@@ -3,6 +3,8 @@
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "UI/NodeCanvasScene.h"
+#include "UI/NodePortGeometry.h"
 
 using namespace CycleV2;
 
@@ -32,7 +34,7 @@ TEST_CASE("Graph node factory creates canonical envelope nodes", "[cycle-v2][gra
 TEST_CASE("Voice Context exposes typed voice configuration inputs", "[cycle-v2][graph][voice-context]") {
     const Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
 
-    REQUIRE(voice.inputs.size() == 3);
+    REQUIRE(voice.inputs.size() == 4);
     REQUIRE(voice.inputs[0].id == "modulation");
     REQUIRE(voice.inputs[0].connectionKind == ConnectionKind::ConfigurationAttachment);
     REQUIRE(voice.inputs[0].attachmentType == AttachmentType::ModulationTriple);
@@ -42,8 +44,20 @@ TEST_CASE("Voice Context exposes typed voice configuration inputs", "[cycle-v2][
     REQUIRE(voice.inputs[2].connectionKind == ConnectionKind::ConfigurationAttachment);
     REQUIRE(voice.inputs[2].attachmentType == AttachmentType::Unison);
     REQUIRE(voice.inputs[2].side == PortSide::Left);
+    REQUIRE(voice.inputs[3].id == "scratch");
+    REQUIRE(voice.inputs[3].purpose == PortPurpose::ScratchAttachment);
+    REQUIRE(voice.inputs[3].connectionKind == ConnectionKind::ProcessingAttachment);
+    REQUIRE(voice.inputs[3].attachmentType == AttachmentType::ScratchEnvelope);
     REQUIRE(voice.bounds.getWidth() == 280.f);
-    REQUIRE(voice.bounds.getHeight() == 148.f);
+    REQUIRE(voice.bounds.getHeight() == 182.f);
+
+    const float socketRadius = NodePortGeometry::socketDiameter * 0.5f;
+    for (const auto& input : voice.inputs) {
+        REQUIRE(input.side == PortSide::Left);
+        const Point<float> centre = NodeCanvasScene::portWorldCentre(voice, input);
+        REQUIRE(centre.y - socketRadius >= voice.bounds.getY());
+        REQUIRE(centre.y + socketRadius <= voice.bounds.getBottom());
+    }
 }
 
 TEST_CASE("Voice Context normalization preserves its readable preview width",

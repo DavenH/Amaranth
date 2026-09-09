@@ -174,6 +174,14 @@ void GraphAudioExecutor::clearIncrementalCache() const {
     diagnosticProcessCounts.clear();
 }
 
+void GraphAudioExecutor::resetExecutionState() const {
+    clearIncrementalCache();
+    processors.clear();
+    preparedVoices.clear();
+    bufferSlots.clear();
+    realtimeOutput = nullptr;
+}
+
 size_t GraphAudioExecutor::diagnosticProcessCount(const String& nodeId) const {
     for (size_t index = 0; index < diagnosticNodeIds.size(); ++index) {
         if (diagnosticNodeIds[index] == nodeId && index < diagnosticProcessCounts.size()) {
@@ -392,7 +400,14 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             output.channelLayout = ChannelLayout::StereoPair;
             output.block.samples.resize(frameCount);
             output.secondaryBlock.samples.resize(frameCount);
-            renderOscillatorRegion(*oscillatorRegion, voice, frameCount, output);
+            renderOscillatorRegion(
+                    *oscillatorRegion,
+                    voice,
+                    timing,
+                    bufferSlots.data(),
+                    bufferSlots.size(),
+                    frameCount,
+                    output);
             publishSingleOutput(context, std::move(output));
         } else {
             processor->process(context);
@@ -629,6 +644,9 @@ GraphAudioExecutor::oscillatorRegionForStep(
 void GraphAudioExecutor::renderOscillatorRegion(
         PreparedVoice::OscillatorRegion& region,
         const AudioVoiceContext& voice,
+        AudioProcessTiming timing,
+        const SignalPayload* signalBuffers,
+        size_t signalBufferCount,
         size_t frameCount,
         SignalPayload& output) {
     Buffer<float> left(output.block.samples.data(), (int) frameCount);
@@ -647,19 +665,30 @@ void GraphAudioExecutor::renderOscillatorRegion(
         if (!region.active || count == 0) {
             return;
         }
-        const bool rendered = region.processor->process(
+        const PreparedOscillatorProcessContext context {
+                &voice,
+                signalBuffers,
+                signalBufferCount,
+                frameCount,
+                start,
+                region.voiceSamplePosition,
+                timing,
                 voice.controls.noteNumber + region.midiNoteOffset,
                 voice.controls.velocity,
                 pitchEnvelope,
                 left.section((int) start, (int) count),
-                right.section((int) start, (int) count));
+                right.section((int) start, (int) count)
+        };
+        const bool rendered = region.processor->process(context);
         jassert(rendered);
+        region.voiceSamplePosition += count;
     };
     const auto applyEvent = [&](const NoteLifecycleEvent& event) {
         if (event.type == NoteLifecycleType::NoteOff) {
             return;
         }
         region.processor->reset();
+        region.voiceSamplePosition = 0;
         region.active = event.type == NoteLifecycleType::NoteOn;
     };
 
@@ -702,6 +731,20 @@ bool GraphAudioExecutor::hasActiveVoiceTail(int voiceIndex) const {
 
 bool GraphAudioExecutor::hasVoiceTailProcessor(int voiceIndex) const {
     return hasVoiceTailProcessor(voiceIndex, false);
+}
+
+size_t GraphAudioExecutor::oscillatorFrameRenderCount(int voiceIndex) const {
+    const auto found = preparedVoices.find(voiceIndex);
+    if (found == preparedVoices.end()) {
+        return 0;
+    }
+    size_t count = 0;
+    for (const auto& region : found->second.oscillatorRegions) {
+        if (region != nullptr && region->processor != nullptr) {
+            count += region->processor->frameRenderCount();
+        }
+    }
+    return count;
 }
 
 bool GraphAudioExecutor::hasVoiceTailProcessor(int voiceIndex, bool activeOnly) const {

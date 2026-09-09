@@ -423,6 +423,7 @@ TEST_CASE("Spectral spy heatmaps map the raw Trimesh grid exactly once",
     mesh.frequencyMidiNote = 48;
 
     NodePreviewResult spy = mesh;
+    spy.role = PreviewModuleRole::SignalSpy;
     const TrimeshRenderProfile profile = TrimeshRenderProfile::fromSemantic({
             PortDomain::SpectralMagnitudeSignal,
             RenderScalePolicy::Bipolar,
@@ -436,7 +437,7 @@ TEST_CASE("Spectral spy heatmaps map the raw Trimesh grid exactly once",
     expectedData.columns = (int) mesh.gridColumns;
     expectedData.rows = (int) mesh.gridRows;
     expectedData.domain = mesh.domain;
-    expectedData.surface = profile.mapGridToDisplay(
+    expectedData.surface = profile.mapSpectrum2DGridToDisplay(
             expectedData.surface,
             mesh.gridColumns,
             mesh.gridRows,
@@ -448,8 +449,8 @@ TEST_CASE("Spectral spy heatmaps map the raw Trimesh grid exactly once",
     REQUIRE(meshImage.isValid());
     REQUIRE(spyImage.isValid());
     REQUIRE(expectedImage.isValid());
-    REQUIRE(imagesMatch(meshImage, expectedImage));
     REQUIRE(imagesMatch(spyImage, expectedImage));
+    REQUIRE_FALSE(imagesMatch(meshImage, expectedImage));
 
     mesh.primary.assign(mesh.primary.size(), 0.f);
     const Image zeroImage = NodePreviewRenderer::createRuntimeHeatmapImage(mesh, profile);

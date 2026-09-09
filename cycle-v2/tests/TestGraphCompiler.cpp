@@ -6,6 +6,7 @@
 #include "Nodes/Control/ModulationTriple.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 
 #include <algorithm>
 
@@ -470,6 +471,227 @@ TEST_CASE("Voice Context defaults reach volume and scratch Envelope sidechains",
     REQUIRE(defaultInputCount(findStep(compiled.plan, "mesh")) == 3);
     REQUIRE(defaultInputCount(findStep(compiled.plan, "volume")) == 2);
     REQUIRE(defaultInputCount(findStep(compiled.plan, "scratch")) == 2);
+}
+
+TEST_CASE("Voice Context default scratch lowers to each context Trimesh",
+        "[cycle-v2][graph][voice-context][scratch]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    Node scratch = factory.createNode(NodeKind::Envelope, "scratch", {});
+    for (auto& parameter : scratch.parameters) {
+        if (parameter.id == "purpose") {
+            parameter.value = "scratch";
+        } else if (parameter.id == "enabled") {
+            parameter.value = "0";
+        }
+    }
+    NodeDefinitionRegistry::instance().normalize(scratch);
+    graph.addNode(std::move(scratch));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "first", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "second", {}));
+
+    GraphEditor editor;
+    REQUIRE(editor.connect(
+            graph,
+            { "scratch", "env", false },
+            { "voice", "scratch", true }).succeeded());
+    for (const String& target : { "first", "second" }) {
+        REQUIRE(editor.connect(
+                graph,
+                { "voice", "context", false },
+                { target, "context", true }).succeeded());
+    }
+
+    const GraphCompileResult compiled = GraphCompiler().compile(graph);
+
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.voiceContexts.size() == 1);
+    REQUIRE(compiled.plan.voiceContexts.front().defaultScratchNodeId == "scratch");
+    for (const String& target : { "first", "second" }) {
+        const GraphExecutionStep& step = findStep(compiled.plan, target);
+        REQUIRE(step.attachments.size() == 1);
+        REQUIRE(step.attachments.front().sourceNodeId == "scratch");
+        REQUIRE(step.attachments.front().destPortId == "scratch");
+        const auto configuration = std::dynamic_pointer_cast<const TrimeshConfiguration>(
+                step.configuration.value);
+        REQUIRE(configuration != nullptr);
+        REQUIRE_FALSE(configuration->scratchSourceEnabled);
+    }
+    REQUIRE(std::count_if(
+            compiled.plan.attachments.begin(),
+            compiled.plan.attachments.end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "scratch"
+                        && edge.destPortId == "scratch";
+            }) == 3);
+}
+
+TEST_CASE("Voice Context scratch reaches Trimesh branches in its oscillator region",
+        "[cycle-v2][graph][voice-context][scratch][oscillator-region]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    graph.removeEdgesFromOutput("scratchEnv", "env");
+    Node* voice = graph.findNodeForEditing("voice");
+    REQUIRE(voice != nullptr);
+    NodeDefinitionRegistry::instance().normalize(*voice);
+    graph.addEdge({
+            "scratchEnv",
+            "env",
+            "voice",
+            "scratch",
+            PortDomain::EnvelopeSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::ScratchEnvelope
+    });
+
+    const GraphCompileResult compiled = GraphCompiler().compile(graph);
+
+    REQUIRE(compiled.succeeded());
+    for (const String& target : { "waveMesh", "magMesh", "phaseMesh" }) {
+        INFO("Missing inherited scratch binding for " << target);
+        REQUIRE(effectiveScratchSourceNodeId(findStep(compiled.plan, target))
+                == "scratchEnv");
+    }
+}
+
+TEST_CASE("Voice Context scratch defaults remain independently scoped",
+        "[cycle-v2][graph][voice-context][scratch]") {
+    GraphNodeFactory factory;
+    GraphEditor editor;
+    NodeGraph graph;
+    for (const String& suffix : { "A", "B" }) {
+        graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice" + suffix, {}));
+        graph.addNode(factory.createNode(NodeKind::Envelope, "scratch" + suffix, {}));
+        graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh" + suffix, {}));
+        REQUIRE(editor.setNodeParameter(
+                graph,
+                "scratch" + suffix,
+                "purpose",
+                "Purpose",
+                "scratch").succeeded());
+        REQUIRE(editor.connect(
+                graph,
+                { "scratch" + suffix, "env", false },
+                { "voice" + suffix, "scratch", true }).succeeded());
+        REQUIRE(editor.connect(
+                graph,
+                { "voice" + suffix, "context", false },
+                { "mesh" + suffix, "context", true }).succeeded());
+    }
+
+    const GraphCompileResult compiled = GraphCompiler().compile(graph);
+
+    REQUIRE(compiled.succeeded());
+    REQUIRE(effectiveScratchSourceNodeId(findStep(compiled.plan, "meshA")) == "scratchA");
+    REQUIRE(effectiveScratchSourceNodeId(findStep(compiled.plan, "meshB")) == "scratchB");
+}
+
+TEST_CASE("Direct Trimesh scratch overrides the Voice Context default",
+        "[cycle-v2][graph][voice-context][scratch]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    for (const String& id : { "defaultScratch", "localScratch" }) {
+        Node scratch = factory.createNode(NodeKind::Envelope, id, {});
+        for (auto& parameter : scratch.parameters) {
+            if (parameter.id == "purpose") {
+                parameter.value = "scratch";
+            } else if (parameter.id == "enabled" && id == "defaultScratch") {
+                parameter.value = "0";
+            }
+        }
+        NodeDefinitionRegistry::instance().normalize(scratch);
+        graph.addNode(std::move(scratch));
+    }
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+
+    GraphEditor editor;
+    REQUIRE(editor.connect(
+            graph,
+            { "defaultScratch", "env", false },
+            { "voice", "scratch", true }).succeeded());
+    REQUIRE(editor.connect(
+            graph,
+            { "voice", "context", false },
+            { "mesh", "context", true }).succeeded());
+    REQUIRE(editor.connect(
+            graph,
+            { "localScratch", "env", false },
+            { "mesh", "scratch", true }).succeeded());
+
+    const GraphCompileResult compiled = GraphCompiler().compile(graph);
+
+    REQUIRE(compiled.succeeded());
+    const GraphExecutionStep& mesh = findStep(compiled.plan, "mesh");
+    REQUIRE(mesh.attachments.size() == 1);
+    REQUIRE(mesh.attachments.front().sourceNodeId == "localScratch");
+    const auto configuration = std::dynamic_pointer_cast<const TrimeshConfiguration>(
+            mesh.configuration.value);
+    REQUIRE(configuration != nullptr);
+    REQUIRE(configuration->scratchSourceEnabled);
+}
+
+TEST_CASE("Use Voice Time suppresses inherited scratch without runtime work",
+        "[cycle-v2][graph][voice-context][scratch]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    Node scratch = factory.createNode(NodeKind::Envelope, "scratch", {});
+    for (auto& parameter : scratch.parameters) {
+        if (parameter.id == "purpose") {
+            parameter.value = "scratch";
+        }
+    }
+    NodeDefinitionRegistry::instance().normalize(scratch);
+    graph.addNode(std::move(scratch));
+    graph.addNode(factory.createNode(NodeKind::ScratchDefaultOverride, "voiceTime", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "inherits", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "excludedFirst", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "excludedSecond", {}));
+
+    GraphEditor editor;
+    REQUIRE(editor.connect(
+            graph,
+            { "scratch", "env", false },
+            { "voice", "scratch", true }).succeeded());
+    for (const String& target : { "inherits", "excludedFirst", "excludedSecond" }) {
+        REQUIRE(editor.connect(
+                graph,
+                { "voice", "context", false },
+                { target, "context", true }).succeeded());
+    }
+    for (const String& target : { "excludedFirst", "excludedSecond" }) {
+        REQUIRE(editor.connect(
+                graph,
+                { "voiceTime", "scratch", false },
+                { target, "scratch", true }).succeeded());
+    }
+
+    const GraphCompileResult compiled = GraphCompiler().compile(graph);
+
+    REQUIRE(compiled.succeeded());
+    REQUIRE(findStep(compiled.plan, "inherits").attachments.size() == 1);
+    REQUIRE(findStep(compiled.plan, "inherits").attachments.front().sourceNodeId == "scratch");
+    REQUIRE(findStep(compiled.plan, "excludedFirst").attachments.empty());
+    REQUIRE(findStep(compiled.plan, "excludedSecond").attachments.empty());
+    REQUIRE(std::none_of(
+            compiled.plan.steps.begin(),
+            compiled.plan.steps.end(),
+            [](const GraphExecutionStep& step) {
+                return step.kind == NodeKind::ScratchDefaultOverride;
+            }));
+    REQUIRE(std::none_of(
+            compiled.plan.buffers.begin(),
+            compiled.plan.buffers.end(),
+            [](const GraphBufferPlan& buffer) {
+                return buffer.sourceNodeId == "voiceTime";
+            }));
+    REQUIRE(std::none_of(
+            compiled.plan.attachments.begin(),
+            compiled.plan.attachments.end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "voiceTime";
+            }));
 }
 
 TEST_CASE("Compiler indexes both dependency directions and probe addresses",

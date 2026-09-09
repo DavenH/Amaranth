@@ -81,7 +81,7 @@ bool GraphPresentationModel::refresh(
             next.runtimeTrace = GraphRuntime().process(graph, next.compileResult.plan);
         }
         updateGraph.clearProductCache();
-        previewAudioExecutor.clearIncrementalCache();
+        previewAudioExecutor.resetExecutionState();
     } else if (change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
         refreshConfigurations(graph, next.compileResult.plan, change.nodeIds);
@@ -602,7 +602,8 @@ void GraphPresentationModel::refreshConfigurations(
                 node->model,
                 spec,
                 &graph,
-                step.nodeId);
+                step.nodeId,
+                effectiveScratchSourceNodeId(step));
         if (step.configuration.key == key) {
             continue;
         }
@@ -612,7 +613,8 @@ void GraphPresentationModel::refreshConfigurations(
                 node->model,
                 spec,
                 &graph,
-                step.nodeId);
+                step.nodeId,
+                effectiveScratchSourceNodeId(step));
         if (value != nullptr) {
             step.configuration = {
                     step.configuration.revision + 1,
@@ -679,6 +681,13 @@ CausalUpdateRequest GraphPresentationModel::updateRequest(
     }
 
     std::vector<String> roots = change.nodeIds;
+    if (compile || change.probesChanged) {
+        for (const auto& probe : graph.getSignalProbes()) {
+            if (std::find(roots.begin(), roots.end(), probe.sourceNodeId) == roots.end()) {
+                roots.push_back(probe.sourceNodeId);
+            }
+        }
+    }
     if (roots.empty() && !plan.nodeOrder.empty()) {
         roots.push_back(plan.nodeOrder.front());
     }

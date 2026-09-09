@@ -9,6 +9,9 @@ namespace CycleV2 {
 class VoiceContextCompactEditor {
 public:
     static Rectangle<float> nodeSelectorBounds(Rectangle<float> nodeBounds, float zoom);
+    static Rectangle<float> summaryBounds(Rectangle<float> nodeBounds, float zoom);
+    static Rectangle<float> scratchIndicatorBounds(Rectangle<float> nodeBounds, float zoom);
+    static Rectangle<float> scratchLabelBounds(Rectangle<float> nodeBounds, float zoom);
 
     static String domain(const Node& node);
     static String domainLabel(const Node& node);
@@ -26,6 +29,10 @@ public:
             float zoom,
             const Node& node,
             double voiceDurationSeconds);
+    static void paintScratchIndicator(
+            Graphics& graphics,
+            Rectangle<float> nodeBounds,
+            float zoom);
     static bool hitNodeSelector(
             Rectangle<float> nodeBounds,
             float zoom,

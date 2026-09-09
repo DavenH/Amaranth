@@ -11,7 +11,49 @@
 
 namespace CycleV2 {
 
+const SignalPayload* PreparedOscillatorProcessContext::signalAt(
+        int bufferIndex) const {
+    return bufferIndex >= 0 && (size_t) bufferIndex < signalBufferCount
+            ? signalBuffers + bufferIndex
+            : nullptr;
+}
+
 namespace {
+
+bool regionContainsNode(
+        const GraphExecutionPlan& plan,
+        const OscillatorRegionPlan& region,
+        const String& nodeId) {
+    return std::any_of(
+            region.stepIndices.begin(),
+            region.stepIndices.end(),
+            [&](int stepIndex) {
+                return stepIndex >= 0
+                        && stepIndex < (int) plan.steps.size()
+                        && plan.steps[(size_t) stepIndex].nodeId == nodeId;
+            });
+}
+
+bool hasExternalProcessorConsumer(
+        const GraphExecutionPlan& plan,
+        const OscillatorRegionPlan& region) {
+    return std::any_of(
+            plan.signalEdges.begin(),
+            plan.signalEdges.end(),
+            [&](const Edge& edge) {
+                if (!regionContainsNode(plan, region, edge.sourceNodeId)
+                        || regionContainsNode(plan, region, edge.destNodeId)) {
+                    return false;
+                }
+                const auto destination = std::find_if(
+                        plan.steps.begin(),
+                        plan.steps.end(),
+                        [&](const GraphExecutionStep& step) {
+                            return step.nodeId == edge.destNodeId;
+                        });
+                return destination != plan.steps.end() && !destination->outputSink;
+            });
+}
 
 class PreparedChainedOscillatorRegion final : public PreparedOscillatorRegion {
 public:
@@ -23,7 +65,7 @@ public:
             const CompiledVoiceContext& context,
             const AudioExecutionSpec& spec,
             int maximumCycleSamples) {
-        replaceDiagnostics = std::none_of(
+        const bool hasScratchAttachment = std::any_of(
                 plan.steps.begin(),
                 plan.steps.end(),
                 [](const GraphExecutionStep& step) {
@@ -34,6 +76,8 @@ public:
                                 return attachment.destPortId == "scratch";
                             });
                 });
+        replaceDiagnostics = !hasScratchAttachment
+                && !hasExternalProcessorConsumer(plan, region);
         auto preparedRenderer = std::make_unique<ChainedOscillatorRecipeRenderer>();
         if (!preparedRenderer->prepare(plan, region, maximumCycleSamples)
                 || !runtime.prepare(
@@ -52,19 +96,8 @@ public:
         renderer->reset();
     }
 
-    bool process(
-            int midiNote,
-            float velocity,
-            Buffer<float> pitchEnvelope,
-            Buffer<float> left,
-            Buffer<float> right) override {
-        return runtime.process(
-                midiNote,
-                velocity,
-                pitchEnvelope,
-                left,
-                right,
-                *renderer);
+    bool process(const PreparedOscillatorProcessContext& context) override {
+        return runtime.process(context, *renderer);
     }
 
 private:
@@ -76,6 +109,7 @@ private:
 class PreparedSpectralOscillatorRegion final : public PreparedOscillatorRegion {
 public:
     bool replacesDiagnosticProcessors() const override { return false; }
+    size_t frameRenderCount() const override { return renderer.frameRenderCount(); }
 
     bool prepare(
             const GraphExecutionPlan& plan,
@@ -99,19 +133,8 @@ public:
         renderer.reset();
     }
 
-    bool process(
-            int midiNote,
-            float velocity,
-            Buffer<float> pitchEnvelope,
-            Buffer<float> left,
-            Buffer<float> right) override {
-        return runtime.process(
-                midiNote,
-                velocity,
-                pitchEnvelope,
-                left,
-                right,
-                renderer);
+    bool process(const PreparedOscillatorProcessContext& context) override {
+        return runtime.process(context, renderer);
     }
 
 private:

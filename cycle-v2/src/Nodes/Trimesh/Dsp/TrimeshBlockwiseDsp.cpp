@@ -38,9 +38,7 @@ void TrimeshBlockwiseDsp::prepare(
     setCyclic(shouldWrap);
     ensureCurveTable();
     configureGuideCurveSeeds(domain);
-    if (mesh != nullptr && mesh->hasEnoughCubesForCrossSection()) {
-        rasterizer.renderWaveform({ *mesh, createRequest(domain), 0.f });
-    }
+    rasterizePrepared(noiseSeed);
 }
 
 void TrimeshBlockwiseDsp::setMesh(Mesh* meshToRender) {
@@ -67,6 +65,14 @@ void TrimeshBlockwiseDsp::setGuideCurveProvider(GuideCurveProvider* provider) {
 void TrimeshBlockwiseDsp::setVoiceLifecycleSeed(uint32_t seed) {
     voiceLifecycleSeed = seed;
     hasVoiceLifecycleSeed = true;
+    configureGuideCurveSeeds(preparedDomain);
+}
+
+void TrimeshBlockwiseDsp::rasterizePrepared(int noiseSeed) {
+    this->noiseSeed = noiseSeed;
+    if (mesh != nullptr && mesh->hasEnoughCubesForCrossSection()) {
+        rasterizer.renderWaveform({ *mesh, createRequest(preparedDomain), 0.f });
+    }
 }
 
 void TrimeshBlockwiseDsp::setFrequencyMidiNote(int midiNote) {
@@ -95,7 +101,7 @@ void TrimeshBlockwiseDsp::configureGuideCurveSeeds(PortDomain domain) {
             guideCount,
             GuideCurveProvider::tableSize,
             seed);
-    rasterizer.setNoiseSeed((int) (seed.value % GuideCurveProvider::tableSize));
+    noiseSeed = (int) (seed.value % GuideCurveProvider::tableSize);
 }
 
 void TrimeshBlockwiseDsp::renderCycle(
@@ -180,6 +186,7 @@ Rasterization::RasterizationRequest TrimeshBlockwiseDsp::createRequest(
     request.scalingMode = scalingModeForDomain(domain);
     request.calcDepthDimensions = false;
     request.lowResCurves = false;
+    request.noiseSeed = noiseSeed;
     return request;
 }
 

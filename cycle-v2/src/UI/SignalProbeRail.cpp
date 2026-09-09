@@ -385,13 +385,9 @@ void SignalProbeRail::paintCachedPreview(
             logicalBounds,
             physicalScale);
     if (!cache.hit) {
-        const PreviewModuleRole displayRole = preview.sourceRole
-                == PreviewModuleRole::MeshSurface
-                ? PreviewModuleRole::MeshSurface
-                : PreviewModuleRole::SignalSpy;
         NodePreviewResult compactResult {
                 "probe-preview-" + probe.id,
-                displayRole,
+                PreviewModuleRole::SignalSpy,
                 preview.values,
                 {},
                 preview.gridColumns,

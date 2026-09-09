@@ -595,7 +595,7 @@ Context:
 Current status: open for the remaining pitch/glide/oversampling semantics; the
 octave path is addressed on 2026-09-06.
 
-## Open: Cycle V1/V2 exact-parity inputs and deterministic seeds are incomplete
+## Open: Cycle V1/V2 exact parity differs beyond live spectral refresh
 
 Context:
 
@@ -679,17 +679,40 @@ and clearing IFFT bins through `SpectralLayerCore` improves correlation to
 `0.95298`, `0.93823`, `0.91239`, and `0.89154` at MIDI 36, 48, 60, and 72. The
 normalized residuals improve to `0.3030`, `0.3460`, `0.4093`, and `0.4529`.
 
-The remaining Filter Saw discrepancy is time-dependent: 20 ms windows at MIDI
-48 range from `0.85560` to `0.99423` correlation. Source inspection shows that
-Cycle 1 recalculates its magnitude raster per cycle, whereas
-`SpectralOscillatorRegionRuntime` renders the shared frame only once after note
-reset and retains the configuration's static morph. Live voice-time, key, and
-velocity modulation are therefore not applied to prepared spectral frames.
-This is an open Cycle V2 implementation gap, not a preset-port discrepancy.
+The remaining Filter Saw discrepancy was time-dependent: 20 ms windows at MIDI
+48 ranged from `0.85560` to `0.99423` correlation. Source inspection showed
+that Cycle 1 recalculated its magnitude raster per cycle, whereas Cycle V2
+rendered one prepared frame after note reset. That implementation gap was
+resolved on 2026-09-08: prepared spectral frames now sample live morph and
+scratch controls and rerasterize at synthesis-cycle frontiers.
 
-Current status: open. Reconcile each candidate against a fresh canonical
-conversion, add explicit deterministic seed control, and remove output-policy
-differences before enabling `exactSamplesRequired`.
+The deterministic Cycle V2 runtime matrix now covers Saw, Filter Saw, PWM,
+Dunk 2, and Japan Drum at MIDI 36, 48, 60, and 72, note lengths of 1024 and
+4096 samples, and host blocks of 64, 127, 256, and 512 samples. Audio, scratch
+signals, and frame-render counts are byte-identical across block partitions.
+An automation fixture also verifies Dunk 2 evolution, PWM duty-cycle and
+scratch evolution, repeated fully released notes, and byte-identical WAV files
+from fresh Cycle V2 processes.
+
+Fresh post-fix comparisons remain repeatable within both engines but are not
+equal at the captured effect-free final voice-output boundary. Filter Saw now
+reports correlations of `0.94219`, `0.91977`, `0.88743`, and `0.84886` at MIDI
+36, 48, 60, and 72. Japan Drum reports `0.22121`, `0.34862`, `0.24436`, and
+`0.23510`. The artifacts are:
+
+- `/private/tmp/cycle-filter-saw-live-modulation-final/comparison.json`
+- `/private/tmp/cycle-japan-drum-live-modulation-final/comparison.json`
+- `/private/tmp/cycle-v2-time-evolution-final-rerun/summary.json`
+
+Current status: open, narrowed. Missing live spectral-frame modulation is
+resolved. The first captured unequal mature boundary is the effect-free final
+voice output (boundary 6); shared fixed-frame rasterization and FFT reference
+tests remain exact. The next diagnostic must add equivalent Cycle 1 captures
+for the rasterized frame, FFT, post-layer spectrum, reconstructed frame, and
+pitch-clocked cyclic output (boundaries 1–5), then address the first unequal
+stage. Canonical input reconciliation, deterministic seed control, startup
+state, gain/resampling policy, and remaining Voice Context fields must still be
+separated before enabling `exactSamplesRequired`.
 
 ## Resolved: Cycle 1 and Cycle V2 use different MIDI reference notes
 

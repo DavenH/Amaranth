@@ -14,7 +14,17 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": { "x": 650.0, "y": 420.0 },
-            "parameters": { "yellow": 0.5, "red": 0.5, "blue": 0.5, "primaryAxis": "yellow", "link.yellow": true, "link.red": false, "link.blue": false },
+            "parameters": {
+                "enabled": true,
+                "range": 0.5,
+                "yellow": 0.5,
+                "red": 0.5,
+                "blue": 0.5,
+                "primaryAxis": "yellow",
+                "link.yellow": true,
+                "link.red": false,
+                "link.blue": false
+            },
             "model": {
                 "schema": "trimesh",
                 "version": 2,
@@ -148,7 +158,17 @@
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
-            "parameters": { "yellow": 0.5, "red": 0.5, "blue": 0.5, "primaryAxis": "yellow", "link.yellow": true, "link.red": false, "link.blue": false },
+            "parameters": {
+                "enabled": true,
+                "range": 0.5,
+                "yellow": 0.5,
+                "red": 0.5,
+                "blue": 0.5,
+                "primaryAxis": "yellow",
+                "link.yellow": true,
+                "link.red": false,
+                "link.blue": false
+            },
             "model": {
                 "schema": "trimesh",
                 "version": 2,
@@ -285,7 +305,17 @@
             "portSides": {
                 "outputs": { "out": "top" }
             },
-            "parameters": { "yellow": 0.5, "red": 0.5, "blue": 0.5, "primaryAxis": "yellow", "link.yellow": true, "link.red": false, "link.blue": false },
+            "parameters": {
+                "enabled": true,
+                "range": 0.5,
+                "yellow": 0.5,
+                "red": 0.5,
+                "blue": 0.5,
+                "primaryAxis": "yellow",
+                "link.yellow": true,
+                "link.red": false,
+                "link.blue": false
+            },
             "model": {
                 "schema": "trimesh",
                 "version": 2,
@@ -478,7 +508,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 1632.0, "y": 159.99994 },
-            "parameters": { "purpose": "volume", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -605,7 +635,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 290.96552, "y": 76.41379 },
-            "parameters": { "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,

@@ -2,6 +2,8 @@
 #include "UI/VoiceContextCompactEditor.h"
 
 #include "UI/CanvasChromeMetrics.h"
+#include "UI/EnvelopePurposeIconRenderer.h"
+#include "UI/NodePortGeometry.h"
 
 namespace CycleV2 {
 
@@ -34,6 +36,38 @@ Rectangle<float> VoiceContextCompactEditor::nodeSelectorBounds(
     const float width = jmin(nodeBounds.getWidth() - 96.f * zoom, 64.f * zoom);
     return Rectangle<float>(width, 28.f * zoom).withCentre(
             { nodeBounds.getCentreX(), body.getY() + 28.f * zoom });
+}
+
+Rectangle<float> VoiceContextCompactEditor::summaryBounds(
+        Rectangle<float> nodeBounds,
+        float zoom) {
+    return nodeBounds
+            .withTrimmedTop(94.f * zoom)
+            .withTrimmedBottom(42.f * zoom)
+            .reduced(16.f * zoom, 0.f);
+}
+
+Rectangle<float> VoiceContextCompactEditor::scratchIndicatorBounds(
+        Rectangle<float> nodeBounds,
+        float zoom) {
+    const float size = 18.f * zoom;
+    const float centreY = nodeBounds.getY()
+            + (NodePortGeometry::firstSidePortOffset
+                    + 3.f * NodePortGeometry::sidePortSpacing) * zoom;
+    return Rectangle<float>(size, size).withCentre({
+            nodeBounds.getX() + 16.f * zoom,
+            centreY
+    });
+}
+
+Rectangle<float> VoiceContextCompactEditor::scratchLabelBounds(
+        Rectangle<float> nodeBounds,
+        float zoom) {
+    const Rectangle<float> icon = scratchIndicatorBounds(nodeBounds, zoom);
+    return Rectangle<float>(76.f * zoom, 24.f * zoom).withCentre({
+            icon.getRight() + 43.f * zoom,
+            icon.getCentreY()
+    });
 }
 
 String VoiceContextCompactEditor::domain(const Node& node) {
@@ -111,16 +145,29 @@ void VoiceContextCompactEditor::paintNodeSummary(
         float zoom,
         const Node& node,
         double voiceDurationSeconds) {
-    Rectangle<float> summary = nodeBounds
-            .withTrimmedTop(94.f * zoom)
-            .withTrimmedBottom(10.f * zoom)
-            .reduced(16.f * zoom, 0.f);
+    const Rectangle<float> summary = summaryBounds(nodeBounds, zoom);
     graphics.setColour(kText.withAlpha(0.88f));
     graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize * zoom));
     graphics.drawText(
             summaryLabel(node, voiceDurationSeconds),
             summary,
             Justification::centred);
+}
+
+void VoiceContextCompactEditor::paintScratchIndicator(
+        Graphics& graphics,
+        Rectangle<float> nodeBounds,
+        float zoom) {
+    EnvelopePurposeIconRenderer::paint(
+            graphics,
+            EnvelopePurpose::Scratch,
+            scratchIndicatorBounds(nodeBounds, zoom));
+    graphics.setColour(kMutedText.withAlpha(0.88f));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize * zoom));
+    graphics.drawText(
+            "Scratch",
+            scratchLabelBounds(nodeBounds, zoom),
+            Justification::centredLeft);
 }
 
 bool VoiceContextCompactEditor::hitNodeSelector(

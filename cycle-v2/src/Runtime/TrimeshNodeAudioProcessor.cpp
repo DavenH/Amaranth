@@ -2,12 +2,11 @@
 #include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
-#include <Curve/Rasterization/ScratchPositionPolicy.h>
 #include <Obj/MorphPosition.h>
 
 #include "Runtime/AudioProcessContextUtils.h"
 #include "Runtime/AudioProcessorFactories.h"
-#include "Runtime/SmoothedMorphPosition.h"
+#include "Runtime/TrimeshMorphResolver.h"
 
 #include "Nodes/Trimesh/Model/PreparedTrimeshTopology.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
@@ -39,17 +38,6 @@ int primaryAxisFromParameter(const String& axisName) {
     }
 
     return Vertex::Time;
-}
-
-Rasterization::ScratchSourceDomain scratchDomainFor(PortDomain domain) {
-    if (domain == PortDomain::TimeSignal) {
-        return Rasterization::ScratchSourceDomain::Time;
-    }
-    if (domain == PortDomain::SpectralMagnitudeSignal
-            || domain == PortDomain::SpectralPhaseSignal) {
-        return Rasterization::ScratchSourceDomain::Spectral;
-    }
-    return Rasterization::ScratchSourceDomain::Unsupported;
 }
 
 const SignalPayload* scratchAttachment(const AudioProcessContext& context) {
@@ -104,8 +92,7 @@ public:
         }
 
         preparedDomain = spec.domain;
-        smoothedMorph.reset(configuration->morph);
-        morphInitialized = true;
+        morphResolver.reset(configuration->morph);
         trimeshDsp.setGuideCurveProvider(configuration->guideCurveProvider.get());
         trimeshGridDsp.setGuideCurveProvider(configuration->guideCurveProvider.get());
 
@@ -153,15 +140,6 @@ public:
         const MorphPosition baseMorph = configuration != nullptr
                 ? configuration->morph
                 : MorphPosition { 0.5f, 0.5f, 0.5f };
-        if (!morphInitialized) {
-            smoothedMorph.reset(baseMorph);
-            morphInitialized = true;
-        }
-
-        smoothedMorph.setTargets(morphTargets(context, baseMorph));
-        smoothedMorph.advance(context.frameCount, context.timing.sampleRate);
-
-        const MorphPosition& morph = smoothedMorph.current();
         const int primaryAxis = configuration != nullptr
                 ? configuration->primaryViewAxis
                 : Vertex::Time;
@@ -178,19 +156,29 @@ public:
                         || configuration->scratchSourceEnabled
                 ? scratchAttachment(context)
                 : nullptr;
-        const auto scratchDomain = scratchDomainFor(outputPort.domain);
+        const auto scratchDomain = TrimeshMorphResolver::domainFor(outputPort.domain);
         const bool scratchAppliesToBlock = scratch != nullptr
                 && !scratch->block.samples.empty()
                 && Rasterization::ScratchPositionPolicy::shouldApply(
                         scratchDomain, primaryAxis);
-        MorphPosition renderMorph = morph;
-        if (scratchAppliesToBlock) {
-            renderMorph = Rasterization::ScratchPositionPolicy::resolve(
-                    morph,
-                    scratchDomain,
-                    primaryAxis,
-                    scratch->block.samples.front());
-        }
+        const TrimeshMorphInputs morphInputs {
+                {
+                        inputAt(context, 2),
+                        inputAt(context, 3),
+                        inputAt(context, 4)
+                },
+                scratch
+        };
+        const MorphPosition renderMorph = morphResolver.resolve(
+                morphInputs,
+                baseMorph,
+                outputPort.domain,
+                primaryAxis,
+                0,
+                context.frameCount,
+                context.timing.sampleRate,
+                configuration == nullptr || configuration->scratchSourceEnabled);
+        const MorphPosition& morph = morphResolver.current();
 
         renderBlock(
                 context,
@@ -322,28 +310,6 @@ private:
                     (int) output.secondaryTraversalGrid.values.size())
                     .mul(configuration->gain);
         }
-    }
-
-    static float absoluteMorphValue(
-            AudioProcessContext& context,
-            size_t inputIndex,
-            float fallback) {
-        const SignalPayload* input = inputAt(context, inputIndex);
-        if (input == nullptr || input->block.samples.empty()) {
-            return fallback;
-        }
-
-        return jlimit(0.f, 1.f, input->block.samples.front());
-    }
-
-    static MorphPosition morphTargets(
-            AudioProcessContext& context,
-            const MorphPosition& fallback) {
-        return {
-                absoluteMorphValue(context, 2, fallback.time.getCurrentValue()),
-                absoluteMorphValue(context, 3, fallback.red.getCurrentValue()),
-                absoluteMorphValue(context, 4, fallback.blue.getCurrentValue())
-        };
     }
 
     static bool hasConnectedMorphInput(AudioProcessContext& context) {
@@ -479,10 +445,9 @@ private:
                 outputPort.domain);
     }
 
-    bool morphInitialized {};
     AudioModuleRole processorRole { AudioModuleRole::MeshSource };
     PortDomain preparedDomain { PortDomain::ControlSignal };
-    SmoothedMorphPosition smoothedMorph;
+    TrimeshMorphResolver morphResolver;
     TrimeshBlockwiseDsp trimeshDsp;
     TrimeshGridwiseDsp trimeshGridDsp;
     std::vector<MorphPosition> traversalMorphs;

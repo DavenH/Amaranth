@@ -44,6 +44,7 @@ public:
     void setCyclic(bool shouldWrap);
     void setGuideCurveProvider(GuideCurveProvider* provider);
     void setVoiceLifecycleSeed(uint32_t seed);
+    void rasterizePrepared(int noiseSeed);
     void setFrequencyMidiNote(int midiNote);
 
     void renderCycle(
@@ -84,6 +85,7 @@ private:
     Mesh* mesh {};
     uint32_t voiceLifecycleSeed {};
     bool hasVoiceLifecycleSeed {};
+    int noiseSeed { -1 };
 };
 
 }

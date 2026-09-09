@@ -52,7 +52,7 @@ generate_svg_data(
     node-icons
     NodeIconData
     NodeIconData
-    genericProcessor voiceContext waveSource imageSource trilinearMesh
+    genericProcessor voiceContext scratchDefaultOverride waveSource imageSource trilinearMesh
     modulationSource modulationTriple
     fft ifft envelope add multiply guideCurve impulseResponse waveshaper
     spectralLayer unison reverb delay equalizer stereoSplit stereoJoin output
@@ -138,6 +138,7 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodePreviewProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/OfflineGraphAudioRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreparedOscillatorRegion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreparedTrimeshMorphBinding.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreviewPitchResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/MonitorPreviewProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SourcePreviewProcessors.cpp"

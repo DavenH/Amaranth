@@ -2,8 +2,11 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
+#include <Util/LogRegionMapping.h>
 
 #include "Runtime/ChainedOscillatorRegionRuntime.h"
+#include "Runtime/GraphAudioExecutor.h"
+#include "Runtime/PreparedOscillatorRegion.h"
 #include "Runtime/SpectralOscillatorFrameRenderer.h"
 #include "Runtime/SpectralOscillatorRegionRuntime.h"
 #include "Graph/GraphCompiler.h"
@@ -15,6 +18,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 
 using namespace CycleV2;
 
@@ -35,6 +39,255 @@ public:
     std::array<int, CycleDsp::maximumUnisonOrder> renderCounts {};
     std::array<float, CycleDsp::maximumUnisonOrder> renderedPhases {};
 };
+
+struct PartitionedRender {
+    std::vector<float> left;
+    std::vector<float> right;
+    std::vector<float> scratch;
+    size_t frameRenderCount {};
+};
+
+class ScratchCaptureObserver final : public GraphProcessObserver {
+public:
+    explicit ScratchCaptureObserver(PartitionedRender& render) : render(render) {}
+
+    void nodeProcessed(
+            const String& nodeId,
+            const AudioProcessContext& context) override {
+        if (nodeId != "scratchEnvelope1" || context.outputs.empty()) {
+            return;
+        }
+        const auto& block = context.outputs.front().block.samples;
+        render.scratch.insert(render.scratch.end(), block.begin(), block.end());
+    }
+
+private:
+    PartitionedRender& render;
+};
+
+float maximumDifference(
+        const std::vector<float>& left,
+        const std::vector<float>& right) {
+    REQUIRE(left.size() == right.size());
+    float result = 0.f;
+    for (size_t index = 0; index < left.size(); ++index) {
+        result = std::max(result, std::abs(left[index] - right[index]));
+    }
+    return result;
+}
+
+NodeGraph loadPresetGraph(const String& name) {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile(name + ".cyclegraph");
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            preset.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    return loaded.graph;
+#else
+    return {};
+#endif
+}
+
+NodeGraph loadOscillatorPresetGraph(const String& name) {
+    NodeGraph graph = loadPresetGraph(name);
+    for (const auto& node : graph.getNodes()) {
+        const bool downstreamEffect = node.kind == NodeKind::ImpulseResponse
+                || node.kind == NodeKind::Waveshaper
+                || node.kind == NodeKind::Reverb
+                || node.kind == NodeKind::Delay
+                || node.kind == NodeKind::Equalizer;
+        if (!downstreamEffect) {
+            continue;
+        }
+        auto parameters = node.parameters;
+        for (auto& parameter : parameters) {
+            if (parameter.id == "enabled") {
+                parameter.value = "0";
+            }
+        }
+        REQUIRE(graph.replaceNodeParameters(node.id, std::move(parameters)));
+    }
+    return graph;
+}
+
+NodeGraph loadFilterSawGraph() {
+    return loadPresetGraph("filter-saw");
+}
+
+GraphExecutionPlan loadFilterSawPlan() {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const auto compiled = GraphCompiler().compile(loadFilterSawGraph());
+    REQUIRE(compiled.succeeded());
+    return compiled.plan;
+#else
+    return {};
+#endif
+}
+
+PartitionedRender renderPreparedGraph(
+        const GraphExecutionPlan& plan,
+        int blockSize,
+        int sampleCount,
+        int controllerEventOffset = -1,
+        int midiNote = 72,
+        float voiceDurationSeconds = 1.f) {
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 512;
+    spec.sampleRate = 48000.0;
+    GraphAudioExecutor executor;
+    executor.prepareExecution(plan, spec);
+
+    PartitionedRender result;
+    result.left.reserve((size_t) sampleCount);
+    result.right.reserve((size_t) sampleCount);
+    AudioVoiceContext voice;
+    voice.hasLifecycleSeed = true;
+    voice.lifecycleSeed = 0x43594332u;
+    voice.controls.noteNumber = midiNote;
+    voice.controls.velocity = 1.f;
+    voice.controls.normalizedVoiceTimeIncrement
+            = 1.f / (48000.f * voiceDurationSeconds);
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    ScratchCaptureObserver observer(result);
+    if (controllerEventOffset >= 0) {
+        voice.controlEvents.push_back({
+                ControlEventKind::Controller,
+                (size_t) controllerEventOffset,
+                74,
+                1.f
+        });
+    }
+    for (int start = 0; start < sampleCount; start += blockSize) {
+        const int count = std::min(blockSize, sampleCount - start);
+        voice.controls.normalizedVoiceTime
+                = (float) start / (48000.f * voiceDurationSeconds);
+        const auto output = executor.processRealtime(
+                plan,
+                (size_t) count,
+                { 48000.0, 120.0, 4 },
+                voice,
+                &observer);
+        REQUIRE(output.isValid());
+        result.left.insert(
+                result.left.end(),
+                output.payload->block.samples.begin(),
+                output.payload->block.samples.end());
+        const SignalBlock& right = output.payload->isStereo()
+                ? output.payload->secondaryBlock
+                : output.payload->block;
+        result.right.insert(
+                result.right.end(),
+                right.samples.begin(),
+                right.samples.end());
+        voice.events.clear();
+        voice.controlEvents.clear();
+    }
+    result.frameRenderCount = executor.oscillatorFrameRenderCount(0);
+    return result;
+}
+
+std::array<std::vector<float>, 2> renderPreparedPresetFrames(
+        const String& presetName) {
+    const auto compiled = GraphCompiler().compile(loadPresetGraph(presetName));
+    REQUIRE(compiled.succeeded());
+    const auto region = std::find_if(
+            compiled.plan.oscillatorRegions.begin(),
+            compiled.plan.oscillatorRegions.end(),
+            [](const OscillatorRegionPlan& candidate) {
+                return candidate.strategy
+                        == OscillatorExecutionStrategy::SharedSpectralFrame;
+            });
+    REQUIRE(region != compiled.plan.oscillatorRegions.end());
+
+    SpectralOscillatorFrameRenderer renderer;
+    REQUIRE(renderer.prepare(compiled.plan, *region, 4096));
+    std::vector<SignalPayload> signals(compiled.plan.buffers.size());
+    for (auto& signal : signals) {
+        signal.domain = PortDomain::ControlSignal;
+        signal.channelLayout = ChannelLayout::Mono;
+        signal.block.samples.assign(512, 0.05f);
+    }
+    AudioVoiceContext voice;
+    voice.hasLifecycleSeed = true;
+    voice.lifecycleSeed = 0x43594332u;
+    PreparedOscillatorProcessContext context;
+    context.voice = &voice;
+    context.signalBuffers = signals.data();
+    context.signalBufferCount = signals.size();
+    context.blockFrameCount = 512;
+    context.timing.sampleRate = 48000.0;
+
+    std::array<std::vector<float>, 2> result;
+    std::array<float, 512> left {};
+    std::array<float, 512> right {};
+    REQUIRE(renderer.renderFrame(
+            512,
+            60,
+            context,
+            0,
+            1,
+            Buffer<float>(left.data(), (int) left.size()),
+            Buffer<float>(right.data(), (int) right.size())));
+    result[0] = std::vector<float>(left.begin(), left.end());
+
+    for (auto& signal : signals) {
+        signal.block.samples.assign(512, 0.37f);
+    }
+    REQUIRE(renderer.renderFrame(
+            512,
+            60,
+            context,
+            511,
+            4096,
+            Buffer<float>(left.data(), (int) left.size()),
+            Buffer<float>(right.data(), (int) right.size())));
+    result[1] = std::vector<float>(left.begin(), left.end());
+    return result;
+}
+
+bool presetHasEvolvingSpectralRaster(const String& presetName) {
+    const auto compiled = GraphCompiler().compile(loadPresetGraph(presetName));
+    REQUIRE(compiled.succeeded());
+    for (const auto& step : compiled.plan.steps) {
+        if (step.audioRole != AudioModuleRole::MeshSource
+                || step.outputs.empty()
+                || (step.outputs.front().domain
+                        != PortDomain::SpectralMagnitudeSignal
+                    && step.outputs.front().domain
+                        != PortDomain::SpectralPhaseSignal)) {
+            continue;
+        }
+        const auto configuration = std::dynamic_pointer_cast<
+                const TrimeshConfiguration>(step.configuration.value);
+        REQUIRE(configuration != nullptr);
+        TrimeshBlockwiseDsp dsp;
+        dsp.setGuideCurveProvider(configuration->guideCurveProvider.get());
+        dsp.prepare(
+                const_cast<Mesh*>(configuration->mesh.get()),
+                MorphPosition(0.05f, 0.05f, 0.05f),
+                configuration->primaryViewAxis,
+                false,
+                step.outputs.front().domain);
+        dsp.prepareSampling(256);
+        dsp.setFrequencyMidiNote(60 + LogRegionMapping::legacyMidiNoteBias);
+        std::array<float, 256> early {};
+        std::array<float, 256> late {};
+        dsp.rasterizePrepared(17);
+        dsp.renderPreparedHarmonicsInto(
+                Buffer<float>(early.data(), (int) early.size()));
+        dsp.setMorphPosition(MorphPosition(0.37f, 0.37f, 0.37f));
+        dsp.rasterizePrepared(19);
+        dsp.renderPreparedHarmonicsInto(
+                Buffer<float>(late.data(), (int) late.size()));
+        if (early != late) {
+            return true;
+        }
+    }
+    return false;
+}
 
 }
 
@@ -368,4 +621,248 @@ TEST_CASE("Spectral oscillator runtime reconstructs one shared frame across Unis
         return sample != 0.f;
     }));
     REQUIRE(wholeLeft != wholeRight);
+}
+
+TEST_CASE("Evolving spectral frames are independent of host block partitions",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][live-modulation]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const GraphExecutionPlan plan = loadFilterSawPlan();
+    const PartitionedRender reference = renderPreparedGraph(plan, 512, 2048);
+    REQUIRE(reference.frameRenderCount > 1);
+
+    for (const int blockSize : { 64, 127, 256 }) {
+        DYNAMIC_SECTION("block size " << blockSize) {
+            const PartitionedRender partitioned = renderPreparedGraph(
+                    plan,
+                    blockSize,
+                    2048);
+            REQUIRE(partitioned.frameRenderCount == reference.frameRenderCount);
+            REQUIRE(partitioned.left == reference.left);
+            REQUIRE(partitioned.right == reference.right);
+        }
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Prepared oscillator preset matrix is independent of host block partitions",
+        "[cycle-v2][runtime][oscillator-region][live-modulation][partition-matrix]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    struct PresetCase {
+        String name;
+        float voiceDurationSeconds;
+    };
+    const std::array presets {
+            PresetCase { "saw", 1.2669865f },
+            PresetCase { "filter-saw", 0.47689545f },
+            PresetCase { "pwm", 1.2669865f },
+            PresetCase { "dunk-2", 0.5069265f },
+            PresetCase { "japan-drum", 1.0113605f }
+    };
+    for (const auto& preset : presets) {
+        const auto compiled = GraphCompiler().compile(
+                loadOscillatorPresetGraph(preset.name));
+        REQUIRE(compiled.succeeded());
+        REQUIRE_FALSE(compiled.plan.oscillatorRegions.empty());
+        REQUIRE(std::all_of(
+                compiled.plan.oscillatorRegions.begin(),
+                compiled.plan.oscillatorRegions.end(),
+                [&](const OscillatorRegionPlan& region) {
+                    return supportsPreparedOscillatorRegion(compiled.plan, region);
+                }));
+        for (const int midiNote : { 36, 48, 60, 72 }) {
+            for (const int sampleCount : { 1024, 4096 }) {
+                DYNAMIC_SECTION(preset.name << " note " << midiNote
+                        << " samples " << sampleCount) {
+                    const PartitionedRender reference = renderPreparedGraph(
+                            compiled.plan,
+                            512,
+                            sampleCount,
+                            -1,
+                            midiNote,
+                            preset.voiceDurationSeconds);
+                    for (const int blockSize : { 64, 127, 256 }) {
+                        const PartitionedRender partitioned = renderPreparedGraph(
+                                compiled.plan,
+                                blockSize,
+                                sampleCount,
+                                -1,
+                                midiNote,
+                                preset.voiceDurationSeconds);
+                        REQUIRE(partitioned.frameRenderCount
+                                == reference.frameRenderCount);
+                        REQUIRE(maximumDifference(
+                                partitioned.scratch,
+                                reference.scratch) == 0.f);
+                        REQUIRE(maximumDifference(
+                                partitioned.left,
+                                reference.left) == 0.f);
+                        REQUIRE(maximumDifference(
+                                partitioned.right,
+                                reference.right) == 0.f);
+                    }
+                }
+            }
+        }
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Prepared spectral preset frames rerasterize at live morph positions",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][live-modulation]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const auto filterSawFrames = renderPreparedPresetFrames("filter-saw");
+    REQUIRE(filterSawFrames[0] != filterSawFrames[1]);
+    REQUIRE(presetHasEvolvingSpectralRaster("japan-drum"));
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Timed controls enter prepared frames at the truncated cycle frontier",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][timed-control]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    NodeGraph graph = loadFilterSawGraph();
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "morph",
+            "yellowSource",
+            "Yellow Source",
+            "midiCC").succeeded());
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "morph",
+            "yellowController",
+            "Yellow Controller",
+            "74").succeeded());
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "scratchEnvelope1",
+            "enabled",
+            "Enabled",
+            "0").succeeded());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    const PartitionedRender before = renderPreparedGraph(compiled.plan, 512, 512, 90);
+    const PartitionedRender on = renderPreparedGraph(compiled.plan, 512, 512, 91);
+    const PartitionedRender after = renderPreparedGraph(compiled.plan, 512, 512, 92);
+    REQUIRE(before.left == on.left);
+    REQUIRE(before.right == on.right);
+    REQUIRE(after.left != on.left);
+    REQUIRE(after.right != on.right);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Prepared spectral scratch follows the authored envelope attachment",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][scratch]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    NodeGraph enabledGraph = loadFilterSawGraph();
+    const auto enabled = GraphCompiler().compile(enabledGraph);
+    REQUIRE(enabled.succeeded());
+
+    NodeGraph disabledGraph = enabledGraph;
+    REQUIRE(GraphEditor().setNodeParameter(
+            disabledGraph,
+            "scratchEnvelope1",
+            "enabled",
+            "Enabled",
+            "0").succeeded());
+    const auto disabled = GraphCompiler().compile(disabledGraph);
+    REQUIRE(disabled.succeeded());
+
+    const PartitionedRender withScratch = renderPreparedGraph(
+            enabled.plan, 256, 2048);
+    const PartitionedRender withoutScratch = renderPreparedGraph(
+            disabled.plan, 256, 2048);
+    REQUIRE(withScratch.left != withoutScratch.left);
+    REQUIRE(withScratch.right != withoutScratch.right);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Spectral frame refresh count is independent of Unison order",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][unison][live-modulation]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    NodeGraph graph = loadFilterSawGraph();
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "scratchEnvelope1",
+            "enabled",
+            "Enabled",
+            "0").succeeded());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    GraphExecutionPlan singlePlan = compiled.plan;
+    GraphExecutionPlan unisonPlan = singlePlan;
+    REQUIRE(singlePlan.voiceContexts.size() == 1);
+    REQUIRE(unisonPlan.voiceContexts.size() == 1);
+
+    CycleDsp::UnisonGroupConfiguration singleConfiguration;
+    singleConfiguration.order = 1;
+    singlePlan.voiceContexts.front().lanes
+            = CycleDsp::UnisonCore::makeGroupLayout(singleConfiguration);
+
+    CycleDsp::UnisonGroupConfiguration unisonConfiguration;
+    unisonConfiguration.order = 4;
+    unisonConfiguration.detuneWidthCents = 18.f;
+    unisonConfiguration.panSpread = 1.f;
+    unisonPlan.voiceContexts.front().lanes
+            = CycleDsp::UnisonCore::makeGroupLayout(unisonConfiguration);
+
+    const PartitionedRender single = renderPreparedGraph(singlePlan, 256, 2048);
+    const PartitionedRender unison = renderPreparedGraph(unisonPlan, 256, 2048);
+    REQUIRE(single.frameRenderCount > 1);
+    REQUIRE(unison.frameRenderCount == single.frameRenderCount);
+    REQUIRE(unison.left != unison.right);
+    for (const int blockSize : { 64, 127, 512 }) {
+        DYNAMIC_SECTION("Unison block size " << blockSize) {
+            const PartitionedRender partitioned = renderPreparedGraph(
+                    unisonPlan,
+                    blockSize,
+                    2048);
+            REQUIRE(partitioned.frameRenderCount == unison.frameRenderCount);
+            REQUIRE(maximumDifference(partitioned.left, unison.left) < 1.0e-3f);
+            REQUIRE(maximumDifference(partitioned.right, unison.right) < 1.0e-3f);
+        }
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Prepared spectral regions reject unresolved live controls",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][fallback]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    GraphExecutionPlan plan = loadFilterSawPlan();
+    REQUIRE(plan.oscillatorRegions.size() == 1);
+    REQUIRE(SpectralOscillatorFrameRenderer::supports(
+            plan,
+            plan.oscillatorRegions.front()));
+    bool invalidated = false;
+    for (auto& step : plan.steps) {
+        for (auto& input : step.inputs) {
+            if (input.destPortId == "yellow") {
+                input.sourceBufferIndex = -1;
+                invalidated = true;
+                break;
+            }
+        }
+        if (invalidated) {
+            break;
+        }
+    }
+    REQUIRE(invalidated);
+    REQUIRE_FALSE(SpectralOscillatorFrameRenderer::supports(
+            plan,
+            plan.oscillatorRegions.front()));
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
 }

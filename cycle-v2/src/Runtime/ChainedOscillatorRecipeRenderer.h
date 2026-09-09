@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Runtime/ChainedOscillatorRegionRuntime.h"
+#include "Runtime/PreparedTrimeshMorphBinding.h"
 #include "Graph/GraphCompiler.h"
 #include "Nodes/Trimesh/Dsp/TrimeshOscillatorCycleRenderer.h"
 
@@ -42,18 +43,26 @@ private:
         float gain { 1.f };
         float leftPan { 1.f };
         float rightPan { 1.f };
+        std::shared_ptr<const TrimeshConfiguration> configuration;
         std::unique_ptr<TrimeshOscillatorCycleRenderer> trimesh;
+        PreparedTrimeshMorphBinding morphBinding;
+        TrimeshMorphResolver morphResolver;
+        uint64_t lastMorphFrontier {};
     };
 
     Buffer<float> operationBuffer(
             int operationIndex,
             int channel,
             int sampleCount);
+    void prepareFrameRandom(const PreparedOscillatorProcessContext* context);
 
     int maximumCycleSamples {};
     int outputOperation { -1 };
     std::vector<Operation> operations;
     ScopedAlloc<float> operationMemory;
+    Random frameRandom;
+    uint32_t lifecycleSeed {};
+    bool lifecycleSeedReady {};
 };
 
 }

@@ -13,6 +13,7 @@
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodePortLayout.h"
 #include "UI/NodePortGeometry.h"
+#include "UI/NodeIconRenderer.h"
 #include "UI/NodeViewModule.h"
 #include "UI/VoiceContextCompactEditor.h"
 #include "Graph/GraphRenderSemanticResolver.h"
@@ -1192,6 +1193,15 @@ void NodeCanvasPresentation::paintNode(
                     zoom,
                     node,
                     frame.unisonPreviewContext.voiceDurationSeconds);
+            VoiceContextCompactEditor::paintScratchIndicator(graphics, nodeBounds, zoom);
+        } else if (node.kind == NodeKind::ScratchDefaultOverride) {
+            const float iconSize = 24.f * zoom;
+            NodeIconRenderer::paint(
+                    graphics,
+                    node.kind,
+                    Rectangle<float>(iconSize, iconSize).withCentre(
+                            nodeBounds.withTrimmedTop(header.getHeight()).getCentre()),
+                    0.78f);
         } else {
             previewRenderer.paint(graphics, {
                     node,

@@ -9,6 +9,37 @@ Resolved and no-longer-reproducing entries have been removed from this ledger.
    Keep this behind reproducible product and automation failures because it has
    not affected fixture results and does not currently reproduce.
 
+## P1: First Spy on a spectral Trimesh side branch appeared disconnected
+
+Resolved 2026-09-09. Adding the first Spy to a spectral Trimesh output could
+leave the tile labeled `Disconnected` until a second downstream Spy was added.
+Probe-only invalidation started at the graph's first execution node; an
+oscillator-region side branch was not necessarily downstream of that node, so
+the first probe preview was never rebuilt. Probe changes now invalidate every
+authored probe source, with the existing first-node fallback retained for
+removal of the last probe.
+
+The same report exposed inconsistent magnitude presentation. A Spy attached
+directly to a Trimesh used the linear mesh-authoring colour scale, while a Spy
+after Add used the logarithmic spectral-output scale. Both carry the exact DSP
+grid—the Spy itself applies no gain—but the direct tile looked roughly 100
+times weaker. All Spy tiles and details now use the output-observation scale;
+compact Trimesh nodes continue to show the authored mesh surface.
+
+Focused coverage exercises the first spectral side-branch Spy through canvas
+authoring, verifies its immediate connected preview, removes it through undo,
+and checks the Trimesh-output heatmap against the spectral Spy scale.
+
+A follow-up fixed the same invalidation gap for topology edits. Deleting the
+Voice Context scratch cable recompiled the graph but initially dirtied products
+only from the graph's first execution node, leaving observed spectral side
+branches stale. Every topology compilation now also invalidates each active
+probe source. A complete canvas-authoring regression deletes a scratch cable
+and verifies that the still-connected Trimesh Spy changes immediately, then
+undoes the deletion and verifies the original grid is restored. The
+production `scratch-test` automation capture likewise shows all three Spy tiles
+updating after the context scratch edge is removed.
+
 ## P2: Intermittent CoreMIDI endpoint assertion during automation startup
 
 Context:

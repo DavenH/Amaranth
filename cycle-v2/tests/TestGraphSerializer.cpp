@@ -224,6 +224,33 @@ TEST_CASE("Graph JSON restores definition-owned structure and typed scalars", "[
     REQUIRE(voiceJson.getProperty("inputs", {}).isVoid());
 }
 
+TEST_CASE("Voice-time scratch overrides round trip as durable typed topology",
+        "[cycle-v2][graph][voice-context][scratch][serialization]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ScratchDefaultOverride, "voiceTime", { 40.f, 80.f }));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 280.f, 80.f }));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voiceTime", "scratch", false },
+            { "mesh", "scratch", true }).succeeded());
+
+    const GraphSerializer serializer;
+    const String encoded = serializer.toJsonString(graph);
+    const GraphLoadResult loaded = serializer.loadJsonString(encoded);
+
+    REQUIRE(loaded.succeeded());
+    REQUIRE(serializer.toJsonString(loaded.graph) == encoded);
+    const Node* overrideNode = loaded.graph.findNode("voiceTime");
+    REQUIRE(overrideNode != nullptr);
+    REQUIRE(overrideNode->kind == NodeKind::ScratchDefaultOverride);
+    REQUIRE(loaded.graph.getEdges().size() == 1);
+    REQUIRE(loaded.graph.getEdges().front().connectionKind
+            == ConnectionKind::ProcessingAttachment);
+    REQUIRE(loaded.graph.getEdges().front().attachmentType
+            == AttachmentType::ScratchEnvelope);
+}
+
 TEST_CASE("Legacy Envelope purpose migration is canonical and deduplicates attachments",
         "[cycle-v2][graph][envelope][purpose][migration]") {
     NodeGraph graph = NodeGraph::createDemoGraph();

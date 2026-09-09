@@ -50,9 +50,17 @@ bool feedsMultiply(const NodeGraph* graph, const String& nodeId) {
     return destination != nullptr && destination->kind == NodeKind::Multiply;
 }
 
-bool scratchSourceEnabled(const NodeGraph* graph, const String& nodeId) {
+bool scratchSourceEnabled(
+        const NodeGraph* graph,
+        const String& nodeId,
+        const String& resolvedSourceNodeId) {
     if (graph == nullptr) {
         return true;
+    }
+    if (resolvedSourceNodeId.isNotEmpty()) {
+        const Node* source = graph->findNode(resolvedSourceNodeId);
+        return source == nullptr
+                || NodeParameterMap(*source).boolValue("enabled", true);
     }
     for (const auto& edge : graph->getEdges()) {
         if (edge.destNodeId != nodeId
@@ -71,7 +79,8 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
         const std::vector<NodeParameter>& parameters,
         const NodeModelStatePtr& model,
         const NodeGraph* graph,
-        const String& nodeId) {
+        const String& nodeId,
+        const String& scratchSourceNodeId) {
     auto configuration = std::make_shared<TrimeshConfiguration>();
     const NodeModelStatePtr modelToUse = model != nullptr
             ? model
@@ -85,7 +94,10 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
     configuration->range = parameterMap.floatValue("range", 0.5f);
     configuration->appliesSpectralRange = feedsSpectralOperation(graph, nodeId);
     configuration->multiplicative = feedsMultiply(graph, nodeId);
-    configuration->scratchSourceEnabled = scratchSourceEnabled(graph, nodeId);
+    configuration->scratchSourceEnabled = scratchSourceEnabled(
+            graph,
+            nodeId,
+            scratchSourceNodeId);
     configuration->mesh = typedModel->sharedMesh();
     if (graph != nullptr) {
         const Node* node = graph->findNode(nodeId);
@@ -118,7 +130,8 @@ String NodeDspConfigurationFactory::keyFor(
         const NodeModelStatePtr& model,
         const AudioExecutionSpec& spec,
         const NodeGraph* graph,
-        const String& nodeId) const {
+        const String& nodeId,
+        const String& scratchSourceNodeId) const {
     String key((int) role);
     (void) spec;
 
@@ -132,7 +145,8 @@ String NodeDspConfigurationFactory::keyFor(
         key << TrimeshGuidePreparation::configurationKey(*graph, nodeId);
     }
     if (role == AudioModuleRole::MeshSource) {
-        key << ":scratchSourceEnabled=" << (scratchSourceEnabled(graph, nodeId) ? 1 : 0);
+        key << ":scratchSourceEnabled="
+            << (scratchSourceEnabled(graph, nodeId, scratchSourceNodeId) ? 1 : 0);
         key << ":spectralOperation=" << (feedsSpectralOperation(graph, nodeId) ? 1 : 0);
         key << ":multiplicative=" << (feedsMultiply(graph, nodeId) ? 1 : 0);
     }
@@ -152,10 +166,16 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         const NodeModelStatePtr& model,
         const AudioExecutionSpec&,
         const NodeGraph* graph,
-        const String& nodeId) const {
+        const String& nodeId,
+        const String& scratchSourceNodeId) const {
     if (role == AudioModuleRole::MeshSource) {
         return std::shared_ptr<const INodeDspConfiguration>(
-                buildTrimeshConfiguration(parameters, model, graph, nodeId));
+                buildTrimeshConfiguration(
+                        parameters,
+                        model,
+                        graph,
+                        nodeId,
+                        scratchSourceNodeId));
     }
     if (role == AudioModuleRole::ImpulseResponse) {
         return IrSignalProcessor::buildConfiguration(
@@ -182,7 +202,8 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
                     buildModulationTripleConfiguration(values));
         } },
         { AudioModuleRole::WaveSource, [](AudioModuleRole roleToUse, const auto& values, const auto&) {
-            auto configuration = buildTrimeshConfiguration(values, {}, nullptr, {});
+            auto configuration = buildTrimeshConfiguration(
+                    values, {}, nullptr, {}, {});
             const NodeParameterMap parameters(values);
             configuration->processorRole = roleToUse;
             configuration->gain = parameters.floatValue("level", 1.f)
