@@ -156,8 +156,10 @@ the definition's `0.5` unity default.
 
 ### Presentation and Interaction Contract
 
+- Double the Output node's natural height from 160 px to 320 px.
 - Reserve at least 56% of the natural preview width for the two meters and no
-  more than 24% for the fader hit column; keep a visible group gap between them.
+  more than 24% for the fader hit column. Centre the fader exactly in the
+  component, place one meter on each side, and keep equal visible group gaps.
 - Draw a thin vertical track, a small horizontal thumb with an exact centre
   line, and a concise decibel readout. The hit column remains at least 24 px at
   normal zoom even though the visible track is narrower.
@@ -192,7 +194,7 @@ the definition's `0.5` unity default.
 - A compiled graph test proves Output gain changes observable output while the
   renderer's fixed headroom remains unchanged.
 - Geometry tests cover compact/natural/expanded bounds, thumb endpoints,
-  hit-target size, meter allocation, and position mapping.
+  hit-target size, centred placement, meter allocation, and position mapping.
 - A gesture sequence test performs at least two updates, commits, observes the
   persisted value and downstream parameter impact, then undoes.
 - Converter tests prove a Cycle 1 volume knob is preserved on Output and the
@@ -208,6 +210,8 @@ the definition's `0.5` unity default.
   semantic command path.
 - The meters remain readable and spatially dominant at the natural Output-node
   size.
+- The Output node is 2x its original natural height and the fader is centred
+  between the two meters.
 - Focused tests, the full Cycle V2 test suite, converter tests, standalone build,
   style checks, and production-size visual review pass.
 
@@ -220,9 +224,11 @@ the definition's `0.5` unity default.
   `GraphExecutionPlan` carries the same mapped gain to the realtime renderer,
   which smooths it after voice summation and keeps `outputHeadroom` independent.
 - `OutputMeterPresentation` now owns the stereo-meter/fader geometry and paint.
-  The canvas routes drag, Shift-fine drag, double-click reset, wheel, and
-  keyboard edits through semantic commands. Fader drag uses one transient edit,
-  accepts multiple updates, commits once, and undoes once.
+  The 190x320 natural Output node is twice its original height, with equal
+  meters flanking a fader aligned exactly to the component centre. The canvas
+  routes drag, Shift-fine drag, double-click reset, wheel, and keyboard edits
+  through semantic commands. Fader drag uses one transient edit, accepts
+  multiple updates, commits once, and undoes once.
 - The Cycle 1 converter emits oscillator knob 0 as Output gain and records that
   normalized value separately from Cycle V2's fixed headroom. Canonical checked
   graphs explicitly store the unity default; older graphs normalize missing

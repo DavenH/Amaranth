@@ -120,14 +120,14 @@
       "nodeId": "out",
       "parameterId": "gain",
       "op": "greaterThan",
-      "value": 0.55
+      "value": 0.6
     },
     {
       "command": "assertNodeParameter",
       "nodeId": "out",
       "parameterId": "gain",
       "op": "lessThan",
-      "value": 0.6
+      "value": 0.75
     },
     {
       "command": "undo",

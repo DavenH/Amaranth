@@ -636,7 +636,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     }))
                     .help("Sends the finished sound to the audio output.")
                     .runtime(AudioModuleRole::Output, PreviewModuleRole::OutputMeters)
-                    .presentation({}, { 190.f, 160.f })
+                    .presentation({}, { 190.f, 320.f })
                     .finish()
     };
 }

@@ -943,17 +943,21 @@ TEST_CASE("Output meter layout gives width to both channels", "[cycle-v2][ui]") 
 
     for (const auto area : areas) {
         const auto layout = OutputMeterPresentation::layout(area);
-        const float channelGap = layout.right.getX() - layout.left.getRight();
+        const float leftGap = layout.faderHitTarget.getX() - layout.left.getRight();
+        const float rightGap = layout.right.getX() - layout.faderHitTarget.getRight();
 
         REQUIRE(layout.left.getWidth() == Catch::Approx(layout.right.getWidth()));
         REQUIRE(layout.left.getRight() <= layout.right.getX());
-        REQUIRE(channelGap >= 2.99f);
-        REQUIRE(channelGap <= 6.01f);
+        REQUIRE(leftGap == Catch::Approx(rightGap));
+        REQUIRE(leftGap >= 3.99f);
+        REQUIRE(leftGap <= 8.01f);
         REQUIRE(area.contains(layout.left));
         REQUIRE(area.contains(layout.right));
         REQUIRE(area.contains(layout.faderHitTarget));
         REQUIRE(layout.faderHitTarget.getWidth() >= 24.f);
-        REQUIRE(layout.right.getRight() < layout.faderHitTarget.getX());
+        REQUIRE(layout.left.getRight() < layout.faderHitTarget.getX());
+        REQUIRE(layout.faderHitTarget.getRight() < layout.right.getX());
+        REQUIRE(layout.faderHitTarget.getCentreX() == Catch::Approx(area.getCentreX()));
         REQUIRE(layout.faderTrack.getWidth() == 2.f);
     }
 

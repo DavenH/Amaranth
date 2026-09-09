@@ -90,11 +90,10 @@ OutputMeterLayout OutputMeterPresentation::layout(juce::Rectangle<float> area) {
     constexpr float verticalInsetFraction = 0.08f;
     constexpr float faderWidthFraction = 0.22f;
     constexpr float groupGapFraction = 0.04f;
-    constexpr float channelGapFraction = 0.035f;
 
     const float horizontalInset = area.getWidth() * horizontalInsetFraction;
     const float verticalInset = area.getHeight() * verticalInsetFraction;
-    juce::Rectangle<float> content = area.reduced(horizontalInset, verticalInset);
+    const juce::Rectangle<float> content = area.reduced(horizontalInset, verticalInset);
     const float faderWidth = juce::jlimit(
             24.f,
             36.f,
@@ -103,12 +102,15 @@ OutputMeterLayout OutputMeterPresentation::layout(juce::Rectangle<float> area) {
             4.f,
             8.f,
             area.getWidth() * groupGapFraction);
-    const auto fader = content.removeFromRight(juce::jmin(faderWidth, content.getWidth()));
-    content.removeFromRight(juce::jmin(groupGap, content.getWidth()));
-    const float channelGap = juce::jmin(
-            juce::jlimit(3.f, 6.f, area.getWidth() * channelGapFraction),
-            content.getWidth());
-    const float channelWidth = juce::jmax(0.f, (content.getWidth() - channelGap) * 0.5f);
+    const float availableMeterWidth = juce::jmax(
+            0.f,
+            content.getWidth() - faderWidth - 2.f * groupGap);
+    const float meterWidth = availableMeterWidth * 0.5f;
+    const juce::Rectangle<float> fader(
+            content.getCentreX() - faderWidth * 0.5f,
+            content.getY(),
+            faderWidth,
+            content.getHeight());
     const float labelHeight = juce::jmin(14.f, fader.getHeight() * 0.16f);
     const auto label = fader.withTop(fader.getBottom() - labelHeight);
     const auto faderTravel = fader.withTrimmedBottom(labelHeight).reduced(0.f, 5.f);
@@ -119,8 +121,8 @@ OutputMeterLayout OutputMeterPresentation::layout(juce::Rectangle<float> area) {
             faderTravel.getHeight());
 
     return {
-            { content.getX(), content.getY(), channelWidth, content.getHeight() },
-            { content.getRight() - channelWidth, content.getY(), channelWidth, content.getHeight() },
+            { content.getX(), content.getY(), meterWidth, content.getHeight() },
+            { content.getRight() - meterWidth, content.getY(), meterWidth, content.getHeight() },
             fader,
             track,
             label
