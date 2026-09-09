@@ -14,6 +14,8 @@ import json
 import math
 from pathlib import Path
 
+from simplify_cycle_v2_presets import simplify_graph
+
 
 MESH_GROUPS = {
     "guides": 3,
@@ -762,6 +764,7 @@ def convert(source):
         "probes": [],
     }
     apply_compact_layout(nodes)
+    simplify_graph(graph)
     return graph
 
 

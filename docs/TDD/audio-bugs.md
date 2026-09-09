@@ -327,6 +327,25 @@ Resolution:
 
 Current status: resolved on 2026-09-06.
 
+## P1: Spectral Voice Context Japan Drum is not bit-exact across host blocks
+
+Status: open, discovered 2026-09-09 during factory preset no-op cleanup.
+
+Promoting `japan-drum.cyclegraph` from an empty waveform mesh/FFT seed to direct
+spectral Voice Context preserves the intended signal topology but exposes a
+small host-block dependency in the prepared oscillator path. The existing
+partition matrix fails for all four MIDI notes at 4096 samples; the maximum
+left-channel differences are approximately `1.1e-8` to `3.0e-8`, while frame
+counts and the shorter 1024-sample cases remain exact. A focused rerun produces
+the same four failures. This contradicts the earlier byte-identical matrix
+claim above and must be resolved at the existing prepared spectral oscillator
+timing/rasterization boundary rather than by weakening the exact test.
+
+Artifacts:
+
+- `/private/tmp/cycle-v2-preset-cleanup-full-tests.log`
+- `/private/tmp/cycle-v2-preset-cleanup-partition-rerun.log`
+
 ## Resolved: Cycle 1 generalized envelope groups lost legacy playback contracts
 
 Context:

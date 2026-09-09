@@ -1753,6 +1753,63 @@ TEST_CASE("Scratch Envelope drives every attached Trimesh from one prepared traj
     REQUIRE(previews.probes.front().connected);
     REQUIRE(previews.probes.front().values == first.traversalGrid.values);
 
+    NodeGraph defaultGraph = graph;
+    defaultGraph.removeEdgesFromOutput("scratch", "env");
+    defaultGraph.addEdge({
+            "scratch",
+            "env",
+            "voice",
+            "scratch",
+            PortDomain::EnvelopeSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::ScratchEnvelope
+    });
+    const auto defaultCompiled = GraphCompiler().compile(defaultGraph);
+    REQUIRE(defaultCompiled.succeeded());
+    GraphAudioExecutor defaultExecutor;
+    const auto defaultResult = defaultExecutor.process(
+            defaultGraph,
+            defaultCompiled.plan,
+            frameCount,
+            timing,
+            voice);
+    const auto& defaultFirst = findNodeAudio(defaultResult, "attachedA").output;
+    const auto& defaultSecond = findNodeAudio(defaultResult, "attachedB").output;
+    const auto& defaultPeer = findNodeAudio(defaultResult, "unattached").output;
+    REQUIRE(defaultFirst.block.samples == first.block.samples);
+    REQUIRE(defaultFirst.traversalGrid.values == first.traversalGrid.values);
+    REQUIRE(defaultSecond.block.samples == second.block.samples);
+    REQUIRE(defaultSecond.traversalGrid.values == second.traversalGrid.values);
+    REQUIRE(defaultPeer.block.samples == first.block.samples);
+    REQUIRE(defaultPeer.traversalGrid.values == first.traversalGrid.values);
+
+    NodeGraph excludedGraph = defaultGraph;
+    excludedGraph.addNode(factory.createNode(
+            NodeKind::ScratchDefaultOverride,
+            "voiceTime",
+            {}));
+    excludedGraph.addEdge({
+            "voiceTime",
+            "scratch",
+            "unattached",
+            "scratch",
+            PortDomain::EnvelopeSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::ScratchEnvelope
+    });
+    const auto excludedCompiled = GraphCompiler().compile(excludedGraph);
+    REQUIRE(excludedCompiled.succeeded());
+    GraphAudioExecutor excludedExecutor;
+    const auto excludedResult = excludedExecutor.process(
+            excludedGraph,
+            excludedCompiled.plan,
+            frameCount,
+            timing,
+            voice);
+    const auto& excludedPeer = findNodeAudio(excludedResult, "unattached").output;
+    REQUIRE(excludedPeer.block.samples == peer.block.samples);
+    REQUIRE(excludedPeer.traversalGrid.values == peer.traversalGrid.values);
+
     const auto advanced = executor.process(
             graph,
             compiled.plan,
@@ -1767,6 +1824,85 @@ TEST_CASE("Scratch Envelope drives every attached Trimesh from one prepared traj
                 advancedBlock[sample] - first.block.samples[sample]);
     }
     REQUIRE(lifecycleDifference > 0.01f);
+}
+
+TEST_CASE("Voice Context scratch matches direct attachments across spectral branches",
+        "[cycle-v2][runtime][envelope][scratch][trimesh][oscillator-region]") {
+    constexpr size_t frameCount = 64;
+    NodeGraph directGraph = NodeGraph::createDemoGraph();
+    directGraph.addEdge({
+            "scratchEnv",
+            "env",
+            "phaseMesh",
+            "scratch",
+            PortDomain::EnvelopeSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::ScratchEnvelope
+    });
+    directGraph.addSignalProbe({
+            "magnitudeProbe", "magMesh", "out", "addMag", "right", "Magnitude", 0.5f, 0
+    });
+    directGraph.addSignalProbe({
+            "phaseProbe", "addPhase", "out", "ifft", "phase", "Phase", 0.5f, 1
+    });
+
+    NodeGraph inheritedGraph = directGraph;
+    inheritedGraph.removeEdgesFromOutput("scratchEnv", "env");
+    Node* voiceNode = inheritedGraph.findNodeForEditing("voice");
+    REQUIRE(voiceNode != nullptr);
+    NodeDefinitionRegistry::instance().normalize(*voiceNode);
+    inheritedGraph.addEdge({
+            "scratchEnv",
+            "env",
+            "voice",
+            "scratch",
+            PortDomain::EnvelopeSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::ScratchEnvelope
+    });
+
+    const auto directPlan = GraphCompiler().compile(directGraph);
+    const auto inheritedPlan = GraphCompiler().compile(inheritedGraph);
+    REQUIRE(directPlan.succeeded());
+    REQUIRE(inheritedPlan.succeeded());
+
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    AudioProcessTiming timing;
+    timing.sampleRate = 64.0;
+    const auto directAudio = GraphAudioExecutor().process(
+            directGraph, directPlan.plan, frameCount, timing, voice);
+    const auto inheritedAudio = GraphAudioExecutor().process(
+            inheritedGraph, inheritedPlan.plan, frameCount, timing, voice);
+
+    const auto& directScratch = findNodeAudio(directAudio, "scratchEnv").output;
+    const auto& inheritedScratch = findNodeAudio(inheritedAudio, "scratchEnv").output;
+    REQUIRE(inheritedScratch.block.samples == directScratch.block.samples);
+    REQUIRE(inheritedScratch.traversalGrid.values == directScratch.traversalGrid.values);
+
+    for (const String& nodeId : { "waveMesh", "magMesh", "phaseMesh", "addMag", "addPhase" }) {
+        INFO("Inherited output differs at " << nodeId);
+        const auto& direct = findNodeAudio(directAudio, nodeId).output;
+        const auto& inherited = findNodeAudio(inheritedAudio, nodeId).output;
+        REQUIRE(inherited.block.samples == direct.block.samples);
+        REQUIRE(inherited.traversalGrid.values == direct.traversalGrid.values);
+    }
+
+    const auto directPreviews = GraphPreviewExecutor().render(
+            directPlan.plan,
+            directAudio,
+            directGraph.getSignalProbes(),
+            frameCount);
+    const auto inheritedPreviews = GraphPreviewExecutor().render(
+            inheritedPlan.plan,
+            inheritedAudio,
+            inheritedGraph.getSignalProbes(),
+            frameCount);
+    REQUIRE(inheritedPreviews.probes.size() == directPreviews.probes.size());
+    for (size_t index = 0; index < directPreviews.probes.size(); ++index) {
+        REQUIRE(inheritedPreviews.probes[index].values
+                == directPreviews.probes[index].values);
+    }
 }
 
 TEST_CASE("Stengah scratch topology changes every authored source-layer traversal",

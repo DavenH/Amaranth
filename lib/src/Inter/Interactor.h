@@ -260,7 +260,7 @@ protected:
 
     Point<int> lastPolledMouse;
 
-    MorphPositioner*    positioner;
+    MorphPositioner*    positioner {};
     Rasterization::Rasterizer* rasterizer {};
     bool rasterizerUpdatesEnabled { true };
 

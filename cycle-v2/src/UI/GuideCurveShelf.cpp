@@ -356,4 +356,13 @@ bool GuideCurveShelf::renderOpenGL(
     return rendered;
 }
 
+void GuideCurveShelf::resetDocumentPreviews() {
+    for (auto& entry : previews) {
+        Preview& preview = entry.second;
+        preview.widget->resetDocumentPresentation();
+        preview.model.reset();
+        preview.needsOpenGLRender = true;
+    }
+}
+
 }

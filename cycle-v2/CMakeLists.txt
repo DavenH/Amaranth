@@ -52,7 +52,7 @@ generate_svg_data(
     node-icons
     NodeIconData
     NodeIconData
-    genericProcessor voiceContext waveSource imageSource trilinearMesh
+    genericProcessor voiceContext scratchDefaultOverride waveSource imageSource trilinearMesh
     modulationSource modulationTriple
     fft ifft envelope add multiply guideCurve impulseResponse waveshaper
     spectralLayer unison reverb delay equalizer stereoSplit stereoJoin output

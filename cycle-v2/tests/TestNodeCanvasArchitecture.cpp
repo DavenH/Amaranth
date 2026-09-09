@@ -628,6 +628,24 @@ TEST_CASE("Every registered node kind has a parseable palette icon",
     }
 }
 
+TEST_CASE("Use Voice Time is a compact single-output utility",
+        "[cycle-v2][canvas][voice-context][scratch]") {
+    const Node node = GraphNodeFactory().createNode(
+            NodeKind::ScratchDefaultOverride,
+            "voiceTime",
+            {});
+
+    REQUIRE(node.bounds.getWidth() == Catch::Approx(174.f));
+    REQUIRE(node.bounds.getHeight() == Catch::Approx(76.f));
+    REQUIRE(node.inputs.empty());
+    REQUIRE(node.outputs.size() == 1);
+    REQUIRE(node.outputs.front().side == PortSide::Right);
+    REQUIRE(node.outputs.front().connectionKind == ConnectionKind::ProcessingAttachment);
+    REQUIRE(node.outputs.front().attachmentType == AttachmentType::ScratchEnvelope);
+    REQUIRE(NodeCanvasScene::portWorldCentre(node, node.outputs.front()).getY()
+            == Catch::Approx(58.f));
+}
+
 TEST_CASE("Guide controls render the shared semantic icon at production size",
         "[cycle-v2][canvas][icons][guide]") {
     ScopedJuceInitialiser_GUI juce;
@@ -1285,6 +1303,25 @@ TEST_CASE("Voice context compact presentation retains its selector and summary",
             voice.bounds,
             1.f,
             selector.getCentre()));
+
+    const Rectangle<float> scratch = VoiceContextCompactEditor::scratchIndicatorBounds(
+            voice.bounds,
+            1.f);
+    const Rectangle<float> summary = VoiceContextCompactEditor::summaryBounds(
+            voice.bounds,
+            1.f);
+    const Rectangle<float> scratchLabel = VoiceContextCompactEditor::scratchLabelBounds(
+            voice.bounds,
+            1.f);
+    REQUIRE(voice.bounds.contains(scratch));
+    REQUIRE(voice.bounds.contains(summary));
+    REQUIRE(voice.bounds.contains(scratchLabel));
+    REQUIRE_FALSE(selector.intersects(summary));
+    REQUIRE_FALSE(summary.intersects(scratch));
+    REQUIRE_FALSE(summary.intersects(scratchLabel));
+    REQUIRE(scratch.getCentreY() == Catch::Approx(
+            NodeCanvasScene::portWorldCentre(voice, voice.inputs[3]).getY()));
+    REQUIRE(scratch.getX() - voice.bounds.getX() >= 7.f);
 }
 
 TEST_CASE("Shared Unison preview does not depend on attachment edge order",

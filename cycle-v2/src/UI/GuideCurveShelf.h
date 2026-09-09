@@ -87,6 +87,7 @@ public:
             float splitRatio,
             const GuideCurveShelfState& state,
             float scaleFactor);
+    void resetDocumentPreviews();
 
 private:
     struct Preview {

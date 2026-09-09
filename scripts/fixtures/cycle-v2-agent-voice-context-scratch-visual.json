@@ -1,0 +1,9 @@
+{
+  "commands": [
+    { "command": "connectPorts", "sourceNodeId": "scratchEnv", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "scratch" },
+    { "command": "waitForIdle", "idleDelayMs": 600 },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

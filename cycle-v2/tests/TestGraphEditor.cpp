@@ -2,6 +2,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
@@ -717,6 +718,70 @@ TEST_CASE("Graph editor rejects context outputs on ordinary signal inputs", "[cy
     REQUIRE_FALSE(result.succeeded());
     REQUIRE(result.code == GraphEditCode::ValidationRejected);
     REQUIRE(graph.getEdges().size() == edgeCount);
+}
+
+TEST_CASE("Voice-time scratch exclusion publishes, restores inheritance, and undoes",
+        "[cycle-v2][graph][voice-context][scratch][undo]") {
+    GraphNodeFactory factory;
+    GraphEditor editor;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "scratch", {}));
+    REQUIRE(editor.setNodeParameter(
+            graph, "scratch", "purpose", "Purpose", "scratch").succeeded());
+    graph.addNode(factory.createNode(NodeKind::ScratchDefaultOverride, "voiceTime", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    REQUIRE(editor.connect(
+            graph,
+            { "scratch", "env", false },
+            { "voice", "scratch", true }).succeeded());
+    REQUIRE(editor.connect(
+            graph,
+            { "voice", "context", false },
+            { "mesh", "context", true }).succeeded());
+
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    const auto scratchSource = [](const GraphExecutionPlan& plan) {
+        const auto step = std::find_if(
+                plan.steps.begin(),
+                plan.steps.end(),
+                [](const GraphExecutionStep& candidate) {
+                    return candidate.nodeId == "mesh";
+                });
+        REQUIRE(step != plan.steps.end());
+        return effectiveScratchSourceNodeId(*step);
+    };
+    const GraphEditResult connected = commands.connect(
+            { "voiceTime", "scratch", false },
+            { "mesh", "scratch", true });
+    REQUIRE(connected.succeeded());
+    REQUIRE(connected.changes.topologyChanged);
+    REQUIRE(scratchSource(GraphCompiler().compile(document.graph()).plan).isEmpty());
+
+    const auto overrideEdge = std::find_if(
+            document.graph().getEdges().begin(),
+            document.graph().getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "voiceTime";
+            });
+    REQUIRE(overrideEdge != document.graph().getEdges().end());
+    const size_t overrideIndex = (size_t) std::distance(
+            document.graph().getEdges().begin(),
+            overrideEdge);
+    REQUIRE(commands.removeEdgeAt(overrideIndex).succeeded());
+    const GraphCompileResult inherited = GraphCompiler().compile(document.graph());
+    REQUIRE(inherited.succeeded());
+    REQUIRE(scratchSource(inherited.plan) == "scratch");
+
+    REQUIRE(document.undo());
+    const GraphCompileResult restored = GraphCompiler().compile(document.graph());
+    REQUIRE(restored.succeeded());
+    REQUIRE(scratchSource(restored.plan).isEmpty());
+    REQUIRE(document.undo());
+    const GraphCompileResult original = GraphCompiler().compile(document.graph());
+    REQUIRE(original.succeeded());
+    REQUIRE(scratchSource(original.plan) == "scratch");
 }
 
 TEST_CASE("Graph editor removes nodes and incident edges", "[cycle-v2][graph]") {
