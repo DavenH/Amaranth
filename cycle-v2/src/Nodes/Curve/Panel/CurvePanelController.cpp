@@ -81,6 +81,10 @@ public:
         return host->paintPreviewSnapshot(graphics, bounds);
     }
 
+    void resetDocumentPresentation() override {
+        host->resetDocumentPresentation();
+    }
+
     void releaseSharedGlResources() override {
         if (host != nullptr) {
             host->releaseSharedGlResources();

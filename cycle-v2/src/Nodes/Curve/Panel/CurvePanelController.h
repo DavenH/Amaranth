@@ -43,6 +43,7 @@ public:
             uint64_t presentationRevision) = 0;
     virtual bool paintExpandedSnapshot(Graphics& graphics, Rectangle<float> bounds) const = 0;
     virtual bool paintPreviewSnapshot(Graphics& graphics, Rectangle<float> bounds) const = 0;
+    virtual void resetDocumentPresentation() = 0;
     virtual void releaseSharedGlResources() = 0;
     virtual int vertexCountForAutomation() const = 0;
     virtual var automationState() const = 0;

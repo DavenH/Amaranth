@@ -115,6 +115,31 @@ TEST_CASE("Curve preview snapshots are reused until a rendering dependency chang
     REQUIRE(diagnostics.misses == 9);
 }
 
+TEST_CASE("Curve document replacement clears snapshots and changes preview identity",
+        "[cycle-v2][node-editor-host][regression]") {
+    CurvePanelSnapshotCache snapshot;
+    Image rendered(Image::ARGB, 8, 8, true);
+    Graphics renderedGraphics(rendered);
+    renderedGraphics.fillAll(Colours::white);
+    snapshot.publish(rendered, true);
+
+    Image destination(Image::ARGB, 8, 8, true);
+    Graphics destinationGraphics(destination);
+    REQUIRE(snapshot.paint(destinationGraphics, destination.getBounds().toFloat(), false));
+    snapshot.clear();
+    REQUIRE_FALSE(snapshot.paint(
+            destinationGraphics,
+            destination.getBounds().toFloat(),
+            false));
+
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    CurveEditorWidget widget(NodeKind::Waveshaper);
+    const uint64_t originalPreviewRevision = widget.previewRevision();
+    widget.resetDocumentPresentation();
+    REQUIRE(widget.previewRevision() > originalPreviewRevision);
+}
+
 struct EditorStats {
     int creations {};
     int destructions {};
@@ -2314,6 +2339,32 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(pitchMode->getToggleState());
     REQUIRE_FALSE(scratchMode->getToggleState());
     REQUIRE((bool) widget.automationState().getProperty("bipolar", {}));
+}
+
+TEST_CASE("Envelope preview sync defers selection work until host initialization",
+        "[cycle-v2][node-editor-host][envelope][preview][preset]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    const NodeGraph warmth = GraphSerializer().fromJsonString(
+            File(CYCLE_V2_SOURCE_DIR)
+                    .getChildFile("content")
+                    .getChildFile("presets")
+                    .getChildFile("Warmth.cyclegraph")
+                    .loadFileAsString());
+    const Node* envelope = warmth.findNode("volumeEnvelope1");
+    REQUIRE(envelope != nullptr);
+
+    CurveEditorWidget widget(NodeKind::Envelope);
+    widget.syncFromNode(*envelope);
+
+    REQUIRE(widget.getExpandedPanelComponentIfCreated() == nullptr);
+    const var state = widget.automationState();
+    REQUIRE_FALSE((bool) state.getProperty("redLinked", true));
+    REQUIRE_FALSE((bool) state.getProperty("blueLinked", true));
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
 }
 
 TEST_CASE("Logarithmic Envelope grid distinguishes major divisions",

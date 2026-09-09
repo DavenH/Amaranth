@@ -795,6 +795,7 @@ bool NodeCanvasPresentation::guideShelfNeedsOpenGLPreviewRender() const {
 void NodeCanvasPresentation::clearDocumentCaches() {
     nodeLayerCache.clear();
     signalProbeRail.clearPreviewCache();
+    guideCurveShelf.resetDocumentPreviews();
 }
 
 void NodeCanvasPresentation::paintGrid(

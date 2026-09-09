@@ -1614,45 +1614,6 @@
                     ]
                 }
             }
-        },
-        {
-            "id": "guide6",
-            "shortLabel": "G6",
-            "name": "",
-            "colourIndex": 5,
-            "shelfOrder": 5,
-            "enabled": true,
-            "noise": 0.0,
-            "dcOffset": 0.0,
-            "phase": 0.0,
-            "revision": 1,
-            "model": {
-                "schema": "flatCurve",
-                "version": 1,
-                "revision": 1,
-                "state": {
-                    "version": 1,
-                    "type": "flatCurve",
-                    "revision": 1,
-                    "vertices": [
-                        { "id": 1, "x": 0.0525, "y": 0.5, "curve": 0.0 },
-                        { "id": 2, "x": 0.0625, "y": 0.5, "curve": 1.0 },
-                        { "id": 3, "x": 0.9375, "y": 0.5, "curve": 1.0 },
-                        { "id": 4, "x": 0.9475, "y": 0.5, "curve": 0.0 },
-                        { "id": 5, "x": 0.12354, "y": 0.52756, "curve": 0.0 },
-                        { "id": 6, "x": 0.16255, "y": 0.46241, "curve": 0.0 },
-                        { "id": 7, "x": 0.23667, "y": 0.5451, "curve": 0.0 },
-                        { "id": 8, "x": 0.28349, "y": 0.44487, "curve": 0.0 },
-                        { "id": 9, "x": 0.35891, "y": 0.55262, "curve": 0.0 },
-                        { "id": 10, "x": 0.43173, "y": 0.4549, "curve": 0.0 },
-                        { "id": 11, "x": 0.51886, "y": 0.55513, "curve": 0.0 },
-                        { "id": 12, "x": 0.57347, "y": 0.43485, "curve": 0.0 },
-                        { "id": 13, "x": 0.6619, "y": 0.5451, "curve": 0.0 },
-                        { "id": 14, "x": 0.73862, "y": 0.43986, "curve": 0.0 },
-                        { "id": 15, "x": 0.81534, "y": 0.53759, "curve": 0.0 }
-                    ]
-                }
-            }
         }
     ],
     "guideHeatmaps": [],
@@ -1736,11 +1697,7 @@
         { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "volumeMultiply", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeEnvelope1", "sourcePortId": "env", "destNodeId": "volumeMultiply", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "scratchEnvelope1", "sourcePortId": "env", "destNodeId": "timeLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
-        { "sourceNodeId": "scratchEnvelope1", "sourcePortId": "env", "destNodeId": "magnitudeLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
-        { "sourceNodeId": "scratchEnvelope1", "sourcePortId": "env", "destNodeId": "magnitudeLayer2", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
-        { "sourceNodeId": "scratchEnvelope1", "sourcePortId": "env", "destNodeId": "magnitudeLayer3", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
-        { "sourceNodeId": "scratchEnvelope1", "sourcePortId": "env", "destNodeId": "phaseLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
+        { "sourceNodeId": "scratchEnvelope1", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
         { "sourceNodeId": "delay", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": []

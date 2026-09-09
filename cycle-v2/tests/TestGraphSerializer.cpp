@@ -751,6 +751,106 @@ TEST_CASE("Migrated factory graphs open with non-overlapping compact nodes",
   #endif
 }
 
+TEST_CASE("Factory presets contain no structurally redundant graph elements",
+        "[cycle-v2][graph][presets][cleanup]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    Array<File> graphs;
+    contentPreset(String()).findChildFiles(
+            graphs,
+            File::findFiles,
+            false,
+            "*.cyclegraph");
+
+    REQUIRE(graphs.size() == 230);
+    for (const File& file : graphs) {
+        const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+                file.loadFileAsString());
+        INFO(file.getFileName());
+        REQUIRE(loaded.succeeded());
+        REQUIRE(GraphValidator().isValid(loaded.graph));
+        const GraphCompileResult compiled = GraphCompiler().compile(loaded.graph);
+        REQUIRE(compiled.succeeded());
+
+        const auto& nodes = loaded.graph.getNodes();
+        const auto& edges = loaded.graph.getEdges();
+        const auto defaultScratch = std::find_if(
+                edges.begin(), edges.end(), [&](const Edge& edge) {
+                    const Node* destination = loaded.graph.findNode(edge.destNodeId);
+                    return destination != nullptr
+                            && destination->kind == NodeKind::VoiceContext
+                            && edge.destPortId == "scratch";
+                });
+        for (const Node& node : nodes) {
+            if (node.kind == NodeKind::SpectralLayer) {
+                REQUIRE(NodeParameterMap(node).floatValue("pan", 0.5f) != 0.5f);
+            }
+
+            if (node.kind == NodeKind::TrilinearMesh) {
+                const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+                        node.model);
+                REQUIRE(model != nullptr);
+                const bool empty = model->mesh().getNumVerts() == 0;
+                REQUIRE_FALSE(empty);
+
+                const bool hasLocalScratch = std::any_of(
+                        edges.begin(), edges.end(), [&](const Edge& edge) {
+                            return edge.destNodeId == node.id
+                                    && edge.destPortId == "scratch";
+                        });
+                if (defaultScratch != edges.end() && !hasLocalScratch) {
+                    const auto step = std::find_if(
+                            compiled.plan.steps.begin(), compiled.plan.steps.end(),
+                            [&](const GraphExecutionStep& candidate) {
+                                return candidate.nodeId == node.id;
+                            });
+                    REQUIRE(step != compiled.plan.steps.end());
+                    REQUIRE(effectiveScratchSourceNodeId(*step)
+                            == defaultScratch->sourceNodeId);
+                }
+            }
+
+            const bool connected = std::any_of(
+                    edges.begin(), edges.end(), [&](const Edge& edge) {
+                        return edge.sourceNodeId == node.id || edge.destNodeId == node.id;
+                    });
+            if (nodes.size() == 1 && node.kind == NodeKind::Output) {
+                REQUIRE_FALSE(connected);
+            } else {
+                REQUIRE(connected);
+            }
+        }
+        for (const GuideCurveResource& guide : loaded.graph.getGuideCurves()) {
+            REQUIRE(loaded.graph.guideUsageCount(guide.id) > 0);
+        }
+
+        for (const Node& fft : nodes) {
+            if (fft.kind != NodeKind::Fft) {
+                continue;
+            }
+            for (const Node& ifft : nodes) {
+                if (ifft.kind != NodeKind::Ifft) {
+                    continue;
+                }
+                const auto hasDirectEdge = [&](const String& sourcePort,
+                                               const String& destPort) {
+                    return std::any_of(edges.begin(), edges.end(), [&](const Edge& edge) {
+                        return edge.sourceNodeId == fft.id
+                                && edge.sourcePortId == sourcePort
+                                && edge.destNodeId == ifft.id
+                                && edge.destPortId == destPort;
+                    });
+                };
+                const bool directRoundTrip = hasDirectEdge("mag", "mag")
+                        && hasDirectEdge("phase", "phase");
+                REQUIRE_FALSE(directRoundTrip);
+            }
+        }
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Legacy preset ports omit disabled effects and preserve delay controls",
           "[cycle-v2][graph][presets]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
@@ -968,13 +1068,10 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
     REQUIRE(hasEdge("voice", "context", "magnitudeLayer1", "context"));
     REQUIRE(hasEdge("voice", "context", "phaseLayer1", "context"));
     REQUIRE(hasEdge("voice", "context", "phaseLayer2", "context"));
-    REQUIRE(hasEdge("scratchEnvelope", "env", "magnitudeLayer1", "scratch"));
-    REQUIRE(hasEdge("scratchEnvelope", "env", "phaseLayer1", "scratch"));
-    REQUIRE(hasEdge("scratchEnvelope", "env", "phaseLayer2", "scratch"));
+    REQUIRE(hasEdge("scratchEnvelope", "env", "voice", "scratch"));
     REQUIRE(hasGuideAssignment(loaded.graph, "guide1", "phaseLayer1", "guide.cube.0.amp"));
     REQUIRE(hasGuideAssignment(loaded.graph, "guide1", "phaseLayer2", "guide.cube.4.phase"));
-    REQUIRE(hasEdge("magnitudeLayer1", "out", "magnitudeLayer1Process", "in"));
-    REQUIRE(hasEdge("magnitudeLayer1Process", "out", "ifft", "mag"));
+    REQUIRE(hasEdge("magnitudeLayer1", "out", "ifft", "mag"));
     REQUIRE(hasEdge("phaseLayer1", "out", "phaseLayer1Process", "in"));
     REQUIRE(hasEdge("phaseLayer1Process", "out", "phaseOp2", "left"));
     REQUIRE(hasEdge("phaseLayer2", "out", "phaseLayer2Process", "in"));
@@ -995,10 +1092,8 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
     REQUIRE(NodeParameterMap(*phaseLayer2).floatValue("range", 0.f)
             == Catch::Approx(0.575f));
     const Node* magnitudeLayer1 = loaded.graph.findNode("magnitudeLayer1");
-    const Node* magnitudeLayerProcess = loaded.graph.findNode("magnitudeLayer1Process");
     REQUIRE(magnitudeLayer1 != nullptr);
-    REQUIRE(magnitudeLayerProcess != nullptr);
-    REQUIRE(parameterValueForNode(*magnitudeLayerProcess, "pan") == "0.5");
+    REQUIRE(loaded.graph.findNode("magnitudeLayer1Process") == nullptr);
     REQUIRE(NodeParameterMap(*magnitudeLayer1).floatValue("range", 0.f)
             == Catch::Approx(0.625f));
     const auto phaseModel1 = std::dynamic_pointer_cast<const TrimeshNodeModelState>(phaseLayer1->model);

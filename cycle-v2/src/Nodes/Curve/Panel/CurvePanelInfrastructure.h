@@ -34,6 +34,7 @@ class CurvePanelSnapshotCache {
 public:
     void publish(juce::Image image, bool hasVisibleContent);
     bool paint(juce::Graphics& graphics, juce::Rectangle<float> bounds, bool resample) const;
+    void clear();
 
 private:
     mutable juce::CriticalSection lock;
@@ -108,6 +109,7 @@ public:
     bool paintExpandedSnapshot(Graphics& graphics, Rectangle<float> bounds) const;
     bool paintPreviewSnapshot(Graphics& graphics, Rectangle<float> bounds) const;
     bool usesCursor(const MouseCursor& cursor) const;
+    void resetDocumentPresentation();
     void releaseSharedGlResources();
 
     RenderInvalidationAccumulator::Diagnostics invalidationDiagnostics() const {

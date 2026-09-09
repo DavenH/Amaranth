@@ -2,12 +2,35 @@
 
 ## Remaining priority
 
-There are no open deterministic P0 or P1 UI regressions as of 2026-09-06.
+There are no open deterministic P0 regressions as of 2026-09-09.
 Resolved and no-longer-reproducing entries have been removed from this ledger.
 
-1. **P2 — Intermittent CoreMIDI endpoint assertion during automation startup.**
+1. **P1 — Guide noise is constant across spectral traversal-grid rows.**
+   Reproduce the compact Trimesh and Spy output together, then compare row
+   arrays before changing either presentation or audio behavior.
+2. **P2 — Intermittent CoreMIDI endpoint assertion during automation startup.**
    Keep this behind reproducible product and automation failures because it has
    not affected fixture results and does not currently reproduce.
+
+## P1: Guide noise is constant across spectral traversal-grid rows
+
+Context:
+
+- Reported 2026-09-09 from a compact spectral Trimesh with a noisy Guide
+  assignment. The visualization shows the same noise sequence repeated across
+  frequency rows, producing horizontal bands instead of row-varying detail.
+- A Spy attached to the Trimesh output shows the same structure. This makes a
+  stale compact-node image or colour-mapping-only defect unlikely; the captured
+  traversal grid itself may contain repeated row data.
+- Recent work corrected Guide/morph behavior in the live audio pipeline, but no
+  causal link has been established. Realtime audio behavior has not yet been
+  compared with this preview result.
+
+Current status: open. Add a focused noisy-Guide fixture and an array-level
+assertion that deterministic seeding remains repeatable while successive
+spectral rows receive distinct noise samples. Trace the mature Guide sampler
+before changing the traversal-grid implementation, and verify the realtime
+audio path independently so a preview correction does not create audio drift.
 
 ## P1: First Spy on a spectral Trimesh side branch appeared disconnected
 
@@ -149,11 +172,15 @@ Context:
   `Interactor::getModPosition(bool)`, called while
   `EnvelopeCurvePanel::setEnvelopeAxisLinks()` synchronized a preview.
 
-Current status: open and intermittent. A focused open/compile/one-second-idle
-run completed without a crash at
-`/private/tmp/cycle-v2-ooh-2-open-report.json`; reproduce with repeated graph
-replacement under active OpenGL previews, then make editor synchronization and
-preview rendering share a safe snapshot/lifetime boundary.
+Resolved 2026-09-09. Loading `downfall.cyclegraph` produced the same crash and
+exposed the precise initialization fault: `Interactor::positioner` was an
+uninitialized raw pointer before `Interactor::init()`. Pre-host envelope sync
+correctly guarded a null positioner, but indeterminate storage could pass that
+guard and enter `updateSelectionFrames()`. The pointer now initializes to null,
+so selection work is deferred until the preview host initializes the
+interactor. The `cycle-v2-agent-downfall-open` fixture covers repeated graph
+replacement through `downfall` and `ooh-2`; the focused pre-host widget test
+covers synchronization with Downfall's unlinked envelope axes.
 
 ## P1: Expanded Trimesh morph controls lost pointer capture during drag
 
@@ -193,3 +220,15 @@ semantic edit through `GraphCommandDispatcher` with undo/redo support.
 The edge context menu now switches from `Add Panning` to `Stop Panning` for
 either segment adjacent to the inline Pan. Removal and reconnection are one
 compound dispatcher command, and undo restores the Pan and both cable segments.
+
+## P1: Curve previews survive preset replacement with stale pixels
+
+Resolved 2026-09-09. After switching presets, Guide shelf tiles could remain
+black and a compact Waveshaper could show the previous preset's curve while its
+expanded editor showed the current model. The persistent Curve widgets keyed
+their OpenGL preview reuse by node/resource id and numeric revisions, which can
+repeat in another document, while document replacement cleared only the outer
+canvas sprites. The replacement lifecycle now invalidates each Curve host's
+render key, clears both framebuffer snapshots, advances its presentation
+identity, and schedules retained Guide widgets for a fresh render. A focused
+node-editor-host regression covers snapshot clearing and identity advancement.

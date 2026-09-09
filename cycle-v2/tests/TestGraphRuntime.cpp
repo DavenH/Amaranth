@@ -539,7 +539,7 @@ TEST_CASE("Stengah probes reflect an asynchronous Waveshaper curve edit at the c
   #endif
 }
 
-TEST_CASE("Stengah probes preserve normalized grids across spectral pan edits",
+TEST_CASE("Stengah upstream probes remain stable across spectral pan edits",
         "[cycle-v2][runtime][causal][pan][presets]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     ScopedJuceInitialiser_GUI juce;
@@ -551,12 +551,12 @@ TEST_CASE("Stengah probes preserve normalized grids across spectral pan edits",
 
     NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
     graph.addSignalProbe({
-            "upstreamMagnitude",
-            "magnitudeLayer1",
+            "upstreamPhase",
+            "phaseLayer1",
             "out",
-            "magnitudeLayer1Process",
+            "phaseLayer1Process",
             "in",
-            "Upstream magnitude",
+            "Upstream phase",
             0.5f,
             8
     });
@@ -567,57 +567,58 @@ TEST_CASE("Stengah probes preserve normalized grids across spectral pan edits",
     topology.topologyChanged = true;
     REQUIRE(presentation.refresh(document.graph(), document.revision(), topology));
     const auto upstreamPrimary = findNodePreview(
-            presentation.previewResult(), "magnitudeLayer1").primary;
+            presentation.previewResult(), "phaseLayer1").primary;
     const auto upstreamSecondary = findNodePreview(
-            presentation.previewResult(), "magnitudeLayer1").secondary;
+            presentation.previewResult(), "phaseLayer1").secondary;
     const auto upstreamSignal = findProbePreview(
-            presentation.previewResult(), "upstreamMagnitude").values;
+            presentation.previewResult(), "upstreamPhase").values;
     const auto downstreamSignal = findProbePreview(
-            presentation.previewResult(), "probe3").values;
-    REQUIRE(downstreamSignal == upstreamSignal);
+            presentation.previewResult(), "probe6").values;
     const size_t upstreamProcessCount = presentation.previewAudioProcessCount(
-            "magnitudeLayer1");
+            "phaseLayer1");
+    bool downstreamChanged {};
 
     for (const String pan : { "1", "0.5", "0", "0.5" }) {
         REQUIRE(commands.setNodeParameter(
-                "magnitudeLayer1Process", "pan", "Pan", pan).succeeded());
+                "phaseLayer1Process", "pan", "Pan", pan).succeeded());
         REQUIRE(presentation.refresh(
                 document.graph(),
                 document.revision(),
                 document.lastChange()));
         REQUIRE(findNodePreview(
-                presentation.previewResult(), "magnitudeLayer1").primary
+                presentation.previewResult(), "phaseLayer1").primary
                 == upstreamPrimary);
         REQUIRE(findNodePreview(
-                presentation.previewResult(), "magnitudeLayer1").secondary
+                presentation.previewResult(), "phaseLayer1").secondary
                 == upstreamSecondary);
         REQUIRE(findProbePreview(
-                presentation.previewResult(), "upstreamMagnitude").values
+                presentation.previewResult(), "upstreamPhase").values
                 == upstreamSignal);
-        REQUIRE(findProbePreview(
-                presentation.previewResult(), "probe3").values
-                == downstreamSignal);
-        REQUIRE(presentation.previewAudioProcessCount("magnitudeLayer1")
+        downstreamChanged = downstreamChanged
+                || findProbePreview(presentation.previewResult(), "probe6").values
+                        != downstreamSignal;
+        REQUIRE(presentation.previewAudioProcessCount("phaseLayer1")
                 == upstreamProcessCount);
     }
+    REQUIRE(downstreamChanged);
 
-    const Node* magnitude = document.graph().findNode("magnitudeLayer1");
-    REQUIRE(magnitude != nullptr);
-    const String currentRed = parameterValueForNode(*magnitude, "red");
+    const Node* phase = document.graph().findNode("phaseLayer1");
+    REQUIRE(phase != nullptr);
+    const String currentRed = parameterValueForNode(*phase, "red");
     const String editedRed = currentRed.getFloatValue() < 0.5f ? "0.8" : "0.2";
     REQUIRE(commands.setNodeParameter(
-            "magnitudeLayer1", "red", "Red", editedRed).succeeded());
+            "phaseLayer1", "red", "Red", editedRed).succeeded());
     REQUIRE(presentation.refresh(
             document.graph(),
             document.revision(),
             document.lastChange()));
-    REQUIRE(presentation.previewAudioProcessCount("magnitudeLayer1")
+    REQUIRE(presentation.previewAudioProcessCount("phaseLayer1")
             == upstreamProcessCount + 1);
     REQUIRE(findNodePreview(
-            presentation.previewResult(), "magnitudeLayer1").primary
+            presentation.previewResult(), "phaseLayer1").primary
             != upstreamPrimary);
     REQUIRE(findProbePreview(
-            presentation.previewResult(), "probe3").values
+            presentation.previewResult(), "probe6").values
             != downstreamSignal);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");

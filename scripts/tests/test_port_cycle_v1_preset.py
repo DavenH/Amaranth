@@ -288,6 +288,19 @@ class PortCycleV1PresetTest(unittest.TestCase):
             for node in converted["nodes"]
         ))
 
+    def test_all_inactive_unconnected_envelopes_are_omitted(self):
+        converted = port_cycle_v1_preset.convert(convertible_source())
+
+        self.assertFalse(any(
+            node["kind"] == "envelope"
+            for node in converted["nodes"]
+        ))
+
+    def test_unassigned_guides_are_omitted(self):
+        converted = port_cycle_v1_preset.convert(convertible_source())
+
+        self.assertEqual(converted["guides"], [])
+
     def test_empty_phase_layer_is_bypassed(self):
         source = convertible_source()
         phase = source["preset"]["meshLibrary"]["groups"][6]["layers"][0]
@@ -397,6 +410,9 @@ class PortCycleV1PresetTest(unittest.TestCase):
         source["preset"]["meshLibrary"]["groups"][3]["layers"] = [{
             "properties": {"active": True},
             "mesh": {"vertices": [], "cubes": []},
+        }]
+        source["preset"]["meshLibrary"]["groups"][4]["layers"][0]["mesh"]["cubes"] = [{
+            "guides": {"phase": 0},
         }]
 
         converted = port_cycle_v1_preset.convert(source)

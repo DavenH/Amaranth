@@ -98,6 +98,12 @@ bool CurvePanelSnapshotCache::paint(
     return true;
 }
 
+void CurvePanelSnapshotCache::clear() {
+    const ScopedLock scopedLock(lock);
+    image = {};
+    visibleContent = false;
+}
+
 class CurvePanelHost::HostComponent final : public PanelInputHostComponent {
 public:
     HostComponent(
@@ -277,6 +283,13 @@ bool CurvePanelHost::paintPreviewSnapshot(Graphics& graphics, Rectangle<float> b
 
 bool CurvePanelHost::usesCursor(const MouseCursor& cursor) const {
     return hostComponent != nullptr && hostComponent->getMouseCursor() == cursor;
+}
+
+void CurvePanelHost::resetDocumentPresentation() {
+    previewRenderCache.invalidate();
+    previewSnapshot.clear();
+    expandedSnapshot.clear();
+    ++previewInvalidationGeneration;
 }
 
 void CurvePanelHost::releaseSharedGlResources() {

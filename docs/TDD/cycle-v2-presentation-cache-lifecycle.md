@@ -1,6 +1,7 @@
 # Cycle V2 Presentation Cache Lifecycle
 
-Status: implemented on 2026-08-31
+Status: implemented on 2026-08-31; document-replacement curve reset completed
+2026-09-09
 
 ## Problem
 
@@ -27,7 +28,10 @@ graph, preventing repeated latest-state feedback.
 
 1. A full document replacement explicitly resets presentation-only caches.
    Cache entries may reuse node/probe ids and numeric revisions within a new
-   document, so those values are not a document identity.
+   document, so those values are not a document identity. This reset reaches
+   both canvas sprites and the persistent Curve widget render/snapshot caches,
+   including Guide shelf widgets; retaining the widgets must not retain pixels
+   from the previous document.
 2. Curve widgets synchronize the current graph model at the existing OpenGL
    preview-render boundary, after context-dependent resources exist and before
    snapshot capture. A default-model snapshot must not become the first
@@ -55,6 +59,9 @@ graph, preventing repeated latest-state feedback.
 - Load African Horn and then Baroque Flute in one process; the second snapshot
   exposes only Baroque Flute probe values and freshly painted tiles.
 - A loaded curve node is synchronized before its first cached OpenGL preview.
+- Replacing a document invalidates the inner Curve render key, clears preview
+  and expanded snapshots, changes the persistent widget presentation identity,
+  and schedules every retained Guide preview for a fresh OpenGL render.
 - The OpenGL underlay is restored in the same frame after Guide readback.
 - Two Guide updates in one transient gesture change the Spy payload twice,
   compile zero additional times, commit once, and undo once.
@@ -82,3 +89,19 @@ graph, preventing repeated latest-state feedback.
   `/private/tmp/cycle-v2-alto-curve-preview.png`, and
   `/private/tmp/cycle-v2-stengah-curve-preview.png`.
 - `git diff --check` passed. `clang-tidy` was unavailable in the environment.
+
+## 2026-09-09 Regression Closure
+
+Preset switches could reuse a blank Guide tile or an old compact Waveshaper
+snapshot when the next document reused the same resource/node id and numeric
+model revision. `NodeCanvas` cleared its outer sprite caches, but not the
+`CurvePanelHost` render key or framebuffer snapshots owned by persistent Curve
+widgets. Full document replacement now resets those existing owners without
+destroying their OpenGL hosts. The focused node-editor-host regression covers
+snapshot clearing and the new presentation identity boundary.
+
+The `cycle-v2-agent-curve-preview-preset-reset.json` fixture switches between
+documents that reuse `waveshaper` and `guide1`, then verifies the replacement
+graph compiles without validation issues. The production-size OS capture at
+`/private/tmp/cycle-v2-curve-preview-preset-reset.png` shows both the current
+compact Waveshaper curve and a non-black Guide tile after the switch.

@@ -1359,7 +1359,7 @@ void NodeCanvas::flushScheduledCompiledStateRefresh() {
 }
 
 void NodeCanvas::resetDocumentPresentation() {
-    editorCoordinator.clearPreviewCache();
+    editorCoordinator.resetDocumentPreviews();
     canvasPresentation.clearDocumentCaches();
     openGLContext.triggerRepaint();
     requestCanvasRepaint();
