@@ -1754,6 +1754,36 @@ TEST_CASE("Scratch Envelope drives every attached Trimesh from one prepared traj
     REQUIRE(previews.probes.front().connected);
     REQUIRE(previews.probes.front().values == first.traversalGrid.values);
 
+    NodeGraph defaultGraph = graph;
+    defaultGraph.removeEdgesFromOutput("scratch", "env");
+    defaultGraph.addEdge({
+            "scratch",
+            "env",
+            "voice",
+            "scratch",
+            PortDomain::EnvelopeSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::ScratchEnvelope
+    });
+    const auto defaultCompiled = GraphCompiler().compile(defaultGraph);
+    REQUIRE(defaultCompiled.succeeded());
+    GraphAudioExecutor defaultExecutor;
+    const auto defaultResult = defaultExecutor.process(
+            defaultGraph,
+            defaultCompiled.plan,
+            frameCount,
+            timing,
+            voice);
+    const auto& defaultFirst = findNodeAudio(defaultResult, "attachedA").output;
+    const auto& defaultSecond = findNodeAudio(defaultResult, "attachedB").output;
+    const auto& defaultPeer = findNodeAudio(defaultResult, "unattached").output;
+    REQUIRE(defaultFirst.block.samples == first.block.samples);
+    REQUIRE(defaultFirst.traversalGrid.values == first.traversalGrid.values);
+    REQUIRE(defaultSecond.block.samples == second.block.samples);
+    REQUIRE(defaultSecond.traversalGrid.values == second.traversalGrid.values);
+    REQUIRE(defaultPeer.block.samples == first.block.samples);
+    REQUIRE(defaultPeer.traversalGrid.values == first.traversalGrid.values);
+
     const auto advanced = executor.process(
             graph,
             compiled.plan,

@@ -330,6 +330,16 @@ int stepIndexFor(const GraphExecutionPlan& plan, const String& nodeId) {
     return -1;
 }
 
+String scratchSourceNodeIdForStep(const GraphExecutionStep& step) {
+    const auto found = std::find_if(
+            step.attachments.begin(),
+            step.attachments.end(),
+            [](const GraphStepAttachment& attachment) {
+                return attachment.destPortId == "scratch";
+            });
+    return found != step.attachments.end() ? found->sourceNodeId : String {};
+}
+
 int outputIndexFor(const GraphExecutionStep& step, const String& portId) {
     for (int i = 0; i < (int) step.outputs.size(); ++i) {
         if (step.outputs[(size_t) i].portId == portId) {
@@ -490,6 +500,7 @@ std::vector<GraphBufferPlan> buildBufferPlan(
 std::vector<CompiledVoiceContext> compileVoiceContexts(
         const NodeGraph& graph,
         const std::vector<Edge>& configurationAttachments,
+        const std::vector<Edge>& processingAttachments,
         const std::vector<Edge>& signalEdges) {
     std::vector<CompiledVoiceContext> contexts;
     const auto defaultModulation = buildModulationTripleConfiguration({});
@@ -554,6 +565,15 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
                 unison = found->second;
                 context.unison = unison;
                 context.lanes = unison->layout;
+            }
+        }
+
+        for (const auto& attachment : processingAttachments) {
+            if (attachment.destNodeId == node.id
+                    && attachment.destPortId == "scratch"
+                    && attachment.attachmentType == AttachmentType::ScratchEnvelope) {
+                context.defaultScratchNodeId = attachment.sourceNodeId;
+                break;
             }
         }
 
@@ -687,6 +707,70 @@ const CompiledVoiceContext* voiceContextForNode(
         return &*found;
     }
     return nullptr;
+}
+
+bool hasTargetLocalScratchAttachment(
+        const GraphExecutionPlan& plan,
+        const String& nodeId) {
+    return std::any_of(
+            plan.attachments.begin(),
+            plan.attachments.end(),
+            [&](const Edge& attachment) {
+                return attachment.destNodeId == nodeId
+                        && attachment.destPortId == "scratch";
+            });
+}
+
+const Node* defaultScratchSourceFor(
+        const NodeGraph& graph,
+        const GraphExecutionPlan& plan,
+        const VoiceContextAssignments& assignments,
+        const Node& node) {
+    const CompiledVoiceContext* context = voiceContextForNode(
+            graph,
+            plan,
+            assignments,
+            node);
+    if (context == nullptr || context->defaultScratchNodeId.isEmpty()) {
+        return nullptr;
+    }
+    return findNode(graph, context->defaultScratchNodeId);
+}
+
+void compileDefaultScratchAttachments(
+        const NodeGraph& graph,
+        GraphExecutionPlan& plan) {
+    const VoiceContextAssignments assignments = assignVoiceContexts(graph, plan);
+    for (const auto& step : plan.steps) {
+        if (step.kind != NodeKind::TrilinearMesh) {
+            continue;
+        }
+        if (hasTargetLocalScratchAttachment(plan, step.nodeId)) {
+            continue;
+        }
+
+        const Node* node = findNode(graph, step.nodeId);
+        if (node == nullptr) {
+            continue;
+        }
+        const Node* source = defaultScratchSourceFor(
+                graph,
+                plan,
+                assignments,
+                *node);
+        if (source == nullptr || source->outputs.empty()) {
+            continue;
+        }
+        plan.attachments.push_back({
+                source->id,
+                source->outputs.front().id,
+                node->id,
+                "scratch",
+                PortDomain::EnvelopeSignal,
+                ConnectionKind::ProcessingAttachment,
+                AttachmentType::ScratchEnvelope
+        });
+    }
 }
 
 void compileDefaultModulationInputs(
@@ -1015,6 +1099,10 @@ bool GraphCompileResult::succeeded() const {
     return validationIssues.empty() && compileIssues.empty();
 }
 
+String effectiveScratchSourceNodeId(const GraphExecutionStep& step) {
+    return scratchSourceNodeIdForStep(step);
+}
+
 GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
     GraphCompileResult result;
     result.validationIssues = validator.validate(graph);
@@ -1048,6 +1136,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
         result.plan.voiceContexts = compileVoiceContexts(
                 graph,
                 result.plan.configurationAttachments,
+                result.plan.attachments,
                 result.plan.signalEdges);
 
         result.plan.steps = buildExecutionSteps(
@@ -1057,6 +1146,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
                 domainResolver,
                 domainResolution,
                 moduleRegistry);
+        compileDefaultScratchAttachments(graph, result.plan);
         compileDefaultModulationInputs(graph, result.plan);
         compileOscillatorRegions(result.plan, result.compileIssues);
         if (!result.compileIssues.empty()) {
@@ -1115,7 +1205,8 @@ void GraphCompiler::publishConfigurations(
                 step.model,
                 spec,
                 &graph,
-                step.nodeId);
+                step.nodeId,
+                effectiveScratchSourceNodeId(step));
         auto found = std::find_if(configurations.begin(), configurations.end(), [&](const auto& entry) {
             return entry.nodeId == step.nodeId;
         });
@@ -1132,7 +1223,8 @@ void GraphCompiler::publishConfigurations(
                     step.model,
                     spec,
                     &graph,
-                    step.nodeId);
+                    step.nodeId,
+                    effectiveScratchSourceNodeId(step));
         });
     }
 }

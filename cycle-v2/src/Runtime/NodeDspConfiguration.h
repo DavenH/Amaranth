@@ -88,14 +88,16 @@ public:
             const NodeModelStatePtr& model,
             const AudioExecutionSpec& spec,
             const NodeGraph* graph = nullptr,
-            const String& nodeId = {}) const;
+            const String& nodeId = {},
+            const String& scratchSourceNodeId = {}) const;
     std::shared_ptr<const INodeDspConfiguration> create(
             AudioModuleRole role,
             const std::vector<NodeParameter>& parameters,
             const NodeModelStatePtr& model,
             const AudioExecutionSpec& spec,
             const NodeGraph* graph = nullptr,
-            const String& nodeId = {}) const;
+            const String& nodeId = {},
+            const String& scratchSourceNodeId = {}) const;
     std::shared_ptr<const INodeDspConfiguration> create(
             AudioModuleRole role,
             const std::vector<NodeParameter>& parameters,

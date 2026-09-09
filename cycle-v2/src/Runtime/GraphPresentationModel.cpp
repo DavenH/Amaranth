@@ -602,7 +602,8 @@ void GraphPresentationModel::refreshConfigurations(
                 node->model,
                 spec,
                 &graph,
-                step.nodeId);
+                step.nodeId,
+                effectiveScratchSourceNodeId(step));
         if (step.configuration.key == key) {
             continue;
         }
@@ -612,7 +613,8 @@ void GraphPresentationModel::refreshConfigurations(
                 node->model,
                 spec,
                 &graph,
-                step.nodeId);
+                step.nodeId,
+                effectiveScratchSourceNodeId(step));
         if (value != nullptr) {
             step.configuration = {
                     step.configuration.revision + 1,

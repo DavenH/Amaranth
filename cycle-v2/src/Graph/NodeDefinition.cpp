@@ -308,7 +308,9 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     input("pitch", "Pitch", PortDomain::PitchSignal),
                     input("unison", "Unison", PortDomain::VoiceControlSignal,
                             ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
-                            ConnectionKind::ConfigurationAttachment, AttachmentType::Unison)
+                            ConnectionKind::ConfigurationAttachment, AttachmentType::Unison),
+                    input("scratch", "Scratch", PortDomain::EnvelopeSignal,
+                            ChannelLayout::Mono, PortPurpose::ScratchAttachment)
                     },
                     { output("context", "Context", PortDomain::DomainContext) }, {
                             choice("domain", "Start Domain", "waveform", { "waveform", "spectral", "spectralMagnitude", "spectralPhase" }, graph | presentation | preview),
