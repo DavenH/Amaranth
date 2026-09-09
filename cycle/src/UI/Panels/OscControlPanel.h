@@ -62,7 +62,7 @@ public:
     float getVolumeScale() { return scaleVolume((float) volume->getValue()); }
     [[nodiscard]] float getLengthInSeconds() const 	{ return scaleSpeed((float) speed->getValue()); }
 
-    static float scaleVolume	(float val) { return expf(6 * val - 3); }
+    static float scaleVolume	(float val) { return CycleDsp::outputGain(val); }
     static float scaleOctave	(float val) { return (float) ::roundToInt(4 * (val - 0.5f) + 0.5f); }
     static float scaleSpeed(float val) {
         return (float) CycleDsp::voiceLengthSeconds(val);

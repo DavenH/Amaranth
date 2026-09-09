@@ -781,7 +781,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 3217.10352, "y": 457.91467 },
-            "parameters": {}
+            "parameters": { "gain": 0.5 }
         },
         {
             "id": "reverb",

@@ -630,6 +630,55 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::endSpectralPanGesture() {
     };
 }
 
+bool NodeCanvasAuthoring::beginOutputGainGesture(const String& nodeId) {
+    const Node* node = findNode(nodeId);
+    if (node == nullptr || node->kind != NodeKind::Output) {
+        return false;
+    }
+
+    commands.beginTransientEdit();
+    outputGainGestureNodeId = nodeId;
+    outputGainGestureChanged = false;
+    selectNode(nodeId);
+    return true;
+}
+
+bool NodeCanvasAuthoring::updateOutputGainGesture(float value) {
+    if (outputGainGestureNodeId.isEmpty()) {
+        return false;
+    }
+
+    const String normalized = String(jlimit(0.f, 1.f, value), 6);
+    const auto result = commands.setNodeParameter(
+            outputGainGestureNodeId,
+            "gain",
+            "Gain",
+            normalized);
+    outputGainGestureChanged = outputGainGestureChanged || result.changed;
+    authoringSession.statusMessage = "Output gain: " + normalized;
+    return result.succeeded();
+}
+
+NodeCanvasAuthoringResult NodeCanvasAuthoring::endOutputGainGesture() {
+    if (outputGainGestureNodeId.isEmpty()) {
+        return {};
+    }
+
+    const String nodeId = std::move(outputGainGestureNodeId);
+    const bool changed = outputGainGestureChanged;
+    outputGainGestureChanged = false;
+    commands.commitTransientEdit();
+    refreshPresentation();
+    return {
+            true,
+            true,
+            changed,
+            GraphEditCode::Connected,
+            nodeId,
+            { true, false, true }
+    };
+}
+
 NodeCanvasAuthoringResult NodeCanvasAuthoring::setTransformMode(
         const String& nodeId,
         TransformMode mode) {

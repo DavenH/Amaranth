@@ -748,7 +748,9 @@ def convert(source):
                 scratch_id, "env", mesh_node_id, "scratch",
                 "processingAttachment", "scratchEnvelope"))
 
-    nodes.append(node("output", "output", 3150, 500))
+    nodes.append(node("output", "output", 3150, 500, {
+        "gain": oscillator_knobs[0],
+    }))
     edges.append(edge(signal_node, signal_port, "output", "time"))
 
     graph = {
@@ -929,6 +931,7 @@ def equivalence_manifest(source, source_document, destination, factory_preset):
             "midiNoteOffset": 12 * octave,
             "legacyMidiReferenceOffset": LEGACY_MIDI_REFERENCE_OFFSET,
             "v1MasterGain": master_gain,
+            "v2OutputGainUnitValue": oscillator_knobs[0],
             "v2OutputHeadroom": 0.125,
             "timeLayer": "timeLayer1",
             "magnitudeLayer": "magnitudeLayer1 -> magnitudeLayer1Process",
@@ -936,7 +939,7 @@ def equivalence_manifest(source, source_document, destination, factory_preset):
             "volumeEnvelope": "volumeEnvelope when active",
             "scratchEnvelope": "scratchEnvelope when active",
             "morph": "morph",
-            "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom",
+            "constantGainPolicy": "Cycle1 master gain maps to Output; Cycle2 fixed headroom remains separate",
         },
         "thresholds": {
             "correlationMin": 0.98,

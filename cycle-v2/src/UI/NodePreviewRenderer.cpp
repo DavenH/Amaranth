@@ -130,7 +130,8 @@ void drawMeters(
         Rectangle<float> area,
         const NodePreviewResult& preview,
         Colour colour,
-        std::optional<OutputMeterLevels> liveLevels) {
+        std::optional<OutputMeterLevels> liveLevels,
+        float gainUnitValue) {
     const float previewLeft = preview.primary.empty()
             ? 0.f
             : jlimit(0.f, 1.f, preview.primary.front());
@@ -139,7 +140,13 @@ void drawMeters(
             : jlimit(0.f, 1.f, preview.secondary.front());
     const float left = liveLevels.has_value() ? liveLevels->left : previewLeft;
     const float right = liveLevels.has_value() ? liveLevels->right : previewRight;
-    OutputMeterPresentation::paint(graphics, area, left, right, colour);
+    OutputMeterPresentation::paint(
+            graphics,
+            area,
+            left,
+            right,
+            colour,
+            gainUnitValue);
 }
 
 std::vector<float> mappedSurface(
@@ -582,7 +589,7 @@ Image NodePreviewRenderer::createRuntimeHeatmapImage(
 Rectangle<float> NodePreviewRenderer::boundsFor(
         const Node& node,
         Rectangle<float> nodeBounds,
-        float zoom) const {
+        float zoom) {
     Rectangle<float> preview = nodeBounds.withTrimmedTop(42.f * zoom).reduced(8.f * zoom);
 
     if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
@@ -741,7 +748,8 @@ bool NodePreviewRenderer::paintRuntimeResult(
                 request.area,
                 result,
                 colour,
-                request.liveOutputLevels);
+                request.liveOutputLevels,
+                NodeParameterMap(request.node).floatValue("gain", 0.5f));
         return true;
     }
 
@@ -947,7 +955,8 @@ void NodePreviewRenderer::paintQualitative(
                 request.area,
                 meters,
                 colourForDomain(PortDomain::TimeSignal),
-                request.liveOutputLevels);
+                request.liveOutputLevels,
+                NodeParameterMap(request.node).floatValue("gain", 0.5f));
         return;
     }
 

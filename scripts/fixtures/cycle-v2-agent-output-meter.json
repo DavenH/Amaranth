@@ -22,6 +22,160 @@
       "value": 0
     },
     {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "outputGain:out"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "outputGain:out",
+      "targetY": 0.75
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "outputGain:out",
+      "downTargetId": "outputGain:out",
+      "targetY": 0.3,
+      "downTargetY": 0.75
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "outputGain:out",
+      "downTargetId": "outputGain:out",
+      "targetY": 0.1,
+      "downTargetY": 0.75
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "outputGain:out",
+      "downTargetId": "outputGain:out",
+      "targetY": 0.1,
+      "downTargetY": 0.75,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "out",
+      "parameterId": "gain",
+      "op": "greaterThan",
+      "value": 0.7
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "out",
+      "parameterId": "gain",
+      "equals": "0.5"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "outputGain:out",
+      "targetY": 0.75,
+      "shift": true
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "outputGain:out",
+      "downTargetId": "outputGain:out",
+      "targetY": 0.3,
+      "downTargetY": 0.75,
+      "shift": true
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "outputGain:out",
+      "downTargetId": "outputGain:out",
+      "targetY": 0.1,
+      "downTargetY": 0.75,
+      "shift": true
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "outputGain:out",
+      "downTargetId": "outputGain:out",
+      "targetY": 0.1,
+      "downTargetY": 0.75,
+      "shift": true,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "out",
+      "parameterId": "gain",
+      "op": "greaterThan",
+      "value": 0.55
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "out",
+      "parameterId": "gain",
+      "op": "lessThan",
+      "value": 0.6
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "out",
+      "parameterId": "gain",
+      "value": "0.8"
+    },
+    {
+      "command": "pointer",
+      "event": "doubleClick",
+      "targetId": "outputGain:out",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "out",
+      "parameterId": "gain",
+      "equals": "0.5"
+    },
+    {
+      "command": "key",
+      "area": "canvas",
+      "key": "up"
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "out",
+      "parameterId": "gain",
+      "equals": "0.520000"
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "out",
+      "parameterId": "gain",
+      "equals": "0.5"
+    },
+    {
       "command": "screenshot",
       "area": "canvas",
       "path": "/private/tmp/cycle-v2-agent-output-meter.png"

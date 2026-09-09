@@ -772,7 +772,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 2730.0, "y": 420.0 },
-            "parameters": {}
+            "parameters": { "gain": 0.5 }
         }
     ],
     "guides": [

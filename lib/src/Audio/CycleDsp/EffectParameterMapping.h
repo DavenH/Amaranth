@@ -25,6 +25,10 @@ double reverbKernelSeconds(float unitValue, double sampleRate);
 float reverbDamping(float unitValue);
 float reverbWetLevel(float unitValue);
 
+float outputGain(float unitValue);
+float outputGainUnitValue(float gain);
+float outputGainDecibels(float unitValue);
+
 double delayBeats(float unitValue, int beatsPerMeasure);
 float delayUnitValueForBeats(double beats, int beatsPerMeasure);
 float delaySnappedUnitValue(

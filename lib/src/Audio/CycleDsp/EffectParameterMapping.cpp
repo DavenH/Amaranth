@@ -87,6 +87,21 @@ float reverbWetLevel(float value) {
     return 0.25f * unitValue(value);
 }
 
+float outputGain(float value) {
+    return std::exp(6.f * unitValue(value) - 3.f);
+}
+
+float outputGainUnitValue(float gain) {
+    constexpr float minimumGain = 0.049787068367863944f;
+    const float clamped = std::max(minimumGain, gain);
+    return std::clamp((std::log(clamped) + 3.f) / 6.f, 0.f, 1.f);
+}
+
+float outputGainDecibels(float value) {
+    constexpr float decibelsPerNeper = 8.685889638065036f;
+    return (6.f * unitValue(value) - 3.f) * decibelsPerNeper;
+}
+
 double delayBeats(float value, int beatsPerMeasure) {
     const double normalizedValue = std::max(0.15, static_cast<double>(unitValue(value)));
     return static_cast<double>(std::max(1, beatsPerMeasure))

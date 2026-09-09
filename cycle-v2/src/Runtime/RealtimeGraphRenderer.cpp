@@ -26,6 +26,7 @@ RealtimeGraphRenderer::prepareGraph(
     prepared->revision = revision;
     prepared->plan = std::move(plan);
     prepared->spec = spec;
+    prepared->outputGainRamp.resize((int) spec.maximumFrameCount);
     for (size_t voiceIndex = 0; voiceIndex < voiceCount; ++voiceIndex) {
         prepared->executor.prepareExecution(
                 prepared->plan,
@@ -41,6 +42,13 @@ void RealtimeGraphRenderer::setPreparedGraph(PreparedGraph* graph) {
     }
     resetVoices();
     preparedGraph = graph;
+    const float nextGain = graph == nullptr ? 1.f : graph->plan.outputGain;
+    if (!outputGainInitialized) {
+        outputGain.setValueDirect(nextGain);
+        outputGainInitialized = true;
+    } else {
+        outputGain = nextGain;
+    }
     activeRevision.store(graph == nullptr ? 0 : graph->revision, std::memory_order_release);
 }
 
@@ -300,11 +308,14 @@ void RealtimeGraphRenderer::renderVoices(
         }
     }
 
+    outputGain.update(frameCount);
     for (int channel = 0; channel < jmin(2, outputChannelCount); ++channel) {
         if (outputChannels[channel] != nullptr) {
-            Buffer<float>(outputChannels[channel], frameCount)
-                    .mul(outputHeadroom)
-                    .clip(-1.f, 1.f);
+            outputGain.maybeApplyRamp(
+                    preparedGraph->outputGainRamp.withSize(frameCount),
+                    Buffer<float>(outputChannels[channel], frameCount),
+                    outputHeadroom);
+            Buffer<float>(outputChannels[channel], frameCount).clip(-1.f, 1.f);
         }
     }
     activeVoices.store(activeCount, std::memory_order_relaxed);

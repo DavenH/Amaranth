@@ -12,6 +12,7 @@
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 
+#include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>
 
@@ -1150,6 +1151,44 @@ TEST_CASE("Transparent audio processors pass through first input", "[cycle-v2][r
 
     REQUIRE(output(context).block.samples == std::vector<float> { -0.25f, 0.f, 0.5f });
     REQUIRE_FALSE(output(context).traversalGrid.isValid());
+}
+
+TEST_CASE("Output processor maps and smooths the persisted master gain",
+        "[cycle-v2][runtime][output][gain]") {
+    NodeAudioProcessorFactory factory;
+    auto processor = factory.create(AudioModuleRole::Output);
+    REQUIRE(processor != nullptr);
+
+    AudioProcessContext quiet;
+    quiet.frameCount = 3;
+    quiet.parameters = { { "gain", "Gain", "0" } };
+    SignalPayload stereo = gridPayload({ 1.f, -0.5f, 0.25f }, 1, 3);
+    stereo.channelLayout = ChannelLayout::StereoPair;
+    stereo.secondaryBlock.samples = SignalBuffer { -1.f, 0.5f, -0.25f };
+    stereo.secondaryTraversalGrid = stereo.traversalGrid;
+    stereo.secondaryTraversalGrid.values = SignalBuffer { -1.f, 0.5f, -0.25f };
+    quiet.inputs = { std::move(stereo) };
+    prepareProcessor(*processor, AudioModuleRole::Output, quiet, 128);
+    processor->process(quiet);
+
+    const float quietGain = CycleDsp::outputGain(0.f);
+    REQUIRE(output(quiet).block.samples[0] == Catch::Approx(quietGain));
+    REQUIRE(output(quiet).secondaryBlock.samples[0] == Catch::Approx(-quietGain));
+    REQUIRE(output(quiet).traversalGrid.values[1] == Catch::Approx(-0.5f * quietGain));
+    REQUIRE(output(quiet).secondaryTraversalGrid.values[1]
+            == Catch::Approx(0.5f * quietGain));
+
+    AudioProcessContext raised;
+    raised.frameCount = 128;
+    raised.parameters = { { "gain", "Gain", "1" } };
+    raised.inputs = { payload(std::vector<float>(128, 1.f)) };
+    prepareProcessor(*processor, AudioModuleRole::Output, raised, 128, 2);
+    processor->process(raised);
+
+    const auto& ramp = output(raised).block.samples;
+    REQUIRE(ramp.front() == Catch::Approx(quietGain));
+    REQUIRE(ramp.back() > ramp.front());
+    REQUIRE(ramp.back() < CycleDsp::outputGain(1.f));
 }
 
 TEST_CASE("Passthrough audio processors expand scalar input safely", "[cycle-v2][runtime]") {

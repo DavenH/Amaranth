@@ -164,7 +164,9 @@ private:
     bool canvasOpenGlAttached {};
     bool compiledStateRefreshPending {};
     String draggingSpectralPanNodeId;
+    String draggingOutputGainNodeId;
     float spectralPanDragStartValue {};
+    float outputGainDragStartValue { 0.5f };
     SignalProbeRailState probeRailState;
     GuideCurveShelfState guideShelfState;
     float dockSplitRatio { 0.5f };

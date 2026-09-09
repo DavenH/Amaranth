@@ -117,6 +117,9 @@ public:
     bool beginSpectralPanGesture(const String& nodeId);
     bool updateSpectralPanGesture(float value);
     NodeCanvasAuthoringResult endSpectralPanGesture();
+    bool beginOutputGainGesture(const String& nodeId);
+    bool updateOutputGainGesture(float value);
+    NodeCanvasAuthoringResult endOutputGainGesture();
     NodeCanvasAuthoringResult setTransformMode(
             const String& nodeId,
             TransformMode mode);
@@ -156,7 +159,9 @@ private:
     NodeEditorCommands& editorCommands;
     NodeCanvasAuthoringSession authoringSession;
     String spectralPanGestureNodeId;
+    String outputGainGestureNodeId;
     bool spectralPanGestureChanged {};
+    bool outputGainGestureChanged {};
 };
 
 }

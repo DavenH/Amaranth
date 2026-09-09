@@ -56,6 +56,12 @@ TEST_CASE("Effect parameter mappings preserve Cycle controls", "[CycleDsp][effec
     REQUIRE(CycleDsp::reverbDamping(1.f) == Approx(0.7f));
     REQUIRE(CycleDsp::reverbWetLevel(1.f) == Approx(0.25f));
 
+    REQUIRE(CycleDsp::outputGain(0.f) == Approx(std::exp(-3.f)));
+    REQUIRE(CycleDsp::outputGain(0.5f) == Approx(1.f));
+    REQUIRE(CycleDsp::outputGain(1.f) == Approx(std::exp(3.f)));
+    REQUIRE(CycleDsp::outputGainUnitValue(CycleDsp::outputGain(0.27f)) == Approx(0.27f));
+    REQUIRE(CycleDsp::outputGainDecibels(0.5f) == Approx(0.f));
+
     REQUIRE(CycleDsp::delayBeats(0.f, 4) == Approx(0.09));
     REQUIRE(CycleDsp::delayBeats(0.5f, 4) == Approx(1.0));
     REQUIRE(CycleDsp::delayBeats(1.f, 4) == Approx(4.0));

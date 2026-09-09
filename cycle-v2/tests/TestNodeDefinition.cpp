@@ -70,6 +70,14 @@ TEST_CASE("Pan presents as an inline cable control", "[cycle-v2][graph][definiti
             == node.bounds.getCentreY());
 }
 
+TEST_CASE("Output owns a unity-default master gain", "[cycle-v2][graph][definitions][output]") {
+    const Node node = GraphNodeFactory().createNode(NodeKind::Output, "output", {});
+
+    REQUIRE(node.parameters.size() == 1);
+    REQUIRE(node.parameters.front().id == "gain");
+    REQUIRE(node.parameters.front().value == "0.5");
+}
+
 TEST_CASE("Trimesh owns the spectral range parameter", "[cycle-v2][graph][definitions]") {
     const Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
     const auto range = std::find_if(

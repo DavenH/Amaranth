@@ -15,6 +15,7 @@
 #include "Runtime/GraphPreviewExecutor.h"
 #include "Runtime/RealtimeGraphRenderer.h"
 
+#include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
 #include <Util/Arithmetic.h>
@@ -204,6 +205,35 @@ void setNodeParameter(Node& node, const String& id, const String& value) {
     found->value = value;
 }
 
+std::vector<float> renderImageThroughOutputGain(float gainUnitValue) {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    Node output = factory.createNode(NodeKind::Output, "output", {});
+    setNodeParameter(output, "gain", String(gainUnitValue));
+    graph.addNode(std::move(output));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "wave", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "wave", "out", false },
+            { "output", "time", true }).succeeded());
+
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    GraphAudioExecutor executor;
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    const auto rendered = executor.process(graph, compiled.plan, 256, {}, voice);
+    return {
+            rendered.output.block.samples.begin(),
+            rendered.output.block.samples.end()
+    };
+}
+
 var sawtoothMeshTopology() {
     Mesh mesh("FftSawtooth");
     const auto addIntercept = [&mesh](float phase, float amplitude) {
@@ -232,6 +262,26 @@ var sawtoothMeshTopology() {
     return topology;
 }
 
+}
+
+TEST_CASE("Compiled Output gain changes the graph audio payload",
+        "[cycle-v2][runtime][output][gain][graph]") {
+    const auto unity = renderImageThroughOutputGain(0.5f);
+    const auto raised = renderImageThroughOutputGain(0.75f);
+    const float expectedScale = CycleDsp::outputGain(0.75f);
+
+    REQUIRE(unity.size() == raised.size());
+    REQUIRE(std::any_of(
+            unity.begin(),
+            unity.end(),
+            [](float sample) { return sample != 0.f; }));
+    float maximumResidual = 0.f;
+    for (size_t index = 0; index < unity.size(); ++index) {
+        maximumResidual = std::max(
+                maximumResidual,
+                std::abs(raised[index] - unity[index] * expectedScale));
+    }
+    REQUIRE(maximumResidual < 1e-6f);
 }
 
 TEST_CASE("Prepared chained oscillator runtime performs no realtime allocation",

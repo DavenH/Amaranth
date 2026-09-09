@@ -9,6 +9,10 @@ audio. The preview must stop implying activity when no audio has been measured,
 preserve independent left/right values when the signal is stereo, and spend the
 available width on the meters rather than an unexplained central void.
 
+The meter-only sections below describe the original completed slice. The later
+Master Gain Extension supersedes their layout and interaction limits while
+preserving their signal-truth contract.
+
 ## Current Failure
 
 - `NodeDefinitionRegistry` marks Output as non-previewable, so the runtime
@@ -54,9 +58,9 @@ The shared meter layout owns these rules:
   nonzero signal remains visible without rounding it up to a whole segment;
 - keep the existing semantic low/warning/over colours and unlit segment state.
 
-The meter has no hover, drag, or value-entry interaction. Its visual footprint,
-channel separation, and exact fill boundary are therefore the applicable UI
-geometry contracts; no invisible hit target is introduced.
+The original meter-only slice had no hover, drag, or value-entry interaction.
+Its visual footprint, channel separation, and exact fill boundary were therefore
+the applicable UI geometry contracts before the Master Gain Extension.
 
 ## Architecture and Deletion Targets
 
@@ -69,9 +73,8 @@ geometry contracts; no invisible hit target is introduced.
 - Keep `NodePreviewRenderer` responsible only for painting the supplied levels
   into the shared bounds.
 
-Expected production change: one small presentation pair, focused edits to the
-monitor processor, Output definition, and renderer. New node-kind switching or
-changes to graph execution are out of scope.
+Expected production change for the meter-only slice: one small presentation
+pair, focused edits to the monitor processor, Output definition, and renderer.
 
 ## Verification
 
@@ -114,7 +117,121 @@ changes to graph execution are out of scope.
   level. The production-size before/after captures are
   `/private/tmp/cycle-v2-agent-canvas.png` from the baseline run and
   `/private/tmp/cycle-v2-agent-output-meter.png` from the final run.
-- `CycleV2_tests` reports 526 passing cases and the one pre-existing
-  `TestNodeCanvasHitRouter.cpp:66` failure already tracked in `ui-bugs.md`.
-  The standalone CycleV2 target builds successfully. `git diff --check` passes;
-  `clang-tidy` was unavailable on this machine.
+- At completion of the initial meter-only slice, its 526 focused cases passed;
+  the broader run still contained the then-pre-existing
+  `TestNodeCanvasHitRouter.cpp:66` failure tracked in `ui-bugs.md`. The later
+  Master Gain Extension evidence below supersedes that historical test status.
+
+## Master Gain Extension
+
+### Objective
+
+Add Cycle 1's master-volume contract to the Output node without conflating it
+with Cycle V2's fixed post-mix safety headroom. The Output preview becomes a
+compact mastering strip: the stereo meters remain the dominant readout and a
+vertical fader beside them controls the persisted master gain.
+
+### Authoritative DSP Contract
+
+Cycle 1's `OscControlPanel::scaleVolume()` is authoritative. It maps normalized
+slider position `x` to linear gain `exp(6x - 3)`, so `0.5` is unity. Its
+`SynthAudioSource` applies a 128-sample half-life smoothed ramp after all effects.
+The mapping belongs in shared `CycleDsp` parameter mapping and is consumed by
+both Cycle 1 and Cycle V2; it must not be reimplemented in the Output UI or
+processor.
+
+Cycle V2 translates the boundary by persisting normalized `gain` on the Output
+node and compiling it into mapped linear gain. Diagnostic and preview execution
+uses the typed Output processor so its captured payload and traversal grids
+reflect the gain. Realtime graph execution deliberately exposes the signal
+feeding the sink, so `RealtimeGraphRenderer` owns the authoritative audible
+application after voice summation. The existing
+`RealtimeGraphRenderer::outputHeadroom` remains a separate fixed multiplication
+at that same final stage. It is not folded into the node parameter, display
+value, converter, or parity manifest.
+
+The Cycle 1 preset converter transfers oscillator knob 0 unchanged into the
+Output node. Older Cycle V2 graphs omit the parameter and therefore normalize to
+the definition's `0.5` unity default.
+
+### Presentation and Interaction Contract
+
+- Reserve at least 56% of the natural preview width for the two meters and no
+  more than 24% for the fader hit column; keep a visible group gap between them.
+- Draw a thin vertical track, a small horizontal thumb with an exact centre
+  line, and a concise decibel readout. The hit column remains at least 24 px at
+  normal zoom even though the visible track is narrower.
+- Map upward motion to increasing normalized gain. Ordinary drag uses at least
+  120 px for the full range; Shift provides 4x finer adjustment. Double-click
+  resets to the `0.5` unity position.
+- Hover uses the vertical-resize cursor and reports the mapped decibel value.
+- Up/Down adjusts a selected Output node in 0.02 normalized steps; Shift uses
+  0.005 steps.
+- A drag is one dispatcher-owned transient edit. Multiple updates retain the
+  same durable base, commit once on mouse-up, refresh audio/preview, and undo as
+  one action. UI code never mutates `NodeGraph` directly.
+
+### Architecture and Deletion Targets
+
+- Extend `OutputMeterPresentation` as the sole owner of meter/fader layout,
+  value geometry, and painting.
+- Replace the diagnostic Output passthrough processor with a narrowly configured
+  gain processor that reuses `SmoothedParameter` and vector buffer operations.
+- Carry mapped gain in `GraphExecutionPlan`; smooth and apply it once globally in
+  `RealtimeGraphRenderer`, after voice summation and before clipping.
+- Reuse `GraphCommandDispatcher` transient editing through
+  `NodeCanvasAuthoring`; do not create an Output-specific graph mutation path.
+- Delete the converter manifest language that calls master gain an unresolved
+  constant-gain discrepancy once the normalized control is emitted.
+
+### Verification
+
+- Shared mapping tests cover endpoints and unity.
+- Processor tests cover mono/stereo gain, neutral default, configuration
+  replacement without discontinuity, and traversal-grid agreement.
+- A compiled graph test proves Output gain changes observable output while the
+  renderer's fixed headroom remains unchanged.
+- Geometry tests cover compact/natural/expanded bounds, thumb endpoints,
+  hit-target size, meter allocation, and position mapping.
+- A gesture sequence test performs at least two updates, commits, observes the
+  persisted value and downstream parameter impact, then undoes.
+- Converter tests prove a Cycle 1 volume knob is preserved on Output and the
+  equivalence manifest no longer declares that control missing.
+- A production-size Cycle V2 screenshot validates the final meter/fader balance.
+
+### Completion Criteria
+
+- Output gain is persisted, compiled, smoothed, audible, preview-visible, and
+  exactly mapped from the Cycle 1 normalized control.
+- The safety headroom remains independently applied and documented.
+- Pointer, reset, fine-drag, keyboard, commit, and undo behavior follow the
+  semantic command path.
+- The meters remain readable and spatially dominant at the natural Output-node
+  size.
+- Focused tests, the full Cycle V2 test suite, converter tests, standalone build,
+  style checks, and production-size visual review pass.
+
+### Implementation Evidence
+
+- `Output` owns a persisted normalized `gain` with a `0.5` unity default. Shared
+  `CycleDsp` mapping is now the one source for Cycle 1 and Cycle V2's
+  `exp(6x - 3)` gain law and decibel presentation.
+- Diagnostic Output processing scales captured blocks and traversal grids;
+  `GraphExecutionPlan` carries the same mapped gain to the realtime renderer,
+  which smooths it after voice summation and keeps `outputHeadroom` independent.
+- `OutputMeterPresentation` now owns the stereo-meter/fader geometry and paint.
+  The canvas routes drag, Shift-fine drag, double-click reset, wheel, and
+  keyboard edits through semantic commands. Fader drag uses one transient edit,
+  accepts multiple updates, commits once, and undoes once.
+- The Cycle 1 converter emits oscillator knob 0 as Output gain and records that
+  normalized value separately from Cycle V2's fixed headroom. Canonical checked
+  graphs explicitly store the unity default; older graphs normalize missing
+  gain to unity.
+- The focused production automation fixture exercises semantic fader targeting,
+  ordinary and fine two-update drags, commit/undo, reset, keyboard adjustment,
+  hover/cursor behavior, and screenshot capture. The final 1728x962 capture is
+  `/private/tmp/cycle-v2-agent-output-meter.png`.
+- All 899 CTest cases pass, as do all 31 converter tests. Cycle 1 and Cycle V2
+  standalone targets build successfully with `--parallel 10`; `git diff
+  --check` passes. No new scalar standard-library math appears in a DSP hot
+  loop, and `clang-tidy` is unavailable on this machine.

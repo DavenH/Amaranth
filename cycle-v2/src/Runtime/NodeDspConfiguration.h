@@ -40,6 +40,12 @@ struct FftNodeConfiguration final : public INodeDspConfiguration {
     AudioModuleRole role() const override { return processorRole; }
 };
 
+struct OutputNodeConfiguration final : public INodeDspConfiguration {
+    float gain { 1.f };
+
+    AudioModuleRole role() const override { return AudioModuleRole::Output; }
+};
+
 struct PanConfiguration final : public INodeDspConfiguration {
     float pan { 0.5f };
     bool multiplicative {};

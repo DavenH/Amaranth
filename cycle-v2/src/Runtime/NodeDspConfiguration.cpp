@@ -1,3 +1,4 @@
+#include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Curve/Mesh/Mesh.h>
 
 #include "Runtime/NodeDspConfiguration.h"
@@ -227,6 +228,12 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
             configuration->processorRole = roleToUse;
             configuration->halfCycleCarry = NodeParameterMap(values).stringValue("mode", "cyclic")
                     == "acyclicCarry";
+            return std::shared_ptr<const INodeDspConfiguration>(configuration);
+        } },
+        { AudioModuleRole::Output, [](AudioModuleRole, const auto& values, const auto&) {
+            auto configuration = std::make_shared<OutputNodeConfiguration>();
+            configuration->gain = CycleDsp::outputGain(
+                    NodeParameterMap(values).floatValue("gain", 0.5f));
             return std::shared_ptr<const INodeDspConfiguration>(configuration);
         } },
         { AudioModuleRole::Waveshaper, [](AudioModuleRole, const auto& values, const auto& modelState) {

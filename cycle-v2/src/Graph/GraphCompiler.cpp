@@ -7,6 +7,8 @@
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "Nodes/Unison/UnisonNode.h"
 
+#include <Audio/CycleDsp/EffectParameterMapping.h>
+
 #include <algorithm>
 #include <unordered_set>
 
@@ -1179,6 +1181,15 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
 
     if (!result.validationIssues.empty()) {
         return result;
+    }
+
+    const auto output = std::find_if(
+            graph.getNodes().begin(),
+            graph.getNodes().end(),
+            [](const Node& node) { return node.kind == NodeKind::Output; });
+    if (output != graph.getNodes().end()) {
+        result.plan.outputGain = CycleDsp::outputGain(
+                NodeParameterMap(*output).floatValue("gain", 0.5f));
     }
 
     result.plan.nodeOrder = buildNodeOrder(graph, result.compileIssues);
