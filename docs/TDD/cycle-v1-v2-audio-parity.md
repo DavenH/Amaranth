@@ -10,6 +10,10 @@ harness now captures the unquantized channel-major float output, checks repeat
 determinism, and reports exact sample equality separately from diagnostic
 gain/latency fitting. Cycle 1 also has an end-to-end UI-keyboard-to-device
 fixture that requires callback progress plus finite nonzero output.
+Prepared Cycle V2 spectral frames now consume live controls and rerasterize at
+synthesis-cycle frontiers. The current slice adds raw, allocation-free capture
+at equivalent mature spectral-frame boundaries so the remaining final-output
+difference can be localized without using preview products.
 
 ## Goal
 
@@ -174,6 +178,14 @@ Cycle V2 graph probes expose authored graph boundaries. Cycle 1 needs a narrow
 diagnostic export at equivalent mature boundaries before a stage can claim
 sample parity. Preview products are not substitutes for audio products.
 
+`CycleDsp::SpectralStageCaptureRecorder` is the shared observational boundary.
+It preallocates storage before rendering, captures one explicitly selected
+synthesis frame, and writes raw float payloads plus SHA-256 metadata only after
+the render completes. Both engines feed the same recorder at the time frame,
+forward FFT, post-layer spectrum, and reconstructed fixed-frame boundaries.
+The recorder does not transform, normalize, resample, or otherwise participate
+in synthesis.
+
 ### Magnitude sampling boundary
 
 Cycle 1's authoritative path samples spectral meshes with
@@ -190,11 +202,9 @@ until MIDI-note domains become explicit types; at that point the integer bias
 and this documentation should be replaced by the typed boundary.
 
 This correction improves Filter Saw at every tested note but does not complete
-parity. `SpectralOscillatorRegionRuntime` renders its shared spectral frame once
-after reset, while Cycle 1 recalculates evolving time and spectral meshes per
-cycle. Carrying live modulation into frame rerasterization is the next required
-architectural slice; treating preview traversal as realtime audio would violate
-the product boundary.
+parity. Prepared Cycle V2 frames now consume live modulation and rerasterize at
+the shared synthesis-cycle cadence. Fresh effect-free output remains unequal,
+so raw stage capture—not preview traversal—is the next diagnostic boundary.
 
 ## Negative Boundaries
 
@@ -275,8 +285,13 @@ the product boundary.
     for `LogRegionMapping`, sampling is bounded by its harmonic region, and IFFT
     scratch spectra are cleared with shared `SpectralLayerCore` behavior.
 16. Make prepared spectral frames consume live voice-time/key/velocity
-    modulation and rerasterize at the Cycle 1 cycle cadence. Open; Filter Saw is
-    the deterministic integration guard.
+    modulation and rerasterize at the Cycle 1 cycle cadence. Complete; Filter
+    Saw, PWM, Dunk 2, and Japan Drum evolve deterministically and are invariant
+    to 64, 127, 256, and 512-sample host partitions.
+17. Capture one selected spectral synthesis frame at equivalent mature Cycle 1
+    and Cycle V2 boundaries, write raw payloads with hashes after rendering,
+    and report the first unequal stage in the paired runner. In progress; the
+    shared preallocated recorder and file format are implemented.
 
 Each slice receives focused semantic tests, a refactor/style pass, and a
 coherent commit before the next slice.
