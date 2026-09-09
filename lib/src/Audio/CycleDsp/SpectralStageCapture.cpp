@@ -13,6 +13,9 @@ String primaryPayloadName(SpectralStage stage) {
     if (stage == SpectralStage::MagnitudeRaster) {
         return "magnitude-raster";
     }
+    if (stage == SpectralStage::MagnitudeOperand) {
+        return "magnitude-operand";
+    }
     return stage == SpectralStage::ForwardFft
                     || stage == SpectralStage::PostLayerSpectrum
             ? "magnitude"
@@ -188,6 +191,8 @@ String spectralStageName(SpectralStage stage) {
             return "forward-fft";
         case SpectralStage::MagnitudeRaster:
             return "magnitude-raster";
+        case SpectralStage::MagnitudeOperand:
+            return "magnitude-operand";
         case SpectralStage::PostLayerSpectrum:
             return "post-layer-spectrum";
         case SpectralStage::ReconstructedFrame:

@@ -306,9 +306,13 @@ as the scratch envelope evolves.
     duration. Filter Saw MIDI 48 now reaches `0.99937` output correlation, and
     its frame-32 raw magnitude operand reaches `0.99901` correlation.
 19. Separate the remaining raw magnitude-raster difference from magnitude
-    shaping, then capture the pitch-clocked cyclic reconstruction boundary.
-    Reconcile Voice Context ranges and output gain/sample-rate policy only at
-    their explicit boundaries; do not normalize them away in the analyzer.
+    shaping, then capture the pitch-clocked cyclic reconstruction boundary. In
+    progress: the shaped-operand capture proves the transfer function agrees;
+    Cycle 1 frame 32 closely matches Cycle V2 frame 31, and the final analyzer
+    reports an approximately one-cycle lag. Capture the cyclic output before
+    changing either engine's latency. Reconcile Voice Context ranges and output
+    gain/sample-rate policy only at their explicit boundaries; do not normalize
+    them away in the analyzer.
 
 Each slice receives focused semantic tests, a refactor/style pass, and a
 coherent commit before the next slice.

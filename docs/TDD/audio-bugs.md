@@ -747,6 +747,18 @@ in Cycle 1 and `0.72422` in Cycle V2. The post-layer spectrum has `0.99755`
 correlation and `0.06989` gain-matched residual. The remaining difference is
 small and begins before reconstruction, not in IFFT.
 
+The shaped-operand boundary confirms that both engines use the same mature
+nonlinear magnitude transfer. At frame 0 its gain-matched residual is only
+`0.00068`. At equal frame index 32, the raw coordinate difference is amplified
+by shaping to `0.14866` residual before compositing. However, Cycle 1 frame 32
+matches Cycle V2 frame 31 almost exactly: scratch is `0.7148094` versus
+`0.7148041`, the raw raster residual is `0.0000101`, the shaped operand residual
+is `0.0000111`, and the reconstructed-frame residual is `0.0001167`. The final
+audio analyzer independently chooses a `-370`-sample lag, approximately one
+synthesis cycle. The remaining material discrepancy is therefore a
+pitch-clocked frame-latency convention, not a different magnitude-shaping
+algorithm.
+
 A separate converter audit also found that legacy modulation input 2 means
 `1-Velocity`; future ports now map it to Cycle V2 `inverseVelocity`. The
 remaining Voice Context key coordinate is `0.3738318` in Cycle 1 because its
@@ -762,13 +774,16 @@ New artifacts:
 - `/tmp/cycle-filter-saw-frame-32/comparison.json`
 - `/tmp/cycle-filter-saw-envelope-duration/comparison.json`
 - `/tmp/cycle-filter-saw-absolute-frontier/comparison.json`
+- `/tmp/cycle-filter-saw-shaped-operand/comparison.json`
+- `/tmp/cycle-filter-saw-shaped-frame0/comparison.json`
+- `/tmp/cycle-filter-saw-shaped-frame31/comparison.json`
 
 Current status: open, with the material evolving mismatch resolved. Boundary
 capture is implemented for the rasterized time frame, FFT, raw magnitude
 operand plus effective morph, post-layer spectrum, and reconstructed frame.
 The first byte difference is in the time frame at very low residual. The next
-investigation should separate the remaining raw-raster coordinate difference
-from post-raster magnitude shaping, then capture pitch-clocked cyclic output.
+investigation must capture pitch-clocked cyclic output and identify which frame
+each engine presents to that boundary before changing latency.
 Canonical input reconciliation, deterministic seed control, startup state,
 gain/resampling policy, and remaining Voice Context fields must still be
 separated before enabling `exactSamplesRequired`.

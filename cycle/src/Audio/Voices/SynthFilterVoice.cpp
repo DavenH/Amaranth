@@ -335,6 +335,12 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
                     props.range,
                     props.mode == Spectrum3D::Additive,
                     noteState.numHarmonics);
+            for (int channel = 0; channel < 2; ++channel) {
+                captureSpectralStage(
+                        CycleDsp::SpectralStage::MagnitudeOperand,
+                        channel,
+                        harmRast);
+            }
 
             if (props.mode == Spectrum3D::Subtractive) {
                 Buffer rightBuffer(phaseAccumBuffer[Left].withSize(noteState.numHarmonics));

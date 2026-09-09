@@ -471,6 +471,24 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                     leftOutput.mul(CycleDsp::SpectralLayerCore::phaseOffsetScale(
                             operation.configuration->range) * MathConstants<float>::twoPi);
                 }
+                if (operation.outputDomain
+                        == PortDomain::SpectralMagnitudeSignal) {
+                    const int activeBinCount = jmin(
+                            count - 1,
+                            LogRegionMapping(
+                                    midiNote + LogRegionMapping::legacyMidiNoteBias)
+                                    .regionSize());
+                    for (int channel = 0; channel < 2; ++channel) {
+                        captureStage(
+                                context,
+                                CycleDsp::SpectralStage::MagnitudeOperand,
+                                renderCount,
+                                voiceSampleFrontier,
+                                midiNote,
+                                channel,
+                                leftOutput.section(1, activeBinCount));
+                    }
+                }
                 leftOutput.copyTo(rightOutput);
                 break;
 

@@ -177,6 +177,9 @@ TEST_CASE("Offline spectral capture records equivalent harmonic boundaries",
     const auto* magnitudeRaster = recorder.record(
             CycleDsp::SpectralStage::MagnitudeRaster,
             0);
+    const auto* magnitudeOperand = recorder.record(
+            CycleDsp::SpectralStage::MagnitudeOperand,
+            0);
     const auto* postLayer = recorder.record(
             CycleDsp::SpectralStage::PostLayerSpectrum,
             0);
@@ -186,6 +189,7 @@ TEST_CASE("Offline spectral capture records equivalent harmonic boundaries",
     REQUIRE(time != nullptr);
     REQUIRE(forward != nullptr);
     REQUIRE(magnitudeRaster != nullptr);
+    REQUIRE(magnitudeOperand != nullptr);
     REQUIRE(postLayer != nullptr);
     REQUIRE(reconstructed != nullptr);
     REQUIRE(time->primary.size() == reconstructed->primary.size());
@@ -199,11 +203,13 @@ TEST_CASE("Offline spectral capture records equivalent harmonic boundaries",
             == Catch::Approx(48.f / 127.f));
     REQUIRE(magnitudeRaster->secondary[2]
             == Catch::Approx(1.f - 96.f / 127.f));
+    REQUIRE(magnitudeOperand->primary.size() == forward->primary.size());
     REQUIRE(postLayer->primary.size() == forward->primary.size());
     REQUIRE(postLayer->secondary.size() == forward->secondary.size());
     REQUIRE(time->frontier == forward->frontier);
     REQUIRE(forward->frontier == magnitudeRaster->frontier);
-    REQUIRE(magnitudeRaster->frontier == postLayer->frontier);
+    REQUIRE(magnitudeRaster->frontier == magnitudeOperand->frontier);
+    REQUIRE(magnitudeOperand->frontier == postLayer->frontier);
     REQUIRE(postLayer->frontier == reconstructed->frontier);
 #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
