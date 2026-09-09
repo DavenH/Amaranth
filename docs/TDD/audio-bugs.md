@@ -905,8 +905,20 @@ now reuses the authoritative default bank. Filter Saw MIDI 48/frame 32 is
 byte-identical through magnitude rasterization, range shaping, and post-layer
 spectrum. The inverse FFT is now the first unequal stage.
 
-Current status: magnitude-raster boundary resolved; inverse-FFT residual tracked
-under parity TDD slice 25.
+Update: the inverse-FFT residual exposed a bin-index boundary error. Cycle 1's
+legacy magnitude and phase arrays omit DC, whereas Cycle V2's full-polar arrays
+include DC at index zero. Cycle V2 cleared the spectrum above the legacy active
+harmonic count without translating it, erasing the final active harmonic. The
+renderer now retains one additional full-polar slot, with a focused regression
+test proving that the last legacy harmonic survives and the following harmonic
+is cleared. The current Filter Saw MIDI 48/frame 32 reconstructed-frame residual
+is `2.6e-7`; the remaining `5.6e-5` output residual is introduced primarily by
+pitch-clocked Hermite resampling. Artifacts:
+`/tmp/cycle-filter-saw-final-harmonic/comparison.json` and
+`/tmp/cycle-filter-saw-final-harmonic-notes/comparison.json`.
+
+Current status: spectral reconstruction boundary resolved; remaining
+deterministic output residual is tracked at pitch-clocked cycle resampling.
 
 ## Resolved: Cycle 1 and Cycle V2 use different MIDI reference notes
 

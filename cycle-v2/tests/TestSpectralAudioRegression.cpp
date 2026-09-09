@@ -9,7 +9,9 @@
 #include <Algo/FFT.h>
 #include <Algo/Resampling.h>
 #include <Audio/CycleDsp/OscillatorLaneCore.h>
+#include <Audio/CycleDsp/SpectralStageCapture.h>
 #include <Util/Arithmetic.h>
+#include <Util/LogRegionMapping.h>
 
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphSerializer.h"
@@ -32,12 +34,12 @@ struct FoldConsistency {
     float meanNormalizedError {};
 };
 
-GraphExecutionPlan loadSpectralReferencePlan() {
+GraphExecutionPlan loadPresetPlan(const String& name) {
 #if defined(CYCLE_V2_SOURCE_DIR)
     const File preset = File(String(CYCLE_V2_SOURCE_DIR))
             .getChildFile("content")
             .getChildFile("presets")
-            .getChildFile("spectral-reference.cyclegraph");
+            .getChildFile(name + ".cyclegraph");
     REQUIRE(preset.existsAsFile());
     const GraphLoadResult loaded = GraphSerializer().loadJsonString(
             preset.loadFileAsString());
@@ -51,6 +53,10 @@ GraphExecutionPlan loadSpectralReferencePlan() {
 #else
     return {};
 #endif
+}
+
+GraphExecutionPlan loadSpectralReferencePlan() {
+    return loadPresetPlan("spectral-reference");
 }
 
 std::vector<float> renderNote(
@@ -260,6 +266,77 @@ TEST_CASE("Spectral reference content remains harmonic after realtime reconstruc
             REQUIRE(betweenHarmonics / actualFundamental < 0.03f);
         }
     }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Prepared spectral reconstruction retains the final legacy harmonic",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][parity]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    constexpr int midiNote = 48;
+    const auto plan = loadPresetPlan("filter-saw");
+    const int frameSize = Arithmetic::getNextPow2((float) (
+            1.0 / CycleDsp::OscillatorLaneCore::angleDelta(
+                    midiNote,
+                    0.f,
+                    sampleRate)));
+    const int activeHarmonicCount = LogRegionMapping(
+            midiNote + LogRegionMapping::legacyMidiNoteBias).regionSize();
+
+    SpectralOscillatorFrameRenderer renderer;
+    REQUIRE(renderer.prepare(plan, plan.oscillatorRegions.front(), 16384));
+    CycleDsp::SpectralStageCaptureRecorder recorder;
+    REQUIRE(recorder.prepare(frameSize, 0));
+    std::vector<SignalPayload> signals(plan.buffers.size());
+    for (auto& signal : signals) {
+        signal.domain = PortDomain::ControlSignal;
+        signal.channelLayout = ChannelLayout::Mono;
+        signal.block.samples.assign((size_t) frameSize, 0.05f);
+    }
+    AudioVoiceContext voice;
+    voice.hasLifecycleSeed = true;
+    voice.lifecycleSeed = 0x43594332u;
+    voice.controls.normalizedVoiceTimeIncrement = 1.f / (48000.f * 0.47689545f);
+    voice.spectralStageCapture = &recorder;
+    PreparedOscillatorProcessContext context;
+    context.voice = &voice;
+    context.signalBuffers = signals.data();
+    context.signalBufferCount = signals.size();
+    context.blockFrameCount = (size_t) frameSize;
+    context.timing.sampleRate = sampleRate;
+    std::vector<float> frame((size_t) frameSize);
+    std::vector<float> right((size_t) frameSize);
+
+    renderer.applyLifecycleEvent({ NoteLifecycleType::NoteOn, 0, 0 });
+    REQUIRE(renderer.renderFrame(
+            frameSize,
+            midiNote,
+            context,
+            0,
+            0.0,
+            1,
+            { frame.data(), frameSize },
+            { right.data(), frameSize }));
+    const auto* spectrum = recorder.record(
+            CycleDsp::SpectralStage::PostLayerSpectrum,
+            0);
+    REQUIRE(spectrum != nullptr);
+    REQUIRE(spectrum->primary.size() == activeHarmonicCount);
+    REQUIRE(spectrum->primary.back() > 1.0e-7f);
+
+    Transform transform;
+    transform.allocate(frameSize, Transform::DivFwdByN, true);
+    transform.forward({ frame.data(), frameSize });
+    std::vector<float> magnitudes((size_t) frameSize / 2 + 1);
+    std::vector<float> phases(magnitudes.size());
+    transform.copyFullPolarSpectrumTo(
+            { magnitudes.data(), (int) magnitudes.size() },
+            { phases.data(), (int) phases.size() });
+
+    REQUIRE(magnitudes[(size_t) activeHarmonicCount]
+            == Catch::Approx(spectrum->primary.back()).epsilon(0.02).margin(1.0e-9));
+    REQUIRE(magnitudes[(size_t) activeHarmonicCount + 1] < 1.0e-8f);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

@@ -594,10 +594,11 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                             magnitude.section(1, activeBinCount),
                             phase.section(1, activeBinCount));
                     if (hasSpectralMesh) {
+                        const int activeFullPolarBinCount = activeBinCount + 1;
                         CycleDsp::SpectralLayerCore::clearBinsAbove(
                                 magnitude,
                                 phase,
-                                activeBinCount);
+                                activeFullPolarBinCount);
                     }
                     transform->setFullPolarSpectrum(
                             magnitude,

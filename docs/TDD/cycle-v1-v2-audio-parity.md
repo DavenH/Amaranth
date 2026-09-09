@@ -391,10 +391,22 @@ as the scratch envelope evolves.
     post-layer spectrum are byte-identical at Filter Saw MIDI 48/frame 32.
     Artifact:
     `/tmp/cycle-filter-saw-shared-log-regions/comparison.json`.
-25. Localize the reconstructed-frame residual. Pending: with all inputs through
-    the post-layer spectrum byte-identical, inverse FFT is now the first unequal
-    captured stage (`3.4e-6` normalized residual), followed by Hermite cycle
-    resampling and a `5.6e-5` output residual.
+25. Localize the reconstructed-frame residual. Complete: Cycle 1's spectral
+    arrays omit DC, so an active count of 169 retains harmonics 1 through 169.
+    Cycle V2 uses a full-polar array whose index zero is DC, but passed that same
+    count directly to the shared tail-clear operation and therefore erased
+    harmonic 169. The renderer now translates the legacy harmonic count to the
+    full-polar bin count at that boundary. A focused Filter Saw reconstruction
+    test guards both the retained final harmonic and the cleared following bin.
+    On the current merged preset, MIDI 48/frame 32 reconstructs with a
+    `2.6e-7` normalized residual; its earlier forward-FFT and post-layer
+    differences are also floating-point-scale (`8.8e-8` and `1.1e-7`). The
+    four-note MIDI 36–72 output matrix remains zero-lag and deterministic with
+    correlations of at least `0.9999999919` and normalized residuals from
+    `3.6e-5` to `1.27e-4`. The remaining amplification occurs in pitch-clocked
+    Hermite cycle resampling, not spectral reconstruction. Artifacts:
+    `/tmp/cycle-filter-saw-final-harmonic/comparison.json` and
+    `/tmp/cycle-filter-saw-final-harmonic-notes/comparison.json`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a
