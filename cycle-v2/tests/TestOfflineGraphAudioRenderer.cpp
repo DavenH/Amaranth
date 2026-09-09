@@ -306,6 +306,9 @@ TEST_CASE("Offline spectral capture records equivalent harmonic boundaries",
     REQUIRE(magnitudeOperand->frontier == postLayer->frontier);
     REQUIRE(postLayer->frontier == reconstructed->frontier);
     REQUIRE_FALSE(pitchClocked->primary.empty());
+    REQUIRE(pitchClocked->frontier < reconstructed->frontier);
+    REQUIRE(reconstructed->frontier - pitchClocked->frontier
+            == pitchClocked->primary.size());
 #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
 #endif

@@ -211,7 +211,10 @@ bool SpectralOscillatorRegionRuntime::initializeSharedFrames(
     lastSharedFramePosition = 0.0;
     nextSharedFramePosition = sharedFramePeriod;
     lastSharedFrameFrontier = 0;
-    return true;
+    return refreshSharedFramesThrough(
+            sharedFramePeriod,
+            context,
+            renderer);
 }
 
 bool SpectralOscillatorRegionRuntime::refreshSharedFramesThrough(
@@ -269,7 +272,10 @@ bool SpectralOscillatorRegionRuntime::renderCyclesUntilReady(
         if (nextLane < 0) {
             return true;
         }
-        if (!refreshSharedFramesThrough(nextCycleStart, context, renderer)
+        if (!refreshSharedFramesThrough(
+                    nextCycleStart + sharedFramePeriod,
+                    context,
+                    renderer)
                 || !renderLaneCycle(nextLane, context, renderer)) {
             return false;
         }
@@ -303,7 +309,8 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
     }
 
     const float framePortion = sharedFramePeriod > 0.0
-            ? (float) (((double) cycleStart - lastSharedFramePosition)
+            ? (float) (((double) cycleStart
+                    - (lastSharedFramePosition - sharedFramePeriod))
                     / sharedFramePeriod)
             : 0.f;
     const double sourceToDestRatio = fixedFrameSize * angleDelta;

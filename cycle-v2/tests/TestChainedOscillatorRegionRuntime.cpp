@@ -641,8 +641,8 @@ TEST_CASE("Spectral oscillator runtime reconstructs one shared frame across Unis
             Buffer<float>(splitRight.data() + 37, 91),
             splitRenderer));
 
-    REQUIRE(wholeRenderer.frameRenderCount() == 1);
-    REQUIRE(splitRenderer.frameRenderCount() == 1);
+    REQUIRE(wholeRenderer.frameRenderCount() == 2);
+    REQUIRE(splitRenderer.frameRenderCount() == 2);
     REQUIRE(splitLeft == wholeLeft);
     REQUIRE(splitRight == wholeRight);
     REQUIRE(std::any_of(wholeLeft.begin(), wholeLeft.end(), [](float sample) {
@@ -677,17 +677,17 @@ TEST_CASE("Evolving spectral frames are independent of host block partitions",
   #endif
 }
 
-TEST_CASE("High spectral notes use the legacy 256-sample control cadence",
+TEST_CASE("High spectral notes use the legacy 16-sample control cadence",
         "[cycle-v2][runtime][oscillator-region][spectral-frame][control-rate]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     const PartitionedRender render = renderPreparedGraph(
             loadFilterSawPlan(),
             512,
-            1024,
+            128,
             -1,
-            72);
+            120);
 
-    REQUIRE(render.frameRenderCount == 4);
+    REQUIRE(render.frameRenderCount == 9);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
@@ -769,7 +769,7 @@ TEST_CASE("Prepared spectral preset frames rerasterize at live morph positions",
   #endif
 }
 
-TEST_CASE("Timed controls enter prepared frames at the legacy control frontier",
+TEST_CASE("Timed controls enter prepared frames at the synthesis-cycle frontier",
         "[cycle-v2][runtime][oscillator-region][spectral-frame][timed-control]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     NodeGraph graph = loadFilterSawGraph();
@@ -794,9 +794,9 @@ TEST_CASE("Timed controls enter prepared frames at the legacy control frontier",
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
 
-    const PartitionedRender before = renderPreparedGraph(compiled.plan, 512, 512, 274);
-    const PartitionedRender on = renderPreparedGraph(compiled.plan, 512, 512, 275);
-    const PartitionedRender after = renderPreparedGraph(compiled.plan, 512, 512, 276);
+    const PartitionedRender before = renderPreparedGraph(compiled.plan, 512, 512, 90);
+    const PartitionedRender on = renderPreparedGraph(compiled.plan, 512, 512, 91);
+    const PartitionedRender after = renderPreparedGraph(compiled.plan, 512, 512, 92);
     REQUIRE(before.left == on.left);
     REQUIRE(before.right == on.right);
     REQUIRE(after.left != on.left);

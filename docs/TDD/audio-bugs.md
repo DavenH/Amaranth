@@ -859,20 +859,24 @@ Current status: open at the cycle-clocked scratch-envelope boundary.
 Update: the cycle-clocked boundary is implemented. Prepared oscillator regions
 now share a dedicated one-sample-per-cycle `EnvelopePlaybackEngine` cursor for
 each compiled envelope attachment, including lifecycle and live prepared-morph
-adoption. Spectral frame refresh follows Cycle 1's
-`round(256 / cyclePeriod)` stride. At Filter Saw MIDI 48/frame 32, both the raw
+adoption. Spectral frame refresh follows Cycle 1's high-quality
+`round(16 / cyclePeriod)` stride. At Filter Saw MIDI 48/frame 32, both the raw
 time raster and all three morph coordinates are byte-identical between engines.
 The first stage difference is now five magnitude bins with an `8.8e-8`
 normalized residual.
 
-Correct scratch timing exposes a distinct downstream scheduling issue: Cycle
-V2 output is delayed by one internal synthesis cycle even though same-frontier
-captured frames agree. The old one-cycle-early scratch sampling had masked this
-delay. Artifact:
-`/tmp/cycle-filter-saw-cycle-envelope/comparison.json`.
+Correct scratch timing exposed a distinct downstream scheduling issue: Cycle
+V2 emitted each cycle from the frame at the same frontier, while Cycle 1 first
+prepares the future frame and uses it to synthesize the preceding control
+interval. The old one-cycle-early scratch sampling had masked this mismatch.
+Cycle V2 now follows that current/future ownership. MIDI 48, 60, and 72 all
+align at zero lag with correlations of at least `0.9999999919` and normalized
+residuals from `5.6e-5` to `1.27e-4`; the captured MIDI 48 pitch-clocked cycle
+has the same frontier and length in both engines. Artifact:
+`/tmp/cycle-filter-saw-future-frame-control16/comparison.json`.
 
-Current status: scratch boundary resolved; one-cycle output scheduling offset
-remains open under parity TDD slice 23.
+Current status: scratch and spectral output scheduling boundaries resolved;
+remaining deterministic numeric residual tracked under parity TDD slice 24.
 
 ## Resolved: Cycle 1 and Cycle V2 use different MIDI reference notes
 

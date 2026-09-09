@@ -361,16 +361,29 @@ as the scratch envelope evolves.
     owns one cursor per compiled envelope attachment, shares it across every
     consuming mesh operation, and follows live prepared-envelope adoption. Both
     chained lanes and shared spectral frames advance the mature engine before
-    rasterization. Spectral frames also restore Cycle 1's
-    `round(256 / period)` stride. Filter Saw frame 32 now has byte-identical
+    rasterization. Spectral frames also restore Cycle 1's high-quality
+    `round(16 / period)` stride. Filter Saw frame 32 now has byte-identical
     time-raster samples and morph coordinates in both engines.
-23. Localize the newly exposed one-cycle output scheduling offset. In progress:
+23. Localize the newly exposed one-cycle output scheduling offset. Complete:
     once scratch is correctly aligned, Filter Saw's captured synthesis stages
     agree through the time frame and differ first by five magnitude bins at
     `8.8e-8` normalized residual, but the analyzed Cycle V2 output is delayed by
     one 337-sample internal cycle (367 samples at 48 kHz). The prior early
-    scratch signal accidentally masked this delay. Preserve the now-exact
-    scratch clock while reconciling initial/current/future frame ownership.
+    scratch signal accidentally masked this delay. Cycle V2 now prepares the
+    next shared spectral frame before emitting cycles from the preceding control
+    interval, matching Cycle 1's current/future frame ownership. At MIDI 48 the
+    output now aligns at zero lag with `0.9999999984` correlation and a `5.6e-5`
+    normalized residual. The captured pitch-clocked cycle also has the same
+    10,450-sample frontier and 337-sample length in both engines. MIDI 48, 60,
+    and 72 all align at zero lag with correlations of at least `0.9999999919`;
+    their normalized residuals range from `5.6e-5` to `1.27e-4`.
+24. Localize the remaining deterministic numeric differences. Pending: Filter
+    Saw first differs in five magnitude-raster bins (`8.8e-8` normalized
+    residual), which expands through reconstruction and Hermite resampling to a
+    `5.6e-5` output residual. Preserve zero-lag scheduling and exact scratch
+    values while identifying the first differing arithmetic operation.
+    Multi-note artifact:
+    `/tmp/cycle-filter-saw-future-frame-control16/comparison.json`.
 
 Future work: replace the inherited 256-sample control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a
