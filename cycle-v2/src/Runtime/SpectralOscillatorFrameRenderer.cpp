@@ -38,7 +38,7 @@ void captureStage(
         const PreparedOscillatorProcessContext* context,
         CycleDsp::SpectralStage stage,
         size_t frameIndex,
-        size_t blockSampleOffset,
+        uint64_t voiceSampleFrontier,
         int midiNote,
         int channel,
         Buffer<float> primary,
@@ -49,13 +49,10 @@ void captureStage(
         return;
     }
 
-    const size_t relativeOffset = blockSampleOffset >= context->blockSampleStart
-            ? blockSampleOffset - context->blockSampleStart
-            : 0;
     context->voice->spectralStageCapture->capture({
             stage,
             frameIndex,
-            context->voiceSampleStart + relativeOffset,
+            voiceSampleFrontier,
             midiNote,
             channel,
             primary,
@@ -222,8 +219,8 @@ bool SpectralOscillatorFrameRenderer::prepare(
                         || operation.configuration->mesh == nullptr) {
                     return false;
                 }
-                operation.morphBinding.bind(step);
-                operation.morphResolver.reset(operation.configuration->morph);
+                operation.morphBinding.bind(plan, step);
+                operation.morphResolver.reset(operation.configuration->morph, true);
                 if (operation.outputDomain == PortDomain::TimeSignal) {
                     operation.type = OperationType::TimeTrimesh;
                     operation.timeState = std::make_unique<
@@ -314,7 +311,7 @@ void SpectralOscillatorFrameRenderer::reset() {
             operation.timeRasterizer->orphanOldVerts();
         }
         if (operation.configuration != nullptr) {
-            operation.morphResolver.reset(operation.configuration->morph);
+            operation.morphResolver.reset(operation.configuration->morph, true);
         }
     }
 }
@@ -330,6 +327,7 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
             nullptr,
             0,
             0,
+            0,
             left,
             right);
 }
@@ -339,6 +337,7 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
         int midiNote,
         const PreparedOscillatorProcessContext& context,
         size_t blockSampleOffset,
+        uint64_t voiceSampleFrontier,
         size_t elapsedSamples,
         Buffer<float> left,
         Buffer<float> right) {
@@ -347,6 +346,7 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
             midiNote,
             &context,
             blockSampleOffset,
+            voiceSampleFrontier,
             elapsedSamples,
             left,
             right);
@@ -357,6 +357,7 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
         int midiNote,
         const PreparedOscillatorProcessContext* context,
         size_t blockSampleOffset,
+        uint64_t voiceSampleFrontier,
         size_t elapsedSamples,
         Buffer<float> left,
         Buffer<float> right) {
@@ -378,7 +379,10 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
         MorphPosition morph;
         if (operation.configuration != nullptr) {
             const TrimeshMorphInputs inputs = context != nullptr
-                    ? operation.morphBinding.inputsFor(*context)
+                    ? operation.morphBinding.inputsFor(
+                            *context,
+                            blockSampleOffset,
+                            voiceSampleFrontier)
                     : TrimeshMorphInputs {};
             morph = operation.morphResolver.resolve(
                     inputs,
@@ -430,6 +434,30 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                 leftOutput.zero();
                 operation.spectralRasterizer->renderPreparedHarmonicsInto(
                         leftOutput.section(1, count - 1));
+                if (operation.outputDomain
+                        == PortDomain::SpectralMagnitudeSignal) {
+                    const int activeBinCount = jmin(
+                            count - 1,
+                            LogRegionMapping(
+                                    midiNote + LogRegionMapping::legacyMidiNoteBias)
+                                    .regionSize());
+                    std::array<float, 3> morphValues {
+                            morph.time.getCurrentValue(),
+                            morph.red.getCurrentValue(),
+                            morph.blue.getCurrentValue()
+                    };
+                    for (int channel = 0; channel < 2; ++channel) {
+                        captureStage(
+                                context,
+                                CycleDsp::SpectralStage::MagnitudeRaster,
+                                renderCount,
+                                voiceSampleFrontier,
+                                midiNote,
+                                channel,
+                                leftOutput.section(1, activeBinCount),
+                                { morphValues.data(), (int) morphValues.size() });
+                    }
+                }
                 leftOutput.mul(operation.configuration->gain);
                 if (operation.configuration->appliesSpectralRange
                         && operation.outputDomain == PortDomain::SpectralMagnitudeSignal) {
@@ -471,7 +499,7 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                             context,
                             CycleDsp::SpectralStage::TimeFrame,
                             renderCount,
-                            blockSampleOffset,
+                            voiceSampleFrontier,
                             midiNote,
                             channel,
                             timeFrame);
@@ -483,7 +511,7 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                             context,
                             CycleDsp::SpectralStage::ForwardFft,
                             renderCount,
-                            blockSampleOffset,
+                            voiceSampleFrontier,
                             midiNote,
                             channel,
                             magnitude.section(1, activeBinCount),
@@ -506,7 +534,7 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                             context,
                             CycleDsp::SpectralStage::PostLayerSpectrum,
                             renderCount,
-                            blockSampleOffset,
+                            voiceSampleFrontier,
                             midiNote,
                             channel,
                             magnitude.section(1, activeBinCount),
@@ -525,7 +553,7 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                             context,
                             CycleDsp::SpectralStage::ReconstructedFrame,
                             renderCount,
-                            blockSampleOffset,
+                            voiceSampleFrontier,
                             midiNote,
                             channel,
                             slot(operation.outputs[0], channel, frameSize));

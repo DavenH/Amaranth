@@ -708,29 +708,51 @@ The shared spectral-stage recorder now resolves boundaries 1–4 directly. For
 Filter Saw at MIDI 48, frame 0 is already non-exact but very close: the time
 frame has `0.00022` normalized residual, post-layer magnitude has `0.00223`,
 and the reconstructed frame has `0.00803`. The material evolving mismatch
-appears at the magnitude-layer boundary. At selected frame 32, the forward FFT
-still has only `0.00077` gain-matched residual and `0.9999997` correlation,
-while the post-layer spectrum has `0.51` gain-matched residual and `0.86`
-correlation; the IFFT adds no meaningful additional error.
+appeared at the magnitude-layer boundary. At selected frame 32, the forward
+FFT still had only `0.00077` gain-matched residual and `0.9999997` correlation,
+while the post-layer spectrum had `0.51` gain-matched residual and `0.86`
+correlation; the IFFT added no meaningful additional error.
 
 The investigation also found two narrower legacy-contract discrepancies:
 
 - Cycle 1 rasterizes nonwrapping magnitude and phase meshes over
   `[-0.05, 1.05]`; Cycle V2 used `[0, 1]`.
 - Cycle 1 derives unscripted voice time from the absolute synthesis-cycle
-  frontier and applies yellow directly. Cycle V2 currently restarts a float
-  voice-time ramp per host block and smooths yellow with red and blue. Applying
-  the ramp directly made output differ by up to `4.47e-7` across host block
-  partitions, so this needs an absolute-sample voice-time contract before the
-  direct-yellow discrepancy can be corrected safely.
+  frontier and applies yellow directly. Cycle V2 restarted a float voice-time
+  ramp per host block and smoothed yellow with red and blue.
+- Cycle V2's envelope processor advanced every authored envelope with
+  `1 / sampleRate`, ignoring the voice-duration-derived normalized time
+  increment already carried by `AudioVoiceContext`. Filter Saw therefore played
+  its scratch envelope over one second instead of its authored `0.47689545`
+  seconds.
 
-The spectral margin has an exact adapter guard; the voice-time discrepancy
-remains open rather than weakening the existing exact block-partition gate.
-Neither explains the aggregate Filter Saw mismatch, so the next boundary must
-capture the actual scratch value and raw magnitude-layer operand. A separate
-converter audit also found that legacy modulation input 2 means `1-Velocity`;
-future ports now map it to Cycle V2 `inverseVelocity`. Filter Saw is invariant
-in blue, so that translation correction does not change this fixture's audio.
+The spectral margin has an exact adapter guard. Prepared spectral renderers now
+derive Voice Time from the absolute voice sample frontier, apply yellow
+directly, and retain byte-identical output across host block partitions. The
+graph compiler also supplies default yellow/red/blue modulation to oscillator
+region members; it previously inferred only downstream nodes. Depth controls
+snap to their routed note-start values as in Cycle 1. The envelope processor
+now passes the same normalized voice-time increment to the shared playback
+engine, with a focused duration regression. Prepared frame calls carry their
+absolute synthesis frontier explicitly, including when Unison renders ahead of
+the current host block. Realtime execution skips region-internal fallback
+processors and materializes each prepared region once, preserving the existing
+zero-allocation contract when live morph inputs are present.
+
+These corrections move Filter Saw at MIDI 48 from `0.91977` to `0.99937`
+correlation and reduce gain-matched residual from approximately `0.39` to
+`0.0356`. At frame 32 the raw magnitude raster now has `0.99901` correlation
+and `0.04448` gain-matched residual; its effective time coordinate is `0.71481`
+in Cycle 1 and `0.72422` in Cycle V2. The post-layer spectrum has `0.99755`
+correlation and `0.06989` gain-matched residual. The remaining difference is
+small and begins before reconstruction, not in IFFT.
+
+A separate converter audit also found that legacy modulation input 2 means
+`1-Velocity`; future ports now map it to Cycle V2 `inverseVelocity`. The
+remaining Voice Context key coordinate is `0.3738318` in Cycle 1 because its
+legacy range is MIDI 20–127, versus `0.3779528` in Cycle V2's current 0–127
+default. Filter Saw is invariant in red and blue, so those coordinate
+differences do not explain this fixture's residual audio.
 
 New artifacts:
 
@@ -738,13 +760,15 @@ New artifacts:
 - `/tmp/cycle-filter-saw-frame-1/comparison.json`
 - `/tmp/cycle-filter-saw-frame-8/comparison.json`
 - `/tmp/cycle-filter-saw-frame-32/comparison.json`
+- `/tmp/cycle-filter-saw-envelope-duration/comparison.json`
+- `/tmp/cycle-filter-saw-absolute-frontier/comparison.json`
 
-Current status: open, narrowed to the magnitude-layer operand or its scratch
-coordinate. Boundary capture is implemented for the rasterized frame, FFT,
-post-layer spectrum, and reconstructed frame. The first byte difference is in
-the time frame at very low residual, while the first material difference is
-introduced between the forward FFT and post-layer spectrum. Pitch-clocked
-cyclic output remains the next uncaptured boundary after the fixed frame.
+Current status: open, with the material evolving mismatch resolved. Boundary
+capture is implemented for the rasterized time frame, FFT, raw magnitude
+operand plus effective morph, post-layer spectrum, and reconstructed frame.
+The first byte difference is in the time frame at very low residual. The next
+investigation should separate the remaining raw-raster coordinate difference
+from post-raster magnitude shaping, then capture pitch-clocked cyclic output.
 Canonical input reconciliation, deterministic seed control, startup state,
 gain/resampling policy, and remaining Voice Context fields must still be
 separated before enabling `exactSamplesRequired`.

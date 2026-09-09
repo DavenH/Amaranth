@@ -689,6 +689,24 @@ const CompiledVoiceContext* voiceContextForNode(
     return nullptr;
 }
 
+const CompiledVoiceContext* oscillatorVoiceContextForStep(
+        const GraphExecutionPlan& plan,
+        const GraphExecutionStep& step) {
+    if (step.oscillatorRegionIndex < 0
+            || step.oscillatorRegionIndex >= (int) plan.oscillatorRegions.size()) {
+        return nullptr;
+    }
+    const String& contextId = plan.oscillatorRegions[
+            (size_t) step.oscillatorRegionIndex].voiceContextNodeId;
+    const auto found = std::find_if(
+            plan.voiceContexts.begin(),
+            plan.voiceContexts.end(),
+            [&](const CompiledVoiceContext& context) {
+                return context.nodeId == contextId;
+            });
+    return found != plan.voiceContexts.end() ? &*found : nullptr;
+}
+
 void compileDefaultModulationInputs(
         const NodeGraph& graph,
         GraphExecutionPlan& plan) {
@@ -703,6 +721,9 @@ void compileDefaultModulationInputs(
                 plan,
                 assignments,
                 *node);
+        if (context == nullptr) {
+            context = oscillatorVoiceContextForStep(plan, step);
+        }
         if (context == nullptr) {
             continue;
         }
@@ -1057,12 +1078,12 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
                 domainResolver,
                 domainResolution,
                 moduleRegistry);
-        compileDefaultModulationInputs(graph, result.plan);
         compileOscillatorRegions(result.plan, result.compileIssues);
         if (!result.compileIssues.empty()) {
             result.plan = {};
             return result;
         }
+        compileDefaultModulationInputs(graph, result.plan);
         compileRouting(result.plan);
         compileDependencyIndex(result.plan);
         refreshSignalProbes(graph, result.plan);

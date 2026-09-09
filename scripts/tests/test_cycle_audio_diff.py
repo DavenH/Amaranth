@@ -205,20 +205,22 @@ class CycleAudioDiffTest(unittest.TestCase):
             self.write_stage_capture(reference, [
                 ("time-frame", [0.0, 1.0, 0.0, -1.0], []),
                 ("forward-fft", [0.5, 0.25], [0.0, 1.0]),
+                ("magnitude-raster", [0.2, 0.4], [0.1, 0.5, 0.9]),
             ])
             self.write_stage_capture(candidate, [
                 ("time-frame", [0.0, 1.0, 0.0, -1.0], []),
-                ("forward-fft", [0.5, 0.125], [0.0, 1.0]),
+                ("forward-fft", [0.5, 0.25], [0.0, 1.0]),
+                ("magnitude-raster", [0.2, 0.125], [0.1, 0.5, 0.9]),
             ])
 
             comparison = compare_cycle_audio.compare_stage_captures(
                 reference, candidate)
 
         self.assertFalse(comparison["samplesEqual"])
-        self.assertEqual(comparison["firstUnequalStage"], "forward-fft")
+        self.assertEqual(comparison["firstUnequalStage"], "magnitude-raster")
         self.assertTrue(comparison["records"][0]["samplesEqual"])
         self.assertEqual(
-            comparison["records"][1]["primary"]["firstMismatch"]["index"],
+            comparison["records"][2]["primary"]["firstMismatch"]["index"],
             1,
         )
 

@@ -267,6 +267,7 @@ def compare_stage_captures(reference_path, candidate_path):
     stage_order = [
         "time-frame",
         "forward-fft",
+        "magnitude-raster",
         "post-layer-spectrum",
         "reconstructed-frame",
     ]

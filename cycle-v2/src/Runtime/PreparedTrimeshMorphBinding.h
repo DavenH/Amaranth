@@ -12,12 +12,17 @@ public:
             const GraphExecutionPlan& plan,
             const GraphExecutionStep& step);
 
-    void bind(const GraphExecutionStep& step);
+    void bind(
+            const GraphExecutionPlan& plan,
+            const GraphExecutionStep& step);
     TrimeshMorphInputs inputsFor(
-            const PreparedOscillatorProcessContext& context) const;
+            const PreparedOscillatorProcessContext& context,
+            size_t blockSampleOffset,
+            uint64_t voiceSampleFrontier) const;
 
 private:
     std::array<int, 3> morphInputBuffers { -1, -1, -1 };
+    std::array<bool, 3> voiceTimeMorph {};
     int scratchBuffer { -1 };
 };
 

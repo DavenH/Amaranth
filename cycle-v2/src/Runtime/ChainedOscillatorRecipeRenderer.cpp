@@ -115,8 +115,8 @@ bool ChainedOscillatorRecipeRenderer::prepare(
                 return false;
             }
             operation.gain = configuration->enabled ? configuration->gain : 0.f;
-            operation.morphBinding.bind(step);
-            operation.morphResolver.reset(configuration->morph);
+            operation.morphBinding.bind(plan, step);
+            operation.morphResolver.reset(configuration->morph, true);
         } else if (step.audioRole == AudioModuleRole::SpectralLayer) {
             const auto configuration = std::dynamic_pointer_cast<
                     const PanConfiguration>(step.configuration.value);
@@ -166,7 +166,7 @@ void ChainedOscillatorRecipeRenderer::reset() {
             operation.trimesh->reset();
         }
         if (operation.configuration != nullptr) {
-            operation.morphResolver.reset(operation.configuration->morph);
+            operation.morphResolver.reset(operation.configuration->morph, true);
         }
         operation.lastMorphFrontier = 0;
     }
@@ -199,7 +199,10 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
                         ? (size_t) (frontier - operation.lastMorphFrontier)
                         : 0;
                 morph = operation.morphResolver.resolve(
-                        operation.morphBinding.inputsFor(*request.processContext),
+                        operation.morphBinding.inputsFor(
+                                *request.processContext,
+                                request.blockSampleOffset,
+                                (uint64_t) request.cycleStartSample),
                         operation.configuration->morph,
                         PortDomain::TimeSignal,
                         operation.configuration->primaryViewAxis,

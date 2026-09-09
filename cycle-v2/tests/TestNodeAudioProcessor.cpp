@@ -60,6 +60,8 @@ TEST_CASE("Trimesh morph resolution shares control and scratch semantics",
     scratch.block.samples = SignalBuffer { 0.8f, 0.7f, 0.6f, 0.5f };
     const TrimeshMorphInputs inputs {
             { &yellow, &red, &blue },
+            {},
+            {},
             &scratch
     };
     const MorphPosition fallback(0.1f, 0.1f, 0.1f);
@@ -102,7 +104,40 @@ TEST_CASE("Trimesh morph resolution shares control and scratch semantics",
             0,
             48000.0,
             false);
-    REQUIRE(withoutScratch.time.getCurrentValue() != Catch::Approx(0.6f));
+    REQUIRE(withoutScratch.time.getCurrentValue() == Catch::Approx(0.4f));
+}
+
+TEST_CASE("Prepared oscillator depth morph snaps to routed note-start controls",
+        "[cycle-v2][runtime][morph][note-start][parity]") {
+    SignalPayload yellow;
+    SignalPayload red;
+    SignalPayload blue;
+    yellow.block.samples = SignalBuffer { 0.2f };
+    red.block.samples = SignalBuffer { 0.37f };
+    blue.block.samples = SignalBuffer { 0.19f };
+    const TrimeshMorphInputs inputs {
+            { &yellow, &red, &blue },
+            {},
+            {},
+            nullptr
+    };
+    const MorphPosition fallback(0.5f, 0.5f, 0.5f);
+    TrimeshMorphResolver resolver;
+    resolver.reset(fallback, true);
+
+    const MorphPosition first = resolver.resolve(
+            inputs,
+            fallback,
+            PortDomain::SpectralMagnitudeSignal,
+            Vertex::Time,
+            0,
+            1,
+            48000.0,
+            false);
+
+    REQUIRE(first.time.getCurrentValue() == 0.2f);
+    REQUIRE(first.red.getCurrentValue() == 0.37f);
+    REQUIRE(first.blue.getCurrentValue() == 0.19f);
 }
 
 TEST_CASE("Envelope preparation request exchange publishes coherent newest values",
@@ -584,6 +619,37 @@ TEST_CASE("Envelope processor applies sample-offset lifecycle events", "[cycle-v
 
     REQUIRE(output(retrigger).block.samples.front() < 0.001f);
     REQUIRE(output(retrigger).block.samples.back() > 0.f);
+}
+
+TEST_CASE("Envelope processor follows the normalized voice duration",
+        "[cycle-v2][runtime][envelope][voice-time]") {
+    const auto render = [](float normalizedTimeIncrement) {
+        const auto configuration = EnvelopeSignalProcessor::buildConfiguration(envelopeParameters());
+        REQUIRE(configuration != nullptr);
+        EnvelopeSignalProcessor processor;
+        processor.adoptConfiguration({ 1, "voice-duration-envelope", configuration });
+        AudioExecutionSpec spec;
+        spec.maximumFrameCount = 4;
+        spec.sampleRate = 48'000.;
+        processor.prepareExecution(spec);
+
+        AudioProcessContext context;
+        context.frameCount = 4;
+        context.timing.sampleRate = 48'000.;
+        context.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+        context.voice.controls.normalizedVoiceTimeIncrement = normalizedTimeIncrement;
+        context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        processor.process(context);
+        return std::make_pair(
+                output(context).block.samples,
+                processor.playbackPosition());
+    };
+
+    const auto [shortVoice, shortPosition] = render(0.1f);
+    const auto [longVoice, longPosition] = render(0.05f);
+
+    REQUIRE(shortPosition == Catch::Approx(2. * longPosition));
+    REQUIRE(shortVoice != longVoice);
 }
 
 TEST_CASE("Envelope processor becomes inactive on note-off without a release curve",

@@ -14,6 +14,7 @@ namespace CycleDsp {
 enum class SpectralStage {
     TimeFrame,
     ForwardFft,
+    MagnitudeRaster,
     PostLayerSpectrum,
     ReconstructedFrame
 };
@@ -47,7 +48,7 @@ struct CapturedSpectralStage {
 
 class SpectralStageCaptureRecorder final : public SpectralStageCaptureSink {
 public:
-    static constexpr int stageCount = 4;
+    static constexpr int stageCount = 5;
     static constexpr int channelCount = 2;
 
     bool prepare(int maximumValueCount, size_t targetFrameIndex);

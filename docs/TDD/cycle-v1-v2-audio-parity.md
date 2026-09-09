@@ -298,11 +298,17 @@ as the scratch envelope evolves.
     validates payload hashes and reports exact mismatches, correlation, raw
     residual, and gain-matched residual for each stage.
 18. Localize the Filter Saw post-layer mismatch below the aggregate magnitude
-    operation. In progress. Preserve Cycle 1's nonwrapping spectral raster
-    margin, then compare the scratch value and raw magnitude operand before the
-    shared multiplicative layer operation. Cycle 1's direct yellow coordinate
-    also requires an absolute-sample voice-time source before it can retain the
-    exact host-partition contract. Do not approximate either with preview data.
+    operation. Complete. The shared recorder now captures the raw magnitude
+    operand and effective morph. Cycle V2 preserves Cycle 1's nonwrapping
+    spectral margin, compiles oscillator-owned default morph inputs, snaps
+    note-start depth controls, derives Voice Time from the absolute sample
+    frontier, and advances scratch envelopes with the authored normalized voice
+    duration. Filter Saw MIDI 48 now reaches `0.99937` output correlation, and
+    its frame-32 raw magnitude operand reaches `0.99901` correlation.
+19. Separate the remaining raw magnitude-raster difference from magnitude
+    shaping, then capture the pitch-clocked cyclic reconstruction boundary.
+    Reconcile Voice Context ranges and output gain/sample-rate policy only at
+    their explicit boundaries; do not normalize them away in the analyzer.
 
 Each slice receives focused semantic tests, a refactor/style pass, and a
 coherent commit before the next slice.

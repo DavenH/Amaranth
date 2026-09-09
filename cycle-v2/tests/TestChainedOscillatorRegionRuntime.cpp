@@ -228,6 +228,7 @@ std::array<std::vector<float>, 2> renderPreparedPresetFrames(
             60,
             context,
             0,
+            0,
             1,
             Buffer<float>(left.data(), (int) left.size()),
             Buffer<float>(right.data(), (int) right.size())));
@@ -240,6 +241,7 @@ std::array<std::vector<float>, 2> renderPreparedPresetFrames(
             512,
             60,
             context,
+            511,
             511,
             4096,
             Buffer<float>(left.data(), (int) left.size()),

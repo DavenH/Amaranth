@@ -262,6 +262,12 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
         size_t rendered = 0;
 
         const auto& voice = processVoice(context);
+        const double sampleRateIncrement = context.timing.sampleRate > 0.
+                ? 1. / context.timing.sampleRate
+                : 0.;
+        const double normalizedTimeIncrement = voice.controls.normalizedVoiceTimeIncrement > 0.f
+                ? (double) voice.controls.normalizedVoiceTimeIncrement
+                : sampleRateIncrement;
         for (const auto& event : voice.events) {
             if (event.voiceIndex != voice.voiceIndex) {
                 continue;
@@ -272,12 +278,12 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
                 continue;
             }
 
-            renderSegment(outputBuffer, rendered, eventOffset - rendered, context.timing);
+            renderSegment(outputBuffer, rendered, eventOffset - rendered, normalizedTimeIncrement);
             applyLifecycleEvent(event);
             rendered = eventOffset;
         }
 
-        renderSegment(outputBuffer, rendered, context.frameCount - rendered, context.timing);
+        renderSegment(outputBuffer, rendered, context.frameCount - rendered, normalizedTimeIncrement);
     }
 
     outputBuffer.mul(level);
@@ -369,8 +375,8 @@ void EnvelopeSignalProcessor::renderSegment(
         Buffer<float> output,
         size_t start,
         size_t count,
-        const AudioProcessTiming& timing) {
-    if (!active || count == 0 || timing.sampleRate <= 0.) {
+        double normalizedTimeIncrement) {
+    if (!active || count == 0 || normalizedTimeIncrement <= 0.) {
         return;
     }
 
@@ -382,7 +388,7 @@ void EnvelopeSignalProcessor::renderSegment(
     const bool stillActive = playback.renderToBuffer(
             current->rasterizer->preparedPlaybackView(),
             (int) count,
-            1. / timing.sampleRate,
+            normalizedTimeIncrement,
             Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
             props,
             1.f);

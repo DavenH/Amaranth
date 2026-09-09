@@ -50,7 +50,7 @@ private:
             float red,
             float blue);
     void applyLifecycleEvent(const NoteLifecycleEvent& event);
-    void renderSegment(Buffer<float> output, size_t start, size_t count, const AudioProcessTiming& timing);
+    void renderSegment(Buffer<float> output, size_t start, size_t count, double normalizedTimeIncrement);
     void applyAdoptionTransition(Buffer<float> rendered);
     void publishTraversalGrid(SignalPayload& output, const AudioProcessWorkArena* arena);
 

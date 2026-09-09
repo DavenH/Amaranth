@@ -19,6 +19,7 @@ TEST_CASE("Realtime graph renderer turns MIDI note gestures into graph audio",
     RealtimeGraphRenderer renderer;
     RealtimeMidiEventQueue queue;
     renderer.setPreparedGraph(prepared.get());
+    renderer.setVoiceDurationSeconds(1.f);
 
     REQUIRE(queue.enqueue(
             MidiMessage::noteOn(1, 60, (uint8) 100),

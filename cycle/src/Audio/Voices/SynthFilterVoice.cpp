@@ -1,3 +1,5 @@
+#include <array>
+
 #include <Algo/Oversampler.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
@@ -291,15 +293,28 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
             continue;
         }
 
-        float progress = getScratchTime(props.scratchChan, frame.frontier);
+        const float progress = getScratchTime(props.scratchChan, frame.frontier);
+        const MorphPosition position = props.pos[parent->voiceIndex].withTime(progress);
 
-        freqRasterizer.setMorphPosition(props.pos[parent->voiceIndex].withTime(progress));
+        freqRasterizer.setMorphPosition(position);
         freqRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
         freqRasterizer.renderWaveformOnly(layer.mesh);
 
         auto sampler = freqRasterizer.sampler();
         if (sampler.isSampleable()) {
             sampler.sampleAtIntervals(fftRamp, harmRast);
+            std::array<float, 3> morph {
+                    position.time.getCurrentValue(),
+                    position.red.getCurrentValue(),
+                    position.blue.getCurrentValue()
+            };
+            for (int channel = 0; channel < 2; ++channel) {
+                captureSpectralStage(
+                        CycleDsp::SpectralStage::MagnitudeRaster,
+                        channel,
+                        harmRast,
+                        { morph.data(), (int) morph.size() });
+            }
 
             wasStereoBeforeLayer |= noteState.isStereo;
 

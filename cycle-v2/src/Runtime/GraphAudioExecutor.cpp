@@ -286,6 +286,15 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             return result;
         }
         const auto& step = plan.steps[stepIndex];
+        auto* oscillatorRegion = oscillatorRegionForStep(
+                preparedVoice->second,
+                stepIndex);
+        if (oscillatorRegion != nullptr
+                && (!captureDiagnostics
+                        || oscillatorRegion->processor->replacesDiagnosticProcessors())
+                && stepIndex != (size_t) oscillatorRegion->materializationStepIndex) {
+            continue;
+        }
         const bool hasCachedResult = captureDiagnostics
                 && diagnosticCache[stepIndex].has_value();
         const bool explicitlyDirty = dirtyNodes == nullptr || (*dirtyNodes)[stepIndex] != 0;
@@ -381,9 +390,6 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             continue;
         }
 
-        auto* oscillatorRegion = oscillatorRegionForStep(
-                preparedVoice->second,
-                stepIndex);
         if (oscillatorRegion != nullptr
                 && (!captureDiagnostics
                         || oscillatorRegion->processor->replacesDiagnosticProcessors())) {
@@ -609,6 +615,7 @@ void GraphAudioExecutor::prepareExecution(
             }
             auto preparedRegion = std::make_unique<PreparedVoice::OscillatorRegion>();
             preparedRegion->planRegionIndex = regionIndex;
+            preparedRegion->materializationStepIndex = region.materializationStepIndex;
             preparedRegion->midiNoteOffset = compiledContext->octave * 12;
             preparedRegion->configurationRevisions.reserve(region.stepIndices.size());
             for (const int operationIndex : region.stepIndices) {
@@ -617,8 +624,10 @@ void GraphAudioExecutor::prepareExecution(
             }
             preparedRegion->pitchEnvelopeUnitValues = compiledContext->pitchEnvelopeUnitValues;
             preparedRegion->processor = std::move(processor);
-            preparedVoice.oscillatorRegionByStep[
-                    (size_t) region.materializationStepIndex] = preparedRegion.get();
+            for (const int stepIndex : region.stepIndices) {
+                preparedVoice.oscillatorRegionByStep[(size_t) stepIndex]
+                        = preparedRegion.get();
+            }
             preparedVoice.oscillatorRegions.push_back(std::move(preparedRegion));
         }
     }

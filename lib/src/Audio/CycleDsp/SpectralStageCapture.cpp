@@ -10,6 +10,9 @@ using namespace juce;
 namespace {
 
 String primaryPayloadName(SpectralStage stage) {
+    if (stage == SpectralStage::MagnitudeRaster) {
+        return "magnitude-raster";
+    }
     return stage == SpectralStage::ForwardFft
                     || stage == SpectralStage::PostLayerSpectrum
             ? "magnitude"
@@ -17,6 +20,9 @@ String primaryPayloadName(SpectralStage stage) {
 }
 
 String secondaryPayloadName(SpectralStage stage) {
+    if (stage == SpectralStage::MagnitudeRaster) {
+        return "morph-position";
+    }
     return stage == SpectralStage::ForwardFft
                     || stage == SpectralStage::PostLayerSpectrum
             ? "phase"
@@ -180,6 +186,8 @@ String spectralStageName(SpectralStage stage) {
             return "time-frame";
         case SpectralStage::ForwardFft:
             return "forward-fft";
+        case SpectralStage::MagnitudeRaster:
+            return "magnitude-raster";
         case SpectralStage::PostLayerSpectrum:
             return "post-layer-spectrum";
         case SpectralStage::ReconstructedFrame:
