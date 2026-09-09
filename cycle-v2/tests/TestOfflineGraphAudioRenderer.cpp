@@ -186,12 +186,16 @@ TEST_CASE("Offline spectral capture records equivalent harmonic boundaries",
     const auto* reconstructed = recorder.record(
             CycleDsp::SpectralStage::ReconstructedFrame,
             0);
+    const auto* pitchClocked = recorder.record(
+            CycleDsp::SpectralStage::PitchClockedCycle,
+            0);
     REQUIRE(time != nullptr);
     REQUIRE(forward != nullptr);
     REQUIRE(magnitudeRaster != nullptr);
     REQUIRE(magnitudeOperand != nullptr);
     REQUIRE(postLayer != nullptr);
     REQUIRE(reconstructed != nullptr);
+    REQUIRE(pitchClocked != nullptr);
     REQUIRE(time->primary.size() == reconstructed->primary.size());
     REQUIRE(forward->primary.size()
             == LogRegionMapping(
@@ -211,6 +215,7 @@ TEST_CASE("Offline spectral capture records equivalent harmonic boundaries",
     REQUIRE(magnitudeRaster->frontier == magnitudeOperand->frontier);
     REQUIRE(magnitudeOperand->frontier == postLayer->frontier);
     REQUIRE(postLayer->frontier == reconstructed->frontier);
+    REQUIRE_FALSE(pitchClocked->primary.empty());
 #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
 #endif

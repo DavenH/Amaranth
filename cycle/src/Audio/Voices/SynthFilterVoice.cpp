@@ -237,6 +237,31 @@ void SynthFilterVoice::captureSpectralStage(
     });
 }
 
+void SynthFilterVoice::capturePitchClockedCycle(
+        int laneIndex,
+        int channel,
+        uint64_t frontier,
+        Buffer<float> samples) {
+    if (laneIndex != 0) {
+        return;
+    }
+    CycleDsp::SpectralStageCaptureSink* capture =
+            audioSource->getSpectralStageCaptureForTesting();
+    if (capture == nullptr) {
+        return;
+    }
+
+    capture->capture({
+            CycleDsp::SpectralStage::PitchClockedCycle,
+            spectralCaptureFrameIndex > 0 ? spectralCaptureFrameIndex - 1 : 0,
+            frontier,
+            noteState.lastNoteNumber,
+            channel,
+            samples,
+            {}
+    });
+}
+
 bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSize) {
     bool requireFwdFFT = false;
 

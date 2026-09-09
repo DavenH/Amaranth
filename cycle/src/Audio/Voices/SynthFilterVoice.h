@@ -34,6 +34,11 @@ public:
 	void updateValue(int outputId, int dim, float value) override;
 
 private:
+	void capturePitchClockedCycle(
+			int laneIndex,
+			int channel,
+			uint64_t frontier,
+			Buffer<float> samples) override;
 	void captureSpectralStage(
 			CycleDsp::SpectralStage stage,
 			int channel,

@@ -271,6 +271,7 @@ def compare_stage_captures(reference_path, candidate_path):
         "magnitude-operand",
         "post-layer-spectrum",
         "reconstructed-frame",
+        "pitch-clocked-cycle",
     ]
     stage_rank = {stage: index for index, stage in enumerate(stage_order)}
     keys = sorted(

@@ -73,6 +73,12 @@ public:
     // Buffer<float> getScratchBuffer(int layerIndex);
 
 protected:
+    virtual void capturePitchClockedCycle(
+            int,
+            int,
+            uint64_t,
+            Buffer<float>) {}
+
     struct NoteState
     {
         NoteState() :

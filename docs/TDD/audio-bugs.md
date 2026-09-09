@@ -759,6 +759,23 @@ synthesis cycle. The remaining material discrepancy is therefore a
 pitch-clocked frame-latency convention, not a different magnitude-shaping
 algorithm.
 
+The pitch-clocked capture then identified the exact convention. Cycle 1 uses
+the cycle-start interpolation position when compositing its previous and
+current fixed frames; Cycle V2 used the post-advance cycle end. At 44.1 kHz,
+Cycle 1 pitch-cycle frame 32 therefore matched pre-fix Cycle V2 frame 30 with
+`0.999878` correlation, and their frontiers differed by one 337-sample cycle.
+Cycle V2 now evaluates the shared `CyclicFrameLaneRenderer` at cycle start, as
+the authoritative Cycle 1 caller does. The same-rate final render now aligns
+within one sample at effectively `1.00000` correlation and `0.00049`
+gain-matched residual. This resolves the evolving synthesis discrepancy.
+
+At the normal 48 kHz device rate, correlation is `0.99888` with `0.0474`
+gain-matched residual because Cycle 1 still synthesizes internally at 44.1 kHz
+and crosses its Hermite output-rate converter, while Cycle V2 synthesizes
+directly at the device rate. Both rates retain an expected `+18.66 dB` gain fit,
+introduced after the pitch-clocked cycle boundary. Output-rate conversion and
+post-oscillator gain are now the next explicit parity boundaries.
+
 A separate converter audit also found that legacy modulation input 2 means
 `1-Velocity`; future ports now map it to Cycle V2 `inverseVelocity`. The
 remaining Voice Context key coordinate is `0.3738318` in Cycle 1 because its
@@ -777,13 +794,18 @@ New artifacts:
 - `/tmp/cycle-filter-saw-shaped-operand/comparison.json`
 - `/tmp/cycle-filter-saw-shaped-frame0/comparison.json`
 - `/tmp/cycle-filter-saw-shaped-frame31/comparison.json`
+- `/tmp/cycle-filter-saw-pitch-cycle-44100/comparison.json`
+- `/tmp/cycle-filter-saw-pitch-cycle31-44100/comparison.json`
+- `/tmp/cycle-filter-saw-pitch-cycle30-44100/comparison.json`
+- `/tmp/cycle-filter-saw-cycle-start-44100/comparison.json`
+- `/tmp/cycle-filter-saw-cycle-start-48000/comparison.json`
 
-Current status: open, with the material evolving mismatch resolved. Boundary
+Current status: open, with the synthesis and evolving-frame mismatch resolved.
 capture is implemented for the rasterized time frame, FFT, raw magnitude
-operand plus effective morph, post-layer spectrum, and reconstructed frame.
-The first byte difference is in the time frame at very low residual. The next
-investigation must capture pitch-clocked cyclic output and identify which frame
-each engine presents to that boundary before changing latency.
+operand plus effective morph, post-layer spectrum, reconstructed frame, and
+pitch-clocked cycle. The first byte difference is in the time frame at very low
+residual. The next investigation must localize the fixed gain difference after
+the oscillator, then make the internal/output sample-rate policies explicit.
 Canonical input reconciliation, deterministic seed control, startup state,
 gain/resampling policy, and remaining Voice Context fields must still be
 separated before enabling `exactSamplesRequired`.

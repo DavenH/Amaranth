@@ -2,6 +2,7 @@
 
 #include <Algo/Resampling.h>
 #include <Audio/CycleDsp/CyclicFrameLaneRenderer.h>
+#include <Audio/CycleDsp/SpectralStageCapture.h>
 #include <Util/Arithmetic.h>
 
 namespace CycleV2 {
@@ -266,7 +267,7 @@ bool SpectralOscillatorRegionRuntime::renderCyclesUntilReady(
             return true;
         }
         if (!refreshSharedFramesThrough(nextCycleStart, context, renderer)
-                || !renderLaneCycle(nextLane, context)) {
+                || !renderLaneCycle(nextLane, context, renderer)) {
             return false;
         }
     }
@@ -274,8 +275,10 @@ bool SpectralOscillatorRegionRuntime::renderCyclesUntilReady(
 
 bool SpectralOscillatorRegionRuntime::renderLaneCycle(
         int laneIndex,
-        const PreparedOscillatorProcessContext& context) {
+        const PreparedOscillatorProcessContext& context,
+        const SpectralOscillatorFrameRenderer& renderer) {
     auto& lane = lanes[(size_t) laneIndex];
+    const uint64_t cycleStart = (uint64_t) lane.clock.cumulativePosition;
     const long relativeFrontier = lane.clock.sampledFrontier
             - lane.buffers[0].totalSamplesRead;
     const int pitchIndex = context.pitchEnvelope.empty()
@@ -297,7 +300,7 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
     }
 
     const float framePortion = sharedFramePeriod > 0.0
-            ? (float) ((lane.clock.cumulativePosition - lastSharedFramePosition)
+            ? (float) (((double) cycleStart - lastSharedFramePosition)
                     / sharedFramePeriod)
             : 0.f;
     const double sourceToDestRatio = fixedFrameSize * angleDelta;
@@ -343,6 +346,20 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
                 padding[6],
                 lane.samplingSpillover[(size_t) channel],
                 Resampling::Hermite);
+        if (laneIndex == 0
+                && context.voice != nullptr
+                && context.voice->spectralStageCapture != nullptr
+                && renderer.frameRenderCount() > 0) {
+            context.voice->spectralStageCapture->capture({
+                    CycleDsp::SpectralStage::PitchClockedCycle,
+                    renderer.frameRenderCount() - 1,
+                    cycleStart,
+                    context.midiNote,
+                    channel,
+                    output,
+                    {}
+            });
+        }
         lane.buffers[(size_t) channel].write(output);
     }
     return true;

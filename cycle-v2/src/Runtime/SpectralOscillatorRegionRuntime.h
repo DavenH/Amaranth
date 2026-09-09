@@ -54,7 +54,8 @@ private:
             SpectralOscillatorFrameRenderer& renderer);
     bool renderLaneCycle(
             int laneIndex,
-            const PreparedOscillatorProcessContext& context);
+            const PreparedOscillatorProcessContext& context,
+            const SpectralOscillatorFrameRenderer& renderer);
     size_t blockSampleOffsetFor(
             uint64_t voiceSample,
             const PreparedOscillatorProcessContext& context) const;

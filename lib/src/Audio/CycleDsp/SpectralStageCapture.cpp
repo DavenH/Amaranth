@@ -197,6 +197,8 @@ String spectralStageName(SpectralStage stage) {
             return "post-layer-spectrum";
         case SpectralStage::ReconstructedFrame:
             return "reconstructed-frame";
+        case SpectralStage::PitchClockedCycle:
+            return "pitch-clocked-cycle";
     }
     return "unknown";
 }
