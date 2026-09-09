@@ -1,0 +1,39 @@
+{
+    "schema": "cycle-v1-v2-audio-equivalence.v1",
+    "status": "verified",
+    "v1": {
+        "factoryPreset": "shiny",
+        "sourceDocument": "cycle/content/presets/shiny.cyc",
+        "sha256": "81822d2a058205630f103d29c003d7b65c3d11825670cfdb6caaa0a30e93cc95"
+    },
+    "v2": {
+        "graph": "cycle-v2/content/presets/shiny.cyclegraph",
+        "sha256": "02ce5dae869bdb069e4aee76372af3b87fc0246619f68a9bb3ca59d6bb7024ec",
+        "renderOverrides": {
+            "voiceDurationSeconds": 7.004584673331117
+        }
+    },
+    "translation": {
+        "midiNoteOffset": 0,
+        "legacyMidiReferenceOffset": -12,
+        "v1MasterGain": 0.9773594682052107,
+        "v2OutputGainUnitValue": 0.496183206,
+        "v2OutputHeadroom": 0.125,
+        "coverage": [
+            "timeLayer",
+            "twoMultiplicativeMagnitudeLayers",
+            "additivePhaseLayer",
+            "voiceTimeMorph",
+            "outputGain"
+        ],
+        "determinism": "volume, pitch, and scratch envelopes, effects, unison, and guide noise are disabled",
+        "inputValidation": "regenerated from a direct Cycle 1 canonical file export on 2026-09-09",
+        "constantGainPolicy": "Cycle1 master gain maps to Output; Cycle2 fixed headroom remains separate"
+    },
+    "thresholds": {
+        "correlationMin": 0.98,
+        "gainMatchedResidualMax": 0.2,
+        "spectrumRmseDbMax": 6.0,
+        "cyclogramMeanRowDifferenceMax": 0.2
+    }
+}

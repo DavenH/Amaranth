@@ -845,17 +845,20 @@ def validate_audio_parity_subset(source):
         layers = groups[MESH_GROUPS[group_name]]["layers"]
         active = [layer for layer in layers if layer["properties"]["active"]]
         active_count = len(active)
-        if active_count != 1:
+        if group_name == "magnitude" and active_count == 0:
+            issues.append("magnitude requires at least one active layer; found 0")
+            continue
+        if group_name != "magnitude" and active_count != 1:
             issues.append(
                 f"{group_name} requires exactly one active layer; found {active_count}")
             continue
-        properties = active[0]["properties"]
-        if properties["gain"] != 0.0 or properties["fineTune"] != 0.0:
-            issues.append(f"{group_name} layer gain and fine tune must be neutral")
-        if group_name == "time" and properties["pan"] != 0.5:
-            issues.append("time layer pan must be centered")
-        if group_name == "phase" and properties["mode"] != 0:
-            issues.append("phase layer must use additive mode")
+        for properties in (layer["properties"] for layer in active):
+            if properties["gain"] != 0.0 or properties["fineTune"] != 0.0:
+                issues.append(f"{group_name} layer gain and fine tune must be neutral")
+            if group_name == "time" and properties["pan"] != 0.5:
+                issues.append("time layer pan must be centered")
+            if group_name == "phase" and properties["mode"] != 0:
+                issues.append("phase layer must use additive mode")
 
     unsupported_effects = ("ImpulseModeller", "Unison", "Delay", "Reverb", "EQ")
     for effect_name in unsupported_effects:

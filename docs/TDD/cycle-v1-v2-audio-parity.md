@@ -166,6 +166,7 @@ translation. The first broad candidates are:
 | saw | One static time mesh; no envelopes, effects, unison, or guide noise | Regenerated exactly. At MIDI 36–72 it reaches `0.98850–0.99844` correlation after the MIDI reference fix. It exposes remaining gain, onset, resampling, and Cycle 1 startup-repeatability gaps. |
 | filter-saw | One time layer and one subtractive magnitude layer; no phase, effects, unison, or guide noise | Regenerated exactly and byte-repeatable in both engines. After restoring cycle-clocked scratch, frame ownership, shared log regions, and the final active harmonic, MIDI 36–72 is zero-lag with correlation of at least `0.9999999919`. |
 | fallout | One time layer, one subtractive magnitude layer, one additive phase layer, and output gain; no envelopes, effects, unison, or guide noise | Regenerated exactly from a live canonical export. Its captured time, magnitude, and phase raster/operand boundaries are byte-identical at MIDI 48/frame 32. MIDI 36–72 remains zero-lag with `0.99974–1.00000` correlation after restoring the mature phase harmonic ramp and phase-only curve interpolation. |
+| shiny | One time layer, two multiplicative magnitude layers, one additive phase layer, and output gain; no envelopes, effects, unison, or guide noise | Regenerated exactly from a direct canonical export. At MIDI 48/frame 32 it is byte-identical from the time frame through reconstructed spectral output. MIDI 36–72 is deterministic, zero-lag, and reaches `0.999999776–0.999999876` correlation. |
 | power | Time layer plus volume envelope | Regenerated exactly but rejected as an audio oracle: Cycle 1 renders silence because the active time layer has no authored waveform geometry. |
 | Subbass | Time, magnitude, phase, volume/scratch envelopes | Port manifest was strict, but current notes 48–72 fail its old output thresholds; diagnostic only. |
 | guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Direct spectral range shaping is restored. Its routed scratch-envelope cross-section is not ready for Cycle V2's first note sample, so phase and effect attribution remain blocked. |
@@ -288,7 +289,8 @@ as the scratch envelope evolves.
     the corrected boundary; Subbass also remains input-invalid because its
     omitted morph state is inherited from the startup document.
 12. Admit deterministic whole-graph ports incrementally. In progress:
-    `saw`, `filter-saw`, `fallout`, `guitar-3-g`, and `japan-drum` now match fresh canonical
+    `saw`, `filter-saw`, `fallout`, `shiny`, `guitar-3-g`, and `japan-drum` now
+    match fresh canonical
     conversion exactly and preserve their prior presentation. Saw substantially
     matches after reference translation. Filter Saw now establishes the
     evolving magnitude-layer baseline, and Fallout establishes static phase
@@ -425,7 +427,19 @@ as the scratch envelope evolves.
     two-render MIDI 48 check are exact in both engines. Artifacts:
     `/tmp/cycle-fallout-phase-interpolation/comparison.json` and
     `/tmp/cycle-fallout-phase-matrix/comparison.json`.
-27. Advance to the routed-envelope/effect graph in Guitar 3 G. In progress:
+27. Admit deterministic multi-layer spectral composition. Complete using Shiny:
+    strict conversion now accepts one or more magnitude layers while retaining
+    its neutral gain/fine-tune checks on every active layer. The checked-in
+    direct export contains two multiplicative magnitude layers followed by one
+    additive phase layer. At MIDI 48/frame 32 both engines are byte-identical
+    from the time frame through FFT, both magnitude operands, phase operand,
+    post-layer spectrum, and reconstructed frame. The first numerical
+    difference occurs in pitch-clocked Hermite resampling. MIDI 36–72 is
+    byte-repeatable in both engines, zero-lag, and reaches correlations from
+    `0.999999776` to `0.999999876`, with gain-matched residuals from `0.00050`
+    to `0.00067`. Artifacts: `/tmp/cycle-shiny-baseline/comparison.json` and
+    `/tmp/cycle-shiny-matrix/comparison.json`.
+28. Advance to the routed-envelope/effect graph in Guitar 3 G. In progress:
     Guitar 3 G was re-exported directly from its current Cycle 1 `.cyc` and
     regenerated with the authoritative converter. This corrected the stale
     velocity polarity and restored full-precision mesh values. The comparison

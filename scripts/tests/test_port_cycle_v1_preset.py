@@ -598,14 +598,39 @@ class PortCycleV1PresetTest(unittest.TestCase):
 
         self.assertIn("Guide noise must be disabled for deterministic audio parity", issues)
 
-    def test_multiple_magnitude_layers_report_validation_issue(self):
+    def test_multiple_magnitude_layers_are_supported_for_strict_parity(self):
         source = supported_source()
         source["preset"]["meshLibrary"]["groups"][5]["layers"].append(
             copy.deepcopy(source["preset"]["meshLibrary"]["groups"][5]["layers"][0]))
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
 
         issues = port_cycle_v1_preset.validate_audio_parity_subset(source)
 
-        self.assertIn("magnitude requires exactly one active layer; found 2", issues)
+        self.assertEqual(issues, [])
+
+    def test_strict_parity_requires_an_active_magnitude_layer(self):
+        source = supported_source()
+        source["preset"]["meshLibrary"]["groups"][5]["layers"][0] \
+            ["properties"]["active"] = False
+
+        issues = port_cycle_v1_preset.validate_audio_parity_subset(source)
+
+        self.assertIn("magnitude requires at least one active layer; found 0", issues)
+
+    def test_every_active_magnitude_layer_must_have_neutral_legacy_gain(self):
+        source = supported_source()
+        second = copy.deepcopy(source["preset"]["meshLibrary"]["groups"][5]["layers"][0])
+        second["properties"]["gain"] = 0.25
+        source["preset"]["meshLibrary"]["groups"][5]["layers"].append(second)
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        issues = port_cycle_v1_preset.validate_audio_parity_subset(source)
+
+        self.assertIn("magnitude layer gain and fine tune must be neutral", issues)
 
     def test_multiple_scratch_envelopes_report_validation_issue(self):
         source = supported_source()
