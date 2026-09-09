@@ -11,9 +11,10 @@ determinism, and reports exact sample equality separately from diagnostic
 gain/latency fitting. Cycle 1 also has an end-to-end UI-keyboard-to-device
 fixture that requires callback progress plus finite nonzero output.
 Prepared Cycle V2 spectral frames now consume live controls and rerasterize at
-synthesis-cycle frontiers. The current slice adds raw, allocation-free capture
-at equivalent mature spectral-frame boundaries so the remaining final-output
-difference can be localized without using preview products.
+synthesis-cycle frontiers. Raw, allocation-free capture now observes equivalent
+mature spectral-frame boundaries in both engines, and the paired runner reports
+the first unequal stage without using preview products. Filter Saw localizes
+the first material evolving mismatch to magnitude-layer processing.
 
 ## Goal
 
@@ -203,8 +204,9 @@ and this documentation should be replaced by the typed boundary.
 
 This correction improves Filter Saw at every tested note but does not complete
 parity. Prepared Cycle V2 frames now consume live modulation and rerasterize at
-the shared synthesis-cycle cadence. Fresh effect-free output remains unequal,
-so raw stage capture—not preview traversal—is the next diagnostic boundary.
+the shared synthesis-cycle cadence. Raw stage capture shows its time frame and
+forward FFT remain closely matched while the magnitude-layer output separates
+as the scratch envelope evolves.
 
 ## Negative Boundaries
 
@@ -290,8 +292,17 @@ so raw stage capture—not preview traversal—is the next diagnostic boundary.
     to 64, 127, 256, and 512-sample host partitions.
 17. Capture one selected spectral synthesis frame at equivalent mature Cycle 1
     and Cycle V2 boundaries, write raw payloads with hashes after rendering,
-    and report the first unequal stage in the paired runner. In progress; the
-    shared preallocated recorder and file format are implemented.
+    and report the first unequal stage in the paired runner. Complete. The
+    shared recorder captures semantic stereo frames and the note-active,
+    non-DC harmonic region without allocating on the realtime path. The runner
+    validates payload hashes and reports exact mismatches, correlation, raw
+    residual, and gain-matched residual for each stage.
+18. Localize the Filter Saw post-layer mismatch below the aggregate magnitude
+    operation. In progress. Preserve Cycle 1's nonwrapping spectral raster
+    margin, then compare the scratch value and raw magnitude operand before the
+    shared multiplicative layer operation. Cycle 1's direct yellow coordinate
+    also requires an absolute-sample voice-time source before it can retain the
+    exact host-partition contract. Do not approximate either with preview data.
 
 Each slice receives focused semantic tests, a refactor/style pass, and a
 coherent commit before the next slice.

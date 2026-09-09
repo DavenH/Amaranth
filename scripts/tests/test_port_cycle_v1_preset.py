@@ -220,11 +220,11 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertEqual(node["portSides"], {"outputs": {"context": "bottom"}})
         self.assertNotEqual(node["parameters"]["octave"], 7)
 
-    def test_converter_preserves_velocity_blue_modulation_source(self):
+    def test_converter_preserves_legacy_inverse_velocity_blue_source(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
         morph = next(node for node in converted["nodes"] if node["id"] == "morph")
 
-        self.assertEqual(morph["parameters"]["blueSource"], "velocity")
+        self.assertEqual(morph["parameters"]["blueSource"], "inverseVelocity")
 
     def test_converter_preserves_mod_wheel_blue_modulation_source(self):
         source = convertible_source()

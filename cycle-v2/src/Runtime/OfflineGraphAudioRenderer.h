@@ -8,6 +8,10 @@
 #include "Graph/GraphCompiler.h"
 #include "Runtime/RealtimeMidiEventQueue.h"
 
+namespace CycleDsp {
+class SpectralStageCaptureSink;
+}
+
 namespace CycleV2 {
 
 struct OfflineGraphAudioEvent {
@@ -23,6 +27,7 @@ struct OfflineGraphAudioRequest {
     float voiceDurationSeconds { 7.f };
     size_t sampleCount {};
     std::vector<OfflineGraphAudioEvent> events;
+    CycleDsp::SpectralStageCaptureSink* spectralStageCapture {};
 };
 
 struct OfflineGraphAudioResult {

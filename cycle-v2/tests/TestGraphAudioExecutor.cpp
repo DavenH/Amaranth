@@ -15,6 +15,7 @@
 #include "Runtime/GraphPreviewExecutor.h"
 #include "Runtime/RealtimeGraphRenderer.h"
 
+#include <Audio/CycleDsp/SpectralStageCapture.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
 #include <Util/Arithmetic.h>
@@ -2066,6 +2067,31 @@ TEST_CASE("Prepared graph audio processing performs no allocations or locks",
     REQUIRE(minimumOutput.isValid());
     REQUIRE(allocations.count() == 0);
     REQUIRE(locks.count() == 0);
+}
+
+TEST_CASE("Prepared spectral stage recording performs no allocations",
+        "[cycle-v2][runtime][realtime][spectral][parity]") {
+    CycleDsp::SpectralStageCaptureRecorder recorder;
+    REQUIRE(recorder.prepare(64, 0));
+    std::array<float, 64> primary {};
+    std::array<float, 32> secondary {};
+
+    size_t allocationCount {};
+    {
+        ScopedRealtimeAllocationCount allocations;
+        recorder.capture({
+                CycleDsp::SpectralStage::ForwardFft,
+                0,
+                0,
+                48,
+                0,
+                { primary.data(), (int) primary.size() },
+                { secondary.data(), (int) secondary.size() }
+        });
+        allocationCount = allocations.count();
+    }
+
+    REQUIRE(allocationCount == 0);
 }
 
 TEST_CASE("Prepared realtime voice mixing performs no allocations or locks",

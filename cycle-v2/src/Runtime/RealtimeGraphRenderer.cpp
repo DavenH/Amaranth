@@ -264,6 +264,7 @@ void RealtimeGraphRenderer::renderVoices(
         voice.context.controls.velocity = voice.velocity;
         voice.context.controls.normalizedVoiceTime = voice.normalizedTime;
         voice.context.controls.normalizedVoiceTimeIncrement = timeIncrement;
+        voice.context.spectralStageCapture = spectralStageCapture;
         midiControls.populateVoice(voice.context, voice.midiChannel);
 
         const auto output = preparedGraph->executor.processRealtime(

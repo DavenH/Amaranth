@@ -3,6 +3,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <Array/Buffer.h>
+#include <Audio/CycleDsp/SpectralStageCapture.h>
+#include <Util/LogRegionMapping.h>
 
 #include "App/OfflineAudioCaptureAutomation.h"
 #include "Graph/GraphCompiler.h"
@@ -44,6 +46,23 @@ GraphExecutionPlan subbassParityPlan() {
         issueMessages += issue.message + "\n";
     }
     INFO(issueMessages);
+    REQUIRE(loaded.succeeded());
+    const auto compiled = GraphCompiler().compile(loaded.graph);
+    REQUIRE(compiled.succeeded());
+    return compiled.plan;
+#else
+    return {};
+#endif
+}
+
+GraphExecutionPlan filterSawPlan() {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("filter-saw.cyclegraph");
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            preset.loadFileAsString());
     REQUIRE(loaded.succeeded());
     const auto compiled = GraphCompiler().compile(loaded.graph);
     REQUIRE(compiled.succeeded());
@@ -106,6 +125,51 @@ TEST_CASE("Offline graph renderer follows the realtime MIDI path across blocks",
                     const_cast<float*>(partitioned.channels[1].data()),
                     (int) partitioned.channels[1].size()
             }) < 1.0e-6f);
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
+}
+
+TEST_CASE("Offline spectral capture records equivalent harmonic boundaries",
+        "[cycle-v2][runtime][offline-audio][spectral][parity]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    CycleDsp::SpectralStageCaptureRecorder recorder;
+    REQUIRE(recorder.prepare(4096, 0));
+    auto request = renderRequest(256, 48);
+    request.spectralStageCapture = &recorder;
+
+    const auto result = OfflineGraphAudioRenderer::render(
+            filterSawPlan(),
+            12,
+            request);
+
+    REQUIRE(result.succeeded);
+    const auto* time = recorder.record(
+            CycleDsp::SpectralStage::TimeFrame,
+            0);
+    const auto* forward = recorder.record(
+            CycleDsp::SpectralStage::ForwardFft,
+            0);
+    const auto* postLayer = recorder.record(
+            CycleDsp::SpectralStage::PostLayerSpectrum,
+            0);
+    const auto* reconstructed = recorder.record(
+            CycleDsp::SpectralStage::ReconstructedFrame,
+            0);
+    REQUIRE(time != nullptr);
+    REQUIRE(forward != nullptr);
+    REQUIRE(postLayer != nullptr);
+    REQUIRE(reconstructed != nullptr);
+    REQUIRE(time->primary.size() == reconstructed->primary.size());
+    REQUIRE(forward->primary.size()
+            == LogRegionMapping(
+                    48 + LogRegionMapping::legacyMidiNoteBias).regionSize());
+    REQUIRE(forward->secondary.size() == forward->primary.size());
+    REQUIRE(postLayer->primary.size() == forward->primary.size());
+    REQUIRE(postLayer->secondary.size() == forward->secondary.size());
+    REQUIRE(time->frontier == forward->frontier);
+    REQUIRE(forward->frontier == postLayer->frontier);
+    REQUIRE(postLayer->frontier == reconstructed->frontier);
 #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
 #endif

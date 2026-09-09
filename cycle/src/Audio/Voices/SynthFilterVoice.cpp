@@ -3,6 +3,7 @@
 #include <App/SingletonRepo.h>
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Audio/CycleDsp/SpectralLayerCore.h>
+#include <Audio/CycleDsp/SpectralStageCapture.h>
 #include <Definitions.h>
 #include <Util/LogRegions.h>
 
@@ -63,6 +64,7 @@ SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo
 }
 
 void SynthFilterVoice::initialiseNoteExtra(const int midiNoteNumber, const float velocity) {
+    spectralCaptureFrameIndex = 0;
 
     const bool smooth = getDocSetting(ParameterSmoothing);
     MeshLibrary::LayerGroup& timeGroup = getTimeLayerGroup();
@@ -126,10 +128,30 @@ void SynthFilterVoice::calcCycle(VoiceParameterGroup& group) {
     // forward fft for time-domain cycle
     if (doFwdFFT) {
         for (int c = 0; c < channelCount; ++c) {
+            captureSpectralStage(
+                    CycleDsp::SpectralStage::TimeFrame,
+                    c,
+                    accumBufs[c]);
             Transform& fft = audioSource->getFFT(noteState.nextPow2);
             fft.forward(accumBufs[c]);
             fft.getMagnitudes().copyTo(magBufs[c]);
             fft.getPhases().copyTo(phaseBufs[c]);
+            captureSpectralStage(
+                    CycleDsp::SpectralStage::ForwardFft,
+                    c,
+                    magBufs[c],
+                    phaseBufs[c]);
+        }
+        if (channelCount == 1) {
+            captureSpectralStage(
+                    CycleDsp::SpectralStage::TimeFrame,
+                    Right,
+                    accumBufs[Left]);
+            captureSpectralStage(
+                    CycleDsp::SpectralStage::ForwardFft,
+                    Right,
+                    magBufs[Left],
+                    phaseBufs[Left]);
         }
 
         rightPhasesAreSet = noteState.isStereo;
@@ -146,6 +168,21 @@ void SynthFilterVoice::calcCycle(VoiceParameterGroup& group) {
 
     calcMagnitudeFilters(fftRamp);
     calcPhaseDomain(fftRamp, doFwdFFT, rightPhasesAreSet, channelCount);
+
+    for (int c = 0; c < channelCount; ++c) {
+        captureSpectralStage(
+                CycleDsp::SpectralStage::PostLayerSpectrum,
+                c,
+                magBufs[c],
+                phaseBufs[c]);
+    }
+    if (channelCount == 1) {
+        captureSpectralStage(
+                CycleDsp::SpectralStage::PostLayerSpectrum,
+                Right,
+                magBufs[Left],
+                phaseBufs[Left]);
+    }
 
     // inverse FFT
     for(int c = 0; c < channelCount; ++c) {
@@ -164,8 +201,38 @@ void SynthFilterVoice::calcCycle(VoiceParameterGroup& group) {
         accumBufs[Left].copyTo(accumBufs[Right]);
     }
 
+    for (int c = 0; c < 2; ++c) {
+        captureSpectralStage(
+                CycleDsp::SpectralStage::ReconstructedFrame,
+                c,
+                accumBufs[c]);
+    }
+
     jassert(fabsf(accumBufs[0].front()) < 1000);
     jassert(fabsf(accumBufs[1].front()) < 1000);
+    ++spectralCaptureFrameIndex;
+}
+
+void SynthFilterVoice::captureSpectralStage(
+        CycleDsp::SpectralStage stage,
+        int channel,
+        Buffer<float> primary,
+        Buffer<float> secondary) {
+    CycleDsp::SpectralStageCaptureSink* capture =
+            audioSource->getSpectralStageCaptureForTesting();
+    if (capture == nullptr) {
+        return;
+    }
+
+    capture->capture({
+            stage,
+            spectralCaptureFrameIndex,
+            (uint64_t) jmax(0L, futureFrame.frontier),
+            noteState.lastNoteNumber,
+            channel,
+            primary,
+            secondary
+    });
 }
 
 bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSize) {

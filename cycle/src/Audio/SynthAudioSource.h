@@ -34,6 +34,10 @@ using std::map;
 class WavAudioSource;
 class SynthFilterVoice;
 
+namespace CycleDsp {
+class SpectralStageCaptureSink;
+}
+
 class SynthSound:
         public SynthesiserSound
     ,	public SingletonAccessor
@@ -70,6 +74,13 @@ public:
     void setEnvelopeMeshes(bool lock);
     void setModValue(double value);
     void setRandomSeedForTesting(int64 seed);
+    void setSpectralStageCaptureForTesting(
+            CycleDsp::SpectralStageCaptureSink* capture) {
+        spectralStageCapture = capture;
+    }
+    CycleDsp::SpectralStageCaptureSink* getSpectralStageCaptureForTesting() const {
+        return spectralStageCapture;
+    }
     void unisonOrderChanged();
 
     void documentAboutToLoad() override;
@@ -203,6 +214,7 @@ private:
 
     Array<Effect*> 				postProcessEffects;
     Array<SynthesizerVoice*>	voices;
+    CycleDsp::SpectralStageCaptureSink* spectralStageCapture {};
 
     friend class CycleBasedVoice;
     friend class SynthesizerVoice;

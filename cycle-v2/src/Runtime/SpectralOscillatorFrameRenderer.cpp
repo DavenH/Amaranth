@@ -4,6 +4,7 @@
 
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Audio/CycleDsp/SpectralLayerCore.h>
+#include <Audio/CycleDsp/SpectralStageCapture.h>
 #include <Curve/Curve.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
@@ -31,6 +32,35 @@ bool supportedRole(AudioModuleRole role) {
 bool sourceRole(AudioModuleRole role) {
     return role == AudioModuleRole::MeshSource
             || role == AudioModuleRole::WaveSource;
+}
+
+void captureStage(
+        const PreparedOscillatorProcessContext* context,
+        CycleDsp::SpectralStage stage,
+        size_t frameIndex,
+        size_t blockSampleOffset,
+        int midiNote,
+        int channel,
+        Buffer<float> primary,
+        Buffer<float> secondary = {}) {
+    if (context == nullptr
+            || context->voice == nullptr
+            || context->voice->spectralStageCapture == nullptr) {
+        return;
+    }
+
+    const size_t relativeOffset = blockSampleOffset >= context->blockSampleStart
+            ? blockSampleOffset - context->blockSampleStart
+            : 0;
+    context->voice->spectralStageCapture->capture({
+            stage,
+            frameIndex,
+            context->voiceSampleStart + relativeOffset,
+            midiNote,
+            channel,
+            primary,
+            secondary
+    });
 }
 
 const GraphStepInput* inputForPort(
@@ -430,11 +460,34 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
             case OperationType::Fft: {
                 const int binCount = RealFftFullPolarSpectrum::binCountForBufferSize(
                         frameSize);
+                const int activeBinCount = jmin(
+                        binCount - 1,
+                        LogRegionMapping(
+                                midiNote + LogRegionMapping::legacyMidiNoteBias)
+                                .regionSize());
                 for (int channel = 0; channel < 2; ++channel) {
+                    auto timeFrame = slot(operation.leftInput, channel, frameSize);
+                    captureStage(
+                            context,
+                            CycleDsp::SpectralStage::TimeFrame,
+                            renderCount,
+                            blockSampleOffset,
+                            midiNote,
+                            channel,
+                            timeFrame);
                     auto magnitude = slot(operation.outputs[0], channel, binCount);
                     auto phase = slot(operation.outputs[1], channel, binCount);
-                    transform->forward(slot(operation.leftInput, channel, frameSize));
+                    transform->forward(timeFrame);
                     transform->copyFullPolarSpectrumTo(magnitude, phase);
+                    captureStage(
+                            context,
+                            CycleDsp::SpectralStage::ForwardFft,
+                            renderCount,
+                            blockSampleOffset,
+                            midiNote,
+                            channel,
+                            magnitude.section(1, activeBinCount),
+                            phase.section(1, activeBinCount));
                 }
                 break;
             }
@@ -449,6 +502,15 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                     auto phase = phaseScratch.withSize(binCount);
                     slot(operation.leftInput, channel, binCount).copyTo(magnitude);
                     slot(operation.rightInput, channel, binCount).copyTo(phase);
+                    captureStage(
+                            context,
+                            CycleDsp::SpectralStage::PostLayerSpectrum,
+                            renderCount,
+                            blockSampleOffset,
+                            midiNote,
+                            channel,
+                            magnitude.section(1, activeBinCount),
+                            phase.section(1, activeBinCount));
                     if (hasSpectralMesh) {
                         CycleDsp::SpectralLayerCore::clearBinsAbove(
                                 magnitude,
@@ -459,6 +521,14 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                             magnitude,
                             phase);
                     transform->inverse(slot(operation.outputs[0], channel, frameSize));
+                    captureStage(
+                            context,
+                            CycleDsp::SpectralStage::ReconstructedFrame,
+                            renderCount,
+                            blockSampleOffset,
+                            midiNote,
+                            channel,
+                            slot(operation.outputs[0], channel, frameSize));
                 }
                 break;
             }

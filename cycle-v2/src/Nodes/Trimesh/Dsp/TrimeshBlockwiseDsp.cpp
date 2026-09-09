@@ -178,9 +178,11 @@ void TrimeshBlockwiseDsp::renderPreparedHarmonicsInto(Buffer<float> output) {
 Rasterization::RasterizationRequest TrimeshBlockwiseDsp::createRequest(
         PortDomain domain) const {
     Rasterization::RasterizationRequest request;
+    const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
+            || domain == PortDomain::SpectralPhaseSignal;
     request.cyclic = cyclic;
-    request.xMinimum = cyclic ? -0.05f : 0.f;
-    request.xMaximum = cyclic ? 1.05f : 1.f;
+    request.xMinimum = cyclic || spectral ? -0.05f : 0.f;
+    request.xMaximum = cyclic || spectral ? 1.05f : 1.f;
     request.morph = morph;
     request.primaryViewDimension = primaryViewAxis;
     request.scalingMode = scalingModeForDomain(domain);

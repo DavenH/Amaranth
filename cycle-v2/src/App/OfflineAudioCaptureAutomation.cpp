@@ -1,6 +1,7 @@
 #include <cmath>
 
 #include <Array/Buffer.h>
+#include <Audio/CycleDsp/SpectralStageCapture.h>
 
 #include "App/OfflineAudioCaptureAutomation.h"
 #include "Runtime/OfflineGraphAudioRenderer.h"
@@ -309,6 +310,20 @@ bool OfflineAudioCaptureAutomation::capture(
         return false;
     }
 
+    constexpr int maximumSpectralStageValues = 131072;
+    const File stageCapturePath(stringProperty(command, "stageCapturePath"));
+    CycleDsp::SpectralStageCaptureRecorder stageCapture;
+    if (stageCapturePath != File()) {
+        const size_t targetFrame = (size_t) jmax(
+                0,
+                (int) doubleProperty(command, "stageCaptureFrameIndex", 0.0));
+        if (!stageCapture.prepare(maximumSpectralStageValues, targetFrame)) {
+            error = "Could not prepare spectral stage capture";
+            return false;
+        }
+        request.spectralStageCapture = &stageCapture;
+    }
+
     const OfflineGraphAudioResult capture = OfflineGraphAudioRenderer::render(
             std::move(plan),
             revision,
@@ -324,6 +339,9 @@ bool OfflineAudioCaptureAutomation::capture(
     if (!writeRawCapture(rawPath, capture, request, error)) {
         return false;
     }
+    if (stageCapturePath != File() && !stageCapture.write(stageCapturePath, error)) {
+        return false;
+    }
 
     data = captureMetrics(capture, request);
     DynamicObject* object = data.getDynamicObject();
@@ -331,6 +349,9 @@ bool OfflineAudioCaptureAutomation::capture(
     object->setProperty(
             "rawPath",
             rawPath == File() ? String {} : rawPath.getFullPathName());
+    object->setProperty(
+            "stageCapturePath",
+            stageCapturePath == File() ? String {} : stageCapturePath.getFullPathName());
     object->setProperty("events", (int) request.events.size());
     object->setProperty("blockSize", request.blockSize);
     object->setProperty("voiceDurationSeconds", request.voiceDurationSeconds);

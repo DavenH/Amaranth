@@ -26,6 +26,7 @@
 #include <App/SingletonRepo.h>
 #include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <Curve/Mesh/Intercept.h>
+#include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
 #include <Util/LogRegionMapping.h>
 
 #include <algorithm>
@@ -721,6 +722,47 @@ TEST_CASE("Prepared spectral sampling clears bins beyond the legacy harmonic reg
             output.end(),
             [](float value) { return value == 0.f; }));
 
+    mesh->destroy();
+}
+
+TEST_CASE("Prepared spectral raster preserves Cycle 1 nonwrapping margins",
+        "[cycle-v2][nodes][trimesh][dsp][spectral][parity]") {
+    constexpr int midiNote = 60;
+    constexpr int outputSize = 256;
+    auto mesh = TrimeshMeshFactory::createDefaultMesh();
+    const MorphPosition morph(0.37f, 0.42f, 0.63f);
+
+    TrimeshBlockwiseDsp prepared;
+    prepared.prepare(
+            mesh.get(),
+            morph,
+            Vertex::Time,
+            false,
+            PortDomain::SpectralMagnitudeSignal);
+    prepared.prepareSampling(outputSize);
+    prepared.setFrequencyMidiNote(midiNote);
+    std::array<float, outputSize> actual {};
+    prepared.renderPreparedHarmonicsInto({ actual.data(), outputSize });
+
+    Rasterization::TrilinearMeshRasterizer legacy;
+    legacy.setWrapsEnds(false);
+    legacy.setCalcDepthDimensions(false);
+    legacy.setXLimits(-0.05f, 1.05f);
+    legacy.setScalingMode(Rasterization::PointScalingMode::Unipolar);
+    legacy.setMorphPosition(morph);
+    legacy.renderWaveformOnly(mesh.get());
+    const int harmonicCount = LogRegionMapping(midiNote).regionSize();
+    std::vector<float> positions((size_t) harmonicCount);
+    LogRegionMapping(midiNote).fillDisplayUnits({
+            positions.data(),
+            harmonicCount
+    });
+    std::array<float, outputSize> expected {};
+    legacy.sampler().sampleAtIntervals(
+            { positions.data(), harmonicCount },
+            { expected.data(), harmonicCount });
+
+    REQUIRE(actual == expected);
     mesh->destroy();
 }
 

@@ -21,7 +21,7 @@
                 "redSource": "keyScale",
                 "redController": 1,
                 "redConstant": 0.5,
-                "blueSource": "velocity",
+                "blueSource": "inverseVelocity",
                 "blueController": 1,
                 "blueConstant": 0.5
             }

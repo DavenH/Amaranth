@@ -704,14 +704,49 @@ reports correlations of `0.94219`, `0.91977`, `0.88743`, and `0.84886` at MIDI
 - `/private/tmp/cycle-japan-drum-live-modulation-final/comparison.json`
 - `/private/tmp/cycle-v2-time-evolution-final-rerun/summary.json`
 
-Current status: open, narrowed. Missing live spectral-frame modulation is
-resolved. The first captured unequal mature boundary is the effect-free final
-voice output (boundary 6); shared fixed-frame rasterization and FFT reference
-tests remain exact. The next diagnostic must add equivalent Cycle 1 captures
-for the rasterized frame, FFT, post-layer spectrum, reconstructed frame, and
-pitch-clocked cyclic output (boundaries 1–5), then address the first unequal
-stage. Canonical input reconciliation, deterministic seed control, startup
-state, gain/resampling policy, and remaining Voice Context fields must still be
+The shared spectral-stage recorder now resolves boundaries 1–4 directly. For
+Filter Saw at MIDI 48, frame 0 is already non-exact but very close: the time
+frame has `0.00022` normalized residual, post-layer magnitude has `0.00223`,
+and the reconstructed frame has `0.00803`. The material evolving mismatch
+appears at the magnitude-layer boundary. At selected frame 32, the forward FFT
+still has only `0.00077` gain-matched residual and `0.9999997` correlation,
+while the post-layer spectrum has `0.51` gain-matched residual and `0.86`
+correlation; the IFFT adds no meaningful additional error.
+
+The investigation also found two narrower legacy-contract discrepancies:
+
+- Cycle 1 rasterizes nonwrapping magnitude and phase meshes over
+  `[-0.05, 1.05]`; Cycle V2 used `[0, 1]`.
+- Cycle 1 derives unscripted voice time from the absolute synthesis-cycle
+  frontier and applies yellow directly. Cycle V2 currently restarts a float
+  voice-time ramp per host block and smooths yellow with red and blue. Applying
+  the ramp directly made output differ by up to `4.47e-7` across host block
+  partitions, so this needs an absolute-sample voice-time contract before the
+  direct-yellow discrepancy can be corrected safely.
+
+The spectral margin has an exact adapter guard; the voice-time discrepancy
+remains open rather than weakening the existing exact block-partition gate.
+Neither explains the aggregate Filter Saw mismatch, so the next boundary must
+capture the actual scratch value and raw magnitude-layer operand. A separate
+converter audit also found that legacy modulation input 2 means `1-Velocity`;
+future ports now map it to Cycle V2 `inverseVelocity`. Filter Saw is invariant
+in blue, so that translation correction does not change this fixture's audio.
+
+New artifacts:
+
+- `/tmp/cycle-filter-saw-stages/comparison.json`
+- `/tmp/cycle-filter-saw-frame-1/comparison.json`
+- `/tmp/cycle-filter-saw-frame-8/comparison.json`
+- `/tmp/cycle-filter-saw-frame-32/comparison.json`
+
+Current status: open, narrowed to the magnitude-layer operand or its scratch
+coordinate. Boundary capture is implemented for the rasterized frame, FFT,
+post-layer spectrum, and reconstructed frame. The first byte difference is in
+the time frame at very low residual, while the first material difference is
+introduced between the forward FFT and post-layer spectrum. Pitch-clocked
+cyclic output remains the next uncaptured boundary after the fixed frame.
+Canonical input reconciliation, deterministic seed control, startup state,
+gain/resampling policy, and remaining Voice Context fields must still be
 separated before enabling `exactSamplesRequired`.
 
 ## Resolved: Cycle 1 and Cycle V2 use different MIDI reference notes

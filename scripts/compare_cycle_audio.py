@@ -5,6 +5,7 @@
 import argparse
 import hashlib
 import json
+import struct
 import subprocess
 import sys
 from pathlib import Path
@@ -152,7 +153,10 @@ def render_capture(
         setup_commands=None):
     write_automation(script, open_command, capture, setup_commands)
     raw_path = Path(capture["rawPath"])
-    if not reuse or not wav.is_file() or not raw_path.is_file():
+    required_paths = [wav, raw_path]
+    if capture.get("stageCapturePath"):
+        required_paths.append(Path(capture["stageCapturePath"]))
+    if not reuse or not all(path.is_file() for path in required_paths):
         run_renderer(wrapper, script, report, log)
 
 
@@ -183,6 +187,140 @@ def repeatability(reference_wav, repeat_wavs):
     }
 
 
+def load_stage_capture(path):
+    with path.open(encoding="utf-8") as source:
+        manifest = json.load(source)
+    if manifest.get("schema") != "cycle-spectral-stage-capture.v1":
+        raise ValueError(f"Unsupported spectral stage capture schema: {path}")
+
+    records = {}
+    for encoded in manifest.get("records", []):
+        raw_path = Path(encoded["rawPath"])
+        if not raw_path.is_absolute():
+            raw_path = path.parent / raw_path
+        payload = raw_path.read_bytes()
+        if hashlib.sha256(payload).hexdigest() != encoded.get("sha256"):
+            raise ValueError(f"Spectral stage payload changed after capture: {raw_path}")
+        primary_count = int(encoded["primaryValueCount"])
+        secondary_count = int(encoded["secondaryValueCount"])
+        value_count = primary_count + secondary_count
+        if len(payload) != value_count * 4:
+            raise ValueError(f"Spectral stage payload has the wrong length: {raw_path}")
+        values = struct.unpack(f"<{value_count}f", payload)
+        key = (encoded["stage"], int(encoded["channel"]))
+        records[key] = {
+            **encoded,
+            "primaryValues": list(values[:primary_count]),
+            "secondaryValues": list(values[primary_count:]),
+        }
+    return records
+
+
+def compare_stage_values(reference, candidate):
+    counts_equal = len(reference) == len(candidate)
+    first_mismatch = None
+    differing_values = 0
+    if counts_equal:
+        for index, (left, right) in enumerate(zip(reference, candidate)):
+            if left == right:
+                continue
+            differing_values += 1
+            if first_mismatch is None:
+                first_mismatch = {
+                    "index": index,
+                    "reference": left,
+                    "candidate": right,
+                }
+
+    compared_count = min(len(reference), len(candidate))
+    left = reference[:compared_count]
+    right = candidate[:compared_count]
+    correlation = None
+    normalized_residual = None
+    gain_scale = None
+    gain_matched_residual = None
+    if compared_count:
+        correlation = cycle_audio_diff.correlation_at_lag(left, right, 0)[0]
+        normalized_residual = cycle_audio_diff.normalized_difference(left, right)
+        gain_scale = cycle_audio_diff.fit_gain(left, right)
+        gain_matched_residual = cycle_audio_diff.normalized_difference(
+            left,
+            [gain_scale * value for value in right],
+        )
+    return {
+        "countsEqual": counts_equal,
+        "referenceValueCount": len(reference),
+        "candidateValueCount": len(candidate),
+        "samplesEqual": counts_equal and differing_values == 0,
+        "differingValues": differing_values if counts_equal else None,
+        "firstMismatch": first_mismatch,
+        "correlation": correlation,
+        "normalizedResidual": normalized_residual,
+        "gainScale": gain_scale,
+        "gainMatchedNormalizedResidual": gain_matched_residual,
+    }
+
+
+def compare_stage_captures(reference_path, candidate_path):
+    reference = load_stage_capture(reference_path)
+    candidate = load_stage_capture(candidate_path)
+    stage_order = [
+        "time-frame",
+        "forward-fft",
+        "post-layer-spectrum",
+        "reconstructed-frame",
+    ]
+    stage_rank = {stage: index for index, stage in enumerate(stage_order)}
+    keys = sorted(
+        set(reference) | set(candidate),
+        key=lambda key: (stage_rank.get(key[0], len(stage_order)), key[1]),
+    )
+    comparisons = []
+    for key in keys:
+        left = reference.get(key)
+        right = candidate.get(key)
+        comparison = {
+            "stage": key[0],
+            "channel": key[1],
+            "present": {"v1": left is not None, "v2": right is not None},
+        }
+        if left is not None:
+            comparison["v1"] = {
+                "frameIndex": left["frameIndex"],
+                "frontier": left["frontier"],
+                "midiNote": left["midiNote"],
+            }
+        if right is not None:
+            comparison["v2"] = {
+                "frameIndex": right["frameIndex"],
+                "frontier": right["frontier"],
+                "midiNote": right["midiNote"],
+            }
+        if left is not None and right is not None:
+            comparison["primary"] = compare_stage_values(
+                left["primaryValues"], right["primaryValues"])
+            comparison["secondary"] = compare_stage_values(
+                left["secondaryValues"], right["secondaryValues"])
+            comparison["samplesEqual"] = (
+                comparison["primary"]["samplesEqual"]
+                and comparison["secondary"]["samplesEqual"])
+        else:
+            comparison["samplesEqual"] = False
+        comparisons.append(comparison)
+
+    first_unequal = next(
+        (comparison["stage"] for comparison in comparisons
+         if not comparison["samplesEqual"]),
+        None,
+    )
+    return {
+        "records": comparisons,
+        "samplesEqual": bool(comparisons)
+            and all(item["samplesEqual"] for item in comparisons),
+        "firstUnequalStage": first_unequal,
+    }
+
+
 def render_note(manifest, note, output_directory, arguments):
     note_directory = output_directory / f"midi-{note}"
     note_directory.mkdir(parents=True, exist_ok=True)
@@ -195,6 +333,13 @@ def render_note(manifest, note, output_directory, arguments):
         arguments,
         manifest["v2"].get("renderOverrides"),
     )
+    if arguments.capture_stages:
+        capture_v1["stageCapturePath"] = str(
+            note_directory / "cycle-v1-stages.json")
+        capture_v2["stageCapturePath"] = str(
+            note_directory / "cycle-v2-stages.json")
+        capture_v1["stageCaptureFrameIndex"] = arguments.stage_frame_index
+        capture_v2["stageCaptureFrameIndex"] = arguments.stage_frame_index
     v1_script = note_directory / "cycle-v1-automation.json"
     v2_script = note_directory / "cycle-v2-automation.json"
 
@@ -271,6 +416,8 @@ def render_note(manifest, note, output_directory, arguments):
             repeat_capture = dict(capture)
             repeat_capture["path"] = str(repeat_wav)
             repeat_capture["rawPath"] = str(repeat_wav.with_suffix(".f32le"))
+            repeat_capture.pop("stageCapturePath", None)
+            repeat_capture.pop("stageCaptureFrameIndex", None)
             render_capture(
                 SCRIPT_DIR / wrapper,
                 note_directory / f"cycle-{engine}-repeat-{repeat}-automation.json",
@@ -307,6 +454,11 @@ def render_note(manifest, note, output_directory, arguments):
         "v1": repeatability(v1_wav, repeat_wavs["v1"]),
         "v2": repeatability(v2_wav, repeat_wavs["v2"]),
     }
+    if arguments.capture_stages:
+        analysis["stageCapture"] = compare_stage_captures(
+            Path(capture_v1["stageCapturePath"]),
+            Path(capture_v2["stageCapturePath"]),
+        )
     analysis["verdict"] = threshold_verdict(analysis, manifest["thresholds"])
     (note_directory / "analysis.json").write_text(
         json.dumps(analysis, indent=2) + "\n",
@@ -358,6 +510,17 @@ def parse_arguments():
     )
     parser.add_argument("--allow-unverified", action="store_true")
     parser.add_argument("--reuse-wavs", action="store_true")
+    parser.add_argument(
+        "--capture-stages",
+        action="store_true",
+        help="capture and compare one oscillator frame at mature spectral boundaries",
+    )
+    parser.add_argument(
+        "--stage-frame-index",
+        type=int,
+        default=0,
+        help="zero-based oscillator frame to capture with --capture-stages",
+    )
     parser.add_argument("--no-fail", action="store_true")
     return parser.parse_args()
 
@@ -392,7 +555,9 @@ def main():
             f"cyclogram={analysis['cyclogram']['meanRowNormalizedDifference']:.4f} "
             f"raw-exact={analysis['rawExact']['samplesEqual']} "
             f"repeatable-v1={analysis['repeatability']['v1']['samplesEqual']} "
-            f"repeatable-v2={analysis['repeatability']['v2']['samplesEqual']}")
+            f"repeatable-v2={analysis['repeatability']['v2']['samplesEqual']}"
+            + (f" first-unequal-stage={analysis['stageCapture']['firstUnequalStage']}"
+               if "stageCapture" in analysis else ""))
     if not report["passed"] and not arguments.no_fail:
         return 1
     return 0

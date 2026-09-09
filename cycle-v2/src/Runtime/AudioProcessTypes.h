@@ -11,6 +11,10 @@
 
 #include <Array/ScopedAlloc.h>
 
+namespace CycleDsp {
+class SpectralStageCaptureSink;
+}
+
 namespace CycleV2 {
 
 struct PublishedNodeConfiguration;
@@ -154,6 +158,7 @@ struct AudioVoiceContext {
     std::vector<TimedControlEvent> controlEvents;
     uint32_t lifecycleSeed {};
     bool hasLifecycleSeed {};
+    CycleDsp::SpectralStageCaptureSink* spectralStageCapture {};
 };
 
 struct AudioProcessWorkArena {

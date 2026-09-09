@@ -41,6 +41,9 @@ public:
             uint64_t revision,
             const AudioExecutionSpec& spec);
     void setPreparedGraph(PreparedGraph* graph);
+    void setSpectralStageCapture(CycleDsp::SpectralStageCaptureSink* capture) {
+        spectralStageCapture = capture;
+    }
     void setVoiceDurationSeconds(float durationSeconds);
     void process(
             RealtimeMidiEventQueue& events,
@@ -100,6 +103,7 @@ private:
     static constexpr size_t maximumScheduledEvents = RealtimeMidiEventQueue::capacity * 2;
 
     PreparedGraph* preparedGraph {};
+    CycleDsp::SpectralStageCaptureSink* spectralStageCapture {};
     std::array<Voice, voiceCount> voices;
     MidiControlState midiControls;
     std::array<RealtimeMidiEvent, maximumScheduledEvents> scheduledEvents;

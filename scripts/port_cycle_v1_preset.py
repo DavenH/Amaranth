@@ -35,7 +35,7 @@ LEGACY_MIDI_REFERENCE_OFFSET = -12
 
 MODULATION_SOURCE_NAMES = {
     1: "voiceTime",
-    2: "velocity",
+    2: "inverseVelocity",
     3: "inverseVelocity",
     4: "keyScale",
     5: "aftertouch",
