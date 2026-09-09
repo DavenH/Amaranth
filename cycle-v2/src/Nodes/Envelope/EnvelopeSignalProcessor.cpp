@@ -20,7 +20,8 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
         float level,
         bool logarithmic,
         bool enabled,
-        float neutralValue) {
+        float neutralValue,
+        bool lowResolution) {
     auto result = std::make_shared<EnvelopeConfiguration>();
     result->mesh = std::shared_ptr<EnvelopeMesh>(
             new EnvelopeMesh(name + "Mesh"),
@@ -34,6 +35,7 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
     result->rasterizer = std::make_shared<EnvRasterizer>(nullptr, name + "Rasterizer");
     result->rasterizer->setMesh(result->mesh.get());
     result->rasterizer->setMorphPosition({ 0.f, red, blue });
+    result->rasterizer->setLowresCurves(lowResolution);
     result->rasterizer->renderWaveformOnly(result->mesh.get(), 0.f);
     result->rasterizer->validateState();
 
@@ -46,6 +48,7 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
     result->blueMorph = blue;
     result->logarithmic = logarithmic;
     result->enabled = enabled;
+    result->lowResolution = lowResolution;
     result->neutralValue = neutralValue;
     return result;
 }
@@ -81,7 +84,8 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
             parameterMap.floatValue("level", 1.f),
             parameterMap.boolValue("logarithmic", false),
             parameterMap.boolValue("enabled", true),
-            purpose == "volume" ? 1.f : (purpose == "pitch" ? 0.5f : 0.f));
+            purpose == "volume" ? 1.f : (purpose == "pitch" ? 0.5f : 0.f),
+            purpose == "pitch" || purpose == "scratch");
 }
 
 void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
@@ -132,7 +136,8 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::prepareMor
             base.level,
             base.logarithmic,
             base.enabled,
-            base.neutralValue);
+            base.neutralValue,
+            base.lowResolution);
 }
 
 bool EnvelopeSignalProcessor::serviceNonRealtimePreparation() {

@@ -486,6 +486,8 @@ TEST_CASE("Graph JSON rounds floats and compacts shallow objects", "[cycle-v2][g
     Mesh edited;
     edited.deepCopy(&current->mesh());
     edited.getVerts().front()->values[Vertex::Amp] = 1.149999976158142f;
+    constexpr float preciseAmplitude = 0.123456789f;
+    edited.getVerts()[1]->values[Vertex::Amp] = preciseAmplitude;
     REQUIRE(graph.replaceNodeModel(
             "waveMesh",
             TrimeshNodeModelState::copyOf(edited, 2)));
@@ -493,9 +495,19 @@ TEST_CASE("Graph JSON rounds floats and compacts shallow objects", "[cycle-v2][g
 
     const String encoded = serializer.toJsonString(graph);
     REQUIRE(encoded.contains("\"amp\": 1.15"));
+    REQUIRE(encoded.contains("\"amp\": 0.12345679"));
     REQUIRE_FALSE(encoded.contains("1.149999976158142"));
     REQUIRE(encoded.contains("{ \"time\":"));
     REQUIRE(encoded.contains("\"vertexIds\": [ 0, 1, 2, 3, 4, 5, 6, 7 ]"));
+
+    const auto loaded = serializer.loadJsonString(encoded);
+    REQUIRE(loaded.succeeded());
+    REQUIRE(loaded.graph.findNode("waveMesh") != nullptr);
+    const auto restored = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            loaded.graph.findNode("waveMesh")->model);
+    REQUIRE(restored != nullptr);
+    REQUIRE(restored->mesh().getVerts()[1]->values[Vertex::Amp]
+            == preciseAmplitude);
 }
 
 TEST_CASE("Graph JSON rejects unsupported, unknown, and legacy input atomically", "[cycle-v2][graph]") {

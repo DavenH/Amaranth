@@ -151,6 +151,10 @@ bool parseRequest(
             0.f,
             16.f,
             (float) doubleProperty(command, "outputGain", 0.125));
+    request.controlNoteOffset = jlimit(
+            -127,
+            127,
+            (int) doubleProperty(command, "controlNoteOffset", 0.0));
     const String ratePolicy = stringProperty(command, "ratePolicy", "native");
     if (ratePolicy == "native") {
         request.ratePolicy = OfflineGraphAudioRatePolicy::Native;
@@ -300,6 +304,7 @@ bool OfflineAudioCaptureAutomation::isScheduledCapture(const var& command) {
             "durationMs",
             "voiceDurationSeconds",
             "outputGain",
+            "controlNoteOffset",
             "ratePolicy",
             "events",
             "note",
@@ -370,6 +375,7 @@ bool OfflineAudioCaptureAutomation::capture(
     object->setProperty("events", (int) request.events.size());
     object->setProperty("blockSize", request.blockSize);
     object->setProperty("voiceDurationSeconds", request.voiceDurationSeconds);
+    object->setProperty("controlNoteOffset", request.controlNoteOffset);
     object->setProperty(
             "ratePolicy",
             request.ratePolicy == OfflineGraphAudioRatePolicy::LegacyInternal44100

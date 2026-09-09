@@ -213,6 +213,25 @@ TEST_CASE("Prepared Envelope exchange rejects stale notes and bounds slot owners
     REQUIRE(exchange.staleResultCount() == 1);
 }
 
+TEST_CASE("Envelope preparation preserves Cycle purpose resolution",
+        "[cycle-v2][runtime][envelope][parity]") {
+    const auto configurationFor = [](const String& purpose) {
+        return EnvelopeSignalProcessor::buildConfiguration({
+                { "purpose", "Purpose", purpose }
+        });
+    };
+
+    const auto volume = configurationFor("volume");
+    const auto pitch = configurationFor("pitch");
+    const auto scratch = configurationFor("scratch");
+    REQUIRE(volume != nullptr);
+    REQUIRE(pitch != nullptr);
+    REQUIRE(scratch != nullptr);
+    REQUIRE_FALSE(volume->lowResolution);
+    REQUIRE(pitch->lowResolution);
+    REQUIRE(scratch->lowResolution);
+}
+
 namespace {
 
 std::vector<NodeParameter> curveParameters(std::vector<FlatCurveVertex> vertices) {

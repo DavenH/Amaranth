@@ -202,7 +202,7 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
                         operation.morphBinding.inputsFor(
                                 *request.processContext,
                                 request.blockSampleOffset,
-                                (uint64_t) request.cycleStartSample),
+                                request.cycleStartSample),
                         operation.configuration->morph,
                         PortDomain::TimeSignal,
                         operation.configuration->primaryViewAxis,

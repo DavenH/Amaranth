@@ -10,6 +10,9 @@ using namespace juce;
 namespace {
 
 String primaryPayloadName(SpectralStage stage) {
+    if (stage == SpectralStage::TimeRaster) {
+        return "time-raster";
+    }
     if (stage == SpectralStage::MagnitudeRaster) {
         return "magnitude-raster";
     }
@@ -23,7 +26,8 @@ String primaryPayloadName(SpectralStage stage) {
 }
 
 String secondaryPayloadName(SpectralStage stage) {
-    if (stage == SpectralStage::MagnitudeRaster) {
+    if (stage == SpectralStage::TimeRaster
+            || stage == SpectralStage::MagnitudeRaster) {
         return "morph-position";
     }
     return stage == SpectralStage::ForwardFft
@@ -185,6 +189,8 @@ int SpectralStageCaptureRecorder::stageIndex(SpectralStage stage) {
 
 String spectralStageName(SpectralStage stage) {
     switch (stage) {
+        case SpectralStage::TimeRaster:
+            return "time-raster";
         case SpectralStage::TimeFrame:
             return "time-frame";
         case SpectralStage::ForwardFft:

@@ -267,6 +267,7 @@ def compare_stage_captures(reference_path, candidate_path):
     reference = load_stage_capture(reference_path)
     candidate = load_stage_capture(candidate_path)
     stage_order = [
+        "time-raster",
         "time-frame",
         "forward-fft",
         "magnitude-raster",
@@ -338,6 +339,8 @@ def render_note(manifest, note, output_directory, arguments):
         arguments,
         manifest["v2"].get("renderOverrides"),
     )
+    capture_v2["controlNoteOffset"] = -manifest["translation"].get(
+        "legacyMidiReferenceOffset", 0)
     if arguments.capture_stages:
         capture_v1["stageCapturePath"] = str(
             note_directory / "cycle-v1-stages.json")

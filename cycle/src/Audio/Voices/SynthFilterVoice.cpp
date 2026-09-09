@@ -290,6 +290,18 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
                 timeBuf);
 
         if (rendered) {
+            std::array<float, 3> morphValues {
+                    position.time.getCurrentValue(),
+                    position.red.getCurrentValue(),
+                    position.blue.getCurrentValue()
+            };
+            for (int channel = 0; channel < 2; ++channel) {
+                captureSpectralStage(
+                        CycleDsp::SpectralStage::TimeRaster,
+                        channel,
+                        timeBuf,
+                        { morphValues.data(), (int) morphValues.size() });
+            }
             float layerPan = props.pan;
             noteState.isStereo |= fabsf(layerPan - 0.5f) > 0.03f;
 

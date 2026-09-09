@@ -46,6 +46,9 @@ public:
     }
     void setVoiceDurationSeconds(float durationSeconds);
     void setOutputGain(float gain) { outputGain = jmax(0.f, gain); }
+    void setControlNoteOffset(int offset) {
+        controlNoteOffset = jlimit(-127, 127, offset);
+    }
     void process(
             RealtimeMidiEventQueue& events,
             float* const* outputChannels,
@@ -113,6 +116,7 @@ private:
     uint64_t nextVoiceOrder {};
     float voiceDurationSeconds { 7.f };
     float outputGain { defaultOutputGain };
+    int controlNoteOffset {};
 
     std::atomic<uint64_t> callbackCounter {};
     std::atomic<uint64_t> activeRevision {};

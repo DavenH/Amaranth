@@ -31,6 +31,7 @@ struct OfflineGraphAudioRequest {
     int channelCount { 2 };
     float voiceDurationSeconds { 7.f };
     float outputGain { 0.125f };
+    int controlNoteOffset {};
     OfflineGraphAudioRatePolicy ratePolicy { OfflineGraphAudioRatePolicy::Native };
     size_t sampleCount {};
     std::vector<OfflineGraphAudioEvent> events;

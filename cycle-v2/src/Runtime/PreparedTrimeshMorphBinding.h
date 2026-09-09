@@ -18,7 +18,7 @@ public:
     TrimeshMorphInputs inputsFor(
             const PreparedOscillatorProcessContext& context,
             size_t blockSampleOffset,
-            uint64_t voiceSampleFrontier) const;
+            double voiceSamplePosition) const;
 
 private:
     std::array<int, 3> morphInputBuffers { -1, -1, -1 };

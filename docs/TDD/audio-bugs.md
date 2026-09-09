@@ -828,6 +828,34 @@ residual, so that boundary is the next investigation. Canonical input
 reconciliation, deterministic seed control, startup state, and remaining Voice
 Context fields must still be separated before enabling `exactSamplesRequired`.
 
+The same-clock residual is now localized below the time frame. A new
+`time-raster` capture records both the raw mesh output and its effective morph.
+At Filter Saw MIDI 48/frame 32, Cycle 1 and Cycle V2 use identical blue and the
+same legacy-range red after separating the audible oscillator note from the
+translated control note. Yellow remains `0.7148094` versus `0.7242211`.
+Regenerating the time, magnitude, and scratch meshes with shortest-round-trip
+vertex values reduces serialization drift without multiline JSON churn, but
+does not remove this timing difference. The exact-model 48 kHz render reaches
+`0.99999991` correlation with `0.000424` gain-matched residual.
+
+Source comparison identifies the missing contract. Cycle 1 configures scratch
+and pitch rasterizers for low-resolution curves and advances the shared
+`EnvelopePlaybackEngine` once per synthesis frame in one-sample-per-cycle mode;
+it samples the current decoupled value before advancing. Cycle V2 now restores
+the purpose-specific low-resolution preparation, but prepared meshes still
+sample the ordinary per-sample envelope block at the frame frontier. A trial
+one-frame history made the selected raw frame nearly exact but broke the live
+frame and host-partition contracts, so it was removed. The open fix is the
+cycle-clocked envelope playback boundary specified in parity TDD slice 22, not
+a buffer-history approximation.
+
+New artifacts:
+
+- `/tmp/cycle-filter-saw-split-note-48000/comparison.json`
+- `/tmp/cycle-filter-saw-exact-models-frame32/comparison.json`
+
+Current status: open at the cycle-clocked scratch-envelope boundary.
+
 ## Resolved: Cycle 1 and Cycle V2 use different MIDI reference notes
 
 Context:

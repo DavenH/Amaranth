@@ -337,7 +337,7 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
         int midiNote,
         const PreparedOscillatorProcessContext& context,
         size_t blockSampleOffset,
-        uint64_t voiceSampleFrontier,
+        double voiceSamplePosition,
         size_t elapsedSamples,
         Buffer<float> left,
         Buffer<float> right) {
@@ -346,7 +346,7 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
             midiNote,
             &context,
             blockSampleOffset,
-            voiceSampleFrontier,
+            voiceSamplePosition,
             elapsedSamples,
             left,
             right);
@@ -357,7 +357,7 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
         int midiNote,
         const PreparedOscillatorProcessContext* context,
         size_t blockSampleOffset,
-        uint64_t voiceSampleFrontier,
+        double voiceSamplePosition,
         size_t elapsedSamples,
         Buffer<float> left,
         Buffer<float> right) {
@@ -372,6 +372,7 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
     }
 
     prepareFrameRandom(context);
+    const uint64_t voiceSampleFrontier = (uint64_t) voiceSamplePosition;
     for (auto& operation : operations) {
         const int count = valueCount(operation.outputDomain, frameSize);
         auto leftOutput = slot(operation.outputs[0], 0, count);
@@ -382,7 +383,7 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                     ? operation.morphBinding.inputsFor(
                             *context,
                             blockSampleOffset,
-                            voiceSampleFrontier)
+                            voiceSamplePosition)
                     : TrimeshMorphInputs {};
             morph = operation.morphResolver.resolve(
                     inputs,
@@ -411,6 +412,24 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                                         GuideCurveProvider::tableSize)
                         },
                         leftOutput);
+                {
+                    std::array<float, 3> morphValues {
+                            morph.time.getCurrentValue(),
+                            morph.red.getCurrentValue(),
+                            morph.blue.getCurrentValue()
+                    };
+                    for (int channel = 0; channel < 2; ++channel) {
+                        captureStage(
+                                context,
+                                CycleDsp::SpectralStage::TimeRaster,
+                                renderCount,
+                                voiceSampleFrontier,
+                                midiNote,
+                                channel,
+                                leftOutput,
+                                { morphValues.data(), (int) morphValues.size() });
+                    }
+                }
                 leftOutput.mul(operation.configuration->gain);
                 leftOutput.copyTo(rightOutput);
                 break;

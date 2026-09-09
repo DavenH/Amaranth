@@ -127,6 +127,35 @@ GraphExecutionPlan loadFilterSawPlan() {
 #endif
 }
 
+TEST_CASE("Prepared trimesh morph binding preserves fractional voice position",
+        "[cycle-v2][runtime][oscillator-region][voice-time][parity]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const auto plan = loadFilterSawPlan();
+    const auto timeLayer = std::find_if(
+            plan.steps.begin(),
+            plan.steps.end(),
+            [](const GraphExecutionStep& step) {
+                return step.nodeId == "timeLayer1";
+            });
+    REQUIRE(timeLayer != plan.steps.end());
+
+    PreparedTrimeshMorphBinding binding;
+    binding.bind(plan, *timeLayer);
+    AudioVoiceContext voice;
+    voice.controls.normalizedVoiceTimeIncrement = 0.001f;
+    PreparedOscillatorProcessContext context;
+    context.voice = &voice;
+
+    const auto inputs = binding.inputsFor(context, 0, 337.75);
+
+    REQUIRE(inputs.hasAbsoluteOverride[0]);
+    REQUIRE(inputs.absoluteOverrides[0] == Catch::Approx(0.33775f));
+    REQUIRE(inputs.absoluteOverrides[0] != Catch::Approx(0.337f));
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
+}
+
 PartitionedRender renderPreparedGraph(
         const GraphExecutionPlan& plan,
         int blockSize,

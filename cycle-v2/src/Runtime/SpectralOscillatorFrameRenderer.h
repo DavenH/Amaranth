@@ -37,7 +37,7 @@ public:
             int midiNote,
             const PreparedOscillatorProcessContext& context,
             size_t blockSampleOffset,
-            uint64_t voiceSampleFrontier,
+            double voiceSamplePosition,
             size_t elapsedSamples,
             Buffer<float> left,
             Buffer<float> right);
@@ -75,7 +75,7 @@ private:
             int midiNote,
             const PreparedOscillatorProcessContext* context,
             size_t blockSampleOffset,
-            uint64_t voiceSampleFrontier,
+            double voiceSamplePosition,
             size_t elapsedSamples,
             Buffer<float> left,
             Buffer<float> right);

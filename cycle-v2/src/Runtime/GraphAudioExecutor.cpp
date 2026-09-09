@@ -662,6 +662,9 @@ void GraphAudioExecutor::renderOscillatorRegion(
         };
     }
 
+    const int oscillatorNoteNumber = voice.oscillatorNoteNumber >= 0
+            ? voice.oscillatorNoteNumber
+            : voice.controls.noteNumber;
     const auto renderSegment = [&](size_t start, size_t count) {
         if (!region.active || count == 0) {
             return;
@@ -674,7 +677,7 @@ void GraphAudioExecutor::renderOscillatorRegion(
                 start,
                 region.voiceSamplePosition,
                 timing,
-                voice.controls.noteNumber + region.midiNoteOffset,
+                oscillatorNoteNumber + region.midiNoteOffset,
                 voice.controls.velocity,
                 pitchEnvelope,
                 left.section((int) start, (int) count),

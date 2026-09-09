@@ -260,7 +260,11 @@ void RealtimeGraphRenderer::renderVoices(
         if (!voice.active) {
             continue;
         }
-        voice.context.controls.noteNumber = voice.noteNumber;
+        voice.context.controls.noteNumber = jlimit(
+                0,
+                127,
+                voice.noteNumber + controlNoteOffset);
+        voice.context.oscillatorNoteNumber = voice.noteNumber;
         voice.context.controls.velocity = voice.velocity;
         voice.context.controls.normalizedVoiceTime = voice.normalizedTime;
         voice.context.controls.normalizedVoiceTimeIncrement = timeIncrement;

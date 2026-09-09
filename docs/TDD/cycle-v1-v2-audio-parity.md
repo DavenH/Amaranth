@@ -342,7 +342,22 @@ as the scratch envelope evolves.
 21. Localize the remaining same-clock numerical residual, beginning with the
     already-observed raw time-frame difference. Preserve zero-lag unity-gain
     comparison and do not replace the mature mesh rasterizer with a test
-    approximation.
+    approximation. Complete: shortest-round-trip mesh serialization and a
+    regenerated Filter Saw graph remove port precision loss without expanding
+    the JSON structure. The time-raster capture proves the remaining frame-32
+    difference is the scratch clock, not rasterization: Cycle 1 uses
+    `0.7148094`, while Cycle V2's blockwise signal supplies `0.7242211`.
+22. Introduce a shared cycle-clocked envelope playback boundary for prepared
+    oscillator regions. In progress: the authoritative implementation is
+    `CycleBasedVoice::updateEnvelopes()` using the shared
+    `EnvelopePlaybackEngine` in one-sample-per-cycle mode. Reuse its sampling,
+    advancement, loop/release, and guide-seed behavior unchanged. The boundary
+    must translate a compiled envelope attachment plus voice lifecycle and
+    elapsed cycle samples into one scalar shared by every consuming mesh
+    operation. Once present, prepared envelope attachments must stop deriving
+    scratch time from a blockwise `SignalPayload`; arbitrary non-envelope
+    scratch signals may retain that graph-level path. Do not add per-operation
+    history or a delayed-buffer approximation.
 
 Each slice receives focused semantic tests, a refactor/style pass, and a
 coherent commit before the next slice.

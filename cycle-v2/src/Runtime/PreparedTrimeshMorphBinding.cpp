@@ -86,7 +86,7 @@ void PreparedTrimeshMorphBinding::bind(
 TrimeshMorphInputs PreparedTrimeshMorphBinding::inputsFor(
         const PreparedOscillatorProcessContext& context,
         size_t blockSampleOffset,
-        uint64_t voiceSampleFrontier) const {
+        double voiceSamplePosition) const {
     TrimeshMorphInputs inputs;
     for (size_t axis = 0; axis < inputs.absoluteMorph.size(); ++axis) {
         inputs.absoluteMorph[axis] = context.signalAt(morphInputBuffers[axis]);
@@ -96,7 +96,7 @@ TrimeshMorphInputs PreparedTrimeshMorphBinding::inputsFor(
             continue;
         }
         inputs.absoluteOverrides[axis] = (float) (
-                (double) voiceSampleFrontier
+                voiceSamplePosition
                 * context.voice->controls.normalizedVoiceTimeIncrement);
         inputs.hasAbsoluteOverride[axis] = true;
     }

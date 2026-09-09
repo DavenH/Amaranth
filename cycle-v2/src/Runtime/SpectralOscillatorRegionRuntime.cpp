@@ -230,7 +230,7 @@ bool SpectralOscillatorRegionRuntime::refreshSharedFramesThrough(
                 context.midiNote,
                 context,
                 blockSampleOffsetFor(frontier, context),
-                frontier,
+                nextSharedFramePosition,
                 elapsedSamples,
                 currentFrames[0].withSize(fixedFrameSize),
                 currentFrames[1].withSize(fixedFrameSize))) {

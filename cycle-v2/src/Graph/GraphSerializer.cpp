@@ -8,6 +8,8 @@
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 
+#include <array>
+#include <charconv>
 #include <cmath>
 #include <unordered_map>
 #include <unordered_set>
@@ -403,7 +405,46 @@ String scalarToJSON(const var& value) {
     return JSON::toString(value, true, maximumDecimalPlaces);
 }
 
-String singleLineObject(const DynamicObject& object) {
+String meshScalarToJSON(const var& value) {
+    if (!value.isDouble()) {
+        return scalarToJSON(value);
+    }
+
+    const float number = (float) (double) value;
+    if (number == 0.f) {
+        return "0.0";
+    }
+    std::array<char, 32> characters {};
+    const auto conversion = std::to_chars(
+            characters.data(),
+            characters.data() + characters.size(),
+            number,
+            std::chars_format::fixed);
+    if (conversion.ec != std::errc()) {
+        return scalarToJSON(value);
+    }
+    String result = String::fromUTF8(
+            characters.data(),
+            (int) (conversion.ptr - characters.data()));
+    if (!result.containsChar('.')
+            && !result.containsChar('e')
+            && !result.containsChar('E')) {
+        result << ".0";
+    }
+    return result;
+}
+
+bool isMeshVertexObject(const DynamicObject& object) {
+    return object.hasProperty("time")
+            && object.hasProperty("phase")
+            && object.hasProperty("amp")
+            && object.hasProperty("key")
+            && object.hasProperty("mod")
+            && object.hasProperty("weight")
+            && object.hasProperty("id");
+}
+
+String singleLineObject(const DynamicObject& object, bool meshVertexObject) {
     String result { "{ " };
     bool first = true;
     for (const auto& property : object.getProperties()) {
@@ -413,7 +454,10 @@ String singleLineObject(const DynamicObject& object) {
         if (!first) {
             result << ", ";
         }
-        result << scalarToJSON(property.name.toString()) << ": " << scalarToJSON(property.value);
+        result << scalarToJSON(property.name.toString()) << ": "
+               << (meshVertexObject
+                        ? meshScalarToJSON(property.value)
+                        : scalarToJSON(property.value));
         first = false;
     }
     return first ? String("{}") : result + " }";
@@ -440,11 +484,14 @@ void appendIndent(String& output, int depth) {
 void appendCanonicalJSON(const var& value, int depth, String& output);
 
 void appendCanonicalObject(const DynamicObject& object, int depth, String& output) {
-    const String compact = singleLineObject(object);
+    const bool meshVertexObject = isMeshVertexObject(object);
+    const String compact = singleLineObject(object, meshVertexObject);
     const bool edgeObject = object.hasProperty("sourceNodeId")
             && object.hasProperty("destNodeId");
     if (compact.isNotEmpty()
-            && (edgeObject || depth * 4 + compact.length() <= maximumLineLength)) {
+            && (edgeObject
+                    || meshVertexObject
+                    || depth * 4 + compact.length() <= maximumLineLength)) {
         output << compact;
         return;
     }

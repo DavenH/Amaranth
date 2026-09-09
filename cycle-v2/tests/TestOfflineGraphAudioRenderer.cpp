@@ -212,6 +212,7 @@ TEST_CASE("Offline spectral capture records equivalent harmonic boundaries",
     CycleDsp::SpectralStageCaptureRecorder recorder;
     REQUIRE(recorder.prepare(4096, 0));
     auto request = renderRequest(256, 48);
+    request.controlNoteOffset = 12;
     request.spectralStageCapture = &recorder;
     const auto plan = filterSawPlan();
     const auto magnitudeStep = std::find_if(
@@ -243,6 +244,9 @@ TEST_CASE("Offline spectral capture records equivalent harmonic boundaries",
             request);
 
     REQUIRE(result.succeeded);
+    const auto* timeRaster = recorder.record(
+            CycleDsp::SpectralStage::TimeRaster,
+            0);
     const auto* time = recorder.record(
             CycleDsp::SpectralStage::TimeFrame,
             0);
@@ -265,6 +269,9 @@ TEST_CASE("Offline spectral capture records equivalent harmonic boundaries",
             CycleDsp::SpectralStage::PitchClockedCycle,
             0);
     REQUIRE(time != nullptr);
+    REQUIRE(timeRaster != nullptr);
+    REQUIRE(timeRaster->secondary.size() == 3);
+    REQUIRE(timeRaster->secondary[1] == Catch::Approx(40.f / 107.f));
     REQUIRE(forward != nullptr);
     REQUIRE(magnitudeRaster != nullptr);
     REQUIRE(magnitudeOperand != nullptr);
@@ -279,7 +286,7 @@ TEST_CASE("Offline spectral capture records equivalent harmonic boundaries",
     REQUIRE(magnitudeRaster->primary.size() == forward->primary.size());
     REQUIRE(magnitudeRaster->secondary.size() == 3);
     REQUIRE(magnitudeRaster->secondary[1]
-            == Catch::Approx(48.f / 127.f));
+            == Catch::Approx(40.f / 107.f));
     REQUIRE(magnitudeRaster->secondary[2]
             == Catch::Approx(1.f - 96.f / 127.f));
     REQUIRE(magnitudeOperand->primary.size() == forward->primary.size());
@@ -346,6 +353,7 @@ TEST_CASE("Scheduled audio automation shares the Cycle capture contract",
     object->setProperty("channels", 2);
     object->setProperty("durationMs", 100.0);
     object->setProperty("voiceDurationSeconds", 1.25);
+    object->setProperty("controlNoteOffset", 12);
     object->setProperty("ratePolicy", "legacyInternal44100");
 
     Array<var> events;
@@ -371,6 +379,7 @@ TEST_CASE("Scheduled audio automation shares the Cycle capture contract",
     REQUIRE((int64) data.getProperty("samples", 0) == 4800);
     REQUIRE((int) data.getProperty("events", 0) == 1);
     REQUIRE((double) data.getProperty("voiceDurationSeconds", 0.0) == 1.25);
+    REQUIRE((int) data.getProperty("controlNoteOffset", 0) == 12);
     REQUIRE(data.getProperty("ratePolicy", {}).toString() == "legacyInternal44100");
     REQUIRE((double) data.getProperty("rms", 0.0) > 0.0);
 #else
