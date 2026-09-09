@@ -137,7 +137,7 @@ void TrimeshPanelBridge::syncFromNode(
             node,
             previewKeyScaleAxis,
             previewMidiNote);
-    if (model.syncFromNode(presentationNode)) {
+    if (!meshEditGestureActive && model.syncFromNode(presentationNode)) {
         stopTimer();
         pendingMeshEdit = false;
         clearInteractionPointers();
@@ -211,6 +211,9 @@ void TrimeshPanelBridge::syncFromNode(
 }
 
 void TrimeshPanelBridge::refreshAfterMeshEdit(TrimeshMeshEditEvent event) {
+    if (!event.gestureComplete) {
+        meshEditGestureActive = true;
+    }
     vector<Vertex*>& selected = event.sourceIs3D
             ? interactor3D.getSelected()
             : interactor2D.getSelected();
@@ -260,6 +263,9 @@ void TrimeshPanelBridge::flushPendingMeshEdit(bool gestureComplete) {
 
     if (meshEditedCallback != nullptr) {
         meshEditedCallback({ pendingMeshEditSourceIs3D, gestureComplete });
+    }
+    if (gestureComplete) {
+        meshEditGestureActive = false;
     }
 }
 

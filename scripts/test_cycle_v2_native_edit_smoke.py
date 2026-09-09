@@ -1488,6 +1488,33 @@ class NativeEditSmoke:
 
         self.assert_audio_changed(initial_audio, self.audio_samples(), "Trimesh downstream output")
 
+    def trimesh_point_drag_sequence(self):
+        state = self.open_editor("waveMesh", trimesh=True)
+        panel = self.target("expanded:waveMesh.panel2D")
+        displayed_intercepts = state["trimesh"]["panelDisplayedIntercepts"]
+        source_display = displayed_intercepts[len(displayed_intercepts) // 2]
+        source = self.point(panel, source_display["x"], source_display["y"])
+        destination_display = {
+            "x": min(0.95, source_display["x"] + 0.015),
+            "y": max(0.05, source_display["y"] - 0.04),
+        }
+        destination = self.point(
+            panel,
+            destination_display["x"],
+            destination_display["y"],
+        )
+        model_before = self.trimesh_model(state)
+        revision_before = self.model_revision(state)
+
+        self.drag(source, destination, steps=20, step_wait_ms=6)
+        moved_state = self.inspect_until(
+            "waveMesh",
+            lambda inspected: self.model_revision(inspected) > revision_before,
+        )
+
+        self.assert_trimesh_slice(moved_state, "Trimesh slice after focused point drag")
+        assert self.trimesh_model(moved_state) != model_before
+
     def spectral_trimesh_sequence(self):
         self.command({
             "command": "openGraph",
@@ -1661,6 +1688,7 @@ class NativeEditSmoke:
                 "waveshaper": self.effect2d_sequence,
                 "envelope": self.envelope_sequence,
                 "trimesh": self.trimesh_sequence,
+                "trimesh-point-drag": self.trimesh_point_drag_sequence,
                 "trimesh-versioning": lambda: self.trimesh_sequence(True),
                 "spectral-trimesh": self.spectral_trimesh_sequence,
                 "causal-trimesh": self.causal_trimesh_sequence,
@@ -1688,6 +1716,7 @@ if __name__ == "__main__":
         "waveshaper",
         "envelope",
         "trimesh",
+        "trimesh-point-drag",
         "trimesh-versioning",
         "spectral-trimesh",
         "causal-trimesh",

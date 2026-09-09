@@ -22,6 +22,7 @@ enum class TrimeshExpandedHitRegionKind {
     PrimaryAxis,
     LinkToggle,
     VertexParameter,
+    VertexGuideGain,
     VertexGuideAttachment
 };
 
@@ -99,6 +100,9 @@ public:
     void setMeshEditedCallback(std::function<void(TrimeshMeshEditEvent)> callback);
     Mesh& currentMesh();
     bool setVertexParameter(int vertexIndex, const juce::String& parameterId, float value);
+    bool setVertexGuideGain(int vertexIndex, const juce::String& parameterId, float value);
+    bool guideGainValueForParameter(const juce::String& parameterId, float& value);
+    bool hasGuideAttachmentForParameter(const juce::String& parameterId) const;
     std::vector<TrimeshVertexParameter> vertexParametersForIndex(int vertexIndex);
     int selectedVertexIndexForPanel();
     std::vector<TrimeshVertexMarker> vertexMarkers();
@@ -187,6 +191,7 @@ private:
     juce::Rectangle<float> vertexParameterPanelBounds(juce::Rectangle<float> content) const;
     static juce::Rectangle<float> vertexParameterRowBounds(juce::Rectangle<float> parameterArea, int parameterIndex);
     static juce::Rectangle<float> vertexParameterRailBounds(juce::Rectangle<float> parameterRow);
+    static juce::String guideGainParameterId(int parameterIndex);
     static juce::String vertexParameterId(int parameterIndex);
     static juce::Rectangle<float> waveshapeContentBounds(juce::Rectangle<float> content);
 

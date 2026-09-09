@@ -543,10 +543,17 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
     if (label.isEmpty()) {
         label = activeVertexParameterId;
     }
-    if (!activeVertexWidget->setVertexParameter(
-            activeVertexIndex,
-            activeVertexParameterId,
-            value)) {
+    const bool editingGuideGain = activeVertexParameterId.startsWith("guideGain.");
+    const bool modelUpdated = editingGuideGain
+            ? activeVertexWidget->setVertexGuideGain(
+                    activeVertexIndex,
+                    activeVertexParameterId,
+                    value)
+            : activeVertexWidget->setVertexParameter(
+                    activeVertexIndex,
+                    activeVertexParameterId,
+                    value);
+    if (!modelUpdated) {
         return false;
     }
     const uint64_t modelRevision = node->model != nullptr ? node->model->revision() : 0;
@@ -570,8 +577,11 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
             activeVertexNodeId,
             activeVertexParameterId,
             fingerprint);
+    const String valueText = editingGuideGain
+            ? String((value * 2.f - 1.f) * 30.f, 1) + " dB"
+            : String(value, 2);
     presentation.setNodeEditorStatus(
-            "Vertex #" + String(activeVertexIndex) + " " + label + " = " + String(value, 2));
+            "Vertex #" + String(activeVertexIndex) + " " + label + " = " + valueText);
     presentation.repaintNodeEditor(false);
     return true;
 }
@@ -586,6 +596,9 @@ void NodeEditorCommandService::endTrimeshVertexParameterEdit() {
     const bool changed = activeVertexChanged;
     if (findNode(activeVertexNodeId) != nullptr && activeVertexWidget != nullptr) {
         commands.commitTransientEdit();
+        if (const Node* committedNode = findNode(activeVertexNodeId)) {
+            activeVertexWidget->syncFromNode(*committedNode);
+        }
     } else {
         commands.cancelTransientEdit();
     }
@@ -671,6 +684,14 @@ bool NodeEditorCommandService::showTrimeshGuideAttachmentMenu(
         const String& nodeId,
         const String& parameterField,
         Rectangle<int> targetScreenArea) {
+    if (hasOpenTrimeshGuideAttachmentMenuFor(nodeId, parameterField)) {
+        ++activeGuideMenuGeneration;
+        activeGuideMenuNodeId = {};
+        activeGuideMenuParameterField = {};
+        PopupMenu::dismissAllActiveMenus();
+        return true;
+    }
+
     const Node* node = findNode(nodeId);
     TrimeshWidget* widget = node != nullptr ? resources.trimeshWidget(*node) : nullptr;
     if (node == nullptr || widget == nullptr || owner == nullptr) {
@@ -683,10 +704,24 @@ bool NodeEditorCommandService::showTrimeshGuideAttachmentMenu(
     for (const auto& item : items) {
         menu.addItem(item.menuId, item.label, true, item.attached);
     }
+    PopupMenu::dismissAllActiveMenus();
+    activeGuideMenuNodeId = nodeId;
+    activeGuideMenuParameterField = parameterField;
+    const uint64_t menuGeneration = ++activeGuideMenuGeneration;
     auto safeOwner = owner;
     menu.showMenuAsync(
             PopupMenu::Options().withTargetScreenArea(targetScreenArea),
-            [this, safeOwner, nodeId, vertexIndex, parameterField, items](int menuId) {
+            [this,
+             safeOwner,
+             nodeId,
+             vertexIndex,
+             parameterField,
+             items,
+             menuGeneration](int menuId) {
+                if (menuGeneration == activeGuideMenuGeneration) {
+                    activeGuideMenuNodeId = {};
+                    activeGuideMenuParameterField = {};
+                }
                 if (safeOwner == nullptr || menuId == 0) {
                     return;
                 }
@@ -719,6 +754,13 @@ bool NodeEditorCommandService::showTrimeshGuideAttachmentMenu(
                 presentation.repaintNodeEditor(false);
             });
     return true;
+}
+
+bool NodeEditorCommandService::hasOpenTrimeshGuideAttachmentMenuFor(
+        const String& nodeId,
+        const String& parameterField) const {
+    return activeGuideMenuNodeId == nodeId
+            && activeGuideMenuParameterField == parameterField;
 }
 
 bool NodeEditorCommandService::selectTrimeshVertexIndex(

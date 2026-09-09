@@ -246,6 +246,9 @@ public:
             const String& nodeId,
             const String& parameterField,
             Rectangle<int> targetScreenArea) override;
+    bool hasOpenTrimeshGuideAttachmentMenuFor(
+            const String& nodeId,
+            const String& parameterField) const;
     bool selectTrimeshVertexIndex(const String& nodeId, int vertexIndex) override;
     void persistTrimeshMeshEdits(const String& nodeId, bool gestureComplete) override;
 
@@ -268,6 +271,9 @@ private:
     TrimeshWidget* activeVertexWidget {};
     int activeVertexIndex { -1 };
     bool activeVertexChanged {};
+    String activeGuideMenuNodeId;
+    String activeGuideMenuParameterField;
+    uint64_t activeGuideMenuGeneration {};
     String activeMeshNodeId;
     bool activeMeshChanged {};
     bool curveTransactionActive {};

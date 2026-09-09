@@ -182,6 +182,7 @@ public:
             auto* encoded = new DynamicObject();
             encoded->setProperty("id", parameter.id);
             encoded->setProperty("value", parameter.value);
+            encoded->setProperty("guideGain", parameter.guideGain);
             selectedParameters.add(encoded);
         }
         meshState->setProperty("selectedVertexParameters", selectedParameters);

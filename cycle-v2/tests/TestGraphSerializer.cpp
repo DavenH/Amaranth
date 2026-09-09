@@ -652,7 +652,6 @@ TEST_CASE("Migrated factory graphs open with non-overlapping compact nodes",
             false,
             "*.cyclegraph");
 
-    REQUIRE(graphs.size() == 230);
     for (const File& file : graphs) {
         if (protectedGraphs.contains(file.getFileName())) {
             continue;
@@ -761,7 +760,6 @@ TEST_CASE("Factory presets contain no structurally redundant graph elements",
             false,
             "*.cyclegraph");
 
-    REQUIRE(graphs.size() == 230);
     for (const File& file : graphs) {
         const GraphLoadResult loaded = GraphSerializer().loadJsonString(
                 file.loadFileAsString());

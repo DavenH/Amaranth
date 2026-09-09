@@ -90,6 +90,7 @@ private:
     int lastPreviewKeyScaleAxis { -2 };
     bool pendingMeshEdit {};
     bool pendingMeshEditSourceIs3D {};
+    bool meshEditGestureActive {};
 };
 
 }
