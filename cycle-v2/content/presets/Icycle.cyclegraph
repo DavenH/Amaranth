@@ -6,14 +6,14 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 475.20001, "y": 633.0 },
+            "position": { "x": 554.51038, "y": 619.0 },
             "parameters": { "domain": "waveform", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 475.20001, "y": 333.0 },
+            "position": { "x": 170.37244, "y": 277.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -44,7 +44,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 475.20001, "y": 861.0 },
+            "position": { "x": 194.37245, "y": 721.0 },
             "parameters": { "enabled": true, "mode": "group", "order": 6, "width": 20.06134, "panSpread": 0.768, "phase": 0.592, "jitter": 0.4 },
             "model": {
                 "schema": "unisonVoices",
@@ -59,7 +59,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 855.20001, "y": 619.0 },
+            "position": { "x": 903.47589, "y": 619.0 },
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
@@ -471,6 +471,9 @@
             "kind": "waveshaper",
             "definitionVersion": 1,
             "position": { "x": 2873.19995, "y": 619.0 },
+            "portSides": {
+                "outputs": { "time": "bottom" }
+            },
             "parameters": { "enabled": true, "pre": 0.512, "post": 0.472, "aaFactor": "1" },
             "model": {
                 "schema": "flatCurve",
@@ -596,7 +599,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 667.0 },
+            "position": { "x": 155.17242, "y": 449.0 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -840,7 +843,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 855.20001, "y": 1336.0 },
+            "position": { "x": 155.17245, "y": 986.99994 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1480,7 +1483,11 @@
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 3194.19995, "y": 619.0 },
+            "position": { "x": 2865.69995, "y": 971.00006 },
+            "portSides": {
+                "inputs": { "time": "top" },
+                "outputs": { "time": "bottom" }
+            },
             "parameters": { "enabled": true, "size": 0.14286, "post": 0.508, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
@@ -1565,14 +1572,18 @@
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 3530.19995, "y": 619.0 },
+            "position": { "x": 2885.69995, "y": 1234.51733 },
+            "portSides": {
+                "inputs": { "time": "top" },
+                "outputs": { "time": "bottom" }
+            },
             "parameters": { "enabled": true, "time": 0.748, "feedback": 0.548, "wet": 1.0, "spin": 1.0, "spinIters": 0.624 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 3826.19995, "y": 619.0 },
+            "position": { "x": 3186.54468, "y": 1245.48291 },
             "parameters": {}
         }
     ],

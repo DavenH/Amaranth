@@ -171,6 +171,7 @@ struct GraphExecutionPlan {
     size_t maximumOutputCount { 1 };
     size_t maximumAttachmentCount {};
     size_t maximumTraversalColumns { 8 };
+    float outputGain { 1.f };
     std::vector<String> nodeOrder;
     std::vector<GraphExecutionStep> steps;
     std::vector<GraphBufferPlan> buffers;

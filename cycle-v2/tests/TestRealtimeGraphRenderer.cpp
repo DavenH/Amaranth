@@ -1,12 +1,78 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
+
+#include <Audio/CycleDsp/EffectParameterMapping.h>
+
+#include <algorithm>
+#include <cmath>
+#include <vector>
 
 #include "Graph/GraphCompiler.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/NodeParameterMap.h"
 #include "Graph/GraphSerializer.h"
 #include "Graph/NodeGraph.h"
 #include "Runtime/RealtimeGraphRenderer.h"
 
 using namespace CycleV2;
 using namespace juce;
+
+namespace {
+
+std::vector<float> renderOutputGain(float gainUnitValue, float& compiledGain) {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "out",
+            "gain",
+            "Gain",
+            String(gainUnitValue)).succeeded());
+
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    compiledGain = compiled.plan.outputGain;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 256;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    renderer.setPreparedGraph(prepared.get());
+    REQUIRE(queue.enqueue(
+            MidiMessage::noteOn(1, 60, (uint8) 100),
+            MidiEventSource::PerformanceKeyboard,
+            1.0));
+
+    AudioBuffer<float> outputBuffer(2, 256);
+    float* channels[] {
+            outputBuffer.getWritePointer(0),
+            outputBuffer.getWritePointer(1)
+    };
+    renderer.process(queue, channels, 2, 256, 44100.0, 1.0);
+    return {
+            outputBuffer.getReadPointer(0),
+            outputBuffer.getReadPointer(0) + outputBuffer.getNumSamples()
+    };
+}
+
+}
+
+TEST_CASE("Realtime graph renderer applies Output gain separately from safety headroom",
+        "[cycle-v2][audio-device][realtime][output][gain]") {
+    float quietGain {};
+    float unityGain {};
+    const auto quiet = renderOutputGain(0.4f, quietGain);
+    const auto unity = renderOutputGain(0.5f, unityGain);
+
+    REQUIRE(quietGain == Catch::Approx(CycleDsp::outputGain(0.4f)));
+    REQUIRE(unityGain == Catch::Approx(1.f));
+    float maximumResidual = 0.f;
+    for (size_t index = 0; index < quiet.size(); ++index) {
+        maximumResidual = std::max(
+                maximumResidual,
+                std::abs(quiet[index] - unity[index] * quietGain));
+    }
+    REQUIRE(maximumResidual < 1e-6f);
+}
 
 TEST_CASE("Realtime graph renderer turns MIDI note gestures into graph audio",
         "[cycle-v2][audio-device][realtime][midi]") {

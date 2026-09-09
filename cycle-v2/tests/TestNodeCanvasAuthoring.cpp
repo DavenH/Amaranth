@@ -422,6 +422,40 @@ TEST_CASE("Inline Pan drag publishes one undoable parameter gesture",
             .floatValue("pan", 0.f) == 0.5f);
 }
 
+TEST_CASE("Output gain drag publishes one transient undoable DSP gesture",
+        "[cycle-v2][canvas][authoring][output][gain]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "output", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    REQUIRE(authoring.beginOutputGainGesture("output"));
+    REQUIRE(authoring.updateOutputGainGesture(0.62f));
+    REQUIRE(authoring.updateOutputGainGesture(0.78f));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("output"))
+            .floatValue("gain", 0.f) == 0.5f);
+    REQUIRE(NodeParameterMap(*commands.editingGraph().findNode("output"))
+            .floatValue("gain", 0.f) == 0.78f);
+    REQUIRE_FALSE(document.canUndo());
+
+    const auto committed = authoring.endOutputGainGesture();
+    REQUIRE(committed.succeeded);
+    REQUIRE(committed.graphChanged);
+    REQUIRE(document.canUndo());
+    REQUIRE(hasImpact(
+            document.lastChange().parameterImpacts,
+            ParameterImpact::DspConfiguration));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("output"))
+            .floatValue("gain", 0.f) == 0.78f);
+
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(NodeParameterMap(*document.graph().findNode("output"))
+            .floatValue("gain", 0.f) == 0.5f);
+}
+
 TEST_CASE("Pan can be added to a cable as one undoable authoring command",
         "[cycle-v2][canvas][authoring][pan][cable]") {
     GraphNodeFactory factory;

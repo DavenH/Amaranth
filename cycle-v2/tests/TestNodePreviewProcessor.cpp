@@ -943,25 +943,50 @@ TEST_CASE("Output meter layout gives width to both channels", "[cycle-v2][ui]") 
 
     for (const auto area : areas) {
         const auto layout = OutputMeterPresentation::layout(area);
-        const float channelGap = layout.right.getX() - layout.left.getRight();
+        const float leftGap = layout.faderHitTarget.getX() - layout.left.getRight();
+        const float rightGap = layout.right.getX() - layout.faderHitTarget.getRight();
 
         REQUIRE(layout.left.getWidth() == Catch::Approx(layout.right.getWidth()));
         REQUIRE(layout.left.getRight() <= layout.right.getX());
-        REQUIRE(channelGap >= 4.f);
-        REQUIRE(channelGap <= 8.f);
+        REQUIRE(leftGap == Catch::Approx(rightGap));
+        REQUIRE(leftGap >= 3.99f);
+        REQUIRE(leftGap <= 8.01f);
         REQUIRE(area.contains(layout.left));
         REQUIRE(area.contains(layout.right));
+        REQUIRE(area.contains(layout.faderHitTarget));
+        REQUIRE(layout.faderHitTarget.getWidth() >= 24.f);
+        REQUIRE(layout.left.getRight() < layout.faderHitTarget.getX());
+        REQUIRE(layout.faderHitTarget.getRight() < layout.right.getX());
+        REQUIRE(layout.faderHitTarget.getCentreX() == Catch::Approx(area.getCentreX()));
+        REQUIRE(layout.faderTrack.getWidth() == 2.f);
     }
 
     const auto natural = OutputMeterPresentation::layout({ 0.f, 0.f, 190.f, 132.f });
     const float occupiedFraction = (natural.left.getWidth() + natural.right.getWidth()) / 190.f;
-    REQUIRE(occupiedFraction >= 0.60f);
+    REQUIRE(occupiedFraction >= 0.56f);
+    REQUIRE(natural.faderHitTarget.getWidth() / 190.f <= 0.24f);
 
     const Rectangle<float> channel(10.f, 20.f, 30.f, 100.f);
     REQUIRE(OutputMeterPresentation::fillBounds(channel, 0.f).getHeight() == 0.f);
     REQUIRE(OutputMeterPresentation::fillBounds(channel, 0.25f)
             == Rectangle<float>(10.f, 95.f, 30.f, 25.f));
     REQUIRE(OutputMeterPresentation::fillBounds(channel, 2.f) == channel);
+
+    const Rectangle<float> faderArea(0.f, 0.f, 190.f, 132.f);
+    const auto fader = OutputMeterPresentation::layout(faderArea);
+    REQUIRE(OutputMeterPresentation::gainUnitValueAt(
+            faderArea,
+            fader.faderTrack.getY()) == 1.f);
+    REQUIRE(OutputMeterPresentation::gainUnitValueAt(
+            faderArea,
+            fader.faderTrack.getBottom()) == 0.f);
+    REQUIRE(OutputMeterPresentation::gainThumbBounds(faderArea, 0.f).getCentreY()
+            == Catch::Approx(fader.faderTrack.getBottom()));
+    REQUIRE(OutputMeterPresentation::gainThumbBounds(faderArea, 0.5f).getCentreY()
+            == Catch::Approx(fader.faderTrack.getCentreY()));
+    REQUIRE(OutputMeterPresentation::gainThumbBounds(faderArea, 1.f).getCentreY()
+            == Catch::Approx(fader.faderTrack.getY()));
+    REQUIRE(OutputMeterPresentation::gainLabel(0.5f) == "0 dB");
 }
 
 TEST_CASE("Output meter painting reveals a low nonzero level", "[cycle-v2][ui]") {

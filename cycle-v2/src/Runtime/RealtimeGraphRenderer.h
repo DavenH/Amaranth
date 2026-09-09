@@ -2,6 +2,9 @@
 
 #include <JuceHeader.h>
 
+#include <Audio/SmoothedParameter.h>
+#include <Array/ScopedAlloc.h>
+
 #include <array>
 #include <atomic>
 #include <memory>
@@ -21,6 +24,7 @@ public:
         GraphExecutionPlan plan;
         AudioExecutionSpec spec;
         GraphAudioExecutor executor;
+        ScopedAlloc<float> outputGainRamp;
     };
 
     struct Diagnostics {
@@ -116,6 +120,8 @@ private:
     uint64_t nextVoiceOrder {};
     float voiceDurationSeconds { 7.f };
     float outputGain { defaultOutputGain };
+    SmoothedParameter graphOutputGain { 1.f };
+    bool outputGainInitialized {};
     int controlNoteOffset {};
 
     std::atomic<uint64_t> callbackCounter {};
