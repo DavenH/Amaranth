@@ -2,12 +2,35 @@
 
 ## Remaining priority
 
-There are no open deterministic P0 or P1 UI regressions as of 2026-09-06.
+There are no open deterministic P0 regressions as of 2026-09-09.
 Resolved and no-longer-reproducing entries have been removed from this ledger.
 
-1. **P2 — Intermittent CoreMIDI endpoint assertion during automation startup.**
+1. **P1 — Guide noise is constant across spectral traversal-grid rows.**
+   Reproduce the compact Trimesh and Spy output together, then compare row
+   arrays before changing either presentation or audio behavior.
+2. **P2 — Intermittent CoreMIDI endpoint assertion during automation startup.**
    Keep this behind reproducible product and automation failures because it has
    not affected fixture results and does not currently reproduce.
+
+## P1: Guide noise is constant across spectral traversal-grid rows
+
+Context:
+
+- Reported 2026-09-09 from a compact spectral Trimesh with a noisy Guide
+  assignment. The visualization shows the same noise sequence repeated across
+  frequency rows, producing horizontal bands instead of row-varying detail.
+- A Spy attached to the Trimesh output shows the same structure. This makes a
+  stale compact-node image or colour-mapping-only defect unlikely; the captured
+  traversal grid itself may contain repeated row data.
+- Recent work corrected Guide/morph behavior in the live audio pipeline, but no
+  causal link has been established. Realtime audio behavior has not yet been
+  compared with this preview result.
+
+Current status: open. Add a focused noisy-Guide fixture and an array-level
+assertion that deterministic seeding remains repeatable while successive
+spectral rows receive distinct noise samples. Trace the mature Guide sampler
+before changing the traversal-grid implementation, and verify the realtime
+audio path independently so a preview correction does not create audio drift.
 
 ## P1: First Spy on a spectral Trimesh side branch appeared disconnected
 
