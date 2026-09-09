@@ -1303,6 +1303,25 @@ TEST_CASE("Voice context compact presentation retains its selector and summary",
             voice.bounds,
             1.f,
             selector.getCentre()));
+
+    const Rectangle<float> scratch = VoiceContextCompactEditor::scratchIndicatorBounds(
+            voice.bounds,
+            1.f);
+    const Rectangle<float> summary = VoiceContextCompactEditor::summaryBounds(
+            voice.bounds,
+            1.f);
+    const Rectangle<float> scratchLabel = VoiceContextCompactEditor::scratchLabelBounds(
+            voice.bounds,
+            1.f);
+    REQUIRE(voice.bounds.contains(scratch));
+    REQUIRE(voice.bounds.contains(summary));
+    REQUIRE(voice.bounds.contains(scratchLabel));
+    REQUIRE_FALSE(selector.intersects(summary));
+    REQUIRE_FALSE(summary.intersects(scratch));
+    REQUIRE_FALSE(summary.intersects(scratchLabel));
+    REQUIRE(scratch.getCentreY() == Catch::Approx(
+            NodeCanvasScene::portWorldCentre(voice, voice.inputs[3]).getY()));
+    REQUIRE(scratch.getX() - voice.bounds.getX() >= 7.f);
 }
 
 TEST_CASE("Shared Unison preview does not depend on attachment edge order",

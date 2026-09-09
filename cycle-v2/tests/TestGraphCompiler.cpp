@@ -527,6 +527,33 @@ TEST_CASE("Voice Context default scratch lowers to each context Trimesh",
             }) == 3);
 }
 
+TEST_CASE("Voice Context scratch reaches Trimesh branches in its oscillator region",
+        "[cycle-v2][graph][voice-context][scratch][oscillator-region]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    graph.removeEdgesFromOutput("scratchEnv", "env");
+    Node* voice = graph.findNodeForEditing("voice");
+    REQUIRE(voice != nullptr);
+    NodeDefinitionRegistry::instance().normalize(*voice);
+    graph.addEdge({
+            "scratchEnv",
+            "env",
+            "voice",
+            "scratch",
+            PortDomain::EnvelopeSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::ScratchEnvelope
+    });
+
+    const GraphCompileResult compiled = GraphCompiler().compile(graph);
+
+    REQUIRE(compiled.succeeded());
+    for (const String& target : { "waveMesh", "magMesh", "phaseMesh" }) {
+        INFO("Missing inherited scratch binding for " << target);
+        REQUIRE(effectiveScratchSourceNodeId(findStep(compiled.plan, target))
+                == "scratchEnv");
+    }
+}
+
 TEST_CASE("Voice Context scratch defaults remain independently scoped",
         "[cycle-v2][graph][voice-context][scratch]") {
     GraphNodeFactory factory;

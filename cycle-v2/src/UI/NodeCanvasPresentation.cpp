@@ -1193,6 +1193,7 @@ void NodeCanvasPresentation::paintNode(
                     zoom,
                     node,
                     frame.unisonPreviewContext.voiceDurationSeconds);
+            VoiceContextCompactEditor::paintScratchIndicator(graphics, nodeBounds, zoom);
         } else if (node.kind == NodeKind::ScratchDefaultOverride) {
             const float iconSize = 24.f * zoom;
             NodeIconRenderer::paint(

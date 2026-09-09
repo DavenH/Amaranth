@@ -174,6 +174,14 @@ void GraphAudioExecutor::clearIncrementalCache() const {
     diagnosticProcessCounts.clear();
 }
 
+void GraphAudioExecutor::resetExecutionState() const {
+    clearIncrementalCache();
+    processors.clear();
+    preparedVoices.clear();
+    bufferSlots.clear();
+    realtimeOutput = nullptr;
+}
+
 size_t GraphAudioExecutor::diagnosticProcessCount(const String& nodeId) const {
     for (size_t index = 0; index < diagnosticNodeIds.size(); ++index) {
         if (diagnosticNodeIds[index] == nodeId && index < diagnosticProcessCounts.size()) {

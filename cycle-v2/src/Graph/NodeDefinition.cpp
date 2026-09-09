@@ -323,7 +323,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .execution(NodeExecutionTrait::ConfigurationOnly)
                     .runtime(AudioModuleRole::VoiceContext, PreviewModuleRole::VoiceContext)
                     .disablePreview()
-                    .presentation({}, { 280.f, 148.f })
+                    .presentation({}, { 280.f, 182.f })
                     .finish(),
             buildDefinition(definition(
                     "scratchDefaultOverride",

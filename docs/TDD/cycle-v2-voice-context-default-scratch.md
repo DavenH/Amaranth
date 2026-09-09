@@ -2,9 +2,16 @@
 
 ## Status
 
-Feature implementation complete on `cycle2/scratch-default`. The offline
-simplifier and preset rewrites remain explicitly deferred until this work is
-merged to master and then into the preset-cleanup branch.
+Feature implementation is complete on `cycle2/scratch-default`. Default
+resolution now uses compiled oscillator-region ownership, so Trimesh side
+branches that feed a region inherit the same scratch source as its waveform
+spine. Effective inherited attachments participate in execution ordering, and
+topology recompilation resets retained preview processor state. The
+`scratch-test` inherited, explicit, and undo-restored forms consequently
+produce identical settled node and Spy outputs.
+
+The offline simplifier and preset rewrites remain explicitly deferred until
+this work is merged to master and then into the preset-cleanup branch.
 
 ## Goal
 
@@ -252,6 +259,13 @@ All graph edits must use `GraphCommandDispatcher`. The UI must not mutate
    library, and commit rewritten presets as a separate coherent slice.
 6. Refactor compiler mechanics so Voice Context orchestration reads as default
    resolution rather than a collection of scratch-specific graph scans.
+7. Correct default resolution for Trimesh side branches by resolving each
+   target through its compiled oscillator region, then prove `scratch-test`-like
+   inherited and direct topologies produce identical node and probe outputs.
+8. Complete a production-size Voice Context review: keep all inputs on the
+   left, contain every socket with the established bottom inset, identify the
+   scratch attachment locally, and verify connected graph appearance and the
+   complete replace/remove/undo interaction.
 
 ## Implementation Evidence
 
@@ -284,8 +298,26 @@ All graph edits must use `GraphCommandDispatcher`. The UI must not mutate
 - Compiler resolution now indexes local scratch bindings once before lowering
   inherited bindings. Envelope playback, Trimesh traversal, and realtime
   processing remain unchanged.
-- The complete Cycle V2 test binary passes all 631 cases and 334,436
-  assertions after updating registry and Voice Context schema expectations.
+- Side-branch defaults resolve through the oscillator region's Voice Context,
+  and a second dependency ordering includes effective processing attachments.
+  This schedules a scratch Envelope before every inheriting Trimesh without
+  persisting derived graph edges.
+- Fresh-executor runtime coverage proves inherited and direct waveform,
+  magnitude, and phase branches produce exact matching blocks, traversal grids,
+  and Spy arrays. Presentation-model coverage also proves equivalent topology
+  recompiles produce identical live preview arrays instead of retaining prior
+  processor state.
+- Voice Context is 182 pixels tall so all four established left-side sockets
+  retain the standard bottom inset. The scratch row uses the existing scratch
+  purpose icon and a local `Scratch` label below the summary; geometry tests
+  prove containment, separation, and port alignment.
+- `cycle-v2-agent-voice-context-scratch-default.json` exercises the standard
+  demo graph through inherited scratch, equivalent direct cables, undo, default
+  replacement, default removal, and restoration. A separate local run against
+  the saved `scratch-test` graph proves its settled inherited, explicit, and
+  undo-restored node and Spy sums match exactly.
+- The complete Cycle V2 test binary passes all 634 cases and 336,116
+  assertions. All 230 shipped graphs remain canonical and compile.
 - Preset simplifier implementation, the 75-percent audit, and preset rewrites
   remain deferred by explicit branch sequencing; no `.cyclegraph` contents are
   changed on this branch.

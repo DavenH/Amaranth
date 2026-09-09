@@ -3,6 +3,8 @@
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "UI/NodeCanvasScene.h"
+#include "UI/NodePortGeometry.h"
 
 using namespace CycleV2;
 
@@ -47,7 +49,15 @@ TEST_CASE("Voice Context exposes typed voice configuration inputs", "[cycle-v2][
     REQUIRE(voice.inputs[3].connectionKind == ConnectionKind::ProcessingAttachment);
     REQUIRE(voice.inputs[3].attachmentType == AttachmentType::ScratchEnvelope);
     REQUIRE(voice.bounds.getWidth() == 280.f);
-    REQUIRE(voice.bounds.getHeight() == 148.f);
+    REQUIRE(voice.bounds.getHeight() == 182.f);
+
+    const float socketRadius = NodePortGeometry::socketDiameter * 0.5f;
+    for (const auto& input : voice.inputs) {
+        REQUIRE(input.side == PortSide::Left);
+        const Point<float> centre = NodeCanvasScene::portWorldCentre(voice, input);
+        REQUIRE(centre.y - socketRadius >= voice.bounds.getY());
+        REQUIRE(centre.y + socketRadius <= voice.bounds.getBottom());
+    }
 }
 
 TEST_CASE("Voice Context normalization preserves its readable preview width",

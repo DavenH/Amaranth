@@ -81,7 +81,7 @@ bool GraphPresentationModel::refresh(
             next.runtimeTrace = GraphRuntime().process(graph, next.compileResult.plan);
         }
         updateGraph.clearProductCache();
-        previewAudioExecutor.clearIncrementalCache();
+        previewAudioExecutor.resetExecutionState();
     } else if (change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
         refreshConfigurations(graph, next.compileResult.plan, change.nodeIds);
