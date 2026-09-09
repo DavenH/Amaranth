@@ -1,0 +1,39 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/downfall.cyclegraph"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 1000
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/ooh-2.cyclegraph"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 250
+    },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/downfall.cyclegraph"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 1000
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    }
+  ],
+  "quit": true
+}

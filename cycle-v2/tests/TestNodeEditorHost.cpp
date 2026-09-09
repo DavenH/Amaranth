@@ -2316,6 +2316,32 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE((bool) widget.automationState().getProperty("bipolar", {}));
 }
 
+TEST_CASE("Envelope preview sync defers selection work until host initialization",
+        "[cycle-v2][node-editor-host][envelope][preview][preset]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    const NodeGraph downfall = GraphSerializer().fromJsonString(
+            File(CYCLE_V2_SOURCE_DIR)
+                    .getChildFile("content")
+                    .getChildFile("presets")
+                    .getChildFile("downfall.cyclegraph")
+                    .loadFileAsString());
+    const Node* envelope = downfall.findNode("volumeEnvelope1");
+    REQUIRE(envelope != nullptr);
+
+    CurveEditorWidget widget(NodeKind::Envelope);
+    widget.syncFromNode(*envelope);
+
+    REQUIRE(widget.getExpandedPanelComponentIfCreated() == nullptr);
+    const var state = widget.automationState();
+    REQUIRE_FALSE((bool) state.getProperty("redLinked", true));
+    REQUIRE_FALSE((bool) state.getProperty("blueLinked", true));
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Logarithmic Envelope grid distinguishes major divisions",
         "[cycle-v2][node-editor-host][envelope][logarithmic][grid]") {
     ScopedJuceInitialiser_GUI juce;

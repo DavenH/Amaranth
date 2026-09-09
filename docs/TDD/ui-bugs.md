@@ -118,11 +118,15 @@ Context:
   `Interactor::getModPosition(bool)`, called while
   `EnvelopeCurvePanel::setEnvelopeAxisLinks()` synchronized a preview.
 
-Current status: open and intermittent. A focused open/compile/one-second-idle
-run completed without a crash at
-`/private/tmp/cycle-v2-ooh-2-open-report.json`; reproduce with repeated graph
-replacement under active OpenGL previews, then make editor synchronization and
-preview rendering share a safe snapshot/lifetime boundary.
+Resolved 2026-09-09. Loading `downfall.cyclegraph` produced the same crash and
+exposed the precise initialization fault: `Interactor::positioner` was an
+uninitialized raw pointer before `Interactor::init()`. Pre-host envelope sync
+correctly guarded a null positioner, but indeterminate storage could pass that
+guard and enter `updateSelectionFrames()`. The pointer now initializes to null,
+so selection work is deferred until the preview host initializes the
+interactor. The `cycle-v2-agent-downfall-open` fixture covers repeated graph
+replacement through `downfall` and `ooh-2`; the focused pre-host widget test
+covers synchronization with Downfall's unlinked envelope axes.
 
 ## P1: Expanded Trimesh morph controls lost pointer capture during drag
 
