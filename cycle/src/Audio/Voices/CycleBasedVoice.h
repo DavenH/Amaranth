@@ -77,6 +77,7 @@ protected:
             int,
             int,
             uint64_t,
+            Buffer<float>,
             Buffer<float>) {}
 
     struct NoteState

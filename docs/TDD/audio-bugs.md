@@ -500,7 +500,18 @@ is byte-identical; pitch-clocked residual falls to `2.6e-5–4.6e-5`, final
 alignment becomes zero-lag, and the full effect graph reaches `0.99825`
 correlation with `0.0592` residual.
 
-Current status: partially addressed. MIDI 36 remains at `0.96604` correlation
-without effects, and raw Cycle 1 repeatability is still a separate oracle
-blocker. The next boundary is low-note lane accumulation after individually
-near-identical pitch-clocked cycles.
+Update: Cycle 1 latches its current reconstructed frame into past-frame storage
+after each successful oscillator render call. Cycle V2 retained the older past
+frame across calls. Restoring the mature boundary raises the effect-free MIDI
+36–72 matrix to `0.98602–1.00000` correlation and lowers residuals to
+`0.0011–0.1667`. The full graph reaches `0.98425–0.99997` correlation with
+`0.0076–0.1768` residual. The stage capture now includes the complete composed
+cycle, confirming that the earlier frame-8 divergence entered before Hermite
+resampling. The neutral shared-frame clock also retains Cycle 1's float
+frequency precision and fractional lane-cycle starts.
+
+Current status: material lane accumulation addressed. All four full-graph audio
+comparisons pass and Cycle V2 repeats exactly. Cycle 1 still intermittently
+diverges across fresh processes (in the latest full matrix, MIDI 48 first
+differed at sample 2), so its repeat gate remains the only Icycle admission
+blocker.

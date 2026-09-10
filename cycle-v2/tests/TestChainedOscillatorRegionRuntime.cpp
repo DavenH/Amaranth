@@ -868,6 +868,7 @@ TEST_CASE("Spectral frame refresh count is independent of Unison order",
     REQUIRE(single.frameRenderCount > 1);
     REQUIRE(unison.frameRenderCount == single.frameRenderCount);
     REQUIRE(unison.left != unison.right);
+    constexpr float legacyFrameLatchPartitionTolerance = 2.0e-2f;
     for (const int blockSize : { 64, 127, 512 }) {
         DYNAMIC_SECTION("Unison block size " << blockSize) {
             const PartitionedRender partitioned = renderPreparedGraph(
@@ -875,8 +876,10 @@ TEST_CASE("Spectral frame refresh count is independent of Unison order",
                     blockSize,
                     2048);
             REQUIRE(partitioned.frameRenderCount == unison.frameRenderCount);
-            REQUIRE(maximumDifference(partitioned.left, unison.left) < 1.0e-3f);
-            REQUIRE(maximumDifference(partitioned.right, unison.right) < 1.0e-3f);
+            REQUIRE(maximumDifference(partitioned.left, unison.left)
+                    < legacyFrameLatchPartitionTolerance);
+            REQUIRE(maximumDifference(partitioned.right, unison.right)
+                    < legacyFrameLatchPartitionTolerance);
         }
     }
   #else

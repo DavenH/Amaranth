@@ -97,3 +97,35 @@ TEST_CASE("Spectral stage recorder writes hashed raw payload metadata") {
             == encoded.getProperty("sha256", {}).toString());
     REQUIRE(raw.deleteFile());
 }
+
+TEST_CASE("Pitch-clocked stage metadata identifies the composed source cycle") {
+    SpectralStageCaptureRecorder recorder;
+    REQUIRE(recorder.prepare(8, 0));
+    std::array<float, 2> samples { 0.25f, 0.5f };
+    std::array<float, 3> composed { -1.f, 0.f, 1.f };
+    recorder.capture({
+            SpectralStage::PitchClockedCycle,
+            0,
+            125,
+            48,
+            0,
+            { samples.data(), (int) samples.size() },
+            { composed.data(), (int) composed.size() }
+    });
+
+    juce::TemporaryFile temporary(".json");
+    juce::String error;
+    REQUIRE(recorder.write(temporary.getFile(), error));
+    const juce::var manifest = juce::JSON::parse(
+            temporary.getFile().loadFileAsString());
+    const auto* records = manifest.getProperty("records", {}).getArray();
+    REQUIRE(records != nullptr);
+    REQUIRE(records->size() == 1);
+    const juce::var& encoded = records->getReference(0);
+    REQUIRE(encoded.getProperty("secondary", {}).toString()
+            == "composed-cycle");
+    REQUIRE((int) encoded.getProperty("secondaryValueCount", {}) == 3);
+
+    const juce::File raw(encoded.getProperty("rawPath", {}).toString());
+    REQUIRE(raw.deleteFile());
+}

@@ -172,7 +172,7 @@ translation. The first broad candidates are:
 | Subbass | Time, magnitude, phase, volume/scratch envelopes | Port manifest was strict, but current notes 48–72 fail its old output thresholds; diagnostic only. |
 | guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Per-channel waveshaper and IR state now match Cycle 1 ownership. MIDI 36–72 meets the diagnostic audio thresholds; EQ and delay add no material gap. MIDI 36 still fails Cycle 1's raw repeat gate, so the fixture is not admitted. |
 | japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase. One corrected render repeated exactly, but a later run did not repeat in Cycle 1. Its large evolving mismatch remains diagnostic until that intermittent startup state is isolated. |
-| Icycle | Broad synthesis/effects plus six-voice Unison | Regenerated from a direct canonical export while retaining node layout, port presentation, and three authored probes. Its reverb is disabled; the corrected IR size is `0.26`. Prepared per-lane pitch playback makes every captured stage through reconstruction byte-identical and brings the full MIDI 48 graph to `0.99825` correlation, but Cycle 1 fails the raw repeat gate and MIDI 36 still exposes low-note lane accumulation error. |
+| Icycle | Broad synthesis/effects plus six-voice Unison | Regenerated from a direct canonical export while retaining node layout, port presentation, and three authored probes. Its reverb is disabled; the corrected IR size is `0.26`. Prepared per-lane pitch playback and Cycle 1's render-boundary frame latch bring the full MIDI 36–72 matrix to `0.98425–0.99997` correlation, but intermittent Cycle 1 fresh-process variation still blocks admission. |
 | accoustic | Broad graph including reverb | Current graph differs in morph/link state, envelope state, reverb size, and IR high-pass; do not use for DSP attribution yet. |
 | organ-2 | Spectral layers, envelopes, Unison, IR, delay, reverb | Current graph differs from fresh conversion in reverb size; reverb seed parity is unresolved. |
 
@@ -623,6 +623,26 @@ as the scratch envelope evolves.
     `/tmp/cycle-icycle-prepared-pitch/comparison.json`,
     `/tmp/cycle-icycle-prepared-pitch-full/comparison.json`, and
     `/tmp/cycle-icycle-prepared-pitch-matrix/comparison.json`.
+38. Preserve Cycle 1's oscillator render-boundary frame latch. Complete:
+    Cycle 1 copies the current reconstructed frame into its past-frame storage
+    after each successful `renderInterpolatedCycles()` call. Cycle V2 retained
+    the older frame across calls, causing low notes to interpolate against a
+    frame Cycle 1 had already latched away. The spectral runtime now performs
+    the same narrow state transition after consuming a block. It also retains
+    Cycle 1's float-precision neutral frame clock and the fractional lane-cycle
+    start used to calculate interpolation position. Pitch-clocked diagnostics
+    now retain the complete composed source cycle as their secondary payload,
+    which localized the mismatch before Hermite resampling. With effects
+    disabled, MIDI 36–72 reaches `0.98602–1.00000` correlation with
+    `0.0011–0.1667` residual. The full graph reaches `0.98425–0.99997`
+    correlation with `0.0076–0.1768` residual. Cycle V2 repeats exactly and all
+    four audio comparisons pass; Cycle 1 intermittently differed from sample 2
+    at MIDI 48 in the full run, so the fixture remains diagnostic. The inherited
+    latch permits bounded block-partition variation while retaining identical
+    shared-frame render counts. Artifacts:
+    `/tmp/cycle-icycle-midi36-frame8-composed/comparison.json`,
+    `/tmp/cycle-icycle-block-latch-matrix/comparison.json`, and
+    `/tmp/cycle-icycle-full-block-latch-matrix/comparison.json`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

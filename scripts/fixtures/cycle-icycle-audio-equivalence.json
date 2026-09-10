@@ -32,10 +32,10 @@
             "impulseResponse",
             "delay"
         ],
-        "determinism": "guide noise is disabled; Unison layout is deterministic, but cross-engine lifecycle seed mapping remains under test",
+        "determinism": "guide noise is disabled and Unison layout is deterministic; Cycle 1 fresh-process startup still intermittently diverges",
         "inputValidation": "regenerated from a direct Cycle 1 canonical file export while preserving Cycle V2 presentation and probes",
         "knownRuntimeGaps": [
-            "cross-engine lifecycle seed mapping"
+            "Cycle 1 fresh-process startup repeatability"
         ],
         "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
     },

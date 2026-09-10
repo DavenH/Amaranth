@@ -38,7 +38,8 @@ private:
 			int laneIndex,
 			int channel,
 			uint64_t frontier,
-			Buffer<float> samples) override;
+			Buffer<float> samples,
+			Buffer<float> composedCycle) override;
 	void captureSpectralStage(
 			CycleDsp::SpectralStage stage,
 			int channel,

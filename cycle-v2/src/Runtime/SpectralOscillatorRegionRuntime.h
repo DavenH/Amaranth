@@ -58,6 +58,7 @@ private:
             int laneIndex,
             const PreparedOscillatorProcessContext& context,
             const SpectralOscillatorFrameRenderer& renderer);
+    void latchCurrentFrames();
     size_t blockSampleOffsetFor(
             uint64_t voiceSample,
             const PreparedOscillatorProcessContext& context) const;

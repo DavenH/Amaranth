@@ -242,7 +242,8 @@ void SynthFilterVoice::capturePitchClockedCycle(
         int laneIndex,
         int channel,
         uint64_t frontier,
-        Buffer<float> samples) {
+        Buffer<float> samples,
+        Buffer<float> composedCycle) {
     if (laneIndex != 0) {
         return;
     }
@@ -259,7 +260,7 @@ void SynthFilterVoice::capturePitchClockedCycle(
             noteState.lastNoteNumber,
             channel,
             samples,
-            {}
+            composedCycle
     });
 }
 

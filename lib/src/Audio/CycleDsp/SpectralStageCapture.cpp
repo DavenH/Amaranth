@@ -37,6 +37,9 @@ String secondaryPayloadName(SpectralStage stage) {
             || stage == SpectralStage::PhaseRaster) {
         return "morph-position";
     }
+    if (stage == SpectralStage::PitchClockedCycle) {
+        return "composed-cycle";
+    }
     return stage == SpectralStage::ForwardFft
                     || stage == SpectralStage::PostLayerSpectrum
             ? "phase"

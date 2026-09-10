@@ -4,6 +4,7 @@
 
 #include <Audio/CycleDsp/CyclicFrameLaneRenderer.h>
 #include <Audio/CycleDsp/OscillatorLaneCore.h>
+#include <Util/NumberUtils.h>
 
 using Catch::Matchers::WithinAbs;
 
@@ -22,6 +23,14 @@ TEST_CASE("Oscillator lane pitch preserves the Cycle 1 angle-delta contract",
                     CycleDsp::OscillatorLaneCore::angleDelta(66, 0.f, 44100.0),
                     1.0e-12));
     REQUIRE(CycleDsp::OscillatorLaneCore::angleDelta(60, 0.f, 0.0) == 0.0);
+}
+
+TEST_CASE("Oscillator neutral clock retains the Cycle 1 frequency precision",
+        "[cycle-dsp][oscillator-lane][parity]") {
+    const float legacyFrequency = (float) NumberUtils::noteToFrequency(48);
+
+    REQUIRE(CycleDsp::OscillatorLaneCore::legacyNeutralAngleDelta(36, 44100.0)
+            == (double) legacyFrequency / 44100.0);
 }
 
 TEST_CASE("Chained lane scheduling retains fractional cycle boundaries",
