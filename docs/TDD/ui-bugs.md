@@ -65,3 +65,18 @@ and compiles` on `african-horn.cyclegraph`. The graph compiles, but a
 deserialize/serialize pass changes its JSON representation. This predates and
 is independent of the document-declick changes; regenerate that preset through
 the canonical serializer without expanding unrelated preset diffs.
+
+## P2: Envelope purpose rail-spacing assertion no longer matches layout
+
+Context:
+
+- The full Cycle V2 suite on 2026-09-10 failed `Envelope purpose selector
+  publishes bipolar pitch presentation` at `TestNodeEditorHost.cpp:2305`.
+- The focused test reproduces independently: the second rail begins 39.825 px
+  below the first, while the assertion expects 39.1 px within 0.02 px.
+- The viewport-pan performance work does not touch Envelope editor layout,
+  shared property rails, or the asserted geometry.
+- Full-suite artifact: `/private/tmp/cycle-v2-pan-full-tests.log`.
+
+Current status: open; reconcile the assertion with the current shared Envelope
+layout contract without weakening minimum rail travel or hit-target coverage.

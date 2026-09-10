@@ -12,7 +12,7 @@ namespace CycleV2 {
 
 struct NodeCanvasNodeLayerCacheAccess {
     Image* image {};
-    Rectangle<int> logicalBounds;
+    Rectangle<float> logicalBounds;
     bool hit {};
 };
 
@@ -27,8 +27,7 @@ public:
     void beginFrame();
     NodeCanvasNodeLayerCacheAccess access(
             const Node& node,
-            Rectangle<int> logicalBounds,
-            uint64_t viewportRevision,
+            Rectangle<float> logicalBounds,
             uint64_t previewResourceFingerprint,
             uint64_t renderContextFingerprint,
             const NodePreviewResult* runtimePreview,
@@ -42,8 +41,7 @@ private:
         String nodeId;
         Node nodeSnapshot;
         NodePreviewResult runtimePreviewSnapshot;
-        Rectangle<int> logicalBounds;
-        uint64_t viewportRevision {};
+        Point<float> logicalSize;
         uint64_t previewResourceFingerprint {};
         uint64_t renderContextFingerprint {};
         uint64_t paintGeneration {};
@@ -54,8 +52,7 @@ private:
 
         bool matches(
                 const Node& node,
-                Rectangle<int> bounds,
-                uint64_t currentViewportRevision,
+                Rectangle<float> bounds,
                 uint64_t resourceFingerprint,
                 uint64_t contextFingerprint,
                 const NodePreviewResult* runtimePreview,
@@ -66,8 +63,7 @@ private:
     void replaceEntry(
             Entry& entry,
             const Node& node,
-            Rectangle<int> logicalBounds,
-            uint64_t viewportRevision,
+            Rectangle<float> logicalBounds,
             uint64_t previewResourceFingerprint,
             uint64_t renderContextFingerprint,
             const NodePreviewResult* runtimePreview,

@@ -1,0 +1,104 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/downfall.cyclegraph"
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 1000
+    },
+    {
+      "command": "resetCanvasPerformance"
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "wheel",
+      "x": 760,
+      "y": 420,
+      "deltaX": 0.018,
+      "deltaY": -0.012
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "wheel",
+      "x": 760,
+      "y": 420,
+      "deltaX": 0.018,
+      "deltaY": -0.012
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "wheel",
+      "x": 760,
+      "y": 420,
+      "deltaX": 0.018,
+      "deltaY": -0.012
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "wheel",
+      "x": 760,
+      "y": 420,
+      "deltaX": 0.018,
+      "deltaY": -0.012
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "wheel",
+      "x": 760,
+      "y": 420,
+      "deltaX": -0.018,
+      "deltaY": 0.012
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "wheel",
+      "x": 760,
+      "y": 420,
+      "deltaX": -0.018,
+      "deltaY": 0.012
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "wheel",
+      "x": 760,
+      "y": 420,
+      "deltaX": -0.018,
+      "deltaY": 0.012
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "wheel",
+      "x": 760,
+      "y": 420,
+      "deltaX": -0.018,
+      "deltaY": 0.012
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 250
+    },
+    {
+      "command": "inspectCanvasPerformance"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-pan-final.png"
+    }
+  ],
+  "quit": false
+}
