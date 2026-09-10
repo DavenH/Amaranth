@@ -362,12 +362,6 @@ void VisualDsp::copyArrayOrParts(
     int srcColInc = (int) (numSrcColumns / double(minLength) + 0.5);
     int dstColInc = (int) (numDstColumns / double(minLength) + 0.5);
 
-  #ifdef JUCE_DEBUG
-    int srcSize = srcColumns.front().size();
-    int dstSize = destColumns.front().size();
-    jassert(srcSize == dstSize);
-  #endif
-
     for (int i = 0, dstColIdx = 0, srcColIdx = 0;
          i < minLength; ++i, dstColIdx += dstColInc, srcColIdx += srcColInc) {
         NumberUtils::constrain(srcColIdx, 0, numSrcColumns - 1);

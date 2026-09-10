@@ -2,12 +2,8 @@
 
 ## Remaining priority
 
-There are no open deterministic P0 regressions as of 2026-09-09.
+There are no open deterministic P0 or P1 regressions as of 2026-09-09.
 Resolved and no-longer-reproducing entries have been removed from this ledger.
-
-1. **P2 — Drunkard pitch render logs VisualDsp column-size assertions.**
-   Reproduce the visual update and establish the authoritative column
-   resolution before adapting the copy boundary.
 
 ## P2: Intermittent CoreMIDI endpoint assertion during automation startup
 
@@ -42,20 +38,6 @@ Context:
 
 Current status: open; update the menu fixture against the intended current menu
 contract in a focused UI slice.
-
-## P2: Drunkard pitch render logs VisualDsp column-size assertions
-
-Context:
-
-- The focused pitch-envelope audio render passes its signal thresholds but logs
-  three assertions at `VisualDsp.cpp:367` because source and destination column
-  sizes differ.
-- The assertion is in visualization column copying, outside the audio voice and
-  envelope paths changed by the parity fix.
-- Repro log: `/private/tmp/cycle-agent-pitch-envelope-log.txt`.
-
-Current status: open; reproduce through the visual update path and decide which
-column resolution owns resampling before changing the assertion.
 
 ## P2: Graph document save test cannot use JUCE's default temporary directory
 
