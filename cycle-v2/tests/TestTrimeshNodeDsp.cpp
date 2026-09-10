@@ -20,6 +20,7 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
+#include "Nodes/Trimesh/Rendering/SpectralRangeControlRenderer.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
@@ -415,6 +416,7 @@ TEST_CASE("Expanded Trimesh surfaces use their complete layout rows", "[cycle-v2
 
     REQUIRE(grid.getY() == Catch::Approx(content.getY()));
     REQUIRE(grid.getHeight() == Catch::Approx(content.getHeight() * 0.54f));
+    REQUIRE(grid.getWidth() == Catch::Approx(content.getWidth() * 0.50f));
     REQUIRE(wave.getY() - grid.getBottom() == Catch::Approx(8.f));
     REQUIRE(wave.getBottom() == Catch::Approx(content.getBottom()));
 }
@@ -462,6 +464,32 @@ TEST_CASE("Trimesh side panel renderer keeps vertex rails inside parameter rows"
         REQUIRE(row.contains(rail));
         REQUIRE(rail.getHeight() == Catch::Approx(8.f));
         REQUIRE(rail.getWidth() > 0.f);
+    }
+}
+
+TEST_CASE("Trimesh vertex deformer controls apply only to the right parameter column",
+        "[cycle-v2][nodes][trimesh][geometry][guide]") {
+    const Rectangle<float> parameterArea { 20.f, 40.f, 620.f, 150.f };
+
+    for (int i = 0; i < 6; ++i) {
+        const Rectangle<float> row =
+                TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i);
+        const bool showsGuideControls =
+                TrimeshSidePanelRenderer::showsGuideControlsForParameter(i);
+        const Rectangle<float> rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(
+                row,
+                showsGuideControls
+                        ? TrimeshSidePanelRenderer::GuideControls::Visible
+                        : TrimeshSidePanelRenderer::GuideControls::Hidden);
+
+        REQUIRE(showsGuideControls == (i >= 3));
+        if (i < 3) {
+            const Rectangle<float> pairedRow =
+                    TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i + 3);
+            const Rectangle<float> pairedRail =
+                    TrimeshSidePanelRenderer::vertexParameterRailBounds(pairedRow);
+            REQUIRE(rail.getWidth() > pairedRail.getWidth() + 50.f);
+        }
     }
 }
 
@@ -528,6 +556,38 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
             > TrimeshSidePanelRenderer::morphRailBounds(sideArea, 2, true).getBottom());
 }
 
+TEST_CASE("Production Trimesh controls place two-column vertex rows above morph and cube controls",
+        "[cycle-v2][nodes][trimesh][geometry]") {
+    const Rectangle<float> sideArea { 0.f, 0.f, 550.f, 370.f };
+    const Rectangle<float> cube = TrimeshSidePanelRenderer::morphCubeBounds(sideArea, true);
+    const Rectangle<float> vertex =
+            TrimeshSidePanelRenderer::vertexParameterPanelBounds(sideArea, true);
+    const Rectangle<float> morph =
+            TrimeshSidePanelRenderer::morphRailBounds(sideArea, 0, true);
+    const Rectangle<float> range =
+            TrimeshSidePanelRenderer::spectralRangeRailBounds(sideArea);
+
+    const Rectangle<float> timeRow =
+            TrimeshSidePanelRenderer::vertexParameterRowBounds(vertex, 0);
+    const Rectangle<float> blueRow =
+            TrimeshSidePanelRenderer::vertexParameterRowBounds(vertex, 2);
+    const Rectangle<float> phaseRow =
+            TrimeshSidePanelRenderer::vertexParameterRowBounds(vertex, 3);
+    const Rectangle<float> curveRow =
+            TrimeshSidePanelRenderer::vertexParameterRowBounds(vertex, 5);
+
+    REQUIRE(vertex.getWidth() > sideArea.getWidth() * 0.9f);
+    REQUIRE(timeRow.getX() == Catch::Approx(blueRow.getX()));
+    REQUIRE(phaseRow.getX() == Catch::Approx(curveRow.getX()));
+    REQUIRE(timeRow.getY() == Catch::Approx(phaseRow.getY()));
+    REQUIRE(blueRow.getY() == Catch::Approx(curveRow.getY()));
+    REQUIRE(timeRow.getRight() < phaseRow.getX());
+    REQUIRE(vertex.getBottom() < morph.getY());
+    REQUIRE(vertex.getBottom() < cube.getY());
+    REQUIRE(morph.getRight() < cube.getX());
+    REQUIRE(range.getRight() < cube.getX());
+}
+
 TEST_CASE("Spectral range display scales round-trip through DSP mappings",
         "[cycle-v2][nodes][trimesh][range]") {
     using CycleDsp::SpectralLayerCore;
@@ -545,7 +605,7 @@ TEST_CASE("Spectral range display scales round-trip through DSP mappings",
     }
 }
 
-TEST_CASE("Wide Trimesh controls use a full right vertex column and honest morph travel",
+TEST_CASE("Wide Trimesh controls pair morph travel with a lower-right cube",
         "[cycle-v2][nodes][trimesh][geometry]") {
     const Rectangle<float> sideArea { 0.f, 0.f, 1080.f, 260.f };
     const Rectangle<float> cube = TrimeshSidePanelRenderer::morphCubeBounds(sideArea);
@@ -555,14 +615,14 @@ TEST_CASE("Wide Trimesh controls use a full right vertex column and honest morph
     const Rectangle<float> axis = TrimeshSidePanelRenderer::primaryAxisBounds(sideArea, 0);
 
     REQUIRE(vertex.getRight() == Catch::Approx(sideArea.getRight() - 9.f));
-    REQUIRE(vertex.getHeight() == Catch::Approx(sideArea.getHeight()));
-    REQUIRE(cube.getRight() < vertex.getX());
+    REQUIRE(vertex.getBottom() < cube.getY());
+    REQUIRE(rail.getRight() < cube.getX());
     REQUIRE(rail.getWidth() > 400.f);
     REQUIRE(rail.getRight() < axis.getX());
     REQUIRE(axis.getX() - rail.getRight() <= 12.f);
 }
 
-TEST_CASE("Trimesh Guide dropdowns are full-height trailing controls outside slider bodies",
+TEST_CASE("Trimesh Guide dropdowns sit between slider bodies and gain knobs",
         "[cycle-v2][nodes][trimesh][geometry][guide]") {
     const Rectangle<float> row { 20.f, 40.f, 280.f, 29.f };
     const Rectangle<float> rail =
@@ -571,9 +631,37 @@ TEST_CASE("Trimesh Guide dropdowns are full-height trailing controls outside sli
             TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
 
     REQUIRE(guide.getHeight() == Catch::Approx(row.getHeight()));
-    REQUIRE(guide.getRight() == Catch::Approx(row.getRight()));
+    REQUIRE(guide.getRight() < row.getRight());
     REQUIRE(rail.getRight() < guide.getX());
-    REQUIRE(guide.getX() - rail.getRight() >= 8.f);
+    REQUIRE(guide.getX() - rail.getRight() >= 6.f);
+}
+
+TEST_CASE("Trimesh guide gain knobs are distinct controls after Guide targets",
+        "[cycle-v2][nodes][trimesh][geometry][guide][gain]") {
+    const Rectangle<float> row { 20.f, 40.f, 280.f, 29.f };
+    const Rectangle<float> rail =
+            TrimeshSidePanelRenderer::vertexParameterRailBounds(row);
+    const Rectangle<float> gain =
+            TrimeshSidePanelRenderer::vertexParameterGuideGainBounds(row);
+    const Rectangle<float> guide =
+            TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
+
+    REQUIRE(row.contains(gain));
+    REQUIRE(gain.getWidth() == Catch::Approx(gain.getHeight()));
+    REQUIRE(gain.getHeight() >= 20.f);
+    REQUIRE(rail.getRight() < guide.getX());
+    REQUIRE(guide.getRight() < gain.getX());
+    REQUIRE_FALSE(rail.intersects(gain));
+    REQUIRE_FALSE(gain.intersects(guide));
+}
+
+TEST_CASE("Spectral range label is vertically centred on its rail",
+        "[cycle-v2][nodes][trimesh][geometry][range]") {
+    const Rectangle<float> row { 20.f, 40.f, 280.f, 45.f };
+    const Rectangle<float> rail { 92.f, 49.f, 196.f, 7.f };
+    const Rectangle<float> label = SpectralRangeControlRenderer::labelBounds(row, rail);
+
+    REQUIRE(label.getCentreY() == Catch::Approx(rail.getCentreY()));
 }
 
 TEST_CASE("Shared morph controls expose precise markers and aligned group headers",
@@ -1487,11 +1575,14 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
             {}
     };
     TrimeshWidget widget;
+    std::array<String, 6> guideLabels;
+    guideLabels[4] = "1";
+    widget.setGuideAttachmentLabels(guideLabels);
     TrimeshControlsComponent controls(widget);
-    controls.setBounds(0, 0, 900, 620);
+    controls.setBounds(0, 0, 1400, 760);
 
     controls.setNode(node);
-    controls.setContentBounds({ 10.f, 42.f, 880.f, 570.f });
+    controls.setContentBounds({ 10.f, 42.f, 1380.f, 710.f });
 
     REQUIRE(controls.getControlRegionCount() == 21);
     REQUIRE(controls.getMorphSliderCount() == 3);
@@ -1499,7 +1590,8 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     REQUIRE(controls.getPrimaryAxisButtonCount() == 3);
     REQUIRE(controls.getLinkToggleButtonCount() == 3);
     REQUIRE(controls.getVertexParameterSliderCount() == 6);
-    REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 6);
+    REQUIRE(controls.getVertexGuideGainKnobCount() == 3);
+    REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 3);
     REQUIRE(controls.getNumChildComponents() == 21);
 }
 
@@ -1507,13 +1599,16 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     ScopedJuceInitialiser_GUI juce;
     Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
     TrimeshWidget widget;
+    std::array<String, 6> guideLabels;
+    guideLabels[4] = "1";
+    widget.setGuideAttachmentLabels(guideLabels);
     widget.setRenderProfile(TrimeshRenderProfile::fromDomain(
             PortDomain::SpectralPhaseSignal));
     TrimeshControlsComponent controls(widget);
     RecordingTrimeshControlsDelegate delegate;
-    const Rectangle<float> content { 10.f, 42.f, 880.f, 570.f };
+    const Rectangle<float> content { 10.f, 42.f, 1380.f, 710.f };
 
-    controls.setBounds(0, 0, 900, 620);
+    controls.setBounds(0, 0, 1400, 760);
     controls.setDelegate(&delegate);
     controls.setNode(node);
     controls.setContentBounds(content);
@@ -1575,6 +1670,28 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     REQUIRE(morphTarget != nullptr);
     REQUIRE(morphTarget != &controls);
     REQUIRE(morphTarget->getMouseCursor() == MouseCursor::LeftRightResizeCursor);
+
+    const auto guideGain = std::find_if(
+            regions.begin(),
+            regions.end(),
+            [](const TrimeshExpandedHitRegion& region) {
+                return region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain
+                        && region.parameterId == "guideGain.amp";
+            });
+    REQUIRE(guideGain != regions.end());
+    controls.beginPointerInteraction(guideGain->bounds.getCentre(), {});
+    controls.continuePointerInteraction(
+            guideGain->bounds.getCentre().translated(0.f, -24.f));
+    controls.endPointerInteraction();
+    REQUIRE(delegate.activeParameter == "guideGain.amp");
+    REQUIRE(delegate.updateValue > delegate.beginValue);
+    REQUIRE(controls.cursorFor(guideGain->bounds.getCentre())
+            == MouseCursor::UpDownResizeCursor);
+
+    auto* keyboardGuideGain = controls.findChildWithID("trimesh.guideGain.amp");
+    REQUIRE(keyboardGuideGain != nullptr);
+    REQUIRE(keyboardGuideGain->keyPressed(KeyPress(KeyPress::upKey)));
+    REQUIRE(delegate.updateValue > delegate.beginValue);
 
     int expectedSelection {};
     const Point<float> selectionPoint = TrimeshWidget::expandedWavePanelContentBounds(content).getCentre();

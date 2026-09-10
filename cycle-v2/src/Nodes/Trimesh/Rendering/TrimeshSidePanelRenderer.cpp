@@ -1,5 +1,6 @@
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
 
+#include <cmath>
 #include <limits>
 
 #include "Nodes/Trimesh/Rendering/SpectralRangeControlRenderer.h"
@@ -27,14 +28,16 @@ constexpr float kRangeTopGap     = 6.f;
 constexpr float kRangeRowHeight  = 45.f;
 constexpr float kMorphColumnHeaderWidth = 24.f;
 constexpr float kAxisLabelW      = 62.f;
-constexpr float kVertexLabelW    = 58.f;
-constexpr float kVertexGuideW    = 46.f;
-constexpr float kVertexCellGap   = 8.f;
+constexpr float kVertexLabelW    = 42.f;
+constexpr float kVertexGainSize  = 24.f;
+constexpr float kVertexGuideW    = 40.f;
+constexpr float kVertexCellGap   = 6.f;
 constexpr float kVertexPanelMinWidth = 224.f;
 constexpr float kVertexPanelMaxWidth = 300.f;
 constexpr float kVertexPanelWidthRatio = 0.55f;
-constexpr float kWideLayoutMinimumWidth = 620.f;
-constexpr float kWideVertexPanelWidthRatio = 0.30f;
+constexpr float kWideLayoutMinimumWidth = 480.f;
+constexpr float kWideVertexPanelHeight = 150.f;
+constexpr float kWideMorphPanelWidthRatio = 0.56f;
 constexpr float kCubeAxisExpansion = 0.09f;
 constexpr int kVertexParamCount  = 6;
 
@@ -71,6 +74,55 @@ const int kCubeAxes[3][2] {
         { 1, 5 }
 };
 
+void paintGuideGainKnob(
+        Graphics& g,
+        Rectangle<float> bounds,
+        float value,
+        bool enabled) {
+    const float normalized = jlimit(0.f, 1.f, value);
+    const float startAngle = MathConstants<float>::pi * 1.25f;
+    const float endAngle = MathConstants<float>::pi * 2.75f;
+    const float valueAngle = startAngle + normalized * (endAngle - startAngle);
+    const Point<float> centre = bounds.getCentre();
+    const float radius = bounds.getWidth() * 0.5f - 2.f;
+
+    g.setColour(Colour(0xff15191e).withAlpha(enabled ? 1.f : 0.55f));
+    g.fillEllipse(bounds);
+    g.setColour(Colour(0xff59606a).withAlpha(enabled ? 0.62f : 0.25f));
+    g.drawEllipse(bounds.reduced(0.5f), 1.f);
+
+    Path track;
+    track.addCentredArc(
+            centre.x,
+            centre.y,
+            radius - 2.f,
+            radius - 2.f,
+            0.f,
+            startAngle,
+            endAngle,
+            true);
+    g.setColour(Colour(0xff59606a).withAlpha(enabled ? 0.52f : 0.20f));
+    g.strokePath(track, PathStrokeType(1.5f));
+
+    Path active;
+    active.addCentredArc(
+            centre.x,
+            centre.y,
+            radius - 2.f,
+            radius - 2.f,
+            0.f,
+            startAngle,
+            valueAngle,
+            true);
+    g.setColour(Colour(0xff70a7ff).withAlpha(enabled ? 0.94f : 0.20f));
+    g.strokePath(active, PathStrokeType(1.7f));
+
+    const Point<float> indicator(
+            centre.x + std::sin(valueAngle) * (radius - 4.f),
+            centre.y - std::cos(valueAngle) * (radius - 4.f));
+    g.drawLine(centre.x, centre.y, indicator.x, indicator.y, 1.4f);
+}
+
 Rectangle<float> sideInnerBounds(Rectangle<float> sideArea) {
     return sideArea.reduced(kSideInset, 0.f);
 }
@@ -103,14 +155,15 @@ Rectangle<float> upperPanelBounds(Rectangle<float> sideArea, bool showSpectralRa
     return inner.removeFromTop(upperPanelHeight(sideArea, showSpectralRange));
 }
 
-Rectangle<float> vertexPanelColumnBounds(Rectangle<float> sideArea, bool showSpectralRange) {
+Rectangle<float> vertexParameterAreaBounds(Rectangle<float> sideArea, bool showSpectralRange) {
     if (usesWideColumnLayout(sideArea)) {
         auto inner = sideInnerBounds(sideArea);
-        const float desiredWidth = jlimit(
-                kVertexPanelMinWidth,
-                kVertexPanelMaxWidth,
-                inner.getWidth() * kWideVertexPanelWidthRatio);
-        return inner.removeFromRight(desiredWidth);
+        const float availableHeight = inner.getHeight()
+                - kVertexGap
+                - morphControlsHeight(showSpectralRange);
+        return inner.removeFromTop(jmin(
+                kWideVertexPanelHeight,
+                jmax(110.f, availableHeight)));
     }
 
     auto upper = upperPanelBounds(sideArea, showSpectralRange);
@@ -122,30 +175,31 @@ Rectangle<float> vertexPanelColumnBounds(Rectangle<float> sideArea, bool showSpe
     return upper.removeFromRight(jmin(availableWidth, desiredWidth));
 }
 
+Rectangle<float> lowerControlsBounds(Rectangle<float> sideArea, bool showSpectralRange) {
+    auto lower = sideInnerBounds(sideArea);
+    const Rectangle<float> vertex = vertexParameterAreaBounds(sideArea, showSpectralRange);
+    lower.removeFromTop(vertex.getHeight() + kVertexGap);
+    return lower;
+}
+
 Rectangle<float> cubeStackBounds(Rectangle<float> sideArea, bool showSpectralRange) {
     if (usesWideColumnLayout(sideArea)) {
-        auto left = sideInnerBounds(sideArea);
-        const Rectangle<float> vertex = vertexPanelColumnBounds(sideArea, showSpectralRange);
-        left.removeFromRight(vertex.getWidth() + kColumnGap);
-        left.removeFromBottom(jmin(
-                left.getHeight(),
-                morphControlsHeight(showSpectralRange) + kVertexGap));
-        return left;
+        auto lower = lowerControlsBounds(sideArea, showSpectralRange);
+        const float morphWidth = lower.getWidth() * kWideMorphPanelWidthRatio;
+        lower.removeFromLeft(morphWidth + kColumnGap);
+        return lower;
     }
 
     auto upper = upperPanelBounds(sideArea, showSpectralRange);
-    const Rectangle<float> vertex = vertexPanelColumnBounds(sideArea, showSpectralRange);
+    const Rectangle<float> vertex = vertexParameterAreaBounds(sideArea, showSpectralRange);
     upper.removeFromRight(vertex.getWidth() + kColumnGap);
     return upper;
 }
 
 Rectangle<float> morphControlsBounds(Rectangle<float> sideArea, bool showSpectralRange) {
     if (usesWideColumnLayout(sideArea)) {
-        auto left = sideInnerBounds(sideArea);
-        const Rectangle<float> vertex = vertexPanelColumnBounds(sideArea, showSpectralRange);
-        left.removeFromRight(vertex.getWidth() + kColumnGap);
-        return left.removeFromBottom(jmin(
-                left.getHeight(), morphControlsHeight(showSpectralRange)));
+        auto lower = lowerControlsBounds(sideArea, showSpectralRange);
+        return lower.removeFromLeft(lower.getWidth() * kWideMorphPanelWidthRatio);
     }
 
     auto inner = sideInnerBounds(sideArea);
@@ -220,6 +274,7 @@ Rectangle<float> axisLabelBounds(Rectangle<float> row) {
 }
 
 Rectangle<float> vertexGuideBounds(Rectangle<float> row) {
+    row.removeFromRight(kVertexGainSize + kVertexCellGap);
     return row.removeFromRight(kVertexGuideW);
 }
 
@@ -421,14 +476,17 @@ void TrimeshSidePanelRenderer::drawSidePanel(
 
     if (showSpectralRange) {
         const Rectangle<float> rangeRow = spectralRangeRowBounds(area);
-        paintPropertyGroupLabel(
-                g,
-                Rectangle<float>(
-                        rangeRow.getX(),
-                        rangeRow.getY() - kMorphHeaderH - kMorphTopGap,
-                        rangeRow.getWidth(),
-                        kMorphHeaderH),
-                "Spectral layer");
+        const Rectangle<float> divider(
+                rangeRow.getX(),
+                rangeRow.getY() - kMorphHeaderH - kMorphTopGap,
+                rangeRow.getWidth(),
+                kMorphHeaderH);
+        g.setColour(kMutedText.withAlpha(0.32f));
+        g.fillRect(Rectangle<float>(
+                divider.getX(),
+                divider.getCentreY() - 0.5f,
+                divider.getWidth(),
+                1.f));
         SpectralRangeControlRenderer::draw(
                 g,
                 rangeRow,
@@ -607,8 +665,10 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
         return;
     }
 
-    const float desiredHeight = heightScale
-            * (30.f + (float) jmax(1, (int) parameters.size()) * 34.f);
+    const int rowCount = area.getWidth() >= kWideLayoutMinimumWidth
+            ? 3
+            : jmax(1, (int) parameters.size());
+    const float desiredHeight = heightScale * (34.f + (float) rowCount * 40.f);
     area = area.withHeight(jmin(area.getHeight(), desiredHeight));
 
     auto header = area.reduced(8.f, 5.f).removeFromTop(18.f);
@@ -618,10 +678,16 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
         const auto& parameter = parameters[(size_t) i];
         const auto row = vertexParameterRowBounds(area, i, heightScale);
         const auto labelBox = vertexLabelBounds(row);
-        const auto rail = vertexParameterRailBounds(row, guideControls);
+        const bool showRowGuideControls = guideControls == GuideControls::Visible
+                && showsGuideControlsForParameter(i);
+        const auto rowGuideControls = showRowGuideControls
+                ? GuideControls::Visible
+                : GuideControls::Hidden;
+        const auto rail = vertexParameterRailBounds(row, rowGuideControls);
 
         const auto guideBox = vertexGuideBounds(row);
-        const Rectangle<float> sliderBody = guideControls == GuideControls::Visible
+        const auto gainBox = vertexParameterGuideGainBounds(row);
+        const Rectangle<float> sliderBody = showRowGuideControls
                 ? row.withRight(guideBox.getX() - kVertexCellGap)
                 : row;
         drawSliderRowBody(g, sliderBody);
@@ -640,13 +706,14 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
         g.setColour(Colour(0xffb7bec7).withAlpha(0.84f));
         g.fillRect(rail.withWidth(rail.getWidth() * normalized));
 
-        if (guideControls == GuideControls::Hidden) {
+        if (!showRowGuideControls) {
             continue;
         }
 
         const String guideLabel = i < (int) guideAttachmentLabels.size()
                 ? guideAttachmentLabels[(size_t) i]
                 : String();
+        paintGuideGainKnob(g, gainBox, parameter.guideGain, guideLabel.isNotEmpty());
         g.setColour(guideLabel.isEmpty() ? Colour(0xff15191e) : Colour(0xff202833));
         g.fillRect(guideBox);
         g.setColour(guideLabel.isEmpty()
@@ -767,7 +834,7 @@ Rectangle<float> TrimeshSidePanelRenderer::spectralRangeRailBounds(Rectangle<flo
 Rectangle<float> TrimeshSidePanelRenderer::vertexParameterPanelBounds(
         Rectangle<float> sideArea,
         bool showSpectralRange) {
-    return vertexPanelColumnBounds(sideArea, showSpectralRange);
+    return vertexParameterAreaBounds(sideArea, showSpectralRange);
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRowBounds(
@@ -775,15 +842,30 @@ Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRowBounds(
         int parameterIndex,
         float heightScale) {
     auto rows = parameterArea.reduced(8.f, 0.f);
-    const float headerHeight = 30.f * heightScale;
-    const float gap = 5.f * heightScale;
+    const float headerHeight = 34.f * heightScale;
+    const float gap = 7.f * heightScale;
+    const bool useTwoColumns = parameterArea.getWidth() >= kWideLayoutMinimumWidth;
+    const int rowCount = useTwoColumns ? 3 : kVertexParamCount;
     const float rowHeight = jmin(
-            29.f * heightScale,
-            jmax(0.f, (rows.getHeight() - headerHeight - gap * (float) (kVertexParamCount - 1)) / kVertexParamCount));
+            34.f * heightScale,
+            jmax(0.f, (rows.getHeight() - headerHeight - gap * (float) (rowCount - 1)) / rowCount));
 
     rows.removeFromTop(headerHeight);
-    rows.translate(0.f, (float) parameterIndex * (rowHeight + gap));
+    const int columnIndex = useTwoColumns && parameterIndex >= rowCount ? 1 : 0;
+    const int rowIndex = useTwoColumns ? parameterIndex % rowCount : parameterIndex;
+
+    if (useTwoColumns) {
+        const float columnWidth = (rows.getWidth() - kColumnGap) * 0.5f;
+        rows = rows.withWidth(columnWidth);
+        rows.translate((columnWidth + kColumnGap) * (float) columnIndex, 0.f);
+    }
+
+    rows.translate(0.f, (float) rowIndex * (rowHeight + gap));
     return rows.removeFromTop(rowHeight);
+}
+
+bool TrimeshSidePanelRenderer::showsGuideControlsForParameter(int parameterIndex) {
+    return parameterIndex >= 3 && parameterIndex < kVertexParamCount;
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRailBounds(
@@ -791,13 +873,23 @@ Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRailBounds(
         GuideControls guideControls) {
     parameterRow.removeFromLeft(kVertexLabelW + kVertexCellGap);
     if (guideControls == GuideControls::Visible) {
-        parameterRow.removeFromRight(kVertexGuideW + kVertexCellGap);
+        parameterRow.removeFromRight(
+                kVertexGuideW
+                + kVertexCellGap
+                + kVertexGainSize
+                + kVertexCellGap);
         return parameterRow.withSizeKeepingCentre(
                 jmax(4.f, parameterRow.getWidth()),
                 8.f);
     }
     return parameterRow.withTrimmedRight(8.f)
             .withSizeKeepingCentre(jmax(4.f, parameterRow.getWidth() - 8.f), 8.f);
+}
+
+Rectangle<float> TrimeshSidePanelRenderer::vertexParameterGuideGainBounds(
+        Rectangle<float> parameterRow) {
+    return parameterRow.removeFromRight(kVertexGainSize)
+            .withSizeKeepingCentre(kVertexGainSize, kVertexGainSize);
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::vertexParameterGuideBounds(Rectangle<float> parameterRow) {

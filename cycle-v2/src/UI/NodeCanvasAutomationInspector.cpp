@@ -297,6 +297,8 @@ public:
             return "trimeshLinkToggle";
         case TrimeshExpandedHitRegionKind::VertexParameter:
             return "trimeshVertexParameter";
+        case TrimeshExpandedHitRegionKind::VertexGuideGain:
+            return "trimeshVertexGuideGain";
         case TrimeshExpandedHitRegionKind::VertexGuideAttachment:
             return "trimeshVertexGuideAttachment";
         }

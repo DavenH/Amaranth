@@ -33,9 +33,11 @@ graph, preventing repeated latest-state feedback.
    including Guide shelf widgets; retaining the widgets must not retain pixels
    from the previous document.
 2. Curve widgets synchronize the current graph model at the existing OpenGL
-   preview-render boundary, after context-dependent resources exist and before
-   snapshot capture. A default-model snapshot must not become the first
-   authoritative preview for a loaded node.
+   preview-render boundary before snapshot capture. Model synchronization may
+   precede lazy panel-host initialization, so interaction selection restoration
+   is deferred until the host initializes the interactor and its morph
+   positioner. A default-model snapshot must not become the first authoritative
+   preview for a loaded node.
 3. Guide preview readback retains the panel renderer's proven capture bounds,
    then immediately restores the OpenGL canvas underlay before publication.
    The temporary render therefore cannot leak at the canvas origin while the
@@ -105,3 +107,16 @@ documents that reuse `waveshaper` and `guide1`, then verifies the replacement
 graph compiles without validation issues. The production-size OS capture at
 `/private/tmp/cycle-v2-curve-preview-preset-reset.png` shows both the current
 compact Waveshaper curve and a non-black Guide tile after the switch.
+
+## 2026-09-09 Envelope Selection Follow-up
+
+The earlier pre-host Envelope fix initialized `Interactor::positioner` to null,
+but persisted editor selection still called `updateSelectionFrames()` before
+the lazy preview host initialized that pointer. Envelope selection restoration
+now retains the selected cube as pending interaction state and applies it from
+the panel's existing initialization lifecycle. Compact preview synchronization
+continues to reuse the authoritative controller and interactor without creating
+a second preview-only selection path. The selected-cube pre-host regression
+passes with 7 assertions, the remaining Envelope-tagged tests pass with 510
+assertions across 36 cases, and four focused Cello transition runs completed
+without a failed automation command or crash.

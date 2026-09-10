@@ -1,0 +1,138 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/Icycle.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "phaseLayer1"
+    },
+    {
+      "command": "selectVertex",
+      "nodeId": "phaseLayer1",
+      "vertexIndex": 8
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.3.guideGain",
+      "equals": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:phaseLayer1.trimeshVertexGuideGain.guideGain.phase",
+      "targetX": 0.5,
+      "targetY": 0.9
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:phaseLayer1.trimeshVertexGuideGain.guideGain.phase",
+      "downTargetId": "expanded:phaseLayer1.trimeshVertexGuideGain.guideGain.phase",
+      "targetX": 0.5,
+      "targetY": 0.5,
+      "downTargetX": 0.5,
+      "downTargetY": 0.9
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:phaseLayer1.trimeshVertexGuideGain.guideGain.phase",
+      "downTargetId": "expanded:phaseLayer1.trimeshVertexGuideGain.guideGain.phase",
+      "targetX": 0.5,
+      "targetY": 0.1,
+      "downTargetX": 0.5,
+      "downTargetY": 0.9
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:phaseLayer1.trimeshVertexGuideGain.guideGain.phase",
+      "downTargetId": "expanded:phaseLayer1.trimeshVertexGuideGain.guideGain.phase",
+      "targetX": 0.5,
+      "targetY": 0.1,
+      "downTargetX": 0.5,
+      "downTargetY": 0.9,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.3.guideGain",
+      "op": "greaterThan",
+      "value": 0.6
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "phaseLayer1"
+    },
+    {
+      "command": "selectVertex",
+      "nodeId": "phaseLayer1",
+      "vertexIndex": 8
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.3.guideGain",
+      "equals": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:phaseLayer1.trimeshVertexGuideAttachment.vertex.phase",
+      "targetX": 0.5,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:phaseLayer1.trimeshVertexGuideAttachment.vertex.phase",
+      "downTargetId": "expanded:phaseLayer1.trimeshVertexGuideAttachment.vertex.phase",
+      "targetX": 0.5,
+      "targetY": 0.5,
+      "downTargetX": 0.5,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:phaseLayer1.trimeshVertexGuideAttachment.vertex.phase",
+      "targetX": 0.5,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:phaseLayer1.trimeshVertexGuideAttachment.vertex.phase",
+      "downTargetId": "expanded:phaseLayer1.trimeshVertexGuideAttachment.vertex.phase",
+      "targetX": 0.5,
+      "targetY": 0.5,
+      "downTargetX": 0.5,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-trimesh-guide-gain.png"
+    }
+  ],
+  "quit": true
+}

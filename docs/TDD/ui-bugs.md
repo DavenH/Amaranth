@@ -233,6 +233,34 @@ render key, clears both framebuffer snapshots, advances its presentation
 identity, and schedules retained Guide widgets for a fresh render. A focused
 node-editor-host regression covers snapshot clearing and identity advancement.
 
+## P1: Cycle V2 reported crash transitioning to Cello Vibrato
+
+Context:
+
+- On 2026-09-09, Cycle V2 reportedly exited while opening
+  `cello-vibrato.cyclegraph` after another preset had already been loaded.
+- Recent-file history identified `solo-string-2.cyclegraph` as the immediate
+  predecessor and `time.cyclegraph` before it. The Cello graph contains local
+  authoring edits, including envelope topology and a Reverb node.
+- The focused `cycle-v2-agent-cello-vibrato-open` fixture covers
+  `time -> cello-vibrato -> solo-string-2 -> cello-vibrato`, including an
+  active voice during the first replacement and live playback afterward.
+- Twelve repeated fixture processes completed without a failed command or a
+  fresh `.ips` report. A Guide popup left active across replacement and the
+  attached-Guide Trimesh editor also survived in separate focused runs.
+
+Resolved 2026-09-09. The transition reproduced under LLDB with a persisted
+Envelope `selectedCubeId`. Compact preview synchronization restored that cube
+before the lazy panel host had initialized `Interactor::positioner`, then
+`updateSelectionFrames()` dereferenced the null pointer. The apparent hang was
+the debugger stopping at the access violation; its main thread was waiting for
+JUCE's OpenGL message-manager lock. Envelope selection restoration now defers
+the selected cube until the existing panel initialization lifecycle completes.
+The focused widget regression covers pre-host synchronization and verifies that
+the selection is restored after host initialization. Live evidence is in
+`/private/tmp/CycleV2-hang-2026-09-09-2206.txt`; macOS could not create an
+`.ips` because ReportCrash logged `Log limit exceeded`.
+
 ## P2: African Horn factory graph is not canonical JSON
 
 Status: Open

@@ -15,7 +15,7 @@ const Colour kText      { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
 constexpr float kLabelWidth = 62.f;
 
-Rectangle<float> labelBounds(Rectangle<float> row) {
+Rectangle<float> labelColumnBounds(Rectangle<float> row) {
     return row.removeFromLeft(kLabelWidth).reduced(8.f, 0.f);
 }
 
@@ -40,6 +40,13 @@ std::vector<std::pair<float, String>> tickValues(PortDomain domain) {
 
 }
 
+Rectangle<float> SpectralRangeControlRenderer::labelBounds(
+        Rectangle<float> row,
+        Rectangle<float> rail) {
+    Rectangle<float> label = labelColumnBounds(row).withHeight(18.f);
+    return label.withCentre({ label.getCentreX(), rail.getCentreY() });
+}
+
 void SpectralRangeControlRenderer::draw(
         Graphics& g,
         Rectangle<float> row,
@@ -52,7 +59,7 @@ void SpectralRangeControlRenderer::draw(
     g.setFont(FontOptions(12.f));
     g.drawText(
             domain == PortDomain::SpectralPhaseSignal ? "Width" : "Range",
-            labelBounds(row),
+            labelBounds(row, rail),
             Justification::centredLeft);
 
     g.setColour(kMutedText);

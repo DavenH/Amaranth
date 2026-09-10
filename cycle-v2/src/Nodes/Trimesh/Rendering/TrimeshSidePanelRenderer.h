@@ -83,9 +83,12 @@ public:
             juce::Rectangle<float> parameterArea,
             int parameterIndex,
             float heightScale = 1.f);
+    static bool showsGuideControlsForParameter(int parameterIndex);
     static juce::Rectangle<float> vertexParameterRailBounds(
             juce::Rectangle<float> parameterRow,
             GuideControls guideControls = GuideControls::Visible);
+    static juce::Rectangle<float> vertexParameterGuideGainBounds(
+            juce::Rectangle<float> parameterRow);
     static juce::Rectangle<float> vertexParameterGuideBounds(juce::Rectangle<float> parameterRow);
 };
 
