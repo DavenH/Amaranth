@@ -17,6 +17,7 @@
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
         "v1MasterGain": 0.9773594682052107,
+        "v2OutputGainUnitValue": 0.496183206,
         "v2OutputHeadroom": 0.125,
         "coverage": [
             "emptyTimeLayerBypass",
@@ -39,6 +40,10 @@
         "waveshaper": {
             "v1Area": "AreaWaveshaper",
             "v2Node": "waveshaper"
+        },
+        "impulseResponse": {
+            "v1Area": "AreaImpulse",
+            "v2Node": "impulseResponse"
         },
         "equalizer": {
             "v1Area": "AreaEQ",

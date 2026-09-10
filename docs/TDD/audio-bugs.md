@@ -430,3 +430,26 @@ pitch-clocked Hermite resampling. Artifacts:
 
 Current status: spectral reconstruction boundary resolved; remaining
 deterministic output residual is tracked at pitch-clocked cycle resampling.
+
+## Open: Guitar 3 G effects diverge after an equivalent voice output
+
+Context:
+
+- Guitar 3 G now matches Cycle 1 through magnitude and phase operands. With
+  waveshaper, IR, EQ, and delay disabled, MIDI 48 is zero-lag at
+  `0.9999999997` correlation with a unity gain fit and `2.4e-5` residual.
+- Enabling only the authored 2x waveshaper lowers correlation to `0.98330` and
+  raises residual to `0.1820`. Adding the impulse response lowers correlation
+  to `0.75736` and raises residual to `0.6530`.
+- Cycle 1 still fails fresh-process exact repeatability at tiny startup samples
+  even when every effect is disabled. This blocks an exact effect verdict but
+  does not account for the material waveshaper and IR differences.
+
+Artifacts:
+
+- `/tmp/cycle-guitar-no-effects-final/comparison.json`
+- `/tmp/cycle-guitar-waveshaper-final/comparison.json`
+- `/tmp/cycle-guitar-waveshaper-ir-final/comparison.json`
+
+Current status: open. Localize the waveshaper first, then the IR, against their
+mature Cycle 1 implementations without copying either algorithm.

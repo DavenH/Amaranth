@@ -528,6 +528,22 @@ as the scratch envelope evolves.
     scale is exactly `1.0`. Raw floats retain the already-localized same-clock
     numerical residual (`5.3e-6`), so exact-sample enforcement remains blocked
     on that DSP boundary rather than output control.
+32. Establish Guitar 3 G's effect-free output baseline. Complete: the parity
+    runner now disables every declared Cycle 1 effect through its authoritative,
+    idempotent `Disable` action, including the impulse-response panel that does
+    not expose the generic enable-control target. Disabled Cycle V2 effects now
+    preserve a runtime stereo payload even when their statically declared output
+    port is mono. The Guitar manifest also declares its already-translated Output
+    fader. With waveshaper, IR, EQ, and delay disabled, MIDI 48 is zero-lag with
+    `0.9999999997` correlation, a unity gain fit, and a `2.4e-5` normalized
+    residual. Enabling the waveshaper lowers correlation to `0.98330` with a
+    `0.1820` residual; adding IR lowers it to `0.75736` with a `0.6530` residual.
+    The waveshaper is therefore the first material effect boundary and IR adds a
+    second larger mismatch. Cycle 1 still fails the exact repeat gate by tiny
+    startup values even with every effect disabled. Artifacts:
+    `/tmp/cycle-guitar-no-effects-final/comparison.json`,
+    `/tmp/cycle-guitar-waveshaper-final/comparison.json`, and
+    `/tmp/cycle-guitar-waveshaper-ir-final/comparison.json`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

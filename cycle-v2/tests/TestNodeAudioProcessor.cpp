@@ -1463,9 +1463,18 @@ TEST_CASE("Disabled waveshaper passes block and traversal grid through unchanged
 
     AudioProcessContext context;
     context.frameCount = 3;
-    context.inputs = {
-            gridPayload({ -0.5f, 0.f, 0.5f, 0.75f, -0.75f, 0.25f }, 2, 3)
+    context.outputPorts = {
+            { "time", PortDomain::TimeSignal, ChannelLayout::Mono }
     };
+    SignalPayload stereo = gridPayload(
+            { -0.5f, 0.f, 0.5f, 0.75f, -0.75f, 0.25f }, 2, 3);
+    stereo.channelLayout = ChannelLayout::StereoPair;
+    stereo.secondaryBlock.samples = SignalBuffer { 0.5f, 0.f, -0.5f };
+    stereo.secondaryTraversalGrid = stereo.traversalGrid;
+    stereo.secondaryTraversalGrid.values = SignalBuffer {
+            0.5f, 0.f, -0.5f, -0.75f, 0.75f, -0.25f
+    };
+    context.inputs = { std::move(stereo) };
     context.parameters = {
             { "enabled", "Enabled", "0" },
             { "pre", "Pre", "2" },
@@ -1476,8 +1485,13 @@ TEST_CASE("Disabled waveshaper passes block and traversal grid through unchanged
     processor->process(context);
 
     REQUIRE(output(context).block.samples == std::vector<float> { -0.5f, 0.f, 0.5f });
+    REQUIRE(output(context).isStereo());
+    REQUIRE(output(context).secondaryBlock.samples
+            == std::vector<float> { 0.5f, 0.f, -0.5f });
     REQUIRE(output(context).traversalGrid.values
             == std::vector<float> { -0.5f, 0.f, 0.5f, 0.75f, -0.75f, 0.25f });
+    REQUIRE(output(context).secondaryTraversalGrid.values
+            == std::vector<float> { 0.5f, 0.f, -0.5f, -0.75f, 0.75f, -0.25f });
 }
 
 TEST_CASE("IR processor transforms block and traversal grid through convolution", "[cycle-v2][runtime]") {

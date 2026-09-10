@@ -380,10 +380,9 @@ def render_note(manifest, note, output_directory, arguments):
             "Manifest has no disable binding for: " + ", ".join(missing_effects))
     v1_setup = [
         {
-            "command": "setControl",
+            "command": "action",
+            "actionType": "Disable",
             "area": effect_bindings[effect]["v1Area"],
-            "target": "TargEffectEnable",
-            "click": True,
             "waitForIdle": True,
             "idleDelayMs": 100,
         }
