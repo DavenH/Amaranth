@@ -188,6 +188,11 @@ class CycleAudioDiffTest(unittest.TestCase):
         self.assertEqual(compare_cycle_audio.translated_output_gain(translated), 0.75)
         self.assertIsNone(compare_cycle_audio.translated_output_gain(legacy))
 
+    def test_renderer_environment_pins_accelerate_to_one_thread(self):
+        environment = compare_cycle_audio.deterministic_renderer_environment()
+
+        self.assertEqual(environment["VECLIB_MAXIMUM_THREADS"], "1")
+
     def test_allow_unverified_permits_changed_diagnostic_artifacts(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

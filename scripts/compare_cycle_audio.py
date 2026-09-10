@@ -5,6 +5,7 @@
 import argparse
 import hashlib
 import json
+import os
 import struct
 import subprocess
 import sys
@@ -115,11 +116,18 @@ def write_automation(path, open_command, capture, setup_commands=None):
     path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
 
 
+def deterministic_renderer_environment():
+    environment = os.environ.copy()
+    environment["VECLIB_MAXIMUM_THREADS"] = "1"
+    return environment
+
+
 def run_renderer(wrapper, script, report, log):
     subprocess.run(
         [str(wrapper), str(script), str(report), str(log)],
         cwd=REPO_ROOT,
         check=True,
+        env=deterministic_renderer_environment(),
     )
     with report.open(encoding="utf-8") as source:
         automation_report = json.load(source)

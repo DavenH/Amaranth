@@ -170,7 +170,7 @@ translation. The first broad candidates are:
 | simple-bass | Time layer, one multiplicative magnitude layer, and a volume envelope; no active phase, scratch, effects, unison, or guide noise | Verified. Shared document declick and the legacy split-rate volume-envelope clock are restored. Complete 75/200/400 ms notes at 48 kHz have zero lag and at least `0.99999999991` correlation. |
 | power | Time layer plus volume envelope | Regenerated exactly but rejected as an audio oracle: Cycle 1 renders silence because the active time layer has no authored waveform geometry. |
 | Subbass | Time, magnitude, phase, volume/scratch envelopes | Port manifest was strict, but current notes 48–72 fail its old output thresholds; diagnostic only. |
-| guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Its legacy-static volume/scratch envelopes are explicit. At frame zero, magnitude and phase operands are byte-identical and reconstructed output differs only at floating-point scale. The next material discrepancy is in the post-oscillator/effect path; Cycle 1 also failed the latest repeat-render gate beginning at sample 3. |
+| guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Per-channel waveshaper and IR state now match Cycle 1 ownership. MIDI 36–72 meets the diagnostic audio thresholds; EQ and delay add no material gap. MIDI 36 still fails Cycle 1's raw repeat gate, so the fixture is not admitted. |
 | japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase. One corrected render repeated exactly, but a later run did not repeat in Cycle 1. Its large evolving mismatch remains diagnostic until that intermittent startup state is isolated. |
 | Icycle | Broad synthesis/effects plus six-voice Unison | Guide noise is disabled. Current graph differs from fresh conversion in reverb size; Unison repeatability still needs an admitted pair. |
 | accoustic | Broad graph including reverb | Current graph differs in morph/link state, envelope state, reverb size, and IR high-pass; do not use for DSP attribution yet. |
@@ -565,6 +565,22 @@ as the scratch envelope evolves.
     with a `+0.0226 dB` fit and `0.00743` residual. This resolves the material IR
     gap while retaining its smaller numerical residual for later localization.
     Artifact: `/tmp/cycle-guitar-ir-channel-state/comparison.json`.
+35. Complete the Guitar 3 G effect ladder and re-audit repeatability. In
+    progress: adding EQ and delay after the corrected waveshaper and IR does not
+    create a material new discrepancy. A full MIDI 36–72 matrix is zero-lag
+    except for MIDI 60's `-183` diagnostic alignment; correlations range from
+    `0.98647` to `0.99998` and residuals from `0.0066` to `0.1639`, within the
+    fixture's current diagnostic thresholds. Accelerate's inverse FFT varied by
+    one float ULP across fresh Cycle 1 processes even with identical captured
+    spectra. The paired runner now pins `VECLIB_MAXIMUM_THREADS=1`, which makes
+    the effect-free graph repeat exactly in both engines. The full graph still
+    fails Cycle 1 repeatability at MIDI 36 while MIDI 48, 60, and 72 repeat
+    exactly. Do not admit the fixture until the remaining low-note effect-path
+    instability is localized; do not weaken the repeat gate. Artifacts:
+    `/tmp/cycle-guitar-no-effects-single-veclib/comparison.json`,
+    `/tmp/cycle-guitar-through-eq-state-fixed/comparison.json`,
+    `/tmp/cycle-guitar-full-deterministic-recheck/comparison.json`, and
+    `/tmp/cycle-guitar-full-matrix/comparison.json`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

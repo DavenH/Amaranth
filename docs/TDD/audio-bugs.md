@@ -447,8 +447,10 @@ Context:
   both channels; matching Cycle 1's per-channel ownership raises correlation to
   `0.9999724` with a `0.00743` residual and `+0.0226 dB` fit.
 - Cycle 1 still fails fresh-process exact repeatability at tiny startup samples
-  even when every effect is disabled. This blocks an exact effect verdict but
-  does not account for the material waveshaper and IR differences.
+  even when every effect is disabled. Pinning Accelerate to one thread makes the
+  effect-free graph repeat exactly, localizing that variation to the inverse
+  FFT. The full effect graph still fails at MIDI 36 while MIDI 48, 60, and 72
+  repeat exactly.
 
 Artifacts:
 
@@ -457,6 +459,9 @@ Artifacts:
 - `/tmp/cycle-guitar-waveshaper-channel-state/comparison.json`
 - `/tmp/cycle-guitar-waveshaper-ir-final/comparison.json`
 - `/tmp/cycle-guitar-ir-channel-state/comparison.json`
+- `/tmp/cycle-guitar-full-matrix/comparison.json`
+- `/tmp/cycle-guitar-midi36-repeat-recheck/comparison.json`
 
 Current status: material waveshaper and IR gaps addressed. Their smaller
-numerical residuals remain open while the effect ladder advances to EQ.
+numerical residuals remain open. EQ and delay add no material discrepancy, but
+Cycle 1's low-note full-effect repeatability still blocks fixture admission.
