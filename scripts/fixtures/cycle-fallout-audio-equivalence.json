@@ -1,0 +1,38 @@
+{
+    "schema": "cycle-v1-v2-audio-equivalence.v1",
+    "status": "verified",
+    "v1": {
+        "factoryPreset": "fallout",
+        "sourceDocument": "cycle/content/presets/fallout.cyc",
+        "sha256": "7aebb2c34cdf311be99399438ee4c8e62349fa89a22f3591287060913aa6505e"
+    },
+    "v2": {
+        "graph": "cycle-v2/content/presets/fallout.cyclegraph",
+        "sha256": "b1e67d798b522524f9edc843fe9332fba44180da366e1c05ffe5e005b3dca46f",
+        "renderOverrides": {
+            "voiceDurationSeconds": 1.2669864718837067
+        }
+    },
+    "translation": {
+        "midiNoteOffset": 0,
+        "legacyMidiReferenceOffset": -12,
+        "v1MasterGain": 0.9773594682052107,
+        "v2OutputGainUnitValue": 0.496183206,
+        "v2OutputHeadroom": 0.125,
+        "coverage": [
+            "timeLayer",
+            "subtractiveMagnitudeLayer",
+            "additivePhaseLayer",
+            "outputGain"
+        ],
+        "determinism": "volume, pitch, and scratch envelopes, effects, unison, and guide noise are disabled",
+        "inputValidation": "regenerated from a direct Cycle 1 canonical file export on 2026-09-09",
+        "constantGainPolicy": "Cycle1 master gain maps to Output; Cycle2 fixed headroom remains separate"
+    },
+    "thresholds": {
+        "correlationMin": 0.98,
+        "gainMatchedResidualMax": 0.2,
+        "spectrumRmseDbMax": 6.0,
+        "cyclogramMeanRowDifferenceMax": 0.2
+    }
+}

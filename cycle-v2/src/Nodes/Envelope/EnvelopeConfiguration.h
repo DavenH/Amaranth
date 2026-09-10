@@ -19,6 +19,8 @@ struct EnvelopeConfiguration final : public INodeDspConfiguration {
     bool logarithmic {};
     bool enabled { true };
     bool lowResolution {};
+    bool volumePurpose {};
+    bool declick {};
 };
 
 }

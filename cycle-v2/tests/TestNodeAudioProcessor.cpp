@@ -672,6 +672,35 @@ TEST_CASE("Envelope processor follows the normalized voice duration",
     REQUIRE(shortVoice != longVoice);
 }
 
+TEST_CASE("Volume envelopes consume their dedicated output-rate clock",
+        "[cycle-v2][runtime][envelope][voice-time][parity]") {
+    const auto render = [](const String& purpose) {
+        const auto configuration = EnvelopeSignalProcessor::buildConfiguration({
+                { "purpose", "Purpose", purpose }
+        });
+        REQUIRE(configuration != nullptr);
+        EnvelopeSignalProcessor processor;
+        processor.adoptConfiguration({ 1, "split-rate-envelope", configuration });
+        AudioExecutionSpec spec;
+        spec.maximumFrameCount = 4;
+        spec.sampleRate = 44'100.;
+        processor.prepareExecution(spec);
+
+        AudioProcessContext context;
+        context.frameCount = 4;
+        context.timing.sampleRate = 44'100.;
+        context.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+        context.voice.controls.normalizedVoiceTimeIncrement = 0.05f;
+        context.voice.controls.normalizedVolumeEnvelopeTimeIncrement = 0.025f;
+        context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        processor.process(context);
+        return processor.playbackPosition();
+    };
+
+    REQUIRE(render("control") == Catch::Approx(0.2));
+    REQUIRE(render("volume") == Catch::Approx(0.1));
+}
+
 TEST_CASE("Envelope processor becomes inactive on note-off without a release curve",
         "[cycle-v2][runtime][envelope][release]") {
     EnvelopeNodeModel model;
@@ -705,6 +734,60 @@ TEST_CASE("Envelope processor becomes inactive on note-off without a release cur
 
     REQUIRE_FALSE(processor.isActive());
     REQUIRE(output(noteOff).block.samples == std::vector<float>(8, 0.f));
+}
+
+TEST_CASE("Document declick supplies a neutral volume envelope and owns note release",
+        "[cycle-v2][runtime][envelope][declick][parity]") {
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration({
+            { "enabled", "Enabled", "false" },
+            { "purpose", "Purpose", "volume" },
+            { "declick", "Declick", "true" }
+    });
+    REQUIRE(configuration != nullptr);
+
+    EnvelopeSignalProcessor processor;
+    processor.adoptConfiguration({ 1, "document-declick", configuration });
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 512;
+    spec.sampleRate = 48'000.;
+    processor.prepareExecution(spec);
+
+    AudioProcessContext attack;
+    const int attackSamples = CycleDsp::VoiceDeclick::attackSampleCount(spec.sampleRate);
+    const int releaseSamples = CycleDsp::VoiceDeclick::releaseSampleCount(spec.sampleRate);
+    attack.frameCount = (size_t) attackSamples;
+    attack.timing.sampleRate = 48'000.;
+    attack.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+    attack.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    processor.process(attack);
+
+    ScopedAlloc<float> expectedAttack(attackSamples);
+    CycleDsp::VoiceDeclick::prepareAttack(expectedAttack);
+    REQUIRE(output(attack).block.samples
+            == std::vector<float>(expectedAttack.begin(), expectedAttack.end()));
+    REQUIRE(processor.isActive());
+
+    AudioProcessContext release;
+    release.frameCount = (size_t) releaseSamples - 1;
+    release.timing.sampleRate = 48'000.;
+    release.outputPorts = attack.outputPorts;
+    release.voice.events.push_back({ NoteLifecycleType::NoteOff, 0, 0 });
+    processor.process(release);
+
+    ScopedAlloc<float> expectedRelease(releaseSamples);
+    CycleDsp::VoiceDeclick::prepareRelease(expectedRelease);
+    REQUIRE(output(release).block.samples.front() == expectedRelease.front());
+    REQUIRE(output(release).block.samples.back() == expectedRelease[expectedRelease.size() - 2]);
+    REQUIRE(processor.isActive());
+
+    AudioProcessContext releaseEnd;
+    releaseEnd.frameCount = 1;
+    releaseEnd.timing.sampleRate = 48'000.;
+    releaseEnd.outputPorts = attack.outputPorts;
+    processor.process(releaseEnd);
+
+    REQUIRE(output(releaseEnd).block.samples.front() == expectedRelease.back());
+    REQUIRE_FALSE(processor.isActive());
 }
 
 TEST_CASE("Envelope processor maps morph and logarithmic parameters", "[cycle-v2][runtime][envelope]") {

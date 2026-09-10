@@ -4,12 +4,14 @@
 #include <App/SingletonRepo.h>
 #include <Array/Buffer.h>
 #include <Audio/CycleDsp/UnisonCore.h>
+#include <Audio/CycleDsp/VoiceDeclick.h>
 #include <Audio/PluginProcessor.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Util/Arithmetic.h>
 
 #include "CycleBasedVoice.h"
 #include "SynthesizerVoice.h"
+
 #include "Algo/Resampling.h"
 #include "../SynthAudioSource.h"
 #include "../CycleDefs.h"
@@ -454,22 +456,11 @@ void SynthesizerVoice::applyVolumeReleaseDeclick(
         EnvRasterizer& rasterizer,
         int releaseSamplesRemaining,
         int numSamples) {
-    if (releaseSamplesRemaining <= 0) {
-        return;
-    }
-
     Buffer<float> envelope = rasterizer.getRenderBuffer().withSize(numSamples);
-    const int fadeSize = audioSource->releaseDeclick.size();
-    const int fadeStart = jmax(0, releaseSamplesRemaining - fadeSize);
-    const int releaseSamples = jmin(numSamples, releaseSamplesRemaining);
-    const int fadeSamples = releaseSamples - fadeStart;
-    if (fadeSamples <= 0) {
-        return;
-    }
-
-    const int fadeEnvelopeStart = fadeSize - releaseSamplesRemaining + fadeStart;
-    Buffer<float> fade(audioSource->releaseDeclick + fadeEnvelopeStart, fadeSamples);
-    envelope.section(fadeStart, fadeSamples).mul(fade);
+    CycleDsp::VoiceDeclick::applyReleaseTail(
+            envelope,
+            audioSource->releaseDeclick,
+            releaseSamplesRemaining);
 }
 
 void SynthesizerVoice::fetchEnvelopeMeshes() {

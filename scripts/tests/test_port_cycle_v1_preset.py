@@ -156,6 +156,27 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertEqual(nodes["magnitudeOp2"]["kind"], "multiply")
         self.assertEqual(nodes["phaseOp1"]["kind"], "add")
 
+    def test_document_declick_uses_the_volume_envelope_boundary(self):
+        source = convertible_source()
+        source["preset"]["settings"]["Declick"] = True
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {entry["id"]: entry for entry in converted["nodes"]}
+
+        self.assertTrue(nodes["volumeEnvelope1"]["parameters"]["declick"])
+        self.assertIn("volumeMultiply", nodes)
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "volumeEnvelope1"
+            and edge["destNodeId"] == "volumeMultiply"
+            for edge in converted["edges"]
+        ))
+
+        source["preset"]["settings"]["Declick"] = False
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {entry["id"]: entry for entry in converted["nodes"]}
+        self.assertNotIn("volumeEnvelope1", nodes)
+        self.assertNotIn("volumeMultiply", nodes)
+
     def test_generated_layout_is_aligned_compact_and_non_overlapping(self):
         source = convertible_source()
         magnitude = source["preset"]["meshLibrary"]["groups"][5]["layers"][0]
@@ -288,13 +309,16 @@ class PortCycleV1PresetTest(unittest.TestCase):
             for node in converted["nodes"]
         ))
 
-    def test_all_inactive_unconnected_envelopes_are_omitted(self):
+    def test_document_declick_retains_only_a_neutral_volume_envelope(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
 
-        self.assertFalse(any(
-            node["kind"] == "envelope"
-            for node in converted["nodes"]
-        ))
+        envelopes = [
+            node for node in converted["nodes"]
+            if node["kind"] == "envelope"
+        ]
+        self.assertEqual(len(envelopes), 1)
+        self.assertEqual(envelopes[0]["id"], "volumeEnvelope1")
+        self.assertTrue(envelopes[0]["parameters"]["declick"])
 
     def test_unassigned_guides_are_omitted(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
@@ -598,14 +622,48 @@ class PortCycleV1PresetTest(unittest.TestCase):
 
         self.assertIn("Guide noise must be disabled for deterministic audio parity", issues)
 
-    def test_multiple_magnitude_layers_report_validation_issue(self):
+    def test_multiple_magnitude_layers_are_supported_for_strict_parity(self):
         source = supported_source()
         source["preset"]["meshLibrary"]["groups"][5]["layers"].append(
             copy.deepcopy(source["preset"]["meshLibrary"]["groups"][5]["layers"][0]))
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
 
         issues = port_cycle_v1_preset.validate_audio_parity_subset(source)
 
-        self.assertIn("magnitude requires exactly one active layer; found 2", issues)
+        self.assertEqual(issues, [])
+
+    def test_strict_parity_requires_an_active_magnitude_layer(self):
+        source = supported_source()
+        source["preset"]["meshLibrary"]["groups"][5]["layers"][0] \
+            ["properties"]["active"] = False
+
+        issues = port_cycle_v1_preset.validate_audio_parity_subset(source)
+
+        self.assertIn("magnitude requires at least one active layer; found 0", issues)
+
+    def test_strict_parity_allows_no_active_phase_layer(self):
+        source = supported_source()
+        source["preset"]["meshLibrary"]["groups"][6]["layers"][0] \
+            ["properties"]["active"] = False
+
+        issues = port_cycle_v1_preset.validate_audio_parity_subset(source)
+
+        self.assertEqual(issues, [])
+
+    def test_every_active_magnitude_layer_must_have_neutral_legacy_gain(self):
+        source = supported_source()
+        second = copy.deepcopy(source["preset"]["meshLibrary"]["groups"][5]["layers"][0])
+        second["properties"]["gain"] = 0.25
+        source["preset"]["meshLibrary"]["groups"][5]["layers"].append(second)
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        issues = port_cycle_v1_preset.validate_audio_parity_subset(source)
+
+        self.assertIn("magnitude layer gain and fine tune must be neutral", issues)
 
     def test_multiple_scratch_envelopes_report_validation_issue(self):
         source = supported_source()

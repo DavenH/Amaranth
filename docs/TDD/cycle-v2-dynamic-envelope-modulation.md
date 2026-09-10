@@ -4,8 +4,15 @@
 
 In Progress.
 
-The bounded preparation exchange, per-note morph latching, and absolute red/blue
-inputs are implemented. The original Envelope-owned `Dynamic while live`
+The bounded preparation exchange and absolute red/blue inputs are implemented.
+Per-note morph latching is incomplete at the note-on boundary: when key or
+velocity selects a cross-section that is not already prepared, the first audio
+uses the persistent base morph until the non-realtime result is adopted. The
+replacement architecture is specified by
+`cycle-v2-realtime-note-on-envelope-preparation.md`: the routed initial result
+must be materialized synchronously through a bounded, lock-free, preallocated
+path before the first sample. Voice activation may not be delayed. The
+original Envelope-owned `Dynamic while live`
 policy was removed on 2026-07-31 after ownership review: live adoption is a
 voice traversal policy and may only be exposed through Voice Context (or a
 shared voice-policy object owned by it). Until that contract exists, Envelope
@@ -57,8 +64,10 @@ curve, morph, loop, and scaling semantics to diverge.
   any future per-voice live traversal policy.
 - If Voice Context later permits live adoption, preserve active note, sustain,
   loop, and release state when an envelope replacement is adopted.
-- Keep envelope preparation, allocation, graph mutation, and snapshot
-  publication off the realtime audio thread.
+- Keep allocation, graph mutation, and snapshot publication off the realtime
+  audio thread. Initial note-on materialization follows the separate bounded
+  realtime contract; future active-note preparation remains outside this TDD
+  until Voice Context defines its adoption policy.
 - Let traversal rendering exploit its complete time-axis domain without
   acquiring audio playback machinery.
 - Coalesce live modulation requests so preparation work is bounded.
@@ -97,7 +106,20 @@ the same absolute-position contract. Canonical normalization adds these ports
 to previously saved Cycle v2 nodes without a separate migration layer.
 
 With the current latched policy, `effectiveMorph` is captured at note-on and
-remains fixed for that note. Changes remain available to the next note.
+remains fixed for that note after its prepared result is adopted. The current
+implementation does not yet guarantee that result is available for the first
+sample; until it does, the latched policy is incomplete. Changes remain
+available to the next note.
+
+The Guitar 3 G parity fixture demonstrates the missing boundary. Its looping
+scratch envelope depends strongly on key and velocity. At MIDI 48/frame zero,
+Cycle 1 starts from the routed cross-section at `0.00553`, while Cycle V2 starts
+from the persistent 0.5/0.5 preparation at `0.22683`. The bounded request is
+published at note-on, which is too late to define the already-started voice.
+The initial result must instead follow
+`cycle-v2-realtime-note-on-envelope-preparation.md`. General-purpose realtime
+`EnvRasterizer` use remains forbidden; the new contract requires an extracted
+shared core with fixed-capacity voice storage.
 
 If Voice Context later enables live adoption, a meaningful change to
 `effectiveMorph` requests a new immutable prepared envelope. Once ready, the
@@ -139,10 +161,13 @@ cross-section per time column and does not step an audio playback cursor.
 Persistent UI edits continue through the conflict-checked graph mutation and
 immutable node-configuration publication path.
 
-Live modulation uses a distinct runtime control path with these properties:
+Active-note live modulation uses a distinct runtime control path with these
+properties:
 
 - values are scoped per voice where the source is per voice;
 - modulation does not alter serialized node parameters;
+- initial note-on preparation is not sent through this exchange and is
+  completed synchronously under the realtime note-on TDD;
 - the audio thread may publish or record a small latest-value request, but may
   not build an envelope or allocate;
 - a non-realtime preparation owner reads the newest request and builds a
@@ -233,8 +258,10 @@ the total traversal samples.
 - traversal application remains `O(n + S)` after one required preparation;
 - persistent authoring edits may rebuild graph configuration, while live
   modulation must not compile or copy the graph;
-- no preparation, allocation, serialization, UI snapshot publication, mutex
-  wait, or unbounded retry occurs on the realtime thread.
+- no active-note replacement preparation, allocation, serialization, UI
+  snapshot publication, mutex wait, or unbounded retry occurs on the realtime
+  thread. Initial note-on materialization is the sole preparation exception and
+  must satisfy its separate fixed-capacity contract.
 
 ## Semantic Tests
 
@@ -283,8 +310,10 @@ the total traversal samples.
 
 ### Realtime Boundary
 
-- Instrumented audio processing reports no envelope preparation, allocation,
-  serialization, graph edit, or snapshot publication.
+- Instrumented ordinary rendering and active-note adoption report no envelope
+  preparation, allocation, serialization, graph edit, or snapshot publication.
+- Instrumented initial note-on preparation satisfies
+  `cycle-v2-realtime-note-on-envelope-preparation.md`.
 - Adoption work remains bounded as prepared-envelope size changes.
 - The producer can run slower than incoming modulation without growing a
   queue; the newest request ultimately wins.
@@ -301,7 +330,9 @@ the total traversal samples.
    parameter; define any future live-adoption control on Voice Context.
 5. Define absolute per-voice effective-morph `ControlSignal` inputs supplied by
    graph edges, without coupling them to graph mutations.
-6. Add bounded non-realtime preparation and safe generation adoption.
+6. Replace note-start exchange/adoption with the bounded synchronous path in
+   `cycle-v2-realtime-note-on-envelope-preparation.md`. Reserve non-realtime
+   preparation and safe generation adoption for a future active-note policy.
 7. Add the audio lifecycle, traversal, coalescing, and realtime-boundary tests.
 8. Route ordinary node-canvas control sources directly to the red/blue inputs;
    keep scaling and combination in upstream control nodes.
@@ -316,6 +347,8 @@ the total traversal samples.
 - Their lifecycle and optimization policies remain separate and domain-shaped.
 - Any future Voice Context-authorized live adoption preserves or validly
   reconciles note, loop, sustain, and release state.
-- Preparation and publication are absent from the realtime audio thread.
+- Initial note-on materialization satisfies its bounded realtime contract;
+  active-note replacement preparation and publication remain absent from the
+  realtime audio thread.
 - Modulation bursts cannot create an unbounded work queue.
 - Tests prove product semantics, not merely that callbacks or revisions occur.

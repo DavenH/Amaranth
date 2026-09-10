@@ -176,6 +176,45 @@ class CycleAudioDiffTest(unittest.TestCase):
 
         self.assertEqual(compare_cycle_audio.cycle_v1_note(manifest, 48), 60)
 
+    def test_translated_output_gain_requires_an_output_fader(self):
+        translated = {
+            "translation": {
+                "v1MasterGain": 0.75,
+                "v2OutputGainUnitValue": 0.45,
+            },
+        }
+        legacy = {"translation": {"v1MasterGain": 0.75}}
+
+        self.assertEqual(compare_cycle_audio.translated_output_gain(translated), 0.75)
+        self.assertIsNone(compare_cycle_audio.translated_output_gain(legacy))
+
+    def test_allow_unverified_permits_changed_diagnostic_artifacts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.cyc"
+            graph = root / "graph.cyclegraph"
+            source.write_bytes(b"source")
+            graph.write_bytes(b"changed graph")
+            manifest = root / "manifest.json"
+            manifest.write_text(json.dumps({
+                "schema": "cycle-v1-v2-audio-equivalence.v1",
+                "status": "diagnostic",
+                "v1": {
+                    "sourceDocument": str(source),
+                    "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+                },
+                "v2": {
+                    "graph": str(graph),
+                    "sha256": hashlib.sha256(b"original graph").hexdigest(),
+                },
+            }), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "not verified"):
+                compare_cycle_audio.load_manifest(manifest, False)
+            loaded = compare_cycle_audio.load_manifest(manifest, True)
+
+        self.assertEqual(loaded["status"], "diagnostic")
+
     def test_threshold_verdict_can_require_raw_exact_samples(self):
         analysis = {
             "alignment": {"correlation": 1.0},

@@ -49,6 +49,9 @@ public:
         spectralStageCapture = capture;
     }
     void setVoiceDurationSeconds(float durationSeconds);
+    void setVolumeEnvelopeClockSampleRate(double sampleRate) {
+        volumeEnvelopeClockSampleRate = jmax(0., sampleRate);
+    }
     void setOutputGain(float gain) { outputGain = jmax(0.f, gain); }
     void setControlNoteOffset(int offset) {
         controlNoteOffset = jlimit(-127, 127, offset);
@@ -119,6 +122,7 @@ private:
     std::array<float, 8192> metricsScratch;
     uint64_t nextVoiceOrder {};
     float voiceDurationSeconds { 7.f };
+    double volumeEnvelopeClockSampleRate {};
     float outputGain { defaultOutputGain };
     SmoothedParameter graphOutputGain { 1.f };
     bool outputGainInitialized {};

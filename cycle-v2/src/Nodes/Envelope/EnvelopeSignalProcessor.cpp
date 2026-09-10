@@ -21,7 +21,9 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
         bool logarithmic,
         bool enabled,
         float neutralValue,
-        bool lowResolution) {
+        bool lowResolution,
+        bool volumePurpose,
+        bool declick) {
     auto result = std::make_shared<EnvelopeConfiguration>();
     result->mesh = std::shared_ptr<EnvelopeMesh>(
             new EnvelopeMesh(name + "Mesh"),
@@ -50,6 +52,8 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
     result->enabled = enabled;
     result->lowResolution = lowResolution;
     result->neutralValue = neutralValue;
+    result->volumePurpose = volumePurpose;
+    result->declick = declick;
     return result;
 }
 
@@ -76,6 +80,7 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
     }
     const NodeParameterMap parameterMap(parameters);
     const String purpose = parameterMap.stringValue("purpose", "control");
+    const bool volumePurpose = purpose == "volume";
     return prepareEnvelopeConfiguration(
             "CycleV2EnvelopeConfiguration",
             envelope->getMesh(),
@@ -84,14 +89,23 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
             parameterMap.floatValue("level", 1.f),
             parameterMap.boolValue("logarithmic", false),
             parameterMap.boolValue("enabled", true),
-            purpose == "volume" ? 1.f : (purpose == "pitch" ? 0.5f : 0.f),
-            purpose == "pitch" || purpose == "scratch");
+            volumePurpose ? 1.f : (purpose == "pitch" ? 0.5f : 0.f),
+            purpose == "pitch" || purpose == "scratch",
+            volumePurpose,
+            volumePurpose && parameterMap.boolValue("declick", false));
 }
 
 void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
     const size_t maximumColumns = std::max(defaultTraversalColumns, spec.maximumFrameCount);
     traversalMemory.ensureSize((int) (2 * maximumColumns));
     transitionMemory.ensureSize((int) spec.maximumFrameCount);
+    const double sampleRate = spec.sampleRate > 0.
+            ? spec.sampleRate
+            : CycleDsp::VoiceDeclick::legacySampleRate;
+    attackDeclick.resize(CycleDsp::VoiceDeclick::attackSampleCount(sampleRate));
+    releaseDeclick.resize(CycleDsp::VoiceDeclick::releaseSampleCount(sampleRate));
+    CycleDsp::VoiceDeclick::prepareAttack(attackDeclick);
+    CycleDsp::VoiceDeclick::prepareRelease(releaseDeclick);
 
     if (configuration == nullptr || pendingRevision == adoptedRevision) {
         return;
@@ -137,7 +151,9 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::prepareMor
             base.logarithmic,
             base.enabled,
             base.neutralValue,
-            base.lowResolution);
+            base.lowResolution,
+            base.volumePurpose,
+            base.declick);
 }
 
 bool EnvelopeSignalProcessor::serviceNonRealtimePreparation() {
@@ -253,7 +269,8 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
     outputBuffer.zero();
 
     const EnvelopeConfiguration* current = preparedConfiguration();
-    if (current != nullptr && !current->enabled) {
+    if (current != nullptr && !current->enabled
+            && !(current->volumePurpose && current->declick)) {
         outputBuffer.set(current->neutralValue);
         if (context.captureTraversalGrid) {
             publishTraversalGrid(output, context.workArena);
@@ -270,8 +287,12 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
         const double sampleRateIncrement = context.timing.sampleRate > 0.
                 ? 1. / context.timing.sampleRate
                 : 0.;
-        const double normalizedTimeIncrement = voice.controls.normalizedVoiceTimeIncrement > 0.f
-                ? (double) voice.controls.normalizedVoiceTimeIncrement
+        const float routedTimeIncrement = current->volumePurpose
+                        && voice.controls.normalizedVolumeEnvelopeTimeIncrement > 0.f
+                ? voice.controls.normalizedVolumeEnvelopeTimeIncrement
+                : voice.controls.normalizedVoiceTimeIncrement;
+        const double normalizedTimeIncrement = routedTimeIncrement > 0.f
+                ? (double) routedTimeIncrement
                 : sampleRateIncrement;
         for (const auto& event : voice.events) {
             if (event.voiceIndex != voice.voiceIndex) {
@@ -360,17 +381,25 @@ void EnvelopeSignalProcessor::applyLifecycleEvent(const NoteLifecycleEvent& even
             ++noteSerial;
             playback.noteOn();
             active = true;
+            fadingIn = current->volumePurpose && current->declick;
+            fadingOut = false;
+            attackSamplePosition = 0;
+            releaseSamplePosition = 0;
             break;
 
         case NoteLifecycleType::NoteOff:
-            if (!playback.noteOff(prepared)) {
-                active = false;
+            if (!current->enabled || !playback.noteOff(prepared)) {
+                fadingOut = current->volumePurpose && current->declick;
+                releaseSamplePosition = 0;
+                active = fadingOut;
             }
             break;
 
         case NoteLifecycleType::Reset:
             playback.noteOn();
             active = false;
+            fadingIn = false;
+            fadingOut = false;
             break;
     }
 }
@@ -389,6 +418,19 @@ void EnvelopeSignalProcessor::renderSegment(
         return;
     }
 
+    if (!current->enabled) {
+        renderNeutralSegment(output, start, count);
+        return;
+    }
+
+    const int releaseSamplesRemaining = current->volumePurpose
+            ? playback.releaseSamplesRemaining(
+                    current->rasterizer->preparedPlaybackView(),
+                    normalizedTimeIncrement,
+                    Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
+                    props,
+                    1.f)
+            : -1;
     const bool stillActive = playback.renderToBuffer(
             current->rasterizer->preparedPlaybackView(),
             (int) count,
@@ -398,9 +440,66 @@ void EnvelopeSignalProcessor::renderSegment(
             1.f);
     Buffer<float> rendered = playback.output().withSize((int) count);
     applyAdoptionTransition(rendered);
+    const bool applyingReleaseDeclick = fadingOut;
+    if (fadingIn) {
+        applyAttackDeclick(rendered);
+    } else if (fadingOut) {
+        renderReleaseDeclick(rendered);
+    } else if (current->volumePurpose) {
+        CycleDsp::VoiceDeclick::applyReleaseTail(
+                rendered,
+                releaseDeclick,
+                releaseSamplesRemaining);
+    }
     rendered.copyTo(output.section((int) start, (int) count));
     lastOutputSample = rendered.back();
-    active = stillActive;
+    active = applyingReleaseDeclick ? fadingOut : stillActive;
+}
+
+void EnvelopeSignalProcessor::renderNeutralSegment(
+        Buffer<float> output,
+        size_t start,
+        size_t count) {
+    if (!active || count == 0) {
+        return;
+    }
+
+    Buffer<float> rendered = output.section((int) start, (int) count);
+    rendered.set(1.f);
+    if (fadingIn) {
+        applyAttackDeclick(rendered);
+    } else if (fadingOut) {
+        renderReleaseDeclick(rendered);
+    }
+    lastOutputSample = rendered.back();
+}
+
+void EnvelopeSignalProcessor::applyAttackDeclick(Buffer<float> rendered) {
+    const int samples = jmin(
+            rendered.size(),
+            attackDeclick.size() - attackSamplePosition);
+    if (samples > 0) {
+        rendered.withSize(samples).mul(
+                attackDeclick.section(attackSamplePosition, samples));
+        attackSamplePosition += samples;
+    }
+    fadingIn = attackSamplePosition < attackDeclick.size();
+}
+
+void EnvelopeSignalProcessor::renderReleaseDeclick(Buffer<float> rendered) {
+    const int samples = jmin(
+            rendered.size(),
+            releaseDeclick.size() - releaseSamplePosition);
+    if (samples > 0) {
+        rendered.withSize(samples).mul(
+                releaseDeclick.section(releaseSamplePosition, samples));
+        releaseSamplePosition += samples;
+    }
+    if (samples < rendered.size()) {
+        rendered.offset(samples).zero();
+    }
+    fadingOut = releaseSamplePosition < releaseDeclick.size();
+    active = fadingOut;
 }
 
 void EnvelopeSignalProcessor::applyAdoptionTransition(Buffer<float> rendered) {

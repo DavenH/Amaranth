@@ -41,6 +41,19 @@ TEST_CASE("Spectral phase layers pan their scaled offsets before accumulation",
     }
 }
 
+TEST_CASE("Spectral phase harmonic scale follows the legacy square-root ramp",
+        "[CycleDsp][spectral][phase]") {
+    std::array<float, 4> scale {};
+
+    CycleDsp::SpectralLayerCore::preparePhaseHarmonicScale(
+            { scale.data(), (int) scale.size() });
+
+    REQUIRE(scale[0] == 1.f);
+    REQUIRE(scale[1] == Approx(std::sqrt(2.f)));
+    REQUIRE(scale[2] == Approx(std::sqrt(3.f)));
+    REQUIRE(scale[3] == 2.f);
+}
+
 TEST_CASE("Multiplicative spectral pan preserves the neutral magnitude",
         "[CycleDsp][spectral][magnitude][pan]") {
     std::array<float, 3> source { 0.25f, 0.5f, 0.75f };

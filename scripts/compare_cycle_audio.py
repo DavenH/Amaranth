@@ -28,17 +28,17 @@ def load_manifest(path, allow_unverified):
             "Equivalence manifest is not verified; use --allow-unverified for diagnostics only")
     if not manifest.get("v1") or not manifest.get("v2", {}).get("graph"):
         raise ValueError("Manifest must declare v1 preset loading and a v2 graph")
-    verify_artifact(manifest["v1"], "sourceDocument")
-    verify_artifact(manifest["v2"], "graph")
+    verify_artifact(manifest["v1"], "sourceDocument", allow_unverified)
+    verify_artifact(manifest["v2"], "graph", allow_unverified)
     return manifest
 
 
-def verify_artifact(configuration, path_property):
+def verify_artifact(configuration, path_property, allow_unverified):
     path = REPO_ROOT / configuration[path_property]
     if not path.is_file():
         raise ValueError(f"Equivalence artifact does not exist: {path}")
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    if digest != configuration.get("sha256"):
+    if digest != configuration.get("sha256") and not allow_unverified:
         raise ValueError(f"Equivalence artifact changed after validation: {path}")
 
 
@@ -98,6 +98,13 @@ def capture_command(path, note, arguments, overrides=None):
 def cycle_v1_note(manifest, requested_note):
     legacy_offset = manifest["translation"].get("legacyMidiReferenceOffset", 0)
     return requested_note - legacy_offset
+
+
+def translated_output_gain(manifest):
+    translation = manifest.get("translation", {})
+    if "v2OutputGainUnitValue" not in translation:
+        return None
+    return translation.get("v1MasterGain")
 
 
 def write_automation(path, open_command, capture, setup_commands=None):
@@ -272,6 +279,8 @@ def compare_stage_captures(reference_path, candidate_path):
         "forward-fft",
         "magnitude-raster",
         "magnitude-operand",
+        "phase-raster",
+        "phase-operand",
         "post-layer-spectrum",
         "reconstructed-frame",
         "pitch-clocked-cycle",
@@ -333,6 +342,9 @@ def render_note(manifest, note, output_directory, arguments):
     v1_wav = note_directory / "cycle-v1.wav"
     v2_wav = note_directory / "cycle-v2.wav"
     capture_v1 = capture_command(v1_wav, cycle_v1_note(manifest, note), arguments)
+    graph_output_gain = translated_output_gain(manifest)
+    if graph_output_gain is not None:
+        capture_v1["outputGain"] = graph_output_gain
     capture_v2 = capture_command(
         v2_wav,
         note,
@@ -453,8 +465,10 @@ def render_note(manifest, note, output_directory, arguments):
     }
     analysis["rawExact"] = cycle_audio_diff.exact_sample_comparison(
         raw_capture(v1_wav), raw_capture(v2_wav))
+    translated_graph_gain = graph_output_gain if graph_output_gain is not None else 1.0
     analysis["expectedGainFit"] = {
-        "candidateScale": capture_v1["outputGain"] / capture_v2["outputGain"],
+        "candidateScale": capture_v1["outputGain"]
+                / (capture_v2["outputGain"] * translated_graph_gain),
     }
     analysis["repeatability"] = {
         "v1": repeatability(v1_wav, repeat_wavs["v1"]),

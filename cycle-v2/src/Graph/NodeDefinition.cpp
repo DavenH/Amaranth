@@ -488,6 +488,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                                     { "control", "volume", "pitch", "scratch" },
                                     graph | dsp | preview | presentation),
                             boolean("logarithmic", "Logarithmic", false, dsp | preview | presentation),
+                            boolean("declick", "Declick", false, dsp),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("level", "Level", 1.f, 0.f, 1.f, dsp)

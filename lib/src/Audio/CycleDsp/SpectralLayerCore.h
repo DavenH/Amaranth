@@ -27,6 +27,10 @@ public:
         return logf(scale) / 5.f;
     }
 
+    static void preparePhaseHarmonicScale(Buffer<float> scale) {
+        scale.ramp(1.f, 1.f).sqrt();
+    }
+
     static float magnitudeDynamicRange(float range) {
         return sqrtf(powf(2.f, 12.f * range - 4.f));
     }

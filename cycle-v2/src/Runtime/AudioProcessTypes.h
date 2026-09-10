@@ -148,6 +148,7 @@ struct AudioVoiceControls {
     float velocity { 1.f };
     float normalizedVoiceTime {};
     float normalizedVoiceTimeIncrement {};
+    float normalizedVolumeEnvelopeTimeIncrement {};
     float channelPressure {};
     std::array<float, 128> controllers {};
 };

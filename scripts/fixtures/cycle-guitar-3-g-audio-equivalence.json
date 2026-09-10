@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/guitar-3-g.cyclegraph",
-        "sha256": "9daffc07f4303ebf81f985da3c76f098356e5698baaa91fb593e4581441defda",
+        "sha256": "2f56c421f8b647b6b1dd148235a8e425546716f30a06770f84e08ba4d90fa4e2",
         "renderOverrides": {
             "voiceDurationSeconds": 4.568038808277109
         }
@@ -19,7 +19,7 @@
         "v1MasterGain": 0.9773594682052107,
         "v2OutputHeadroom": 0.125,
         "coverage": [
-            "timeLayer",
+            "emptyTimeLayerBypass",
             "magnitudeLayer",
             "phaseLayer",
             "stereoPhasePan",
@@ -31,7 +31,10 @@
             "delay"
         ],
         "determinism": "guide noise and unison are disabled",
-        "inputValidation": "regenerated from a live Cycle 1 canonical export on 2026-09-08",
+        "inputValidation": "regenerated from a direct Cycle 1 canonical file export on 2026-09-09",
+        "knownRuntimeGaps": [
+            "routed scratch-envelope morph preparation is not available at the first note sample"
+        ],
         "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
     },
     "effectBindings": {

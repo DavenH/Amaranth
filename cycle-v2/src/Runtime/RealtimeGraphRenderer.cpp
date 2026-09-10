@@ -263,6 +263,12 @@ void RealtimeGraphRenderer::renderVoices(
     const float timeIncrement = sampleRate > 0.
             ? 1.f / ((float) sampleRate * voiceDurationSeconds)
             : 0.f;
+    const double volumeClockSampleRate = volumeEnvelopeClockSampleRate > 0.
+            ? volumeEnvelopeClockSampleRate
+            : sampleRate;
+    const float volumeEnvelopeTimeIncrement = volumeClockSampleRate > 0.
+            ? 1.f / ((float) volumeClockSampleRate * voiceDurationSeconds)
+            : 0.f;
 
     for (auto& voice : voices) {
         if (!voice.active) {
@@ -276,6 +282,8 @@ void RealtimeGraphRenderer::renderVoices(
         voice.context.controls.velocity = voice.velocity;
         voice.context.controls.normalizedVoiceTime = voice.normalizedTime;
         voice.context.controls.normalizedVoiceTimeIncrement = timeIncrement;
+        voice.context.controls.normalizedVolumeEnvelopeTimeIncrement
+                = volumeEnvelopeTimeIncrement;
         voice.context.spectralStageCapture = spectralStageCapture;
         midiControls.populateVoice(voice.context, voice.midiChannel);
 

@@ -189,6 +189,7 @@ Rasterization::RasterizationRequest TrimeshBlockwiseDsp::createRequest(
     request.scalingMode = scalingModeForDomain(domain);
     request.calcDepthDimensions = false;
     request.lowResCurves = false;
+    request.interpolateCurves = domain == PortDomain::SpectralPhaseSignal;
     request.noiseSeed = noiseSeed;
     return request;
 }

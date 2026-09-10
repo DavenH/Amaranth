@@ -260,3 +260,13 @@ The focused widget regression covers pre-host synchronization and verifies that
 the selection is restored after host initialization. Live evidence is in
 `/private/tmp/CycleV2-hang-2026-09-09-2206.txt`; macOS could not create an
 `.ips` because ReportCrash logged `Log limit exceeded`.
+
+## P2: African Horn factory graph is not canonical JSON
+
+Status: Open
+
+The full Cycle V2 suite currently fails `Every shipped graph is canonical JSON
+and compiles` on `african-horn.cyclegraph`. The graph compiles, but a
+deserialize/serialize pass changes its JSON representation. This predates and
+is independent of the document-declick changes; regenerate that preset through
+the canonical serializer without expanding unrelated preset diffs.

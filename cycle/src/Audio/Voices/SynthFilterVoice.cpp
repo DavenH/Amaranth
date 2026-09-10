@@ -86,8 +86,9 @@ void SynthFilterVoice::initialiseNoteExtra(const int midiNoteNumber, const float
             GuideCurvePanel::tableSize,
             Rasterization::GuideCurveSeed::voiceLifecycle((uint32_t) parent->random.nextInt()));
 
-    if(parent->flags.haveFFTPhase) {
-        phaseScaleRamp.withSize(noteState.numHarmonics).ramp(1.f, 1.f).sqrt();
+    if (parent->flags.haveFFTPhase) {
+        CycleDsp::SpectralLayerCore::preparePhaseHarmonicScale(
+                phaseScaleRamp.withSize(noteState.numHarmonics));
     }
 }
 
@@ -472,15 +473,29 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
                 continue;
             }
 
-            float progress = getScratchTime(props.scratchChan, frame.frontier);
+            const float progress = getScratchTime(props.scratchChan, frame.frontier);
+            const MorphPosition position = props.pos[parent->voiceIndex].withTime(progress);
 
-            phaseRasterizer.setMorphPosition(props.pos[parent->voiceIndex].withTime(progress));
+            phaseRasterizer.setMorphPosition(position);
             phaseRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
             phaseRasterizer.renderWaveformOnly(layer.mesh);
 
             auto sampler = phaseRasterizer.sampler();
             if (sampler.isSampleable()) {
                 sampler.sampleAtIntervals(fftRamp, harmRast);
+
+                std::array<float, 3> morph {
+                        position.time.getCurrentValue(),
+                        position.red.getCurrentValue(),
+                        position.blue.getCurrentValue()
+                };
+                for (int channel = 0; channel < 2; ++channel) {
+                    captureSpectralStage(
+                            CycleDsp::SpectralStage::PhaseRaster,
+                            channel,
+                            harmRast,
+                            { morph.data(), (int) morph.size() });
+                }
 
                 float pans[2];
                 Arithmetic::getPans(props.pan, pans[0], pans[1]);
@@ -489,6 +504,13 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
                         props.range);
 
                 harmRast.mul(phaseAmpScale * MathConstants<float>::twoPi);
+
+                for (int channel = 0; channel < 2; ++channel) {
+                    captureSpectralStage(
+                            CycleDsp::SpectralStage::PhaseOperand,
+                            channel,
+                            harmRast);
+                }
 
                 for(int c = 0; c < channelCount; ++c) {
                     phaseAccBufs[c].addProduct(harmRast, pans[c]);
