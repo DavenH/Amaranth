@@ -1063,10 +1063,13 @@ versus `0.42900`).
 The existing bounded preparation exchange is allocation-free and correctly
 latches once its result is adopted, but it does not satisfy the intended
 first-sample contract when the effective cross-section depends on per-note key
-or velocity. Do not approximate this by rasterizing on the realtime thread.
-The ownership and completion criteria remain in
-`cycle-v2-dynamic-envelope-modulation.md`. This mismatch must be resolved
-before Guitar 3 G can attribute later phase/effect differences. Artifacts:
+or velocity. Cycle 1 confirms that note-dependent preparation occurs
+synchronously before the first sample. Cycle V2 must preserve that timing with
+the lock-free, preallocated materialization path specified by
+`cycle-v2-realtime-note-on-envelope-preparation.md`; it must not invoke the
+allocation-capable general-purpose rasterizer or delay voice activation. This
+mismatch must be resolved before Guitar 3 G can attribute later phase/effect
+differences. Artifacts:
 `/tmp/cycle-guitar-3-g-frame0/comparison.json` and
 `/tmp/cycle-guitar-3-g-direct-range/comparison.json`.
 

@@ -455,7 +455,10 @@ as the scratch envelope evolves.
     (`yellow=0.00553`), while Cycle V2 begins from the authored 0.5/0.5 envelope
     preparation (`yellow=0.22683`) and requests the routed preparation only
     after note-on. This violates the intended first-sample latched-envelope
-    contract and blocks phase attribution. Artifacts:
+    contract and blocks phase attribution. The resolution is specified by
+    `cycle-v2-realtime-note-on-envelope-preparation.md`: synchronously
+    materialize the routed result through a lock-free, preallocated voice path,
+    without delaying activation. Artifacts:
     `/tmp/cycle-guitar-3-g-frame0/comparison.json` and
     `/tmp/cycle-guitar-3-g-direct-range/comparison.json`.
 29. Admit a deterministic volume-envelope fixture at multiple note lengths.
