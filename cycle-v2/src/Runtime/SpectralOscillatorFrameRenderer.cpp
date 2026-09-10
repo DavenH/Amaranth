@@ -392,6 +392,9 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                 context->voice->controls.normalizedVoiceTimeIncrement);
     }
     const uint64_t voiceSampleFrontier = (uint64_t) voiceSamplePosition;
+    const int activeHarmonicCount = jmin(
+            RealFftFullPolarSpectrum::binCountForBufferSize(frameSize) - 1,
+            LogRegionMapping(midiNote + LogRegionMapping::legacyMidiNoteBias).regionSize());
     for (auto& operation : operations) {
         const int count = valueCount(operation.outputDomain, frameSize);
         auto leftOutput = slot(operation.outputs[0], 0, count);
@@ -475,11 +478,6 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                         leftOutput.section(1, count - 1));
                 if (operation.outputDomain == PortDomain::SpectralMagnitudeSignal
                         || operation.outputDomain == PortDomain::SpectralPhaseSignal) {
-                    const int activeBinCount = jmin(
-                            count - 1,
-                            LogRegionMapping(
-                                    midiNote + LogRegionMapping::legacyMidiNoteBias)
-                                    .regionSize());
                     const auto stage = operation.outputDomain
                                     == PortDomain::SpectralMagnitudeSignal
                             ? CycleDsp::SpectralStage::MagnitudeRaster
@@ -497,7 +495,7 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                                 voiceSampleFrontier,
                                 midiNote,
                                 channel,
-                                leftOutput.section(1, activeBinCount),
+                                leftOutput.section(1, activeHarmonicCount),
                                 { morphValues.data(), (int) morphValues.size() });
                     }
                 }
@@ -508,16 +506,11 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                             leftOutput,
                             operation.configuration->range,
                             !operation.configuration->multiplicative,
-                            count);
+                            activeHarmonicCount);
                 } else if (operation.configuration->appliesSpectralRange
                         && operation.outputDomain == PortDomain::SpectralPhaseSignal) {
                     leftOutput.mul(CycleDsp::SpectralLayerCore::phaseOffsetScale(
                             operation.configuration->range) * MathConstants<float>::twoPi);
-                    const int activeBinCount = jmin(
-                            count - 1,
-                            LogRegionMapping(
-                                    midiNote + LogRegionMapping::legacyMidiNoteBias)
-                                    .regionSize());
                     for (int channel = 0; channel < 2; ++channel) {
                         captureStage(
                                 context,
@@ -526,18 +519,13 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                                 voiceSampleFrontier,
                                 midiNote,
                                 channel,
-                                leftOutput.section(1, activeBinCount));
+                                leftOutput.section(1, activeHarmonicCount));
                     }
                     leftOutput.section(1, count - 1).mul(
                             phaseHarmonicScale.withSize(count - 1));
                 }
                 if (operation.outputDomain
                         == PortDomain::SpectralMagnitudeSignal) {
-                    const int activeBinCount = jmin(
-                            count - 1,
-                            LogRegionMapping(
-                                    midiNote + LogRegionMapping::legacyMidiNoteBias)
-                                    .regionSize());
                     for (int channel = 0; channel < 2; ++channel) {
                         captureStage(
                                 context,
@@ -546,7 +534,7 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                                 voiceSampleFrontier,
                                 midiNote,
                                 channel,
-                                leftOutput.section(1, activeBinCount));
+                                leftOutput.section(1, activeHarmonicCount));
                     }
                 }
                 leftOutput.copyTo(rightOutput);
@@ -566,11 +554,6 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
             case OperationType::Fft: {
                 const int binCount = RealFftFullPolarSpectrum::binCountForBufferSize(
                         frameSize);
-                const int activeBinCount = jmin(
-                        binCount - 1,
-                        LogRegionMapping(
-                                midiNote + LogRegionMapping::legacyMidiNoteBias)
-                                .regionSize());
                 for (int channel = 0; channel < 2; ++channel) {
                     auto timeFrame = slot(operation.leftInput, channel, frameSize);
                     captureStage(
@@ -592,17 +575,14 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                             voiceSampleFrontier,
                             midiNote,
                             channel,
-                            magnitude.section(1, activeBinCount),
-                            phase.section(1, activeBinCount));
+                            magnitude.section(1, activeHarmonicCount),
+                            phase.section(1, activeHarmonicCount));
                 }
                 break;
             }
             case OperationType::Ifft: {
                 const int binCount = RealFftFullPolarSpectrum::binCountForBufferSize(
                         frameSize);
-                const LogRegionMapping harmonicRegion(
-                        midiNote + LogRegionMapping::legacyMidiNoteBias);
-                const int activeBinCount = harmonicRegion.regionSize();
                 for (int channel = 0; channel < 2; ++channel) {
                     auto magnitude = magnitudeScratch.withSize(binCount);
                     auto phase = phaseScratch.withSize(binCount);
@@ -615,10 +595,10 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                             voiceSampleFrontier,
                             midiNote,
                             channel,
-                            magnitude.section(1, activeBinCount),
-                            phase.section(1, activeBinCount));
+                            magnitude.section(1, activeHarmonicCount),
+                            phase.section(1, activeHarmonicCount));
                     if (hasSpectralMesh) {
-                        const int activeFullPolarBinCount = activeBinCount + 1;
+                        const int activeFullPolarBinCount = activeHarmonicCount + 1;
                         CycleDsp::SpectralLayerCore::clearBinsAbove(
                                 magnitude,
                                 phase,

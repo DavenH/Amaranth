@@ -170,7 +170,7 @@ translation. The first broad candidates are:
 | simple-bass | Time layer, one multiplicative magnitude layer, and a volume envelope; no active phase, scratch, effects, unison, or guide noise | Verified. Shared document declick and the legacy split-rate volume-envelope clock are restored. Complete 75/200/400 ms notes at 48 kHz have zero lag and at least `0.99999999991` correlation. |
 | power | Time layer plus volume envelope | Regenerated exactly but rejected as an audio oracle: Cycle 1 renders silence because the active time layer has no authored waveform geometry. |
 | Subbass | Time, magnitude, phase, volume/scratch envelopes | Port manifest was strict, but current notes 48–72 fail its old output thresholds; diagnostic only. |
-| guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Its legacy-static volume/scratch envelopes are now explicit, and the frame-zero raster plus morph coordinates are byte-identical. The next discrepancy is a uniform spectral range-shaping gain difference. |
+| guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Its legacy-static volume/scratch envelopes are explicit. At frame zero, magnitude and phase operands are byte-identical and reconstructed output differs only at floating-point scale. The next material discrepancy is in the post-oscillator/effect path; Cycle 1 also failed the latest repeat-render gate beginning at sample 3. |
 | japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase. One corrected render repeated exactly, but a later run did not repeat in Cycle 1. Its large evolving mismatch remains diagnostic until that intermittent startup state is isolated. |
 | Icycle | Broad synthesis/effects plus six-voice Unison | Guide noise is disabled. Current graph differs from fresh conversion in reverb size; Unison repeatability still needs an admitted pair. |
 | accoustic | Broad graph including reverb | Current graph differs in morph/link state, envelope state, reverb size, and IR high-pass; do not use for DSP attribution yet. |
@@ -457,13 +457,21 @@ as the scratch envelope evolves.
     `dynamic=false`; conversion now explicitly pins their legacy 0/0
     cross-section. At MIDI 48/frame zero, both channels' magnitude raster and
     effective morph triple are byte-identical, including the scratch coordinate
-    `0.00553`. The first unequal stage is magnitude-operand range shaping:
-    harmonic zero is `0.02985745` in Cycle 1 and `0.02745639` in Cycle V2, a
-    uniform `1.087450` scale difference with a gain-matched normalized residual
-    of `3.75e-8`. Earlier artifacts:
+    `0.00553`. The magnitude-operand difference was the additive normalization
+    count: Cycle 1 passes the note-dependent 169-harmonic region to the shared
+    `SpectralLayerCore`, while Cycle V2 passed its 257-slot full-polar storage
+    length. The prepared renderer now computes the active harmonic count once
+    and uses it consistently for range shaping, capture, and IFFT tail clearing.
+    At MIDI 48/frame zero, magnitude and phase operands are byte-identical. The
+    reconstructed left frame has a `1.37e-7` normalized residual and the right
+    frame is byte-identical. Final output remains a material effect-path
+    mismatch at `0.76139` correlation. A fresh two-render run was exact in
+    Cycle V2 but not Cycle 1, beginning at sample 3, so effect attribution
+    remains gated on isolating that startup nondeterminism. Earlier artifacts:
     `/tmp/cycle-guitar-3-g-frame0/comparison.json` and
-    `/tmp/cycle-guitar-3-g-direct-range/comparison.json`; current artifact:
-    `/private/tmp/cycle-guitar-realtime-note-on/comparison.json`.
+    `/tmp/cycle-guitar-3-g-direct-range/comparison.json` and
+    `/private/tmp/cycle-guitar-realtime-note-on/comparison.json`; current
+    artifact: `/tmp/cycle-guitar-active-harmonics/comparison.json`.
 29. Admit a deterministic volume-envelope fixture at multiple note lengths.
     Complete using Simple Bass: direct conversion contains a time layer, one
     multiplicative magnitude layer, and one volume envelope, with no active

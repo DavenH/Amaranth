@@ -1119,12 +1119,18 @@ TEST_CASE("Guitar 3 G starts its scratch Envelope at the Cycle 1 cross-section",
     request.events.push_back({ 0, MidiMessage::noteOn(1, 48, 0.8f) });
     const auto result = OfflineGraphAudioRenderer::render(compiled.plan, 1, request);
     const auto* magnitude = recorder.record(CycleDsp::SpectralStage::MagnitudeRaster, 0);
+    const auto* operand = recorder.record(CycleDsp::SpectralStage::MagnitudeOperand, 0);
 
     REQUIRE(result.succeeded);
     REQUIRE(magnitude != nullptr);
     REQUIRE(magnitude->captured);
     REQUIRE_FALSE(magnitude->secondary.empty());
     REQUIRE(magnitude->secondary.front() == Catch::Approx(0.00553f).margin(0.00001f));
+    REQUIRE(operand != nullptr);
+    REQUIRE(operand->captured);
+    REQUIRE_FALSE(operand->primary.empty());
+    REQUIRE(operand->primary.front()
+            == Catch::Approx(0.02985745f).margin(0.00000001f));
   #endif
 }
 
