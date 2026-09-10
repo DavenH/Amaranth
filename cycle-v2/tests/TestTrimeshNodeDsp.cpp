@@ -1225,6 +1225,72 @@ TEST_CASE("Trimesh gridwise DSP renders independent morph columns", "[cycle-v2][
     mesh->destroy();
 }
 
+TEST_CASE("Trimesh spectral traversal columns receive deterministic distinct Guide noise",
+        "[cycle-v2][nodes][trimesh][guide][grid]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("NoisyGuideGrid");
+    REQUIRE(mesh != nullptr);
+    mesh->getCubes().front()->guideCurveAt(Vertex::Amp) = 0;
+    mesh->getCubes().front()->guideCurveGainAt(Vertex::Amp) = 0.25f;
+
+    GuideCurveResource guide;
+    guide.id = "noise";
+    FlatCurveModel curve;
+    REQUIRE(curve.replaceVertices({
+            { 1, 0.05f, 0.5f, 1.f },
+            { 2, 0.95f, 0.5f, 1.f }
+    }));
+    guide.model = CurveNodeModelState::copyOf(curve, 2);
+    guide.noise = 0.4f;
+
+    GuideCurveSnapshotProvider provider;
+    REQUIRE(provider.addGuide(guide));
+
+    constexpr int columnCount = 4;
+    constexpr int rowCount = 64;
+    std::vector<float> plainValues(columnCount * rowCount);
+    std::vector<float> firstValues(columnCount * rowCount);
+    std::vector<float> repeatedValues(columnCount * rowCount);
+    TrimeshGridwiseDsp plain;
+    TrimeshGridwiseDsp guided;
+    guided.setGuideCurveProvider(&provider);
+
+    const MorphPosition center(0.5f, 0.5f, 0.5f);
+    REQUIRE(plain.renderColumnsInto(
+            *mesh,
+            center,
+            Vertex::Red,
+            columnCount,
+            Buffer<float>(plainValues.data(), (int) plainValues.size()),
+            PortDomain::SpectralMagnitudeSignal));
+    REQUIRE(guided.renderColumnsInto(
+            *mesh,
+            center,
+            Vertex::Red,
+            columnCount,
+            Buffer<float>(firstValues.data(), (int) firstValues.size()),
+            PortDomain::SpectralMagnitudeSignal));
+    REQUIRE(guided.renderColumnsInto(
+            *mesh,
+            center,
+            Vertex::Red,
+            columnCount,
+            Buffer<float>(repeatedValues.data(), (int) repeatedValues.size()),
+            PortDomain::SpectralMagnitudeSignal));
+
+    REQUIRE(firstValues == repeatedValues);
+
+    double adjacentNoiseDifference {};
+    for (int row = 0; row < rowCount; ++row) {
+        const float firstNoise = firstValues[(size_t) row] - plainValues[(size_t) row];
+        const float secondNoise = firstValues[(size_t) rowCount + (size_t) row]
+                - plainValues[(size_t) rowCount + (size_t) row];
+        adjacentNoiseDifference += std::abs(firstNoise - secondNoise);
+    }
+    REQUIRE(adjacentNoiseDifference > 0.01);
+
+    mesh->destroy();
+}
+
 TEST_CASE(
         "Trimesh gridwise DSP renders directly into prepared traversal storage",
         "[cycle-v2][nodes][trimesh][complexity]") {

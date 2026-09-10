@@ -31,6 +31,22 @@ void TrimeshBlockwiseDsp::prepare(
         int axis,
         bool shouldWrap,
         PortDomain domain) {
+    prepareRasterization(
+            meshToRender,
+            morphPosition,
+            axis,
+            shouldWrap,
+            domain,
+            0);
+}
+
+void TrimeshBlockwiseDsp::prepareRasterization(
+        Mesh* meshToRender,
+        const MorphPosition& morphPosition,
+        int axis,
+        bool shouldWrap,
+        PortDomain domain,
+        int noiseSeedOffset) {
     preparedDomain = domain;
     setMesh(meshToRender);
     setMorphPosition(morphPosition);
@@ -38,7 +54,7 @@ void TrimeshBlockwiseDsp::prepare(
     setCyclic(shouldWrap);
     ensureCurveTable();
     configureGuideCurveSeeds(domain);
-    rasterizePrepared(noiseSeed);
+    rasterizePrepared(noiseSeed + noiseSeedOffset);
 }
 
 void TrimeshBlockwiseDsp::setMesh(Mesh* meshToRender) {
@@ -114,6 +130,22 @@ void TrimeshBlockwiseDsp::renderCycle(
     renderPrepared(frameCount, domain, channelLayout, output);
 }
 
+void TrimeshBlockwiseDsp::renderCycleWithNoiseSeedOffset(
+        size_t frameCount,
+        PortDomain domain,
+        ChannelLayout channelLayout,
+        SignalPayload& output,
+        int noiseSeedOffset) {
+    prepareRasterization(
+            mesh,
+            morph,
+            primaryViewAxis,
+            cyclic,
+            domain,
+            noiseSeedOffset);
+    renderPrepared(frameCount, domain, channelLayout, output);
+}
+
 void TrimeshBlockwiseDsp::renderPrepared(
         size_t frameCount,
         PortDomain domain,
@@ -146,6 +178,20 @@ void TrimeshBlockwiseDsp::renderPrepared(
 
 void TrimeshBlockwiseDsp::renderCycleInto(Buffer<float> output, PortDomain domain) {
     prepare(mesh, morph, primaryViewAxis, cyclic, domain);
+    renderPreparedInto(output);
+}
+
+void TrimeshBlockwiseDsp::renderCycleWithNoiseSeedOffsetInto(
+        Buffer<float> output,
+        PortDomain domain,
+        int noiseSeedOffset) {
+    prepareRasterization(
+            mesh,
+            morph,
+            primaryViewAxis,
+            cyclic,
+            domain,
+            noiseSeedOffset);
     renderPreparedInto(output);
 }
 

@@ -62,6 +62,8 @@ public:
     void resetCounters() { renderCounters = {}; }
 
 private:
+    static int noiseSeedOffsetForColumn(size_t columnIndex, PortDomain domain);
+
     template<typename RenderColumn>
     void renderColumnRange(
             Mesh& mesh,

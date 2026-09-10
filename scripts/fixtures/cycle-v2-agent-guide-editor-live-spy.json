@@ -14,6 +14,8 @@
     { "command": "assertState", "path": "guides.0.noise", "equals": 0.9 },
     { "command": "assertState", "path": "probePreviewStats.0.sampleCount", "op": "greaterThan", "value": 0 },
     { "command": "assertState", "path": "probePreviewStats.0.absoluteSum", "op": "greaterThan", "value": 0 },
+    { "command": "assertState", "path": "probePreviewStats.0.gridColumns", "op": "greaterThan", "value": 1 },
+    { "command": "assertState", "path": "probePreviewStats.0.gridRows", "op": "greaterThan", "value": 1 },
     { "command": "inspectTargets", "area": "canvas" }
   ],
   "quit": false

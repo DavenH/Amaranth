@@ -1,0 +1,40 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "by-myself",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "openFactoryPreset",
+      "preset": "calming-keys-2",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "openFactoryPreset",
+      "preset": "calming-keys",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "openFactoryPreset",
+      "preset": "cluck-2",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "openFactoryPreset",
+      "preset": "calming-keys",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "document",
+      "equals": "CalmingKeys"
+    }
+  ],
+  "quit": true
+}

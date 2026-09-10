@@ -52,17 +52,34 @@ public:
             PortDomain domain,
             ChannelLayout channelLayout,
             SignalPayload& output);
+    void renderCycleWithNoiseSeedOffset(
+            size_t frameCount,
+            PortDomain domain,
+            ChannelLayout channelLayout,
+            SignalPayload& output,
+            int noiseSeedOffset);
     void renderPrepared(
             size_t frameCount,
             PortDomain domain,
             ChannelLayout channelLayout,
             SignalPayload& output);
     void renderCycleInto(Buffer<float> output, PortDomain domain);
+    void renderCycleWithNoiseSeedOffsetInto(
+            Buffer<float> output,
+            PortDomain domain,
+            int noiseSeedOffset);
     void renderPreparedInto(Buffer<float> output);
     // Index zero is the first authored harmonic; DC is owned by the FFT boundary.
     void renderPreparedHarmonicsInto(Buffer<float> output);
 
 private:
+    void prepareRasterization(
+            Mesh* meshToRender,
+            const MorphPosition& morphPosition,
+            int axis,
+            bool shouldWrap,
+            PortDomain domain,
+            int noiseSeedOffset);
     void configureGuideCurveSeeds(PortDomain domain);
     Rasterization::RasterizationRequest createRequest(PortDomain domain) const;
     void sampleOutput(Buffer<float> output);

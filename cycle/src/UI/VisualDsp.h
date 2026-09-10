@@ -20,6 +20,7 @@ class Spectrum3D;
 class PhaseTrackingTest;
 class Waveform3D;
 class Unison;
+class VisualDspColumnCopyTest;
 using std::map;
 
 class ResizeParams {
@@ -63,6 +64,7 @@ class VisualDsp :
         public Timer
     ,	public SingletonAccessor {
     friend class PhaseTrackingTest;
+    friend class VisualDspColumnCopyTest;
 
 public:
     enum EnvType 	{ VolumeType, ScratchType, ScratchPanelType, PitchType, PhaseType 	};
@@ -139,7 +141,9 @@ private:
     void calcSpectrogram(int numColumns);
     void processThroughEffects(int numColumns);
     void unwrapPhaseColumns(vector<Column>& phaseColumns);
-    void copyArrayOrParts(const vector<Column>& srcColumns, vector<Column>& destColumns);
+    static void copyArrayOrParts(
+            const vector<Column>& srcColumns,
+            vector<Column>& destColumns);
 
     void processFrequency(vector<Column>& columns, bool processUnison);
     void processThroughEnvelopes(int numColumns);
