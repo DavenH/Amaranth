@@ -5,11 +5,7 @@
 There are no open deterministic P0 regressions as of 2026-09-09.
 Resolved and no-longer-reproducing entries have been removed from this ledger.
 
-1. **P1 — Cycle 1 Calming Keys preset crashes during visual refresh.**
-   Reproduce normal interactive preset replacement, then correct the Envelope
-   or Unison visualization lifetime boundary without coupling migration back to
-   the live document.
-2. **P2 — Drunkard pitch render logs VisualDsp column-size assertions.**
+1. **P2 — Drunkard pitch render logs VisualDsp column-size assertions.**
    Reproduce the visual update and establish the authoritative column
    resolution before adapting the copy boundary.
 
@@ -77,27 +73,6 @@ Context:
 Current status: open as a sandbox/test-fixture path issue. Give temporary-file
 fixtures an explicitly writable test root rather than weakening document-save
 behavior.
-
-## P1: Cycle 1 Calming Keys preset crashes during visual refresh
-
-Context:
-
-- The Cycle 1 factory-library migration sweep opened and exported 28 presets,
-  then crashed while opening `cycle/content/presets/calming-keys.cyc`.
-- The crash is an invalid `dynamic_cast` read in
-  `EnvRasterizer::renderWaveformOnly()` reached from
-  `UnisonPhaseColumnRenderer`, `VisualDsp::processFrequency()`, and the pending
-  UI update graph. It occurs after the document load starts scheduling visual
-  work; the preset's canonical migration itself is not yet implicated.
-- Repro artifacts are `/private/tmp/cycle-v1-preset-migration-session.log` and
-  `/Users/daven/Library/Logs/DiagnosticReports/Cycle-2026-09-07-111853.ips`.
-
-Current status: open. Update suppression was insufficient because live document
-application still touched UI-owned state, and `cluck-2.cyc` exposed the same
-class of failure. The migration exporter now decodes and migrates the source
-without applying it to the live document, isolating canonical export from
-editor, updater, rasterizer, and audio lifecycles. Reproduce normal interactive
-loads separately before changing Envelope or Unison rasterization ownership.
 
 ## P2: African Horn factory graph is not canonical JSON
 
