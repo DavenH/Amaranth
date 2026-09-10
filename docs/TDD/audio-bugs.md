@@ -442,8 +442,10 @@ Context:
   `0.98330` and raised residual to `0.1820`. Cycle V2 incorrectly shared one
   stateful oversampler across both channels; matching Cycle 1's per-channel
   ownership raises correlation to `0.999999945` with a `0.000332` residual.
-- Adding the impulse response lowers correlation to `0.75736` and raises
-  residual to `0.6530` on the pre-waveshaper-fix run.
+- Adding the impulse response originally lowered correlation to `0.75736` and
+  raised residual to `0.6530`. Cycle V2 also shared one stateful convolver across
+  both channels; matching Cycle 1's per-channel ownership raises correlation to
+  `0.9999724` with a `0.00743` residual and `+0.0226 dB` fit.
 - Cycle 1 still fails fresh-process exact repeatability at tiny startup samples
   even when every effect is disabled. This blocks an exact effect verdict but
   does not account for the material waveshaper and IR differences.
@@ -454,6 +456,7 @@ Artifacts:
 - `/tmp/cycle-guitar-waveshaper-final/comparison.json`
 - `/tmp/cycle-guitar-waveshaper-channel-state/comparison.json`
 - `/tmp/cycle-guitar-waveshaper-ir-final/comparison.json`
+- `/tmp/cycle-guitar-ir-channel-state/comparison.json`
 
-Current status: waveshaper addressed. Localize the IR next against its mature
-Cycle 1 implementation without copying the algorithm.
+Current status: material waveshaper and IR gaps addressed. Their smaller
+numerical residuals remain open while the effect ladder advances to EQ.

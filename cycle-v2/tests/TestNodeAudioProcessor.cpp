@@ -1646,6 +1646,10 @@ TEST_CASE("IR processor preserves the graph channel policy", "[cycle-v2][runtime
         context.inputs = { payload(std::vector<float>(64, 0.f)) };
         context.inputs.front().block.samples.front() = 1.f;
         context.inputs.front().channelLayout = layout;
+        if (layout == ChannelLayout::StereoPair) {
+            context.inputs.front().secondaryBlock.samples =
+                    context.inputs.front().block.samples;
+        }
         context.parameters = parameters;
 
         auto processor = factory.create(AudioModuleRole::ImpulseResponse);
@@ -1658,6 +1662,10 @@ TEST_CASE("IR processor preserves the graph channel policy", "[cycle-v2][runtime
             reference.assign(samples.begin(), samples.end());
         } else {
             REQUIRE(output(context).block.samples == reference);
+        }
+        if (layout == ChannelLayout::StereoPair) {
+            REQUIRE(output(context).secondaryBlock.samples
+                    == output(context).block.samples);
         }
     }
 }

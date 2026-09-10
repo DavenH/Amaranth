@@ -63,7 +63,9 @@ void IrSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
 
     prepareBlockConvolver(spec.maximumFrameCount);
     prepareTraversalConvolver(spec.maximumFrameCount);
-    convolvers.prepareScratch(spec.maximumFrameCount);
+    for (auto& channelConvolvers : convolvers) {
+        channelConvolvers.prepareScratch(spec.maximumFrameCount);
+    }
 }
 
 void IrSignalProcessor::adoptConfiguration(const PublishedNodeConfiguration& published) {
@@ -74,37 +76,48 @@ void IrSignalProcessor::adoptConfiguration(const PublishedNodeConfiguration& pub
 
     configuration = std::static_pointer_cast<const IrConfiguration>(published.value);
     postGain = configuration->postGain;
-    convolvers.invalidate();
+    for (auto& channelConvolvers : convolvers) {
+        channelConvolvers.invalidate();
+    }
     adoptedRevision = published.revision;
 }
 
 void IrSignalProcessor::beginBlock(size_t frameCount) {
     ignoreUnused(frameCount);
-    convolvers.beginBlock();
+    for (auto& channelConvolvers : convolvers) {
+        channelConvolvers.beginBlock();
+    }
 }
 
 void IrSignalProcessor::beginTraversalGrid(size_t, size_t rows) {
-    convolvers.beginTraversal();
-    prepareConvolver(convolvers.traversal(), rows);
-    convolvers.markTraversalPrepared(rows);
+    for (auto& channelConvolvers : convolvers) {
+        channelConvolvers.beginTraversal();
+        prepareConvolver(channelConvolvers.traversal(), rows);
+        channelConvolvers.markTraversalPrepared(rows);
+    }
 }
 
 void IrSignalProcessor::endTraversalGrid() {
-    convolvers.endTraversal();
+    for (auto& channelConvolvers : convolvers) {
+        channelConvolvers.endTraversal();
+    }
 }
 
-void IrSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessPosition&) {
+void IrSignalProcessor::processBuffer(
+        Buffer<float> buffer,
+        const SignalProcessPosition& position) {
+    auto& channelConvolvers = convolvers[jmin(position.channel, (size_t) 1)];
     if (buffer.empty() || configuration == nullptr || configuration->impulse.empty()
-            || convolvers.active() == nullptr) {
+            || channelConvolvers.active() == nullptr) {
         return;
     }
 
-    Buffer<float> convolutionOutput = convolvers.output((size_t) buffer.size());
+    Buffer<float> convolutionOutput = channelConvolvers.output((size_t) buffer.size());
     if (convolutionOutput.empty()) {
         return;
     }
 
-    convolvers.active()->process(
+    channelConvolvers.active()->process(
             buffer,
             convolutionOutput);
 
@@ -114,23 +127,25 @@ void IrSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessP
 }
 
 void IrSignalProcessor::prepareBlockConvolver(size_t blockSize) {
-    if (configuration == nullptr || blockSize == 0
-            || !convolvers.blockNeedsPreparation(blockSize)) {
-        return;
+    for (auto& channelConvolvers : convolvers) {
+        if (configuration == nullptr || blockSize == 0
+                || !channelConvolvers.blockNeedsPreparation(blockSize)) {
+            continue;
+        }
+        prepareConvolver(channelConvolvers.block(), blockSize);
+        channelConvolvers.markBlockPrepared(blockSize);
     }
-
-    prepareConvolver(convolvers.block(), blockSize);
-    convolvers.markBlockPrepared(blockSize);
 }
 
 void IrSignalProcessor::prepareTraversalConvolver(size_t rowCount) {
-    if (configuration == nullptr || rowCount == 0
-            || !convolvers.traversalNeedsPreparation(rowCount)) {
-        return;
+    for (auto& channelConvolvers : convolvers) {
+        if (configuration == nullptr || rowCount == 0
+                || !channelConvolvers.traversalNeedsPreparation(rowCount)) {
+            continue;
+        }
+        prepareConvolver(channelConvolvers.traversal(), rowCount);
+        channelConvolvers.markTraversalPrepared(rowCount);
     }
-
-    prepareConvolver(convolvers.traversal(), rowCount);
-    convolvers.markTraversalPrepared(rowCount);
 }
 
 void IrSignalProcessor::prepareConvolver(
@@ -145,7 +160,6 @@ void IrSignalProcessor::prepareConvolver(
             Buffer<float>(
                     const_cast<float*>(configuration->impulse.data()),
                     (int) configuration->impulse.size()));
-    convolvers.prepareScratch(frameCount);
 }
 
 std::shared_ptr<const ReverbConfiguration> ReverbSignalProcessor::buildConfiguration(

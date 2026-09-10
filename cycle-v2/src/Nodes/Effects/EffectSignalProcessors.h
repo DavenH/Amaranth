@@ -71,7 +71,7 @@ private:
     void prepareTraversalConvolver(size_t rowCount);
     void prepareConvolver(BlockConvolver& convolver, size_t frameCount);
 
-    PreparedConvolverPair<BlockConvolver> convolvers;
+    std::array<PreparedConvolverPair<BlockConvolver>, 2> convolvers;
     float postGain { 1.f };
     uint64_t adoptedRevision {};
     std::shared_ptr<const IrConfiguration> configuration;

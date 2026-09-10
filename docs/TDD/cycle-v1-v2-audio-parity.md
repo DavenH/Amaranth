@@ -554,6 +554,17 @@ as the scratch envelope evolves.
     enabled now reaches `0.999999945` correlation, a unity gain fit, and a
     `0.000332` residual at zero lag. IR is the next material effect boundary.
     Artifact: `/tmp/cycle-guitar-waveshaper-channel-state/comparison.json`.
+34. Restore per-channel impulse-response convolution state. Complete: Cycle 1
+    owns one mature `BlockConvolver` per audio channel, while Cycle V2 passed
+    both channels through one stateful block/traversal pair. Cycle V2 now owns a
+    preallocated pair per channel and selects it through the unary processor's
+    existing channel position. Impulse rasterization, prefiltering, convolution,
+    and post-gain behavior remain delegated to the existing implementations. An
+    equal-stereo-input regression guards channel independence. Guitar 3 G with
+    waveshaper and IR enabled now reaches `0.9999724` correlation at zero lag,
+    with a `+0.0226 dB` fit and `0.00743` residual. This resolves the material IR
+    gap while retaining its smaller numerical residual for later localization.
+    Artifact: `/tmp/cycle-guitar-ir-channel-state/comparison.json`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a
