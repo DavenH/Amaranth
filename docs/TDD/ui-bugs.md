@@ -5,36 +5,13 @@
 There are no open deterministic P0 regressions as of 2026-09-09.
 Resolved and no-longer-reproducing entries have been removed from this ledger.
 
-1. **P1 — Guide noise is constant across spectral traversal-grid rows.**
-   Reproduce the compact Trimesh and Spy output together, then compare row
-   arrays before changing either presentation or audio behavior.
-2. **P1 — Cycle 1 Calming Keys preset crashes during visual refresh.**
+1. **P1 — Cycle 1 Calming Keys preset crashes during visual refresh.**
    Reproduce normal interactive preset replacement, then correct the Envelope
    or Unison visualization lifetime boundary without coupling migration back to
    the live document.
-3. **P2 — Drunkard pitch render logs VisualDsp column-size assertions.**
+2. **P2 — Drunkard pitch render logs VisualDsp column-size assertions.**
    Reproduce the visual update and establish the authoritative column
    resolution before adapting the copy boundary.
-
-## P1: Guide noise is constant across spectral traversal-grid rows
-
-Context:
-
-- Reported 2026-09-09 from a compact spectral Trimesh with a noisy Guide
-  assignment. The visualization shows the same noise sequence repeated across
-  frequency rows, producing horizontal bands instead of row-varying detail.
-- A Spy attached to the Trimesh output shows the same structure. This makes a
-  stale compact-node image or colour-mapping-only defect unlikely; the captured
-  traversal grid itself may contain repeated row data.
-- Recent work corrected Guide/morph behavior in the live audio pipeline, but no
-  causal link has been established. Realtime audio behavior has not yet been
-  compared with this preview result.
-
-Current status: open. Add a focused noisy-Guide fixture and an array-level
-assertion that deterministic seeding remains repeatable while successive
-spectral rows receive distinct noise samples. Trace the mature Guide sampler
-before changing the traversal-grid implementation, and verify the realtime
-audio path independently so a preview correction does not create audio drift.
 
 ## P2: Intermittent CoreMIDI endpoint assertion during automation startup
 
