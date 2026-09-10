@@ -656,8 +656,12 @@ Context:
   run but not in a later run, so Cycle 1 still has intermittent startup state.
   The corrected-note Guitar 3 G comparison also differs at tiny pre-note
   effect-tail levels in Cycle 1 and is not yet deterministic.
-- End-to-end exact output is also masked by Cycle 1 master gain and internal
-  44.1 kHz conversion versus Cycle V2's fixed `0.125` output headroom.
+- End-to-end exact output was initially masked by Cycle 1 master gain and
+  Cycle V2's separate Output fader and safety headroom. Output gain is now
+  translated into the graph, and the parity runner applies the same recorded
+  master gain at the Cycle 1 capture boundary. Simple Bass's fitted gain is
+  effectively unity; its remaining raw difference is the already-localized
+  same-clock numerical residual.
 - The paired runner recorded Cycle 1's `-12` legacy MIDI reference but omitted
   it from scheduled note events. Comparisons produced before the 2026-09-08
   runner fix were therefore an octave apart and are not DSP evidence.

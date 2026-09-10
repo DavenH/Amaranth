@@ -499,18 +499,30 @@ as the scratch envelope evolves.
     correlation of at least `0.99999999991`, and gain-matched residual no greater
     than `1.32e-5`. A confirming three-process 75 ms run is byte-repeatable in
     both engines. Simple Bass is now a verified parity fixture.
+31. Compare translated Output gain at the same boundary. Complete: the
+    converter now gives supported graphs a Cycle 1-scaled Output fader, but the
+    parity runner still replaces Cycle 1's document master with unity while
+    Cycle V2 retains the translated fader. This creates a constant gain fit and
+    prevents an otherwise equivalent render from satisfying the raw-float
+    contract. For manifests that explicitly declare a V2 Output gain, the
+    runner must apply the recorded Cycle 1 master gain to the Cycle 1 capture
+    and leave Cycle V2's external capture multiplier at unity. Older manifests
+    without an Output fader retain their existing override behavior. The
+    expected-gain report includes the graph-owned fader rather than describing
+    the deliberate translation as unexplained gain. Simple Bass's 75 ms fit
+    moves from `+0.198913 dB` to `-0.0000005 dB`, and the expected candidate
+    scale is exactly `1.0`. Raw floats retain the already-localized same-clock
+    numerical residual (`5.3e-6`), so exact-sample enforcement remains blocked
+    on that DSP boundary rather than output control.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a
 quality/architecture change, not part of Cycle 1 parity, and must retain the
 cycle-clocked envelope boundary rather than returning to blockwise sampling.
 
-Separate output-control gap: Cycle V2 currently applies fixed `0.125` headroom
-after voice summation, and its Output node has meters but no authored master-gain
-parameter. This cannot affect oscillator-stage parity and is not the source of
-the magnitude-raster difference. Adding a Cycle 1-mapped vertical master fader
-belongs in an Output-node control slice, with the fixed safety headroom kept as
-a distinct implementation concern.
+The separate output-control gap is resolved: Output owns a Cycle 1-mapped
+vertical master fader, while the fixed safety headroom remains a distinct
+renderer concern. Slice 31 aligns the comparison harness with that ownership.
 
 Each slice receives focused semantic tests, a refactor/style pass, and a
 coherent commit before the next slice.

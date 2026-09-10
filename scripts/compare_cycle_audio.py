@@ -100,6 +100,13 @@ def cycle_v1_note(manifest, requested_note):
     return requested_note - legacy_offset
 
 
+def translated_output_gain(manifest):
+    translation = manifest.get("translation", {})
+    if "v2OutputGainUnitValue" not in translation:
+        return None
+    return translation.get("v1MasterGain")
+
+
 def write_automation(path, open_command, capture, setup_commands=None):
     document = {
         "commands": [open_command, *(setup_commands or []), capture],
@@ -335,6 +342,9 @@ def render_note(manifest, note, output_directory, arguments):
     v1_wav = note_directory / "cycle-v1.wav"
     v2_wav = note_directory / "cycle-v2.wav"
     capture_v1 = capture_command(v1_wav, cycle_v1_note(manifest, note), arguments)
+    graph_output_gain = translated_output_gain(manifest)
+    if graph_output_gain is not None:
+        capture_v1["outputGain"] = graph_output_gain
     capture_v2 = capture_command(
         v2_wav,
         note,
@@ -455,8 +465,10 @@ def render_note(manifest, note, output_directory, arguments):
     }
     analysis["rawExact"] = cycle_audio_diff.exact_sample_comparison(
         raw_capture(v1_wav), raw_capture(v2_wav))
+    translated_graph_gain = graph_output_gain if graph_output_gain is not None else 1.0
     analysis["expectedGainFit"] = {
-        "candidateScale": capture_v1["outputGain"] / capture_v2["outputGain"],
+        "candidateScale": capture_v1["outputGain"]
+                / (capture_v2["outputGain"] * translated_graph_gain),
     }
     analysis["repeatability"] = {
         "v1": repeatability(v1_wav, repeat_wavs["v1"]),

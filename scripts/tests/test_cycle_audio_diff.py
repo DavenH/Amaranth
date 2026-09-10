@@ -176,6 +176,18 @@ class CycleAudioDiffTest(unittest.TestCase):
 
         self.assertEqual(compare_cycle_audio.cycle_v1_note(manifest, 48), 60)
 
+    def test_translated_output_gain_requires_an_output_fader(self):
+        translated = {
+            "translation": {
+                "v1MasterGain": 0.75,
+                "v2OutputGainUnitValue": 0.45,
+            },
+        }
+        legacy = {"translation": {"v1MasterGain": 0.75}}
+
+        self.assertEqual(compare_cycle_audio.translated_output_gain(translated), 0.75)
+        self.assertIsNone(compare_cycle_audio.translated_output_gain(legacy))
+
     def test_allow_unverified_permits_changed_diagnostic_artifacts(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
