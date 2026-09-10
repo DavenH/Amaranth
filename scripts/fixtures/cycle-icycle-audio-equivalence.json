@@ -1,0 +1,67 @@
+{
+    "schema": "cycle-v1-v2-audio-equivalence.v1",
+    "status": "diagnostic",
+    "v1": {
+        "factoryPreset": "Icycle",
+        "sourceDocument": "cycle/content/presets/icycle.cyc",
+        "sha256": "d11e833e747f45b391cd7a290e1b498cd712d3013b337af6db18fd6ac2421273"
+    },
+    "v2": {
+        "graph": "cycle-v2/content/presets/Icycle.cyclegraph",
+        "sha256": "0938ee5f5e733c01a31d4569106a8044a079dfd11f1a8ba2564f05733f4406bb",
+        "renderOverrides": {
+            "voiceDurationSeconds": 2.2102451743580955
+        }
+    },
+    "translation": {
+        "midiNoteOffset": 0,
+        "legacyMidiReferenceOffset": -12,
+        "v1MasterGain": 1.053085198357633,
+        "v2OutputGainUnitValue": 0.50862069,
+        "v2OutputHeadroom": 0.125,
+        "coverage": [
+            "multipleTimeLayers",
+            "multipleMagnitudeLayers",
+            "multiplePhaseLayers",
+            "stereoPhasePan",
+            "volumeEnvelope",
+            "pitchEnvelope",
+            "scratchEnvelope",
+            "unisonGroup6",
+            "waveshaper",
+            "impulseResponse",
+            "delay"
+        ],
+        "determinism": "guide noise is disabled; Unison layout is deterministic, but cross-engine lifecycle seed mapping remains under test",
+        "inputValidation": "regenerated from a direct Cycle 1 canonical file export while preserving Cycle V2 presentation and probes",
+        "knownRuntimeGaps": [
+            "cross-engine lifecycle seed mapping"
+        ],
+        "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
+    },
+    "effectBindings": {
+        "unison": {
+            "v1Area": "AreaUnison",
+            "v2Node": "unison"
+        },
+        "waveshaper": {
+            "v1Area": "AreaWaveshaper",
+            "v2Node": "waveshaper"
+        },
+        "impulseResponse": {
+            "v1Area": "AreaImpulse",
+            "v2Node": "impulseResponse"
+        },
+        "delay": {
+            "v1Area": "AreaDelay",
+            "v2Node": "delay"
+        }
+    },
+    "thresholds": {
+        "correlationMin": 0.98,
+        "gainMatchedResidualMax": 0.2,
+        "spectrumRmseDbMax": 6.0,
+        "cyclogramMeanRowDifferenceMax": 0.2,
+        "exactSamplesRequired": false
+    }
+}

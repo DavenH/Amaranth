@@ -465,3 +465,33 @@ Artifacts:
 Current status: material waveshaper and IR gaps addressed. Their smaller
 numerical residuals remain open. EQ and delay add no material discrepancy, but
 Cycle 1's low-note full-effect repeatability still blocks fixture admission.
+
+## Open: Icycle pitch-clocked Unison reconstruction diverges
+
+Context:
+
+- Icycle was regenerated from a direct Cycle 1 canonical export while retaining
+  its hand-authored Cycle V2 node presentation and three signal probes.
+- With waveshaper, IR, and delay disabled, MIDI 48 reaches `0.99548`
+  correlation and `0.0949` gain-matched residual at a five-sample diagnostic
+  lag.
+- The stage capture is byte-identical through time raster/frame and every
+  magnitude/phase operand. Forward FFT and reconstructed-frame differences are
+  only `8.8e-8` and `5.2e-6`; pitch-clocked cycle reconstruction increases the
+  residual to about `0.056`.
+- Unison group layout and jitter come from shared `UnisonCore`. All assigned
+  Guides have zero noise, offset, and phase, so lifecycle seed mapping does not
+  explain this preset's difference.
+- Cycle 1 changes from frame 40 across fresh processes even with Unison and all
+  effects disabled. Cycle V2 repeats exactly. This independently blocks fixture
+  admission until the Cycle 1 startup instability is localized.
+
+Artifacts:
+
+- `/tmp/cycle-icycle-unison-baseline/comparison.json`
+- `/tmp/cycle-icycle-no-unison/comparison.json`
+- `/tmp/cycle-icycle-unison-stages/comparison.json`
+
+Current status: open. The next semantic boundary is the shared spectral
+Unison lane clock/resampling schedule; raw Cycle 1 repeatability is a separate
+oracle blocker.

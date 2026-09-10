@@ -997,6 +997,7 @@ def preserve_presentation(converted, existing):
                 node[property_name] = copy.deepcopy(previous[property_name])
             else:
                 node.pop(property_name, None)
+    converted["probes"] = copy.deepcopy(existing.get("probes", []))
     return converted
 
 

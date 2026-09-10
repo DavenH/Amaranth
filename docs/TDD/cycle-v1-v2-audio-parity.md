@@ -172,7 +172,7 @@ translation. The first broad candidates are:
 | Subbass | Time, magnitude, phase, volume/scratch envelopes | Port manifest was strict, but current notes 48–72 fail its old output thresholds; diagnostic only. |
 | guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Per-channel waveshaper and IR state now match Cycle 1 ownership. MIDI 36–72 meets the diagnostic audio thresholds; EQ and delay add no material gap. MIDI 36 still fails Cycle 1's raw repeat gate, so the fixture is not admitted. |
 | japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase. One corrected render repeated exactly, but a later run did not repeat in Cycle 1. Its large evolving mismatch remains diagnostic until that intermittent startup state is isolated. |
-| Icycle | Broad synthesis/effects plus six-voice Unison | Guide noise is disabled. Current graph differs from fresh conversion in reverb size; Unison repeatability still needs an admitted pair. |
+| Icycle | Broad synthesis/effects plus six-voice Unison | Regenerated from a direct canonical export while retaining node layout, port presentation, and three authored probes. Its reverb is disabled; the corrected IR size is `0.26`. With waveshaper, IR, and delay disabled, MIDI 48 reaches `0.99548` correlation, but Cycle 1 fails the raw repeat gate. The first material cross-engine difference is pitch-clocked lane reconstruction, not Unison layout or seed state. |
 | accoustic | Broad graph including reverb | Current graph differs in morph/link state, envelope state, reverb size, and IR high-pass; do not use for DSP attribution yet. |
 | organ-2 | Spectral layers, envelopes, Unison, IR, delay, reverb | Current graph differs from fresh conversion in reverb size; reverb seed parity is unresolved. |
 
@@ -298,10 +298,13 @@ as the scratch envelope evolves.
     rasterization/compositing. Guitar 3 G exposes the next boundary at
     key/velocity-routed envelope preparation before effects can be attributed.
 13. Add deterministic seed injection/persistence at the shared render contract
-    for Guide noise, Unison jitter, and reverb, then admit one fixture for each.
-    In progress: Cycle 1 voice/rasterizer seed injection is complete and proves
-    repeatability for the first two fixtures; cross-engine seed mapping and
-    Cycle 1 reverb remain open.
+    for Guide noise and any remaining stochastic effect state, then admit one
+    fixture for each. In progress: Cycle 1 voice/rasterizer seed injection is
+    complete and proves repeatability for the first two fixtures; cross-engine
+    Guide seed mapping remains open. Unison jitter is the fixed table owned by
+    shared `UnisonCore`, not random state. Cycle 1 reverb's wall-clock seed only
+    fills an unused legacy noise buffer; both engines build their audible kernel
+    through deterministic shared `ReverbKernel`.
 14. Remove each gain, latency, scheduling, and sample-rate policy discrepancy
     from the comparison boundary until admitted fixtures require raw exact
     sample equality.
@@ -581,6 +584,24 @@ as the scratch envelope evolves.
     `/tmp/cycle-guitar-through-eq-state-fixed/comparison.json`,
     `/tmp/cycle-guitar-full-deterministic-recheck/comparison.json`, and
     `/tmp/cycle-guitar-full-matrix/comparison.json`.
+36. Establish the six-voice Icycle differential fixture. In progress: a fresh
+    Cycle 1 canonical export regenerated the graph exactly while the converter
+    retained every existing node position, port side, editor dimension, and
+    all three authored signal probes. This corrects stale semantic state,
+    including inverse-velocity routing, envelope declick, output gain, missing
+    static envelope modulation, full-precision meshes, and IR size `0.26`.
+    Probe retention is now a tested part of presentation reconciliation. With
+    waveshaper, IR, and delay disabled, MIDI 48 reaches `0.99548` correlation,
+    a `+0.05 dB` fit, and `0.0949` residual. Its captured time raster/frame and
+    all magnitude/phase operands are byte-identical; the forward FFT differs
+    only at `8.8e-8` residual, reconstruction at `5.2e-6`, then the first
+    material divergence appears in pitch-clocked cycle reconstruction at about
+    `0.056`. Cycle 1 differs from itself from frame 40 across fresh processes,
+    even with Unison disabled, so the diagnostic fixture cannot be admitted by
+    weakening the repeat gate. Artifacts:
+    `/tmp/cycle-icycle-unison-baseline/comparison.json`,
+    `/tmp/cycle-icycle-no-unison/comparison.json`, and
+    `/tmp/cycle-icycle-unison-stages/comparison.json`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a
