@@ -293,9 +293,12 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
     const int pitchIndex = context.pitchEnvelope.empty()
             ? 0
             : jlimit(0, context.pitchEnvelope.size() - 1, (int) relativeFrontier);
-    const float pitch = context.pitchEnvelope.empty()
-            ? 0.5f
-            : context.pitchEnvelope[pitchIndex];
+    float pitch = 0.5f;
+    if (renderer.hasPitchEnvelope()) {
+        pitch = renderer.pitchEnvelopeValue(laneIndex);
+    } else if (!context.pitchEnvelope.empty()) {
+        pitch = context.pitchEnvelope[pitchIndex];
+    }
     const double angleDelta = CycleDsp::OscillatorLaneCore::angleDeltaForPitchUnit(
             context.midiNote,
             layout[laneIndex].detuneCents,

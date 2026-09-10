@@ -492,6 +492,15 @@ Artifacts:
 - `/tmp/cycle-icycle-no-unison/comparison.json`
 - `/tmp/cycle-icycle-unison-stages/comparison.json`
 
-Current status: open. The next semantic boundary is the shared spectral
-Unison lane clock/resampling schedule; raw Cycle 1 repeatability is a separate
-oracle blocker.
+Update: Cycle V2 had treated the 129-point Unison preview trajectory as an
+audio-time pitch buffer. Prepared oscillator regions now resolve the pitch
+Envelope into the existing cycle-envelope bank and advance one mature playback
+cursor per lane. At MIDI 48, every captured stage through reconstructed frames
+is byte-identical; pitch-clocked residual falls to `2.6e-5–4.6e-5`, final
+alignment becomes zero-lag, and the full effect graph reaches `0.99825`
+correlation with `0.0592` residual.
+
+Current status: partially addressed. MIDI 36 remains at `0.96604` correlation
+without effects, and raw Cycle 1 repeatability is still a separate oracle
+blocker. The next boundary is low-note lane accumulation after individually
+near-identical pitch-clocked cycles.

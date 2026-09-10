@@ -631,7 +631,10 @@ void GraphAudioExecutor::prepareExecution(
                 preparedRegion->configurationRevisions.push_back(
                         plan.steps[(size_t) operationIndex].configuration.revision);
             }
-            preparedRegion->pitchEnvelopeUnitValues = compiledContext->pitchEnvelopeUnitValues;
+            if (compiledContext->pitchEnvelopeNodeId.isEmpty()) {
+                preparedRegion->pitchEnvelopeUnitValues
+                        = compiledContext->pitchEnvelopeUnitValues;
+            }
             preparedRegion->processor = std::move(processor);
             for (const int stepIndex : region.stepIndices) {
                 preparedVoice.oscillatorRegionByStep[(size_t) stepIndex]

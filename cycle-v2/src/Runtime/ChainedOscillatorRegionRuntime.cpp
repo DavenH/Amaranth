@@ -116,9 +116,24 @@ bool ChainedOscillatorRegionRuntime::renderUntilReady(
         const int pitchIndex = context.pitchEnvelope.empty()
                 ? 0
                 : jlimit(0, context.pitchEnvelope.size() - 1, (int) relativeFrontier);
-        const float pitch = context.pitchEnvelope.empty()
-                ? 0.5f
-                : context.pitchEnvelope[pitchIndex];
+        const int previousCycleSamples = lane.clock.samplesThisCycle > 0
+                ? lane.clock.samplesThisCycle
+                : jmax(1, (int) (1.0 / CycleDsp::OscillatorLaneCore::angleDelta(
+                        context.midiNote,
+                        layout[laneIndex].detuneCents,
+                        sampleRate) + 0.5));
+        if (context.voice != nullptr) {
+            renderer.advanceCycleEnvelopes(
+                    laneIndex,
+                    previousCycleSamples,
+                    context.voice->controls.normalizedVoiceTimeIncrement);
+        }
+        float pitch = 0.5f;
+        if (renderer.hasPitchEnvelope()) {
+            pitch = renderer.pitchEnvelopeValue(laneIndex);
+        } else if (!context.pitchEnvelope.empty()) {
+            pitch = context.pitchEnvelope[pitchIndex];
+        }
         const double angleDelta = CycleDsp::OscillatorLaneCore::angleDeltaForPitchUnit(
                 context.midiNote,
                 layout[laneIndex].detuneCents,

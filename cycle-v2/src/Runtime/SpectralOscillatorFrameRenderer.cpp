@@ -154,13 +154,19 @@ bool SpectralOscillatorFrameRenderer::prepare(
         const OscillatorRegionPlan& region,
         int maximumFrameSizeToUse,
         const std::vector<NodeAudioProcessor*>& processors,
-        int laneCount) {
+        int laneCount,
+        const String& pitchEnvelopeNodeId) {
     if (!supports(plan, region) || !isPowerOfTwo(maximumFrameSizeToUse)) {
         return false;
     }
 
     maximumFrameSize = maximumFrameSizeToUse;
-    if (!cycleEnvelopes.prepare(plan, region, processors, laneCount)) {
+    if (!cycleEnvelopes.prepare(
+            plan,
+            region,
+            processors,
+            laneCount,
+            pitchEnvelopeNodeId)) {
         return false;
     }
     if (Curve::table == nullptr) {

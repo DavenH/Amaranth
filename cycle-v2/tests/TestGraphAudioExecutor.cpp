@@ -1134,6 +1134,59 @@ TEST_CASE("Guitar 3 G starts its scratch Envelope at the Cycle 1 cross-section",
   #endif
 }
 
+TEST_CASE("Icycle advances pitch from the prepared Envelope instead of its preview",
+        "[cycle-v2][runtime][envelope][pitch][unison][parity][preset]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("Icycle.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.voiceContexts.size() == 1);
+    REQUIRE(compiled.plan.voiceContexts.front().pitchEnvelopeNodeId
+            == "pitchEnvelope1");
+    std::fill(
+            compiled.plan.voiceContexts.front().pitchEnvelopeUnitValues.begin(),
+            compiled.plan.voiceContexts.front().pitchEnvelopeUnitValues.end(),
+            0.99f);
+
+    CycleDsp::SpectralStageCaptureRecorder recorder;
+    REQUIRE(recorder.prepare(2048, 32));
+    OfflineGraphAudioRequest request;
+    request.sampleRate = 48'000.;
+    request.blockSize = 512;
+    request.sampleCount = 12'000;
+    request.voiceDurationSeconds = 2.2102451f;
+    request.outputGain = 1.f;
+    request.ratePolicy = OfflineGraphAudioRatePolicy::LegacyInternal44100;
+    request.controlNoteOffset = 12;
+    request.spectralStageCapture = &recorder;
+    request.events.push_back({ 0, MidiMessage::noteOn(1, 48, 0.8f) });
+
+    const auto result = OfflineGraphAudioRenderer::render(
+            std::move(compiled.plan),
+            1,
+            request);
+    const auto* left = recorder.record(CycleDsp::SpectralStage::PitchClockedCycle, 0);
+    const auto* right = recorder.record(CycleDsp::SpectralStage::PitchClockedCycle, 1);
+
+    REQUIRE(result.succeeded);
+    REQUIRE(left != nullptr);
+    REQUIRE(right != nullptr);
+    REQUIRE(left->captured);
+    REQUIRE(right->captured);
+    REQUIRE(left->frontier == 10'562);
+    REQUIRE(right->frontier == 10'562);
+    REQUIRE(left->primary.size() == 341);
+    REQUIRE(right->primary.size() == 341);
+    REQUIRE(left->primary.front() == Catch::Approx(0.2668371f).margin(0.00002f));
+    REQUIRE(right->primary.front() == Catch::Approx(0.1515495f).margin(0.00002f));
+  #endif
+}
+
 TEST_CASE("Logarithmic Envelope applies the Cycle 1 transform to audio and traversal grids",
         "[cycle-v2][runtime][envelope][logarithmic]") {
     struct RenderedEnvelope {

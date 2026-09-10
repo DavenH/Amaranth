@@ -11,8 +11,10 @@ bool PreparedCycleEnvelopeBank::prepare(
         const GraphExecutionPlan& plan,
         const OscillatorRegionPlan& region,
         const std::vector<NodeAudioProcessor*>& processors,
-        int laneCount) {
+        int laneCount,
+        const String& pitchEnvelopeNodeId) {
     entries.clear();
+    pitchEntryIndex = -1;
     if (laneCount < 1) {
         return false;
     }
@@ -51,6 +53,31 @@ bool PreparedCycleEnvelopeBank::prepare(
             entries.push_back(std::move(entry));
         }
     }
+    if (pitchEnvelopeNodeId.isNotEmpty()) {
+        const auto found = plan.dependencyIndex.stepIndexById.find(
+                pitchEnvelopeNodeId);
+        if (found == plan.dependencyIndex.stepIndexById.end()
+                || found->second < 0
+                || found->second >= (int) processors.size()
+                || processors[(size_t) found->second] == nullptr) {
+            return false;
+        }
+        const auto* source = processors[(size_t) found->second]
+                ->cycleEnvelopePlaybackSource();
+        if (source == nullptr) {
+            return false;
+        }
+        auto entry = std::make_unique<Entry>();
+        entry->laneCount = laneCount;
+        entry->pitch = true;
+        entry->source = source;
+        entry->values.resize((size_t) laneCount, 0.5f);
+        entry->active.resize((size_t) laneCount);
+        entry->playback.ensureVoiceCount(laneCount);
+        entry->playback.setOneSamplePerCycle(true);
+        entries.push_back(std::move(entry));
+        pitchEntryIndex = (int) entries.size() - 1;
+    }
     reset();
     return true;
 }
@@ -60,7 +87,10 @@ void PreparedCycleEnvelopeBank::reset() {
         Entry& entry = *ownedEntry;
         entry.playback.noteOn();
         entry.adoptedConfiguration = nullptr;
-        std::fill(entry.values.begin(), entry.values.end(), 0.f);
+        std::fill(
+                entry.values.begin(),
+                entry.values.end(),
+                entry.pitch ? 0.5f : 0.f);
         std::fill(entry.active.begin(), entry.active.end(), false);
     }
 }
@@ -122,6 +152,22 @@ float PreparedCycleEnvelopeBank::value(int bufferIndex, int laneIndex) const {
             ? std::min(laneIndex, entry->laneCount - 1)
             : entry->laneCount - 1;
     return entry->values[(size_t) index];
+}
+
+bool PreparedCycleEnvelopeBank::hasPitchEnvelope() const {
+    return pitchEntryIndex >= 0;
+}
+
+float PreparedCycleEnvelopeBank::pitchValue(int laneIndex) const {
+    if (pitchEntryIndex < 0 || pitchEntryIndex >= (int) entries.size()) {
+        return 0.5f;
+    }
+    const Entry& entry = *entries[(size_t) pitchEntryIndex];
+    if (entry.values.empty()) {
+        return 0.5f;
+    }
+    const int index = std::max(0, std::min(laneIndex, entry.laneCount - 1));
+    return entry.values[(size_t) index];
 }
 
 const EnvelopeConfiguration* PreparedCycleEnvelopeBank::adopt(Entry& entry) {

@@ -28,7 +28,8 @@ public:
             const OscillatorRegionPlan& region,
             int maximumFrameSize,
             const std::vector<NodeAudioProcessor*>& processors = {},
-            int laneCount = 1);
+            int laneCount = 1,
+            const String& pitchEnvelopeNodeId = {});
     void reset();
     void applyLifecycleEvent(const NoteLifecycleEvent& event);
     bool renderFrame(
@@ -46,6 +47,10 @@ public:
             Buffer<float> left,
             Buffer<float> right);
     size_t frameRenderCount() const { return renderCount; }
+    bool hasPitchEnvelope() const { return cycleEnvelopes.hasPitchEnvelope(); }
+    float pitchEnvelopeValue(int laneIndex) const {
+        return cycleEnvelopes.pitchValue(laneIndex);
+    }
 
 private:
     enum class OperationType {

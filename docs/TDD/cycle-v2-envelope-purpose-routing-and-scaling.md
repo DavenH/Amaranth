@@ -26,9 +26,12 @@ approximations:
   evaluator.
 
 Pitch-purpose Envelopes connect only to the Voice Context pitch input and feed
-its shared per-voice tuning path. Pitch curves are fitted before their first
-compact preview on preset load, without requiring the expanded editor to be
-opened as an initialization side effect.
+its shared per-voice tuning path. Their 129-point compiled trajectory belongs
+only to preview presentation. Prepared oscillator regions resolve the source
+Envelope once, own a mature `EnvelopePlaybackEngine` cursor per Unison lane,
+and advance it at the same cycle/control frontier as scratch. Pitch curves are
+fitted before their first compact preview on preset load, without requiring
+the expanded editor to be opened as an initialization side effect.
 
 This document is the authoritative Cycle V2 contract for Envelope purpose,
 output grammar, polarity, logarithmic scaling, and scratch traversal. The
@@ -343,7 +346,9 @@ The expected end state deletes:
    complete. Sample-accurate source rendering and expanded-editor publication
    remain at the boundaries listed in Status.
 4. **Complete:** enable the typed Voice Context pitch edge and reuse shared
-   pitch sampling/tuning in the compiled voice plan.
+   pitch sampling/tuning in the compiled voice plan. Realtime oscillator
+   regions consume a prepared per-lane playback cursor; the compiled preview
+   trajectory is not an audio buffer.
 5. **Partial:** remove transitional connection/output inference and run the architectural
    review required by `docs/TDD/README.md` before marking this implemented.
    The ambiguous serialized attachment boolean is deleted; the review below

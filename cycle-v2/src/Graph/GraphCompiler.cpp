@@ -596,6 +596,7 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
             }
             const Node* source = findNode(graph, edge.sourceNodeId);
             if (source != nullptr && source->kind == NodeKind::Envelope) {
+                context.pitchEnvelopeNodeId = source->id;
                 context.pitchEnvelope = EnvelopeSignalProcessor::buildConfiguration(
                         source->parameters,
                         source->model);

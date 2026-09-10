@@ -118,6 +118,7 @@ struct CompiledVoiceContext {
     int oversampling { 1 };
     std::shared_ptr<const INodeDspConfiguration> defaultModulation;
     std::shared_ptr<const INodeDspConfiguration> pitchEnvelope;
+    String pitchEnvelopeNodeId;
     std::vector<float> pitchEnvelopeUnitValues;
     std::shared_ptr<const INodeDspConfiguration> unison;
     String defaultScratchNodeId;
