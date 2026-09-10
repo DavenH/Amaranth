@@ -145,6 +145,68 @@ void NodeCanvasPresentation::paintPalette(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
     const int activeSectionIndex = frame.palette.activeSection();
+    int hoveredEntryIndex = -1;
+    if (activeSectionIndex >= 0) {
+        const auto& section = frame.palette.section(activeSectionIndex);
+        for (int entryIndex = 0; entryIndex < section.entryCount; ++entryIndex) {
+            if (frame.palette.entryBounds(activeSectionIndex, entryIndex).contains(frame.pointer)) {
+                hoveredEntryIndex = entryIndex;
+                break;
+            }
+        }
+    }
+
+    const float physicalScale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
+    Rectangle<float> bounds = frame.palette.railBounds();
+    if (activeSectionIndex >= 0) {
+        bounds = bounds.getUnion(frame.palette.pulloutBounds(activeSectionIndex));
+    }
+    const int imageWidth = jmax(1, roundToInt(bounds.getWidth() * physicalScale));
+    const int imageHeight = jmax(1, roundToInt(bounds.getHeight() * physicalScale));
+    const bool cacheHit = paletteCacheImage.isValid()
+            && paletteCacheImage.getWidth() == imageWidth
+            && paletteCacheImage.getHeight() == imageHeight
+            && paletteCacheScale == physicalScale
+            && paletteCacheActiveSection == activeSectionIndex
+            && paletteCacheHoveredEntry == hoveredEntryIndex;
+    if (!cacheHit) {
+        paletteCacheImage = Image(Image::ARGB, imageWidth, imageHeight, true);
+        paletteCacheBounds = bounds;
+        paletteCacheScale = physicalScale;
+        paletteCacheActiveSection = activeSectionIndex;
+        paletteCacheHoveredEntry = hoveredEntryIndex;
+
+        Graphics imageGraphics(paletteCacheImage);
+        imageGraphics.addTransform(AffineTransform(
+                physicalScale,
+                0.f,
+                -bounds.getX() * physicalScale,
+                0.f,
+                physicalScale,
+                -bounds.getY() * physicalScale));
+        paintPaletteContent(imageGraphics, frame);
+    }
+
+    const float imageToLogicalX = paletteCacheBounds.getWidth()
+            / (float) paletteCacheImage.getWidth();
+    const float imageToLogicalY = paletteCacheBounds.getHeight()
+            / (float) paletteCacheImage.getHeight();
+    graphics.drawImageTransformed(
+            paletteCacheImage,
+            AffineTransform(
+                    imageToLogicalX,
+                    0.f,
+                    paletteCacheBounds.getX(),
+                    0.f,
+                    imageToLogicalY,
+                    paletteCacheBounds.getY()),
+            false);
+}
+
+void NodeCanvasPresentation::paintPaletteContent(
+        Graphics& graphics,
+        const NodeCanvasPresentationFrame& frame) {
+    const int activeSectionIndex = frame.palette.activeSection();
     for (int sectionIndex = 0; sectionIndex < frame.palette.sectionCount(); ++sectionIndex) {
         const auto& section = frame.palette.section(sectionIndex);
         const bool active = sectionIndex == activeSectionIndex;

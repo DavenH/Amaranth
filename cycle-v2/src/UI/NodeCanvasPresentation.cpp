@@ -898,8 +898,7 @@ void NodeCanvasPresentation::prepareCachedEdge(
         const NodeCableStyle& style,
         float zoom,
         float physicalScale) {
-    const Rectangle<int> logicalBounds = NodeCableRenderer::visibleBounds(sceneEdge, zoom)
-            .getSmallestIntegerContainer();
+    const Rectangle<float> logicalBounds = NodeCableRenderer::visibleBounds(sceneEdge, zoom);
     const NodeCanvasCableLayerCacheAccess cache = cableLayerCache.access(
             sceneEdge,
             style,
@@ -1051,15 +1050,13 @@ void NodeCanvasPresentation::paintCachedNode(
         const NodeCanvasPresentationFrame& frame,
         const Node& node,
         float physicalScale) {
-    const Rectangle<int> logicalBounds = frame.viewport.toScreen(
+    const Rectangle<float> logicalBounds = frame.viewport.toScreen(
             NodeCanvasScene::presentationWorldBounds(frame.graph, node))
-            .expanded(32.f * portScale(frame.viewport.getZoom()))
-            .getSmallestIntegerContainer();
+            .expanded(32.f * portScale(frame.viewport.getZoom()));
     const NodePreviewResult* runtimePreview = previewFor(frame.previewResult, node.id);
     const NodeCanvasNodeLayerCacheAccess cache = nodeLayerCache.access(
             node,
             logicalBounds,
-            frame.viewport.getRevision(),
             previewRenderer.nodePresentationFingerprint(node.id),
             renderContextFingerprintFor(frame, node),
             runtimePreview,

@@ -26,7 +26,7 @@ TEST_CASE("Cable layer cache reuses only complete presentation keys",
     NodeCanvasCableLayerCache cache;
     NodeSceneEdge edge = makeSceneEdge();
     NodeCableStyle style { Colours::cyan, false, false, false, false };
-    const Rectangle<int> bounds { 0, 20, 200, 120 };
+    Rectangle<float> bounds { 0.f, 20.f, 200.f, 120.f };
     const auto access = [&](float zoom = 0.58f, float scale = 1.f) {
         return cache.access(edge, style, bounds, zoom, scale);
     };
@@ -42,13 +42,39 @@ TEST_CASE("Cable layer cache reuses only complete presentation keys",
     Image output(Image::ARGB, 220, 180, true);
     Graphics outputGraphics(output);
     cache.drawComposite(outputGraphics, firstFrame);
-    REQUIRE(output.getPixelAt(bounds.getCentreX(), bounds.getCentreY()) == Colours::red);
+    REQUIRE(output.getPixelAt(
+            roundToInt(bounds.getCentreX()),
+            roundToInt(bounds.getCentreY())) == Colours::red);
 
     cache.beginFrame({ 0, 0, 220, 180 }, 1.f);
     REQUIRE(access().hit);
     const NodeCanvasCableLayerCacheFrame hitFrame = cache.endFrame();
     REQUIRE(hitFrame.spriteStats.hits == 1);
     REQUIRE(hitFrame.compositeHit);
+
+    edge = makeSceneEdge(4, 17.25f);
+    bounds = bounds.translated(17.25f, 0.f);
+    cache.beginFrame({ 0, 0, 240, 180 }, 1.f);
+    REQUIRE(access().hit);
+    const NodeCanvasCableLayerCacheFrame translatedFrame = cache.endFrame();
+    REQUIRE(translatedFrame.spriteStats.hits == 1);
+    REQUIRE_FALSE(translatedFrame.compositeHit);
+    REQUIRE(translatedFrame.drawEntries);
+
+    cache.beginFrame({ 0, 0, 240, 180 }, 1.f);
+    REQUIRE(access().hit);
+    const NodeCanvasCableLayerCacheFrame translatedRebuild = cache.endFrame();
+    REQUIRE_FALSE(translatedRebuild.compositeHit);
+    REQUIRE_FALSE(translatedRebuild.drawEntries);
+
+    cache.beginFrame({ 0, 0, 240, 180 }, 1.f);
+    REQUIRE(access().hit);
+    REQUIRE(cache.endFrame().compositeHit);
+
+    bounds.setWidth(bounds.getWidth() + 1.f);
+    cache.beginFrame({ 0, 0, 240, 180 }, 1.f);
+    REQUIRE_FALSE(access().hit);
+    REQUIRE(cache.endFrame().spriteStats.misses == 1);
 
     cache.beginFrame({ 0, 0, 220, 180 }, 1.f);
     style.selected = true;
@@ -86,11 +112,11 @@ TEST_CASE("Cable composite cache invalidates ordered visible membership",
     NodeCanvasCableLayerCache cache;
     NodeSceneEdge first = makeSceneEdge(1, 0.f);
     NodeSceneEdge second = makeSceneEdge(2, 120.f);
-    const Rectangle<int> firstBounds { 0, 20, 100, 120 };
-    const Rectangle<int> secondBounds { 120, 20, 100, 120 };
+    const Rectangle<float> firstBounds { 0.f, 20.f, 100.f, 120.f };
+    const Rectangle<float> secondBounds { 120.f, 20.f, 100.f, 120.f };
     NodeCableStyle style { Colours::cyan, false, false, false, false };
     const Rectangle<int> visibleBounds { 0, 0, 240, 180 };
-    const auto access = [&](const NodeSceneEdge& edge, Rectangle<int> bounds, Colour colour) {
+    const auto access = [&](const NodeSceneEdge& edge, Rectangle<float> bounds, Colour colour) {
         const NodeCanvasCableLayerCacheAccess result = cache.access(
                 edge,
                 style,
@@ -113,11 +139,11 @@ TEST_CASE("Cable composite cache invalidates ordered visible membership",
     Graphics initialGraphics(initialOutput);
     cache.drawComposite(initialGraphics, initial);
     REQUIRE(initialOutput.getPixelAt(
-            firstBounds.getCentreX(),
-            firstBounds.getCentreY()) == Colours::red);
+            roundToInt(firstBounds.getCentreX()),
+            roundToInt(firstBounds.getCentreY())) == Colours::red);
     REQUIRE(initialOutput.getPixelAt(
-            secondBounds.getCentreX(),
-            secondBounds.getCentreY()) == Colours::blue);
+            roundToInt(secondBounds.getCentreX()),
+            roundToInt(secondBounds.getCentreY())) == Colours::blue);
 
     cache.beginFrame(visibleBounds, 1.f);
     REQUIRE(access(first, firstBounds, Colours::red).hit);
@@ -137,11 +163,11 @@ TEST_CASE("Cable composite cache invalidates ordered visible membership",
     Graphics removedGraphics(removedOutput);
     cache.drawComposite(removedGraphics, removed);
     REQUIRE(removedOutput.getPixelAt(
-            firstBounds.getCentreX(),
-            firstBounds.getCentreY()) == Colours::red);
+            roundToInt(firstBounds.getCentreX()),
+            roundToInt(firstBounds.getCentreY())) == Colours::red);
     REQUIRE(removedOutput.getPixelAt(
-            secondBounds.getCentreX(),
-            secondBounds.getCentreY()) == Colours::transparentBlack);
+            roundToInt(secondBounds.getCentreX()),
+            roundToInt(secondBounds.getCentreY())) == Colours::transparentBlack);
 
     cache.beginFrame({ 0, 0, 80, 180 }, 1.f);
     REQUIRE(access(first, firstBounds, Colours::red).hit);

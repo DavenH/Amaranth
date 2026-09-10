@@ -119,10 +119,13 @@ TEST_CASE("Curve preview snapshots are reused until a rendering dependency chang
 TEST_CASE("Curve document replacement clears snapshots and changes preview identity",
         "[cycle-v2][node-editor-host][regression]") {
     CurvePanelSnapshotCache snapshot;
+    const uint64_t emptyRevision = snapshot.revision();
     Image rendered(Image::ARGB, 8, 8, true);
     Graphics renderedGraphics(rendered);
     renderedGraphics.fillAll(Colours::white);
     snapshot.publish(rendered, true);
+    REQUIRE(snapshot.revision() > emptyRevision);
+    const uint64_t publishedRevision = snapshot.revision();
 
     Image destination(Image::ARGB, 8, 8, true);
     Graphics destinationGraphics(destination);
@@ -132,6 +135,7 @@ TEST_CASE("Curve document replacement clears snapshots and changes preview ident
             destinationGraphics,
             destination.getBounds().toFloat(),
             false));
+    REQUIRE(snapshot.revision() > publishedRevision);
 
     ScopedJuceInitialiser_GUI juce;
     CurveTableScope curveTable;
@@ -447,6 +451,48 @@ TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
         return result;
     };
     REQUIRE(checksum(withRuntime) == checksum(authoritative));
+}
+
+TEST_CASE("First compact Envelope paint synchronizes its durable curve model",
+        "[cycle-v2][canvas][preview][envelope][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Component canvas;
+    NodeGraph graph;
+    Node envelope = GraphNodeFactory().createNode(NodeKind::Envelope, "env", {});
+    EnvelopeNodeModel envelopeModel;
+    REQUIRE(envelopeModel.synchronizeFromMesh(nullptr));
+    envelope.model = CurveNodeModelState::copyOf(
+            envelopeModel,
+            envelopeModel.revision() + 7);
+    graph.addNode(std::move(envelope));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher graphCommands(document);
+    NullPresentation presentation;
+    NullResources editorResources;
+    NodeEditorCommandService editorCommands(
+            canvas,
+            document,
+            graphCommands,
+            presentation,
+            editorResources);
+    NodePreviewResources resources(editorCommands);
+    resources.setGraph(&document.graph());
+    NodePreviewRenderer renderer(resources);
+    const Node& node = *document.graph().findNode("env");
+
+    Image image(Image::ARGB, 180, 140, true);
+    Graphics graphics(image);
+    renderer.paint(graphics, {
+            node,
+            nullptr,
+            image.getBounds().toFloat(),
+            TrimeshRenderProfile::fromDomain(PortDomain::ControlSignal),
+            1.f,
+            true
+    });
+
+    REQUIRE(resources.curveEditorWidget(node).modelRevision() == node.model->revision());
 }
 
 std::vector<double> irEditableSamplesAt(

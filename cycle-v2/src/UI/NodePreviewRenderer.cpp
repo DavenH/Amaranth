@@ -721,6 +721,7 @@ bool NodePreviewRenderer::paintAuthoritativeModel(
     }
 
     CurveEditorWidget& widget = resources.curveEditorWidget(request.node);
+    widget.syncFromNode(request.node);
     if (!widget.paintPreviewSnapshot(graphics, request.area)) {
         drawCurveFallback(
                 graphics,

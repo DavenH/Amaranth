@@ -81,6 +81,10 @@ public:
         return host->paintPreviewSnapshot(graphics, bounds);
     }
 
+    uint64_t previewSnapshotRevision() const override {
+        return host->previewSnapshotRevision();
+    }
+
     void resetDocumentPresentation() override {
         host->resetDocumentPresentation();
     }

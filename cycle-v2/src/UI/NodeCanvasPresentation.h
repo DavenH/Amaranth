@@ -123,6 +123,7 @@ private:
     void paintMiniMap(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintLegend(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintPalette(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
+    void paintPaletteContent(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
 
     void renderOpenGLEffectPreviews(
             const NodeCanvasPresentationFrame& frame,
@@ -147,6 +148,11 @@ private:
     NodeCanvasPresentationPerformanceObserver* performanceObserver;
     NodeCanvasCableLayerCache cableLayerCache;
     NodeCanvasNodeLayerCache nodeLayerCache;
+    Image paletteCacheImage;
+    Rectangle<float> paletteCacheBounds;
+    float paletteCacheScale {};
+    int paletteCacheActiveSection { -2 };
+    int paletteCacheHoveredEntry { -2 };
 };
 
 }

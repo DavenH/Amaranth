@@ -56,6 +56,7 @@ public:
     uint64_t modelRevision() const;
     uint64_t contentRevision() const;
     uint64_t previewRevision() const { return previewPresentationRevision; }
+    uint64_t previewSnapshotRevision() const;
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
     bool setSelectedVertexParameter(const String& parameterId, float normalizedValue);
     bool hasSingleSelectedEnvelopeVertex();

@@ -35,11 +35,14 @@ public:
     void publish(juce::Image image, bool hasVisibleContent);
     bool paint(juce::Graphics& graphics, juce::Rectangle<float> bounds, bool resample) const;
     void clear();
+    uint64_t revision() const { return publicationRevision.load(); }
 
 private:
+    bool visibleContent {};
+    std::atomic<uint64_t> publicationRevision {};
+
     mutable juce::CriticalSection lock;
     juce::Image image;
-    bool visibleContent {};
 };
 
 class CurvePanelPreviewRenderCache {
@@ -108,6 +111,7 @@ public:
             uint64_t presentationRevision);
     bool paintExpandedSnapshot(Graphics& graphics, Rectangle<float> bounds) const;
     bool paintPreviewSnapshot(Graphics& graphics, Rectangle<float> bounds) const;
+    uint64_t previewSnapshotRevision() const { return previewSnapshot.revision(); }
     bool usesCursor(const MouseCursor& cursor) const;
     void resetDocumentPresentation();
     void releaseSharedGlResources();
