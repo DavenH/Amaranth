@@ -38,6 +38,7 @@ struct TrimeshVertexParameter {
     float value {};
     float minimum {};
     float maximum { 1.f };
+    float guideGain { 0.5f };
 };
 
 struct TrimeshVertexMarker {
@@ -116,6 +117,8 @@ public:
     int getResolvedSelectedVertexIndex();
     void selectVertex(Vertex* vertex);
     bool setVertexParameter(int vertexIndex, const String& parameterId, float value);
+    bool setVertexGuideGain(int vertexIndex, const String& parameterId, float value);
+    float vertexGuideGain(int vertexIndex, const String& parameterId);
     void markMeshEdited();
 
     const MorphPosition& getMorphPosition() const { return morph; }

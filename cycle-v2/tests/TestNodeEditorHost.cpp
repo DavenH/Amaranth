@@ -18,6 +18,7 @@
 #include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 #include "Nodes/Trimesh/Editor/TrimeshExpandedEditorComponent.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Unison/UnisonNode.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
@@ -1183,6 +1184,8 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     REQUIRE(targetWithId("expanded:mesh.panel3D") != nullptr);
     REQUIRE(targetWithId("expanded:mesh.trimeshMorphRail.yellow") != nullptr);
     REQUIRE(targetWithId("expanded:mesh.trimeshVertexParameter.vertex.phase") != nullptr);
+    REQUIRE(targetWithId("expanded:mesh.trimeshVertexGuideGain.guideGain.phase") != nullptr);
+    REQUIRE(targetWithId("expanded:mesh.trimeshVertexGuideGain.guideGain.time") == nullptr);
     const DynamicObject* expandedTarget = targetWithId("expanded:mesh");
     REQUIRE(expandedTarget != nullptr);
     REQUIRE_FALSE((bool) expandedTarget->getProperty("nativeReady"));
@@ -2343,28 +2346,33 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
 
 TEST_CASE("Envelope preview sync defers selection work until host initialization",
         "[cycle-v2][node-editor-host][envelope][preview][preset]") {
-  #if defined(CYCLE_V2_SOURCE_DIR)
     ScopedJuceInitialiser_GUI juce;
     CurveTableScope curveTable;
-    const NodeGraph warmth = GraphSerializer().fromJsonString(
-            File(CYCLE_V2_SOURCE_DIR)
-                    .getChildFile("content")
-                    .getChildFile("presets")
-                    .getChildFile("Warmth.cyclegraph")
-                    .loadFileAsString());
-    const Node* envelope = warmth.findNode("volumeEnvelope1");
-    REQUIRE(envelope != nullptr);
+    GraphNodeFactory factory;
+    Node envelope = factory.createNode(NodeKind::Envelope, "env", {});
+    EnvelopeNodeModel envelopeModel;
+    VertCube* selectedCube = envelopeModel.getMesh().getCubes().front();
+    REQUIRE(selectedCube != nullptr);
+    REQUIRE(envelopeModel.synchronizeFromMesh(selectedCube));
+    envelope.model = CurveNodeModelState::copyOf(
+            envelopeModel, envelopeModel.revision() + 1);
+    auto* editorState = new DynamicObject();
+    editorState->setProperty(
+            "selectedCubeId", (int64) *envelopeModel.selectedCubeId());
+    envelope.editorState = var(editorState);
 
     CurveEditorWidget widget(NodeKind::Envelope);
-    widget.syncFromNode(*envelope);
+    widget.syncFromNode(envelope);
 
     REQUIRE(widget.getExpandedPanelComponentIfCreated() == nullptr);
-    const var state = widget.automationState();
-    REQUIRE_FALSE((bool) state.getProperty("redLinked", true));
-    REQUIRE_FALSE((bool) state.getProperty("blueLinked", true));
-  #else
-    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
-  #endif
+    REQUIRE_FALSE((bool) widget.automationState().getProperty("hasCurrentCube", {}));
+
+    REQUIRE(widget.prepareExpandedPanelComponent(
+            envelope,
+            Rectangle<float>(0.f, 0.f, 640.f, 400.f)) != nullptr);
+    const var initializedState = widget.automationState();
+    REQUIRE((bool) initializedState.getProperty("hasCurrentCube", {}));
+    REQUIRE((int) initializedState.getProperty("movingVertexCount", 0) > 0);
 }
 
 TEST_CASE("Logarithmic Envelope grid distinguishes major divisions",
@@ -2594,6 +2602,107 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0.5");
+}
+
+TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one edit",
+        "[cycle-v2][editor][trimesh][guide][gain]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphEditor editor;
+    const auto guide = editor.createGuideCurve(graph);
+    REQUIRE(guide.succeeded());
+    REQUIRE(editor.assignGuideCurveToTrimeshVertexParameter(
+            graph,
+            guide.nodeId,
+            "mesh",
+            0,
+            "amp").succeeded());
+
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    widget.syncFromNode(*document.graph().findNode("mesh"));
+    resources.activeTrimesh = &widget;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+
+    REQUIRE(commands.beginTrimeshVertexParameterEdit(
+            "mesh", "guideGain.amp", 0.5f));
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.7f));
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.8f));
+    commands.endTrimeshVertexParameterEdit();
+
+    const Node* committedNode = document.graph().findNode("mesh");
+    REQUIRE(committedNode != nullptr);
+    const auto committed = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            committedNode->model);
+    REQUIRE(committed != nullptr);
+    REQUIRE(committed->mesh().getCubes().front()->guideCurveGainAt(Vertex::Amp)
+            == Catch::Approx(0.8f));
+    const auto prepared = TrimeshGuidePreparation::prepare(
+            document.graph(), *committedNode, committed->mesh());
+    REQUIRE(prepared.assignmentCount > 0);
+    REQUIRE(prepared.mesh->getCubes().front()->guideCurveGainAt(Vertex::Amp)
+            == Catch::Approx(0.8f));
+    REQUIRE(presentation.recordedMovements == 3);
+    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(document.canUndo());
+
+    REQUIRE(document.undo());
+    const auto restored = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            document.graph().findNode("mesh")->model);
+    REQUIRE(restored != nullptr);
+    REQUIRE(restored->mesh().getCubes().front()->guideCurveGainAt(Vertex::Amp)
+            == Catch::Approx(0.5f));
+    widget.syncFromNode(*document.graph().findNode("mesh"));
+    REQUIRE(widget.vertexParametersForIndex(0)[4].guideGain
+            == Catch::Approx(0.5f));
+    REQUIRE_FALSE(document.canUndo());
+}
+
+TEST_CASE("Clicking an open Trimesh Guide selector dismisses its popup",
+        "[cycle-v2][editor][trimesh][guide][menu]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    owner.setBounds(0, 0, 800, 600);
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    resources.activeTrimesh = &widget;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+
+    REQUIRE(commands.showTrimeshGuideAttachmentMenu(
+            "mesh", "amp", { 100, 100, 40, 30 }));
+    REQUIRE(commands.hasOpenTrimeshGuideAttachmentMenuFor("mesh", "amp"));
+
+    REQUIRE(commands.showTrimeshGuideAttachmentMenu(
+            "mesh", "amp", { 100, 100, 40, 30 }));
+    REQUIRE_FALSE(commands.hasOpenTrimeshGuideAttachmentMenuFor("mesh", "amp"));
 }
 
 TEST_CASE("Trimesh link toggles survive rebind and undo",

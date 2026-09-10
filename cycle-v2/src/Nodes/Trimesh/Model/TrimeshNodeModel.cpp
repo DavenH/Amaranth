@@ -233,13 +233,27 @@ std::vector<TrimeshVertexParameter> TrimeshNodeModel::getVertexParametersForInde
         return {};
     }
 
+    const auto parameter = [this, vertexIndex, selectedVertex](
+            const String& id,
+            const String& label,
+            int valueIndex) {
+        return TrimeshVertexParameter {
+                id,
+                label,
+                selectedVertex->values[valueIndex],
+                0.f,
+                1.f,
+                vertexGuideGain(vertexIndex, id)
+        };
+    };
+
     return {
-            { "vertex.time", "time", selectedVertex->values[Vertex::Time], 0.f, 1.f },
-            { "vertex.red", "red", selectedVertex->values[Vertex::Red], 0.f, 1.f },
-            { "vertex.blue", "blue", selectedVertex->values[Vertex::Blue], 0.f, 1.f },
-            { "vertex.phase", "phase", selectedVertex->values[Vertex::Phase], 0.f, 1.f },
-            { "vertex.amp", "amp", selectedVertex->values[Vertex::Amp], 0.f, 1.f },
-            { "vertex.curve", "curve", selectedVertex->values[Vertex::Curve], 0.f, 1.f }
+            parameter("vertex.time", "time", Vertex::Time),
+            parameter("vertex.red", "red", Vertex::Red),
+            parameter("vertex.blue", "blue", Vertex::Blue),
+            parameter("vertex.phase", "phase", Vertex::Phase),
+            parameter("vertex.amp", "amp", Vertex::Amp),
+            parameter("vertex.curve", "curve", Vertex::Curve)
     };
 }
 
@@ -466,6 +480,58 @@ bool TrimeshNodeModel::setVertexParameter(
     vertex->values[valueIndex] = clampedValue;
     bumpMeshContentRevision();
     return true;
+}
+
+bool TrimeshNodeModel::setVertexGuideGain(
+        int vertexIndex,
+        const String& parameterId,
+        float value) {
+    Vertex* vertex = vertexAtIndex(vertexIndex);
+    const int valueIndex = vertexValueIndex(parameterId);
+    if (vertex == nullptr || valueIndex < 0 || vertex->owners.isEmpty()) {
+        return false;
+    }
+
+    const float targetValue = jlimit(0.f, 1.f, value);
+    const float delta = targetValue - vertexGuideGain(vertexIndex, parameterId);
+    bool changed {};
+    for (auto* owner : vertex->owners) {
+        if (owner != nullptr) {
+            const float nextValue = jlimit(
+                    0.f,
+                    1.f,
+                    owner->guideCurveGainAt(valueIndex) + delta);
+            if (owner->guideCurveGainAt(valueIndex) == nextValue) {
+                continue;
+            }
+            owner->guideCurveGainAt(valueIndex) = nextValue;
+            changed = true;
+        }
+    }
+    if (changed) {
+        bumpMeshContentRevision();
+    }
+    return true;
+}
+
+float TrimeshNodeModel::vertexGuideGain(
+        int vertexIndex,
+        const String& parameterId) {
+    Vertex* vertex = vertexAtIndex(vertexIndex);
+    const int valueIndex = vertexValueIndex(parameterId);
+    if (vertex == nullptr || valueIndex < 0 || vertex->owners.isEmpty()) {
+        return 0.5f;
+    }
+
+    float sum {};
+    int count {};
+    for (const auto* owner : vertex->owners) {
+        if (owner != nullptr) {
+            sum += owner->guideCurveGainAt(valueIndex);
+            ++count;
+        }
+    }
+    return count > 0 ? sum / (float) count : 0.5f;
 }
 
 int TrimeshNodeModel::vertexValueIndex(const String& parameterId) {

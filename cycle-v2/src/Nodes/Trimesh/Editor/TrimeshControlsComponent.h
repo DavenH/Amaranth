@@ -45,6 +45,7 @@ public:
     int getPrimaryAxisButtonCount() const;
     int getLinkToggleButtonCount() const;
     int getVertexParameterSliderCount() const;
+    int getVertexGuideGainKnobCount() const;
     int getVertexGuideAttachmentButtonCount() const;
 
     juce::MouseCursor cursorFor(juce::Point<float> position);
@@ -63,7 +64,8 @@ private:
         None,
         Morph,
         SpectralRange,
-        VertexParameter
+        VertexParameter,
+        VertexGuideGain
     };
 
     void updateHitRegions();
@@ -75,12 +77,17 @@ private:
             juce::Rectangle<int> screenArea);
     void dragControl(juce::Point<float> position);
     void endControlDrag();
+    bool adjustGuideGainFromKeyboard(
+            const TrimeshExpandedHitRegion& region,
+            float amount);
 
     TrimeshWidget& widget;
     TrimeshControlsDelegate* delegate {};
     Node node;
     DragTarget dragTarget { DragTarget::None };
     juce::String activeParameterId;
+    float guideGainDragStartY {};
+    float guideGainDragStartValue {};
     juce::Rectangle<float> contentBounds;
     juce::Rectangle<int> lastHitRegionContentBounds;
     std::vector<TrimeshExpandedHitRegion> controlHitRegions;

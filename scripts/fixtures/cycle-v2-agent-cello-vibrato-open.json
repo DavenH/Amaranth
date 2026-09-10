@@ -1,0 +1,67 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/time.cyclegraph"
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Note60",
+      "event": "down",
+      "targetY": 0.85
+    },
+    { "command": "waitForIdle", "idleDelayMs": 100 },
+    {
+      "command": "assertState",
+      "path": "performance.activeVoiceCount",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/cello-vibrato.cyclegraph"
+    },
+    { "command": "waitForIdle", "idleDelayMs": 1000 },
+    {
+      "command": "assertState",
+      "path": "performance.activeVoiceCount",
+      "equals": 0
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Note60",
+      "event": "down",
+      "targetY": 0.85
+    },
+    {
+      "command": "captureLiveAudio",
+      "durationMs": 500,
+      "path": "/private/tmp/cycle-v2-cello-vibrato-live.wav",
+      "peakGreaterThan": 0.00001,
+      "rmsGreaterThan": 0.000001,
+      "peakLessThan": 1.0
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Note60",
+      "event": "up",
+      "targetY": 0.85
+    },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/solo-string-2.cyclegraph"
+    },
+    { "command": "waitForIdle", "idleDelayMs": 300 },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/cello-vibrato.cyclegraph"
+    },
+    { "command": "waitForIdle", "idleDelayMs": 1000 },
+    {
+      "command": "assertState",
+      "path": "editStatusMessage",
+      "equals": "Opened cello-vibrato.cyclegraph"
+    }
+  ],
+  "quit": true
+}

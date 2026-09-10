@@ -8,6 +8,9 @@ namespace CycleV2 {
 
 class SpectralRangeControlRenderer {
 public:
+    static juce::Rectangle<float> labelBounds(
+            juce::Rectangle<float> row,
+            juce::Rectangle<float> rail);
     static void draw(
             juce::Graphics& g,
             juce::Rectangle<float> row,

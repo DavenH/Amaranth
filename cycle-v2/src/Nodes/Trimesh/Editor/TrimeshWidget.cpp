@@ -1,10 +1,12 @@
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 
 #include <Curve/Mesh/Vertex.h>
 #include <Util/Arithmetic.h>
 
+#include <algorithm>
 #include <array>
 #include <utility>
 
@@ -14,7 +16,7 @@ namespace {
 
 constexpr float kExpandedPanelGap      = 8.f;
 constexpr float kExpandedTopRowRatio   = 0.54f;
-constexpr float kExpandedGridRatio     = 0.58f;
+constexpr float kExpandedGridRatio     = 0.50f;
 constexpr int kPreviewRows             = 320;
 constexpr int kPreviewColumns          = 96;
 constexpr int kExpandedRows            = 320;
@@ -269,6 +271,32 @@ bool TrimeshWidget::setVertexParameter(
         const String& parameterId,
         float value) {
     return bridge.getModel().setVertexParameter(vertexIndex, parameterId, value);
+}
+
+bool TrimeshWidget::setVertexGuideGain(
+        int vertexIndex,
+        const String& parameterId,
+        float value) {
+    return bridge.getModel().setVertexGuideGain(vertexIndex, parameterId, value);
+}
+
+bool TrimeshWidget::guideGainValueForParameter(
+        const String& parameterId,
+        float& value) {
+    const int selectedVertex = bridge.getModel().getResolvedSelectedVertexIndex();
+    if (selectedVertex < 0) {
+        return false;
+    }
+    value = bridge.getModel().vertexGuideGain(selectedVertex, parameterId);
+    return true;
+}
+
+bool TrimeshWidget::hasGuideAttachmentForParameter(const String& parameterId) const {
+    const String field = parameterId.fromLastOccurrenceOf(".", false, false);
+    const auto& fields = TrimeshGuideAttachmentTarget::fields();
+    const auto found = std::find(fields.begin(), fields.end(), field);
+    return found != fields.end()
+            && guideAttachmentLabels[(size_t) std::distance(fields.begin(), found)].isNotEmpty();
 }
 
 std::vector<TrimeshVertexParameter> TrimeshWidget::vertexParametersForIndex(int vertexIndex) {
@@ -619,11 +647,28 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
 
     for (int i = 0; i < kVertexParameterCount; ++i) {
         const Rectangle<float> row = vertexParameterRowBounds(parameterArea, i);
+        const bool showGuideControls =
+                TrimeshSidePanelRenderer::showsGuideControlsForParameter(i);
+        const auto guideControls = showGuideControls
+                ? TrimeshSidePanelRenderer::GuideControls::Visible
+                : TrimeshSidePanelRenderer::GuideControls::Hidden;
 
         regions.push_back({
                 TrimeshExpandedHitRegionKind::VertexParameter,
-                vertexParameterRailBounds(row).expanded(5.f, 8.f),
+                TrimeshSidePanelRenderer::vertexParameterRailBounds(
+                        row,
+                        guideControls).expanded(5.f, 8.f),
                 vertexParameterId(i),
+                {}
+        });
+        if (!showGuideControls) {
+            continue;
+        }
+        regions.push_back({
+                TrimeshExpandedHitRegionKind::VertexGuideGain,
+                TrimeshSidePanelRenderer::vertexParameterGuideGainBounds(row)
+                        .expanded(3.f, 2.f),
+                guideGainParameterId(i),
                 {}
         });
         regions.push_back({
@@ -717,6 +762,13 @@ String TrimeshWidget::vertexParameterId(int parameterIndex) {
         case 5:     return "vertex.curve";
         default:    return {};
     }
+}
+
+String TrimeshWidget::guideGainParameterId(int parameterIndex) {
+    const String parameterId = vertexParameterId(parameterIndex);
+    return parameterId.isNotEmpty()
+            ? "guideGain." + parameterId.fromLastOccurrenceOf(".", false, false)
+            : String();
 }
 
 Rectangle<float> TrimeshWidget::waveshapeContentBounds(Rectangle<float> content) {
