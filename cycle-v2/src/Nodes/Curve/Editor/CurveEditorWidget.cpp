@@ -175,6 +175,10 @@ bool CurveEditorWidget::paintPreviewSnapshot(Graphics& g, Rectangle<float> bound
     return controller->paintPreviewSnapshot(g, bounds);
 }
 
+uint64_t CurveEditorWidget::previewSnapshotRevision() const {
+    return controller->previewSnapshotRevision();
+}
+
 bool CurveEditorWidget::paintExpandedSnapshot(Graphics& g, Rectangle<float> bounds) const {
     return controller->paintExpandedSnapshot(g, bounds);
 }

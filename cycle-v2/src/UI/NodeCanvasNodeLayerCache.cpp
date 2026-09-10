@@ -73,16 +73,14 @@ void NodeCanvasNodeLayerCache::clear() {
 
 bool NodeCanvasNodeLayerCache::Entry::matches(
         const Node& node,
-        Rectangle<int> bounds,
-        uint64_t currentViewportRevision,
+        Rectangle<float> bounds,
         uint64_t resourceFingerprint,
         uint64_t contextFingerprint,
         const NodePreviewResult* runtimePreview,
         bool currentlySelected,
         float scale) const {
     return nodesEqualForPresentation(nodeSnapshot, node)
-            && logicalBounds == bounds
-            && viewportRevision == currentViewportRevision
+            && logicalSize == Point<float>(bounds.getWidth(), bounds.getHeight())
             && previewResourceFingerprint == resourceFingerprint
             && renderContextFingerprint == contextFingerprint
             && hasRuntimePreview == (runtimePreview != nullptr)
@@ -100,8 +98,7 @@ void NodeCanvasNodeLayerCache::beginFrame() {
 
 NodeCanvasNodeLayerCacheAccess NodeCanvasNodeLayerCache::access(
         const Node& node,
-        Rectangle<int> logicalBounds,
-        uint64_t viewportRevision,
+        Rectangle<float> logicalBounds,
         uint64_t previewResourceFingerprint,
         uint64_t renderContextFingerprint,
         const NodePreviewResult* runtimePreview,
@@ -116,7 +113,6 @@ NodeCanvasNodeLayerCacheAccess NodeCanvasNodeLayerCache::access(
             && entry->matches(
                     node,
                     logicalBounds,
-                    viewportRevision,
                     previewResourceFingerprint,
                     renderContextFingerprint,
                     runtimePreview,
@@ -131,7 +127,6 @@ NodeCanvasNodeLayerCacheAccess NodeCanvasNodeLayerCache::access(
                 *entry,
                 node,
                 logicalBounds,
-                viewportRevision,
                 previewResourceFingerprint,
                 renderContextFingerprint,
                 runtimePreview,
@@ -148,8 +143,7 @@ NodeCanvasNodeLayerCacheAccess NodeCanvasNodeLayerCache::access(
 void NodeCanvasNodeLayerCache::replaceEntry(
         Entry& entry,
         const Node& node,
-        Rectangle<int> logicalBounds,
-        uint64_t viewportRevision,
+        Rectangle<float> logicalBounds,
         uint64_t previewResourceFingerprint,
         uint64_t renderContextFingerprint,
         const NodePreviewResult* runtimePreview,
@@ -163,8 +157,7 @@ void NodeCanvasNodeLayerCache::replaceEntry(
     entry.runtimePreviewSnapshot = runtimePreview != nullptr
             ? *runtimePreview
             : NodePreviewResult {};
-    entry.logicalBounds = logicalBounds;
-    entry.viewportRevision = viewportRevision;
+    entry.logicalSize = { logicalBounds.getWidth(), logicalBounds.getHeight() };
     entry.previewResourceFingerprint = previewResourceFingerprint;
     entry.renderContextFingerprint = renderContextFingerprint;
     entry.physicalScale = physicalScale;
@@ -179,19 +172,19 @@ void NodeCanvasNodeLayerCache::draw(
     if (access.image == nullptr || !access.image->isValid()) {
         return;
     }
-    const float imageToLogicalX = (float) access.logicalBounds.getWidth()
+    const float imageToLogicalX = access.logicalBounds.getWidth()
             / (float) access.image->getWidth();
-    const float imageToLogicalY = (float) access.logicalBounds.getHeight()
+    const float imageToLogicalY = access.logicalBounds.getHeight()
             / (float) access.image->getHeight();
     graphics.drawImageTransformed(
             *access.image,
             AffineTransform(
                     imageToLogicalX,
                     0.f,
-                    (float) access.logicalBounds.getX(),
+                    access.logicalBounds.getX(),
                     0.f,
                     imageToLogicalY,
-                    (float) access.logicalBounds.getY()),
+                    access.logicalBounds.getY()),
             false);
 }
 

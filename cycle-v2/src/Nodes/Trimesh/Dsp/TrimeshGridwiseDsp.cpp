@@ -4,6 +4,17 @@
 
 namespace CycleV2 {
 
+int TrimeshGridwiseDsp::noiseSeedOffsetForColumn(
+        size_t columnIndex,
+        PortDomain domain) {
+    const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
+            || domain == PortDomain::SpectralPhaseSignal;
+    const int columnStride = spectral ? 1997 : 6197;
+    const size_t wrappedColumn = columnIndex % GuideCurveProvider::tableSize;
+    return (int) ((wrappedColumn * (size_t) columnStride)
+            % GuideCurveProvider::tableSize);
+}
+
 void TrimeshGridwiseDsp::setCyclic(bool shouldWrap) {
     blockwiseDsp.setCyclic(shouldWrap);
 }
@@ -38,11 +49,13 @@ void TrimeshGridwiseDsp::prepare(
             center,
             primaryViewAxis,
             maximumColumnCount,
-            [this, domain](size_t, const MorphPosition&) {
-                blockwiseDsp.renderCycleInto(Buffer<float>(
-                        preparationScratch.data(),
-                        (int) preparationScratch.size()),
-                        domain);
+            [this, domain](size_t index, const MorphPosition&) {
+                blockwiseDsp.renderCycleWithNoiseSeedOffsetInto(
+                        Buffer<float>(
+                                preparationScratch.data(),
+                                (int) preparationScratch.size()),
+                        domain,
+                        noiseSeedOffsetForColumn(index, domain));
             });
     resetCounters();
 }
@@ -64,15 +77,16 @@ std::vector<TrimeshGridColumn> TrimeshGridwiseDsp::renderColumns(
             primaryViewAxis,
             columnCount,
             [this, &columns, frameCount, domain, channelLayout](
-                    size_t,
+                    size_t index,
                     const MorphPosition& morph) {
                 TrimeshGridColumn column;
                 column.morph = morph;
-                blockwiseDsp.renderCycle(
+                blockwiseDsp.renderCycleWithNoiseSeedOffset(
                         frameCount,
                         domain,
                         channelLayout,
-                        column.signal);
+                        column.signal,
+                        noiseSeedOffsetForColumn(index, domain));
                 columns.push_back(std::move(column));
             });
 
@@ -100,10 +114,10 @@ bool TrimeshGridwiseDsp::renderColumnsInto(
             [this, destination, rowCount, domain](
                     size_t index,
                     const MorphPosition&) {
-                blockwiseDsp.renderCycleInto(destination.section(
-                        (int) index * rowCount,
-                        rowCount),
-                        domain);
+                blockwiseDsp.renderCycleWithNoiseSeedOffsetInto(
+                        destination.section((int) index * rowCount, rowCount),
+                        domain,
+                        noiseSeedOffsetForColumn(index, domain));
                 ++renderCounters.sliceCount;
                 ++renderCounters.bakeCount;
             });
@@ -128,10 +142,10 @@ bool TrimeshGridwiseDsp::renderMorphColumnsInto(
     blockwiseDsp.setPrimaryViewAxis(primaryViewAxis);
     for (size_t index = 0; index < columnCount; ++index) {
         blockwiseDsp.setMorphPosition(morphs[index]);
-        blockwiseDsp.renderCycleInto(destination.section(
-                (int) index * rowCount,
-                rowCount),
-                domain);
+        blockwiseDsp.renderCycleWithNoiseSeedOffsetInto(
+                destination.section((int) index * rowCount, rowCount),
+                domain,
+                noiseSeedOffsetForColumn(index, domain));
         ++renderCounters.sliceCount;
         ++renderCounters.bakeCount;
     }

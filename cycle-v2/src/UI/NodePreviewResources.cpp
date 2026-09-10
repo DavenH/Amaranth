@@ -90,6 +90,7 @@ uint64_t NodePreviewResources::nodePresentationFingerprint(const String& nodeId)
             return fingerprint
                     .add(entry.second->contentRevision())
                     .add(entry.second->previewRevision())
+                    .add(entry.second->previewSnapshotRevision())
                     .value();
         }
     }
