@@ -6,14 +6,14 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 633.0 },
+            "position": { "x": 353.4483, "y": 653.0 },
             "parameters": { "domain": "spectral", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 333.0 },
+            "position": { "x": -41.37932, "y": 474.3793 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -37,7 +37,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 861.0 },
+            "position": { "x": -17.37932, "y": 672.72412 },
             "parameters": { "enabled": true, "mode": "group", "order": 5, "width": 12.04, "panSpread": 1.0, "phase": 1.0, "jitter": 0.5 },
             "model": {
                 "schema": "unisonVoices",
@@ -52,7 +52,7 @@
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 380.0, "y": 100.0 },
+            "position": { "x": 459.99997, "y": 406.3793 },
             "parameters": {
                 "enabled": true,
                 "range": 0.6,
@@ -141,7 +141,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.725,
-                "yellow": 0.5,
+                "yellow": 0.027,
                 "red": 0.5,
                 "blue": 0.5,
                 "primaryAxis": "yellow",
@@ -217,7 +217,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.725,
-                "yellow": 0.5,
+                "yellow": 0.323,
                 "red": 0.5,
                 "blue": 0.5,
                 "primaryAxis": "yellow",
@@ -286,34 +286,34 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 380.0, "y": 987.0 },
+            "position": { "x": 871.37933, "y": 653.0 },
             "parameters": {
                 "enabled": true,
-                "range": 0.1,
+                "range": 0.05921,
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
                 "primaryAxis": "yellow",
-                "link.yellow": true,
-                "link.red": false,
-                "link.blue": false
+                "link.yellow": false,
+                "link.red": true,
+                "link.blue": true
             },
             "model": {
                 "schema": "trimesh",
                 "version": 2,
-                "revision": 1,
+                "revision": 210,
                 "mesh": {
                     "name": "PhaseMesh0",
-                    "version": 1,
+                    "version": 2,
                     "vertices": [
-                        { "time": 0.0, "phase": 0.34401, "amp": 0.49746, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 0 },
-                        { "time": 0.0, "phase": 0.34401, "amp": 0.49746, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 1 },
-                        { "time": 0.0, "phase": 0.34401, "amp": 0.49746, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 2 },
-                        { "time": 0.0, "phase": 0.34401, "amp": 0.49746, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 3 },
-                        { "time": 1.0, "phase": 0.34063, "amp": 0.49631, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 4 },
-                        { "time": 1.0, "phase": 0.34063, "amp": 0.49631, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 5 },
-                        { "time": 1.0, "phase": 0.34063, "amp": 0.49631, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 6 },
-                        { "time": 1.0, "phase": 0.34063, "amp": 0.49631, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 7 },
+                        { "time": 0.0, "phase": 0.3432822, "amp": 0.49746, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 0 },
+                        { "time": 0.0, "phase": 0.3432822, "amp": 0.49746, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 1 },
+                        { "time": 0.0, "phase": 0.3432822, "amp": 0.49746, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 2 },
+                        { "time": 0.0, "phase": 0.3432822, "amp": 0.49746, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 3 },
+                        { "time": 1.0, "phase": 0.1043663, "amp": 0.49631, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 4 },
+                        { "time": 1.0, "phase": 0.1043663, "amp": 0.49631, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 5 },
+                        { "time": 1.0, "phase": 0.1043663, "amp": 0.49631, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 6 },
+                        { "time": 1.0, "phase": 0.1043663, "amp": 0.49631, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 7 },
                         { "time": 0.0, "phase": 0.96478, "amp": 0.49247, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 8 },
                         { "time": 0.0, "phase": 0.96478, "amp": 0.49247, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 9 },
                         { "time": 0.0, "phase": 0.96478, "amp": 0.49247, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 10 },
@@ -326,7 +326,7 @@
                     "cubes": [
                         {
                             "vertexIds": [ 0, 1, 2, 3, 4, 5, 6, 7 ],
-                            "guides": { "time": 5, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                            "guides": { "time": 0, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
                             "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
                         },
                         {
@@ -336,14 +336,15 @@
                         }
                     ]
                 }
-            }
+            },
+            "editor": { "selectedVertexId": 4 }
         },
         {
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 480.0, "y": 1336.0 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "position": { "x": -56.57933, "y": 963.58618 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -451,7 +452,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 2094.0, "y": 619.0 },
-            "parameters": {}
+            "parameters": { "gain": 0.49167 }
         }
     ],
     "guides": [

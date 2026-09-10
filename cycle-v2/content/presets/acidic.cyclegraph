@@ -6,14 +6,14 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 633.0 },
+            "position": { "x": 155.29466, "y": 619.0 },
             "parameters": { "domain": "waveform", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 333.0 },
+            "position": { "x": -238.14813, "y": 561.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -44,7 +44,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 480.0, "y": 619.0 },
+            "position": { "x": 528.91449, "y": 619.0 },
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
@@ -152,7 +152,7 @@
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1216.0, "y": 100.0 },
+            "position": { "x": 1216.0, "y": 223.34964 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -250,7 +250,7 @@
             "id": "magnitudeOp1",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 1284.0, "y": 449.0 },
+            "position": { "x": 1284.0, "y": 619.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -462,8 +462,8 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1892.80005, "y": 817.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
+            "position": { "x": 1892.80005, "y": 325.34964 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -563,8 +563,8 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 480.0, "y": 1336.0 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
+            "position": { "x": -253.34814, "y": 721.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -678,6 +678,9 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 2268.0, "y": 619.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
@@ -729,7 +732,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 3451.0, "y": 619.0 },
-            "parameters": {}
+            "parameters": { "gain": 0.5 }
         }
     ],
     "guides": [],
