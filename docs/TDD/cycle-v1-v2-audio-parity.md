@@ -167,7 +167,7 @@ translation. The first broad candidates are:
 | filter-saw | One time layer and one subtractive magnitude layer; no phase, effects, unison, or guide noise | Regenerated exactly and byte-repeatable in both engines. After restoring cycle-clocked scratch, frame ownership, shared log regions, and the final active harmonic, MIDI 36–72 is zero-lag with correlation of at least `0.9999999919`. |
 | fallout | One time layer, one subtractive magnitude layer, one additive phase layer, and output gain; no envelopes, effects, unison, or guide noise | Regenerated exactly from a live canonical export. Its captured time, magnitude, and phase raster/operand boundaries are byte-identical at MIDI 48/frame 32. MIDI 36–72 remains zero-lag with `0.99974–1.00000` correlation after restoring the mature phase harmonic ramp and phase-only curve interpolation. |
 | shiny | One time layer, two multiplicative magnitude layers, one additive phase layer, and output gain; no envelopes, effects, unison, or guide noise | Regenerated exactly from a direct canonical export. At MIDI 48/frame 32 it is byte-identical from the time frame through reconstructed spectral output. MIDI 36–72 is deterministic, zero-lag, and reaches `0.999999776–0.999999876` correlation. |
-| simple-bass | Time layer, one multiplicative magnitude layer, and a volume envelope; no active phase, scratch, effects, unison, or guide noise | Retained as diagnostic. The shared document declick is now applied at the volume-envelope boundary; 75 ms and 200 ms correlations improve to `0.99989` and `0.99963`. The remaining release-window difference is in authored-envelope cursor parity. |
+| simple-bass | Time layer, one multiplicative magnitude layer, and a volume envelope; no active phase, scratch, effects, unison, or guide noise | Verified. Shared document declick and the legacy split-rate volume-envelope clock are restored. Complete 75/200/400 ms notes at 48 kHz have zero lag and at least `0.99999999991` correlation. |
 | power | Time layer plus volume envelope | Regenerated exactly but rejected as an audio oracle: Cycle 1 renders silence because the active time layer has no authored waveform geometry. |
 | Subbass | Time, magnitude, phase, volume/scratch envelopes | Port manifest was strict, but current notes 48–72 fail its old output thresholds; diagnostic only. |
 | guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Direct spectral range shaping is restored. Its routed scratch-envelope cross-section is not ready for Cycle V2's first note sample, so phase and effect attribution remain blocked. |
@@ -458,8 +458,8 @@ as the scratch envelope evolves.
     contract and blocks phase attribution. Artifacts:
     `/tmp/cycle-guitar-3-g-frame0/comparison.json` and
     `/tmp/cycle-guitar-3-g-direct-range/comparison.json`.
-29. Admit a deterministic volume-envelope fixture at multiple note lengths. In
-    progress using Simple Bass: direct conversion contains a time layer, one
+29. Admit a deterministic volume-envelope fixture at multiple note lengths.
+    Complete using Simple Bass: direct conversion contains a time layer, one
     multiplicative magnitude layer, and one volume envelope, with no active
     phase, scratch, effect, unison, or guide-noise confounds. The strict subset
     now permits zero active phase layers, matching the converter's established
@@ -472,14 +472,33 @@ as the scratch envelope evolves.
     setting onto the volume-envelope lifecycle boundary, with a neutral volume
     envelope carrying the policy when no authored one is active. The 75 ms and
     200 ms comparisons improve to `0.99989` and `0.99963`; the remaining
-    release-window difference is now isolated to authored-envelope release
-    cursor parity, so the fixture remains diagnostic. Artifacts:
+    release-window difference was subsequently isolated to the split-rate
+    volume-envelope clock and resolved in slice 30. The fixture is verified.
+    Artifacts:
     `/tmp/cycle-simple-bass-baseline/comparison.json`,
     `/tmp/cycle-simple-bass-repeat/comparison.json`,
     `/tmp/cycle-simple-bass-note-75/comparison.json`, and
     `/tmp/cycle-simple-bass-note-200/comparison.json`,
     `/tmp/cycle-simple-bass-declick-rate-75/comparison.json`, and
     `/tmp/cycle-simple-bass-declick-200/comparison.json`.
+30. Preserve Cycle 1's split-rate volume-envelope clock in legacy-rate renders.
+    Complete: native 44.1 kHz Simple Bass renders are zero-lag and effectively
+    identical for complete 75 ms and 200 ms notes after the declared constant
+    gain fit, proving that the shared envelope playback, release normalization,
+    and terminal fade are already authoritative. At a 48 kHz output rate, Cycle
+    1 synthesizes at 44.1 kHz but advances its volume envelope with
+    `SynthesizerVoice::getSampleRate()` (48 kHz); pitch, scratch, and cycle-time
+    updates retain their 44.1 kHz clock. Cycle V2 currently supplies one 44.1 kHz
+    normalized-time increment to every envelope, making the volume release about
+    8.8% too fast. The stable boundary is a distinct, precomputed volume-envelope
+    increment in `AudioVoiceControls`. The offline legacy-rate adapter supplies
+    it from the requested output rate; `EnvelopeSignalProcessor` consumes it only
+    for volume-purpose envelopes. Native rendering leaves both increments equal.
+    No timing policy, curve sampling, or release behavior is duplicated. At 48
+    kHz output, complete 75 ms, 200 ms, and 400 ms notes now have zero lag,
+    correlation of at least `0.99999999991`, and gain-matched residual no greater
+    than `1.32e-5`. A confirming three-process 75 ms run is byte-repeatable in
+    both engines. Simple Bass is now a verified parity fixture.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

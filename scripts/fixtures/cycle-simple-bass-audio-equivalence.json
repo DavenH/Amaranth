@@ -1,6 +1,6 @@
 {
     "schema": "cycle-v1-v2-audio-equivalence.v1",
-    "status": "diagnostic",
+    "status": "verified",
     "v1": {
         "factoryPreset": "simple-bass",
         "sourceDocument": "cycle/content/presets/simple-bass.cyc",
@@ -28,9 +28,7 @@
         ],
         "determinism": "pitch and scratch envelopes, spectral phase, effects, unison, and guide noise are disabled",
         "inputValidation": "regenerated from a direct Cycle 1 canonical file export on 2026-09-09",
-        "knownRuntimeGaps": [
-            "Cycle V2 authored-envelope release cursor still differs from Cycle 1 at note-off"
-        ],
+        "knownRuntimeGaps": [],
         "constantGainPolicy": "Cycle1 master gain maps to Output; Cycle2 fixed headroom remains separate"
     },
     "thresholds": {

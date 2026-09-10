@@ -121,6 +121,44 @@ TEST_CASE("Realtime graph renderer turns MIDI note gestures into graph audio",
     REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 0);
 }
 
+TEST_CASE("Realtime graph renderer supplies the legacy volume-envelope clock",
+        "[cycle-v2][audio-device][realtime][envelope][internal-rate][parity]") {
+    const auto render = [](double volumeEnvelopeSampleRate) {
+        const auto compiled = GraphCompiler().compile(NodeGraph::createDemoGraph());
+        REQUIRE(compiled.succeeded());
+
+        AudioExecutionSpec spec;
+        spec.maximumFrameCount = 256;
+        spec.sampleRate = 44'100.;
+        auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 19, spec);
+        RealtimeGraphRenderer renderer;
+        RealtimeMidiEventQueue queue;
+        renderer.setPreparedGraph(prepared.get());
+        renderer.setVoiceDurationSeconds(0.02f);
+        renderer.setVolumeEnvelopeClockSampleRate(volumeEnvelopeSampleRate);
+        REQUIRE(queue.enqueue(
+                MidiMessage::noteOn(1, 60, (uint8) 100),
+                MidiEventSource::PerformanceKeyboard,
+                1.0));
+
+        AudioBuffer<float> output(2, 256);
+        float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+        renderer.process(queue, channels, 2, 256, 44'100., 1.0);
+        return std::vector<float>(
+                output.getReadPointer(0),
+                output.getReadPointer(0) + output.getNumSamples());
+    };
+
+    const auto internalClock = render(44'100.);
+    const auto outputClock = render(48'000.);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(internalClock.data()),
+            (int) internalClock.size()).normDiffL2({
+                const_cast<float*>(outputClock.data()),
+                (int) outputClock.size()
+            }) > 0.001f);
+}
+
 TEST_CASE("Realtime graph renderer stops immediately without a volume envelope",
         "[cycle-v2][audio-device][realtime][midi][release]") {
     NodeGraph graph = NodeGraph::createDemoGraph();

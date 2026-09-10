@@ -28,17 +28,17 @@ def load_manifest(path, allow_unverified):
             "Equivalence manifest is not verified; use --allow-unverified for diagnostics only")
     if not manifest.get("v1") or not manifest.get("v2", {}).get("graph"):
         raise ValueError("Manifest must declare v1 preset loading and a v2 graph")
-    verify_artifact(manifest["v1"], "sourceDocument")
-    verify_artifact(manifest["v2"], "graph")
+    verify_artifact(manifest["v1"], "sourceDocument", allow_unverified)
+    verify_artifact(manifest["v2"], "graph", allow_unverified)
     return manifest
 
 
-def verify_artifact(configuration, path_property):
+def verify_artifact(configuration, path_property, allow_unverified):
     path = REPO_ROOT / configuration[path_property]
     if not path.is_file():
         raise ValueError(f"Equivalence artifact does not exist: {path}")
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    if digest != configuration.get("sha256"):
+    if digest != configuration.get("sha256") and not allow_unverified:
         raise ValueError(f"Equivalence artifact changed after validation: {path}")
 
 

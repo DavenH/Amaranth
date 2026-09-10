@@ -672,6 +672,35 @@ TEST_CASE("Envelope processor follows the normalized voice duration",
     REQUIRE(shortVoice != longVoice);
 }
 
+TEST_CASE("Volume envelopes consume their dedicated output-rate clock",
+        "[cycle-v2][runtime][envelope][voice-time][parity]") {
+    const auto render = [](const String& purpose) {
+        const auto configuration = EnvelopeSignalProcessor::buildConfiguration({
+                { "purpose", "Purpose", purpose }
+        });
+        REQUIRE(configuration != nullptr);
+        EnvelopeSignalProcessor processor;
+        processor.adoptConfiguration({ 1, "split-rate-envelope", configuration });
+        AudioExecutionSpec spec;
+        spec.maximumFrameCount = 4;
+        spec.sampleRate = 44'100.;
+        processor.prepareExecution(spec);
+
+        AudioProcessContext context;
+        context.frameCount = 4;
+        context.timing.sampleRate = 44'100.;
+        context.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+        context.voice.controls.normalizedVoiceTimeIncrement = 0.05f;
+        context.voice.controls.normalizedVolumeEnvelopeTimeIncrement = 0.025f;
+        context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        processor.process(context);
+        return processor.playbackPosition();
+    };
+
+    REQUIRE(render("control") == Catch::Approx(0.2));
+    REQUIRE(render("volume") == Catch::Approx(0.1));
+}
+
 TEST_CASE("Envelope processor becomes inactive on note-off without a release curve",
         "[cycle-v2][runtime][envelope][release]") {
     EnvelopeNodeModel model;

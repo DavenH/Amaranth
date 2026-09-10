@@ -1011,6 +1011,40 @@ Current status: resolved on 2026-09-09. Artifacts:
 `/tmp/cycle-simple-bass-declick-rate-75/comparison.json` and
 `/tmp/cycle-simple-bass-declick-200/comparison.json`.
 
+## Resolved: Cycle V2 clocked legacy-rate volume envelopes at the internal rate
+
+Simple Bass is effectively identical for complete 75 ms and 200 ms notes when
+both engines render natively at 44.1 kHz. At a 48 kHz output rate, however,
+Cycle 1 retains an intentional split clock: synthesis, pitch envelopes, and
+scratch envelopes advance at the 44.1 kHz internal rate, while the volume
+envelope uses the prepared output rate reported by `SynthesizerVoice`. Cycle V2
+currently gives every envelope the internal normalized-time increment. Its
+authored release therefore completes about 8.8% early; the last significant
+release samples precede Cycle 1 by roughly 45 output samples in this fixture.
+
+The fix must carry a distinct volume-envelope increment across the offline
+rate-adapter boundary and select it only for volume-purpose envelopes. It must
+not change `EnvelopePlaybackEngine`, rescale the serialized curve, or disturb
+pitch, scratch, and live spectral modulation clocks.
+
+Resolution: `AudioVoiceControls` now carries a dedicated normalized volume
+envelope increment. The offline renderer derives it from the requested output
+rate, while the general voice-time increment remains tied to the actual graph
+render rate. `EnvelopeSignalProcessor` selects the dedicated clock only for
+volume-purpose envelopes. Native rendering supplies equal rates and is
+unchanged.
+
+At 48 kHz output, complete 75 ms, 200 ms, and 400 ms Simple Bass notes now have
+zero lag, correlation of at least `0.99999999991`, and gain-matched residual no
+greater than `1.32e-5`. A confirming three-process 75 ms run is byte-repeatable
+in both engines. Current status: resolved on 2026-09-09. Native artifacts:
+`/tmp/cycle-simple-bass-44100-75/comparison.json` and
+`/tmp/cycle-simple-bass-44100-200/comparison.json`; resolved legacy-rate
+artifacts: `/tmp/cycle-simple-bass-volume-clock-75/comparison.json`,
+`/tmp/cycle-simple-bass-volume-clock-200/comparison.json`,
+`/tmp/cycle-simple-bass-volume-clock-400/comparison.json`, and
+`/tmp/cycle-simple-bass-volume-clock-confirm/comparison.json`.
+
 ## Open: routed scratch-envelope morph is not ready at note start
 
 The freshly exported and regenerated Guitar 3 G parity pair exposes a more
