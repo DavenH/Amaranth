@@ -62,6 +62,7 @@ public:
     void clearGraphicOverlaps();
     void updateGraphicConvState(int graphicRes, bool force);
     void updateSmoothedParameters(int deltaSamples);
+    void updateParametersToTarget();
     void checkForPendingUpdates();
 
     /* Accessors */

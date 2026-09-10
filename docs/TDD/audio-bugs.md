@@ -466,7 +466,7 @@ Current status: material waveshaper and IR gaps addressed. Their smaller
 numerical residuals remain open. EQ and delay add no material discrepancy, but
 Cycle 1's low-note full-effect repeatability still blocks fixture admission.
 
-## Open: Icycle pitch-clocked Unison reconstruction diverges
+## Resolved: Icycle pitch-clocked Unison reconstruction and repeatability
 
 Context:
 
@@ -510,8 +510,11 @@ cycle, confirming that the earlier frame-8 divergence entered before Hermite
 resampling. The neutral shared-frame clock also retains Cycle 1's float
 frequency precision and fractional lane-cycle starts.
 
-Current status: material lane accumulation addressed. All four full-graph audio
-comparisons pass and Cycle V2 repeats exactly. Cycle 1 still intermittently
-diverges across fresh processes (in the latest full matrix, MIDI 48 first
-differed at sample 2), so its repeat gate remains the only Icycle admission
-blocker.
+Final update: the remaining Cycle 1 variation came from the live device
+advancing effect and master parameter smoothing by a timing-dependent amount
+before offline capture. The capture boundary now settles the existing
+waveshaper, IR, EQ, and master parameters to their authored targets after the
+device is suspended and prepared. Realtime smoothing is unchanged. Three fresh
+waveshaper-only renders now match byte-for-byte, as does the complete two-render
+MIDI 36–72 matrix in both engines. Icycle is admitted as a verified fixture;
+artifact: `/tmp/cycle-icycle-full-settled-matrix/comparison.json`.

@@ -172,7 +172,7 @@ translation. The first broad candidates are:
 | Subbass | Time, magnitude, phase, volume/scratch envelopes | Port manifest was strict, but current notes 48–72 fail its old output thresholds; diagnostic only. |
 | guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Per-channel waveshaper and IR state now match Cycle 1 ownership. MIDI 36–72 meets the diagnostic audio thresholds; EQ and delay add no material gap. MIDI 36 still fails Cycle 1's raw repeat gate, so the fixture is not admitted. |
 | japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase. One corrected render repeated exactly, but a later run did not repeat in Cycle 1. Its large evolving mismatch remains diagnostic until that intermittent startup state is isolated. |
-| Icycle | Broad synthesis/effects plus six-voice Unison | Regenerated from a direct canonical export while retaining node layout, port presentation, and three authored probes. Its reverb is disabled; the corrected IR size is `0.26`. Prepared per-lane pitch playback and Cycle 1's render-boundary frame latch bring the full MIDI 36–72 matrix to `0.98425–0.99997` correlation, but intermittent Cycle 1 fresh-process variation still blocks admission. |
+| Icycle | Broad synthesis/effects plus six-voice Unison | Verified. Regenerated from a direct canonical export while retaining node layout, port presentation, and three authored probes. Its reverb is disabled; the corrected IR size is `0.26`. Prepared per-lane pitch playback, Cycle 1's render-boundary frame latch, and deterministic offline parameter settling bring the full MIDI 36–72 matrix to `0.98425–0.99997` correlation with exact repeatability in both engines. |
 | accoustic | Broad graph including reverb | Current graph differs in morph/link state, envelope state, reverb size, and IR high-pass; do not use for DSP attribution yet. |
 | organ-2 | Spectral layers, envelopes, Unison, IR, delay, reverb | Current graph differs from fresh conversion in reverb size; reverb seed parity is unresolved. |
 
@@ -643,6 +643,22 @@ as the scratch envelope evolves.
     `/tmp/cycle-icycle-midi36-frame8-composed/comparison.json`,
     `/tmp/cycle-icycle-block-latch-matrix/comparison.json`, and
     `/tmp/cycle-icycle-full-block-latch-matrix/comparison.json`.
+39. Make Cycle 1 offline effect startup deterministic and admit Icycle.
+    Complete: the live audio device can advance waveshaper, IR, EQ, and master
+    smoothing by a timing-dependent number of samples between preset load and
+    offline capture. The capture adapter now settles those existing parameters
+    to their authored targets after suspending and re-preparing the device; it
+    does not change realtime smoothing. Preset-open commands also honor their
+    existing `waitForIdle` contract. Three fresh waveshaper-only processes now
+    produce byte-identical Cycle 1 output. The complete Icycle MIDI 36–72 matrix
+    repeats exactly in both engines and passes every declared audio threshold:
+    correlation is `0.98425–0.99997`, residual is `0.0076–0.1768`, spectral
+    RMSE is `0.02–0.61 dB`, and cyclogram difference is `0.0065–0.0930`.
+    Icycle is now a verified representative for multiple time/magnitude/phase
+    layers, three envelope purposes, six-voice Unison, waveshaper, IR, and
+    delay. Artifacts:
+    `/tmp/cycle-icycle-repeat-waveshaper-settled/comparison.json` and
+    `/tmp/cycle-icycle-full-settled-matrix/comparison.json`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a
