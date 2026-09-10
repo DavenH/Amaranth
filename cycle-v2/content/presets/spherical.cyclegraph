@@ -13,7 +13,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 333.0 },
+            "position": { "x": -265.94165, "y": 599.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -30,14 +30,14 @@
             "id": "ifft",
             "kind": "ifft",
             "definitionVersion": 1,
-            "position": { "x": 1440.0, "y": 619.0 },
+            "position": { "x": 1440.0, "y": 729.15271 },
             "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
         },
         {
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 380.0, "y": 100.0 },
+            "position": { "x": 460.0, "y": 449.0 },
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
@@ -660,7 +660,7 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 380.0, "y": 987.0 },
+            "position": { "x": 460.0, "y": 763.15271 },
             "parameters": {
                 "enabled": true,
                 "range": 0.225,
@@ -775,8 +775,8 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1422.8000499999998, "y": 817.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "position": { "x": 1485.08801, "y": 297.28497 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -876,8 +876,8 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 480.0, "y": 1336.0 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "position": { "x": -290.81329, "y": 783.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -1185,7 +1185,10 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 1798.0, "y": 619.0 },
+            "position": { "x": 1801.89294, "y": 619.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
@@ -1200,14 +1203,14 @@
             "kind": "reverb",
             "definitionVersion": 1,
             "position": { "x": 2324.0, "y": 619.0 },
-            "parameters": { "enabled": true, "size": 0.972, "damp": 0.112, "width": 0.992, "wet": 0.044, "highPass": 0.24 }
+            "parameters": { "enabled": true, "size": 0.972, "damp": 0.112, "width": 0.992, "wet": 0.28687, "highPass": 0.24 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 2620.0, "y": 619.0 },
-            "parameters": {}
+            "parameters": { "gain": 0.5 }
         }
     ],
     "guides": [

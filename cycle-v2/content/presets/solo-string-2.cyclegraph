@@ -6,14 +6,14 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 475.20001, "y": 633.0 },
+            "position": { "x": 547.61414, "y": 619.0 },
             "parameters": { "domain": "waveform", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 475.20001, "y": 333.0 },
+            "position": { "x": 194.53455, "y": 415.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -30,7 +30,7 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "position": { "x": 1261.19995, "y": 619.0 },
+            "position": { "x": 1277.91089, "y": 619.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
         {
@@ -44,11 +44,11 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 855.20001, "y": 619.0 },
+            "position": { "x": 899.76257, "y": 619.0 },
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
-                "yellow": 0.5,
+                "yellow": 0.0,
                 "red": 0.5,
                 "blue": 0.5,
                 "primaryAxis": "yellow",
@@ -359,14 +359,14 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1591.19995, "y": 987.0 },
+            "position": { "x": 1591.19983, "y": 901.63751 },
             "portSides": {
                 "outputs": { "out": "top" }
             },
             "parameters": {
                 "enabled": true,
                 "range": 0.2,
-                "yellow": 0.5,
+                "yellow": 0.086,
                 "red": 0.5,
                 "blue": 0.5,
                 "primaryAxis": "yellow",
@@ -431,7 +431,7 @@
             "id": "phaseOp1",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 1659.19995, "y": 789.0 },
+            "position": { "x": 1659.19995, "y": 653.0 },
             "portSides": {
                 "inputs": { "right": "bottom" }
             },
@@ -568,7 +568,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 667.0 },
+            "position": { "x": 142.70578, "y": 653.0 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -773,7 +773,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 855.20001, "y": 1336.0 },
+            "position": { "x": 179.33455, "y": 949.79114 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -987,7 +987,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 3871.19995, "y": 619.0 },
-            "parameters": {}
+            "parameters": { "gain": 0.5 }
         }
     ],
     "guides": [
