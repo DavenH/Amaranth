@@ -1458,6 +1458,33 @@ TEST_CASE("Waveshaper oversamples audio while keeping traversal columns independ
             [](float value) { return std::isfinite(value); }));
 }
 
+TEST_CASE("Waveshaper oversampling keeps identical stereo channels independent",
+        "[cycle-v2][runtime][waveshaper][stereo][parity]") {
+    NodeAudioProcessorFactory factory;
+    AudioProcessContext context;
+    context.frameCount = 64;
+    std::vector<float> signal(64);
+    for (size_t i = 0; i < signal.size(); ++i) {
+        signal[i] = i % 2 == 0 ? -0.75f : 0.75f;
+    }
+    SignalPayload stereo = payload(signal);
+    stereo.channelLayout = ChannelLayout::StereoPair;
+    stereo.secondaryBlock.samples = signal;
+    context.inputs = { std::move(stereo) };
+    context.parameters = {
+            { "pre", "Pre", "0.8" },
+            { "post", "Post", "0.4" },
+            { "aaFactor", "AA Factor", "2" }
+    };
+
+    auto processor = factory.create(AudioModuleRole::Waveshaper);
+    prepareProcessor(*processor, AudioModuleRole::Waveshaper, context);
+    processor->process(context);
+
+    REQUIRE(output(context).isStereo());
+    REQUIRE(output(context).block.samples == output(context).secondaryBlock.samples);
+}
+
 TEST_CASE("Disabled waveshaper passes block and traversal grid through unchanged", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
 

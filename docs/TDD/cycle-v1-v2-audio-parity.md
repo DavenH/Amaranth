@@ -544,6 +544,16 @@ as the scratch envelope evolves.
     `/tmp/cycle-guitar-no-effects-final/comparison.json`,
     `/tmp/cycle-guitar-waveshaper-final/comparison.json`, and
     `/tmp/cycle-guitar-waveshaper-ir-final/comparison.json`.
+33. Restore per-channel waveshaper oversampling state. Complete: Cycle 1 owns
+    one mature `Oversampler` per audio channel, while Cycle V2 passed both
+    channels serially through one stateful instance. Cycle V2 now retains two
+    preallocated oversampler lanes and selects them from the unary processor's
+    existing channel position; the shared oversampling and transfer algorithms
+    remain unchanged. An identical-stereo-input regression guards against FIR
+    history crossing channels. Guitar 3 G with only its authored 2x waveshaper
+    enabled now reaches `0.999999945` correlation, a unity gain fit, and a
+    `0.000332` residual at zero lag. IR is the next material effect boundary.
+    Artifact: `/tmp/cycle-guitar-waveshaper-channel-state/comparison.json`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

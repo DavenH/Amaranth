@@ -48,8 +48,10 @@ std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildC
 }
 
 void WaveshaperSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
-    oversampleMemory.resize((int) (spec.maximumFrameCount * 8));
-    oversampler.setMemoryBuffer(oversampleMemory);
+    for (size_t channel = 0; channel < oversamplers.size(); ++channel) {
+        oversampleMemory[channel].resize((int) (spec.maximumFrameCount * 8));
+        oversamplers[channel].setMemoryBuffer(oversampleMemory[channel]);
+    }
 }
 
 void WaveshaperSignalProcessor::adoptConfiguration(const PublishedNodeConfiguration& published) {
@@ -62,7 +64,9 @@ void WaveshaperSignalProcessor::adoptConfiguration(const PublishedNodeConfigurat
     preGain = configuration->preGain;
     postGain = configuration->postGain;
     oversampleFactor = configuration->oversampleFactor;
-    oversampler.setOversampleFactor(oversampleFactor);
+    for (auto& oversampler : oversamplers) {
+        oversampler.setOversampleFactor(oversampleFactor);
+    }
     adoptedRevision = published.revision;
 }
 
@@ -73,10 +77,12 @@ void WaveshaperSignalProcessor::beginBlock(size_t frameCount) {
     }
 
     const size_t requiredSize = frameCount * (size_t) oversampleFactor;
-    if ((size_t) oversampleMemory.size() < requiredSize) {
-        jassertfalse;
-        useOversampling = false;
-        return;
+    for (const auto& memory : oversampleMemory) {
+        if ((size_t) memory.size() < requiredSize) {
+            jassertfalse;
+            useOversampling = false;
+            return;
+        }
     }
 }
 
@@ -88,11 +94,14 @@ void WaveshaperSignalProcessor::endTraversalGrid() {
     useOversampling = oversampleFactor > 1;
 }
 
-void WaveshaperSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessPosition&) {
+void WaveshaperSignalProcessor::processBuffer(
+        Buffer<float> buffer,
+        const SignalProcessPosition& position) {
     if (configuration == nullptr || configuration->transfer == nullptr) {
         return;
     }
 
+    Oversampler& oversampler = oversamplers[jmin(position.channel, (size_t) 1)];
     if (useOversampling) {
         oversampler.startOversamplingBlock(buffer);
     }
