@@ -89,11 +89,13 @@ public:
     void init() override {
         Panel2D::init();
         Interactor2D::init();
+        restorePendingEnvelopeSelection();
     }
 
     void initWithHost(Component* hostComponent) override {
         Panel2D::initWithExternalComponent(hostComponent);
         Interactor2D::init();
+        restorePendingEnvelopeSelection();
         updateZoomBounds(true);
         updateEnvelopeBackgroundGrid();
         if (pendingVerticalFit) {
@@ -102,6 +104,7 @@ public:
     }
 
     void clearInteractionState() override {
+        pendingSelection = nullptr;
         state.currentVertex = nullptr;
         state.currentCube = nullptr;
         state.selectedFrame.clear();
@@ -122,6 +125,10 @@ public:
     void restoreEnvelopeSelection(VertCube* cube) override {
         clearInteractionState();
         if (cube == nullptr) {
+            return;
+        }
+        if (positioner == nullptr) {
+            pendingSelection = cube;
             return;
         }
         state.currentCube = cube;
@@ -1137,6 +1144,15 @@ protected:
         return synchronizeEnvelopeLoopSeamFrom(sourceVertex, movingLoopLine);
     }
 
+    void restorePendingEnvelopeSelection() {
+        if (pendingSelection == nullptr) {
+            return;
+        }
+
+        VertCube* selection = pendingSelection;
+        restoreEnvelopeSelection(selection);
+    }
+
     EnvRasterizer envRasterizer;
     TrimeshPanelEnvironment& environment;
     Mesh& mesh;
@@ -1147,6 +1163,7 @@ protected:
     bool envelopeRedLinked { true };
     bool envelopeBlueLinked { true };
     bool pendingVerticalFit {};
+    VertCube* pendingSelection {};
 
     int selectedMenuId {};
 

@@ -2346,28 +2346,33 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
 
 TEST_CASE("Envelope preview sync defers selection work until host initialization",
         "[cycle-v2][node-editor-host][envelope][preview][preset]") {
-  #if defined(CYCLE_V2_SOURCE_DIR)
     ScopedJuceInitialiser_GUI juce;
     CurveTableScope curveTable;
-    const NodeGraph warmth = GraphSerializer().fromJsonString(
-            File(CYCLE_V2_SOURCE_DIR)
-                    .getChildFile("content")
-                    .getChildFile("presets")
-                    .getChildFile("Warmth.cyclegraph")
-                    .loadFileAsString());
-    const Node* envelope = warmth.findNode("volumeEnvelope1");
-    REQUIRE(envelope != nullptr);
+    GraphNodeFactory factory;
+    Node envelope = factory.createNode(NodeKind::Envelope, "env", {});
+    EnvelopeNodeModel envelopeModel;
+    VertCube* selectedCube = envelopeModel.getMesh().getCubes().front();
+    REQUIRE(selectedCube != nullptr);
+    REQUIRE(envelopeModel.synchronizeFromMesh(selectedCube));
+    envelope.model = CurveNodeModelState::copyOf(
+            envelopeModel, envelopeModel.revision() + 1);
+    auto* editorState = new DynamicObject();
+    editorState->setProperty(
+            "selectedCubeId", (int64) *envelopeModel.selectedCubeId());
+    envelope.editorState = var(editorState);
 
     CurveEditorWidget widget(NodeKind::Envelope);
-    widget.syncFromNode(*envelope);
+    widget.syncFromNode(envelope);
 
     REQUIRE(widget.getExpandedPanelComponentIfCreated() == nullptr);
-    const var state = widget.automationState();
-    REQUIRE_FALSE((bool) state.getProperty("redLinked", true));
-    REQUIRE_FALSE((bool) state.getProperty("blueLinked", true));
-  #else
-    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
-  #endif
+    REQUIRE_FALSE((bool) widget.automationState().getProperty("hasCurrentCube", {}));
+
+    REQUIRE(widget.prepareExpandedPanelComponent(
+            envelope,
+            Rectangle<float>(0.f, 0.f, 640.f, 400.f)) != nullptr);
+    const var initializedState = widget.automationState();
+    REQUIRE((bool) initializedState.getProperty("hasCurrentCube", {}));
+    REQUIRE((int) initializedState.getProperty("movingVertexCount", 0) > 0);
 }
 
 TEST_CASE("Logarithmic Envelope grid distinguishes major divisions",

@@ -249,6 +249,14 @@ Context:
   fresh `.ips` report. A Guide popup left active across replacement and the
   attached-Guide Trimesh editor also survived in separate focused runs.
 
-Current status: open and not reproduced. Preserve the focused transition
-fixture; obtain the crash report or additional interaction immediately before
-the transition before changing graph, editor, or audio lifetime behavior.
+Resolved 2026-09-09. The transition reproduced under LLDB with a persisted
+Envelope `selectedCubeId`. Compact preview synchronization restored that cube
+before the lazy panel host had initialized `Interactor::positioner`, then
+`updateSelectionFrames()` dereferenced the null pointer. The apparent hang was
+the debugger stopping at the access violation; its main thread was waiting for
+JUCE's OpenGL message-manager lock. Envelope selection restoration now defers
+the selected cube until the existing panel initialization lifecycle completes.
+The focused widget regression covers pre-host synchronization and verifies that
+the selection is restored after host initialization. Live evidence is in
+`/private/tmp/CycleV2-hang-2026-09-09-2206.txt`; macOS could not create an
+`.ips` because ReportCrash logged `Log limit exceeded`.
