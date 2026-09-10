@@ -8,7 +8,6 @@
 #include "Graph/GraphNodeFactory.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopeMeshState.h"
-#include "Nodes/Envelope/EnvelopePreparationExchange.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 
@@ -17,10 +16,8 @@
 #include <Curve/Mesh/VertCube.h>
 
 #include <algorithm>
-#include <atomic>
 #include <cmath>
 #include <numeric>
-#include <thread>
 
 using namespace CycleV2;
 
@@ -139,79 +136,6 @@ TEST_CASE("Prepared oscillator depth morph snaps to routed note-start controls",
     REQUIRE(first.time.getCurrentValue() == 0.2f);
     REQUIRE(first.red.getCurrentValue() == 0.37f);
     REQUIRE(first.blue.getCurrentValue() == 0.19f);
-}
-
-TEST_CASE("Envelope preparation request exchange publishes coherent newest values",
-        "[cycle-v2][runtime][envelope][exchange]") {
-    LatestEnvelopePreparationRequest requests;
-    requests.publish(0.2f, 0.8f, 11);
-    requests.publish(0.7f, 0.3f, 12);
-
-    EnvelopePreparationRequest request;
-    REQUIRE(requests.latest(request));
-    REQUIRE(request.red == 0.7f);
-    REQUIRE(request.blue == 0.3f);
-    REQUIRE(request.noteSerial == 12);
-    REQUIRE(requests.isCurrent(request.generation));
-    requests.markPrepared(request.generation);
-    REQUIRE_FALSE(requests.latest(request));
-}
-
-TEST_CASE("Envelope preparation request exchange never mixes concurrent fields",
-        "[cycle-v2][runtime][envelope][exchange]") {
-    LatestEnvelopePreparationRequest requests;
-    std::atomic<bool> writerFinished {};
-    std::atomic<bool> coherent { true };
-    std::thread writer([&] {
-        for (uint64_t i = 1; i <= 10000; ++i) {
-            const float red = (float) i / 10000.f;
-            requests.publish(red, 1.f - red, i);
-        }
-        writerFinished = true;
-    });
-
-    uint64_t observedGeneration = 0;
-    while (!writerFinished.load() || requests.publicationCount() < 10000) {
-        EnvelopePreparationRequest request;
-        if (!requests.latest(request)) {
-            continue;
-        }
-        observedGeneration = request.generation;
-        requests.markPrepared(observedGeneration);
-        const float expectedRed = (float) request.noteSerial / 10000.f;
-        if (request.red != expectedRed || request.blue != 1.f - expectedRed) {
-            coherent = false;
-        }
-    }
-    writer.join();
-
-    REQUIRE(coherent.load());
-    REQUIRE(requests.publicationCount() == 10000);
-}
-
-TEST_CASE("Prepared Envelope exchange rejects stale notes and bounds slot ownership",
-        "[cycle-v2][runtime][envelope][exchange]") {
-    const std::vector<NodeParameter> parameters;
-    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
-    REQUIRE(configuration != nullptr);
-    PreparedEnvelopeExchange exchange;
-
-    REQUIRE(exchange.publish(configuration, 2, 1));
-    const auto stale = exchange.adoptNewest(2, false);
-    REQUIRE(stale.stale);
-    REQUIRE_FALSE(stale.adopted);
-
-    REQUIRE(exchange.publish(configuration, 4, 2));
-    const auto adopted = exchange.adoptNewest(2, false);
-    REQUIRE(adopted.adopted);
-    REQUIRE(adopted.configuration == configuration.get());
-    REQUIRE(exchange.active(nullptr) == configuration.get());
-
-    REQUIRE(exchange.publish(configuration, 6, 2));
-    REQUIRE(exchange.adoptNewest(2, true).adopted);
-    REQUIRE(exchange.preparationCount() == 3);
-    REQUIRE(exchange.adoptionCount() == 2);
-    REQUIRE(exchange.staleResultCount() == 1);
 }
 
 TEST_CASE("Envelope preparation preserves Cycle purpose resolution",
@@ -936,21 +860,67 @@ TEST_CASE("Envelope latches absolute morph inputs per note",
         return output(context).traversalGrid.values;
     };
 
-    processAt(0.1f, true);
-    REQUIRE(processor.serviceNonRealtimePreparation());
-    const auto firstNote = processAt(0.1f, false);
-    const uint64_t requestsAfterLatch = processor.preparationDiagnostics().requests;
+    const auto firstNote = processAt(0.1f, true);
+    const uint64_t preparationsAfterLatch = processor.realtimePreparationDiagnostics().attempts;
 
     const auto unchangedActiveNote = processAt(0.9f, false);
     REQUIRE(unchangedActiveNote == firstNote);
-    REQUIRE(processor.preparationDiagnostics().requests == requestsAfterLatch);
-    REQUIRE_FALSE(processor.serviceNonRealtimePreparation());
+    REQUIRE(processor.realtimePreparationDiagnostics().attempts == preparationsAfterLatch);
 
-    processAt(0.9f, true);
-    REQUIRE(processor.preparationDiagnostics().requests == requestsAfterLatch + 1);
-    REQUIRE(processor.serviceNonRealtimePreparation());
-    const auto secondNote = processAt(0.9f, false);
+    const auto secondNote = processAt(0.9f, true);
+    REQUIRE(processor.realtimePreparationDiagnostics().attempts == preparationsAfterLatch + 1);
     REQUIRE(secondNote != firstNote);
+}
+
+TEST_CASE("Envelope materializes routed morph at a nonzero note-on sample offset",
+        "[cycle-v2][runtime][envelope][note-start][parity]") {
+    auto parameters = envelopeParameters();
+    parameters.push_back({ "red", "Red", "0" });
+    parameters.push_back({ "blue", "Blue", "0.25" });
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    REQUIRE(configuration != nullptr);
+
+    EnvelopeSignalProcessor processor;
+    processor.adoptConfiguration({ 1, "offset-envelope", configuration });
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 8;
+    spec.sampleRate = 32.0;
+    processor.prepareExecution(spec);
+
+    AudioProcessContext context;
+    context.frameCount = 8;
+    context.timing.sampleRate = spec.sampleRate;
+    context.inputs = { payload({ 0.f, 0.f, 0.f, 0.f, 1.f, 1.f, 1.f, 1.f }) };
+    context.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+    context.voice.events.push_back({ NoteLifecycleType::NoteOn, 4, 0 });
+    processor.process(context);
+
+    const auto& samples = output(context).block.samples;
+    REQUIRE(std::all_of(samples.begin(), samples.begin() + 4, [](float sample) {
+        return sample == 0.f;
+    }));
+    REQUIRE(processor.realtimePreparationDiagnostics().attempts == 1);
+    REQUIRE(processor.realtimePreparationDiagnostics().failures == 0);
+
+    auto expectedParameters = envelopeParameters();
+    expectedParameters.push_back({ "red", "Red", "1" });
+    expectedParameters.push_back({ "blue", "Blue", "0.25" });
+    const auto expectedConfiguration = EnvelopeSignalProcessor::buildConfiguration(expectedParameters);
+    REQUIRE(expectedConfiguration != nullptr);
+    EnvelopeSignalProcessor expected;
+    expected.adoptConfiguration({ 1, "expected-envelope", expectedConfiguration });
+    expected.prepareExecution(spec);
+    AudioProcessContext expectedContext;
+    expectedContext.frameCount = 4;
+    expectedContext.timing.sampleRate = spec.sampleRate;
+    expectedContext.outputPorts = context.outputPorts;
+    expectedContext.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    expected.process(expectedContext);
+
+    REQUIRE(std::equal(
+            samples.begin() + 4,
+            samples.end(),
+            output(expectedContext).block.samples.begin()));
 }
 
 TEST_CASE("Envelope processor preserves active position across snapshot edits", "[cycle-v2][runtime][envelope]") {

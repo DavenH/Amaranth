@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Curve/Mesh/EnvelopeMesh.h>
+#include <Curve/Rasterization/EnvelopeMaterialization.h>
 #include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 
 #include "Runtime/NodeDspConfiguration.h"
@@ -12,6 +13,7 @@ struct EnvelopeConfiguration final : public INodeDspConfiguration {
 
     std::shared_ptr<EnvelopeMesh> mesh;
     std::shared_ptr<EnvRasterizer> rasterizer;
+    Rasterization::RealtimeEnvelopePlan realtimePlan;
     float level { 1.f };
     float redMorph { 0.5f };
     float blueMorph { 0.5f };

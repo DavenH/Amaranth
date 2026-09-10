@@ -3,6 +3,7 @@
 #include <Definitions.h>
 #include <Curve/GuideCurveProvider.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
+#include <Curve/Rasterization/EnvelopeMaterialization.h>
 #include <Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h>
 #include <Curve/Rasterization/Policies/Core/InterceptPolicies.h>
 #include <Curve/Rasterization/Policies/Curves/CurvePolicies.h>
@@ -221,6 +222,21 @@ void EnvRasterizer::renderEnvelope(Mesh* mesh, float oscPhase, bool buildWavefor
     }
 
     envMesh = envelopeMesh;
+
+    if (buildWaveform) {
+        const auto materialized = Rasterization::materializeEnvelope(
+                *envMesh,
+                request,
+                guideCurveProvider,
+                guideCurveOffsetSeeds,
+                toEnvelopePaddingState(getMode()),
+                result,
+                loopResult,
+                reduction);
+        loopIndex = materialized.loopIndex;
+        sustainIndex = materialized.sustainIndex;
+        return;
+    }
 
     Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
     Rasterization::TrilinearMeshSlicer().sliceMesh(

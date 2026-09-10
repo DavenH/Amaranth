@@ -177,6 +177,45 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertNotIn("volumeEnvelope1", nodes)
         self.assertNotIn("volumeMultiply", nodes)
 
+    def test_static_envelopes_preserve_the_legacy_zero_morph(self):
+        source = convertible_source()
+        volume = {
+            "properties": {"active": True, "dynamic": False},
+            "mesh": {
+                "mainMesh": {"vertices": [], "cubes": []},
+                "loopIndices": [],
+                "sustainIndices": [],
+            },
+        }
+        source["preset"]["meshLibrary"]["groups"][0]["layers"] = [volume]
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {entry["id"]: entry for entry in converted["nodes"]}
+        morph = nodes["staticEnvelopeMorph"]
+
+        self.assertEqual(morph["parameters"]["source"], "constant")
+        self.assertEqual(morph["parameters"]["constant"], 0.0)
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "staticEnvelopeMorph"
+            and edge["destNodeId"] == "volumeEnvelope1"
+            and edge["destPortId"] == "red"
+            for edge in converted["edges"]
+        ))
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "staticEnvelopeMorph"
+            and edge["destNodeId"] == "volumeEnvelope1"
+            and edge["destPortId"] == "blue"
+            for edge in converted["edges"]
+        ))
+
+        volume["properties"]["dynamic"] = True
+        converted = port_cycle_v1_preset.convert(source)
+        self.assertFalse(any(
+            node["id"] == "staticEnvelopeMorph" for node in converted["nodes"]))
+
     def test_generated_layout_is_aligned_compact_and_non_overlapping(self):
         source = convertible_source()
         magnitude = source["preset"]["meshLibrary"]["groups"][5]["layers"][0]

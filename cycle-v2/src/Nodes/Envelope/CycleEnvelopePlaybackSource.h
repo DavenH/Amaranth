@@ -9,6 +9,7 @@ public:
     virtual ~CycleEnvelopePlaybackSource() = default;
 
     virtual const EnvelopeConfiguration* cycleEnvelopeConfiguration() const = 0;
+    virtual Rasterization::PreparedEnvelopePlaybackView cycleEnvelopePlaybackView() const = 0;
 };
 
 }

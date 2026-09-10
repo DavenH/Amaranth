@@ -3,28 +3,20 @@
 #include <Array/ScopedAlloc.h>
 #include <Audio/CycleDsp/VoiceDeclick.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
+#include <Curve/Rasterization/EnvelopeMaterialization.h>
 #include <Curve/Rasterization/EnvelopePlaybackEngine.h>
 #include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 
+#include "Nodes/Envelope/CycleEnvelopePlaybackSource.h"
+#include "Nodes/Envelope/EnvelopeConfiguration.h"
+#include "Nodes/Envelope/EnvelopeMeshState.h"
 #include "Runtime/AudioProcessContextUtils.h"
 #include "Runtime/NodeDspConfiguration.h"
-#include "Runtime/SmoothedMorphPosition.h"
-#include "Nodes/Envelope/EnvelopeConfiguration.h"
-#include "Nodes/Envelope/CycleEnvelopePlaybackSource.h"
-#include "Nodes/Envelope/EnvelopeMeshState.h"
-#include "Nodes/Envelope/EnvelopePreparationExchange.h"
 
 namespace CycleV2 {
 
 class EnvelopeSignalProcessor : public CycleEnvelopePlaybackSource {
 public:
-    struct MorphPreparationDiagnostics {
-        uint64_t requests {};
-        uint64_t preparations {};
-        uint64_t adoptions {};
-        uint64_t staleResults {};
-    };
-
     EnvelopeSignalProcessor();
 
     static std::shared_ptr<const EnvelopeConfiguration> buildConfiguration(
@@ -33,13 +25,18 @@ public:
 
     void prepareExecution(const AudioExecutionSpec& spec);
     void adoptConfiguration(const PublishedNodeConfiguration& published);
-    bool serviceNonRealtimePreparation();
 
     void process(AudioProcessContext& context);
-    MorphPreparationDiagnostics preparationDiagnostics() const;
+    const Rasterization::RealtimeEnvelopeMaterializationDiagnostics&
+    realtimePreparationDiagnostics() const {
+        return materializer.diagnostics();
+    }
     bool isActive() const { return active; }
     const EnvelopeConfiguration* cycleEnvelopeConfiguration() const override {
         return preparedConfiguration();
+    }
+    Rasterization::PreparedEnvelopePlaybackView cycleEnvelopePlaybackView() const override {
+        return preparedPlaybackView();
     }
     double playbackPosition() const {
         return playback.samplePosition(Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex);
@@ -47,26 +44,22 @@ public:
     Rasterization::EnvelopePlaybackMode playbackMode() const { return playback.mode(); }
 
 private:
-    void requestEffectiveMorph(AudioProcessContext& context);
-    void adoptPreparedEnvelope();
     const EnvelopeConfiguration* preparedConfiguration() const;
-    static std::shared_ptr<const EnvelopeConfiguration> prepareMorphConfiguration(
-            const EnvelopeConfiguration& base,
-            float red,
-            float blue);
-    void applyLifecycleEvent(const NoteLifecycleEvent& event);
+    Rasterization::PreparedEnvelopePlaybackView preparedPlaybackView() const;
+    bool prepareNoteEnvelope(const AudioProcessContext& context, size_t sampleOffset);
+    void applyLifecycleEvent(
+            const NoteLifecycleEvent& event,
+            const AudioProcessContext& context,
+            size_t sampleOffset);
     void renderSegment(Buffer<float> output, size_t start, size_t count, double normalizedTimeIncrement);
     void renderNeutralSegment(Buffer<float> output, size_t start, size_t count);
     void applyAttackDeclick(Buffer<float> rendered);
     void renderReleaseDeclick(Buffer<float> rendered);
-    void applyAdoptionTransition(Buffer<float> rendered);
     void publishTraversalGrid(SignalPayload& output, const AudioProcessWorkArena* arena);
 
     static constexpr size_t defaultTraversalColumns = 8;
-    static constexpr float morphRequestThreshold = 0.002f;
-    static constexpr int morphRequestInterval44k = 64;
-
     Rasterization::EnvelopePlaybackEngine playback;
+    Rasterization::RealtimeEnvelopeMaterializer materializer;
     MeshLibrary::EnvProps props;
     bool active {};
     bool fadingIn {};
@@ -78,20 +71,6 @@ private:
     uint64_t pendingRevision {};
     std::shared_ptr<const EnvelopeConfiguration> configuration;
     std::shared_ptr<const EnvelopeConfiguration> activeConfiguration;
-    LatestEnvelopePreparationRequest preparationRequests;
-    PreparedEnvelopeExchange preparedEnvelopes;
-    uint64_t noteSerial {};
-    float lastRequestedRed { 0.5f };
-    float lastRequestedBlue { 0.5f };
-    bool hasRequestedMorph {};
-    bool morphInitialized {};
-    bool adoptionTransitionPending {};
-    int samplesSinceMorphRequest {};
-    int transitionSamplesRemaining {};
-    float lastOutputSample {};
-    float transitionOffset {};
-    SmoothedMorphPosition smoothedMorph;
-    ScopedAlloc<float> transitionMemory { 8192 };
     ScopedAlloc<float> traversalMemory { 2 * defaultTraversalColumns };
     ScopedAlloc<float> attackDeclick;
     ScopedAlloc<float> releaseDeclick;

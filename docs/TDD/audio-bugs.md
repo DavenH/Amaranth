@@ -430,29 +430,3 @@ pitch-clocked Hermite resampling. Artifacts:
 
 Current status: spectral reconstruction boundary resolved; remaining
 deterministic output residual is tracked at pitch-clocked cycle resampling.
-
-## Open: routed scratch-envelope morph is not ready at note start
-
-The freshly exported and regenerated Guitar 3 G parity pair exposes a more
-complex envelope case than Filter Saw: its looping scratch envelope changes
-substantially across red/key and blue/velocity. Cycle 1 prepares the routed
-cross-section before starting playback. At MIDI 48/frame zero its captured
-scratch coordinate is `0.00553`; Cycle V2 starts from the authored 0.5/0.5
-preparation at `0.22683` and requests the routed immutable preparation after
-the note-on reaches the audio processor. Frame 32 still differs (`0.28051`
-versus `0.42900`).
-
-The existing bounded preparation exchange is allocation-free and correctly
-latches once its result is adopted, but it does not satisfy the intended
-first-sample contract when the effective cross-section depends on per-note key
-or velocity. Cycle 1 confirms that note-dependent preparation occurs
-synchronously before the first sample. Cycle V2 must preserve that timing with
-the lock-free, preallocated materialization path specified by
-`cycle-v2-realtime-note-on-envelope-preparation.md`; it must not invoke the
-allocation-capable general-purpose rasterizer or delay voice activation. This
-mismatch must be resolved before Guitar 3 G can attribute later phase/effect
-differences. Artifacts:
-`/tmp/cycle-guitar-3-g-frame0/comparison.json` and
-`/tmp/cycle-guitar-3-g-direct-range/comparison.json`.
-
-Current status: open at note-on preparation/adoption ownership.

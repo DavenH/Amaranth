@@ -311,6 +311,26 @@ inline SignalPayload* inputAt(AudioProcessContext& context, size_t index) {
     return input;
 }
 
+inline const SignalPayload* inputAt(const AudioProcessContext& context, size_t index) {
+    const SignalPayload* input = index < context.inputViews.size()
+            ? context.inputViews[index]
+            : (index < context.inputs.size() ? &context.inputs[index] : nullptr);
+    if (input == nullptr) {
+        return nullptr;
+    }
+
+    const size_t sampleCount = input->block.samples.size();
+    if (input->traversalGrid.isValid()) {
+        return input;
+    }
+
+    if (sampleCount != 1 && sampleCount < context.frameCount) {
+        return nullptr;
+    }
+
+    return input;
+}
+
 inline void publishVectorAsTraversalGrid(
         SignalPayload& payload,
         size_t columns,

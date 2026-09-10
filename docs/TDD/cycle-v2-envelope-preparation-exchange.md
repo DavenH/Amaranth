@@ -2,7 +2,14 @@
 
 ## Status
 
-Implemented.
+Superseded and removed on 2026-09-10.
+
+Synchronous, preallocated note-on materialization replaced this worker
+exchange. No production caller remained, so its implementation and isolated
+concurrency tests were deleted with
+`cycle-v2-realtime-note-on-envelope-preparation.md`.
+
+The remainder of this document records the superseded design.
 
 Depends on `cycle-v2-smoothed-morph-control.md` for the request source.
 
@@ -83,7 +90,7 @@ forwarding helpers that reproduce the exchange implementation in the processor.
 - Continue through committed slices without user scheduling until every
   deletion target and completion criterion above is satisfied.
 
-## Implementation Notes
+## Historical Implementation Notes
 
 - `LatestEnvelopePreparationRequest` now owns coherent red/blue/note
   publication, the consumed generation, coalescing, and stale-build diagnostics.

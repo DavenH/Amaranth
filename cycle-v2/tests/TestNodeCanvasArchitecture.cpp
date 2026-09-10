@@ -1027,7 +1027,7 @@ TEST_CASE("Graph presentation preserves configuration revision history across re
     REQUIRE(revisionFor("ir") == initialIrRevision + 1);
     const auto irAudio = presentation.captureAudio(document.graph(), 128).output.block.samples;
 
-    REQUIRE(commands.setNodeParameter("env", "red", "Red", "0.75").succeeded());
+    REQUIRE(commands.setNodeParameter("env", "level", "Level", "0.75").succeeded());
     REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
     REQUIRE(revisionFor("env") == initialEnvelopeRevision + 1);
     REQUIRE(presentation.captureAudio(document.graph(), 128).output.block.samples != irAudio);

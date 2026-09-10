@@ -13,6 +13,7 @@
 #include "Runtime/ChainedOscillatorRegionRuntime.h"
 #include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/GraphPreviewExecutor.h"
+#include "Runtime/OfflineGraphAudioRenderer.h"
 #include "Runtime/RealtimeGraphRenderer.h"
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
@@ -1084,11 +1085,47 @@ TEST_CASE("Graph control edges drive absolute Envelope morph without graph edits
     const auto initial = executor.process(graph, compiled.plan, 16, {}, noteOn);
     const auto initialGrid = findNodeAudio(initial, "env").output.traversalGrid.values;
 
-    REQUIRE(executor.serviceNonRealtimePreparation() == 1);
-    const auto adopted = executor.process(graph, compiled.plan, 16, {}, {});
-    REQUIRE(findNodeAudio(adopted, "env").output.traversalGrid.values != initialGrid);
+    REQUIRE(executor.serviceNonRealtimePreparation() == 0);
+    const auto continued = executor.process(graph, compiled.plan, 16, {}, {});
+    REQUIRE(findNodeAudio(continued, "env").output.traversalGrid.values == initialGrid);
     REQUIRE(executor.serviceNonRealtimePreparation() == 0);
     REQUIRE(parameterValueForNode(*graph.findNode("env"), "red") == "0.5");
+}
+
+TEST_CASE("Guitar 3 G starts its scratch Envelope at the Cycle 1 cross-section",
+        "[cycle-v2][runtime][envelope][note-start][parity][preset]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("guitar-3-g.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    AudioVoiceContext voice;
+    CycleDsp::SpectralStageCaptureRecorder recorder;
+    REQUIRE(recorder.prepare(2048, 0));
+    OfflineGraphAudioRequest request;
+    request.sampleRate = 48'000.;
+    request.blockSize = 512;
+    request.sampleCount = 4096;
+    request.voiceDurationSeconds = 4.5680388f;
+    request.outputGain = 1.f;
+    request.ratePolicy = OfflineGraphAudioRatePolicy::LegacyInternal44100;
+    request.controlNoteOffset = 12;
+    request.spectralStageCapture = &recorder;
+    request.events.push_back({ 0, MidiMessage::noteOn(1, 48, 0.8f) });
+    const auto result = OfflineGraphAudioRenderer::render(compiled.plan, 1, request);
+    const auto* magnitude = recorder.record(CycleDsp::SpectralStage::MagnitudeRaster, 0);
+
+    REQUIRE(result.succeeded);
+    REQUIRE(magnitude != nullptr);
+    REQUIRE(magnitude->captured);
+    REQUIRE_FALSE(magnitude->secondary.empty());
+    REQUIRE(magnitude->secondary.front() == Catch::Approx(0.00553f).margin(0.00001f));
+  #endif
 }
 
 TEST_CASE("Logarithmic Envelope applies the Cycle 1 transform to audio and traversal grids",
@@ -2304,7 +2341,7 @@ TEST_CASE("Prepared realtime voice mixing performs no allocations or locks",
     REQUIRE(locks.count() == 0);
 }
 
-TEST_CASE("Latched Envelope morph request and adoption remain allocation-free on the realtime path",
+TEST_CASE("Synchronous Envelope note preparation remains allocation-free on the realtime path",
         "[cycle-v2][runtime][realtime][envelope][modulation]") {
     GraphNodeFactory factory;
     NodeGraph graph;
@@ -2332,10 +2369,12 @@ TEST_CASE("Latched Envelope morph request and adoption remain allocation-free on
 
     {
         ScopedRealtimeAllocationCount allocations;
+        ScopedRealtimeLockCount locks;
         REQUIRE(executor.processRealtime(compiled.plan, 64, {}, noteOn).isValid());
         REQUIRE(allocations.count() == 0);
+        REQUIRE(locks.count() == 0);
     }
-    REQUIRE(executor.serviceNonRealtimePreparation() == 1);
+    REQUIRE(executor.serviceNonRealtimePreparation() == 0);
     {
         ScopedRealtimeAllocationCount allocations;
         REQUIRE(executor.processRealtime(compiled.plan, 64, {}, {}).isValid());
