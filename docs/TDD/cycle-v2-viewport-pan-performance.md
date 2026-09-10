@@ -123,3 +123,24 @@ The full suite passed 661 of 665 cases. Its failures are outside this change:
 the already-recorded spectral amplitude thresholds and African Horn canonical
 JSON check, plus the independently reproduced Envelope rail-spacing mismatch
 recorded in `ui-bugs.md` during this audit.
+
+## Curve-preview cache regression follow-up (2026-09-10)
+
+The translation-independent node cache exposed an initialization race for
+Envelope, Waveshaper, and Impulse Response previews. If JUCE painted a compact
+node before its first OpenGL preview pass, it could cache an unsynchronized
+fallback. Partially clipped nodes cannot publish an OpenGL snapshot by design,
+so the empty fallback remained visible until selection or editor opening
+changed another cache dependency.
+
+The authoritative curve widget now synchronizes from the durable node before
+every compact fallback paint. Successful preview snapshot publication also
+increments a thread-safe revision included in the node presentation
+fingerprint, allowing a fallback sprite to upgrade after safe framebuffer
+capture. The full-residency requirement from
+`cycle-v2-render-invalidation-coalescing.md` remains unchanged.
+
+Verification covers the first compact Envelope paint, snapshot revision
+publication and clearing, all 96 canvas cases (1,246 assertions), the existing
+offscreen-pan automation fixture, and a partially clipped compact-preview
+capture at `/private/tmp/cycle-v2-preview-partial.png`.

@@ -78,6 +78,7 @@ void CurvePanelSnapshotCache::publish(Image nextImage, bool hasVisibleContent) {
     const ScopedLock scopedLock(lock);
     image = std::move(nextImage);
     visibleContent = hasVisibleContent;
+    ++publicationRevision;
 }
 
 bool CurvePanelSnapshotCache::paint(
@@ -102,6 +103,7 @@ void CurvePanelSnapshotCache::clear() {
     const ScopedLock scopedLock(lock);
     image = {};
     visibleContent = false;
+    ++publicationRevision;
 }
 
 class CurvePanelHost::HostComponent final : public PanelInputHostComponent {
