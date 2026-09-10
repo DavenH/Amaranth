@@ -170,7 +170,7 @@ translation. The first broad candidates are:
 | simple-bass | Time layer, one multiplicative magnitude layer, and a volume envelope; no active phase, scratch, effects, unison, or guide noise | Verified. Shared document declick and the legacy split-rate volume-envelope clock are restored. Complete 75/200/400 ms notes at 48 kHz have zero lag and at least `0.99999999991` correlation. |
 | power | Time layer plus volume envelope | Regenerated exactly but rejected as an audio oracle: Cycle 1 renders silence because the active time layer has no authored waveform geometry. |
 | Subbass | Time, magnitude, phase, volume/scratch envelopes | Port manifest was strict, but current notes 48–72 fail its old output thresholds; diagnostic only. |
-| guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Direct spectral range shaping is restored. Its routed scratch-envelope cross-section is not ready for Cycle V2's first note sample, so phase and effect attribution remain blocked. |
+| guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Its legacy-static volume/scratch envelopes are now explicit, and the frame-zero raster plus morph coordinates are byte-identical. The next discrepancy is a uniform spectral range-shaping gain difference. |
 | japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase. One corrected render repeated exactly, but a later run did not repeat in Cycle 1. Its large evolving mismatch remains diagnostic until that intermittent startup state is isolated. |
 | Icycle | Broad synthesis/effects plus six-voice Unison | Guide noise is disabled. Current graph differs from fresh conversion in reverb size; Unison repeatability still needs an admitted pair. |
 | accoustic | Broad graph including reverb | Current graph differs in morph/link state, envelope state, reverb size, and IR high-pass; do not use for DSP attribution yet. |
@@ -440,7 +440,7 @@ as the scratch envelope evolves.
     `0.999999776` to `0.999999876`, with gain-matched residuals from `0.00050`
     to `0.00067`. Artifacts: `/tmp/cycle-shiny-baseline/comparison.json` and
     `/tmp/cycle-shiny-matrix/comparison.json`.
-28. Advance to the routed-envelope/effect graph in Guitar 3 G. In progress:
+28. Advance to the envelope/effect graph in Guitar 3 G. In progress:
     Guitar 3 G was re-exported directly from its current Cycle 1 `.cyc` and
     regenerated with the authoritative converter. This corrected the stale
     velocity polarity and restored full-precision mesh values. The comparison
@@ -450,17 +450,20 @@ as the scratch envelope evolves.
     is now a range-shaped spectral consumer, guarded by a focused configuration
     test. At MIDI 48/frame 32 the magnitude operand is now on the expected scale
     (`0.02328` versus `0.02658` for harmonic one) instead of bypassing shaping
-    (`0.55409`). The first remaining mismatch is the scratch-envelope morph:
-    Cycle 1 begins frame zero at the routed key/velocity cross-section
-    (`yellow=0.00553`), while Cycle V2 begins from the authored 0.5/0.5 envelope
-    preparation (`yellow=0.22683`) and requests the routed preparation only
-    after note-on. This violates the intended first-sample latched-envelope
-    contract and blocks phase attribution. The resolution is specified by
-    `cycle-v2-realtime-note-on-envelope-preparation.md`: synchronously
-    materialize the routed result through a lock-free, preallocated voice path,
-    without delaying activation. Artifacts:
+    (`0.55409`). Cycle V2 now synchronously materializes dynamic envelope
+    cross-sections before the first sample through the bounded realtime path in
+    `cycle-v2-realtime-note-on-envelope-preparation.md`. Direct Cycle 1 export
+    inspection showed Guitar 3 G's volume and scratch layers are
+    `dynamic=false`; conversion now explicitly pins their legacy 0/0
+    cross-section. At MIDI 48/frame zero, both channels' magnitude raster and
+    effective morph triple are byte-identical, including the scratch coordinate
+    `0.00553`. The first unequal stage is magnitude-operand range shaping:
+    harmonic zero is `0.02985745` in Cycle 1 and `0.02745639` in Cycle V2, a
+    uniform `1.087450` scale difference with a gain-matched normalized residual
+    of `3.75e-8`. Earlier artifacts:
     `/tmp/cycle-guitar-3-g-frame0/comparison.json` and
-    `/tmp/cycle-guitar-3-g-direct-range/comparison.json`.
+    `/tmp/cycle-guitar-3-g-direct-range/comparison.json`; current artifact:
+    `/private/tmp/cycle-guitar-realtime-note-on/comparison.json`.
 29. Admit a deterministic volume-envelope fixture at multiple note lengths.
     Complete using Simple Bass: direct conversion contains a time layer, one
     multiplicative magnitude layer, and one volume envelope, with no active

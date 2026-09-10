@@ -4,14 +4,9 @@
 
 In Progress.
 
-The bounded preparation exchange and absolute red/blue inputs are implemented.
-Per-note morph latching is incomplete at the note-on boundary: when key or
-velocity selects a cross-section that is not already prepared, the first audio
-uses the persistent base morph until the non-realtime result is adopted. The
-replacement architecture is specified by
-`cycle-v2-realtime-note-on-envelope-preparation.md`: the routed initial result
-must be materialized synchronously through a bounded, lock-free, preallocated
-path before the first sample. Voice activation may not be delayed. The
+Absolute red/blue inputs and synchronous, preallocated per-note morph latching
+are implemented by `cycle-v2-realtime-note-on-envelope-preparation.md`. The
+obsolete worker preparation exchange was removed. The
 original Envelope-owned `Dynamic while live`
 policy was removed on 2026-07-31 after ownership review: live adoption is a
 voice traversal policy and may only be exposed through Voice Context (or a

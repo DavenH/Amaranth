@@ -7,6 +7,7 @@
 #include <Curve/Curve.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>
+#include <Curve/Rasterization/EnvelopeMaterialization.h>
 #include <Curve/Rasterization/EnvelopePlaybackEngine.h>
 #include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 
@@ -55,6 +56,28 @@ namespace {
         }
 
         EnvelopeMesh mesh;
+    };
+
+    class ConstantGuideCurveProvider : public GuideCurveProvider {
+    public:
+        float getTableValue(
+                int guideIndex,
+                float,
+                const NoiseContext&) override {
+            return values[guideIndex];
+        }
+
+        void sampleDownAddNoise(
+                int guideIndex,
+                Buffer<float> destination,
+                const NoiseContext&) override {
+            destination.set(values[guideIndex]);
+        }
+
+        Buffer<Float32> getTable(int) override { return {}; }
+        int getTableDensity(int) override { return tableSize; }
+
+        float values[128] {};
     };
 
     struct TestPreparedPlayback {
@@ -117,6 +140,80 @@ TEST_CASE("Envelope preparation is independent of snapshot publication", "[raste
         REQUIRE(published.curves().size() == rasterizer.preparedResult().curves.size());
         REQUIRE(published.isSampleable());
     }
+}
+
+TEST_CASE("Realtime Envelope materialization is byte-identical to EnvRasterizer",
+        "[rasterization][env][realtime][parity]") {
+    CurveTableScope curveTable;
+    TestEnvelope envelope;
+    ConstantGuideCurveProvider guideCurveProvider;
+    guideCurveProvider.values[0] = 0.125f;
+    envelope.mesh.getCubes()[1]->getCompGuideCurve() = 0;
+    const MorphPosition morph(0.f, 0.2f, 0.8f);
+    EnvRasterizer rasterizer;
+    rasterizer.setGuideCurveProvider(&guideCurveProvider);
+    rasterizer.setMorphPosition(morph);
+    rasterizer.renderWaveformOnly(&envelope.mesh);
+
+    Rasterization::RealtimeEnvelopePlan plan;
+    plan.mesh = &envelope.mesh;
+    plan.guideCurveProvider = &guideCurveProvider;
+    plan.request.morph = morph;
+    plan.request.cyclic = false;
+    plan.request.xMinimum = 0.f;
+    plan.request.xMaximum = 10.f;
+    plan.capacity = Rasterization::envelopeMaterializationCapacity(
+            envelope.mesh,
+            plan.request,
+            plan.guideCurveProvider);
+    Rasterization::RealtimeEnvelopeMaterializer materializer;
+    REQUIRE(materializer.prepare(plan));
+    REQUIRE(materializer.materialize(morph.red, morph.blue));
+
+    const auto realtime = materializer.preparedPlaybackView();
+    const auto legacy = rasterizer.preparedPlaybackView();
+    REQUIRE(realtime.loopIndex == legacy.loopIndex);
+    REQUIRE(realtime.sustainIndex == legacy.sustainIndex);
+    REQUIRE(realtime.display.intercepts == legacy.display.intercepts);
+    REQUIRE(realtime.display.curves == legacy.display.curves);
+    REQUIRE(realtime.display.waveform.waveX.size() == legacy.display.waveform.waveX.size());
+    REQUIRE(std::equal(
+            realtime.display.waveform.waveX.get(),
+            realtime.display.waveform.waveX.get() + realtime.display.waveform.waveX.size(),
+            legacy.display.waveform.waveX.get()));
+    REQUIRE(std::equal(
+            realtime.display.waveform.waveY.get(),
+            realtime.display.waveform.waveY.get() + realtime.display.waveform.waveY.size(),
+            legacy.display.waveform.waveY.get()));
+    REQUIRE(realtime.loop.intercepts == legacy.loop.intercepts);
+    REQUIRE(realtime.loop.curves == legacy.loop.curves);
+    REQUIRE(std::equal(
+            realtime.loop.waveform.waveY.get(),
+            realtime.loop.waveform.waveY.get() + realtime.loop.waveform.waveY.size(),
+            legacy.loop.waveform.waveY.get()));
+
+    const auto diagnostics = materializer.diagnostics();
+    REQUIRE(diagnostics.attempts == 1);
+    REQUIRE(diagnostics.failures == 0);
+    REQUIRE(diagnostics.maximumElapsedNanoseconds > 0);
+    REQUIRE(diagnostics.highWater.intercepts <= plan.capacity.intercepts);
+    REQUIRE(diagnostics.highWater.curves <= plan.capacity.curves);
+    REQUIRE(diagnostics.highWater.waveformSamples <= plan.capacity.waveformSamples);
+}
+
+TEST_CASE("Realtime Envelope plans reject unsupported capacity before preparation",
+        "[rasterization][env][realtime][capacity]") {
+    EnvelopeMesh mesh("OversizedEnvelope");
+    Rasterization::RealtimeEnvelopePlan plan;
+    plan.mesh = &mesh;
+    plan.capacity.intercepts = Rasterization::EnvelopeMaterializationCapacity::maximumIntercepts + 1;
+    plan.capacity.curves = plan.capacity.intercepts + 6;
+    plan.capacity.guideCurveRegions = plan.capacity.curves;
+    plan.capacity.waveformSamples = 32;
+
+    Rasterization::RealtimeEnvelopeMaterializer materializer;
+    REQUIRE_FALSE(materializer.prepare(plan));
+    REQUIRE(materializer.diagnostics().attempts == 0);
 }
 
 TEST_CASE("Envelope cleanup publishes one complete empty generation", "[rasterization][env][boundary]") {

@@ -19,10 +19,6 @@ public:
         processor.adoptConfiguration(configuration);
     }
 
-    bool serviceNonRealtimePreparation() override {
-        return processor.serviceNonRealtimePreparation();
-    }
-
     bool isVoiceActive() const override {
         return processor.isActive();
     }

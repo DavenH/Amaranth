@@ -270,3 +270,13 @@ and compiles` on `african-horn.cyclegraph`. The graph compiles, but a
 deserialize/serialize pass changes its JSON representation. This predates and
 is independent of the document-declick changes; regenerate that preset through
 the canonical serializer without expanding unrelated preset diffs.
+
+## P2: Envelope parameter-rail spacing regression
+
+Status: Open
+
+The full Cycle V2 suite on 2026-09-10 fails the Envelope editor geometry
+assertion in `TestNodeEditorHost.cpp`: adjacent parameter rails are 39.825
+pixels apart instead of the specified 39.1 +/- 0.02 pixels. This appeared
+incidentally during realtime note-on envelope verification and is unrelated to
+audio materialization.

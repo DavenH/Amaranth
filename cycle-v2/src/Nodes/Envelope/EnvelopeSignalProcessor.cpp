@@ -1,12 +1,10 @@
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 
-#include "Graph/NodeParameterMap.h"
-
-#include "Nodes/Curve/Model/CurveNodeModels.h"
-
+#include <Curve/Rasterization/Policies/Curves/CurvePolicies.h>
 #include <Util/Arithmetic.h>
 
-#include <cmath>
+#include "Graph/NodeParameterMap.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
 
 namespace CycleV2 {
 
@@ -38,6 +36,7 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
     result->rasterizer->setMesh(result->mesh.get());
     result->rasterizer->setMorphPosition({ 0.f, red, blue });
     result->rasterizer->setLowresCurves(lowResolution);
+    result->rasterizer->setCalcDepthDimensions(false);
     result->rasterizer->renderWaveformOnly(result->mesh.get(), 0.f);
     result->rasterizer->validateState();
 
@@ -54,6 +53,21 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
     result->neutralValue = neutralValue;
     result->volumePurpose = volumePurpose;
     result->declick = declick;
+
+    result->realtimePlan.mesh = result->mesh.get();
+    result->realtimePlan.request.morph = MorphPosition(0.f, red, blue);
+    result->realtimePlan.request.cyclic = false;
+    result->realtimePlan.request.xMinimum = 0.f;
+    result->realtimePlan.request.xMaximum = 10.f;
+    result->realtimePlan.request.lowResCurves = lowResolution;
+    result->realtimePlan.request.calcDepthDimensions = false;
+    result->realtimePlan.capacity = Rasterization::envelopeMaterializationCapacity(
+            *result->mesh,
+            result->realtimePlan.request,
+            result->realtimePlan.guideCurveProvider);
+    if (!result->realtimePlan.capacity.isSupported()) {
+        return {};
+    }
     return result;
 }
 
@@ -69,6 +83,7 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
     if (Curve::table == nullptr) {
         Curve::calcTable();
     }
+    Rasterization::TransferTable::values();
 
     const NodeModelStatePtr modelToUse = model != nullptr
             ? model
@@ -98,7 +113,6 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
 void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
     const size_t maximumColumns = std::max(defaultTraversalColumns, spec.maximumFrameCount);
     traversalMemory.ensureSize((int) (2 * maximumColumns));
-    transitionMemory.ensureSize((int) spec.maximumFrameCount);
     const double sampleRate = spec.sampleRate > 0.
             ? spec.sampleRate
             : CycleDsp::VoiceDeclick::legacySampleRate;
@@ -112,15 +126,10 @@ void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
     }
 
     activeConfiguration = configuration;
-    preparationRequests.reset();
-    preparedEnvelopes.reset();
-    hasRequestedMorph = false;
-    const MorphPosition baseMorph(0.f, configuration->redMorph, configuration->blueMorph);
-    if (!morphInitialized) {
-        smoothedMorph.reset(baseMorph);
-        morphInitialized = true;
-    } else {
-        smoothedMorph.setTargets(baseMorph);
+    if (!materializer.prepare(configuration->realtimePlan)) {
+        activeConfiguration.reset();
+        active = false;
+        return;
     }
     playback.validate(activeConfiguration->rasterizer->preparedPlaybackView());
     props.logarithmic = configuration->logarithmic;
@@ -138,132 +147,42 @@ void EnvelopeSignalProcessor::adoptConfiguration(const PublishedNodeConfiguratio
     pendingRevision = published.revision;
 }
 
-std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::prepareMorphConfiguration(
-        const EnvelopeConfiguration& base,
-        float red,
-        float blue) {
-    return prepareEnvelopeConfiguration(
-            "CycleV2MorphEnvelope",
-            *base.mesh,
-            red,
-            blue,
-            base.level,
-            base.logarithmic,
-            base.enabled,
-            base.neutralValue,
-            base.lowResolution,
-            base.volumePurpose,
-            base.declick);
-}
-
-bool EnvelopeSignalProcessor::serviceNonRealtimePreparation() {
-    EnvelopePreparationRequest request;
-    if (configuration == nullptr
-            || !preparationRequests.latest(request)) {
-        return false;
-    }
-
-    auto prepared = prepareMorphConfiguration(
-            *configuration, request.red, request.blue);
-    if (prepared == nullptr) {
-        return false;
-    }
-    if (!preparationRequests.isCurrent(request.generation)) {
-        preparationRequests.recordStaleResult();
-        return false;
-    }
-    if (!preparedEnvelopes.publish(
-            std::move(prepared), request.generation, request.noteSerial)) {
-        return false;
-    }
-    preparationRequests.markPrepared(request.generation);
-    return true;
-}
-
-EnvelopeSignalProcessor::MorphPreparationDiagnostics
-EnvelopeSignalProcessor::preparationDiagnostics() const {
-    return {
-            preparationRequests.publicationCount(),
-            preparedEnvelopes.preparationCount(),
-            preparedEnvelopes.adoptionCount(),
-            preparationRequests.staleResultCount() + preparedEnvelopes.staleResultCount()
-    };
-}
-
 const EnvelopeConfiguration* EnvelopeSignalProcessor::preparedConfiguration() const {
-    return preparedEnvelopes.active(activeConfiguration.get());
+    return activeConfiguration.get();
 }
 
-void EnvelopeSignalProcessor::requestEffectiveMorph(AudioProcessContext& context) {
+Rasterization::PreparedEnvelopePlaybackView EnvelopeSignalProcessor::preparedPlaybackView() const {
+    if (materializer.hasPreparedEnvelope()) {
+        return materializer.preparedPlaybackView();
+    }
+    return activeConfiguration->rasterizer->preparedPlaybackView();
+}
+
+bool EnvelopeSignalProcessor::prepareNoteEnvelope(
+        const AudioProcessContext& context,
+        size_t sampleOffset) {
+    if (activeConfiguration == nullptr) {
+        return false;
+    }
+
+    const auto valueAt = [sampleOffset](const SignalPayload* input, float fallback) {
+        if (input == nullptr || input->block.samples.empty()) {
+            return fallback;
+        }
+        if (input->block.samples.size() == 1) {
+            return jlimit(0.f, 1.f, input->block.samples.front());
+        }
+        const size_t index = std::min(sampleOffset, input->block.samples.size() - 1);
+        return jlimit(0.f, 1.f, input->block.samples[index]);
+    };
     const SignalPayload* redInput = inputAt(context, 0);
     const SignalPayload* blueInput = inputAt(context, 1);
-    const bool hasRedInput = redInput != nullptr && !redInput->block.samples.empty();
-    const bool hasBlueInput = blueInput != nullptr && !blueInput->block.samples.empty();
-    if (!hasRedInput && !hasBlueInput) {
-        return;
-    }
-
-    const EnvelopeConfiguration* current = preparedConfiguration();
-    if (current == nullptr || configuration == nullptr) {
-        return;
-    }
-    const bool noteStarts = std::any_of(
-            processVoice(context).events.begin(),
-            processVoice(context).events.end(),
-            [&](const auto& event) {
-                return event.voiceIndex == processVoice(context).voiceIndex
-                        && event.type == NoteLifecycleType::NoteOn;
-            });
-    const float redTarget = hasRedInput
-            ? jlimit(0.f, 1.f, redInput->block.samples.front())
-            : configuration->redMorph;
-    const float blueTarget = hasBlueInput
-            ? jlimit(0.f, 1.f, blueInput->block.samples.front())
-            : configuration->blueMorph;
-    smoothedMorph.setTargets({ 0.f, redTarget, blueTarget });
-    samplesSinceMorphRequest += smoothedMorph.advance(
-            context.frameCount,
-            context.timing.sampleRate);
-
-    if (active && !noteStarts) {
-        return;
-    }
-
-    const float red = smoothedMorph.current().red.getCurrentValue();
-    const float blue = smoothedMorph.current().blue.getCurrentValue();
-    const bool reachedTarget = red == smoothedMorph.current().red.getTargetValue()
-            && blue == smoothedMorph.current().blue.getTargetValue();
-    const bool changedMeaningfully = !hasRequestedMorph
-            || std::abs(red - lastRequestedRed) >= morphRequestThreshold
-            || std::abs(blue - lastRequestedBlue) >= morphRequestThreshold
-            || (reachedTarget && (red != lastRequestedRed || blue != lastRequestedBlue));
-    if (!changedMeaningfully
-            || (!noteStarts && samplesSinceMorphRequest < morphRequestInterval44k)) {
-        return;
-    }
-
-    lastRequestedRed = red;
-    lastRequestedBlue = blue;
-    hasRequestedMorph = true;
-    samplesSinceMorphRequest = 0;
-    preparationRequests.publish(
-            red,
-            blue,
-            noteStarts ? noteSerial + 1 : noteSerial);
-}
-
-void EnvelopeSignalProcessor::adoptPreparedEnvelope() {
-    const auto adoption = preparedEnvelopes.adoptNewest(noteSerial, false);
-    if (!adoption.adopted || adoption.configuration == nullptr) {
-        return;
-    }
-    playback.validate(adoption.configuration->rasterizer->preparedPlaybackView());
-    adoptionTransitionPending = active;
+    const float red = valueAt(redInput, activeConfiguration->redMorph);
+    const float blue = valueAt(blueInput, activeConfiguration->blueMorph);
+    return materializer.materialize(red, blue);
 }
 
 void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
-    adoptPreparedEnvelope();
-    requestEffectiveMorph(context);
     auto output = makeOutputPayload(context, 0);
     Buffer<float> outputBuffer = payloadBuffer(output, context.frameCount);
     outputBuffer.zero();
@@ -305,7 +224,7 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
             }
 
             renderSegment(outputBuffer, rendered, eventOffset - rendered, normalizedTimeIncrement);
-            applyLifecycleEvent(event);
+            applyLifecycleEvent(event, context, eventOffset);
             rendered = eventOffset;
         }
 
@@ -341,7 +260,12 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
     if (!current->enabled) {
         values.set(current->neutralValue);
     } else {
-        const auto sampler = current->rasterizer->sampler();
+        const auto prepared = preparedPlaybackView();
+        const auto& result = playback.mode() == Rasterization::EnvelopePlaybackMode::Looping
+                && prepared.loop.sampleable
+                ? prepared.loop
+                : prepared.display;
+        const Rasterization::SamplerView sampler(result.waveform, result.sampleable);
         sampler.sampleAtIntervals(positions, values);
         if (current->logarithmic) {
             Arithmetic::applyInvLogMapping(values, 30.f);
@@ -369,16 +293,23 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
     }
 }
 
-void EnvelopeSignalProcessor::applyLifecycleEvent(const NoteLifecycleEvent& event) {
+void EnvelopeSignalProcessor::applyLifecycleEvent(
+        const NoteLifecycleEvent& event,
+        const AudioProcessContext& context,
+        size_t sampleOffset) {
     const EnvelopeConfiguration* current = preparedConfiguration();
     if (current == nullptr) {
         return;
     }
 
-    const auto prepared = current->rasterizer->preparedPlaybackView();
     switch (event.type) {
         case NoteLifecycleType::NoteOn:
-            ++noteSerial;
+            if (!prepareNoteEnvelope(context, sampleOffset)) {
+                active = false;
+                fadingIn = false;
+                fadingOut = false;
+                break;
+            }
             playback.noteOn();
             active = true;
             fadingIn = current->volumePurpose && current->declick;
@@ -388,7 +319,7 @@ void EnvelopeSignalProcessor::applyLifecycleEvent(const NoteLifecycleEvent& even
             break;
 
         case NoteLifecycleType::NoteOff:
-            if (!current->enabled || !playback.noteOff(prepared)) {
+            if (!current->enabled || !playback.noteOff(preparedPlaybackView())) {
                 fadingOut = current->volumePurpose && current->declick;
                 releaseSamplePosition = 0;
                 active = fadingOut;
@@ -425,21 +356,20 @@ void EnvelopeSignalProcessor::renderSegment(
 
     const int releaseSamplesRemaining = current->volumePurpose
             ? playback.releaseSamplesRemaining(
-                    current->rasterizer->preparedPlaybackView(),
+                    preparedPlaybackView(),
                     normalizedTimeIncrement,
                     Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
                     props,
                     1.f)
             : -1;
     const bool stillActive = playback.renderToBuffer(
-            current->rasterizer->preparedPlaybackView(),
+            preparedPlaybackView(),
             (int) count,
             normalizedTimeIncrement,
             Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
             props,
             1.f);
     Buffer<float> rendered = playback.output().withSize((int) count);
-    applyAdoptionTransition(rendered);
     const bool applyingReleaseDeclick = fadingOut;
     if (fadingIn) {
         applyAttackDeclick(rendered);
@@ -452,7 +382,6 @@ void EnvelopeSignalProcessor::renderSegment(
                 releaseSamplesRemaining);
     }
     rendered.copyTo(output.section((int) start, (int) count));
-    lastOutputSample = rendered.back();
     active = applyingReleaseDeclick ? fadingOut : stillActive;
 }
 
@@ -471,7 +400,6 @@ void EnvelopeSignalProcessor::renderNeutralSegment(
     } else if (fadingOut) {
         renderReleaseDeclick(rendered);
     }
-    lastOutputSample = rendered.back();
 }
 
 void EnvelopeSignalProcessor::applyAttackDeclick(Buffer<float> rendered) {
@@ -500,28 +428,6 @@ void EnvelopeSignalProcessor::renderReleaseDeclick(Buffer<float> rendered) {
     }
     fadingOut = releaseSamplePosition < releaseDeclick.size();
     active = fadingOut;
-}
-
-void EnvelopeSignalProcessor::applyAdoptionTransition(Buffer<float> rendered) {
-    if (rendered.empty()) {
-        return;
-    }
-    if (adoptionTransitionPending) {
-        transitionOffset = lastOutputSample - rendered.front();
-        transitionSamplesRemaining = 128;
-        adoptionTransitionPending = false;
-    }
-    if (transitionSamplesRemaining <= 0) {
-        return;
-    }
-
-    const int count = std::min(rendered.size(), transitionSamplesRemaining);
-    const float decrement = transitionOffset / 128.f;
-    const float start = decrement * (float) transitionSamplesRemaining;
-    Buffer<float> correction = transitionMemory.withSize(count);
-    correction.ramp(start, -decrement);
-    rendered.withSize(count).add(correction);
-    transitionSamplesRemaining -= count;
 }
 
 }

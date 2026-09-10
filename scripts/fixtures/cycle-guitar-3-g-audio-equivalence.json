@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/guitar-3-g.cyclegraph",
-        "sha256": "2f56c421f8b647b6b1dd148235a8e425546716f30a06770f84e08ba4d90fa4e2",
+        "sha256": "e3465410cd27f1e6ea2e3f4124b87fea5a349a77ed0de3d53714b2ce47ea0944",
         "renderOverrides": {
             "voiceDurationSeconds": 4.568038808277109
         }
@@ -32,9 +32,7 @@
         ],
         "determinism": "guide noise and unison are disabled",
         "inputValidation": "regenerated from a direct Cycle 1 canonical file export on 2026-09-09",
-        "knownRuntimeGaps": [
-            "routed scratch-envelope morph preparation is not available at the first note sample"
-        ],
+        "knownRuntimeGaps": [],
         "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
     },
     "effectBindings": {

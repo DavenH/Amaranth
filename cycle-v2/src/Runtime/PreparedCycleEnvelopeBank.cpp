@@ -78,7 +78,7 @@ void PreparedCycleEnvelopeBank::applyLifecycleEvent(
             std::fill(entry.active.begin(), entry.active.end(), true);
         } else if (event.type == NoteLifecycleType::NoteOff) {
             const bool releases = entry.playback.noteOff(
-                    configuration->rasterizer->preparedPlaybackView());
+                    entry.source->cycleEnvelopePlaybackView());
             if (!releases) {
                 std::fill(entry.active.begin(), entry.active.end(), false);
             }
@@ -130,7 +130,7 @@ const EnvelopeConfiguration* PreparedCycleEnvelopeBank::adopt(Entry& entry) {
             : entry.source->cycleEnvelopeConfiguration();
     if (configuration != nullptr
             && configuration != entry.adoptedConfiguration) {
-        entry.playback.validate(configuration->rasterizer->preparedPlaybackView());
+        entry.playback.validate(entry.source->cycleEnvelopePlaybackView());
         entry.props.logarithmic = configuration->logarithmic;
         entry.adoptedConfiguration = configuration;
     }
@@ -161,7 +161,7 @@ void PreparedCycleEnvelopeBank::advance(
     const int voiceIndex = Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex
             + laneIndex;
     entry.active[(size_t) laneIndex] = entry.playback.renderToBuffer(
-            configuration->rasterizer->preparedPlaybackView(),
+            entry.source->cycleEnvelopePlaybackView(),
             sampleCount,
             normalizedTimeIncrement,
             voiceIndex,

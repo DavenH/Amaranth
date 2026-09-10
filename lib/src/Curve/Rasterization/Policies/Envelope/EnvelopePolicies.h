@@ -247,29 +247,27 @@ namespace Rasterization {
                 const EnvelopePaddingContext& context,
                 const Intercept& loopBackIcptA,
                 const Intercept& loopBackIcptB) {
-            std::vector<Intercept> loopIcpts;
-
             jassert(context.loopIndex >= 0);
             jassert(context.loopLength > 0);
             jassert(context.sustainIndex >= 2);
-
-            loopIcpts.emplace_back(intercepts[context.sustainIndex - 2]);
-            loopIcpts.emplace_back(intercepts[context.sustainIndex - 1]);
-
-            loopIcpts[0].x -= context.loopLength;
-            loopIcpts[1].x -= context.loopLength;
-
-            for (int i = context.loopIndex; i <= context.sustainIndex; ++i) {
-                loopIcpts.emplace_back(intercepts[i]);
-            }
-
-            loopIcpts.emplace_back(loopBackIcptA);
-            loopIcpts.emplace_back(loopBackIcptB);
-
             curves.clear();
-            curves.reserve(loopIcpts.size());
+            curves.reserve((size_t) (context.sustainIndex - context.loopIndex + 5));
 
-            addInteriorCurves(loopIcpts, curves);
+            Intercept first = intercepts[context.sustainIndex - 2];
+            Intercept second = intercepts[context.sustainIndex - 1];
+            first.x -= context.loopLength;
+            second.x -= context.loopLength;
+
+            const auto append = [&curves, &first, &second](const Intercept& next) {
+                curves.emplace_back(first, second, next);
+                first = second;
+                second = next;
+            };
+            for (int i = context.loopIndex; i <= context.sustainIndex; ++i) {
+                append(intercepts[i]);
+            }
+            append(loopBackIcptA);
+            append(loopBackIcptB);
         }
     };
 

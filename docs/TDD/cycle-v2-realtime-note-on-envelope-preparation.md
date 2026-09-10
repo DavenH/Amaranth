@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented on 2026-09-10.
 
 ## Decision
 
@@ -26,7 +26,9 @@ Cycle 1 establishes the audible contract:
 - JUCE dispatches a note-on to `SynthesizerVoice::startNote()` at its sample
   offset;
 - `startNote()` routes key and inverse velocity, then calls
-  `initialiseEnvMeshes()` before rendering the note;
+  `initialiseEnvMeshes()` before rendering the note; only legacy envelope
+  layers marked `dynamic` consume those routed values, while static layers
+  retain their existing cross-section;
 - `initialiseEnvMeshes()` materializes every active volume, pitch, and scratch
   envelope at the routed red/blue cross-section; and
 - the first sample after the event therefore observes the routed envelope.
@@ -59,8 +61,11 @@ its envelope cross-section therefore emits initial audio from the authored
 base morph.
 
 Guitar 3 G demonstrates the discrepancy. At MIDI 48/frame zero, Cycle 1's
-scratch coordinate is `0.00553`, while Cycle V2 begins at `0.22683` from the
-authored 0.5/0.5 preparation. Delaying the note until the requested result is
+static scratch envelope begins at its legacy 0/0 cross-section with coordinate
+`0.00553`, while Cycle V2 begins at `0.22683` from the imported 0.5/0.5
+preparation. The converter now represents that static legacy ownership with
+explicit constant inputs; dynamic Cycle V2 envelopes use the routed note-on
+path specified here. Delaying the note until the requested result is
 ready would make scheduling latency dependent on worker timing and is outside
 the product contract.
 
@@ -314,3 +319,34 @@ that responsibility is explicit and no note-start behavior depends on it.
 - All deletion targets are complete, and the implementation review records
   production diff size, largest files, new type branches, extracted mature
   sources, realtime instrumentation, and focused parity evidence.
+
+## Implementation Review
+
+The completed production change adds 646 lines and removes 463 lines across
+the shared rasterization host, Cycle V2 envelope orchestration, and the Guitar
+3 G conversion boundary, including deletion of the 243-line worker preparation
+exchange. The largest new file is `EnvelopeMaterialization.cpp` at 379 lines;
+the largest edited production file is `EnvelopeSignalProcessor.cpp`, which is
+93 lines smaller after deleting the worker request/adoption and transition
+path. No `NodeKind` branch was added.
+
+The extracted shared behavior remains in `TrilinearMeshSlicer`, the intercept,
+marker, sustain, padding, resolution, curve-preparation, waveform-bake, guide,
+and playback policies. `EnvRasterizer` and `RealtimeEnvelopeMaterializer` now
+call the same materialization function. The realtime host owns two prepared
+result slots, reserves the accepted plan's intercept, curve, guide-region,
+colour-point, and waveform capacities before audio, and swaps only after a
+complete successful bake. Diagnostics record attempts, failures, elapsed
+nanoseconds, and capacity high-water marks.
+
+Focused evidence covers byte-identical mature-host/realtime intercepts,
+curves, loop metadata, and waveform samples; capacity rejection; exact
+nonzero-offset activation; independently authored input fallback; voice-state
+isolation; zero callback allocations and mutex acquisitions; and Guitar 3 G's
+frame-zero `0.00553` point. The canonical Cycle 1 export also established that
+Guitar 3 G's volume and scratch layers are `dynamic=false`; the converter now
+pins those legacy static envelopes to 0/0 explicitly instead of accidentally
+feeding the graph-wide modulation triple. A fresh MIDI 48 paired capture is
+byte-identical through both frame-zero magnitude rasters and effective morph
+triples; it attributes the next discrepancy to a uniform `1.087450` gain
+difference in spectral range shaping.
