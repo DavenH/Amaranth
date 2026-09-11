@@ -970,7 +970,7 @@ protected:
             sectionColours[1] = sectionColours[0];
         }
 
-        gfx->setCurrentLineWidth(interactor->mouseFlag(WithinReshapeThresh) ? 2.f : 1.f);
+        gfx->setCurrentLineWidth(curveLineWidth());
 
         int i = 0;
 

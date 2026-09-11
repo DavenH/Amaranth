@@ -77,6 +77,11 @@ void paintPropertySegmentedControl(
         juce::Rectangle<float> bounds,
         int segmentCount,
         int selectedSegment);
+void paintPropertyLinkToggle(
+        juce::Graphics& graphics,
+        juce::Rectangle<float> bounds,
+        juce::Colour accent,
+        bool linked);
 
 void stylePropertyLabel(juce::Label& label, const juce::String& text);
 void stylePropertyButton(juce::TextButton& button, const juce::String& text);

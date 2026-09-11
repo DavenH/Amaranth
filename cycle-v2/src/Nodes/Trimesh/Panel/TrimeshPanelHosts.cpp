@@ -208,6 +208,16 @@ void TrimeshPanelHosts::renderPanel(
 void TrimeshPanelHosts::requestPanelInvalidation(
         Panel* sourcePanel,
         PanelDirtyState::Flag flag) {
+    MessageManager* messageManager = MessageManager::getInstanceWithoutCreating();
+    if (flag == PanelDirtyState::Flag::Overlay
+            && messageManager != nullptr
+            && messageManager->isThisTheMessageThread()) {
+        if (delegate != nullptr) {
+            delegate->requestTrimeshPanelRepaint();
+        }
+        return;
+    }
+
     uint32_t categories = TrimeshPanelInvalidation::Owner;
     const bool requiresBake = flag == PanelDirtyState::Flag::StaticVisual
             || flag == PanelDirtyState::Flag::SurfaceCache

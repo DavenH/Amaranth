@@ -1814,7 +1814,6 @@ TEST_CASE("Trimesh panel hosts use component cursors and delegated repaint",
     REQUIRE(panel2DHost->getMouseCursor() == MouseCursor::LeftRightResizeCursor);
 
     bridge.getPanel2D().requestRepaint(PanelDirtyState::Flag::Overlay);
-    MessageManager::getInstance()->runDispatchLoopUntil(20);
     REQUIRE(delegate.repaintCount == 1);
 
     bridge.clearPanelHostDelegate(&delegate);

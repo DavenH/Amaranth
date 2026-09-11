@@ -432,6 +432,14 @@ PanelHostCallbacks CurvePanelHost::callbacks() const {
 
 void CurvePanelHost::requestPanelInvalidation(PanelDirtyState::Flag flag) {
     ++previewInvalidationGeneration;
+    MessageManager* messageManager = MessageManager::getInstanceWithoutCreating();
+    if (flag == PanelDirtyState::Flag::Overlay
+            && messageManager != nullptr
+            && messageManager->isThisTheMessageThread()) {
+        delegate.repaintCurvePanel();
+        return;
+    }
+
     uint32_t categories = CurvePanelInvalidation::Owner;
     if (flag == PanelDirtyState::Flag::StaticVisual
             || flag == PanelDirtyState::Flag::SurfaceCache

@@ -1173,6 +1173,7 @@ class NativeEditSmoke:
         release_point = release_points[0]
         source = self.point(panel, release_point["displayX"], release_point["displayY"])
         self.move_pointer((1, 1))
+        self.capture("envelope-release-rest", panel)
         self.move_pointer(source)
         hover_deadline = time.monotonic() + 0.5
         hovered = self.inspect("env")
@@ -1187,6 +1188,17 @@ class NativeEditSmoke:
             "releasePoint": (release_point["x"], release_point["y"]),
             "interactionXMaximum": hovered_panel["interactionXMaximum"],
         }
+        self.capture("envelope-release-hover", panel)
+        self.move_pointer((1, 1))
+        away = self.inspect("env")["effect2D"]["panelState"]
+        assert not away["curveHover"], "release curve remained highlighted after pointer exit"
+        self.move_pointer(source)
+        hovered = self.inspect_until(
+            "env",
+            lambda state: state["effect2D"]["panelState"]["curveHover"],
+        )
+        hovered_panel = hovered["effect2D"]["panelState"]
+        assert hovered_panel["curveHover"], "release curve did not highlight after pointer re-entry"
         control = hovered_panel.get("currentVertex")
         assert control is not None, "release curve has no reshape control"
 
@@ -1241,10 +1253,12 @@ class NativeEditSmoke:
         })
         time.sleep(SETTLE_SECONDS)
         self.open_editor("waveMesh", trimesh=True)
+        self.capture("intercepts-trimesh-editor", self.target("expanded:waveMesh"))
         self.capture("intercepts-trimesh", self.target("expanded:waveMesh.panel2D"))
         self.open_editor("waveshaper")
         self.capture("intercepts-waveshaper", self.target("expanded:waveshaper.panel2D"))
         self.open_editor("env")
+        self.capture("intercepts-envelope-editor", self.target("expanded:env"))
         self.capture("intercepts-envelope", self.target("expanded:env.panel2D"))
 
     def trimesh_sequence(
@@ -1270,9 +1284,26 @@ class NativeEditSmoke:
         )
         curve_source = self.point(panel, curve_point["x"], curve_point["y"])
         self.move_pointer((1, 1))
+        self.capture("trimesh-curve-rest", panel)
         self.move_pointer(curve_source)
-        curve_hover = self.inspect("waveMesh")
+        curve_hover = self.inspect_until(
+            "waveMesh",
+            lambda inspected: inspected["trimesh"]["panelCurveHover"],
+        )
         assert curve_hover["trimesh"]["panelCurveHover"], curve_hover["trimesh"]
+        self.capture("trimesh-curve-hover", panel)
+        self.move_pointer((1, 1))
+        curve_away = self.inspect_until(
+            "waveMesh",
+            lambda inspected: not inspected["trimesh"]["panelCurveHover"],
+        )
+        assert not curve_away["trimesh"]["panelCurveHover"]
+        self.move_pointer(curve_source)
+        curve_hover = self.inspect_until(
+            "waveMesh",
+            lambda inspected: inspected["trimesh"]["panelCurveHover"],
+        )
+        assert curve_hover["trimesh"]["panelCurveHover"]
         hovered_vertex_index = curve_hover["trimesh"]["panelHoveredVertexIndex"]
         assert hovered_vertex_index >= 0, curve_hover["trimesh"]
         self.cursor_until("upDownResize")

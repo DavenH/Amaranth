@@ -2814,7 +2814,7 @@ TEST_CASE("Trimesh link toggles survive rebind and undo",
     };
 
     rebind();
-    REQUIRE_FALSE(redLinkSelected());
+    REQUIRE(redLinkSelected());
     auto* enabled = dynamic_cast<ToggleButton*>(
             host.component()->findChildWithID("trimeshEditor.enabled"));
     REQUIRE(enabled != nullptr);
@@ -2826,19 +2826,19 @@ TEST_CASE("Trimesh link toggles survive rebind and undo",
     REQUIRE_FALSE(enabled->getToggleState());
 
     REQUIRE(commands.toggleTrimeshLinkAxisValue("mesh", "red"));
-    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "link.red") == "1");
-    rebind();
-    REQUIRE(redLinkSelected());
-
-    REQUIRE(commands.toggleTrimeshLinkAxisValue("mesh", "red"));
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "link.red") == "0");
     rebind();
     REQUIRE_FALSE(redLinkSelected());
 
-    REQUIRE(document.undo());
+    REQUIRE(commands.toggleTrimeshLinkAxisValue("mesh", "red"));
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "link.red") == "1");
     rebind();
     REQUIRE(redLinkSelected());
+
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "link.red") == "0");
+    rebind();
+    REQUIRE_FALSE(redLinkSelected());
 }
 
 TEST_CASE("Spectral Trimesh range is visible and edits as one undo transaction",
