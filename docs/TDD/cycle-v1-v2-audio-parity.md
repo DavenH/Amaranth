@@ -930,13 +930,28 @@ as the scratch envelope evolves.
     supersedes that presentation: voice-local processing is unmarked, a
     global-only icon replaces text labels, Global Input roots a disjoint graph,
     and selectable effect ownership becomes durable graph state. The badges
-    remain a deletion target of that TDD rather than the final parity UI. Next,
-    audit
+    remain a deletion target of that TDD rather than the final parity UI.
+    Icycle spy traversal is also complete. Its authored scratch Envelope and
+    both mature rasterizers were dynamic, but the diagnostic traversal used
+    `sampleAtIntervals`, whose intentional all-or-silence contract rejected the
+    complete request when the last `127 / 128` cursor exceeded that prepared
+    waveform's `0.987672` upper bound. The resulting zero scratch grid replaced
+    every attached Trimesh time coordinate with zero, making otherwise dynamic
+    grids and their Spies appear pinned. Envelope diagnostics now reuse the
+    mature cursor-aware scalar sampler for each requested position, retaining
+    valid columns while leaving only positions outside the prepared waveform at
+    zero. A bundled-Icycle regression requires the scratch rollout, all attached
+    time/magnitude/phase mesh grids, and all three authored Spy grids to change
+    across voice time; the existing two-dimensional Spy renderer remains
+    unchanged. Focused UI coverage confirms all three real preset probes remain
+    connected, nonempty two-dimensional grids in
+    `scripts/fixtures/cycle-v2-agent-icycle-spies.json`; visual artifact:
+    `/private/tmp/cycle-v2-icycle-spies.png`. Next, audit
     every factory `.cyc`/`.cyclegraph` pair for voice length, octave, pitch,
     portamento, oversampling, and migrated envelope ownership while preserving
     authored Cycle V2 node presentation. Keyboard range/velocity, runtime
-    global-graph architecture, Icycle spy time, and Astral audio each remain
-    separate observable slices under this item.
+    global-graph architecture, and Astral audio each remain separate observable
+    slices under this item.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a
