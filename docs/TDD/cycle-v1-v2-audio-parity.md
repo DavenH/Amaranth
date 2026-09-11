@@ -923,18 +923,19 @@ as the scratch envelope evolves.
     `0.8`, and the dock now exposes C3-C5 at the existing 25-by-100 pixel white
     key geometry. The widened 451-by-112 dock and full MIDI-range clamping are
     covered by component and focused automation tests; visual artifact:
-    `/tmp/cycle-v2-keyboard-parity-after.png`. Runtime ownership indication is
-    complete as a separate presentation slice: every audio-processing node now
-    carries an explicit `VOICE` or `GLOBAL` header badge sourced from its
-    compiled `RuntimeOwnershipScope`, including downstream global promotion;
-    non-audio orchestration nodes remain unbadged. The label makes the state
-    readable without relying on colour. A focused compiler/presentation test
-    guards the mapping and the production-size artifact is
-    `/tmp/cycle-v2-scope-after.png`. Next, audit
+    `/tmp/cycle-v2-keyboard-parity-after.png`. The temporary runtime ownership
+    badges exposed the compiler's current downstream-promotion model, but the
+    resulting `VOICE` labels add noise and do not express the intended authored
+    graph boundary. [`cycle-v2-global-audio-graph.md`](cycle-v2-global-audio-graph.md)
+    supersedes that presentation: voice-local processing is unmarked, a
+    global-only icon replaces text labels, Global Input roots a disjoint graph,
+    and selectable effect ownership becomes durable graph state. The badges
+    remain a deletion target of that TDD rather than the final parity UI. Next,
+    audit
     every factory `.cyc`/`.cyclegraph` pair for voice length, octave, pitch,
     portamento, oversampling, and migrated envelope ownership while preserving
     authored Cycle V2 node presentation. Keyboard range/velocity, runtime
-    voice/global scope indication, Icycle spy time, and Astral audio each remain
+    global-graph architecture, Icycle spy time, and Astral audio each remain
     separate observable slices under this item.
 
 Future work: replace the inherited quality-selected control interval with an explicit
