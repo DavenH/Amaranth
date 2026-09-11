@@ -909,6 +909,20 @@ as the scratch envelope evolves.
     either renderer. Artifacts: `/tmp/cycle-icycle-release-stages-64/`,
     `/tmp/cycle-icycle-sequence-notes-dry/`, and
     `/tmp/cycle-icycle-start-note-dry/`.
+54. Restore live Voice Context and preset-control parity. In progress. The
+    live octave defect is complete: a
+    parameter-only refresh updates execution-step configurations but leaves the
+    compiled Voice Context snapshot unchanged. Consequently octave edits can
+    publish a newly prepared graph that still carries the old oscillator MIDI
+    offset. Reuse `GraphCompiler`'s authoritative Voice Context compilation on
+    DSP-configuration refreshes; no editor-to-audio side channel was added.
+    A focused test guards the durable edit, refresh, published plan, and changed
+    rendered output without topology recompilation. Next, audit
+    every factory `.cyc`/`.cyclegraph` pair for voice length, octave, pitch,
+    portamento, oversampling, and migrated envelope ownership while preserving
+    authored Cycle V2 node presentation. Keyboard range/velocity, runtime
+    voice/global scope indication, Icycle spy time, and Astral audio each remain
+    separate observable slices under this item.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

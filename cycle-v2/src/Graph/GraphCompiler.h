@@ -201,6 +201,7 @@ public:
     GraphCompileResult compile(const NodeGraph& graph) const;
     static float outputGainFor(const NodeGraph& graph);
     void refreshSignalProbes(const NodeGraph& graph, GraphExecutionPlan& plan) const;
+    void refreshVoiceContexts(const NodeGraph& graph, GraphExecutionPlan& plan) const;
 
 private:
     struct ConfigurationEntry {
