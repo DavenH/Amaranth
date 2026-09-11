@@ -135,6 +135,13 @@ void SynthAudioSource::setRandomSeedForTesting(int64 seed) {
     }
 }
 
+void SynthAudioSource::updateParametersToTargetForTesting() {
+    waveshaper->updateParametersToTarget();
+    tubeModel->updateParametersToTarget();
+    equalizer->updateParametersToTarget();
+    reverb->updateParametersToTarget();
+    volumeScale.updateToTarget();
+}
 
 void SynthAudioSource::releaseResources() {
 }

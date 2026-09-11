@@ -8,6 +8,7 @@
 #include "Nodes/Guide/GuideCurveSnapshotProvider.h"
 #include "Nodes/Control/ModulationSource.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
+#include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 #include "Nodes/Trimesh/Editor/TrimeshControlsComponent.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGridwiseDsp.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentMenu.h"
@@ -352,6 +353,42 @@ TEST_CASE("Prepared Trimesh guides affect blockwise and gridwise rendering",
     }
     REQUIRE(gridDifference > 0.5);
 
+    mesh->destroy();
+}
+
+TEST_CASE("Prepared Trimesh guides retain graph Guide slot identity",
+        "[cycle-v2][nodes][trimesh][guide][parity]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("SparseGuidedTrimesh");
+    REQUIRE(mesh != nullptr);
+
+    FlatCurveModel curve;
+    REQUIRE(curve.replaceVertices({
+            { 1, 0.05f, 0.25f, 1.f },
+            { 2, 0.95f, 0.75f, 1.f }
+    }));
+    NodeGraph graph;
+    for (int index = 0; index < 2; ++index) {
+        GuideCurveResource guide;
+        guide.id = "guide" + String(index + 1);
+        guide.shortLabel = "G" + String(index + 1);
+        guide.model = CurveNodeModelState::copyOf(curve, 2);
+        REQUIRE(graph.addGuideCurve(std::move(guide)));
+    }
+    Node trimesh = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    graph.addNode(std::move(trimesh));
+    REQUIRE(graph.assignGuideCurve({
+            "guide2",
+            "mesh",
+            { 0, GuideCurveField::Amplitude }
+    }));
+    const Node* stored = graph.findNode("mesh");
+    REQUIRE(stored != nullptr);
+
+    const auto prepared = TrimeshGuidePreparation::prepare(graph, *stored, *mesh);
+
+    REQUIRE(prepared.provider != nullptr);
+    REQUIRE(prepared.provider->size() == 2);
+    REQUIRE(prepared.mesh->getCubes().front()->guideCurveAt(Vertex::Amp) == 1);
     mesh->destroy();
 }
 

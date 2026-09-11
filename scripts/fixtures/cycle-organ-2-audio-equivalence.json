@@ -2,15 +2,15 @@
     "schema": "cycle-v1-v2-audio-equivalence.v1",
     "status": "diagnostic",
     "v1": {
-        "factoryPreset": "guitar-3-g",
-        "sourceDocument": "cycle/content/presets/guitar-3-g.cyc",
-        "sha256": "28e5d4f2152a7fa43f616ce1b562d74326f0e442d091efb9bd0544562ec871e2"
+        "factoryPreset": "organ-2",
+        "sourceDocument": "cycle/content/presets/organ-2.cyc",
+        "sha256": "4f8f8945c77537a655b3e17661b38f59c614a1707b668700541e5a5e14de3245"
     },
     "v2": {
-        "graph": "cycle-v2/content/presets/guitar-3-g.cyclegraph",
-        "sha256": "e3465410cd27f1e6ea2e3f4124b87fea5a349a77ed0de3d53714b2ce47ea0944",
+        "graph": "cycle-v2/content/presets/organ-2.cyclegraph",
+        "sha256": "e95543046770b41b337db34141df85711478b1ecf1c8bef5c93fc008f562172d",
         "renderOverrides": {
-            "voiceDurationSeconds": 4.568038808277109
+            "voiceDurationSeconds": 1.2669864718837067
         }
     },
     "translation": {
@@ -20,38 +20,36 @@
         "v2OutputGainUnitValue": 0.496183206,
         "v2OutputHeadroom": 0.125,
         "coverage": [
-            "emptyTimeLayerBypass",
-            "magnitudeLayer",
+            "multipleMagnitudeLayers",
             "phaseLayer",
-            "stereoPhasePan",
             "volumeEnvelope",
-            "scratchEnvelope",
-            "waveshaper2x",
+            "pitchEnvelope",
+            "unisonGroup5",
             "impulseResponse",
-            "equalizer",
-            "delay"
+            "delay",
+            "reverb"
         ],
-        "determinism": "guide noise and unison are disabled",
-        "inputValidation": "regenerated from a direct Cycle 1 canonical file export on 2026-09-09",
+        "determinism": "guide noise is disabled; offline effect state is settled before capture",
+        "inputValidation": "regenerated from a direct Cycle 1 canonical file export while preserving Cycle V2 presentation",
         "knownRuntimeGaps": [],
         "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
     },
     "effectBindings": {
-        "waveshaper": {
-            "v1Area": "AreaWaveshaper",
-            "v2Node": "waveshaper"
+        "unison": {
+            "v1Area": "AreaUnison",
+            "v2Node": "unison"
         },
         "impulseResponse": {
             "v1Area": "AreaImpulse",
             "v2Node": "impulseResponse"
         },
-        "equalizer": {
-            "v1Area": "AreaEQ",
-            "v2Node": "equalizer"
-        },
         "delay": {
             "v1Area": "AreaDelay",
             "v2Node": "delay"
+        },
+        "reverb": {
+            "v1Area": "AreaReverb",
+            "v2Node": "reverb"
         }
     },
     "thresholds": {

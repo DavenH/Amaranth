@@ -168,6 +168,7 @@ struct GuideCurveResource {
     float noise {};
     float dcOffset {};
     float phase {};
+    int noiseSeed { -1 };
     NodeModelStatePtr model;
     String heatmapAssetId;
     uint64_t revision { 1 };

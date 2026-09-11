@@ -36,6 +36,8 @@ public:
     bool start();
     void stop();
     bool publishGraph(GraphExecutionPlan plan, uint64_t revision);
+    void setVoiceDurationSeconds(float durationSeconds);
+    void setGraphOutputGain(float gain);
     Status status() const;
     LiveCapture captureLiveAudio(int durationMs);
 

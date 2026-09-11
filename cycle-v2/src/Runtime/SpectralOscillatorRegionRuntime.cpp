@@ -123,6 +123,7 @@ bool SpectralOscillatorRegionRuntime::process(
         lane.buffers[0].retract();
         lane.buffers[1].retract();
     }
+    latchCurrentFrames();
     return true;
 }
 
@@ -145,9 +146,8 @@ bool SpectralOscillatorRegionRuntime::process(
 }
 
 int SpectralOscillatorRegionRuntime::fixedFrameSizeFor(int midiNote) const {
-    const double angleDelta = CycleDsp::OscillatorLaneCore::angleDelta(
+    const double angleDelta = CycleDsp::OscillatorLaneCore::legacyNeutralAngleDelta(
             midiNote,
-            0.f,
             sampleRate);
     if (angleDelta <= 0.0) {
         return 0;
@@ -164,9 +164,9 @@ bool SpectralOscillatorRegionRuntime::initializeSharedFrames(
     }
 
     const int halfSize = fixedFrameSize / 2;
-    const double cyclePeriod = 1.0 / CycleDsp::OscillatorLaneCore::angleDelta(
+    const double cyclePeriod = 1.0
+            / CycleDsp::OscillatorLaneCore::legacyNeutralAngleDelta(
             context.midiNote,
-            0.f,
             sampleRate);
     if (cyclePeriod <= 0.0) {
         fixedFrameSize = 0;
@@ -287,15 +287,19 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
         const PreparedOscillatorProcessContext& context,
         const SpectralOscillatorFrameRenderer& renderer) {
     auto& lane = lanes[(size_t) laneIndex];
-    const uint64_t cycleStart = (uint64_t) lane.clock.cumulativePosition;
+    const double cycleStartPosition = lane.clock.cumulativePosition;
+    const uint64_t cycleStart = (uint64_t) cycleStartPosition;
     const long relativeFrontier = lane.clock.sampledFrontier
             - lane.buffers[0].totalSamplesRead;
     const int pitchIndex = context.pitchEnvelope.empty()
             ? 0
             : jlimit(0, context.pitchEnvelope.size() - 1, (int) relativeFrontier);
-    const float pitch = context.pitchEnvelope.empty()
-            ? 0.5f
-            : context.pitchEnvelope[pitchIndex];
+    float pitch = 0.5f;
+    if (renderer.hasPitchEnvelope()) {
+        pitch = renderer.pitchEnvelopeValue(laneIndex);
+    } else if (!context.pitchEnvelope.empty()) {
+        pitch = context.pitchEnvelope[pitchIndex];
+    }
     const double angleDelta = CycleDsp::OscillatorLaneCore::angleDeltaForPitchUnit(
             context.midiNote,
             layout[laneIndex].detuneCents,
@@ -309,7 +313,7 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
     }
 
     const float framePortion = sharedFramePeriod > 0.0
-            ? (float) (((double) cycleStart
+            ? (float) ((cycleStartPosition
                     - (lastSharedFramePosition - sharedFramePeriod))
                     / sharedFramePeriod)
             : 0.f;
@@ -367,12 +371,21 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
                     context.midiNote,
                     channel,
                     output,
-                    {}
+                    composed
             });
         }
         lane.buffers[(size_t) channel].write(output);
     }
     return true;
+}
+
+void SpectralOscillatorRegionRuntime::latchCurrentFrames() {
+    for (int channel = 0; channel < 2; ++channel) {
+        currentFrames[(size_t) channel]
+                .withSize(fixedFrameSize)
+                .copyTo(previousFrames[(size_t) channel]
+                        .withSize(fixedFrameSize));
+    }
 }
 
 size_t SpectralOscillatorRegionRuntime::blockSampleOffsetFor(

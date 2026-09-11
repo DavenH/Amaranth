@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <vector>
 
 #include <JuceHeader.h>
@@ -32,6 +33,8 @@ struct OfflineGraphAudioRequest {
     float voiceDurationSeconds { 7.f };
     float outputGain { 0.125f };
     int controlNoteOffset {};
+    int64_t randomSeed {};
+    bool hasRandomSeed {};
     OfflineGraphAudioRatePolicy ratePolicy { OfflineGraphAudioRatePolicy::Native };
     size_t sampleCount {};
     std::vector<OfflineGraphAudioEvent> events;

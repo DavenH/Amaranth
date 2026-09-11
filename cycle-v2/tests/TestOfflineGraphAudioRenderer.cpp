@@ -73,6 +73,40 @@ GraphExecutionPlan filterSawPlan() {
 #endif
 }
 
+GraphExecutionPlan flutePlan() {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("flute.cyclegraph");
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            preset.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    const auto compiled = GraphCompiler().compile(loaded.graph);
+    REQUIRE(compiled.succeeded());
+    return compiled.plan;
+#else
+    return {};
+#endif
+}
+
+GraphExecutionPlan sitarPlan() {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("sitar.cyclegraph");
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            preset.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    const auto compiled = GraphCompiler().compile(loaded.graph);
+    REQUIRE(compiled.succeeded());
+    return compiled.plan;
+#else
+    return {};
+#endif
+}
+
 OfflineGraphAudioRequest renderRequest(int blockSize, int midiNote = 72) {
     OfflineGraphAudioRequest request;
     request.sampleRate = 48000.0;
@@ -126,6 +160,56 @@ TEST_CASE("Offline graph renderer follows the realtime MIDI path across blocks",
                     const_cast<float*>(partitioned.channels[1].data()),
                     (int) partitioned.channels[1].size()
             }) < 1.0e-6f);
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
+}
+
+TEST_CASE("Offline guide seed controls chained oscillator noise deterministically",
+        "[cycle-v2][runtime][offline-audio][guide-noise][parity]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    auto firstRequest = renderRequest(256, 60);
+    firstRequest.randomSeed = 1129927500;
+    firstRequest.hasRandomSeed = true;
+    auto repeatedRequest = firstRequest;
+    auto differentRequest = firstRequest;
+    differentRequest.randomSeed += 1;
+
+    const auto plan = flutePlan();
+    const auto first = OfflineGraphAudioRenderer::render(plan, 8, firstRequest);
+    const auto repeated = OfflineGraphAudioRenderer::render(plan, 8, repeatedRequest);
+    const auto different = OfflineGraphAudioRenderer::render(plan, 8, differentRequest);
+
+    REQUIRE(first.succeeded);
+    REQUIRE(repeated.succeeded);
+    REQUIRE(different.succeeded);
+    REQUIRE(first.channels == repeated.channels);
+    REQUIRE(first.channels != different.channels);
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
+}
+
+TEST_CASE("Offline guide seed controls spectral oscillator noise deterministically",
+        "[cycle-v2][runtime][offline-audio][guide-noise][spectral][parity]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    auto firstRequest = renderRequest(256, 60);
+    firstRequest.randomSeed = 1129927500;
+    firstRequest.hasRandomSeed = true;
+    auto repeatedRequest = firstRequest;
+    auto differentRequest = firstRequest;
+    differentRequest.randomSeed += 1;
+
+    const auto plan = sitarPlan();
+    const auto first = OfflineGraphAudioRenderer::render(plan, 8, firstRequest);
+    const auto repeated = OfflineGraphAudioRenderer::render(plan, 8, repeatedRequest);
+    const auto different = OfflineGraphAudioRenderer::render(plan, 8, differentRequest);
+
+    REQUIRE(first.succeeded);
+    REQUIRE(repeated.succeeded);
+    REQUIRE(different.succeeded);
+    REQUIRE(first.channels == repeated.channels);
+    REQUIRE(first.channels != different.channels);
 #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
 #endif
@@ -365,6 +449,7 @@ TEST_CASE("Scheduled audio automation shares the Cycle capture contract",
     object->setProperty("durationMs", 100.0);
     object->setProperty("voiceDurationSeconds", 1.25);
     object->setProperty("controlNoteOffset", 12);
+    object->setProperty("randomSeed", (int64) 1129927500);
     object->setProperty("ratePolicy", "legacyInternal44100");
 
     Array<var> events;
@@ -391,6 +476,7 @@ TEST_CASE("Scheduled audio automation shares the Cycle capture contract",
     REQUIRE((int) data.getProperty("events", 0) == 1);
     REQUIRE((double) data.getProperty("voiceDurationSeconds", 0.0) == 1.25);
     REQUIRE((int) data.getProperty("controlNoteOffset", 0) == 12);
+    REQUIRE((int64) data.getProperty("randomSeed", 0) == 1129927500);
     REQUIRE(data.getProperty("ratePolicy", {}).toString() == "legacyInternal44100");
     REQUIRE((double) data.getProperty("rms", 0.0) > 0.0);
 #else

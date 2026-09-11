@@ -24,9 +24,20 @@ public:
             const OscillatorRegionPlan& region,
             int maximumCycleSamples,
             const std::vector<NodeAudioProcessor*>& processors = {},
-            int laneCount = 1);
+            int laneCount = 1,
+            const String& pitchEnvelopeNodeId = {});
     void reset() override;
     void applyLifecycleEvent(const NoteLifecycleEvent& event) override;
+    void advanceCycleEnvelopes(
+            int laneIndex,
+            int sampleCount,
+            double normalizedTimeIncrement) override;
+    bool hasPitchEnvelope() const override {
+        return cycleEnvelopes.hasPitchEnvelope();
+    }
+    float pitchEnvelopeValue(int laneIndex) const override {
+        return cycleEnvelopes.pitchValue(laneIndex);
+    }
     void renderCycle(
             const ChainedCycleRenderRequest& request,
             Buffer<float> left,
@@ -66,7 +77,7 @@ private:
     PreparedCycleEnvelopeBank cycleEnvelopes;
     ScopedAlloc<float> operationMemory;
     Random frameRandom;
-    uint32_t lifecycleSeed {};
+    int64_t frameRandomSeed {};
     bool lifecycleSeedReady {};
 };
 

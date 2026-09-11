@@ -1,4 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
+
+#include <Audio/CycleDsp/EffectParameterMapping.h>
 
 #include <algorithm>
 
@@ -384,6 +387,25 @@ TEST_CASE("Ordinary DSP edits refresh configuration without compiling topology",
 
     REQUIRE(presentation.compilationCount() == initialCompilations);
     REQUIRE(presentation.previewRenderCount() == 2);
+}
+
+TEST_CASE("Output gain edits refresh the renderer-owned compiled value",
+        "[cycle-v2][runtime][causal][output][gain]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+    const size_t initialCompilations = presentation.compilationCount();
+
+    REQUIRE(commands.setNodeParameter("out", "gain", "Gain", "0.25").succeeded());
+    REQUIRE(presentation.refresh(
+            document.graph(),
+            document.revision(),
+            document.lastChange()));
+
+    REQUIRE(presentation.compilationCount() == initialCompilations);
+    REQUIRE(presentation.compileResult().plan.outputGain
+            == Catch::Approx(CycleDsp::outputGain(0.25f)));
 }
 
 TEST_CASE("Adding a second signal probe refreshes its compiled preview address",

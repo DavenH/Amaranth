@@ -334,6 +334,9 @@ var guideToJSON(const GuideCurveResource& guide) {
     result->setProperty("noise", guide.noise);
     result->setProperty("dcOffset", guide.dcOffset);
     result->setProperty("phase", guide.phase);
+    if (guide.noiseSeed >= 0) {
+        result->setProperty("noiseSeed", guide.noiseSeed);
+    }
     result->setProperty("revision", (int64) guide.revision);
     if (guide.heatmapAssetId.isNotEmpty()) {
         result->setProperty("heatmapAssetId", guide.heatmapAssetId);
@@ -916,6 +919,13 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         guide.noise = (float) noise;
         guide.dcOffset = (float) dcOffset;
         guide.phase = (float) phase;
+        const var noiseSeed = encoded->getProperty("noiseSeed");
+        if (!noiseSeed.isVoid() && !noiseSeed.isInt() && !noiseSeed.isInt64()) {
+            result.issues.push_back({ GraphLoadCode::InvalidParameter,
+                    "Guide noise seed must be an integer" });
+            continue;
+        }
+        guide.noiseSeed = noiseSeed.isVoid() ? -1 : (int) noiseSeed;
         const var encodedRevision = encoded->getProperty("revision");
         const int64 guideRevision = (int64) encodedRevision;
         guide.heatmapAssetId = encoded->getProperty("heatmapAssetId").toString();

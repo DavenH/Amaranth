@@ -10,6 +10,7 @@ struct NodeModuleDescriptor {
     PreviewModuleRole previewRole { PreviewModuleRole::None };
     PreviewContract previewContract { PreviewContract::None };
     NodeExecutionTrait executionTrait { NodeExecutionTrait::SampleBlockProcessor };
+    AudioProcessingScope processingScope { AudioProcessingScope::Voice };
     bool executable {};
     bool previewable {};
     bool cycle1AdapterBacked {};

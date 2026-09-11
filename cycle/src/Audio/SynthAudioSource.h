@@ -74,6 +74,7 @@ public:
     void setEnvelopeMeshes(bool lock);
     void setModValue(double value);
     void setRandomSeedForTesting(int64 seed);
+    void updateParametersToTargetForTesting();
     void setOutputGainForTesting(float gain) { volumeScale.setValueDirect(gain); }
     float getOutputGainForTesting() const { return volumeScale.getTargetValue(); }
     void setSpectralStageCaptureForTesting(

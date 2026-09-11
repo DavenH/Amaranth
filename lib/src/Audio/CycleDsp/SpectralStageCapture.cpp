@@ -37,6 +37,9 @@ String secondaryPayloadName(SpectralStage stage) {
             || stage == SpectralStage::PhaseRaster) {
         return "morph-position";
     }
+    if (stage == SpectralStage::PitchClockedCycle) {
+        return "composed-cycle";
+    }
     return stage == SpectralStage::ForwardFft
                     || stage == SpectralStage::PostLayerSpectrum
             ? "phase"
@@ -47,13 +50,15 @@ String secondaryPayloadName(SpectralStage stage) {
 
 bool SpectralStageCaptureRecorder::prepare(
         int maximumValueCount,
-        size_t targetFrameIndex) {
-    if (maximumValueCount <= 0) {
+        size_t targetFrameIndex,
+        int targetOccurrenceIndex) {
+    if (maximumValueCount <= 0 || targetOccurrenceIndex < 0) {
         return false;
     }
 
     maximumValues = maximumValueCount;
     targetFrame = targetFrameIndex;
+    targetOccurrence = targetOccurrenceIndex;
     payloadMemory.resize(
             stageCount * channelCount * 2 * maximumValues);
     reset();
@@ -61,6 +66,7 @@ bool SpectralStageCaptureRecorder::prepare(
 }
 
 void SpectralStageCaptureRecorder::reset() {
+    occurrenceCounts.fill(0);
     for (int stage = 0; stage < stageCount; ++stage) {
         for (int channel = 0; channel < channelCount; ++channel) {
             const int recordIndex = stage * channelCount + channel;
@@ -94,8 +100,10 @@ void SpectralStageCaptureRecorder::capture(
         return;
     }
 
-    auto& captured = records[(size_t) (stage * channelCount + frame.channel)];
-    if (captured.captured) {
+    const size_t recordIndex = (size_t) (stage * channelCount + frame.channel);
+    const int occurrence = occurrenceCounts[recordIndex]++;
+    auto& captured = records[recordIndex];
+    if (captured.captured || occurrence != targetOccurrence) {
         return;
     }
 
@@ -180,6 +188,7 @@ bool SpectralStageCaptureRecorder::write(
     auto* object = root.getDynamicObject();
     object->setProperty("schema", "cycle-spectral-stage-capture.v1");
     object->setProperty("targetFrameIndex", (int64) targetFrame);
+    object->setProperty("targetOccurrenceIndex", targetOccurrence);
     object->setProperty("records", encodedRecords);
     if (!manifest.replaceWithText(JSON::toString(root, true) + "\n")) {
         error = "Could not write spectral stage manifest: "

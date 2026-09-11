@@ -1319,6 +1319,13 @@ uint64_t NodeCanvasPresentation::renderContextFingerprintFor(
     if (node.kind == NodeKind::TrilinearMesh) {
         fingerprint.add(TrimeshGuidePreparation::configurationKey(frame.graph, node.id));
     }
+    if (node.kind == NodeKind::Output && frame.liveOutputMeterLevels.has_value()) {
+        uint32_t leftBits {};
+        uint32_t rightBits {};
+        std::memcpy(&leftBits, &frame.liveOutputMeterLevels->left, sizeof(leftBits));
+        std::memcpy(&rightBits, &frame.liveOutputMeterLevels->right, sizeof(rightBits));
+        fingerprint.add(leftBits).add(rightBits);
+    }
     if (node.kind == NodeKind::Unison) {
         fingerprint.add(unisonContextFingerprint(unisonPreviewContextFor(
                 frame.compileResult.plan,

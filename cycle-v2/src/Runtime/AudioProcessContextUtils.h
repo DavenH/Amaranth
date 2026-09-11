@@ -97,6 +97,9 @@ inline void copyPayloadBlockExpandingScalars(
         const SignalPayload& source,
         size_t frameCount) {
     copyBlockExpandingScalars(dest.block.samples, source.block, frameCount);
+    if (!dest.isStereo() && dest.declaresStereoChannels() && source.isStereo()) {
+        dest.secondaryBlock.samples.resize(frameCount);
+    }
     if (dest.isStereo()) {
         const SignalBlock& secondarySource = source.isStereo()
                 ? source.secondaryBlock
@@ -207,7 +210,7 @@ inline SignalPayload makeOutputPayload(const AudioOutputPort& port, size_t frame
     payload.domain = port.domain;
     payload.channelLayout = port.channelLayout;
     payload.block.samples.resize(frameCount);
-    if (payload.isStereo()) {
+    if (payload.declaresStereoChannels()) {
         payload.secondaryBlock.samples.resize(frameCount);
     }
     return payload;
@@ -230,7 +233,7 @@ inline SignalPayload makeOutputPayload(AudioProcessContext& context, size_t inde
         payload.domain = context.outputPorts[index].domain;
         payload.channelLayout = context.outputPorts[index].channelLayout;
         payload.block.samples.resize(context.frameCount);
-        if (payload.isStereo()) {
+        if (payload.declaresStereoChannels()) {
             payload.secondaryBlock.samples.resize(context.frameCount);
         } else {
             payload.secondaryBlock.samples.clear();

@@ -11,6 +11,7 @@ struct ChainedCycleState {
 class OscillatorLaneCore {
 public:
     static double angleDelta(int midiNote, float detuneCents, double sampleRate);
+    static double legacyNeutralAngleDelta(int midiNote, double sampleRate);
     static double angleDeltaForPitchUnit(
             int midiNote,
             float detuneCents,

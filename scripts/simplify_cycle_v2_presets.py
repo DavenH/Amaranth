@@ -150,6 +150,9 @@ def bypass_neutral_pan(document, report):
                 report["ambiguousNeutralPan"] += 1
                 return
             source_node.setdefault("parameters", {})["range"] = legacy_range
+        spectral_mode = candidate.get("parameters", {}).get("mode")
+        if spectral_mode is not None and source_node is not None:
+            source_node.setdefault("parameters", {})["spectralMode"] = spectral_mode
         for edge in outgoing:
             edge["sourceNodeId"] = source["sourceNodeId"]
             edge["sourcePortId"] = source["sourcePortId"]
@@ -519,29 +522,6 @@ def prune_isolated_nodes(document, report):
         report["isolatedNode"] += len(removable)
 
 
-def prune_unused_guides(document, report):
-    used = {
-        assignment["guideId"] for assignment in document.get("guideAssignments", [])
-    }
-    removed = {
-        guide["id"] for guide in document.get("guides", []) if guide["id"] not in used
-    }
-    if not removed:
-        return
-    document["guides"] = [
-        guide for guide in document.get("guides", []) if guide["id"] not in removed
-    ]
-    used_heatmaps = {
-        guide.get("heatmapAssetId") for guide in document.get("guides", [])
-        if guide.get("heatmapAssetId")
-    }
-    document["guideHeatmaps"] = [
-        heatmap for heatmap in document.get("guideHeatmaps", [])
-        if heatmap.get("id") in used_heatmaps
-    ]
-    report["unusedGuide"] += len(removed)
-
-
 def simplify_graph(document):
     report = Counter()
     collapse_silent_empty_time_graph(document, report)
@@ -551,7 +531,6 @@ def simplify_graph(document):
     promote_empty_time_seed_to_spectral_context(document, report)
     collapse_complete_scratch_fanout(document, report)
     prune_isolated_nodes(document, report)
-    prune_unused_guides(document, report)
     return report
 
 

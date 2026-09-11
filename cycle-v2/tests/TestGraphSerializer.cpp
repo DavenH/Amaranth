@@ -103,6 +103,33 @@ TEST_CASE("Graph JSON is canonical and byte stable", "[cycle-v2][graph]") {
     REQUIRE(serializer.toJsonString(loaded.graph) == encoded);
 }
 
+TEST_CASE("Graph JSON preserves authored Guide noise seeds", "[cycle-v2][graph][guide]") {
+    NodeGraph source;
+    GuideCurveResource guide;
+    guide.id = "guide1";
+    guide.shortLabel = "G1";
+    guide.noise = 0.5f;
+    guide.noiseSeed = 6585;
+    FlatCurveModel curve;
+    REQUIRE(curve.replaceVertices({
+            { 1, 0.05f, 0.5f, 1.f },
+            { 2, 0.95f, 0.5f, 1.f }
+    }));
+    guide.model = CurveNodeModelState::copyOf(curve, 1);
+    REQUIRE(source.addGuideCurve(std::move(guide)));
+
+    const GraphSerializer serializer;
+    const String encoded = serializer.toJsonString(source);
+    const GraphLoadResult loaded = serializer.loadJsonString(encoded);
+
+    INFO((loaded.issues.empty() ? String() : loaded.issues.front().message));
+    REQUIRE(loaded.succeeded());
+    const GuideCurveResource* restored = loaded.graph.findGuideCurve("guide1");
+    REQUIRE(restored != nullptr);
+    REQUIRE(restored->noiseSeed == 6585);
+    REQUIRE(encoded.contains("\"noiseSeed\": 6585"));
+}
+
 TEST_CASE("Graph documents save canonical JSON with stable line endings",
         "[cycle-v2][graph]") {
     const File destination = File::getSpecialLocation(File::tempDirectory)

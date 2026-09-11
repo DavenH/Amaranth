@@ -2583,6 +2583,7 @@ bool CycleAutomation::captureAudio(const var& command, String& message, var& dat
     audioHub.prepareToPlay(blockSize, sampleRate);
     const var randomSeed = PresetJson::property(command, "randomSeed");
     SynthAudioSource& synthAudioSource = getObj(SynthAudioSource);
+    synthAudioSource.updateParametersToTargetForTesting();
     if (!randomSeed.isVoid()) {
         synthAudioSource.setRandomSeedForTesting((int64) randomSeed);
     }
@@ -2609,7 +2610,13 @@ bool CycleAutomation::captureAudio(const var& command, String& message, var& dat
         const size_t targetFrame = (size_t) jmax(
                 0,
                 (int) getDouble(command, "stageCaptureFrameIndex", 0.0));
-        if (!stageCapture.prepare(maximumSpectralStageValues, targetFrame)) {
+        const int targetOccurrence = jmax(
+                0,
+                (int) getDouble(command, "stageCaptureOccurrenceIndex", 0.0));
+        if (!stageCapture.prepare(
+                maximumSpectralStageValues,
+                targetFrame,
+                targetOccurrence)) {
             message = "Could not prepare spectral stage capture";
             return false;
         }
@@ -2866,6 +2873,8 @@ bool CycleAutomation::openPreset(const var& command, String& message, var& data)
         return false;
     }
 
+    const bool waitedForIdle = drainMessageLoopIfRequested(command);
+    json->setProperty("waitedForIdle", waitedForIdle);
     message = "Preset opened: " + path;
     return true;
 }
@@ -2886,11 +2895,13 @@ bool CycleAutomation::openFactoryPreset(const var& command, String& message, var
     }
 
     getObj(FileManager).openFactoryPreset(preset);
+    const bool waitedForIdle = drainMessageLoopIfRequested(command);
 
     auto json = PresetJson::object();
     json->setProperty("preset", preset);
     json->setProperty("path", file.getFullPathName());
     json->setProperty("document", getObj(Document).getDocumentName());
+    json->setProperty("waitedForIdle", waitedForIdle);
     data = PresetJson::toVar(json);
 
     message = "Factory preset opened: " + preset;

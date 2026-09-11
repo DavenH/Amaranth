@@ -92,8 +92,16 @@ struct SignalPayload {
     SignalTraversalGrid traversalGrid;
     SignalTraversalGrid secondaryTraversalGrid;
 
+    bool declaresStereoChannels() const {
+        return channelLayout == ChannelLayout::LinkedStereo
+                || channelLayout == ChannelLayout::StereoPair;
+    }
+
     bool isStereo() const {
-        return channelLayout == ChannelLayout::StereoPair;
+        return channelLayout == ChannelLayout::StereoPair
+                || (channelLayout == ChannelLayout::LinkedStereo
+                        && (!secondaryBlock.samples.empty()
+                                || secondaryTraversalGrid.isValid()));
     }
 };
 
@@ -160,7 +168,9 @@ struct AudioVoiceContext {
     AudioVoiceControls controls;
     std::vector<TimedControlEvent> controlEvents;
     uint32_t lifecycleSeed {};
+    int64_t deterministicRandomSeed {};
     bool hasLifecycleSeed {};
+    bool hasDeterministicRandomSeed {};
     CycleDsp::SpectralStageCaptureSink* spectralStageCapture {};
 };
 
@@ -214,7 +224,7 @@ struct AudioProcessWorkArena {
     void reserve(SignalPayload& payload) const {
         payload.block.samples.reserve(frameCapacity);
         payload.traversalGrid.values.reserve(gridValueCapacity);
-        if (payload.isStereo()) {
+        if (payload.declaresStereoChannels()) {
             payload.secondaryBlock.samples.reserve(frameCapacity);
             payload.secondaryTraversalGrid.values.reserve(gridValueCapacity);
         }

@@ -100,6 +100,14 @@ bool StandaloneAudioEngine::publishGraph(
     return true;
 }
 
+void StandaloneAudioEngine::setVoiceDurationSeconds(float durationSeconds) {
+    renderer.setVoiceDurationSeconds(durationSeconds);
+}
+
+void StandaloneAudioEngine::setGraphOutputGain(float gain) {
+    renderer.setGraphOutputGain(gain);
+}
+
 StandaloneAudioEngine::Status StandaloneAudioEngine::status() const {
     return {
             ready.load(std::memory_order_acquire),

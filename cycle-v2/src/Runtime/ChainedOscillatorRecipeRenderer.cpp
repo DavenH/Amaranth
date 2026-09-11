@@ -90,13 +90,19 @@ bool ChainedOscillatorRecipeRenderer::prepare(
         const OscillatorRegionPlan& region,
         int maximumCycleSamplesToUse,
         const std::vector<NodeAudioProcessor*>& processors,
-        int laneCount) {
+        int laneCount,
+        const String& pitchEnvelopeNodeId) {
     if (!supports(plan, region) || maximumCycleSamplesToUse <= 0) {
         return false;
     }
 
     maximumCycleSamples = maximumCycleSamplesToUse;
-    if (!cycleEnvelopes.prepare(plan, region, processors, laneCount)) {
+    if (!cycleEnvelopes.prepare(
+            plan,
+            region,
+            processors,
+            laneCount,
+            pitchEnvelopeNodeId)) {
         return false;
     }
     outputOperation = -1;
@@ -183,6 +189,16 @@ void ChainedOscillatorRecipeRenderer::applyLifecycleEvent(
     cycleEnvelopes.applyLifecycleEvent(event);
 }
 
+void ChainedOscillatorRecipeRenderer::advanceCycleEnvelopes(
+        int laneIndex,
+        int sampleCount,
+        double normalizedTimeIncrement) {
+    cycleEnvelopes.advanceLane(
+            laneIndex,
+            sampleCount,
+            normalizedTimeIncrement);
+}
+
 void ChainedOscillatorRecipeRenderer::renderCycle(
         const ChainedCycleRenderRequest& request,
         Buffer<float> left,
@@ -198,13 +214,6 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
     }
 
     prepareFrameRandom(request.processContext);
-    if (request.processContext != nullptr
-            && request.processContext->voice != nullptr) {
-        cycleEnvelopes.advanceLane(
-                request.laneIndex,
-                request.sampleCount,
-                request.processContext->voice->controls.normalizedVoiceTimeIncrement);
-    }
     for (int operationIndex = 0; operationIndex < (int) operations.size(); ++operationIndex) {
         auto& operation = operations[(size_t) operationIndex];
         auto outputLeft = operationBuffer(operationIndex, 0, request.sampleCount);
@@ -277,21 +286,30 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
 
 void ChainedOscillatorRecipeRenderer::prepareFrameRandom(
         const PreparedOscillatorProcessContext* context) {
+    const bool hasDeterministicRandomSeed = context != nullptr
+            && context->voice != nullptr
+            && context->voice->hasDeterministicRandomSeed;
     const bool hasLifecycleSeed = context != nullptr
             && context->voice != nullptr
             && context->voice->hasLifecycleSeed;
-    const uint32_t seed = hasLifecycleSeed
-            ? context->voice->lifecycleSeed
-            : GuideCurveSnapshotProvider::visualizationSeed(PortDomain::TimeSignal);
-    if (lifecycleSeedReady && lifecycleSeed == seed) {
+    int64_t seed = GuideCurveSnapshotProvider::visualizationSeed(PortDomain::TimeSignal);
+    if (hasDeterministicRandomSeed) {
+        seed = context->voice->deterministicRandomSeed + 2;
+    } else if (hasLifecycleSeed) {
+        seed = context->voice->lifecycleSeed;
+    }
+    if (lifecycleSeedReady && frameRandomSeed == seed) {
         return;
     }
-    lifecycleSeed = seed;
+    frameRandomSeed = seed;
     lifecycleSeedReady = true;
-    frameRandom.setSeed((int64) seed);
+    frameRandom.setSeed(seed);
+    const uint32_t offsetSeed = hasDeterministicRandomSeed
+            ? (uint32_t) frameRandom.nextInt()
+            : (uint32_t) seed;
     for (auto& operation : operations) {
         if (operation.trimesh != nullptr) {
-            operation.trimesh->setVoiceLifecycleSeed(seed);
+            operation.trimesh->setVoiceLifecycleSeed(offsetSeed);
         }
     }
 }

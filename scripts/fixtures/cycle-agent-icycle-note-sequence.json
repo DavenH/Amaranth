@@ -1,0 +1,35 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "Icycle",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "captureAudio",
+      "path": "/private/tmp/cycle-v1-icycle-note-sequence.wav",
+      "rawPath": "/private/tmp/cycle-v1-icycle-note-sequence.f32le",
+      "sampleRate": 48000,
+      "blockSize": 256,
+      "channels": 2,
+      "durationMs": 3000,
+      "outputGain": 1.053085198357633,
+      "ratePolicy": "legacyInternal44100",
+      "randomSeed": 1129927500,
+      "events": [
+        { "type": "noteOn", "timeMs": 0, "note": 60, "velocity": 0.8 },
+        { "type": "noteOn", "timeMs": 250, "note": 67, "velocity": 0.72 },
+        { "type": "noteOff", "timeMs": 450, "note": 60 },
+        { "type": "noteOn", "timeMs": 500, "note": 72, "velocity": 0.88 },
+        { "type": "noteOff", "timeMs": 700, "note": 67 },
+        { "type": "noteOff", "timeMs": 950, "note": 72 }
+      ],
+      "peakGreaterThan": 0.001,
+      "rmsGreaterThan": 0.0001,
+      "peakLessThan": 1.5,
+      "noteOffSecondDifferenceLessThan": 0.1
+    }
+  ],
+  "quit": true
+}

@@ -538,6 +538,7 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
 
                 Buffer<float> destBuffer;
                 Buffer halfBuff(halfBuf.withSize(half));
+                Buffer<float> composedCycle;
 
                 for (int c = 0; c < (noteState.isStereo ? 2 : 1); ++c) {
                     Buffer biasedCyc(biasedCycle[c].withSize(noteState.nextPow2));
@@ -564,6 +565,7 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
                                     halfBuff
                             });
                     jassert(!srcBuffer.empty());
+                    composedCycle = srcBuffer;
 
                     switch (resamplingAlgo) {
                         case Resampling::Sinc:
@@ -608,7 +610,8 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
                             i,
                             c,
                             (uint64_t) jmax(0, truncCume),
-                            destBuffer);
+                            destBuffer,
+                            composedCycle);
                     if (noteState.isStereo) {
                         destBuffer.mul(pans[c]);
                     }
@@ -619,7 +622,8 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
                             i,
                             Right,
                             (uint64_t) jmax(0, truncCume),
-                            destBuffer);
+                            destBuffer,
+                            composedCycle);
                     Buffer<float> written = group.cycleBuffer[Right].write(destBuffer);
 
                     destBuffer.mul(pans[Left]);

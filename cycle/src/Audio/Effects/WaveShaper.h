@@ -32,6 +32,7 @@ public:
     void processBuffer(AudioSampleBuffer& audioBuffer) override;
     void processVertexBuffer(Buffer<Float32> outputBuffer);
     void updateSmoothedParameters(int deltaSamples);
+    void updateParametersToTarget();
     bool doParamChange(int param, double value, bool doFurtherUpdate) override;
     void audioThreadUpdate() override;
     void clearGraphicDelayLine();

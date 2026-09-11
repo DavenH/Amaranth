@@ -12,6 +12,7 @@ NodeModuleDescriptor descriptor(
         PreviewModuleRole previewRole,
         PreviewContract previewContract,
         NodeExecutionTrait executionTrait,
+        AudioProcessingScope processingScope,
         bool executable,
         bool previewable,
         String cycle1Reference = {}) {
@@ -21,6 +22,7 @@ NodeModuleDescriptor descriptor(
             previewRole,
             previewContract,
             executionTrait,
+            processingScope,
             executable,
             previewable,
             cycle1Reference.isNotEmpty(),
@@ -42,6 +44,7 @@ NodeModuleDescriptor NodeModuleRegistry::descriptorFor(NodeKind kind) const {
             definition->previewRole,
             definition->previewContract,
             definition->executionTrait,
+            definition->processingScope,
             definition->executable,
             definition->previewable,
             definition->cycle1Reference);

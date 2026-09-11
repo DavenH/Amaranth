@@ -5,6 +5,7 @@
 import argparse
 import hashlib
 import json
+import os
 import struct
 import subprocess
 import sys
@@ -115,11 +116,19 @@ def write_automation(path, open_command, capture, setup_commands=None):
     path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
 
 
+def deterministic_renderer_environment():
+    environment = os.environ.copy()
+    environment["MallocNanoZone"] = "0"
+    environment["VECLIB_MAXIMUM_THREADS"] = "1"
+    return environment
+
+
 def run_renderer(wrapper, script, report, log):
     subprocess.run(
         [str(wrapper), str(script), str(report), str(log)],
         cwd=REPO_ROOT,
         check=True,
+        env=deterministic_renderer_environment(),
     )
     with report.open(encoding="utf-8") as source:
         automation_report = json.load(source)
@@ -360,6 +369,8 @@ def render_note(manifest, note, output_directory, arguments):
             note_directory / "cycle-v2-stages.json")
         capture_v1["stageCaptureFrameIndex"] = arguments.stage_frame_index
         capture_v2["stageCaptureFrameIndex"] = arguments.stage_frame_index
+        capture_v1["stageCaptureOccurrenceIndex"] = arguments.stage_occurrence_index
+        capture_v2["stageCaptureOccurrenceIndex"] = arguments.stage_occurrence_index
     v1_script = note_directory / "cycle-v1-automation.json"
     v2_script = note_directory / "cycle-v2-automation.json"
 
@@ -380,10 +391,9 @@ def render_note(manifest, note, output_directory, arguments):
             "Manifest has no disable binding for: " + ", ".join(missing_effects))
     v1_setup = [
         {
-            "command": "setControl",
+            "command": "action",
+            "actionType": "Disable",
             "area": effect_bindings[effect]["v1Area"],
-            "target": "TargEffectEnable",
-            "click": True,
             "waitForIdle": True,
             "idleDelayMs": 100,
         }
@@ -436,8 +446,13 @@ def render_note(manifest, note, output_directory, arguments):
             repeat_capture = dict(capture)
             repeat_capture["path"] = str(repeat_wav)
             repeat_capture["rawPath"] = str(repeat_wav.with_suffix(".f32le"))
-            repeat_capture.pop("stageCapturePath", None)
-            repeat_capture.pop("stageCaptureFrameIndex", None)
+            if arguments.capture_stages:
+                repeat_capture["stageCapturePath"] = str(
+                    note_directory / f"cycle-{engine}-repeat-{repeat}-stages.json")
+            else:
+                repeat_capture.pop("stageCapturePath", None)
+                repeat_capture.pop("stageCaptureFrameIndex", None)
+                repeat_capture.pop("stageCaptureOccurrenceIndex", None)
             render_capture(
                 SCRIPT_DIR / wrapper,
                 note_directory / f"cycle-{engine}-repeat-{repeat}-automation.json",
@@ -540,6 +555,12 @@ def parse_arguments():
         type=int,
         default=0,
         help="zero-based oscillator frame to capture with --capture-stages",
+    )
+    parser.add_argument(
+        "--stage-occurrence-index",
+        type=int,
+        default=0,
+        help="zero-based repeated stage occurrence to capture within the selected frame",
     )
     parser.add_argument("--no-fail", action="store_true")
     return parser.parse_args()

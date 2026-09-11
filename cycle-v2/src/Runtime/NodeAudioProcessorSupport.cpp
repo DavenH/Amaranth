@@ -12,9 +12,9 @@ void processPassthrough(AudioProcessContext& context) {
     }
 
     auto output = makeOutputPayload(context, 0);
+    output.channelLayout = input->channelLayout;
     if (context.outputPorts.empty()) {
         output.domain = input->domain;
-        output.channelLayout = input->channelLayout;
     }
 
     copyPayloadBlockExpandingScalars(output, *input, context.frameCount);

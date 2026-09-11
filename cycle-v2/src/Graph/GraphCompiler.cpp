@@ -283,7 +283,9 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                 node.kind,
                 descriptor.executionTrait,
                 coordinateForTrait(descriptor.executionTrait),
-                RuntimeOwnershipScope::SynthVoice,
+                descriptor.processingScope == AudioProcessingScope::Global
+                        ? RuntimeOwnershipScope::Global
+                        : RuntimeOwnershipScope::SynthVoice,
                 -1,
                 node.kind == NodeKind::Output,
                 node.kind == NodeKind::Envelope
@@ -415,6 +417,65 @@ void compileRouting(GraphExecutionPlan& plan) {
         plan.maximumAttachmentCount = std::max(
                 plan.maximumAttachmentCount,
                 step.attachments.size());
+    }
+}
+
+void compileProcessingScopes(
+        GraphExecutionPlan& plan,
+        std::vector<GraphCompileIssue>& issues) {
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        for (const auto& edge : plan.signalEdges) {
+            const int sourceIndex = stepIndexFor(plan, edge.sourceNodeId);
+            const int destinationIndex = stepIndexFor(plan, edge.destNodeId);
+            if (sourceIndex < 0 || destinationIndex < 0) {
+                continue;
+            }
+
+            const auto& source = plan.steps[(size_t) sourceIndex];
+            auto& destination = plan.steps[(size_t) destinationIndex];
+            if (source.ownershipScope != RuntimeOwnershipScope::Global
+                    || destination.ownershipScope == RuntimeOwnershipScope::Global) {
+                continue;
+            }
+            if (destination.ownershipScope == RuntimeOwnershipScope::OscillatorRegion
+                    || destination.ownershipScope == RuntimeOwnershipScope::UnisonLane) {
+                issues.push_back({
+                        GraphCompileCode::GlobalSignalReentersVoiceDomain,
+                        "Global signal from '" + source.nodeId
+                                + "' cannot re-enter voice processor '"
+                                + destination.nodeId + "'"
+                });
+                return;
+            }
+
+            destination.ownershipScope = RuntimeOwnershipScope::Global;
+            changed = true;
+        }
+    }
+}
+
+void compileVoiceMixBuffers(GraphExecutionPlan& plan) {
+    plan.voiceMixBufferIndices.clear();
+    for (const auto& destination : plan.steps) {
+        if (destination.ownershipScope != RuntimeOwnershipScope::Global) {
+            continue;
+        }
+        for (const auto& input : destination.inputs) {
+            if (input.sourceStepIndex < 0 || input.sourceBufferIndex < 0) {
+                continue;
+            }
+            const auto& source = plan.steps[(size_t) input.sourceStepIndex];
+            if (source.ownershipScope == RuntimeOwnershipScope::Global
+                    || std::find(
+                            plan.voiceMixBufferIndices.begin(),
+                            plan.voiceMixBufferIndices.end(),
+                            input.sourceBufferIndex) != plan.voiceMixBufferIndices.end()) {
+                continue;
+            }
+            plan.voiceMixBufferIndices.push_back(input.sourceBufferIndex);
+        }
     }
 }
 
@@ -596,6 +657,7 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
             }
             const Node* source = findNode(graph, edge.sourceNodeId);
             if (source != nullptr && source->kind == NodeKind::Envelope) {
+                context.pitchEnvelopeNodeId = source->id;
                 context.pitchEnvelope = EnvelopeSignalProcessor::buildConfiguration(
                         source->parameters,
                         source->model);
@@ -1182,14 +1244,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
         return result;
     }
 
-    const auto output = std::find_if(
-            graph.getNodes().begin(),
-            graph.getNodes().end(),
-            [](const Node& node) { return node.kind == NodeKind::Output; });
-    if (output != graph.getNodes().end()) {
-        result.plan.outputGain = CycleDsp::outputGain(
-                NodeParameterMap(*output).floatValue("gain", 0.5f));
-    }
+    result.plan.outputGain = outputGainFor(graph);
 
     result.plan.nodeOrder = buildNodeOrder(graph, result.compileIssues);
 
@@ -1251,7 +1306,13 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
             return result;
         }
         compileDefaultModulationInputs(graph, result.plan);
+        compileProcessingScopes(result.plan, result.compileIssues);
+        if (!result.compileIssues.empty()) {
+            result.plan = {};
+            return result;
+        }
         compileRouting(result.plan);
+        compileVoiceMixBuffers(result.plan);
         compileDependencyIndex(result.plan);
         refreshSignalProbes(graph, result.plan);
         publishConfigurations(graph, result.plan.steps);
@@ -1262,6 +1323,16 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
     }
 
     return result;
+}
+
+float GraphCompiler::outputGainFor(const NodeGraph& graph) {
+    const auto output = std::find_if(
+            graph.getNodes().begin(),
+            graph.getNodes().end(),
+            [](const Node& node) { return node.kind == NodeKind::Output; });
+    return output != graph.getNodes().end()
+            ? CycleDsp::outputGain(NodeParameterMap(*output).floatValue("gain", 0.5f))
+            : 1.f;
 }
 
 void GraphCompiler::refreshSignalProbes(

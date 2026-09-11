@@ -493,6 +493,10 @@ void IrModeller::updateSmoothedParameters(int deltaSamples) {
     postamp.update(deltaSamples);
 }
 
+void IrModeller::updateParametersToTarget() {
+    postamp.updateToTarget();
+}
+
 void IrModeller::audioFileModelled() {
     usingWavFile = false;
     waveLoaded = true;

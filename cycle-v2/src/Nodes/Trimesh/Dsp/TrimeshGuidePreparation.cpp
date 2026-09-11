@@ -100,17 +100,10 @@ PreparedTrimeshGuides TrimeshGuidePreparation::prepare(
     clearGuideAssignments(*result.mesh);
 
     std::unordered_map<String, int, StringHash> slots;
-    for (const auto& assignment : graph.getGuideAssignments()) {
-        if (assignment.targetNodeId != trimeshNode.id
-                || slots.find(assignment.guideId) != slots.end()) {
-            continue;
-        }
-        const GuideCurveResource* resource = graph.findGuideCurve(assignment.guideId);
-        const GuideHeatmapAsset* heatmap = resource != nullptr
-                ? graph.findGuideHeatmap(resource->heatmapAssetId)
-                : nullptr;
-        if (resource != nullptr && result.provider->addGuide(*resource, heatmap)) {
-            slots.emplace(resource->id, result.provider->size() - 1);
+    for (const auto& resource : graph.getGuideCurves()) {
+        const GuideHeatmapAsset* heatmap = graph.findGuideHeatmap(resource.heatmapAssetId);
+        if (result.provider->addGuide(resource, heatmap)) {
+            slots.emplace(resource.id, result.provider->size() - 1);
         }
     }
     for (const auto& assignment : graph.getGuideAssignments()) {
@@ -140,10 +133,19 @@ String TrimeshGuidePreparation::configurationKey(
                 << ":field=" << (int) assignment.target.field;
         const GuideCurveResource* resource = graph.findGuideCurve(assignment.guideId);
         if (resource != nullptr) {
-            key << ":revision=" << String((int64) resource->revision)
+            const auto& guides = graph.getGuideCurves();
+            const auto guide = std::find_if(
+                    guides.begin(),
+                    guides.end(),
+                    [&](const GuideCurveResource& candidate) {
+                        return candidate.id == resource->id;
+                    });
+            key << ":slot=" << std::distance(guides.begin(), guide)
+                    << ":revision=" << String((int64) resource->revision)
                     << ":heatmap=" << resource->heatmapAssetId
                     << ":enabled=" << (resource->enabled ? 1 : 0)
                     << ":noise=" << resource->noise
+                    << ":noiseSeed=" << resource->noiseSeed
                     << ":dc=" << resource->dcOffset
                     << ":phase=" << resource->phase;
             if (resource->model != nullptr) {

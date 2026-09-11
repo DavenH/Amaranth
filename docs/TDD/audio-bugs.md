@@ -148,6 +148,13 @@ Context:
   run but not in a later run, so Cycle 1 still has intermittent startup state.
   The corrected-note Guitar 3 G comparison also differs at tiny pre-note
   effect-tail levels in Cycle 1 and is not yet deterministic.
+- The paired runner now also disables macOS's Nano allocator for both child
+  renderers, in addition to pinning vecLib to one thread. This makes Sitar
+  byte-repeatable across its full MIDI matrix. Japan Drum MIDI 48 repeated five
+  times under that contract, but one of two Cycle 1 renders differed in a later
+  full matrix, so its separate intermittent state remains open. Artifacts:
+  `/tmp/cycle-japan-drum-repeat-allocator/comparison.json` and
+  `/tmp/cycle-japan-drum-verified-allocator/comparison.json`.
 - End-to-end exact output was initially masked by Cycle 1 master gain and
   Cycle V2's separate Output fader and safety headroom. Output gain is now
   translated into the graph, and the parity runner applies the same recorded
@@ -430,3 +437,97 @@ pitch-clocked Hermite resampling. Artifacts:
 
 Current status: spectral reconstruction boundary resolved; remaining
 deterministic output residual is tracked at pitch-clocked cycle resampling.
+
+## Open: Guitar 3 G effects diverge after an equivalent voice output
+
+Context:
+
+- Guitar 3 G now matches Cycle 1 through magnitude and phase operands. With
+  waveshaper, IR, EQ, and delay disabled, MIDI 48 is zero-lag at
+  `0.9999999997` correlation with a unity gain fit and `2.4e-5` residual.
+- Enabling only the authored 2x waveshaper originally lowered correlation to
+  `0.98330` and raised residual to `0.1820`. Cycle V2 incorrectly shared one
+  stateful oversampler across both channels; matching Cycle 1's per-channel
+  ownership raises correlation to `0.999999945` with a `0.000332` residual.
+- Adding the impulse response originally lowered correlation to `0.75736` and
+  raised residual to `0.6530`. Cycle V2 also shared one stateful convolver across
+  both channels; matching Cycle 1's per-channel ownership raises correlation to
+  `0.9999724` with a `0.00743` residual and `+0.0226 dB` fit.
+- Cycle 1 still fails fresh-process exact repeatability at tiny startup samples
+  even when every effect is disabled. Pinning Accelerate to one thread makes the
+  effect-free graph repeat exactly, localizing that variation to the inverse
+  FFT. Disabling macOS's Nano allocator also makes five full-effect MIDI 36
+  renders exact, but a later full matrix failed at MIDI 48. The difference is
+  already present in the dry output before a Delay tap can return. Disabling
+  Delay produced three exact repeats, but Delay is not yet identified as the
+  source because its presence changes allocation layout before rendering.
+
+Artifacts:
+
+- `/tmp/cycle-guitar-no-effects-final/comparison.json`
+- `/tmp/cycle-guitar-waveshaper-final/comparison.json`
+- `/tmp/cycle-guitar-waveshaper-channel-state/comparison.json`
+- `/tmp/cycle-guitar-waveshaper-ir-final/comparison.json`
+- `/tmp/cycle-guitar-ir-channel-state/comparison.json`
+- `/tmp/cycle-guitar-full-matrix/comparison.json`
+- `/tmp/cycle-guitar-midi36-repeat-recheck/comparison.json`
+- `/tmp/cycle-guitar-repeat-allocator/comparison.json`
+- `/tmp/cycle-guitar-verified-allocator/comparison.json`
+- `/tmp/cycle-guitar-repeat-no-delay/comparison.json`
+
+Current status: material waveshaper and IR gaps addressed. Their smaller
+numerical residuals remain open. EQ and delay add no material discrepancy, but
+Cycle 1's intermittent full-effect repeatability still blocks fixture admission.
+
+## Resolved: Icycle pitch-clocked Unison reconstruction and repeatability
+
+Context:
+
+- Icycle was regenerated from a direct Cycle 1 canonical export while retaining
+  its hand-authored Cycle V2 node presentation and three signal probes.
+- With waveshaper, IR, and delay disabled, MIDI 48 reaches `0.99548`
+  correlation and `0.0949` gain-matched residual at a five-sample diagnostic
+  lag.
+- The stage capture is byte-identical through time raster/frame and every
+  magnitude/phase operand. Forward FFT and reconstructed-frame differences are
+  only `8.8e-8` and `5.2e-6`; pitch-clocked cycle reconstruction increases the
+  residual to about `0.056`.
+- Unison group layout and jitter come from shared `UnisonCore`. All assigned
+  Guides have zero noise, offset, and phase, so lifecycle seed mapping does not
+  explain this preset's difference.
+- Cycle 1 changes from frame 40 across fresh processes even with Unison and all
+  effects disabled. Cycle V2 repeats exactly. This independently blocks fixture
+  admission until the Cycle 1 startup instability is localized.
+
+Artifacts:
+
+- `/tmp/cycle-icycle-unison-baseline/comparison.json`
+- `/tmp/cycle-icycle-no-unison/comparison.json`
+- `/tmp/cycle-icycle-unison-stages/comparison.json`
+
+Update: Cycle V2 had treated the 129-point Unison preview trajectory as an
+audio-time pitch buffer. Prepared oscillator regions now resolve the pitch
+Envelope into the existing cycle-envelope bank and advance one mature playback
+cursor per lane. At MIDI 48, every captured stage through reconstructed frames
+is byte-identical; pitch-clocked residual falls to `2.6e-5–4.6e-5`, final
+alignment becomes zero-lag, and the full effect graph reaches `0.99825`
+correlation with `0.0592` residual.
+
+Update: Cycle 1 latches its current reconstructed frame into past-frame storage
+after each successful oscillator render call. Cycle V2 retained the older past
+frame across calls. Restoring the mature boundary raises the effect-free MIDI
+36–72 matrix to `0.98602–1.00000` correlation and lowers residuals to
+`0.0011–0.1667`. The full graph reaches `0.98425–0.99997` correlation with
+`0.0076–0.1768` residual. The stage capture now includes the complete composed
+cycle, confirming that the earlier frame-8 divergence entered before Hermite
+resampling. The neutral shared-frame clock also retains Cycle 1's float
+frequency precision and fractional lane-cycle starts.
+
+Final update: the remaining Cycle 1 variation came from the live device
+advancing effect and master parameter smoothing by a timing-dependent amount
+before offline capture. The capture boundary now settles the existing
+waveshaper, IR, EQ, and master parameters to their authored targets after the
+device is suspended and prepared. Realtime smoothing is unchanged. Three fresh
+waveshaper-only renders now match byte-for-byte, as does the complete two-render
+MIDI 36–72 matrix in both engines. Icycle is admitted as a verified fixture;
+artifact: `/tmp/cycle-icycle-full-settled-matrix/comparison.json`.

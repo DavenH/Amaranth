@@ -1458,14 +1458,50 @@ TEST_CASE("Waveshaper oversamples audio while keeping traversal columns independ
             [](float value) { return std::isfinite(value); }));
 }
 
+TEST_CASE("Waveshaper oversampling keeps identical stereo channels independent",
+        "[cycle-v2][runtime][waveshaper][stereo][parity]") {
+    NodeAudioProcessorFactory factory;
+    AudioProcessContext context;
+    context.frameCount = 64;
+    std::vector<float> signal(64);
+    for (size_t i = 0; i < signal.size(); ++i) {
+        signal[i] = i % 2 == 0 ? -0.75f : 0.75f;
+    }
+    SignalPayload stereo = payload(signal);
+    stereo.channelLayout = ChannelLayout::StereoPair;
+    stereo.secondaryBlock.samples = signal;
+    context.inputs = { std::move(stereo) };
+    context.parameters = {
+            { "pre", "Pre", "0.8" },
+            { "post", "Post", "0.4" },
+            { "aaFactor", "AA Factor", "2" }
+    };
+
+    auto processor = factory.create(AudioModuleRole::Waveshaper);
+    prepareProcessor(*processor, AudioModuleRole::Waveshaper, context);
+    processor->process(context);
+
+    REQUIRE(output(context).isStereo());
+    REQUIRE(output(context).block.samples == output(context).secondaryBlock.samples);
+}
+
 TEST_CASE("Disabled waveshaper passes block and traversal grid through unchanged", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
 
     AudioProcessContext context;
     context.frameCount = 3;
-    context.inputs = {
-            gridPayload({ -0.5f, 0.f, 0.5f, 0.75f, -0.75f, 0.25f }, 2, 3)
+    context.outputPorts = {
+            { "time", PortDomain::TimeSignal, ChannelLayout::Mono }
     };
+    SignalPayload stereo = gridPayload(
+            { -0.5f, 0.f, 0.5f, 0.75f, -0.75f, 0.25f }, 2, 3);
+    stereo.channelLayout = ChannelLayout::StereoPair;
+    stereo.secondaryBlock.samples = SignalBuffer { 0.5f, 0.f, -0.5f };
+    stereo.secondaryTraversalGrid = stereo.traversalGrid;
+    stereo.secondaryTraversalGrid.values = SignalBuffer {
+            0.5f, 0.f, -0.5f, -0.75f, 0.75f, -0.25f
+    };
+    context.inputs = { std::move(stereo) };
     context.parameters = {
             { "enabled", "Enabled", "0" },
             { "pre", "Pre", "2" },
@@ -1476,8 +1512,13 @@ TEST_CASE("Disabled waveshaper passes block and traversal grid through unchanged
     processor->process(context);
 
     REQUIRE(output(context).block.samples == std::vector<float> { -0.5f, 0.f, 0.5f });
+    REQUIRE(output(context).isStereo());
+    REQUIRE(output(context).secondaryBlock.samples
+            == std::vector<float> { 0.5f, 0.f, -0.5f });
     REQUIRE(output(context).traversalGrid.values
             == std::vector<float> { -0.5f, 0.f, 0.5f, 0.75f, -0.75f, 0.25f });
+    REQUIRE(output(context).secondaryTraversalGrid.values
+            == std::vector<float> { 0.5f, 0.f, -0.5f, -0.75f, 0.75f, -0.25f });
 }
 
 TEST_CASE("IR processor transforms block and traversal grid through convolution", "[cycle-v2][runtime]") {
@@ -1605,6 +1646,10 @@ TEST_CASE("IR processor preserves the graph channel policy", "[cycle-v2][runtime
         context.inputs = { payload(std::vector<float>(64, 0.f)) };
         context.inputs.front().block.samples.front() = 1.f;
         context.inputs.front().channelLayout = layout;
+        if (layout == ChannelLayout::StereoPair) {
+            context.inputs.front().secondaryBlock.samples =
+                    context.inputs.front().block.samples;
+        }
         context.parameters = parameters;
 
         auto processor = factory.create(AudioModuleRole::ImpulseResponse);
@@ -1617,6 +1662,10 @@ TEST_CASE("IR processor preserves the graph channel policy", "[cycle-v2][runtime
             reference.assign(samples.begin(), samples.end());
         } else {
             REQUIRE(output(context).block.samples == reference);
+        }
+        if (layout == ChannelLayout::StereoPair) {
+            REQUIRE(output(context).secondaryBlock.samples
+                    == output(context).block.samples);
         }
     }
 }
@@ -1709,6 +1758,66 @@ TEST_CASE("Delay processor transforms block and traversal grid with matching del
     REQUIRE(output(context).traversalGrid.values[0] == Catch::Approx(output(context).block.samples[0]));
     REQUIRE(output(context).traversalGrid.values[5] == Catch::Approx(output(context).block.samples[5]));
     REQUIRE(output(context).traversalGrid.values[8] > context.inputs.front().traversalGrid.values[8]);
+}
+
+TEST_CASE("Delay processor preserves independent stereo input state",
+        "[cycle-v2][runtime][delay][stereo]") {
+    NodeAudioProcessorFactory factory;
+    AudioProcessContext context;
+    context.frameCount = 32;
+    context.timing.sampleRate = 128.0;
+    context.parameters = {
+            { "time", "Time", "0" },
+            { "feedback", "Feedback", "0.5" },
+            { "wet", "Wet", "1" },
+            { "spin", "Pan Amount", "0" },
+            { "spinIters", "Pan Cycle", "0" }
+    };
+    SignalPayload stereo = payload(std::vector<float>(32, 0.f));
+    stereo.channelLayout = ChannelLayout::LinkedStereo;
+    stereo.secondaryBlock.samples.resize(32);
+    stereo.block.samples[0] = 1.f;
+    stereo.secondaryBlock.samples[3] = 0.5f;
+    context.inputs = { std::move(stereo) };
+
+    auto processor = factory.create(AudioModuleRole::Delay);
+    prepareProcessor(*processor, AudioModuleRole::Delay, context);
+    processor->process(context);
+
+    REQUIRE(output(context).channelLayout == ChannelLayout::LinkedStereo);
+    REQUIRE(output(context).secondaryBlock.samples.size() == context.frameCount);
+    REQUIRE(output(context).block.samples != output(context).secondaryBlock.samples);
+    REQUIRE(output(context).block.samples[0] == Catch::Approx(1.f));
+    REQUIRE(output(context).secondaryBlock.samples[0] == Catch::Approx(0.f).margin(1.0e-6f));
+    REQUIRE(output(context).secondaryBlock.samples[3] == Catch::Approx(0.5f));
+}
+
+TEST_CASE("Delay pan cycle produces complementary stereo echoes",
+        "[cycle-v2][runtime][delay][stereo][pan]") {
+    NodeAudioProcessorFactory factory;
+    AudioProcessContext context;
+    context.frameCount = 256;
+    context.timing.sampleRate = 128.0;
+    context.parameters = {
+            { "time", "Time", "0" },
+            { "feedback", "Feedback", "0.5" },
+            { "wet", "Wet", "1" },
+            { "spin", "Pan Amount", "1" },
+            { "spinIters", "Pan Cycle", "0.5" }
+    };
+    SignalPayload stereo = payload(std::vector<float>(256, 0.f));
+    stereo.channelLayout = ChannelLayout::StereoPair;
+    stereo.secondaryBlock.samples.resize(256);
+    stereo.block.samples[0] = 1.f;
+    stereo.secondaryBlock.samples[0] = 1.f;
+    context.inputs = { std::move(stereo) };
+
+    auto processor = factory.create(AudioModuleRole::Delay);
+    prepareProcessor(*processor, AudioModuleRole::Delay, context);
+    processor->process(context);
+
+    REQUIRE(output(context).isStereo());
+    REQUIRE(output(context).block.samples != output(context).secondaryBlock.samples);
 }
 
 TEST_CASE("Delay traversal rendering does not overwrite block state", "[cycle-v2][runtime]") {

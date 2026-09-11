@@ -54,6 +54,21 @@ def graph(nodes, edges):
 
 
 class SimplifyCycleV2PresetsTest(unittest.TestCase):
+    def test_unused_guides_remain_available_and_keep_their_slot_identity(self):
+        document = graph([], [])
+        document["guides"] = [
+            {"id": "guide1"},
+            {"id": "guide2"},
+        ]
+        document["guideAssignments"] = []
+
+        simplify.simplify_graph(document)
+
+        self.assertEqual(
+            [guide["id"] for guide in document["guides"]],
+            ["guide1", "guide2"],
+        )
+
     def test_complete_scratch_fanout_becomes_voice_context_default(self):
         scratch = {
             **node("scratch", "envelope"),
@@ -112,7 +127,11 @@ class SimplifyCycleV2PresetsTest(unittest.TestCase):
             {
                 "id": "pan",
                 "kind": "spectralLayer",
-                "parameters": {"pan": 0.5, "range": 0.625},
+                "parameters": {
+                    "pan": 0.5,
+                    "range": 0.625,
+                    "mode": "additive",
+                },
             },
             node("out", "output"),
         ], [
@@ -132,6 +151,10 @@ class SimplifyCycleV2PresetsTest(unittest.TestCase):
         self.assertEqual(document["edges"][0]["sourceNodeId"], "mesh")
         self.assertEqual(document["probes"][0]["sourceNodeId"], "mesh")
         self.assertEqual(document["nodes"][0]["parameters"]["range"], 0.625)
+        self.assertEqual(
+            document["nodes"][0]["parameters"]["spectralMode"],
+            "additive",
+        )
 
     def test_empty_spectral_layer_and_operation_are_bypassed(self):
         document = graph([
@@ -179,7 +202,7 @@ class SimplifyCycleV2PresetsTest(unittest.TestCase):
         )
         self.assertEqual(document["edges"], [edge("mesh", "out", "out", "time")])
 
-    def test_unused_nodes_and_guides_are_removed(self):
+    def test_unused_nodes_are_removed_without_discarding_guide_resources(self):
         document = graph([
             node("mesh", "trilinearMesh", [1]),
             node("unused", "envelope"),
@@ -198,9 +221,8 @@ class SimplifyCycleV2PresetsTest(unittest.TestCase):
         report = simplify.simplify_graph(document)
 
         self.assertEqual(report["isolatedNode"], 1)
-        self.assertEqual(report["unusedGuide"], 1)
-        self.assertEqual([item["id"] for item in document["guides"]], ["used"])
-        self.assertEqual(document["guideHeatmaps"], [])
+        self.assertEqual([item["id"] for item in document["guides"]], ["used", "unused"])
+        self.assertEqual(document["guideHeatmaps"], [{"id": "unused-map"}])
 
     def test_wholly_silent_empty_time_graph_collapses_to_output(self):
         document = graph([

@@ -85,7 +85,8 @@ public:
                     region,
                     maximumCycleSamples,
                     processors,
-                    context.lanes.order)
+                    context.lanes.order,
+                    context.pitchEnvelopeNodeId)
                 || !runtime.prepare(
                         spec.maximumFrameCount,
                         maximumCycleSamples,
@@ -135,7 +136,8 @@ public:
                     region,
                     maximumFixedFrameSize,
                     processors,
-                    context.lanes.order)
+                    context.lanes.order,
+                    context.pitchEnvelopeNodeId)
                 && runtime.prepare(
                         spec.maximumFrameCount,
                         maximumCycleSamples,

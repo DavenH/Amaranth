@@ -152,9 +152,27 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertTrue(nodes["timeLayer1"]["parameters"]["enabled"])
         self.assertFalse(nodes["timeLayer2"]["parameters"]["enabled"])
         self.assertFalse(nodes["magnitudeLayer2"]["parameters"]["enabled"])
+        self.assertEqual(
+            nodes["magnitudeLayer1"]["parameters"]["spectralMode"],
+            "additive",
+        )
+        self.assertEqual(
+            nodes["magnitudeLayer2"]["parameters"]["spectralMode"],
+            "multiplicative",
+        )
         self.assertEqual(nodes["magnitudeOp1"]["kind"], "add")
         self.assertEqual(nodes["magnitudeOp2"]["kind"], "multiply")
         self.assertEqual(nodes["phaseOp1"]["kind"], "add")
+
+    def test_converter_persists_cycle_one_guide_noise_seeds(self):
+        self.assertEqual(
+            port_cycle_v1_preset.resolved_guide_noise_seed({"noiseSeed": 77}, 0),
+            77,
+        )
+        self.assertEqual(
+            port_cycle_v1_preset.resolved_guide_noise_seed({"noiseSeed": -1}, 0),
+            6585,
+        )
 
     def test_document_declick_uses_the_volume_envelope_boundary(self):
         source = convertible_source()
@@ -271,6 +289,11 @@ class PortCycleV1PresetTest(unittest.TestCase):
         existing_node["position"] = {"x": 123.0, "y": 456.0}
         existing_node["portSides"] = {"outputs": {"context": "bottom"}}
         existing_node["parameters"]["octave"] = 7
+        existing["probes"] = [{
+            "id": "probe",
+            "sourceNodeId": "timeLayer1",
+            "sourcePortId": "out",
+        }]
 
         reconciled = port_cycle_v1_preset.preserve_presentation(
             converted, existing)
@@ -279,6 +302,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertEqual(node["position"], {"x": 123.0, "y": 456.0})
         self.assertEqual(node["portSides"], {"outputs": {"context": "bottom"}})
         self.assertNotEqual(node["parameters"]["octave"], 7)
+        self.assertEqual(reconciled["probes"], existing["probes"])
 
     def test_converter_preserves_legacy_inverse_velocity_blue_source(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
@@ -572,6 +596,18 @@ class PortCycleV1PresetTest(unittest.TestCase):
             "highPass": 0.4,
             "wet": 0.5,
         })
+
+    def test_legacy_reverb_uses_the_effective_high_pass_default(self):
+        source = convertible_source()
+        source["preset"]["details"] = {"productVersion": 1.0}
+        source["preset"]["effects"]["Reverb"]["enabled"] = True
+
+        converted = port_cycle_v1_preset.convert(source)
+        reverb = next(
+            node for node in converted["nodes"]
+            if node["id"] == "reverb")
+
+        self.assertEqual(reverb["parameters"]["highPass"], 0.05)
 
     def test_group_unison_uses_the_shared_cycle_mapping(self):
         source = convertible_source()

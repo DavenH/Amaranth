@@ -958,3 +958,43 @@ TEST_CASE("Compiler assigns output slots and source lifetimes before processing"
     REQUIRE(buffer.firstProducerStep >= 0);
     REQUIRE(buffer.lastConsumerStep > buffer.firstProducerStep);
 }
+
+TEST_CASE("Compiler keeps processing global downstream of the first global effect",
+        "[cycle-v2][graph][audio-scope]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
+    graph.addNode(factory.createNode(
+            NodeKind::GenericProcessor,
+            "downstream",
+            {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "wave", "out", "delay", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "delay", "time", "downstream", "in",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "downstream", "out", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(findStep(result.plan, "wave").ownershipScope
+            == RuntimeOwnershipScope::SynthVoice);
+    REQUIRE(findStep(result.plan, "delay").ownershipScope
+            == RuntimeOwnershipScope::Global);
+    REQUIRE(findStep(result.plan, "downstream").ownershipScope
+            == RuntimeOwnershipScope::Global);
+    REQUIRE(findStep(result.plan, "out").ownershipScope
+            == RuntimeOwnershipScope::Global);
+    REQUIRE(result.plan.voiceMixBufferIndices.size() == 1);
+    REQUIRE(result.plan.voiceMixBufferIndices.front()
+            == findStep(result.plan, "wave").outputs.front().bufferIndex);
+}

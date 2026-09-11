@@ -1217,7 +1217,7 @@ void NodeCanvas::refreshCompiledStateAsync() {
             });
 }
 
-void NodeCanvas::setPreviewVoiceLengthSeconds(double seconds) {
+void NodeCanvas::setVoiceLengthSeconds(double seconds) {
     const double duration = jlimit(
             CycleDsp::voiceLengthSeconds(0.f),
             CycleDsp::voiceLengthSeconds(1.f),
@@ -1228,6 +1228,9 @@ void NodeCanvas::setPreviewVoiceLengthSeconds(double seconds) {
     globalUnisonPreviewContext.voiceDurationSeconds = duration;
     settings.getGlobalSetting(AppSettings::PreviewVoiceLengthMilliseconds) =
             roundToInt(duration * 1000.0);
+    if (voiceLengthChangedCallback) {
+        voiceLengthChangedCallback(duration);
+    }
     editStatusMessage = "Voice length: " + formatPropertyReal(duration) + " seconds";
     requestCanvasRepaint();
 }
@@ -1703,6 +1706,10 @@ bool NodeCanvas::copyAudioPlan(
     return true;
 }
 
+float NodeCanvas::graphOutputGain() const {
+    return GraphCompiler::outputGainFor(commands.editingGraph());
+}
+
 Rectangle<int> NodeCanvas::performanceKeyboardDockBounds() const {
     return CanvasUtilityDock::layout(canvasContentBounds()).keyboard.toNearestInt();
 }
@@ -1723,6 +1730,11 @@ Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
 
 void NodeCanvas::setOverlayOcclusionChangedCallback(std::function<void()> callback) {
     overlayOcclusionChanged = std::move(callback);
+}
+
+void NodeCanvas::setVoiceLengthChangedCallback(
+        std::function<void(double)> callback) {
+    voiceLengthChangedCallback = std::move(callback);
 }
 
 void NodeCanvas::notifyOverlayOcclusionChanged() {

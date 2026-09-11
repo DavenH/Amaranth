@@ -1,0 +1,45 @@
+{
+    "schema": "cycle-v1-v2-audio-equivalence.v1",
+  "status": "verified",
+    "v1": {
+        "factoryPreset": "flute",
+        "sourceDocument": "cycle/content/presets/flute.cyc",
+        "sha256": "2bf488dbfd63d209191c4bee39df44fc7dfb2e5142f808b9392b06cefcc9b7f4"
+    },
+    "v2": {
+        "graph": "cycle-v2/content/presets/flute.cyclegraph",
+        "sha256": "8ef622058fa64871677765e347acd5b7df1d4a85b6e752dfe9121049eab6e7b2",
+        "renderOverrides": {
+            "voiceDurationSeconds": 2.901406327604401
+        }
+    },
+    "translation": {
+        "midiNoteOffset": 0,
+        "legacyMidiReferenceOffset": -12,
+        "v1MasterGain": 0.7773159385024441,
+        "v2OutputGainUnitValue": 0.458015267,
+        "v2OutputHeadroom": 0.125,
+        "coverage": [
+            "timeLayer",
+            "volumeEnvelope",
+            "guideNoise",
+            "impulseResponse"
+        ],
+        "determinism": "offline seed maps to the Cycle 1 Unison voice RNG stream before Guide offset and per-cycle draws",
+        "inputValidation": "regenerated from a direct Cycle 1 canonical export while preserving Cycle V2 presentation",
+        "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
+    },
+    "effectBindings": {
+        "impulseResponse": {
+            "v1Area": "AreaImpulse",
+            "v2Node": "impulseResponse"
+        }
+    },
+    "thresholds": {
+        "correlationMin": 0.98,
+        "gainMatchedResidualMax": 0.2,
+        "spectrumRmseDbMax": 6.0,
+        "cyclogramMeanRowDifferenceMax": 0.2,
+        "exactSamplesRequired": false
+    }
+}

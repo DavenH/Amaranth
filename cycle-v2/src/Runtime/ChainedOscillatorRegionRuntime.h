@@ -28,6 +28,12 @@ public:
     virtual ~OscillatorCycleRenderer() = default;
     virtual void reset() {}
     virtual void applyLifecycleEvent(const NoteLifecycleEvent&) {}
+    virtual void advanceCycleEnvelopes(
+            int,
+            int,
+            double) {}
+    virtual bool hasPitchEnvelope() const { return false; }
+    virtual float pitchEnvelopeValue(int) const { return 0.5f; }
     virtual void renderCycle(
             const ChainedCycleRenderRequest& request,
             Buffer<float> left,

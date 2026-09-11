@@ -1,10 +1,12 @@
 #pragma once
 
-#include "Runtime/UnarySignalProcessor.h"
-#include "Runtime/NodeDspConfiguration.h"
+#include <array>
 
 #include <Algo/Oversampler.h>
 #include <Audio/WaveshaperTransfer.h>
+
+#include "Runtime/NodeDspConfiguration.h"
+#include "Runtime/UnarySignalProcessor.h"
 
 namespace CycleV2 {
 
@@ -35,8 +37,8 @@ public:
     void processBuffer(Buffer<float> buffer, const SignalProcessPosition& position) override;
 
 private:
-    Oversampler oversampler { 16 };
-    ScopedAlloc<float> oversampleMemory;
+    std::array<Oversampler, 2> oversamplers { Oversampler(16), Oversampler(16) };
+    std::array<ScopedAlloc<float>, 2> oversampleMemory;
     float preGain { 1.f };
     float postGain { 1.f };
     int oversampleFactor { 1 };

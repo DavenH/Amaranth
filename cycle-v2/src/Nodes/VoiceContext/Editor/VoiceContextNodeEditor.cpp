@@ -137,6 +137,9 @@ public:
         state->setProperty(
                 "previewVoiceLengthSeconds",
                 CycleDsp::voiceLengthSeconds((float) voiceLength.slider.getValue()));
+        state->setProperty(
+                "voiceLengthSeconds",
+                CycleDsp::voiceLengthSeconds((float) voiceLength.slider.getValue()));
         return state;
     }
 
@@ -227,7 +230,7 @@ private:
                 CycleDsp::voiceLengthUnitValue(1.0),
                 0.01,
                 0.001,
-                "Preview voice duration in seconds. Shift-drag for fine adjustment.");
+                "Voice duration in seconds. Shift-drag for fine adjustment.");
         voiceLength.slider.setKeyboardStepper([](double current, bool increase, bool fine) {
             const double seconds = CycleDsp::voiceLengthSeconds((float) current);
             const double step = fine ? 0.01 : 0.1;
@@ -241,7 +244,7 @@ private:
         });
         voiceLength.slider.onValueChange = [this] {
             if (!syncingVoiceLength) {
-                resources.setPreviewVoiceLengthSeconds(
+                resources.setVoiceLengthSeconds(
                         CycleDsp::voiceLengthSeconds((float) voiceLength.slider.getValue()));
             }
         };

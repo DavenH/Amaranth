@@ -43,7 +43,7 @@ public:
     void setPrimaryViewAxis(int axis);
     void setCyclic(bool shouldWrap);
     void setGuideCurveProvider(GuideCurveProvider* provider);
-    void setVoiceLifecycleSeed(uint32_t seed);
+    void setVoiceLifecycleSeed(uint32_t seed, int guideSeedCount = -1);
     void rasterizePrepared(int noiseSeed);
     void setFrequencyMidiNote(int midiNote);
 
@@ -100,8 +100,9 @@ private:
     Rasterization::TrilinearMeshRasterizer rasterizer;
     GuideCurveProvider* guideCurveProvider {};
     Mesh* mesh {};
-    uint32_t voiceLifecycleSeed {};
     bool hasVoiceLifecycleSeed {};
+    uint32_t voiceLifecycleSeed {};
+    int voiceGuideSeedCount { -1 };
     int noiseSeed { -1 };
 };
 

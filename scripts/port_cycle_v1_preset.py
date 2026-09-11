@@ -400,6 +400,14 @@ def translated_octave(octave_knob):
     return preset_octave + LEGACY_MIDI_REFERENCE_OFFSET // 12
 
 
+def resolved_guide_noise_seed(properties, guide_index):
+    stored_seed = properties.get("noiseSeed", -1)
+    if stored_seed >= 0:
+        return stored_seed
+    mixed = ((guide_index + 1) * 0x9e3779b9) & 0xffffffff
+    return mixed % 0x2000
+
+
 def morph_state(preset):
     authored = preset.get("morphPanel") or {}
     return {
@@ -466,6 +474,13 @@ def envelope_node(preset, layer, purpose, node_id, x, y, level=1.0):
         },
         envelope_model(layer, morph),
     )
+
+
+def effective_reverb_high_pass(preset, stored_value):
+    product_version = preset.get("details", {}).get("productVersion")
+    if product_version is not None and float(product_version) < 1.5:
+        return 0.05
+    return stored_value
 
 
 def convert(source):
@@ -602,6 +617,7 @@ def convert(source):
             mode = "additive" if group_name == "phase" \
                 or layer["properties"]["mode"] == 0 \
                 else "multiplicative"
+            parameters["spectralMode"] = mode
             operation = "add" if mode == "additive" else "multiply"
             nodes.append(node(
                 layer_id, "trilinearMesh", 1150, y + 170 * (index - 1),
@@ -615,7 +631,7 @@ def convert(source):
                     "spectralLayer",
                     1490,
                     y + 170 * (index - 1),
-                    {"pan": pan}))
+                    {"pan": pan, "mode": mode}))
                 edges.append(edge(layer_id, "out", process_id, "in"))
                 layer_source = (process_id, "out")
             edges.extend([
@@ -649,6 +665,7 @@ def convert(source):
             "noise": props["noiseLevel"],
             "dcOffset": props["offsetLevel"],
             "phase": props["phaseLevel"],
+            "noiseSeed": resolved_guide_noise_seed(props, index),
             "revision": 1,
             "model": flat_curve_model(layer["mesh"]),
         })
@@ -764,7 +781,8 @@ def convert(source):
             "size": reverb["knobs"][0],
             "damp": reverb["knobs"][1],
             "width": reverb["knobs"][2],
-            "highPass": reverb["knobs"][3],
+            "highPass": effective_reverb_high_pass(
+                preset, reverb["knobs"][3]),
             "wet": reverb["knobs"][4],
         }))
         edges.append(edge(signal_node, signal_port, "reverb", "time"))
@@ -997,6 +1015,7 @@ def preserve_presentation(converted, existing):
                 node[property_name] = copy.deepcopy(previous[property_name])
             else:
                 node.pop(property_name, None)
+    converted["probes"] = copy.deepcopy(existing.get("probes", []))
     return converted
 
 

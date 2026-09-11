@@ -203,6 +203,11 @@ public:
         return *this;
     }
 
+    DefinitionBuilder& globalProcessing() {
+        value.processingScope = AudioProcessingScope::Global;
+        return *this;
+    }
+
     DefinitionBuilder& disablePreview() {
         value.previewable = false;
         return *this;
@@ -424,6 +429,8 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }, {
                             boolean("enabled", "Enabled", true, dsp | presentation),
                             number("range", "Range", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            choice("spectralMode", "Spectral Mode", "auto",
+                                    { "auto", "additive", "multiplicative" }, graph | dsp),
                             number("yellow", "Yellow", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
@@ -443,7 +450,9 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     "Pan", "stereo placement", "pan",
                     { input("in", "Layer", PortDomain::ControlSignal, ChannelLayout::Mono) },
                     { output("out", "Stereo", PortDomain::ControlSignal, ChannelLayout::StereoPair) }, {
-                            number("pan", "Pan", 0.5f, 0.f, 1.f, dsp | preview | presentation)
+                            number("pan", "Pan", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            choice("mode", "Mode", "auto",
+                                    { "auto", "additive", "multiplicative" }, graph | dsp)
                     }))
                     .help("Places a signal in the stereo field.")
                     .execution(NodeExecutionTrait::CoordinateTransform)
@@ -526,6 +535,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     }))
                     .help("Applies the drawn impulse response to the sound.")
                     .model(std::make_shared<CurveNodeDomainCodec>(NodeKind::ImpulseResponse))
+                    .globalProcessing()
                     .runtime(AudioModuleRole::ImpulseResponse, PreviewModuleRole::ImpulseResponse,
                             "cycle/src/Audio/Effects/IrModeller.cpp")
                     .presentation({ 230.f, 92.f })
@@ -540,6 +550,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     }))
                     .help("Shapes the waveform with a custom transfer curve.")
                     .model(std::make_shared<CurveNodeDomainCodec>(NodeKind::Waveshaper))
+                    .globalProcessing()
                     .runtime(AudioModuleRole::Waveshaper, PreviewModuleRole::Waveshaper,
                             "cycle/src/Audio/Effects/WaveShaper.cpp")
                     .presentation({ 154.f, 174.f })
@@ -581,6 +592,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("highPass", "High Pass", 0.05f, 0.f, 1.f, dsp | presentation)
                     }))
                     .help("Adds a sense of space and room around the sound.")
+                    .globalProcessing()
                     .runtime(AudioModuleRole::Reverb, PreviewModuleRole::ReverbSpectrogram,
                             "cycle/src/Audio/Effects/Reverb.cpp")
                     .finish(),
@@ -595,6 +607,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("spinIters", "Pan Cycle", 0.f, 0.f, 1.f, dsp | presentation)
                     }))
                     .help("Creates tempo-synced echoes that move across the stereo field.")
+                    .globalProcessing()
                     .runtime(AudioModuleRole::Delay, PreviewModuleRole::None,
                             "cycle/src/Audio/Effects/Delay.cpp")
                     .finish(),
@@ -614,6 +627,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("band5Frequency", "Band 5 Frequency", 0.8286473f, 0.f, 1.f, dsp | preview | presentation)
                     }))
                     .help("Shapes the tone with five adjustable frequency bands.")
+                    .globalProcessing()
                     .runtime(AudioModuleRole::Equalizer, PreviewModuleRole::EqualizerResponse,
                             "cycle/src/Audio/Effects/Equalizer.cpp")
                     .presentation({ 230.f, 112.f })
@@ -636,6 +650,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                                     dsp | preview | presentation)
                     }))
                     .help("Sends the finished sound to the audio output.")
+                    .globalProcessing()
                     .runtime(AudioModuleRole::Output, PreviewModuleRole::OutputMeters)
                     .presentation({}, { 190.f, 320.f })
                     .finish()

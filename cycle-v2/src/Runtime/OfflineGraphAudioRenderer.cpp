@@ -129,6 +129,9 @@ OfflineGraphAudioResult OfflineGraphAudioRenderer::render(
     renderer.setVolumeEnvelopeClockSampleRate(request.sampleRate);
     renderer.setOutputGain(request.outputGain);
     renderer.setControlNoteOffset(request.controlNoteOffset);
+    if (request.hasRandomSeed) {
+        renderer.setRandomSeedForTesting(request.randomSeed);
+    }
     for (int channel = 0; channel < request.channelCount; ++channel) {
         result.channels[(size_t) channel].resize(request.sampleCount);
     }

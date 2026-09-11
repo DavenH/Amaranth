@@ -134,6 +134,11 @@ void Waveshaper::updateSmoothedParameters(int deltaSamples) {
     preamp.update(deltaSamples);
 }
 
+void Waveshaper::updateParametersToTarget() {
+    postamp.updateToTarget();
+    preamp.updateToTarget();
+}
+
 bool Waveshaper::isEnabled() const {
     return ui->isEffectEnabled();
 }

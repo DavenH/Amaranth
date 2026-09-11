@@ -1,42 +1,47 @@
 {
     "schema": "cycle-v1-v2-audio-equivalence.v1",
-    "status": "diagnostic",
+    "status": "verified",
     "v1": {
-        "factoryPreset": "guitar-3-g",
-        "sourceDocument": "cycle/content/presets/guitar-3-g.cyc",
-        "sha256": "28e5d4f2152a7fa43f616ce1b562d74326f0e442d091efb9bd0544562ec871e2"
+        "factoryPreset": "Icycle",
+        "sourceDocument": "cycle/content/presets/icycle.cyc",
+        "sha256": "d11e833e747f45b391cd7a290e1b498cd712d3013b337af6db18fd6ac2421273"
     },
     "v2": {
-        "graph": "cycle-v2/content/presets/guitar-3-g.cyclegraph",
-        "sha256": "e3465410cd27f1e6ea2e3f4124b87fea5a349a77ed0de3d53714b2ce47ea0944",
+        "graph": "cycle-v2/content/presets/Icycle.cyclegraph",
+        "sha256": "0938ee5f5e733c01a31d4569106a8044a079dfd11f1a8ba2564f05733f4406bb",
         "renderOverrides": {
-            "voiceDurationSeconds": 4.568038808277109
+            "voiceDurationSeconds": 2.2102451743580955
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 0.9773594682052107,
-        "v2OutputGainUnitValue": 0.496183206,
+        "v1MasterGain": 1.053085198357633,
+        "v2OutputGainUnitValue": 0.50862069,
         "v2OutputHeadroom": 0.125,
         "coverage": [
-            "emptyTimeLayerBypass",
-            "magnitudeLayer",
-            "phaseLayer",
+            "multipleTimeLayers",
+            "multipleMagnitudeLayers",
+            "multiplePhaseLayers",
             "stereoPhasePan",
             "volumeEnvelope",
+            "pitchEnvelope",
             "scratchEnvelope",
-            "waveshaper2x",
+            "unisonGroup6",
+            "waveshaper",
             "impulseResponse",
-            "equalizer",
             "delay"
         ],
-        "determinism": "guide noise and unison are disabled",
-        "inputValidation": "regenerated from a direct Cycle 1 canonical file export on 2026-09-09",
+        "determinism": "guide noise is disabled, Unison layout is deterministic, and offline parameter smoothing is settled before capture",
+        "inputValidation": "regenerated from a direct Cycle 1 canonical file export while preserving Cycle V2 presentation and probes",
         "knownRuntimeGaps": [],
         "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
     },
     "effectBindings": {
+        "unison": {
+            "v1Area": "AreaUnison",
+            "v2Node": "unison"
+        },
         "waveshaper": {
             "v1Area": "AreaWaveshaper",
             "v2Node": "waveshaper"
@@ -44,10 +49,6 @@
         "impulseResponse": {
             "v1Area": "AreaImpulse",
             "v2Node": "impulseResponse"
-        },
-        "equalizer": {
-            "v1Area": "AreaEQ",
-            "v2Node": "equalizer"
         },
         "delay": {
             "v1Area": "AreaDelay",

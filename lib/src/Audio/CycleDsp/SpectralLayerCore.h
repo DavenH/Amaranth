@@ -15,8 +15,12 @@ public:
             int activeBinCount) {
         const int magnitudeStart = jlimit(0, magnitudes.size(), activeBinCount);
         const int phaseStart = jlimit(0, phases.size(), activeBinCount);
-        magnitudes.offset(magnitudeStart).zero();
-        phases.offset(phaseStart).zero();
+        if (magnitudeStart < magnitudes.size()) {
+            magnitudes.offset(magnitudeStart).zero();
+        }
+        if (phaseStart < phases.size()) {
+            phases.offset(phaseStart).zero();
+        }
     }
 
     static float phaseOffsetScale(float range) {

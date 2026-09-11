@@ -16,6 +16,16 @@ double OscillatorLaneCore::angleDelta(
     return UnisonCore::frequencyForMidiNote(midiNote, detuneCents) / sampleRate;
 }
 
+double OscillatorLaneCore::legacyNeutralAngleDelta(
+        int midiNote,
+        double sampleRate) {
+    if (sampleRate <= 0.0) {
+        return 0.0;
+    }
+    const float frequency = (float) UnisonCore::frequencyForMidiNote(midiNote);
+    return frequency / sampleRate;
+}
+
 double OscillatorLaneCore::angleDeltaForPitchUnit(
         int midiNote,
         float detuneCents,

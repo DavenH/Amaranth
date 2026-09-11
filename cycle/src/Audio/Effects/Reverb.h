@@ -26,6 +26,7 @@ public:
     void setPendingAction(int action, int value);
     void createKernel(int size);
     void updateKernelSections();
+    void updateParametersToTarget();
     void audioThreadUpdate() override;
     void resetOutputBuffer();
     void setBlockSize(int size);

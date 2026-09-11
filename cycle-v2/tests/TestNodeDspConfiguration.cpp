@@ -17,6 +17,16 @@ public:
     int value {};
 };
 
+void setParameter(Node& node, const String& id, const String& value) {
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == id) {
+            parameter.value = value;
+            return;
+        }
+    }
+    FAIL("Missing node parameter: " << id);
+}
+
 }
 
 TEST_CASE("DSP configuration publication retains stable keys and complete revisions", "[cycle-v2][runtime][configuration]") {
@@ -92,6 +102,39 @@ TEST_CASE("Direct spectral Trimesh applies its range before IFFT",
             {},
             &graph,
             magnitude->id);
+    const auto spectral = std::dynamic_pointer_cast<const TrimeshConfiguration>(
+            configuration);
+
+    REQUIRE(spectral != nullptr);
+    REQUIRE(spectral->appliesSpectralRange);
+    REQUIRE_FALSE(spectral->multiplicative);
+}
+
+TEST_CASE("Explicit spectral mode survives a downstream multiply",
+        "[cycle-v2][runtime][configuration][spectral]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    Node magnitude = factory.createNode(NodeKind::TrilinearMesh, "magnitude", {});
+    setParameter(magnitude, "spectralMode", "additive");
+    graph.addNode(std::move(magnitude));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+    graph.addEdge({
+            "magnitude",
+            "out",
+            "multiply",
+            "right",
+            PortDomain::SpectralMagnitudeSignal
+    });
+    const Node* storedMagnitude = graph.findNode("magnitude");
+    REQUIRE(storedMagnitude != nullptr);
+
+    const auto configuration = NodeDspConfigurationFactory().create(
+            AudioModuleRole::MeshSource,
+            storedMagnitude->parameters,
+            storedMagnitude->model,
+            {},
+            &graph,
+            storedMagnitude->id);
     const auto spectral = std::dynamic_pointer_cast<const TrimeshConfiguration>(
             configuration);
 

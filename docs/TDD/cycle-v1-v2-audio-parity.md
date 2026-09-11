@@ -170,11 +170,12 @@ translation. The first broad candidates are:
 | simple-bass | Time layer, one multiplicative magnitude layer, and a volume envelope; no active phase, scratch, effects, unison, or guide noise | Verified. Shared document declick and the legacy split-rate volume-envelope clock are restored. Complete 75/200/400 ms notes at 48 kHz have zero lag and at least `0.99999999991` correlation. |
 | power | Time layer plus volume envelope | Regenerated exactly but rejected as an audio oracle: Cycle 1 renders silence because the active time layer has no authored waveform geometry. |
 | Subbass | Time, magnitude, phase, volume/scratch envelopes | Port manifest was strict, but current notes 48–72 fail its old output thresholds; diagnostic only. |
-| guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Its legacy-static volume/scratch envelopes are now explicit, and the frame-zero raster plus morph coordinates are byte-identical. The next discrepancy is a uniform spectral range-shaping gain difference. |
+| guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Per-channel waveshaper and IR state now match Cycle 1 ownership. MIDI 36–72 meets the diagnostic audio thresholds; EQ and delay add no material gap. MIDI 36 still fails Cycle 1's raw repeat gate, so the fixture is not admitted. |
 | japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase. One corrected render repeated exactly, but a later run did not repeat in Cycle 1. Its large evolving mismatch remains diagnostic until that intermittent startup state is isolated. |
-| Icycle | Broad synthesis/effects plus six-voice Unison | Guide noise is disabled. Current graph differs from fresh conversion in reverb size; Unison repeatability still needs an admitted pair. |
+| Icycle | Broad synthesis/effects plus six-voice Unison | Verified. Regenerated from a direct canonical export while retaining node layout, port presentation, and three authored probes. Its reverb is disabled; the corrected IR size is `0.26`. Prepared per-lane pitch playback, Cycle 1's render-boundary frame latch, and deterministic offline parameter settling bring the full MIDI 36–72 matrix to `0.98425–0.99997` correlation with exact repeatability in both engines. |
 | accoustic | Broad graph including reverb | Current graph differs in morph/link state, envelope state, reverb size, and IR high-pass; do not use for DSP attribution yet. |
-| organ-2 | Spectral layers, envelopes, Unison, IR, delay, reverb | Current graph differs from fresh conversion in reverb size; reverb seed parity is unresolved. |
+| organ-2 | Spectral layers, envelopes, Unison, IR, delay, reverb | Regenerated from a fresh export while retaining presentation. Its oscillator-through-delay baseline is near-identical and global effect tails now outlive voices. The full Reverb output remains diagnostic. |
+| sitar | Three magnitude layers, phase, and persisted Guide noise | Verified. The converter retains Cycle 1's layer modes and Guide seeds. With the deterministic renderer environment fixed, MIDI 36–72 is byte-repeatable in both engines and reaches `0.99905–1.00000` correlation. |
 
 Noise-bearing presets are deferred until both engines expose and honor the
 same persisted or injected seed. “Noise level zero” alone does not exempt a
@@ -298,10 +299,14 @@ as the scratch envelope evolves.
     rasterization/compositing. Guitar 3 G exposes the next boundary at
     key/velocity-routed envelope preparation before effects can be attributed.
 13. Add deterministic seed injection/persistence at the shared render contract
-    for Guide noise, Unison jitter, and reverb, then admit one fixture for each.
-    In progress: Cycle 1 voice/rasterizer seed injection is complete and proves
-    repeatability for the first two fixtures; cross-engine seed mapping and
-    Cycle 1 reverb remain open.
+    for Guide noise and any remaining stochastic effect state, then admit one
+    fixture for each. In progress: Cycle 1 voice/rasterizer seed injection and
+    the equivalent Cycle V2 chained-oscillator Guide mapping are complete.
+    Remaining stochastic node families need representative fixtures. Unison
+    jitter is the fixed table owned by
+    shared `UnisonCore`, not random state. Cycle 1 reverb's wall-clock seed only
+    fills an unused legacy noise buffer; both engines build their audible kernel
+    through deterministic shared `ReverbKernel`.
 14. Remove each gain, latency, scheduling, and sample-rate policy discrepancy
     from the comparison boundary until admitted fixtures require raw exact
     sample equality.
@@ -457,13 +462,21 @@ as the scratch envelope evolves.
     `dynamic=false`; conversion now explicitly pins their legacy 0/0
     cross-section. At MIDI 48/frame zero, both channels' magnitude raster and
     effective morph triple are byte-identical, including the scratch coordinate
-    `0.00553`. The first unequal stage is magnitude-operand range shaping:
-    harmonic zero is `0.02985745` in Cycle 1 and `0.02745639` in Cycle V2, a
-    uniform `1.087450` scale difference with a gain-matched normalized residual
-    of `3.75e-8`. Earlier artifacts:
+    `0.00553`. The magnitude-operand difference was the additive normalization
+    count: Cycle 1 passes the note-dependent 169-harmonic region to the shared
+    `SpectralLayerCore`, while Cycle V2 passed its 257-slot full-polar storage
+    length. The prepared renderer now computes the active harmonic count once
+    and uses it consistently for range shaping, capture, and IFFT tail clearing.
+    At MIDI 48/frame zero, magnitude and phase operands are byte-identical. The
+    reconstructed left frame has a `1.37e-7` normalized residual and the right
+    frame is byte-identical. Final output remains a material effect-path
+    mismatch at `0.76139` correlation. A fresh two-render run was exact in
+    Cycle V2 but not Cycle 1, beginning at sample 3, so effect attribution
+    remains gated on isolating that startup nondeterminism. Earlier artifacts:
     `/tmp/cycle-guitar-3-g-frame0/comparison.json` and
-    `/tmp/cycle-guitar-3-g-direct-range/comparison.json`; current artifact:
-    `/private/tmp/cycle-guitar-realtime-note-on/comparison.json`.
+    `/tmp/cycle-guitar-3-g-direct-range/comparison.json` and
+    `/private/tmp/cycle-guitar-realtime-note-on/comparison.json`; current
+    artifact: `/tmp/cycle-guitar-active-harmonics/comparison.json`.
 29. Admit a deterministic volume-envelope fixture at multiple note lengths.
     Complete using Simple Bass: direct conversion contains a time layer, one
     multiplicative magnitude layer, and one volume envelope, with no active
@@ -520,6 +533,382 @@ as the scratch envelope evolves.
     scale is exactly `1.0`. Raw floats retain the already-localized same-clock
     numerical residual (`5.3e-6`), so exact-sample enforcement remains blocked
     on that DSP boundary rather than output control.
+32. Establish Guitar 3 G's effect-free output baseline. Complete: the parity
+    runner now disables every declared Cycle 1 effect through its authoritative,
+    idempotent `Disable` action, including the impulse-response panel that does
+    not expose the generic enable-control target. Disabled Cycle V2 effects now
+    preserve a runtime stereo payload even when their statically declared output
+    port is mono. The Guitar manifest also declares its already-translated Output
+    fader. With waveshaper, IR, EQ, and delay disabled, MIDI 48 is zero-lag with
+    `0.9999999997` correlation, a unity gain fit, and a `2.4e-5` normalized
+    residual. Enabling the waveshaper lowers correlation to `0.98330` with a
+    `0.1820` residual; adding IR lowers it to `0.75736` with a `0.6530` residual.
+    The waveshaper is therefore the first material effect boundary and IR adds a
+    second larger mismatch. Cycle 1 still fails the exact repeat gate by tiny
+    startup values even with every effect disabled. Artifacts:
+    `/tmp/cycle-guitar-no-effects-final/comparison.json`,
+    `/tmp/cycle-guitar-waveshaper-final/comparison.json`, and
+    `/tmp/cycle-guitar-waveshaper-ir-final/comparison.json`.
+33. Restore per-channel waveshaper oversampling state. Complete: Cycle 1 owns
+    one mature `Oversampler` per audio channel, while Cycle V2 passed both
+    channels serially through one stateful instance. Cycle V2 now retains two
+    preallocated oversampler lanes and selects them from the unary processor's
+    existing channel position; the shared oversampling and transfer algorithms
+    remain unchanged. An identical-stereo-input regression guards against FIR
+    history crossing channels. Guitar 3 G with only its authored 2x waveshaper
+    enabled now reaches `0.999999945` correlation, a unity gain fit, and a
+    `0.000332` residual at zero lag. IR is the next material effect boundary.
+    Artifact: `/tmp/cycle-guitar-waveshaper-channel-state/comparison.json`.
+34. Restore per-channel impulse-response convolution state. Complete: Cycle 1
+    owns one mature `BlockConvolver` per audio channel, while Cycle V2 passed
+    both channels through one stateful block/traversal pair. Cycle V2 now owns a
+    preallocated pair per channel and selects it through the unary processor's
+    existing channel position. Impulse rasterization, prefiltering, convolution,
+    and post-gain behavior remain delegated to the existing implementations. An
+    equal-stereo-input regression guards channel independence. Guitar 3 G with
+    waveshaper and IR enabled now reaches `0.9999724` correlation at zero lag,
+    with a `+0.0226 dB` fit and `0.00743` residual. This resolves the material IR
+    gap while retaining its smaller numerical residual for later localization.
+    Artifact: `/tmp/cycle-guitar-ir-channel-state/comparison.json`.
+35. Complete the Guitar 3 G effect ladder and re-audit repeatability. In
+    progress: adding EQ and delay after the corrected waveshaper and IR does not
+    create a material new discrepancy. A full MIDI 36–72 matrix is zero-lag
+    except for MIDI 60's `-183` diagnostic alignment; correlations range from
+    `0.98647` to `0.99998` and residuals from `0.0066` to `0.1639`, within the
+    fixture's current diagnostic thresholds. Accelerate's inverse FFT varied by
+    one float ULP across fresh Cycle 1 processes even with identical captured
+    spectra. The paired runner now pins `VECLIB_MAXIMUM_THREADS=1`, which makes
+    the effect-free graph repeat exactly in both engines. The full graph still
+    fails Cycle 1 repeatability at MIDI 36 while MIDI 48, 60, and 72 repeat
+    exactly. Do not admit the fixture until the remaining low-note effect-path
+    instability is localized; do not weaken the repeat gate. Artifacts:
+    `/tmp/cycle-guitar-no-effects-single-veclib/comparison.json`,
+    `/tmp/cycle-guitar-through-eq-state-fixed/comparison.json`,
+    `/tmp/cycle-guitar-full-deterministic-recheck/comparison.json`, and
+    `/tmp/cycle-guitar-full-matrix/comparison.json`.
+36. Establish the six-voice Icycle differential fixture. In progress: a fresh
+    Cycle 1 canonical export regenerated the graph exactly while the converter
+    retained every existing node position, port side, editor dimension, and
+    all three authored signal probes. This corrects stale semantic state,
+    including inverse-velocity routing, envelope declick, output gain, missing
+    static envelope modulation, full-precision meshes, and IR size `0.26`.
+    Probe retention is now a tested part of presentation reconciliation. With
+    waveshaper, IR, and delay disabled, MIDI 48 reaches `0.99548` correlation,
+    a `+0.05 dB` fit, and `0.0949` residual. Its captured time raster/frame and
+    all magnitude/phase operands are byte-identical; the forward FFT differs
+    only at `8.8e-8` residual, reconstruction at `5.2e-6`, then the first
+    material divergence appears in pitch-clocked cycle reconstruction at about
+    `0.056`. Cycle 1 differs from itself from frame 40 across fresh processes,
+    even with Unison disabled, so the diagnostic fixture cannot be admitted by
+    weakening the repeat gate. Artifacts:
+    `/tmp/cycle-icycle-unison-baseline/comparison.json`,
+    `/tmp/cycle-icycle-no-unison/comparison.json`, and
+    `/tmp/cycle-icycle-unison-stages/comparison.json`.
+37. Restore prepared pitch-Envelope playback inside oscillator regions.
+    Complete: the compiler's 129-point pitch trajectory is presentation data
+    for the Unison preview, but the realtime region incorrectly treated it as
+    an audio-time buffer and clamped to its last point after 129 samples. The
+    existing prepared cycle-envelope bank now also owns the resolved pitch
+    source and one mature `EnvelopePlaybackEngine` cursor per Unison lane.
+    Chained regions advance it before lane tuning; spectral regions advance it
+    at the shared frame-control frontier, matching Cycle 1. No envelope
+    interpolation or state machine was copied into the lane runtime. A focused
+    Icycle regression poisons the preview trajectory yet retains Cycle 1's
+    frame-32 frontier, 341-sample cycle, and left/right starting values. The
+    MIDI 48 stage capture is now byte-identical through reconstructed frames;
+    pitch-clocked residual falls from about `0.056` to `2.6e-5–4.6e-5`, output
+    alignment moves from five samples to zero, correlation rises from
+    `0.99548` to `0.99780`, and residual falls from `0.0949` to `0.0662`.
+    The full effect graph reaches `0.99825` correlation and `0.0592` residual.
+    A MIDI 36–72 effect-free matrix ranges from `0.96604` to `0.99986`, leaving
+    low-note lane accumulation and Cycle 1 repeatability open. Artifacts:
+    `/tmp/cycle-icycle-prepared-pitch/comparison.json`,
+    `/tmp/cycle-icycle-prepared-pitch-full/comparison.json`, and
+    `/tmp/cycle-icycle-prepared-pitch-matrix/comparison.json`.
+38. Preserve Cycle 1's oscillator render-boundary frame latch. Complete:
+    Cycle 1 copies the current reconstructed frame into its past-frame storage
+    after each successful `renderInterpolatedCycles()` call. Cycle V2 retained
+    the older frame across calls, causing low notes to interpolate against a
+    frame Cycle 1 had already latched away. The spectral runtime now performs
+    the same narrow state transition after consuming a block. It also retains
+    Cycle 1's float-precision neutral frame clock and the fractional lane-cycle
+    start used to calculate interpolation position. Pitch-clocked diagnostics
+    now retain the complete composed source cycle as their secondary payload,
+    which localized the mismatch before Hermite resampling. With effects
+    disabled, MIDI 36–72 reaches `0.98602–1.00000` correlation with
+    `0.0011–0.1667` residual. The full graph reaches `0.98425–0.99997`
+    correlation with `0.0076–0.1768` residual. Cycle V2 repeats exactly and all
+    four audio comparisons pass; Cycle 1 intermittently differed from sample 2
+    at MIDI 48 in the full run, so the fixture remains diagnostic. The inherited
+    latch permits bounded block-partition variation while retaining identical
+    shared-frame render counts. Artifacts:
+    `/tmp/cycle-icycle-midi36-frame8-composed/comparison.json`,
+    `/tmp/cycle-icycle-block-latch-matrix/comparison.json`, and
+    `/tmp/cycle-icycle-full-block-latch-matrix/comparison.json`.
+39. Make Cycle 1 offline effect startup deterministic and admit Icycle.
+    Complete: the live audio device can advance waveshaper, IR, EQ, and master
+    smoothing by a timing-dependent number of samples between preset load and
+    offline capture. The capture adapter now settles those existing parameters
+    to their authored targets after suspending and re-preparing the device; it
+    does not change realtime smoothing. Preset-open commands also honor their
+    existing `waitForIdle` contract. Three fresh waveshaper-only processes now
+    produce byte-identical Cycle 1 output. The complete Icycle MIDI 36–72 matrix
+    repeats exactly in both engines and passes every declared audio threshold:
+    correlation is `0.98425–0.99997`, residual is `0.0076–0.1768`, spectral
+    RMSE is `0.02–0.61 dB`, and cyclogram difference is `0.0065–0.0930`.
+    Icycle is now a verified representative for multiple time/magnitude/phase
+    layers, three envelope purposes, six-voice Unison, waveshaper, IR, and
+    delay. Artifacts:
+    `/tmp/cycle-icycle-repeat-waveshaper-settled/comparison.json` and
+    `/tmp/cycle-icycle-full-settled-matrix/comparison.json`.
+40. Establish Organ 2's semantic and oscillator baseline. Complete: a fresh
+    Cycle 1 export regenerated the Cycle V2 graph while retaining its authored
+    node, port, editor, and probe presentation. The converter now applies Cycle
+    1's pre-1.5 Reverb compatibility override, where the stored former-dry slot
+    resolves to a `0.05` high pass. A negative scratch-buffer sentinel no longer
+    aliases the prepared pitch Envelope, and synthesis transforms now reuse
+    Cycle 1's offset-removing inverse-FFT contract. With Reverb disabled, the
+    complete oscillator, IR, and delay path reaches `0.99999` correlation,
+    `0.0037` residual, `0.03 dB` spectral RMSE, and `0.0014` cyclogram
+    difference at MIDI 48. Cycle 1's offline settlement now also completes its
+    existing Reverb kernel and parameter actions deterministically. Full
+    Reverb renders repeat exactly, but are not eligible for threshold admission:
+    Cycle V2 currently instantiates and gates all effects per voice, whereas
+    Cycle 1 mixes voices before running one continuous global chain. Artifacts:
+    `/tmp/cycle-organ-2-oscillator-dc-fixed/comparison.json`,
+    `/tmp/cycle-organ-2-no-reverb-after-fixes/comparison.json`, and
+    `/tmp/cycle-organ-2-full-matrix-candidate/comparison.json`.
+41. Restore the live Voice Length contract. Complete: Cycle 1's oscillator panel
+    control governs the normalized lifetime used by live voices. Cycle V2's
+    identically presented Voice Context control currently changes only preview
+    state. The stable boundary is a thread-safe runtime-duration value owned by
+    `RealtimeGraphRenderer`; `NodeWorkspace` translates the canvas setting
+    into that value without turning session audio configuration into a graph
+    mutation. Preview and live rendering consume the same clamped duration. A
+    focused active-note sequence changes the duration from 1.0 to 0.1 seconds
+    and observes the live Voice Time slope increase by exactly 10x.
+42. Restore the global post-voice effects boundary. Complete: Cycle 1's
+    `SynthAudioSource::processBlock()` is authoritative: synth voices are mixed,
+    then waveshaper, IR/tube, EQ, delay, Reverb, and master gain run once on
+    every audio block. Cycle V2 reuses its existing node processors and
+    topology unchanged, while graph metadata declares processor lifetime and
+    the executor translates voice-boundary buffers into one preallocated global
+    execution. No effect DSP or graph traversal will be copied. The stable end
+    state removes effect-tail ownership from individual voices: note release can
+    retire a synth voice independently, while the persistent global executor
+    continues receiving silence and emitting delay/Reverb tails. The intended
+    graph end state keeps Reverb and delay intrinsically global, while
+    Waveshaper, IR Modeller, and EQ expose authored voice-local/global modes
+    (defaulting to global for Cycle 1 ports). Adding those editor selections is
+    outside this parity slice; regardless of selection, scope remains monotonic
+    downstream and a global signal cannot become voice-local again. Compiler
+    and renderer regressions cover downstream scope propagation and a delay echo
+    remaining audible for multiple callbacks after its source voice retires.
+43. Localize Organ 2's remaining global Reverb output mismatch. Complete:
+    moving the existing effect chain to its authoritative lifetime boundary does
+    not change the held-note mismatch, as expected for a single active voice.
+    With every effect disabled, MIDI 48 remains zero-lag at `0.99999`
+    correlation, `0.0041` residual, `0.03 dB` spectral RMSE, and `0.0017`
+    cyclogram difference. The full chain remains zero-lag at `0.97076`
+    correlation and `0.2400` residual; a 250–750 ms post-note window confirms
+    both engines now emit tails but retains a material Reverb-shape difference.
+    Kernel contents, configuration, input blocks, convolution framing, and
+    first-block dry energy, wet energy, and dry/wet correlation are equivalent.
+    Cycle V2 now delegates its wet/dry calculation to a shared primitive that
+    is guarded against Cycle 1's mono dry law and stereo width law, while the
+    mature Cycle 1 implementation remains unchanged. The mismatch begins as
+    the small oscillator-through-delay residual accumulates through the long
+    convolution; it is not a different Reverb parameter, kernel, processing
+    scope, or wet/dry feature. Organ 2 therefore remains diagnostic pending an
+    earlier exact oscillator boundary rather than another Reverb rewrite.
+    Artifacts: `/tmp/cycle-organ-2-global-no-effects-fixed/comparison.json`,
+    `/tmp/cycle-organ-2-global-full-fixed/comparison.json`, and
+    `/tmp/cycle-organ-2-global-tail/comparison.json`. Focused boundary trace:
+    `/tmp/cycle-organ-2-reverb-mix-debug-4/`. The behavior-neutral shared-mix
+    rerun is `/tmp/cycle-organ-2-shared-v2-reverb-mix/comparison.json`.
+44. Establish a deterministic Guide-noise fixture. Complete: the existing
+    offline `randomSeed` command now reaches a generic deterministic per-voice
+    seed in Cycle V2 while the live lifecycle seed remains unchanged. The
+    chained oscillator owns Cycle 1's `+2` Unison-stream translation, consumes
+    the same first draw for Guide offsets, and retains the advanced stream for
+    per-cycle random positions. A focused Flute regression proves identical
+    output for a repeated seed and different output for another seed. Flute was
+    regenerated from a direct Cycle 1 export while retaining Cycle V2's node,
+    port, and editor presentation. Fresh MIDI 36–72 renders repeat byte-for-byte
+    in both engines and pass all declared thresholds: correlation is
+    `0.98566–0.99406`, residual is `0.1088–0.1687`, spectral RMSE is
+    `0.45–1.41 dB`, and cyclogram difference is `0.0343–0.1389`. Flute is now
+    a verified representative for chained Guide noise and IR. Artifact:
+    `/tmp/cycle-flute-verified/comparison.json`.
+45. Establish deterministic spectral Guide-noise mapping. Completed: Cycle
+    1's `SynthFilterVoice` owns a random stream seeded from the offline
+    per-voice base plus one. Note preparation consumes its time Guide-offset
+    draw from that stream; the magnitude and phase offset seeds belong to the
+    parent voice's separate random stream. Subsequent active layer
+    rasterizations continue from the filter stream in render order. Cycle V2
+    translates that ownership inside `SpectralOscillatorFrameRenderer`, leaving
+    its live lifecycle-seed path unchanged. Sitar is the smallest effect-free factory
+    candidate with an assigned noisy magnitude Guide and no active envelopes.
+    Its first differential render proved the noisy magnitude raster is
+    byte-identical, but exposed a separate conversion gap: promoting an empty
+    time seed removed the first additive operation, after which Cycle V2
+    inferred that root layer's mode from the next downstream multiply and
+    omitted additive normalization. The converted graph must retain each Cycle
+    1 spectral layer mode explicitly while old graphs retain topology-based
+    `auto` inference. A second phase-noise diagnostic also showed that Cycle 1
+    initializes only spectral Guide offset slot zero; Cycle V2's prepared
+    spectral adapter must retain that mature count without changing general
+    node rasterization. The diagnostic also exposed a missing semantic field:
+    Cycle 1 persists a base noise-table seed per Guide (falling back to its
+    stable Guide index), while Cycle V2 previously rederived it from the string
+    resource id. The converter and graph resource now preserve that seed. The
+    focused spectral renderer contract is exactly repeatable and responds to
+    seed changes. Sitar's first magnitude raster/operand is byte-identical and
+    its phase raster/operand is within `4.9e-8` normalized residual, isolating
+    its remaining `0.2571` rendered residual to spectral-stack composition
+    rather than random-state preparation. Sitar remains diagnostic because
+    Cycle 1 also differs by ULPs across repeated captures. Persisted Guide seeds
+    improved the already verified Flute matrix to correlation
+    `0.99704–0.99975`, residual `0.0222–0.0769`, spectrum `0.05–0.17 dB`, and
+    cyclogram `0.0120–0.0504`; both engines are exactly repeatable. Artifacts:
+    `/tmp/cycle-sitar-persisted-guide-seeds/comparison.json` and
+    `/tmp/cycle-flute-persisted-guide-seeds/comparison.json`.
+46. Align multi-layer spectral-stack composition. Completed: an
+    occurrence-selectable shared stage recorder localized Sitar's error to its
+    third magnitude layer. Cycle V2 had consumed the parent-owned magnitude and
+    phase offset draws from the filter RNG, advancing noisy layer seeds by two.
+    Keeping those offset calculations separate while advancing the retained
+    filter stream only for its time-offset draw makes the third magnitude raster
+    and operand byte-identical. The full MIDI 36–72 matrix now reaches
+    correlation `0.99905–1.00000`, residual `0.0005–0.0437`, spectrum
+    `0.00–1.06 dB`, and cyclogram `0.0003–0.0388`. Cycle V2 repeats exactly at
+    every pitch. Sitar remains diagnostic only because Cycle 1 intermittently
+    differs by ULPs on repeated MIDI 48 captures. Artifact:
+    `/tmp/cycle-sitar-verified/comparison.json`.
+47. Resolve the intermittent Cycle 1 spectral-reference repeatability failure.
+    Complete: MIDI 48 sometimes repeated exactly and sometimes differed by
+    single-precision ULPs despite identical seeded stage operands. Preserve the
+    exact repeatability gate; identify the first unstable downstream boundary
+    before admitting Sitar as verified. Five plain repeated captures produced
+    two stable payload hashes, with one render differing from the other four
+    starting at output frame 41. Repeating the same capture five times with the
+    stage recorder present was byte-identical, and every captured spectral
+    boundary hash matched. The comparison harness now retains stage capture on
+    repeat renders so instrumented determinism compares identical execution
+    conditions. The remaining variable was the macOS Nano allocator regime:
+    disabling it for both child renderers, alongside the existing single-threaded
+    vecLib contract, retains the established Cycle 1 payload hash and makes five
+    fresh uninstrumented captures byte-identical. The harness now owns that
+    process-level determinism boundary. The full MIDI 36–72 matrix repeats
+    byte-for-byte in both engines and reaches `0.99905–1.00000` correlation,
+    so Sitar is admitted as verified. Artifacts:
+    `/tmp/cycle-sitar-reference-repeat-plain/comparison.json`,
+    `/tmp/cycle-sitar-reference-repeat-stages/comparison.json`,
+    `/tmp/cycle-sitar-repeat-harness/comparison.json`, and
+    `/tmp/cycle-sitar-verified-allocator/comparison.json`.
+48. Preserve stereo identity through the global Delay boundary. Complete:
+    Cycle 1 and Cycle V2 already share `CycleDsp::CycleDelay`, and both effect
+    wrappers own one delay state per channel. Add a direct stereo contract and
+    a realtime global-boundary contract before changing DSP; any failure must
+    be corrected where runtime channel metadata or buffers cross the voice mix,
+    without introducing a second delay implementation. Direct independent-input
+    and pan-cycle regressions prove that Cycle V2 retains two channels and emits
+    complementary echoes. A fresh Icycle MIDI 48 differential render is stereo
+    in both engines and reaches `0.99993` correlation with `0.0121` residual.
+    There is no justified Delay DSP change; a remaining centered impression is
+    preset-specific until an upstream boundary capture proves otherwise.
+    Artifact: `/tmp/cycle-icycle-stereo-audit/comparison.json`.
+49. Publish live Output gain independently of graph preparation. Complete:
+    Output gain is durable graph state, but the realtime renderer currently
+    samples the compiled value only when adopting a prepared graph. A parameter
+    refresh updates the Output processor configuration while leaving the
+    renderer-owned compiled gain stale, and replacing a prepared graph resets
+    voices. Keep the graph parameter authoritative, refresh its compiled plan
+    field, and translate transient fader movement into a thread-safe renderer
+    target so a held note responds without graph replacement. Commit and undo
+    remain semantic dispatcher edits. `GraphCompiler` now owns the one Output
+    mapping used by initial compilation and parameter-only plan refreshes. The
+    workspace polls the dispatcher-owned editing view and publishes its mapped
+    value through an atomic renderer target; the audio thread retains the
+    existing smoothing and active graph/voice. Focused tests cover compiled
+    refresh and a held voice responding without graph replacement.
+50. Make live Output meters invalidate their cached node layer. Complete:
+    the audio renderer already publishes independent left/right peaks and the
+    workspace polls them at 30 Hz. The canvas requests repaint, but the outer
+    node-layer cache key omits the live levels and reuses the old Output image.
+    Include only the meter state in the Output render-context fingerprint; do
+    not duplicate metering or bypass the existing renderer diagnostics. The
+    existing live-device fixture now reports nonzero left/right display levels
+    (`0.5869` in the verification run), and cache-key coverage guards dynamic
+    context invalidation. Artifact: `/tmp/cycle-v2-meter-report.json`.
+51. Re-audit older intermittent fixtures under the deterministic allocator
+    contract. In progress: Guitar 3 G MIDI 36 repeats exactly across five fresh
+    processes and retains `0.99998` correlation, but a subsequent full matrix
+    moved the Cycle 1 repeat failure to MIDI 48. That mismatch starts in the dry
+    output before any delayed sample can return; disabling Delay produced three
+    exact repeats, but this does not identify Delay as the source because its
+    presence also changes the process allocation layout. Japan Drum likewise
+    repeated exactly five times at MIDI 48, then failed one Cycle 1 repeat at
+    the same note inside a later full matrix. Both remain diagnostic. Preserve
+    the exact gate and localize the next failure with equivalent allocation and
+    capture conditions before changing shared DSP. Artifacts:
+    `/tmp/cycle-guitar-repeat-allocator/comparison.json`,
+    `/tmp/cycle-guitar-verified-allocator/comparison.json`,
+    `/tmp/cycle-guitar-repeat-no-delay/comparison.json`,
+    `/tmp/cycle-japan-drum-repeat-allocator/comparison.json`, and
+    `/tmp/cycle-japan-drum-verified-allocator/comparison.json`.
+52. Preserve real linked-stereo payloads through global Delay. Complete:
+    real compiled time-signal ports use `ChannelLayout::LinkedStereo`, while
+    the runtime payload predicate recognizes only `StereoPair`. The prior Delay
+    test manually supplied `StereoPair` and therefore bypassed the production
+    failure. The runtime now separates a port's declared stereo arity from the
+    presence of materialized secondary samples: `LinkedStereo` preserves a real
+    second block but still permits existing scalar payloads to expand safely,
+    while `StereoPair` remains explicitly two-channel. Guard the complete
+    compiled path with a Stereo Split/Join immediately before Delay so a real
+    `LinkedStereo` payload with deliberately different channels crosses Delay
+    and Output. Reverting the predicate collapses that regression to identical
+    channels; the corrected path passes. Reuse the shared `CycleDelay`; do not
+    add Delay-local channel adaptation.
+
+    Paired three-note Icycle fixtures additionally render Cycle 1 and Cycle V2
+    for three seconds, with overlapping note lifetimes and a 2.05-second window
+    after the first note-off. Both engines retain strongly non-mono output and
+    uninterrupted release/effect energy: side RMS remains `0.06680` in Cycle 1
+    and `0.07304` in Cycle V2 during 2.0-2.95 seconds. First-note cross-engine
+    correlation remains approximately `0.999` per channel, then declines
+    during overlap and the late tail. This is a remaining multi-voice/tail
+    DSP-parity diagnostic, not a processing-ownership regression: the current
+    Icycle Waveshaper, IR,
+    Delay, and Output steps are all global, and the node definitions also keep
+    EQ and Reverb global. Selectable Waveshaper/IR/EQ scope remains the explicit
+    future architecture described in Slice 42. Fixtures:
+    `scripts/fixtures/cycle-agent-icycle-note-sequence.json` and
+    `scripts/fixtures/cycle-v2-agent-icycle-note-sequence.json`. Artifacts:
+    `/tmp/cycle-v1-icycle-note-sequence-report.json`,
+    `/tmp/cycle-v2-icycle-note-sequence-report.json`, and their `.f32le` audio.
+53. Localize Icycle's post-note release drift. In progress: rerendering the
+    three-note sequence with Waveshaper, IR, and Delay disabled leaves the
+    mismatch in the dry voice sum, so it is not caused by global effect state.
+    Isolated MIDI 48, 55, and 60 renders remain between `0.9979` and `0.99999`
+    correlation per channel while held, then fall to `0.57-0.83` after
+    note-off. This reproduces without overlapping voices and rules out a
+    polyphonic ownership failure.
+
+    A post-release stage capture at oscillator frame 64/frontier 21575 first
+    differs at the time raster. Its red and blue morph coordinates remain
+    identical, while the time coordinate is `0.62508` in Cycle 1 and `0.68939`
+    in Cycle V2. Icycle's prepared scratch Envelope overrides that time morph,
+    which localizes the gap to scratch-Envelope release advancement at the
+    oscillator lookahead boundary. Cycle 1 sets Note Off on every mature
+    `EnvRasterizer` before its cycle renderer advances scratch state; Cycle V2
+    applies the same shared `EnvelopePlaybackEngine` lifecycle through
+    `PreparedCycleEnvelopeBank`, but may already own prepared frame/cycle state
+    beyond the event boundary. Preserve the shared playback implementation and
+    identify the exact event/lookahead ordering difference before changing
+    either renderer. Artifacts: `/tmp/cycle-icycle-release-stages-64/`,
+    `/tmp/cycle-icycle-sequence-notes-dry/`, and
+    `/tmp/cycle-icycle-start-note-dry/`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

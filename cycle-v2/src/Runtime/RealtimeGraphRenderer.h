@@ -7,6 +7,7 @@
 
 #include <array>
 #include <atomic>
+#include <cstdint>
 #include <memory>
 
 #include "Runtime/GraphAudioExecutor.h"
@@ -49,12 +50,19 @@ public:
         spectralStageCapture = capture;
     }
     void setVoiceDurationSeconds(float durationSeconds);
+    void setGraphOutputGain(float gain) {
+        requestedGraphOutputGain.store(jmax(0.f, gain), std::memory_order_release);
+    }
     void setVolumeEnvelopeClockSampleRate(double sampleRate) {
         volumeEnvelopeClockSampleRate = jmax(0., sampleRate);
     }
     void setOutputGain(float gain) { outputGain = jmax(0.f, gain); }
     void setControlNoteOffset(int offset) {
         controlNoteOffset = jlimit(-127, 127, offset);
+    }
+    void setRandomSeedForTesting(int64_t seed) {
+        deterministicRandomSeed = seed;
+        hasDeterministicRandomSeed = true;
     }
     void process(
             RealtimeMidiEventQueue& events,
@@ -121,11 +129,14 @@ private:
     size_t scheduledEventCount {};
     std::array<float, 8192> metricsScratch;
     uint64_t nextVoiceOrder {};
-    float voiceDurationSeconds { 7.f };
+    std::atomic<float> voiceDurationSeconds { 7.f };
     double volumeEnvelopeClockSampleRate {};
     float outputGain { defaultOutputGain };
     SmoothedParameter graphOutputGain { 1.f };
+    std::atomic<float> requestedGraphOutputGain { 1.f };
     bool outputGainInitialized {};
+    int64_t deterministicRandomSeed {};
+    bool hasDeterministicRandomSeed {};
     int controlNoteOffset {};
 
     std::atomic<uint64_t> callbackCounter {};

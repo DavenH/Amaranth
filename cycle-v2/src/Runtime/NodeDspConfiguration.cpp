@@ -53,6 +53,21 @@ bool feedsMultiply(const NodeGraph* graph, const String& nodeId) {
     return destination != nullptr && destination->kind == NodeKind::Multiply;
 }
 
+bool resolvesMultiplicative(
+        const NodeParameterMap& parameters,
+        const String& modeParameter,
+        const NodeGraph* graph,
+        const String& nodeId) {
+    const String mode = parameters.stringValue(modeParameter, "auto");
+    if (mode == "additive") {
+        return false;
+    }
+    if (mode == "multiplicative") {
+        return true;
+    }
+    return feedsMultiply(graph, nodeId);
+}
+
 bool scratchSourceEnabled(
         const NodeGraph* graph,
         const String& nodeId,
@@ -96,7 +111,11 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
     configuration->enabled = parameterMap.boolValue("enabled", true);
     configuration->range = parameterMap.floatValue("range", 0.5f);
     configuration->appliesSpectralRange = feedsSpectralRangeConsumer(graph, nodeId);
-    configuration->multiplicative = feedsMultiply(graph, nodeId);
+    configuration->multiplicative = resolvesMultiplicative(
+            parameterMap,
+            "spectralMode",
+            graph,
+            nodeId);
     configuration->scratchSourceEnabled = scratchSourceEnabled(
             graph,
             nodeId,
@@ -136,6 +155,7 @@ String NodeDspConfigurationFactory::keyFor(
         const String& nodeId,
         const String& scratchSourceNodeId) const {
     String key((int) role);
+    const NodeParameterMap parameterMap(parameters);
     (void) spec;
 
     for (const auto& parameter : parameters) {
@@ -151,10 +171,18 @@ String NodeDspConfigurationFactory::keyFor(
         key << ":scratchSourceEnabled="
             << (scratchSourceEnabled(graph, nodeId, scratchSourceNodeId) ? 1 : 0);
         key << ":spectralRange=" << (feedsSpectralRangeConsumer(graph, nodeId) ? 1 : 0);
-        key << ":multiplicative=" << (feedsMultiply(graph, nodeId) ? 1 : 0);
+        key << ":multiplicative=" << (resolvesMultiplicative(
+                parameterMap,
+                "spectralMode",
+                graph,
+                nodeId) ? 1 : 0);
     }
     if (role == AudioModuleRole::SpectralLayer) {
-        key << ":multiplicative=" << (feedsMultiply(graph, nodeId) ? 1 : 0);
+        key << ":multiplicative=" << (resolvesMultiplicative(
+                parameterMap,
+                "mode",
+                graph,
+                nodeId) ? 1 : 0);
     }
     if (role == AudioModuleRole::ImpulseResponse) {
         key << IrSignalProcessor::resourceConfigurationKey(graph, nodeId);
@@ -275,7 +303,11 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         auto configuration = std::make_shared<PanConfiguration>();
         const NodeParameterMap parameterMap(parameters);
         configuration->pan = parameterMap.floatValue("pan", 0.5f);
-        configuration->multiplicative = feedsMultiply(graph, nodeId);
+        configuration->multiplicative = resolvesMultiplicative(
+                parameterMap,
+                "mode",
+                graph,
+                nodeId);
         return configuration;
     }
 

@@ -78,8 +78,11 @@ void TrimeshBlockwiseDsp::setGuideCurveProvider(GuideCurveProvider* provider) {
     rasterizer.setGuideCurveProvider(provider);
 }
 
-void TrimeshBlockwiseDsp::setVoiceLifecycleSeed(uint32_t seed) {
+void TrimeshBlockwiseDsp::setVoiceLifecycleSeed(
+        uint32_t seed,
+        int guideSeedCount) {
     voiceLifecycleSeed = seed;
+    voiceGuideSeedCount = guideSeedCount;
     hasVoiceLifecycleSeed = true;
     configureGuideCurveSeeds(preparedDomain);
 }
@@ -107,9 +110,11 @@ void TrimeshBlockwiseDsp::configureGuideCurveSeeds(PortDomain domain) {
     }
 
     const auto* snapshot = dynamic_cast<const GuideCurveSnapshotProvider*>(guideCurveProvider);
-    const int guideCount = snapshot != nullptr
-            ? snapshot->size()
-            : Rasterization::GuideCurveOffsetSeeds::capacity;
+    const int guideCount = voiceGuideSeedCount >= 0
+            ? voiceGuideSeedCount
+            : snapshot != nullptr
+                    ? snapshot->size()
+                    : Rasterization::GuideCurveOffsetSeeds::capacity;
     const uint32_t stableSeed = GuideCurveSnapshotProvider::visualizationSeed(domain);
     const auto seed = hasVoiceLifecycleSeed
             ? Rasterization::GuideCurveSeed::voiceLifecycle(voiceLifecycleSeed)
