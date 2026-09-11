@@ -445,8 +445,13 @@ def render_note(manifest, note, output_directory, arguments):
             repeat_capture = dict(capture)
             repeat_capture["path"] = str(repeat_wav)
             repeat_capture["rawPath"] = str(repeat_wav.with_suffix(".f32le"))
-            repeat_capture.pop("stageCapturePath", None)
-            repeat_capture.pop("stageCaptureFrameIndex", None)
+            if arguments.capture_stages:
+                repeat_capture["stageCapturePath"] = str(
+                    note_directory / f"cycle-{engine}-repeat-{repeat}-stages.json")
+            else:
+                repeat_capture.pop("stageCapturePath", None)
+                repeat_capture.pop("stageCaptureFrameIndex", None)
+                repeat_capture.pop("stageCaptureOccurrenceIndex", None)
             render_capture(
                 SCRIPT_DIR / wrapper,
                 note_directory / f"cycle-{engine}-repeat-{repeat}-automation.json",

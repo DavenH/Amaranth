@@ -788,7 +788,14 @@ as the scratch envelope evolves.
     In progress: MIDI 48 sometimes repeats exactly and sometimes differs by
     single-precision ULPs despite identical seeded stage operands. Preserve the
     exact repeatability gate; identify the first unstable downstream boundary
-    before admitting Sitar as verified.
+    before admitting Sitar as verified. Five plain repeated captures produced
+    two stable payload hashes, with one render differing from the other four
+    starting at output frame 41. Repeating the same capture five times with the
+    stage recorder present was byte-identical, and every captured spectral
+    boundary hash matched. The comparison harness now retains stage capture on
+    repeat renders so instrumented determinism compares identical execution
+    conditions. Artifacts: `/tmp/cycle-sitar-reference-repeat-plain/comparison.json`
+    and `/tmp/cycle-sitar-reference-repeat-stages/comparison.json`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a
