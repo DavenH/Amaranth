@@ -21,8 +21,10 @@ public:
     void reduceDetail() override {}
     void restoreDetail() override {}
     void doGlobalUIUpdate(bool) override { performUpdate(Update); }
+    void doExtraMouseMoveAt(Point<int> localPosition) override;
     void setExtraElements(float x) override;
     bool isCurrentVertexHit(Point<int> mousePosition) override;
+    void mouseDown(const MouseEvent& event) override;
     void mouseDrag(const MouseEvent& event) override;
     void mouseUp(const MouseEvent& event) override;
     void deleteSelected();

@@ -46,7 +46,9 @@ void TrimeshExpandedEditorComponent::setNode(const Node& nextNode) {
     enabled.setToggleState(
             NodeParameterMap(node).boolValue("enabled", true),
             dontSendNotification);
-    updatePanelHosts();
+    if (!widget.isMeshEditGestureActive()) {
+        updatePanelHosts();
+    }
     updateControlsHost();
     repaint();
 }

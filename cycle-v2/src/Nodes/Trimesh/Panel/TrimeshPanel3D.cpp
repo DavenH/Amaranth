@@ -11,6 +11,10 @@ TrimeshPanel3D::TrimeshPanel3D(SingletonRepo* repo, TrimeshPanelDataSource& sour
     volumeTrans = 0.f;
     guideCurveApplicable = true;
     speedApplicable = false;
+    vertexBlackRadius *= 2.f;
+    vertexWhiteRadius *= 2.f;
+    vertexHighlightRadius *= 2.f;
+    vertexSelectedRadius *= 2.f;
 }
 
 void TrimeshPanel3D::panelResized() {

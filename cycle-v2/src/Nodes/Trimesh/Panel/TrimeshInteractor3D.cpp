@@ -166,6 +166,14 @@ bool TrimeshInteractor3D::locateClosestElement() {
     return false;
 }
 
+void TrimeshInteractor3D::mouseDown(const MouseEvent& event) {
+    Interactor3D::mouseDown(event);
+
+    if (meshEditedCallback != nullptr) {
+        meshEditedCallback({ true, false, true });
+    }
+}
+
 void TrimeshInteractor3D::mouseDrag(const MouseEvent& event) {
     Interactor3D::mouseDrag(event);
 
@@ -208,6 +216,8 @@ void TrimeshInteractor3D::mouseUp(const MouseEvent& event) {
 
     if ((meshChanged || meshEditGestureActive) && meshEditedCallback != nullptr) {
         meshEditedCallback({ true, true });
+    } else if (meshEditedCallback != nullptr) {
+        meshEditedCallback({ true, true, true });
     }
     meshEditGestureActive = false;
 }

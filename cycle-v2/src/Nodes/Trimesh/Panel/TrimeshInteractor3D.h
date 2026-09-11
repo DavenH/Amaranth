@@ -21,6 +21,7 @@ public:
     void restoreDetail() override {}
     void doGlobalUIUpdate(bool) override { performUpdate(Update); }
     bool locateClosestElement() override;
+    void mouseDown(const MouseEvent& event) override;
     void mouseDrag(const MouseEvent& event) override;
     void mouseUp(const MouseEvent& event) override;
     void deleteSelected();
