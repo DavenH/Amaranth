@@ -118,6 +118,7 @@ def write_automation(path, open_command, capture, setup_commands=None):
 
 def deterministic_renderer_environment():
     environment = os.environ.copy()
+    environment["MallocNanoZone"] = "0"
     environment["VECLIB_MAXIMUM_THREADS"] = "1"
     return environment
 

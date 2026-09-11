@@ -1,6 +1,6 @@
 {
     "schema": "cycle-v1-v2-audio-equivalence.v1",
-    "status": "diagnostic",
+    "status": "verified",
     "v1": {
         "factoryPreset": "sitar",
         "sourceDocument": "cycle/content/presets/sitar.cyc",

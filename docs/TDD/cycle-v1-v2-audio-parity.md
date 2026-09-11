@@ -175,6 +175,7 @@ translation. The first broad candidates are:
 | Icycle | Broad synthesis/effects plus six-voice Unison | Verified. Regenerated from a direct canonical export while retaining node layout, port presentation, and three authored probes. Its reverb is disabled; the corrected IR size is `0.26`. Prepared per-lane pitch playback, Cycle 1's render-boundary frame latch, and deterministic offline parameter settling bring the full MIDI 36–72 matrix to `0.98425–0.99997` correlation with exact repeatability in both engines. |
 | accoustic | Broad graph including reverb | Current graph differs in morph/link state, envelope state, reverb size, and IR high-pass; do not use for DSP attribution yet. |
 | organ-2 | Spectral layers, envelopes, Unison, IR, delay, reverb | Regenerated from a fresh export while retaining presentation. Its oscillator-through-delay baseline is near-identical and global effect tails now outlive voices. The full Reverb output remains diagnostic. |
+| sitar | Three magnitude layers, phase, and persisted Guide noise | Verified. The converter retains Cycle 1's layer modes and Guide seeds. With the deterministic renderer environment fixed, MIDI 36–72 is byte-repeatable in both engines and reaches `0.99905–1.00000` correlation. |
 
 Noise-bearing presets are deferred until both engines expose and honor the
 same persisted or injected seed. “Noise level zero” alone does not exempt a
@@ -785,7 +786,7 @@ as the scratch envelope evolves.
     differs by ULPs on repeated MIDI 48 captures. Artifact:
     `/tmp/cycle-sitar-verified/comparison.json`.
 47. Resolve the intermittent Cycle 1 spectral-reference repeatability failure.
-    In progress: MIDI 48 sometimes repeats exactly and sometimes differs by
+    Complete: MIDI 48 sometimes repeated exactly and sometimes differed by
     single-precision ULPs despite identical seeded stage operands. Preserve the
     exact repeatability gate; identify the first unstable downstream boundary
     before admitting Sitar as verified. Five plain repeated captures produced
@@ -794,8 +795,17 @@ as the scratch envelope evolves.
     stage recorder present was byte-identical, and every captured spectral
     boundary hash matched. The comparison harness now retains stage capture on
     repeat renders so instrumented determinism compares identical execution
-    conditions. Artifacts: `/tmp/cycle-sitar-reference-repeat-plain/comparison.json`
-    and `/tmp/cycle-sitar-reference-repeat-stages/comparison.json`.
+    conditions. The remaining variable was the macOS Nano allocator regime:
+    disabling it for both child renderers, alongside the existing single-threaded
+    vecLib contract, retains the established Cycle 1 payload hash and makes five
+    fresh uninstrumented captures byte-identical. The harness now owns that
+    process-level determinism boundary. The full MIDI 36–72 matrix repeats
+    byte-for-byte in both engines and reaches `0.99905–1.00000` correlation,
+    so Sitar is admitted as verified. Artifacts:
+    `/tmp/cycle-sitar-reference-repeat-plain/comparison.json`,
+    `/tmp/cycle-sitar-reference-repeat-stages/comparison.json`,
+    `/tmp/cycle-sitar-repeat-harness/comparison.json`, and
+    `/tmp/cycle-sitar-verified-allocator/comparison.json`.
 48. Preserve stereo identity through the global Delay boundary. Complete:
     Cycle 1 and Cycle V2 already share `CycleDsp::CycleDelay`, and both effect
     wrappers own one delay state per channel. Add a direct stereo contract and
