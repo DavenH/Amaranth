@@ -2,10 +2,13 @@
 
 #include <JuceHeader.h>
 
+#include <limits>
 #include <memory>
 #include <optional>
 #include <unordered_map>
 #include <vector>
+
+#include "Graph/SharedAudioSamples.h"
 
 namespace CycleV2 {
 
@@ -13,6 +16,7 @@ using namespace juce;
 
 class GuideHeatmapAsset;
 using GuideHeatmapAssetPtr = std::shared_ptr<const GuideHeatmapAsset>;
+class GraphDelta;
 
 enum class PortDomain {
     DomainContext,
@@ -177,7 +181,7 @@ struct AudioSampleResource {
     String id;
     String name;
     double sampleRate {};
-    std::vector<float> samples;
+    SharedAudioSamples samples;
 };
 
 struct NodeAudioResourceBinding {
@@ -277,20 +281,46 @@ struct NodeNaturalSize {
 
 class NodeGraph {
 public:
-    const std::vector<Node>& getNodes() const { return nodes; }
-    const std::vector<Edge>& getEdges() const { return edges; }
-    const std::vector<GuideCurveResource>& getGuideCurves() const { return guideCurves; }
-    const std::vector<GuideHeatmapAssetPtr>& getGuideHeatmaps() const { return guideHeatmaps; }
-    const std::vector<GuideCurveAssignment>& getGuideAssignments() const { return guideAssignments; }
-    const std::vector<SignalProbe>& getSignalProbes() const { return signalProbes; }
-    const std::vector<AudioSampleResource>& getAudioResources() const { return audioResources; }
+    NodeGraph() = default;
+    NodeGraph(const NodeGraph& other);
+    NodeGraph(NodeGraph&& other) noexcept = default;
+    NodeGraph& operator=(const NodeGraph& other);
+    NodeGraph& operator=(NodeGraph&& other) noexcept = default;
+
+    static NodeGraph createEditingOverlay(const NodeGraph& base);
+
+    const std::vector<Node>& getNodes() const;
+    const std::vector<Edge>& getEdges() const {
+        return overlayBase != nullptr ? overlayBase->getEdges() : edges;
+    }
+    const std::vector<GuideCurveResource>& getGuideCurves() const;
+    const std::vector<GuideHeatmapAssetPtr>& getGuideHeatmaps() const {
+        return overlayBase != nullptr ? overlayBase->getGuideHeatmaps() : guideHeatmaps;
+    }
+    const std::vector<GuideCurveAssignment>& getGuideAssignments() const {
+        return overlayBase != nullptr ? overlayBase->getGuideAssignments() : guideAssignments;
+    }
+    const std::vector<SignalProbe>& getSignalProbes() const {
+        return overlayBase != nullptr ? overlayBase->getSignalProbes() : signalProbes;
+    }
+    const std::vector<AudioSampleResource>& getAudioResources() const {
+        return overlayBase != nullptr ? overlayBase->getAudioResources() : audioResources;
+    }
     const std::vector<NodeAudioResourceBinding>& getAudioResourceBindings() const {
-        return audioResourceBindings;
+        return overlayBase != nullptr
+                ? overlayBase->getAudioResourceBindings()
+                : audioResourceBindings;
     }
     uint64_t getRevision() const { return revision; }
 
     const Node* findNode(const String& nodeId) const;
     Node* findNodeForEditing(const String& nodeId);
+    const NodeParameter* findNodeParameter(
+            const String& nodeId,
+            const String& parameterId) const;
+    NodeParameter* findNodeParameterForEditing(
+            const String& nodeId,
+            const String& parameterId);
 
     void addNode(Node node);
     void addEdge(Edge edge);
@@ -308,9 +338,13 @@ public:
     bool removeGuideAssignment(
             const String& nodeId,
             const TrimeshCubeComponentGuideTarget& target);
+    const GuideCurveAssignment* guideAssignmentForTarget(
+            const String& nodeId,
+            const TrimeshCubeComponentGuideTarget& target) const;
     int removeGuideAssignmentsOutsideCubeRange(
             const String& nodeId,
-            int cubeCount);
+            int cubeCount,
+            std::vector<GuideCurveAssignment>* removed = nullptr);
     int guideUsageCount(const String& guideId) const;
     const std::vector<String>& guideTargetNodeIds(const String& guideId) const;
     const std::vector<String>& guideIdsForTargetNode(const String& nodeId) const;
@@ -329,10 +363,12 @@ public:
             const String& sourceNodeId,
             const String& sourcePortId) const;
     void removeNode(const String& nodeId);
+    bool removeEdge(const Edge& edge);
     void removeEdgeAt(size_t index);
     void removeEdgesToInput(const String& nodeId, const String& portId);
     void removeEdgesFromOutput(const String& nodeId, const String& portId);
     bool replaceNodeParameters(const String& nodeId, std::vector<NodeParameter> parameters);
+    bool addNodeParameter(const String& nodeId, NodeParameter parameter);
     bool replaceNodeModel(const String& nodeId, NodeModelStatePtr model);
     bool replaceNodeEditorState(const String& nodeId, var editorState);
     bool setNodeBounds(const String& nodeId, Rectangle<float> bounds);
@@ -342,6 +378,8 @@ public:
     static NodeGraph createDemoGraph();
 
 private:
+    friend class GraphDelta;
+
     struct StringHash {
         size_t operator()(const String& value) const {
             return (size_t) value.hashCode64();
@@ -370,6 +408,16 @@ private:
 
     void rebuildGuideResourceIndex();
     void rebuildGuideAssignmentIndexes();
+    void rebuildNodeIndex();
+    void rebuildParameterIndex(const String& nodeId);
+    void applyNodeParameterState(
+            const String& nodeId,
+            const String& parameterId,
+            const std::optional<NodeParameter>& state);
+    void applyNodeModelState(const String& nodeId, NodeModelStatePtr state);
+    void applyNodeEditorState(const String& nodeId, var state);
+    void applyNodeBounds(const String& nodeId, Rectangle<float> state);
+    void applyGuideCurveState(GuideCurveResource state);
 
     std::vector<Node> nodes;
     std::vector<Edge> edges;
@@ -379,6 +427,11 @@ private:
     std::vector<SignalProbe> signalProbes;
     std::vector<AudioSampleResource> audioResources;
     std::vector<NodeAudioResourceBinding> audioResourceBindings;
+    std::unordered_map<String, size_t, StringHash> nodeIndex;
+    std::unordered_map<
+            String,
+            std::unordered_map<String, size_t, StringHash>,
+            StringHash> parameterIndices;
     std::unordered_map<String, size_t, StringHash> guideResourceIndex;
     std::unordered_map<String, size_t, StringHash> guideHeatmapIndex;
     std::unordered_map<
@@ -388,6 +441,11 @@ private:
     std::unordered_map<String, int, StringHash> guideUsageCounts;
     std::unordered_map<String, std::vector<String>, StringHash> guideTargetNodes;
     std::unordered_map<String, std::vector<String>, StringHash> targetNodeGuides;
+    mutable std::vector<Node> overlayNodeView;
+    mutable std::vector<GuideCurveResource> overlayGuideView;
+    mutable uint64_t overlayNodeViewRevision { std::numeric_limits<uint64_t>::max() };
+    mutable uint64_t overlayGuideViewRevision { std::numeric_limits<uint64_t>::max() };
+    const NodeGraph* overlayBase {};
     uint64_t revision {};
 };
 

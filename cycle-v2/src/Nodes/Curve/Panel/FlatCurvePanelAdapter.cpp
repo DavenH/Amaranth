@@ -1,5 +1,7 @@
 #include "Nodes/Curve/Panel/FlatCurvePanelAdapter.h"
 
+#include "Graph/InteractionComplexityDiagnostics.h"
+
 #include "Nodes/Curve/Model/FlatCurveMeshState.h"
 
 #include <Audio/CycleDsp/IrModel.h>
@@ -101,6 +103,7 @@ void FlatCurvePanelAdapter::initialiseDefaultMesh() {
 }
 
 String FlatCurvePanelAdapter::serializedMeshState() {
+    InteractionComplexityDiagnostics::recordModelSerialization();
     std::vector<FlatCurveVertexState> vertices;
     vertices.reserve((size_t) mesh().getNumVerts());
     for (const Vertex* vertex : mesh().getVerts()) {
@@ -149,11 +152,6 @@ std::vector<CurvePreviewVertex> FlatCurvePanelAdapter::previewVertices() {
 }
 
 bool FlatCurvePanelAdapter::registerMeshEdit() {
-    const String nextState = serializedMeshState();
-    if (nextState == syncedMeshState) {
-        return false;
-    }
-    syncedMeshState = nextState;
     return true;
 }
 

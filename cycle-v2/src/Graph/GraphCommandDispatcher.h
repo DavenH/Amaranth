@@ -101,18 +101,23 @@ public:
 private:
     struct TransientEdit {
         NodeGraph graph;
+        GraphDeltaBuilder delta;
         GraphChangeSet changes;
         int depth { 1 };
         bool changed {};
     };
 
     GraphEditResult apply(const std::function<GraphEditResult(NodeGraph&)>& command);
+    GraphEditResult applyIncremental(
+            const std::function<void(GraphDeltaBuilder&, const NodeGraph&)>& capture,
+            const std::function<GraphEditResult(NodeGraph&)>& command);
     GraphEditResult setNodeBounds(const juce::String& nodeId, juce::Rectangle<float> bounds);
     void accumulateCompoundChange(const GraphChangeSet& change);
     static void accumulateChange(GraphChangeSet& destination, const GraphChangeSet& change);
 
     GraphDocument& document;
-    NodeGraph compoundBefore;
+    std::optional<NodeGraph> compoundBefore;
+    GraphDeltaBuilder compoundDelta;
     GraphChangeSet compoundChanges;
     bool compoundActive {};
     bool compoundChanged {};

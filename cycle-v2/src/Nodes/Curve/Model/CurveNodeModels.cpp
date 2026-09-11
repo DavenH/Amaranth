@@ -1,5 +1,6 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/NodeModelDecodeDiagnostics.h"
 #include "Graph/NodeParameterMap.h"
 
@@ -639,6 +640,7 @@ std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::copyOf(
         const FlatCurveModel& model,
         uint64_t revision,
         var editorState) {
+    InteractionComplexityDiagnostics::recordMeshCopy(model.getVertices().size(), 0);
     auto copy = std::make_shared<FlatCurveModel>();
     copy->copyFrom(model);
     copy->setPublicationRevision(revision);
@@ -651,6 +653,9 @@ std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::copyOf(
         const EnvelopeNodeModel& model,
         uint64_t revision,
         var editorState) {
+    InteractionComplexityDiagnostics::recordMeshCopy(
+            (size_t) model.getMesh().getNumVerts(),
+            (size_t) model.getMesh().getNumCubes());
     auto copy = std::make_shared<EnvelopeNodeModel>();
     copy->copyFrom(model);
     copy->setPublicationRevision(revision);

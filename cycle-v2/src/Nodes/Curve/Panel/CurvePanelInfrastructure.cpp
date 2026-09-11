@@ -122,6 +122,7 @@ public:
 
 private:
     void pointerGestureBegan() override {
+        publishedDuringGesture = false;
         delegate.beginEdit();
     }
 
@@ -129,12 +130,31 @@ private:
         return event.mods.isLeftButtonDown();
     }
 
+    void pointerGesturePressed() override {
+        Interactor* interactor = panelInteractor();
+        if (interactor != nullptr
+                && interactor->state.flags[PanelState::DidIncrementalMeshChange]) {
+            delegate.publishIntermediateRevision();
+            publishedDuringGesture = true;
+        }
+    }
+
     void pointerGestureUpdated() override {
-        delegate.publishIntermediateRevision();
+        Interactor* interactor = panelInteractor();
+        if (interactor != nullptr
+                && interactor->state.flags[PanelState::DidIncrementalMeshChange]) {
+            delegate.publishIntermediateRevision();
+            publishedDuringGesture = true;
+        }
     }
 
     void pointerGestureEnded() override {
-        delegate.publishIntermediateRevision();
+        Interactor* interactor = panelInteractor();
+        if (!publishedDuringGesture
+                && interactor != nullptr
+                && interactor->state.flags[PanelState::DidMeshChange]) {
+            delegate.publishIntermediateRevision();
+        }
         delegate.commitEdit();
     }
 
@@ -152,6 +172,7 @@ private:
 
     CurvePanelSnapshotCache& snapshot;
     CurvePanelHostDelegate& delegate;
+    bool publishedDuringGesture {};
 };
 
 CurvePanelHost::CurvePanelHost(

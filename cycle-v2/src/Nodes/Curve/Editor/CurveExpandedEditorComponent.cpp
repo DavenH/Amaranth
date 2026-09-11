@@ -226,9 +226,6 @@ void CurveExpandedEditorComponent::publishCurrentState() {
     applyEditorStateToWidget();
     requestRepaint();
     if (transactionActive) {
-        if (!publishModelState()) {
-            return;
-        }
         transientStateChanged = true;
         FingerprintBuilder fingerprint(widget.contentRevision());
         for (const auto& control : editorControls()) {
@@ -270,6 +267,12 @@ void CurveExpandedEditorComponent::setEditorModelState(NodeModelStatePtr model) 
 
 void CurveExpandedEditorComponent::commitTransaction() {
     if (transactionActive && delegate != nullptr) {
+        if (transientStateChanged && !publishModelState()) {
+            delegate->commitCurveTransaction();
+            transactionActive = false;
+            transientStateChanged = false;
+            return;
+        }
         delegate->commitCurveTransaction();
     }
     transactionActive = false;

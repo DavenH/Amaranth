@@ -4,6 +4,7 @@
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Nodes/Curve/Editor/CurveNodeEditorFactory.h"
 #include "Nodes/Curve/Editor/CurveEditorPrimitives.h"
 #include "Nodes/Curve/Editor/CurveExpandedEditorComponent.h"
@@ -51,6 +52,19 @@ public:
     CurveTableScope() { Curve::calcTable(); }
     ~CurveTableScope() { Curve::deleteTable(); }
 };
+
+void addUnrelatedInteractionState(NodeGraph& graph) {
+    GraphNodeFactory factory;
+    for (int index = 0; index < 128; ++index) {
+        graph.addNode(factory.createNode(
+                NodeKind::Add,
+                "unrelated" + String(index),
+                { (float) index, (float) index }));
+    }
+    AudioSampleResource audio { "unrelated-audio", "Unrelated.wav", 48000.0, {} };
+    audio.samples.resize(16384);
+    graph.addAudioResource(std::move(audio));
+}
 
 TEST_CASE("Curve snapshot capture requires full framebuffer residency",
         "[cycle-v2][node-editor-host][performance]") {
@@ -2651,7 +2665,7 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
 }
 
 TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one edit",
-        "[cycle-v2][editor][trimesh][guide][gain]") {
+        "[cycle-v2][editor][trimesh][guide][gain][complexity]") {
     ScopedJuceInitialiser_GUI juce;
     CurveTableScope curveTables;
     Component owner;
@@ -2660,6 +2674,7 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
             NodeKind::TrilinearMesh,
             "mesh",
             {}));
+    addUnrelatedInteractionState(graph);
     GraphEditor editor;
     const auto guide = editor.createGuideCurve(graph);
     REQUIRE(guide.succeeded());
@@ -2686,9 +2701,16 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
 
     REQUIRE(commands.beginTrimeshVertexParameterEdit(
             "mesh", "guideGain.amp", 0.5f));
+    InteractionComplexityDiagnostics::reset();
     REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.7f));
     REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.8f));
+    REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
     commands.endTrimeshVertexParameterEdit();
+    REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 1);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().audioSamplesCopied == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().assignmentLinearScans == 0);
 
     const Node* committedNode = document.graph().findNode("mesh");
     REQUIRE(committedNode != nullptr);
@@ -3022,13 +3044,14 @@ TEST_CASE("Unison drag exposes every transient preview before one undoable commi
     REQUIRE_FALSE(document.canUndo());
 }
 
-TEST_CASE("Trimesh drag publishes successive active-mesh snapshots without resynchronizing",
-        "[cycle-v2][editor][trimesh][regression]") {
+TEST_CASE("Trimesh drag keeps movement local and publishes one commit snapshot",
+        "[cycle-v2][editor][trimesh][regression][complexity]") {
     ScopedJuceInitialiser_GUI juce;
     CurveTableScope curveTables;
     Component owner;
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    addUnrelatedInteractionState(graph);
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher dispatcher(document);
     RecordingPresentation presentation;
@@ -3047,6 +3070,7 @@ TEST_CASE("Trimesh drag publishes successive active-mesh snapshots without resyn
             document.graph().findNode("mesh")->model);
     REQUIRE(durableModel != nullptr);
     const float originalAmp = durableModel->mesh().getVerts().front()->values[Vertex::Amp];
+    InteractionComplexityDiagnostics::reset();
 
     widget.currentMesh().getVerts().front()->values[Vertex::Amp] = originalAmp + 0.05f;
     commands.persistTrimeshMeshEdits("mesh", false);
@@ -3054,11 +3078,14 @@ TEST_CASE("Trimesh drag publishes successive active-mesh snapshots without resyn
             dispatcher.editingGraph().findNode("mesh")->model);
     REQUIRE(firstTransient != nullptr);
     REQUIRE(firstTransient->mesh().getVerts().front()->values[Vertex::Amp]
+            == Catch::Approx(originalAmp));
+    REQUIRE(widget.currentMesh().getVerts().front()->values[Vertex::Amp]
             == Catch::Approx(originalAmp + 0.05f));
-    const int transientSelection = (int) dispatcher.editingGraph()
-            .findNode("mesh")->editorState.getProperty("selectedVertexId", -1);
+    const int transientSelection = widget.selectedVertexIndexForPanel();
     REQUIRE(transientSelection >= 0);
     REQUIRE(document.graph().findNode("mesh")->model->revision() == durableModel->revision());
+    REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
 
     widget.currentMesh().getVerts().front()->values[Vertex::Amp] = originalAmp + 0.1f;
     commands.persistTrimeshMeshEdits("mesh", true);
@@ -3067,6 +3094,10 @@ TEST_CASE("Trimesh drag publishes successive active-mesh snapshots without resyn
     REQUIRE(committed != nullptr);
     REQUIRE(committed->mesh().getVerts().front()->values[Vertex::Amp]
             == Catch::Approx(originalAmp + 0.1f));
+    REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 1);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().audioSamplesCopied == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().assignmentLinearScans == 0);
     REQUIRE((int) document.graph().findNode("mesh")->editorState.getProperty(
             "selectedVertexId", -1) == transientSelection);
     REQUIRE(resources.synchronizingTrimeshLookups == 0);

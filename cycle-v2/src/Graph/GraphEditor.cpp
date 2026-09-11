@@ -1,5 +1,7 @@
 #include "Graph/GraphEditor.h"
 
+#include "Graph/InteractionComplexityDiagnostics.h"
+
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
@@ -69,12 +71,18 @@ void reconcileTrimeshGuideAssignments(
 
     const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(node->model);
     const int cubeCount = model != nullptr ? model->mesh().getNumCubes() : 0;
-    if (graph.removeGuideAssignmentsOutsideCubeRange(nodeId, cubeCount) == 0) {
+    if (graph.removeGuideAssignmentsOutsideCubeRange(
+            nodeId, cubeCount, &result.changes.removedGuideAssignments) == 0) {
         return;
     }
 
     result.changes.guidesChanged = true;
     result.changes.guidePresentationChanged = true;
+}
+
+int trimeshCubeCount(const NodeModelStatePtr& model) {
+    const auto trimesh = std::dynamic_pointer_cast<const TrimeshNodeModelState>(model);
+    return trimesh != nullptr ? trimesh->mesh().getNumCubes() : 0;
 }
 
 bool validAudioResource(const AudioSampleResource& resource) {
@@ -368,14 +376,9 @@ GraphEditResult GraphEditor::assignGuideCurveToTrimeshVertexParameter(
         return { GraphEditCode::ValidationRejected, {}, {} };
     }
     for (const auto& componentTarget : targets) {
-        const auto existing = std::find_if(
-                graph.getGuideAssignments().begin(),
-                graph.getGuideAssignments().end(),
-                [&](const GuideCurveAssignment& assignment) {
-                    return assignment.guideId == guideId
-                            && assignment.targets(meshNodeId, componentTarget);
-                });
-        if (existing == graph.getGuideAssignments().end()
+        const GuideCurveAssignment* existing = graph.guideAssignmentForTarget(
+                meshNodeId, componentTarget);
+        if ((existing == nullptr || existing->guideId != guideId)
                 && !graph.assignGuideCurve({ guideId, meshNodeId, componentTarget })) {
             return { GraphEditCode::ValidationRejected, {}, {} };
         }
@@ -605,32 +608,29 @@ GraphEditResult GraphEditor::setNodeParameter(
             ? parameterDefinition->impacts
             : ParameterImpact::Preview | ParameterImpact::DspConfiguration;
 
-    for (auto& parameter : node->parameters) {
-        if (parameter.id == parameterId) {
-            const bool effectiveValueEqual = parameterDefinition != nullptr
-                            && parameterDefinition->type == ParameterType::Float
-                    ? parameter.value.getDoubleValue() == normalizedValue.getDoubleValue()
-                    : parameter.value == normalizedValue;
-            if (effectiveValueEqual && parameter.label == resolvedLabel) {
-                GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
-                result.changed = false;
-                return result;
-            }
-            parameter.label = resolvedLabel;
-            parameter.value = normalizedValue;
-            graph.markChanged();
+    if (NodeParameter* parameter = graph.findNodeParameterForEditing(nodeId, parameterId)) {
+        const bool effectiveValueEqual = parameterDefinition != nullptr
+                        && parameterDefinition->type == ParameterType::Float
+                ? parameter->value.getDoubleValue() == normalizedValue.getDoubleValue()
+                : parameter->value == normalizedValue;
+        if (effectiveValueEqual && parameter->label == resolvedLabel) {
             GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
-            result.changes.nodeIds.push_back(nodeId);
-            result.changes.parameterImpacts = impacts;
-            if (node->kind == NodeKind::Envelope && parameterId == "purpose") {
-                applyEnvelopePurposeSemantics(graph, *node, result);
-            }
+            result.changed = false;
             return result;
         }
+        parameter->label = resolvedLabel;
+        parameter->value = normalizedValue;
+        graph.markChanged();
+        GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
+        result.changes.nodeIds.push_back(nodeId);
+        result.changes.parameterImpacts = impacts;
+        if (node->kind == NodeKind::Envelope && parameterId == "purpose") {
+            applyEnvelopePurposeSemantics(graph, *node, result);
+        }
+        return result;
     }
 
-    node->parameters.push_back({ parameterId, resolvedLabel, normalizedValue });
-    graph.markChanged();
+    graph.addNodeParameter(nodeId, { parameterId, resolvedLabel, normalizedValue });
     GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
     result.changes.nodeIds.push_back(nodeId);
     result.changes.parameterImpacts = impacts;
@@ -644,6 +644,7 @@ GraphEditResult GraphEditor::setNodeParametersAtomic(
         NodeGraph& graph,
         const String& nodeId,
         const std::vector<NodeParameter>& parameters) const {
+    InteractionComplexityDiagnostics::recordParameterLinearScan();
     Node* node = findMutableNode(graph, nodeId);
     if (node == nullptr) {
         return { GraphEditCode::MissingNode, {}, {} };
@@ -737,10 +738,12 @@ GraphEditResult GraphEditor::replaceNodeModel(
         return { GraphEditCode::ConflictingRevision, nodeId, {} };
     }
 
+    const int previousCubeCount = trimeshCubeCount(node->model);
+    const int nextCubeCount = trimeshCubeCount(model);
     GraphEditResult result;
     result.nodeId = nodeId;
     result.changed = graph.replaceNodeModel(nodeId, std::move(model));
-    if (result.changed) {
+    if (result.changed && nextCubeCount < previousCubeCount) {
         reconcileTrimeshGuideAssignments(graph, nodeId, result);
     }
     result.changes.nodeIds.push_back(nodeId);
@@ -772,10 +775,12 @@ GraphEditResult GraphEditor::replaceTransientNodeModel(
         return { GraphEditCode::WrongNodeKind, nodeId, {} };
     }
 
+    const int previousCubeCount = trimeshCubeCount(node->model);
+    const int nextCubeCount = trimeshCubeCount(model);
     GraphEditResult result;
     result.nodeId = nodeId;
     result.changed = graph.replaceNodeModel(nodeId, std::move(model));
-    if (result.changed) {
+    if (result.changed && nextCubeCount < previousCubeCount) {
         reconcileTrimeshGuideAssignments(graph, nodeId, result);
     }
     result.changes.nodeIds.push_back(nodeId);
@@ -865,13 +870,7 @@ GraphEditResult GraphEditor::removeNodeAudioResource(
 }
 
 const Node* GraphEditor::findNode(const NodeGraph& graph, const String& nodeId) const {
-    for (const auto& node : graph.getNodes()) {
-        if (node.id == nodeId) {
-            return &node;
-        }
-    }
-
-    return nullptr;
+    return graph.findNode(nodeId);
 }
 
 Node* GraphEditor::findMutableNode(NodeGraph& graph, const String& nodeId) const {

@@ -152,7 +152,9 @@ public:
     }
     void mouseDoubleClick(const MouseEvent& event) override {
         updateCurrentMouseFromLocalPosition(event.getPosition());
-        doCreateVertex();
+        state.flags[PanelState::DidIncrementalMeshChange] = doCreateVertex();
+        state.flags[PanelState::DidMeshChange]
+                |= state.flags[PanelState::DidIncrementalMeshChange];
     }
     bool locateClosestElement() override {
         state.currentIcpt = -1;

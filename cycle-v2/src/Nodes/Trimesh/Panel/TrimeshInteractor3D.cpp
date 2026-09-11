@@ -177,7 +177,7 @@ void TrimeshInteractor3D::mouseDown(const MouseEvent& event) {
 void TrimeshInteractor3D::mouseDrag(const MouseEvent& event) {
     Interactor3D::mouseDrag(event);
 
-    if (flag(DidMeshChange) && meshEditedCallback != nullptr) {
+    if (flag(DidIncrementalMeshChange) && meshEditedCallback != nullptr) {
         meshEditGestureActive = true;
         meshEditedCallback({ true, false });
     }

@@ -176,6 +176,7 @@ void Interactor::mouseMove(const MouseEvent& e) {
 
     mouseFlag(MouseOver) = true;
     flag(DidMeshChange) = false;
+    flag(DidIncrementalMeshChange) = false;
 
     state.lastMouse = state.currentMouse;
     updateCurrentMouseFromLocalPosition(localPos);
@@ -246,6 +247,7 @@ void Interactor::timerCallback() {
 
     mouseFlag(MouseOver) = true;
     flag(DidMeshChange) = false;
+    flag(DidIncrementalMeshChange) = false;
 
     state.lastMouse = state.currentMouse;
     updateCurrentMouseFromLocalPosition(localPos);
@@ -264,6 +266,8 @@ void Interactor::timerCallback() {
 
 void Interactor::mouseDown(const MouseEvent& e) {
     state.resetActionState();
+    flag(DidMeshChange) = false;
+    flag(DidIncrementalMeshChange) = false;
     PanelState::ActionState& action = state.actionState;
 
     updateCurrentMouseFromLocalPosition(e.getPosition());
@@ -320,6 +324,9 @@ void Interactor::mouseDown(const MouseEvent& e) {
 
     // rasterizer should have added new point if applicable
     locateClosestElement();
+
+    flag(DidIncrementalMeshChange) = createSucceeded || flag(DidMeshChange);
+    flag(DidMeshChange) = flag(DidIncrementalMeshChange);
 }
 
 
@@ -365,6 +372,9 @@ void Interactor::mouseUp(const MouseEvent& e) {
 }
 
 void Interactor::mouseDrag(const MouseEvent& e) {
+    const bool previousGestureChange = flag(DidMeshChange);
+    flag(DidMeshChange) = false;
+    flag(DidIncrementalMeshChange) = false;
     state.lastMouse = state.currentMouse;
     updateCurrentMouseFromLocalPosition(e.getPosition());
 
@@ -406,6 +416,8 @@ void Interactor::mouseDrag(const MouseEvent& e) {
     showCoordinates();
     refresh();
 
+    flag(DidIncrementalMeshChange) = flag(DidMeshChange);
+    flag(DidMeshChange) = previousGestureChange || flag(DidIncrementalMeshChange);
     mouseFlag(FirstMove) = false;
 }
 
@@ -2044,6 +2056,12 @@ Array<Vertex*> Interactor::getVerticesToMove(VertCube* cube, Vertex* startVertex
         }
     }
 
+    for (int index = movingVerts.size() - 1; index >= 0; --index) {
+        if (movingVerts[index] == nullptr) {
+            movingVerts.remove(index);
+        }
+    }
+
     return movingVerts;
 }
 
@@ -2051,8 +2069,11 @@ void Interactor::setMovingVertsFromSelected() {
     state.selectedFrame.clear();
     vector<Vertex*>& selected = getSelected();
 
-    for (auto& it : selected) {
-        addToArray(getVerticesToMove(getClosestLine(it), it), state.selectedFrame);
+    for (Vertex* vertex : selected) {
+        if (vertex == nullptr) {
+            continue;
+        }
+        addToArray(getVerticesToMove(getClosestLine(vertex), vertex), state.selectedFrame);
     }
 }
 
@@ -2483,6 +2504,9 @@ bool Interactor::shouldDoDimensionCheck() {
 }
 
 VertCube* Interactor::getClosestLine(Vertex* vert) {
+    if (vert == nullptr) {
+        return nullptr;
+    }
     if (vert->getNumOwners() > 0) {
         MorphPosition pos = positioner->getMorphPosition();
 

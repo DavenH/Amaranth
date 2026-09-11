@@ -69,10 +69,19 @@ bool GraphDocument::undo() {
         return false;
     }
 
-    redoHistory.push_back(currentGraph);
-    NodeGraph graph = std::move(undoHistory.back());
+    HistoryEntry entry = std::move(undoHistory.back());
     undoHistory.pop_back();
-    return restoreGraph(std::move(graph));
+    if (auto* graph = std::get_if<NodeGraph>(&entry)) {
+        redoHistory.emplace_back(currentGraph);
+        return restoreGraph(std::move(*graph));
+    }
+
+    auto& delta = std::get<GraphDelta>(entry);
+    delta.applyInverse(currentGraph);
+    const GraphChangeSet change = delta.change();
+    redoHistory.push_back(std::move(entry));
+    publishChange(change);
+    return true;
 }
 
 bool GraphDocument::redo() {
@@ -80,10 +89,19 @@ bool GraphDocument::redo() {
         return false;
     }
 
-    undoHistory.push_back(currentGraph);
-    NodeGraph graph = std::move(redoHistory.back());
+    HistoryEntry entry = std::move(redoHistory.back());
     redoHistory.pop_back();
-    return restoreGraph(std::move(graph));
+    if (auto* graph = std::get_if<NodeGraph>(&entry)) {
+        undoHistory.emplace_back(currentGraph);
+        return restoreGraph(std::move(*graph));
+    }
+
+    auto& delta = std::get<GraphDelta>(entry);
+    delta.applyForward(currentGraph);
+    const GraphChangeSet change = delta.change();
+    undoHistory.push_back(std::move(entry));
+    publishChange(change);
+    return true;
 }
 
 void GraphDocument::recordExternalChange(NodeGraph beforeGraph, GraphChangeSet change) {
@@ -92,7 +110,18 @@ void GraphDocument::recordExternalChange(NodeGraph beforeGraph, GraphChangeSet c
 }
 
 void GraphDocument::recordBeforeChange(NodeGraph graph) {
-    undoHistory.push_back(std::move(graph));
+    undoHistory.emplace_back(std::move(graph));
+    redoHistory.clear();
+    if (undoHistory.size() > maximumHistoryDepth) {
+        undoHistory.erase(undoHistory.begin());
+    }
+}
+
+void GraphDocument::recordDelta(GraphDelta delta) {
+    if (delta.empty()) {
+        return;
+    }
+    undoHistory.emplace_back(std::move(delta));
     redoHistory.clear();
     if (undoHistory.size() > maximumHistoryDepth) {
         undoHistory.erase(undoHistory.begin());
