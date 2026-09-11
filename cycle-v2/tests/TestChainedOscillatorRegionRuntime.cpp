@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
+#include <Audio/CycleDsp/SpectralStageCapture.h>
 #include <Util/LogRegionMapping.h>
 
 #include "Runtime/ChainedOscillatorRegionRuntime.h"
@@ -19,6 +20,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <numeric>
 
 using namespace CycleV2;
 
@@ -156,13 +158,43 @@ TEST_CASE("Prepared trimesh morph binding preserves fractional voice position",
 #endif
 }
 
+TEST_CASE("Prepared Organ 2 time mesh inherits the attached Voice Time source",
+        "[cycle-v2][runtime][oscillator-region][voice-time][organ-2][parity]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const auto compiled = GraphCompiler().compile(loadPresetGraph("organ-2"));
+    REQUIRE(compiled.succeeded());
+    const auto timeLayer = std::find_if(
+            compiled.plan.steps.begin(),
+            compiled.plan.steps.end(),
+            [](const GraphExecutionStep& step) {
+                return step.nodeId == "timeLayer1";
+            });
+    REQUIRE(timeLayer != compiled.plan.steps.end());
+
+    PreparedTrimeshMorphBinding binding;
+    binding.bind(compiled.plan, *timeLayer);
+    AudioVoiceContext voice;
+    voice.controls.normalizedVoiceTimeIncrement = 1.f / 55874.f;
+    PreparedOscillatorProcessContext context;
+    context.voice = &voice;
+
+    const auto inputs = binding.inputsFor(context, 0, 5393.0);
+
+    REQUIRE(inputs.hasAbsoluteOverride[0]);
+    REQUIRE(inputs.absoluteOverrides[0] == Catch::Approx(5393.f / 55874.f));
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
+}
+
 PartitionedRender renderPreparedGraph(
         const GraphExecutionPlan& plan,
         int blockSize,
         int sampleCount,
         int controllerEventOffset = -1,
         int midiNote = 72,
-        float voiceDurationSeconds = 1.f) {
+        float voiceDurationSeconds = 1.f,
+        CycleDsp::SpectralStageCaptureSink* stageCapture = nullptr) {
     AudioExecutionSpec spec;
     spec.maximumFrameCount = 512;
     spec.sampleRate = 48000.0;
@@ -179,6 +211,7 @@ PartitionedRender renderPreparedGraph(
     voice.controls.velocity = 1.f;
     voice.controls.normalizedVoiceTimeIncrement
             = 1.f / (48000.f * voiceDurationSeconds);
+    voice.spectralStageCapture = stageCapture;
     voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     ScratchCaptureObserver observer(result);
     if (controllerEventOffset >= 0) {
@@ -216,6 +249,47 @@ PartitionedRender renderPreparedGraph(
     }
     result.frameRenderCount = executor.oscillatorFrameRenderCount(0);
     return result;
+}
+
+TEST_CASE("Prepared Organ 2 does not use its pitch envelope as Time scratch",
+        "[cycle-v2][runtime][oscillator-region][voice-time][organ-2][parity]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const auto compiled = GraphCompiler().compile(loadOscillatorPresetGraph("organ-2"));
+    REQUIRE(compiled.succeeded());
+    CycleDsp::SpectralStageCaptureRecorder stages;
+    REQUIRE(stages.prepare(4096, 16));
+    constexpr float voiceDurationSeconds = 1.2669865f;
+
+    renderPreparedGraph(
+            compiled.plan,
+            512,
+            8192,
+            -1,
+            48,
+            voiceDurationSeconds,
+            &stages);
+
+    const auto* timeRaster = stages.record(CycleDsp::SpectralStage::TimeRaster, 0);
+    REQUIRE(timeRaster != nullptr);
+    REQUIRE(timeRaster->secondary.size() == 3);
+    const float expectedVoiceTime = (float) timeRaster->frontier
+            / (48000.f * voiceDurationSeconds);
+    const float voiceTimeIncrement = 1.f / (48000.f * voiceDurationSeconds);
+    REQUIRE(timeRaster->secondary[0]
+            == Catch::Approx(expectedVoiceTime).margin(voiceTimeIncrement));
+
+    const auto* reconstructed = stages.record(
+            CycleDsp::SpectralStage::ReconstructedFrame,
+            0);
+    REQUIRE(reconstructed != nullptr);
+    const float mean = std::accumulate(
+            reconstructed->primary.get(),
+            reconstructed->primary.get() + reconstructed->primary.size(),
+            0.f) / (float) reconstructed->primary.size();
+    REQUIRE(mean == Catch::Approx(0.f).margin(1.0e-6f));
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
 }
 
 std::array<std::vector<float>, 2> renderPreparedPresetFrames(
@@ -503,6 +577,8 @@ TEST_CASE("Spectral oscillator recipes preserve a fixed Trimesh frame through FF
                     0
             },
             Buffer<float>(expected.data(), frameSize)));
+    Buffer<float> expectedBuffer(expected.data(), frameSize);
+    expectedBuffer.add(-expectedBuffer.mean());
     REQUIRE(Buffer<float>(left.data(), frameSize).normDiffL2({
                     expected.data(),
                     frameSize

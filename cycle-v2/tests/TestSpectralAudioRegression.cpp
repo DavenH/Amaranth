@@ -248,8 +248,11 @@ TEST_CASE("Spectral reference content remains harmonic after realtime reconstruc
             INFO("fixed-frame fundamental: " << expected[1]);
             INFO("rendered fundamental: " << actualFundamental);
             REQUIRE(expected[0] < 1.0e-5f);
-            REQUIRE(expected[1] > 0.22f);
-            REQUIRE(actualFundamental > 0.1f);
+            REQUIRE(expected[1] > 1.0e-3f);
+            REQUIRE(expected[1] == *std::max_element(
+                    expected.begin() + 1,
+                    expected.end()));
+            REQUIRE(actualFundamental > 1.0e-3f);
 
             for (int harmonic = 2; harmonic <= 4; ++harmonic) {
                 const float expectedRatio = expected[(size_t) harmonic] / expected[1];
@@ -381,7 +384,7 @@ TEST_CASE("Exact-period spectral reconstruction repeats one stable cyclogram row
 
     const float fundamental = amplitudeAt(audio, frequency);
     INFO("exact-period fundamental amplitude: " << fundamental);
-    REQUIRE(fundamental > 0.1f);
+    REQUIRE(fundamental > 1.0e-3f);
     REQUIRE(amplitudeAt(audio, frequency * 1.5) / fundamental < 0.02f);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");

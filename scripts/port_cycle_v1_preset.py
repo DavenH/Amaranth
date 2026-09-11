@@ -468,6 +468,13 @@ def envelope_node(preset, layer, purpose, node_id, x, y, level=1.0):
     )
 
 
+def effective_reverb_high_pass(preset, stored_value):
+    product_version = preset.get("details", {}).get("productVersion")
+    if product_version is not None and float(product_version) < 1.5:
+        return 0.05
+    return stored_value
+
+
 def convert(source):
     issues = validate_conversion(source)
     if issues:
@@ -764,7 +771,8 @@ def convert(source):
             "size": reverb["knobs"][0],
             "damp": reverb["knobs"][1],
             "width": reverb["knobs"][2],
-            "highPass": reverb["knobs"][3],
+            "highPass": effective_reverb_high_pass(
+                preset, reverb["knobs"][3]),
             "wet": reverb["knobs"][4],
         }))
         edges.append(edge(signal_node, signal_port, "reverb", "time"))

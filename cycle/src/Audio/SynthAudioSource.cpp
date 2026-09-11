@@ -139,6 +139,7 @@ void SynthAudioSource::updateParametersToTargetForTesting() {
     waveshaper->updateParametersToTarget();
     tubeModel->updateParametersToTarget();
     equalizer->updateParametersToTarget();
+    reverb->updateParametersToTarget();
     volumeScale.updateToTarget();
 }
 

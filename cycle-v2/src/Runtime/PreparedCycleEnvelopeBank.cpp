@@ -218,6 +218,9 @@ void PreparedCycleEnvelopeBank::advance(
 
 PreparedCycleEnvelopeBank::Entry* PreparedCycleEnvelopeBank::entryFor(
         int bufferIndex) {
+    if (bufferIndex < 0) {
+        return nullptr;
+    }
     const auto found = std::find_if(
             entries.begin(), entries.end(), [&](const auto& entry) {
                 return entry->bufferIndex == bufferIndex;
@@ -227,6 +230,9 @@ PreparedCycleEnvelopeBank::Entry* PreparedCycleEnvelopeBank::entryFor(
 
 const PreparedCycleEnvelopeBank::Entry* PreparedCycleEnvelopeBank::entryFor(
         int bufferIndex) const {
+    if (bufferIndex < 0) {
+        return nullptr;
+    }
     const auto found = std::find_if(
             entries.begin(), entries.end(), [&](const auto& entry) {
                 return entry->bufferIndex == bufferIndex;

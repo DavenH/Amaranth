@@ -1,0 +1,62 @@
+{
+    "schema": "cycle-v1-v2-audio-equivalence.v1",
+    "status": "diagnostic",
+    "v1": {
+        "factoryPreset": "organ-2",
+        "sourceDocument": "cycle/content/presets/organ-2.cyc",
+        "sha256": "4f8f8945c77537a655b3e17661b38f59c614a1707b668700541e5a5e14de3245"
+    },
+    "v2": {
+        "graph": "cycle-v2/content/presets/organ-2.cyclegraph",
+        "sha256": "e95543046770b41b337db34141df85711478b1ecf1c8bef5c93fc008f562172d",
+        "renderOverrides": {
+            "voiceDurationSeconds": 1.2669864718837067
+        }
+    },
+    "translation": {
+        "midiNoteOffset": 0,
+        "legacyMidiReferenceOffset": -12,
+        "v1MasterGain": 0.9773594682052107,
+        "v2OutputGainUnitValue": 0.496183206,
+        "v2OutputHeadroom": 0.125,
+        "coverage": [
+            "multipleMagnitudeLayers",
+            "phaseLayer",
+            "volumeEnvelope",
+            "pitchEnvelope",
+            "unisonGroup5",
+            "impulseResponse",
+            "delay",
+            "reverb"
+        ],
+        "determinism": "guide noise is disabled; offline effect state is settled before capture",
+        "inputValidation": "regenerated from a direct Cycle 1 canonical file export while preserving Cycle V2 presentation",
+        "knownRuntimeGaps": [],
+        "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
+    },
+    "effectBindings": {
+        "unison": {
+            "v1Area": "AreaUnison",
+            "v2Node": "unison"
+        },
+        "impulseResponse": {
+            "v1Area": "AreaImpulse",
+            "v2Node": "impulseResponse"
+        },
+        "delay": {
+            "v1Area": "AreaDelay",
+            "v2Node": "delay"
+        },
+        "reverb": {
+            "v1Area": "AreaReverb",
+            "v2Node": "reverb"
+        }
+    },
+    "thresholds": {
+        "correlationMin": 0.98,
+        "gainMatchedResidualMax": 0.2,
+        "spectrumRmseDbMax": 6.0,
+        "cyclogramMeanRowDifferenceMax": 0.2,
+        "exactSamplesRequired": false
+    }
+}

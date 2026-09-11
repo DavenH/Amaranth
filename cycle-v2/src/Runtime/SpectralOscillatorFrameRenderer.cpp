@@ -307,6 +307,7 @@ bool SpectralOscillatorFrameRenderer::prepare(
     for (int frameSize = 2; frameSize <= maximumFrameSize; frameSize *= 2) {
         auto transform = std::make_unique<Transform>();
         transform->allocate(frameSize, Transform::DivFwdByN, true);
+        transform->setRemovesOffset(true);
         transform->setExclusiveRealtimeAccess(true);
         transforms.push_back(std::move(transform));
     }

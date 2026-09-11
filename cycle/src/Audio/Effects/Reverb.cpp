@@ -200,6 +200,16 @@ void ReverbEffect::updateKernelSections()
     rightConv.init(rightConv.headBlockSize, rightConv.tailBlockSize, kernel.right);
 }
 
+void ReverbEffect::updateParametersToTarget() {
+    if (blockSizeAction.isPending()) {
+        setBlockSize(blockSizeAction.getValueAndDismiss());
+    }
+    createKernel((int) CycleDsp::reverbKernelLength(roomSize));
+    kernelSizeAction.dismiss();
+    kernelFilterAction.dismiss();
+    stopTimer(kernelSize);
+}
+
 void ReverbEffect::setBlockSize(int size) {
     int nextPow2 = NumberUtils::nextPower2(size);
 

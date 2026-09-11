@@ -579,6 +579,18 @@ class PortCycleV1PresetTest(unittest.TestCase):
             "wet": 0.5,
         })
 
+    def test_legacy_reverb_uses_the_effective_high_pass_default(self):
+        source = convertible_source()
+        source["preset"]["details"] = {"productVersion": 1.0}
+        source["preset"]["effects"]["Reverb"]["enabled"] = True
+
+        converted = port_cycle_v1_preset.convert(source)
+        reverb = next(
+            node for node in converted["nodes"]
+            if node["id"] == "reverb")
+
+        self.assertEqual(reverb["parameters"]["highPass"], 0.05)
+
     def test_group_unison_uses_the_shared_cycle_mapping(self):
         source = convertible_source()
         source["preset"]["effects"]["Unison"]["enabled"] = True
