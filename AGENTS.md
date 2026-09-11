@@ -60,6 +60,14 @@
 - A successful semantic command must merge every changed field into one `GraphEditResult`/`GraphChangeSet`. Scheduling and repaint decisions must use that consolidated result so parameter-only and model-only edits cannot disappear.
 - Any new live editing path needs a sequence test with at least two updates in one gesture, commit, observable downstream refresh/effect, and undo. Single-update tests do not prove transient revision correctness.
 
+## Interaction Complexity Parity
+- Before porting or changing a mature Cycle 1 interaction, document the Cycle 1 cost of pointer-down, each movement update, and commit. Cycle 2 must not increase the asymptotic cost of any phase.
+- Work for a semantic delta may scale only with the objects changed by that delta and with an explicitly required local render product. It must not scale with unrelated graph nodes, edges, resources, audio samples, mesh vertices, or editor-state size.
+- A live movement update must not clone `NodeGraph`, deep-copy a complete `Mesh` or node model, serialize state, stringify JSON for equality, rebuild unrelated presentation, or prepare durable resources.
+- Undo capture may occur once at a gesture boundary as a temporary fallback, but it must copy the smallest affected domain state and never unrelated graph or audio-resource content. The intended end state is an invertible semantic delta: apply the delta for edit/redo and its inverse for undo.
+- Gesture tests must use operation counters in addition to timing. Scale unrelated graph and domain data while holding the edited delta constant, and assert unchanged copy, serialization, lookup, preparation, and rebuild counts.
+- Treat a Cycle 1 O(1) operation that becomes O(n) in Cycle 2 as a correctness regression, not a performance optimization opportunity.
+
 ## Engineering Loop
 
 For every nontrivial implementation, execute these stages in order. Treat each

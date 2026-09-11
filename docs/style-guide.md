@@ -245,6 +245,17 @@ Mirror this order in constructor initializer lists.
 - Make methods as pure-function shaped as practical. Values that genuinely vary per call should normally be explicit parameters, so the signature exposes the computation's changing dependencies instead of requiring callers to mutate hidden member state first. Stable collaborators, owned resources, caches, and saved references that define object identity may remain members; do not mechanically turn all members into repetitive argument lists.
 - Name operations for the domain product they compute. A method that renders one morph-position cross-section should say `crossSection` or `slice` and accept that position explicitly; a generic name such as `renderMesh` conceals both cost and dependency.
 - Preserve asymptotic intent. A single-object edit should not scan, sort, serialize, or rebuild the whole collection unless that work is inherent to a separately defined commit/publication boundary. State expected complexity when introducing lookup structures or reconciliation passes.
+- For interactions with a mature Cycle 1 implementation, preserve complexity per
+  gesture phase as well as visible behavior. Pointer-down, movement, and commit
+  need separate cost contracts. One undo capture at a gesture boundary may be
+  tolerated while migrating old code, but it must contain only the smallest
+  affected domain state. Movement callbacks never snapshot aggregate state;
+  the target undo model stores an invertible semantic delta and applies it
+  forward for redo and backward for undo.
+- Prove interaction complexity with deterministic operation counts. Tests should
+  enlarge unrelated graph and model content while keeping the semantic delta
+  fixed, then assert that copies, serialization, preparation, searches, and
+  rebuilds do not increase.
 - Try to keep methods and functions under 30 lines
 - A large translation unit containing several concrete domain components is a
   refactor signal even when each method is individually short. Split concrete
