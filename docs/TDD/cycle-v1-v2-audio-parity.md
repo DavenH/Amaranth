@@ -857,6 +857,36 @@ as the scratch envelope evolves.
     `/tmp/cycle-guitar-repeat-no-delay/comparison.json`,
     `/tmp/cycle-japan-drum-repeat-allocator/comparison.json`, and
     `/tmp/cycle-japan-drum-verified-allocator/comparison.json`.
+52. Preserve real linked-stereo payloads through global Delay. Complete:
+    real compiled time-signal ports use `ChannelLayout::LinkedStereo`, while
+    the runtime payload predicate recognizes only `StereoPair`. The prior Delay
+    test manually supplied `StereoPair` and therefore bypassed the production
+    failure. The runtime now separates a port's declared stereo arity from the
+    presence of materialized secondary samples: `LinkedStereo` preserves a real
+    second block but still permits existing scalar payloads to expand safely,
+    while `StereoPair` remains explicitly two-channel. Guard the complete
+    compiled path with a Stereo Split/Join immediately before Delay so a real
+    `LinkedStereo` payload with deliberately different channels crosses Delay
+    and Output. Reverting the predicate collapses that regression to identical
+    channels; the corrected path passes. Reuse the shared `CycleDelay`; do not
+    add Delay-local channel adaptation.
+
+    Paired three-note Icycle fixtures additionally render Cycle 1 and Cycle V2
+    for three seconds, with overlapping note lifetimes and a 2.05-second window
+    after the first note-off. Both engines retain strongly non-mono output and
+    uninterrupted release/effect energy: side RMS remains `0.06680` in Cycle 1
+    and `0.07304` in Cycle V2 during 2.0-2.95 seconds. First-note cross-engine
+    correlation remains approximately `0.999` per channel, then declines
+    during overlap and the late tail. This is a remaining multi-voice/tail
+    DSP-parity diagnostic, not a processing-ownership regression: the current
+    Icycle Waveshaper, IR,
+    Delay, and Output steps are all global, and the node definitions also keep
+    EQ and Reverb global. Selectable Waveshaper/IR/EQ scope remains the explicit
+    future architecture described in Slice 42. Fixtures:
+    `scripts/fixtures/cycle-agent-icycle-note-sequence.json` and
+    `scripts/fixtures/cycle-v2-agent-icycle-note-sequence.json`. Artifacts:
+    `/tmp/cycle-v1-icycle-note-sequence-report.json`,
+    `/tmp/cycle-v2-icycle-note-sequence-report.json`, and their `.f32le` audio.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

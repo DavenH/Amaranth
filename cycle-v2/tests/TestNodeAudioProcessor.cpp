@@ -1774,7 +1774,7 @@ TEST_CASE("Delay processor preserves independent stereo input state",
             { "spinIters", "Pan Cycle", "0" }
     };
     SignalPayload stereo = payload(std::vector<float>(32, 0.f));
-    stereo.channelLayout = ChannelLayout::StereoPair;
+    stereo.channelLayout = ChannelLayout::LinkedStereo;
     stereo.secondaryBlock.samples.resize(32);
     stereo.block.samples[0] = 1.f;
     stereo.secondaryBlock.samples[3] = 0.5f;
@@ -1784,7 +1784,7 @@ TEST_CASE("Delay processor preserves independent stereo input state",
     prepareProcessor(*processor, AudioModuleRole::Delay, context);
     processor->process(context);
 
-    REQUIRE(output(context).channelLayout == ChannelLayout::StereoPair);
+    REQUIRE(output(context).channelLayout == ChannelLayout::LinkedStereo);
     REQUIRE(output(context).secondaryBlock.samples.size() == context.frameCount);
     REQUIRE(output(context).block.samples != output(context).secondaryBlock.samples);
     REQUIRE(output(context).block.samples[0] == Catch::Approx(1.f));

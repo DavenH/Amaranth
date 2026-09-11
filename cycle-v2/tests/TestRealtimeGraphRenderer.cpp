@@ -370,6 +370,98 @@ TEST_CASE("Global delay continues after its source voice retires",
     REQUIRE(releasedPeak > 1.0e-4f);
 }
 
+TEST_CASE("Compiled linked-stereo graph preserves distinct channels through Delay",
+        "[cycle-v2][audio-device][realtime][delay][stereo]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("Icycle.cyclegraph");
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            preset.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    NodeGraph graph = loaded.graph;
+    const auto delayInput = std::find_if(
+            graph.getEdges().begin(),
+            graph.getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "impulseResponse"
+                        && edge.destNodeId == "delay";
+            });
+    REQUIRE(delayInput != graph.getEdges().end());
+    REQUIRE(GraphEditor().removeEdgeAt(
+            graph,
+            (size_t) std::distance(graph.getEdges().begin(), delayInput)).succeeded());
+
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::StereoSplit,
+            "delayStereoSplit",
+            {}));
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::StereoJoin,
+            "delayStereoJoin",
+            {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "impulseResponse", "time", false },
+            { "delayStereoSplit", "time", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "delayStereoSplit", "left", false },
+            { "delayStereoJoin", "left", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "delayStereoSplit", "right", false },
+            { "delayStereoJoin", "right", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "delayStereoJoin", "time", false },
+            { "delay", "time", true }).succeeded());
+
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    constexpr int frameCount = 256;
+    constexpr double sampleRate = 44'100.0;
+    constexpr double blockDuration = frameCount / sampleRate;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = frameCount;
+    spec.sampleRate = sampleRate;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 53, spec);
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    renderer.setPreparedGraph(prepared.get());
+    REQUIRE(queue.enqueue(
+            MidiMessage::noteOn(1, 48, (uint8) 100),
+            MidiEventSource::PerformanceKeyboard,
+            1.0));
+
+    AudioBuffer<float> output(2, frameCount);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    float stereoDifference = 0.f;
+    double callbackTime = 1.0;
+    for (int block = 0; block < 8; ++block) {
+        renderer.process(
+                queue,
+                channels,
+                2,
+                frameCount,
+                sampleRate,
+                callbackTime);
+        for (int sample = 0; sample < frameCount; ++sample) {
+            stereoDifference = jmax(
+                    stereoDifference,
+                    std::abs(output.getSample(0, sample) - output.getSample(1, sample)));
+        }
+        callbackTime += blockDuration;
+    }
+
+    REQUIRE(renderer.diagnostics(queue).leftPeak > 0.f);
+    REQUIRE(renderer.diagnostics(queue).rightPeak > 0.f);
+    REQUIRE(stereoDifference > 1.0e-4f);
+  #endif
+}
+
 TEST_CASE("Realtime graph renderer isolates voices and steals the oldest voice",
         "[cycle-v2][audio-device][realtime][midi]") {
     const auto compiled = GraphCompiler().compile(NodeGraph::createDemoGraph());
