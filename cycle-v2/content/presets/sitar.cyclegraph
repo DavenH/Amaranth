@@ -2531,6 +2531,55 @@
             }
         },
         {
+            "id": "guide3",
+            "shortLabel": "G3",
+            "name": "",
+            "colourIndex": 2,
+            "shelfOrder": 2,
+            "enabled": true,
+            "noise": 0.0,
+            "dcOffset": 0.0,
+            "phase": 0.0,
+            "noiseSeed": 3317,
+            "revision": 1,
+            "model": {
+                "schema": "flatCurve",
+                "version": 1,
+                "revision": 1,
+                "state": {
+                    "version": 1,
+                    "type": "flatCurve",
+                    "revision": 1,
+                    "vertices": [
+                        {
+                            "id": 1,
+                            "x": 0.0625,
+                            "y": 0.5,
+                            "curve": 1.0
+                        },
+                        {
+                            "id": 2,
+                            "x": 0.944001913,
+                            "y": 0.497041404,
+                            "curve": 1.0
+                        },
+                        {
+                            "id": 3,
+                            "x": 0.189856946,
+                            "y": 0.393491119,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 4,
+                            "x": 0.117035061,
+                            "y": 0.565088749,
+                            "curve": 0.0
+                        }
+                    ]
+                }
+            }
+        },
+        {
             "id": "guide4",
             "shortLabel": "G4",
             "name": "",

@@ -56,7 +56,10 @@ public:
     static constexpr int stageCount = 10;
     static constexpr int channelCount = 2;
 
-    bool prepare(int maximumValueCount, size_t targetFrameIndex);
+    bool prepare(
+            int maximumValueCount,
+            size_t targetFrameIndex,
+            int targetOccurrenceIndex = 0);
     void reset();
     void capture(const SpectralStageFrame& frame) noexcept override;
 
@@ -70,8 +73,10 @@ private:
 
     int maximumValues {};
     size_t targetFrame {};
+    int targetOccurrence {};
     ScopedAlloc<float> payloadMemory;
     std::array<CapturedSpectralStage, stageCount * channelCount> records;
+    std::array<int, stageCount * channelCount> occurrenceCounts {};
 };
 
 juce::String spectralStageName(SpectralStage stage);

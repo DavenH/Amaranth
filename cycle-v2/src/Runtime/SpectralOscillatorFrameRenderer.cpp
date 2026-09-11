@@ -712,9 +712,13 @@ void SpectralOscillatorFrameRenderer::prepareFrameRandom(
     uint32_t magnitudeOffsetSeed = (uint32_t) seed;
     uint32_t phaseOffsetSeed = (uint32_t) seed;
     if (hasDeterministicRandomSeed) {
-        timeOffsetSeed = (uint32_t) frameRandom.nextInt();
-        magnitudeOffsetSeed = (uint32_t) frameRandom.nextInt();
-        phaseOffsetSeed = (uint32_t) frameRandom.nextInt();
+        // Cycle 1 takes only the time-offset draw from the filter voice stream.
+        // Keep the other offset translation from advancing retained layer noise.
+        Random offsetRandom(seed);
+        timeOffsetSeed = (uint32_t) offsetRandom.nextInt();
+        magnitudeOffsetSeed = (uint32_t) offsetRandom.nextInt();
+        phaseOffsetSeed = (uint32_t) offsetRandom.nextInt();
+        frameRandom.nextInt();
     }
     for (auto& operation : operations) {
         if (operation.timeRasterizer != nullptr) {

@@ -2610,7 +2610,13 @@ bool CycleAutomation::captureAudio(const var& command, String& message, var& dat
         const size_t targetFrame = (size_t) jmax(
                 0,
                 (int) getDouble(command, "stageCaptureFrameIndex", 0.0));
-        if (!stageCapture.prepare(maximumSpectralStageValues, targetFrame)) {
+        const int targetOccurrence = jmax(
+                0,
+                (int) getDouble(command, "stageCaptureOccurrenceIndex", 0.0));
+        if (!stageCapture.prepare(
+                maximumSpectralStageValues,
+                targetFrame,
+                targetOccurrence)) {
             message = "Could not prepare spectral stage capture";
             return false;
         }

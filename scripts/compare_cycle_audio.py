@@ -368,6 +368,8 @@ def render_note(manifest, note, output_directory, arguments):
             note_directory / "cycle-v2-stages.json")
         capture_v1["stageCaptureFrameIndex"] = arguments.stage_frame_index
         capture_v2["stageCaptureFrameIndex"] = arguments.stage_frame_index
+        capture_v1["stageCaptureOccurrenceIndex"] = arguments.stage_occurrence_index
+        capture_v2["stageCaptureOccurrenceIndex"] = arguments.stage_occurrence_index
     v1_script = note_directory / "cycle-v1-automation.json"
     v2_script = note_directory / "cycle-v2-automation.json"
 
@@ -547,6 +549,12 @@ def parse_arguments():
         type=int,
         default=0,
         help="zero-based oscillator frame to capture with --capture-stages",
+    )
+    parser.add_argument(
+        "--stage-occurrence-index",
+        type=int,
+        default=0,
+        help="zero-based repeated stage occurrence to capture within the selected frame",
     )
     parser.add_argument("--no-fail", action="store_true")
     return parser.parse_args()

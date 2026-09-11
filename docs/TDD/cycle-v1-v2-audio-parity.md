@@ -741,11 +741,12 @@ as the scratch envelope evolves.
     `/tmp/cycle-flute-verified/comparison.json`.
 45. Establish deterministic spectral Guide-noise mapping. Completed: Cycle
     1's `SynthFilterVoice` owns a random stream seeded from the offline
-    per-voice base plus one. Note preparation consumes one draw each for time,
-    magnitude, and phase Guide offsets; subsequent active layer rasterizations
-    consume that advanced stream in render order. Cycle V2 must translate that
-    sequence inside `SpectralOscillatorFrameRenderer`, leaving its live
-    lifecycle-seed path unchanged. Sitar is the smallest effect-free factory
+    per-voice base plus one. Note preparation consumes its time Guide-offset
+    draw from that stream; the magnitude and phase offset seeds belong to the
+    parent voice's separate random stream. Subsequent active layer
+    rasterizations continue from the filter stream in render order. Cycle V2
+    translates that ownership inside `SpectralOscillatorFrameRenderer`, leaving
+    its live lifecycle-seed path unchanged. Sitar is the smallest effect-free factory
     candidate with an assigned noisy magnitude Guide and no active envelopes.
     Its first differential render proved the noisy magnitude raster is
     byte-identical, but exposed a separate conversion gap: promoting an empty
@@ -771,13 +772,23 @@ as the scratch envelope evolves.
     cyclogram `0.0120–0.0504`; both engines are exactly repeatable. Artifacts:
     `/tmp/cycle-sitar-persisted-guide-seeds/comparison.json` and
     `/tmp/cycle-flute-persisted-guide-seeds/comparison.json`.
-46. Align multi-layer spectral-stack composition. In progress: Sitar's
-    authoritative first additive magnitude operand and phase operand already
-    match, but its post-layer spectrum begins the material mismatch. Compare
-    later magnitude operands and the add/multiply accumulator boundaries before
-    changing synthesis code; retain Sitar as diagnostic until Cycle 1 itself
-    satisfies the exact repeatability gate or that harness instability is
-    resolved.
+46. Align multi-layer spectral-stack composition. Completed: an
+    occurrence-selectable shared stage recorder localized Sitar's error to its
+    third magnitude layer. Cycle V2 had consumed the parent-owned magnitude and
+    phase offset draws from the filter RNG, advancing noisy layer seeds by two.
+    Keeping those offset calculations separate while advancing the retained
+    filter stream only for its time-offset draw makes the third magnitude raster
+    and operand byte-identical. The full MIDI 36–72 matrix now reaches
+    correlation `0.99905–1.00000`, residual `0.0005–0.0437`, spectrum
+    `0.00–1.06 dB`, and cyclogram `0.0003–0.0388`. Cycle V2 repeats exactly at
+    every pitch. Sitar remains diagnostic only because Cycle 1 intermittently
+    differs by ULPs on repeated MIDI 48 captures. Artifact:
+    `/tmp/cycle-sitar-verified/comparison.json`.
+47. Resolve the intermittent Cycle 1 spectral-reference repeatability failure.
+    In progress: MIDI 48 sometimes repeats exactly and sometimes differs by
+    single-precision ULPs despite identical seeded stage operands. Preserve the
+    exact repeatability gate; identify the first unstable downstream boundary
+    before admitting Sitar as verified.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

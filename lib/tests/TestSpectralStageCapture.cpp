@@ -98,6 +98,38 @@ TEST_CASE("Spectral stage recorder writes hashed raw payload metadata") {
     REQUIRE(raw.deleteFile());
 }
 
+TEST_CASE("Spectral stage recorder selects a repeated stage occurrence") {
+    SpectralStageCaptureRecorder recorder;
+    REQUIRE(recorder.prepare(8, 2, 1));
+
+    std::array<float, 2> first { 1.f, 2.f };
+    std::array<float, 2> second { 3.f, 4.f };
+    recorder.capture({
+            SpectralStage::MagnitudeOperand,
+            2,
+            500,
+            60,
+            0,
+            { first.data(), (int) first.size() },
+            {}
+    });
+    REQUIRE(recorder.record(SpectralStage::MagnitudeOperand, 0) == nullptr);
+
+    recorder.capture({
+            SpectralStage::MagnitudeOperand,
+            2,
+            500,
+            60,
+            0,
+            { second.data(), (int) second.size() },
+            {}
+    });
+    const auto* captured = recorder.record(SpectralStage::MagnitudeOperand, 0);
+    REQUIRE(captured != nullptr);
+    REQUIRE(captured->primary[0] == 3.f);
+    REQUIRE(captured->primary[1] == 4.f);
+}
+
 TEST_CASE("Pitch-clocked stage metadata identifies the composed source cycle") {
     SpectralStageCaptureRecorder recorder;
     REQUIRE(recorder.prepare(8, 0));

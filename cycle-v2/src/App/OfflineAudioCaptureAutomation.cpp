@@ -342,7 +342,13 @@ bool OfflineAudioCaptureAutomation::capture(
         const size_t targetFrame = (size_t) jmax(
                 0,
                 (int) doubleProperty(command, "stageCaptureFrameIndex", 0.0));
-        if (!stageCapture.prepare(maximumSpectralStageValues, targetFrame)) {
+        const int targetOccurrence = jmax(
+                0,
+                (int) doubleProperty(command, "stageCaptureOccurrenceIndex", 0.0));
+        if (!stageCapture.prepare(
+                maximumSpectralStageValues,
+                targetFrame,
+                targetOccurrence)) {
             error = "Could not prepare spectral stage capture";
             return false;
         }

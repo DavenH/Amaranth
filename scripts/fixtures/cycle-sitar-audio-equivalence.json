@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/sitar.cyclegraph",
-        "sha256": "5454ba8058f76514ad0536e367ce9e0c09fc141cc606674476ee938f736049b1",
+        "sha256": "c05053ffb7eeee525c6b0b320d1d2d7391c4822ac1a290caa9ce6bac22e4286c",
         "renderOverrides": {
             "voiceDurationSeconds": 0.6088500846478859
         }
@@ -25,7 +25,7 @@
             "phaseLayer",
             "spectralGuideNoise"
         ],
-        "determinism": "offline seed maps to the Cycle 1 filter-voice RNG stream before time, magnitude, and phase Guide offset draws",
+        "determinism": "offline seed maps to the Cycle 1 filter-voice RNG stream; the retained layer stream consumes only its time-Guide offset draw",
         "inputValidation": "regenerated from a direct Cycle 1 canonical export while preserving Cycle V2 presentation",
         "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
     },
