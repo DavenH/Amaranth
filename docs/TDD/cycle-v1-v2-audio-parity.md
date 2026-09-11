@@ -930,19 +930,12 @@ as the scratch envelope evolves.
     non-audio orchestration nodes remain unbadged. The label makes the state
     readable without relying on colour. A focused compiler/presentation test
     guards the mapping and the production-size artifact is
-    `/tmp/cycle-v2-scope-after.png`. Icycle spy read-time is complete as a
-    presentation correction: probe capture retains the full traversal grid,
-    while the spy renderer now reads the time-zero column as a one-dimensional
-    signal instead of duplicating the source node's complete dynamic grid.
-    The extraction is independently tested at the first, middle, and final
-    cursor positions so a future movable read cursor can reuse the same
-    boundary without changing capture semantics. Visual artifact:
-    `/tmp/cycle-v2-icycle-spies-after.png`. Next, audit
+    `/tmp/cycle-v2-scope-after.png`. Next, audit
     every factory `.cyc`/`.cyclegraph` pair for voice length, octave, pitch,
     portamento, oversampling, and migrated envelope ownership while preserving
     authored Cycle V2 node presentation. Keyboard range/velocity, runtime
-    voice/global scope indication, Icycle spy time, and Astral audio as separate
-    observable slices under this item.
+    voice/global scope indication, Icycle spy time, and Astral audio each remain
+    separate observable slices under this item.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

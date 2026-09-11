@@ -586,21 +586,6 @@ Image NodePreviewRenderer::createRuntimeHeatmapImage(
     return image;
 }
 
-std::vector<float> NodePreviewRenderer::signalSpyReadSlice(
-        const NodePreviewResult& preview,
-        float normalizedTime) {
-    if (preview.gridColumns == 0
-            || preview.gridRows == 0
-            || preview.primary.size() < preview.gridColumns * preview.gridRows) {
-        return preview.primary;
-    }
-
-    const size_t column = (size_t) roundToInt(jlimit(0.f, 1.f, normalizedTime)
-            * (float) (preview.gridColumns - 1));
-    const auto first = preview.primary.begin() + (ptrdiff_t) (column * preview.gridRows);
-    return { first, first + (ptrdiff_t) preview.gridRows };
-}
-
 Rectangle<float> NodePreviewRenderer::boundsFor(
         const Node& node,
         Rectangle<float> nodeBounds,
@@ -635,7 +620,8 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
     }
 
     if (request.runtimeResult != nullptr
-            && request.runtimeResult->role == PreviewModuleRole::MeshSurface
+            && (request.runtimeResult->role == PreviewModuleRole::SignalSpy
+                    || request.runtimeResult->role == PreviewModuleRole::MeshSurface)
             && request.cache
             && paintCachedHeatmap(graphics, request)) {
         return;
@@ -768,25 +754,8 @@ bool NodePreviewRenderer::paintRuntimeResult(
         return true;
     }
 
-    if (result.role == PreviewModuleRole::SignalSpy) {
-        NodePreviewResult readSlice = result;
-        readSlice.primary = signalSpyReadSlice(result);
-        readSlice.gridColumns = 1;
-        readSlice.gridRows = readSlice.primary.size();
-        const std::vector<float> display = mappedSurface(
-                readSlice,
-                readSlice.primary,
-                request.profile);
-        drawTrace(
-                graphics,
-                previewContentArea(request.area),
-                display,
-                colour,
-                request.zoom);
-        return true;
-    }
-
-    if (result.role == PreviewModuleRole::MeshSurface) {
+    if (result.role == PreviewModuleRole::SignalSpy
+            || result.role == PreviewModuleRole::MeshSurface) {
         return drawHeatmap(
                 graphics,
                 request.area,

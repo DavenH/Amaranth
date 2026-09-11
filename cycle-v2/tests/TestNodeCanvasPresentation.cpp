@@ -65,26 +65,6 @@ TEST_CASE("Node canvas reports compiled voice and global processing scope",
     REQUIRE(NodeCanvasPresentation::runtimeScopeLabel(compiled.plan, "missing").isEmpty());
 }
 
-TEST_CASE("Signal spies read one time column instead of duplicating the traversal grid",
-        "[cycle-v2][canvas][probe][preview]") {
-    NodePreviewResult preview;
-    preview.role = PreviewModuleRole::SignalSpy;
-    preview.primary = {
-            0.f, 1.f, 2.f,
-            10.f, 11.f, 12.f,
-            20.f, 21.f, 22.f
-    };
-    preview.gridColumns = 3;
-    preview.gridRows = 3;
-
-    REQUIRE(NodePreviewRenderer::signalSpyReadSlice(preview, 0.f)
-            == std::vector<float> { 0.f, 1.f, 2.f });
-    REQUIRE(NodePreviewRenderer::signalSpyReadSlice(preview, 0.5f)
-            == std::vector<float> { 10.f, 11.f, 12.f });
-    REQUIRE(NodePreviewRenderer::signalSpyReadSlice(preview, 1.f)
-            == std::vector<float> { 20.f, 21.f, 22.f });
-}
-
 TEST_CASE("Signal and attachment sockets share one presentation diameter",
         "[cycle-v2][canvas][presentation][ports]") {
     const Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
