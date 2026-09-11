@@ -77,7 +77,7 @@ private:
     PreparedCycleEnvelopeBank cycleEnvelopes;
     ScopedAlloc<float> operationMemory;
     Random frameRandom;
-    uint32_t lifecycleSeed {};
+    int64_t frameRandomSeed {};
     bool lifecycleSeedReady {};
 };
 

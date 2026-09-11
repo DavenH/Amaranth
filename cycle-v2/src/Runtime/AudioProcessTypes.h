@@ -160,7 +160,9 @@ struct AudioVoiceContext {
     AudioVoiceControls controls;
     std::vector<TimedControlEvent> controlEvents;
     uint32_t lifecycleSeed {};
+    int64_t deterministicRandomSeed {};
     bool hasLifecycleSeed {};
+    bool hasDeterministicRandomSeed {};
     CycleDsp::SpectralStageCaptureSink* spectralStageCapture {};
 };
 

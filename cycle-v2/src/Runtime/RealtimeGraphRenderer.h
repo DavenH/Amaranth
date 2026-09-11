@@ -7,6 +7,7 @@
 
 #include <array>
 #include <atomic>
+#include <cstdint>
 #include <memory>
 
 #include "Runtime/GraphAudioExecutor.h"
@@ -55,6 +56,10 @@ public:
     void setOutputGain(float gain) { outputGain = jmax(0.f, gain); }
     void setControlNoteOffset(int offset) {
         controlNoteOffset = jlimit(-127, 127, offset);
+    }
+    void setRandomSeedForTesting(int64_t seed) {
+        deterministicRandomSeed = seed;
+        hasDeterministicRandomSeed = true;
     }
     void process(
             RealtimeMidiEventQueue& events,
@@ -126,6 +131,8 @@ private:
     float outputGain { defaultOutputGain };
     SmoothedParameter graphOutputGain { 1.f };
     bool outputGainInitialized {};
+    int64_t deterministicRandomSeed {};
+    bool hasDeterministicRandomSeed {};
     int controlNoteOffset {};
 
     std::atomic<uint64_t> callbackCounter {};

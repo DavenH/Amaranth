@@ -286,21 +286,30 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
 
 void ChainedOscillatorRecipeRenderer::prepareFrameRandom(
         const PreparedOscillatorProcessContext* context) {
+    const bool hasDeterministicRandomSeed = context != nullptr
+            && context->voice != nullptr
+            && context->voice->hasDeterministicRandomSeed;
     const bool hasLifecycleSeed = context != nullptr
             && context->voice != nullptr
             && context->voice->hasLifecycleSeed;
-    const uint32_t seed = hasLifecycleSeed
-            ? context->voice->lifecycleSeed
-            : GuideCurveSnapshotProvider::visualizationSeed(PortDomain::TimeSignal);
-    if (lifecycleSeedReady && lifecycleSeed == seed) {
+    int64_t seed = GuideCurveSnapshotProvider::visualizationSeed(PortDomain::TimeSignal);
+    if (hasDeterministicRandomSeed) {
+        seed = context->voice->deterministicRandomSeed + 2;
+    } else if (hasLifecycleSeed) {
+        seed = context->voice->lifecycleSeed;
+    }
+    if (lifecycleSeedReady && frameRandomSeed == seed) {
         return;
     }
-    lifecycleSeed = seed;
+    frameRandomSeed = seed;
     lifecycleSeedReady = true;
-    frameRandom.setSeed((int64) seed);
+    frameRandom.setSeed(seed);
+    const uint32_t offsetSeed = hasDeterministicRandomSeed
+            ? (uint32_t) frameRandom.nextInt()
+            : (uint32_t) seed;
     for (auto& operation : operations) {
         if (operation.trimesh != nullptr) {
-            operation.trimesh->setVoiceLifecycleSeed(seed);
+            operation.trimesh->setVoiceLifecycleSeed(offsetSeed);
         }
     }
 }

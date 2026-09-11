@@ -299,9 +299,10 @@ as the scratch envelope evolves.
     key/velocity-routed envelope preparation before effects can be attributed.
 13. Add deterministic seed injection/persistence at the shared render contract
     for Guide noise and any remaining stochastic effect state, then admit one
-    fixture for each. In progress: Cycle 1 voice/rasterizer seed injection is
-    complete and proves repeatability for the first two fixtures; cross-engine
-    Guide seed mapping remains open. Unison jitter is the fixed table owned by
+    fixture for each. In progress: Cycle 1 voice/rasterizer seed injection and
+    the equivalent Cycle V2 chained-oscillator Guide mapping are complete.
+    Remaining stochastic node families need representative fixtures. Unison
+    jitter is the fixed table owned by
     shared `UnisonCore`, not random state. Cycle 1 reverb's wall-clock seed only
     fills an unused legacy noise buffer; both engines build their audible kernel
     through deterministic shared `ReverbKernel`.
@@ -724,12 +725,20 @@ as the scratch envelope evolves.
     `/tmp/cycle-organ-2-global-tail/comparison.json`. Focused boundary trace:
     `/tmp/cycle-organ-2-reverb-mix-debug-4/`. The behavior-neutral shared-mix
     rerun is `/tmp/cycle-organ-2-shared-v2-reverb-mix/comparison.json`.
-44. Establish a deterministic Guide-noise fixture. In progress: the paired
-    request currently injects a Cycle 1 base RNG seed, while Cycle V2 derives a
-    lifecycle seed from event time and queue order. Both paths are repeatable,
-    but that does not establish equivalent Guide offsets. The next slice must
-    define one shared offline lifecycle-seed translation without changing live
-    note randomness, then regenerate and validate a noise-bearing preset.
+44. Establish a deterministic Guide-noise fixture. Complete: the existing
+    offline `randomSeed` command now reaches a generic deterministic per-voice
+    seed in Cycle V2 while the live lifecycle seed remains unchanged. The
+    chained oscillator owns Cycle 1's `+2` Unison-stream translation, consumes
+    the same first draw for Guide offsets, and retains the advanced stream for
+    per-cycle random positions. A focused Flute regression proves identical
+    output for a repeated seed and different output for another seed. Flute was
+    regenerated from a direct Cycle 1 export while retaining Cycle V2's node,
+    port, and editor presentation. Fresh MIDI 36–72 renders repeat byte-for-byte
+    in both engines and pass all declared thresholds: correlation is
+    `0.98566–0.99406`, residual is `0.1088–0.1687`, spectral RMSE is
+    `0.45–1.41 dB`, and cyclogram difference is `0.0343–0.1389`. Flute is now
+    a verified representative for chained Guide noise and IR. Artifact:
+    `/tmp/cycle-flute-verified/comparison.json`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

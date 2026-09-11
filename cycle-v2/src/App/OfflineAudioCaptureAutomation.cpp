@@ -155,6 +155,11 @@ bool parseRequest(
             -127,
             127,
             (int) doubleProperty(command, "controlNoteOffset", 0.0));
+    const var randomSeed = property(command, "randomSeed");
+    if (!randomSeed.isVoid()) {
+        request.randomSeed = (int64_t) randomSeed;
+        request.hasRandomSeed = true;
+    }
     const String ratePolicy = stringProperty(command, "ratePolicy", "native");
     if (ratePolicy == "native") {
         request.ratePolicy = OfflineGraphAudioRatePolicy::Native;
@@ -376,6 +381,9 @@ bool OfflineAudioCaptureAutomation::capture(
     object->setProperty("blockSize", request.blockSize);
     object->setProperty("voiceDurationSeconds", request.voiceDurationSeconds);
     object->setProperty("controlNoteOffset", request.controlNoteOffset);
+    if (request.hasRandomSeed) {
+        object->setProperty("randomSeed", request.randomSeed);
+    }
     object->setProperty(
             "ratePolicy",
             request.ratePolicy == OfflineGraphAudioRatePolicy::LegacyInternal44100

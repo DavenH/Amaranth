@@ -248,6 +248,8 @@ RealtimeGraphRenderer::Voice& RealtimeGraphRenderer::allocateVoice(
     selected->context.events.push_back({ NoteLifecycleType::NoteOn, sampleOffset, voiceIndex });
     selected->context.lifecycleSeed = event.lifecycleSeed;
     selected->context.hasLifecycleSeed = true;
+    selected->context.hasDeterministicRandomSeed = hasDeterministicRandomSeed;
+    selected->context.deterministicRandomSeed = deterministicRandomSeed + voiceIndex * 3;
     selected->source = event.source;
     selected->startOrder = ++nextVoiceOrder;
     selected->midiChannel = event.channel;
