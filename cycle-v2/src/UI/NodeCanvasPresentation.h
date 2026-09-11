@@ -91,6 +91,9 @@ public:
     static String canvasStatusText(
             const String& statusMessage,
             const String& hoverText);
+    static String runtimeScopeLabel(
+            const GraphExecutionPlan& plan,
+            const String& nodeId);
     void paintStatus(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     bool guideShelfNeedsOpenGLPreviewRender() const;
     void clearDocumentCaches();

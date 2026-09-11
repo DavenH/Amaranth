@@ -41,6 +41,30 @@ TEST_CASE("Node canvas presentation scales port hit geometry with canvas zoom",
     REQUIRE(doubled.bounds.getHeight() == Catch::Approx(reference.bounds.getHeight() * 2.f));
 }
 
+TEST_CASE("Node canvas reports compiled voice and global processing scope",
+        "[cycle-v2][canvas][presentation][audio-scope]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "wave", "out", "delay", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "delay", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    REQUIRE(NodeCanvasPresentation::runtimeScopeLabel(compiled.plan, "wave") == "VOICE");
+    REQUIRE(NodeCanvasPresentation::runtimeScopeLabel(compiled.plan, "delay") == "GLOBAL");
+    REQUIRE(NodeCanvasPresentation::runtimeScopeLabel(compiled.plan, "out") == "GLOBAL");
+    REQUIRE(NodeCanvasPresentation::runtimeScopeLabel(compiled.plan, "missing").isEmpty());
+}
+
 TEST_CASE("Signal and attachment sockets share one presentation diameter",
         "[cycle-v2][canvas][presentation][ports]") {
     const Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
