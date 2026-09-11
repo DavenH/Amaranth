@@ -32,7 +32,7 @@
     {
       "command": "assertState",
       "path": "performance.screenWidth",
-      "equals": 276
+      "equals": 451
     },
     {
       "command": "assertState",

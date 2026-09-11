@@ -27,7 +27,7 @@ public:
 
 }
 
-TEST_CASE("Performance keyboard emits ordinary MIDI and keeps one octave visible",
+TEST_CASE("Performance keyboard emits ordinary MIDI and keeps two octaves visible",
         "[cycle-v2][keyboard][midi]") {
     ScopedJuceInitialiser_GUI gui;
     MidiKeyboardState state;
@@ -39,8 +39,10 @@ TEST_CASE("Performance keyboard emits ordinary MIDI and keeps one octave visible
     REQUIRE(keyboard.noteLabel(60) == "C3");
     REQUIRE(keyboard.noteLabel(61).isEmpty());
     REQUIRE(keyboard.noteLabel(72) == "C4");
+    REQUIRE(keyboard.noteLabel(84) == "C5");
     REQUIRE_FALSE(keyboard.noteBounds(60).isEmpty());
     REQUIRE_FALSE(keyboard.noteBounds(72).isEmpty());
+    REQUIRE_FALSE(keyboard.noteBounds(84).isEmpty());
     REQUIRE(keyboard.noteBounds(59).isEmpty());
 
     state.noteOn(1, 60, 0.75f);
@@ -70,10 +72,16 @@ TEST_CASE("Performance keyboard octave changes release its owned notes",
     REQUIRE(keyboard.baseNote() == 72);
     REQUIRE(keyboard.noteLabel(72) == "C4");
     REQUIRE(keyboard.noteLabel(84) == "C5");
+    REQUIRE(keyboard.noteLabel(96) == "C6");
     REQUIRE(keyboard.heldNote() == -1);
     REQUIRE_FALSE(keyboard.noteBounds(72).isEmpty());
     REQUIRE_FALSE(keyboard.noteBounds(84).isEmpty());
+    REQUIRE_FALSE(keyboard.noteBounds(96).isEmpty());
     REQUIRE(sink.releasedSources.back() == MidiEventSource::PerformanceKeyboard);
+
+    keyboard.shiftOctave(20);
+    REQUIRE(keyboard.baseNote() == 103);
+    REQUIRE_FALSE(keyboard.noteBounds(127).isEmpty());
 }
 
 TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
@@ -82,7 +90,7 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     MidiKeyboardState state;
     RecordingMidiSink sink;
     PerformanceKeyboardPanel panel(state, sink);
-    panel.setBounds(0, 0, 276, 112);
+    panel.setBounds(0, 0, 451, 112);
 
     const Rectangle<float> whiteKey = panel.noteBounds(60);
     const Rectangle<float> blackKey = panel.noteBounds(61);
@@ -96,17 +104,17 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     REQUIRE(octaveDown.getHeight() == whiteKey.getHeight());
     REQUIRE(octaveUp.getHeight() == whiteKey.getHeight());
     REQUIRE(octaveDown.getRight() < whiteKey.getX());
-    REQUIRE(octaveUp.getX() > panel.noteBounds(72).getRight());
+    REQUIRE(octaveUp.getX() > panel.noteBounds(84).getRight());
     REQUIRE(whiteKey.getWidth() >= 25.f);
     REQUIRE(whiteAspect == 4.f);
     REQUIRE(blackAspect == 4.f);
     REQUIRE(blackKey.getWidth() < whiteKey.getWidth());
     REQUIRE(blackKey.getHeight() < whiteKey.getHeight());
-    REQUIRE_FALSE(panel.noteBounds(72).isEmpty());
+    REQUIRE_FALSE(panel.noteBounds(84).isEmpty());
     REQUIRE(panel.getLocalBounds().toFloat().contains(whiteKey));
-    REQUIRE(panel.getLocalBounds().toFloat().contains(panel.noteBounds(72)));
+    REQUIRE(panel.getLocalBounds().toFloat().contains(panel.noteBounds(84)));
 
-    panel.setBounds(0, 0, 276, 112);
+    panel.setBounds(0, 0, 451, 112);
     const Rectangle<float> compactWhiteKey = panel.noteBounds(60);
     REQUIRE(panel.octaveDownBounds().getHeight() == compactWhiteKey.getHeight());
     REQUIRE(panel.octaveUpBounds().getHeight() == compactWhiteKey.getHeight());
@@ -122,7 +130,7 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
     REQUIRE(layout.minimap.getRight() == content.getRight() - CanvasUtilityDock::margin);
     REQUIRE(layout.legend.getRight() == layout.minimap.getRight());
     REQUIRE(layout.keyboard.getRight() == layout.minimap.getRight());
-    REQUIRE(layout.keyboard.getWidth() == 276.f);
+    REQUIRE(layout.keyboard.getWidth() == 451.f);
     REQUIRE(layout.keyboard.getHeight() == 112.5f);
     REQUIRE(layout.status.getX() == content.getX() + CanvasUtilityDock::margin);
     REQUIRE(layout.status.getY() == content.getY() + CanvasUtilityDock::margin);
@@ -138,7 +146,7 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
 
     const Rectangle<float> compactContent { 0.f, 0.f, 500.f, 300.f };
     const CanvasUtilityDockLayout compact = CanvasUtilityDock::layout(compactContent);
-    REQUIRE(compact.keyboard.getWidth() == 276.f);
+    REQUIRE(compact.keyboard.getWidth() == 451.f);
     REQUIRE(compact.keyboard.getHeight() == 112.5f);
     REQUIRE(compact.legend.getHeight() >= CanvasUtilityDock::minimumCompactLegendHeight);
     REQUIRE(compact.minimap.getHeight() == 92.f);

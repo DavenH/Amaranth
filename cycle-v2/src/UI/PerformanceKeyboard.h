@@ -62,7 +62,7 @@ private:
             int midiNoteNumber,
             float velocity);
 
-    static constexpr int visibleSemitones = 12;
+    static constexpr int visibleSemitones = 24;
 
     MidiKeyboardState& keyboardState;
     MidiEventSink& eventSink;
@@ -80,7 +80,7 @@ public:
     int heldNote() const { return keyboard.heldNote(); }
     float heldVelocity() const { return keyboard.heldVelocity(); }
     String baseNoteLabel() const { return keyboard.noteLabel(keyboard.baseNote()); }
-    String highestNoteLabel() const { return keyboard.noteLabel(keyboard.baseNote() + 12); }
+    String highestNoteLabel() const { return keyboard.noteLabel(keyboard.baseNote() + 24); }
     Rectangle<float> noteBounds(int noteNumber) const;
     Rectangle<float> octaveDownBounds() const;
     Rectangle<float> octaveUpBounds() const;

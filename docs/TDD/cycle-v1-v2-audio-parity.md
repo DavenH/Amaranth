@@ -917,7 +917,13 @@ as the scratch envelope evolves.
     offset. Reuse `GraphCompiler`'s authoritative Voice Context compilation on
     DSP-configuration refreshes; no editor-to-audio side channel was added.
     A focused test guards the durable edit, refresh, published plan, and changed
-    rendered output without topology recompilation. Next, audit
+    rendered output without topology recompilation. The keyboard sub-slice is
+    also complete: JUCE's authoritative horizontal-keyboard hit testing keeps
+    top-to-bottom velocity increasing, V2 no longer caps its bottom edge at
+    `0.8`, and the dock now exposes C3-C5 at the existing 25-by-100 pixel white
+    key geometry. The widened 451-by-112 dock and full MIDI-range clamping are
+    covered by component and focused automation tests; visual artifact:
+    `/tmp/cycle-v2-keyboard-parity-after.png`. Next, audit
     every factory `.cyc`/`.cyclegraph` pair for voice length, octave, pitch,
     portamento, oversampling, and migrated envelope ownership while preserving
     authored Cycle V2 node presentation. Keyboard range/velocity, runtime

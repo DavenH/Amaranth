@@ -242,7 +242,7 @@ var NodeWorkspace::performanceStateForAutomation() const {
     auto* object = new DynamicObject();
     object->setProperty("visible", keyboard.isVisible());
     object->setProperty("baseNote", keyboard.baseNote());
-    object->setProperty("highestNote", keyboard.baseNote() + 12);
+    object->setProperty("highestNote", keyboard.baseNote() + 24);
     object->setProperty("baseNoteLabel", keyboard.baseNoteLabel());
     object->setProperty("highestNoteLabel", keyboard.highestNoteLabel());
     object->setProperty("heldNote", keyboard.heldNote());

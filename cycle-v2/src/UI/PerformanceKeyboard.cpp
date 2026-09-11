@@ -19,7 +19,7 @@ PerformanceKeyboard::PerformanceKeyboard(
     setScrollButtonsVisible(false);
     setUseVectorKeys(true);
     setMidiChannel(1);
-    setVelocity(0.8f, true);
+    setVelocity(1.f, true);
     setAvailableRange(rangeStart, rangeStart + visibleSemitones);
     setLowestVisibleKey(rangeStart);
     keyboardState.addListener(&stateListener);
@@ -44,7 +44,7 @@ String PerformanceKeyboard::noteLabel(int noteNumber) const {
 }
 
 void PerformanceKeyboard::shiftOctave(int octaveDelta) {
-    const int nextStart = jlimit(0, 115, rangeStart + octaveDelta * 12);
+    const int nextStart = jlimit(0, 127 - visibleSemitones, rangeStart + octaveDelta * 12);
     if (nextStart == rangeStart) {
         return;
     }
@@ -65,7 +65,7 @@ void PerformanceKeyboard::releaseAllNotes() {
 }
 
 void PerformanceKeyboard::resized() {
-    constexpr int whiteKeyCount = 8;
+    constexpr int whiteKeyCount = 15;
     if (getWidth() <= 0) {
         return;
     }
