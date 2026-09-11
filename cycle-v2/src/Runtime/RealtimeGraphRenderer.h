@@ -50,6 +50,9 @@ public:
         spectralStageCapture = capture;
     }
     void setVoiceDurationSeconds(float durationSeconds);
+    void setGraphOutputGain(float gain) {
+        requestedGraphOutputGain.store(jmax(0.f, gain), std::memory_order_release);
+    }
     void setVolumeEnvelopeClockSampleRate(double sampleRate) {
         volumeEnvelopeClockSampleRate = jmax(0., sampleRate);
     }
@@ -130,6 +133,7 @@ private:
     double volumeEnvelopeClockSampleRate {};
     float outputGain { defaultOutputGain };
     SmoothedParameter graphOutputGain { 1.f };
+    std::atomic<float> requestedGraphOutputGain { 1.f };
     bool outputGainInitialized {};
     int64_t deterministicRandomSeed {};
     bool hasDeterministicRandomSeed {};

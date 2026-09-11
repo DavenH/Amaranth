@@ -1244,14 +1244,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
         return result;
     }
 
-    const auto output = std::find_if(
-            graph.getNodes().begin(),
-            graph.getNodes().end(),
-            [](const Node& node) { return node.kind == NodeKind::Output; });
-    if (output != graph.getNodes().end()) {
-        result.plan.outputGain = CycleDsp::outputGain(
-                NodeParameterMap(*output).floatValue("gain", 0.5f));
-    }
+    result.plan.outputGain = outputGainFor(graph);
 
     result.plan.nodeOrder = buildNodeOrder(graph, result.compileIssues);
 
@@ -1330,6 +1323,16 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
     }
 
     return result;
+}
+
+float GraphCompiler::outputGainFor(const NodeGraph& graph) {
+    const auto output = std::find_if(
+            graph.getNodes().begin(),
+            graph.getNodes().end(),
+            [](const Node& node) { return node.kind == NodeKind::Output; });
+    return output != graph.getNodes().end()
+            ? CycleDsp::outputGain(NodeParameterMap(*output).floatValue("gain", 0.5f))
+            : 1.f;
 }
 
 void GraphCompiler::refreshSignalProbes(

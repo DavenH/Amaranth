@@ -343,6 +343,7 @@ void NodeWorkspace::resized() {
 void NodeWorkspace::timerCallback() {
     const auto status = audioEngine.status();
     updateOutputMeter(status);
+    audioEngine.setGraphOutputGain(canvas.graphOutputGain());
     if (previousDeviceReady && !status.deviceReady) {
         keyboard.releaseAllNotes();
     }

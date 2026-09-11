@@ -796,6 +796,41 @@ as the scratch envelope evolves.
     repeat renders so instrumented determinism compares identical execution
     conditions. Artifacts: `/tmp/cycle-sitar-reference-repeat-plain/comparison.json`
     and `/tmp/cycle-sitar-reference-repeat-stages/comparison.json`.
+48. Preserve stereo identity through the global Delay boundary. Complete:
+    Cycle 1 and Cycle V2 already share `CycleDsp::CycleDelay`, and both effect
+    wrappers own one delay state per channel. Add a direct stereo contract and
+    a realtime global-boundary contract before changing DSP; any failure must
+    be corrected where runtime channel metadata or buffers cross the voice mix,
+    without introducing a second delay implementation. Direct independent-input
+    and pan-cycle regressions prove that Cycle V2 retains two channels and emits
+    complementary echoes. A fresh Icycle MIDI 48 differential render is stereo
+    in both engines and reaches `0.99993` correlation with `0.0121` residual.
+    There is no justified Delay DSP change; a remaining centered impression is
+    preset-specific until an upstream boundary capture proves otherwise.
+    Artifact: `/tmp/cycle-icycle-stereo-audit/comparison.json`.
+49. Publish live Output gain independently of graph preparation. Complete:
+    Output gain is durable graph state, but the realtime renderer currently
+    samples the compiled value only when adopting a prepared graph. A parameter
+    refresh updates the Output processor configuration while leaving the
+    renderer-owned compiled gain stale, and replacing a prepared graph resets
+    voices. Keep the graph parameter authoritative, refresh its compiled plan
+    field, and translate transient fader movement into a thread-safe renderer
+    target so a held note responds without graph replacement. Commit and undo
+    remain semantic dispatcher edits. `GraphCompiler` now owns the one Output
+    mapping used by initial compilation and parameter-only plan refreshes. The
+    workspace polls the dispatcher-owned editing view and publishes its mapped
+    value through an atomic renderer target; the audio thread retains the
+    existing smoothing and active graph/voice. Focused tests cover compiled
+    refresh and a held voice responding without graph replacement.
+50. Make live Output meters invalidate their cached node layer. Complete:
+    the audio renderer already publishes independent left/right peaks and the
+    workspace polls them at 30 Hz. The canvas requests repaint, but the outer
+    node-layer cache key omits the live levels and reuses the old Output image.
+    Include only the meter state in the Output render-context fingerprint; do
+    not duplicate metering or bypass the existing renderer diagnostics. The
+    existing live-device fixture now reports nonzero left/right display levels
+    (`0.5869` in the verification run), and cache-key coverage guards dynamic
+    context invalidation. Artifact: `/tmp/cycle-v2-meter-report.json`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

@@ -94,6 +94,7 @@ public:
     void requestOpenGLFrameForAutomation();
     var captureAudioForAutomation(size_t frameCount) const;
     bool copyAudioPlan(GraphExecutionPlan& plan, uint64_t& revision) const;
+    float graphOutputGain() const;
     Rectangle<int> performanceKeyboardDockBounds() const;
     Rectangle<float> expandedEditorBoundsForOverlay() const;
     void setOverlayOcclusionChangedCallback(std::function<void()> callback);

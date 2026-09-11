@@ -75,6 +75,50 @@ TEST_CASE("Realtime graph renderer applies Output gain separately from safety he
     REQUIRE(maximumResidual < 1e-6f);
 }
 
+TEST_CASE("Realtime Output gain changes do not replace the graph or active voice",
+        "[cycle-v2][audio-device][realtime][output][gain][gesture]") {
+    const auto compiled = GraphCompiler().compile(NodeGraph::createDemoGraph());
+    REQUIRE(compiled.succeeded());
+    constexpr int frameCount = 256;
+    constexpr double sampleRate = 44'100.0;
+    constexpr double blockDuration = frameCount / sampleRate;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = frameCount;
+    spec.sampleRate = sampleRate;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 41, spec);
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    renderer.setPreparedGraph(prepared.get());
+    renderer.setVoiceDurationSeconds(2.f);
+    REQUIRE(queue.enqueue(
+            MidiMessage::noteOn(1, 60, (uint8) 100),
+            MidiEventSource::PerformanceKeyboard,
+            1.0));
+    AudioBuffer<float> output(2, frameCount);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    renderer.process(queue, channels, 2, frameCount, sampleRate, 1.0);
+    REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 1);
+
+    renderer.setGraphOutputGain(CycleDsp::outputGain(0.f));
+    double callbackTime = 1.0 + blockDuration;
+    for (int block = 0; block < 8; ++block) {
+        renderer.process(
+                queue,
+                channels,
+                2,
+                frameCount,
+                sampleRate,
+                callbackTime);
+        callbackTime += blockDuration;
+    }
+
+    const auto quiet = renderer.diagnostics(queue);
+    REQUIRE(quiet.graphRevision == 41);
+    REQUIRE(quiet.activeVoiceCount == 1);
+    REQUIRE(quiet.peak > 0.f);
+    REQUIRE(quiet.peak < 0.02f);
+}
+
 TEST_CASE("Realtime graph renderer turns MIDI note gestures into graph audio",
         "[cycle-v2][audio-device][realtime][midi]") {
     const auto compiled = GraphCompiler().compile(NodeGraph::createDemoGraph());

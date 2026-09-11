@@ -584,6 +584,7 @@ void GraphPresentationModel::refreshConfigurations(
         const NodeGraph& graph,
         GraphExecutionPlan& plan,
         const std::vector<String>& nodeIds) {
+    plan.outputGain = GraphCompiler::outputGainFor(graph);
     AudioExecutionSpec spec;
     for (auto& step : plan.steps) {
         const bool directlyChanged = nodeIds.empty()

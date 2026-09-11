@@ -1706,6 +1706,10 @@ bool NodeCanvas::copyAudioPlan(
     return true;
 }
 
+float NodeCanvas::graphOutputGain() const {
+    return GraphCompiler::outputGainFor(commands.editingGraph());
+}
+
 Rectangle<int> NodeCanvas::performanceKeyboardDockBounds() const {
     return CanvasUtilityDock::layout(canvasContentBounds()).keyboard.toNearestInt();
 }

@@ -84,7 +84,8 @@ TEST_CASE("Node layer cache reuses only complete presentation keys",
     preview.secondary.front() = 0.9f;
     preview.contentRevision = 2;
     REQUIRE_FALSE(access(7, 8, true, 2.f, &preview).hit);
-    REQUIRE(cache.endFrame().misses == 6);
+    REQUIRE_FALSE(access(7, 9, true, 2.f, &preview).hit);
+    REQUIRE(cache.endFrame().misses == 7);
 
     cache.beginFrame();
     REQUIRE(cache.endFrame().hits == 0);

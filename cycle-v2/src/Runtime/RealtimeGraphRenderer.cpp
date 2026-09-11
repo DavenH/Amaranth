@@ -46,6 +46,7 @@ void RealtimeGraphRenderer::setPreparedGraph(PreparedGraph* graph) {
     resetVoices();
     preparedGraph = graph;
     const float nextGain = graph == nullptr ? 1.f : graph->plan.outputGain;
+    requestedGraphOutputGain.store(nextGain, std::memory_order_release);
     if (!outputGainInitialized) {
         graphOutputGain.setValueDirect(nextGain);
         outputGainInitialized = true;
@@ -81,6 +82,8 @@ void RealtimeGraphRenderer::process(
         activeVoices.store(0, std::memory_order_relaxed);
         outputPeak.store(0.f, std::memory_order_relaxed);
         outputRms.store(0.f, std::memory_order_relaxed);
+        outputLeftPeak.store(0.f, std::memory_order_relaxed);
+        outputRightPeak.store(0.f, std::memory_order_relaxed);
         return;
     }
 
@@ -336,6 +339,7 @@ void RealtimeGraphRenderer::renderVoices(
         }
     }
 
+    graphOutputGain = requestedGraphOutputGain.load(std::memory_order_acquire);
     graphOutputGain.update(frameCount);
     for (int channel = 0; channel < jmin(2, outputChannelCount); ++channel) {
         if (outputChannels[channel] != nullptr) {
