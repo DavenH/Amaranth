@@ -689,19 +689,33 @@ Transform* SpectralOscillatorFrameRenderer::transformFor(int frameSize) {
 
 void SpectralOscillatorFrameRenderer::prepareFrameRandom(
         const PreparedOscillatorProcessContext* context) {
+    const bool hasDeterministicRandomSeed = context != nullptr
+            && context->voice != nullptr
+            && context->voice->hasDeterministicRandomSeed;
     const bool hasLifecycleSeed = context != nullptr
             && context->voice != nullptr
             && context->voice->hasLifecycleSeed;
-    const uint32_t seed = hasLifecycleSeed
-            ? context->voice->lifecycleSeed
-            : GuideCurveSnapshotProvider::visualizationSeed(PortDomain::TimeSignal);
-    if (lifecycleSeedReady && lifecycleSeed == seed) {
+    int64_t seed = GuideCurveSnapshotProvider::visualizationSeed(PortDomain::TimeSignal);
+    if (hasDeterministicRandomSeed) {
+        seed = context->voice->deterministicRandomSeed + 1;
+    } else if (hasLifecycleSeed) {
+        seed = context->voice->lifecycleSeed;
+    }
+    if (lifecycleSeedReady && frameRandomSeed == seed) {
         return;
     }
 
-    lifecycleSeed = seed;
+    frameRandomSeed = seed;
     lifecycleSeedReady = true;
-    frameRandom.setSeed((int64) seed);
+    frameRandom.setSeed(seed);
+    uint32_t timeOffsetSeed = (uint32_t) seed;
+    uint32_t magnitudeOffsetSeed = (uint32_t) seed;
+    uint32_t phaseOffsetSeed = (uint32_t) seed;
+    if (hasDeterministicRandomSeed) {
+        timeOffsetSeed = (uint32_t) frameRandom.nextInt();
+        magnitudeOffsetSeed = (uint32_t) frameRandom.nextInt();
+        phaseOffsetSeed = (uint32_t) frameRandom.nextInt();
+    }
     for (auto& operation : operations) {
         if (operation.timeRasterizer != nullptr) {
             operation.timeRasterizer->updateOffsetSeeds(
@@ -709,10 +723,14 @@ void SpectralOscillatorFrameRenderer::prepareFrameRandom(
                             ? (int) operation.configuration->guideAssignmentCount
                             : 0,
                     GuideCurveProvider::tableSize,
-                    Rasterization::GuideCurveSeed::voiceLifecycle(seed));
+                    Rasterization::GuideCurveSeed::voiceLifecycle(timeOffsetSeed));
         }
         if (operation.spectralRasterizer != nullptr) {
-            operation.spectralRasterizer->setVoiceLifecycleSeed(seed);
+            const uint32_t offsetSeed = operation.outputDomain
+                            == PortDomain::SpectralPhaseSignal
+                    ? phaseOffsetSeed
+                    : magnitudeOffsetSeed;
+            operation.spectralRasterizer->setVoiceLifecycleSeed(offsetSeed, 1);
         }
     }
 }

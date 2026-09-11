@@ -1457,6 +1457,7 @@
             "noise": 1.0,
             "dcOffset": 0.0,
             "phase": 0.0,
+            "noiseSeed": 6585,
             "revision": 1,
             "model": {
                 "schema": "flatCurve",
@@ -1505,6 +1506,7 @@
             "noise": 1.0,
             "dcOffset": 0.0,
             "phase": 0.0,
+            "noiseSeed": 4978,
             "revision": 1,
             "model": {
                 "schema": "flatCurve",
@@ -1553,6 +1555,7 @@
             "noise": 1.0,
             "dcOffset": 0.0,
             "phase": 0.0,
+            "noiseSeed": 3371,
             "revision": 1,
             "model": {
                 "schema": "flatCurve",

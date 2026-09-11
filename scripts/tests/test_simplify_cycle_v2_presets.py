@@ -112,7 +112,11 @@ class SimplifyCycleV2PresetsTest(unittest.TestCase):
             {
                 "id": "pan",
                 "kind": "spectralLayer",
-                "parameters": {"pan": 0.5, "range": 0.625},
+                "parameters": {
+                    "pan": 0.5,
+                    "range": 0.625,
+                    "mode": "additive",
+                },
             },
             node("out", "output"),
         ], [
@@ -132,6 +136,10 @@ class SimplifyCycleV2PresetsTest(unittest.TestCase):
         self.assertEqual(document["edges"][0]["sourceNodeId"], "mesh")
         self.assertEqual(document["probes"][0]["sourceNodeId"], "mesh")
         self.assertEqual(document["nodes"][0]["parameters"]["range"], 0.625)
+        self.assertEqual(
+            document["nodes"][0]["parameters"]["spectralMode"],
+            "additive",
+        )
 
     def test_empty_spectral_layer_and_operation_are_bypassed(self):
         document = graph([

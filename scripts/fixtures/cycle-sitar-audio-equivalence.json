@@ -1,0 +1,39 @@
+{
+    "schema": "cycle-v1-v2-audio-equivalence.v1",
+    "status": "diagnostic",
+    "v1": {
+        "factoryPreset": "sitar",
+        "sourceDocument": "cycle/content/presets/sitar.cyc",
+        "sha256": "9f7f55addf51902b97430606d365d8976169873e6cf78a8f2e820187923aa63f"
+    },
+    "v2": {
+        "graph": "cycle-v2/content/presets/sitar.cyclegraph",
+        "sha256": "5454ba8058f76514ad0536e367ce9e0c09fc141cc606674476ee938f736049b1",
+        "renderOverrides": {
+            "voiceDurationSeconds": 0.6088500846478859
+        }
+    },
+    "translation": {
+        "midiNoteOffset": 0,
+        "legacyMidiReferenceOffset": -12,
+        "v1MasterGain": 0.3255831470069504,
+        "v2OutputGainUnitValue": 0.312977099,
+        "v2OutputHeadroom": 0.125,
+        "coverage": [
+            "emptyTimeBypass",
+            "threeMagnitudeLayers",
+            "phaseLayer",
+            "spectralGuideNoise"
+        ],
+        "determinism": "offline seed maps to the Cycle 1 filter-voice RNG stream before time, magnitude, and phase Guide offset draws",
+        "inputValidation": "regenerated from a direct Cycle 1 canonical export while preserving Cycle V2 presentation",
+        "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
+    },
+    "thresholds": {
+        "correlationMin": 0.98,
+        "gainMatchedResidualMax": 0.2,
+        "spectrumRmseDbMax": 6.0,
+        "cyclogramMeanRowDifferenceMax": 0.2,
+        "exactSamplesRequired": false
+    }
+}

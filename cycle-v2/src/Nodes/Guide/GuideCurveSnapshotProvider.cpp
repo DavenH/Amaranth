@@ -23,7 +23,9 @@ bool GuideCurveSnapshotProvider::addGuide(
     snapshot.parameters.noiseLevel = resource.noise;
     snapshot.parameters.verticalOffsetLevel = resource.dcOffset;
     snapshot.parameters.phaseOffsetLevel = resource.phase;
-    snapshot.parameters.seed = stableSeed(resource);
+    snapshot.parameters.seed = resource.noiseSeed >= 0
+            ? resource.noiseSeed
+            : stableSeed(resource);
 
     const auto typedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(resource.model);
     const FlatCurveModel* curve = typedModel != nullptr ? typedModel->flatCurve() : nullptr;

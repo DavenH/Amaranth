@@ -739,6 +739,45 @@ as the scratch envelope evolves.
     `0.45–1.41 dB`, and cyclogram difference is `0.0343–0.1389`. Flute is now
     a verified representative for chained Guide noise and IR. Artifact:
     `/tmp/cycle-flute-verified/comparison.json`.
+45. Establish deterministic spectral Guide-noise mapping. Completed: Cycle
+    1's `SynthFilterVoice` owns a random stream seeded from the offline
+    per-voice base plus one. Note preparation consumes one draw each for time,
+    magnitude, and phase Guide offsets; subsequent active layer rasterizations
+    consume that advanced stream in render order. Cycle V2 must translate that
+    sequence inside `SpectralOscillatorFrameRenderer`, leaving its live
+    lifecycle-seed path unchanged. Sitar is the smallest effect-free factory
+    candidate with an assigned noisy magnitude Guide and no active envelopes.
+    Its first differential render proved the noisy magnitude raster is
+    byte-identical, but exposed a separate conversion gap: promoting an empty
+    time seed removed the first additive operation, after which Cycle V2
+    inferred that root layer's mode from the next downstream multiply and
+    omitted additive normalization. The converted graph must retain each Cycle
+    1 spectral layer mode explicitly while old graphs retain topology-based
+    `auto` inference. A second phase-noise diagnostic also showed that Cycle 1
+    initializes only spectral Guide offset slot zero; Cycle V2's prepared
+    spectral adapter must retain that mature count without changing general
+    node rasterization. The diagnostic also exposed a missing semantic field:
+    Cycle 1 persists a base noise-table seed per Guide (falling back to its
+    stable Guide index), while Cycle V2 previously rederived it from the string
+    resource id. The converter and graph resource now preserve that seed. The
+    focused spectral renderer contract is exactly repeatable and responds to
+    seed changes. Sitar's first magnitude raster/operand is byte-identical and
+    its phase raster/operand is within `4.9e-8` normalized residual, isolating
+    its remaining `0.2571` rendered residual to spectral-stack composition
+    rather than random-state preparation. Sitar remains diagnostic because
+    Cycle 1 also differs by ULPs across repeated captures. Persisted Guide seeds
+    improved the already verified Flute matrix to correlation
+    `0.99704–0.99975`, residual `0.0222–0.0769`, spectrum `0.05–0.17 dB`, and
+    cyclogram `0.0120–0.0504`; both engines are exactly repeatable. Artifacts:
+    `/tmp/cycle-sitar-persisted-guide-seeds/comparison.json` and
+    `/tmp/cycle-flute-persisted-guide-seeds/comparison.json`.
+46. Align multi-layer spectral-stack composition. In progress: Sitar's
+    authoritative first additive magnitude operand and phase operand already
+    match, but its post-layer spectrum begins the material mismatch. Compare
+    later magnitude operands and the add/multiply accumulator boundaries before
+    changing synthesis code; retain Sitar as diagnostic until Cycle 1 itself
+    satisfies the exact repeatability gate or that harness instability is
+    resolved.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

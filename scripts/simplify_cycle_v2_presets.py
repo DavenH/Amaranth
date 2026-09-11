@@ -150,6 +150,9 @@ def bypass_neutral_pan(document, report):
                 report["ambiguousNeutralPan"] += 1
                 return
             source_node.setdefault("parameters", {})["range"] = legacy_range
+        spectral_mode = candidate.get("parameters", {}).get("mode")
+        if spectral_mode is not None and source_node is not None:
+            source_node.setdefault("parameters", {})["spectralMode"] = spectral_mode
         for edge in outgoing:
             edge["sourceNodeId"] = source["sourceNodeId"]
             edge["sourcePortId"] = source["sourcePortId"]

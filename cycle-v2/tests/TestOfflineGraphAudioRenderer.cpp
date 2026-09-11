@@ -90,6 +90,23 @@ GraphExecutionPlan flutePlan() {
 #endif
 }
 
+GraphExecutionPlan sitarPlan() {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("sitar.cyclegraph");
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            preset.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    const auto compiled = GraphCompiler().compile(loaded.graph);
+    REQUIRE(compiled.succeeded());
+    return compiled.plan;
+#else
+    return {};
+#endif
+}
+
 OfflineGraphAudioRequest renderRequest(int blockSize, int midiNote = 72) {
     OfflineGraphAudioRequest request;
     request.sampleRate = 48000.0;
@@ -159,6 +176,31 @@ TEST_CASE("Offline guide seed controls chained oscillator noise deterministicall
     differentRequest.randomSeed += 1;
 
     const auto plan = flutePlan();
+    const auto first = OfflineGraphAudioRenderer::render(plan, 8, firstRequest);
+    const auto repeated = OfflineGraphAudioRenderer::render(plan, 8, repeatedRequest);
+    const auto different = OfflineGraphAudioRenderer::render(plan, 8, differentRequest);
+
+    REQUIRE(first.succeeded);
+    REQUIRE(repeated.succeeded);
+    REQUIRE(different.succeeded);
+    REQUIRE(first.channels == repeated.channels);
+    REQUIRE(first.channels != different.channels);
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
+}
+
+TEST_CASE("Offline guide seed controls spectral oscillator noise deterministically",
+        "[cycle-v2][runtime][offline-audio][guide-noise][spectral][parity]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    auto firstRequest = renderRequest(256, 60);
+    firstRequest.randomSeed = 1129927500;
+    firstRequest.hasRandomSeed = true;
+    auto repeatedRequest = firstRequest;
+    auto differentRequest = firstRequest;
+    differentRequest.randomSeed += 1;
+
+    const auto plan = sitarPlan();
     const auto first = OfflineGraphAudioRenderer::render(plan, 8, firstRequest);
     const auto repeated = OfflineGraphAudioRenderer::render(plan, 8, repeatedRequest);
     const auto different = OfflineGraphAudioRenderer::render(plan, 8, differentRequest);

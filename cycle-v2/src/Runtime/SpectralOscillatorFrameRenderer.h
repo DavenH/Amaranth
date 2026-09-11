@@ -106,7 +106,7 @@ private:
     ScopedAlloc<float> phaseScratch;
     ScopedAlloc<float> phaseHarmonicScale;
     Random frameRandom;
-    uint32_t lifecycleSeed {};
+    int64_t frameRandomSeed {};
     bool lifecycleSeedReady {};
 };
 

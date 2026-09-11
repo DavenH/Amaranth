@@ -87,12 +87,22 @@ NodeRenderSemantic GraphRenderSemanticResolver::semanticForEdge(
     const Node* destNode = findNode(graph, edge.destNodeId);
 
     if (domain == PortDomain::SpectralMagnitudeSignal && destNode != nullptr) {
-        const bool multiplicativeLayer = destNode->kind == NodeKind::SpectralLayer
-                && parameterValueForNode(*destNode, "mode", "additive") == "multiplicative";
-        if (destNode->kind == NodeKind::Multiply || multiplicativeLayer) {
+        const Node* sourceNode = findNode(graph, edge.sourceNodeId);
+        const String sourceMode = sourceNode != nullptr
+                ? parameterValueForNode(*sourceNode, "spectralMode", "auto")
+                : "auto";
+        const String layerMode = destNode->kind == NodeKind::SpectralLayer
+                ? parameterValueForNode(*destNode, "mode", "auto")
+                : "auto";
+        const bool explicitlyAdditive = sourceMode == "additive" || layerMode == "additive";
+        const bool explicitlyMultiplicative = sourceMode == "multiplicative"
+                || layerMode == "multiplicative";
+        if (explicitlyMultiplicative
+                || (!explicitlyAdditive && destNode->kind == NodeKind::Multiply)) {
             semantic.scalePolicy = RenderScalePolicy::Bipolar;
             semantic.role = RenderSemanticRole::SpectralMagnitudeMultiplicative;
-        } else if (destNode->kind == NodeKind::Add
+        } else if (explicitlyAdditive
+                || destNode->kind == NodeKind::Add
                 || destNode->kind == NodeKind::SpectralLayer) {
             semantic.scalePolicy = RenderScalePolicy::Unipolar;
             semantic.role = RenderSemanticRole::SpectralMagnitudeAdditive;
