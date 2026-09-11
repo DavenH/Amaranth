@@ -39,6 +39,7 @@ public:
     const Interactor2D& getInteractor2D() const { return interactor2D; }
     Interactor3D& getInteractor3D() { return interactor3D; }
     TrimeshNodeModel& getModel() { return model; }
+    const TrimeshNodeModel& getModel() const { return model; }
     bool rasterizerWrapsVertices() { return panelRasterizer.wrapsVertices(); }
     Component* getPanel3DHostComponent();
     Component* getPanel3DHostComponentIfCreated() const;
@@ -53,6 +54,7 @@ public:
     void setRenderProfile(TrimeshRenderProfile profile);
     void setPreviewMidiNote(int midiNote);
     void setPreviewKeyScaleAxis(int axis);
+    bool isMeshEditGestureActive() const { return meshEditGestureActive; }
     void renderPanel3D(juce::Rectangle<float> bounds, float scaleFactor);
     void renderPanel2D(juce::Rectangle<float> bounds, float scaleFactor);
     int selectedVertexIndexForPanel();
@@ -91,6 +93,7 @@ private:
     bool pendingMeshEdit {};
     bool pendingMeshEditSourceIs3D {};
     bool meshEditGestureActive {};
+    bool pendingSelectionChanged {};
 };
 
 }

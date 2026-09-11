@@ -211,14 +211,32 @@ void TrimeshPanelBridge::syncFromNode(
 }
 
 void TrimeshPanelBridge::refreshAfterMeshEdit(TrimeshMeshEditEvent event) {
+    if (event.selectionOnly) {
+        vector<Vertex*>& selected = event.sourceIs3D
+                ? interactor3D.getSelected()
+                : interactor2D.getSelected();
+        const bool selectionChanged = model.selectVertex(
+                selected.empty() ? nullptr : selected.front());
+        pendingSelectionChanged |= selectionChanged;
+
+        if (selectionChanged) {
+            panel2D.requestRepaint();
+            panel3D.requestRepaint();
+        }
+        if (!event.gestureComplete) {
+            meshEditGestureActive = true;
+            return;
+        }
+        if (pendingSelectionChanged && meshEditedCallback != nullptr) {
+            meshEditedCallback(event);
+        }
+        pendingSelectionChanged = false;
+        meshEditGestureActive = false;
+        return;
+    }
+
     if (!event.gestureComplete) {
         meshEditGestureActive = true;
-    }
-    vector<Vertex*>& selected = event.sourceIs3D
-            ? interactor3D.getSelected()
-            : interactor2D.getSelected();
-    if (!selected.empty()) {
-        model.selectVertex(selected.front());
     }
     model.markMeshEdited();
     syncPrimaryAxisContext();
@@ -265,6 +283,7 @@ void TrimeshPanelBridge::flushPendingMeshEdit(bool gestureComplete) {
         meshEditedCallback({ pendingMeshEditSourceIs3D, gestureComplete });
     }
     if (gestureComplete) {
+        pendingSelectionChanged = false;
         meshEditGestureActive = false;
     }
 }
@@ -284,17 +303,6 @@ void TrimeshPanelBridge::clearInteractionPointers() {
 }
 
 int TrimeshPanelBridge::selectedVertexIndexForPanel() {
-    vector<Vertex*>& selected2D = interactor2D.getSelected();
-    vector<Vertex*>& selected3D = interactor3D.getSelected();
-    Vertex* selected = !selected2D.empty()
-            ? selected2D.front()
-            : (!selected3D.empty() ? selected3D.front() : nullptr);
-    const auto& vertices = model.getMeshForPanel().getVerts();
-    for (int i = 0; i < (int) vertices.size(); ++i) {
-        if (vertices[(size_t) i] == selected) {
-            return i;
-        }
-    }
     return model.getResolvedSelectedVertexIndex();
 }
 

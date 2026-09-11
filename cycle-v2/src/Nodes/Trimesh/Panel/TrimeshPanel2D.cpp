@@ -12,6 +12,10 @@ TrimeshPanel2D::TrimeshPanel2D(SingletonRepo* repo) :
     guideCurveApplicable = true;
     speedApplicable = false;
     backgroundTimeRelevant = false;
+    vertexBlackRadius *= 2.f;
+    vertexWhiteRadius *= 2.f;
+    vertexHighlightRadius *= 2.f;
+    vertexSelectedRadius *= 2.f;
     applyRenderProfile();
 }
 

@@ -115,7 +115,7 @@ public:
     std::vector<TrimeshCubePreviewVertex> getSelectedCubePreviewVertices();
     int findNearestVertexIndexForPhaseAmp(float phase, float amp);
     int getResolvedSelectedVertexIndex();
-    void selectVertex(Vertex* vertex);
+    bool selectVertex(Vertex* vertex);
     bool setVertexParameter(int vertexIndex, const String& parameterId, float value);
     bool setVertexGuideGain(int vertexIndex, const String& parameterId, float value);
     float vertexGuideGain(int vertexIndex, const String& parameterId);
@@ -128,6 +128,7 @@ public:
     const TrimeshDerivedRevisions& getDerivedRevisions() const { return revisions; }
     Mesh& getMeshForPanel() { return mesh(); }
     Mesh& currentMesh() { return mesh(); }
+    const Mesh& currentMesh() const { return *ownedMesh; }
 
 private:
     Mesh& mesh();

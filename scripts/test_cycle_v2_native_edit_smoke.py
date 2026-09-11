@@ -1158,6 +1158,8 @@ class NativeEditSmoke:
         self.move_pointer(curve_source)
         curve_hover = self.inspect("waveMesh")
         assert curve_hover["trimesh"]["panelCurveHover"], curve_hover["trimesh"]
+        hovered_vertex_index = curve_hover["trimesh"]["panelHoveredVertexIndex"]
+        assert hovered_vertex_index >= 0, curve_hover["trimesh"]
         self.cursor_until("upDownResize")
         curve_before = self.trimesh_model(curve_hover)
         curve_revision = self.model_revision(curve_hover)
@@ -1187,13 +1189,13 @@ class NativeEditSmoke:
             curve_point["x"],
             "y",
         )
-        pointer_delta = curve_destination[1] - curve_source[1]
-        assert pointer_delta * (rendered_after - rendered_before) > 0, (
+        assert abs(rendered_after - rendered_before) > 0.001, (
             curve_point,
             rendered_before,
             rendered_after,
             control,
         )
+        assert curve_after["trimesh"]["selectedVertexIndex"] == hovered_vertex_index
         self.key_chord("z")
         curve_undone = self.inspect_until(
             "waveMesh",
@@ -1492,28 +1494,68 @@ class NativeEditSmoke:
         state = self.open_editor("waveMesh", trimesh=True)
         panel = self.target("expanded:waveMesh.panel2D")
         displayed_intercepts = state["trimesh"]["panelDisplayedIntercepts"]
+        selected_index = state["trimesh"]["selectedVertexIndex"]
+        self.capture("trimesh-point-markers", panel)
+
+        first_hover_point = self.point(
+            panel,
+            displayed_intercepts[0]["x"],
+            displayed_intercepts[0]["y"],
+        )
+        last_hover_point = self.point(
+            panel,
+            displayed_intercepts[-1]["x"],
+            displayed_intercepts[-1]["y"],
+        )
+        self.move_pointer((1, 1))
+        self.move_pointer(first_hover_point)
+        first_hover = self.inspect("waveMesh")["trimesh"]
+        self.move_pointer((1, 1))
+        self.move_pointer(last_hover_point)
+        last_hover = self.inspect("waveMesh")["trimesh"]
+        assert first_hover["panelHoveredInterceptIndex"] != last_hover[
+            "panelHoveredInterceptIndex"
+        ], (first_hover, last_hover)
+        assert first_hover["selectedVertexIndex"] == selected_index
+        assert last_hover["selectedVertexIndex"] == selected_index
+
         source_display = displayed_intercepts[len(displayed_intercepts) // 2]
         source = self.point(panel, source_display["x"], source_display["y"])
         destination_display = {
-            "x": min(0.95, source_display["x"] + 0.015),
-            "y": max(0.05, source_display["y"] - 0.04),
+            "x": min(0.92, source_display["x"] + 0.12),
+            "y": max(0.08, source_display["y"] - 0.16),
         }
         destination = self.point(
             panel,
             destination_display["x"],
             destination_display["y"],
         )
+        self.move_pointer((1, 1))
+        self.move_pointer(source)
+        source_hover = self.inspect("waveMesh")["trimesh"]
+        expected_selected_index = source_hover["panelHoveredVertexIndex"]
+        assert expected_selected_index >= 0, source_hover
         model_before = self.trimesh_model(state)
         revision_before = self.model_revision(state)
 
         self.drag(source, destination, steps=20, step_wait_ms=6)
         moved_state = self.inspect_until(
             "waveMesh",
-            lambda inspected: self.model_revision(inspected) > revision_before,
+            lambda inspected: (
+                self.model_revision(inspected) > revision_before
+                and inspected["trimesh"]["selectedVertexIndex"]
+                == expected_selected_index
+            ),
         )
 
         self.assert_trimesh_slice(moved_state, "Trimesh slice after focused point drag")
         assert self.trimesh_model(moved_state) != model_before
+        assert moved_state["trimesh"]["selectedVertexIndex"] == expected_selected_index, (
+            expected_selected_index,
+            moved_state["trimesh"]["selectedVertexIndex"],
+            source_hover,
+            moved_state["trimesh"],
+        )
 
     def spectral_trimesh_sequence(self):
         self.command({

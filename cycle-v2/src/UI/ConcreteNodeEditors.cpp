@@ -127,7 +127,13 @@ public:
         boundNode = node;
         boundWidget = widget;
         widget->setMeshEditedCallback([this](TrimeshMeshEditEvent event) {
-            commands.persistTrimeshMeshEdits(nodeId, event.gestureComplete);
+            if (event.selectionOnly) {
+                commands.selectTrimeshVertexIndex(
+                        nodeId,
+                        boundWidget->selectedVertexIndexForPanel());
+            } else {
+                commands.persistTrimeshMeshEdits(nodeId, event.gestureComplete);
+            }
         });
         editor->setRenderProfile(resources.trimeshRenderProfile(node));
         editor->setGuideAttachmentLabels(resources.trimeshGuideLabels(node));
@@ -215,6 +221,12 @@ public:
         const auto panelStats = boundWidget->panelRenderStatsForAutomation();
         meshState->setProperty("panelSampleCount", panelStats.sampleCount);
         meshState->setProperty("panelInterceptCount", panelStats.interceptCount);
+        meshState->setProperty(
+                "panelHoveredInterceptIndex",
+                panelStats.hoveredInterceptIndex);
+        meshState->setProperty(
+                "panelHoveredVertexIndex",
+                panelStats.hoveredVertexIndex);
         meshState->setProperty("panelGuideRailSegmentCount", panelStats.guideRailSegmentCount);
         meshState->setProperty(
                 "panelComponentGuideSegmentCount",

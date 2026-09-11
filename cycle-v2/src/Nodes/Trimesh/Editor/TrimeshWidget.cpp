@@ -329,6 +329,15 @@ TrimeshPanelRenderStats TrimeshWidget::panelRenderStatsForAutomation() const {
     }
     stats.sampleCount = samples.size();
     stats.interceptCount = (int) snapshot.intercepts().size();
+    stats.hoveredInterceptIndex = bridge.getInteractor2D().state.currentIcpt;
+    const Vertex* hoveredVertex = bridge.getInteractor2D().state.currentVertex;
+    const auto& vertices = bridge.getModel().currentMesh().getVerts();
+    for (int index = 0; index < (int) vertices.size(); ++index) {
+        if (vertices[(size_t) index] == hoveredVertex) {
+            stats.hoveredVertexIndex = index;
+            break;
+        }
+    }
     const bool hasPanelSize = panel.getWidth() > 0 && panel.getHeight() > 0;
     if (hasPanelSize) {
         stats.phaseUnitsPerDisplayX = panel.invertScaleX(panel.getWidth())

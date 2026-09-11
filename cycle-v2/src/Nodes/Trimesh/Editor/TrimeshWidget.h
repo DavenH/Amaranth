@@ -41,6 +41,8 @@ struct TrimeshPanelRenderStats {
     int curveGuideSegmentCount {};
     int firstPanelMidiNote { -1 };
     int lastPanelMidiNote { -1 };
+    int hoveredInterceptIndex { -1 };
+    int hoveredVertexIndex { -1 };
     float minimum {};
     float maximum {};
     float centreSample {};
@@ -94,6 +96,7 @@ public:
             juce::Rectangle<float> content);
     juce::Component* getExpandedPanel2DComponentIfCreated() const;
     void releaseSharedGlResources();
+    bool isMeshEditGestureActive() const { return bridge.isMeshEditGestureActive(); }
     int resolvedSelectedVertexIndexForNode(const Node& node);
     void setExpandedPanelHostDelegate(TrimeshPanelHostDelegate* delegate);
     void clearExpandedPanelHostDelegate(TrimeshPanelHostDelegate* delegate);

@@ -166,7 +166,24 @@ bool TrimeshInteractor3D::locateClosestElement() {
     return false;
 }
 
+void TrimeshInteractor3D::mouseDown(const MouseEvent& event) {
+    Interactor3D::mouseDown(event);
+
+    Vertex* nextSelection = getSelected().empty() ? nullptr : getSelected().front();
+    if (meshEditedCallback != nullptr) {
+        meshEditedCallback({ true, false, true });
+    }
+
+    gestureCube = state.currentCube;
+    gestureVertex = nextSelection;
+}
+
 void TrimeshInteractor3D::mouseDrag(const MouseEvent& event) {
+    if (gestureVertex != nullptr) {
+        state.currentCube = gestureCube;
+        state.currentVertex = gestureVertex;
+    }
+
     Interactor3D::mouseDrag(event);
 
     if (flag(DidMeshChange) && meshEditedCallback != nullptr) {
@@ -208,7 +225,11 @@ void TrimeshInteractor3D::mouseUp(const MouseEvent& event) {
 
     if ((meshChanged || meshEditGestureActive) && meshEditedCallback != nullptr) {
         meshEditedCallback({ true, true });
+    } else if (meshEditedCallback != nullptr) {
+        meshEditedCallback({ true, true, true });
     }
+    gestureCube = nullptr;
+    gestureVertex = nullptr;
     meshEditGestureActive = false;
 }
 

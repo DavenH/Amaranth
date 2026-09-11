@@ -451,17 +451,29 @@ Vertex* TrimeshNodeModel::selectedVertex() {
     return vertexAtIndex(resolvedSelectedVertexIndex());
 }
 
-void TrimeshNodeModel::selectVertex(Vertex* vertex) {
+bool TrimeshNodeModel::selectVertex(Vertex* vertex) {
+    if (vertex == nullptr) {
+        if (selectedVertexIndex == -1) {
+            return false;
+        }
+        selectedVertexIndex = -1;
+        bumpSelectedControlRevision();
+        return true;
+    }
+
     const auto& vertices = mesh().getVerts();
     for (int i = 0; i < (int) vertices.size(); ++i) {
         if (vertices[(size_t) i] == vertex) {
             if (selectedVertexIndex != i) {
                 selectedVertexIndex = i;
                 bumpSelectedControlRevision();
+                return true;
             }
-            return;
+            return false;
         }
     }
+
+    return false;
 }
 
 bool TrimeshNodeModel::setVertexParameter(
