@@ -1135,6 +1135,118 @@ class NativeEditSmoke:
             "Envelope downstream output",
         )
 
+    def envelope_release_sequence(self):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(REPO, "cycle-v2", "resources", "with-spies.cyclegraph"),
+        })
+        time.sleep(SETTLE_SECONDS)
+        initial = self.open_editor("env")
+        panel = self.target("expanded:env.panel2D")
+        panel_state = initial["effect2D"]["panelState"]
+        zoom = panel_state["zoom"]
+
+        release_end = panel_state["intercepts"][-1]["x"]
+        release_points = [
+            point for point in panel_state["waveformPoints"]
+            if 1.02 < point["x"] < release_end - 0.02
+            and 0.05 < point["displayX"] < 0.95
+            and 0.05 < point["displayY"] < 0.95
+        ]
+        assert release_points, {"releaseEnd": release_end, "zoom": zoom}
+
+        intercept_positions = [
+            (
+                (intercept["x"] - zoom["x"]) / zoom["w"],
+                1.0 - (intercept["y"] - zoom["y"]) / zoom["h"],
+            )
+            for intercept in panel_state["intercepts"]
+        ]
+        release_points.sort(
+            key=lambda point: min(
+                (point["displayX"] - x) ** 2 + (point["displayY"] - y) ** 2
+                for x, y in intercept_positions
+            ),
+            reverse=True,
+        )
+
+        release_point = release_points[0]
+        source = self.point(panel, release_point["displayX"], release_point["displayY"])
+        self.move_pointer((1, 1))
+        self.move_pointer(source)
+        hover_deadline = time.monotonic() + 0.5
+        hovered = self.inspect("env")
+        while (not hovered["effect2D"]["panelState"]["curveHover"]
+                and time.monotonic() < hover_deadline):
+            time.sleep(0.01)
+            hovered = self.inspect("env")
+
+        hovered_panel = hovered["effect2D"]["panelState"]
+        assert hovered_panel["interactionXMaximum"] >= release_end
+        assert hovered_panel["curveHover"], {
+            "releasePoint": (release_point["x"], release_point["y"]),
+            "interactionXMaximum": hovered_panel["interactionXMaximum"],
+        }
+        control = hovered_panel.get("currentVertex")
+        assert control is not None, "release curve has no reshape control"
+
+        initial_revision = self.model_revision(hovered)
+        initial_mesh = hovered["model"]["state"]["mesh"]
+        control_display_y = 1.0 - (control["y"] - zoom["y"]) / zoom["h"]
+        destination = self.point(
+            panel,
+            release_point["displayX"],
+            release_point["displayY"]
+            + (control_display_y - release_point["displayY"]) * 0.6,
+        )
+
+        self.drag(source, destination, steps=4, step_wait_ms=6)
+        moved = self.inspect_until(
+            "env",
+            lambda state: self.model_revision(state) > initial_revision,
+        )
+        moved_control = moved["effect2D"]["panelState"].get("currentVertex")
+        assert moved_control is not None, "release reshape lost its control vertex"
+        assert abs(moved_control["curve"] - control["curve"]) > 0.01, (
+            control,
+            moved_control,
+        )
+        self.capture("envelope-release-edited", panel)
+
+        self.key_chord("z")
+        undone = self.inspect_until(
+            "env",
+            lambda state: state["model"]["state"]["mesh"] == initial_mesh,
+        )
+        assert undone["model"]["state"]["mesh"] == initial_mesh
+
+    def guide_preview_sequence(self):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(
+                REPO,
+                "cycle-v2",
+                "content",
+                "presets",
+                "solo-string-2.cyclegraph",
+            ),
+        })
+        time.sleep(SETTLE_SECONDS)
+        self.capture("guide-previews-distinct", self.target("guideShelf"))
+
+    def intercept_visual_sequence(self):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(REPO, "cycle-v2", "resources", "with-spies.cyclegraph"),
+        })
+        time.sleep(SETTLE_SECONDS)
+        self.open_editor("waveMesh", trimesh=True)
+        self.capture("intercepts-trimesh", self.target("expanded:waveMesh.panel2D"))
+        self.open_editor("waveshaper")
+        self.capture("intercepts-waveshaper", self.target("expanded:waveshaper.panel2D"))
+        self.open_editor("env")
+        self.capture("intercepts-envelope", self.target("expanded:env.panel2D"))
+
     def trimesh_sequence(
             self,
             stop_after_versioning_check=False,
@@ -1738,6 +1850,9 @@ class NativeEditSmoke:
                 "authoring": self.graph_authoring_sequence,
                 "waveshaper": self.effect2d_sequence,
                 "envelope": self.envelope_sequence,
+                "envelope-release": self.envelope_release_sequence,
+                "guide-previews": self.guide_preview_sequence,
+                "intercept-visuals": self.intercept_visual_sequence,
                 "trimesh": self.trimesh_sequence,
                 "trimesh-curve-drag": lambda: self.trimesh_sequence(False, True),
                 "trimesh-point-drag": self.trimesh_point_drag_sequence,
@@ -1767,6 +1882,9 @@ if __name__ == "__main__":
         "authoring",
         "waveshaper",
         "envelope",
+        "envelope-release",
+        "guide-previews",
+        "intercept-visuals",
         "trimesh",
         "trimesh-curve-drag",
         "trimesh-point-drag",

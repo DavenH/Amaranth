@@ -216,6 +216,7 @@ void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float sca
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     ScopedGLScissor scissor(bounds, scaleFactor);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     panel.render();
 
     Image nextImage;
@@ -283,6 +284,7 @@ bool CurvePanelHost::renderPreviewUncached(
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     ScopedGLScissor scissor(bounds, scaleFactor);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     panel.render();
     panel.getZoomPanel()->rect = interactiveZoom;
 

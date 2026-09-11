@@ -4,6 +4,8 @@
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 
+#include "UI/MeshEditorPresentation.h"
+
 namespace CycleV2 {
 
 TrimeshPanel2D::TrimeshPanel2D(SingletonRepo* repo) :
@@ -12,10 +14,7 @@ TrimeshPanel2D::TrimeshPanel2D(SingletonRepo* repo) :
     guideCurveApplicable = true;
     speedApplicable = false;
     backgroundTimeRelevant = false;
-    vertexBlackRadius *= 2.f;
-    vertexWhiteRadius *= 2.f;
-    vertexHighlightRadius *= 2.f;
-    vertexSelectedRadius *= 2.f;
+    setInterceptPointScale(MeshEditorPresentation::interceptPointScale);
     applyRenderProfile();
 }
 

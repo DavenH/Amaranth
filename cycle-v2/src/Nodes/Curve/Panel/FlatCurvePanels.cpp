@@ -18,6 +18,7 @@
 
 #include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
+#include "UI/MeshEditorPresentation.h"
 
 #include <algorithm>
 #include <cmath>
@@ -68,6 +69,7 @@ public:
         bgPaddingBttm = verticalPadding;
         colorA = Color(0.92f, 0.93f, 0.96f, 0.92f);
         colorB = colorA;
+        setInterceptPointScale(MeshEditorPresentation::interceptPointScale);
 
         rasterizer.setDims(dims);
         rasterizer.setMesh(&mesh);
