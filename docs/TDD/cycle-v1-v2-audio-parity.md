@@ -841,6 +841,22 @@ as the scratch envelope evolves.
     existing live-device fixture now reports nonzero left/right display levels
     (`0.5869` in the verification run), and cache-key coverage guards dynamic
     context invalidation. Artifact: `/tmp/cycle-v2-meter-report.json`.
+51. Re-audit older intermittent fixtures under the deterministic allocator
+    contract. In progress: Guitar 3 G MIDI 36 repeats exactly across five fresh
+    processes and retains `0.99998` correlation, but a subsequent full matrix
+    moved the Cycle 1 repeat failure to MIDI 48. That mismatch starts in the dry
+    output before any delayed sample can return; disabling Delay produced three
+    exact repeats, but this does not identify Delay as the source because its
+    presence also changes the process allocation layout. Japan Drum likewise
+    repeated exactly five times at MIDI 48, then failed one Cycle 1 repeat at
+    the same note inside a later full matrix. Both remain diagnostic. Preserve
+    the exact gate and localize the next failure with equivalent allocation and
+    capture conditions before changing shared DSP. Artifacts:
+    `/tmp/cycle-guitar-repeat-allocator/comparison.json`,
+    `/tmp/cycle-guitar-verified-allocator/comparison.json`,
+    `/tmp/cycle-guitar-repeat-no-delay/comparison.json`,
+    `/tmp/cycle-japan-drum-repeat-allocator/comparison.json`, and
+    `/tmp/cycle-japan-drum-verified-allocator/comparison.json`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a
