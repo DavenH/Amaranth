@@ -179,6 +179,7 @@ void GraphAudioExecutor::resetExecutionState() const {
     processors.clear();
     preparedVoices.clear();
     bufferSlots.clear();
+    voiceMixSlots.clear();
     realtimeOutput = nullptr;
 }
 
@@ -207,6 +208,67 @@ GraphAudioOutputView GraphAudioExecutor::processRealtime(
     return { realtimeOutput };
 }
 
+void GraphAudioExecutor::beginRealtimeVoiceMix(
+        const GraphExecutionPlan& plan,
+        size_t frameCount) const {
+    jassert(frameCount <= voiceMixArena.frameCapacity);
+    for (const int bufferIndex : plan.voiceMixBufferIndices) {
+        if (bufferIndex < 0 || (size_t) bufferIndex >= voiceMixSlots.size()) {
+            continue;
+        }
+        const auto& buffer = plan.buffers[(size_t) bufferIndex];
+        auto& payload = voiceMixSlots[(size_t) bufferIndex];
+        payload.domain = buffer.domain;
+        payload.channelLayout = buffer.channelLayout;
+        payload.block.samples.resize(frameCount);
+        Buffer<float>(payload.block.samples.data(), (int) frameCount).zero();
+        payload.secondaryBlock.samples.resize(frameCount);
+        Buffer<float>(
+                payload.secondaryBlock.samples.data(),
+                (int) frameCount).zero();
+    }
+}
+
+void GraphAudioExecutor::processRealtimeVoiceToMix(
+        const GraphExecutionPlan& plan,
+        size_t frameCount,
+        AudioProcessTiming timing,
+        const AudioVoiceContext& voice) const {
+    processInternal(
+            plan,
+            frameCount,
+            timing,
+            voice,
+            false,
+            nullptr,
+            nullptr,
+            {},
+            nullptr,
+            ProcessingPass::Voice);
+    mixVoiceBoundary(plan, frameCount);
+}
+
+GraphAudioOutputView GraphAudioExecutor::processRealtimeGlobal(
+        const GraphExecutionPlan& plan,
+        size_t frameCount,
+        AudioProcessTiming timing) const {
+    loadMixedVoiceBoundary(plan, frameCount);
+    AudioVoiceContext context;
+    context.voiceIndex = globalProcessorIndex;
+    processInternal(
+            plan,
+            frameCount,
+            timing,
+            context,
+            false,
+            nullptr,
+            nullptr,
+            {},
+            nullptr,
+            ProcessingPass::Global);
+    return { realtimeOutput };
+}
+
 GraphAudioResult GraphAudioExecutor::processInternal(
         const GraphExecutionPlan& plan,
         size_t frameCount,
@@ -216,7 +278,8 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         GraphProcessObserver* observer,
         const std::vector<uint8_t>* dirtyNodes,
         const CancellationCheck& cancellationCheck,
-        GraphAudioResultView* incrementalResult) const {
+        GraphAudioResultView* incrementalResult,
+        ProcessingPass pass) const {
     if (captureDiagnostics) {
         AudioExecutionSpec executionSpec;
         executionSpec.maximumFrameCount = frameCount;
@@ -265,25 +328,27 @@ GraphAudioResult GraphAudioExecutor::processInternal(
     }
     realtimeOutput = nullptr;
 
-    for (size_t bufferIndex = 0; bufferIndex < plan.buffers.size(); ++bufferIndex) {
-        const auto& buffer = plan.buffers[bufferIndex];
-        if (buffer.defaultModulationSlot == DefaultModulationSlot::None) {
-            continue;
+    if (pass != ProcessingPass::Global) {
+        for (size_t bufferIndex = 0; bufferIndex < plan.buffers.size(); ++bufferIndex) {
+            const auto& buffer = plan.buffers[bufferIndex];
+            if (buffer.defaultModulationSlot == DefaultModulationSlot::None) {
+                continue;
+            }
+            const auto configuration = std::dynamic_pointer_cast<
+                    const ModulationTripleConfiguration>(buffer.defaultModulation);
+            if (configuration == nullptr) {
+                continue;
+            }
+            const int sourceIndex = (int) buffer.defaultModulationSlot - 1;
+            SignalPayload& payload = bufferSlots[bufferIndex];
+            payload.domain = PortDomain::ControlSignal;
+            payload.channelLayout = ChannelLayout::Mono;
+            payload.block.samples.resize(frameCount);
+            ModulationSource::renderAudioBlock(
+                    configuration->sources[(size_t) sourceIndex],
+                    voice,
+                    { payload.block.samples.data(), (int) frameCount });
         }
-        const auto configuration = std::dynamic_pointer_cast<
-                const ModulationTripleConfiguration>(buffer.defaultModulation);
-        if (configuration == nullptr) {
-            continue;
-        }
-        const int sourceIndex = (int) buffer.defaultModulationSlot - 1;
-        SignalPayload& payload = bufferSlots[bufferIndex];
-        payload.domain = PortDomain::ControlSignal;
-        payload.channelLayout = ChannelLayout::Mono;
-        payload.block.samples.resize(frameCount);
-        ModulationSource::renderAudioBlock(
-                configuration->sources[(size_t) sourceIndex],
-                voice,
-                { payload.block.samples.data(), (int) frameCount });
     }
 
     for (size_t stepIndex = 0; stepIndex < plan.steps.size(); ++stepIndex) {
@@ -294,6 +359,11 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             return result;
         }
         const auto& step = plan.steps[stepIndex];
+        const bool globalStep = step.ownershipScope == RuntimeOwnershipScope::Global;
+        if ((pass == ProcessingPass::Voice && globalStep)
+                || (pass == ProcessingPass::Global && !globalStep)) {
+            continue;
+        }
         auto* oscillatorRegion = oscillatorRegionForStep(
                 preparedVoice->second,
                 stepIndex);
@@ -517,6 +587,35 @@ void GraphAudioExecutor::prepareExecution(
         const GraphExecutionPlan& plan,
         const AudioExecutionSpec& spec,
         int voiceIndex) const {
+    prepareExecutionInternal(
+            plan,
+            spec,
+            voiceIndex,
+            ProcessingPass::Complete);
+}
+
+void GraphAudioExecutor::prepareRealtimeVoiceExecution(
+        const GraphExecutionPlan& plan,
+        const AudioExecutionSpec& spec,
+        int voiceIndex) const {
+    prepareExecutionInternal(plan, spec, voiceIndex, ProcessingPass::Voice);
+}
+
+void GraphAudioExecutor::prepareRealtimeGlobalExecution(
+        const GraphExecutionPlan& plan,
+        const AudioExecutionSpec& spec) const {
+    prepareExecutionInternal(
+            plan,
+            spec,
+            globalProcessorIndex,
+            ProcessingPass::Global);
+}
+
+void GraphAudioExecutor::prepareExecutionInternal(
+        const GraphExecutionPlan& plan,
+        const AudioExecutionSpec& spec,
+        int voiceIndex,
+        ProcessingPass pass) const {
     NodeAudioProcessorFactory factory;
     const size_t gridValueCapacity = spec.maximumFrameCount
             * std::max(spec.maximumFrameCount, plan.maximumTraversalColumns);
@@ -542,6 +641,23 @@ void GraphAudioExecutor::prepareExecution(
             workArena.bind(slot);
         }
     }
+    if (pass != ProcessingPass::Complete) {
+        const bool mixWorkspaceMatches = voiceMixArena.frameCapacity == spec.maximumFrameCount
+                && voiceMixSlots.size() == plan.buffers.size();
+        if (!mixWorkspaceMatches) {
+            voiceMixArena.prepare(spec.maximumFrameCount, 0, 0, 0);
+            voiceMixSlots.clear();
+            if (!voiceMixArena.preparePayloadStorage(plan.buffers.size())) {
+                voiceMixArena.frameCapacity = 0;
+                jassertfalse;
+                return;
+            }
+            voiceMixSlots.resize(plan.buffers.size());
+            for (auto& slot : voiceMixSlots) {
+                voiceMixArena.bind(slot);
+            }
+        }
+    }
     processContext.outputs.clear();
     processContext.parameters.clear();
     processContext.inputs.clear();
@@ -551,10 +667,9 @@ void GraphAudioExecutor::prepareExecution(
     processContext.outputViews.prepare(plan.maximumOutputCount);
     processContext.outputs.prepare(plan.maximumOutputCount);
     PreparedVoice& preparedVoice = preparedVoices[voiceIndex];
-    const bool rebuildOscillatorRegions = !oscillatorPreparationMatches(
-            plan,
-            preparedVoice,
-            spec);
+    const bool globalPreparation = pass == ProcessingPass::Global;
+    const bool rebuildOscillatorRegions = !globalPreparation
+            && !oscillatorPreparationMatches(plan, preparedVoice, spec);
     preparedVoice.voiceIndex = voiceIndex;
     preparedVoice.plan = &plan;
     preparedVoice.maximumFrameCount = spec.maximumFrameCount;
@@ -563,6 +678,12 @@ void GraphAudioExecutor::prepareExecution(
     preparedVoice.processors.reserve(plan.steps.size());
 
     for (const auto& step : plan.steps) {
+        const bool globalStep = step.ownershipScope == RuntimeOwnershipScope::Global;
+        if ((pass == ProcessingPass::Voice && globalStep)
+                || (pass == ProcessingPass::Global && !globalStep)) {
+            preparedVoice.processors.push_back(nullptr);
+            continue;
+        }
         CachedProcessor& cached = processorFor(
                 step.nodeId,
                 voiceIndex,
@@ -600,7 +721,10 @@ void GraphAudioExecutor::prepareExecution(
         ++cached.preparationCount;
     }
 
-    if (rebuildOscillatorRegions) {
+    if (globalPreparation) {
+        preparedVoice.oscillatorRegions.clear();
+        preparedVoice.oscillatorRegionByStep.assign(plan.steps.size(), nullptr);
+    } else if (rebuildOscillatorRegions) {
         preparedVoice.oscillatorRegions.clear();
         preparedVoice.oscillatorRegionByStep.assign(plan.steps.size(), nullptr);
         for (int regionIndex = 0; regionIndex < (int) plan.oscillatorRegions.size(); ++regionIndex) {
@@ -641,6 +765,66 @@ void GraphAudioExecutor::prepareExecution(
                         = preparedRegion.get();
             }
             preparedVoice.oscillatorRegions.push_back(std::move(preparedRegion));
+        }
+    }
+}
+
+void GraphAudioExecutor::mixVoiceBoundary(
+        const GraphExecutionPlan& plan,
+        size_t frameCount) const {
+    for (const int bufferIndex : plan.voiceMixBufferIndices) {
+        if (bufferIndex < 0
+                || (size_t) bufferIndex >= bufferSlots.size()
+                || (size_t) bufferIndex >= voiceMixSlots.size()) {
+            continue;
+        }
+        const auto& source = bufferSlots[(size_t) bufferIndex];
+        auto& mixed = voiceMixSlots[(size_t) bufferIndex];
+        mixed.domain = source.domain;
+        mixed.channelLayout = source.channelLayout;
+        mixed.block.samples.resize(frameCount);
+        Buffer<float>(mixed.block.samples.data(), (int) frameCount).add(
+                Buffer<float>(
+                        const_cast<float*>(source.block.samples.data()),
+                        (int) frameCount));
+        if (source.isStereo()) {
+            mixed.secondaryBlock.samples.resize(frameCount);
+            Buffer<float>(mixed.secondaryBlock.samples.data(), (int) frameCount).add(
+                    Buffer<float>(
+                            const_cast<float*>(source.secondaryBlock.samples.data()),
+                            (int) frameCount));
+        }
+    }
+}
+
+void GraphAudioExecutor::loadMixedVoiceBoundary(
+        const GraphExecutionPlan& plan,
+        size_t frameCount) const {
+    for (const int bufferIndex : plan.voiceMixBufferIndices) {
+        if (bufferIndex < 0
+                || (size_t) bufferIndex >= bufferSlots.size()
+                || (size_t) bufferIndex >= voiceMixSlots.size()) {
+            continue;
+        }
+        const auto& mixed = voiceMixSlots[(size_t) bufferIndex];
+        auto& destination = bufferSlots[(size_t) bufferIndex];
+        destination.domain = mixed.domain;
+        destination.channelLayout = mixed.channelLayout;
+        destination.block.samples.resize(frameCount);
+        Buffer<float>(
+                const_cast<float*>(mixed.block.samples.data()),
+                (int) frameCount).copyTo(Buffer<float>(
+                        destination.block.samples.data(),
+                        (int) frameCount));
+        if (mixed.isStereo()) {
+            destination.secondaryBlock.samples.resize(frameCount);
+            Buffer<float>(
+                    const_cast<float*>(mixed.secondaryBlock.samples.data()),
+                    (int) frameCount).copyTo(Buffer<float>(
+                            destination.secondaryBlock.samples.data(),
+                            (int) frameCount));
+        } else {
+            destination.secondaryBlock.samples.resize(0);
         }
     }
 }

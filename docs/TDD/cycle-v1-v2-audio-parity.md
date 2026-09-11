@@ -174,7 +174,7 @@ translation. The first broad candidates are:
 | japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase. One corrected render repeated exactly, but a later run did not repeat in Cycle 1. Its large evolving mismatch remains diagnostic until that intermittent startup state is isolated. |
 | Icycle | Broad synthesis/effects plus six-voice Unison | Verified. Regenerated from a direct canonical export while retaining node layout, port presentation, and three authored probes. Its reverb is disabled; the corrected IR size is `0.26`. Prepared per-lane pitch playback, Cycle 1's render-boundary frame latch, and deterministic offline parameter settling bring the full MIDI 36–72 matrix to `0.98425–0.99997` correlation with exact repeatability in both engines. |
 | accoustic | Broad graph including reverb | Current graph differs in morph/link state, envelope state, reverb size, and IR high-pass; do not use for DSP attribution yet. |
-| organ-2 | Spectral layers, envelopes, Unison, IR, delay, reverb | Current graph differs from fresh conversion in reverb size; reverb seed parity is unresolved. |
+| organ-2 | Spectral layers, envelopes, Unison, IR, delay, reverb | Regenerated from a fresh export while retaining presentation. Its oscillator-through-delay baseline is near-identical and global effect tails now outlive voices. The full Reverb output remains diagnostic. |
 
 Noise-bearing presets are deferred until both engines expose and honor the
 same persisted or injected seed. “Noise level zero” alone does not exempt a
@@ -659,6 +659,63 @@ as the scratch envelope evolves.
     delay. Artifacts:
     `/tmp/cycle-icycle-repeat-waveshaper-settled/comparison.json` and
     `/tmp/cycle-icycle-full-settled-matrix/comparison.json`.
+40. Establish Organ 2's semantic and oscillator baseline. Complete: a fresh
+    Cycle 1 export regenerated the Cycle V2 graph while retaining its authored
+    node, port, editor, and probe presentation. The converter now applies Cycle
+    1's pre-1.5 Reverb compatibility override, where the stored former-dry slot
+    resolves to a `0.05` high pass. A negative scratch-buffer sentinel no longer
+    aliases the prepared pitch Envelope, and synthesis transforms now reuse
+    Cycle 1's offset-removing inverse-FFT contract. With Reverb disabled, the
+    complete oscillator, IR, and delay path reaches `0.99999` correlation,
+    `0.0037` residual, `0.03 dB` spectral RMSE, and `0.0014` cyclogram
+    difference at MIDI 48. Cycle 1's offline settlement now also completes its
+    existing Reverb kernel and parameter actions deterministically. Full
+    Reverb renders repeat exactly, but are not eligible for threshold admission:
+    Cycle V2 currently instantiates and gates all effects per voice, whereas
+    Cycle 1 mixes voices before running one continuous global chain. Artifacts:
+    `/tmp/cycle-organ-2-oscillator-dc-fixed/comparison.json`,
+    `/tmp/cycle-organ-2-no-reverb-after-fixes/comparison.json`, and
+    `/tmp/cycle-organ-2-full-matrix-candidate/comparison.json`.
+41. Restore the live Voice Length contract. Complete: Cycle 1's oscillator panel
+    control governs the normalized lifetime used by live voices. Cycle V2's
+    identically presented Voice Context control currently changes only preview
+    state. The stable boundary is a thread-safe runtime-duration value owned by
+    `RealtimeGraphRenderer`; `NodeWorkspace` translates the canvas setting
+    into that value without turning session audio configuration into a graph
+    mutation. Preview and live rendering consume the same clamped duration. A
+    focused active-note sequence changes the duration from 1.0 to 0.1 seconds
+    and observes the live Voice Time slope increase by exactly 10x.
+42. Restore the global post-voice effects boundary. Complete: Cycle 1's
+    `SynthAudioSource::processBlock()` is authoritative: synth voices are mixed,
+    then waveshaper, IR/tube, EQ, delay, Reverb, and master gain run once on
+    every audio block. Cycle V2 reuses its existing node processors and
+    topology unchanged, while graph metadata declares processor lifetime and
+    the executor translates voice-boundary buffers into one preallocated global
+    execution. No effect DSP or graph traversal will be copied. The stable end
+    state removes effect-tail ownership from individual voices: note release can
+    retire a synth voice independently, while the persistent global executor
+    continues receiving silence and emitting delay/Reverb tails. The intended
+    graph end state keeps Reverb and delay intrinsically global, while
+    Waveshaper, IR Modeller, and EQ expose authored voice-local/global modes
+    (defaulting to global for Cycle 1 ports). Adding those editor selections is
+    outside this parity slice; regardless of selection, scope remains monotonic
+    downstream and a global signal cannot become voice-local again. Compiler
+    and renderer regressions cover downstream scope propagation and a delay echo
+    remaining audible for multiple callbacks after its source voice retires.
+43. Localize Organ 2's remaining global Reverb output mismatch. In progress:
+    moving the existing effect chain to its authoritative lifetime boundary does
+    not change the held-note mismatch, as expected for a single active voice.
+    With every effect disabled, MIDI 48 remains zero-lag at `0.99999`
+    correlation, `0.0041` residual, `0.03 dB` spectral RMSE, and `0.0017`
+    cyclogram difference. The full chain remains zero-lag at `0.97076`
+    correlation and `0.2400` residual; a 250–750 ms post-note window confirms
+    both engines now emit tails but retains a material Reverb-shape difference.
+    Kernel contents, configuration, input blocks, and first convolution output
+    were already observed equivalent, so the next boundary is Reverb's stereo
+    wet/dry accumulation rather than its lifetime or preset translation.
+    Artifacts: `/tmp/cycle-organ-2-global-no-effects-fixed/comparison.json`,
+    `/tmp/cycle-organ-2-global-full-fixed/comparison.json`, and
+    `/tmp/cycle-organ-2-global-tail/comparison.json`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

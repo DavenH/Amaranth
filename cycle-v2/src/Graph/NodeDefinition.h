@@ -120,6 +120,11 @@ enum class NodeExecutionTrait {
     SampleBlockProcessor
 };
 
+enum class AudioProcessingScope {
+    Voice,
+    Global
+};
+
 struct NodeDefinition {
     String typeId;
     int version { 1 };
@@ -140,6 +145,7 @@ struct NodeDefinition {
     bool previewable {};
     String cycle1Reference;
     NodeExecutionTrait executionTrait { NodeExecutionTrait::SampleBlockProcessor };
+    AudioProcessingScope processingScope { AudioProcessingScope::Voice };
     NodeNaturalSize minimumPreviewSize { 190.f, 76.f };
     NodeNaturalSize fixedNaturalSize;
 };

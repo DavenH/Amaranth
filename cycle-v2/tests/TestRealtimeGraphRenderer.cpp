@@ -9,6 +9,7 @@
 
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeFactory.h"
 #include "Graph/NodeParameterMap.h"
 #include "Graph/GraphSerializer.h"
 #include "Graph/NodeGraph.h"
@@ -159,6 +160,61 @@ TEST_CASE("Realtime graph renderer supplies the legacy volume-envelope clock",
             }) > 0.001f);
 }
 
+TEST_CASE("Realtime voice length updates the active voice-time clock",
+        "[cycle-v2][audio-device][realtime][voice-length]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "time", {}));
+    graph.replaceNodeParameters("time", {
+            { "source", "Source", "voiceTime" },
+            { "controller", "Controller", "1" },
+            { "constant", "Constant", "0.5" }
+    });
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "time", "value", "out", "time",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    constexpr int frameCount = 10;
+    constexpr double sampleRate = 1'000.0;
+    constexpr double blockDuration = frameCount / sampleRate;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = frameCount;
+    spec.sampleRate = sampleRate;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 31, spec);
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    renderer.setPreparedGraph(prepared.get());
+    renderer.setVoiceDurationSeconds(1.f);
+
+    REQUIRE(queue.enqueue(
+            MidiMessage::noteOn(1, 60, (uint8) 100),
+            MidiEventSource::PerformanceKeyboard,
+            1.0));
+    AudioBuffer<float> output(2, frameCount);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    renderer.process(queue, channels, 2, frameCount, sampleRate, 1.0);
+    const float slowDelta = output.getSample(0, frameCount - 1)
+            - output.getSample(0, 0);
+
+    renderer.setVoiceDurationSeconds(0.1f);
+    renderer.process(
+            queue,
+            channels,
+            2,
+            frameCount,
+            sampleRate,
+            1.0 + blockDuration);
+    const float fastDelta = output.getSample(0, frameCount - 1)
+            - output.getSample(0, 0);
+
+    REQUIRE(slowDelta > 0.f);
+    REQUIRE(fastDelta == Catch::Approx(10.f * slowDelta).margin(1.0e-6f));
+}
+
 TEST_CASE("Realtime graph renderer stops immediately without a volume envelope",
         "[cycle-v2][audio-device][realtime][midi][release]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
@@ -193,6 +249,81 @@ TEST_CASE("Realtime graph renderer stops immediately without a volume envelope",
             1.1));
     renderer.process(queue, channels, 2, 256, 44100.0, 1.1);
     REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 0);
+}
+
+TEST_CASE("Global delay continues after its source voice retires",
+        "[cycle-v2][audio-device][realtime][delay][audio-scope]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    graph.removeNode("env");
+    graph.removeNode("multiply");
+    GraphNodeFactory factory;
+    graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
+    graph.replaceNodeParameters("delay", {
+            { "enabled", "Enabled", "1" },
+            { "time", "Time", "0" },
+            { "feedback", "Feedback", "0.5" },
+            { "wet", "Wet", "1" },
+            { "spin", "Pan Amount", "0" },
+            { "spinIters", "Pan Cycle", "0" }
+    });
+    graph.addEdge({
+            "ifft", "time", "delay", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "delay", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    constexpr int frameCount = 256;
+    constexpr double sampleRate = 44'100.0;
+    constexpr double blockDuration = frameCount / sampleRate;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = frameCount;
+    spec.sampleRate = sampleRate;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 29, spec);
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    renderer.setPreparedGraph(prepared.get());
+
+    double callbackTime = 1.0;
+    REQUIRE(queue.enqueue(
+            MidiMessage::noteOn(1, 60, (uint8) 100),
+            MidiEventSource::PerformanceKeyboard,
+            callbackTime));
+    AudioBuffer<float> output(2, frameCount);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    renderer.process(
+            queue,
+            channels,
+            2,
+            frameCount,
+            sampleRate,
+            callbackTime);
+
+    callbackTime += blockDuration;
+    REQUIRE(queue.enqueue(
+            MidiMessage::noteOff(1, 60),
+            MidiEventSource::PerformanceKeyboard,
+            callbackTime));
+
+    float releasedPeak = 0.f;
+    for (int block = 0; block < 12; ++block) {
+        renderer.process(
+                queue,
+                channels,
+                2,
+                frameCount,
+                sampleRate,
+                callbackTime);
+        REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 0);
+        releasedPeak = jmax(releasedPeak, renderer.diagnostics(queue).peak);
+        callbackTime += blockDuration;
+    }
+
+    REQUIRE(releasedPeak > 1.0e-4f);
 }
 
 TEST_CASE("Realtime graph renderer isolates voices and steals the oldest voice",

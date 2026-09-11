@@ -121,7 +121,7 @@ private:
     size_t scheduledEventCount {};
     std::array<float, 8192> metricsScratch;
     uint64_t nextVoiceOrder {};
-    float voiceDurationSeconds { 7.f };
+    std::atomic<float> voiceDurationSeconds { 7.f };
     double volumeEnvelopeClockSampleRate {};
     float outputGain { defaultOutputGain };
     SmoothedParameter graphOutputGain { 1.f };

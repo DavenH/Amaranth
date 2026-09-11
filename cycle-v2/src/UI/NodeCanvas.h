@@ -97,6 +97,10 @@ public:
     Rectangle<int> performanceKeyboardDockBounds() const;
     Rectangle<float> expandedEditorBoundsForOverlay() const;
     void setOverlayOcclusionChangedCallback(std::function<void()> callback);
+    void setVoiceLengthChangedCallback(std::function<void(double)> callback);
+    double voiceLengthSeconds() const {
+        return globalUnisonPreviewContext.voiceDurationSeconds;
+    }
     void setRealtimeOutputMeterLevels(std::optional<OutputMeterLevels> measured);
     std::optional<OutputMeterLevels> realtimeOutputMeterLevels() const {
         return liveOutputMeterLevels;
@@ -178,6 +182,7 @@ private:
     String draggingProbeId;
     String expandedGuideId;
     std::optional<uint64_t> guideTransactionBaseRevision;
+    std::function<void(double)> voiceLengthChangedCallback;
     uint32 compiledStateRefreshDueMs {};
     std::function<void()> overlayOcclusionChanged;
 
@@ -265,7 +270,7 @@ private:
             const Node& node,
             Rectangle<float> bounds) override;
     UnisonPreviewContext unisonPreviewContext() const override;
-    void setPreviewVoiceLengthSeconds(double seconds) override;
+    void setVoiceLengthSeconds(double seconds) override;
 
     void closeCurveEditor() override;
     void repaintCurveEditorOpenGL() override;

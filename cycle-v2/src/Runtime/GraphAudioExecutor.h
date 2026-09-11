@@ -49,6 +49,13 @@ public:
             const GraphExecutionPlan& plan,
             const AudioExecutionSpec& spec,
             int voiceIndex = 0) const;
+    void prepareRealtimeVoiceExecution(
+            const GraphExecutionPlan& plan,
+            const AudioExecutionSpec& spec,
+            int voiceIndex) const;
+    void prepareRealtimeGlobalExecution(
+            const GraphExecutionPlan& plan,
+            const AudioExecutionSpec& spec) const;
     size_t preparationCount(const String& nodeId, int voiceIndex = 0) const;
     size_t serviceNonRealtimePreparation() const;
     bool hasActiveVoiceTail(int voiceIndex) const;
@@ -95,8 +102,26 @@ public:
             AudioProcessTiming timing,
             const AudioVoiceContext& voice,
             GraphProcessObserver* observer = nullptr) const;
+    void beginRealtimeVoiceMix(
+            const GraphExecutionPlan& plan,
+            size_t frameCount) const;
+    void processRealtimeVoiceToMix(
+            const GraphExecutionPlan& plan,
+            size_t frameCount,
+            AudioProcessTiming timing,
+            const AudioVoiceContext& voice) const;
+    GraphAudioOutputView processRealtimeGlobal(
+            const GraphExecutionPlan& plan,
+            size_t frameCount,
+            AudioProcessTiming timing) const;
 
 private:
+    enum class ProcessingPass {
+        Complete,
+        Voice,
+        Global
+    };
+
     struct ProcessorKey {
         String nodeId;
         int voiceIndex {};
@@ -192,11 +217,27 @@ private:
             GraphProcessObserver* observer,
             const std::vector<uint8_t>* dirtyNodes = nullptr,
             const CancellationCheck& cancellationCheck = {},
-            GraphAudioResultView* incrementalResult = nullptr) const;
+            GraphAudioResultView* incrementalResult = nullptr,
+            ProcessingPass pass = ProcessingPass::Complete) const;
+    void mixVoiceBoundary(
+            const GraphExecutionPlan& plan,
+            size_t frameCount) const;
+    void loadMixedVoiceBoundary(
+            const GraphExecutionPlan& plan,
+            size_t frameCount) const;
+    void prepareExecutionInternal(
+            const GraphExecutionPlan& plan,
+            const AudioExecutionSpec& spec,
+            int voiceIndex,
+            ProcessingPass pass) const;
+
+    static constexpr int globalProcessorIndex = -1;
 
     mutable AudioProcessWorkArena workArena;
+    mutable AudioProcessWorkArena voiceMixArena;
     mutable AudioProcessContext processContext;
     mutable std::vector<SignalPayload> bufferSlots;
+    mutable std::vector<SignalPayload> voiceMixSlots;
     mutable const SignalPayload* realtimeOutput {};
     mutable std::unordered_map<ProcessorKey, CachedProcessor, ProcessorKeyHash> processors;
     mutable std::unordered_map<int, PreparedVoice> preparedVoices;

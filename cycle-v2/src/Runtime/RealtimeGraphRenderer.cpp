@@ -28,11 +28,14 @@ RealtimeGraphRenderer::prepareGraph(
     prepared->spec = spec;
     prepared->outputGainRamp.resize((int) spec.maximumFrameCount);
     for (size_t voiceIndex = 0; voiceIndex < voiceCount; ++voiceIndex) {
-        prepared->executor.prepareExecution(
+        prepared->executor.prepareRealtimeVoiceExecution(
                 prepared->plan,
                 prepared->spec,
                 (int) voiceIndex);
     }
+    prepared->executor.prepareRealtimeGlobalExecution(
+            prepared->plan,
+            prepared->spec);
     return prepared;
 }
 
@@ -53,7 +56,9 @@ void RealtimeGraphRenderer::setPreparedGraph(PreparedGraph* graph) {
 }
 
 void RealtimeGraphRenderer::setVoiceDurationSeconds(float durationSeconds) {
-    voiceDurationSeconds = jmax(durationSeconds, 0.001f);
+    voiceDurationSeconds.store(
+            jmax(durationSeconds, 0.001f),
+            std::memory_order_release);
 }
 
 void RealtimeGraphRenderer::process(
@@ -260,15 +265,20 @@ void RealtimeGraphRenderer::renderVoices(
         int frameCount,
         double sampleRate) {
     size_t activeCount = 0;
+    const float durationSeconds = voiceDurationSeconds.load(std::memory_order_acquire);
     const float timeIncrement = sampleRate > 0.
-            ? 1.f / ((float) sampleRate * voiceDurationSeconds)
+            ? 1.f / ((float) sampleRate * durationSeconds)
             : 0.f;
     const double volumeClockSampleRate = volumeEnvelopeClockSampleRate > 0.
             ? volumeEnvelopeClockSampleRate
             : sampleRate;
     const float volumeEnvelopeTimeIncrement = volumeClockSampleRate > 0.
-            ? 1.f / ((float) volumeClockSampleRate * voiceDurationSeconds)
+            ? 1.f / ((float) volumeClockSampleRate * durationSeconds)
             : 0.f;
+
+    preparedGraph->executor.beginRealtimeVoiceMix(
+            preparedGraph->plan,
+            (size_t) frameCount);
 
     for (auto& voice : voices) {
         if (!voice.active) {
@@ -287,27 +297,11 @@ void RealtimeGraphRenderer::renderVoices(
         voice.context.spectralStageCapture = spectralStageCapture;
         midiControls.populateVoice(voice.context, voice.midiChannel);
 
-        const auto output = preparedGraph->executor.processRealtime(
+        preparedGraph->executor.processRealtimeVoiceToMix(
                 preparedGraph->plan,
                 (size_t) frameCount,
                 { sampleRate },
                 voice.context);
-        if (output.isValid() && output.payload != nullptr && outputChannelCount > 0) {
-            const auto& payload = *output.payload;
-            if (outputChannels[0] != nullptr) {
-                Buffer<float>(outputChannels[0], frameCount).add(
-                        Buffer<float>(
-                                const_cast<float*>(payload.block.samples.data()),
-                                frameCount));
-            }
-            if (outputChannelCount > 1 && outputChannels[1] != nullptr) {
-                const SignalBuffer& right = payload.isStereo()
-                        ? payload.secondaryBlock.samples
-                        : payload.block.samples;
-                Buffer<float>(outputChannels[1], frameCount).add(
-                        Buffer<float>(const_cast<float*>(right.data()), frameCount));
-            }
-        }
 
         voice.normalizedTime = jmin(
                 1.f,
@@ -318,6 +312,25 @@ void RealtimeGraphRenderer::renderVoices(
         }
         if (voice.active) {
             ++activeCount;
+        }
+    }
+
+    const auto output = preparedGraph->executor.processRealtimeGlobal(
+            preparedGraph->plan,
+            (size_t) frameCount,
+            { sampleRate });
+    if (output.isValid() && output.payload != nullptr && outputChannelCount > 0) {
+        const auto& payload = *output.payload;
+        if (outputChannels[0] != nullptr) {
+            Buffer<float>(const_cast<float*>(payload.block.samples.data()), frameCount)
+                    .copyTo(Buffer<float>(outputChannels[0], frameCount));
+        }
+        if (outputChannelCount > 1 && outputChannels[1] != nullptr) {
+            const SignalBuffer& right = payload.isStereo()
+                    ? payload.secondaryBlock.samples
+                    : payload.block.samples;
+            Buffer<float>(const_cast<float*>(right.data()), frameCount)
+                    .copyTo(Buffer<float>(outputChannels[1], frameCount));
         }
     }
 

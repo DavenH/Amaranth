@@ -32,6 +32,10 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     canvas.setOverlayOcclusionChangedCallback([this] {
         layoutPerformanceKeyboard();
     });
+    canvas.setVoiceLengthChangedCallback([this](double durationSeconds) {
+        audioEngine.setVoiceDurationSeconds((float) durationSeconds);
+    });
+    audioEngine.setVoiceDurationSeconds((float) canvas.voiceLengthSeconds());
     startTimerHz(30);
     timerCallback();
 }
@@ -39,6 +43,7 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
 NodeWorkspace::~NodeWorkspace() {
     stopTimer();
     canvas.setOverlayOcclusionChangedCallback({});
+    canvas.setVoiceLengthChangedCallback({});
     keyboard.releaseAllNotes();
 }
 

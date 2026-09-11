@@ -15,7 +15,8 @@ namespace CycleV2 {
 enum class GraphCompileCode {
     CycleDetected,
     AmbiguousVoiceContext,
-    UnsupportedReconstructionPolicy
+    UnsupportedReconstructionPolicy,
+    GlobalSignalReentersVoiceDomain
 };
 
 enum class ExecutionCoordinate {
@@ -29,7 +30,8 @@ enum class RuntimeOwnershipScope {
     Context,
     SynthVoice,
     OscillatorRegion,
-    UnisonLane
+    UnisonLane,
+    Global
 };
 
 enum class OscillatorExecutionStrategy {
@@ -182,6 +184,7 @@ struct GraphExecutionPlan {
     std::vector<CompiledVoiceContext> voiceContexts;
     std::vector<OscillatorRegionPlan> oscillatorRegions;
     std::vector<CompiledSignalProbe> signalProbes;
+    std::vector<int> voiceMixBufferIndices;
     GraphDependencyIndex dependencyIndex;
 };
 

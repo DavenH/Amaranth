@@ -317,18 +317,18 @@ public:
     void paintNodePreview(Graphics&, const Node&, Rectangle<float>) override {}
     UnisonPreviewContext unisonPreviewContext() const override {
         UnisonPreviewContext result;
-        result.voiceDurationSeconds = previewVoiceLengthSeconds;
+        result.voiceDurationSeconds = voiceLengthSeconds;
         return result;
     }
-    void setPreviewVoiceLengthSeconds(double seconds) override {
-        previewVoiceLengthSeconds = seconds;
+    void setVoiceLengthSeconds(double seconds) override {
+        voiceLengthSeconds = seconds;
         ++previewVoiceLengthChanges;
     }
 
     TrimeshWidget* activeTrimesh {};
     PortDomain trimeshDomain { PortDomain::TimeSignal };
     int synchronizingTrimeshLookups {};
-    double previewVoiceLengthSeconds { 1.0 };
+    double voiceLengthSeconds { 1.0 };
     int previewVoiceLengthChanges {};
 };
 
@@ -909,7 +909,7 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     REQUIRE(voiceLengthValue != nullptr);
     voiceLengthValue->setText("2 s", sendNotificationSync);
     REQUIRE(resources.previewVoiceLengthChanges == 1);
-    REQUIRE(resources.previewVoiceLengthSeconds == Catch::Approx(2.0).margin(0.0001));
+    REQUIRE(resources.voiceLengthSeconds == Catch::Approx(2.0).margin(0.0001));
     auto* voiceLength = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
             "voiceContextEditor.voiceLength"));
     REQUIRE(voiceLength != nullptr);
@@ -918,7 +918,7 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
             ModifierKeys::shiftModifier,
             0)));
     REQUIRE(resources.previewVoiceLengthChanges == 2);
-    REQUIRE(resources.previewVoiceLengthSeconds == Catch::Approx(2.01).margin(0.001));
+    REQUIRE(resources.voiceLengthSeconds == Catch::Approx(2.01).margin(0.001));
 }
 
 TEST_CASE("Delay and Reverb own shared semantic property rows",
