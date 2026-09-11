@@ -177,6 +177,8 @@ void Interactor::mouseMove(const MouseEvent& e) {
     mouseFlag(MouseOver) = true;
     flag(DidMeshChange) = false;
     flag(DidIncrementalMeshChange) = false;
+    wasPollingMouseOver = true;
+    lastPolledMouse = localPos;
 
     state.lastMouse = state.currentMouse;
     updateCurrentMouseFromLocalPosition(localPos);
@@ -684,7 +686,7 @@ void Interactor::eraseSelected() {
     flag(DidMeshChange) = true;
 }
 
-void Interactor::associateTo(Panel* panel, bool observeComponentInput) {
+void Interactor::associateTo(Panel* panel, bool registerMouseListener) {
     if (display != nullptr) {
         display->removeMouseListener(this);
     }
@@ -692,8 +694,10 @@ void Interactor::associateTo(Panel* panel, bool observeComponentInput) {
     this->panel = panel;
     this->display = panel->comp;
 
-    if (display != nullptr && observeComponentInput) {
-        display->addMouseListener(this, false);
+    if (display != nullptr) {
+        if (registerMouseListener) {
+            display->addMouseListener(this, false);
+        }
         startTimerHz(30);
     } else {
         stopTimer();

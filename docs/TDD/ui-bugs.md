@@ -97,3 +97,18 @@ Context:
 Current status: open as broader native-fixture stability work; investigate the
 delete targeting and graph-state polling independently of Trimesh drag pointer
 lifetime.
+
+## P2: Envelope release native edit does not restore exact mesh on undo
+
+Context:
+
+- After native automation was corrected to target the exact launched process,
+  the focused `envelope-release` sequence edited the release region but its
+  final undo did not restore the initial serialized mesh exactly.
+- The failure occurred after the hover-entry assertion passed and is independent
+  of the Trimesh hover-proximity correction.
+- The latest shared launch log is
+  `/private/var/folders/zx/hdzf3v1s6vvdz7chbz40bbtc0000gn/T/cycle-v2-native-edit-smoke.log`.
+
+Current status: open; compare the forward/inverse Envelope vertex delta after a
+real routed release drag without folding that investigation into hover behavior.

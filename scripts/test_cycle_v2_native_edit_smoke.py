@@ -4,6 +4,7 @@ import json
 import math
 import os
 import socket
+import struct
 import subprocess
 import sys
 import tempfile
@@ -23,6 +24,26 @@ class NativeEditSmoke:
         self.socket_path = os.path.join(temporary, "cycle-v2-native-edit-smoke.sock")
         self.log_path = os.path.join(temporary, "cycle-v2-native-edit-smoke.log")
         self.request_id = 0
+        self.app_pid = None
+        self.render_capture_dir = tempfile.mkdtemp(prefix="cycle-v2-hover-render-")
+
+    @staticmethod
+    def app_pids():
+        result = subprocess.run(
+            ["ps", "-axo", "pid=,command="],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        matching = set()
+        for line in result.stdout.splitlines():
+            fields = line.strip().split(None, 1)
+            if len(fields) != 2:
+                continue
+            pid, command = fields
+            if command == APP_EXECUTABLE or command.startswith(APP_EXECUTABLE + " "):
+                matching.add(int(pid))
+        return matching
 
     def start(self):
         pointer_probe = subprocess.run(
@@ -37,6 +58,7 @@ class NativeEditSmoke:
                 "CycleV2 native edit smoke requires Accessibility permission for cliclick"
             )
 
+        existing_pids = self.app_pids()
         environment = os.environ.copy()
         environment["CYCLE_APP_PATH"] = APP
         environment["CYCLE_PROCESS_NAME"] = "CycleV2"
@@ -47,8 +69,13 @@ class NativeEditSmoke:
             check=True,
             stdout=subprocess.DEVNULL,
         )
-        subprocess.run(["open", "-a", APP], check=True)
-        time.sleep(0.1)
+        launched_pids = self.app_pids() - existing_pids
+        if len(launched_pids) != 1:
+            raise AssertionError(
+                f"Expected one newly launched CycleV2 process, found {sorted(launched_pids)}"
+            )
+        self.app_pid = launched_pids.pop()
+        self.focus_app()
 
     def stop(self):
         try:
@@ -57,12 +84,7 @@ class NativeEditSmoke:
             pass
         deadline = time.monotonic() + 2.0
         while time.monotonic() < deadline:
-            result = subprocess.run(
-                ["pgrep", "-f", f"^{APP_EXECUTABLE}$"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            if result.returncode != 0:
+            if self.app_pid not in self.app_pids():
                 return
             time.sleep(0.02)
         raise AssertionError("CycleV2 did not exit after native edit smoke")
@@ -81,9 +103,23 @@ class NativeEditSmoke:
             raise AssertionError(decoded)
         return decoded["result"].get("data", {})
 
-    @staticmethod
-    def focus_app():
-        subprocess.run(["open", "-a", APP], check=True)
+    def focus_app(self):
+        if self.app_pid is None:
+            raise AssertionError("CycleV2 process identity is unavailable")
+        script = (
+            'tell application "System Events"\n'
+            f'  set targetProcess to first process whose unix id is {self.app_pid}\n'
+            '  set frontmost of targetProcess to true\n'
+            '  return frontmost of targetProcess\n'
+            'end tell'
+        )
+        result = subprocess.run(
+            ["osascript", "-e", script],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        assert result.stdout.strip() == "true", result.stdout
         time.sleep(0.03)
 
     def click(self, *commands):
@@ -221,6 +257,92 @@ class NativeEditSmoke:
         subprocess.run([
             "screencapture", "-C", "-x", f"-R{region}", os.path.join(directory, f"{name}.png")
         ], check=True)
+
+    def capture_bitmap(self, name, bounds):
+        directory = os.environ.get(
+            "CYCLE_V2_NATIVE_CAPTURE_DIR",
+            self.render_capture_dir,
+        )
+        os.makedirs(directory, exist_ok=True)
+        region = "{x},{y},{width},{height}".format(**{
+            key: round(bounds[key]) for key in ("x", "y", "width", "height")
+        })
+        path = os.path.join(directory, f"{name}.bmp")
+        subprocess.run([
+            "screencapture", "-C", "-x", "-t", "bmp", f"-R{region}", path
+        ], check=True)
+        return path
+
+    @staticmethod
+    def bitmap(path):
+        with open(path, "rb") as source:
+            data = source.read()
+        pixel_offset = struct.unpack_from("<I", data, 10)[0]
+        width, signed_height = struct.unpack_from("<ii", data, 18)
+        bits_per_pixel = struct.unpack_from("<H", data, 28)[0]
+        assert bits_per_pixel in (24, 32), (path, bits_per_pixel)
+        height = abs(signed_height)
+        row_stride = ((width * bits_per_pixel + 31) // 32) * 4
+        return (
+            data,
+            pixel_offset,
+            width,
+            height,
+            signed_height,
+            row_stride,
+            bits_per_pixel // 8,
+        )
+
+    @staticmethod
+    def changed_pixels_outside_pointer(
+            before,
+            after,
+            pointer_x,
+            pointer_y,
+            mask_radius):
+        data, pixel_offset, width, height, signed_height, row_stride, pixel_size = before
+        changed_pixels = 0
+        for y in range(height):
+            source_y = y if signed_height < 0 else height - 1 - y
+            row_offset = pixel_offset + source_y * row_stride
+            for x in range(width):
+                if (x - pointer_x) ** 2 + (y - pointer_y) ** 2 <= mask_radius ** 2:
+                    continue
+                offset = row_offset + x * pixel_size
+                if max(abs(data[offset + channel] - after[0][offset + channel])
+                       for channel in range(3)) >= 12:
+                    changed_pixels += 1
+        return changed_pixels
+
+    @classmethod
+    def assert_render_changed_outside_pointer(
+            cls,
+            before_path,
+            after_path,
+            panel,
+            pointer):
+        before = cls.bitmap(before_path)
+        after = cls.bitmap(after_path)
+        assert before[2:] == after[2:], (before_path, after_path, before[2:], after[2:])
+        _, _, width, height, _, _, _ = before
+        pointer_x = round((pointer[0] - panel["x"]) * width / panel["width"])
+        pointer_y = round((pointer[1] - panel["y"]) * height / panel["height"])
+        mask_radius = round(72 * width / panel["width"])
+        changed_pixels = cls.changed_pixels_outside_pointer(
+            before,
+            after,
+            pointer_x,
+            pointer_y,
+            mask_radius,
+        )
+
+        minimum_changed_pixels = max(200, width // 4)
+        assert changed_pixels >= minimum_changed_pixels, {
+            "before": before_path,
+            "after": after_path,
+            "changedPixels": changed_pixels,
+            "minimumChangedPixels": minimum_changed_pixels,
+        }
 
     def open_editor(self, node_id, trimesh=False):
         command = "openMeshPopup" if trimesh else "openNodeEditor"
@@ -1175,6 +1297,7 @@ class NativeEditSmoke:
         self.move_pointer((1, 1))
         self.capture("envelope-release-rest", panel)
         self.move_pointer(source)
+        self.capture("envelope-release-hover-before-inspect", panel)
         hover_deadline = time.monotonic() + 0.5
         hovered = self.inspect("env")
         while (not hovered["effect2D"]["panelState"]["curveHover"]
@@ -1261,6 +1384,63 @@ class NativeEditSmoke:
         self.capture("intercepts-envelope-editor", self.target("expanded:env"))
         self.capture("intercepts-envelope", self.target("expanded:env.panel2D"))
 
+    def trimesh_hover_render_sequence(self):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(
+                REPO,
+                "cycle-v2",
+                "content",
+                "presets",
+                "solo-string-2.cyclegraph",
+            ),
+        })
+        time.sleep(SETTLE_SECONDS)
+        state = self.open_editor("timeLayer1", trimesh=True)
+        panel = self.target("expanded:timeLayer1.panel2D")
+        displayed_intercepts = state["trimesh"]["panelDisplayedIntercepts"]
+        curve_point = max(
+            state["trimesh"]["panelDisplayedCurvePoints"],
+            key=lambda point: min(
+                (point["x"] - intercept["x"]) ** 2
+                + (point["y"] - intercept["y"]) ** 2
+                for intercept in displayed_intercepts
+            ),
+        )
+        exact_curve_point = self.point(panel, curve_point["x"], curve_point["y"])
+        curve_source = (exact_curve_point[0], exact_curve_point[1] - 12)
+        outside_curve = (exact_curve_point[0], exact_curve_point[1] + 40)
+
+        self.move_pointer(outside_curve)
+        resting = self.capture_bitmap("trimesh-hover-render-rest", panel)
+        self.move_pointer(curve_source)
+        entered = self.capture_bitmap("trimesh-hover-render-entered", panel)
+        self.assert_render_changed_outside_pointer(
+            resting,
+            entered,
+            panel,
+            curve_source,
+        )
+        hovered = self.inspect_until(
+            "timeLayer1",
+            lambda inspected: inspected["trimesh"]["panelCurveHover"],
+        )
+        assert hovered["trimesh"]["panelCurveHover"], hovered["trimesh"]
+
+        self.move_pointer(outside_curve)
+        exited = self.capture_bitmap("trimesh-hover-render-exited", panel)
+        away = self.inspect_until(
+            "timeLayer1",
+            lambda inspected: not inspected["trimesh"]["panelCurveHover"],
+        )
+        assert not away["trimesh"]["panelCurveHover"], away["trimesh"]
+        self.assert_render_changed_outside_pointer(
+            entered,
+            exited,
+            panel,
+            curve_source,
+        )
+
     def trimesh_sequence(
             self,
             stop_after_versioning_check=False,
@@ -1286,6 +1466,7 @@ class NativeEditSmoke:
         self.move_pointer((1, 1))
         self.capture("trimesh-curve-rest", panel)
         self.move_pointer(curve_source)
+        self.capture("trimesh-curve-hover-before-inspect", panel)
         curve_hover = self.inspect_until(
             "waveMesh",
             lambda inspected: inspected["trimesh"]["panelCurveHover"],
@@ -1886,6 +2067,7 @@ class NativeEditSmoke:
                 "intercept-visuals": self.intercept_visual_sequence,
                 "trimesh": self.trimesh_sequence,
                 "trimesh-curve-drag": lambda: self.trimesh_sequence(False, True),
+                "trimesh-hover-render": self.trimesh_hover_render_sequence,
                 "trimesh-point-drag": self.trimesh_point_drag_sequence,
                 "trimesh-versioning": lambda: self.trimesh_sequence(True),
                 "spectral-trimesh": self.spectral_trimesh_sequence,
@@ -1918,6 +2100,7 @@ if __name__ == "__main__":
         "intercept-visuals",
         "trimesh",
         "trimesh-curve-drag",
+        "trimesh-hover-render",
         "trimesh-point-drag",
         "trimesh-versioning",
         "spectral-trimesh",
