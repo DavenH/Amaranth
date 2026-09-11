@@ -159,9 +159,13 @@ void CurveExpandedEditorComponent::resized() {
 }
 
 void CurveExpandedEditorComponent::mouseMove(const MouseEvent& event) {
-    if (!editorMouseMove(event.position)) {
-        setMouseCursor(MouseCursor::NormalCursor);
+    if (editorMouseMove(event.position)) {
+        return;
     }
+
+    setMouseCursor(editorPanelBounds().contains(event.position)
+            ? panelCursor
+            : MouseCursor::NormalCursor);
 }
 
 void CurveExpandedEditorComponent::mouseDown(const MouseEvent& event) {
@@ -373,6 +377,11 @@ void CurveExpandedEditorComponent::curvePanelControllerEdited() {
 void CurveExpandedEditorComponent::commitCurvePanelControllerEdit() {
     syncInteractionControls();
     commitTransaction();
+}
+
+void CurveExpandedEditorComponent::setCurvePanelCursor(const MouseCursor& cursor) {
+    panelCursor = cursor;
+    setMouseCursor(cursor);
 }
 
 }

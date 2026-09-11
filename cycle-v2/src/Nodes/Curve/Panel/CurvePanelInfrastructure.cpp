@@ -8,6 +8,8 @@
 #include <UI/Panels/PanelInputHostComponent.h>
 #include <UI/Panels/ScopedGLScissor.h>
 
+#include "UI/NativeCursorRefresh.h"
+
 using namespace gl;
 
 namespace CycleV2 {
@@ -425,7 +427,9 @@ PanelHostCallbacks CurvePanelHost::callbacks() const {
     result.setCursorCallback([this](Panel*, const MouseCursor& cursor) {
         if (hostComponent != nullptr) {
             hostComponent->setMouseCursor(cursor);
+            showNativeCursorForPanel(*hostComponent, cursor);
         }
+        delegate.setCurvePanelCursor(cursor);
     });
     return result;
 }

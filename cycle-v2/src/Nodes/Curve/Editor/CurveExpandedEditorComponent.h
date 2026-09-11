@@ -116,11 +116,13 @@ private:
     void beginCurvePanelControllerEdit() override;
     void curvePanelControllerEdited() override;
     void commitCurvePanelControllerEdit() override;
+    void setCurvePanelCursor(const MouseCursor& cursor) override;
 
     bool transactionActive {};
     bool transientStateChanged {};
     uint64_t transactionBaseRevision {};
     Component* headerAction {};
+    MouseCursor panelCursor { MouseCursor::NormalCursor };
     std::unique_ptr<Button> closeButton;
     NodeModelStatePtr editorModel;
 

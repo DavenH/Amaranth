@@ -143,6 +143,20 @@ class NativeEditSmoke:
         subprocess.run([CLICK, "-w", "20", f"du:{point[0]},{point[1]}"], check=True)
         time.sleep(SETTLE_SECONDS)
 
+    def double_click(self, point):
+        self.focus_app()
+        subprocess.run([
+            CLICK,
+            "-w",
+            "20",
+            f"m:{point[0] + 2},{point[1]}",
+            f"m:{point[0]},{point[1]}",
+            f"c:{point[0]},{point[1]}",
+            "w:40",
+            f"c:{point[0]},{point[1]}",
+        ], check=True)
+        time.sleep(SETTLE_SECONDS)
+
     def move_pointer(self, point):
         self.focus_app()
         self.move_pointer_in_focused_app(point)
@@ -279,10 +293,6 @@ class NativeEditSmoke:
         subprocess.run(command, check=True)
         return path
 
-    def capture_cursor_bitmap_pair(self, name, bounds):
-        clean = self.capture_bitmap(f"{name}-clean", bounds, include_cursor=False)
-        return self.capture_bitmap(name, bounds), clean
-
     @staticmethod
     def bitmap(path):
         with open(path, "rb") as source:
@@ -382,14 +392,20 @@ class NativeEditSmoke:
         ys = [point[1] for point in signature]
         width = max(xs) - min(xs) + 1
         height = max(ys) - min(ys) + 1
-        assert (min(xs) <= -4
-                and max(xs) >= 4
+        vertical_core = {
+            y for x, y in signature
+            if -2 <= x <= 2
+        }
+        assert (min(xs) <= -8
+                and max(xs) >= 8
                 and min(ys) <= -8
                 and max(ys) >= 8
-                and height * 2 >= width * 3), {
+                and height >= 30
+                and len(vertical_core) >= 20), {
             "cursor": cursor_path,
             "cursorWidth": width,
             "cursorHeight": height,
+            "verticalCoreHeight": len(vertical_core),
             "cursorBounds": (min(xs), max(xs), min(ys), max(ys)),
         }
 
@@ -1453,142 +1469,124 @@ class NativeEditSmoke:
         self.capture("intercepts-envelope", self.target("expanded:env.panel2D"))
 
     def trimesh_hover_render_sequence(self):
-        graph_path = os.path.join(
-            REPO,
-            "cycle-v2",
-            "content",
-            "presets",
-            "solo-string-2.cyclegraph",
-        )
+        graph_path = os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph")
+        with open(graph_path, encoding="utf-8") as source:
+            graph = json.load(source)
+        editor_cases = [
+            (node["id"], node["kind"])
+            for node in graph["nodes"]
+            if node["kind"] in {"trilinearMesh", "waveshaper", "impulseResponse"}
+        ]
+        assert editor_cases
+
         self.command({
             "command": "openGraph",
             "path": graph_path,
         })
         time.sleep(SETTLE_SECONDS)
-        canvas = self.target("canvas")
-        editor_width = canvas["width"] * 0.81
-        editor = {
-            "x": canvas["x"] + (canvas["width"] - editor_width) * 0.5,
-            "y": canvas["y"] + 18,
-            "width": editor_width,
-            "height": canvas["height"] - 36,
-        }
-        controls_source = self.point(editor, 0.5, 0.04)
 
-        self.move_pointer_in_focused_app(controls_source)
-        state = self.command({"command": "openMeshPopup", "nodeId": "timeLayer1"})
-        panel = self.target("expanded:timeLayer1.panel2D")
-        time.sleep(0.3)
+        opening_positions = []
+        for node_id, kind in editor_cases:
+            node = self.target(f"node:{node_id}")
+            opening_point = self.point(node, 0.5, 0.5)
+            self.move_pointer(opening_point)
+            self.double_click(opening_point)
+            self.target(f"expanded:{node_id}")
+            panel = self.target(f"expanded:{node_id}.panel2D")
+            opening_positions.append({
+                "node": node_id,
+                "openedOver2DPanel": (
+                    panel["x"] <= opening_point[0] < panel["x"] + panel["width"]
+                    and panel["y"] <= opening_point[1] < panel["y"] + panel["height"]
+                ),
+            })
 
-        displayed_intercepts = state["trimesh"]["panelDisplayedIntercepts"]
-        curve_candidates = sorted(
-            state["trimesh"]["panelDisplayedCurvePoints"],
-            key=lambda point: min(
-                (point["x"] - intercept["x"]) ** 2
-                + (point["y"] - intercept["y"]) ** 2
-                for intercept in displayed_intercepts
-            ),
-            reverse=True,
-        )
-        curve_point = None
-        curve_source = None
-        for candidate in curve_candidates:
-            exact_source = self.point(panel, candidate["x"], candidate["y"])
-            for horizontal_offset in (0, -20, 20, -40, 40):
-                candidate_source = (
-                    exact_source[0] + horizontal_offset,
-                    exact_source[1],
-                )
-                self.move_pointer_in_focused_app(candidate_source)
-                hovered = self.inspect_until(
-                    "timeLayer1",
-                    lambda inspected: inspected["trimesh"]["panelCurveHover"],
-                )
-                pointer = self.command({"command": "inspectPointerCursor"})
-                if (hovered["trimesh"]["panelCurveHover"]
-                        and pointer["component"] == "CycleV2TrimeshPanel2D"):
-                    curve_point = candidate
-                    curve_source = candidate_source
+            def is_curve_hovered(inspected):
+                if kind == "trilinearMesh":
+                    return inspected["trimesh"]["panelCurveHover"]
+                return inspected["effect2D"]["panelState"]["curveHover"]
+
+            state = self.inspect(node_id)
+            if kind == "trilinearMesh":
+                curve_candidates = [
+                    self.point(panel, point["x"], point["y"])
+                    for point in state["trimesh"]["panelDisplayedCurvePoints"]
+                ]
+            else:
+                panel_state = state["effect2D"]["panelState"]
+                zoom = panel_state["zoom"]
+                curve_candidates = [
+                    self.point(
+                        panel,
+                        (point["x"] - zoom["x"]) / zoom["w"],
+                        1.0 - (point["y"] - zoom["y"]) / zoom["h"],
+                    )
+                    for point in panel_state["waveformPoints"][::8]
+                    if (zoom["x"] < point["x"] < zoom["x"] + zoom["w"]
+                            and zoom["y"] < point["y"] < zoom["y"] + zoom["h"])
+                ]
+            panel_centre = self.point(panel, 0.5, 0.5)
+            curve_candidates.sort(key=lambda point: (
+                (point[0] - panel_centre[0]) ** 2
+                + (point[1] - panel_centre[1]) ** 2
+            ))
+
+            curve_source = None
+            for candidate in curve_candidates:
+                self.move_pointer_in_focused_app(candidate)
+                hovered = self.inspect_until(node_id, is_curve_hovered)
+                if is_curve_hovered(hovered):
+                    curve_source = candidate
                     break
-            if curve_point is not None:
-                break
-        assert curve_point is not None, state["trimesh"]
+            assert curve_source is not None, (node_id, kind, state)
 
-        outside_curve = None
-        for offset in (-40, 40, -60, 60):
-            candidate = (curve_source[0], curve_source[1] + offset)
-            self.move_pointer_in_focused_app(candidate)
-            away = self.inspect_until(
-                "timeLayer1",
-                lambda inspected: not inspected["trimesh"]["panelCurveHover"],
+            outside_curve = None
+            for offset in (-60, 60, -90, 90):
+                candidate = (curve_source[0], curve_source[1] + offset)
+                if not (panel["y"] < candidate[1] < panel["y"] + panel["height"]):
+                    continue
+                self.move_pointer_in_focused_app(candidate)
+                away = self.inspect_until(
+                    node_id,
+                    lambda inspected: not is_curve_hovered(inspected),
+                )
+                if not is_curve_hovered(away):
+                    outside_curve = candidate
+                    break
+            assert outside_curve is not None, (node_id, panel)
+
+            self.move_pointer_in_focused_app(outside_curve)
+            self.command({"command": "requestCanvasOpenGLFrame"})
+            time.sleep(SETTLE_SECONDS)
+            resting_clean = self.capture_bitmap(
+                f"{node_id}-hover-rest-clean", panel, include_cursor=False
             )
-            pointer = self.command({"command": "inspectPointerCursor"})
-            if (not away["trimesh"]["panelCurveHover"]
-                    and pointer["component"] == "CycleV2TrimeshPanel2D"):
-                outside_curve = candidate
-                break
-        assert outside_curve is not None, panel
+            resting = self.capture_bitmap(f"{node_id}-hover-rest", panel)
+            self.assert_centered_cross_cursor(
+                resting, resting_clean, panel, outside_curve
+            )
 
-        self.focus_app()
-        self.move_pointer_in_focused_app(outside_curve)
-        time.sleep(0.3)
-        self.cursor_until("custom")
-        self.command({"command": "requestCanvasOpenGLFrame"})
-        time.sleep(0.1)
-        resting, resting_clean = self.capture_cursor_bitmap_pair(
-            "trimesh-hover-render-rest", panel
-        )
-        self.assert_centered_cross_cursor(
-            resting,
-            resting_clean,
-            panel,
-            outside_curve,
-        )
-        self.move_pointer_in_focused_app(curve_source)
-        time.sleep(0.3)
-        self.cursor_until("upDownResize")
-        self.command({"command": "requestCanvasOpenGLFrame"})
-        time.sleep(0.1)
-        entered, entered_clean = self.capture_cursor_bitmap_pair(
-            "trimesh-hover-render-entered", panel
-        )
-        self.assert_vertical_resize_cursor(
-            entered,
-            entered_clean,
-            panel,
-            curve_source,
-        )
-        self.assert_render_changed_outside_pointer(
-            resting_clean,
-            entered_clean,
-            panel,
-            curve_source,
-        )
-        hovered = self.inspect_until(
-            "timeLayer1",
-            lambda inspected: inspected["trimesh"]["panelCurveHover"],
-        )
-        assert hovered["trimesh"]["panelCurveHover"], hovered["trimesh"]
+            self.move_pointer_in_focused_app(curve_source)
+            self.command({"command": "requestCanvasOpenGLFrame"})
+            time.sleep(SETTLE_SECONDS)
+            entered_clean = self.capture_bitmap(
+                f"{node_id}-hover-curve-clean", panel, include_cursor=False
+            )
+            entered = self.capture_bitmap(f"{node_id}-hover-curve", panel)
+            self.assert_vertical_resize_cursor(
+                entered, entered_clean, panel, curve_source
+            )
+            hovered = self.inspect_until(node_id, is_curve_hovered)
+            assert is_curve_hovered(hovered), (node_id, hovered)
+            self.assert_render_changed_outside_pointer(
+                resting_clean, entered_clean, panel, curve_source
+            )
 
-        self.move_pointer_in_focused_app(outside_curve)
-        time.sleep(0.3)
-        self.command({"command": "requestCanvasOpenGLFrame"})
-        time.sleep(0.1)
-        exited_clean = self.capture_bitmap(
-            "trimesh-hover-render-exited-clean", panel, include_cursor=False
-        )
-        away = self.inspect_until(
-            "timeLayer1",
-            lambda inspected: not inspected["trimesh"]["panelCurveHover"],
-        )
-        assert not away["trimesh"]["panelCurveHover"], away["trimesh"]
-        self.assert_render_changed_outside_pointer(
-            entered_clean,
-            exited_clean,
-            panel,
-            curve_source,
-        )
-        self.cursor_until("custom")
+            close = self.target(f"expanded:{node_id}.close")
+            self.primary_click(self.point(close, 0.5, 0.5))
+
+        assert len(opening_positions) == len(editor_cases), opening_positions
+        print(json.dumps({"nativeCurveHoverOpenings": opening_positions}), flush=True)
 
     def trimesh_sequence(
             self,

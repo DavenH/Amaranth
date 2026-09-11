@@ -101,9 +101,15 @@ public:
 class RecordingTrimeshPanelHostDelegate final : public TrimeshPanelHostDelegate {
 public:
     void requestTrimeshPanelRepaint() override { ++repaintCount; }
-    void setTrimeshPanelCursor(const MouseCursor& cursor) override { lastCursor = cursor; }
+    void setTrimeshPanelCursor(
+            TrimeshPanelHostKind host,
+            const MouseCursor& cursor) override {
+        lastHost = host;
+        lastCursor = cursor;
+    }
 
     int repaintCount {};
+    TrimeshPanelHostKind lastHost { TrimeshPanelHostKind::Panel2D };
     MouseCursor lastCursor { MouseCursor::NormalCursor };
 };
 
@@ -1811,10 +1817,12 @@ TEST_CASE("Trimesh panel hosts use component cursors and delegated repaint",
 
     bridge.getPanel3D().setPanelMouseCursor(MouseCursor::PointingHandCursor);
     REQUIRE(panel3DHost->getMouseCursor() == MouseCursor::PointingHandCursor);
+    REQUIRE(delegate.lastHost == TrimeshPanelHostKind::Panel3D);
     REQUIRE(delegate.lastCursor == MouseCursor::PointingHandCursor);
 
     bridge.getPanel2D().setPanelMouseCursor(MouseCursor::LeftRightResizeCursor);
     REQUIRE(panel2DHost->getMouseCursor() == MouseCursor::LeftRightResizeCursor);
+    REQUIRE(delegate.lastHost == TrimeshPanelHostKind::Panel2D);
     REQUIRE(delegate.lastCursor == MouseCursor::LeftRightResizeCursor);
 
     bridge.getPanel2D().requestRepaint(PanelDirtyState::Flag::Overlay);

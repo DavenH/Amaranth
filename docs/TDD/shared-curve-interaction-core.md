@@ -34,10 +34,11 @@ There must be no per-editor gesture-polarity policy.
 - `lib/src/Curve/Curve.cpp` and the rasterizer snapshot are authoritative for
   curve evaluation. The prepared `TransformParameters::ypole` is the mature
   Cycle v1 polarity that maps signed pointer motion to curve sharpness.
-- JUCE component targeting is authoritative for enter, exit, move, drag
-  capture, and choosing the cursor of the component under the pointer. A host
-  adapter may mirror the already-resolved panel cursor to the expanded owner
-  when that owner remains JUCE's native cursor target.
+- JUCE component targeting is authoritative for enter, exit, move, and drag
+  capture. On macOS, a component inserted after a double-click may not become
+  JUCE's native cursor target until a later click. A host may publish the
+  Interactor's already-resolved cursor after the current event, but it must not
+  recompute cursor semantics.
 - Existing Cycle v2 command dispatchers remain authoritative for transient
   publication, commit, cancellation, and undo. They do not own hit testing or
   curve math.
@@ -56,7 +57,8 @@ For every 2D curve editor:
    state and the receiving panel host exposes `UpDownResizeCursor`.
 2. Moving away clears that state and restores the normal panel cursor without
    requiring a click. A hosted panel propagates its resolved cursor to the
-   native owner without recomputing interaction state.
+   native owner after the current event without recomputing interaction state,
+   including when the editor was opened somewhere other than under its panel.
 3. Mouse-down on the hovered curve starts `ReshapingCurve` and retains JUCE
    drag capture until mouse-up, including outside the original bounds.
 4. For an unclamped edit, the rendered point under the initial pointer follows
@@ -164,11 +166,14 @@ with a curve-editor override.
 
 The JUCE component receiving panel events forwards its already-local event to
 the shared Interactor. `Panel::setCursor` updates that receiving component's
-cursor. The Trimesh host adapter also forwards that same resolved value to its
+cursor. All curve hosts also forward that same resolved value to their
 expanded owner because the owner can remain JUCE's native cursor target after
-opening over controls. Parent editors and `NodeCanvas` must not inspect child
-cursors, recalculate cursor semantics, reconstruct coordinates from desktop
-position, poll hover, or synthesize sibling transitions.
+opening over controls. On macOS the leaf host defers native publication until
+after the current event while the pointer is geometrically inside that host;
+this prevents the pre-expansion cursor from being restored at event return.
+Parent editors and `NodeCanvas` must not inspect child cursors, recalculate
+cursor semantics, reconstruct interaction coordinates from desktop position,
+poll hover, or synthesize sibling transitions.
 
 JUCE does not replace mesh-element hit testing: the shared Interactor still
 tests the rendered waveform inside the single panel component.
@@ -183,8 +188,8 @@ tests the rendered waveform inside the single panel component.
    sequence into `Interactor2D`.
 4. Delete the flat and Envelope `doReshapeCurve` copies and any temporary
    Trimesh polarity override.
-5. Remove parent/global cursor forcing and retain only leaf-component cursor
-   installation.
+5. Retain leaf cursor installation, mirror the resolved cursor through the
+   expanded-owner boundary, and limit native publication to the hovered leaf.
 6. Run the cross-editor sequence tests, refactor/style pass, and inspect the
    production diff before committing.
 
@@ -202,8 +207,11 @@ Focused semantic coverage must include:
 - selection stability for linked Envelope vertices and Trimesh hidden
   dimensions;
 - an architectural check or source review proving that concrete Cycle v2
-  panels no longer override `doReshapeCurve` and production code no longer
-  calls `MouseInputSource::showMouseCursor` for panel hover.
+  panels no longer override `doReshapeCurve` and any native cursor publication
+  is a deferred leaf-host bridge for an already-resolved cursor.
+- a native default-preset matrix that moves to each compact Trimesh node,
+  Waveshaper, and IR Modeller, double-clicks it, then verifies the real `+` and
+  up/down cursor pixels without clicking the expanded panel first.
 
 Tests that only observe a changed serialized mesh, a stored cursor value, or a
 single delivered mouse event do not satisfy the contract. The rendered point
@@ -233,7 +241,8 @@ Completion requires deletion of:
 - every Trimesh-specific curve polarity override or sign correction;
 - temporary gesture diagnostics;
 - parent-editor and `NodeCanvas` cursor recomputation for child panel hosts;
-- unconditional or per-tick global cursor forcing;
+- unconditional polling or cursor-semantic recomputation outside the leaf
+  host;
 - native smoke assertions that accept any model difference without checking
   rendered direction.
 
@@ -268,6 +277,18 @@ This TDD could not be marked
   check rendered direction and model publication, and exercise exact undo.
   Existing held-drag fixtures cover capture outside the initial hit region and
   existing causal assertions cover downstream Envelope and Trimesh refresh.
+- The default-preset native cursor matrix opens `waveMesh`, `magMesh`,
+  `phaseMesh`, Waveshaper, and IR Modeller by native double-click. It covers
+  both editors that open under the pointer and editors that open elsewhere,
+  then checks cursor-inclusive and cursor-free production-size screenshots.
+- The leaf bridge defers only the Interactor-resolved native cursor while the
+  pointer remains inside that leaf; it performs no hit test, graph read, or
+  domain-state mutation.
+- The cursor follow-up adds 95 lines and removes 8 across eleven production
+  files. The largest changes are the Trimesh expanded owner (+24/-2) and the
+  23-line shared native bridge; it adds no `NodeKind` branch or copied
+  interaction logic. The native fixture replaces one special-case sequence
+  with the complete default-preset matrix at a net reduction of two lines.
 - The production diff adds no `NodeKind` branch or Cycle v2 domain type to
   `lib`. Concrete Cycle v2 panels do not override `doReshapeCurve`. The
   Trimesh host forwards the shared cursor value to the native expanded owner;
