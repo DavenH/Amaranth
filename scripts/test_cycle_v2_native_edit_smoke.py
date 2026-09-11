@@ -1135,7 +1135,10 @@ class NativeEditSmoke:
             "Envelope downstream output",
         )
 
-    def trimesh_sequence(self, stop_after_versioning_check=False):
+    def trimesh_sequence(
+            self,
+            stop_after_versioning_check=False,
+            stop_after_curve_check=False):
         initial_audio = self.audio_samples()
         state = self.open_editor("waveMesh", trimesh=True)
         panel = self.target("expanded:waveMesh.panel2D")
@@ -1170,7 +1173,10 @@ class NativeEditSmoke:
         curve_destination = self.point(
             panel,
             curve_point["x"],
-            curve_point["y"] + (control["y"] - curve_point["y"]) * 0.6,
+            max(0.08, min(
+                0.92,
+                curve_point["y"] - (control["y"] - curve_point["y"]) * 0.6,
+            )),
         )
         self.drag(curve_source, curve_destination, steps=12, step_wait_ms=6)
         curve_after = self.inspect_until(
@@ -1213,6 +1219,9 @@ class NativeEditSmoke:
             "waveMesh",
             lambda inspected: self.trimesh_model(inspected) == curve_before,
         )
+        if stop_after_curve_check:
+            return
+
         state = self.open_editor("waveMesh", trimesh=True)
         panel = self.target("expanded:waveMesh.panel2D")
 
@@ -1730,6 +1739,7 @@ class NativeEditSmoke:
                 "waveshaper": self.effect2d_sequence,
                 "envelope": self.envelope_sequence,
                 "trimesh": self.trimesh_sequence,
+                "trimesh-curve-drag": lambda: self.trimesh_sequence(False, True),
                 "trimesh-point-drag": self.trimesh_point_drag_sequence,
                 "trimesh-versioning": lambda: self.trimesh_sequence(True),
                 "spectral-trimesh": self.spectral_trimesh_sequence,
@@ -1758,6 +1768,7 @@ if __name__ == "__main__":
         "waveshaper",
         "envelope",
         "trimesh",
+        "trimesh-curve-drag",
         "trimesh-point-drag",
         "trimesh-versioning",
         "spectral-trimesh",

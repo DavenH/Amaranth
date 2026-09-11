@@ -27,7 +27,7 @@ public:
             const Node& node,
             int rows,
             int columns);
-    void applyPreparedGuides(PreparedTrimeshGuides guides);
+    bool applyPreparedGuides(PreparedTrimeshGuides guides);
 
     TrimeshPanel3D& getPanel3D() { return panel3D; }
     TrimeshPanel2D& getPanel2D() { return panel2D; }

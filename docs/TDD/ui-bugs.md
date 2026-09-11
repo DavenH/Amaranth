@@ -80,3 +80,20 @@ Context:
 
 Current status: open; reconcile the assertion with the current shared Envelope
 layout contract without weakening minimum rail travel or hit-target coverage.
+
+## P2: Broad native Trimesh sequence has intermittent late-step assertions
+
+Context:
+
+- Two native runs on 2026-09-11 completed the focused curve reshape and long
+  point-drag checks, then failed at unrelated later steps: once when native
+  delete did not reduce the vertex count, and once when graph-edge undo did not
+  restore the expected edge count.
+- The isolated `trimesh-point-drag` and `trimesh-curve-drag` native sequences
+  both pass. No application assertion or crash was logged in these runs.
+- The latest shared launch log is
+  `/private/var/folders/zx/hdzf3v1s6vvdz7chbz40bbtc0000gn/T/cycle-v2-native-edit-smoke.log`.
+
+Current status: open as broader native-fixture stability work; investigate the
+delete targeting and graph-state polling independently of Trimesh drag pointer
+lifetime.

@@ -30,6 +30,10 @@ void TrimeshWidget::syncFromNode(const Node& node) {
 }
 
 void TrimeshWidget::syncGuideContext(const NodeGraph& graph, const Node& node) {
+    if (bridge.isMeshEditGestureActive()) {
+        return;
+    }
+
     String nextKey = TrimeshGuidePreparation::configurationKey(graph, node.id);
     if (node.model != nullptr) {
         nextKey << ":mesh=" << String((int64) node.model->revision());
@@ -43,11 +47,12 @@ void TrimeshWidget::syncGuideContext(const NodeGraph& graph, const Node& node) {
         return;
     }
 
-    bridge.applyPreparedGuides(TrimeshGuidePreparation::prepare(
-            graph,
-            node,
-            model->mesh()));
-    guideConfigurationKey = nextKey;
+    if (bridge.applyPreparedGuides(TrimeshGuidePreparation::prepare(
+                graph,
+                node,
+                model->mesh()))) {
+        guideConfigurationKey = nextKey;
+    }
 }
 
 void TrimeshWidget::setDisplayDomain(PortDomain domain) {

@@ -77,19 +77,10 @@ bool TrimeshInteractor2D::isCurrentVertexHit(Point<int> mousePosition) {
 }
 
 void TrimeshInteractor2D::mouseDown(const MouseEvent& event) {
-    VertCube* hoveredCube = state.currentCube;
-    Vertex* hoveredVertex = state.currentVertex;
     Interactor2D::mouseDown(event);
-
-    Vertex* nextSelection = actionIs(ReshapingCurve)
-            ? hoveredVertex
-            : (getSelected().empty() ? nullptr : getSelected().front());
     if (meshEditedCallback != nullptr) {
         meshEditedCallback({ false, false, true });
     }
-
-    gestureCube = actionIs(ReshapingCurve) ? hoveredCube : state.currentCube;
-    gestureVertex = nextSelection;
 }
 
 bool TrimeshInteractor2D::doCreateVertex() {
@@ -104,11 +95,6 @@ bool TrimeshInteractor2D::doCreateVertex() {
 void TrimeshInteractor2D::mouseDrag(const MouseEvent& event) {
     const bool establishReshapeSelection = actionIs(ReshapingCurve)
             && !meshEditGestureActive;
-
-    if (gestureVertex != nullptr) {
-        state.currentCube = gestureCube;
-        state.currentVertex = gestureVertex;
-    }
 
     Interactor2D::mouseDrag(event);
 
@@ -159,8 +145,6 @@ void TrimeshInteractor2D::mouseUp(const MouseEvent& event) {
     } else if (meshEditedCallback != nullptr) {
         meshEditedCallback({ false, true, true });
     }
-    gestureCube = nullptr;
-    gestureVertex = nullptr;
     meshEditGestureActive = false;
 }
 

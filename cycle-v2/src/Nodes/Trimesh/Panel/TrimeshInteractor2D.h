@@ -34,8 +34,6 @@ public:
 private:
     std::function<void(TrimeshMeshEditEvent)> meshEditedCallback;
     Mesh* mesh {};
-    VertCube* gestureCube {};
-    Vertex* gestureVertex {};
     bool meshEditGestureActive {};
 };
 

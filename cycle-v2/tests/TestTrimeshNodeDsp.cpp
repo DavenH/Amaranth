@@ -1473,7 +1473,7 @@ TEST_CASE("Trimesh panel bridge clears interaction pointers only for mesh replac
     REQUIRE(bridge.getInteractor2D().getSelected().empty());
 }
 
-TEST_CASE("Trimesh point drag retains its pointer-down vertex across hover changes",
+TEST_CASE("Hosted Trimesh point drag defers mesh replacement across publications",
         "[cycle-v2][nodes][trimesh][interaction]") {
     ScopedJuceInitialiser_GUI juce;
     Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
@@ -1482,7 +1482,26 @@ TEST_CASE("Trimesh point drag retains its pointer-down vertex across hover chang
 
     Component* host = bridge.getPanel2DHostComponent();
     host->setBounds(0, 0, 640, 280);
+    host->addToDesktop(ComponentPeer::windowIsTemporary);
+    host->setVisible(true);
     bridge.syncFromNode(node, 320, 96);
+
+    const auto preparedGuides = [&bridge] {
+        PreparedTrimeshGuides guides;
+        guides.mesh = std::shared_ptr<Mesh>(new Mesh(), [](Mesh* mesh) {
+            mesh->destroy();
+            delete mesh;
+        });
+        guides.mesh->deepCopy(&bridge.getModel().getMeshForPanel());
+        guides.provider = std::make_shared<GuideCurveSnapshotProvider>();
+        return guides;
+    };
+    int publicationCount = 0;
+    int replacementCount = 0;
+    bridge.setMeshEditedCallback([&](TrimeshMeshEditEvent) {
+        ++publicationCount;
+        replacementCount += bridge.applyPreparedGuides(preparedGuides()) ? 1 : 0;
+    });
 
     auto snapshot = bridge.getInteractor2D().rasterizerSnapshot();
     REQUIRE(snapshot.intercepts().size() >= 2);
@@ -1491,54 +1510,45 @@ TEST_CASE("Trimesh point drag retains its pointer-down vertex across hover chang
             bridge.getPanel2D().sx(intercept.x),
             bridge.getPanel2D().sy(intercept.y));
     auto move = panelMouseEvent(*host, source, {}, source, false);
-    bridge.getInteractor2D().mouseMove(move);
+    host->mouseMove(move);
     auto down = panelMouseEvent(
             *host,
             source,
             ModifierKeys::leftButtonModifier,
             source,
             false);
-    bridge.getInteractor2D().mouseDown(down);
+    host->mouseDown(down);
 
     auto& selected = bridge.getInteractor2D().getSelected();
     REQUIRE(selected.size() == 1);
     Vertex* gestureVertex = selected.front();
     const float initialPhase = gestureVertex->values[Vertex::Phase];
-    Vertex* unrelatedVertex = bridge.getModel().getMeshForPanel().getVerts().front();
-    REQUIRE(unrelatedVertex != gestureVertex);
+    const int selectedVertexIndex = bridge.selectedVertexIndexForPanel();
+    Point<float> destination = source;
+    for (int step = 1; step <= 12; ++step) {
+        destination = source.translated(3.f * step, -2.f * step);
+        auto drag = panelMouseEvent(
+                *host,
+                destination,
+                ModifierKeys::leftButtonModifier,
+                source,
+                true);
+        host->mouseDrag(drag);
+        MessageManager::getInstance()->runDispatchLoopUntil(40);
 
-    bridge.getInteractor2D().state.currentVertex = unrelatedVertex;
-    bridge.getInteractor2D().state.currentCube = unrelatedVertex->owners.getFirst();
-    const Point<float> midpoint = source.translated(18.f, -12.f);
-    auto firstDrag = panelMouseEvent(
-            *host,
-            midpoint,
-            ModifierKeys::leftButtonModifier,
-            source,
-            true);
-    bridge.getInteractor2D().mouseDrag(firstDrag);
-
-    REQUIRE(selected.size() == 1);
-    REQUIRE(selected.front() == gestureVertex);
-    REQUIRE(bridge.selectedVertexIndexForPanel()
-            == bridge.getModel().getSelectedVertexIndex());
-
-    bridge.getInteractor2D().state.currentVertex = unrelatedVertex;
-    bridge.getInteractor2D().state.currentCube = unrelatedVertex->owners.getFirst();
-    const Point<float> destination = source.translated(36.f, -24.f);
-    auto secondDrag = panelMouseEvent(
-            *host,
-            destination,
-            ModifierKeys::leftButtonModifier,
-            source,
-            true);
-    bridge.getInteractor2D().mouseDrag(secondDrag);
+        REQUIRE(selected.size() == 1);
+        REQUIRE(selected.front() == gestureVertex);
+        REQUIRE(bridge.selectedVertexIndexForPanel() == selectedVertexIndex);
+        REQUIRE(replacementCount == 0);
+    }
     auto up = panelMouseEvent(*host, destination, {}, source, true);
-    bridge.getInteractor2D().mouseUp(up);
+    host->mouseUp(up);
 
+    REQUIRE(publicationCount >= 3);
     REQUIRE(selected.size() == 1);
     REQUIRE(selected.front() == gestureVertex);
     REQUIRE(gestureVertex->values[Vertex::Phase] != Catch::Approx(initialPhase));
+    REQUIRE(bridge.applyPreparedGuides(preparedGuides()));
 }
 
 TEST_CASE("Trimesh hover follows the closest intercept without changing selection",

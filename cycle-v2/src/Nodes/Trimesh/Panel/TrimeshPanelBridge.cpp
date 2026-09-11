@@ -94,9 +94,12 @@ TrimeshPanelBridge::~TrimeshPanelBridge() {
     releaseSharedGlResources();
 }
 
-void TrimeshPanelBridge::applyPreparedGuides(PreparedTrimeshGuides guides) {
+bool TrimeshPanelBridge::applyPreparedGuides(PreparedTrimeshGuides guides) {
     if (guides.mesh == nullptr || guides.provider == nullptr) {
-        return;
+        return false;
+    }
+    if (meshEditGestureActive) {
+        return false;
     }
 
     guideCurveProvider = std::move(guides.provider);
@@ -115,6 +118,7 @@ void TrimeshPanelBridge::applyPreparedGuides(PreparedTrimeshGuides guides) {
             previewKeyScaleAxis);
     updateRasterizer(true, true);
     lastSyncedRevision = panelRevisionFor(model);
+    return true;
 }
 
 void TrimeshPanelBridge::syncFromNode(
