@@ -299,6 +299,10 @@ void TrimeshExpandedEditorComponent::requestTrimeshPanelRepaint() {
     }
 }
 
+void TrimeshExpandedEditorComponent::setTrimeshPanelCursor(const MouseCursor& cursor) {
+    setMouseCursor(cursor);
+}
+
 Rectangle<float> TrimeshExpandedEditorComponent::closeButtonBounds() const {
     return embeddedEditorHeaderLayout(getLocalBounds().toFloat(), true).close;
 }

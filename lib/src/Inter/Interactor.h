@@ -240,6 +240,7 @@ protected:
     void addSelectedVertexOrToggle(Vertex* v);
 
     bool isDuplicateVertex(Vertex* v);
+    bool isDimensionLinked(int dimension);
 
     Vertex* findLinesClosestVertex(VertCube* cube, const Vertex2& mouseXY, Vertex& pos);
     Vertex* findLinesClosestVertex(VertCube* cube, const Vertex2& mouseXY);

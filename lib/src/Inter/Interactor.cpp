@@ -4,6 +4,7 @@
 
 #include <App/AppConstants.h>
 
+#include "CurveReshapeStrategy.h"
 #include "Interactor3D.h"
 #include "UndoableActions.h"
 #include "UndoableMeshProcess.h"
@@ -1520,16 +1521,24 @@ float Interactor::getDragMovementScale(VertCube* cube) {
         for (int i = 0; i < dims.numHidden(); ++i) {
             Vertex* vFar    = cube->getOtherVertexAlong(dims.hidden[i], vNear);
             float dimValue  = positioner->getValue(dims.hidden[i]);
-            float distA     = fabsf(dimValue - vNear->values[dims.hidden[i]]);
-            float distB     = fabsf(dimValue - vFar->values[dims.hidden[i]]);
-            float maxDist   = jmax(distA, distB);
-            float distNearFar = fabsf(vNear->values[dims.hidden[i]] - vFar->values[dims.hidden[i]]);
-
-            scale *= (maxDist < 0.0001f) ? 1.f : distNearFar / maxDist;
+            scale *= CurveReshapeStrategy::hiddenDimensionScale(
+                    isDimensionLinked(dims.hidden[i]),
+                    dimValue,
+                    vNear->values[dims.hidden[i]],
+                    vFar->values[dims.hidden[i]]);
         }
     }
 
     return scale;
+}
+
+bool Interactor::isDimensionLinked(int dimension) {
+    switch (dimension) {
+        case Vertex::Time: return getSetting(LinkYellow) == 1;
+        case Vertex::Red:  return getSetting(LinkRed) == 1;
+        case Vertex::Blue: return getSetting(LinkBlue) == 1;
+        default:           return false;
+    }
 }
 
 void Interactor::updateDepthVerts() {
@@ -2034,9 +2043,9 @@ Array<Vertex*> Interactor::getVerticesToMove(VertCube* cube, Vertex* startVertex
 
     if(startVertex != nullptr) {
         if (cube != nullptr && dims.numHidden() > 0) {
-            bool linkYllw  = getSetting(LinkYellow) == 1;
-            bool linkRed   = getSetting(LinkRed)    == 1;
-            bool linkBlue  = getSetting(LinkBlue)   == 1;
+            bool linkYllw  = isDimensionLinked(Vertex::Time);
+            bool linkRed   = isDimensionLinked(Vertex::Red);
+            bool linkBlue  = isDimensionLinked(Vertex::Blue);
 
             int numLinks   = int(linkYllw) + int(linkRed) + int(linkBlue);
 

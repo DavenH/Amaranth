@@ -105,6 +105,10 @@ PanelHostCallbacks TrimeshPanelHosts::createPanelHostCallbacks() {
         if (panel == &panel2D && panel2DHost != nullptr) {
             panel2DHost->setMouseCursor(cursor);
         }
+
+        if (delegate != nullptr) {
+            delegate->setTrimeshPanelCursor(cursor);
+        }
     });
 
     return callbacks;

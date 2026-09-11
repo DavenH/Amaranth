@@ -145,6 +145,10 @@ class NativeEditSmoke:
 
     def move_pointer(self, point):
         self.focus_app()
+        self.move_pointer_in_focused_app(point)
+
+    @staticmethod
+    def move_pointer_in_focused_app(point):
         subprocess.run([
             CLICK,
             "-w",
@@ -258,7 +262,7 @@ class NativeEditSmoke:
             "screencapture", "-C", "-x", f"-R{region}", os.path.join(directory, f"{name}.png")
         ], check=True)
 
-    def capture_bitmap(self, name, bounds):
+    def capture_bitmap(self, name, bounds, include_cursor=True):
         directory = os.environ.get(
             "CYCLE_V2_NATIVE_CAPTURE_DIR",
             self.render_capture_dir,
@@ -268,10 +272,16 @@ class NativeEditSmoke:
             key: round(bounds[key]) for key in ("x", "y", "width", "height")
         })
         path = os.path.join(directory, f"{name}.bmp")
-        subprocess.run([
-            "screencapture", "-C", "-x", "-t", "bmp", f"-R{region}", path
-        ], check=True)
+        command = ["screencapture"]
+        if include_cursor:
+            command.append("-C")
+        command.extend(["-x", "-t", "bmp", f"-R{region}", path])
+        subprocess.run(command, check=True)
         return path
+
+    def capture_cursor_bitmap_pair(self, name, bounds):
+        clean = self.capture_bitmap(f"{name}-clean", bounds, include_cursor=False)
+        return self.capture_bitmap(name, bounds), clean
 
     @staticmethod
     def bitmap(path):
@@ -342,6 +352,64 @@ class NativeEditSmoke:
             "after": after_path,
             "changedPixels": changed_pixels,
             "minimumChangedPixels": minimum_changed_pixels,
+        }
+
+    @classmethod
+    def cursor_signature(cls, cursor_path, clean_path, panel, pointer):
+        cursor = cls.bitmap(cursor_path)
+        clean = cls.bitmap(clean_path)
+        assert cursor[2:] == clean[2:], (cursor_path, clean_path)
+        _, _, width, height, signed_height, row_stride, pixel_size = cursor
+        pointer_x = round((pointer[0] - panel["x"]) * width / panel["width"])
+        pointer_y = round((pointer[1] - panel["y"]) * height / panel["height"])
+        radius = round(28 * width / panel["width"])
+        signature = set()
+        for y in range(max(0, pointer_y - radius), min(height, pointer_y + radius + 1)):
+            source_y = y if signed_height < 0 else height - 1 - y
+            row_offset = cursor[1] + source_y * row_stride
+            for x in range(max(0, pointer_x - radius), min(width, pointer_x + radius + 1)):
+                offset = row_offset + x * pixel_size
+                if max(abs(cursor[0][offset + channel] - clean[0][offset + channel])
+                       for channel in range(3)) >= 12:
+                    signature.add((x - pointer_x, y - pointer_y))
+        assert len(signature) >= 20, (cursor_path, len(signature))
+        return signature
+
+    @classmethod
+    def assert_vertical_resize_cursor(cls, cursor_path, clean_path, panel, pointer):
+        signature = cls.cursor_signature(cursor_path, clean_path, panel, pointer)
+        xs = [point[0] for point in signature]
+        ys = [point[1] for point in signature]
+        width = max(xs) - min(xs) + 1
+        height = max(ys) - min(ys) + 1
+        assert (min(xs) <= -4
+                and max(xs) >= 4
+                and min(ys) <= -8
+                and max(ys) >= 8
+                and height * 2 >= width * 3), {
+            "cursor": cursor_path,
+            "cursorWidth": width,
+            "cursorHeight": height,
+            "cursorBounds": (min(xs), max(xs), min(ys), max(ys)),
+        }
+
+    @classmethod
+    def assert_centered_cross_cursor(cls, cursor_path, clean_path, panel, pointer):
+        signature = cls.cursor_signature(cursor_path, clean_path, panel, pointer)
+        xs = [point[0] for point in signature]
+        ys = [point[1] for point in signature]
+        width = max(xs) - min(xs) + 1
+        height = max(ys) - min(ys) + 1
+        assert (min(xs) <= -4
+                and max(xs) >= 4
+                and min(ys) <= -4
+                and max(ys) >= 4
+                and width * 3 >= height * 2
+                and height * 3 >= width * 2), {
+            "cursor": cursor_path,
+            "cursorWidth": width,
+            "cursorHeight": height,
+            "cursorBounds": (min(xs), max(xs), min(ys), max(ys)),
         }
 
     def open_editor(self, node_id, trimesh=False):
@@ -1385,39 +1453,114 @@ class NativeEditSmoke:
         self.capture("intercepts-envelope", self.target("expanded:env.panel2D"))
 
     def trimesh_hover_render_sequence(self):
+        graph_path = os.path.join(
+            REPO,
+            "cycle-v2",
+            "content",
+            "presets",
+            "solo-string-2.cyclegraph",
+        )
         self.command({
             "command": "openGraph",
-            "path": os.path.join(
-                REPO,
-                "cycle-v2",
-                "content",
-                "presets",
-                "solo-string-2.cyclegraph",
-            ),
+            "path": graph_path,
         })
         time.sleep(SETTLE_SECONDS)
-        state = self.open_editor("timeLayer1", trimesh=True)
+        canvas = self.target("canvas")
+        editor_width = canvas["width"] * 0.81
+        editor = {
+            "x": canvas["x"] + (canvas["width"] - editor_width) * 0.5,
+            "y": canvas["y"] + 18,
+            "width": editor_width,
+            "height": canvas["height"] - 36,
+        }
+        controls_source = self.point(editor, 0.5, 0.04)
+
+        self.move_pointer_in_focused_app(controls_source)
+        state = self.command({"command": "openMeshPopup", "nodeId": "timeLayer1"})
         panel = self.target("expanded:timeLayer1.panel2D")
+        time.sleep(0.3)
+
         displayed_intercepts = state["trimesh"]["panelDisplayedIntercepts"]
-        curve_point = max(
+        curve_candidates = sorted(
             state["trimesh"]["panelDisplayedCurvePoints"],
             key=lambda point: min(
                 (point["x"] - intercept["x"]) ** 2
                 + (point["y"] - intercept["y"]) ** 2
                 for intercept in displayed_intercepts
             ),
+            reverse=True,
         )
-        exact_curve_point = self.point(panel, curve_point["x"], curve_point["y"])
-        curve_source = (exact_curve_point[0], exact_curve_point[1] - 12)
-        outside_curve = (exact_curve_point[0], exact_curve_point[1] + 40)
+        curve_point = None
+        curve_source = None
+        for candidate in curve_candidates:
+            exact_source = self.point(panel, candidate["x"], candidate["y"])
+            for horizontal_offset in (0, -20, 20, -40, 40):
+                candidate_source = (
+                    exact_source[0] + horizontal_offset,
+                    exact_source[1],
+                )
+                self.move_pointer_in_focused_app(candidate_source)
+                hovered = self.inspect_until(
+                    "timeLayer1",
+                    lambda inspected: inspected["trimesh"]["panelCurveHover"],
+                )
+                pointer = self.command({"command": "inspectPointerCursor"})
+                if (hovered["trimesh"]["panelCurveHover"]
+                        and pointer["component"] == "CycleV2TrimeshPanel2D"):
+                    curve_point = candidate
+                    curve_source = candidate_source
+                    break
+            if curve_point is not None:
+                break
+        assert curve_point is not None, state["trimesh"]
 
-        self.move_pointer(outside_curve)
-        resting = self.capture_bitmap("trimesh-hover-render-rest", panel)
-        self.move_pointer(curve_source)
-        entered = self.capture_bitmap("trimesh-hover-render-entered", panel)
-        self.assert_render_changed_outside_pointer(
+        outside_curve = None
+        for offset in (-40, 40, -60, 60):
+            candidate = (curve_source[0], curve_source[1] + offset)
+            self.move_pointer_in_focused_app(candidate)
+            away = self.inspect_until(
+                "timeLayer1",
+                lambda inspected: not inspected["trimesh"]["panelCurveHover"],
+            )
+            pointer = self.command({"command": "inspectPointerCursor"})
+            if (not away["trimesh"]["panelCurveHover"]
+                    and pointer["component"] == "CycleV2TrimeshPanel2D"):
+                outside_curve = candidate
+                break
+        assert outside_curve is not None, panel
+
+        self.focus_app()
+        self.move_pointer_in_focused_app(outside_curve)
+        time.sleep(0.3)
+        self.cursor_until("custom")
+        self.command({"command": "requestCanvasOpenGLFrame"})
+        time.sleep(0.1)
+        resting, resting_clean = self.capture_cursor_bitmap_pair(
+            "trimesh-hover-render-rest", panel
+        )
+        self.assert_centered_cross_cursor(
             resting,
+            resting_clean,
+            panel,
+            outside_curve,
+        )
+        self.move_pointer_in_focused_app(curve_source)
+        time.sleep(0.3)
+        self.cursor_until("upDownResize")
+        self.command({"command": "requestCanvasOpenGLFrame"})
+        time.sleep(0.1)
+        entered, entered_clean = self.capture_cursor_bitmap_pair(
+            "trimesh-hover-render-entered", panel
+        )
+        self.assert_vertical_resize_cursor(
             entered,
+            entered_clean,
+            panel,
+            curve_source,
+        )
+        self.assert_render_changed_outside_pointer(
+            resting_clean,
+            entered_clean,
             panel,
             curve_source,
         )
@@ -1427,19 +1570,25 @@ class NativeEditSmoke:
         )
         assert hovered["trimesh"]["panelCurveHover"], hovered["trimesh"]
 
-        self.move_pointer(outside_curve)
-        exited = self.capture_bitmap("trimesh-hover-render-exited", panel)
+        self.move_pointer_in_focused_app(outside_curve)
+        time.sleep(0.3)
+        self.command({"command": "requestCanvasOpenGLFrame"})
+        time.sleep(0.1)
+        exited_clean = self.capture_bitmap(
+            "trimesh-hover-render-exited-clean", panel, include_cursor=False
+        )
         away = self.inspect_until(
             "timeLayer1",
             lambda inspected: not inspected["trimesh"]["panelCurveHover"],
         )
         assert not away["trimesh"]["panelCurveHover"], away["trimesh"]
         self.assert_render_changed_outside_pointer(
-            entered,
-            exited,
+            entered_clean,
+            exited_clean,
             panel,
             curve_source,
         )
+        self.cursor_until("custom")
 
     def trimesh_sequence(
             self,

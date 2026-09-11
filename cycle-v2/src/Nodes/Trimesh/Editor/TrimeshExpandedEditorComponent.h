@@ -86,6 +86,7 @@ private:
             juce::Rectangle<int> screenArea) override;
     void selectTrimeshVertex(int index) override;
     void requestTrimeshPanelRepaint() override;
+    void setTrimeshPanelCursor(const juce::MouseCursor& cursor) override;
 
     TrimeshWidget& widget;
     TrimeshExpandedEditorDelegate* delegate {};

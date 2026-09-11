@@ -32,10 +32,12 @@ There must be no per-editor gesture-polarity policy.
 - `lib/src/Inter/Interactor.cpp` is authoritative for mouse gesture lifecycle,
   action selection, pointer-to-panel coordinate conversion, and drag capture.
 - `lib/src/Curve/Curve.cpp` and the rasterizer snapshot are authoritative for
-  curve evaluation. `TransformParameters::ypole` is raster transform metadata;
-  it must not become input-gesture policy.
+  curve evaluation. The prepared `TransformParameters::ypole` is the mature
+  Cycle v1 polarity that maps signed pointer motion to curve sharpness.
 - JUCE component targeting is authoritative for enter, exit, move, drag
-  capture, and choosing the cursor of the component under the pointer.
+  capture, and choosing the cursor of the component under the pointer. A host
+  adapter may mirror the already-resolved panel cursor to the expanded owner
+  when that owner remains JUCE's native cursor target.
 - Existing Cycle v2 command dispatchers remain authoritative for transient
   publication, commit, cancellation, and undo. They do not own hit testing or
   curve math.
@@ -53,19 +55,23 @@ For every 2D curve editor:
 1. A pointer within the shared curve threshold enters the shared reshape-hover
    state and the receiving panel host exposes `UpDownResizeCursor`.
 2. Moving away clears that state and restores the normal panel cursor without
-   polling or forcing the global mouse source.
+   requiring a click. A hosted panel propagates its resolved cursor to the
+   native owner without recomputing interaction state.
 3. Mouse-down on the hovered curve starts `ReshapingCurve` and retains JUCE
    drag capture until mouse-up, including outside the original bounds.
 4. For an unclamped edit, the rendered point under the initial pointer follows
    the pointer's vertical direction. An upward drag moves that point upward; a
    downward drag moves it downward.
-5. Dragging in the gesture-start direction toward the curve's controlling
-   intercept increases sharpness and continues increasing after the pointer
-   crosses that intercept, saturating at full sharpness. Reversing direction
-   during one gesture decreases sharpness without discontinuity.
+5. Dragging in the prepared curve pole's sharpening direction continues to
+   increase sharpness after the pointer crosses the curve centre, saturating at
+   full sharpness. Reversing direction decreases sharpness without a polarity
+   discontinuity at the centre.
 6. Every drag update mutates the domain-selected vertices once, emits one
    consolidated transient edit, and repaints from the resulting state.
-7. Mouse-up commits one undoable edit. Undo restores the exact pre-gesture
+7. Hidden-axis interpolation compensation applies only when the paired vertex
+   remains fixed. Linked paired vertices move together at unit gesture scale,
+   keeping Trimesh sensitivity aligned with flat curve editors.
+8. Mouse-up commits one undoable edit. Undo restores the exact pre-gesture
    model and visible curve.
 
 The contract is expressed in one canonical panel coordinate system. A client
@@ -123,10 +129,11 @@ publish increasing `waveIdx` boundaries. No editor-specific polarity is used.
 2. resolve the controlling curve geometry in canonical panel/model space;
 3. update selection framing;
 4. ask the existing domain hook for the vertices affected by the edit;
-5. calculate one signed sharpness delta from pointer movement and the shared
-   gesture-start relationship to the selected control intercept;
-6. constrain and mutate the affected `Vertex::Curve` values;
-7. notify selection listeners and mark the mesh changed only when a retained
+5. calculate one signed sharpness delta from pointer movement and the prepared
+   curve pole;
+6. compensate only for hidden dimensions whose paired vertex is not moving;
+7. constrain and mutate the affected `Vertex::Curve` values;
+8. notify selection listeners and mark the mesh changed only when a retained
    value actually changed.
 
 The curve segment under the pointer and the curve centered on the selected
@@ -156,9 +163,11 @@ with a curve-editor override.
 ## Host And Cursor Boundary
 
 The JUCE component receiving panel events forwards its already-local event to
-the shared Interactor. `Panel::setCursor` may update that receiving component's
-cursor. Parent editors and `NodeCanvas` must not inspect child cursors, call
-`MouseInputSource::showMouseCursor`, reconstruct coordinates from desktop
+the shared Interactor. `Panel::setCursor` updates that receiving component's
+cursor. The Trimesh host adapter also forwards that same resolved value to its
+expanded owner because the owner can remain JUCE's native cursor target after
+opening over controls. Parent editors and `NodeCanvas` must not inspect child
+cursors, recalculate cursor semantics, reconstruct coordinates from desktop
 position, poll hover, or synthesize sibling transitions.
 
 JUCE does not replace mesh-element hit testing: the shared Interactor still
@@ -223,7 +232,8 @@ Completion requires deletion of:
 - the flat-curve and Envelope copies of `doReshapeCurve`;
 - every Trimesh-specific curve polarity override or sign correction;
 - temporary gesture diagnostics;
-- parent-editor and `NodeCanvas` cursor propagation for child panel hosts;
+- parent-editor and `NodeCanvas` cursor recomputation for child panel hosts;
+- unconditional or per-tick global cursor forcing;
 - native smoke assertions that accept any model difference without checking
   rendered direction.
 
@@ -243,12 +253,11 @@ This TDD could not be marked
 ## Implementation Review
 
 - `Interactor2D` is the only 2D `doReshapeCurve` implementation. It owns
-  selection framing, domain vertex resolution, the shared gesture-start
-  relationship to the selected reduced control intercept, clamping, listener
-  notification, and change marking.
+  selection framing, domain vertex resolution, prepared-curve polarity,
+  clamping, listener notification, and change marking.
 - `CurveReshapeStrategy` is a small pure calculation seam used by that shared
-  sequence and covered for upward, downward, reverse, stationary, scaled, and
-  clamped edits.
+  sequence and covered for upward, downward, reverse, stationary, scaled,
+  clamped, linked-axis, and unlinked-axis edits.
 - Prepared `Curve` copies retain transform metadata and arrays; a snapshot
   regression test protects this rasterizer-to-interaction boundary.
 - Flat and Envelope panel copies were deleted. The remaining Envelope hook
@@ -260,9 +269,9 @@ This TDD could not be marked
   Existing held-drag fixtures cover capture outside the initial hit region and
   existing causal assertions cover downstream Envelope and Trimesh refresh.
 - The production diff adds no `NodeKind` branch or Cycle v2 domain type to
-  `lib`. Production code no longer calls
-  `MouseInputSource::showMouseCursor`, and concrete Cycle v2 panels do not
-  override `doReshapeCurve`.
+  `lib`. Concrete Cycle v2 panels do not override `doReshapeCurve`. The
+  Trimesh host forwards the shared cursor value to the native expanded owner;
+  neither the owner nor `NodeCanvas` recalculates panel cursor semantics.
 - Review size before documentation was 314 additions and 129 deletions across
   ten tracked files, dominated by 153 lines of native automation. The largest
   production changes were `Interactor2D.cpp` (+76/-24),
