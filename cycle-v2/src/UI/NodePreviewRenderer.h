@@ -35,6 +35,9 @@ public:
             const NodePreviewResult& preview,
             const TrimeshRenderProfile& profile,
             bool desaturated = false);
+    static std::vector<float> signalSpyReadSlice(
+            const NodePreviewResult& preview,
+            float normalizedTime = 0.f);
 
     static Rectangle<float> boundsFor(
             const Node& node,
