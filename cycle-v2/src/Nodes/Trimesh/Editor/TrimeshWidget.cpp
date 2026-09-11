@@ -30,6 +30,10 @@ void TrimeshWidget::syncFromNode(const Node& node) {
 }
 
 void TrimeshWidget::syncGuideContext(const NodeGraph& graph, const Node& node) {
+    if (bridge.isMeshEditGestureActive()) {
+        return;
+    }
+
     String nextKey = TrimeshGuidePreparation::configurationKey(graph, node.id);
     if (node.model != nullptr) {
         nextKey << ":mesh=" << String((int64) node.model->revision());
@@ -43,11 +47,12 @@ void TrimeshWidget::syncGuideContext(const NodeGraph& graph, const Node& node) {
         return;
     }
 
-    bridge.applyPreparedGuides(TrimeshGuidePreparation::prepare(
-            graph,
-            node,
-            model->mesh()));
-    guideConfigurationKey = nextKey;
+    if (bridge.applyPreparedGuides(TrimeshGuidePreparation::prepare(
+                graph,
+                node,
+                model->mesh()))) {
+        guideConfigurationKey = nextKey;
+    }
 }
 
 void TrimeshWidget::setDisplayDomain(PortDomain domain) {
@@ -329,6 +334,15 @@ TrimeshPanelRenderStats TrimeshWidget::panelRenderStatsForAutomation() const {
     }
     stats.sampleCount = samples.size();
     stats.interceptCount = (int) snapshot.intercepts().size();
+    stats.hoveredInterceptIndex = bridge.getInteractor2D().state.currentIcpt;
+    const Vertex* hoveredVertex = bridge.getInteractor2D().state.currentVertex;
+    const auto& vertices = bridge.getModel().currentMesh().getVerts();
+    for (int index = 0; index < (int) vertices.size(); ++index) {
+        if (vertices[(size_t) index] == hoveredVertex) {
+            stats.hoveredVertexIndex = index;
+            break;
+        }
+    }
     const bool hasPanelSize = panel.getWidth() > 0 && panel.getHeight() > 0;
     if (hasPanelSize) {
         stats.phaseUnitsPerDisplayX = panel.invertScaleX(panel.getWidth())

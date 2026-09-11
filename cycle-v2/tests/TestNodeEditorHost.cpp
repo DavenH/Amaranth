@@ -3055,6 +3055,9 @@ TEST_CASE("Trimesh drag publishes successive active-mesh snapshots without resyn
     REQUIRE(firstTransient != nullptr);
     REQUIRE(firstTransient->mesh().getVerts().front()->values[Vertex::Amp]
             == Catch::Approx(originalAmp + 0.05f));
+    const int transientSelection = (int) dispatcher.editingGraph()
+            .findNode("mesh")->editorState.getProperty("selectedVertexId", -1);
+    REQUIRE(transientSelection >= 0);
     REQUIRE(document.graph().findNode("mesh")->model->revision() == durableModel->revision());
 
     widget.currentMesh().getVerts().front()->values[Vertex::Amp] = originalAmp + 0.1f;
@@ -3064,6 +3067,8 @@ TEST_CASE("Trimesh drag publishes successive active-mesh snapshots without resyn
     REQUIRE(committed != nullptr);
     REQUIRE(committed->mesh().getVerts().front()->values[Vertex::Amp]
             == Catch::Approx(originalAmp + 0.1f));
+    REQUIRE((int) document.graph().findNode("mesh")->editorState.getProperty(
+            "selectedVertexId", -1) == transientSelection);
     REQUIRE(resources.synchronizingTrimeshLookups == 0);
     REQUIRE(presentation.recordedMovements == 2);
     REQUIRE(document.canUndo());
@@ -3074,6 +3079,8 @@ TEST_CASE("Trimesh drag publishes successive active-mesh snapshots without resyn
     REQUIRE(restored != nullptr);
     REQUIRE(restored->mesh().getVerts().front()->values[Vertex::Amp]
             == Catch::Approx(originalAmp));
+    REQUIRE((int) document.graph().findNode("mesh")->editorState.getProperty(
+            "selectedVertexId", -1) == -1);
 }
 
 TEST_CASE("Equalizer graph drag publishes frequency and gain as one undo transaction",

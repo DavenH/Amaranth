@@ -34,6 +34,15 @@ void TrimeshInteractor2D::setMeshEditedCallback(
     meshEditedCallback = std::move(callback);
 }
 
+void TrimeshInteractor2D::doExtraMouseMoveAt(Point<int> localPosition) {
+    Interactor2D::doExtraMouseMoveAt(localPosition);
+
+    if (isCurrentVertexHit(localPosition)) {
+        mouseFlag(WithinReshapeThresh) = false;
+        flag(SimpleRepaint) = true;
+    }
+}
+
 void TrimeshInteractor2D::setExtraElements(float) {
     ScopedLock sl(vertexLock);
 
@@ -67,6 +76,13 @@ bool TrimeshInteractor2D::isCurrentVertexHit(Point<int> mousePosition) {
     return pixelPosition.dist2(Vertex2(mousePosition.x, mousePosition.y)) <= 64.f;
 }
 
+void TrimeshInteractor2D::mouseDown(const MouseEvent& event) {
+    Interactor2D::mouseDown(event);
+    if (meshEditedCallback != nullptr) {
+        meshEditedCallback({ false, false, true });
+    }
+}
+
 bool TrimeshInteractor2D::doCreateVertex() {
     const bool created = Interactor2D::doCreateVertex();
     if (created && meshEditedCallback != nullptr) {
@@ -77,9 +93,15 @@ bool TrimeshInteractor2D::doCreateVertex() {
 }
 
 void TrimeshInteractor2D::mouseDrag(const MouseEvent& event) {
+    const bool establishReshapeSelection = actionIs(ReshapingCurve)
+            && !meshEditGestureActive;
+
     Interactor2D::mouseDrag(event);
 
     if (flag(DidMeshChange) && meshEditedCallback != nullptr) {
+        if (establishReshapeSelection) {
+            meshEditedCallback({ false, false, true });
+        }
         meshEditGestureActive = true;
         meshEditedCallback({ false, false });
     }
@@ -120,6 +142,8 @@ void TrimeshInteractor2D::mouseUp(const MouseEvent& event) {
     if ((meshChanged || createdVertex || meshEditGestureActive)
             && meshEditedCallback != nullptr) {
         meshEditedCallback({ false, true });
+    } else if (meshEditedCallback != nullptr) {
+        meshEditedCallback({ false, true, true });
     }
     meshEditGestureActive = false;
 }

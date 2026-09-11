@@ -22,7 +22,13 @@ TrimeshWidget& NodePreviewResources::trimeshWidget(const String& nodeId) {
     trimeshWidgets.emplace_back(nodeId, std::make_unique<TrimeshWidget>());
     TrimeshWidget& widget = *trimeshWidgets.back().second;
     widget.setMeshEditedCallback([this, nodeId](TrimeshMeshEditEvent event) {
-        editorCommands.persistTrimeshMeshEdits(nodeId, event.gestureComplete);
+        if (event.selectionOnly) {
+            editorCommands.selectTrimeshVertexIndex(
+                    nodeId,
+                    trimeshWidget(nodeId).selectedVertexIndexForPanel());
+        } else {
+            editorCommands.persistTrimeshMeshEdits(nodeId, event.gestureComplete);
+        }
     });
     return widget;
 }
