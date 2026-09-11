@@ -887,6 +887,28 @@ as the scratch envelope evolves.
     `scripts/fixtures/cycle-v2-agent-icycle-note-sequence.json`. Artifacts:
     `/tmp/cycle-v1-icycle-note-sequence-report.json`,
     `/tmp/cycle-v2-icycle-note-sequence-report.json`, and their `.f32le` audio.
+53. Localize Icycle's post-note release drift. In progress: rerendering the
+    three-note sequence with Waveshaper, IR, and Delay disabled leaves the
+    mismatch in the dry voice sum, so it is not caused by global effect state.
+    Isolated MIDI 48, 55, and 60 renders remain between `0.9979` and `0.99999`
+    correlation per channel while held, then fall to `0.57-0.83` after
+    note-off. This reproduces without overlapping voices and rules out a
+    polyphonic ownership failure.
+
+    A post-release stage capture at oscillator frame 64/frontier 21575 first
+    differs at the time raster. Its red and blue morph coordinates remain
+    identical, while the time coordinate is `0.62508` in Cycle 1 and `0.68939`
+    in Cycle V2. Icycle's prepared scratch Envelope overrides that time morph,
+    which localizes the gap to scratch-Envelope release advancement at the
+    oscillator lookahead boundary. Cycle 1 sets Note Off on every mature
+    `EnvRasterizer` before its cycle renderer advances scratch state; Cycle V2
+    applies the same shared `EnvelopePlaybackEngine` lifecycle through
+    `PreparedCycleEnvelopeBank`, but may already own prepared frame/cycle state
+    beyond the event boundary. Preserve the shared playback implementation and
+    identify the exact event/lookahead ordering difference before changing
+    either renderer. Artifacts: `/tmp/cycle-icycle-release-stages-64/`,
+    `/tmp/cycle-icycle-sequence-notes-dry/`, and
+    `/tmp/cycle-icycle-start-note-dry/`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a
