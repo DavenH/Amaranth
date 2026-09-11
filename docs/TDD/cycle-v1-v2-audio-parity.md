@@ -702,7 +702,7 @@ as the scratch envelope evolves.
     downstream and a global signal cannot become voice-local again. Compiler
     and renderer regressions cover downstream scope propagation and a delay echo
     remaining audible for multiple callbacks after its source voice retires.
-43. Localize Organ 2's remaining global Reverb output mismatch. In progress:
+43. Localize Organ 2's remaining global Reverb output mismatch. Complete:
     moving the existing effect chain to its authoritative lifetime boundary does
     not change the held-note mismatch, as expected for a single active voice.
     With every effect disabled, MIDI 48 remains zero-lag at `0.99999`
@@ -710,12 +710,26 @@ as the scratch envelope evolves.
     cyclogram difference. The full chain remains zero-lag at `0.97076`
     correlation and `0.2400` residual; a 250–750 ms post-note window confirms
     both engines now emit tails but retains a material Reverb-shape difference.
-    Kernel contents, configuration, input blocks, and first convolution output
-    were already observed equivalent, so the next boundary is Reverb's stereo
-    wet/dry accumulation rather than its lifetime or preset translation.
+    Kernel contents, configuration, input blocks, convolution framing, and
+    first-block dry energy, wet energy, and dry/wet correlation are equivalent.
+    Cycle V2 now delegates its wet/dry calculation to a shared primitive that
+    is guarded against Cycle 1's mono dry law and stereo width law, while the
+    mature Cycle 1 implementation remains unchanged. The mismatch begins as
+    the small oscillator-through-delay residual accumulates through the long
+    convolution; it is not a different Reverb parameter, kernel, processing
+    scope, or wet/dry feature. Organ 2 therefore remains diagnostic pending an
+    earlier exact oscillator boundary rather than another Reverb rewrite.
     Artifacts: `/tmp/cycle-organ-2-global-no-effects-fixed/comparison.json`,
     `/tmp/cycle-organ-2-global-full-fixed/comparison.json`, and
-    `/tmp/cycle-organ-2-global-tail/comparison.json`.
+    `/tmp/cycle-organ-2-global-tail/comparison.json`. Focused boundary trace:
+    `/tmp/cycle-organ-2-reverb-mix-debug-4/`. The behavior-neutral shared-mix
+    rerun is `/tmp/cycle-organ-2-shared-v2-reverb-mix/comparison.json`.
+44. Establish a deterministic Guide-noise fixture. In progress: the paired
+    request currently injects a Cycle 1 base RNG seed, while Cycle V2 derives a
+    lifecycle seed from event time and queue order. Both paths are repeatable,
+    but that does not establish equivalent Guide offsets. The next slice must
+    define one shared offline lifecycle-seed translation without changing live
+    note randomness, then regenerate and validate a noise-bearing preset.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

@@ -7,6 +7,7 @@
 #include <Algo/ConvReverb.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Audio/CycleDsp/ReverbKernel.h>
+#include <Audio/CycleDsp/ReverbMix.h>
 #include <Util/NumberUtils.h>
 
 #include <algorithm>
@@ -331,23 +332,32 @@ void ReverbSignalProcessor::mixPendingBuffers(size_t frameCount) {
     }
 
     if (activeChannelCount == 1 || pendingWet[1].empty()) {
-        const float dryScale = 1.f - 0.25f * wetLevel;
-        pendingWet[0].mul(wetLevel);
-        pendingWet[0].addProduct({ dryBuffers[0].data(), (int) frameCount }, dryScale);
+        Buffer<float> mix(mixBuffers[0].data(), (int) frameCount);
+        CycleDsp::mixReverbMono(
+                { dryBuffers[0].data(), (int) frameCount },
+                pendingWet[0],
+                mix,
+                wetLevel);
+        mix.copyTo(pendingWet[0]);
         return;
     }
 
-    const float direct = wetLevel * jmax(0.5f, configuration->width);
-    const float cross = wetLevel * jmin(0.5f, 1.f - configuration->width);
-    const float dryScale = 1.f - 0.24f * wetLevel;
     Buffer<float> leftMix(mixBuffers[0].data(), (int) frameCount);
     Buffer<float> rightMix(mixBuffers[1].data(), (int) frameCount);
-    VecOps::mul(pendingWet[0], direct, leftMix);
-    leftMix.addProduct(pendingWet[1], cross);
-    leftMix.addProduct({ dryBuffers[0].data(), (int) frameCount }, dryScale);
-    VecOps::mul(pendingWet[1], direct, rightMix);
-    rightMix.addProduct(pendingWet[0], cross);
-    rightMix.addProduct({ dryBuffers[1].data(), (int) frameCount }, dryScale);
+    CycleDsp::mixReverbChannel(
+            { dryBuffers[0].data(), (int) frameCount },
+            pendingWet[0],
+            pendingWet[1],
+            leftMix,
+            wetLevel,
+            configuration->width);
+    CycleDsp::mixReverbChannel(
+            { dryBuffers[1].data(), (int) frameCount },
+            pendingWet[1],
+            pendingWet[0],
+            rightMix,
+            wetLevel,
+            configuration->width);
     leftMix.copyTo(pendingWet[0]);
     rightMix.copyTo(pendingWet[1]);
 }

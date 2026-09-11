@@ -80,3 +80,18 @@ Context:
 
 Current status: open; reconcile the assertion with the current shared Envelope
 layout contract without weakening minimum rail travel or hit-target coverage.
+
+## P2: Paired audio automation intermittently cannot focus the applications
+
+Context:
+
+- Organ 2 differential runs on 2026-09-11 repeatedly logged AppleScript error
+  `-10006` when System Events attempted to activate either `Cycle` or
+  `CycleV2`.
+- Each application still completed its scripted offline capture and wrote a
+  valid report, raw float sidecar, and WAV, so the error does not invalidate
+  the audio comparison.
+- Repro artifact: `/tmp/cycle-organ-2-reverb-mix-debug-4/`.
+
+Current status: open; make foreground activation best-effort or synchronize it
+with process launch without weakening command/report completion checks.
