@@ -29,6 +29,8 @@ def expected_controls(preset):
         "pitch": 0.0,
         "portamento": False,
         "oversampling": f"{oversampling}x",
+        "controlInterval": port_cycle_v1_preset.translated_control_interval(
+            preset.get("settings", {}).get("ControlFreq", 8)),
     }
 
 

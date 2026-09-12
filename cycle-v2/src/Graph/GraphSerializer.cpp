@@ -531,7 +531,7 @@ void appendCanonicalObject(
                 property.value,
                 depth + 1,
                 output,
-                property.name == Identifier("parameters"));
+                parameterObject || property.name == Identifier("parameters"));
         output << (++index < properties.size() ? ",\n" : "\n");
     }
     appendIndent(output, depth);

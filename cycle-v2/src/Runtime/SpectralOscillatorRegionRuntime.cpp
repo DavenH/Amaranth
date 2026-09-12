@@ -12,12 +12,14 @@ bool SpectralOscillatorRegionRuntime::prepare(
         int maximumCycleSamplesToUse,
         int maximumFixedFrameSizeToUse,
         double sampleRateToUse,
-        const CycleDsp::UnisonVoiceLayout& layoutToUse) {
+        const CycleDsp::UnisonVoiceLayout& layoutToUse,
+        int controlIntervalSamplesToUse) {
     if (maximumFrameCountToUse == 0
             || maximumCycleSamplesToUse <= 0
             || maximumFixedFrameSizeToUse <= 2
             || (maximumFixedFrameSizeToUse & (maximumFixedFrameSizeToUse - 1)) != 0
             || sampleRateToUse <= 0.0
+            || controlIntervalSamplesToUse <= 0
             || layoutToUse.order < 1
             || layoutToUse.order > CycleDsp::maximumUnisonOrder) {
         return false;
@@ -27,6 +29,7 @@ bool SpectralOscillatorRegionRuntime::prepare(
     maximumCycleSamples = maximumCycleSamplesToUse;
     maximumFixedFrameSize = maximumFixedFrameSizeToUse;
     sampleRate = sampleRateToUse;
+    controlIntervalSamples = controlIntervalSamplesToUse;
     layout = layoutToUse;
 
     const int laneBufferSize = (int) maximumFrameCount + maximumCycleSamples + 1;
@@ -172,9 +175,9 @@ bool SpectralOscillatorRegionRuntime::initializeSharedFrames(
         fixedFrameSize = 0;
         return false;
     }
-    const int controlStride = std::max(
-            1,
-            (int) (legacyControlIntervalSamples / cyclePeriod + 0.5));
+    const int controlStride = CycleDsp::OscillatorLaneCore::controlFrameStride(
+            controlIntervalSamples,
+            cyclePeriod);
     sharedFramePeriod = cyclePeriod * controlStride;
     if (!CycleDsp::CyclicFrameLaneRenderer::makeHalfFrameFades(
                 fixedFrameSize,

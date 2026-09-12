@@ -17,6 +17,9 @@ public:
             float detuneCents,
             float pitchUnitValue,
             double sampleRate);
+    static int controlFrameStride(
+            int controlIntervalSamples,
+            double neutralCyclePeriod);
     static void advanceChainedCycle(ChainedCycleState& state, double angleDelta);
 };
 

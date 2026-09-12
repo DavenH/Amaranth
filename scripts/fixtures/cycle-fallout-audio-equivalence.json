@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/fallout.cyclegraph",
-        "sha256": "aab0a2e81c75b0a92ad71ef9cee2281c9f4428bb5c558eb5990ec6ba8e3748b9",
+        "sha256": "30aa5effb12049ea135aa9d899a62fd2a80866b44a4d3a45c24a9fef79d76a1a",
         "renderOverrides": {
             "voiceDurationSeconds": 1.2669864718837067
         }

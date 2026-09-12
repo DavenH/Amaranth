@@ -120,6 +120,7 @@ struct CompiledVoiceContext {
     float pitchSemitones {};
     bool portamento {};
     int oversampling { 1 };
+    int controlIntervalSamples { 16 };
     std::shared_ptr<const INodeDspConfiguration> defaultModulation;
     std::shared_ptr<const INodeDspConfiguration> pitchEnvelope;
     String pitchEnvelopeNodeId;

@@ -130,7 +130,9 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
     }
 
     futureFrame.period = middlePeriod;
-    noteState.stride = jmax(1, (int) (controlFreq / middlePeriod + 0.5));
+    noteState.stride = CycleDsp::OscillatorLaneCore::controlFrameStride(
+            controlFreq,
+            middlePeriod);
     futureFrame.cycleCount = -noteState.stride;
 
     if (parent != nullptr) {

@@ -81,11 +81,17 @@ public:
         const NodeParameterMap parameters(node);
         const String domain = parameters.stringValue("domain", "waveform");
         const String oversamplingValue = parameters.stringValue("oversampling", "1x");
+        const String controlIntervalValue = parameters.stringValue("controlInterval", "16");
         waveform.setToggleState(domain.startsWith("waveform"), dontSendNotification);
         spectral.setToggleState(!domain.startsWith("waveform"), dontSendNotification);
         for (size_t index = 0; index < oversampling.size(); ++index) {
             oversampling[index].setToggleState(
                     oversamplingValue == oversamplingValues[index],
+                    dontSendNotification);
+        }
+        for (size_t index = 0; index < controlIntervals.size(); ++index) {
+            controlIntervals[index].setToggleState(
+                    controlIntervalValue == controlIntervalValues[index],
                     dontSendNotification);
         }
         portamento.setToggleState(
@@ -124,6 +130,7 @@ public:
         layoutVoiceLengthRow(nextRow(rows));
         pitch.setBounds(nextRow(rows));
         layoutOversamplingRow(nextRow(rows));
+        layoutControlIntervalRow(nextRow(rows));
         layoutToggleRow(nextRow(rows));
     }
 
@@ -135,6 +142,7 @@ public:
         state->setProperty("voiceLength", propertySliderRowAutomationState(voiceLength));
         state->setProperty("pitch", propertySliderRowAutomationState(pitch));
         state->setProperty("oversampling", selectedOversampling());
+        state->setProperty("controlInterval", selectedControlInterval());
         state->setProperty("portamento", portamento.getToggleState());
         state->setProperty(
                 "previewVoiceLengthSeconds",
@@ -160,10 +168,13 @@ private:
     void configureSelectors() {
         stylePropertyLabel(domainLabel, "Domain");
         stylePropertyLabel(oversamplingLabel, "Oversampling");
+        stylePropertyLabel(controlIntervalLabel, "Control interval");
         addAndMakeVisible(domainLabel);
         addAndMakeVisible(oversamplingLabel);
+        addAndMakeVisible(controlIntervalLabel);
         configureDomainSelector();
         configureOversamplingSelector();
+        configureControlIntervalSelector();
         configurePortamento();
     }
 
@@ -183,6 +194,18 @@ private:
                     oversamplingValues[index],
                     "voiceContextEditor.oversampling." + oversamplingValues[index],
                     [this, index] { setOversampling(oversamplingValues[index]); });
+        }
+    }
+
+    void configureControlIntervalSelector() {
+        for (size_t index = 0; index < controlIntervals.size(); ++index) {
+            configureOption(
+                    controlIntervals[index],
+                    controlIntervalValues[index],
+                    "voiceContextEditor.controlInterval." + controlIntervalValues[index],
+                    [this, index] { setControlInterval(controlIntervalValues[index]); });
+            controlIntervals[index].setTooltip(
+                    "Samples between requested synthesis control updates.");
         }
     }
 
@@ -291,10 +314,34 @@ private:
         }
     }
 
+    void setControlInterval(const String& value) {
+        if (!commands.setNodeParameterText(
+                    node.id,
+                    "controlInterval",
+                    "Control Interval",
+                    value)) {
+            return;
+        }
+        for (size_t index = 0; index < controlIntervals.size(); ++index) {
+            controlIntervals[index].setToggleState(
+                    controlIntervalValues[index] == value,
+                    dontSendNotification);
+        }
+    }
+
     String selectedOversampling() const {
         for (size_t index = 0; index < oversampling.size(); ++index) {
             if (oversampling[index].getToggleState()) {
                 return oversamplingValues[index];
+            }
+        }
+        return {};
+    }
+
+    String selectedControlInterval() const {
+        for (size_t index = 0; index < controlIntervals.size(); ++index) {
+            if (controlIntervals[index].getToggleState()) {
+                return controlIntervalValues[index];
             }
         }
         return {};
@@ -323,6 +370,14 @@ private:
                 row,
                 oversamplingLabel,
                 { &oversampling[0], &oversampling[1], &oversampling[2], &oversampling[3] });
+    }
+
+    void layoutControlIntervalRow(Rectangle<int> row) {
+        layoutSelectorRow(
+                row,
+                controlIntervalLabel,
+                { &controlIntervals[0], &controlIntervals[1],
+                        &controlIntervals[2], &controlIntervals[3] });
     }
 
     static void layoutSelectorRow(
@@ -358,6 +413,9 @@ private:
     Label oversamplingLabel;
     std::array<TextButton, 4> oversampling;
     const std::array<String, 4> oversamplingValues { "1x", "2x", "4x", "8x" };
+    Label controlIntervalLabel;
+    std::array<TextButton, 4> controlIntervals;
+    const std::array<String, 4> controlIntervalValues { "16", "64", "256", "1024" };
     ToggleButton portamento;
 };
 

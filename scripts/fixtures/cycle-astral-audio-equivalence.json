@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/astral.cyclegraph",
-        "sha256": "2aa27823680f13f873dbd9c35a13ec141a0113f1380aac2767cdbe78d600ec5a",
+        "sha256": "f3d99a8d2e38e220ade729a12dfabf1a8da730f455a002e5579bc0c425e7d439",
         "renderOverrides": {
             "voiceDurationSeconds": 7.914545649830685
         }

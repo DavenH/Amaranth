@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/accoustic.cyclegraph",
-        "sha256": "dcc681652fbc191ef853ddd72e60a94ac6910f6e5d6936d8abe504aa4911046d",
+        "sha256": "96b2e966abd50fb22fa8cc1f1771c95c6c9138c98ca0933b1f21a71fbb92f338",
         "renderOverrides": {
             "voiceDurationSeconds": 1.3467710598620575
         }
@@ -27,7 +27,7 @@
         "morph": "morph",
         "knownRuntimeGaps": [
             "The 48 kHz full global-effect render exceeds the spectral threshold because Reverb accumulates the remaining upstream numerical residual",
-            "The dry oscillator first differs at inverse reconstruction after byte-identical raster and operand stages"
+            "Evolving raster coordinates retain sub-1e-7 float differences after matching control-frame frontiers"
         ],
         "constantGainPolicy": "Cycle1 master gain maps to Output; Cycle2 fixed headroom remains separate"
     },

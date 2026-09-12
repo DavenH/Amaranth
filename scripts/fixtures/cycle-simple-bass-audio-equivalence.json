@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/simple-bass.cyclegraph",
-        "sha256": "1d28b61862f6aeda19eb8b328b0091a19cdf1c91646a017e22fa28b2c1de361b",
+        "sha256": "eb45402b6d9b016b8293132f3dd1bbf6981ed4d1d65e05058eef751d69da0ef8",
         "renderOverrides": {
             "voiceDurationSeconds": 0.24360341021593185
         }

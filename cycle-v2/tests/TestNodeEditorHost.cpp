@@ -877,7 +877,7 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     NodeEditorHost host(parent, commands, presentation, resources);
     Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
 
-    REQUIRE(host.bind(&voice, { 0, 0, 440, 276 }));
+    REQUIRE(host.bind(&voice, { 0, 0, 440, 318 }));
     DynamicObject automation;
     host.appendAutomationState(automation);
     const var state = automation.getProperty("voiceContext");
@@ -886,6 +886,7 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     REQUIRE(state.getProperty("octave", {}).getProperty("display", {}).toString() == "0");
     REQUIRE(state.getProperty("voiceLength", {}).getProperty("display", {}).toString() == "1 s");
     REQUIRE(state.getProperty("pitch", {}).getProperty("display", {}).toString() == "0 semis");
+    REQUIRE(state.getProperty("controlInterval", {}).toString() == "16");
     REQUIRE((int) state.getProperty("octave", {}).getProperty("usableTrackWidth", {}) >= 140);
     REQUIRE((int) state.getProperty("voiceLength", {}).getProperty("usableTrackWidth", {}) >= 140);
     REQUIRE((int) state.getProperty("pitch", {}).getProperty("usableTrackWidth", {}) >= 140);
@@ -916,6 +917,14 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
         option->onClick();
         REQUIRE(commands.textParameterId == "oversampling");
         REQUIRE(commands.textValue == factor);
+    }
+    for (const String& interval : { String("16"), String("64"), String("256"), String("1024") }) {
+        auto* option = dynamic_cast<TextButton*>(host.component()->findChildWithID(
+                "voiceContextEditor.controlInterval." + interval));
+        REQUIRE(option != nullptr);
+        option->onClick();
+        REQUIRE(commands.textParameterId == "controlInterval");
+        REQUIRE(commands.textValue == interval);
     }
     auto* portamento = dynamic_cast<ToggleButton*>(host.component()->findChildWithID(
             "voiceContextEditor.portamento"));
@@ -3065,7 +3074,7 @@ TEST_CASE("Voice Context hosted pitch gesture commits two updates and one undo",
             resources);
     NodeEditorHost host(owner, commands, presentation, resources);
 
-    REQUIRE(host.bind(document.graph().findNode("voice"), { 0, 0, 440, 276 }));
+    REQUIRE(host.bind(document.graph().findNode("voice"), { 0, 0, 440, 318 }));
     auto* pitch = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
             "voiceContextEditor.pitch"));
     REQUIRE(pitch != nullptr);
@@ -3104,7 +3113,7 @@ TEST_CASE("Voice Context hosted length gesture commits two updates and one undo"
             resources);
     NodeEditorHost host(owner, commands, presentation, resources);
 
-    REQUIRE(host.bind(document.graph().findNode("voice"), { 0, 0, 440, 276 }));
+    REQUIRE(host.bind(document.graph().findNode("voice"), { 0, 0, 440, 318 }));
     auto* length = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
             "voiceContextEditor.voiceLength"));
     REQUIRE(length != nullptr);

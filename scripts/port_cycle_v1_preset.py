@@ -489,6 +489,10 @@ def translated_octave(octave_knob):
     return round(mapped_octave)
 
 
+def translated_control_interval(control_frequency_order):
+    return str(1 << int(control_frequency_order))
+
+
 def translated_impulse_size(size_knob):
     """Return Cycle V2's canonical knob value for Cycle 1's IR length."""
     exponent = int(7.0 + size_knob * 7.0 + 1.0e-5)
@@ -593,6 +597,8 @@ def convert(source):
     oscillator_knobs.extend([0.5] * (3 - len(oscillator_knobs)))
     octave = translated_octave(oscillator_knobs[1])
     oversampling = preset["settings"].get("OversampleFactorRltm", 1)
+    control_interval = translated_control_interval(
+        preset["settings"].get("ControlFreq", 8))
     modulation_sources = modulation_sources_for_preset(preset)
     guide_layers = groups[MESH_GROUPS["guides"]]["layers"]
     has_spectral_layers = any(
@@ -608,6 +614,7 @@ def convert(source):
             "pitch": 0.0,
             "portamento": False,
             "oversampling": f"{oversampling}x",
+            "controlInterval": control_interval,
         }),
         node("morph", "modulationTriple", 100, 100, {
             "yellowSource": modulation_sources["yellow"],

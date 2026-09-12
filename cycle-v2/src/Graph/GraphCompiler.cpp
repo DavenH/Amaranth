@@ -549,6 +549,9 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
         context.oversampling = jmax(
                 1,
                 parameters.stringValue("oversampling", "1x").getIntValue());
+        context.controlIntervalSamples = jmax(
+                1,
+                parameters.stringValue("controlInterval", "16").getIntValue());
         context.defaultModulation = defaultModulation;
         auto unison = defaultUnison;
         context.unison = unison;

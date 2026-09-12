@@ -344,7 +344,12 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                                     dsp | preview | presentation),
                             number("pitch", "Pitch", 0.f, -48.f, 48.f, dsp | presentation),
                             boolean("portamento", "Portamento", false, dsp | presentation),
-                            choice("oversampling", "Oversampling", "1x", { "1x", "2x", "4x", "8x" }, dsp | reset | presentation)
+                            choice("oversampling", "Oversampling", "1x",
+                                    { "1x", "2x", "4x", "8x" },
+                                    dsp | reset | presentation),
+                            choice("controlInterval", "Control Interval", "16",
+                                    { "16", "64", "256", "1024" },
+                                    dsp | reset | presentation)
                     }))
                     .help("Sets pitch, timing, and voice behaviour before synthesis.")
                     .execution(NodeExecutionTrait::ConfigurationOnly)

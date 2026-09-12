@@ -150,6 +150,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
         nodes = {entry["id"]: entry for entry in converted["nodes"]}
 
         self.assertEqual(nodes["voice"]["parameters"]["voiceLength"], 0.5)
+        self.assertEqual(nodes["voice"]["parameters"]["controlInterval"], "256")
         self.assertTrue(nodes["timeLayer1"]["parameters"]["enabled"])
         self.assertFalse(nodes["timeLayer2"]["parameters"]["enabled"])
         self.assertFalse(nodes["magnitudeLayer2"]["parameters"]["enabled"])
@@ -176,6 +177,15 @@ class PortCycleV1PresetTest(unittest.TestCase):
             nodes["voice"]["parameters"]["voiceLength"],
             0.474137931,
         )
+
+    def test_converter_translates_cycle_one_control_frequency_order(self):
+        source = convertible_source()
+        source["preset"]["settings"]["ControlFreq"] = 6
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {entry["id"]: entry for entry in converted["nodes"]}
+
+        self.assertEqual(nodes["voice"]["parameters"]["controlInterval"], "64")
 
     def test_converter_persists_cycle_one_guide_noise_seeds(self):
         self.assertEqual(

@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/sitar.cyclegraph",
-        "sha256": "e922c7f9f47e392e01687e364ebccdae04445a71ee62c221131ed0898f709ab0",
+        "sha256": "cc380059b6b2d8a92c54599f2d5adfdcbd8264546a60fef26bf2fbc202fb124a",
         "renderOverrides": {
             "voiceDurationSeconds": 0.6088500846478859
         }

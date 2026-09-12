@@ -57,6 +57,15 @@ TEST_CASE("Chained lane scheduling retains fractional cycle boundaries",
     REQUIRE(state.sampledFrontier == 401);
 }
 
+TEST_CASE("Control frame stride preserves the Cycle 1 cycle-clocked contract",
+        "[cycle-dsp][oscillator-lane][control-rate][parity]") {
+    REQUIRE(CycleDsp::OscillatorLaneCore::controlFrameStride(16, 168.5) == 1);
+    REQUIRE(CycleDsp::OscillatorLaneCore::controlFrameStride(256, 168.5) == 2);
+    REQUIRE(CycleDsp::OscillatorLaneCore::controlFrameStride(1024, 168.5) == 6);
+    REQUIRE(CycleDsp::OscillatorLaneCore::controlFrameStride(0, 168.5) == 1);
+    REQUIRE(CycleDsp::OscillatorLaneCore::controlFrameStride(256, 0.0) == 1);
+}
+
 TEST_CASE("Cyclic frame composition preserves the unshifted first cycle",
         "[cycle-dsp][oscillator-lane][cyclic-frame]") {
     float currentData[] { 10.f, 11.f, 12.f, 13.f, 14.f, 15.f, 16.f, 17.f };

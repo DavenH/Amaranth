@@ -753,17 +753,19 @@ TEST_CASE("Evolving spectral frames are independent of host block partitions",
   #endif
 }
 
-TEST_CASE("High spectral notes use the legacy 16-sample control cadence",
+TEST_CASE("High spectral notes use the compiled factory control interval",
         "[cycle-v2][runtime][oscillator-region][spectral-frame][control-rate]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
+    const GraphExecutionPlan plan = loadFilterSawPlan();
+    REQUIRE(plan.voiceContexts.front().controlIntervalSamples == 64);
     const PartitionedRender render = renderPreparedGraph(
-            loadFilterSawPlan(),
+            plan,
             512,
             128,
             -1,
             120);
 
-    REQUIRE(render.frameRenderCount == 9);
+    REQUIRE(render.frameRenderCount == 4);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

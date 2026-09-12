@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/filter-saw.cyclegraph",
-        "sha256": "c52d39fbab6152744170a7d49d4ce079e69943945b7b812528351f2ab4b6fc90",
+        "sha256": "1166c807b6f509b24183ff386a69d9644994d3c770fccf414b41e686fbed70f4",
         "renderOverrides": {
             "voiceDurationSeconds": 0.47689543975042176
         }

@@ -19,7 +19,8 @@ public:
             int maximumCycleSamplesToUse,
             int maximumFixedFrameSizeToUse,
             double sampleRateToUse,
-            const CycleDsp::UnisonVoiceLayout& layoutToUse);
+            const CycleDsp::UnisonVoiceLayout& layoutToUse,
+            int controlIntervalSamplesToUse = 16);
     void reset();
     bool process(
             const PreparedOscillatorProcessContext& context,
@@ -33,8 +34,6 @@ public:
             SpectralOscillatorFrameRenderer& renderer);
 
 private:
-    static constexpr int legacyControlIntervalSamples = 16;
-
     struct LaneState {
         CycleDsp::ChainedCycleState clock;
         std::array<ReadWriteBuffer, 2> buffers;
@@ -68,6 +67,7 @@ private:
     int maximumFixedFrameSize {};
     int fixedFrameSize {};
     double sampleRate { 44100.0 };
+    int controlIntervalSamples { 16 };
     bool initialFramesReady {};
     double sharedFramePeriod {};
     double lastSharedFramePosition {};

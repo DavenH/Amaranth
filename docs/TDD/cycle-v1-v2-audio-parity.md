@@ -174,7 +174,7 @@ translation. The first broad candidates are:
 | japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase. One corrected render repeated exactly, but a later run did not repeat in Cycle 1. Its large evolving mismatch remains diagnostic until that intermittent startup state is isolated. |
 | Icycle | Broad synthesis/effects plus six-voice Unison | Diagnostic. Regenerated from a direct canonical export while retaining node layout, port presentation, and three authored probes. Its reverb is disabled; the corrected IR size is `0.26`. Prepared per-lane pitch playback and Cycle 1's render-boundary frame latch bring the full MIDI 36–72 matrix to `0.98425–0.99997` correlation. Cycle 1's IR-enabled output intermittently selects one of two floating-point payloads across fresh processes, so the exact repeat prerequisite is not yet met. |
 | astral | Three magnitude layers, phase pan, volume/scratch envelopes, and delay | Regenerated from a fresh live export while retaining the existing Cycle V2 node presentation. The former hand-authored graph rendered effectively silent in the differential harness. At MIDI 48 the regenerated graph is zero-lag with `1.00000` correlation, `0.0011` gain-matched residual, and `0.35 dB` spectral RMSE. Cycle V2 repeats exactly; Cycle 1 does not, so the fixture remains diagnostic. |
-| accoustic | Time, two magnitude layers, two phase layers, volume/scratch envelopes, IR, delay, and reverb | Diagnostic. Regenerated from a live canonical export while retaining every node position and editor/port presentation. Correcting octave pitch and its Voice Context key-scale coordinate makes every raster and operand stage byte-identical at MIDI 48. The full 44.1 kHz graph reaches `0.99870` correlation; its 48 kHz Reverb tail still amplifies the small inverse-reconstruction/output-rate residual beyond the spectral threshold. |
+| accoustic | Time, two magnitude layers, two phase layers, volume/scratch envelopes, IR, delay, and reverb | Diagnostic. Regenerated from a live canonical export while retaining every node position and editor/port presentation. Its migrated 256-sample control interval aligns evolving morph-frame frontiers. At MIDI 48 the dry graph reaches `1.00000` correlation and `0.01 dB` spectral error, and the full 44.1 kHz graph does the same. The 48 kHz Reverb tail still amplifies the tiny upstream/output-rate residual beyond the spectral threshold. |
 | organ-2 | Spectral layers, envelopes, Unison, IR, delay, reverb | Regenerated from a fresh export while retaining presentation. Its oscillator-through-delay baseline is near-identical and global effect tails now outlive voices. The full Reverb output remains diagnostic. |
 | sitar | Three magnitude layers, phase, and persisted Guide noise | Diagnostic. The converter retains Cycle 1's layer modes and Guide seeds, and MIDI 36–72 reaches `0.99905–1.00000` correlation. A fresh Cycle 1 MIDI 48 repeat again selected a different floating-point payload while Cycle V2 remained exact. |
 
@@ -1211,10 +1211,58 @@ as the scratch envelope evolves.
     `/private/tmp/cycle-accoustic-octave-keyscale-full-44100/`, and
     `/private/tmp/cycle-accoustic-octave-keyscale-full-matrix/`.
 
-Future work: replace the inherited quality-selected control interval with an explicit
-control-rate contract that may request sub-cycle synthesis updates. That is a
-quality/architecture change, not part of Cycle 1 parity, and must retain the
-cycle-clocked envelope boundary rather than returning to blockwise sampling.
+57. Compile the Cycle 1 control interval through Voice Context. Complete:
+    Cycle 1 stores `ControlFreq` as a power-of-two order and computes the number
+    of oscillator cycles between shared-frame refreshes as
+    `max(1, round((1 << ControlFreq) / neutralCyclePeriod))`. Cycle V2 currently
+    implements that same cycle-clocked refresh and interpolation behavior, but
+    hard-codes the interval to 16 samples. Accoustic stores order 8, so its V2
+    morph frames advance at twice the Cycle 1 rate at MIDI 48: captured frame 32
+    begins near sample 5393 instead of 10787.
+
+    The stable contract is an explicit Voice Context `controlInterval`
+    parameter containing the realized sample interval (`16`, `64`, `256`, or
+    `1024`), not the legacy exponent or an approximate Hz label. The compiler
+    owns translation from graph text to a prepared integer; prepared spectral
+    regions receive it once at construction. The shared `OscillatorLaneCore`
+    owns the exact stride calculation and both Cycle 1 and Cycle V2 call it.
+    Existing authored V2 graphs default to 16, preserving their current sound.
+    Factory migration translates canonical `ControlFreq` with `1 << order` and
+    edits Voice Context parameters only, preserving positions, port sides,
+    editor/probe state, and global/voice-local topology.
+
+    The shared-DSP, compiler, prepared-runtime, converter, node-factory, and
+    editor tests cover the contract. Migration added only this Voice Context
+    field to 216 eligible factory graphs: 154 use 64, 59 use 256, and 3 use 16.
+    A comparison against pre-migration graph copies found no changes to
+    positions, port sides, editor/probe state, edges, or global/voice-local
+    topology. The final audit has no mismatches; its 12 gaps remain the existing
+    missing/singular-Voice-Context conversion gaps. Three old factory graphs
+    without canonical oscillator controls use Cycle 1's default 256 interval;
+    two diagnostic presets and all three bundled starter resources explicitly
+    retain V2's former 16 interval. Every shipped Voice Context now stores the
+    contract. Report:
+    `/private/tmp/cycle-parity-voice-controls-control-interval-final.json`.
+
+    Accoustic frame 32 now begins at sample frontier 10787 in both engines,
+    rather than V2's former frontier 5393. The time frame and forward FFT are
+    exact; evolving raster-coordinate differences are below `8.5e-8` normalized
+    residual. With IR, Delay, and Reverb disabled, MIDI 48 reaches `1.00000`
+    correlation, `0.0002` residual, and `0.01 dB` spectral RMSE. The complete
+    44.1 kHz graph reaches `1.00000`, `0.0001`, and `0.01 dB`, respectively,
+    and both engines repeat exactly. At 48 kHz the complete graph improves to
+    `0.98627` correlation and `7.61 dB` spectral RMSE, but remains diagnostic
+    because Reverb still magnifies the tiny output-rate-boundary difference.
+    Artifacts: `/private/tmp/cycle-accoustic-control-interval-frame32/`,
+    `/private/tmp/cycle-accoustic-control-interval-full-44100/`, and
+    `/private/tmp/cycle-accoustic-control-interval-full/`.
+
+    This slice deliberately retains Cycle 1's minimum-one-cycle boundary.
+    Chained time-only regions currently render their recipe once per oscillator
+    cycle and therefore do not yet reproduce multi-cycle hold/interpolation at
+    very high notes when the selected interval exceeds the neutral cycle period.
+    That is a separate oscillator-reconstruction slice; a future higher-rate
+    design may also add sub-cycle updates without changing this stored contract.
 
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct

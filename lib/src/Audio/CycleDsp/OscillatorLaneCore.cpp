@@ -41,6 +41,17 @@ double OscillatorLaneCore::angleDeltaForPitchUnit(
             detuneCents) / sampleRate;
 }
 
+int OscillatorLaneCore::controlFrameStride(
+        int controlIntervalSamples,
+        double neutralCyclePeriod) {
+    if (controlIntervalSamples <= 0 || neutralCyclePeriod <= 0.0) {
+        return 1;
+    }
+    return std::max(
+            1,
+            (int) (controlIntervalSamples / neutralCyclePeriod + 0.5));
+}
+
 void OscillatorLaneCore::advanceChainedCycle(
         ChainedCycleState& state,
         double angleDelta) {

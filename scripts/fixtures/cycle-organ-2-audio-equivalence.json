@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/organ-2.cyclegraph",
-        "sha256": "4086b0b3f4a857816865c1a9e4afa4ec6b2afde040bd32445464d74829ef39c9",
+        "sha256": "161a34354bad2290c337a4d43e96c58e1989a6b0658acc6584bbb0e89cba54d2",
         "renderOverrides": {
             "voiceDurationSeconds": 1.2669864718837067
         }
