@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graph/GraphAudioScope.h"
 #include "Graph/GraphDomainResolver.h"
 #include "Graph/NodeGraph.h"
 
@@ -18,7 +19,14 @@ enum class GraphValidationCode {
     InvalidAttachmentDestination,
     ScratchPortRequiresAttachment,
     PitchRequiresVoiceAwareDestination,
-    MixedOperationDomains
+    MixedOperationDomains,
+    MissingRequiredNode,
+    DuplicateSingletonNode,
+    ProcessingScopeMismatch,
+    ConflictingProcessingScope,
+    GlobalNodeUnreachable,
+    GlobalNodeCannotReachOutput,
+    AmbiguousVoiceOutput
 };
 
 struct GraphValidationIssue {
@@ -45,11 +53,16 @@ private:
             const NodeGraph& graph,
             const Edge& edge,
             PortDomain resolvedDomain,
+            const GraphAudioScopeAnalysis* scopeAnalysis,
             EdgeIssueReporter& reporter) const;
     bool isVoiceAwareDestination(const Port& port) const;
     void validateOperationInputs(
             const NodeGraph& graph,
             const GraphDomainResolution& resolution,
+            std::vector<GraphValidationIssue>& issues) const;
+    void validateAudioScopes(
+            const NodeGraph& graph,
+            const GraphAudioScopeAnalysis& analysis,
             std::vector<GraphValidationIssue>& issues) const;
     bool domainsCompatible(const Port& source, const Port& dest) const;
     bool channelLayoutsCompatible(const Port& source, const Port& dest) const;

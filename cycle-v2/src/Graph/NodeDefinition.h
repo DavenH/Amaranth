@@ -129,7 +129,8 @@ enum class AudioProcessingScope {
 enum class AudioProcessingCapability {
     VoiceOnly,
     GlobalOnly,
-    Selectable
+    Selectable,
+    DomainNeutral
 };
 
 struct NodeDefinition {

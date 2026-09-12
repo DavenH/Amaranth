@@ -2,9 +2,11 @@
 
 ## Status
 
-In progress on 2026-09-12. The authored node/capability schema and required
-singleton edit boundaries are implemented. Compiler partitions, runtime binding,
-editor selectors, presentation, migration/layout, and preset conversion remain.
+In progress on 2026-09-12. The authored node/capability schema, required
+singleton edit boundaries, explicit scope validation/partitioning, and Global
+Input runtime binding are implemented. The legacy compiler path remains only
+until migration lands. Editor selectors, presentation, migration/layout, and
+preset conversion remain.
 
 Proposed on 2026-09-11. This TDD supersedes the temporary per-node `VOICE` and
 `GLOBAL` text badges added during Cycle 1 audio-parity work. It does not change

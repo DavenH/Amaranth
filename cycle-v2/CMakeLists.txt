@@ -55,7 +55,7 @@ generate_svg_data(
     genericProcessor voiceContext scratchDefaultOverride waveSource imageSource trilinearMesh
     modulationSource modulationTriple
     fft ifft envelope add multiply guideCurve impulseResponse waveshaper
-    spectralLayer unison reverb delay equalizer stereoSplit stereoJoin output
+    spectralLayer unison reverb delay equalizer stereoSplit stereoJoin globalInput output
 )
 
 generate_svg_data(
@@ -99,6 +99,8 @@ list(APPEND APP_SOURCES
 list(REMOVE_DUPLICATES APP_SOURCES)
 
 set(GRAPH_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScope.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScopeCompiler.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDelta.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/SharedAudioSamples.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeDefinition.cpp"

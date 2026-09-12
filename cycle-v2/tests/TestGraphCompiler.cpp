@@ -998,3 +998,52 @@ TEST_CASE("Compiler keeps processing global downstream of the first global effec
     REQUIRE(result.plan.voiceMixBufferIndices.front()
             == findStep(result.plan, "wave").outputs.front().bufferIndex);
 }
+
+TEST_CASE("Compiler derives runtime ownership from the authored global graph",
+        "[cycle-v2][graph][audio-scope]") {
+    GraphNodeFactory factory;
+    GraphEditor editor;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::GenericProcessor, "voiceTerminal", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "boundary", {}));
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shaper", {}));
+    graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    REQUIRE(editor.setNodeParameter(
+            graph,
+            "shaper",
+            "processingScope",
+            "Processing",
+            "global").succeeded());
+    graph.addEdge({
+            "boundary", "time", "shaper", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "shaper", "time", "delay", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "delay", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(findStep(result.plan, "voiceTerminal").ownershipScope
+            == RuntimeOwnershipScope::SynthVoice);
+    REQUIRE(findStep(result.plan, "boundary").ownershipScope
+            == RuntimeOwnershipScope::Global);
+    REQUIRE(findStep(result.plan, "shaper").ownershipScope
+            == RuntimeOwnershipScope::Global);
+    REQUIRE(findStep(result.plan, "delay").ownershipScope
+            == RuntimeOwnershipScope::Global);
+    REQUIRE(findStep(result.plan, "out").ownershipScope
+            == RuntimeOwnershipScope::Global);
+    REQUIRE(result.plan.voiceMixBufferIndices.size() == 1);
+    REQUIRE(result.plan.voiceMixBufferIndices.front()
+            == findStep(result.plan, "voiceTerminal").outputs.front().bufferIndex);
+    REQUIRE(result.plan.globalInputBufferIndex
+            == findStep(result.plan, "boundary").outputs.front().bufferIndex);
+}

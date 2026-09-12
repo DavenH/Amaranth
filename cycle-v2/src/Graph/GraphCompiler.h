@@ -185,6 +185,7 @@ struct GraphExecutionPlan {
     std::vector<OscillatorRegionPlan> oscillatorRegions;
     std::vector<CompiledSignalProbe> signalProbes;
     std::vector<int> voiceMixBufferIndices;
+    int globalInputBufferIndex { -1 };
     GraphDependencyIndex dependencyIndex;
 };
 

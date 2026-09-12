@@ -705,3 +705,129 @@ TEST_CASE("Edge queries use the authoritative bulk validation rules", "[cycle-v2
 
     REQUIRE(issueCount == 2);
 }
+
+TEST_CASE("Explicit global audio graph accepts zero or one voice terminal",
+        "[cycle-v2][graph][audio-scope]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "globalIn", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+
+    REQUIRE(GraphValidator().isValid(graph));
+
+    graph.addNode(factory.createNode(NodeKind::GenericProcessor, "voiceTerminal", {}));
+    REQUIRE(GraphValidator().isValid(graph));
+
+    graph.addNode(factory.createNode(NodeKind::GenericProcessor, "otherTerminal", {}));
+    const auto issues = GraphValidator().validate(graph);
+    REQUIRE(std::any_of(
+            issues.begin(),
+            issues.end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::AmbiguousVoiceOutput;
+            }));
+}
+
+TEST_CASE("Explicit global audio graph rejects cross-scope signal edges",
+        "[cycle-v2][graph][audio-scope]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shaper", {}));
+    graph.addEdge({
+            "globalIn", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    const Edge voiceToGlobal {
+            "wave", "out", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    };
+    const Edge globalToVoice {
+            "globalIn", "time", "shaper", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    };
+    graph.addEdge(voiceToGlobal);
+    graph.addEdge(globalToVoice);
+
+    const auto issues = GraphValidator().validate(graph);
+    REQUIRE(std::any_of(
+            issues.begin(),
+            issues.end(),
+            [&](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::ProcessingScopeMismatch
+                        && addressesEdge(issue, voiceToGlobal);
+            }));
+    REQUIRE(std::any_of(
+            issues.begin(),
+            issues.end(),
+            [&](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::ProcessingScopeMismatch
+                        && addressesEdge(issue, globalToVoice);
+            }));
+}
+
+TEST_CASE("Neutral routing cannot participate in both audio partitions",
+        "[cycle-v2][graph][audio-scope]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
+    graph.addNode(factory.createNode(NodeKind::GenericProcessor, "route", {}));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "globalIn", "time", "route", "in",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "wave", "out", "route", "in",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "route", "out", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+
+    const auto issues = GraphValidator().validate(graph);
+    REQUIRE(std::any_of(
+            issues.begin(),
+            issues.end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::ConflictingProcessingScope
+                        && issue.message.contains("route");
+            }));
+}
+
+TEST_CASE("Every explicit global node belongs to the Global Input to Output path",
+        "[cycle-v2][graph][audio-scope]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
+    graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "globalIn", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+
+    const auto issues = GraphValidator().validate(graph);
+    REQUIRE(std::any_of(
+            issues.begin(),
+            issues.end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::GlobalNodeUnreachable
+                        && issue.message.contains("delay");
+            }));
+    REQUIRE(std::any_of(
+            issues.begin(),
+            issues.end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::GlobalNodeCannotReachOutput
+                        && issue.message.contains("delay");
+            }));
+}

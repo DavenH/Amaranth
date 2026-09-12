@@ -1,5 +1,9 @@
 #include "Graph/GraphValidator.h"
 
+#include <optional>
+#include <unordered_map>
+#include <unordered_set>
+
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 
@@ -60,6 +64,56 @@ bool isValidScratchBindingDestination(
             || destNode.kind == NodeKind::TrilinearMesh;
 }
 
+bool hasNodeKind(const NodeGraph& graph, NodeKind kind) {
+    return std::any_of(
+            graph.getNodes().begin(),
+            graph.getNodes().end(),
+            [kind](const Node& node) { return node.kind == kind; });
+}
+
+using NodeIdSet = std::unordered_set<
+        String,
+        GraphAudioScopeAnalysis::StringHash>;
+using NodeAdjacency = std::unordered_map<
+        String,
+        std::vector<String>,
+        GraphAudioScopeAnalysis::StringHash>;
+
+NodeIdSet reachableGlobalNodes(
+        const NodeGraph& graph,
+        const GraphAudioScopeAnalysis& analysis,
+        const String& root,
+        bool reverse) {
+    NodeAdjacency adjacency;
+    for (const auto& edge : graph.getEdges()) {
+        if (!edge.isAttachment()) {
+            const String& from = reverse ? edge.destNodeId : edge.sourceNodeId;
+            const String& to = reverse ? edge.sourceNodeId : edge.destNodeId;
+            adjacency[from].push_back(to);
+        }
+    }
+    NodeIdSet reachable { root };
+    std::vector<String> pending { root };
+    for (size_t cursor = 0; cursor < pending.size(); ++cursor) {
+        const auto found = adjacency.find(pending[cursor]);
+        if (found == adjacency.end()) {
+            continue;
+        }
+        for (const auto& nodeId : found->second) {
+            if (analysis.scopeFor(nodeId) == AuthoredAudioScope::Global
+                    && reachable.insert(nodeId).second) {
+                pending.push_back(nodeId);
+            }
+        }
+    }
+    return reachable;
+}
+
+bool isLinkedStereoTimeOutput(const Port& port) {
+    return port.domain == PortDomain::TimeSignal
+            && port.channelLayout == ChannelLayout::LinkedStereo;
+}
+
 void addIssue(
         std::vector<GraphValidationIssue>& issues,
         GraphValidationCode code,
@@ -107,12 +161,17 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
     std::vector<GraphValidationIssue> issues;
     EdgeIssueReporter reporter(issues);
     const GraphDomainResolution resolution = domainResolver.resolve(graph);
+    const bool explicitAudioGraph = hasNodeKind(graph, NodeKind::GlobalInput);
+    const auto scopeAnalysis = explicitAudioGraph
+            ? std::optional<GraphAudioScopeAnalysis>(GraphAudioScopeAnalyzer().analyze(graph))
+            : std::nullopt;
 
     for (size_t edgeIndex = 0; edgeIndex < graph.getEdges().size(); ++edgeIndex) {
         validateEdge(
                 graph,
                 graph.getEdges()[edgeIndex],
                 resolution.domains[edgeIndex],
+                scopeAnalysis.has_value() ? &*scopeAnalysis : nullptr,
                 reporter);
     }
 
@@ -140,6 +199,9 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
     }
 
     validateOperationInputs(graph, resolution, issues);
+    if (scopeAnalysis.has_value()) {
+        validateAudioScopes(graph, *scopeAnalysis, issues);
+    }
 
     return issues;
 }
@@ -154,10 +216,14 @@ bool GraphValidator::edgeHasValidationIssue(const NodeGraph& graph, const Edge& 
 
 GraphValidationIssue GraphValidator::validationIssueForEdge(const NodeGraph& graph, const Edge& edge) const {
     EdgeIssueReporter reporter;
+    const auto analysis = hasNodeKind(graph, NodeKind::GlobalInput)
+            ? std::optional<GraphAudioScopeAnalysis>(GraphAudioScopeAnalyzer().analyze(graph))
+            : std::nullopt;
     validateEdge(
             graph,
             edge,
             domainResolver.resolvedDomainForEdge(graph, edge),
+            analysis.has_value() ? &*analysis : nullptr,
             reporter);
     return reporter.getFirstIssue();
 }
@@ -166,6 +232,7 @@ void GraphValidator::validateEdge(
         const NodeGraph& graph,
         const Edge& edge,
         PortDomain resolvedDomain,
+        const GraphAudioScopeAnalysis* scopeAnalysis,
         EdgeIssueReporter& reporter) const {
     auto report = [&edge, &reporter](GraphValidationCode code, String message) {
         return reporter.report({
@@ -204,6 +271,16 @@ void GraphValidator::validateEdge(
         report(
                 GraphValidationCode::MissingDestinationPort,
                 "Missing destination port: " + edge.destNodeId + "." + edge.destPortId);
+        return;
+    }
+
+    if (scopeAnalysis != nullptr
+            && scopeAnalysis->scopeFor(sourceNode->id)
+                    != scopeAnalysis->scopeFor(destNode->id)) {
+        report(
+                GraphValidationCode::ProcessingScopeMismatch,
+                "Processing scope mismatch: " + sourceNode->id + "." + source->id
+                        + " -> " + destNode->id + "." + dest->id);
         return;
     }
 
@@ -395,6 +472,104 @@ void GraphValidator::validateOperationInputs(
                 break;
             }
         }
+    }
+}
+
+void GraphValidator::validateAudioScopes(
+        const NodeGraph& graph,
+        const GraphAudioScopeAnalysis& analysis,
+        std::vector<GraphValidationIssue>& issues) const {
+    std::vector<String> globalInputIds;
+    std::vector<String> outputIds;
+    for (const auto& node : graph.getNodes()) {
+        if (node.kind == NodeKind::GlobalInput) {
+            globalInputIds.push_back(node.id);
+        } else if (node.kind == NodeKind::Output) {
+            outputIds.push_back(node.id);
+        }
+    }
+    if (globalInputIds.size() != 1) {
+        addIssue(
+                issues,
+                globalInputIds.empty()
+                        ? GraphValidationCode::MissingRequiredNode
+                        : GraphValidationCode::DuplicateSingletonNode,
+                "Audio graph requires exactly one Global Input");
+    }
+    if (outputIds.size() != 1) {
+        addIssue(
+                issues,
+                outputIds.empty()
+                        ? GraphValidationCode::MissingRequiredNode
+                        : GraphValidationCode::DuplicateSingletonNode,
+                "Audio graph requires exactly one Output");
+    }
+
+    for (const auto& nodeId : analysis.conflictingNeutralNodeIds) {
+        addIssue(
+                issues,
+                GraphValidationCode::ConflictingProcessingScope,
+                "Routing node participates in both voice and global graphs: " + nodeId);
+    }
+    if (globalInputIds.size() != 1 || outputIds.size() != 1) {
+        return;
+    }
+
+    const auto fromInput = reachableGlobalNodes(
+            graph,
+            analysis,
+            globalInputIds.front(),
+            false);
+    const auto toOutput = reachableGlobalNodes(
+            graph,
+            analysis,
+            outputIds.front(),
+            true);
+    for (const auto& node : graph.getNodes()) {
+        if (analysis.scopeFor(node.id) != AuthoredAudioScope::Global) {
+            continue;
+        }
+        if (fromInput.count(node.id) == 0) {
+            addIssue(
+                    issues,
+                    GraphValidationCode::GlobalNodeUnreachable,
+                    "Global node is not reachable from Global Input: " + node.id);
+        }
+        if (toOutput.count(node.id) == 0) {
+            addIssue(
+                    issues,
+                    GraphValidationCode::GlobalNodeCannotReachOutput,
+                    "Global node does not reach Output: " + node.id);
+        }
+    }
+
+    int terminalCount = 0;
+    for (const auto& node : graph.getNodes()) {
+        if (analysis.scopeFor(node.id) != AuthoredAudioScope::Voice) {
+            continue;
+        }
+        for (const auto& output : node.outputs) {
+            if (!isLinkedStereoTimeOutput(output)) {
+                continue;
+            }
+            const bool consumedInVoiceGraph = std::any_of(
+                    graph.getEdges().begin(),
+                    graph.getEdges().end(),
+                    [&](const Edge& edge) {
+                        return !edge.isAttachment()
+                                && edge.sourceNodeId == node.id
+                                && edge.sourcePortId == output.id
+                                && analysis.scopeFor(edge.destNodeId)
+                                        == AuthoredAudioScope::Voice;
+                    });
+            terminalCount += consumedInVoiceGraph ? 0 : 1;
+        }
+    }
+    if (terminalCount > 1) {
+        addIssue(
+                issues,
+                GraphValidationCode::AmbiguousVoiceOutput,
+                "Voice graph has more than one terminal linked-stereo time output");
     }
 }
 

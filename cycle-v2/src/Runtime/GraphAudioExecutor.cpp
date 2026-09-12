@@ -212,9 +212,9 @@ void GraphAudioExecutor::beginRealtimeVoiceMix(
         const GraphExecutionPlan& plan,
         size_t frameCount) const {
     jassert(frameCount <= voiceMixArena.frameCapacity);
-    for (const int bufferIndex : plan.voiceMixBufferIndices) {
+    const auto initializeMixBuffer = [&](int bufferIndex) {
         if (bufferIndex < 0 || (size_t) bufferIndex >= voiceMixSlots.size()) {
-            continue;
+            return;
         }
         const auto& buffer = plan.buffers[(size_t) bufferIndex];
         auto& payload = voiceMixSlots[(size_t) bufferIndex];
@@ -226,6 +226,13 @@ void GraphAudioExecutor::beginRealtimeVoiceMix(
         Buffer<float>(
                 payload.secondaryBlock.samples.data(),
                 (int) frameCount).zero();
+    };
+    if (plan.globalInputBufferIndex >= 0) {
+        initializeMixBuffer(plan.globalInputBufferIndex);
+        return;
+    }
+    for (const int bufferIndex : plan.voiceMixBufferIndices) {
+        initializeMixBuffer(bufferIndex);
     }
 }
 
@@ -772,14 +779,18 @@ void GraphAudioExecutor::prepareExecutionInternal(
 void GraphAudioExecutor::mixVoiceBoundary(
         const GraphExecutionPlan& plan,
         size_t frameCount) const {
-    for (const int bufferIndex : plan.voiceMixBufferIndices) {
-        if (bufferIndex < 0
-                || (size_t) bufferIndex >= bufferSlots.size()
-                || (size_t) bufferIndex >= voiceMixSlots.size()) {
+    for (const int sourceBufferIndex : plan.voiceMixBufferIndices) {
+        const int mixBufferIndex = plan.globalInputBufferIndex >= 0
+                ? plan.globalInputBufferIndex
+                : sourceBufferIndex;
+        if (sourceBufferIndex < 0
+                || mixBufferIndex < 0
+                || (size_t) sourceBufferIndex >= bufferSlots.size()
+                || (size_t) mixBufferIndex >= voiceMixSlots.size()) {
             continue;
         }
-        const auto& source = bufferSlots[(size_t) bufferIndex];
-        auto& mixed = voiceMixSlots[(size_t) bufferIndex];
+        const auto& source = bufferSlots[(size_t) sourceBufferIndex];
+        auto& mixed = voiceMixSlots[(size_t) mixBufferIndex];
         mixed.domain = source.domain;
         mixed.channelLayout = source.channelLayout;
         mixed.block.samples.resize(frameCount);
@@ -800,11 +811,11 @@ void GraphAudioExecutor::mixVoiceBoundary(
 void GraphAudioExecutor::loadMixedVoiceBoundary(
         const GraphExecutionPlan& plan,
         size_t frameCount) const {
-    for (const int bufferIndex : plan.voiceMixBufferIndices) {
+    const auto loadBuffer = [&](int bufferIndex) {
         if (bufferIndex < 0
                 || (size_t) bufferIndex >= bufferSlots.size()
                 || (size_t) bufferIndex >= voiceMixSlots.size()) {
-            continue;
+            return;
         }
         const auto& mixed = voiceMixSlots[(size_t) bufferIndex];
         auto& destination = bufferSlots[(size_t) bufferIndex];
@@ -826,6 +837,13 @@ void GraphAudioExecutor::loadMixedVoiceBoundary(
         } else {
             destination.secondaryBlock.samples.resize(0);
         }
+    };
+    if (plan.globalInputBufferIndex >= 0) {
+        loadBuffer(plan.globalInputBufferIndex);
+        return;
+    }
+    for (const int bufferIndex : plan.voiceMixBufferIndices) {
+        loadBuffer(bufferIndex);
     }
 }
 

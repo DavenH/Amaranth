@@ -214,6 +214,11 @@ public:
         return *this;
     }
 
+    DefinitionBuilder& domainNeutralProcessing() {
+        value.processingCapability = AudioProcessingCapability::DomainNeutral;
+        return *this;
+    }
+
     DefinitionBuilder& requiredSingleton() {
         value.requiredSingleton = true;
         value.removable = false;
@@ -316,6 +321,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { input("in", "In", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}, true))
                     .help("Processes the incoming signal.")
+                    .domainNeutralProcessing()
                     .runtime(AudioModuleRole::GenericProcessor, PreviewModuleRole::Generic)
                     .finish(),
             buildDefinition(definition("voiceContext", NodeKind::VoiceContext, "Voice Context", "waveform start", "voice", {
@@ -525,6 +531,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { input("left", "A", PortDomain::ControlSignal), input("right", "B", PortDomain::ControlSignal) },
                     { output("out", "Out", PortDomain::ControlSignal) }))
                     .help("Adds two signals together.")
+                    .domainNeutralProcessing()
                     .execution(NodeExecutionTrait::CoordinateTransform)
                     .runtime(AudioModuleRole::Add, PreviewModuleRole::None)
                     .presentation({ 58.f, 44.f }, { 150.f, 118.f })
@@ -533,6 +540,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { input("left", "A", PortDomain::ControlSignal), input("right", "B", PortDomain::ControlSignal) },
                     { output("out", "Out", PortDomain::ControlSignal) }))
                     .help("Multiplies two signals to shape one with the other.")
+                    .domainNeutralProcessing()
                     .execution(NodeExecutionTrait::CoordinateTransform)
                     .runtime(AudioModuleRole::Multiply, PreviewModuleRole::None)
                     .presentation({ 58.f, 44.f }, { 150.f, 118.f })
@@ -651,12 +659,14 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("left", "Left", PortDomain::TimeSignal, ChannelLayout::Left), output("right", "Right", PortDomain::TimeSignal, ChannelLayout::Right) }))
                     .help("Separates a stereo signal into left and right channels.")
+                    .domainNeutralProcessing()
                     .runtime(AudioModuleRole::StereoSplit, PreviewModuleRole::None)
                     .finish(),
             buildDefinition(definition("stereoJoin", NodeKind::StereoJoin, "Stereo Join", "L/R combine", "join",
                     { input("left", "Left", PortDomain::TimeSignal, ChannelLayout::Left), input("right", "Right", PortDomain::TimeSignal, ChannelLayout::Right) },
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }))
                     .help("Combines left and right channels into a stereo signal.")
+                    .domainNeutralProcessing()
                     .runtime(AudioModuleRole::StereoJoin, PreviewModuleRole::None)
                     .finish(),
             buildDefinition(definition("globalInput", NodeKind::GlobalInput, "Global Input", "voice mix", "globalIn", {},
