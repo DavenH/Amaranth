@@ -1,6 +1,6 @@
 {
     "schema": "cycle-v1-v2-audio-equivalence.v1",
-    "status": "verified",
+    "status": "diagnostic",
     "v1": {
         "factoryPreset": "Icycle",
         "sourceDocument": "cycle/content/presets/icycle.cyc",
@@ -34,7 +34,9 @@
         ],
         "determinism": "guide noise is disabled, Unison layout is deterministic, and offline parameter smoothing is settled before capture",
         "inputValidation": "regenerated from a direct Cycle 1 canonical file export while preserving Cycle V2 presentation and probes",
-        "knownRuntimeGaps": [],
+        "knownRuntimeGaps": [
+            "Cycle 1 full-effect output intermittently selects one of two floating-point payloads across fresh processes when the impulse response is enabled"
+        ],
         "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
     },
     "effectBindings": {

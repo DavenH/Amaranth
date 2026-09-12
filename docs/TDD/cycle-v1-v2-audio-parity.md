@@ -172,7 +172,7 @@ translation. The first broad candidates are:
 | Subbass | Time, magnitude, phase, volume/scratch envelopes | Port manifest was strict, but current notes 48–72 fail its old output thresholds; diagnostic only. |
 | guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Per-channel waveshaper and IR state now match Cycle 1 ownership. MIDI 36–72 meets the diagnostic audio thresholds; EQ and delay add no material gap. MIDI 36 still fails Cycle 1's raw repeat gate, so the fixture is not admitted. |
 | japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase. One corrected render repeated exactly, but a later run did not repeat in Cycle 1. Its large evolving mismatch remains diagnostic until that intermittent startup state is isolated. |
-| Icycle | Broad synthesis/effects plus six-voice Unison | Verified. Regenerated from a direct canonical export while retaining node layout, port presentation, and three authored probes. Its reverb is disabled; the corrected IR size is `0.26`. Prepared per-lane pitch playback, Cycle 1's render-boundary frame latch, and deterministic offline parameter settling bring the full MIDI 36–72 matrix to `0.98425–0.99997` correlation with exact repeatability in both engines. |
+| Icycle | Broad synthesis/effects plus six-voice Unison | Diagnostic. Regenerated from a direct canonical export while retaining node layout, port presentation, and three authored probes. Its reverb is disabled; the corrected IR size is `0.26`. Prepared per-lane pitch playback and Cycle 1's render-boundary frame latch bring the full MIDI 36–72 matrix to `0.98425–0.99997` correlation. Cycle 1's IR-enabled output intermittently selects one of two floating-point payloads across fresh processes, so the exact repeat prerequisite is not yet met. |
 | astral | Three magnitude layers, phase pan, volume/scratch envelopes, and delay | Regenerated from a fresh live export while retaining the existing Cycle V2 node presentation. The former hand-authored graph rendered effectively silent in the differential harness. At MIDI 48 the regenerated graph is zero-lag with `1.00000` correlation, `0.0011` gain-matched residual, and `0.35 dB` spectral RMSE. Cycle V2 repeats exactly; Cycle 1 does not, so the fixture remains diagnostic. |
 | accoustic | Broad graph including reverb | Current graph differs in morph/link state, envelope state, reverb size, and IR high-pass; do not use for DSP attribution yet. |
 | organ-2 | Spectral layers, envelopes, Unison, IR, delay, reverb | Regenerated from a fresh export while retaining presentation. Its oscillator-through-delay baseline is near-identical and global effect tails now outlive voices. The full Reverb output remains diagnostic. |
@@ -856,6 +856,26 @@ as the scratch envelope evolves.
     `/tmp/cycle-guitar-repeat-no-delay/comparison.json`,
     `/tmp/cycle-japan-drum-repeat-allocator/comparison.json`, and
     `/tmp/cycle-japan-drum-verified-allocator/comparison.json`.
+
+    Icycle exposes the same remaining boundary. A five-process effect ladder
+    repeats exactly with IR disabled and first becomes unstable when IR is
+    enabled. The shared static-kernel preparation retained the oversampler's
+    FIR delay from an earlier preparation; `rasterizeIrImpulse` now resets that
+    history and a shared-core regression proves that consecutive preparations
+    with one oversampler are byte-identical. This removes a real state leak and
+    improves the full MIDI 48 comparison to zero lag, `0.99996` correlation,
+    `0.0084` residual, and `0.15 dB` spectral RMSE. It does not eliminate the
+    older process-level Cycle 1 variability: four of five plain captures can
+    share one payload while the fifth selects a second payload, differing from
+    frame 2 by floating-point-scale values. With stage capture enabled, all
+    five renders repeat exactly and every oscillator boundary matches. An
+    attempted extra offline IR settlement did not change the result and was
+    removed. Icycle therefore returns to diagnostic status without weakening
+    the exact gate. Artifacts:
+    `/private/tmp/cycle-icycle-repeat-audit-dry/`,
+    `/private/tmp/cycle-icycle-repeat-audit-waveshaper-ir/`,
+    `/private/tmp/cycle-icycle-ir-reset-repeat/`, and
+    `/private/tmp/cycle-icycle-ir-reset-stages/`.
 52. Preserve real linked-stereo payloads through global Delay. Complete:
     real compiled time-signal ports use `ChannelLayout::LinkedStereo`, while
     the runtime payload predicate recognizes only `StereoPair`. The prior Delay
