@@ -129,3 +129,33 @@ Context:
 Current status: open as broader native-fixture stability work; investigate the
 delete targeting and graph-state polling independently of Trimesh drag pointer
 lifetime.
+
+## P2: Broad Waveshaper native sequence can drag the wrong vertex
+
+Context:
+
+- A focused run on 2026-09-11 inserted a Waveshaper vertex, then attempted to
+  drag that exact intercept. The inserted vertex remained unchanged while the
+  panel's current vertex moved to the requested destination.
+- The failure occurs before the curve-reshape portion of the sequence and is
+  independent of curve-pole or hidden-axis gesture scaling.
+- The latest shared launch log is
+  `/private/var/folders/zx/hdzf3v1s6vvdz7chbz40bbtc0000gn/T/cycle-v2-native-edit-smoke.log`.
+
+Current status: open; make the fixture assert the hovered vertex identity before
+mouse-down and investigate why the new intercept is not the drag target.
+
+## P2: Envelope release native edit does not restore exact mesh on undo
+
+Context:
+
+- After native automation was corrected to target the exact launched process,
+  the focused `envelope-release` sequence edited the release region but its
+  final undo did not restore the initial serialized mesh exactly.
+- The failure occurred after the hover-entry assertion passed and is independent
+  of the Trimesh hover-proximity correction.
+- The latest shared launch log is
+  `/private/var/folders/zx/hdzf3v1s6vvdz7chbz40bbtc0000gn/T/cycle-v2-native-edit-smoke.log`.
+
+Current status: open; compare the forward/inverse Envelope vertex delta after a
+real routed release drag without folding that investigation into hover behavior.

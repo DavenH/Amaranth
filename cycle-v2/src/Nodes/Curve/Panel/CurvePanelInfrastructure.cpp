@@ -8,6 +8,8 @@
 #include <UI/Panels/PanelInputHostComponent.h>
 #include <UI/Panels/ScopedGLScissor.h>
 
+#include "UI/NativeCursorRefresh.h"
+
 using namespace gl;
 
 namespace CycleV2 {
@@ -122,6 +124,7 @@ public:
 
 private:
     void pointerGestureBegan() override {
+        publishedDuringGesture = false;
         delegate.beginEdit();
     }
 
@@ -129,12 +132,31 @@ private:
         return event.mods.isLeftButtonDown();
     }
 
+    void pointerGesturePressed() override {
+        Interactor* interactor = panelInteractor();
+        if (interactor != nullptr
+                && interactor->state.flags[PanelState::DidIncrementalMeshChange]) {
+            delegate.publishIntermediateRevision();
+            publishedDuringGesture = true;
+        }
+    }
+
     void pointerGestureUpdated() override {
-        delegate.publishIntermediateRevision();
+        Interactor* interactor = panelInteractor();
+        if (interactor != nullptr
+                && interactor->state.flags[PanelState::DidIncrementalMeshChange]) {
+            delegate.publishIntermediateRevision();
+            publishedDuringGesture = true;
+        }
     }
 
     void pointerGestureEnded() override {
-        delegate.publishIntermediateRevision();
+        Interactor* interactor = panelInteractor();
+        if (!publishedDuringGesture
+                && interactor != nullptr
+                && interactor->state.flags[PanelState::DidMeshChange]) {
+            delegate.publishIntermediateRevision();
+        }
         delegate.commitEdit();
     }
 
@@ -152,6 +174,7 @@ private:
 
     CurvePanelSnapshotCache& snapshot;
     CurvePanelHostDelegate& delegate;
+    bool publishedDuringGesture {};
 };
 
 CurvePanelHost::CurvePanelHost(
@@ -195,6 +218,7 @@ void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float sca
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     ScopedGLScissor scissor(bounds, scaleFactor);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     panel.render();
 
     Image nextImage;
@@ -262,6 +286,7 @@ bool CurvePanelHost::renderPreviewUncached(
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     ScopedGLScissor scissor(bounds, scaleFactor);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     panel.render();
     panel.getZoomPanel()->rect = interactiveZoom;
 
@@ -402,13 +427,23 @@ PanelHostCallbacks CurvePanelHost::callbacks() const {
     result.setCursorCallback([this](Panel*, const MouseCursor& cursor) {
         if (hostComponent != nullptr) {
             hostComponent->setMouseCursor(cursor);
+            showNativeCursorForPanel(*hostComponent, cursor);
         }
+        delegate.setCurvePanelCursor(cursor);
     });
     return result;
 }
 
 void CurvePanelHost::requestPanelInvalidation(PanelDirtyState::Flag flag) {
     ++previewInvalidationGeneration;
+    MessageManager* messageManager = MessageManager::getInstanceWithoutCreating();
+    if (flag == PanelDirtyState::Flag::Overlay
+            && messageManager != nullptr
+            && messageManager->isThisTheMessageThread()) {
+        delegate.repaintCurvePanel();
+        return;
+    }
+
     uint32_t categories = CurvePanelInvalidation::Owner;
     if (flag == PanelDirtyState::Flag::StaticVisual
             || flag == PanelDirtyState::Flag::SurfaceCache

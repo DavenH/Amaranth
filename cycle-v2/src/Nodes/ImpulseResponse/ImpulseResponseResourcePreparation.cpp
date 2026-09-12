@@ -111,7 +111,7 @@ Result ImpulseResponseResourcePreparation::prepare(
     });
     edit.expectedModelRevision = node.model != nullptr ? node.model->revision() : 0;
     if (mode == ImpulseResponseImportMode::Modelled) {
-        edit.model = buildModelledCurve(edit.resource.samples, impulseLength, node);
+        edit.model = buildModelledCurve(edit.resource.samples.vector(), impulseLength, node);
         if (edit.model == nullptr) {
             return Result::fail("The impulse could not be converted to an editable curve.");
         }

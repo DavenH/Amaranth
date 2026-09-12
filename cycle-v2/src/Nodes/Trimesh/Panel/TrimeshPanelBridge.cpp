@@ -128,8 +128,8 @@ void TrimeshPanelBridge::syncFromNode(
     const NodeParameterMap parameters(node);
     environment.setAxisLinks(
             parameters.boolValue("link.yellow", true),
-            parameters.boolValue("link.red", false),
-            parameters.boolValue("link.blue", false));
+            parameters.boolValue("link.red", true),
+            parameters.boolValue("link.blue", true));
     const bool spectral = renderProfile.getDomain() == PortDomain::SpectralMagnitudeSignal
             || renderProfile.getDomain() == PortDomain::SpectralPhaseSignal;
 

@@ -15,6 +15,7 @@ protected:
     virtual bool acceptsPointerDown(const juce::MouseEvent& event) const;
     virtual bool acceptsDoubleClick(const juce::MouseEvent& event) const;
     virtual void pointerGestureBegan() {}
+    virtual void pointerGesturePressed() {}
     virtual void pointerGestureUpdated() {}
     virtual void pointerGestureEnded() {}
     virtual bool deleteKeyPressed() { return false; }

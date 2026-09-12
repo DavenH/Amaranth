@@ -253,6 +253,12 @@ private:
         }
     }
 
+    void setCurvePanelCursor(const MouseCursor& cursor) override {
+        if (controllerDelegate != nullptr) {
+            controllerDelegate->setCurvePanelCursor(cursor);
+        }
+    }
+
     CurvePanelControllerDelegate* controllerDelegate {};
     bool editChanged {};
 };

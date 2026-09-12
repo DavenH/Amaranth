@@ -4,6 +4,7 @@ import json
 import math
 import os
 import socket
+import struct
 import subprocess
 import sys
 import tempfile
@@ -23,6 +24,26 @@ class NativeEditSmoke:
         self.socket_path = os.path.join(temporary, "cycle-v2-native-edit-smoke.sock")
         self.log_path = os.path.join(temporary, "cycle-v2-native-edit-smoke.log")
         self.request_id = 0
+        self.app_pid = None
+        self.render_capture_dir = tempfile.mkdtemp(prefix="cycle-v2-hover-render-")
+
+    @staticmethod
+    def app_pids():
+        result = subprocess.run(
+            ["ps", "-axo", "pid=,command="],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        matching = set()
+        for line in result.stdout.splitlines():
+            fields = line.strip().split(None, 1)
+            if len(fields) != 2:
+                continue
+            pid, command = fields
+            if command == APP_EXECUTABLE or command.startswith(APP_EXECUTABLE + " "):
+                matching.add(int(pid))
+        return matching
 
     def start(self):
         pointer_probe = subprocess.run(
@@ -37,6 +58,7 @@ class NativeEditSmoke:
                 "CycleV2 native edit smoke requires Accessibility permission for cliclick"
             )
 
+        existing_pids = self.app_pids()
         environment = os.environ.copy()
         environment["CYCLE_APP_PATH"] = APP
         environment["CYCLE_PROCESS_NAME"] = "CycleV2"
@@ -47,8 +69,13 @@ class NativeEditSmoke:
             check=True,
             stdout=subprocess.DEVNULL,
         )
-        subprocess.run(["open", "-a", APP], check=True)
-        time.sleep(0.1)
+        launched_pids = self.app_pids() - existing_pids
+        if len(launched_pids) != 1:
+            raise AssertionError(
+                f"Expected one newly launched CycleV2 process, found {sorted(launched_pids)}"
+            )
+        self.app_pid = launched_pids.pop()
+        self.focus_app()
 
     def stop(self):
         try:
@@ -57,12 +84,7 @@ class NativeEditSmoke:
             pass
         deadline = time.monotonic() + 2.0
         while time.monotonic() < deadline:
-            result = subprocess.run(
-                ["pgrep", "-f", f"^{APP_EXECUTABLE}$"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            if result.returncode != 0:
+            if self.app_pid not in self.app_pids():
                 return
             time.sleep(0.02)
         raise AssertionError("CycleV2 did not exit after native edit smoke")
@@ -81,9 +103,23 @@ class NativeEditSmoke:
             raise AssertionError(decoded)
         return decoded["result"].get("data", {})
 
-    @staticmethod
-    def focus_app():
-        subprocess.run(["open", "-a", APP], check=True)
+    def focus_app(self):
+        if self.app_pid is None:
+            raise AssertionError("CycleV2 process identity is unavailable")
+        script = (
+            'tell application "System Events"\n'
+            f'  set targetProcess to first process whose unix id is {self.app_pid}\n'
+            '  set frontmost of targetProcess to true\n'
+            '  return frontmost of targetProcess\n'
+            'end tell'
+        )
+        result = subprocess.run(
+            ["osascript", "-e", script],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        assert result.stdout.strip() == "true", result.stdout
         time.sleep(0.03)
 
     def click(self, *commands):
@@ -107,8 +143,26 @@ class NativeEditSmoke:
         subprocess.run([CLICK, "-w", "20", f"du:{point[0]},{point[1]}"], check=True)
         time.sleep(SETTLE_SECONDS)
 
+    def double_click(self, point):
+        self.focus_app()
+        subprocess.run([
+            CLICK,
+            "-w",
+            "20",
+            f"m:{point[0] + 2},{point[1]}",
+            f"m:{point[0]},{point[1]}",
+            f"c:{point[0]},{point[1]}",
+            "w:40",
+            f"c:{point[0]},{point[1]}",
+        ], check=True)
+        time.sleep(SETTLE_SECONDS)
+
     def move_pointer(self, point):
         self.focus_app()
+        self.move_pointer_in_focused_app(point)
+
+    @staticmethod
+    def move_pointer_in_focused_app(point):
         subprocess.run([
             CLICK,
             "-w",
@@ -221,6 +275,158 @@ class NativeEditSmoke:
         subprocess.run([
             "screencapture", "-C", "-x", f"-R{region}", os.path.join(directory, f"{name}.png")
         ], check=True)
+
+    def capture_bitmap(self, name, bounds, include_cursor=True):
+        directory = os.environ.get(
+            "CYCLE_V2_NATIVE_CAPTURE_DIR",
+            self.render_capture_dir,
+        )
+        os.makedirs(directory, exist_ok=True)
+        region = "{x},{y},{width},{height}".format(**{
+            key: round(bounds[key]) for key in ("x", "y", "width", "height")
+        })
+        path = os.path.join(directory, f"{name}.bmp")
+        command = ["screencapture"]
+        if include_cursor:
+            command.append("-C")
+        command.extend(["-x", "-t", "bmp", f"-R{region}", path])
+        subprocess.run(command, check=True)
+        return path
+
+    @staticmethod
+    def bitmap(path):
+        with open(path, "rb") as source:
+            data = source.read()
+        pixel_offset = struct.unpack_from("<I", data, 10)[0]
+        width, signed_height = struct.unpack_from("<ii", data, 18)
+        bits_per_pixel = struct.unpack_from("<H", data, 28)[0]
+        assert bits_per_pixel in (24, 32), (path, bits_per_pixel)
+        height = abs(signed_height)
+        row_stride = ((width * bits_per_pixel + 31) // 32) * 4
+        return (
+            data,
+            pixel_offset,
+            width,
+            height,
+            signed_height,
+            row_stride,
+            bits_per_pixel // 8,
+        )
+
+    @staticmethod
+    def changed_pixels_outside_pointer(
+            before,
+            after,
+            pointer_x,
+            pointer_y,
+            mask_radius):
+        data, pixel_offset, width, height, signed_height, row_stride, pixel_size = before
+        changed_pixels = 0
+        for y in range(height):
+            source_y = y if signed_height < 0 else height - 1 - y
+            row_offset = pixel_offset + source_y * row_stride
+            for x in range(width):
+                if (x - pointer_x) ** 2 + (y - pointer_y) ** 2 <= mask_radius ** 2:
+                    continue
+                offset = row_offset + x * pixel_size
+                if max(abs(data[offset + channel] - after[0][offset + channel])
+                       for channel in range(3)) >= 12:
+                    changed_pixels += 1
+        return changed_pixels
+
+    @classmethod
+    def assert_render_changed_outside_pointer(
+            cls,
+            before_path,
+            after_path,
+            panel,
+            pointer):
+        before = cls.bitmap(before_path)
+        after = cls.bitmap(after_path)
+        assert before[2:] == after[2:], (before_path, after_path, before[2:], after[2:])
+        _, _, width, height, _, _, _ = before
+        pointer_x = round((pointer[0] - panel["x"]) * width / panel["width"])
+        pointer_y = round((pointer[1] - panel["y"]) * height / panel["height"])
+        mask_radius = round(72 * width / panel["width"])
+        changed_pixels = cls.changed_pixels_outside_pointer(
+            before,
+            after,
+            pointer_x,
+            pointer_y,
+            mask_radius,
+        )
+
+        minimum_changed_pixels = max(200, width // 4)
+        assert changed_pixels >= minimum_changed_pixels, {
+            "before": before_path,
+            "after": after_path,
+            "changedPixels": changed_pixels,
+            "minimumChangedPixels": minimum_changed_pixels,
+        }
+
+    @classmethod
+    def cursor_signature(cls, cursor_path, clean_path, panel, pointer):
+        cursor = cls.bitmap(cursor_path)
+        clean = cls.bitmap(clean_path)
+        assert cursor[2:] == clean[2:], (cursor_path, clean_path)
+        _, _, width, height, signed_height, row_stride, pixel_size = cursor
+        pointer_x = round((pointer[0] - panel["x"]) * width / panel["width"])
+        pointer_y = round((pointer[1] - panel["y"]) * height / panel["height"])
+        radius = round(28 * width / panel["width"])
+        signature = set()
+        for y in range(max(0, pointer_y - radius), min(height, pointer_y + radius + 1)):
+            source_y = y if signed_height < 0 else height - 1 - y
+            row_offset = cursor[1] + source_y * row_stride
+            for x in range(max(0, pointer_x - radius), min(width, pointer_x + radius + 1)):
+                offset = row_offset + x * pixel_size
+                if max(abs(cursor[0][offset + channel] - clean[0][offset + channel])
+                       for channel in range(3)) >= 12:
+                    signature.add((x - pointer_x, y - pointer_y))
+        assert len(signature) >= 20, (cursor_path, len(signature))
+        return signature
+
+    @classmethod
+    def assert_vertical_resize_cursor(cls, cursor_path, clean_path, panel, pointer):
+        signature = cls.cursor_signature(cursor_path, clean_path, panel, pointer)
+        xs = [point[0] for point in signature]
+        ys = [point[1] for point in signature]
+        width = max(xs) - min(xs) + 1
+        height = max(ys) - min(ys) + 1
+        vertical_core = {
+            y for x, y in signature
+            if -2 <= x <= 2
+        }
+        assert (min(xs) <= -8
+                and max(xs) >= 8
+                and min(ys) <= -8
+                and max(ys) >= 8
+                and height >= 30
+                and len(vertical_core) >= 20), {
+            "cursor": cursor_path,
+            "cursorWidth": width,
+            "cursorHeight": height,
+            "verticalCoreHeight": len(vertical_core),
+            "cursorBounds": (min(xs), max(xs), min(ys), max(ys)),
+        }
+
+    @classmethod
+    def assert_centered_cross_cursor(cls, cursor_path, clean_path, panel, pointer):
+        signature = cls.cursor_signature(cursor_path, clean_path, panel, pointer)
+        xs = [point[0] for point in signature]
+        ys = [point[1] for point in signature]
+        width = max(xs) - min(xs) + 1
+        height = max(ys) - min(ys) + 1
+        assert (min(xs) <= -4
+                and max(xs) >= 4
+                and min(ys) <= -4
+                and max(ys) >= 4
+                and width * 3 >= height * 2
+                and height * 3 >= width * 2), {
+            "cursor": cursor_path,
+            "cursorWidth": width,
+            "cursorHeight": height,
+            "cursorBounds": (min(xs), max(xs), min(ys), max(ys)),
+        }
 
     def open_editor(self, node_id, trimesh=False):
         command = "openMeshPopup" if trimesh else "openNodeEditor"
@@ -1135,6 +1341,253 @@ class NativeEditSmoke:
             "Envelope downstream output",
         )
 
+    def envelope_release_sequence(self):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(REPO, "cycle-v2", "resources", "with-spies.cyclegraph"),
+        })
+        time.sleep(SETTLE_SECONDS)
+        initial = self.open_editor("env")
+        panel = self.target("expanded:env.panel2D")
+        panel_state = initial["effect2D"]["panelState"]
+        zoom = panel_state["zoom"]
+
+        release_end = panel_state["intercepts"][-1]["x"]
+        release_points = [
+            point for point in panel_state["waveformPoints"]
+            if 1.02 < point["x"] < release_end - 0.02
+            and 0.05 < point["displayX"] < 0.95
+            and 0.05 < point["displayY"] < 0.95
+        ]
+        assert release_points, {"releaseEnd": release_end, "zoom": zoom}
+
+        intercept_positions = [
+            (
+                (intercept["x"] - zoom["x"]) / zoom["w"],
+                1.0 - (intercept["y"] - zoom["y"]) / zoom["h"],
+            )
+            for intercept in panel_state["intercepts"]
+        ]
+        release_points.sort(
+            key=lambda point: min(
+                (point["displayX"] - x) ** 2 + (point["displayY"] - y) ** 2
+                for x, y in intercept_positions
+            ),
+            reverse=True,
+        )
+
+        release_point = release_points[0]
+        source = self.point(panel, release_point["displayX"], release_point["displayY"])
+        self.move_pointer((1, 1))
+        self.capture("envelope-release-rest", panel)
+        self.move_pointer(source)
+        self.capture("envelope-release-hover-before-inspect", panel)
+        hover_deadline = time.monotonic() + 0.5
+        hovered = self.inspect("env")
+        while (not hovered["effect2D"]["panelState"]["curveHover"]
+                and time.monotonic() < hover_deadline):
+            time.sleep(0.01)
+            hovered = self.inspect("env")
+
+        hovered_panel = hovered["effect2D"]["panelState"]
+        assert hovered_panel["interactionXMaximum"] >= release_end
+        assert hovered_panel["curveHover"], {
+            "releasePoint": (release_point["x"], release_point["y"]),
+            "interactionXMaximum": hovered_panel["interactionXMaximum"],
+        }
+        self.capture("envelope-release-hover", panel)
+        self.move_pointer((1, 1))
+        away = self.inspect("env")["effect2D"]["panelState"]
+        assert not away["curveHover"], "release curve remained highlighted after pointer exit"
+        self.move_pointer(source)
+        hovered = self.inspect_until(
+            "env",
+            lambda state: state["effect2D"]["panelState"]["curveHover"],
+        )
+        hovered_panel = hovered["effect2D"]["panelState"]
+        assert hovered_panel["curveHover"], "release curve did not highlight after pointer re-entry"
+        control = hovered_panel.get("currentVertex")
+        assert control is not None, "release curve has no reshape control"
+
+        initial_revision = self.model_revision(hovered)
+        initial_mesh = hovered["model"]["state"]["mesh"]
+        control_display_y = 1.0 - (control["y"] - zoom["y"]) / zoom["h"]
+        destination = self.point(
+            panel,
+            release_point["displayX"],
+            release_point["displayY"]
+            + (control_display_y - release_point["displayY"]) * 0.6,
+        )
+
+        self.drag(source, destination, steps=4, step_wait_ms=6)
+        moved = self.inspect_until(
+            "env",
+            lambda state: self.model_revision(state) > initial_revision,
+        )
+        moved_control = moved["effect2D"]["panelState"].get("currentVertex")
+        assert moved_control is not None, "release reshape lost its control vertex"
+        assert abs(moved_control["curve"] - control["curve"]) > 0.01, (
+            control,
+            moved_control,
+        )
+        self.capture("envelope-release-edited", panel)
+
+        self.key_chord("z")
+        undone = self.inspect_until(
+            "env",
+            lambda state: state["model"]["state"]["mesh"] == initial_mesh,
+        )
+        assert undone["model"]["state"]["mesh"] == initial_mesh
+
+    def guide_preview_sequence(self):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(
+                REPO,
+                "cycle-v2",
+                "content",
+                "presets",
+                "solo-string-2.cyclegraph",
+            ),
+        })
+        time.sleep(SETTLE_SECONDS)
+        self.capture("guide-previews-distinct", self.target("guideShelf"))
+
+    def intercept_visual_sequence(self):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(REPO, "cycle-v2", "resources", "with-spies.cyclegraph"),
+        })
+        time.sleep(SETTLE_SECONDS)
+        self.open_editor("waveMesh", trimesh=True)
+        self.capture("intercepts-trimesh-editor", self.target("expanded:waveMesh"))
+        self.capture("intercepts-trimesh", self.target("expanded:waveMesh.panel2D"))
+        self.open_editor("waveshaper")
+        self.capture("intercepts-waveshaper", self.target("expanded:waveshaper.panel2D"))
+        self.open_editor("env")
+        self.capture("intercepts-envelope-editor", self.target("expanded:env"))
+        self.capture("intercepts-envelope", self.target("expanded:env.panel2D"))
+
+    def trimesh_hover_render_sequence(self):
+        graph_path = os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph")
+        with open(graph_path, encoding="utf-8") as source:
+            graph = json.load(source)
+        editor_cases = [
+            (node["id"], node["kind"])
+            for node in graph["nodes"]
+            if node["kind"] in {"trilinearMesh", "waveshaper", "impulseResponse"}
+        ]
+        assert editor_cases
+
+        self.command({
+            "command": "openGraph",
+            "path": graph_path,
+        })
+        time.sleep(SETTLE_SECONDS)
+
+        opening_positions = []
+        for node_id, kind in editor_cases:
+            node = self.target(f"node:{node_id}")
+            opening_point = self.point(node, 0.5, 0.5)
+            self.move_pointer(opening_point)
+            self.double_click(opening_point)
+            self.target(f"expanded:{node_id}")
+            panel = self.target(f"expanded:{node_id}.panel2D")
+            opening_positions.append({
+                "node": node_id,
+                "openedOver2DPanel": (
+                    panel["x"] <= opening_point[0] < panel["x"] + panel["width"]
+                    and panel["y"] <= opening_point[1] < panel["y"] + panel["height"]
+                ),
+            })
+
+            def is_curve_hovered(inspected):
+                if kind == "trilinearMesh":
+                    return inspected["trimesh"]["panelCurveHover"]
+                return inspected["effect2D"]["panelState"]["curveHover"]
+
+            state = self.inspect(node_id)
+            if kind == "trilinearMesh":
+                curve_candidates = [
+                    self.point(panel, point["x"], point["y"])
+                    for point in state["trimesh"]["panelDisplayedCurvePoints"]
+                ]
+            else:
+                panel_state = state["effect2D"]["panelState"]
+                zoom = panel_state["zoom"]
+                curve_candidates = [
+                    self.point(
+                        panel,
+                        (point["x"] - zoom["x"]) / zoom["w"],
+                        1.0 - (point["y"] - zoom["y"]) / zoom["h"],
+                    )
+                    for point in panel_state["waveformPoints"][::8]
+                    if (zoom["x"] < point["x"] < zoom["x"] + zoom["w"]
+                            and zoom["y"] < point["y"] < zoom["y"] + zoom["h"])
+                ]
+            panel_centre = self.point(panel, 0.5, 0.5)
+            curve_candidates.sort(key=lambda point: (
+                (point[0] - panel_centre[0]) ** 2
+                + (point[1] - panel_centre[1]) ** 2
+            ))
+
+            curve_source = None
+            for candidate in curve_candidates:
+                self.move_pointer_in_focused_app(candidate)
+                hovered = self.inspect_until(node_id, is_curve_hovered)
+                if is_curve_hovered(hovered):
+                    curve_source = candidate
+                    break
+            assert curve_source is not None, (node_id, kind, state)
+
+            outside_curve = None
+            for offset in (-60, 60, -90, 90):
+                candidate = (curve_source[0], curve_source[1] + offset)
+                if not (panel["y"] < candidate[1] < panel["y"] + panel["height"]):
+                    continue
+                self.move_pointer_in_focused_app(candidate)
+                away = self.inspect_until(
+                    node_id,
+                    lambda inspected: not is_curve_hovered(inspected),
+                )
+                if not is_curve_hovered(away):
+                    outside_curve = candidate
+                    break
+            assert outside_curve is not None, (node_id, panel)
+
+            self.move_pointer_in_focused_app(outside_curve)
+            self.command({"command": "requestCanvasOpenGLFrame"})
+            time.sleep(SETTLE_SECONDS)
+            resting_clean = self.capture_bitmap(
+                f"{node_id}-hover-rest-clean", panel, include_cursor=False
+            )
+            resting = self.capture_bitmap(f"{node_id}-hover-rest", panel)
+            self.assert_centered_cross_cursor(
+                resting, resting_clean, panel, outside_curve
+            )
+
+            self.move_pointer_in_focused_app(curve_source)
+            self.command({"command": "requestCanvasOpenGLFrame"})
+            time.sleep(SETTLE_SECONDS)
+            entered_clean = self.capture_bitmap(
+                f"{node_id}-hover-curve-clean", panel, include_cursor=False
+            )
+            entered = self.capture_bitmap(f"{node_id}-hover-curve", panel)
+            self.assert_vertical_resize_cursor(
+                entered, entered_clean, panel, curve_source
+            )
+            hovered = self.inspect_until(node_id, is_curve_hovered)
+            assert is_curve_hovered(hovered), (node_id, hovered)
+            self.assert_render_changed_outside_pointer(
+                resting_clean, entered_clean, panel, curve_source
+            )
+
+            close = self.target(f"expanded:{node_id}.close")
+            self.primary_click(self.point(close, 0.5, 0.5))
+
+        assert len(opening_positions) == len(editor_cases), opening_positions
+        print(json.dumps({"nativeCurveHoverOpenings": opening_positions}), flush=True)
+
     def trimesh_sequence(
             self,
             stop_after_versioning_check=False,
@@ -1158,9 +1611,27 @@ class NativeEditSmoke:
         )
         curve_source = self.point(panel, curve_point["x"], curve_point["y"])
         self.move_pointer((1, 1))
+        self.capture("trimesh-curve-rest", panel)
         self.move_pointer(curve_source)
-        curve_hover = self.inspect("waveMesh")
+        self.capture("trimesh-curve-hover-before-inspect", panel)
+        curve_hover = self.inspect_until(
+            "waveMesh",
+            lambda inspected: inspected["trimesh"]["panelCurveHover"],
+        )
         assert curve_hover["trimesh"]["panelCurveHover"], curve_hover["trimesh"]
+        self.capture("trimesh-curve-hover", panel)
+        self.move_pointer((1, 1))
+        curve_away = self.inspect_until(
+            "waveMesh",
+            lambda inspected: not inspected["trimesh"]["panelCurveHover"],
+        )
+        assert not curve_away["trimesh"]["panelCurveHover"]
+        self.move_pointer(curve_source)
+        curve_hover = self.inspect_until(
+            "waveMesh",
+            lambda inspected: inspected["trimesh"]["panelCurveHover"],
+        )
+        assert curve_hover["trimesh"]["panelCurveHover"]
         hovered_vertex_index = curve_hover["trimesh"]["panelHoveredVertexIndex"]
         assert hovered_vertex_index >= 0, curve_hover["trimesh"]
         self.cursor_until("upDownResize")
@@ -1738,8 +2209,12 @@ class NativeEditSmoke:
                 "authoring": self.graph_authoring_sequence,
                 "waveshaper": self.effect2d_sequence,
                 "envelope": self.envelope_sequence,
+                "envelope-release": self.envelope_release_sequence,
+                "guide-previews": self.guide_preview_sequence,
+                "intercept-visuals": self.intercept_visual_sequence,
                 "trimesh": self.trimesh_sequence,
                 "trimesh-curve-drag": lambda: self.trimesh_sequence(False, True),
+                "trimesh-hover-render": self.trimesh_hover_render_sequence,
                 "trimesh-point-drag": self.trimesh_point_drag_sequence,
                 "trimesh-versioning": lambda: self.trimesh_sequence(True),
                 "spectral-trimesh": self.spectral_trimesh_sequence,
@@ -1767,8 +2242,12 @@ if __name__ == "__main__":
         "authoring",
         "waveshaper",
         "envelope",
+        "envelope-release",
+        "guide-previews",
+        "intercept-visuals",
         "trimesh",
         "trimesh-curve-drag",
+        "trimesh-hover-render",
         "trimesh-point-drag",
         "trimesh-versioning",
         "spectral-trimesh",

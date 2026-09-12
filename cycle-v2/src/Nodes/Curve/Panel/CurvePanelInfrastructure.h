@@ -92,6 +92,7 @@ public:
     virtual void prepareCurvePanel() = 0;
     virtual void synchronizeCurvePanelSelection() = 0;
     virtual void repaintCurvePanel() = 0;
+    virtual void setCurvePanelCursor(const MouseCursor& cursor) = 0;
 };
 
 class CurvePanelHost : private RenderInvalidationTarget {

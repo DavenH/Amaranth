@@ -59,6 +59,7 @@ public:
     void render();
     void render(const PanelHostContext& context);
     void setCursor();
+    void setInterceptPointScale(float scale);
     void triggerZoom(bool in);
     void updateNameTexturePos();
     void updateVertexSizes();
@@ -231,6 +232,7 @@ protected:
     float maxWidth;
     float minorBrightness, majorBrightness;
     float bgPaddingLeft, bgPaddingRight, bgPaddingTop, bgPaddingBttm;
+    float interceptPointScale;
     float vertexBlackRadius, vertexWhiteRadius, vertexHighlightRadius, vertexSelectedRadius;
 
     double averageFrameTime;

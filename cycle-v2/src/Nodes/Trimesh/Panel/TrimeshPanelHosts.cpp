@@ -10,6 +10,8 @@
 #include <UI/Panels/PanelInputHostComponent.h>
 #include <UI/Panels/ScopedGLScissor.h>
 
+#include "UI/NativeCursorRefresh.h"
+
 namespace CycleV2 {
 
 namespace TrimeshPanelInvalidation {
@@ -100,10 +102,20 @@ PanelHostCallbacks TrimeshPanelHosts::createPanelHostCallbacks() {
     callbacks.setCursorCallback([this](Panel* panel, const MouseCursor& cursor) {
         if (panel == &panel3D && panel3DHost != nullptr) {
             panel3DHost->setMouseCursor(cursor);
+            showNativeCursorForPanel(*panel3DHost, cursor);
         }
 
         if (panel == &panel2D && panel2DHost != nullptr) {
             panel2DHost->setMouseCursor(cursor);
+            showNativeCursorForPanel(*panel2DHost, cursor);
+        }
+
+        if (delegate != nullptr && (panel == &panel2D || panel == &panel3D)) {
+            delegate->setTrimeshPanelCursor(
+                    panel == &panel2D
+                            ? TrimeshPanelHostKind::Panel2D
+                            : TrimeshPanelHostKind::Panel3D,
+                    cursor);
         }
     });
 
@@ -208,6 +220,16 @@ void TrimeshPanelHosts::renderPanel(
 void TrimeshPanelHosts::requestPanelInvalidation(
         Panel* sourcePanel,
         PanelDirtyState::Flag flag) {
+    MessageManager* messageManager = MessageManager::getInstanceWithoutCreating();
+    if (flag == PanelDirtyState::Flag::Overlay
+            && messageManager != nullptr
+            && messageManager->isThisTheMessageThread()) {
+        if (delegate != nullptr) {
+            delegate->requestTrimeshPanelRepaint();
+        }
+        return;
+    }
+
     uint32_t categories = TrimeshPanelInvalidation::Owner;
     const bool requiresBake = flag == PanelDirtyState::Flag::StaticVisual
             || flag == PanelDirtyState::Flag::SurfaceCache

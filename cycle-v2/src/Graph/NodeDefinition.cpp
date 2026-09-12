@@ -436,8 +436,8 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             choice("primaryAxis", "Primary Axis", "yellow", { "yellow", "red", "blue" }, preview | presentation),
                             boolean("link.yellow", "Link Yellow", true, presentation),
-                            boolean("link.red", "Link Red", false, presentation),
-                            boolean("link.blue", "Link Blue", false, presentation)
+                            boolean("link.red", "Link Red", true, presentation),
+                            boolean("link.blue", "Link Blue", true, presentation)
                     }))
                     .help("Shapes a sound by moving through a morphable mesh.")
                     .model(std::make_shared<TrimeshNodeModelCodec>())

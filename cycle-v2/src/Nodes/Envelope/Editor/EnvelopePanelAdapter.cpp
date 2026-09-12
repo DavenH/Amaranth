@@ -1,5 +1,7 @@
 #include "Nodes/Envelope/Editor/EnvelopePanelAdapter.h"
 
+#include "Graph/InteractionComplexityDiagnostics.h"
+
 #include "Nodes/Envelope/EnvelopeMeshState.h"
 
 #include <Curve/Mesh/VertCube.h>
@@ -11,9 +13,7 @@ namespace CycleV2 {
 
 EnvelopePanelAdapter::EnvelopePanelAdapter() = default;
 
-EnvelopePanelAdapter::~EnvelopePanelAdapter() {
-    syncedMesh.destroy();
-}
+EnvelopePanelAdapter::~EnvelopePanelAdapter() = default;
 
 bool EnvelopePanelAdapter::needsNodeSync(const Node& node) const {
     if (node.kind != NodeKind::Envelope) {
@@ -35,8 +35,6 @@ bool EnvelopePanelAdapter::syncFromNode(const Node& node) {
     syncedModel = node.model;
     model.selectCube((EnvelopeCubeId) (int64) node.editorState.getProperty("selectedCubeId", 0));
     model.setPublicationRevision(node.model->revision());
-    syncedMesh.deepCopy(&mesh());
-    hasSyncedMesh = true;
     return true;
 }
 
@@ -47,6 +45,7 @@ void EnvelopePanelAdapter::initialiseDefaultMesh() {
 }
 
 String EnvelopePanelAdapter::serializedMeshState() {
+    InteractionComplexityDiagnostics::recordModelSerialization();
     return EnvelopeMeshState::serialize(mesh());
 }
 
@@ -97,11 +96,6 @@ std::vector<CurvePreviewVertex> EnvelopePanelAdapter::previewVertices() {
 }
 
 bool EnvelopePanelAdapter::registerMeshEdit() {
-    if (hasSyncedMesh && mesh().equals(syncedMesh)) {
-        return false;
-    }
-    syncedMesh.deepCopy(&mesh());
-    hasSyncedMesh = true;
     return true;
 }
 

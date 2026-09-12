@@ -55,6 +55,7 @@ Panel::Panel(SingletonRepo* repo, const String& name, bool isTransparent) :
     ,   bgPaddingTop            (0.f)
     ,   bgPaddingBttm           (0.f)
 
+    ,   interceptPointScale     (1.f)
     ,   vertexWhiteRadius       (2.f)
     ,   vertexSelectedRadius    (3.f)
     ,   vertexBlackRadius       (5.f)
@@ -681,6 +682,16 @@ void Panel::updateVertexSizes() {
 
         scaleSize /= 2;
     }
+
+    vertexWhiteRadius *= interceptPointScale;
+    vertexSelectedRadius *= interceptPointScale;
+    vertexBlackRadius *= interceptPointScale;
+    vertexHighlightRadius *= interceptPointScale;
+}
+
+void Panel::setInterceptPointScale(float scale) {
+    interceptPointScale = jmax(0.1f, scale);
+    updateVertexSizes();
 }
 
 void Panel::drawScaledInterceptPoints(int size) {

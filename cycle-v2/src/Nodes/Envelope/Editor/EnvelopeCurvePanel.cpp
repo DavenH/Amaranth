@@ -13,6 +13,7 @@
 #include <Util/Arithmetic.h>
 
 #include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
+#include "UI/MeshEditorPresentation.h"
 
 #include <algorithm>
 #include <cmath>
@@ -63,6 +64,7 @@ public:
 
         colorA = Color(0.92f, 0.93f, 0.96f, 0.92f);
         colorB = Color(0.92f, 0.93f, 0.96f, 0.92f);
+        setInterceptPointScale(MeshEditorPresentation::interceptPointScale);
 
         envRasterizer.setDims(dims);
         envRasterizer.setMesh(&envelopeMesh);
@@ -84,6 +86,7 @@ public:
         vertexProps.dimensionNames.set(Vertex::Blue, {});
         vertexProps.dimensionNames.set(Vertex::Phase, "x");
         vertexProps.dimensionNames.set(Vertex::Amp, "y");
+        vertexLimits[Vertex::Phase] = Range<float>(0.f, 1.5f);
     }
 
     void init() override {
@@ -404,6 +407,7 @@ public:
             root->setProperty("verticalZoomHeight", zoomPanel->rect.h);
         }
         root->setProperty("curveHover", mouseFlag(WithinReshapeThresh));
+        root->setProperty("interactionXMaximum", vertexLimits[Vertex::Phase].getEnd());
         Array<var> vertexParameters;
         for (const auto& parameter : selectedVertexParameters()) {
             auto* encoded = new DynamicObject();
@@ -756,6 +760,7 @@ protected:
         zoomPanel->rect.xMaximum = maxX;
         zoomPanel->rect.yMinimum = 0.f;
         zoomPanel->rect.yMaximum = 1.f;
+        vertexLimits[Vertex::Phase].setEnd(maxX);
 
         if (resetView) {
             zoomPanel->rect.x = 0.f;
@@ -965,7 +970,7 @@ protected:
             sectionColours[1] = sectionColours[0];
         }
 
-        gfx->setCurrentLineWidth(interactor->mouseFlag(WithinReshapeThresh) ? 2.f : 1.f);
+        gfx->setCurrentLineWidth(curveLineWidth());
 
         int i = 0;
 

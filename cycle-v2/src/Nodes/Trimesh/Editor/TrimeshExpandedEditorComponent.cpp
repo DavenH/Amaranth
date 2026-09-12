@@ -299,6 +299,17 @@ void TrimeshExpandedEditorComponent::requestTrimeshPanelRepaint() {
     }
 }
 
+void TrimeshExpandedEditorComponent::setTrimeshPanelCursor(
+        TrimeshPanelHostKind host,
+        const MouseCursor& cursor) {
+    if (host == TrimeshPanelHostKind::Panel2D) {
+        panel2DCursor = cursor;
+    } else {
+        panel3DCursor = cursor;
+    }
+    setMouseCursor(cursor);
+}
+
 Rectangle<float> TrimeshExpandedEditorComponent::closeButtonBounds() const {
     return embeddedEditorHeaderLayout(getLocalBounds().toFloat(), true).close;
 }
@@ -318,7 +329,22 @@ MouseCursor TrimeshExpandedEditorComponent::cursorFor(Point<float> position) {
         return MouseCursor::PointingHandCursor;
     }
 
-    return controls.cursorFor(position);
+    MouseCursor controlsCursor = controls.cursorFor(position);
+    if (controlsCursor != MouseCursor::NormalCursor) {
+        return controlsCursor;
+    }
+
+    Component* panel2D = widget.getExpandedPanel2DComponentIfCreated();
+    if (panel2D != nullptr && panel2D->getBounds().contains(position.roundToInt())) {
+        return panel2DCursor;
+    }
+
+    Component* panel3D = widget.getExpandedPanel3DComponentIfCreated();
+    if (panel3D != nullptr && panel3D->getBounds().contains(position.roundToInt())) {
+        return panel3DCursor;
+    }
+
+    return MouseCursor::NormalCursor;
 }
 
 void TrimeshExpandedEditorComponent::updateCursor(Point<float> position) {

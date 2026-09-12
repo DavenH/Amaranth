@@ -50,6 +50,7 @@ void PanelInputHostComponent::mouseDown(const MouseEvent& event) {
     if (Interactor* interactor = panelInteractor()) {
         interactor->mouseDown(event);
     }
+    pointerGesturePressed();
 }
 
 void PanelInputHostComponent::mouseDoubleClick(const MouseEvent& event) {

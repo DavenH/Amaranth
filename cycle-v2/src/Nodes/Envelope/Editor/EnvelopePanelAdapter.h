@@ -39,8 +39,6 @@ private:
     EnvelopeNodeModel model;
     String syncedNodeId;
     NodeModelStatePtr syncedModel;
-    EnvelopeMesh syncedMesh { "CycleV2EnvelopePanelSyncedMesh" };
-    bool hasSyncedMesh {};
 };
 
 }

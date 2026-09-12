@@ -1,11 +1,10 @@
 #include "Graph/NodeGraph.h"
 
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/NodeParameterMap.h"
 
-#include "Graph/GraphNodeFactory.h"
 #include "Graph/NodeDefinition.h"
 
-#include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 
 #include <algorithm>
@@ -14,57 +13,6 @@
 namespace CycleV2 {
 
 namespace {
-
-Port input(
-        String id,
-        String label,
-        PortDomain domain,
-        ChannelLayout layout = ChannelLayout::Mono,
-        PortPurpose purpose = PortPurpose::Signal,
-        PortSide side = PortSide::Left,
-        ConnectionKind connectionKind = ConnectionKind::Signal,
-        AttachmentType attachmentType = AttachmentType::None,
-        DefaultModulationSlot defaultSlot = DefaultModulationSlot::None) {
-    return {
-            std::move(id), std::move(label), domain, layout, purpose, true, side,
-            purpose == PortPurpose::ScratchAttachment
-                    ? ConnectionKind::ProcessingAttachment
-                    : connectionKind,
-            purpose == PortPurpose::ScratchAttachment
-                    ? AttachmentType::ScratchEnvelope
-                    : attachmentType,
-            defaultSlot
-    };
-}
-
-Port output(
-        String id,
-        String label,
-        PortDomain domain,
-        ChannelLayout layout = ChannelLayout::Mono,
-        PortSide side = PortSide::Right) {
-    return { std::move(id), std::move(label), domain, layout, PortPurpose::Signal, false, side };
-}
-
-Node node(String id, NodeKind kind, String subtitle, Point<float> position,
-          std::vector<Port> inputs, std::vector<Port> outputs) {
-    Node result {
-        std::move(id),
-        kind,
-        std::move(subtitle),
-        { position.x, position.y, 0.f, 0.f },
-        {},
-        std::move(inputs),
-        std::move(outputs)
-    };
-    const auto* definition = NodeDefinitionRegistry::instance().find(kind);
-    if (definition != nullptr && definition->modelCodec != nullptr) {
-        result.model = definition->modelCodec->createDefault();
-    }
-    const auto naturalSize = naturalSizeForNode(result);
-    result.bounds.setSize(naturalSize.width, naturalSize.height);
-    return result;
-}
 
 template<typename Container, typename Predicate>
 void eraseIf(Container& container, Predicate predicate) {
@@ -83,6 +31,8 @@ void NodeGraph::addNode(Node nodeToAdd) {
         return;
     }
     nodes.push_back(std::move(nodeToAdd));
+    nodeIndex[nodes.back().id] = nodes.size() - 1;
+    rebuildParameterIndex(nodes.back().id);
     ++revision;
 }
 
@@ -135,16 +85,30 @@ bool NodeGraph::removeGuideCurve(const String& guideId) {
 
 const GuideCurveResource* NodeGraph::findGuideCurve(const String& guideId) const {
     const auto found = guideResourceIndex.find(guideId);
-    return found != guideResourceIndex.end() && found->second < guideCurves.size()
+    const GuideCurveResource* local = found != guideResourceIndex.end()
+                    && found->second < guideCurves.size()
             ? &guideCurves[found->second]
             : nullptr;
+    return local != nullptr || overlayBase == nullptr
+            ? local
+            : overlayBase->findGuideCurve(guideId);
 }
 
 GuideCurveResource* NodeGraph::findGuideCurveForEditing(const String& guideId) {
     const auto found = guideResourceIndex.find(guideId);
-    return found != guideResourceIndex.end() && found->second < guideCurves.size()
-            ? &guideCurves[found->second]
+    if (found != guideResourceIndex.end() && found->second < guideCurves.size()) {
+        return &guideCurves[found->second];
+    }
+    const GuideCurveResource* baseGuide = overlayBase != nullptr
+            ? overlayBase->findGuideCurve(guideId)
             : nullptr;
+    if (baseGuide == nullptr) {
+        return nullptr;
+    }
+
+    guideCurves.push_back(*baseGuide);
+    guideResourceIndex[guideId] = guideCurves.size() - 1;
+    return &guideCurves.back();
 }
 
 bool NodeGraph::replaceGuideCurve(GuideCurveResource resource) {
@@ -173,16 +137,23 @@ bool NodeGraph::addGuideHeatmap(GuideHeatmapAssetPtr asset) {
 
 const GuideHeatmapAsset* NodeGraph::findGuideHeatmap(const String& assetId) const {
     const auto found = guideHeatmapIndex.find(assetId);
-    return found != guideHeatmapIndex.end() && found->second < guideHeatmaps.size()
+    const GuideHeatmapAsset* local = found != guideHeatmapIndex.end()
+                    && found->second < guideHeatmaps.size()
             ? guideHeatmaps[found->second].get()
             : nullptr;
+    return local != nullptr || overlayBase == nullptr
+            ? local
+            : overlayBase->findGuideHeatmap(assetId);
 }
 
 GuideHeatmapAssetPtr NodeGraph::guideHeatmapAsset(const String& assetId) const {
     const auto found = guideHeatmapIndex.find(assetId);
-    return found != guideHeatmapIndex.end()
+    const GuideHeatmapAssetPtr local = found != guideHeatmapIndex.end()
             ? guideHeatmaps[found->second]
-            : nullptr;
+            : GuideHeatmapAssetPtr();
+    return local != nullptr || overlayBase == nullptr
+            ? local
+            : overlayBase->guideHeatmapAsset(assetId);
 }
 
 void NodeGraph::removeUnreferencedGuideHeatmaps() {
@@ -287,7 +258,10 @@ const AudioSampleResource* NodeGraph::findAudioResource(const String& resourceId
     const auto found = std::find_if(audioResources.begin(), audioResources.end(), [&](const auto& resource) {
         return resource.id == resourceId;
     });
-    return found != audioResources.end() ? &*found : nullptr;
+    const AudioSampleResource* local = found != audioResources.end() ? &*found : nullptr;
+    return local != nullptr || overlayBase == nullptr
+            ? local
+            : overlayBase->findAudioResource(resourceId);
 }
 
 bool NodeGraph::bindAudioResource(NodeAudioResourceBinding binding) {
@@ -331,10 +305,18 @@ const NodeAudioResourceBinding* NodeGraph::findAudioResourceBinding(const String
             audioResourceBindings.begin(),
             audioResourceBindings.end(),
             [&](const auto& binding) { return binding.nodeId == nodeId; });
-    return found != audioResourceBindings.end() ? &*found : nullptr;
+    const NodeAudioResourceBinding* local = found != audioResourceBindings.end()
+            ? &*found
+            : nullptr;
+    return local != nullptr || overlayBase == nullptr
+            ? local
+            : overlayBase->findAudioResourceBinding(nodeId);
 }
 
 int NodeGraph::audioResourceUsageCount(const String& resourceId) const {
+    if (overlayBase != nullptr && audioResourceBindings.empty()) {
+        return overlayBase->audioResourceUsageCount(resourceId);
+    }
     return (int) std::count_if(
             audioResourceBindings.begin(),
             audioResourceBindings.end(),
@@ -357,13 +339,32 @@ bool NodeGraph::removeGuideAssignment(
     return true;
 }
 
+const GuideCurveAssignment* NodeGraph::guideAssignmentForTarget(
+        const String& nodeId,
+        const TrimeshCubeComponentGuideTarget& target) const {
+    const auto found = guideAssignmentTargetIndex.find({ nodeId, target });
+    if (found != guideAssignmentTargetIndex.end()
+            && found->second < guideAssignments.size()) {
+        return &guideAssignments[found->second];
+    }
+    return overlayBase != nullptr
+            ? overlayBase->guideAssignmentForTarget(nodeId, target)
+            : nullptr;
+}
+
 int NodeGraph::removeGuideAssignmentsOutsideCubeRange(
         const String& nodeId,
-        int cubeCount) {
+        int cubeCount,
+        std::vector<GuideCurveAssignment>* removed) {
+    InteractionComplexityDiagnostics::recordAssignmentLinearScan();
     const size_t previousCount = guideAssignments.size();
     eraseIf(guideAssignments, [&](const GuideCurveAssignment& assignment) {
-        return assignment.targetNodeId == nodeId
+        const bool shouldRemove = assignment.targetNodeId == nodeId
                 && !isPositiveAndBelow(assignment.target.cubeIndex, cubeCount);
+        if (shouldRemove && removed != nullptr) {
+            removed->push_back(assignment);
+        }
+        return shouldRemove;
     });
     const int removedCount = (int) (previousCount - guideAssignments.size());
     if (removedCount == 0) {
@@ -377,19 +378,25 @@ int NodeGraph::removeGuideAssignmentsOutsideCubeRange(
 
 int NodeGraph::guideUsageCount(const String& guideId) const {
     const auto found = guideUsageCounts.find(guideId);
-    return found != guideUsageCounts.end() ? found->second : 0;
+    return found != guideUsageCounts.end()
+            ? found->second
+            : (overlayBase != nullptr ? overlayBase->guideUsageCount(guideId) : 0);
 }
 
 const std::vector<String>& NodeGraph::guideTargetNodeIds(const String& guideId) const {
     static const std::vector<String> empty;
     const auto found = guideTargetNodes.find(guideId);
-    return found != guideTargetNodes.end() ? found->second : empty;
+    return found != guideTargetNodes.end()
+            ? found->second
+            : (overlayBase != nullptr ? overlayBase->guideTargetNodeIds(guideId) : empty);
 }
 
 const std::vector<String>& NodeGraph::guideIdsForTargetNode(const String& nodeId) const {
     static const std::vector<String> empty;
     const auto found = targetNodeGuides.find(nodeId);
-    return found != targetNodeGuides.end() ? found->second : empty;
+    return found != targetNodeGuides.end()
+            ? found->second
+            : (overlayBase != nullptr ? overlayBase->guideIdsForTargetNode(nodeId) : empty);
 }
 
 void NodeGraph::rebuildGuideResourceIndex() {
@@ -401,6 +408,7 @@ void NodeGraph::rebuildGuideResourceIndex() {
 }
 
 void NodeGraph::rebuildGuideAssignmentIndexes() {
+    InteractionComplexityDiagnostics::recordAssignmentLinearScan();
     guideAssignmentTargetIndex.clear();
     guideUsageCounts.clear();
     guideTargetNodes.clear();
@@ -456,7 +464,7 @@ const SignalProbe* NodeGraph::findSignalProbe(const String& probeId) const {
             return &probe;
         }
     }
-    return nullptr;
+    return overlayBase != nullptr ? overlayBase->findSignalProbe(probeId) : nullptr;
 }
 
 SignalProbe* NodeGraph::findSignalProbeForEditing(const String& probeId) {
@@ -476,7 +484,9 @@ const SignalProbe* NodeGraph::findSignalProbeForSource(
             return &probe;
         }
     }
-    return nullptr;
+    return overlayBase != nullptr
+            ? overlayBase->findSignalProbeForSource(sourceNodeId, sourcePortId)
+            : nullptr;
 }
 
 void NodeGraph::removeNode(const String& nodeId) {
@@ -506,6 +516,7 @@ void NodeGraph::removeNode(const String& nodeId) {
         }
     }
     if (nodes.size() != previousNodeCount) {
+        rebuildNodeIndex();
         ++revision;
     }
 }
@@ -517,6 +528,23 @@ void NodeGraph::removeEdgeAt(size_t index) {
 
     edges.erase(edges.begin() + (int) index);
     ++revision;
+}
+
+bool NodeGraph::removeEdge(const Edge& edgeToRemove) {
+    const auto found = std::find_if(edges.begin(), edges.end(), [&](const Edge& edge) {
+        return edge.sourceNodeId == edgeToRemove.sourceNodeId
+            && edge.sourcePortId == edgeToRemove.sourcePortId
+            && edge.destNodeId == edgeToRemove.destNodeId
+            && edge.destPortId == edgeToRemove.destPortId
+            && edge.connectionKind == edgeToRemove.connectionKind
+            && edge.attachmentType == edgeToRemove.attachmentType;
+    });
+    if (found == edges.end()) {
+        return false;
+    }
+    edges.erase(found);
+    ++revision;
+    return true;
 }
 
 void NodeGraph::removeEdgesToInput(const String& nodeId, const String& portId) {
@@ -537,264 +565,6 @@ void NodeGraph::removeEdgesFromOutput(const String& nodeId, const String& portId
     if (edges.size() != previousEdgeCount) {
         ++revision;
     }
-}
-
-const Node* NodeGraph::findNode(const String& nodeId) const {
-    for (const auto& node : nodes) {
-        if (node.id == nodeId) {
-            return &node;
-        }
-    }
-    return nullptr;
-}
-
-Node* NodeGraph::findNodeForEditing(const String& nodeId) {
-    for (auto& node : nodes) {
-        if (node.id == nodeId) {
-            return &node;
-        }
-    }
-    return nullptr;
-}
-
-bool NodeGraph::replaceNodeParameters(const String& nodeId, std::vector<NodeParameter> parameters) {
-    auto* node = findNodeForEditing(nodeId);
-    if (node == nullptr) {
-        return false;
-    }
-    node->parameters = std::move(parameters);
-    ++revision;
-    return true;
-}
-
-bool NodeGraph::replaceNodeModel(const String& nodeId, NodeModelStatePtr model) {
-    Node* node = findNodeForEditing(nodeId);
-    if (node == nullptr) {
-        return false;
-    }
-    if ((node->model == nullptr && model == nullptr)
-            || (node->model != nullptr && model != nullptr && node->model->equals(*model))) {
-        return false;
-    }
-
-    node->model = std::move(model);
-    markChanged();
-    return true;
-}
-
-bool NodeGraph::replaceNodeEditorState(const String& nodeId, var editorState) {
-    Node* node = findNodeForEditing(nodeId);
-    if (node == nullptr || JSON::toString(node->editorState, false) == JSON::toString(editorState, false)) {
-        return false;
-    }
-
-    node->editorState = std::move(editorState);
-    markChanged();
-    return true;
-}
-
-bool NodeGraph::setNodeBounds(const String& nodeId, Rectangle<float> bounds) {
-    auto* node = findNodeForEditing(nodeId);
-    if (node == nullptr) {
-        return false;
-    }
-    node->bounds = bounds;
-    ++revision;
-    return true;
-}
-
-void NodeGraph::translateNodes(const std::vector<String>& nodeIds, Point<float> offset) {
-    bool changed = false;
-    for (auto& node : nodes) {
-        if (std::find(nodeIds.begin(), nodeIds.end(), node.id) != nodeIds.end()) {
-            node.bounds = node.bounds.translated(offset.x, offset.y);
-            changed = true;
-        }
-    }
-    if (changed) {
-        ++revision;
-    }
-}
-
-NodeGraph NodeGraph::createDemoGraph() {
-    NodeGraph graph;
-
-    graph.addNode(node(
-            "voice",
-            NodeKind::VoiceContext,
-            "waveform start",
-            { 320.f, 420.f },
-            {
-                    input("modulation", "Modulation", PortDomain::VoiceControlSignal,
-                            ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
-                            ConnectionKind::ConfigurationAttachment, AttachmentType::ModulationTriple),
-                    input("pitch", "Pitch", PortDomain::PitchSignal),
-                    input("unison", "Unison", PortDomain::VoiceControlSignal,
-                            ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
-                            ConnectionKind::ConfigurationAttachment, AttachmentType::Unison)
-            },
-            {
-                    output("context", "Context", PortDomain::DomainContext)
-            }));
-    graph.replaceNodeParameters("voice", {
-            { "domain", "Start Domain", "waveform" },
-            { "octave", "Octave", "0" },
-            { "pitch", "Pitch", "0" },
-            { "portamento", "Portamento", "0" },
-            { "oversampling", "Oversampling", "1x" }
-    });
-
-    graph.addNode(node(
-            "waveMesh",
-            NodeKind::TrilinearMesh,
-            "waveform operand",
-            { 650.f, 420.f },
-            {
-                    input("context", "Context", PortDomain::DomainContext),
-                    input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment),
-                    input("yellow", "Yellow Morph", PortDomain::ControlSignal),
-                    input("red", "Red Morph", PortDomain::ControlSignal),
-                    input("blue", "Blue Morph", PortDomain::ControlSignal)
-            },
-            { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }));
-
-    graph.addNode(node(
-            "fft",
-            NodeKind::Fft,
-            "cycle chunks",
-            { 1080.f, 420.f },
-            { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
-            {
-                    output("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
-                    output("phase", "Phase", PortDomain::SpectralPhaseSignal)
-            }));
-    graph.replaceNodeParameters("fft", {
-            { "cycleFrames", "Cycle Frames", "2048" },
-            { "mode", "Mode", "cycle" }
-    });
-
-    graph.addNode(node(
-            "magMesh",
-            NodeKind::TrilinearMesh,
-            "layer operand",
-            { 1175.f, 170.f },
-            {
-                    input("context", "Context", PortDomain::DomainContext),
-                    input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment),
-                    input("yellow", "Yellow Morph", PortDomain::ControlSignal),
-                    input("red", "Red Morph", PortDomain::ControlSignal),
-                    input("blue", "Blue Morph", PortDomain::ControlSignal)
-            },
-            { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo, PortSide::Bottom) }));
-
-    graph.addNode(node(
-            "addMag",
-            NodeKind::Add,
-            "magnitude layer",
-            { 1260.f, 420.f },
-            {
-                    input("left", "A", PortDomain::SpectralMagnitudeSignal),
-                    input("right", "B", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
-            },
-            { output("out", "Out", PortDomain::SpectralMagnitudeSignal) }));
-
-    graph.addNode(node(
-            "phaseMesh",
-            NodeKind::TrilinearMesh,
-            "phase operand",
-            { 1175.f, 760.f },
-            {
-                    input("context", "Context", PortDomain::DomainContext),
-                    input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment),
-                    input("yellow", "Yellow Morph", PortDomain::ControlSignal),
-                    input("red", "Red Morph", PortDomain::ControlSignal),
-                    input("blue", "Blue Morph", PortDomain::ControlSignal)
-            },
-            { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo, PortSide::Top) }));
-
-    graph.addNode(node(
-            "addPhase",
-            NodeKind::Add,
-            "phase layer",
-            { 1260.f, 454.f },
-            {
-                    input("left", "A", PortDomain::SpectralPhaseSignal),
-                    input("right", "B", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom)
-            },
-            { output("out", "Out", PortDomain::SpectralPhaseSignal) }));
-
-    graph.addNode(node(
-            "ifft",
-            NodeKind::Ifft,
-            "cyclic overlap",
-            { 1600.f, 420.f },
-            {
-                    input("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
-                    input("phase", "Phase", PortDomain::SpectralPhaseSignal)
-            },
-            { output("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }));
-    graph.replaceNodeParameters("ifft", {
-            { "cycleFrames", "Cycle Frames", "2048" },
-            { "mode", "Mode", "cyclic" }
-    });
-
-    GraphNodeFactory nodeFactory;
-    Node volumeEnvelope = nodeFactory.createNode(NodeKind::Envelope, "env", { 1660.f, 610.f });
-    for (auto& parameter : volumeEnvelope.parameters) {
-        if (parameter.id == "purpose") {
-            parameter.value = "volume";
-        }
-    }
-    applyEnvelopePurpose(volumeEnvelope);
-    graph.addNode(std::move(volumeEnvelope));
-
-    Node scratchEnvelope = nodeFactory.createNode(NodeKind::Envelope, "scratchEnv", { 320.f, 204.f });
-    for (auto& parameter : scratchEnvelope.parameters) {
-        if (parameter.id == "purpose") {
-            parameter.value = "scratch";
-        }
-    }
-    NodeDefinitionRegistry::instance().normalize(scratchEnvelope);
-    graph.addNode(std::move(scratchEnvelope));
-
-    graph.addNode(node(
-            "multiply",
-            NodeKind::Multiply,
-            "global volume",
-            { 1850.f, 420.f },
-            {
-                    input("left", "A", PortDomain::TimeSignal, ChannelLayout::LinkedStereo),
-                    input("right", "B", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom)
-            },
-            { output("out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }));
-
-    graph.addNode(node(
-            "out",
-            NodeKind::Output,
-            "sink",
-            { 2100.f, 420.f },
-            { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
-            {}));
-
-    graph.edges = {
-            { "voice", "context", "waveMesh", "context", PortDomain::DomainContext, ConnectionKind::Signal },
-            { "scratchEnv", "env", "waveMesh", "scratch", PortDomain::EnvelopeSignal,
-                    ConnectionKind::ProcessingAttachment, AttachmentType::ScratchEnvelope },
-            { "scratchEnv", "env", "magMesh", "scratch", PortDomain::EnvelopeSignal,
-                    ConnectionKind::ProcessingAttachment, AttachmentType::ScratchEnvelope },
-            { "waveMesh", "out", "fft", "time", PortDomain::TimeSignal, ConnectionKind::Signal },
-            { "fft", "mag", "addMag", "left", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal },
-            { "magMesh", "out", "addMag", "right", PortDomain::ControlSignal, ConnectionKind::Signal },
-            { "fft", "phase", "addPhase", "left", PortDomain::SpectralPhaseSignal, ConnectionKind::Signal },
-            { "phaseMesh", "out", "addPhase", "right", PortDomain::ControlSignal, ConnectionKind::Signal },
-            { "addMag", "out", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal },
-            { "addPhase", "out", "ifft", "phase", PortDomain::SpectralPhaseSignal, ConnectionKind::Signal },
-            { "ifft", "time", "multiply", "left", PortDomain::TimeSignal, ConnectionKind::Signal },
-            { "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, ConnectionKind::Signal },
-            { "multiply", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal }
-    };
-
-    return graph;
 }
 
 Colour colourForDomain(PortDomain domain) {

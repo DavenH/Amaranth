@@ -275,6 +275,7 @@ private:
     String activeGuideMenuParameterField;
     uint64_t activeGuideMenuGeneration {};
     String activeMeshNodeId;
+    uint64_t activeMeshUpdateSequence {};
     bool activeMeshChanged {};
     bool curveTransactionActive {};
     std::optional<uint64_t> curveTransactionBaseRevision;

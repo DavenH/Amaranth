@@ -1,5 +1,6 @@
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/NodeModelDecodeDiagnostics.h"
 
 #include <Curve/Mesh/Mesh.h>
@@ -30,6 +31,9 @@ TrimeshNodeModelState::TrimeshNodeModelState(
 std::shared_ptr<const TrimeshNodeModelState> TrimeshNodeModelState::copyOf(
         const Mesh& mesh,
         uint64_t revisionToUse) {
+    InteractionComplexityDiagnostics::recordMeshCopy(
+            (size_t) mesh.getNumVerts(),
+            (size_t) mesh.getNumCubes());
     auto copy = ownedMesh(new Mesh());
     copy->deepCopy(&mesh);
     return std::shared_ptr<const TrimeshNodeModelState>(

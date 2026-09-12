@@ -317,13 +317,7 @@ void EnvelopeMorphControls::draw(
                 axis == viewAxis
                         ? CanvasChromeMetrics::activeBorderWidth
                         : CanvasChromeMetrics::restingBorderWidth);
-        graphics.setColour(colour.withAlpha(linked[axis] ? 0.9f : 0.25f));
-        graphics.drawRoundedRectangle(
-                linkArea,
-                CanvasChromeMetrics::controlCornerRadius,
-                linked[axis]
-                        ? CanvasChromeMetrics::activeBorderWidth
-                        : CanvasChromeMetrics::restingBorderWidth);
+        paintPropertyLinkToggle(graphics, linkArea, colour, linked[axis]);
     }
 }
 

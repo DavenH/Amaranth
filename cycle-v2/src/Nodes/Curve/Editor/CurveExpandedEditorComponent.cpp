@@ -159,9 +159,13 @@ void CurveExpandedEditorComponent::resized() {
 }
 
 void CurveExpandedEditorComponent::mouseMove(const MouseEvent& event) {
-    if (!editorMouseMove(event.position)) {
-        setMouseCursor(MouseCursor::NormalCursor);
+    if (editorMouseMove(event.position)) {
+        return;
     }
+
+    setMouseCursor(editorPanelBounds().contains(event.position)
+            ? panelCursor
+            : MouseCursor::NormalCursor);
 }
 
 void CurveExpandedEditorComponent::mouseDown(const MouseEvent& event) {
@@ -226,9 +230,6 @@ void CurveExpandedEditorComponent::publishCurrentState() {
     applyEditorStateToWidget();
     requestRepaint();
     if (transactionActive) {
-        if (!publishModelState()) {
-            return;
-        }
         transientStateChanged = true;
         FingerprintBuilder fingerprint(widget.contentRevision());
         for (const auto& control : editorControls()) {
@@ -270,6 +271,12 @@ void CurveExpandedEditorComponent::setEditorModelState(NodeModelStatePtr model) 
 
 void CurveExpandedEditorComponent::commitTransaction() {
     if (transactionActive && delegate != nullptr) {
+        if (transientStateChanged && !publishModelState()) {
+            delegate->commitCurveTransaction();
+            transactionActive = false;
+            transientStateChanged = false;
+            return;
+        }
         delegate->commitCurveTransaction();
     }
     transactionActive = false;
@@ -370,6 +377,11 @@ void CurveExpandedEditorComponent::curvePanelControllerEdited() {
 void CurveExpandedEditorComponent::commitCurvePanelControllerEdit() {
     syncInteractionControls();
     commitTransaction();
+}
+
+void CurveExpandedEditorComponent::setCurvePanelCursor(const MouseCursor& cursor) {
+    panelCursor = cursor;
+    setMouseCursor(cursor);
 }
 
 }

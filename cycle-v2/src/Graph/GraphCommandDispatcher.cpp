@@ -1,23 +1,10 @@
 #include "Graph/GraphCommandDispatcher.h"
 
-#include "Graph/NodeParameterMap.h"
-
-#include "Nodes/Curve/Model/CurveNodeModels.h"
-
 #include <algorithm>
-#include <cmath>
-#include <cstdlib>
-#include <unordered_set>
 
 namespace CycleV2 {
 
 namespace {
-
-bool isCurveNodeKind(NodeKind kind) {
-    return kind == NodeKind::Envelope
-        || kind == NodeKind::ImpulseResponse
-        || kind == NodeKind::Waveshaper;
-}
 
 struct EditAnnotation {
     std::vector<juce::String> nodeIds;
@@ -28,64 +15,7 @@ struct EditAnnotation {
 std::vector<String> guideConsumerNodeIds(
         const NodeGraph& graph,
         const String& guideId) {
-    std::vector<String> result;
-    for (const auto& assignment : graph.getGuideAssignments()) {
-        if (assignment.guideId == guideId
-                && std::find(result.begin(), result.end(), assignment.targetNodeId)
-                    == result.end()) {
-            result.push_back(assignment.targetNodeId);
-        }
-    }
-    return result;
-}
-
-bool parseGuideControl(const String& value, float& parsed) {
-    const char* start = value.toRawUTF8();
-    char* end {};
-    parsed = std::strtof(start, &end);
-    return end != start && *end == '\0' && std::isfinite(parsed);
-}
-
-bool guideControlsAreValid(const std::vector<NodeParameter>& controls) {
-    std::unordered_set<std::string> remaining {
-            "enabled", "noise", "dcOffset", "phase"
-    };
-    for (const auto& control : controls) {
-        if (remaining.erase(control.id.toStdString()) != 1) {
-            return false;
-        }
-        float value {};
-        if (!parseGuideControl(control.value, value)) {
-            return false;
-        }
-        if (control.id == "enabled") {
-            if (value != 0.f && value != 1.f) {
-                return false;
-            }
-        } else if (value < 0.f || value > 1.f) {
-            return false;
-        }
-    }
-    return remaining.empty();
-}
-
-bool guideControlsMatch(
-        const GuideCurveResource& guide,
-        const std::vector<NodeParameter>& controls) {
-    if (!guideControlsAreValid(controls)) {
-        return false;
-    }
-    for (const auto& control : controls) {
-        float value {};
-        parseGuideControl(control.value, value);
-        if ((control.id == "enabled" && guide.enabled != (value != 0.f))
-                || (control.id == "noise" && guide.noise != value)
-                || (control.id == "dcOffset" && guide.dcOffset != value)
-                || (control.id == "phase" && guide.phase != value)) {
-            return false;
-        }
-    }
-    return true;
+    return graph.guideTargetNodeIds(guideId);
 }
 
 GraphEditResult annotateSuccessful(
@@ -291,88 +221,6 @@ GraphEditResult GraphCommandDispatcher::renameGuideCurve(
     });
 }
 
-GraphEditResult GraphCommandDispatcher::publishGuideCurveState(
-        const GuideCurveStatePublication& publication) {
-    return apply([&](auto& graph) {
-        const GuideCurveResource* guide = graph.findGuideCurve(publication.guideId);
-        const GuideCurveResource* durableGuide = document.graph().findGuideCurve(publication.guideId);
-        if (guide == nullptr || durableGuide == nullptr) {
-            return GraphEditResult { GraphEditCode::MissingNode, publication.guideId, {} };
-        }
-        if (publication.model == nullptr) {
-            return GraphEditResult {
-                    GraphEditCode::InvalidTypedSnapshot,
-                    publication.guideId,
-                    {}
-            };
-        }
-        if (!guideControlsAreValid(publication.controls)) {
-            return GraphEditResult {
-                    GraphEditCode::InvalidControlValue,
-                    publication.guideId,
-                    {}
-            };
-        }
-
-        const uint64_t currentRevision = guide->revision;
-        const uint64_t durableRevision = durableGuide->revision;
-        const uint64_t currentModelRevision = guide->model != nullptr
-                ? guide->model->revision()
-                : 0;
-        const auto typedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
-                publication.model);
-        if (typedModel == nullptr || typedModel->flatCurve() == nullptr) {
-            return GraphEditResult {
-                    GraphEditCode::InvalidTypedSnapshot,
-                    publication.guideId,
-                    {}
-            };
-        }
-        const bool exactRetry = guide->model != nullptr
-                && publication.model->revision() == currentModelRevision
-                && guide->model->equals(*publication.model)
-                && guideControlsMatch(*guide, publication.controls);
-        if (exactRetry) {
-            return GraphEditResult {
-                    GraphEditCode::Connected,
-                    publication.guideId,
-                    {},
-                    {},
-                    false
-            };
-        }
-        if (!transientEdit.has_value()
-                && publication.model->revision() == currentModelRevision) {
-            return GraphEditResult {
-                    GraphEditCode::ConflictingRevision,
-                    publication.guideId,
-                    {}
-            };
-        }
-        const bool hasValidTransientBase = transientEdit.has_value()
-                && publication.durableBaseRevision == durableRevision;
-        if ((!hasValidTransientBase && publication.durableBaseRevision != currentRevision)
-                || publication.model->revision() < currentModelRevision) {
-            return GraphEditResult { GraphEditCode::StaleRevision, publication.guideId, {} };
-        }
-
-        const bool modelChanged = guide->model == nullptr
-                || !guide->model->equals(*publication.model);
-        const std::vector<String> consumers = guideConsumerNodeIds(graph, publication.guideId);
-        auto result = annotateSuccessful(
-                GraphEditor().replaceGuideCurve(
-                        graph,
-                        publication.guideId,
-                        publication.model,
-                        publication.controls),
-                { consumers, false, false });
-        result.changes.guidesChanged = result.succeeded() && !consumers.empty();
-        result.changes.guidePresentationChanged = result.succeeded();
-        result.changes.modelChanged = result.succeeded() && modelChanged;
-        return result;
-    });
-}
-
 GraphEditResult GraphCommandDispatcher::setGuideHeatmap(
         const juce::String& guideId,
         uint64_t expectedRevision,
@@ -423,26 +271,41 @@ GraphEditResult GraphCommandDispatcher::setNodeParameter(
         const juce::String& parameterId,
         const juce::String& label,
         const juce::String& value) {
-    return apply([&](auto& graph) {
-        return GraphEditor().setNodeParameter(graph, nodeId, parameterId, label, value);
-    });
+    return applyIncremental(
+            [&](GraphDeltaBuilder& delta, const NodeGraph& graph) {
+                delta.captureNodeParameter(graph, nodeId, parameterId);
+            },
+            [&](auto& graph) {
+                return GraphEditor().setNodeParameter(
+                        graph, nodeId, parameterId, label, value);
+            });
 }
 
 GraphEditResult GraphCommandDispatcher::replaceNodeModel(
         const juce::String& nodeId,
         uint64_t expectedRevision,
         NodeModelStatePtr model) {
-    return apply([&](auto& graph) {
-        return GraphEditor().replaceNodeModel(graph, nodeId, expectedRevision, std::move(model));
-    });
+    return applyIncremental(
+            [&](GraphDeltaBuilder& delta, const NodeGraph& graph) {
+                delta.captureNodeModel(graph, nodeId);
+            },
+            [&](auto& graph) {
+                return GraphEditor().replaceNodeModel(
+                        graph, nodeId, expectedRevision, std::move(model));
+            });
 }
 
 GraphEditResult GraphCommandDispatcher::setNodeEditorState(
         const juce::String& nodeId,
         juce::var editorState) {
-    return apply([&](auto& graph) {
-        return GraphEditor().setNodeEditorState(graph, nodeId, std::move(editorState));
-    });
+    return applyIncremental(
+            [&](GraphDeltaBuilder& delta, const NodeGraph& graph) {
+                delta.captureNodeEditorState(graph, nodeId);
+            },
+            [&](auto& graph) {
+                return GraphEditor().setNodeEditorState(
+                        graph, nodeId, std::move(editorState));
+            });
 }
 
 GraphEditResult GraphCommandDispatcher::setNodeAudioResource(
@@ -456,128 +319,6 @@ GraphEditResult GraphCommandDispatcher::removeNodeAudioResource(
         const juce::String& nodeId) {
     return apply([&](auto& graph) {
         return GraphEditor().removeNodeAudioResource(graph, nodeId);
-    });
-}
-
-GraphEditResult GraphCommandDispatcher::publishCurveState(
-        const CurveNodeStatePublication& publication) {
-    return apply([&](auto& graph) {
-        const Node* node = graph.findNode(publication.nodeId);
-        if (node == nullptr) {
-            return GraphEditResult { GraphEditCode::MissingNode, publication.nodeId, {} };
-        }
-        if (!isCurveNodeKind(node->kind)) {
-            return GraphEditResult { GraphEditCode::WrongNodeKind, publication.nodeId, {} };
-        }
-
-        const uint64_t currentRevision = node->model != nullptr ? node->model->revision() : 0;
-        if (publication.model == nullptr) {
-            return GraphEditResult { GraphEditCode::InvalidTypedSnapshot, publication.nodeId, {} };
-        }
-        const Node* durableNode = document.graph().findNode(publication.nodeId);
-        const uint64_t durableRevision = durableNode != nullptr && durableNode->model != nullptr
-                ? durableNode->model->revision()
-                : 0;
-        const bool hasValidTransientBase = transientEdit.has_value()
-                && publication.durableBaseRevision == durableRevision;
-        const bool replacesTransientSnapshot = hasValidTransientBase
-                && currentRevision > durableRevision
-                && publication.model->revision() == currentRevision;
-        if (!hasValidTransientBase
-                && (publication.durableBaseRevision != currentRevision
-                    || publication.model->revision() < currentRevision)) {
-            return GraphEditResult { GraphEditCode::StaleRevision, publication.nodeId, {} };
-        }
-        if (hasValidTransientBase && publication.model->revision() < currentRevision) {
-            return GraphEditResult { GraphEditCode::StaleRevision, publication.nodeId, {} };
-        }
-        const auto* definition = NodeDefinitionRegistry::instance().find(node->kind);
-        if (definition == nullptr || definition->modelCodec == nullptr
-                || publication.model->schemaId() != definition->modelCodec->schemaId()
-                || publication.model->schemaVersion() != definition->modelCodec->currentVersion()) {
-            return GraphEditResult { GraphEditCode::WrongNodeKind, publication.nodeId, {} };
-        }
-        const auto typedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(publication.model);
-        if (typedModel == nullptr) {
-            return GraphEditResult { GraphEditCode::InvalidTypedSnapshot, publication.nodeId, {} };
-        }
-
-        std::unordered_set<std::string> requiredControls;
-        for (const auto& parameter : definition->parameters) {
-            requiredControls.insert(parameter.id.toStdString());
-        }
-        std::vector<NodeParameter> parameters;
-        parameters.reserve(publication.controls.size());
-        for (const auto& control : publication.controls) {
-            const auto required = requiredControls.find(control.id.toStdString());
-            const auto* controlDefinition = NodeDefinitionRegistry::instance().findParameter(
-                    node->kind, control.id);
-            if (required == requiredControls.end() || controlDefinition == nullptr
-                    || !controlDefinition->accepts(control.value)) {
-                return GraphEditResult { GraphEditCode::InvalidControlValue, publication.nodeId, {} };
-            }
-            requiredControls.erase(required);
-            parameters.push_back({ control.id, controlDefinition->label, controlDefinition->normalized(control.value) });
-        }
-        if (!requiredControls.empty()) {
-            return GraphEditResult { GraphEditCode::InvalidControlValue, publication.nodeId, {} };
-        }
-        if (node->kind == NodeKind::Envelope) {
-            const EnvelopeNodeModel* envelope = typedModel->envelope();
-            if (envelope == nullptr) {
-                return GraphEditResult { GraphEditCode::InvalidTypedSnapshot, publication.nodeId, {} };
-            }
-            const NodeParameterMap parameterMap(parameters);
-            if (!parameterMap.contains("red")
-                    || !parameterMap.contains("blue")
-                    || !parameterMap.contains("logarithmic")
-                    || parameterMap.floatValue("red") != envelope->red
-                    || parameterMap.floatValue("blue") != envelope->blue
-                    || parameterMap.boolValue("logarithmic") != envelope->logarithmic) {
-                return GraphEditResult { GraphEditCode::InvalidControlValue, publication.nodeId, {} };
-            }
-        }
-        const bool isModelRetry = node->model != nullptr
-                && node->model->revision() == publication.model->revision()
-                && node->model->equals(*publication.model);
-        const bool controlsMatch = node->parameters.size() == parameters.size()
-                && std::equal(
-                        node->parameters.begin(),
-                        node->parameters.end(),
-                        parameters.begin(),
-                        [](const NodeParameter& left, const NodeParameter& right) {
-                            return left.id == right.id && left.value == right.value;
-                        });
-        if (isModelRetry && !controlsMatch && !transientEdit.has_value()) {
-            return GraphEditResult { GraphEditCode::ConflictingRevision, publication.nodeId, {} };
-        }
-
-        auto parameterResult = GraphEditor().setNodeParametersAtomic(graph, publication.nodeId, parameters);
-        if (!parameterResult.succeeded()) {
-            return parameterResult;
-        }
-        GraphEditResult modelResult;
-        if (replacesTransientSnapshot) {
-            modelResult = GraphEditor().replaceTransientNodeModel(
-                    graph, publication.nodeId, currentRevision, publication.model);
-        } else {
-            modelResult = GraphEditor().replaceNodeModel(
-                    graph, publication.nodeId, currentRevision, publication.model);
-        }
-        modelResult.changed = modelResult.changed || parameterResult.changed;
-        accumulateChange(modelResult.changes, parameterResult.changes);
-        if (typedModel->editorJSON().getDynamicObject() != nullptr) {
-            auto editorResult = GraphEditor().setNodeEditorState(
-                    graph, publication.nodeId, typedModel->editorJSON());
-            if (!editorResult.succeeded()) {
-                return editorResult;
-            }
-            modelResult.changed = modelResult.changed || editorResult.changed;
-            modelResult.changes.editorStateChanged = editorResult.changed;
-            modelResult.changes.parameterImpacts = modelResult.changes.parameterImpacts
-                    | editorResult.changes.parameterImpacts;
-        }
-        return modelResult;
     });
 }
 
@@ -621,13 +362,19 @@ GraphEditResult GraphCommandDispatcher::editNodePresentation(
 GraphEditResult GraphCommandDispatcher::translateNodes(
         const std::vector<juce::String>& nodeIds,
         juce::Point<float> offset) {
-    return apply([&](auto& graph) {
-        graph.translateNodes(nodeIds, offset);
-        GraphEditResult result;
-        result.changes.nodeIds = nodeIds;
-        result.changes.layoutChanged = true;
-        return result;
-    });
+    return applyIncremental(
+            [&](GraphDeltaBuilder& delta, const NodeGraph& graph) {
+                for (const auto& nodeId : nodeIds) {
+                    delta.captureNodeBounds(graph, nodeId);
+                }
+            },
+            [&](auto& graph) {
+                graph.translateNodes(nodeIds, offset);
+                GraphEditResult result;
+                result.changes.nodeIds = nodeIds;
+                result.changes.layoutChanged = true;
+                return result;
+            });
 }
 
 void GraphCommandDispatcher::beginCompoundEdit() {
@@ -635,7 +382,8 @@ void GraphCommandDispatcher::beginCompoundEdit() {
         ++compoundDepth;
         return;
     }
-    compoundBefore = document.graph();
+    compoundBefore.reset();
+    compoundDelta = {};
     compoundChanges = {};
     compoundActive = true;
     compoundChanged = false;
@@ -650,10 +398,16 @@ void GraphCommandDispatcher::commitCompoundEdit() {
         return;
     }
     if (compoundChanged) {
-        document.recordBeforeChange(std::move(compoundBefore));
+        if (compoundBefore.has_value()) {
+            document.recordBeforeChange(std::move(*compoundBefore));
+        } else {
+            document.recordDelta(compoundDelta.finish(
+                    document.graph(), compoundChanges));
+        }
         document.publishChange(std::move(compoundChanges));
     }
-    compoundBefore = {};
+    compoundBefore.reset();
+    compoundDelta = {};
     compoundActive = false;
     compoundChanged = false;
     compoundChanges = {};
@@ -662,9 +416,14 @@ void GraphCommandDispatcher::commitCompoundEdit() {
 
 void GraphCommandDispatcher::cancelCompoundEdit() {
     if (compoundActive && compoundChanged) {
-        document.restoreGraph(compoundBefore);
+        if (compoundBefore.has_value()) {
+            document.restoreGraph(std::move(*compoundBefore));
+        } else {
+            compoundDelta.restore(document.graphForCommand());
+        }
     }
-    compoundBefore = {};
+    compoundBefore.reset();
+    compoundDelta = {};
     compoundActive = false;
     compoundChanged = false;
     compoundChanges = {};
@@ -676,7 +435,9 @@ void GraphCommandDispatcher::beginTransientEdit() {
         ++transientEdit->depth;
         return;
     }
-    transientEdit = TransientEdit { document.graph() };
+    transientEdit.emplace(TransientEdit {
+            NodeGraph::createEditingOverlay(document.graph())
+    });
 }
 
 void GraphCommandDispatcher::commitTransientEdit() {
@@ -684,8 +445,10 @@ void GraphCommandDispatcher::commitTransientEdit() {
         return;
     }
     if (transientEdit->changed) {
-        document.recordBeforeChange(document.graph());
-        document.currentGraph = std::move(transientEdit->graph);
+        GraphDelta delta = transientEdit->delta.finish(
+                transientEdit->graph, transientEdit->changes);
+        delta.applyForward(document.graphForCommand());
+        document.recordDelta(std::move(delta));
         document.publishChange(std::move(transientEdit->changes));
     }
     transientEdit.reset();
@@ -707,12 +470,13 @@ const GraphChangeSet& GraphCommandDispatcher::transientChanges() const {
 GraphEditResult GraphCommandDispatcher::apply(
         const std::function<GraphEditResult(NodeGraph&)>& command) {
     if (transientEdit.has_value()) {
-        GraphEditResult result = command(transientEdit->graph);
-        if (result.succeeded() && result.changed) {
-            transientEdit->changed = true;
-            accumulateChange(transientEdit->changes, result.changes);
-        }
-        return result;
+        jassertfalse;
+        return { GraphEditCode::ValidationRejected, {}, {} };
+    }
+    if (compoundActive && !compoundBefore.has_value()) {
+        NodeGraph before = document.graph();
+        compoundDelta.restore(before);
+        compoundBefore.emplace(std::move(before));
     }
     const NodeGraph before = compoundActive ? NodeGraph() : document.graph();
     GraphEditResult result = command(document.graphForCommand());
@@ -728,6 +492,39 @@ GraphEditResult GraphCommandDispatcher::apply(
         accumulateCompoundChange(result.changes);
     } else {
         document.recordBeforeChange(before);
+        document.publishChange(result.changes);
+    }
+    return result;
+}
+
+GraphEditResult GraphCommandDispatcher::applyIncremental(
+        const std::function<void(GraphDeltaBuilder&, const NodeGraph&)>& capture,
+        const std::function<GraphEditResult(NodeGraph&)>& command) {
+    if (transientEdit.has_value()) {
+        capture(transientEdit->delta, transientEdit->graph);
+        GraphEditResult result = command(transientEdit->graph);
+        if (result.succeeded() && result.changed) {
+            transientEdit->changed = true;
+            accumulateChange(transientEdit->changes, result.changes);
+        }
+        return result;
+    }
+
+    if (compoundActive) {
+        capture(compoundDelta, document.graph());
+        GraphEditResult result = command(document.graphForCommand());
+        if (result.succeeded() && result.changed) {
+            compoundChanged = true;
+            accumulateCompoundChange(result.changes);
+        }
+        return result;
+    }
+
+    GraphDeltaBuilder delta;
+    capture(delta, document.graph());
+    GraphEditResult result = command(document.graphForCommand());
+    if (result.succeeded() && result.changed) {
+        document.recordDelta(delta.finish(document.graph(), result.changes));
         document.publishChange(result.changes);
     }
     return result;
@@ -750,6 +547,10 @@ void GraphCommandDispatcher::accumulateChange(
             destination.removedEdges.end(),
             change.removedEdges.begin(),
             change.removedEdges.end());
+    destination.removedGuideAssignments.insert(
+            destination.removedGuideAssignments.end(),
+            change.removedGuideAssignments.begin(),
+            change.removedGuideAssignments.end());
     destination.topologyChanged = destination.topologyChanged || change.topologyChanged;
     destination.layoutChanged = destination.layoutChanged || change.layoutChanged;
     destination.probesChanged = destination.probesChanged || change.probesChanged;
@@ -765,17 +566,21 @@ void GraphCommandDispatcher::accumulateChange(
 GraphEditResult GraphCommandDispatcher::setNodeBounds(
         const juce::String& nodeId,
         juce::Rectangle<float> bounds) {
-    return apply([&](auto& graph) {
-        GraphEditResult result;
-        if (!graph.setNodeBounds(nodeId, bounds)) {
-            result.code = GraphEditCode::MissingNode;
-            return result;
-        }
-        result.nodeId = nodeId;
-        result.changes.nodeIds.push_back(nodeId);
-        result.changes.layoutChanged = true;
-        return result;
-    });
+    return applyIncremental(
+            [&](GraphDeltaBuilder& delta, const NodeGraph& graph) {
+                delta.captureNodeBounds(graph, nodeId);
+            },
+            [&](auto& graph) {
+                GraphEditResult result;
+                if (!graph.setNodeBounds(nodeId, bounds)) {
+                    result.code = GraphEditCode::MissingNode;
+                    return result;
+                }
+                result.nodeId = nodeId;
+                result.changes.nodeIds.push_back(nodeId);
+                result.changes.layoutChanged = true;
+                return result;
+            });
 }
 
 }

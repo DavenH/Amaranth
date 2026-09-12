@@ -33,6 +33,8 @@ public:
     void drawInterceptLines() override;
 
 protected:
+    float curveLineWidth() const;
+
     bool curveIsBipolar, cyclicLines, haveVertZoom;
 
     Color colorA, colorB;
