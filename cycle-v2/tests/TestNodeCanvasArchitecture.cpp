@@ -1004,10 +1004,24 @@ TEST_CASE("Graph presentation preserves configuration revision history across re
             .getChildFile("default.cyclegraph");
     NodeGraph graph = GraphSerializer().fromJsonString(defaultGraph.loadFileAsString());
     GraphNodeFactory factory;
-    graph.replaceNodeParameters("waveshaper",
-            factory.createNode(NodeKind::Waveshaper, "defaults", {}).parameters);
-    graph.replaceNodeParameters("ir",
-            factory.createNode(NodeKind::ImpulseResponse, "defaults", {}).parameters);
+    auto waveshaperParameters = factory.createNode(
+            NodeKind::Waveshaper, "defaults", {}).parameters;
+    auto irParameters = factory.createNode(
+            NodeKind::ImpulseResponse, "defaults", {}).parameters;
+    const auto retainGlobalScope = [](std::vector<NodeParameter>& parameters) {
+        const auto scope = std::find_if(
+                parameters.begin(),
+                parameters.end(),
+                [](const auto& parameter) {
+                    return parameter.id == "processingScope";
+                });
+        REQUIRE(scope != parameters.end());
+        scope->value = "global";
+    };
+    retainGlobalScope(waveshaperParameters);
+    retainGlobalScope(irParameters);
+    graph.replaceNodeParameters("waveshaper", std::move(waveshaperParameters));
+    graph.replaceNodeParameters("ir", std::move(irParameters));
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     GraphPresentationModel presentation;

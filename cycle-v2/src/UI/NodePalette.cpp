@@ -54,6 +54,8 @@ const NodePalette::Entry kChannelEntries[] = {
         { NodeKind::SpectralLayer, "Pan" },
         { NodeKind::StereoSplit, "Split" },
         { NodeKind::StereoJoin, "Join" },
+        { NodeKind::VoiceOutput, "Voice Output" },
+        { NodeKind::GlobalInput, "Global Input" },
         { NodeKind::Output, "Output" }
 };
 

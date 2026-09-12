@@ -15,6 +15,7 @@
 #include "UI/SignalProbeDetailView.h"
 #include "UI/SignalProbeRail.h"
 #include "Graph/GraphCompiler.h"
+#include "Graph/GraphAudioScope.h"
 #include "Runtime/GraphPreviewExecutor.h"
 
 namespace CycleV2 {
@@ -91,9 +92,13 @@ public:
     static String canvasStatusText(
             const String& statusMessage,
             const String& hoverText);
-    static String runtimeScopeLabel(
-            const GraphExecutionPlan& plan,
+    static bool hasGlobalProcessingIndicator(
+            const NodeGraph& graph,
             const String& nodeId);
+    static Rectangle<float> globalProcessingIndicatorBounds(
+            Rectangle<float> header,
+            float zoom,
+            bool besideAction);
     void paintStatus(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     bool guideShelfNeedsOpenGLPreviewRender() const;
     void clearDocumentCaches();
@@ -151,6 +156,7 @@ private:
     NodeCanvasPresentationPerformanceObserver* performanceObserver;
     NodeCanvasCableLayerCache cableLayerCache;
     NodeCanvasNodeLayerCache nodeLayerCache;
+    GraphAudioScopeAnalysis audioScopes;
     Image paletteCacheImage;
     Rectangle<float> paletteCacheBounds;
     float paletteCacheScale {};

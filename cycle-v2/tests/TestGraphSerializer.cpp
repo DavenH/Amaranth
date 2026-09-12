@@ -141,6 +141,24 @@ TEST_CASE("Graph documents save canonical JSON with stable line endings",
     REQUIRE(destination.deleteFile());
 }
 
+TEST_CASE("Graph JSON preserves parameter precision needed for Cycle parity",
+        "[cycle-v2][graph]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "voice",
+            "voiceLength",
+            "Voice",
+            "0.474137931").succeeded());
+
+    const String encoded = GraphSerializer().toJsonString(graph);
+    REQUIRE(encoded.contains("\"voiceLength\": 0.474137931"));
+    const GraphLoadResult restored = GraphSerializer().loadJsonString(encoded);
+    REQUIRE(restored.succeeded());
+    REQUIRE(NodeParameterMap(*restored.graph.findNode("voice")).floatValue(
+            "voiceLength", 0.f) == Catch::Approx(0.474137931));
+}
+
 TEST_CASE("Graph JSON embeds portable audio resources and node bindings",
         "[cycle-v2][graph][audio-resource]") {
     NodeGraph source;
@@ -806,10 +824,19 @@ TEST_CASE("African Horn keeps its populated mesh path in the time domain",
             [](const Edge& edge) {
                 return edge.sourceNodeId == "timeAdd1"
                         && edge.sourcePortId == "out"
-                        && edge.destNodeId == "delay"
-                        && edge.destPortId == "time";
+                        && edge.destNodeId == "volumeMultiply"
+                        && edge.destPortId == "left";
             });
     REQUIRE(directTimePath != loaded.graph.getEdges().end());
+    REQUIRE(std::any_of(
+            loaded.graph.getEdges().begin(),
+            loaded.graph.getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "volumeMultiply"
+                        && edge.sourcePortId == "out"
+                        && edge.destNodeId == "voiceOutput"
+                        && edge.destPortId == "time";
+            }));
 
     const auto guideAssignments = std::count_if(
             loaded.graph.getGuideAssignments().begin(),

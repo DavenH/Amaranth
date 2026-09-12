@@ -27,6 +27,7 @@
 #include "UI/EffectEnableButton.h"
 #include "UI/EditorChromeLayout.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
+#include "UI/Editors/ProcessingScopeSelector.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/EnvelopePurposeSelector.h"
 #include "UI/NodeCanvasAutomationController.h"
@@ -576,6 +577,16 @@ public:
         return true;
     }
 
+    bool setNodeParameterText(
+            const String& parameterId,
+            const String&,
+            const String& value) override {
+        textParameterId = parameterId;
+        textValue = value;
+        events.add("parameter");
+        return true;
+    }
+
     void beginCurveTransaction() override { events.add("begin"); }
     void commitCurveTransaction() override { events.add("commit"); }
     void setCurveEditorStatus(const String& message) override { status = message; }
@@ -597,6 +608,8 @@ public:
 
     StringArray events;
     String status;
+    String textParameterId;
+    String textValue;
     NodeAudioResourceEdit appliedResource;
     std::optional<NodeAudioResourceSummary> resource;
     bool resourceRemovalSucceeds { true };
@@ -1094,7 +1107,7 @@ TEST_CASE("Equalizer retains paired columns with semantic shared rows",
         "[cycle-v2][editor][equalizer][properties]") {
     ScopedJuceInitialiser_GUI juce;
     Component parent;
-    NullCommands commands;
+    RecordingVoiceCommands commands;
     NullPresentation presentation;
     NullResources resources;
     NodeEditorHost host(parent, commands, presentation, resources);
@@ -1117,6 +1130,22 @@ TEST_CASE("Equalizer retains paired columns with semantic shared rows",
             .getProperty("label", {}).toString() == "Gain");
     REQUIRE(effectState.getProperty("frequencyGroup", {})
             .getProperty("label", {}).toString() == "Frequency");
+    const var processing = effectState.getProperty("processingScope", {});
+    REQUIRE(processing.getProperty("scope", {}).toString() == "voice");
+    REQUIRE(rectangleProperty(processing, "bounds").getWidth() >= 112.f);
+    REQUIRE(rectangleProperty(processing, "bounds").getHeight() >= 28.f);
+    REQUIRE(effectState.getProperty("processingGroup", {})
+            .getProperty("label", {}).toString() == "PROCESSING");
+
+    auto* scopeSelector = dynamic_cast<ProcessingScopeSelector*>(
+            host.component()->findChildWithID("equalizerEditor.processingScope"));
+    REQUIRE(scopeSelector != nullptr);
+    auto* globalScope = dynamic_cast<Button*>(scopeSelector->findChildWithID(
+            "equalizerEditor.processingScope.global"));
+    REQUIRE(globalScope != nullptr);
+    globalScope->onClick();
+    REQUIRE(commands.textParameterId == "processingScope");
+    REQUIRE(commands.textValue == "global");
 
     auto* gainValue = dynamic_cast<Label*>(host.component()->findChildWithID(
             "equalizerEditor.band1Gain.value"));
@@ -1538,6 +1567,38 @@ TEST_CASE("Guide property keyboard edits use one complete Curve transaction",
     REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
 }
 
+TEST_CASE("Processing scope selector exposes two keyboard-selectable segments",
+        "[cycle-v2][node-editor-host][processing-scope][accessibility]") {
+    ScopedJuceInitialiser_GUI juce;
+    ProcessingScopeSelector selector("testEditor");
+    selector.setBounds(0, 0, 160, 28);
+    selector.addToDesktop(0);
+    selector.setVisible(true);
+    String selected;
+    selector.onChange = [&selected](const String& scope) { selected = scope; };
+
+    auto* voice = dynamic_cast<Button*>(
+            selector.findChildWithID("testEditor.processingScope.voice"));
+    auto* global = dynamic_cast<Button*>(
+            selector.findChildWithID("testEditor.processingScope.global"));
+    REQUIRE(voice != nullptr);
+    REQUIRE(global != nullptr);
+    REQUIRE(voice->getBounds() == Rectangle<int>(0, 0, 80, 28));
+    REQUIRE(global->getBounds() == Rectangle<int>(80, 0, 80, 28));
+    REQUIRE(voice->getToggleState());
+    REQUIRE_FALSE(global->getToggleState());
+
+    voice->grabKeyboardFocus();
+    REQUIRE(voice->hasKeyboardFocus(false));
+    REQUIRE(static_cast<Component*>(voice)->keyPressed(KeyPress(KeyPress::rightKey)));
+    REQUIRE(global->hasKeyboardFocus(false));
+    REQUIRE(static_cast<Component*>(global)->keyPressed(KeyPress(KeyPress::returnKey)));
+    REQUIRE(selector.scope() == "global");
+    REQUIRE(selected == "global");
+    REQUIRE_FALSE(voice->getToggleState());
+    REQUIRE(global->getToggleState());
+}
+
 TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows",
         "[cycle-v2][node-editor-host][waveshaper][properties]") {
     ScopedJuceInitialiser_GUI juce;
@@ -1585,6 +1646,12 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
     REQUIRE(static_cast<int>(preLayout.getProperty("usableTrackWidth", {}))
             >= PropertyControlMetrics::minimumUsableTrackWidth);
     REQUIRE(state.getProperty("oversamplingDisplay", {}).toString() == "4x");
+    const var processing = state.getProperty("processingScope", {});
+    REQUIRE(processing.getProperty("scope", {}).toString() == "voice");
+    REQUIRE(rectangleProperty(processing, "bounds").getWidth() >= 112.f);
+    REQUIRE(rectangleProperty(processing, "bounds").getHeight() >= 28.f);
+    REQUIRE(state.getProperty("processingGroup", {})
+            .getProperty("label", {}).toString() == "PROCESSING");
     REQUIRE(state.getProperty("gainGroup", {})
             .getProperty("label", {}).toString() == "Gain");
     REQUIRE(state.getProperty("qualityGroup", {})
@@ -1599,7 +1666,10 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
     REQUIRE(preGain != nullptr);
     REQUIRE(enabled->getBounds().toFloat() == headerActionBounds);
     REQUIRE(rectangleProperty(preLayout, "label").getY()
-            == controlGroupBounds.getY() + PropertyControlMetrics::groupLabelHeight);
+            == controlGroupBounds.getY()
+                    + 2 * PropertyControlMetrics::groupLabelHeight
+                    + 28
+                    + PropertyControlMetrics::sectionGap);
     REQUIRE(oversampling != nullptr);
     REQUIRE(oversampling->getWidth() <= 72);
     REQUIRE(oversampling->getNumItems() == 4);
@@ -1607,7 +1677,19 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
     REQUIRE(oversampling->getItemText(1) == "2x");
     REQUIRE(oversampling->getItemText(2) == "4x");
     REQUIRE(oversampling->getItemText(3) == "8x");
+    auto* scopeSelector = dynamic_cast<ProcessingScopeSelector*>(
+            editor.findChildWithID("waveshaperEditor.processingScope"));
+    REQUIRE(scopeSelector != nullptr);
+    auto* globalScope = dynamic_cast<Button*>(scopeSelector->findChildWithID(
+            "waveshaperEditor.processingScope.global"));
+    REQUIRE(globalScope != nullptr);
+    delegate.events.clear();
+    globalScope->onClick();
+    REQUIRE(delegate.events == StringArray { "parameter" });
+    REQUIRE(delegate.textParameterId == "processingScope");
+    REQUIRE(delegate.textValue == "global");
 
+    delegate.events.clear();
     auto* preGainValue = dynamic_cast<Label*>(
             editor.findChildWithID("waveshaperEditor.preGain.value"));
     REQUIRE(preGainValue != nullptr);
@@ -1672,6 +1754,22 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
             > static_cast<double>(panel.getProperty("height", {})));
     REQUIRE(headerActionBounds == embeddedEditorHeaderLayout(
             editor.getLocalBounds().toFloat(), true).enabled);
+    const var processing = state.getProperty("processingScope", {});
+    REQUIRE(processing.getProperty("scope", {}).toString() == "voice");
+    REQUIRE(rectangleProperty(processing, "bounds").getWidth() >= 112.f);
+    REQUIRE(rectangleProperty(processing, "bounds").getHeight() >= 28.f);
+    REQUIRE(state.getProperty("processingGroup", {})
+            .getProperty("label", {}).toString() == "PROCESSING");
+    auto* scopeSelector = dynamic_cast<ProcessingScopeSelector*>(
+            editor.findChildWithID("irEditor.processingScope"));
+    REQUIRE(scopeSelector != nullptr);
+    auto* globalScope = dynamic_cast<Button*>(scopeSelector->findChildWithID(
+            "irEditor.processingScope.global"));
+    REQUIRE(globalScope != nullptr);
+    globalScope->onClick();
+    REQUIRE(delegate.events == StringArray { "parameter" });
+    REQUIRE(delegate.textParameterId == "processingScope");
+    REQUIRE(delegate.textValue == "global");
     REQUIRE(state.getProperty("sizeLayout", {}).getProperty("display", {}).toString()
             == "1024 smp");
     REQUIRE(state.getProperty("postGainLayout", {}).getProperty("display", {}).toString()
@@ -1815,7 +1913,9 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     REQUIRE(sizeLabel.getY()
             == rectangleProperty(state, "controlBounds").toNearestInt()
                     .reduced(12, 12).getY()
-                    + PropertyControlMetrics::groupLabelHeight);
+                    + 2 * PropertyControlMetrics::groupLabelHeight
+                    + 28
+                    + PropertyControlMetrics::sectionGap);
     REQUIRE(sizeTrack.getY() - sizeLabel.getBottom() <= 10.f);
 
     delegate.events.clear();
@@ -2335,7 +2435,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     }
     const auto parameterRails = state.getProperty("vertexParameterRails", {});
     REQUIRE(parameterRails.isArray());
-    REQUIRE(parameterRails.getArray()->size() >= 2);
+    REQUIRE(parameterRails.getArray()->size() >= 3);
     REQUIRE_FALSE((bool) state.getProperty("guideControlsVisible", true));
     const auto morphLabelBounds = rectangleProperty(state, "morphGroupLabelBounds");
     const auto axisGroupLabelBounds = rectangleProperty(state, "axisGroupLabelBounds");
@@ -2358,8 +2458,10 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
             == Catch::Approx(morphLabelBounds.getY()));
     const auto firstRail = rectangleProperty(parameterRails.getArray()->getReference(0), "bounds");
     const auto secondRail = rectangleProperty(parameterRails.getArray()->getReference(1), "bounds");
+    const auto thirdRail = rectangleProperty(parameterRails.getArray()->getReference(2), "bounds");
     const auto lastRail = rectangleProperty(parameterRails.getArray()->getLast(), "bounds");
-    REQUIRE(secondRail.getY() - firstRail.getY() == Catch::Approx(39.1f).margin(0.02f));
+    REQUIRE(secondRail.getY() - firstRail.getY()
+            == Catch::Approx(thirdRail.getY() - secondRail.getY()));
     REQUIRE(actionBarBounds.getY() - lastRail.getBottom() >= 20.f);
     REQUIRE((bool) panelState.getProperty("previewPreservesInteractiveZoom", {}));
 

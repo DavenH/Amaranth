@@ -429,6 +429,7 @@ TEST_CASE("Adding a second signal probe refreshes its compiled preview address",
     REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
     REQUIRE(presentation.previewResult().probes.size() == 1);
     REQUIRE(presentation.previewResult().probes.front().connected);
+    const auto firstProbeValues = presentation.previewResult().probes.front().values;
     REQUIRE(commands.toggleSignalProbe(2, 0.6f).succeeded());
     REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
 
@@ -436,6 +437,7 @@ TEST_CASE("Adding a second signal probe refreshes its compiled preview address",
     REQUIRE(presentation.previewResult().probes.size() == 2);
     REQUIRE(presentation.previewResult().probes[0].connected);
     REQUIRE(presentation.previewResult().probes[1].connected);
+    REQUIRE(presentation.previewResult().probes[0].values == firstProbeValues);
 }
 
 TEST_CASE("A first spectral Trimesh probe is connected immediately",

@@ -295,11 +295,12 @@ bool GraphPresentationModel::renderPreviewProducts(
         bool& previewRendered,
         GraphAudioExecutor::CancellationCheck cancellationCheck) {
     previewRendered = false;
-    const bool hasPreviewTraversal = std::any_of(
+    const bool hasPreviewWork = std::any_of(
             products.begin(), products.end(), [](const auto& product) {
-                return product.product == UpdateProduct::PreviewTraversal;
+                return product.product == UpdateProduct::PreviewTraversal
+                        || product.product == UpdateProduct::ProbePreview;
             });
-    if (!hasPreviewTraversal || !snapshot.compileResult.succeeded()) {
+    if (!hasPreviewWork || !snapshot.compileResult.succeeded()) {
         return true;
     }
 
@@ -694,6 +695,12 @@ CausalUpdateRequest GraphPresentationModel::updateRequest(
         roots.push_back(plan.nodeOrder.front());
     }
     std::vector<ProductInvalidation> invalidations;
+    const bool probeAddressOnly = change.probesChanged
+            && !compile
+            && !change.guidesChanged
+            && !hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)
+            && !hasImpact(change.parameterImpacts, ParameterImpact::Preview)
+            && !hasImpact(change.parameterImpacts, ParameterImpact::Presentation);
     for (const auto& root : roots) {
         const std::vector<UpdateCause> causes { { root, compile ? "topology" : "state" } };
         if (change.guidesChanged
@@ -702,10 +709,12 @@ CausalUpdateRequest GraphPresentationModel::updateRequest(
                     root, stream, UpdateProduct::AudioConfiguration,
                     effectiveFingerprint, causes, true });
         }
-        if (preview) {
+        if (preview && !probeAddressOnly) {
             invalidations.push_back({
                     root, stream, UpdateProduct::PreviewTraversal,
                     effectiveFingerprint, causes, true });
+        }
+        if (preview) {
             invalidations.push_back({
                     root, stream, UpdateProduct::ProbePreview,
                     effectiveFingerprint, causes, true });

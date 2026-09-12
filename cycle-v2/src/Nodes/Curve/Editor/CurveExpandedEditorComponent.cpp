@@ -90,6 +90,25 @@ std::optional<NodeAudioResourceSummary> CurveExpandedEditorComponent::audioResou
     return delegate != nullptr ? delegate->audioResourceSummary() : std::nullopt;
 }
 
+bool CurveExpandedEditorComponent::setNodeParameterText(
+        const String& parameterId,
+        const String& label,
+        const String& value) {
+    if (delegate == nullptr
+            || !delegate->setNodeParameterText(parameterId, label, value)) {
+        return false;
+    }
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == parameterId) {
+            parameter.label = label;
+            parameter.value = value;
+            return true;
+        }
+    }
+    node.parameters.push_back({ parameterId, label, value });
+    return true;
+}
+
 void CurveExpandedEditorComponent::setNode(const Node& nextNode) {
     node = nextNode;
     setEditorModelState(node.model);

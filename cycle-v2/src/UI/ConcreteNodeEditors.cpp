@@ -60,6 +60,13 @@ private:
         return commands.publishCurveState(nodeId, std::move(model), controls);
     }
 
+    bool setNodeParameterText(
+            const String& parameterId,
+            const String& label,
+            const String& value) override {
+        return commands.setNodeParameterText(nodeId, parameterId, label, value);
+    }
+
     void beginCurveTransaction() override {
         commands.beginCurveTransaction();
     }

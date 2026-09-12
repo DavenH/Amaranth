@@ -1,5 +1,6 @@
 #include "Graph/GraphCompiler.h"
 
+#include "Graph/GraphAudioScopeCompiler.h"
 #include "Graph/NodeParameterMap.h"
 
 #include "Nodes/Control/ModulationTriple.h"
@@ -236,7 +237,7 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
 
         const Node& node = graph.getNodes()[static_cast<size_t>(nodeIndex)];
         const auto descriptor = moduleRegistry.descriptorFor(node.kind);
-        if (!descriptor.executable) {
+        if (!descriptor.executable && node.kind != NodeKind::VoiceOutput) {
             continue;
         }
         if (node.kind == NodeKind::ModulationTriple
@@ -420,71 +421,18 @@ void compileRouting(GraphExecutionPlan& plan) {
     }
 }
 
-void compileProcessingScopes(
-        GraphExecutionPlan& plan,
-        std::vector<GraphCompileIssue>& issues) {
-    bool changed = true;
-    while (changed) {
-        changed = false;
-        for (const auto& edge : plan.signalEdges) {
-            const int sourceIndex = stepIndexFor(plan, edge.sourceNodeId);
-            const int destinationIndex = stepIndexFor(plan, edge.destNodeId);
-            if (sourceIndex < 0 || destinationIndex < 0) {
-                continue;
-            }
-
-            const auto& source = plan.steps[(size_t) sourceIndex];
-            auto& destination = plan.steps[(size_t) destinationIndex];
-            if (source.ownershipScope != RuntimeOwnershipScope::Global
-                    || destination.ownershipScope == RuntimeOwnershipScope::Global) {
-                continue;
-            }
-            if (destination.ownershipScope == RuntimeOwnershipScope::OscillatorRegion
-                    || destination.ownershipScope == RuntimeOwnershipScope::UnisonLane) {
-                issues.push_back({
-                        GraphCompileCode::GlobalSignalReentersVoiceDomain,
-                        "Global signal from '" + source.nodeId
-                                + "' cannot re-enter voice processor '"
-                                + destination.nodeId + "'"
-                });
-                return;
-            }
-
-            destination.ownershipScope = RuntimeOwnershipScope::Global;
-            changed = true;
-        }
-    }
-}
-
-void compileVoiceMixBuffers(GraphExecutionPlan& plan) {
-    plan.voiceMixBufferIndices.clear();
-    for (const auto& destination : plan.steps) {
-        if (destination.ownershipScope != RuntimeOwnershipScope::Global) {
-            continue;
-        }
-        for (const auto& input : destination.inputs) {
-            if (input.sourceStepIndex < 0 || input.sourceBufferIndex < 0) {
-                continue;
-            }
-            const auto& source = plan.steps[(size_t) input.sourceStepIndex];
-            if (source.ownershipScope == RuntimeOwnershipScope::Global
-                    || std::find(
-                            plan.voiceMixBufferIndices.begin(),
-                            plan.voiceMixBufferIndices.end(),
-                            input.sourceBufferIndex) != plan.voiceMixBufferIndices.end()) {
-                continue;
-            }
-            plan.voiceMixBufferIndices.push_back(input.sourceBufferIndex);
-        }
-    }
-}
-
 int dependencyNodeIndex(const GraphDependencyIndex& index, const String& nodeId) {
     const auto found = index.nodeIndexById.find(nodeId);
     return found != index.nodeIndexById.end() ? found->second : -1;
 }
 
-void compileDependencyIndex(GraphExecutionPlan& plan) {
+std::vector<Edge> effectiveExecutionDependencies(
+        const NodeGraph& graph,
+        const GraphExecutionPlan& plan);
+
+void compileDependencyIndex(
+        const NodeGraph& graph,
+        GraphExecutionPlan& plan) {
     auto& index = plan.dependencyIndex;
     index.nodeIds = plan.nodeOrder;
     index.dependents.assign(index.nodeIds.size(), {});
@@ -517,8 +465,7 @@ void compileDependencyIndex(GraphExecutionPlan& plan) {
         }
     };
 
-    appendEdges(plan.signalEdges);
-    appendEdges(plan.attachments);
+    appendEdges(effectiveExecutionDependencies(graph, plan));
     appendEdges(plan.configurationAttachments);
 }
 
@@ -888,6 +835,25 @@ std::vector<Edge> effectiveExecutionDependencies(
             continue;
         }
         dependencies.push_back(attachment);
+    }
+    const auto globalInput = std::find_if(
+            graph.getNodes().begin(),
+            graph.getNodes().end(),
+            [](const Node& node) { return node.kind == NodeKind::GlobalInput; });
+    const auto voiceOutput = std::find_if(
+            graph.getNodes().begin(),
+            graph.getNodes().end(),
+            [](const Node& node) { return node.kind == NodeKind::VoiceOutput; });
+    if (globalInput != graph.getNodes().end()
+            && voiceOutput != graph.getNodes().end()) {
+        dependencies.push_back({
+                voiceOutput->id,
+                "time",
+                globalInput->id,
+                "time",
+                PortDomain::TimeSignal,
+                ConnectionKind::Signal
+        });
     }
     return dependencies;
 }
@@ -1320,14 +1286,17 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
             return result;
         }
         compileDefaultModulationInputs(graph, result.plan);
-        compileProcessingScopes(result.plan, result.compileIssues);
+        const auto scopeAnalysis = GraphAudioScopeAnalyzer().analyze(graph);
+        GraphAudioScopeCompiler::applyOwnership(result.plan, scopeAnalysis);
         if (!result.compileIssues.empty()) {
             result.plan = {};
             return result;
         }
         compileRouting(result.plan);
-        compileVoiceMixBuffers(result.plan);
-        compileDependencyIndex(result.plan);
+        GraphAudioScopeCompiler::compileVoiceMixBoundary(
+                result.plan,
+                scopeAnalysis);
+        compileDependencyIndex(graph, result.plan);
         refreshSignalProbes(graph, result.plan);
         publishConfigurations(graph, result.plan.steps);
     }

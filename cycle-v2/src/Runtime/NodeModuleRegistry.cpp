@@ -13,6 +13,7 @@ NodeModuleDescriptor descriptor(
         PreviewContract previewContract,
         NodeExecutionTrait executionTrait,
         AudioProcessingScope processingScope,
+        AudioProcessingCapability processingCapability,
         bool executable,
         bool previewable,
         String cycle1Reference = {}) {
@@ -23,6 +24,7 @@ NodeModuleDescriptor descriptor(
             previewContract,
             executionTrait,
             processingScope,
+            processingCapability,
             executable,
             previewable,
             cycle1Reference.isNotEmpty(),
@@ -45,6 +47,7 @@ NodeModuleDescriptor NodeModuleRegistry::descriptorFor(NodeKind kind) const {
             definition->previewContract,
             definition->executionTrait,
             definition->processingScope,
+            definition->processingCapability,
             definition->executable,
             definition->previewable,
             definition->cycle1Reference);
@@ -73,6 +76,7 @@ String labelForAudioModuleRole(AudioModuleRole role) {
         case AudioModuleRole::Equalizer:         return "Equalizer";
         case AudioModuleRole::StereoSplit:       return "Stereo Split";
         case AudioModuleRole::StereoJoin:        return "Stereo Join";
+        case AudioModuleRole::GlobalInput:       return "Global Input";
         case AudioModuleRole::Output:            return "Output";
         case AudioModuleRole::GenericProcessor:  return "Generic Processor";
         default:                                 return "Unknown";

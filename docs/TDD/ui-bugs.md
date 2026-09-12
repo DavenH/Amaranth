@@ -98,6 +98,22 @@ Context:
 Current status: open; reconcile the Pan mode serialization contract and update
 the paired definition/migration expectations together.
 
+## P2: Full-suite Trimesh tests retain order-dependent failures
+
+Context:
+
+- A full randomized Cycle V2 test run on 2026-09-12 failed
+  `Trimesh interactor movement policy matches the mature panel` because the
+  shared move set contained eight vertices where the fixture expected two.
+- The same run later crashed in `Trimesh Panel3D reads node-backed columns
+  through lib data retriever` with `SIGSEGV`, followed by a
+  `SingletonRepo.h:54` assertion. Focused global-audio graph tests do not touch
+  Trimesh panel state and pass independently.
+
+Current status: open; reproduce both tests under their recorded random order
+and isolate leaked singleton/panel state before changing the mature movement
+policy or test expectations.
+
 ## P2: Paired audio automation intermittently cannot focus the applications
 
 Context:

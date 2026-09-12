@@ -46,7 +46,14 @@ def canonical_json(value, depth=0):
                 for key, item in value.items()
             ) + " }"
         edge = "sourceNodeId" in value and "destNodeId" in value
-        if scalar and (edge or depth * 4 + len(compact) <= MAXIMUM_LINE_LENGTH):
+        mesh_vertex = all(
+            key in value
+            for key in ("time", "phase", "amp", "key", "mod", "weight", "id")
+        )
+        if scalar and (
+                edge
+                or mesh_vertex
+                or depth * 4 + len(compact) <= MAXIMUM_LINE_LENGTH):
             return compact
         lines = [
             "    " * (depth + 1)

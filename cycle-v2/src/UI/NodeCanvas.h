@@ -126,6 +126,7 @@ private:
     OpenGLContext openGLContext;
     NodeCanvasRenderer renderer;
     mutable NodeCanvasViewport viewport;
+    bool documentViewportFitted {};
     mutable NodeCanvasScene sceneBuilder;
     Settings settings;
     GraphDocument document;
@@ -210,6 +211,7 @@ private:
     void scheduleCompiledStateRefresh();
     void flushScheduledCompiledStateRefresh();
     void resetDocumentPresentation();
+    void fitDocumentInViewport();
     File snapshotFile() const;
     bool saveSnapshot();
     bool loadSnapshot();
@@ -272,6 +274,10 @@ private:
     bool publishCurveState(
             NodeModelStatePtr model,
             const std::vector<NodeParameter>& controls) override;
+    bool setNodeParameterText(
+            const String& parameterId,
+            const String& label,
+            const String& value) override;
     void beginCurveTransaction() override;
     void commitCurveTransaction() override;
 

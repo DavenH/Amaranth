@@ -94,8 +94,8 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
 
     REQUIRE(result.succeeded());
     REQUIRE(result.plan.attachments.size() == 2);
-    REQUIRE(result.plan.signalEdges.size() == 11);
-    REQUIRE(result.plan.buffers.size() == 13);
+    REQUIRE(result.plan.signalEdges.size() == 12);
+    REQUIRE(result.plan.buffers.size() == 15);
     REQUIRE(result.plan.steps.size() == result.plan.nodeOrder.size());
     REQUIRE(result.plan.voiceContexts.size() == 1);
 
@@ -112,7 +112,9 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(orderIndex(plan, "addPhase") < orderIndex(plan, "ifft"));
     REQUIRE(orderIndex(plan, "ifft") < orderIndex(plan, "multiply"));
     REQUIRE(orderIndex(plan, "env") < orderIndex(plan, "multiply"));
-    REQUIRE(orderIndex(plan, "multiply") < orderIndex(plan, "out"));
+    REQUIRE(orderIndex(plan, "multiply") < orderIndex(plan, "voiceOutput"));
+    REQUIRE(orderIndex(plan, "voiceOutput") < orderIndex(plan, "globalInput"));
+    REQUIRE(orderIndex(plan, "globalInput") < orderIndex(plan, "out"));
 
     REQUIRE(parameterValueForNode({ "voice", NodeKind::VoiceContext, {}, {}, findStep(plan, "voice").parameters, {}, {} },
             "domain") == "waveform");
@@ -959,19 +961,22 @@ TEST_CASE("Compiler assigns output slots and source lifetimes before processing"
     REQUIRE(buffer.lastConsumerStep > buffer.firstProducerStep);
 }
 
-TEST_CASE("Compiler keeps processing global downstream of the first global effect",
+TEST_CASE("Compiler derives neutral global processing from Global Input",
         "[cycle-v2][graph][audio-scope]") {
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalInput", {}));
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
     graph.addNode(factory.createNode(
             NodeKind::GenericProcessor,
             "downstream",
             {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({ "wave", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({
-            "wave", "out", "delay", "time",
+            "globalInput", "time", "delay", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
     graph.addEdge({
@@ -997,4 +1002,55 @@ TEST_CASE("Compiler keeps processing global downstream of the first global effec
     REQUIRE(result.plan.voiceMixBufferIndices.size() == 1);
     REQUIRE(result.plan.voiceMixBufferIndices.front()
             == findStep(result.plan, "wave").outputs.front().bufferIndex);
+}
+
+TEST_CASE("Compiler derives runtime ownership from the authored global graph",
+        "[cycle-v2][graph][audio-scope]") {
+    GraphNodeFactory factory;
+    GraphEditor editor;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::GenericProcessor, "voiceTerminal", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "boundary", {}));
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shaper", {}));
+    graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({ "voiceTerminal", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    REQUIRE(editor.setNodeParameter(
+            graph,
+            "shaper",
+            "processingScope",
+            "Processing",
+            "global").succeeded());
+    graph.addEdge({
+            "boundary", "time", "shaper", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "shaper", "time", "delay", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "delay", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(findStep(result.plan, "voiceTerminal").ownershipScope
+            == RuntimeOwnershipScope::SynthVoice);
+    REQUIRE(findStep(result.plan, "boundary").ownershipScope
+            == RuntimeOwnershipScope::Global);
+    REQUIRE(findStep(result.plan, "shaper").ownershipScope
+            == RuntimeOwnershipScope::Global);
+    REQUIRE(findStep(result.plan, "delay").ownershipScope
+            == RuntimeOwnershipScope::Global);
+    REQUIRE(findStep(result.plan, "out").ownershipScope
+            == RuntimeOwnershipScope::Global);
+    REQUIRE(result.plan.voiceMixBufferIndices.size() == 1);
+    REQUIRE(result.plan.voiceMixBufferIndices.front()
+            == findStep(result.plan, "voiceTerminal").outputs.front().bufferIndex);
+    REQUIRE(result.plan.globalInputBufferIndex
+            == findStep(result.plan, "boundary").outputs.front().bufferIndex);
 }

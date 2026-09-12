@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/GlobalAudioGraphMigration.h"
 #include "Graph/NodeDefinition.h"
 
 #include "Nodes/Envelope/EnvelopePurpose.h"
@@ -242,6 +243,9 @@ NodeGraph NodeGraph::createDemoGraph() {
             { "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, ConnectionKind::Signal },
             { "multiply", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal }
     };
+
+    const auto migration = GlobalAudioGraphMigration().migrate(graph);
+    jassert(migration.succeeded());
 
     return graph;
 }

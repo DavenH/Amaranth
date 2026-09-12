@@ -1445,6 +1445,7 @@ TEST_CASE("Trimesh panel data source adapts node grid data to Panel3D columns", 
 }
 
 TEST_CASE("Trimesh Panel3D reads node-backed columns through lib data retriever", "[cycle-v2][nodes][trimesh]") {
+    ScopedJuceInitialiser_GUI juce;
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
@@ -1454,13 +1455,10 @@ TEST_CASE("Trimesh Panel3D reads node-backed columns through lib data retriever"
             {},
             {}
     };
-    SingletonRepo repo;
-    TrimeshNodeModel model;
-    TrimeshPanelDataSource source;
-    TrimeshPanel3D panel(&repo, source);
-
-    model.syncFromNode(node);
-    source.rebuild(model, 12, 4);
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(node, 12, 4);
+    auto& panel = bridge.getPanel3D();
+    auto& source = bridge.getDataSource();
 
     REQUIRE(panel.shouldDrawGrid());
     REQUIRE(panel.getColumns().size() == 4);
@@ -1826,6 +1824,10 @@ TEST_CASE("Trimesh link parameters drive mature linked-vertex interaction",
     TrimeshPanelBridge bridge;
     GraphEditor editor;
 
+    REQUIRE(editor.setNodeParameter(
+            graph, "mesh", "link.red", "Link Red", "0").succeeded());
+    REQUIRE(editor.setNodeParameter(
+            graph, "mesh", "link.blue", "Link Blue", "0").succeeded());
     bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
     VertCube* cube = bridge.getModel().getMeshForPanel().getCubes().front();
     Vertex* vertex = cube->getVertex(0);

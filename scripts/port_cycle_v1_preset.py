@@ -12,7 +12,10 @@ import copy
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
+import subprocess
+import tempfile
 
 from simplify_cycle_v2_presets import simplify_graph
 
@@ -84,7 +87,76 @@ NODE_FOOTPRINTS = {
     "delay": (216.0, 194.0),
     "equalizer": (256.0, 230.0),
     "output": (190.0, 160.0),
+    "globalInput": (190.0, 160.0),
 }
+
+
+def graph_migrator_path():
+    configured = os.environ.get("CYCLE_V2_GRAPH_MIGRATOR")
+    candidates = [
+        Path(configured) if configured else None,
+        Path(__file__).resolve().parents[1]
+        / "build" / "tests" / "cycle-v2" / "CycleV2GraphMigrator",
+    ]
+    for candidate in candidates:
+        if candidate is not None and candidate.is_file():
+            return candidate
+    raise RuntimeError(
+        "CycleV2GraphMigrator is required; build the tests preset first")
+
+
+def restore_numeric_precision(migrated, original):
+    if isinstance(migrated, dict) and isinstance(original, dict):
+        for key in migrated.keys() & original.keys():
+            migrated[key] = restore_numeric_precision(migrated[key], original[key])
+        return migrated
+    if isinstance(migrated, list) and isinstance(original, list):
+        if len(migrated) != len(original):
+            return migrated
+        return [
+            restore_numeric_precision(migrated_value, original_value)
+            for migrated_value, original_value in zip(migrated, original)
+        ]
+    numeric_types = (int, float)
+    if not isinstance(migrated, bool) \
+            and not isinstance(original, bool) \
+            and isinstance(migrated, numeric_types) \
+            and isinstance(original, numeric_types):
+        return original
+    return migrated
+
+
+def migrate_global_audio_graph(graph):
+    with tempfile.TemporaryDirectory(prefix="cycle-v2-migration-") as directory:
+        source = Path(directory) / "legacy.cyclegraph"
+        destination = Path(directory) / "explicit.cyclegraph"
+        source.write_text(json.dumps(graph, indent=4) + "\n", encoding="utf-8")
+        completed = subprocess.run(
+            [str(graph_migrator_path()), "--raw", str(source), str(destination)],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode != 0:
+            detail = completed.stderr.strip() or completed.stdout.strip()
+            raise ValueError(f"Global audio graph migration failed: {detail}")
+        with destination.open(encoding="utf-8") as migrated_file:
+            migrated = json.load(migrated_file)
+
+    original_nodes = {node["id"]: node for node in graph.get("nodes", [])}
+    for migrated_node in migrated.get("nodes", []):
+        original_node = original_nodes.get(migrated_node["id"])
+        if original_node is None:
+            continue
+        for property_name in ("parameters", "model"):
+            if property_name in migrated_node and property_name in original_node:
+                migrated_node[property_name] = restore_numeric_precision(
+                    migrated_node[property_name], original_node[property_name])
+    for property_name in ("guides", "guideHeatmaps"):
+        if property_name in migrated and property_name in graph:
+            migrated[property_name] = restore_numeric_precision(
+                migrated[property_name], graph[property_name])
+    return migrated
 
 
 def node(node_id, kind, x, y, parameters=None, model=None):
@@ -684,7 +756,6 @@ def convert(source):
 
     envelope_y = {"volume": 120, "pitch": 1050, "scratch": 1280}
     envelope_ids = {}
-    static_envelope_ids = []
     for purpose in ("volume", "pitch", "scratch"):
         for index, layer in enumerate(envelope_layers(preset, purpose), 1):
             if purpose == "pitch" and not layer["properties"]["active"]:
@@ -695,20 +766,6 @@ def convert(source):
                 2450 + 310 * (index - 1), envelope_y[purpose]))
             if layer["properties"]["active"]:
                 envelope_ids[purpose] = envelope_id
-                if not layer["properties"].get("dynamic", False):
-                    static_envelope_ids.append(envelope_id)
-
-    if static_envelope_ids:
-        nodes.append(node("staticEnvelopeMorph", "modulationSource", 2140, 1280, {
-            "source": "constant",
-            "controller": 1,
-            "constant": 0.0,
-        }))
-        for envelope_id in static_envelope_ids:
-            edges.extend([
-                edge("staticEnvelopeMorph", "value", envelope_id, "red"),
-                edge("staticEnvelopeMorph", "value", envelope_id, "blue"),
-            ])
 
     volume_id = envelope_ids.get("volume")
     if volume_id is None and preset["settings"].get("Declick", True):
@@ -816,7 +873,7 @@ def convert(source):
     }
     apply_compact_layout(nodes)
     simplify_graph(graph)
-    return graph
+    return migrate_global_audio_graph(graph)
 
 
 def validate_conversion(source):
