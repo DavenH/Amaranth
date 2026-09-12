@@ -30,6 +30,7 @@ enum class AudioModuleRole {
     Equalizer,
     StereoSplit,
     StereoJoin,
+    GlobalInput,
     Output,
     GenericProcessor
 };
@@ -125,6 +126,12 @@ enum class AudioProcessingScope {
     Global
 };
 
+enum class AudioProcessingCapability {
+    VoiceOnly,
+    GlobalOnly,
+    Selectable
+};
+
 struct NodeDefinition {
     String typeId;
     int version { 1 };
@@ -146,6 +153,9 @@ struct NodeDefinition {
     String cycle1Reference;
     NodeExecutionTrait executionTrait { NodeExecutionTrait::SampleBlockProcessor };
     AudioProcessingScope processingScope { AudioProcessingScope::Voice };
+    AudioProcessingCapability processingCapability { AudioProcessingCapability::VoiceOnly };
+    bool requiredSingleton {};
+    bool removable { true };
     NodeNaturalSize minimumPreviewSize { 190.f, 76.f };
     NodeNaturalSize fixedNaturalSize;
 };

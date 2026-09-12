@@ -2,6 +2,10 @@
 
 ## Status
 
+In progress on 2026-09-12. The authored node/capability schema and required
+singleton edit boundaries are implemented. Compiler partitions, runtime binding,
+editor selectors, presentation, migration/layout, and preset conversion remain.
+
 Proposed on 2026-09-11. This TDD supersedes the temporary per-node `VOICE` and
 `GLOBAL` text badges added during Cycle 1 audio-parity work. It does not change
 DSP algorithms. It makes the existing voice-mix/global-processing boundary an

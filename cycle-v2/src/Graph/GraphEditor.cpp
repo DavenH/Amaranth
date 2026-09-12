@@ -147,6 +147,17 @@ GraphEditResult audioResourceEditResult(
 }
 
 GraphEditResult GraphEditor::addNode(NodeGraph& graph, NodeKind kind, Point<float> position) const {
+    const auto* definition = NodeDefinitionRegistry::instance().find(kind);
+    if (definition != nullptr && definition->requiredSingleton) {
+        const auto duplicate = std::find_if(
+                graph.getNodes().begin(),
+                graph.getNodes().end(),
+                [kind](const Node& node) { return node.kind == kind; });
+        if (duplicate != graph.getNodes().end()) {
+            return { GraphEditCode::ValidationRejected, duplicate->id, {} };
+        }
+    }
+
     const String nodeId = createUniqueNodeId(graph, kind);
     graph.addNode(GraphNodeFactory().createNode(kind, nodeId, position));
     return { GraphEditCode::Connected, nodeId, {} };
@@ -555,8 +566,13 @@ GraphEditResult GraphEditor::spliceNodeIntoEdge(NodeGraph& graph, size_t edgeInd
 }
 
 GraphEditResult GraphEditor::removeNode(NodeGraph& graph, const String& nodeId) const {
-    if (findNode(graph, nodeId) == nullptr) {
+    const Node* node = findNode(graph, nodeId);
+    if (node == nullptr) {
         return { GraphEditCode::MissingNode, {}, {} };
+    }
+    const auto* definition = NodeDefinitionRegistry::instance().find(node->kind);
+    if (definition != nullptr && !definition->removable) {
+        return { GraphEditCode::ValidationRejected, nodeId, {} };
     }
 
     const NodeAudioResourceBinding* binding = graph.findAudioResourceBinding(nodeId);
