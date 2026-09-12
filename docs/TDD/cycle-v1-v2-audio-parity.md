@@ -886,7 +886,7 @@ as the scratch envelope evolves.
     `scripts/fixtures/cycle-v2-agent-icycle-note-sequence.json`. Artifacts:
     `/tmp/cycle-v1-icycle-note-sequence-report.json`,
     `/tmp/cycle-v2-icycle-note-sequence-report.json`, and their `.f32le` audio.
-53. Localize Icycle's post-note release drift. In progress: rerendering the
+53. Localize Icycle's post-note release drift. Complete: rerendering the
     three-note sequence with Waveshaper, IR, and Delay disabled leaves the
     mismatch in the dry voice sum, so it is not caused by global effect state.
     Isolated MIDI 48, 55, and 60 renders remain between `0.9979` and `0.99999`
@@ -897,15 +897,28 @@ as the scratch envelope evolves.
     A post-release stage capture at oscillator frame 64/frontier 21575 first
     differs at the time raster. Its red and blue morph coordinates remain
     identical, while the time coordinate is `0.62508` in Cycle 1 and `0.68939`
-    in Cycle V2. Icycle's prepared scratch Envelope overrides that time morph,
-    which localizes the gap to scratch-Envelope release advancement at the
-    oscillator lookahead boundary. Cycle 1 sets Note Off on every mature
-    `EnvRasterizer` before its cycle renderer advances scratch state; Cycle V2
-    applies the same shared `EnvelopePlaybackEngine` lifecycle through
-    `PreparedCycleEnvelopeBank`, but may already own prepared frame/cycle state
-    beyond the event boundary. Preserve the shared playback implementation and
-    identify the exact event/lookahead ordering difference before changing
-    either renderer. Artifacts: `/tmp/cycle-icycle-release-stages-64/`,
+    in Cycle V2. Icycle's prepared scratch Envelope overrides that time morph.
+    The initial lookahead diagnosis was incomplete: matched held-note captures
+    at frames 0, 16, 63, 64, and 65 show that float-rounded V2 time increments
+    can select the wrong sample for one precision-sensitive loop transition.
+    Cycle 1 computes a float inverse duration and retains the subsequent
+    sample-rate division as a double. V2 now retains that same arithmetic
+    boundary for both cycle and volume Envelope clocks; frame 64 then matches.
+
+    The remaining tail gap was a V2-only lifecycle rule. Icycle's active scratch
+    cross-section has no release curve. Mature `EnvRasterizer::setNoteOff()`
+    requests release but leaves a no-release pitch/scratch Envelope advancing
+    normally; `PreparedCycleEnvelopeBank` instead deactivated it and froze its
+    last value at `0.689390`. The prepared bank now preserves active playback
+    when the shared engine reports no release curve, while Reset remains the
+    hard-stop boundary. At post-note frame 80/frontier 26969 its time morph is
+    the Cycle 1 value `0.576615`. The dry 1.2-second release comparison improves
+    from lag 372, correlation `0.85890`, residual `0.5121`, and spectral RMSE
+    `6.56 dB` to zero lag, correlation `0.99989`, residual `0.0151`, and
+    spectral RMSE `0.11 dB`; both engines are repeatable. No envelope playback
+    or oscillator algorithm was duplicated. Artifacts:
+    `/private/tmp/cycle-icycle-precision-fix-stage64/`,
+    `/private/tmp/cycle-icycle-release-continued/`,
     `/tmp/cycle-icycle-sequence-notes-dry/`, and
     `/tmp/cycle-icycle-start-note-dry/`.
 54. Restore live Voice Context and preset-control parity. In progress. The

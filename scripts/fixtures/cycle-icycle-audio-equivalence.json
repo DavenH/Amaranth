@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/Icycle.cyclegraph",
-        "sha256": "0938ee5f5e733c01a31d4569106a8044a079dfd11f1a8ba2564f05733f4406bb",
+        "sha256": "03aaa1d53a61d9d44e00a768e7063d3d782482501573133de29bfff9086c4e92",
         "renderOverrides": {
             "voiceDurationSeconds": 2.2102451743580955
         }

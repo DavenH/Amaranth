@@ -299,14 +299,15 @@ void RealtimeGraphRenderer::renderVoices(
     const float durationSeconds = voiceDurationSecondsFor(
             preparedGraph->plan,
             durationOverride);
-    const float timeIncrement = sampleRate > 0.
-            ? 1.f / ((float) sampleRate * durationSeconds)
+    const float inverseDuration = 1.f / durationSeconds;
+    const double timeIncrement = sampleRate > 0.
+            ? inverseDuration / sampleRate
             : 0.f;
     const double volumeClockSampleRate = volumeEnvelopeClockSampleRate > 0.
             ? volumeEnvelopeClockSampleRate
             : sampleRate;
-    const float volumeEnvelopeTimeIncrement = volumeClockSampleRate > 0.
-            ? 1.f / ((float) volumeClockSampleRate * durationSeconds)
+    const double volumeEnvelopeTimeIncrement = volumeClockSampleRate > 0.
+            ? inverseDuration / volumeClockSampleRate
             : 0.f;
 
     preparedGraph->executor.beginRealtimeVoiceMix(
@@ -338,7 +339,8 @@ void RealtimeGraphRenderer::renderVoices(
 
         voice.normalizedTime = jmin(
                 1.f,
-                voice.normalizedTime + timeIncrement * (float) frameCount);
+                voice.normalizedTime
+                        + (float) (timeIncrement * (double) frameCount));
         if (voice.released && !preparedGraph->executor.hasActiveVoiceTail(
                 voice.context.voiceIndex)) {
             voice.active = false;
