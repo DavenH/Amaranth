@@ -22,6 +22,10 @@ public:
     virtual bool publishCurveState(
             NodeModelStatePtr model,
             const std::vector<NodeParameter>& controls) = 0;
+    virtual bool setNodeParameterText(
+            const String& parameterId,
+            const String& label,
+            const String& value) = 0;
     virtual void beginCurveTransaction() = 0;
     virtual void commitCurveTransaction() = 0;
     virtual void curveTransientStateChanged(uint64_t) {}
@@ -85,6 +89,10 @@ protected:
     bool setAudioResource(NodeAudioResourceEdit edit);
     bool removeAudioResource();
     std::optional<NodeAudioResourceSummary> audioResourceSummary() const;
+    bool setNodeParameterText(
+            const String& parameterId,
+            const String& label,
+            const String& value);
 
     template<typename Operation>
     void bindDiscreteAction(Button& button, Operation operation) {

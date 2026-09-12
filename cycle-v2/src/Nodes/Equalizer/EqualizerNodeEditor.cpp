@@ -10,6 +10,7 @@
 #include "UI/EditorChromeLayout.h"
 #include "UI/EffectEnableButton.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
+#include "UI/Editors/ProcessingScopeSelector.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
 namespace CycleV2 {
@@ -17,8 +18,10 @@ namespace CycleV2 {
 namespace {
 
 constexpr int kPreviewHeight = 150;
-constexpr int kPropertyStart = 242;
+constexpr int kPropertyStart = 292;
 constexpr int kColumnGap = 46;
+constexpr int kScopeWidth = 160;
+constexpr int kScopeHeight = 28;
 
 String formatGain(double value) {
     const float decibels = CycleDsp::equalizerGainDecibels((float) value);
@@ -96,7 +99,8 @@ public:
             NodeEditorCommands& commandsToUse,
             NodeEditorPresentation& presentationToUse) :
             commands     (commandsToUse)
-        ,   presentation (presentationToUse) {
+        ,   presentation (presentationToUse)
+        ,   processingScope ("equalizerEditor") {
         configureHeader();
         createControls();
     }
@@ -105,6 +109,9 @@ public:
         node = nextNode;
         const NodeParameterMap parameters(node);
         enabled.setToggleState(parameters.boolValue("enabled", true), dontSendNotification);
+        processingScope.setScope(
+                parameters.stringValue("processingScope", "voice"),
+                dontSendNotification);
         for (auto& control : controls) {
             control->row.bind(
                     node.id,
@@ -131,6 +138,12 @@ public:
         const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
         close.setBounds(header.close);
         enabled.setBounds(header.enabled);
+        processingHeader.setBounds(
+                38,
+                214,
+                kScopeWidth,
+                PropertyControlMetrics::groupLabelHeight);
+        processingScope.setBounds(38, 230, kScopeWidth, kScopeHeight);
         const int columnWidth = (getWidth() - 76 - kColumnGap) / 2;
         const int frequencyX = 38 + columnWidth + kColumnGap;
         gainHeader.setBounds(
@@ -172,6 +185,10 @@ public:
         auto* state = new DynamicObject();
         state->setProperty("kind", "EQUALIZER");
         state->setProperty("enabled", enabled.getToggleState());
+        state->setProperty("processingScope", processingScope.automationState());
+        state->setProperty(
+                "processingGroup",
+                propertyGroupLabelAutomationState(processingHeader));
         state->setProperty("gainGroup", propertyGroupLabelAutomationState(gainHeader));
         state->setProperty(
                 "frequencyGroup",
@@ -205,8 +222,29 @@ private:
                     "Enabled",
                     enabled.getToggleState() ? 1.f : 0.f);
         };
+        processingScope.onChange = [this](const String& scope) {
+            if (!commands.setNodeParameterText(
+                    node.id,
+                    "processingScope",
+                    "Processing",
+                    scope)) {
+                processingScope.setScope(
+                        NodeParameterMap(node).stringValue("processingScope", "voice"),
+                        dontSendNotification);
+                return;
+            }
+            for (auto& parameter : node.parameters) {
+                if (parameter.id == "processingScope") {
+                    parameter.value = scope;
+                    return;
+                }
+            }
+            node.parameters.push_back({ "processingScope", "Processing", scope });
+        };
         addAndMakeVisible(close);
         addAndMakeVisible(enabled);
+        addAndMakeVisible(processingHeader);
+        addAndMakeVisible(processingScope);
         addAndMakeVisible(gainHeader);
         addAndMakeVisible(frequencyHeader);
     }
@@ -398,6 +436,8 @@ private:
     Node node;
     TextButton close;
     EffectEnableButton enabled;
+    PropertyGroupLabel processingHeader { "PROCESSING" };
+    ProcessingScopeSelector processingScope;
     PropertyGroupLabel gainHeader { "Gain" };
     PropertyGroupLabel frequencyHeader { "Frequency" };
     int draggedBand { -1 };

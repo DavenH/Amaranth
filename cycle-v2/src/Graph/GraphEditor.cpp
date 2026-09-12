@@ -128,6 +128,29 @@ bool bindReplacementAudioResource(
     return true;
 }
 
+bool sameValidationIssue(
+        const GraphValidationIssue& first,
+        const GraphValidationIssue& second) {
+    return first.code == second.code
+            && first.sourceNodeId == second.sourceNodeId
+            && first.sourcePortId == second.sourcePortId
+            && first.destNodeId == second.destNodeId
+            && first.destPortId == second.destPortId;
+}
+
+bool strictlyRepairsValidationIssues(
+        const std::vector<GraphValidationIssue>& before,
+        const std::vector<GraphValidationIssue>& after) {
+    if (before.empty() || after.size() >= before.size()) {
+        return false;
+    }
+    return std::all_of(after.begin(), after.end(), [&](const auto& issue) {
+        return std::any_of(before.begin(), before.end(), [&](const auto& prior) {
+            return sameValidationIssue(issue, prior);
+        });
+    });
+}
+
 GraphEditResult audioResourceEditResult(
         const String& nodeId,
         ParameterImpact parameterImpacts,
@@ -204,9 +227,11 @@ GraphEditResult GraphEditor::connect(
                     : dest->attachmentType
     });
 
-    auto issues = GraphValidator().validate(candidate);
+    GraphValidator validator;
+    auto issues = validator.validate(candidate);
 
-    if (!issues.empty()) {
+    if (!issues.empty()
+            && !strictlyRepairsValidationIssues(validator.validate(graph), issues)) {
         return { GraphEditCode::ValidationRejected, {}, std::move(issues) };
     }
 

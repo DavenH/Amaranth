@@ -112,6 +112,114 @@ TEST_CASE("Pitch Envelope routes only to the typed Voice Context pitch port",
     REQUIRE(graph.getEdges().size() == 1);
 }
 
+TEST_CASE("Processing scope edits retain cables until explicit repair and undo",
+        "[cycle-v2][graph][audio-scope][gesture][undo]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "global", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "voice", "out", "shape", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "global", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    REQUIRE(GraphCompiler().compile(graph).succeeded());
+
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    const auto changed = commands.setNodeParameter(
+            "shape", "processingScope", "Processing", "global");
+    REQUIRE(changed.succeeded());
+    REQUIRE(changed.changes.parameterImpacts
+            == (ParameterImpact::GraphSemantics | ParameterImpact::Presentation));
+    REQUIRE(document.graph().getEdges().size() == 2);
+    const auto invalidGlobal = GraphCompiler().compile(document.graph());
+    REQUIRE_FALSE(invalidGlobal.succeeded());
+    REQUIRE(std::any_of(
+            invalidGlobal.validationIssues.begin(),
+            invalidGlobal.validationIssues.end(),
+            [](const auto& issue) {
+                return issue.code == GraphValidationCode::ProcessingScopeMismatch
+                        && issue.sourceNodeId == "voice"
+                        && issue.destNodeId == "shape";
+            }));
+
+    REQUIRE(commands.connect(
+            { "global", "time", false },
+            { "shape", "time", true }).succeeded());
+    REQUIRE(commands.connect(
+            { "shape", "time", false },
+            { "out", "time", true }).succeeded());
+    const auto globalPlan = GraphCompiler().compile(document.graph());
+    REQUIRE(globalPlan.succeeded());
+    REQUIRE(globalPlan.plan.voiceMixBufferIndices.size() == 1);
+
+    REQUIRE(document.undo());
+    REQUIRE_FALSE(GraphCompiler().compile(document.graph()).succeeded());
+    REQUIRE(document.undo());
+    REQUIRE_FALSE(GraphCompiler().compile(document.graph()).succeeded());
+    REQUIRE(document.undo());
+    REQUIRE(GraphCompiler().compile(document.graph()).succeeded());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("shape"), "processingScope")
+            == "voice");
+    REQUIRE(document.graph().getEdges().size() == 2);
+}
+
+TEST_CASE("Global effect scope can be repaired into the voice graph and undone",
+        "[cycle-v2][graph][audio-scope][gesture][undo]") {
+    GraphNodeFactory factory;
+    GraphEditor editor;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "global", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    REQUIRE(editor.setNodeParameter(
+            graph,
+            "shape",
+            "processingScope",
+            "Processing",
+            "global").succeeded());
+    graph.addEdge({
+            "global", "time", "shape", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "shape", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    REQUIRE(GraphCompiler().compile(graph).succeeded());
+
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.setNodeParameter(
+            "shape", "processingScope", "Processing", "voice").succeeded());
+    REQUIRE(document.graph().getEdges().size() == 2);
+    REQUIRE_FALSE(GraphCompiler().compile(document.graph()).succeeded());
+
+    REQUIRE(commands.connect(
+            { "voice", "out", false },
+            { "shape", "time", true }).succeeded());
+    REQUIRE(commands.connect(
+            { "global", "time", false },
+            { "out", "time", true }).succeeded());
+    REQUIRE(GraphCompiler().compile(document.graph()).succeeded());
+
+    REQUIRE(document.undo());
+    REQUIRE_FALSE(GraphCompiler().compile(document.graph()).succeeded());
+    REQUIRE(document.undo());
+    REQUIRE_FALSE(GraphCompiler().compile(document.graph()).succeeded());
+    REQUIRE(document.undo());
+    REQUIRE(GraphCompiler().compile(document.graph()).succeeded());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("shape"), "processingScope")
+            == "global");
+}
+
 TEST_CASE("Envelope purpose edit restores its removed routing through document undo",
         "[cycle-v2][graph][envelope][purpose][undo]") {
     GraphNodeFactory factory;
