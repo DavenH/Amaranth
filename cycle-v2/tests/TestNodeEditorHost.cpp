@@ -29,6 +29,7 @@
 #include "UI/Editors/NodePropertyControlBinding.h"
 #include "UI/Editors/ProcessingScopeSelector.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
+#include "UI/Editors/PropertySegmentedSelector.h"
 #include "UI/EnvelopePurposeSelector.h"
 #include "UI/NodeCanvasAutomationController.h"
 #include "UI/NodeCanvasAutomationInspector.h"
@@ -468,6 +469,66 @@ TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
     REQUIRE(checksum(withRuntime) == checksum(authoritative));
 }
 
+TEST_CASE("Reverb heatmap palette follows its runtime spectral domain",
+        "[cycle-v2][canvas][preview][reverb][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component canvas;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Reverb, "reverb", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher graphCommands(document);
+    NullPresentation presentation;
+    NullResources editorResources;
+    NodeEditorCommandService editorCommands(
+            canvas,
+            document,
+            graphCommands,
+            presentation,
+            editorResources);
+    NodePreviewResources resources(editorCommands);
+    resources.setGraph(&document.graph());
+    NodePreviewRenderer renderer(resources);
+    const Node& node = *document.graph().findNode("reverb");
+    NodePreviewResult runtime {
+            "reverb",
+            PreviewModuleRole::ReverbSpectrogram,
+            { 0.f, 0.25f, 0.75f, 1.f }
+    };
+    runtime.gridColumns = 2;
+    runtime.gridRows = 2;
+    runtime.domain = PortDomain::SpectralMagnitudeSignal;
+
+    const auto render = [&](PortDomain requestDomain) {
+        Image image(Image::ARGB, 96, 64, true);
+        Graphics graphics(image);
+        renderer.paint(graphics, {
+                node,
+                &runtime,
+                image.getBounds().toFloat(),
+                TrimeshRenderProfile::fromDomain(requestDomain),
+                1.f,
+                true
+        });
+        return image;
+    };
+
+    const Image timeRequest = render(PortDomain::TimeSignal);
+    const Image magnitudeRequest = render(PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(timeRequest.isValid());
+    REQUIRE(magnitudeRequest.isValid());
+    const auto checksum = [](const Image& image) {
+        uint64_t result = 1469598103934665603ULL;
+        for (int y = 0; y < image.getHeight(); ++y) {
+            for (int x = 0; x < image.getWidth(); ++x) {
+                result ^= image.getPixelAt(x, y).getARGB();
+                result *= 1099511628211ULL;
+            }
+        }
+        return result;
+    };
+    REQUIRE(checksum(timeRequest) == checksum(magnitudeRequest));
+}
+
 TEST_CASE("First compact Envelope paint synchronizes its durable curve model",
         "[cycle-v2][canvas][preview][envelope][regression]") {
     ScopedJuceInitialiser_GUI juce;
@@ -895,6 +956,19 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     REQUIRE((int) state.getProperty("octave", {}).getProperty("usableTrackWidth", {}) >= 140);
     REQUIRE((int) state.getProperty("voiceLength", {}).getProperty("usableTrackWidth", {}) >= 140);
     REQUIRE((int) state.getProperty("pitch", {}).getProperty("usableTrackWidth", {}) >= 140);
+    const Rectangle<float> octaveTrack = rectangleProperty(
+            state.getProperty("octave", {}),
+            "track");
+    const Rectangle<float> voiceLengthTrack = rectangleProperty(
+            state.getProperty("voiceLength", {}),
+            "track");
+    const Rectangle<float> pitchTrack = rectangleProperty(
+            state.getProperty("pitch", {}),
+            "track");
+    REQUIRE(octaveTrack.getX() == Catch::Approx(voiceLengthTrack.getX()));
+    REQUIRE(octaveTrack.getX() == Catch::Approx(pitchTrack.getX()));
+    REQUIRE(octaveTrack.getWidth() == Catch::Approx(voiceLengthTrack.getWidth()));
+    REQUIRE(octaveTrack.getWidth() == Catch::Approx(pitchTrack.getWidth()));
 
     auto* pitchValue = dynamic_cast<Label*>(host.component()->findChildWithID(
             "voiceContextEditor.pitch.value"));
@@ -907,16 +981,21 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     pitchValue->setText("7.5 semitones", sendNotificationSync);
     REQUIRE(commands.updates == 1);
 
+    auto* domainSelector = host.component()->findChildWithID("voiceContextEditor.domain");
+    REQUIRE(domainSelector != nullptr);
     for (const String& domain : { String("spectral"), String("waveform") }) {
-        auto* option = dynamic_cast<TextButton*>(host.component()->findChildWithID(
+        auto* option = dynamic_cast<TextButton*>(domainSelector->findChildWithID(
                 "voiceContextEditor.domain." + domain));
         REQUIRE(option != nullptr);
         option->onClick();
         REQUIRE(commands.textParameterId == "domain");
         REQUIRE(commands.textValue == domain);
     }
+    auto* oversamplingSelector = host.component()->findChildWithID(
+            "voiceContextEditor.oversampling");
+    REQUIRE(oversamplingSelector != nullptr);
     for (const String& factor : { String("1x"), String("2x"), String("4x"), String("8x") }) {
-        auto* option = dynamic_cast<TextButton*>(host.component()->findChildWithID(
+        auto* option = dynamic_cast<TextButton*>(oversamplingSelector->findChildWithID(
                 "voiceContextEditor.oversampling." + factor));
         REQUIRE(option != nullptr);
         option->onClick();
@@ -1041,6 +1120,11 @@ TEST_CASE("Delay and Reverb own shared semantic property rows",
     REQUIRE(size.getProperty("readout", {}).toString() == "0.74 s");
     REQUIRE((bool) size.getProperty("compact", {}));
     REQUIRE((int) size.getProperty("usableTrackWidth", {}) >= 140);
+    auto* sizeSlider = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
+            "reverbEditor.size"));
+    REQUIRE(sizeSlider != nullptr);
+    REQUIRE(sizeSlider->snapValue(0.61, Slider::absoluteDrag)
+            == Catch::Approx(0.61));
     const var wet = controlWithId(reverbAutomation, "wet");
     REQUIRE(wet.getProperty("readout", {}).toString() == "40%");
     auto* sizeValue = dynamic_cast<Label*>(host.component()->findChildWithID(
@@ -1659,7 +1743,7 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
             .getProperty("label", {}).toString() == "Gain");
     REQUIRE(state.getProperty("qualityGroup", {})
             .getProperty("label", {}).toString() == "Quality");
-    auto* oversampling = dynamic_cast<ComboBox*>(
+    auto* oversampling = dynamic_cast<PropertySegmentedSelector*>(
             editor.findChildWithID("waveshaperEditor.oversampling"));
     auto* enabled = dynamic_cast<ToggleButton*>(
             editor.findChildWithID("waveshaperEditor.enabled"));
@@ -1674,12 +1758,19 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
                     + 28
                     + PropertyControlMetrics::sectionGap);
     REQUIRE(oversampling != nullptr);
-    REQUIRE(oversampling->getWidth() <= 72);
-    REQUIRE(oversampling->getNumItems() == 4);
-    REQUIRE(oversampling->getItemText(0) == "1x");
-    REQUIRE(oversampling->getItemText(1) == "2x");
-    REQUIRE(oversampling->getItemText(2) == "4x");
-    REQUIRE(oversampling->getItemText(3) == "8x");
+    REQUIRE(oversampling->getWidth() == 176);
+    REQUIRE(oversampling->selectedValue() == "4");
+    for (int index = 1; index < 4; ++index) {
+        REQUIRE(oversampling->optionBounds(index - 1).getRight()
+                == Catch::Approx(oversampling->optionBounds(index).getX()));
+    }
+    auto* eightTimes = dynamic_cast<TextButton*>(oversampling->findChildWithID(
+            "waveshaperEditor.oversampling.8x"));
+    REQUIRE(eightTimes != nullptr);
+    delegate.events.clear();
+    eightTimes->onClick();
+    REQUIRE(oversampling->selectedValue() == "8");
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
     auto* scopeSelector = dynamic_cast<ProcessingScopeSelector*>(
             editor.findChildWithID("waveshaperEditor.processingScope"));
     REQUIRE(scopeSelector != nullptr);

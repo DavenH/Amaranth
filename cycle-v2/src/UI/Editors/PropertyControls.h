@@ -68,6 +68,10 @@ PropertySliderLayout propertySliderLayout(
 PropertyGroupLabelLayout propertyGroupLabelLayout(
         juce::Rectangle<float> bounds,
         float textWidth);
+juce::Path propertySegmentPath(
+        juce::Rectangle<float> bounds,
+        int segmentIndex,
+        int segmentCount);
 void paintPropertyGroupLabel(
         juce::Graphics& graphics,
         juce::Rectangle<float> bounds,

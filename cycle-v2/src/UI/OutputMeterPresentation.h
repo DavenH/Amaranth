@@ -39,17 +39,21 @@ private:
 
 class OutputMeterPresentation {
 public:
-    static OutputMeterLayout layout(juce::Rectangle<float> area);
+    static OutputMeterLayout layout(
+            juce::Rectangle<float> area,
+            float zoom = 1.f);
     static float displayLevelForAmplitude(float amplitude);
     static juce::Rectangle<float> fillBounds(
             juce::Rectangle<float> channelBounds,
             float level);
     static float gainUnitValueAt(
             juce::Rectangle<float> area,
-            float y);
+            float y,
+            float zoom = 1.f);
     static juce::Rectangle<float> gainThumbBounds(
             juce::Rectangle<float> area,
-            float gainUnitValue);
+            float gainUnitValue,
+            float zoom = 1.f);
     static juce::String gainLabel(float gainUnitValue);
     static void paint(
             juce::Graphics& graphics,
@@ -57,7 +61,8 @@ public:
             float leftLevel,
             float rightLevel,
             juce::Colour colour,
-            float gainUnitValue = 0.5f);
+            float gainUnitValue = 0.5f,
+            float zoom = 1.f);
 };
 
 }

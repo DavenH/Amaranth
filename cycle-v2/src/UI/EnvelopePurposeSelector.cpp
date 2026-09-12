@@ -6,15 +6,16 @@
 
 namespace CycleV2 {
 
-namespace {
-
-}
-
 class EnvelopePurposeSelector::PurposeButton final : public Button {
 public:
-    explicit PurposeButton(EnvelopePurpose purposeToUse) :
+    PurposeButton(
+            EnvelopePurpose purposeToUse,
+            int indexToUse,
+            int countToUse) :
             Button          (envelopePurposeLabel(purposeToUse) + " envelope mode")
-        ,   purposeValue    (purposeToUse) {
+        ,   purposeValue    (purposeToUse)
+        ,   index           (indexToUse)
+        ,   count           (countToUse) {
         setComponentID("envelope-mode-" + envelopePurposeToString(purposeValue));
         setTooltip(envelopePurposeLabel(purposeValue));
         setMouseCursor(MouseCursor::PointingHandCursor);
@@ -29,8 +30,19 @@ public:
                 EnvelopeToolbarMetrics::purposeIconCanvasSize);
     }
 
-    void paintButton(Graphics& graphics, bool highlighted, bool) override {
+    void paintButton(Graphics& graphics, bool highlighted, bool down) override {
         const bool selected = getToggleState();
+        if (!selected && (highlighted || down)) {
+            Rectangle<float> selectorBounds(
+                    (float) -getX(),
+                    0.f,
+                    (float) getParentWidth(),
+                    (float) getHeight());
+            selectorBounds = selectorBounds.reduced(0.75f);
+            Path hover = propertySegmentPath(selectorBounds, index, count);
+            graphics.setColour(Colours::white.withAlpha(down ? 0.14f : 0.08f));
+            graphics.fillPath(hover);
+        }
         const float opacity = selected ? 1.f : (highlighted ? 0.94f : 0.62f);
         EnvelopePurposeIconRenderer::paint(
                 graphics,
@@ -41,12 +53,18 @@ public:
 
 private:
     EnvelopePurpose purposeValue;
+    int index {};
+    int count {};
 };
 
 EnvelopePurposeSelector::EnvelopePurposeSelector() {
     buttons.reserve(kEnvelopePurposes.size());
-    for (const EnvelopePurpose purposeValue : kEnvelopePurposes) {
-        auto button = std::make_unique<PurposeButton>(purposeValue);
+    for (size_t index = 0; index < kEnvelopePurposes.size(); ++index) {
+        const EnvelopePurpose purposeValue = kEnvelopePurposes[index];
+        auto button = std::make_unique<PurposeButton>(
+                purposeValue,
+                (int) index,
+                (int) kEnvelopePurposes.size());
         button->onClick = [this, purposeValue] {
             setPurpose(purposeValue, sendNotificationSync);
         };

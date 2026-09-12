@@ -67,34 +67,6 @@ int propertyUnitWidth(const String& unit, int availableWidth) {
                     unit.length() * kUnitCharacterWidth + kUnitGap));
 }
 
-Path selectedSegmentPath(
-        Rectangle<float> bounds,
-        int segmentCount,
-        int selectedSegment) {
-    const float segmentWidth = bounds.getWidth() / (float) segmentCount;
-    const bool first = selectedSegment == 0;
-    const bool last = selectedSegment + 1 == segmentCount;
-    const Rectangle<float> selected {
-            bounds.getX() + segmentWidth * (float) selectedSegment,
-            bounds.getY(),
-            segmentWidth,
-            bounds.getHeight()
-    };
-    Path result;
-    result.addRoundedRectangle(
-            selected.getX(),
-            selected.getY(),
-            selected.getWidth(),
-            selected.getHeight(),
-            CanvasChromeMetrics::controlCornerRadius,
-            CanvasChromeMetrics::controlCornerRadius,
-            first,
-            last,
-            first,
-            last);
-    return result;
-}
-
 }
 
 bool operator==(const PropertyValueText& lhs, const PropertyValueText& rhs) {
@@ -202,6 +174,36 @@ PropertyGroupLabelLayout propertyGroupLabelLayout(
     };
 }
 
+Path propertySegmentPath(
+        Rectangle<float> bounds,
+        int segmentIndex,
+        int segmentCount) {
+    jassert(segmentCount > 0);
+    jassert(isPositiveAndBelow(segmentIndex, segmentCount));
+    const float segmentWidth = bounds.getWidth() / (float) segmentCount;
+    const bool first = segmentIndex == 0;
+    const bool last = segmentIndex + 1 == segmentCount;
+    const Rectangle<float> segment {
+            bounds.getX() + segmentWidth * (float) segmentIndex,
+            bounds.getY(),
+            segmentWidth,
+            bounds.getHeight()
+    };
+    Path result;
+    result.addRoundedRectangle(
+            segment.getX(),
+            segment.getY(),
+            segment.getWidth(),
+            segment.getHeight(),
+            CanvasChromeMetrics::controlCornerRadius,
+            CanvasChromeMetrics::controlCornerRadius,
+            first,
+            last,
+            first,
+            last);
+    return result;
+}
+
 void paintPropertyGroupLabel(
         Graphics& graphics,
         Rectangle<float> bounds,
@@ -230,7 +232,7 @@ void paintPropertySegmentedControl(
 
     if (selectedSegment >= 0 && selectedSegment < segmentCount) {
         graphics.setColour(kSelectedFill);
-        graphics.fillPath(selectedSegmentPath(bounds, segmentCount, selectedSegment));
+        graphics.fillPath(propertySegmentPath(bounds, selectedSegment, segmentCount));
     }
 
     graphics.setColour(kControlBorder.withAlpha(0.74f));

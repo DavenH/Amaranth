@@ -175,3 +175,20 @@ Context:
 
 Current status: open; compare the forward/inverse Envelope vertex delta after a
 real routed release drag without folding that investigation into hover behavior.
+
+## P2: Full Cycle V2 suite retains cross-test graph and Trimesh failures
+
+Context:
+
+- A full randomized `CycleV2_tests` run on 2026-09-12 completed the focused UI
+  polish regressions, but reported 16 unrelated failures before a `SIGSEGV` in
+  `Clicking an open Trimesh Guide selector dismisses its popup`.
+- Other failures included graph compiler/validator connection expectations and
+  an unavailable Impulse Response test stream. None of the failing paths
+  overlap the segmented controls, Reverb preview profile, Envelope glyph, or
+  Output meter presentation changed by the UI polish batch.
+- The focused UI tests and native-size automation fixtures pass independently.
+
+Current status: open; reproduce with the recorded Catch randomness seed
+`3643743595` and isolate leaked shared Trimesh/graph fixture state before
+changing the individual expectations.

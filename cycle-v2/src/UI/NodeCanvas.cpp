@@ -80,7 +80,7 @@ Rectangle<float> outputFaderBounds(
     const Rectangle<float> nodeBounds = viewport.toScreen(
             NodeCanvasScene::presentationWorldBounds(graph, node));
     const Rectangle<float> preview = NodePreviewRenderer::boundsFor(node, nodeBounds, zoom);
-    return OutputMeterPresentation::layout(preview).faderHitTarget;
+    return OutputMeterPresentation::layout(preview, zoom).faderHitTarget;
 }
 
 const Node* findOutputFaderAt(
