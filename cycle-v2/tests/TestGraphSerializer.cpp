@@ -736,6 +736,56 @@ TEST_CASE("Legacy preset ports omit disabled effects and preserve delay controls
   #endif
 }
 
+TEST_CASE("Astral retains the canonical spectral and Envelope control graph",
+        "[cycle-v2][graph][presets][astral]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            contentPreset("astral.cyclegraph").loadFileAsString());
+    INFO((loaded.issues.empty() ? String() : loaded.issues.front().message));
+    REQUIRE(loaded.succeeded());
+    REQUIRE(GraphCompiler().compile(loaded.graph).succeeded());
+
+    const Node* morph = loaded.graph.findNode("morph");
+    const Node* magnitude1 = loaded.graph.findNode("magnitudeLayer1");
+    const Node* magnitude2 = loaded.graph.findNode("magnitudeLayer2");
+    const Node* phaseProcess = loaded.graph.findNode("phaseLayer1Process");
+    const Node* envelopeMorph = loaded.graph.findNode("staticEnvelopeMorph");
+    const Node* output = loaded.graph.findNode("output");
+    REQUIRE(morph != nullptr);
+    REQUIRE(magnitude1 != nullptr);
+    REQUIRE(magnitude2 != nullptr);
+    REQUIRE(phaseProcess != nullptr);
+    REQUIRE(envelopeMorph != nullptr);
+    REQUIRE(output != nullptr);
+    REQUIRE(NodeParameterMap(*morph).stringValue("blueSource") == "inverseVelocity");
+    REQUIRE(NodeParameterMap(*magnitude1).stringValue("spectralMode") == "additive");
+    REQUIRE(NodeParameterMap(*magnitude2).stringValue("spectralMode") == "multiplicative");
+    REQUIRE(NodeParameterMap(*phaseProcess).floatValue("pan", 0.f)
+            == Catch::Approx(0.75f));
+    REQUIRE(NodeParameterMap(*output).floatValue("gain", 0.f)
+            == Catch::Approx(0.442748092f));
+    const auto envelopeMorphEdges = std::count_if(
+            loaded.graph.getEdges().begin(),
+            loaded.graph.getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "staticEnvelopeMorph";
+            });
+    REQUIRE(envelopeMorphEdges == 4);
+    REQUIRE(std::any_of(
+            loaded.graph.getEdges().begin(),
+            loaded.graph.getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "phaseLayer1Process"
+                        && edge.destNodeId == "ifft"
+                        && edge.destPortId == "phase";
+            }));
+    REQUIRE(loaded.graph.findNode("magnitudeOp1") == nullptr);
+    REQUIRE(loaded.graph.findNode("pan") == nullptr);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("African Horn keeps its populated mesh path in the time domain",
         "[cycle-v2][graph][presets]") {
   #if defined(CYCLE_V2_SOURCE_DIR)

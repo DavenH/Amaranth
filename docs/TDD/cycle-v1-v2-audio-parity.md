@@ -173,6 +173,7 @@ translation. The first broad candidates are:
 | guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Per-channel waveshaper and IR state now match Cycle 1 ownership. MIDI 36–72 meets the diagnostic audio thresholds; EQ and delay add no material gap. MIDI 36 still fails Cycle 1's raw repeat gate, so the fixture is not admitted. |
 | japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase. One corrected render repeated exactly, but a later run did not repeat in Cycle 1. Its large evolving mismatch remains diagnostic until that intermittent startup state is isolated. |
 | Icycle | Broad synthesis/effects plus six-voice Unison | Verified. Regenerated from a direct canonical export while retaining node layout, port presentation, and three authored probes. Its reverb is disabled; the corrected IR size is `0.26`. Prepared per-lane pitch playback, Cycle 1's render-boundary frame latch, and deterministic offline parameter settling bring the full MIDI 36–72 matrix to `0.98425–0.99997` correlation with exact repeatability in both engines. |
+| astral | Three magnitude layers, phase pan, volume/scratch envelopes, and delay | Regenerated from a fresh live export while retaining the existing Cycle V2 node presentation. The former hand-authored graph rendered effectively silent in the differential harness. At MIDI 48 the regenerated graph is zero-lag with `1.00000` correlation, `0.0011` gain-matched residual, and `0.35 dB` spectral RMSE. Cycle V2 repeats exactly; Cycle 1 does not, so the fixture remains diagnostic. |
 | accoustic | Broad graph including reverb | Current graph differs in morph/link state, envelope state, reverb size, and IR high-pass; do not use for DSP attribution yet. |
 | organ-2 | Spectral layers, envelopes, Unison, IR, delay, reverb | Regenerated from a fresh export while retaining presentation. Its oscillator-through-delay baseline is near-identical and global effect tails now outlive voices. The full Reverb output remains diagnostic. |
 | sitar | Three magnitude layers, phase, and persisted Guide noise | Verified. The converter retains Cycle 1's layer modes and Guide seeds. With the deterministic renderer environment fixed, MIDI 36–72 is byte-repeatable in both engines and reaches `0.99905–1.00000` correlation. |
@@ -948,8 +949,8 @@ as the scratch envelope evolves.
     every factory `.cyc`/`.cyclegraph` pair for voice length, octave, pitch,
     portamento, oversampling, and migrated envelope ownership while preserving
     authored Cycle V2 node presentation. Keyboard range/velocity, runtime
-    global-graph architecture, and Astral audio each remain separate observable
-    slices under this item.
+    global-graph architecture and Astral audio remain separate observable slices
+    under this item.
 
     The factory-wide control audit now uses fresh live Cycle 1 exports as its
     authority. Of 228 filename-matched presets, 216 contain both Cycle 1
@@ -991,6 +992,23 @@ as the scratch envelope evolves.
     Context fixture verifies two slider updates, the committed node value, and
     the downstream duration preview; artifact:
     `/private/tmp/cycle-v2-voice-context-attachments.png`.
+
+    The Astral preset sub-slice is complete. The existing graph was a stale,
+    rounded hand port: it inverted Cycle 1's inverse-velocity morph, omitted
+    spectral layer modes and static Envelope morph inputs, represented phase
+    pan through a different node, and omitted the master gain. It also retained
+    only rounded mesh coordinates. Regenerating through the authoritative
+    converter restores those values and topologies while preserving positions,
+    port sides, editor sizes, and probes for every retained node. The two new
+    boundary nodes are placed below the existing graph without overlap. This
+    preset-only migration leaves Delay routing unchanged for the parallel
+    global-audio TDD. The old graph is effectively silent under the MIDI 48
+    differential request; the regenerated graph is zero-lag with `1.00000`
+    correlation, `0.0011` gain-matched residual, `0.35 dB` spectral RMSE, and
+    exact Cycle V2 repeatability. Cycle 1 fails the repeat-render prerequisite,
+    so `scripts/fixtures/cycle-astral-audio-equivalence.json` remains diagnostic.
+    Artifacts: `/private/tmp/cycle-astral-before-port/` and
+    `/private/tmp/cycle-astral-after-port/`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a
