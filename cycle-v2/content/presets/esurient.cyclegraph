@@ -6,14 +6,14 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 353.4483, "y": 653.0 },
+            "position": { "x": 205.17244, "y": 635.75861 },
             "parameters": { "domain": "spectral", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": -41.37932, "y": 474.3793 },
+            "position": { "x": -158.6207, "y": 448.99997 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -30,14 +30,14 @@
             "id": "ifft",
             "kind": "ifft",
             "definitionVersion": 1,
-            "position": { "x": 1440.0, "y": 619.0 },
+            "position": { "x": 1505.51721, "y": 449.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
         },
         {
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": -17.37932, "y": 672.72412 },
+            "position": { "x": -134.6207, "y": 598.58618 },
             "parameters": { "enabled": true, "mode": "group", "order": 5, "width": 12.04, "panSpread": 1.0, "phase": 1.0, "jitter": 0.5 },
             "model": {
                 "schema": "unisonVoices",
@@ -52,10 +52,11 @@
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 459.99997, "y": 406.3793 },
+            "position": { "x": 577.24133, "y": 449.0 },
             "parameters": {
                 "enabled": true,
                 "range": 0.6,
+                "spectralMode": "auto",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -134,13 +135,14 @@
             "id": "magnitudeLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 746.0, "y": 100.0 },
+            "position": { "x": 883.93103, "y": 40.0 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
             "parameters": {
                 "enabled": true,
                 "range": 0.725,
+                "spectralMode": "auto",
                 "yellow": 0.027,
                 "red": 0.5,
                 "blue": 0.5,
@@ -193,7 +195,7 @@
             "id": "magnitudeOp2",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 814.0, "y": 449.0 },
+            "position": { "x": 951.93103, "y": 449.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -203,20 +205,21 @@
             "id": "magnitudeLayer2Process",
             "kind": "spectralLayer",
             "definitionVersion": 1,
-            "position": { "x": 1009.0, "y": 194.0 },
-            "parameters": { "pan": 1.0 }
+            "position": { "x": 1040.03442, "y": 194.0 },
+            "parameters": { "pan": 1.0, "mode": "auto" }
         },
         {
             "id": "magnitudeLayer3",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1112.0, "y": 100.0 },
+            "position": { "x": 1187.0, "y": 40.00001 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
             "parameters": {
                 "enabled": true,
                 "range": 0.725,
+                "spectralMode": "auto",
                 "yellow": 0.323,
                 "red": 0.5,
                 "blue": 0.5,
@@ -269,7 +272,7 @@
             "id": "magnitudeOp3",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 1180.0, "y": 449.0 },
+            "position": { "x": 1255.0, "y": 449.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -280,16 +283,17 @@
             "kind": "spectralLayer",
             "definitionVersion": 1,
             "position": { "x": 1375.0, "y": 194.0 },
-            "parameters": { "pan": 0.0 }
+            "parameters": { "pan": 0.0, "mode": "auto" }
         },
         {
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 871.37933, "y": 653.0 },
+            "position": { "x": 577.24133, "y": 794.37933 },
             "parameters": {
                 "enabled": true,
                 "range": 0.05921,
+                "spectralMode": "auto",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -343,7 +347,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": -56.57933, "y": 963.58618 },
+            "position": { "x": -173.82071, "y": 862.37933 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -444,28 +448,28 @@
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 181.42067, "y": 1303.58618 },
+            "position": { "x": 64.17929, "y": 1202.37939 },
             "parameters": { "enabled": true, "time": 0.5, "feedback": 0.604, "wet": 0.74, "spin": 1.0, "spinIters": 0.58 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 445.42065, "y": 1303.58618 },
+            "position": { "x": 328.17929, "y": 1202.37939 },
             "parameters": { "gain": 0.49167 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": -56.57933, "y": 1303.58618 },
+            "position": { "x": -173.82071, "y": 1202.37939 },
             "parameters": {}
         },
         {
             "id": "voiceOutput",
             "kind": "voiceOutput",
             "definitionVersion": 1,
-            "position": { "x": 1766.0, "y": 619.0 },
+            "position": { "x": 1831.51721, "y": 449.0 },
             "parameters": {}
         }
     ],

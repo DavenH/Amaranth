@@ -6,14 +6,14 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 475.20001, "y": 633.0 },
+            "position": { "x": 542.44141, "y": 619.0 },
             "parameters": { "domain": "waveform", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 475.20001, "y": 333.0 },
+            "position": { "x": 142.44138, "y": 449.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -44,11 +44,12 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 855.20001, "y": 619.0 },
+            "position": { "x": 901.75171, "y": 619.0 },
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
-                "yellow": 0.5,
+                "spectralMode": "auto",
+                "yellow": 0.273,
                 "red": 0.5,
                 "blue": 0.5,
                 "primaryAxis": "yellow",
@@ -204,9 +205,10 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.625,
-                "yellow": 0.5,
-                "red": 0.5,
-                "blue": 0.5,
+                "spectralMode": "auto",
+                "yellow": 0.0,
+                "red": 0.199,
+                "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": false,
@@ -312,6 +314,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.6,
+                "spectralMode": "auto",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -381,6 +384,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
+                "spectralMode": "auto",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -505,13 +509,14 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1591.19995, "y": 987.0 },
+            "position": { "x": 1591.19983, "y": 875.0 },
             "portSides": {
                 "outputs": { "out": "top" }
             },
             "parameters": {
                 "enabled": true,
                 "range": 0.425,
+                "spectralMode": "auto",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -629,7 +634,7 @@
             "id": "phaseOp1",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 1659.19995, "y": 789.0 },
+            "position": { "x": 1659.19995, "y": 653.0 },
             "portSides": {
                 "inputs": { "right": "bottom" }
             },
@@ -640,7 +645,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 2634.0, "y": 817.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -754,7 +759,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 667.0 },
-            "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -1088,8 +1093,8 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 855.20001, "y": 1336.0 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "position": { "x": 146.57928, "y": 964.93097 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -1248,21 +1253,21 @@
             "id": "reverb",
             "kind": "reverb",
             "definitionVersion": 1,
-            "position": { "x": 338.0, "y": 1676.0 },
-            "parameters": { "enabled": true, "size": 0.332, "damp": 0.14, "width": 0.628, "wet": 0.128, "highPass": 0.58 }
+            "position": { "x": 338.0, "y": 1304.93091 },
+            "parameters": { "enabled": true, "size": 0.3333, "damp": 0.14, "width": 0.628, "wet": 1.0, "highPass": 0.58 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 602.0, "y": 1676.0 },
-            "parameters": {}
+            "position": { "x": 602.0, "y": 1304.93091 },
+            "parameters": { "gain": 0.6 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 1676.0 },
+            "position": { "x": 100.0, "y": 1304.93091 },
             "parameters": {}
         },
         {
@@ -1543,5 +1548,46 @@
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "reverb", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": []
+    "probes": [
+        {
+            "id": "probe2",
+            "sourceNodeId": "timeLayer1",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "fft",
+            "anchorDestPortId": "time",
+            "label": "Spy 2",
+            "tapPosition": 0.5,
+            "railOrder": 1
+        },
+        {
+            "id": "probe3",
+            "sourceNodeId": "fft",
+            "sourcePortId": "mag",
+            "anchorDestNodeId": "magnitudeOp1",
+            "anchorDestPortId": "left",
+            "label": "Spy 3",
+            "tapPosition": 0.5,
+            "railOrder": 2
+        },
+        {
+            "id": "probe",
+            "sourceNodeId": "magnitudeOp3",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "ifft",
+            "anchorDestPortId": "mag",
+            "label": "Spy 5",
+            "tapPosition": 0.5,
+            "railOrder": 4
+        },
+        {
+            "id": "probe4",
+            "sourceNodeId": "volumeMultiply",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "reverb",
+            "anchorDestPortId": "time",
+            "label": "Spy 6",
+            "tapPosition": 0.5,
+            "railOrder": 5
+        }
+    ]
 }

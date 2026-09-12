@@ -13,7 +13,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 475.20001, "y": 333.0 },
+            "position": { "x": 115.20001, "y": 484.16541 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -44,7 +44,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 475.20001, "y": 861.0 },
+            "position": { "x": 82.0, "y": 745.67175 },
             "parameters": { "enabled": true, "mode": "group", "order": 8, "width": 18.76, "panSpread": 0.436, "phase": 0.868, "jitter": 0.748 },
             "model": {
                 "schema": "unisonVoices",
@@ -63,6 +63,7 @@
             "parameters": {
                 "enabled": false,
                 "range": 0.5,
+                "spectralMode": "auto",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -200,6 +201,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.55,
+                "spectralMode": "auto",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -269,6 +271,7 @@
             "parameters": {
                 "enabled": false,
                 "range": 0.375,
+                "spectralMode": "auto",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -364,6 +367,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.4,
+                "spectralMode": "auto",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -479,7 +483,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 2268.0, "y": 817.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -592,8 +596,8 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 667.0 },
-            "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "position": { "x": -237.7099, "y": 585.0 },
+            "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -862,8 +866,8 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 855.20001, "y": 1336.0 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "position": { "x": 42.8, "y": 1021.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -952,7 +956,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 602.0, "y": 1676.0 },
-            "parameters": {}
+            "parameters": { "gain": 0.5 }
         },
         {
             "id": "globalInput",

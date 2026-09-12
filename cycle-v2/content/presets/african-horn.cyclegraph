@@ -34,6 +34,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
+                "spectralMode": "auto",
                 "yellow": 0.0,
                 "red": 0.37383,
                 "blue": 0.0,
@@ -181,6 +182,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
+                "spectralMode": "auto",
                 "yellow": 0.0,
                 "red": 0.37383,
                 "blue": 0.0,
@@ -266,8 +268,8 @@
             "id": "volumeEnvelope",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1110.11035, "y": 179.31035 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "red": 0.591, "blue": 1.0, "level": 1.0 },
+            "position": { "x": 924.89624, "y": 163.29443 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.591, "blue": 1.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -369,7 +371,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": -286.27374, "y": 445.10345 },
-            "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -1091,8 +1093,8 @@
             "id": "scratchEnvelope",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 131.1212, "y": 520.0 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
+            "position": { "x": -286.27374, "y": 722.53052 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -1199,7 +1201,7 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 1470.34485, "y": 520.0 },
+            "position": { "x": 1220.09619, "y": 520.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -1223,7 +1225,7 @@
             "id": "voiceOutput",
             "kind": "voiceOutput",
             "definitionVersion": 1,
-            "position": { "x": 1668.34485, "y": 520.0 },
+            "position": { "x": 1480.15784, "y": 520.0 },
             "parameters": {}
         }
     ],
