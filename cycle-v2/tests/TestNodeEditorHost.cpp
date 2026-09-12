@@ -1375,6 +1375,8 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     REQUIRE((int) snapshotObject->getProperty("guideCount") == 1);
     REQUIRE((int) snapshotObject->getProperty("guideAssignmentCount") == 1);
     REQUIRE(snapshotObject->getProperty("selectedNodeId").toString() == "mesh");
+    REQUIRE_FALSE((bool) snapshotObject->getProperty("documentDirty"));
+    REQUIRE(snapshotObject->hasProperty("documentFile"));
     REQUIRE(snapshotObject->getProperty("expandedGuideId").toString() == "guide1");
     const Array<var>* guides = snapshotObject->getProperty("guides").getArray();
     REQUIRE(guides != nullptr);

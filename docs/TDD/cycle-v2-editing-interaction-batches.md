@@ -28,6 +28,9 @@ brightness transform while retaining the domain palette.
   factory tests guard that contract.
 - Cable popup hit testing is independent of overlapping node-body targets, and
   the same hit range drives hover highlighting.
+- Cycle 1 undo-backed edits now refresh the established title asterisk and Save
+  command. Cycle 2 uses save-point identities for dirty state and presents the
+  same title convention and Save availability.
 
 ## Node Selection Contract
 
@@ -63,12 +66,21 @@ path.
   only additive/multiplicative magnitude semantics.
 - Voice Context implicit routing requires a compiler/graph-format decision and
   preset migration plan.
-- Cycle 2 already owns a correct basic dirty lifecycle in `GraphDocument`, while
-  Cycle 1 owns it in `EditWatcher`. The remaining work is a shared product
-  decision for how both windows indicate that state and whether undoing to a
-  save point clears it.
 - Curve reshape polarity remains owned by shared `Interactor2D`. Diagnose the
   Envelope association/coordinate boundary; do not add an Envelope sign branch.
+
+## Dirty-State Contract
+
+- Cycle 1's `EditWatcher` title convention is authoritative: append `*` to the
+  preset title and enable Save only while the document differs from its save
+  baseline. Undo-backed edits notify its existing clients just as non-undo
+  edits already do.
+- Cycle 2 keeps save-point identity in `GraphDocument`, without serializing or
+  comparing the graph. History entries retain their before/after state IDs, so
+  edit, undo, redo, save, and load update dirty state in O(1). `NodeCanvas`
+  translates that state into a narrow callback for the standalone window; the
+  window owns title and command presentation. Automation exposes the same
+  document state for regression tests.
 
 ## Node Selection Completion Criteria
 
@@ -78,3 +90,13 @@ path.
 - Every selected node receives the same focus-ring treatment.
 - Focused tests, Standalone Debug, `git diff --check`, and production-size
   screenshot review pass before commit.
+
+## Dirty-State Completion Criteria
+
+- Cycle 1 refreshes its existing title and Save command after a successful
+  undo-backed edit, undo, redo, load, and save reset.
+- Cycle 2 marks semantic edits dirty, clears after save/load, clears when undo
+  returns to the saved state, and restores dirty on redo without graph-wide
+  comparison work.
+- The Cycle 2 standalone title uses the Cycle 1 `Product - Preset*` convention,
+  and Save availability plus automation state agree with `GraphDocument`.

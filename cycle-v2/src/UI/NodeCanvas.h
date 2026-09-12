@@ -55,6 +55,9 @@ public:
 
     bool saveGraphToFile(const File& file);
     bool loadGraphFromFile(const File& file);
+    bool isGraphDirty() const { return document.isDirty(); }
+    const File& graphFile() const { return document.file(); }
+    void setGraphDocumentStateChangedCallback(std::function<void()> callback);
     var exportAutomationState() const;
     String exportGraphJson() const;
     bool openNodeEditorForAutomation(const String& nodeId);
@@ -187,6 +190,7 @@ private:
     String expandedGuideId;
     std::optional<uint64_t> guideTransactionBaseRevision;
     std::function<void(double)> voiceLengthChangedCallback;
+    std::function<void()> graphDocumentStateChangedCallback;
     uint32 compiledStateRefreshDueMs {};
     std::function<void()> overlayOcclusionChanged;
 

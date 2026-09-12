@@ -1,0 +1,31 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/resources/default.cyclegraph"
+    },
+    { "command": "assertState", "path": "documentDirty", "equals": false },
+    { "command": "assertState", "path": "windowTitle", "equals": "cycle-v2 - default" },
+    {
+      "command": "moveNode",
+      "nodeId": "voice",
+      "x": 100,
+      "y": 100
+    },
+    { "command": "assertState", "path": "documentDirty", "equals": true },
+    { "command": "assertState", "path": "windowTitle", "equals": "cycle-v2 - default*" },
+    { "command": "undo" },
+    { "command": "assertState", "path": "documentDirty", "equals": false },
+    { "command": "assertState", "path": "windowTitle", "equals": "cycle-v2 - default" },
+    {
+      "command": "moveNode",
+      "nodeId": "voice",
+      "x": 130,
+      "y": 110
+    },
+    { "command": "assertState", "path": "documentDirty", "equals": true },
+    { "command": "assertState", "path": "windowTitle", "equals": "cycle-v2 - default*" },
+    { "command": "inspectTargets", "area": "window" }
+  ],
+  "quit": false
+}

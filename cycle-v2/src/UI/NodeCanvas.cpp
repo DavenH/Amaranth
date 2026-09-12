@@ -1370,6 +1370,9 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     if (result.effects.repaintRequested) {
         requestCanvasRepaint();
     }
+    if (graphDocumentStateChangedCallback) {
+        graphDocumentStateChangedCallback();
+    }
 
     return result.succeeded;
 }
@@ -1802,6 +1805,11 @@ void NodeCanvas::setOverlayOcclusionChangedCallback(std::function<void()> callba
 void NodeCanvas::setVoiceLengthChangedCallback(
         std::function<void(double)> callback) {
     voiceLengthChangedCallback = std::move(callback);
+}
+
+void NodeCanvas::setGraphDocumentStateChangedCallback(
+        std::function<void()> callback) {
+    graphDocumentStateChangedCallback = std::move(callback);
 }
 
 void NodeCanvas::notifyOverlayOcclusionChanged() {

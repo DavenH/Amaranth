@@ -29,7 +29,7 @@ bool GraphDocument::save(const juce::File& destination) {
     }
 
     currentFile = destination;
-    dirty = false;
+    savedStateId = currentStateId;
     return true;
 }
 
@@ -39,7 +39,7 @@ bool GraphDocument::load(const juce::File& source) {
     }
 
     currentFile = source;
-    dirty = false;
+    savedStateId = currentStateId;
     return true;
 }
 
@@ -71,16 +71,18 @@ bool GraphDocument::undo() {
 
     HistoryEntry entry = std::move(undoHistory.back());
     undoHistory.pop_back();
-    if (auto* graph = std::get_if<NodeGraph>(&entry)) {
-        redoHistory.emplace_back(currentGraph);
-        return restoreGraph(std::move(*graph));
+    if (auto* graph = std::get_if<NodeGraph>(&entry.edit)) {
+        const uint64_t targetStateId = entry.beforeStateId;
+        redoHistory.push_back({ currentGraph, entry.beforeStateId, entry.afterStateId });
+        return restoreGraph(std::move(*graph), targetStateId);
     }
 
-    auto& delta = std::get<GraphDelta>(entry);
+    auto& delta = std::get<GraphDelta>(entry.edit);
     delta.applyInverse(currentGraph);
     const GraphChangeSet change = delta.change();
+    const uint64_t targetStateId = entry.beforeStateId;
     redoHistory.push_back(std::move(entry));
-    publishChange(change);
+    publishChangeAtState(change, targetStateId);
     return true;
 }
 
@@ -91,16 +93,18 @@ bool GraphDocument::redo() {
 
     HistoryEntry entry = std::move(redoHistory.back());
     redoHistory.pop_back();
-    if (auto* graph = std::get_if<NodeGraph>(&entry)) {
-        undoHistory.emplace_back(currentGraph);
-        return restoreGraph(std::move(*graph));
+    if (auto* graph = std::get_if<NodeGraph>(&entry.edit)) {
+        const uint64_t targetStateId = entry.afterStateId;
+        undoHistory.push_back({ currentGraph, entry.beforeStateId, entry.afterStateId });
+        return restoreGraph(std::move(*graph), targetStateId);
     }
 
-    auto& delta = std::get<GraphDelta>(entry);
+    auto& delta = std::get<GraphDelta>(entry.edit);
     delta.applyForward(currentGraph);
     const GraphChangeSet change = delta.change();
+    const uint64_t targetStateId = entry.afterStateId;
     undoHistory.push_back(std::move(entry));
-    publishChange(change);
+    publishChangeAtState(change, targetStateId);
     return true;
 }
 
@@ -110,7 +114,9 @@ void GraphDocument::recordExternalChange(NodeGraph beforeGraph, GraphChangeSet c
 }
 
 void GraphDocument::recordBeforeChange(NodeGraph graph) {
-    undoHistory.emplace_back(std::move(graph));
+    const uint64_t newStateId = nextStateId++;
+    undoHistory.push_back({ std::move(graph), currentStateId, newStateId });
+    pendingStateId = newStateId;
     redoHistory.clear();
     if (undoHistory.size() > maximumHistoryDepth) {
         undoHistory.erase(undoHistory.begin());
@@ -121,7 +127,9 @@ void GraphDocument::recordDelta(GraphDelta delta) {
     if (delta.empty()) {
         return;
     }
-    undoHistory.emplace_back(std::move(delta));
+    const uint64_t newStateId = nextStateId++;
+    undoHistory.push_back({ std::move(delta), currentStateId, newStateId });
+    pendingStateId = newStateId;
     redoHistory.clear();
     if (undoHistory.size() > maximumHistoryDepth) {
         undoHistory.erase(undoHistory.begin());
@@ -129,20 +137,28 @@ void GraphDocument::recordDelta(GraphDelta delta) {
 }
 
 void GraphDocument::publishChange(GraphChangeSet change) {
+    const uint64_t stateId = pendingStateId.has_value()
+            ? *pendingStateId
+            : nextStateId++;
+    pendingStateId.reset();
+    publishChangeAtState(std::move(change), stateId);
+}
+
+void GraphDocument::publishChangeAtState(GraphChangeSet change, uint64_t stateId) {
     latestChange = std::move(change);
+    currentStateId = stateId;
     ++documentRevision;
-    dirty = true;
     if (listener) {
         listener(documentRevision, latestChange);
     }
 }
 
-bool GraphDocument::restoreGraph(NodeGraph graph) {
+bool GraphDocument::restoreGraph(NodeGraph graph, uint64_t stateId) {
     currentGraph = std::move(graph);
     GraphChangeSet change;
     change.topologyChanged = true;
     change.layoutChanged = true;
-    publishChange(std::move(change));
+    publishChangeAtState(std::move(change), stateId);
     return true;
 }
 

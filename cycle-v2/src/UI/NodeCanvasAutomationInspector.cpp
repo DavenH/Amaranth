@@ -545,6 +545,8 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("expandedNodeId", state.expandedNodeId);
     root->setProperty("selectedEdgeIndex", state.selectedEdgeIndex);
     root->setProperty("hoveredEdgeIndex", state.hoveredEdgeIndex);
+    root->setProperty("documentDirty", context.document.isDirty());
+    root->setProperty("documentFile", context.document.file().getFullPathName());
     root->setProperty("previewVoiceLengthSeconds", state.previewVoiceLengthSeconds);
     root->setProperty("editStatusMessage", state.editStatusMessage);
     root->setProperty("hoverRepaintRequestCount", (int64) state.hoverRepaintRequestCount);

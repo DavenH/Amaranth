@@ -44,14 +44,23 @@ bool EditWatcher::addAction(NamedUndoableAction* action, bool startNewTransactio
     }
 
     const String& description = action->getDescription();
-    return undoManager.perform(action, description);
+    const bool performed = undoManager.perform(action, description);
+    if (performed) {
+        triggerAsyncUpdate();
+    }
+    return performed;
 }
 
 bool EditWatcher::addAction(UndoableAction* action, bool startNewTransaction) {
-    if(startNewTransaction)
+    if (startNewTransaction) {
         undoManager.beginNewTransaction();
+    }
 
-    return undoManager.perform(action);
+    const bool performed = undoManager.perform(action);
+    if (performed) {
+        triggerAsyncUpdate();
+    }
+    return performed;
 }
 
 void EditWatcher::setHaveEditedWithoutUndo(bool have) {
