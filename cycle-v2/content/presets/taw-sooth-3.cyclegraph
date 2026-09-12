@@ -31,7 +31,7 @@
             "kind": "unison",
             "definitionVersion": 1,
             "position": { "x": 475.20001, "y": 628.0 },
-            "parameters": { "enabled": true, "mode": "group", "order": 7, "width": 47.600000000000001, "panSpread": 0.428, "phase": 0.536, "jitter": 0.0 },
+            "parameters": { "enabled": true, "mode": "group", "order": 7, "width": 47.6, "panSpread": 0.428, "phase": 0.536, "jitter": 0.0 },
             "model": {
                 "schema": "unisonVoices",
                 "version": 1,
@@ -103,7 +103,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 1752.0, "y": 584.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,

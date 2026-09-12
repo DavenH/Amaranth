@@ -38,7 +38,7 @@
             "kind": "unison",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 861.0 },
-            "parameters": { "enabled": true, "mode": "group", "order": 9, "width": 10.640000000000001, "panSpread": 1.0, "phase": 0.74, "jitter": 0.968 },
+            "parameters": { "enabled": true, "mode": "group", "order": 9, "width": 10.64, "panSpread": 1.0, "phase": 0.74, "jitter": 0.968 },
             "model": {
                 "schema": "unisonVoices",
                 "version": 1,
@@ -303,7 +303,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 1056.80005, "y": 817.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.337890625, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -378,8 +378,8 @@
                         "sustainIndices": [ 3 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
-                    "blue": 0.5,
+                    "red": 0.337890625,
+                    "blue": 0.0,
                     "redLinked": false,
                     "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4 ]
@@ -391,7 +391,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 480.0, "y": 1336.0 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.337890625, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -453,8 +453,8 @@
                         "sustainIndices": [ 1 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
-                    "blue": 0.5,
+                    "red": 0.337890625,
+                    "blue": 0.0,
                     "redLinked": false,
                     "blueLinked": false,
                     "cubeIds": [ 1, 2, 3 ]

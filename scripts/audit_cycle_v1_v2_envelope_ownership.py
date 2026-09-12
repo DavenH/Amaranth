@@ -42,14 +42,23 @@ def has_edge(edges, source_id, destination_port, destination_prefix=None):
     )
 
 
-def has_static_morph_edge(edges, destination_id, destination_port):
-    return any(
-        edge.get("sourceNodeId") == "staticEnvelopeMorph"
-        and edge.get("sourcePortId") == "value"
-        and edge.get("destNodeId") == destination_id
-        and edge.get("destPortId") == destination_port
-        for edge in edges
-    )
+def has_voice_context(graph):
+    return any(node.get("kind") == "voiceContext"
+               for node in graph.get("nodes", []))
+
+
+def static_morph_override_ports(edges, destination_id):
+    return [
+        port
+        for port in ("red", "blue")
+        if any(
+            edge.get("sourceNodeId") == "staticEnvelopeMorph"
+            and edge.get("sourcePortId") == "value"
+            and edge.get("destNodeId") == destination_id
+            and edge.get("destPortId") == port
+            for edge in edges
+        )
+    ]
 
 
 def expected_active_layer(preset, purpose):
@@ -61,11 +70,19 @@ def expected_active_layer(preset, purpose):
     return active[0] if len(active) == 1 else None, len(active)
 
 
+def authored_morph_position(preset):
+    return (preset.get("morphPanel") or {}).get("position")
+
+
 def audit_pair(name, preset, graph):
     findings = []
+    if not has_voice_context(graph):
+        return {"preset": name, "applicable": False, "findings": findings}
+
     nodes_by_purpose = envelope_nodes_by_purpose(graph)
     edges = graph.get("edges", [])
     active_layers = {}
+    morph_position = authored_morph_position(preset)
 
     for purpose in PURPOSES:
         active_layer, active_count = expected_active_layer(preset, purpose)
@@ -110,17 +127,39 @@ def audit_pair(name, preset, graph):
             })
 
         if not active_layer["properties"].get("dynamic", False):
-            missing_ports = [
-                port
-                for port in ("red", "blue")
-                if not has_static_morph_edge(edges, node_id, port)
-            ]
-            if missing_ports:
+            if morph_position is not None:
+                model_state = node.get("model", {}).get("state", {})
+                actual_values = {
+                    f"parameter.{port}": parameters.get(port, 0.5)
+                    for port in ("red", "blue")
+                }
+                actual_values.update({
+                    f"model.{port}": model_state.get(port, 0.5)
+                    for port in ("red", "blue")
+                    if model_state
+                })
+                mismatched_values = {
+                    field: {
+                        "expected": morph_position[field.rsplit(".", 1)[1]],
+                        "actual": actual,
+                    }
+                    for field, actual in actual_values.items()
+                    if actual != morph_position[field.rsplit(".", 1)[1]]
+                }
+                if mismatched_values:
+                    findings.append({
+                        "kind": "staticMorphValue",
+                        "purpose": purpose,
+                        "nodeId": node_id,
+                        "values": mismatched_values,
+                    })
+            override_ports = static_morph_override_ports(edges, node_id)
+            if override_ports:
                 findings.append({
                     "kind": "staticMorphOverride",
                     "purpose": purpose,
                     "nodeId": node_id,
-                    "missingPorts": missing_ports,
+                    "presentPorts": override_ports,
                 })
 
         if purpose == "volume":
@@ -155,7 +194,7 @@ def audit_pair(name, preset, graph):
                 "routed": routed,
             })
 
-    return {"preset": name, "findings": findings}
+    return {"preset": name, "applicable": True, "findings": findings}
 
 
 def main():
@@ -173,14 +212,23 @@ def main():
         path.stem.lower(): path
         for path in args.cycle2_presets.glob("*.cyclegraph")
     }
+    paired_names = cycle1.keys() & cycle2.keys()
+    authored_morph_count = sum(
+        authored_morph_position(source_preset(cycle1[name])) is not None
+        for name in paired_names
+    )
     pairs = []
     counts = defaultdict(int)
-    for name in sorted(cycle1.keys() & cycle2.keys()):
+    skipped = []
+    for name in sorted(paired_names):
         pair = audit_pair(
             name,
             source_preset(cycle1[name]),
             json.loads(cycle2[name].read_text(encoding="utf-8")),
         )
+        if not pair["applicable"]:
+            skipped.append(name)
+            continue
         if not pair["findings"]:
             continue
         pairs.append(pair)
@@ -188,7 +236,12 @@ def main():
             counts[finding["kind"]] += 1
 
     report = {
-        "pairedPresetCount": len(cycle1.keys() & cycle2.keys()),
+        "pairedPresetCount": len(paired_names),
+        "authoredMorphPresetCount": authored_morph_count,
+        "missingMorphPositionPresetCount": len(paired_names) - authored_morph_count,
+        "eligiblePresetCount": len(paired_names) - len(skipped),
+        "skippedPresetCount": len(skipped),
+        "skippedPresets": skipped,
         "mismatchedPresetCount": len(pairs),
         "findingCounts": dict(sorted(counts.items())),
         "presets": pairs,

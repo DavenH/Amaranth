@@ -702,7 +702,9 @@ TEST_CASE("Legacy preset ports omit disabled effects and preserve delay controls
 
     for (const NodeGraph* graph : { &african, &baroque, &stengah }) {
         for (const Node& node : graph->getNodes()) {
-            REQUIRE(parameterValueForNode(node, "enabled") != "0");
+            if (node.kind != NodeKind::Envelope) {
+                REQUIRE(parameterValueForNode(node, "enabled") != "0");
+            }
         }
         const auto modulationEdges = std::count_if(
                 graph->getEdges().begin(),
@@ -732,6 +734,12 @@ TEST_CASE("Legacy preset ports omit disabled effects and preserve delay controls
     REQUIRE(african.findNode("equalizer") == nullptr);
     REQUIRE(african.findNode("reverb") == nullptr);
     REQUIRE(stengah.findNode("reverb") == nullptr);
+    REQUIRE(baroque.findNode("scratchEnvelope") != nullptr);
+    REQUIRE(stengah.findNode("pitchEnvelope") != nullptr);
+    REQUIRE(parameterValueForNode(
+            *baroque.findNode("scratchEnvelope"), "enabled") == "0");
+    REQUIRE(parameterValueForNode(
+            *stengah.findNode("pitchEnvelope"), "enabled") == "0");
 
     const Node* africanDelay = african.findNode("delay");
     const Node* baroqueDelay = baroque.findNode("delay");
@@ -767,13 +775,12 @@ TEST_CASE("Astral retains the canonical spectral and Envelope control graph",
     const Node* magnitude1 = loaded.graph.findNode("magnitudeLayer1");
     const Node* magnitude2 = loaded.graph.findNode("magnitudeLayer2");
     const Node* phaseProcess = loaded.graph.findNode("phaseLayer1Process");
-    const Node* envelopeMorph = loaded.graph.findNode("staticEnvelopeMorph");
     const Node* output = loaded.graph.findNode("output");
     REQUIRE(morph != nullptr);
     REQUIRE(magnitude1 != nullptr);
     REQUIRE(magnitude2 != nullptr);
     REQUIRE(phaseProcess != nullptr);
-    REQUIRE(envelopeMorph != nullptr);
+    REQUIRE(loaded.graph.findNode("staticEnvelopeMorph") == nullptr);
     REQUIRE(output != nullptr);
     REQUIRE(NodeParameterMap(*morph).stringValue("blueSource") == "inverseVelocity");
     REQUIRE(NodeParameterMap(*magnitude1).stringValue("spectralMode") == "additive");
@@ -788,7 +795,7 @@ TEST_CASE("Astral retains the canonical spectral and Envelope control graph",
             [](const Edge& edge) {
                 return edge.sourceNodeId == "staticEnvelopeMorph";
             });
-    REQUIRE(envelopeMorphEdges == 4);
+    REQUIRE(envelopeMorphEdges == 0);
     REQUIRE(std::any_of(
             loaded.graph.getEdges().begin(),
             loaded.graph.getEdges().end(),

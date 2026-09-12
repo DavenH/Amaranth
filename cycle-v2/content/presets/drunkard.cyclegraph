@@ -767,7 +767,15 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 667.0 },
-            "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": {
+                "enabled": true,
+                "purpose": "pitch",
+                "logarithmic": false,
+                "declick": false,
+                "red": 0.373831778764725,
+                "blue": 0.0,
+                "level": 1.0
+            },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -881,8 +889,8 @@
                         "sustainIndices": [ 2 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
-                    "blue": 0.5,
+                    "red": 0.373831778764725,
+                    "blue": 0.0,
                     "redLinked": false,
                     "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7 ]
@@ -894,7 +902,15 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 855.20001, "y": 1336.0 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": {
+                "enabled": true,
+                "purpose": "scratch",
+                "logarithmic": false,
+                "declick": false,
+                "red": 0.373831778764725,
+                "blue": 0.0,
+                "level": 1.0
+            },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -982,8 +998,8 @@
                         "sustainIndices": [ 1 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
-                    "blue": 0.5,
+                    "red": 0.373831778764725,
+                    "blue": 0.0,
                     "redLinked": false,
                     "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5 ]

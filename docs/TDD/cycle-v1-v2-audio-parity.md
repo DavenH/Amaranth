@@ -1060,7 +1060,7 @@ as the scratch envelope evolves.
 
     The Astral preset sub-slice is complete. The existing graph was a stale,
     rounded hand port: it inverted Cycle 1's inverse-velocity morph, omitted
-    spectral layer modes and static Envelope morph inputs, represented phase
+    spectral layer modes and authored static Envelope morph values, represented phase
     pan through a different node, and omitted the master gain. It also retained
     only rounded mesh coordinates. Regenerating through the authoritative
     converter restores those values and topologies while preserving positions,
@@ -1075,16 +1075,25 @@ as the scratch envelope evolves.
     Artifacts: `/private/tmp/cycle-astral-before-port/` and
     `/private/tmp/cycle-astral-after-port/`.
 
-    The factory Envelope-ownership audit is complete. After merging the parallel
-    global-audio preset rewrite, all 228 paired presets compile and 194 have at
-    least one missing Envelope-owned value or attachment: six active-purpose
-    disagreements, 49 missing active-volume declick values, eleven missing
-    declick-only fallback Envelopes, and 353 active static Envelopes without
-    their constant red/blue override inputs. Correctly active volume, pitch,
-    and scratch Envelopes already route to valid semantic owners, so this is a
-    preset migration gap rather than a new DSP feature. Migrate these findings
-    to zero while preserving presentation and the new global graph. Post-merge
-    report: `/private/tmp/cycle-parity-envelope-ownership-merge-final.json`.
+    The factory Envelope-ownership migration is complete. The post-merge audit
+    initially reported 353 missing static red/blue override inputs, but that
+    contract predated the semantic correction in slice 28: `dynamic=false`
+    removes time/yellow evolution and retains the authored red/blue morph; a
+    constant-zero cable incorrectly overrides it. The corrected audit checks
+    the Envelope parameter and model values directly and rejects the obsolete
+    override cables. Across 228 paired presets, 219 contain a voice graph and
+    are eligible; nine boundary-only/silent graphs are reported separately.
+    Only 21 canonical exports carry an authored morph position, so the other
+    207 retain their existing Envelope red/blue values rather than inventing
+    the converter's fallback values.
+    The surgical migration corrected 49 active-volume declick flags, eleven
+    neutral declick fallback Envelope/Multiply routes, 35 static morph values,
+    two stale active-purpose routes, and sixteen obsolete override cables across
+    four presets. The 69 affected graphs now report zero findings. Existing
+    node presentation, probes, Guides, and global-audio topology were retained;
+    only the eleven required fallback routes introduced new voice-local nodes.
+    Reports: `/private/tmp/cycle-parity-envelope-ownership-migration.json` and
+    `/private/tmp/cycle-parity-envelope-ownership-final.json`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

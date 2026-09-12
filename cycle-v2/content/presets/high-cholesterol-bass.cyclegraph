@@ -45,7 +45,7 @@
             "kind": "unison",
             "definitionVersion": 1,
             "position": { "x": -129.31035, "y": 764.79309 },
-            "parameters": { "enabled": true, "mode": "group", "order": 4, "width": 17.359999999999999, "panSpread": 0.0, "phase": 0.016, "jitter": 0.5 },
+            "parameters": { "enabled": true, "mode": "group", "order": 4, "width": 17.36, "panSpread": 0.0, "phase": 0.016, "jitter": 0.5 },
             "model": {
                 "schema": "unisonVoices",
                 "version": 1,
@@ -658,7 +658,15 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 1526.80005, "y": 849.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": {
+                "enabled": true,
+                "purpose": "volume",
+                "logarithmic": false,
+                "declick": true,
+                "red": 0.373831778764725,
+                "blue": 0.0,
+                "level": 1.0
+            },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -733,8 +741,8 @@
                         "sustainIndices": [ 1 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
-                    "blue": 0.5,
+                    "red": 0.373831778764725,
+                    "blue": 0.0,
                     "redLinked": false,
                     "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4 ]
