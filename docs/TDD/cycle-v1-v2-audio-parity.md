@@ -876,6 +876,24 @@ as the scratch envelope evolves.
     `/private/tmp/cycle-icycle-repeat-audit-waveshaper-ir/`,
     `/private/tmp/cycle-icycle-ir-reset-repeat/`, and
     `/private/tmp/cycle-icycle-ir-reset-stages/`.
+
+    Further boundary hashes rule out IR as the origin of those two payloads.
+    Every Cycle 1 IR kernel rebuild is byte-identical across both output modes,
+    while the first nonzero block entering IR already has a mode-specific hash;
+    each input then maps deterministically through convolution. Resetting the
+    Waveshaper's FIR history at capture startup also leaves the same two output
+    hashes, so that attempted change was removed. A current full-precision
+    Filter Saw recheck provides the allocation-equivalent negative control:
+    this preset has no effects, Unison, Envelopes, or noise, yet Cycle 1 still
+    fails one of three fresh MIDI 48 repeats while MIDI 36, 60, and 72 repeat
+    exactly. MIDI 48 remains zero-lag at `1.00000` correlation with a `0.0001`
+    residual. This localizes the open issue to Cycle 1's mature spectral/audio
+    numerical path rather than any Cycle V2 effect implementation. Keep the
+    affected fixtures diagnostic; do not approximate or alter shared DSP to
+    manufacture exact equality. Artifacts:
+    `/private/tmp/cycle-icycle-ir-kernel-hashes/`,
+    `/private/tmp/cycle-icycle-ir-nonzero-*.log.raw`, and
+    `/private/tmp/cycle-filter-saw-admission-recheck/`.
 52. Preserve real linked-stereo payloads through global Delay. Complete:
     real compiled time-signal ports use `ChannelLayout::LinkedStereo`, while
     the runtime payload predicate recognizes only `StereoPair`. The prior Delay
