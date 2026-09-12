@@ -56,7 +56,8 @@ public:
     static void renderAudioBlock(
             const ModulationSourceConfiguration& configuration,
             const AudioVoiceContext& voice,
-            Buffer<float> values);
+            Buffer<float> values,
+            int noteOffset = 0);
 };
 
 std::unique_ptr<NodeAudioProcessor> createModulationSourceAudioProcessor();

@@ -94,6 +94,23 @@ TEST_CASE("Mod wheel and MIDI CC 1 share controller state",
             == ModulationSource::evaluate(*configuration("midiCC", 1), context));
 }
 
+TEST_CASE("Voice Context octave offsets its default key-scale modulation",
+        "[cycle-v2][modulation][audio][voice-context]") {
+    AudioVoiceContext voice;
+    voice.controls.noteNumber = 60;
+    voice.controls.lowestNote = Constants::LowestMidiNote;
+    voice.controls.highestNote = Constants::HighestMidiNote;
+    std::vector<float> output(4);
+
+    ModulationSource::renderAudioBlock(
+            *configuration("keyScale"),
+            voice,
+            { output.data(), (int) output.size() },
+            12);
+
+    REQUIRE(output == std::vector<float>(4, 52.f / 107.f));
+}
+
 TEST_CASE("MIDI endpoints normalize for every supported control kind",
         "[cycle-v2][modulation][control]") {
     MidiControlState state;

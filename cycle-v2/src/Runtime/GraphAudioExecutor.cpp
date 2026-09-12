@@ -354,7 +354,8 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             ModulationSource::renderAudioBlock(
                     configuration->sources[(size_t) sourceIndex],
                     voice,
-                    { payload.block.samples.data(), (int) frameCount });
+                    { payload.block.samples.data(), (int) frameCount },
+                    buffer.defaultModulationNoteOffset);
         }
     }
 

@@ -18,11 +18,13 @@ float controllerValue(const PreviewControlContext& context, int controller) {
     return context.controllers[(size_t) jlimit(0, 127, controller)];
 }
 
-PreviewControlContext previewContextForVoice(const AudioVoiceContext& voice) {
+PreviewControlContext previewContextForVoice(
+        const AudioVoiceContext& voice,
+        int noteOffset = 0) {
     PreviewControlContext context;
     context.voiceTime = voice.controls.normalizedVoiceTime;
     context.velocity = voice.controls.velocity;
-    context.noteNumber = voice.controls.noteNumber;
+    context.noteNumber = voice.controls.noteNumber + noteOffset;
     context.lowestNote = voice.controls.lowestNote;
     context.highestNote = voice.controls.highestNote;
     context.channelPressure = voice.controls.channelPressure;
@@ -197,8 +199,9 @@ ModulationSourceConfiguration ModulationSource::buildConfiguration(
 void ModulationSource::renderAudioBlock(
         const ModulationSourceConfiguration& configuration,
         const AudioVoiceContext& voice,
-        Buffer<float> values) {
-    PreviewControlContext current = previewContextForVoice(voice);
+        Buffer<float> values,
+        int noteOffset) {
+    PreviewControlContext current = previewContextForVoice(voice, noteOffset);
     if (configuration.mode == ModulationSourceMode::VoiceTime) {
         values.ramp(
                 jlimit(0.f, 1.f, voice.controls.normalizedVoiceTime),

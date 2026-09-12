@@ -333,11 +333,11 @@ Saw renders align at zero lag with effectively `1.00000` correlation and
 time-frame boundary and are now the next localization target.
 
 A separate converter audit also found that legacy modulation input 2 means
-`1-Velocity`; future ports now map it to Cycle V2 `inverseVelocity`. The
-remaining Voice Context key coordinate is `0.3738318` in Cycle 1 because its
-legacy range is MIDI 20–127, versus `0.3779528` in Cycle V2's current 0–127
-default. Filter Saw is invariant in red and blue, so those coordinate
-differences do not explain this fixture's residual audio.
+`1-Velocity`; future ports now map it to Cycle V2 `inverseVelocity`. Cycle V2
+now shares Cycle 1's MIDI 20–127 normalization range. Voice Context octave is
+also applied to inherited key-scale modulation as of parity slice 56. Filter
+Saw is invariant in red and blue, so neither correction explains this
+fixture's remaining residual audio.
 
 New artifacts:
 

@@ -372,6 +372,8 @@ TEST_CASE("Voice Context defaults resolve per axis with explicit override preced
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph, "voice", "octave", "Octave", "1").succeeded());
     Node triple = factory.createNode(NodeKind::ModulationTriple, "triple", {});
     for (auto& parameter : triple.parameters) {
         if (parameter.id == "yellowSource" || parameter.id == "blueSource") {
@@ -413,6 +415,7 @@ TEST_CASE("Voice Context defaults resolve per axis with explicit override preced
             implicit->defaultModulation);
     REQUIRE(configuration != nullptr);
     REQUIRE(configuration->sources[0].constant == Catch::Approx(0.2f));
+    REQUIRE(implicit->defaultModulationNoteOffset == 12);
 }
 
 TEST_CASE("Voice Context defaults reach volume and scratch Envelope sidechains",

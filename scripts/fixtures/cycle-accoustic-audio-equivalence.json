@@ -26,8 +26,8 @@
         "scratchEnvelope": "scratchEnvelope when active",
         "morph": "morph",
         "knownRuntimeGaps": [
-            "The full global-effect render exceeds the spectral threshold",
-            "The dry oscillator first differs at the time-raster boundary"
+            "The 48 kHz full global-effect render exceeds the spectral threshold because Reverb accumulates the remaining upstream numerical residual",
+            "The dry oscillator first differs at inverse reconstruction after byte-identical raster and operand stages"
         ],
         "constantGainPolicy": "Cycle1 master gain maps to Output; Cycle2 fixed headroom remains separate"
     },

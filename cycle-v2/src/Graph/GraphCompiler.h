@@ -89,6 +89,7 @@ struct GraphBufferPlan {
     int lastConsumerStep { -1 };
     DefaultModulationSlot defaultModulationSlot { DefaultModulationSlot::None };
     std::shared_ptr<const INodeDspConfiguration> defaultModulation;
+    int defaultModulationNoteOffset {};
 };
 
 struct GraphDependencyIndex {

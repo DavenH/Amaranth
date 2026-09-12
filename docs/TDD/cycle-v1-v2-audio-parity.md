@@ -174,7 +174,7 @@ translation. The first broad candidates are:
 | japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase. One corrected render repeated exactly, but a later run did not repeat in Cycle 1. Its large evolving mismatch remains diagnostic until that intermittent startup state is isolated. |
 | Icycle | Broad synthesis/effects plus six-voice Unison | Diagnostic. Regenerated from a direct canonical export while retaining node layout, port presentation, and three authored probes. Its reverb is disabled; the corrected IR size is `0.26`. Prepared per-lane pitch playback and Cycle 1's render-boundary frame latch bring the full MIDI 36–72 matrix to `0.98425–0.99997` correlation. Cycle 1's IR-enabled output intermittently selects one of two floating-point payloads across fresh processes, so the exact repeat prerequisite is not yet met. |
 | astral | Three magnitude layers, phase pan, volume/scratch envelopes, and delay | Regenerated from a fresh live export while retaining the existing Cycle V2 node presentation. The former hand-authored graph rendered effectively silent in the differential harness. At MIDI 48 the regenerated graph is zero-lag with `1.00000` correlation, `0.0011` gain-matched residual, and `0.35 dB` spectral RMSE. Cycle V2 repeats exactly; Cycle 1 does not, so the fixture remains diagnostic. |
-| accoustic | Time, two magnitude layers, two phase layers, volume/scratch envelopes, IR, delay, and reverb | Diagnostic. Regenerated from a live canonical export while retaining every node position and editor/port presentation. Correcting the stored octave moves the dry MIDI 48 comparison from `0.19646` to `0.99733` correlation; the full global-effect graph reaches `0.98559` correlation but remains above its spectral threshold. |
+| accoustic | Time, two magnitude layers, two phase layers, volume/scratch envelopes, IR, delay, and reverb | Diagnostic. Regenerated from a live canonical export while retaining every node position and editor/port presentation. Correcting octave pitch and its Voice Context key-scale coordinate makes every raster and operand stage byte-identical at MIDI 48. The full 44.1 kHz graph reaches `0.99870` correlation; its 48 kHz Reverb tail still amplifies the small inverse-reconstruction/output-rate residual beyond the spectral threshold. |
 | organ-2 | Spectral layers, envelopes, Unison, IR, delay, reverb | Regenerated from a fresh export while retaining presentation. Its oscillator-through-delay baseline is near-identical and global effect tails now outlive voices. The full Reverb output remains diagnostic. |
 | sitar | Three magnitude layers, phase, and persisted Guide noise | Diagnostic. The converter retains Cycle 1's layer modes and Guide seeds, and MIDI 36–72 reaches `0.99905–1.00000` correlation. A fresh Cycle 1 MIDI 48 repeat again selected a different floating-point payload while Cycle V2 remained exact. |
 
@@ -1182,6 +1182,34 @@ as the scratch envelope evolves.
     Artifacts: `/private/tmp/cycle-accoustic-dry/`,
     `/private/tmp/cycle-accoustic-octave-one-dry/`, and
     `/private/tmp/cycle-accoustic-octave-fixed-full/`.
+
+56. Apply Voice Context octave to its inherited key-scale modulation. Complete:
+    Cycle 1 routes `normalizeKey(adjustedMidiNote)` after applying its octave,
+    while Cycle V2 previously applied octave only at oscillator materialization.
+    The compiler now records the owning Voice Context's note offset on each
+    synthesized default-modulation buffer, and the existing modulation renderer
+    applies it without allocating or copying voice state. Explicit standalone
+    Modulation Source nodes remain in standard MIDI space; this translation is
+    limited to defaults inherited from a Voice Context and remains correct when
+    a graph contains multiple contexts with different octaves.
+
+    For Accoustic MIDI 48, the red key coordinate now matches Cycle 1 at
+    `0.4859813` instead of `0.3738318`. The time raster/frame, FFT, magnitude
+    rasters/operands, and phase rasters/operands are byte-identical; the first
+    primary difference is inverse reconstruction at `1.58e-7` residual. Dry
+    output improves to `0.99840` correlation, `0.0565` residual, and `4.57 dB`
+    spectral RMSE. The complete graph at 44.1 kHz reaches `0.99870`
+    correlation, `0.0510` residual, and `4.52 dB` spectral RMSE. At 48 kHz its
+    long Reverb still accumulates the remaining upstream/output-rate residual
+    to `0.98564` correlation and `9.81 dB` spectral RMSE, so the fixture remains
+    diagnostic as described by the established Organ 2 Reverb boundary in
+    slice 43. Across the complete 48 kHz MIDI 36–72 matrix, both engines repeat
+    exactly and correlations remain `0.98483–0.99552`; three notes exceed only
+    the spectral threshold. Artifacts:
+    `/private/tmp/cycle-accoustic-octave-keyscale-dry/`,
+    `/private/tmp/cycle-accoustic-octave-keyscale-full/`, and
+    `/private/tmp/cycle-accoustic-octave-keyscale-full-44100/`, and
+    `/private/tmp/cycle-accoustic-octave-keyscale-full-matrix/`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

@@ -908,7 +908,8 @@ void compileDefaultModulationInputs(
                         -1,
                         -1,
                         port.defaultModulationSlot,
-                        context->defaultModulation
+                        context->defaultModulation,
+                        context->octave * 12
                 });
             }
             step.inputs.push_back({
