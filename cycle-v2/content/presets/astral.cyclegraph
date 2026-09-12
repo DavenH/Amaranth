@@ -44,6 +44,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
+                "spectralMode": "auto",
                 "yellow": 0.0,
                 "red": 0.37383,
                 "blue": 0.0,
@@ -516,6 +517,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.625,
+                "spectralMode": "auto",
                 "yellow": 0.0,
                 "red": 0.37383,
                 "blue": 0.0,
@@ -604,6 +606,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.725,
+                "spectralMode": "auto",
                 "yellow": 0.0,
                 "red": 0.37383,
                 "blue": 0.0,
@@ -683,6 +686,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.225,
+                "spectralMode": "auto",
                 "yellow": 0.0,
                 "red": 0.37383,
                 "blue": 0.0,
@@ -788,7 +792,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 2258.80005, "y": 944.58618 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -902,7 +906,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 481.72412, "y": 755.0 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -1189,14 +1193,14 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 983.72412, "y": 1284.58618 },
-            "parameters": {}
+            "parameters": { "gain": 0.5 }
         },
         {
             "id": "pan",
             "kind": "spectralLayer",
             "definitionVersion": 1,
             "position": { "x": 1775.35022, "y": 805.32837 },
-            "parameters": { "pan": 0.76667 }
+            "parameters": { "pan": 0.76667, "mode": "auto" }
         },
         {
             "id": "globalInput",
@@ -1667,5 +1671,26 @@
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": []
+    "probes": [
+        {
+            "id": "probe3",
+            "sourceNodeId": "magnitudeOp3",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "ifft",
+            "anchorDestPortId": "mag",
+            "label": "Spy 3",
+            "tapPosition": 0.5,
+            "railOrder": 2
+        },
+        {
+            "id": "probe4",
+            "sourceNodeId": "ifft",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "volumeMultiply",
+            "anchorDestPortId": "left",
+            "label": "Spy 4",
+            "tapPosition": 0.5,
+            "railOrder": 3
+        }
+    ]
 }

@@ -34,6 +34,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.625,
+                "spectralMode": "auto",
                 "yellow": 0.085,
                 "red": 0.444,
                 "blue": 0.0,
@@ -103,6 +104,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.6,
+                "spectralMode": "auto",
                 "yellow": 1.0,
                 "red": 0.37383,
                 "blue": 0.0,
@@ -237,6 +239,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.575,
+                "spectralMode": "auto",
                 "yellow": 1.0,
                 "red": 0.37383,
                 "blue": 0.0,
@@ -368,14 +371,14 @@
             "kind": "spectralLayer",
             "definitionVersion": 1,
             "position": { "x": 1689.65515, "y": 936.76166 },
-            "parameters": { "pan": 1.0 }
+            "parameters": { "pan": 1.0, "mode": "auto" }
         },
         {
             "id": "phaseLayer2Process",
             "kind": "spectralLayer",
             "definitionVersion": 1,
             "position": { "x": 1689.65515, "y": 1254.50342 },
-            "parameters": { "pan": 0.0 }
+            "parameters": { "pan": 0.0, "mode": "auto" }
         },
         {
             "id": "phaseOp2",
@@ -922,7 +925,7 @@
             "kind": "waveshaper",
             "definitionVersion": 1,
             "position": { "x": 780.01031, "y": 1430.50342 },
-            "parameters": { "enabled": true, "pre": 0.626, "post": 0.44544, "aaFactor": "2", "processingScope": "global" },
+            "parameters": { "processingScope": "global", "enabled": true, "pre": 0.626, "post": 0.44544, "aaFactor": "2" },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
@@ -948,7 +951,7 @@
             "kind": "impulseResponse",
             "definitionVersion": 1,
             "position": { "x": 1069.01025, "y": 1430.50342 },
-            "parameters": { "enabled": true, "size": 0.14286, "post": 0.543, "highPass": 0.0, "processingScope": "global" },
+            "parameters": { "processingScope": "global", "enabled": true, "size": 0.14286, "post": 0.543, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
@@ -1082,6 +1085,7 @@
             "definitionVersion": 1,
             "position": { "x": 1373.01025, "y": 1430.50342 },
             "parameters": {
+                "processingScope": "global",
                 "enabled": true,
                 "band1Gain": 0.516,
                 "band2Gain": 0.4701,
@@ -1092,8 +1096,7 @@
                 "band2Frequency": 0.4239,
                 "band3Frequency": 0.712,
                 "band4Frequency": 0.8,
-                "band5Frequency": 0.824,
-                "processingScope": "global"
+                "band5Frequency": 0.824
             }
         },
         {
@@ -1114,21 +1117,21 @@
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 542.01031, "y": 1770.50342 },
+            "position": { "x": 1976.0343, "y": 1430.5033 },
             "parameters": { "gain": 0.5 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 542.01031, "y": 1430.50342 },
+            "position": { "x": 486.51117, "y": 1430.5033 },
             "parameters": {}
         },
         {
             "id": "voiceOutput",
             "kind": "voiceOutput",
             "definitionVersion": 1,
-            "position": { "x": 2652.44043, "y": 758.17285 },
+            "position": { "x": 2709.49609, "y": 758.11523 },
             "parameters": {}
         }
     ],
