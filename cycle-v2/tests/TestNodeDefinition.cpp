@@ -1,10 +1,16 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
+
+#include <App/AppConstants.h>
 
 #include <algorithm>
 #include <set>
 
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/NodeDefinition.h"
+#include "Graph/NodeParameterMap.h"
+#include "Nodes/Control/ModulationSource.h"
+#include "Runtime/PreviewPitchResolver.h"
 #include "UI/NodeCanvasScene.h"
 
 using namespace CycleV2;
@@ -162,4 +168,18 @@ TEST_CASE("Trimesh owns the spectral range parameter", "[cycle-v2][graph][defini
 
     REQUIRE(range != node.parameters.end());
     REQUIRE(range->value == "0.5");
+}
+
+TEST_CASE("Trimesh defaults its morph position to the preview key",
+        "[cycle-v2][graph][definitions][trimesh]") {
+    const Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    const NodeParameterMap parameters(node);
+    const float previewKey = ModulationSource::normalizeKey(
+            PreviewPitchResolver::defaultMidiNote,
+            Constants::LowestMidiNote,
+            Constants::HighestMidiNote);
+
+    REQUIRE(parameters.floatValue("yellow", -1.f) == 0.f);
+    REQUIRE(parameters.floatValue("red", -1.f) == Catch::Approx(previewKey));
+    REQUIRE(parameters.floatValue("blue", -1.f) == 0.f);
 }

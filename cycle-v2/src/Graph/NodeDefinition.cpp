@@ -1,5 +1,6 @@
 #include <Audio/CycleDsp/IrModel.h>
 #include <Audio/CycleDsp/UnisonCore.h>
+#include <App/AppConstants.h>
 
 #include <algorithm>
 #include <climits>
@@ -7,10 +8,12 @@
 
 #include "Graph/NodeDefinition.h"
 
+#include "Nodes/Control/ModulationSource.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Unison/UnisonNode.h"
+#include "Runtime/PreviewPitchResolver.h"
 
 namespace CycleV2 {
 
@@ -21,6 +24,13 @@ constexpr auto preview = ParameterImpact::Preview;
 constexpr auto graph = ParameterImpact::GraphSemantics;
 constexpr auto dsp = ParameterImpact::DspConfiguration;
 constexpr auto reset = ParameterImpact::ProcessorReset;
+
+float defaultTrimeshKeyPosition() {
+    return ModulationSource::normalizeKey(
+            PreviewPitchResolver::defaultMidiNote,
+            Constants::LowestMidiNote,
+            Constants::HighestMidiNote);
+}
 
 Port input(
         String id,
@@ -449,9 +459,9 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("range", "Range", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             choice("spectralMode", "Spectral Mode", "auto",
                                     { "auto", "additive", "multiplicative" }, graph | dsp),
-                            number("yellow", "Yellow", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            number("yellow", "Yellow", 0.f, 0.f, 1.f, dsp | preview | presentation),
+                            number("red", "Red", defaultTrimeshKeyPosition(), 0.f, 1.f, dsp | preview | presentation),
+                            number("blue", "Blue", 0.f, 0.f, 1.f, dsp | preview | presentation),
                             choice("primaryAxis", "Primary Axis", "yellow", { "yellow", "red", "blue" }, preview | presentation),
                             boolean("link.yellow", "Link Yellow", true, presentation),
                             boolean("link.red", "Link Red", true, presentation),

@@ -82,6 +82,16 @@ path.
   window owns title and command presentation. Automation exposes the same
   document state for regression tests.
 
+## Trimesh Default Morph Contract
+
+- `PreviewPitchResolver::defaultMidiNote` owns the preview key, and
+  `ModulationSource::normalizeKey` owns its unit mapping across
+  `Constants::LowestMidiNote` and `Constants::HighestMidiNote`.
+- Newly created Trimesh nodes start Yellow and Blue at zero. Red starts at the
+  normalized preview key so its durable fallback agrees with the existing
+  key-scale presentation adapter. Existing presets retain their authored
+  values; no load migration rewrites them.
+
 ## Node Selection Completion Criteria
 
 - Unit tests cover replace, Shift-add, Shift-remove, stable primary selection,

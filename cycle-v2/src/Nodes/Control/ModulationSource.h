@@ -43,7 +43,13 @@ class ModulationSource {
 public:
     static ModulationSourceMode modeFromId(const String& id);
     static String idForMode(ModulationSourceMode mode);
-    static float normalizeKey(int note, int lowestNote, int highestNote);
+    static float normalizeKey(int note, int lowestNote, int highestNote) {
+        if (highestNote <= lowestNote) {
+            return 0.f;
+        }
+        return jlimit(0.f, 1.f,
+                (float) (note - lowestNote) / (float) (highestNote - lowestNote));
+    }
     static float evaluate(
             const ModulationSourceConfiguration& configuration,
             const PreviewControlContext& context);
