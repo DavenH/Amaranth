@@ -172,6 +172,19 @@ def node(node_id, kind, x, y, parameters=None, model=None):
     return result
 
 
+def legacy_envelope_morph_node():
+    return node(
+        "legacyEnvelopeMorph",
+        "modulationSource",
+        2140,
+        1280,
+        {
+            "source": "constant",
+            "controller": 1,
+            "constant": 0.0,
+        })
+
+
 def node_footprint(entry):
     return NODE_FOOTPRINTS.get(entry["kind"], (216.0, 194.0))
 
@@ -342,6 +355,11 @@ def apply_compact_layout(nodes):
     for node_id in numbered_node_ids(nodes_by_id, "scratchEnvelope"):
         set_node_position(nodes_by_id, node_id, auxiliary_x, auxiliary_y)
         auxiliary_x += NODE_FOOTPRINTS["envelope"][0] + LAYOUT_GAP
+    set_node_position(
+        nodes_by_id,
+        "legacyEnvelopeMorph",
+        auxiliary_x,
+        auxiliary_y)
 
     visible_nodes = [
         entry for entry in nodes if entry["kind"] != "spectralLayer"
@@ -756,6 +774,7 @@ def convert(source):
 
     envelope_y = {"volume": 120, "pitch": 1050, "scratch": 1280}
     envelope_ids = {}
+    active_envelope_ids = []
     for purpose in ("volume", "pitch", "scratch"):
         for index, layer in enumerate(envelope_layers(preset, purpose), 1):
             if purpose == "pitch" and not layer["properties"]["active"]:
@@ -766,6 +785,15 @@ def convert(source):
                 2450 + 310 * (index - 1), envelope_y[purpose]))
             if layer["properties"]["active"]:
                 envelope_ids[purpose] = envelope_id
+                active_envelope_ids.append(envelope_id)
+
+    if active_envelope_ids:
+        nodes.append(legacy_envelope_morph_node())
+        for envelope_id in active_envelope_ids:
+            edges.extend([
+                edge("legacyEnvelopeMorph", "value", envelope_id, "red"),
+                edge("legacyEnvelopeMorph", "value", envelope_id, "blue"),
+            ])
 
     volume_id = envelope_ids.get("volume")
     if volume_id is None and preset["settings"].get("Declick", True):

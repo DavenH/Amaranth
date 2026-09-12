@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/subbass-parity.cyclegraph",
-        "sha256": "419f7a84da09fdb73e0959f31ebc6b98dc8a08fe0b278e69c73e80280d4e96cc",
+        "sha256": "a5c6b06a62b27a8670e4d8c622ef2dc344e7dda9d8784499a29648ac0aed48e1",
         "renderOverrides": {
             "voiceDurationSeconds": 0.2789115780343647
         }

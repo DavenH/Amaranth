@@ -1,6 +1,6 @@
 {
     "schema": "cycle-v1-v2-audio-equivalence.v1",
-    "status": "verified",
+    "status": "diagnostic",
     "v1": {
         "factoryPreset": "sitar",
         "sourceDocument": "cycle/content/presets/sitar.cyc",
@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/sitar.cyclegraph",
-        "sha256": "c70d8c8522baa9fe1c93bd1280f99b5477ba23d58092dad0a6294185263737f9",
+        "sha256": "e922c7f9f47e392e01687e364ebccdae04445a71ee62c221131ed0898f709ab0",
         "renderOverrides": {
             "voiceDurationSeconds": 0.6088500846478859
         }
@@ -27,6 +27,9 @@
         ],
         "determinism": "offline seed maps to the Cycle 1 filter-voice RNG stream; the retained layer stream consumes only its time-Guide offset draw",
         "inputValidation": "regenerated from a direct Cycle 1 canonical export while preserving Cycle V2 presentation",
+        "knownRuntimeGaps": [
+            "Cycle 1 MIDI 48 selected a different floating-point payload on a fresh repeat during the 2026-09-12 admission recheck"
+        ],
         "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
     },
     "thresholds": {

@@ -208,7 +208,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertNotIn("volumeEnvelope1", nodes)
         self.assertNotIn("volumeMultiply", nodes)
 
-    def test_static_envelopes_keep_red_blue_modulation_without_a_time_input(self):
+    def test_active_envelopes_preserve_the_legacy_zero_cross_section(self):
         source = convertible_source()
         volume = {
             "properties": {"active": True, "dynamic": False},
@@ -226,14 +226,25 @@ class PortCycleV1PresetTest(unittest.TestCase):
         converted = port_cycle_v1_preset.convert(source)
         nodes = {entry["id"]: entry for entry in converted["nodes"]}
 
-        self.assertNotIn("staticEnvelopeMorph", nodes)
+        self.assertEqual(
+            nodes["legacyEnvelopeMorph"]["parameters"],
+            {"source": "constant", "controller": 1, "constant": 0.0},
+        )
         self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["red"], 0.5)
         self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["blue"], 0.75)
+        self.assertEqual(
+            sorted(
+                edge["destPortId"]
+                for edge in converted["edges"]
+                if edge["sourceNodeId"] == "legacyEnvelopeMorph"
+            ),
+            ["blue", "red"],
+        )
 
         volume["properties"]["dynamic"] = True
         converted = port_cycle_v1_preset.convert(source)
         nodes = {entry["id"]: entry for entry in converted["nodes"]}
-        self.assertNotIn("staticEnvelopeMorph", nodes)
+        self.assertIn("legacyEnvelopeMorph", nodes)
         self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["red"], 0.5)
         self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["blue"], 0.75)
 

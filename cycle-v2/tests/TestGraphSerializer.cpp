@@ -780,7 +780,7 @@ TEST_CASE("Astral retains the canonical spectral and Envelope control graph",
     REQUIRE(magnitude1 != nullptr);
     REQUIRE(magnitude2 != nullptr);
     REQUIRE(phaseProcess != nullptr);
-    REQUIRE(loaded.graph.findNode("staticEnvelopeMorph") == nullptr);
+    REQUIRE(loaded.graph.findNode("legacyEnvelopeMorph") != nullptr);
     REQUIRE(output != nullptr);
     REQUIRE(NodeParameterMap(*morph).stringValue("blueSource") == "inverseVelocity");
     REQUIRE(NodeParameterMap(*magnitude1).stringValue("spectralMode") == "additive");
@@ -793,9 +793,9 @@ TEST_CASE("Astral retains the canonical spectral and Envelope control graph",
             loaded.graph.getEdges().begin(),
             loaded.graph.getEdges().end(),
             [](const Edge& edge) {
-                return edge.sourceNodeId == "staticEnvelopeMorph";
+                return edge.sourceNodeId == "legacyEnvelopeMorph";
             });
-    REQUIRE(envelopeMorphEdges == 0);
+    REQUIRE(envelopeMorphEdges == 4);
     REQUIRE(std::any_of(
             loaded.graph.getEdges().begin(),
             loaded.graph.getEdges().end(),

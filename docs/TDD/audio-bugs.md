@@ -532,20 +532,19 @@ waveshaper-only renders now match byte-for-byte, as does the complete two-render
 MIDI 36–72 matrix in both engines. Icycle is admitted as a verified fixture;
 artifact: `/tmp/cycle-icycle-full-settled-matrix/comparison.json`.
 
-## Open: remeasure parity after correcting Envelope dynamic-flag translation
+## Resolved: preserve Cycle 1's effective Envelope cross-section
 
 Context:
 
-- The Cycle 1 converter previously interpreted Envelope `dynamic=false` as a
-  request to replace red/blue modulation with explicit constant-zero inputs.
-- The flag applies to the time/yellow dimension. Cycle V2 Envelope has no such
-  input and already fixes time to zero during preparation; red/blue remain
-  grammatically valid Voice Context modulation.
-- The synthetic Constant Modulation node and cables were removed from Icycle,
-  Flute, Guitar 3 G, and Organ 2. Focused graph tests now assert their real
-  red/blue bindings and the fixed-zero preparation-time coordinate.
-- Earlier Guitar 3 G frame-zero and Icycle full-matrix measurements used the
-  incorrect constant red/blue routing and are not current parity evidence.
+- `dynamic=false` applies to live rerasterization, not to the red/blue grammar.
+  Removing the explicit zero source was therefore structurally plausible, but
+  it did not preserve the mature renderer's audible behavior.
+- Cycle 1's `EnvRasterizer::updateValue()` updates smoothed targets. Its
+  `SynthesizerVoice::updateSmoothedParameters()` is empty, so the current
+  red/blue values consumed by rasterization remain at their initialized zero.
+- Cycle V2's general Envelope inputs retain their intended absolute Voice
+  Context modulation. Imported factory graphs represent the Cycle 1 defect
+  explicitly with one `legacyEnvelopeMorph` constant-zero source.
 
 One-note diagnostic reruns after the correction produced:
 
@@ -555,9 +554,14 @@ One-note diagnostic reruns after the correction produced:
   `0.9527` residual, `10.51 dB` spectral error, and `0.9325` cyclogram
   difference.
 
-Artifacts are `/tmp/cycle-icycle-corrected-envelope/comparison.json` and
-`/tmp/cycle-guitar-3-g-corrected-envelope/comparison.json`.
+Those failing artifacts are `/private/tmp/cycle-icycle-envelope-ownership-rerun-fresh/comparison.json`
+and `/private/tmp/cycle-guitar-envelope-ownership-rerun-fresh/comparison.json`.
 
-Current status: graph/runtime semantics corrected. Icycle is close but below
-its declared correlation/residual thresholds; Guitar 3 G has a material open
-parity gap. Neither prior parity claim is readmitted.
+After migrating all 191 affected graphs, Guitar 3 G MIDI 48 is zero-lag at
+`1.00000` correlation, `0.0008` residual, `0.03 dB` spectral error, and
+`0.0006` cyclogram difference. Icycle is zero-lag at `0.99996` correlation,
+`0.0087` residual, `0.15 dB` spectral error, and `0.0117` cyclogram difference.
+Cycle V2 repeats exactly; Cycle 1 retains its separately documented
+process-level nondeterminism. Current artifacts are
+`/private/tmp/cycle-guitar-legacy-envelope-rerun/comparison.json` and
+`/private/tmp/cycle-icycle-legacy-envelope-rerun/comparison.json`.

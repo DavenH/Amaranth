@@ -30,30 +30,27 @@ boundary, while the existing gain-and-meter `Output` remains the required
 global sink. This preserves Cycle 1's post-effect preset gain and truthful
 final-output metering while making both disjoint graphs explicit and stackable.
 
-Production review of Icycle exposed two migration artifacts. The Cycle 1
-converter misread an Envelope layer's `dynamic=false` as a requirement to pin
-its red/blue morph inputs with a synthetic Constant Modulation node. That flag
-concerns the time/yellow dimension, which Cycle V2 Envelope does not expose;
-red/blue remain ordinary Voice Context modulation. The converter and affected
-presets must therefore delete the synthetic node and cables without replacing
-them or changing Envelope red/blue values. Separately, repacking a linear
-global chain must clear its audio-edge port-side overrides so definition-owned
-left-input/right-output routing produces direct horizontal cables. Branching
-global topology retains authored side overrides.
+Production review of Icycle exposed two migration artifacts. The first review
+correctly established that `dynamic=false` does not alter the red/blue cable
+grammar, but incorrectly concluded that removing the legacy zero source
+preserved Cycle 1 audio. A later source trace and differential render proved
+that Cycle 1 never advances the smoothed Envelope morph values it routes, so
+factory Envelopes audibly remain at `0/0`. Factory graphs now identify that
+compatibility explicitly as `legacyEnvelopeMorph`; V2's general Envelope
+semantics remain unchanged. Separately, repacking a linear global chain clears
+its audio-edge port-side overrides so definition-owned left-input/right-output
+routing produces direct horizontal cables. Branching global topology retains
+authored side overrides.
 
 The corrected Icycle production capture is
-`/tmp/cycle-v2-icycle-routing-fixed.png`. It contains no synthetic modulation
-source, shows one compact horizontal global chain, and loads with zero
-validation issues. Its focused automation report and filtered log are
+`/tmp/cycle-v2-icycle-routing-fixed.png`. Its global chain remains compact and
+loads with zero validation issues. Its focused automation report and filtered log are
 `/tmp/cycle-v2-icycle-routing-fixed-report.json` and
 `/tmp/cycle-v2-icycle-routing-fixed-logs.txt`; both commands succeeded and the
 log contains no warning, assertion, error, or crash.
 
-The graph architecture and presentation criteria are complete. Correcting the
-Envelope import semantics invalidated earlier Icycle and Guitar 3 G parity
-evidence; their new diagnostic measurements are recorded in `audio-bugs.md`.
-This TDD remains in progress until the affected parity gap is resolved or the
-completion criterion is explicitly revised.
+The graph architecture and presentation criteria are complete. The affected
+Icycle and Guitar 3 G parity measurements are resolved in `audio-bugs.md`.
 
 Proposed on 2026-09-11. This TDD supersedes the temporary per-node `VOICE` and
 `GLOBAL` text badges added during Cycle 1 audio-parity work. It does not change

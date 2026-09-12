@@ -62,6 +62,23 @@ def signal_edge(source, source_port, destination, destination_port):
     }
 
 
+def legacy_morph_node():
+    return {
+        "id": "legacyEnvelopeMorph",
+        "kind": "modulationSource",
+        "position": {"x": 0.0, "y": 0.0},
+        "parameters": {
+            "source": "constant",
+            "controller": 1,
+            "constant": 0.0,
+        },
+    }
+
+
+def converted_with_legacy_morph():
+    return {"nodes": [legacy_morph_node()], "edges": []}
+
+
 class EnvelopeOwnershipMigrationTest(unittest.TestCase):
     def test_updates_semantics_without_changing_existing_presentation_or_global_graph(self):
         source = preset(volume_active=True, scratch_active=False)
@@ -87,7 +104,10 @@ class EnvelopeOwnershipMigrationTest(unittest.TestCase):
         }
         original_global_edge = copy.deepcopy(graph["edges"][-1])
 
-        changed = migration.migrate_pair(source, graph, {"nodes": [], "edges": []})
+        changed = migration.migrate_pair(
+            source,
+            graph,
+            converted_with_legacy_morph())
 
         self.assertTrue(changed)
         volume = migration.node_with_id(graph, "volume")
@@ -101,6 +121,38 @@ class EnvelopeOwnershipMigrationTest(unittest.TestCase):
         self.assertFalse(scratch["parameters"]["enabled"])
         self.assertIsNone(migration.node_with_id(graph, "staticEnvelopeMorph"))
         self.assertIn(original_global_edge, graph["edges"])
+
+    def test_installs_legacy_morph_without_moving_existing_nodes(self):
+        source = preset(volume_active=True, scratch_active=False)
+        volume = envelope("volume", "volume", True)
+        graph = {
+            "nodes": [
+                {"id": "voice", "kind": "voiceContext",
+                 "position": {"x": 400.0, "y": 200.0}},
+                volume,
+                {"id": "globalInput", "kind": "globalInput",
+                 "position": {"x": 0.0, "y": 800.0}},
+            ],
+            "edges": [signal_edge("volume", "env", "volumeMultiply", "right")],
+        }
+        converted = converted_with_legacy_morph()
+        original_positions = {
+            node["id"]: copy.deepcopy(node["position"])
+            for node in graph["nodes"]
+        }
+
+        changed = migration.migrate_pair(source, graph, converted)
+
+        self.assertTrue(changed)
+        for node_id, position in original_positions.items():
+            self.assertEqual(migration.node_with_id(graph, node_id)["position"], position)
+        legacy = migration.node_with_id(graph, "legacyEnvelopeMorph")
+        self.assertIsNotNone(legacy)
+        self.assertEqual(
+            sorted(edge["destPortId"] for edge in graph["edges"]
+                   if edge["sourceNodeId"] == "legacyEnvelopeMorph"),
+            ["blue", "red"],
+        )
 
     def test_installs_converter_owned_declick_fallback_route(self):
         source = preset(volume_active=False, declick=True)
@@ -172,7 +224,10 @@ class EnvelopeOwnershipMigrationTest(unittest.TestCase):
             ],
         }
 
-        migration.migrate_pair(source, graph, {"nodes": [], "edges": []})
+        migration.migrate_pair(
+            source,
+            graph,
+            converted_with_legacy_morph())
 
         self.assertEqual(volume["parameters"]["red"], 0.0)
         self.assertEqual(volume["parameters"]["blue"], 0.0)

@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/shiny.cyclegraph",
-        "sha256": "f16c9970d4ed23884ce587b381d39294b1b882136bbe7cbdb27ff89345327b0e",
+        "sha256": "c4f53dd2a39129606990ddb4e7b25641269a2e32fa4123b8ea11337f33e59de2",
         "renderOverrides": {
             "voiceDurationSeconds": 7.004584673331117
         }
