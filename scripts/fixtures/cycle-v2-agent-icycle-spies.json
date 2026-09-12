@@ -1,0 +1,54 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/Icycle.cyclegraph",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.connected",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.1.connected",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.2.connected",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.absoluteSum",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.1.absoluteSum",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.2.absoluteSum",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-icycle-spies.png"
+    }
+  ],
+  "quit": true
+}

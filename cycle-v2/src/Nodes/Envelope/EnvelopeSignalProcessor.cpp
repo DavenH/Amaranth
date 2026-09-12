@@ -261,12 +261,15 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
         values.set(current->neutralValue);
     } else {
         const auto prepared = preparedPlaybackView();
-        const auto& result = playback.mode() == Rasterization::EnvelopePlaybackMode::Looping
-                && prepared.loop.sampleable
-                ? prepared.loop
-                : prepared.display;
-        const Rasterization::SamplerView sampler(result.waveform, result.sampleable);
-        sampler.sampleAtIntervals(positions, values);
+        const Rasterization::SamplerView sampler(
+                prepared.display.waveform,
+                prepared.display.sampleable);
+        // Envelope padding may end before the final traversal position. The bulk
+        // sampler intentionally silences every result when any position is invalid.
+        int currentIndex = sampler.initialIndex();
+        for (int column = 0; column < values.size(); ++column) {
+            values[column] = sampler.sampleAt(positions[column], currentIndex);
+        }
         if (current->logarithmic) {
             Arithmetic::applyInvLogMapping(values, 30.f);
         }

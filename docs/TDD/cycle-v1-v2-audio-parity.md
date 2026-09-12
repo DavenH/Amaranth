@@ -909,6 +909,49 @@ as the scratch envelope evolves.
     either renderer. Artifacts: `/tmp/cycle-icycle-release-stages-64/`,
     `/tmp/cycle-icycle-sequence-notes-dry/`, and
     `/tmp/cycle-icycle-start-note-dry/`.
+54. Restore live Voice Context and preset-control parity. In progress. The
+    live octave defect is complete: a
+    parameter-only refresh updates execution-step configurations but leaves the
+    compiled Voice Context snapshot unchanged. Consequently octave edits can
+    publish a newly prepared graph that still carries the old oscillator MIDI
+    offset. Reuse `GraphCompiler`'s authoritative Voice Context compilation on
+    DSP-configuration refreshes; no editor-to-audio side channel was added.
+    A focused test guards the durable edit, refresh, published plan, and changed
+    rendered output without topology recompilation. The keyboard sub-slice is
+    also complete: JUCE's authoritative horizontal-keyboard hit testing keeps
+    top-to-bottom velocity increasing, V2 no longer caps its bottom edge at
+    `0.8`, and the dock now exposes C3-C5 at the existing 25-by-100 pixel white
+    key geometry. The widened 451-by-112 dock and full MIDI-range clamping are
+    covered by component and focused automation tests; visual artifact:
+    `/tmp/cycle-v2-keyboard-parity-after.png`. The temporary runtime ownership
+    badges exposed the compiler's current downstream-promotion model, but the
+    resulting `VOICE` labels add noise and do not express the intended authored
+    graph boundary. [`cycle-v2-global-audio-graph.md`](cycle-v2-global-audio-graph.md)
+    supersedes that presentation: voice-local processing is unmarked, a
+    global-only icon replaces text labels, Global Input roots a disjoint graph,
+    and selectable effect ownership becomes durable graph state. The badges
+    remain a deletion target of that TDD rather than the final parity UI.
+    Icycle spy traversal is also complete. Its authored scratch Envelope and
+    both mature rasterizers were dynamic, but the diagnostic traversal used
+    `sampleAtIntervals`, whose intentional all-or-silence contract rejected the
+    complete request when the last `127 / 128` cursor exceeded that prepared
+    waveform's `0.987672` upper bound. The resulting zero scratch grid replaced
+    every attached Trimesh time coordinate with zero, making otherwise dynamic
+    grids and their Spies appear pinned. Envelope diagnostics now reuse the
+    mature cursor-aware scalar sampler for each requested position, retaining
+    valid columns while leaving only positions outside the prepared waveform at
+    zero. A bundled-Icycle regression requires the scratch rollout, all attached
+    time/magnitude/phase mesh grids, and all three authored Spy grids to change
+    across voice time; the existing two-dimensional Spy renderer remains
+    unchanged. Focused UI coverage confirms all three real preset probes remain
+    connected, nonempty two-dimensional grids in
+    `scripts/fixtures/cycle-v2-agent-icycle-spies.json`; visual artifact:
+    `/private/tmp/cycle-v2-icycle-spies.png`. Next, audit
+    every factory `.cyc`/`.cyclegraph` pair for voice length, octave, pitch,
+    portamento, oversampling, and migrated envelope ownership while preserving
+    authored Cycle V2 node presentation. Keyboard range/velocity, runtime
+    global-graph architecture, and Astral audio each remain separate observable
+    slices under this item.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

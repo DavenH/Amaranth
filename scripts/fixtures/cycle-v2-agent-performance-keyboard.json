@@ -18,7 +18,7 @@
     {
       "command": "assertState",
       "path": "performance.screenWidth",
-      "equals": 276
+      "equals": 451
     },
     {
       "command": "assertState",
@@ -53,7 +53,7 @@
     {
       "command": "assertState",
       "path": "performance.highestNote",
-      "equals": 72
+      "equals": 84
     },
     {
       "command": "assertState",
@@ -63,7 +63,7 @@
     {
       "command": "assertState",
       "path": "performance.highestNoteLabel",
-      "equals": "C4"
+      "equals": "C5"
     },
     {
       "command": "assertState",
@@ -83,7 +83,7 @@
     {
       "command": "assertState",
       "path": "performance.highestNote",
-      "equals": 84
+      "equals": 96
     },
     {
       "command": "pointer",
@@ -113,6 +113,11 @@
       "command": "assertState",
       "path": "performance.heldNote",
       "equals": 60
+    },
+    {
+      "command": "assertState",
+      "path": "performance.heldVelocity",
+      "equals": 0.85
     },
     {
       "command": "assertState",

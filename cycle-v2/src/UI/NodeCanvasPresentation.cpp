@@ -406,6 +406,30 @@ Rectangle<float> actionButton(Rectangle<float> nodeBounds, float zoom) {
     });
 }
 
+void paintRuntimeScopeBadge(
+        Graphics& graphics,
+        Rectangle<float> header,
+        float zoom,
+        const String& label,
+        bool besideAction) {
+    if (label.isEmpty()) {
+        return;
+    }
+
+    const float width = (label == "GLOBAL" ? 49.f : 43.f) * zoom;
+    Rectangle<float> badge(width, 17.f * zoom);
+    badge.setCentre({
+            header.getRight() - (besideAction ? 66.f : 32.f) * zoom,
+            header.getCentreY()
+    });
+    graphics.setColour(CanvasChromePalette::insetBackground.withAlpha(0.9f));
+    graphics.fillRoundedRectangle(badge, 4.f * zoom);
+    graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.9f));
+    graphics.drawRoundedRectangle(badge, 4.f * zoom, jmax(0.75f, zoom));
+    graphics.setFont(FontOptions(9.f * zoom, Font::bold));
+    graphics.drawText(label, badge, Justification::centred, false);
+}
+
 enum class OperationPortLayout {
     Side,
     Uptack,
@@ -1103,6 +1127,20 @@ UnisonPreviewContext NodeCanvasPresentation::unisonPreviewContextFor(
     return fallback;
 }
 
+String NodeCanvasPresentation::runtimeScopeLabel(
+        const GraphExecutionPlan& plan,
+        const String& nodeId) {
+    const auto found = std::find_if(plan.steps.begin(), plan.steps.end(), [&](const auto& step) {
+        return step.nodeId == nodeId;
+    });
+    if (found == plan.steps.end() || found->audioRole == AudioModuleRole::None) {
+        return {};
+    }
+    return found->ownershipScope == RuntimeOwnershipScope::Global
+            ? "GLOBAL"
+            : "VOICE";
+}
+
 void NodeCanvasPresentation::paintNode(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame,
@@ -1131,6 +1169,12 @@ void NodeCanvasPresentation::paintNode(
                 true,
                 frame.unisonPreviewContext
         });
+        paintRuntimeScopeBadge(
+                graphics,
+                nodeBounds.withHeight(30.f * zoom),
+                zoom,
+                runtimeScopeLabel(frame.compileResult.plan, node.id),
+                false);
     } else {
         Rectangle<float> body = nodeBounds;
         const Rectangle<float> header = body.removeFromTop(42.f * zoom);
@@ -1154,14 +1198,29 @@ void NodeCanvasPresentation::paintNode(
                     CanvasChromeMetrics::focusRingWidth);
         }
 
+        const auto& capabilities = NodeViewModuleRegistry::instance()
+                .moduleFor(node.kind).capabilities();
+        const bool hasAction = capabilities.operationLayoutControl
+                || supportsSinglePortLayout(node)
+                || capabilities.outputSideControl;
+        const bool reservesHeaderRight = hasAction || node.kind == NodeKind::Envelope;
+        paintRuntimeScopeBadge(
+                graphics,
+                header,
+                zoom,
+                runtimeScopeLabel(frame.compileResult.plan, node.id),
+                reservesHeaderRight);
+
         graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize * zoom));
         graphics.setColour(CanvasChromePalette::text);
-        graphics.drawText(labelForNodeKind(node.kind), header.reduced(13.f * zoom, 4.f * zoom),
-                          Justification::centredLeft);
+        graphics.drawText(
+                labelForNodeKind(node.kind),
+                header.reduced(13.f * zoom, 4.f * zoom).withTrimmedRight(
+                        (reservesHeaderRight ? 91.f : 58.f) * zoom),
+                Justification::centredLeft);
         if (node.kind == NodeKind::Envelope) {
             paintEnvelopePurposeIcon(graphics, node, header, zoom);
         }
-        const auto& capabilities = NodeViewModuleRegistry::instance().moduleFor(node.kind).capabilities();
         if (capabilities.operationLayoutControl) {
             paintOperationAction(
                     graphics,

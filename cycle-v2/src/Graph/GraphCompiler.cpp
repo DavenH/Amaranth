@@ -1236,6 +1236,16 @@ String effectiveScratchSourceNodeId(const GraphExecutionStep& step) {
     return scratchSourceNodeIdForStep(step);
 }
 
+void GraphCompiler::refreshVoiceContexts(
+        const NodeGraph& graph,
+        GraphExecutionPlan& plan) const {
+    plan.voiceContexts = compileVoiceContexts(
+            graph,
+            plan.configurationAttachments,
+            plan.attachments,
+            plan.signalEdges);
+}
+
 GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
     GraphCompileResult result;
     result.validationIssues = validator.validate(graph);

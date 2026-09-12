@@ -933,6 +933,24 @@ TEST_CASE("Graph presentation schedules work from semantic change impacts", "[cy
     REQUIRE(presentation.previewRenderCount() == previewCount + 1);
 }
 
+TEST_CASE("Voice context parameter refresh updates the published audio plan",
+        "[cycle-v2][canvas][presentation][audio]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    GraphChangeSet topology;
+    topology.topologyChanged = true;
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), topology));
+    const size_t compilationCount = presentation.compilationCount();
+
+    REQUIRE(presentation.compileResult().plan.voiceContexts.front().octave == 0);
+    REQUIRE(commands.setNodeParameter("voice", "octave", "Octave", "1").succeeded());
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+
+    REQUIRE(presentation.compilationCount() == compilationCount);
+    REQUIRE(presentation.compileResult().plan.voiceContexts.front().octave == 1);
+}
+
 TEST_CASE("Graph presentation rejects stale revision results", "[cycle-v2][canvas][presentation]") {
     GraphPresentationModel presentation;
     GraphChangeSet topology;

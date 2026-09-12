@@ -119,6 +119,25 @@ float absoluteDifferenceSum(const LeftValues& left, const RightValues& right) {
     return sum;
 }
 
+template<typename Values>
+float interColumnDifferenceSum(
+        const Values& values,
+        size_t columns,
+        size_t rows) {
+    REQUIRE(columns > 1);
+    REQUIRE(values.size() == columns * rows);
+
+    float difference = 0.f;
+    for (size_t column = 1; column < columns; ++column) {
+        const size_t previous = (column - 1) * rows;
+        const size_t current = column * rows;
+        for (size_t row = 0; row < rows; ++row) {
+            difference += std::abs(values[current + row] - values[previous + row]);
+        }
+    }
+    return difference;
+}
+
 float columnDifference(
         const SignalTraversalGrid& grid,
         size_t leftColumn,
@@ -469,6 +488,57 @@ TEST_CASE("Stengah spies render the exact output selected by each probe",
             REQUIRE(sourcePreview.gridRows == probe.gridRows);
         }
         REQUIRE(absoluteSum(probe.values) > 1.0e-5f);
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Icycle spies preserve traversal change across voice time",
+        "[cycle-v2][runtime][probe][presets][icycle]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("Icycle.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+
+    const NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    constexpr size_t frameCount = 128;
+    const auto audio = GraphAudioExecutor().process(graph, compiled.plan, frameCount);
+    const auto previews = GraphPreviewExecutor().render(
+            compiled.plan,
+            audio,
+            graph.getSignalProbes(),
+            frameCount);
+
+    for (const String& nodeId : {
+            "scratchEnvelope1",
+            "timeLayer1",
+            "magnitudeLayer1",
+            "magnitudeLayer2",
+            "phaseLayer1",
+            "phaseLayer2" }) {
+        const auto& grid = findAudio(audio, nodeId).output.traversalGrid;
+        REQUIRE(grid.isValid());
+        const float difference = interColumnDifferenceSum(
+                grid.values,
+                grid.columns,
+                grid.rows);
+        INFO("Traversal node: " << nodeId << ", inter-column difference: " << difference);
+        CHECK(difference > 0.01f);
+    }
+
+    for (const auto& probe : previews.probes) {
+        const float difference = interColumnDifferenceSum(
+                probe.values,
+                probe.gridColumns,
+                probe.gridRows);
+        INFO("Probe: " << probe.probeId << ", inter-column difference: " << difference);
+        CHECK(difference > 0.01f);
     }
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
