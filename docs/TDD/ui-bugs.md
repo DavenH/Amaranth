@@ -192,3 +192,9 @@ Context:
 Current status: open; reproduce with the recorded Catch randomness seed
 `3643743595` and isolate leaked shared Trimesh/graph fixture state before
 changing the individual expectations.
+
+Update 2026-09-12: another full run with seed `1137522538` reported 61
+order-dependent failures and ended in `Signal probe detail resolves the
+attached Voice Context key value` with `SIGSEGV`. Focused tests for Reverb,
+node group movement, Trimesh selection/link highlighting, and cable hit routing
+all pass independently; this remains an open suite-isolation defect.

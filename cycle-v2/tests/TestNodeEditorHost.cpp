@@ -3305,6 +3305,10 @@ TEST_CASE("Trimesh drag keeps movement local and publishes one commit snapshot",
     Component owner;
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    auto editorState = std::make_unique<DynamicObject>();
+    editorState->setProperty("selectedVertexId", 0);
+    REQUIRE(GraphEditor().setNodeEditorState(
+            graph, "mesh", var(editorState.release())).succeeded());
     addUnrelatedInteractionState(graph);
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher dispatcher(document);
@@ -3365,7 +3369,7 @@ TEST_CASE("Trimesh drag keeps movement local and publishes one commit snapshot",
     REQUIRE(restored->mesh().getVerts().front()->values[Vertex::Amp]
             == Catch::Approx(originalAmp));
     REQUIRE((int) document.graph().findNode("mesh")->editorState.getProperty(
-            "selectedVertexId", -1) == -1);
+            "selectedVertexId", -1) == 0);
 }
 
 TEST_CASE("Equalizer graph drag publishes frequency and gain as one undo transaction",

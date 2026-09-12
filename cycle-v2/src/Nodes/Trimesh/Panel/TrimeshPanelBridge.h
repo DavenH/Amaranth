@@ -90,6 +90,9 @@ private:
     int lastPreviewMidiNote { -1 };
     int previewKeyScaleAxis { -1 };
     int lastPreviewKeyScaleAxis { -2 };
+    int lastYellowLink { -1 };
+    int lastRedLink { -1 };
+    int lastBlueLink { -1 };
     bool pendingMeshEdit {};
     bool pendingMeshEditSourceIs3D {};
     bool meshEditGestureActive {};

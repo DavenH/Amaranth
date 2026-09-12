@@ -1,6 +1,7 @@
 #include "UI/NodeCanvasInteraction.h"
 #include "UI/ModulationCableBundle.h"
 
+#include <algorithm>
 #include <limits>
 
 namespace CycleV2 {
@@ -132,8 +133,12 @@ void NodeCanvasInteraction::beginPan(Point<float> startPan) {
 
 void NodeCanvasInteraction::beginNodeDrag(
         const String& nodeId,
+        std::vector<String> nodeIds,
         Rectangle<float> startBounds) {
-    currentGesture = NodeDragGesture { nodeId, startBounds, {} };
+    if (std::find(nodeIds.begin(), nodeIds.end(), nodeId) == nodeIds.end()) {
+        nodeIds.push_back(nodeId);
+    }
+    currentGesture = NodeDragGesture { nodeId, std::move(nodeIds), startBounds, {} };
 }
 
 void NodeCanvasInteraction::beginConnection(
@@ -200,14 +205,18 @@ std::optional<PortAddress> NodeCanvasInteraction::connectionTargetAt(
 SnappedNodeBounds NodeCanvasInteraction::snapNode(
         const NodeGraph& graph,
         const Node& node,
-        Rectangle<float> proposed) const {
+        Rectangle<float> proposed,
+        const std::vector<String>& excludedNodeIds) const {
     std::vector<SnapCandidate> xCandidates;
     std::vector<SnapCandidate> yCandidates;
     std::vector<float> xAnchors;
     std::vector<float> yAnchors;
 
     for (const auto& candidate : graph.getNodes()) {
-        if (candidate.id != node.id) {
+        if (std::find(
+                    excludedNodeIds.begin(),
+                    excludedNodeIds.end(),
+                    candidate.id) == excludedNodeIds.end()) {
             addNodeCandidates(xCandidates, yCandidates, candidate);
         }
     }
@@ -276,12 +285,14 @@ NodeCanvasDragUpdate NodeCanvasInteraction::drag(
     const auto snapped = snapNode(
             graph,
             *node,
-            nodeDrag->startBounds.translated(worldOffset.x, worldOffset.y));
+            nodeDrag->startBounds.translated(worldOffset.x, worldOffset.y),
+            nodeDrag->nodeIds);
     nodeDrag->guides = snapped.guides;
     const bool beginTransaction = !nodeDrag->transactionRequested;
     nodeDrag->transactionRequested = true;
     return NodeDragUpdate {
             nodeDrag->nodeId,
+            nodeDrag->nodeIds,
             snapped.bounds,
             snapped.guides,
             beginTransaction,
@@ -296,7 +307,11 @@ NodeCanvasGestureCompletion NodeCanvasInteraction::finish(
     NodeCanvasGestureCompletion completion;
 
     if (const auto* nodeDrag = std::get_if<NodeDragGesture>(&currentGesture)) {
-        completion = NodeDragCompletion { nodeDrag->nodeId, nodeDrag->moved };
+        completion = NodeDragCompletion {
+                nodeDrag->nodeId,
+                nodeDrag->nodeIds,
+                nodeDrag->moved
+        };
     } else if (const auto* connection = std::get_if<PortConnectionGesture>(&currentGesture)) {
         completion = ConnectionCompletion {
                 connection->source,

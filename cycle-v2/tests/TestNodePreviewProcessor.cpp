@@ -712,7 +712,7 @@ TEST_CASE("Bypassed Reverb spectrogram retains its configured response",
     REQUIRE(maximumBrightness > 0.25f);
 }
 
-TEST_CASE("Reverb heatmaps preserve their normalized spectrogram intensity",
+TEST_CASE("Reverb heatmaps retain the mature spectrogram display transform",
         "[cycle-v2][runtime][effects][reverb][preview][ui]") {
     NodePreviewResult result {
             "reverb",
@@ -724,11 +724,18 @@ TEST_CASE("Reverb heatmaps preserve their normalized spectrogram intensity",
     result.domain = PortDomain::SpectralMagnitudeSignal;
     const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(
             result.domain);
+    const std::vector<float> expectedSurface = profile.mapSpectrum2DGridToDisplay(
+            result.primary,
+            result.gridColumns,
+            result.gridRows,
+            result.frequencyMidiNote);
 
     const Image image = NodePreviewRenderer::createRuntimeHeatmapImage(result);
 
     REQUIRE(image.isValid());
-    REQUIRE(image.getPixelAt(0, 0) == profile.getSurfaceStyle().colourForValue(0.25f));
+    REQUIRE(image.getPixelAt(0, 1)
+            == profile.getSurfaceStyle().colourForValue(expectedSurface[0]));
+    REQUIRE(expectedSurface[0] > result.primary[0]);
 }
 
 TEST_CASE("Reverb Width preview follows production stereo mixing",

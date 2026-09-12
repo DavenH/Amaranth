@@ -140,13 +140,14 @@ TEST_CASE("Node canvas interaction models node drag transaction and completion s
     NodeCanvasViewport viewport;
     viewport.setTransform({}, 0.5f);
     NodeCanvasInteraction interaction;
-    interaction.beginNodeDrag(node.id, node.bounds);
+    interaction.beginNodeDrag(node.id, { node.id, "peer" }, node.bounds);
 
     auto first = interaction.drag(graph, viewport, {}, {}, { 10.f, 5.f });
     const auto* firstDrag = std::get_if<NodeDragUpdate>(&first);
     REQUIRE(firstDrag != nullptr);
     REQUIRE(firstDrag->beginTransaction);
     REQUIRE(firstDrag->moved);
+    REQUIRE(firstDrag->nodeIds == std::vector<String> { node.id, "peer" });
     REQUIRE(firstDrag->bounds.getX() == Catch::Approx(node.bounds.getX() + 20.f));
     REQUIRE(firstDrag->bounds.getY() == Catch::Approx(node.bounds.getY() + 10.f));
 
@@ -159,6 +160,7 @@ TEST_CASE("Node canvas interaction models node drag transaction and completion s
     const auto* nodeCompletion = std::get_if<NodeDragCompletion>(&completion);
     REQUIRE(nodeCompletion != nullptr);
     REQUIRE(nodeCompletion->nodeId == node.id);
+    REQUIRE(nodeCompletion->nodeIds == std::vector<String> { node.id, "peer" });
     REQUIRE(nodeCompletion->moved);
     REQUIRE(interaction.isIdle());
 }

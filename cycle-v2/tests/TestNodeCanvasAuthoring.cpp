@@ -111,6 +111,51 @@ TEST_CASE("Node canvas authoring preserves graph and layout semantics",
     REQUIRE(document.graph().findNode(added.nodeId) == nullptr);
 }
 
+TEST_CASE("Node canvas authoring keeps a toggled selection and bulk move in one undo",
+        "[cycle-v2][canvas][authoring][selection]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 20.f, 30.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", { 260.f, 90.f }));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    authoring.selectNode("wave");
+    REQUIRE(authoring.session().selectedNodeIds == std::vector<String> { "wave" });
+    REQUIRE(authoring.toggleNodeSelection("out"));
+    REQUIRE(authoring.session().selectedNodeIds
+            == std::vector<String> { "wave", "out" });
+    authoring.makeNodePrimary("wave");
+    REQUIRE(authoring.session().selectedNodeId == "wave");
+    REQUIRE_FALSE(authoring.toggleNodeSelection("wave"));
+    REQUIRE(authoring.session().selectedNodeId == "out");
+    REQUIRE(authoring.toggleNodeSelection("wave"));
+
+    const Rectangle<float> waveStart = document.graph().findNode("wave")->bounds;
+    const Rectangle<float> outStart = document.graph().findNode("out")->bounds;
+    authoring.beginNodeMoveGesture();
+    REQUIRE(authoring.moveSelectedNodesDuringGesture(
+            authoring.session().selectedNodeIds,
+            "wave",
+            waveStart.translated(10.f, 5.f)));
+    REQUIRE(authoring.moveSelectedNodesDuringGesture(
+            authoring.session().selectedNodeIds,
+            "wave",
+            waveStart.translated(25.f, 12.f)));
+    authoring.commitNodeMoveGesture();
+
+    REQUIRE(document.graph().findNode("wave")->bounds
+            == waveStart.translated(25.f, 12.f));
+    REQUIRE(document.graph().findNode("out")->bounds
+            == outStart.translated(25.f, 12.f));
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findNode("wave")->bounds == waveStart);
+    REQUIRE(document.graph().findNode("out")->bounds == outStart);
+}
+
 TEST_CASE("Node canvas authors a first spectral Trimesh Spy with a live preview",
         "[cycle-v2][canvas][authoring][probe][spectral][trimesh]") {
     GraphDocument document(NodeGraph::createDemoGraph());

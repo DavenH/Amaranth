@@ -258,7 +258,7 @@ std::vector<TrimeshVertexParameter> TrimeshNodeModel::getVertexParametersForInde
 }
 
 std::vector<TrimeshVertexParameter> TrimeshNodeModel::getSelectedVertexParameters() {
-    return getVertexParametersForIndex(resolvedSelectedVertexIndex());
+    return getVertexParametersForIndex(selectedVertexIndex);
 }
 
 std::vector<TrimeshVertexMarker> TrimeshNodeModel::getVertexMarkers() {
@@ -448,7 +448,7 @@ int TrimeshNodeModel::resolvedSelectedVertexIndex() {
 }
 
 Vertex* TrimeshNodeModel::selectedVertex() {
-    return vertexAtIndex(resolvedSelectedVertexIndex());
+    return vertexAtIndex(selectedVertexIndex);
 }
 
 bool TrimeshNodeModel::selectVertex(Vertex* vertex) {

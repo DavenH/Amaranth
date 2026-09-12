@@ -970,16 +970,20 @@ TEST_CASE("Trimesh node model renders compact grid data from node parameters", "
 
     const auto vertexParameters = model.getSelectedVertexParameters();
     const auto vertexMarkers = model.getVertexMarkers();
-    REQUIRE(vertexParameters.size() == 6);
-    REQUIRE(vertexMarkers.size() >= vertexParameters.size());
-    REQUIRE(vertexParameters[0].id == "vertex.time");
-    REQUIRE(vertexParameters[1].id == "vertex.red");
-    REQUIRE(vertexParameters[2].id == "vertex.blue");
-    REQUIRE(vertexParameters[3].id == "vertex.phase");
-    REQUIRE(vertexParameters[4].id == "vertex.amp");
-    REQUIRE(vertexParameters[5].id == "vertex.curve");
+    REQUIRE(vertexParameters.empty());
+    REQUIRE_FALSE(vertexMarkers.empty());
 
-    for (const auto& parameter : vertexParameters) {
+    REQUIRE(model.selectVertex(model.currentMesh().getVerts().front()));
+    const auto selectedVertexParameters = model.getSelectedVertexParameters();
+    REQUIRE(selectedVertexParameters.size() == 6);
+    REQUIRE(selectedVertexParameters[0].id == "vertex.time");
+    REQUIRE(selectedVertexParameters[1].id == "vertex.red");
+    REQUIRE(selectedVertexParameters[2].id == "vertex.blue");
+    REQUIRE(selectedVertexParameters[3].id == "vertex.phase");
+    REQUIRE(selectedVertexParameters[4].id == "vertex.amp");
+    REQUIRE(selectedVertexParameters[5].id == "vertex.curve");
+
+    for (const auto& parameter : selectedVertexParameters) {
         REQUIRE(parameter.value >= parameter.minimum);
         REQUIRE(parameter.value <= parameter.maximum);
     }
@@ -991,9 +995,16 @@ TEST_CASE("Trimesh node model exposes selected cube vertices for the side panel 
 
     model.syncFromNode(node);
 
-    const auto previewVertices = model.getSelectedCubePreviewVertices();
+    auto previewVertices = model.getSelectedCubePreviewVertices();
 
     REQUIRE(previewVertices.size() == 8);
+    REQUIRE(std::none_of(
+            previewVertices.begin(),
+            previewVertices.end(),
+            [](const auto& vertex) { return vertex.selected; }));
+
+    REQUIRE(model.selectVertex(model.currentMesh().getVerts().front()));
+    previewVertices = model.getSelectedCubePreviewVertices();
 
     bool hasSelectedVertex {};
     bool hasLowTime {};
@@ -1020,6 +1031,42 @@ TEST_CASE("Trimesh node model exposes selected cube vertices for the side panel 
     REQUIRE(hasHighRed);
     REQUIRE(hasLowBlue);
     REQUIRE(hasHighBlue);
+}
+
+TEST_CASE("Trimesh selection remains empty or explicit while morph position changes",
+        "[cycle-v2][nodes][trimesh][selection]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphEditor editor;
+    TrimeshNodeModel model;
+
+    model.syncFromNode(*graph.findNode("mesh"));
+    REQUIRE(model.getSelectedVertexIndex() == -1);
+    REQUIRE(model.getSelectedVertexParameters().empty());
+
+    REQUIRE(editor.setNodeParameter(
+            graph, "mesh", "yellow", "Yellow", "0.8").succeeded());
+    model.syncFromNode(*graph.findNode("mesh"));
+    REQUIRE(model.getSelectedVertexIndex() == -1);
+    REQUIRE(model.getSelectedVertexParameters().empty());
+
+    Vertex* selected = model.currentMesh().getVerts().front();
+    REQUIRE(model.selectVertex(selected));
+    const int selectedIndex = model.getSelectedVertexIndex();
+    REQUIRE(selectedIndex >= 0);
+    auto selectedState = std::make_unique<DynamicObject>();
+    selectedState->setProperty("selectedVertexId", selectedIndex);
+    REQUIRE(editor.setNodeEditorState(
+            graph, "mesh", var(selectedState.release())).succeeded());
+
+    REQUIRE(editor.setNodeParameter(
+            graph, "mesh", "red", "Red", "0.2").succeeded());
+    model.syncFromNode(*graph.findNode("mesh"));
+    REQUIRE(model.getSelectedVertexIndex() == selectedIndex);
+    REQUIRE(model.currentMesh().getVerts()[(size_t) selectedIndex] == selected);
 }
 
 TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][nodes][trimesh]") {
@@ -1826,20 +1873,29 @@ TEST_CASE("Trimesh link parameters drive mature linked-vertex interaction",
     TrimeshPanelBridge bridge;
     GraphEditor editor;
 
+    REQUIRE(editor.setNodeParameter(
+            graph, "mesh", "link.red", "Link Red", "0").succeeded());
+    REQUIRE(editor.setNodeParameter(
+            graph, "mesh", "link.blue", "Link Blue", "0").succeeded());
     bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
     VertCube* cube = bridge.getModel().getMeshForPanel().getCubes().front();
     Vertex* vertex = cube->getVertex(0);
     REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 2);
+    bridge.getInteractor2D().getSelected().push_back(vertex);
+    bridge.getInteractor2D().setMovingVertsFromSelected();
+    REQUIRE(bridge.getInteractor2D().getSelectedMovingVerts().size() == 2);
 
     REQUIRE(editor.setNodeParameter(
             graph, "mesh", "link.red", "Link Red", "1").succeeded());
     bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
     REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 4);
+    REQUIRE(bridge.getInteractor2D().getSelectedMovingVerts().size() == 4);
 
     REQUIRE(editor.setNodeParameter(
             graph, "mesh", "link.blue", "Link Blue", "1").succeeded());
     bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
     REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 8);
+    REQUIRE(bridge.getInteractor2D().getSelectedMovingVerts().size() == 8);
 }
 
 TEST_CASE("Trimesh panel hosts use component cursors and delegated repaint",

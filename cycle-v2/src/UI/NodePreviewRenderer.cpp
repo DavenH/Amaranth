@@ -163,13 +163,6 @@ std::vector<float> mappedSurface(
     const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
     const bool spectral = preview.domain == PortDomain::SpectralMagnitudeSignal
             || preview.domain == PortDomain::SpectralPhaseSignal;
-    if (preview.role == PreviewModuleRole::ReverbSpectrogram && spectral) {
-        return profile.mapGridToDisplay(
-                surface,
-                preview.gridColumns,
-                preview.gridRows,
-                preview.frequencyMidiNote);
-    }
     if (meshSurface && spectral) {
         return profile.mapGridToDisplay(
                 surface,

@@ -101,9 +101,9 @@ The production review identified four corrections to the first batch:
   underlines are removed. Spectral Trimesh exposes its existing `spectralMode`
   parameter through the shared Auto/Add/Multiply selector in the editor header.
 - Reverb retains `ReverbSpectrogramPreviewProcessor` as the authoritative data
-  source. Its already-normalized surface uses the existing spectral grid mapper
-  without the generic magnitude tension curve, while the spectral render
-  profile remains authoritative for the inferno palette. During a transient
+  source. Its surface uses the mature logarithmic frequency and brightness
+  transform, while the runtime spectral render profile remains authoritative
+  for the inferno palette. During a transient
   preview gap, the renderer retains the last authoritative heatmap instead of
   switching to the qualitative cyan reflection bars.
 - Output meter mapping and hit geometry remain unchanged; only the visible

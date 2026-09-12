@@ -146,6 +146,7 @@ NodeCanvas::NodeCanvas() :
     ,   editorCommands(*this, document, commands, *this, *this, &performanceMetrics)
     ,   authoring(document, commands, presentation, editorCommands)
     ,   selectedNodeId(authoring.interactionSession().selectedNodeId)
+    ,   selectedNodeIds(authoring.interactionSession().selectedNodeIds)
     ,   expandedNodeId(authoring.interactionSession().expandedNodeId)
     ,   editStatusMessage(authoring.interactionSession().statusMessage)
     ,   selectedEdgeIndex(authoring.interactionSession().selectedEdgeIndex)
@@ -294,12 +295,14 @@ void NodeCanvas::mouseExit(const MouseEvent&) {
     const bool paletteChanged = palette.close();
     const bool canvasChanged = guideShelfState.hoveredGuideId.isNotEmpty()
             || probeRailState.hoveredProbeId.isNotEmpty()
+            || hoveredEdgeIndex >= 0
             || paletteChanged;
     const bool statusChanged = resolvedHoverText.isNotEmpty();
     pointerInsideCanvas = false;
     resolvedHoverText = {};
     guideShelfState.hoveredGuideId = {};
     probeRailState.hoveredProbeId = {};
+    hoveredEdgeIndex = -1;
     setMouseCursor(MouseCursor::NormalCursor);
     const HoverRepaint repaint = hoverRepaintFor(canvasChanged, statusChanged);
     performanceMetrics.recordHoverState(repaint != HoverRepaint::None);
@@ -311,6 +314,7 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
     const int previousPaletteSection = palette.activeSection();
     const String previousGuideId = guideShelfState.hoveredGuideId;
     const String previousProbeId = probeRailState.hoveredProbeId;
+    const int previousHoveredEdgeIndex = hoveredEdgeIndex;
     const String previousHoverText = resolvedHoverText;
     const bool occluded = expandedEditorBoundsForOverlay().contains(position);
     pointerInsideCanvas = true;
@@ -320,9 +324,11 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
         resolvedHoverText = {};
         guideShelfState.hoveredGuideId = {};
         probeRailState.hoveredProbeId = {};
+        hoveredEdgeIndex = -1;
         const bool canvasChanged = paletteChanged
                 || previousGuideId.isNotEmpty()
-                || previousProbeId.isNotEmpty();
+                || previousProbeId.isNotEmpty()
+                || previousHoveredEdgeIndex >= 0;
         const bool statusChanged = previousHoverText.isNotEmpty();
         const HoverRepaint repaint = hoverRepaintFor(canvasChanged, statusChanged);
         performanceMetrics.recordOperation(
@@ -338,6 +344,12 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
             presentation.revision(),
             document.revision());
     resolvedHoverText = hitRouter.hoverTextFor(viewport, scene, position);
+    hoveredEdgeIndex = hitRouter.edgeAt(scene, position);
+    if (hoveredEdgeIndex >= 0
+            && hoveredEdgeIndex < (int) graph.getEdges().size()) {
+        resolvedHoverText = queries.hoverTextForEdge(
+                graph.getEdges()[(size_t) hoveredEdgeIndex]);
+    }
     guideShelfState.hoveredGuideId = GuideCurveShelf::guideAt(
             position,
             graph,
@@ -375,7 +387,8 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
             performanceMetrics.timestamp() - startedAt);
     const bool canvasChanged = previousPaletteSection != palette.activeSection()
             || previousGuideId != guideShelfState.hoveredGuideId
-            || previousProbeId != probeRailState.hoveredProbeId;
+            || previousProbeId != probeRailState.hoveredProbeId
+            || previousHoveredEdgeIndex != hoveredEdgeIndex;
     const bool statusChanged = previousHoverText != resolvedHoverText;
     const HoverRepaint repaint = hoverRepaintFor(canvasChanged, statusChanged);
     performanceMetrics.recordHoverState(repaint != HoverRepaint::None);
@@ -467,6 +480,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             if (const Node* node = queries.findNode(result.nodeId)) {
                 interaction.beginNodeDrag(
                         node->id,
+                        { node->id },
                         hitRouter.paletteDragBounds(viewport, *node, event.position));
             }
             editStatusMessage = "Node added";
@@ -537,14 +551,20 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         requestCanvasRepaint();
         return;
     }
+    if (event.mods.isPopupMenu()) {
+        const int edgeIndex = hitRouter.edgeAt(scene, event.position);
+        if (edgeIndex >= 0) {
+            showEdgeMenu(edgeIndex, event.position);
+            return;
+        }
+    }
     const Node* inlinePan = findInlinePanAt(graph, viewport, event.position);
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
         if (authoring.beginSpectralPanGesture(inlinePan->id)) {
             draggingSpectralPanNodeId = inlinePan->id;
             spectralPanDragStartValue = NodeParameterMap(*inlinePan)
                     .floatValue("pan", 0.5f);
-            selectedNodeId = inlinePan->id;
-            selectedEdgeIndex = -1;
+            authoring.selectNode(inlinePan->id);
             requestCanvasRepaint();
             return;
         }
@@ -564,16 +584,14 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             draggingOutputGainNodeId = outputFader->id;
             outputGainDragStartValue = NodeParameterMap(*outputFader)
                     .floatValue("gain", 0.5f);
-            selectedNodeId = outputFader->id;
-            selectedEdgeIndex = -1;
+            authoring.selectNode(outputFader->id);
             requestCanvasRepaint();
             return;
         }
     }
     if (const auto hitPort = interaction.portAt(scene, event.position)) {
         interaction.beginConnection(*hitPort, event.position);
-        selectedNodeId = hitPort->nodeId;
-        selectedEdgeIndex = -1;
+        authoring.selectNode(hitPort->nodeId);
         requestCanvasRepaint();
         return;
     }
@@ -584,9 +602,19 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     }
 
     if (hitNode != nullptr) {
-        selectedNodeId = hitNode->id;
-        selectedEdgeIndex = -1;
-        interaction.beginNodeDrag(hitNode->id, hitNode->bounds);
+        if (event.mods.isShiftDown()) {
+            if (!authoring.toggleNodeSelection(hitNode->id)) {
+                interaction.reset();
+                requestCanvasRepaint();
+                return;
+            }
+        } else {
+            authoring.makeNodePrimary(hitNode->id);
+        }
+        interaction.beginNodeDrag(
+                hitNode->id,
+                selectedNodeIds,
+                hitNode->bounds);
 
         if (event.getNumberOfClicks() >= 2 && hasExpandedEditor(hitNode->kind)) {
             expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
@@ -617,14 +645,13 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             return;
         }
 
-        selectedNodeId = {};
+        authoring.selectEdge(selectedEdgeIndex);
         interaction.reset();
         requestCanvasRepaint();
         return;
     }
 
-    selectedNodeId = {};
-    selectedEdgeIndex = -1;
+    authoring.selectNode({});
     interaction.beginPan(viewport.getPan());
     expandedNodeId = {};
 
@@ -689,7 +716,10 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
             authoring.beginNodeMoveGesture();
         }
 
-        authoring.resizeNodeDuringGesture(nodeDrag->nodeId, nodeDrag->bounds);
+        authoring.moveSelectedNodesDuringGesture(
+                nodeDrag->nodeIds,
+                nodeDrag->nodeId,
+                nodeDrag->bounds);
         spliceTargetEdgeIndex = nodeDrag->moved
                 ? hitRouter.spliceTargetEdgeAt(scene, event.position, nodeDrag->nodeId)
                 : -1;
@@ -743,7 +773,9 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     spliceTargetEdgeIndex = -1;
 
     if (const auto* nodeDrag = std::get_if<NodeDragCompletion>(&completion)) {
-        if (nodeDrag->moved && spliceSelectedNodeIntoEdgeAt(event.position)) {
+        if (nodeDrag->moved
+                && nodeDrag->nodeIds.size() == 1
+                && spliceSelectedNodeIntoEdgeAt(event.position)) {
             authoring.commitNodeMoveGesture();
             requestCanvasRepaint();
             return;
@@ -1054,7 +1086,9 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             probeDetailState,
             globalUnisonPreviewContext,
             liveOutputMeterLevels,
-            draggingSpectralPanNodeId
+            draggingSpectralPanNodeId,
+            selectedNodeIds,
+            hoveredEdgeIndex
     };
 }
 
@@ -1343,6 +1377,7 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
 NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const {
     NodeCanvasAutomationPresentation result;
     result.selectedNodeId = selectedNodeId;
+    result.selectedNodeIds = selectedNodeIds;
     result.expandedNodeId = expandedNodeId;
     result.editStatusMessage = editStatusMessage;
     const CanvasPerformanceMetrics::Snapshot metrics = performanceMetrics.snapshot();
@@ -1353,6 +1388,7 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     result.statusRepaintRequestCount = metrics.repaintScopes[
             static_cast<size_t>(CanvasPerformanceMetrics::RepaintScope::Status)];
     result.selectedEdgeIndex = selectedEdgeIndex;
+    result.hoveredEdgeIndex = hoveredEdgeIndex;
     result.previewVoiceLengthSeconds = globalUnisonPreviewContext.voiceDurationSeconds;
     result.probeRefreshMode = probeRailState.refreshMode;
     result.probeDetailId = probeDetailState.probeId;
@@ -2060,8 +2096,7 @@ void NodeCanvas::repaintNodeEditor(bool openGl) {
 }
 
 void NodeCanvas::selectEditedNode(const String& nodeId) {
-    selectedNodeId = nodeId;
-    selectedEdgeIndex = -1;
+    authoring.selectNode(nodeId);
 }
 
 void NodeCanvas::setNodeEditorStatus(const String& message) {

@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include <cstdint>
+#include <vector>
 
 #include "Graph/GraphDocument.h"
 #include "Runtime/GraphPresentationModel.h"
@@ -71,6 +72,8 @@ struct NodeCanvasAutomationPresentation {
     uint64_t hoverRepaintRequestCount {};
     uint64_t canvasRepaintRequestCount {};
     uint64_t statusRepaintRequestCount {};
+    std::vector<juce::String> selectedNodeIds;
+    int hoveredEdgeIndex { -1 };
 };
 
 struct NodeCanvasAutomationContext {

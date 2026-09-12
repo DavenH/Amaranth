@@ -15,6 +15,7 @@ struct NodeCanvasAuthoringSession {
     String statusMessage;
     int selectedEdgeIndex { -1 };
     int spliceTargetEdgeIndex { -1 };
+    std::vector<String> selectedNodeIds;
 };
 
 struct NodeCanvasAuthoringEffects {
@@ -51,6 +52,9 @@ public:
     NodeCanvasAuthoringSession& interactionSession() { return authoringSession; }
     void setSession(NodeCanvasAuthoringSession session);
     void selectNode(const String& nodeId);
+    void makeNodePrimary(const String& nodeId);
+    bool toggleNodeSelection(const String& nodeId);
+    bool isNodeSelected(const String& nodeId) const;
     void selectEdge(int edgeIndex);
     bool clearSelection();
 
@@ -69,6 +73,10 @@ public:
     NodeCanvasAuthoringResult moveNode(const String& nodeId, Point<float> position);
     void beginNodeMoveGesture();
     bool resizeNodeDuringGesture(const String& nodeId, Rectangle<float> bounds);
+    bool moveSelectedNodesDuringGesture(
+            const std::vector<String>& nodeIds,
+            const String& primaryNodeId,
+            Rectangle<float> primaryBounds);
     void commitNodeMoveGesture();
     NodeCanvasAuthoringResult connectPorts(
             const PortAddress& source,

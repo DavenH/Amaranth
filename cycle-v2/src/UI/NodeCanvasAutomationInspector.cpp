@@ -536,8 +536,15 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("panX", context.viewport.getPan().x);
     root->setProperty("panY", context.viewport.getPan().y);
     root->setProperty("selectedNodeId", state.selectedNodeId);
+    Array<var> selectedNodeIds;
+    for (const auto& nodeId : state.selectedNodeIds) {
+        selectedNodeIds.add(nodeId);
+    }
+    root->setProperty("selectedNodeIds", selectedNodeIds);
+    root->setProperty("selectedNodeCount", selectedNodeIds.size());
     root->setProperty("expandedNodeId", state.expandedNodeId);
     root->setProperty("selectedEdgeIndex", state.selectedEdgeIndex);
+    root->setProperty("hoveredEdgeIndex", state.hoveredEdgeIndex);
     root->setProperty("previewVoiceLengthSeconds", state.previewVoiceLengthSeconds);
     root->setProperty("editStatusMessage", state.editStatusMessage);
     root->setProperty("hoverRepaintRequestCount", (int64) state.hoverRepaintRequestCount);

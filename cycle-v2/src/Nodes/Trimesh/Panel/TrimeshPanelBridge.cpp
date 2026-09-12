@@ -126,10 +126,16 @@ void TrimeshPanelBridge::syncFromNode(
         int rows,
         int columns) {
     const NodeParameterMap parameters(node);
-    environment.setAxisLinks(
-            parameters.boolValue("link.yellow", true),
-            parameters.boolValue("link.red", true),
-            parameters.boolValue("link.blue", true));
+    const bool yellowLinked = parameters.boolValue("link.yellow", true);
+    const bool redLinked = parameters.boolValue("link.red", true);
+    const bool blueLinked = parameters.boolValue("link.blue", true);
+    const bool linksChanged = lastYellowLink < 0
+            || lastRedLink < 0
+            || lastBlueLink < 0
+            || yellowLinked != (lastYellowLink == 1)
+            || redLinked != (lastRedLink == 1)
+            || blueLinked != (lastBlueLink == 1);
+    environment.setAxisLinks(yellowLinked, redLinked, blueLinked);
     const bool spectral = renderProfile.getDomain() == PortDomain::SpectralMagnitudeSignal
             || renderProfile.getDomain() == PortDomain::SpectralPhaseSignal;
 
@@ -141,11 +147,22 @@ void TrimeshPanelBridge::syncFromNode(
             node,
             previewKeyScaleAxis,
             previewMidiNote);
-    if (!meshEditGestureActive && model.syncFromNode(presentationNode)) {
+    const bool meshReplaced = !meshEditGestureActive
+            && model.syncFromNode(presentationNode);
+    if (meshReplaced) {
         stopTimer();
         pendingMeshEdit = false;
         clearInteractionPointers();
     }
+    if (linksChanged && !meshReplaced) {
+        interactor2D.setMovingVertsFromSelected();
+        interactor3D.setMovingVertsFromSelected();
+        panel2D.requestRepaint();
+        panel3D.requestRepaint();
+    }
+    lastYellowLink = yellowLinked ? 1 : 0;
+    lastRedLink = redLinked ? 1 : 0;
+    lastBlueLink = blueLinked ? 1 : 0;
     environment.setMorphPosition(model.getMorphPosition(), model.getPrimaryViewAxis());
     syncPrimaryAxisContext();
     const bool pitchSpansColumns = spectral
@@ -307,7 +324,7 @@ void TrimeshPanelBridge::clearInteractionPointers() {
 }
 
 int TrimeshPanelBridge::selectedVertexIndexForPanel() {
-    return model.getResolvedSelectedVertexIndex();
+    return model.getSelectedVertexIndex();
 }
 
 void TrimeshPanelBridge::syncPrimaryAxisContext() {

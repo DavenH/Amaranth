@@ -146,6 +146,7 @@ private:
     NodeCanvasAuthoring authoring;
     NodeCanvasInteraction interaction;
     String& selectedNodeId;
+    std::vector<String>& selectedNodeIds;
     String& expandedNodeId;
     String& editStatusMessage;
     int& selectedEdgeIndex;
@@ -160,6 +161,7 @@ private:
     std::unique_ptr<GuideCurveEditorComponent> guideEditor;
 
     int activeTrimeshVertexIndex { -1 };
+    int hoveredEdgeIndex { -1 };
     Point<float> lastMousePosition;
     String resolvedHoverText;
     bool pointerInsideCanvas {};
