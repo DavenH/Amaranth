@@ -46,7 +46,7 @@ bool EditWatcher::addAction(NamedUndoableAction* action, bool startNewTransactio
     const String& description = action->getDescription();
     const bool performed = undoManager.perform(action, description);
     if (performed) {
-        triggerAsyncUpdate();
+        triggerClientUpdate();
     }
     return performed;
 }
@@ -58,14 +58,20 @@ bool EditWatcher::addAction(UndoableAction* action, bool startNewTransaction) {
 
     const bool performed = undoManager.perform(action);
     if (performed) {
-        triggerAsyncUpdate();
+        triggerClientUpdate();
     }
     return performed;
 }
 
 void EditWatcher::setHaveEditedWithoutUndo(bool have) {
     editedWithoutUndo = have;
-    triggerAsyncUpdate();
+    triggerClientUpdate();
+}
+
+void EditWatcher::triggerClientUpdate() {
+    if (! clients.isEmpty()) {
+        triggerAsyncUpdate();
+    }
 }
 
 void EditWatcher::undo() {

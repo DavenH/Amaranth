@@ -45,6 +45,8 @@ public:
     void beginNewTransaction(const String& name) { undoManager.beginNewTransaction(name); }
 
 private:
+    void triggerClientUpdate();
+
     bool editedWithoutUndo;
 
     UndoManager undoManager;

@@ -69,3 +69,13 @@ TEST_CASE("Edit watcher publishes undo-backed dirty state to its clients",
     REQUIRE(client.title == "Cycle - Test preset");
     REQUIRE(client.titleUpdates == 2);
 }
+
+TEST_CASE("Headless edit watchers do not schedule document notifications",
+        "[edit-watcher][dirty]") {
+    ScopedJuceInitialiser_GUI juceGui;
+    SingletonRepo repo;
+    EditWatcher watcher(&repo);
+
+    REQUIRE(watcher.addAction(new TestEditAction()));
+    REQUIRE_FALSE(watcher.isUpdatePending());
+}

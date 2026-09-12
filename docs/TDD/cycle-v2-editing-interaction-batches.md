@@ -66,8 +66,11 @@ path.
   only additive/multiplicative magnitude semantics.
 - Voice Context implicit routing requires a compiler/graph-format decision and
   preset migration plan.
-- Curve reshape polarity remains owned by shared `Interactor2D`. Diagnose the
-  Envelope association/coordinate boundary; do not add an Envelope sign branch.
+- Curve reshape polarity remains owned by shared `Interactor2D`; there is no
+  Envelope sign branch. The stable gesture-start direction toward the selected
+  control is authoritative. `Curve::tp.ypole` is raster metadata for one
+  prepared curvelet and can disagree with the editable control on Envelope's
+  blended, uneven segments, which caused the apparent inversion.
 
 ## Dirty-State Contract
 

@@ -32,8 +32,9 @@ There must be no per-editor gesture-polarity policy.
 - `lib/src/Inter/Interactor.cpp` is authoritative for mouse gesture lifecycle,
   action selection, pointer-to-panel coordinate conversion, and drag capture.
 - `lib/src/Curve/Curve.cpp` and the rasterizer snapshot are authoritative for
-  curve evaluation. The prepared `TransformParameters::ypole` is the mature
-  Cycle v1 polarity that maps signed pointer motion to curve sharpness.
+  curve evaluation. `TransformParameters::ypole` is raster transform metadata;
+  gesture polarity comes from the pointer's gesture-start relationship to the
+  selected control intercept.
 - JUCE component targeting is authoritative for enter, exit, move, and drag
   capture. On macOS, a component inserted after a double-click may not become
   JUCE's native cursor target until a later click. A host may publish the
@@ -64,10 +65,10 @@ For every 2D curve editor:
 4. For an unclamped edit, the rendered point under the initial pointer follows
    the pointer's vertical direction. An upward drag moves that point upward; a
    downward drag moves it downward.
-5. Dragging in the prepared curve pole's sharpening direction continues to
-   increase sharpness after the pointer crosses the curve centre, saturating at
+5. Dragging from the gesture start toward the selected control continues to
+   increase sharpness after the pointer crosses that control, saturating at
    full sharpness. Reversing direction decreases sharpness without a polarity
-   discontinuity at the centre.
+   discontinuity at the control.
 6. Every drag update mutates the domain-selected vertices once, emits one
    consolidated transient edit, and repaints from the resulting state.
 7. Hidden-axis interpolation compensation applies only when the paired vertex
@@ -117,6 +118,11 @@ The retained event traces established two independent association defects:
   intercept coordinates visible in the 2D slice. Reshape direction therefore
   uses the already-selected reduced intercept, while retained-vertex selection
   remains the domain translation performed by `setExtraElements`.
+- A later regression replaced the gesture/control relationship with
+  `Curve::tp.ypole`. A displayed segment blends adjacent prepared curvelets,
+  while sharpness belongs to the selected control. Envelope's uneven and
+  release geometry can therefore expose an opposite raster pole even though
+  every editor calls the same reshape function.
 
 The shared implementation now preserves the prepared snapshot geometry and
 uses the hit waveform sample to resolve the curve owner. Flat curves retain
@@ -131,8 +137,8 @@ publish increasing `waveIdx` boundaries. No editor-specific polarity is used.
 2. resolve the controlling curve geometry in canonical panel/model space;
 3. update selection framing;
 4. ask the existing domain hook for the vertices affected by the edit;
-5. calculate one signed sharpness delta from pointer movement and the prepared
-   curve pole;
+5. calculate one signed sharpness delta from pointer movement and the stable
+   gesture-start direction toward the selected control;
 6. compensate only for hidden dimensions whose paired vertex is not moving;
 7. constrain and mutate the affected `Vertex::Curve` values;
 8. notify selection listeners and mark the mesh changed only when a retained
@@ -262,7 +268,7 @@ This TDD could not be marked
 ## Implementation Review
 
 - `Interactor2D` is the only 2D `doReshapeCurve` implementation. It owns
-  selection framing, domain vertex resolution, prepared-curve polarity,
+  selection framing, domain vertex resolution, gesture/control polarity,
   clamping, listener notification, and change marking.
 - `CurveReshapeStrategy` is a small pure calculation seam used by that shared
   sequence and covered for upward, downward, reverse, stationary, scaled,
