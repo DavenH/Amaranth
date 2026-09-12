@@ -159,3 +159,26 @@ Context:
 
 Current status: open; compare the forward/inverse Envelope vertex delta after a
 real routed release drag without folding that investigation into hover behavior.
+
+## P2: Complexity regression test omitted Guide noise seed
+
+Context:
+
+- The 2026-09-12 tests-preset build failed while compiling
+  `TestInteractionComplexityParity.cpp` because its `GuideCurveResource`
+  aggregate still used the field order from before `noiseSeed` was introduced.
+- Production Guide behavior was unaffected; the test fixture passed its model
+  pointer into the integer seed field and no longer compiled.
+
+Current status: addressed by supplying the default `-1` seed explicitly.
+
+## P2: Legacy Pan migration test expected the removed pre-mode schema
+
+Context:
+
+- The 2026-09-12 graph suite failed after loading a legacy Pan `mode` because
+  the test still expected no Pan mode parameter.
+- Pan now owns the canonical `auto`/`additive`/`multiplicative` mode parameter;
+  loading removes the legacy payload and normalization supplies `auto`.
+
+Current status: addressed by asserting the current canonical `auto` value.

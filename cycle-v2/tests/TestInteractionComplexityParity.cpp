@@ -116,7 +116,7 @@ TEST_CASE("Guide curve gesture resolves consumers from the relationship index",
         const NodeModelStatePtr model = createDefaultGuideCurveModel();
         REQUIRE(graph.addGuideCurve({
                 "guide", "G", "Guide", 0, 0, true,
-                0.f, 0.f, 0.f, model, {}, 1
+                0.f, 0.f, 0.f, -1, model, {}, 1
         }));
         if (unrelatedNodeCount == 0) {
             REQUIRE(graph.assignGuideCurve({
