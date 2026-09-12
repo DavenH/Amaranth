@@ -486,8 +486,13 @@ def active_envelope_layer(preset, purpose):
 
 def translated_octave(octave_knob):
     mapped_octave = 4.0 * (octave_knob - 0.5) + 0.5
-    preset_octave = math.floor(mapped_octave + 0.5)
-    return preset_octave + LEGACY_MIDI_REFERENCE_OFFSET // 12
+    return round(mapped_octave)
+
+
+def translated_impulse_size(size_knob):
+    """Return Cycle V2's canonical knob value for Cycle 1's IR length."""
+    exponent = int(7.0 + size_knob * 7.0 + 1.0e-5)
+    return (exponent - 7.0) / 7.0
 
 
 def resolved_guide_noise_seed(properties, guide_index):
@@ -825,7 +830,7 @@ def convert(source):
         impulse_layer = groups[MESH_GROUPS["impulseResponse"]]["layers"][0]
         nodes.append(node("impulseResponse", "impulseResponse", 2600, 660, {
             "enabled": True,
-            "size": impulse["knobs"][0],
+            "size": translated_impulse_size(impulse["knobs"][0]),
             "post": impulse["knobs"][1],
             "highPass": impulse["knobs"][2] if len(impulse["knobs"]) > 2 else 0.0,
         }, flat_curve_model(impulse_layer["mesh"])))

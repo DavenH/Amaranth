@@ -1,0 +1,54 @@
+{
+    "schema": "cycle-v1-v2-audio-equivalence.v1",
+    "status": "diagnostic",
+    "v1": {
+        "factoryPreset": "accoustic",
+        "sourceDocument": "cycle/content/presets/accoustic.cyc",
+        "sha256": "376f31927170cca9e3679cb5305f9de0147ae32d8e90e094ba510c630a02e846"
+    },
+    "v2": {
+        "graph": "cycle-v2/content/presets/accoustic.cyclegraph",
+        "sha256": "dcc681652fbc191ef853ddd72e60a94ac6910f6e5d6936d8abe504aa4911046d",
+        "renderOverrides": {
+            "voiceDurationSeconds": 1.3467710598620575
+        }
+    },
+    "translation": {
+        "midiNoteOffset": 12,
+        "legacyMidiReferenceOffset": -12,
+        "v1MasterGain": 1.4098896628073432,
+        "v2OutputGainUnitValue": 0.557251908,
+        "v2OutputHeadroom": 0.125,
+        "timeLayer": "timeLayer1",
+        "magnitudeLayer": "magnitudeLayer1 -> magnitudeLayer1Process",
+        "phaseLayer": "phaseLayer1 -> phaseLayer1Process",
+        "volumeEnvelope": "volumeEnvelope when active",
+        "scratchEnvelope": "scratchEnvelope when active",
+        "morph": "morph",
+        "knownRuntimeGaps": [
+            "The full global-effect render exceeds the spectral threshold",
+            "The dry oscillator first differs at the time-raster boundary"
+        ],
+        "constantGainPolicy": "Cycle1 master gain maps to Output; Cycle2 fixed headroom remains separate"
+    },
+    "thresholds": {
+        "correlationMin": 0.98,
+        "gainMatchedResidualMax": 0.2,
+        "spectrumRmseDbMax": 6.0,
+        "cyclogramMeanRowDifferenceMax": 0.2
+    },
+    "effectBindings": {
+        "ir": {
+            "v1Area": "AreaImpulse",
+            "v2Node": "impulseResponse"
+        },
+        "delay": {
+            "v1Area": "AreaDelay",
+            "v2Node": "delay"
+        },
+        "reverb": {
+            "v1Area": "AreaReverb",
+            "v2Node": "reverb"
+        }
+    }
+}

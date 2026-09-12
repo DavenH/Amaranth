@@ -658,7 +658,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
             for edge in converted["edges"]
         ))
 
-    def test_drawn_impulse_response_uses_the_shared_cycle_mapping(self):
+    def test_drawn_impulse_response_preserves_the_shared_cycle_length(self):
         source = convertible_source()
         source["preset"]["effects"]["ImpulseModeller"].update({
             "enabled": True,
@@ -677,11 +677,17 @@ class PortCycleV1PresetTest(unittest.TestCase):
 
         self.assertEqual(impulse["parameters"], {
             "enabled": True,
-            "size": 0.2,
+            "size": 1.0 / 7.0,
             "post": 0.3,
             "highPass": 0.4,
             "processingScope": "global",
         })
+
+    def test_impulse_response_size_is_canonicalized_to_a_power_of_two(self):
+        self.assertEqual(
+            port_cycle_v1_preset.translated_impulse_size(0.328),
+            2.0 / 7.0,
+        )
 
     def test_legacy_impulse_response_defaults_missing_high_pass(self):
         source = convertible_source()
@@ -781,9 +787,10 @@ class PortCycleV1PresetTest(unittest.TestCase):
             issues,
         )
 
-    def test_octave_translation_includes_legacy_midi_reference(self):
+    def test_octave_translation_matches_cycle_one_control_rounding(self):
         self.assertEqual(port_cycle_v1_preset.translated_octave(0.5), 0)
-        self.assertEqual(port_cycle_v1_preset.translated_octave(0.198473282), -2)
+        self.assertEqual(port_cycle_v1_preset.translated_octave(0.198473282), -1)
+        self.assertEqual(port_cycle_v1_preset.translated_octave(0.534351145), 1)
 
 
 if __name__ == "__main__":

@@ -174,7 +174,7 @@ translation. The first broad candidates are:
 | japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase. One corrected render repeated exactly, but a later run did not repeat in Cycle 1. Its large evolving mismatch remains diagnostic until that intermittent startup state is isolated. |
 | Icycle | Broad synthesis/effects plus six-voice Unison | Diagnostic. Regenerated from a direct canonical export while retaining node layout, port presentation, and three authored probes. Its reverb is disabled; the corrected IR size is `0.26`. Prepared per-lane pitch playback and Cycle 1's render-boundary frame latch bring the full MIDI 36–72 matrix to `0.98425–0.99997` correlation. Cycle 1's IR-enabled output intermittently selects one of two floating-point payloads across fresh processes, so the exact repeat prerequisite is not yet met. |
 | astral | Three magnitude layers, phase pan, volume/scratch envelopes, and delay | Regenerated from a fresh live export while retaining the existing Cycle V2 node presentation. The former hand-authored graph rendered effectively silent in the differential harness. At MIDI 48 the regenerated graph is zero-lag with `1.00000` correlation, `0.0011` gain-matched residual, and `0.35 dB` spectral RMSE. Cycle V2 repeats exactly; Cycle 1 does not, so the fixture remains diagnostic. |
-| accoustic | Broad graph including reverb | Current graph differs in morph/link state, envelope state, reverb size, and IR high-pass; do not use for DSP attribution yet. |
+| accoustic | Time, two magnitude layers, two phase layers, volume/scratch envelopes, IR, delay, and reverb | Diagnostic. Regenerated from a live canonical export while retaining every node position and editor/port presentation. Correcting the stored octave moves the dry MIDI 48 comparison from `0.19646` to `0.99733` correlation; the full global-effect graph reaches `0.98559` correlation but remains above its spectral threshold. |
 | organ-2 | Spectral layers, envelopes, Unison, IR, delay, reverb | Regenerated from a fresh export while retaining presentation. Its oscillator-through-delay baseline is near-identical and global effect tails now outlive voices. The full Reverb output remains diagnostic. |
 | sitar | Three magnitude layers, phase, and persisted Guide noise | Diagnostic. The converter retains Cycle 1's layer modes and Guide seeds, and MIDI 36–72 reaches `0.99905–1.00000` correlation. A fresh Cycle 1 MIDI 48 repeat again selected a different floating-point payload while Cycle V2 remained exact. |
 
@@ -974,7 +974,7 @@ as the scratch envelope evolves.
     `/private/tmp/cycle-icycle-release-continued/`,
     `/tmp/cycle-icycle-sequence-notes-dry/`, and
     `/tmp/cycle-icycle-start-note-dry/`.
-54. Restore live Voice Context and preset-control parity. In progress. The
+54. Restore live Voice Context and preset-control parity. Complete. The
     live octave defect is complete: a
     parameter-only refresh updates execution-step configurations but leaves the
     compiled Voice Context snapshot unchanged. Consequently octave edits can
@@ -1127,6 +1127,61 @@ as the scratch envelope evolves.
     `/private/tmp/cycle-shiny-legacy-envelope-verified/comparison.json`,
     `/private/tmp/cycle-simple-bass-legacy-envelope-verified/comparison.json`,
     and `/private/tmp/cycle-sitar-legacy-envelope-verified/comparison.json`.
+
+    The final octave audit corrected a quantization error in the converter.
+    Cycle 1's `OscControlPanel::scaleOctave()` applies `roundToInt()` to
+    `4 * (unit - 0.5) + 0.5`; the converter instead folded the separately
+    translated legacy MIDI reference into the stored Voice Context octave.
+    That happened to preserve the common centered value but lowered twelve
+    non-centred factory presets by one octave. The converter is now the single
+    authority for that rounding, and the factory audit reuses it. Only the
+    Voice Context octave changed in the other eleven graphs; Accoustic was
+    separately regenerated from its canonical source below. All 216 eligible
+    pairs again report zero control mismatches, with the same twelve explicit
+    source/schema gaps. Report:
+    `/private/tmp/cycle-parity-voice-controls-octave-final.json`.
+
+    The correction is independently audible. Accoustic MIDI 48 originally
+    compared Cycle 1's adjusted MIDI 72/256-sample time raster against Cycle
+    V2's MIDI 48/512-sample raster and reached only `0.19646` dry correlation.
+    With octave one, both use the same pitch boundary and the dry comparison is
+    zero-lag at `0.99733` correlation and `0.0730` residual. Subbass similarly
+    improves to zero-lag `0.99997` correlation and `0.0077` residual when its
+    graph octave moves from `-2` to `-1`. Artifacts:
+    `/private/tmp/cycle-accoustic-octave-one-dry/comparison.json` and
+    `/private/tmp/cycle-subbass-octave-corrected/comparison.json`.
+
+    Cycle 1 has no base-pitch or portamento control, so the imported `0` and
+    disabled values are deliberate neutral V2 state rather than missing parity
+    behavior. Realtime oscillator oversampling remains an unimplemented V2
+    feature, but it does not create a current factory-audio gap: Stengah is the
+    only non-default imported case and its pure spectral voice never enters
+    Cycle 1's time-cycle oversampling/downsampling branch. Implementing those
+    three controls as new V2 features belongs in a separate TDD.
+
+55. Reconcile Accoustic against its current Cycle 1 document. Complete: the
+    authoritative implementation is the canonical live export interpreted by
+    `port_cycle_v1_preset.py`; mesh rasterization, spectral modes, Envelope
+    behavior, and effect DSP remain unchanged. The translation replaces stale
+    rounded mesh/Guide data and persisted effect/output values while retaining
+    every existing node position, port side, editor dimension, probe, and the
+    merged global graph topology. No compatibility adapter or copied DSP is
+    introduced; the stable end state is the normal converted graph, and this
+    preset-specific reconciliation has no deletion target.
+
+    The regenerated graph restores explicit additive/multiplicative spectral
+    modes, Cycle 1's 512-sample IR size (canonical V2 value `2/7`),
+    full-precision Reverb controls, Output gain `0.557251908`, full-precision
+    meshes/Guides, and the corrected octave one.
+    With IR, Delay, and Reverb disabled, MIDI 48 is repeatable in both engines,
+    zero-lag, and reaches `0.99733` correlation; the first numerical difference
+    is the time raster. With the complete global chain enabled, both engines
+    remain repeatable and reach `0.98559` correlation, `0.1692` residual, and
+    `0.1300` cyclogram difference, but the `10.94 dB` spectral RMSE exceeds the
+    declared threshold. The checked-in manifest is therefore diagnostic.
+    Artifacts: `/private/tmp/cycle-accoustic-dry/`,
+    `/private/tmp/cycle-accoustic-octave-one-dry/`, and
+    `/private/tmp/cycle-accoustic-octave-fixed-full/`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

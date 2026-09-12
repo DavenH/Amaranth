@@ -5,6 +5,8 @@ import argparse
 import json
 from pathlib import Path
 
+import port_cycle_v1_preset
+
 
 def source_preset(path):
     document = json.loads(path.read_text(encoding="utf-8"))
@@ -16,17 +18,13 @@ def voice_node(graph):
     return voices[0] if len(voices) == 1 else None
 
 
-def translated_octave(unit_value):
-    return round(4.0 * unit_value - 2.0)
-
-
 def expected_controls(preset):
     knobs = preset.get("oscControls", {}).get("knobs", [])
     if len(knobs) < 3:
         return None
     oversampling = max(1, int(preset.get("settings", {}).get("OversampleFactorRltm", 1)))
     return {
-        "octave": translated_octave(knobs[1]),
+        "octave": port_cycle_v1_preset.translated_octave(knobs[1]),
         "voiceLength": knobs[2],
         "pitch": 0.0,
         "portamento": False,

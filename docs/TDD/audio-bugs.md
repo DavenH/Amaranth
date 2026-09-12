@@ -104,7 +104,7 @@ Current status: open; trace why `GraphPreviewExecutor` omits this connected
 phase probe after successful audio execution before changing the preset or
 preview expectations.
 
-## Open: Cycle V2 compiled Voice Context pitch fields are only partially consumed
+## Resolved for parity: Cycle V2 Voice Context pitch fields
 
 Context:
 
@@ -113,13 +113,18 @@ Context:
   one octave above Cycle 1.
 - The octave now becomes an integer MIDI-note offset at the prepared region
   boundary and has a focused equivalence test.
-- The neighbouring fractional `pitchSemitones`, `portamento`, and oscillator
-  oversampling fields remain compiled without a corresponding realtime
-  oscillator consumption path. They are outside the strict Subbass fixture but
-  represent the same incomplete Voice Context adoption.
+- Cycle 1 has no base-pitch or portamento controls. The converter's zero/off
+  values are neutral V2 state, not omitted Cycle 1 behavior.
+- Realtime oscillator oversampling remains a future V2 feature. Stengah is the
+  only factory graph with a non-default imported value, and its pure spectral
+  voice never enters Cycle 1's time-cycle oversampling/downsampling branch.
+- A separate converter error folded the already translated legacy reference
+  note into stored octave. Correcting Cycle 1's actual control rounding updates
+  twelve factory graphs and moves Accoustic dry MIDI 48 from `0.19646` to
+  `0.99733` correlation; Subbass reaches `0.99997`.
 
-Current status: open for the remaining pitch/glide/oversampling semantics; the
-octave path is addressed on 2026-09-06.
+Current status: Cycle 1 parity is resolved. Base pitch, portamento, and audible
+oscillator oversampling require a separate feature TDD rather than parity code.
 
 ## Open: Cycle V1/V2 exact parity differs beyond live spectral refresh
 
@@ -129,9 +134,9 @@ Context:
   historical verified thresholds. At 48 kHz, MIDI 48, 60, and 72 report
   correlations of `0.96886`, `0.95866`, and `0.95695`; the same trend remains
   at 44.1 kHz.
-- Fresh Cycle 1 canonical exports do not convert exactly to several newly
-  merged graphs. `accoustic` differs in morph/link state, envelope state,
-  reverb size, and IR high-pass; `Icycle` and `organ-2` differ in reverb size.
+- Fresh Cycle 1 canonical exports did not convert exactly to several newly
+  merged graphs. Accoustic, Icycle, and Organ 2 have now been reconciled while
+  preserving their Cycle V2 presentation and explicit global topology.
   These are preset-input failures, not yet DSP verdicts. `guitar-3-g` and
   `japan-drum` were regenerated from live exports and now match the converter
   exactly while retaining their prior presentation.

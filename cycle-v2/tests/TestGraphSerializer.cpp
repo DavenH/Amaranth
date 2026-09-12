@@ -811,6 +811,56 @@ TEST_CASE("Astral retains the canonical spectral and Envelope control graph",
   #endif
 }
 
+TEST_CASE("Accoustic retains its canonical spectral and global effect graph",
+        "[cycle-v2][graph][presets][accoustic]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            contentPreset("accoustic.cyclegraph").loadFileAsString());
+    INFO((loaded.issues.empty() ? String() : loaded.issues.front().message));
+    REQUIRE(loaded.succeeded());
+    REQUIRE(GraphCompiler().compile(loaded.graph).succeeded());
+
+    const Node* voice = loaded.graph.findNode("voice");
+    const Node* magnitude1 = loaded.graph.findNode("magnitudeLayer1");
+    const Node* magnitude2 = loaded.graph.findNode("magnitudeLayer2");
+    const Node* impulseResponse = loaded.graph.findNode("impulseResponse");
+    const Node* reverb = loaded.graph.findNode("reverb");
+    const Node* output = loaded.graph.findNode("output");
+    REQUIRE(voice != nullptr);
+    REQUIRE(magnitude1 != nullptr);
+    REQUIRE(magnitude2 != nullptr);
+    REQUIRE(impulseResponse != nullptr);
+    REQUIRE(reverb != nullptr);
+    REQUIRE(output != nullptr);
+    REQUIRE(loaded.graph.findNode("legacyEnvelopeMorph") != nullptr);
+    REQUIRE(NodeParameterMap(*voice).intValue("octave", 0) == 1);
+    REQUIRE(NodeParameterMap(*magnitude1).stringValue("spectralMode") == "additive");
+    REQUIRE(NodeParameterMap(*magnitude2).stringValue("spectralMode")
+            == "multiplicative");
+    REQUIRE(NodeParameterMap(*impulseResponse).floatValue("size", 0.f)
+            == Catch::Approx(2.f / 7.f));
+    REQUIRE(NodeParameterMap(*reverb).floatValue("size", 0.f)
+            == Catch::Approx(0.112000003f));
+    REQUIRE(NodeParameterMap(*output).floatValue("gain", 0.f)
+            == Catch::Approx(0.557251908f));
+
+    const auto hasEdge = [&](const String& source, const String& destination) {
+        return std::any_of(
+                loaded.graph.getEdges().begin(),
+                loaded.graph.getEdges().end(),
+                [&](const Edge& edge) {
+                    return edge.sourceNodeId == source
+                            && edge.destNodeId == destination;
+                });
+    };
+    REQUIRE(hasEdge("volumeMultiply", "voiceOutput"));
+    REQUIRE(hasEdge("globalInput", "impulseResponse"));
+    REQUIRE(hasEdge("reverb", "output"));
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("African Horn keeps its populated mesh path in the time domain",
         "[cycle-v2][graph][presets]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
