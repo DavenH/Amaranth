@@ -79,6 +79,21 @@ TEST_CASE("Node canvas interaction resolves compatible connection targets by pro
     REQUIRE(interaction.isIdle());
 }
 
+TEST_CASE("Node canvas viewport fits graph bounds inside dock-safe screen bounds",
+        "[cycle-v2][ui][viewport][global-audio]") {
+    NodeCanvasViewport viewport;
+    const Rectangle<float> graphBounds { -200.f, 100.f, 1600.f, 900.f };
+    const Rectangle<float> available { 40.f, 40.f, 860.f, 560.f };
+
+    viewport.fit(graphBounds, available);
+
+    const Rectangle<float> fitted = viewport.toScreen(graphBounds);
+    REQUIRE(fitted.getX() == Catch::Approx(available.getX()).margin(0.001f));
+    REQUIRE(fitted.getY() >= available.getY() - 0.001f);
+    REQUIRE(fitted.getRight() <= available.getRight() + 0.001f);
+    REQUIRE(fitted.getBottom() <= available.getBottom() + 0.001f);
+}
+
 TEST_CASE("Node canvas interaction snaps dragged ports and exposes guide positions",
         "[cycle-v2][ui][interaction]") {
     GraphNodeFactory factory;

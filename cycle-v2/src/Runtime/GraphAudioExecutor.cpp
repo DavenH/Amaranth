@@ -780,9 +780,7 @@ void GraphAudioExecutor::mixVoiceBoundary(
         const GraphExecutionPlan& plan,
         size_t frameCount) const {
     for (const int sourceBufferIndex : plan.voiceMixBufferIndices) {
-        const int mixBufferIndex = plan.globalInputBufferIndex >= 0
-                ? plan.globalInputBufferIndex
-                : sourceBufferIndex;
+        const int mixBufferIndex = plan.globalInputBufferIndex;
         if (sourceBufferIndex < 0
                 || mixBufferIndex < 0
                 || (size_t) sourceBufferIndex >= bufferSlots.size()
@@ -838,13 +836,7 @@ void GraphAudioExecutor::loadMixedVoiceBoundary(
             destination.secondaryBlock.samples.resize(0);
         }
     };
-    if (plan.globalInputBufferIndex >= 0) {
-        loadBuffer(plan.globalInputBufferIndex);
-        return;
-    }
-    for (const int bufferIndex : plan.voiceMixBufferIndices) {
-        loadBuffer(bufferIndex);
-    }
+    loadBuffer(plan.globalInputBufferIndex);
 }
 
 GraphAudioExecutor::PreparedVoice::OscillatorRegion*

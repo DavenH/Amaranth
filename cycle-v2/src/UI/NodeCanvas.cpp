@@ -252,6 +252,10 @@ void NodeCanvas::resized() {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::LayoutLifecycle);
     viewport.setBounds(canvasContentBounds());
+    if (!documentViewportFitted && !canvasContentBounds().isEmpty()) {
+        fitDocumentInViewport();
+        documentViewportFitted = true;
+    }
     if (guideEditor != nullptr && guideEditor->isVisible()) {
         guideEditor->setBounds(
                 GuideCurveEditorComponent::preferredHostBounds(canvasContentBounds()).toNearestInt());
@@ -1466,6 +1470,33 @@ void NodeCanvas::resetDocumentPresentation() {
     requestCanvasRepaint();
 }
 
+void NodeCanvas::fitDocumentInViewport() {
+    Rectangle<float> graphBounds;
+    bool initialized {};
+    for (const auto& node : graph.getNodes()) {
+        graphBounds = initialized ? graphBounds.getUnion(node.bounds) : node.bounds;
+        initialized = true;
+    }
+    if (!initialized) {
+        return;
+    }
+
+    constexpr float visibleMargin = 40.f;
+    constexpr float dockClearance = 12.f;
+    const Rectangle<float> content = canvasContentBounds();
+    const auto utilities = CanvasUtilityDock::layout(content);
+    Rectangle<float> available = content.reduced(visibleMargin);
+    available.setRight(jmin(
+            available.getRight(),
+            jmin(utilities.minimap.getX(), utilities.keyboard.getX())
+                    - dockClearance));
+    available.setBottom(jmin(
+            available.getBottom(),
+            utilities.keyboard.getY() - dockClearance));
+    viewport.setBounds(content);
+    viewport.fit(graphBounds, available);
+}
+
 var NodeCanvas::exportAutomationState() const {
     return automation.exportState(automationPresentationState());
 }
@@ -1760,6 +1791,7 @@ bool NodeCanvas::loadGraphFromFile(const File& file) {
         resetDocumentPresentation();
         clearDockEphemeralState();
         probeDetailState.close();
+        documentViewportFitted = false;
         resized();
     }
     return loaded;
@@ -1779,6 +1811,7 @@ bool NodeCanvas::loadSnapshot() {
         resetDocumentPresentation();
         clearDockEphemeralState();
         probeDetailState.close();
+        documentViewportFitted = false;
         resized();
     }
     return result.handled;
@@ -1983,6 +2016,20 @@ bool NodeCanvas::publishCurveState(
     }
     requestCanvasRepaint();
     return true;
+}
+
+bool NodeCanvas::setNodeParameterText(
+        const String& parameterId,
+        const String& label,
+        const String& value) {
+    if (expandedNodeId.isEmpty()) {
+        return false;
+    }
+    return editorCommands.setNodeParameterText(
+            expandedNodeId,
+            parameterId,
+            label,
+            value);
 }
 
 void NodeCanvas::beginCurveTransaction() {

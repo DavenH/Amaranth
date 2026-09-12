@@ -1,6 +1,5 @@
 #include "Graph/GraphValidator.h"
 
-#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -62,13 +61,6 @@ bool isValidScratchBindingDestination(
     }
     return sourceNode.kind != NodeKind::ScratchDefaultOverride
             || destNode.kind == NodeKind::TrilinearMesh;
-}
-
-bool hasNodeKind(const NodeGraph& graph, NodeKind kind) {
-    return std::any_of(
-            graph.getNodes().begin(),
-            graph.getNodes().end(),
-            [kind](const Node& node) { return node.kind == kind; });
 }
 
 using NodeIdSet = std::unordered_set<
@@ -161,17 +153,14 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
     std::vector<GraphValidationIssue> issues;
     EdgeIssueReporter reporter(issues);
     const GraphDomainResolution resolution = domainResolver.resolve(graph);
-    const bool explicitAudioGraph = hasNodeKind(graph, NodeKind::GlobalInput);
-    const auto scopeAnalysis = explicitAudioGraph
-            ? std::optional<GraphAudioScopeAnalysis>(GraphAudioScopeAnalyzer().analyze(graph))
-            : std::nullopt;
+    const auto scopeAnalysis = GraphAudioScopeAnalyzer().analyze(graph);
 
     for (size_t edgeIndex = 0; edgeIndex < graph.getEdges().size(); ++edgeIndex) {
         validateEdge(
                 graph,
                 graph.getEdges()[edgeIndex],
                 resolution.domains[edgeIndex],
-                scopeAnalysis.has_value() ? &*scopeAnalysis : nullptr,
+                &scopeAnalysis,
                 reporter);
     }
 
@@ -199,9 +188,7 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
     }
 
     validateOperationInputs(graph, resolution, issues);
-    if (scopeAnalysis.has_value()) {
-        validateAudioScopes(graph, *scopeAnalysis, issues);
-    }
+    validateAudioScopes(graph, scopeAnalysis, issues);
 
     return issues;
 }
@@ -216,14 +203,12 @@ bool GraphValidator::edgeHasValidationIssue(const NodeGraph& graph, const Edge& 
 
 GraphValidationIssue GraphValidator::validationIssueForEdge(const NodeGraph& graph, const Edge& edge) const {
     EdgeIssueReporter reporter;
-    const auto analysis = hasNodeKind(graph, NodeKind::GlobalInput)
-            ? std::optional<GraphAudioScopeAnalysis>(GraphAudioScopeAnalyzer().analyze(graph))
-            : std::nullopt;
+    const auto analysis = GraphAudioScopeAnalyzer().analyze(graph);
     validateEdge(
             graph,
             edge,
             domainResolver.resolvedDomainForEdge(graph, edge),
-            analysis.has_value() ? &*analysis : nullptr,
+            &analysis,
             reporter);
     return reporter.getFirstIssue();
 }

@@ -22,6 +22,22 @@ void NodeCanvasViewport::setTransform(juce::Point<float> panToUse, float zoomToU
     ++revision;
 }
 
+void NodeCanvasViewport::fit(
+        juce::Rectangle<float> worldBounds,
+        juce::Rectangle<float> screenBounds) {
+    if (worldBounds.isEmpty() || screenBounds.isEmpty()) {
+        return;
+    }
+
+    const float fittedZoom = juce::jmin(
+            screenBounds.getWidth() / worldBounds.getWidth(),
+            screenBounds.getHeight() / worldBounds.getHeight());
+    const float constrainedZoom = juce::jlimit(minimumZoom, maximumZoom, fittedZoom);
+    setTransform(
+            screenBounds.getCentre() - worldBounds.getCentre() * constrainedZoom,
+            constrainedZoom);
+}
+
 void NodeCanvasViewport::panBy(juce::Point<float> delta) {
     setTransform(pan + delta, zoom);
 }

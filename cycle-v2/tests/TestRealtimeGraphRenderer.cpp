@@ -347,8 +347,19 @@ TEST_CASE("Global delay continues after its source voice retires",
             { "spin", "Pan Amount", "0" },
             { "spinIters", "Pan Cycle", "0" }
     });
+    const auto globalOutputEdge = std::find_if(
+            graph.getEdges().begin(),
+            graph.getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "globalInput"
+                        && edge.destNodeId == "out";
+            });
+    REQUIRE(globalOutputEdge != graph.getEdges().end());
+    graph.removeEdgeAt((size_t) std::distance(
+            graph.getEdges().begin(),
+            globalOutputEdge));
     graph.addEdge({
-            "ifft", "time", "delay", "time",
+            "globalInput", "time", "delay", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
     graph.addEdge({

@@ -959,11 +959,12 @@ TEST_CASE("Compiler assigns output slots and source lifetimes before processing"
     REQUIRE(buffer.lastConsumerStep > buffer.firstProducerStep);
 }
 
-TEST_CASE("Compiler keeps processing global downstream of the first global effect",
+TEST_CASE("Compiler derives neutral global processing from Global Input",
         "[cycle-v2][graph][audio-scope]") {
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalInput", {}));
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
     graph.addNode(factory.createNode(
             NodeKind::GenericProcessor,
@@ -971,7 +972,7 @@ TEST_CASE("Compiler keeps processing global downstream of the first global effec
             {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
     graph.addEdge({
-            "wave", "out", "delay", "time",
+            "globalInput", "time", "delay", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
     graph.addEdge({

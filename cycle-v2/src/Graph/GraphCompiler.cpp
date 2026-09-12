@@ -421,65 +421,6 @@ void compileRouting(GraphExecutionPlan& plan) {
     }
 }
 
-void compileLegacyProcessingScopes(
-        GraphExecutionPlan& plan,
-        std::vector<GraphCompileIssue>& issues) {
-    bool changed = true;
-    while (changed) {
-        changed = false;
-        for (const auto& edge : plan.signalEdges) {
-            const int sourceIndex = stepIndexFor(plan, edge.sourceNodeId);
-            const int destinationIndex = stepIndexFor(plan, edge.destNodeId);
-            if (sourceIndex < 0 || destinationIndex < 0) {
-                continue;
-            }
-
-            const auto& source = plan.steps[(size_t) sourceIndex];
-            auto& destination = plan.steps[(size_t) destinationIndex];
-            if (source.ownershipScope != RuntimeOwnershipScope::Global
-                    || destination.ownershipScope == RuntimeOwnershipScope::Global) {
-                continue;
-            }
-            if (destination.ownershipScope == RuntimeOwnershipScope::OscillatorRegion
-                    || destination.ownershipScope == RuntimeOwnershipScope::UnisonLane) {
-                issues.push_back({
-                        GraphCompileCode::GlobalSignalReentersVoiceDomain,
-                        "Global signal from '" + source.nodeId
-                                + "' cannot re-enter voice processor '"
-                                + destination.nodeId + "'"
-                });
-                return;
-            }
-
-            destination.ownershipScope = RuntimeOwnershipScope::Global;
-            changed = true;
-        }
-    }
-}
-
-void compileLegacyVoiceMixBuffers(GraphExecutionPlan& plan) {
-    plan.voiceMixBufferIndices.clear();
-    for (const auto& destination : plan.steps) {
-        if (destination.ownershipScope != RuntimeOwnershipScope::Global) {
-            continue;
-        }
-        for (const auto& input : destination.inputs) {
-            if (input.sourceStepIndex < 0 || input.sourceBufferIndex < 0) {
-                continue;
-            }
-            const auto& source = plan.steps[(size_t) input.sourceStepIndex];
-            if (source.ownershipScope == RuntimeOwnershipScope::Global
-                    || std::find(
-                            plan.voiceMixBufferIndices.begin(),
-                            plan.voiceMixBufferIndices.end(),
-                            input.sourceBufferIndex) != plan.voiceMixBufferIndices.end()) {
-                continue;
-            }
-            plan.voiceMixBufferIndices.push_back(input.sourceBufferIndex);
-        }
-    }
-}
-
 int dependencyNodeIndex(const GraphDependencyIndex& index, const String& nodeId) {
     const auto found = index.nodeIndexById.find(nodeId);
     return found != index.nodeIndexById.end() ? found->second : -1;
@@ -1317,30 +1258,16 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
             return result;
         }
         compileDefaultModulationInputs(graph, result.plan);
-        const bool hasGlobalInput = std::any_of(
-                graph.getNodes().begin(),
-                graph.getNodes().end(),
-                [](const Node& node) { return node.kind == NodeKind::GlobalInput; });
-        const auto scopeAnalysis = hasGlobalInput
-                ? std::optional<GraphAudioScopeAnalysis>(GraphAudioScopeAnalyzer().analyze(graph))
-                : std::nullopt;
-        if (scopeAnalysis.has_value()) {
-            GraphAudioScopeCompiler::applyOwnership(result.plan, *scopeAnalysis);
-        } else {
-            compileLegacyProcessingScopes(result.plan, result.compileIssues);
-        }
+        const auto scopeAnalysis = GraphAudioScopeAnalyzer().analyze(graph);
+        GraphAudioScopeCompiler::applyOwnership(result.plan, scopeAnalysis);
         if (!result.compileIssues.empty()) {
             result.plan = {};
             return result;
         }
         compileRouting(result.plan);
-        if (scopeAnalysis.has_value()) {
-            GraphAudioScopeCompiler::compileVoiceMixBoundary(
-                    result.plan,
-                    *scopeAnalysis);
-        } else {
-            compileLegacyVoiceMixBuffers(result.plan);
-        }
+        GraphAudioScopeCompiler::compileVoiceMixBoundary(
+                result.plan,
+                scopeAnalysis);
         compileDependencyIndex(result.plan);
         refreshSignalProbes(graph, result.plan);
         publishConfigurations(graph, result.plan.steps);

@@ -2,17 +2,25 @@
 
 ## Status
 
-In progress on 2026-09-12. The authored node/capability schema, required
+Implemented on 2026-09-12. The authored node/capability schema, required
 singleton edit boundaries, explicit scope validation/partitioning, and Global
-Input runtime binding are implemented. The three selectable-effect editors now
+Input runtime binding are implemented. The three selectable-effect editors
 publish processing scope through the command service, retain invalid cables,
 support stepwise repair, and undo each semantic edit. Canvas presentation uses
 one compact global-only semantic icon, including authored invalid states, and
 reserves no scope space for voice nodes. One atomic representation migration is
 shared by native V2 loading, the Cycle 1 converter, and the default graph; all
 230 bundled presets are migrated, validate, compile, and serialize idempotently.
-Removal of the compiler's old-scope fallback and the remaining lifecycle and
-production-viewport evidence remain.
+The compiler and audio executor contain only the explicit Global Input boundary
+path. Initial document fitting reserves 40 screen pixels and excludes the
+production utility docks.
+
+Production-size evidence was captured for the default graph, the long Icycle
+preset, both Waveshaper processing modes, and retained error cables. The focused
+automation reports and screenshots are `/tmp/cycle-v2-global-default-*`,
+`/tmp/cycle-v2-global-long-*`, `/tmp/cycle-v2-global-mode-*`, and
+`/tmp/cycle-v2-voice-error-*`; each automation command succeeded and the
+filtered logs contained no warning, assertion, or crash.
 
 Proposed on 2026-09-11. This TDD supersedes the temporary per-node `VOICE` and
 `GLOBAL` text badges added during Cycle 1 audio-parity work. It does not change

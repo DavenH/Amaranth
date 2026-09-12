@@ -1,0 +1,30 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/resources/default.cyclegraph"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveshaper",
+      "parameterId": "processingScope",
+      "label": "Processing",
+      "value": "voice"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveshaper",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "waveshaper"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}
