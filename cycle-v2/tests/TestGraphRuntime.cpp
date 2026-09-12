@@ -101,7 +101,7 @@ TEST_CASE("Runtime traces compiled graph execution", "[cycle-v2][runtime]") {
     REQUIRE(trace.nodes.back().nodeId == "out");
     REQUIRE(findTraceNode(trace, "voice").kind == NodeKind::VoiceContext);
     REQUIRE(findTraceNode(trace, "voice").audioRole == AudioModuleRole::VoiceContext);
-    REQUIRE(findTraceNode(trace, "voice").parameters.size() == 5);
+    REQUIRE(findTraceNode(trace, "voice").parameters.size() == 6);
     REQUIRE(std::none_of(
             findTraceNode(trace, "voice").parameters.begin(),
             findTraceNode(trace, "voice").parameters.end(),

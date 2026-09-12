@@ -593,6 +593,10 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
         context.nodeId = node.id;
         context.startDomain = parameters.stringValue("domain", "waveform");
         context.octave = parameters.intValue("octave", 0);
+        context.voiceDurationSeconds = (float) CycleDsp::voiceLengthSeconds(
+                parameters.floatValue(
+                        "voiceLength",
+                        CycleDsp::voiceLengthUnitValue(1.0)));
         context.pitchSemitones = parameters.floatValue("pitch", 0.f);
         context.portamento = parameters.boolValue("portamento", false);
         context.oversampling = jmax(

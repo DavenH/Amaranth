@@ -1104,6 +1104,17 @@ UnisonPreviewContext NodeCanvasPresentation::unisonPreviewContextFor(
         const GraphExecutionPlan& plan,
         const String& unisonNodeId,
         UnisonPreviewContext fallback) {
+    const auto directContext = std::find_if(
+            plan.voiceContexts.begin(),
+            plan.voiceContexts.end(),
+            [&](const CompiledVoiceContext& candidate) {
+                return candidate.nodeId == unisonNodeId;
+            });
+    if (directContext != plan.voiceContexts.end()) {
+        fallback.voiceDurationSeconds = directContext->voiceDurationSeconds;
+        fallback.pitchEnvelopeUnitValues = directContext->pitchEnvelopeUnitValues;
+        return fallback;
+    }
     std::vector<const Edge*> attachments;
     for (const auto& edge : plan.configurationAttachments) {
         if (edge.sourceNodeId == unisonNodeId
@@ -1122,6 +1133,7 @@ UnisonPreviewContext NodeCanvasPresentation::unisonPreviewContextFor(
                 return candidate.nodeId == attachment->destNodeId;
             });
     if (context != plan.voiceContexts.end()) {
+        fallback.voiceDurationSeconds = context->voiceDurationSeconds;
         fallback.pitchEnvelopeUnitValues = context->pitchEnvelopeUnitValues;
     }
     return fallback;
@@ -1248,8 +1260,7 @@ void NodeCanvasPresentation::paintNode(
                     graphics,
                     nodeBounds,
                     zoom,
-                    node,
-                    frame.unisonPreviewContext.voiceDurationSeconds);
+                    node);
             VoiceContextCompactEditor::paintScratchIndicator(graphics, nodeBounds, zoom);
         } else if (node.kind == NodeKind::ScratchDefaultOverride) {
             const float iconSize = 24.f * zoom;

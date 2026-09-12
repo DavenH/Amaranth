@@ -678,15 +678,13 @@ as the scratch envelope evolves.
     `/tmp/cycle-organ-2-oscillator-dc-fixed/comparison.json`,
     `/tmp/cycle-organ-2-no-reverb-after-fixes/comparison.json`, and
     `/tmp/cycle-organ-2-full-matrix-candidate/comparison.json`.
-41. Restore the live Voice Length contract. Complete: Cycle 1's oscillator panel
-    control governs the normalized lifetime used by live voices. Cycle V2's
-    identically presented Voice Context control currently changes only preview
-    state. The stable boundary is a thread-safe runtime-duration value owned by
-    `RealtimeGraphRenderer`; `NodeWorkspace` translates the canvas setting
-    into that value without turning session audio configuration into a graph
-    mutation. Preview and live rendering consume the same clamped duration. A
-    focused active-note sequence changes the duration from 1.0 to 0.1 seconds
-    and observes the live Voice Time slope increase by exactly 10x.
+41. Restore the live Voice Length contract. Complete, then superseded by slice
+    54's durable preset work: the initial repair made the preview control reach
+    `RealtimeGraphRenderer` through a thread-safe session override, proving with
+    an active-note sequence that changing 1.0 to 0.1 seconds increases the live
+    Voice Time slope by exactly 10x. Slice 54 removes that editor side channel;
+    the same renderer now reads the compiled Voice Context duration, while the
+    explicit override remains only for offline differential requests.
 42. Restore the global post-voice effects boundary. Complete: Cycle 1's
     `SynthAudioSource::processBlock()` is authoritative: synth voices are mixed,
     then waveshaper, IR/tube, EQ, delay, Reverb, and master gain run once on
@@ -952,6 +950,47 @@ as the scratch envelope evolves.
     authored Cycle V2 node presentation. Keyboard range/velocity, runtime
     global-graph architecture, and Astral audio each remain separate observable
     slices under this item.
+
+    The factory-wide control audit now uses fresh live Cycle 1 exports as its
+    authority. Of 228 filename-matched presets, 216 contain both Cycle 1
+    oscillator controls and one Cycle V2 Voice Context; all 216 omit the Cycle
+    1 voice length, 50 carry a different octave, and Stengah alone carries a
+    different realtime oversampling factor. Three Cycle 1 documents omit the
+    oscillator-control payload and nine matched Cycle V2 documents have no
+    Voice Context, so those twelve are explicit migration gaps rather than
+    candidates for guessed values.
+
+    Voice length must become durable Voice Context state. The existing editor
+    row writes an application preference through `NodeEditorResources`, while
+    octave, pitch, portamento, and oversampling use semantic graph commands.
+    Add the normalized Cycle 1 duration control to the Voice Context definition,
+    compile its mapped seconds into `CompiledVoiceContext`, and make the live
+    renderer use the audible oscillator region's compiled context. Keep the
+    explicit offline duration override for the differential harness. Delete the
+    editor-to-canvas-to-audio callback bridge and retain no second mutable
+    authority. This slice does not alter effect ownership, global routing, or
+    node placement, which are owned by the parallel global-audio TDD.
+
+    The durable-control sub-slice is complete. Voice Length now participates in
+    the same dispatcher-owned parameter gesture as the other Voice Context
+    controls, survives graph serialization, refreshes the compiled context, and
+    drives the realtime Voice Time and volume-envelope clocks. The former
+    application preference and editor/canvas/audio callback path are no longer
+    runtime authorities; offline comparison requests retain their explicit
+    duration override. The compact node summary also reads the node parameter.
+    All 216 unambiguous factory pairs now carry their Cycle 1 duration, octave,
+    pitch, portamento, and realtime oversampling values without changing node
+    positions or edges. Five V2 graphs without authoritative Cycle 1 controls
+    retain the prior one-second default explicitly, as do the three bundled
+    resource graphs. The post-migration audit reports zero mismatches and twelve
+    documented source/schema gaps; report:
+    `/private/tmp/cycle-parity-voice-controls-final.json`. Live parameter
+    gestures also schedule a final durable-graph refresh after their causal
+    local-state commit, so an in-flight transient refresh cannot leave the
+    canvas on the preceding Voice Context configuration. The focused Voice
+    Context fixture verifies two slider updates, the committed node value, and
+    the downstream duration preview; artifact:
+    `/private/tmp/cycle-v2-voice-context-attachments.png`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

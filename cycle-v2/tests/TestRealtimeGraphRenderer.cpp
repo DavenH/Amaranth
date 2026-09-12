@@ -259,6 +259,65 @@ TEST_CASE("Realtime voice length updates the active voice-time clock",
     REQUIRE(fastDelta == Catch::Approx(10.f * slowDelta).margin(1.0e-6f));
 }
 
+TEST_CASE("Realtime voice-time clock uses the compiled Voice Context length",
+        "[cycle-v2][audio-device][realtime][voice-context][voice-length]") {
+    const auto renderDelta = [](float voiceLength) {
+        GraphNodeFactory factory;
+        GraphEditor editor;
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+        graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+        graph.addNode(factory.createNode(NodeKind::ModulationSource, "time", {}));
+        graph.replaceNodeParameters("time", {
+                { "source", "Source", "voiceTime" },
+                { "controller", "Controller", "1" },
+                { "constant", "Constant", "0.5" }
+        });
+        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        REQUIRE(editor.setNodeParameter(
+                graph,
+                "voice",
+                "voiceLength",
+                "Voice Length",
+                String(voiceLength)).succeeded());
+        REQUIRE(editor.connect(
+                graph,
+                { "voice", "context", false },
+                { "mesh", "context", true }).succeeded());
+        REQUIRE(editor.connect(
+                graph,
+                { "time", "value", false },
+                { "out", "time", true }).succeeded());
+        const auto compiled = GraphCompiler().compile(graph);
+        REQUIRE(compiled.succeeded());
+        REQUIRE(compiled.plan.voiceContexts.front().voiceDurationSeconds
+                == Catch::Approx(CycleDsp::voiceLengthSeconds(voiceLength)));
+
+        constexpr int frameCount = 10;
+        constexpr double sampleRate = 1'000.0;
+        AudioExecutionSpec spec;
+        spec.maximumFrameCount = frameCount;
+        spec.sampleRate = sampleRate;
+        auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 31, spec);
+        RealtimeGraphRenderer renderer;
+        RealtimeMidiEventQueue queue;
+        renderer.setPreparedGraph(prepared.get());
+        REQUIRE(queue.enqueue(
+                MidiMessage::noteOn(1, 60, (uint8) 100),
+                MidiEventSource::PerformanceKeyboard,
+                1.0));
+        AudioBuffer<float> output(2, frameCount);
+        float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+        renderer.process(queue, channels, 2, frameCount, sampleRate, 1.0);
+        return output.getSample(0, frameCount - 1) - output.getSample(0, 0);
+    };
+
+    const float oneSecond = renderDelta(CycleDsp::voiceLengthUnitValue(1.0));
+    const float oneTenthSecond = renderDelta(CycleDsp::voiceLengthUnitValue(0.1));
+    REQUIRE(oneSecond > 0.f);
+    REQUIRE(oneTenthSecond == Catch::Approx(10.f * oneSecond).margin(1.0e-6f));
+}
+
 TEST_CASE("Realtime graph renderer stops immediately without a volume envelope",
         "[cycle-v2][audio-device][realtime][midi][release]") {
     NodeGraph graph = NodeGraph::createDemoGraph();

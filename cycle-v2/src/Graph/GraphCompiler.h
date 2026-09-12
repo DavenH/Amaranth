@@ -115,6 +115,7 @@ struct CompiledVoiceContext {
     String nodeId;
     String startDomain { "waveform" };
     int octave {};
+    float voiceDurationSeconds { 1.f };
     float pitchSemitones {};
     bool portamento {};
     int oversampling { 1 };

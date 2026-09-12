@@ -1293,10 +1293,8 @@ TEST_CASE("Voice context compact presentation retains its selector and summary",
 
     REQUIRE(VoiceContextCompactEditor::domainLabel(voice) == "Waveform");
     REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "spectral");
-    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice, 1.0)
+    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice)
             == "Octave 0  ·  1 second");
-    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice, 0.25)
-            == "Octave 0  ·  0.25 seconds");
 
     voice.parameters = {
             { "domain", "Start Domain", "spectralPhase" }
@@ -1307,12 +1305,13 @@ TEST_CASE("Voice context compact presentation retains its selector and summary",
 
     voice.parameters = {
             { "octave", "Octave", "1" },
+            { "voiceLength", "Voice Length", "0.375" },
             { "pitch", "Pitch", "-5" },
             { "portamento", "Portamento", "1" },
             { "oversampling", "Oversampling", "4x" }
     };
-    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice, 2.0)
-            == "Octave 1  ·  2 seconds  ·  Glide");
+    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice)
+            == "Octave 1  ·  1 second  ·  Glide");
 
     const Rectangle<float> selector = VoiceContextCompactEditor::nodeSelectorBounds(
             voice.bounds,

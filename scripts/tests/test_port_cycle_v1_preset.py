@@ -149,6 +149,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
         converted = port_cycle_v1_preset.convert(source)
         nodes = {entry["id"]: entry for entry in converted["nodes"]}
 
+        self.assertEqual(nodes["voice"]["parameters"]["voiceLength"], 0.5)
         self.assertTrue(nodes["timeLayer1"]["parameters"]["enabled"])
         self.assertFalse(nodes["timeLayer2"]["parameters"]["enabled"])
         self.assertFalse(nodes["magnitudeLayer2"]["parameters"]["enabled"])

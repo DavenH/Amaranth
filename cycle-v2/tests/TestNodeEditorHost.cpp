@@ -334,16 +334,10 @@ public:
         result.voiceDurationSeconds = voiceLengthSeconds;
         return result;
     }
-    void setVoiceLengthSeconds(double seconds) override {
-        voiceLengthSeconds = seconds;
-        ++previewVoiceLengthChanges;
-    }
-
     TrimeshWidget* activeTrimesh {};
     PortDomain trimeshDomain { PortDomain::TimeSignal };
     int synchronizingTrimeshLookups {};
     double voiceLengthSeconds { 1.0 };
-    int previewVoiceLengthChanges {};
 };
 
 class RecordingVoiceCommands final : public NullCommands {
@@ -922,8 +916,10 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
             "voiceContextEditor.voiceLength.value"));
     REQUIRE(voiceLengthValue != nullptr);
     voiceLengthValue->setText("2 s", sendNotificationSync);
-    REQUIRE(resources.previewVoiceLengthChanges == 1);
-    REQUIRE(resources.voiceLengthSeconds == Catch::Approx(2.0).margin(0.0001));
+    REQUIRE(commands.activeParameterId.isEmpty());
+    REQUIRE(commands.immediateParameterId == "portamento");
+    REQUIRE(commands.numericValues.back()
+            == Catch::Approx(CycleDsp::voiceLengthUnitValue(2.0)).margin(0.0001));
     auto* voiceLength = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
             "voiceContextEditor.voiceLength"));
     REQUIRE(voiceLength != nullptr);
@@ -931,8 +927,9 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
             KeyPress::rightKey,
             ModifierKeys::shiftModifier,
             0)));
-    REQUIRE(resources.previewVoiceLengthChanges == 2);
-    REQUIRE(resources.voiceLengthSeconds == Catch::Approx(2.01).margin(0.001));
+    REQUIRE(commands.immediateParameterId == "portamento");
+    REQUIRE(commands.numericValues.back()
+            == Catch::Approx(CycleDsp::voiceLengthUnitValue(2.01)).margin(0.0001));
 }
 
 TEST_CASE("Delay and Reverb own shared semantic property rows",
@@ -2984,6 +2981,55 @@ TEST_CASE("Voice Context hosted pitch gesture commits two updates and one undo",
     REQUIRE(parameterValueForNode(*document.graph().findNode("voice"), "pitch") == "0");
     REQUIRE(presentation.recordedMovements == 2);
     REQUIRE(presentation.immediateRefreshes == 1);
+}
+
+TEST_CASE("Voice Context hosted length gesture commits two updates and one undo",
+        "[cycle-v2][editor][voice-context][voice-length][gesture]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    presentation.refreshMode = ProbeRefreshMode::LiveLatest;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+
+    REQUIRE(host.bind(document.graph().findNode("voice"), { 0, 0, 440, 276 }));
+    auto* length = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
+            "voiceContextEditor.voiceLength"));
+    REQUIRE(length != nullptr);
+    length->onDragStart();
+    length->setValue(0.45, sendNotificationSync);
+    length->setValue(0.65, sendNotificationSync);
+    REQUIRE(parameterValueForNode(
+            *dispatcher.editingGraph().findNode("voice"),
+            "voiceLength") == "0.650000");
+    REQUIRE(parameterValueForNode(
+            *document.graph().findNode("voice"),
+            "voiceLength") == String(CycleDsp::voiceLengthUnitValue(1.0f)));
+    REQUIRE_FALSE(document.canUndo());
+
+    length->onDragEnd();
+    REQUIRE(parameterValueForNode(
+            *document.graph().findNode("voice"),
+            "voiceLength") == "0.650000");
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(
+            *document.graph().findNode("voice"),
+            "voiceLength") == String(CycleDsp::voiceLengthUnitValue(1.0f)));
+    REQUIRE(presentation.recordedMovements == 2);
+    REQUIRE(presentation.localCommits == 1);
+    REQUIRE(presentation.scheduledRefreshes == 1);
+    REQUIRE(presentation.immediateRefreshes == 0);
 }
 
 TEST_CASE("Unison drag exposes every transient preview before one undoable commit",

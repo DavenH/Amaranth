@@ -132,7 +132,6 @@ public:
             const Node& node,
             Rectangle<float> bounds) = 0;
     virtual UnisonPreviewContext unisonPreviewContext() const { return {}; }
-    virtual void setVoiceLengthSeconds(double) {}
     virtual std::optional<NodeAudioResourceSummary> audioResourceSummary(
             const String&) const { return std::nullopt; }
 };

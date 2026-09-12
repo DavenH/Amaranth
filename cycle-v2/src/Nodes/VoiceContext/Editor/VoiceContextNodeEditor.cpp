@@ -65,13 +65,11 @@ class VoiceContextEditorComponent final : public Component {
 public:
     VoiceContextEditorComponent(
             NodeEditorCommands& commandsToUse,
-            NodeEditorPresentation& presentationToUse,
-            NodeEditorResources& resourcesToUse) :
+            NodeEditorPresentation& presentationToUse) :
             commands       (commandsToUse)
         ,   presentation   (presentationToUse)
-        ,   resources      (resourcesToUse)
         ,   octave         (*this, commands, "octave", "Octave")
-        ,   voiceLength    (*this, "Voice Length")
+        ,   voiceLength    (*this, commands, "voiceLength", "Voice Length")
         ,   pitch          (*this, commands, "pitch", "Pitch") {
         configureHeader();
         configureSelectors();
@@ -94,8 +92,12 @@ public:
                 parameters.boolValue("portamento", false),
                 dontSendNotification);
         octave.bind(node.id, parameters.floatValue("octave", 0.f));
+        voiceLength.bind(
+                node.id,
+                parameters.floatValue(
+                        "voiceLength",
+                        CycleDsp::voiceLengthUnitValue(1.0)));
         pitch.bind(node.id, parameters.floatValue("pitch", 0.f));
-        syncVoiceLength();
     }
 
     void paint(Graphics& graphics) override {
@@ -242,12 +244,6 @@ private:
                 { CycleDsp::voiceLengthUnitValue(7.0), "7" },
                 { 1.0, "148" }
         });
-        voiceLength.slider.onValueChange = [this] {
-            if (!syncingVoiceLength) {
-                resources.setVoiceLengthSeconds(
-                        CycleDsp::voiceLengthSeconds((float) voiceLength.slider.getValue()));
-            }
-        };
     }
 
     void configurePitch() {
@@ -293,15 +289,6 @@ private:
                     oversamplingValues[index] == value,
                     dontSendNotification);
         }
-    }
-
-    void syncVoiceLength() {
-        const ScopedValueSetter<bool> guard(syncingVoiceLength, true);
-        voiceLength.slider.setValue(
-                CycleDsp::voiceLengthUnitValue(
-                        resources.unisonPreviewContext().voiceDurationSeconds),
-                dontSendNotification);
-        voiceLength.refreshValueText();
     }
 
     String selectedOversampling() const {
@@ -360,26 +347,24 @@ private:
 
     NodeEditorCommands& commands;
     NodeEditorPresentation& presentation;
-    NodeEditorResources& resources;
     Node node;
     TextButton close;
     Label domainLabel;
     TextButton waveform;
     TextButton spectral;
     NodePropertySliderRow octave;
-    PropertySliderRow voiceLength;
+    NodePropertySliderRow voiceLength;
     NodePropertySliderRow pitch;
     Label oversamplingLabel;
     std::array<TextButton, 4> oversampling;
     const std::array<String, 4> oversamplingValues { "1x", "2x", "4x", "8x" };
     ToggleButton portamento;
-    bool syncingVoiceLength {};
 };
 
 class VoiceContextNodeEditor final : public NodeEditor {
 public:
     explicit VoiceContextNodeEditor(const NodeEditorContext& context) :
-            editor(context.commands, context.presentation, context.resources) {}
+            editor(context.commands, context.presentation) {}
 
     Component& component() override { return editor; }
     void bind(const Node& node) override { editor.setNode(node); }

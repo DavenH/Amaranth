@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <Audio/CycleDsp/EffectParameterMapping.h>
+
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
@@ -48,6 +50,8 @@ TEST_CASE("Voice Context exposes typed voice configuration inputs", "[cycle-v2][
     REQUIRE(voice.inputs[3].purpose == PortPurpose::ScratchAttachment);
     REQUIRE(voice.inputs[3].connectionKind == ConnectionKind::ProcessingAttachment);
     REQUIRE(voice.inputs[3].attachmentType == AttachmentType::ScratchEnvelope);
+    REQUIRE(parameterValueForNode(voice, "voiceLength")
+            == String(CycleDsp::voiceLengthUnitValue(1.0f)));
     REQUIRE(voice.bounds.getWidth() == 280.f);
     REQUIRE(voice.bounds.getHeight() == 182.f);
 
