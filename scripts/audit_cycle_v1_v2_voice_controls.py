@@ -27,7 +27,7 @@ def expected_controls(preset):
     oversampling = max(1, int(preset.get("settings", {}).get("OversampleFactorRltm", 1)))
     return {
         "octave": translated_octave(knobs[1]),
-        "voiceLength": round(knobs[2], 5),
+        "voiceLength": knobs[2],
         "pitch": 0.0,
         "portamento": False,
         "oversampling": f"{oversampling}x",

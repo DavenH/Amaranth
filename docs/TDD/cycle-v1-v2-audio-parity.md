@@ -1006,6 +1006,18 @@ as the scratch envelope evolves.
     the downstream duration preview; artifact:
     `/private/tmp/cycle-v2-voice-context-attachments.png`.
 
+    A precision follow-up is complete. The converter and first audit rounded
+    Cycle 1's normalized Voice Length to five decimal places. That small
+    duration error can move a cycle-clocked Envelope across a loop boundary,
+    as the Icycle frame-64 diagnostic demonstrated. Voice Length now preserves
+    the canonical Cycle 1 JSON number unchanged. All 216 eligible factory
+    graphs were updated only at that Voice Context scalar; an object-level diff
+    confirms no node presentation, edge, probe, or other parameter changed.
+    Every checked-in audio-equivalence manifest now identifies its resulting
+    graph exactly, and the final audit again reports zero mismatches with the
+    same twelve explicit source/schema gaps. Report:
+    `/private/tmp/cycle-parity-voice-controls-precision-final.json`.
+
     The Astral preset sub-slice is complete. The existing graph was a stale,
     rounded hand port: it inverted Cycle 1's inverse-velocity morph, omitted
     spectral layer modes and static Envelope morph inputs, represented phase

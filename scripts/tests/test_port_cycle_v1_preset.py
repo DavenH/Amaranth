@@ -165,6 +165,18 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertEqual(nodes["magnitudeOp2"]["kind"], "multiply")
         self.assertEqual(nodes["phaseOp1"]["kind"], "add")
 
+    def test_converter_preserves_full_voice_length_precision(self):
+        source = convertible_source()
+        source["preset"]["oscControls"]["knobs"][2] = 0.474137931
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {entry["id"]: entry for entry in converted["nodes"]}
+
+        self.assertEqual(
+            nodes["voice"]["parameters"]["voiceLength"],
+            0.474137931,
+        )
+
     def test_converter_persists_cycle_one_guide_noise_seeds(self):
         self.assertEqual(
             port_cycle_v1_preset.resolved_guide_noise_seed({"noiseSeed": 77}, 0),

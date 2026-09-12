@@ -509,7 +509,7 @@ def convert(source):
         node("voice", "voiceContext", 100, 520, {
             "domain": "waveform",
             "octave": octave,
-            "voiceLength": round(oscillator_knobs[2], 5),
+            "voiceLength": oscillator_knobs[2],
             "pitch": 0.0,
             "portamento": False,
             "oversampling": f"{oversampling}x",

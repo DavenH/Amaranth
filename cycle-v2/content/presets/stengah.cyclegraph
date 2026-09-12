@@ -7,7 +7,7 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 949.93774, "y": 656.0 },
-            "parameters": { "domain": "spectral", "octave": -1, "voiceLength": 0.48855, "pitch": 0.0, "portamento": false, "oversampling": "2x" }
+            "parameters": { "domain": "spectral", "octave": -1, "voiceLength": 0.488549618, "pitch": 0.0, "portamento": false, "oversampling": "2x" }
         },
         {
             "id": "morph",
