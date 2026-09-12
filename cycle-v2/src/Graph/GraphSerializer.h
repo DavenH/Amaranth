@@ -29,11 +29,12 @@ struct GraphLoadResult {
 
 class GraphSerializer {
 public:
-    static constexpr int currentFormatVersion = 4;
+    static constexpr int currentFormatVersion = 5;
 
     var writeJSON(const NodeGraph& graph) const;
     GraphLoadResult readJSON(const var& value) const;
     String toJsonString(const NodeGraph& graph) const;
+    String toJsonString(const var& graphRepresentation) const;
     NodeGraph fromJsonString(const String& json) const;
     GraphLoadResult loadJsonString(const String& json) const;
 };

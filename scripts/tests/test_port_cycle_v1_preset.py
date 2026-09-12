@@ -255,8 +255,20 @@ class PortCycleV1PresetTest(unittest.TestCase):
                         nodes["fft"]["position"]["x"])
         self.assertLess(nodes["fft"]["position"]["x"],
                         nodes["ifft"]["position"]["x"])
-        self.assertLess(nodes["ifft"]["position"]["x"],
-                        nodes["output"]["position"]["x"])
+        voice_kinds = {
+            "voiceContext", "modulationSource", "modulationTriple",
+            "trilinearMesh", "spectralLayer", "fft", "ifft", "envelope",
+            "add", "multiply", "unison",
+        }
+        voice_bottom = max(
+            node["position"]["y"]
+            + port_cycle_v1_preset.node_footprint(node)[1]
+            for node in converted["nodes"] if node["kind"] in voice_kinds
+        )
+        self.assertGreaterEqual(
+            nodes["globalInput"]["position"]["y"],
+            voice_bottom + 96.0,
+        )
 
         mesh = nodes["magnitudeLayer1"]
         operation = nodes["magnitudeOp1"]
@@ -278,9 +290,9 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertEqual(
             nodes["magnitudeOp1"]["position"]["y"],
             nodes["magnitudeOp10"]["position"]["y"])
-        self.assertEqual(
-            nodes["ifft"]["position"]["y"],
-            nodes["output"]["position"]["y"])
+        self.assertGreater(
+            nodes["output"]["position"]["y"],
+            nodes["ifft"]["position"]["y"])
 
     def test_presentation_reconciliation_does_not_preserve_semantics(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
@@ -654,6 +666,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
             "size": 0.2,
             "post": 0.3,
             "highPass": 0.4,
+            "processingScope": "global",
         })
 
     def test_legacy_impulse_response_defaults_missing_high_pass(self):

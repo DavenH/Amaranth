@@ -12,7 +12,10 @@ import copy
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
+import subprocess
+import tempfile
 
 from simplify_cycle_v2_presets import simplify_graph
 
@@ -84,7 +87,40 @@ NODE_FOOTPRINTS = {
     "delay": (216.0, 194.0),
     "equalizer": (256.0, 230.0),
     "output": (190.0, 160.0),
+    "globalInput": (190.0, 160.0),
 }
+
+
+def graph_migrator_path():
+    configured = os.environ.get("CYCLE_V2_GRAPH_MIGRATOR")
+    candidates = [
+        Path(configured) if configured else None,
+        Path(__file__).resolve().parents[1]
+        / "build" / "tests" / "cycle-v2" / "CycleV2GraphMigrator",
+    ]
+    for candidate in candidates:
+        if candidate is not None and candidate.is_file():
+            return candidate
+    raise RuntimeError(
+        "CycleV2GraphMigrator is required; build the tests preset first")
+
+
+def migrate_global_audio_graph(graph):
+    with tempfile.TemporaryDirectory(prefix="cycle-v2-migration-") as directory:
+        source = Path(directory) / "legacy.cyclegraph"
+        destination = Path(directory) / "explicit.cyclegraph"
+        source.write_text(json.dumps(graph, indent=4) + "\n", encoding="utf-8")
+        completed = subprocess.run(
+            [str(graph_migrator_path()), "--raw", str(source), str(destination)],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode != 0:
+            detail = completed.stderr.strip() or completed.stdout.strip()
+            raise ValueError(f"Global audio graph migration failed: {detail}")
+        with destination.open(encoding="utf-8") as migrated:
+            return json.load(migrated)
 
 
 def node(node_id, kind, x, y, parameters=None, model=None):
@@ -815,7 +851,7 @@ def convert(source):
     }
     apply_compact_layout(nodes)
     simplify_graph(graph)
-    return graph
+    return migrate_global_audio_graph(graph)
 
 
 def validate_conversion(source):

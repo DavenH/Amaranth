@@ -1,6 +1,6 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 4,
+    "formatVersion": 5,
     "nodes": [
         {
             "id": "voice",
@@ -273,9 +273,9 @@
                         { "time": 1.0, "phase": 0.51679, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 69 },
                         { "time": 1.0, "phase": 0.48251, "amp": 0.19938, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 70 },
                         { "time": 1.0, "phase": 0.48251, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 71 },
-                        { "time": 0.0, "phase": 0.53586, "amp": 2e-5, "key": 0.0, "mod": 0.0, "weight": 0.15929, "id": 72 },
+                        { "time": 0.0, "phase": 0.53586, "amp": 0.00002, "key": 0.0, "mod": 0.0, "weight": 0.15929, "id": 72 },
                         { "time": 0.0, "phase": 0.53586, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 0.15929, "id": 73 },
-                        { "time": 0.0, "phase": 0.50157, "amp": 2e-5, "key": 1.0, "mod": 0.0, "weight": 0.15929, "id": 74 },
+                        { "time": 0.0, "phase": 0.50157, "amp": 0.00002, "key": 1.0, "mod": 0.0, "weight": 0.15929, "id": 74 },
                         { "time": 0.0, "phase": 0.50157, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 0.15929, "id": 75 },
                         { "time": 1.0, "phase": 0.5368, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 0.15929, "id": 76 },
                         { "time": 1.0, "phase": 0.5368, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 0.15929, "id": 77 },
@@ -931,7 +931,14 @@
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 2132.0, "y": 619.0 },
+            "position": { "x": 338.0, "y": 1352.0 },
+            "parameters": {}
+        },
+        {
+            "id": "globalInput",
+            "kind": "globalInput",
+            "definitionVersion": 1,
+            "position": { "x": 100.0, "y": 1352.0 },
             "parameters": {}
         }
     ],
@@ -1163,7 +1170,7 @@
         { "sourceNodeId": "phaseOp1", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "volumeMultiply", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeEnvelope1", "sourcePortId": "env", "destNodeId": "volumeMultiply", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
+        { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": []
 }

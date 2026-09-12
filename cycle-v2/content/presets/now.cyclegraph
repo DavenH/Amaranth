@@ -1,10 +1,17 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 4,
+    "formatVersion": 5,
     "nodes": [
         {
             "id": "output",
             "kind": "output",
+            "definitionVersion": 1,
+            "position": { "x": 338.0, "y": 100.0 },
+            "parameters": {}
+        },
+        {
+            "id": "globalInput",
+            "kind": "globalInput",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 100.0 },
             "parameters": {}
@@ -13,6 +20,8 @@
     "guides": [],
     "guideHeatmaps": [],
     "guideAssignments": [],
-    "edges": [],
+    "edges": [
+        { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
+    ],
     "probes": []
 }
