@@ -1,6 +1,6 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 4,
+    "formatVersion": 6,
     "nodes": [
         {
             "id": "voice",
@@ -455,8 +455,8 @@
             "id": "waveshaper",
             "kind": "waveshaper",
             "definitionVersion": 1,
-            "position": { "x": 2009.03223, "y": 457.9147 },
-            "parameters": { "enabled": true, "pre": 0.5, "post": 0.5, "aaFactor": "1" },
+            "position": { "x": 240.50752, "y": 1151.0 },
+            "parameters": { "enabled": true, "pre": 0.5, "post": 0.5, "aaFactor": "1", "processingScope": "global" },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
@@ -481,8 +481,8 @@
             "id": "ir",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 2354.6665, "y": 457.91464 },
-            "parameters": { "enabled": true, "size": 0.0, "post": 0.618, "highPass": 0.0 },
+            "position": { "x": 529.50751, "y": 1151.0 },
+            "parameters": { "enabled": true, "size": 0.0, "post": 0.618, "highPass": 0.0, "processingScope": "global" },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
@@ -770,7 +770,7 @@
             "id": "multiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2696.0, "y": 457.9147 },
+            "position": { "x": 833.50751, "y": 1151.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -780,15 +780,29 @@
             "id": "out",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 3217.10352, "y": 457.91467 },
+            "position": { "x": 2.50753, "y": 1491.0 },
             "parameters": { "gain": 0.5 }
         },
         {
             "id": "reverb",
             "kind": "reverb",
             "definitionVersion": 1,
-            "position": { "x": 2924.41382, "y": 457.91467 },
+            "position": { "x": 1031.50757, "y": 1151.0 },
             "parameters": { "enabled": true, "size": 0.4999, "damp": 1.0, "width": 0.6186, "wet": 0.795, "highPass": 0.0667 }
+        },
+        {
+            "id": "globalInput",
+            "kind": "globalInput",
+            "definitionVersion": 1,
+            "position": { "x": 2.50753, "y": 1151.0 },
+            "parameters": {}
+        },
+        {
+            "id": "voiceOutput",
+            "kind": "voiceOutput",
+            "definitionVersion": 1,
+            "position": { "x": 1970.60547, "y": 457.91464 },
+            "parameters": {}
         }
     ],
     "guides": [
@@ -832,14 +846,15 @@
         { "sourceNodeId": "phaseMesh", "sourcePortId": "out", "destNodeId": "addPhase", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "addMag", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "mag", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "addPhase", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "waveshaper", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "waveshaper", "sourcePortId": "time", "destNodeId": "ir", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "ir", "sourcePortId": "time", "destNodeId": "multiply", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "multiply", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "env", "sourcePortId": "env", "destNodeId": "multiply", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "waveMesh", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "fft", "sourcePortId": "mag", "destNodeId": "addMag", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "multiply", "sourcePortId": "out", "destNodeId": "reverb", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "reverb", "sourcePortId": "time", "destNodeId": "out", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
+        { "sourceNodeId": "ir", "sourcePortId": "time", "destNodeId": "reverb", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "reverb", "sourcePortId": "time", "destNodeId": "out", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "waveshaper", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "multiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": [
         {

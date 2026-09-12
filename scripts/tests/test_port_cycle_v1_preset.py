@@ -195,7 +195,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertNotIn("volumeEnvelope1", nodes)
         self.assertNotIn("volumeMultiply", nodes)
 
-    def test_static_envelopes_preserve_the_legacy_zero_morph(self):
+    def test_static_envelopes_keep_red_blue_modulation_without_a_time_input(self):
         source = convertible_source()
         volume = {
             "properties": {"active": True, "dynamic": False},
@@ -212,27 +212,17 @@ class PortCycleV1PresetTest(unittest.TestCase):
 
         converted = port_cycle_v1_preset.convert(source)
         nodes = {entry["id"]: entry for entry in converted["nodes"]}
-        morph = nodes["staticEnvelopeMorph"]
 
-        self.assertEqual(morph["parameters"]["source"], "constant")
-        self.assertEqual(morph["parameters"]["constant"], 0.0)
-        self.assertTrue(any(
-            edge["sourceNodeId"] == "staticEnvelopeMorph"
-            and edge["destNodeId"] == "volumeEnvelope1"
-            and edge["destPortId"] == "red"
-            for edge in converted["edges"]
-        ))
-        self.assertTrue(any(
-            edge["sourceNodeId"] == "staticEnvelopeMorph"
-            and edge["destNodeId"] == "volumeEnvelope1"
-            and edge["destPortId"] == "blue"
-            for edge in converted["edges"]
-        ))
+        self.assertNotIn("staticEnvelopeMorph", nodes)
+        self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["red"], 0.5)
+        self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["blue"], 0.75)
 
         volume["properties"]["dynamic"] = True
         converted = port_cycle_v1_preset.convert(source)
-        self.assertFalse(any(
-            node["id"] == "staticEnvelopeMorph" for node in converted["nodes"]))
+        nodes = {entry["id"]: entry for entry in converted["nodes"]}
+        self.assertNotIn("staticEnvelopeMorph", nodes)
+        self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["red"], 0.5)
+        self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["blue"], 0.75)
 
     def test_generated_layout_is_aligned_compact_and_non_overlapping(self):
         source = convertible_source()
@@ -255,8 +245,20 @@ class PortCycleV1PresetTest(unittest.TestCase):
                         nodes["fft"]["position"]["x"])
         self.assertLess(nodes["fft"]["position"]["x"],
                         nodes["ifft"]["position"]["x"])
-        self.assertLess(nodes["ifft"]["position"]["x"],
-                        nodes["output"]["position"]["x"])
+        voice_kinds = {
+            "voiceContext", "modulationSource", "modulationTriple",
+            "trilinearMesh", "spectralLayer", "fft", "ifft", "envelope",
+            "add", "multiply", "unison",
+        }
+        voice_bottom = max(
+            node["position"]["y"]
+            + port_cycle_v1_preset.node_footprint(node)[1]
+            for node in converted["nodes"] if node["kind"] in voice_kinds
+        )
+        self.assertGreaterEqual(
+            nodes["globalInput"]["position"]["y"],
+            voice_bottom + 96.0,
+        )
 
         mesh = nodes["magnitudeLayer1"]
         operation = nodes["magnitudeOp1"]
@@ -278,9 +280,9 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertEqual(
             nodes["magnitudeOp1"]["position"]["y"],
             nodes["magnitudeOp10"]["position"]["y"])
-        self.assertEqual(
-            nodes["ifft"]["position"]["y"],
-            nodes["output"]["position"]["y"])
+        self.assertGreater(
+            nodes["output"]["position"]["y"],
+            nodes["ifft"]["position"]["y"])
 
     def test_presentation_reconciliation_does_not_preserve_semantics(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
@@ -654,6 +656,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
             "size": 0.2,
             "post": 0.3,
             "highPass": 0.4,
+            "processingScope": "global",
         })
 
     def test_legacy_impulse_response_defaults_missing_high_pass(self):

@@ -41,15 +41,23 @@ TEST_CASE("Node canvas presentation scales port hit geometry with canvas zoom",
     REQUIRE(doubled.bounds.getHeight() == Catch::Approx(reference.bounds.getHeight() * 2.f));
 }
 
-TEST_CASE("Node canvas reports compiled voice and global processing scope",
+TEST_CASE("Node canvas marks only authored global processing",
         "[cycle-v2][canvas][presentation][audio-scope]") {
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "global", {}));
+    graph.addNode(factory.createNode(NodeKind::GenericProcessor, "route", {}));
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({ "wave", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({
-            "wave", "out", "delay", "time",
+            "global", "time", "route", "in",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "route", "out", "delay", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
     graph.addEdge({
@@ -59,10 +67,40 @@ TEST_CASE("Node canvas reports compiled voice and global processing scope",
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
 
-    REQUIRE(NodeCanvasPresentation::runtimeScopeLabel(compiled.plan, "wave") == "VOICE");
-    REQUIRE(NodeCanvasPresentation::runtimeScopeLabel(compiled.plan, "delay") == "GLOBAL");
-    REQUIRE(NodeCanvasPresentation::runtimeScopeLabel(compiled.plan, "out") == "GLOBAL");
-    REQUIRE(NodeCanvasPresentation::runtimeScopeLabel(compiled.plan, "missing").isEmpty());
+    REQUIRE_FALSE(NodeCanvasPresentation::hasGlobalProcessingIndicator(graph, "wave"));
+    REQUIRE(NodeCanvasPresentation::hasGlobalProcessingIndicator(graph, "global"));
+    REQUIRE(NodeCanvasPresentation::hasGlobalProcessingIndicator(graph, "route"));
+    REQUIRE(NodeCanvasPresentation::hasGlobalProcessingIndicator(graph, "delay"));
+    REQUIRE(NodeCanvasPresentation::hasGlobalProcessingIndicator(graph, "out"));
+    REQUIRE_FALSE(NodeCanvasPresentation::hasGlobalProcessingIndicator(graph, "missing"));
+
+    graph.addNode(factory.createNode(NodeKind::Equalizer, "invalidGlobalEq", {}));
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "invalidGlobalEq",
+            "processingScope",
+            "Processing",
+            "global").succeeded());
+    REQUIRE_FALSE(GraphCompiler().compile(graph).succeeded());
+    REQUIRE(NodeCanvasPresentation::hasGlobalProcessingIndicator(
+            graph,
+            "invalidGlobalEq"));
+
+    const Rectangle<float> header { 20.f, 30.f, 180.f, 42.f };
+    const auto clear = NodeCanvasPresentation::globalProcessingIndicatorBounds(
+            header,
+            1.f,
+            false);
+    const auto besideAction = NodeCanvasPresentation::globalProcessingIndicatorBounds(
+            header,
+            1.f,
+            true);
+    REQUIRE(clear.getWidth() == 24.f);
+    REQUIRE(clear.getHeight() == 24.f);
+    REQUIRE(besideAction.getWidth() == 24.f);
+    REQUIRE(besideAction.getHeight() == 24.f);
+    REQUIRE(clear.getRight() <= header.getRight());
+    REQUIRE(besideAction.getRight() < clear.getX());
 }
 
 TEST_CASE("Signal and attachment sockets share one presentation diameter",

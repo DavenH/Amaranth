@@ -1,6 +1,6 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 4,
+    "formatVersion": 6,
     "nodes": [
         {
             "id": "voice",
@@ -30,7 +30,7 @@
             "id": "ifft",
             "kind": "ifft",
             "definitionVersion": 1,
-            "position": { "x": 1449.2000100000002, "y": 619.0 },
+            "position": { "x": 1449.20001, "y": 619.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
         },
         {
@@ -153,14 +153,14 @@
                         { "time": 0.05714, "phase": 0.89235, "amp": 0.01183, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 93 },
                         { "time": 0.05714, "phase": 0.89235, "amp": 0.01183, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 94 },
                         { "time": 0.05714, "phase": 0.89235, "amp": 0.01183, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 95 },
-                        { "time": 0.0, "phase": 0.90116, "amp": 1.86265e-9, "key": 0.0, "mod": 0.0, "weight": 0.56293, "id": 96 },
-                        { "time": 0.0, "phase": 0.90116, "amp": 1.86265e-9, "key": 0.0, "mod": 1.0, "weight": 0.56293, "id": 97 },
-                        { "time": 0.0, "phase": 0.90116, "amp": 1.86265e-9, "key": 1.0, "mod": 0.0, "weight": 0.56293, "id": 98 },
-                        { "time": 0.0, "phase": 0.90116, "amp": 1.86265e-9, "key": 1.0, "mod": 1.0, "weight": 0.56293, "id": 99 },
-                        { "time": 0.05714, "phase": 0.89738, "amp": 1.86265e-9, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 100 },
-                        { "time": 0.05714, "phase": 0.89738, "amp": 1.86265e-9, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 101 },
-                        { "time": 0.05714, "phase": 0.89738, "amp": 1.86265e-9, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 102 },
-                        { "time": 0.05714, "phase": 0.89738, "amp": 1.86265e-9, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 103 }
+                        { "time": 0.0, "phase": 0.90116, "amp": 0.00000000186265, "key": 0.0, "mod": 0.0, "weight": 0.56293, "id": 96 },
+                        { "time": 0.0, "phase": 0.90116, "amp": 0.00000000186265, "key": 0.0, "mod": 1.0, "weight": 0.56293, "id": 97 },
+                        { "time": 0.0, "phase": 0.90116, "amp": 0.00000000186265, "key": 1.0, "mod": 0.0, "weight": 0.56293, "id": 98 },
+                        { "time": 0.0, "phase": 0.90116, "amp": 0.00000000186265, "key": 1.0, "mod": 1.0, "weight": 0.56293, "id": 99 },
+                        { "time": 0.05714, "phase": 0.89738, "amp": 0.00000000186265, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 100 },
+                        { "time": 0.05714, "phase": 0.89738, "amp": 0.00000000186265, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 101 },
+                        { "time": 0.05714, "phase": 0.89738, "amp": 0.00000000186265, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 102 },
+                        { "time": 0.05714, "phase": 0.89738, "amp": 0.00000000186265, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 103 }
                     ],
                     "cubes": [
                         {
@@ -566,7 +566,21 @@
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 1807.2000100000002, "y": 619.0 },
+            "position": { "x": 338.0, "y": 1352.0 },
+            "parameters": {}
+        },
+        {
+            "id": "globalInput",
+            "kind": "globalInput",
+            "definitionVersion": 1,
+            "position": { "x": 100.0, "y": 1352.0 },
+            "parameters": {}
+        },
+        {
+            "id": "voiceOutput",
+            "kind": "voiceOutput",
+            "definitionVersion": 1,
+            "position": { "x": 1775.19995, "y": 619.0 },
             "parameters": {}
         }
     ],
@@ -714,9 +728,10 @@
         { "sourceNodeId": "magnitudeOp2", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "mag", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "phaseLayer1", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "pitchEnvelope1", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "pitch", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "magnitudeLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "phaseLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" }
+        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "phaseLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": []
 }

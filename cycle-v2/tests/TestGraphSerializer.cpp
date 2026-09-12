@@ -398,7 +398,7 @@ TEST_CASE("Graph JSON migrates legacy Pan range to its spectral Trimesh",
     REQUIRE(loadedPan != nullptr);
     REQUIRE(loadedMesh != nullptr);
     REQUIRE(parameterValueForNode(*loadedPan, "range").isEmpty());
-    REQUIRE(parameterValueForNode(*loadedPan, "mode").isEmpty());
+    REQUIRE(parameterValueForNode(*loadedPan, "mode") == "auto");
     REQUIRE(NodeParameterMap(*loadedMesh).floatValue("range", 0.f)
             == Catch::Approx(0.75f));
 

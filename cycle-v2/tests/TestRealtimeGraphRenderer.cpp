@@ -166,6 +166,45 @@ TEST_CASE("Realtime graph renderer turns MIDI note gestures into graph audio",
     REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 0);
 }
 
+TEST_CASE("Realtime renderer supplies the mixed voice terminal through Global Input",
+        "[cycle-v2][audio-device][realtime][audio-scope]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "voiceTerminal", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "boundary", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "boundary", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({ "voiceTerminal", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 256;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 71, spec);
+    REQUIRE(prepared != nullptr);
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    renderer.setPreparedGraph(prepared.get());
+    renderer.setVoiceDurationSeconds(1.f);
+    REQUIRE(queue.enqueue(
+            MidiMessage::noteOn(1, 60, (uint8) 100),
+            MidiEventSource::PerformanceKeyboard,
+            1.0));
+
+    AudioBuffer<float> output(2, 256);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    renderer.process(queue, channels, 2, 256, 44'100.0, 1.0);
+
+    const auto diagnostics = renderer.diagnostics(queue);
+    REQUIRE(diagnostics.peak > 0.f);
+    REQUIRE(diagnostics.leftPeak > 0.f);
+    REQUIRE(diagnostics.rightPeak > 0.f);
+}
+
 TEST_CASE("Realtime graph renderer supplies the legacy volume-envelope clock",
         "[cycle-v2][audio-device][realtime][envelope][internal-rate][parity]") {
     const auto render = [](double volumeEnvelopeSampleRate) {
@@ -265,7 +304,7 @@ TEST_CASE("Realtime graph renderer stops immediately without a volume envelope",
     graph.removeNode("env");
     graph.removeNode("multiply");
     graph.addEdge({
-            "ifft", "time", "out", "time",
+            "ifft", "time", "voiceOutput", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
     const auto compiled = GraphCompiler().compile(graph);
@@ -300,6 +339,10 @@ TEST_CASE("Global delay continues after its source voice retires",
     NodeGraph graph = NodeGraph::createDemoGraph();
     graph.removeNode("env");
     graph.removeNode("multiply");
+    graph.addEdge({
+            "ifft", "time", "voiceOutput", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
     GraphNodeFactory factory;
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
     graph.replaceNodeParameters("delay", {
@@ -310,8 +353,19 @@ TEST_CASE("Global delay continues after its source voice retires",
             { "spin", "Pan Amount", "0" },
             { "spinIters", "Pan Cycle", "0" }
     });
+    const auto globalOutputEdge = std::find_if(
+            graph.getEdges().begin(),
+            graph.getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "globalInput"
+                        && edge.destNodeId == "out";
+            });
+    REQUIRE(globalOutputEdge != graph.getEdges().end());
+    graph.removeEdgeAt((size_t) std::distance(
+            graph.getEdges().begin(),
+            globalOutputEdge));
     graph.addEdge({
-            "ifft", "time", "delay", "time",
+            "globalInput", "time", "delay", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
     graph.addEdge({

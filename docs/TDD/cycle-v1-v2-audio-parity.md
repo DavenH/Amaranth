@@ -459,10 +459,12 @@ as the scratch envelope evolves.
     cross-sections before the first sample through the bounded realtime path in
     `cycle-v2-realtime-note-on-envelope-preparation.md`. Direct Cycle 1 export
     inspection showed Guitar 3 G's volume and scratch layers are
-    `dynamic=false`; conversion now explicitly pins their legacy 0/0
-    cross-section. At MIDI 48/frame zero, both channels' magnitude raster and
-    effective morph triple are byte-identical, including the scratch coordinate
-    `0.00553`. The magnitude-operand difference was the additive normalization
+    `dynamic=false`. A later semantic review established that this fixes the
+    Envelope's unavailable time/yellow coordinate, not its red/blue inputs;
+    the converter's synthetic 0/0 red/blue routing was removed. The associated
+    frame-zero parity claim is superseded; a diagnostic rerun exposes the open
+    mismatch recorded in `audio-bugs.md`. The magnitude-operand difference was
+    the additive normalization
     count: Cycle 1 passes the note-dependent 169-harmonic region to the shared
     `SpectralLayerCore`, while Cycle V2 passed its 257-slot full-polar storage
     length. The prepared renderer now computes the active harmonic count once

@@ -205,6 +205,23 @@ public:
 
     DefinitionBuilder& globalProcessing() {
         value.processingScope = AudioProcessingScope::Global;
+        value.processingCapability = AudioProcessingCapability::GlobalOnly;
+        return *this;
+    }
+
+    DefinitionBuilder& selectableProcessing() {
+        value.processingCapability = AudioProcessingCapability::Selectable;
+        return *this;
+    }
+
+    DefinitionBuilder& domainNeutralProcessing() {
+        value.processingCapability = AudioProcessingCapability::DomainNeutral;
+        return *this;
+    }
+
+    DefinitionBuilder& requiredSingleton() {
+        value.requiredSingleton = true;
+        value.removable = false;
         return *this;
     }
 
@@ -304,6 +321,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { input("in", "In", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}, true))
                     .help("Processes the incoming signal.")
+                    .domainNeutralProcessing()
                     .runtime(AudioModuleRole::GenericProcessor, PreviewModuleRole::Generic)
                     .finish(),
             buildDefinition(definition("voiceContext", NodeKind::VoiceContext, "Voice Context", "waveform start", "voice", {
@@ -513,6 +531,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { input("left", "A", PortDomain::ControlSignal), input("right", "B", PortDomain::ControlSignal) },
                     { output("out", "Out", PortDomain::ControlSignal) }))
                     .help("Adds two signals together.")
+                    .domainNeutralProcessing()
                     .execution(NodeExecutionTrait::CoordinateTransform)
                     .runtime(AudioModuleRole::Add, PreviewModuleRole::None)
                     .presentation({ 58.f, 44.f }, { 150.f, 118.f })
@@ -521,6 +540,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { input("left", "A", PortDomain::ControlSignal), input("right", "B", PortDomain::ControlSignal) },
                     { output("out", "Out", PortDomain::ControlSignal) }))
                     .help("Multiplies two signals to shape one with the other.")
+                    .domainNeutralProcessing()
                     .execution(NodeExecutionTrait::CoordinateTransform)
                     .runtime(AudioModuleRole::Multiply, PreviewModuleRole::None)
                     .presentation({ 58.f, 44.f }, { 150.f, 118.f })
@@ -528,6 +548,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             buildDefinition(definition("impulseResponse", NodeKind::ImpulseResponse, "IR", "convolution", "ir",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
+                            choice("processingScope", "Processing", "voice", { "voice", "global" }, graph | presentation),
                             boolean("enabled", "Enabled", true, dsp | presentation),
                             impulseLength(),
                             number("post", "Post", 0.5f, 0.f, 1.f, dsp | presentation),
@@ -535,7 +556,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     }))
                     .help("Applies the drawn impulse response to the sound.")
                     .model(std::make_shared<CurveNodeDomainCodec>(NodeKind::ImpulseResponse))
-                    .globalProcessing()
+                    .selectableProcessing()
                     .runtime(AudioModuleRole::ImpulseResponse, PreviewModuleRole::ImpulseResponse,
                             "cycle/src/Audio/Effects/IrModeller.cpp")
                     .presentation({ 230.f, 92.f })
@@ -543,6 +564,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             buildDefinition(definition("waveshaper", NodeKind::Waveshaper, "Waveshaper", "transfer curve", "waveshaper",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
+                            choice("processingScope", "Processing", "voice", { "voice", "global" }, graph | presentation),
                             boolean("enabled", "Enabled", true, dsp | presentation),
                             number("pre", "Pre", 0.5f, 0.f, 1.f, dsp | presentation),
                             number("post", "Post", 0.5f, 0.f, 1.f, dsp | presentation),
@@ -550,7 +572,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     }))
                     .help("Shapes the waveform with a custom transfer curve.")
                     .model(std::make_shared<CurveNodeDomainCodec>(NodeKind::Waveshaper))
-                    .globalProcessing()
+                    .selectableProcessing()
                     .runtime(AudioModuleRole::Waveshaper, PreviewModuleRole::Waveshaper,
                             "cycle/src/Audio/Effects/WaveShaper.cpp")
                     .presentation({ 154.f, 174.f })
@@ -614,6 +636,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             buildDefinition(definition("equalizer", NodeKind::Equalizer, "EQ", "five band", "eq",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
+                            choice("processingScope", "Processing", "voice", { "voice", "global" }, graph | presentation),
                             boolean("enabled", "Enabled", true, dsp | presentation),
                             number("band1Gain", "Band 1 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("band2Gain", "Band 2 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
@@ -627,7 +650,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("band5Frequency", "Band 5 Frequency", 0.8286473f, 0.f, 1.f, dsp | preview | presentation)
                     }))
                     .help("Shapes the tone with five adjustable frequency bands.")
-                    .globalProcessing()
+                    .selectableProcessing()
                     .runtime(AudioModuleRole::Equalizer, PreviewModuleRole::EqualizerResponse,
                             "cycle/src/Audio/Effects/Equalizer.cpp")
                     .presentation({ 230.f, 112.f })
@@ -636,13 +659,31 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("left", "Left", PortDomain::TimeSignal, ChannelLayout::Left), output("right", "Right", PortDomain::TimeSignal, ChannelLayout::Right) }))
                     .help("Separates a stereo signal into left and right channels.")
+                    .domainNeutralProcessing()
                     .runtime(AudioModuleRole::StereoSplit, PreviewModuleRole::None)
                     .finish(),
             buildDefinition(definition("stereoJoin", NodeKind::StereoJoin, "Stereo Join", "L/R combine", "join",
                     { input("left", "Left", PortDomain::TimeSignal, ChannelLayout::Left), input("right", "Right", PortDomain::TimeSignal, ChannelLayout::Right) },
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }))
                     .help("Combines left and right channels into a stereo signal.")
+                    .domainNeutralProcessing()
                     .runtime(AudioModuleRole::StereoJoin, PreviewModuleRole::None)
+                    .finish(),
+            buildDefinition(definition("voiceOutput", NodeKind::VoiceOutput, "Voice Output", "voice mix", "voiceOut",
+                    { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}))
+                    .help("Terminates each voice before the signals are mixed for global processing.")
+                    .requiredSingleton()
+                    .disablePreview()
+                    .presentation({}, { 190.f, 76.f })
+                    .finish(),
+            buildDefinition(definition("globalInput", NodeKind::GlobalInput, "Global Input", "voice mix", "globalIn", {},
+                    { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }))
+                    .help("Supplies the mixed stereo voice signal to global processing.")
+                    .globalProcessing()
+                    .requiredSingleton()
+                    .runtime(AudioModuleRole::GlobalInput, PreviewModuleRole::None)
+                    .disablePreview()
+                    .presentation({}, { 190.f, 76.f })
                     .finish(),
             buildDefinition(definition("output", NodeKind::Output, "Output", "sink", "out",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}, {
@@ -651,6 +692,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     }))
                     .help("Sends the finished sound to the audio output.")
                     .globalProcessing()
+                    .requiredSingleton()
                     .runtime(AudioModuleRole::Output, PreviewModuleRole::OutputMeters)
                     .presentation({}, { 190.f, 320.f })
                     .finish()

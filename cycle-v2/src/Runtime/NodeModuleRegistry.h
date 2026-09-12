@@ -11,6 +11,7 @@ struct NodeModuleDescriptor {
     PreviewContract previewContract { PreviewContract::None };
     NodeExecutionTrait executionTrait { NodeExecutionTrait::SampleBlockProcessor };
     AudioProcessingScope processingScope { AudioProcessingScope::Voice };
+    AudioProcessingCapability processingCapability { AudioProcessingCapability::VoiceOnly };
     bool executable {};
     bool previewable {};
     bool cycle1AdapterBacked {};

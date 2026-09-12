@@ -1,10 +1,12 @@
 #include "Nodes/ImpulseResponse/Editor/ImpulseResponseEditorComponent.h"
 
+#include "Graph/NodeParameterMap.h"
 #include "Nodes/Curve/Editor/CurveEditorPrimitives.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Runtime/MessageThreadWorker.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EffectEnableButton.h"
+#include "UI/Editors/ProcessingScopeSelector.h"
 #include "UI/Editors/PropertyControls.h"
 #include "UiIconData.h"
 
@@ -23,6 +25,8 @@ constexpr int kActionButtonHeight = 24;
 constexpr int kActionButtonWidth = 72;
 constexpr int kViewButtonSize = 24;
 constexpr int kViewButtonGap = 4;
+constexpr int kScopeWidth = 160;
+constexpr int kScopeHeight = 28;
 constexpr float kSampleLabelWidth = 56.f;
 constexpr float kSampleLabelHeight = 14.f;
 constexpr double kReferenceSampleRate = 44100.0;
@@ -303,7 +307,8 @@ Array<var> sampleLandmarkAutomation(const std::vector<SampleLandmark>& landmarks
 
 struct ImpulseResponseEditorComponent::Impl {
     explicit Impl(Component& owner) :
-            zoomAttack  ("Zoom to attack",
+            processingScope ("irEditor")
+        ,   zoomAttack  ("Zoom to attack",
                          "Frames the impulse onset and early response",
                          "Zoom to the impulse attack",
                          UiIconData::zoomAttack)
@@ -319,6 +324,8 @@ struct ImpulseResponseEditorComponent::Impl {
         owner.addAndMakeVisible(zoomAttack);
         owner.addAndMakeVisible(zoomFull);
 
+        owner.addAndMakeVisible(processingTitle);
+        owner.addAndMakeVisible(processingScope);
         owner.addAndMakeVisible(responseTitle);
         owner.addAndMakeVisible(resourceTitle);
 
@@ -339,11 +346,13 @@ struct ImpulseResponseEditorComponent::Impl {
     }
 
     EffectEnableButton enabled;
+    ProcessingScopeSelector processingScope;
     IrViewButton zoomAttack;
     IrViewButton zoomFull;
     LabeledParameterSlider size;
     LabeledParameterSlider postGain;
     LabeledParameterSlider highPass;
+    PropertyGroupLabel processingTitle { "PROCESSING" };
     PropertyGroupLabel responseTitle { "Response" };
     PropertyGroupLabel resourceTitle { "IR sample" };
     TextButton loadAudio;
@@ -367,6 +376,11 @@ ImpulseResponseEditorComponent::ImpulseResponseEditorComponent(CurveEditorWidget
     }
     impl->enabled.setComponentID("irEditor.enabled");
     setHeaderAction(impl->enabled);
+    impl->processingScope.onChange = [this](const String& scope) {
+        if (!setNodeParameterText("processingScope", "Processing", scope)) {
+            syncEditorFromNode();
+        }
+    };
     bindDiscreteAction(impl->enabled, [] {});
     bindContinuousControls({ &impl->size, &impl->postGain, &impl->highPass });
     impl->zoomAttack.onClick = [this] {
@@ -450,6 +464,11 @@ void ImpulseResponseEditorComponent::layoutEditor() {
 
     Rectangle<int> bounds = propertyRailContentBounds(
             editorControlBounds().toNearestInt());
+    impl->processingTitle.setBounds(
+            bounds.removeFromTop(PropertyControlMetrics::groupLabelHeight));
+    impl->processingScope.setBounds(
+            bounds.removeFromTop(kScopeHeight).withWidth(kScopeWidth));
+    bounds.removeFromTop(PropertyControlMetrics::sectionGap);
     impl->responseTitle.setBounds(
             bounds.removeFromTop(PropertyControlMetrics::groupLabelHeight));
     for (auto* control : { &impl->size, &impl->postGain, &impl->highPass }) {
@@ -481,6 +500,9 @@ void ImpulseResponseEditorComponent::syncEditorFromNode() {
     ImpulseResponseNodeModel model;
     model.syncFromNode(node);
     impl->enabled.setToggleState(model.enabled, dontSendNotification);
+    impl->processingScope.setScope(
+            NodeParameterMap(node).stringValue("processingScope", "voice"),
+            dontSendNotification);
     impl->size.slider.setValue(model.size, dontSendNotification);
     impl->postGain.slider.setValue(model.postGain, dontSendNotification);
     impl->highPass.slider.setValue(model.highPass, dontSendNotification);
@@ -581,6 +603,12 @@ void ImpulseResponseEditorComponent::applyEditorStateToWidget() {
 
 std::vector<NodeParameter> ImpulseResponseEditorComponent::editorControls() const {
     std::vector<NodeParameter> result;
+    addEditorParameter(
+            result,
+            node,
+            "processingScope",
+            "Processing",
+            impl->processingScope.scope());
     addEditorParameter(result, node, "enabled", "Enabled", impl->enabled.getToggleState() ? "1" : "0");
     addEditorParameter(result, node, "size", "Size", String(impl->size.slider.getValue(), 8));
     addEditorParameter(result, node, "post", "Post Gain", String(impl->postGain.slider.getValue(), 8));
@@ -593,6 +621,10 @@ void ImpulseResponseEditorComponent::appendEditorAutomation(DynamicObject& state
     state.setProperty("size", impl->size.slider.getValue());
     state.setProperty("postGain", impl->postGain.slider.getValue());
     state.setProperty("highPass", impl->highPass.slider.getValue());
+    state.setProperty("processingScope", impl->processingScope.automationState());
+    state.setProperty(
+            "processingGroup",
+            propertyGroupLabelAutomationState(impl->processingTitle));
     state.setProperty("sizeLayout", propertySliderRowAutomationState(impl->size));
     state.setProperty("postGainLayout", propertySliderRowAutomationState(impl->postGain));
     state.setProperty("highPassLayout", propertySliderRowAutomationState(impl->highPass));

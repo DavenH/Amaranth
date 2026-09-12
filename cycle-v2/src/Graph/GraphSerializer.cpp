@@ -2,6 +2,7 @@
 
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphValidator.h"
+#include "Graph/GlobalAudioGraphRepresentationMigration.h"
 #include "Graph/NodeDefinition.h"
 
 #include "Nodes/Curve/Model/CurveNodeModels.h"
@@ -646,7 +647,17 @@ var GraphSerializer::writeJSON(const NodeGraph& graph) const {
 
 GraphLoadResult GraphSerializer::readJSON(const var& value) const {
     GraphLoadResult result;
-    const auto* root = value.getDynamicObject();
+    var migratedValue = value.clone();
+    const auto representationMigration =
+            GlobalAudioGraphRepresentationMigration().migrate(migratedValue);
+    if (!representationMigration.succeeded()) {
+        result.issues.push_back({
+                GraphLoadCode::UnsupportedVersion,
+                representationMigration.error
+        });
+        return result;
+    }
+    const auto* root = migratedValue.getDynamicObject();
     if (root == nullptr || root->getProperty("format").toString() != formatId) {
         result.issues.push_back({ GraphLoadCode::InvalidSchema, "Root object is not a Cycle V2 graph" });
         return result;
@@ -757,7 +768,8 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         if (node.kind == NodeKind::SpectralLayer && parameters->hasProperty("mode")) {
             const var mode = parameters->getProperty("mode");
             if (!mode.isString()
-                    || (mode.toString() != "additive"
+                    || (mode.toString() != "auto"
+                            && mode.toString() != "additive"
                             && mode.toString() != "multiplicative")) {
                 result.issues.push_back({ GraphLoadCode::InvalidParameter,
                         "Invalid legacy mode on Pan node '" + nodeId + "'" });
@@ -1117,8 +1129,12 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
 }
 
 String GraphSerializer::toJsonString(const NodeGraph& graph) const {
+    return toJsonString(writeJSON(graph));
+}
+
+String GraphSerializer::toJsonString(const var& graphRepresentation) const {
     String result;
-    appendCanonicalJSON(writeJSON(graph), 0, result);
+    appendCanonicalJSON(graphRepresentation, 0, result);
     return result + "\n";
 }
 

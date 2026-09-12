@@ -8,6 +8,7 @@ class NodeCanvasViewport {
 public:
     void setBounds(juce::Rectangle<float> boundsToUse);
     void setTransform(juce::Point<float> panToUse, float zoomToUse);
+    void fit(juce::Rectangle<float> worldBounds, juce::Rectangle<float> screenBounds);
     void panBy(juce::Point<float> delta);
     void zoomAround(juce::Point<float> screenAnchor, float scaleFactor);
 

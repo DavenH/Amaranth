@@ -143,6 +143,12 @@ private:
     AudioModuleRole processorRole {};
 };
 
+class GlobalInputAudioProcessor final : public NodeAudioProcessor {
+public:
+    AudioModuleRole role() const override { return AudioModuleRole::GlobalInput; }
+    void process(AudioProcessContext&) override {}
+};
+
 class OutputAudioProcessor final : public NodeAudioProcessor {
 public:
     AudioModuleRole role() const override { return AudioModuleRole::Output; }
@@ -292,6 +298,10 @@ std::unique_ptr<NodeAudioProcessor> createOutputAudioProcessor() {
 
 std::unique_ptr<NodeAudioProcessor> createGenericAudioProcessor() {
     return std::make_unique<PassthroughAudioProcessor>(AudioModuleRole::GenericProcessor);
+}
+
+std::unique_ptr<NodeAudioProcessor> createGlobalInputAudioProcessor() {
+    return std::make_unique<GlobalInputAudioProcessor>();
 }
 
 std::unique_ptr<NodeAudioProcessor> createVoiceContextAudioProcessor() {

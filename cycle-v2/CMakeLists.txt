@@ -55,7 +55,7 @@ generate_svg_data(
     genericProcessor voiceContext scratchDefaultOverride waveSource imageSource trilinearMesh
     modulationSource modulationTriple
     fft ifft envelope add multiply guideCurve impulseResponse waveshaper
-    spectralLayer unison reverb delay equalizer stereoSplit stereoJoin output
+    spectralLayer unison reverb delay equalizer stereoSplit stereoJoin globalInput output
 )
 
 generate_svg_data(
@@ -99,6 +99,10 @@ list(APPEND APP_SOURCES
 list(REMOVE_DUPLICATES APP_SOURCES)
 
 set(GRAPH_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphMigration.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphRepresentationMigration.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScope.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScopeCompiler.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDelta.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/SharedAudioSamples.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeDefinition.cpp"
@@ -162,6 +166,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EffectEnableButton.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/PropertyControlLookAndFeel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/PropertyControls.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/ProcessingScopeSelector.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/NodePropertyControlBinding.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/VoiceContext/Editor/VoiceContextNodeEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/CanvasPerformanceMetrics.cpp"
@@ -288,6 +293,43 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Waveshaper/WaveshaperSignalProcessor.cpp"
 )
 
+if(BUILD_TESTING)
+    add_executable(CycleV2GraphMigrator
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphMigration.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphRepresentationMigration.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScope.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDomainResolver.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphNodeFactory.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphSerializer.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphValidator.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeDefinition.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraph.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraphEditing.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeParameterMap.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/SharedAudioSamples.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Curve/Model/CurveNodeModels.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Curve/Model/FlatCurveMeshState.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopeMeshState.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopePurpose.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideHeatmapAsset.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Model/TrimeshMeshFactory.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Model/TrimeshMeshState.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Unison/UnisonNode.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/GraphMigrationMain.cpp"
+    )
+    target_compile_definitions(CycleV2GraphMigrator PRIVATE
+        JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/incl/JucePluginDefines.h"
+    )
+    target_include_directories(CycleV2GraphMigrator PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${SVG_DATA_DIR}
+        ${JUCE_MODULES_DIR}
+        ${IPP_DIR}/include/ipp
+    )
+    target_link_libraries(CycleV2GraphMigrator PRIVATE AmaranthLib)
+endif()
+
 set(BASE_DEFINITIONS
     JUCE_PROJUCER_VERSION=0x80004
     JUCE_MODAL_LOOPS_PERMITTED=1
@@ -348,6 +390,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/OfflineAudioCaptureAutomation.cpp"
             ${TEST_SOURCES}
         )
+        add_dependencies(${PROJECT_NAME}_tests CycleV2GraphMigrator)
 
         target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
             BUILD_TESTING=1

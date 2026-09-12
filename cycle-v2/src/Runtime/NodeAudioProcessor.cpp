@@ -45,6 +45,7 @@ std::unique_ptr<NodeAudioProcessor> NodeAudioProcessorFactory::create(AudioModul
             { AudioModuleRole::Multiply, createMultiplyAudioProcessor },
             { AudioModuleRole::StereoJoin, createStereoJoinAudioProcessor },
             { AudioModuleRole::StereoSplit, createStereoSplitAudioProcessor },
+            { AudioModuleRole::GlobalInput, createGlobalInputAudioProcessor },
             { AudioModuleRole::Output, createOutputAudioProcessor },
             { AudioModuleRole::GenericProcessor, createGenericAudioProcessor },
             { AudioModuleRole::VoiceContext, createVoiceContextAudioProcessor },

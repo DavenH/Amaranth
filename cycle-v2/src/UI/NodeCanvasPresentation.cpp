@@ -406,28 +406,21 @@ Rectangle<float> actionButton(Rectangle<float> nodeBounds, float zoom) {
     });
 }
 
-void paintRuntimeScopeBadge(
+void paintGlobalProcessingIcon(
         Graphics& graphics,
-        Rectangle<float> header,
-        float zoom,
-        const String& label,
-        bool besideAction) {
-    if (label.isEmpty()) {
-        return;
-    }
-
-    const float width = (label == "GLOBAL" ? 49.f : 43.f) * zoom;
-    Rectangle<float> badge(width, 17.f * zoom);
-    badge.setCentre({
-            header.getRight() - (besideAction ? 66.f : 32.f) * zoom,
-            header.getCentreY()
-    });
-    graphics.setColour(CanvasChromePalette::insetBackground.withAlpha(0.9f));
-    graphics.fillRoundedRectangle(badge, 4.f * zoom);
-    graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.9f));
-    graphics.drawRoundedRectangle(badge, 4.f * zoom, jmax(0.75f, zoom));
-    graphics.setFont(FontOptions(9.f * zoom, Font::bold));
-    graphics.drawText(label, badge, Justification::centred, false);
+        Rectangle<float> indicatorBounds,
+        float zoom) {
+    const Rectangle<float> icon = indicatorBounds.withSizeKeepingCentre(
+            16.f * zoom,
+            16.f * zoom);
+    const float stroke = jmax(1.f, 1.25f * zoom);
+    graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.94f));
+    graphics.drawEllipse(icon, stroke);
+    graphics.drawEllipse(icon.reduced(4.25f * zoom, 0.f), stroke);
+    graphics.drawHorizontalLine(
+            roundToInt(icon.getCentreY()),
+            icon.getX() + 1.5f * zoom,
+            icon.getRight() - 1.5f * zoom);
 }
 
 enum class OperationPortLayout {
@@ -619,6 +612,7 @@ NodeCanvasPresentation::NodeCanvasPresentation(
 void NodeCanvasPresentation::paint(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
+    audioScopes = GraphAudioScopeAnalyzer().analyze(frame.graph);
     {
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
@@ -1127,18 +1121,29 @@ UnisonPreviewContext NodeCanvasPresentation::unisonPreviewContextFor(
     return fallback;
 }
 
-String NodeCanvasPresentation::runtimeScopeLabel(
-        const GraphExecutionPlan& plan,
+bool NodeCanvasPresentation::hasGlobalProcessingIndicator(
+        const NodeGraph& graph,
         const String& nodeId) {
-    const auto found = std::find_if(plan.steps.begin(), plan.steps.end(), [&](const auto& step) {
-        return step.nodeId == nodeId;
-    });
-    if (found == plan.steps.end() || found->audioRole == AudioModuleRole::None) {
+    if (graph.findNode(nodeId) == nullptr) {
+        return false;
+    }
+    return GraphAudioScopeAnalyzer().analyze(graph).scopeFor(nodeId)
+            == AuthoredAudioScope::Global;
+}
+
+Rectangle<float> NodeCanvasPresentation::globalProcessingIndicatorBounds(
+        Rectangle<float> header,
+        float zoom,
+        bool besideAction) {
+    if (header.isEmpty() || zoom <= 0.f) {
         return {};
     }
-    return found->ownershipScope == RuntimeOwnershipScope::Global
-            ? "GLOBAL"
-            : "VOICE";
+    Rectangle<float> result(24.f * zoom, 24.f * zoom);
+    result.setCentre({
+            header.getRight() - (besideAction ? 60.f : 20.f) * zoom,
+            header.getCentreY()
+    });
+    return result;
 }
 
 void NodeCanvasPresentation::paintNode(
@@ -1169,12 +1174,6 @@ void NodeCanvasPresentation::paintNode(
                 true,
                 frame.unisonPreviewContext
         });
-        paintRuntimeScopeBadge(
-                graphics,
-                nodeBounds.withHeight(30.f * zoom),
-                zoom,
-                runtimeScopeLabel(frame.compileResult.plan, node.id),
-                false);
     } else {
         Rectangle<float> body = nodeBounds;
         const Rectangle<float> header = body.removeFromTop(42.f * zoom);
@@ -1204,19 +1203,24 @@ void NodeCanvasPresentation::paintNode(
                 || supportsSinglePortLayout(node)
                 || capabilities.outputSideControl;
         const bool reservesHeaderRight = hasAction || node.kind == NodeKind::Envelope;
-        paintRuntimeScopeBadge(
-                graphics,
-                header,
-                zoom,
-                runtimeScopeLabel(frame.compileResult.plan, node.id),
-                reservesHeaderRight);
+        const bool globalProcessing = audioScopes.scopeFor(node.id)
+                == AuthoredAudioScope::Global;
+        if (globalProcessing) {
+            paintGlobalProcessingIcon(
+                    graphics,
+                    globalProcessingIndicatorBounds(header, zoom, reservesHeaderRight),
+                    zoom);
+        }
 
         graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize * zoom));
         graphics.setColour(CanvasChromePalette::text);
+        const float titleRightReservation = globalProcessing
+                ? (reservesHeaderRight ? 65.f : 24.f)
+                : reservesHeaderRight ? 65.f : 0.f;
         graphics.drawText(
                 labelForNodeKind(node.kind),
                 header.reduced(13.f * zoom, 4.f * zoom).withTrimmedRight(
-                        (reservesHeaderRight ? 91.f : 58.f) * zoom),
+                        titleRightReservation * zoom),
                 Justification::centredLeft);
         if (node.kind == NodeKind::Envelope) {
             paintEnvelopePurposeIcon(graphics, node, header, zoom);

@@ -2,12 +2,80 @@
 
 ## Status
 
+In progress on 2026-09-12. The authored node/capability schema, required
+singleton edit boundaries, explicit scope validation/partitioning, and Global
+Input runtime binding are implemented. The three selectable-effect editors
+publish processing scope through the command service, retain invalid cables,
+support stepwise repair, and undo each semantic edit. Canvas presentation uses
+one compact global-only semantic icon, including authored invalid states, and
+reserves no scope space for voice nodes. One atomic representation migration is
+shared by native V2 loading, the Cycle 1 converter, and the default graph; all
+230 bundled presets are migrated, validate, compile, and serialize idempotently.
+The compiler and audio executor contain only the explicit Global Input boundary
+path. Initial document fitting reserves 40 screen pixels and excludes the
+production utility docks.
+
+Production-size evidence was captured for the default graph, the long Icycle
+preset, both Waveshaper processing modes, and retained error cables. The focused
+automation reports and screenshots are `/tmp/cycle-v2-global-default-*`,
+`/tmp/cycle-v2-global-long-*`, `/tmp/cycle-v2-global-mode-*`, and
+`/tmp/cycle-v2-voice-error-*`; each automation command succeeded and the
+filtered logs contained no warning, assertion, or crash. The final disjoint
+layout evidence is `/tmp/cycle-v2-voice-output.png`; its filtered log contains
+only the JUCE version banner.
+
+The completion pass addressed the former inferred voice terminal by adding a
+required passive `Voice Output` sink. Its input is the sole voice-mix
+boundary, while the existing gain-and-meter `Output` remains the required
+global sink. This preserves Cycle 1's post-effect preset gain and truthful
+final-output metering while making both disjoint graphs explicit and stackable.
+
+Production review of Icycle exposed two migration artifacts. The Cycle 1
+converter misread an Envelope layer's `dynamic=false` as a requirement to pin
+its red/blue morph inputs with a synthetic Constant Modulation node. That flag
+concerns the time/yellow dimension, which Cycle V2 Envelope does not expose;
+red/blue remain ordinary Voice Context modulation. The converter and affected
+presets must therefore delete the synthetic node and cables without replacing
+them or changing Envelope red/blue values. Separately, repacking a linear
+global chain must clear its audio-edge port-side overrides so definition-owned
+left-input/right-output routing produces direct horizontal cables. Branching
+global topology retains authored side overrides.
+
+The corrected Icycle production capture is
+`/tmp/cycle-v2-icycle-routing-fixed.png`. It contains no synthetic modulation
+source, shows one compact horizontal global chain, and loads with zero
+validation issues. Its focused automation report and filtered log are
+`/tmp/cycle-v2-icycle-routing-fixed-report.json` and
+`/tmp/cycle-v2-icycle-routing-fixed-logs.txt`; both commands succeeded and the
+log contains no warning, assertion, error, or crash.
+
+The graph architecture and presentation criteria are complete. Correcting the
+Envelope import semantics invalidated earlier Icycle and Guitar 3 G parity
+evidence; their new diagnostic measurements are recorded in `audio-bugs.md`.
+This TDD remains in progress until the affected parity gap is resolved or the
+completion criterion is explicitly revised.
+
 Proposed on 2026-09-11. This TDD supersedes the temporary per-node `VOICE` and
 `GLOBAL` text badges added during Cycle 1 audio-parity work. It does not change
 DSP algorithms. It makes the existing voice-mix/global-processing boundary an
 authored graph and UI concept.
 
 ## Decision
+
+The two authored graphs have independent source-to-sink contracts:
+
+- `Voice Context -> ... -> Voice Output` is the voice-local graph. Voice Output
+  is passive, has no gain or meter, and its input buffer is summed across
+  voices without an authored cross-boundary cable.
+- `Global Input -> ... -> Output` is the global graph. Output retains the
+  preset gain slider and final signal meter; the gain remains after every
+  global effect for Cycle 1 parity.
+
+Every graph requires exactly one Voice Output, Global Input, and Output. The
+compiler must bind the Voice Output input to Global Input rather than searching
+for an unconsumed linked-stereo output. Migration preserves the existing Output
+identity, gain, automation, bounds, and global cable, and adds Voice Output at
+the former implicit voice terminal.
 
 Cycle V2 presents two disjoint audio graphs on one canvas:
 
@@ -21,13 +89,14 @@ Voice-local graph                         Global graph
                                (no authored cable)
 ```
 
-The voice-local graph runs independently for every synth voice. Its one
-terminal time-signal path is mixed across active voices by the runtime. The
+The voice-local graph runs independently for every synth voice and terminates
+at Voice Output. Voice Output's input signal is mixed across active voices by
+the runtime. The
 Global Input node exposes that mixed stereo signal as the root of a separate,
 persistent global graph. There is no authored edge between the two graphs and
 no global signal can re-enter the voice-local graph.
 
-Every canvas contains exactly one Global Input and exactly one Output. The
+Every canvas contains exactly one Voice Output, Global Input, and Output. The
 global graph begins at Global Input and terminates at Output. Reverb and Delay
 are always global. Waveshaper, IR Modeller, and EQ expose an authored Voice /
 Global processing selector. Existing presets migrate every instance of those
@@ -102,8 +171,10 @@ Add a first-class `globalInput` node with these semantics:
 - executable only as the boundary source for the global graph; and
 - supplied from the runtime's existing post-voice mix buffer.
 
-Global Input does not conceal a model edge. The voice-local side must resolve to
-zero or one terminal linked-stereo time-signal output:
+Global Input does not conceal a model edge. Voice Output is a passive,
+voice-only required singleton with one linked-stereo input, no output, no
+parameters, and no meter. It explicitly owns the voice-mix boundary while the
+runtime performs the same preallocated summation as before.
 
 - zero terminals means silence at Global Input, allowing an unfinished canvas;
 - one terminal is the voice signal mixed across active voices; and
@@ -191,13 +262,13 @@ before building executable ownership:
 1. Validate required singleton nodes and fixed/selectable scope capability.
 2. Walk ordinary audio edges outward from Global Input to identify the global
    partition and require that it terminates at Output.
-3. Identify the remaining voice-local partition and resolve its zero or one
-   terminal linked-stereo time output.
+3. Identify the remaining voice-local partition and require every voice audio
+   path to terminate at Voice Output.
 4. Reject cross-partition edges, global re-entry, conflicting neutral-node
-   reachability, fixed-scope violations, and ambiguous voice terminals.
+   reachability, fixed-scope violations, and bypasses around Voice Output.
 5. Compile the voice partition with existing oscillator-region/Unison/voice
    ownership.
-6. Bind the terminal voice buffer to the existing voice mixer and expose that
+6. Bind the Voice Output input buffer to the existing voice mixer and expose that
    post-mix buffer through the Global Input step.
 7. Compile the Global Input-to-Output partition into the existing persistent
    global executor.
@@ -205,8 +276,8 @@ before building executable ownership:
 `RuntimeOwnershipScope` may remain the prepared-plan representation, but it is
 derived from validated authored membership. It is no longer inferred by
 finding the first global effect and promoting everything downstream.
-`voiceMixBufferIndices` becomes the explicit result of the resolved voice
-terminal rather than a scan of local-to-global edges.
+`voiceMixBufferIndices` contains only the compiled Voice Output input rather
+than a scan of unconsumed outputs or local-to-global edges.
 
 Global Input is processed on every host block, including blocks with no active
 voices. It passes silence into the persistent global graph so Delay and Reverb
@@ -292,18 +363,20 @@ idempotent and never reapplies packing.
 
 ## Preset And Graph Migration
 
-The native graph format receives a versioned, one-way representation migration.
-The stable stored format contains Global Input and explicit selectable-effect
-scope; runtime compilation contains no old-format inference adapter.
+The native graph format receives versioned, one-way representation migrations.
+Format 5 introduced Global Input and explicit selectable-effect scope. Format
+6 adds Voice Output; runtime compilation contains no old-format inference
+adapter.
 
 For every bundled `.cyclegraph` and every fresh `.cyc` conversion:
 
-1. Add the singleton Global Input if absent.
+1. Add the singleton Voice Output and Global Input if absent.
 2. Mark every Waveshaper, IR Modeller, and EQ instance `global`.
 3. Keep Delay, Reverb, and Output fixed-global.
 4. Classify the old graph with the existing compiler's pre-migration scope
    rules only inside the migration utility.
-5. Remove old voice-to-first-global boundary edges.
+5. Remove old voice-to-first-global boundary edges and connect the former voice
+   terminal to Voice Output.
 6. Connect Global Input to the former first global node, preserving the old
    global effect order and all downstream connections to Output.
 7. If there are no effects, connect Global Input directly to Output.
@@ -338,10 +411,10 @@ excuse to regenerate or normalize unrelated preset content.
 
 ### Graph grammar
 
-- A minimal Voice Context-to-terminal voice graph plus Global Input-to-Output
+- A minimal Voice Context-to-Voice Output graph plus Global Input-to-Output
   global graph validates and renders.
-- Zero voice terminals produces silence; two terminal time paths report
-  `AmbiguousVoiceOutput`.
+- Voice Output is unique, required, non-deletable, and accepts linked stereo.
+- A voice audio path that bypasses Voice Output is rejected.
 - Voice-to-global, global-to-voice, voice-to-Output, and global-to-Voice Context
   cables report endpoint-specific scope errors.
 - Global Input is unique, required, non-deletable, has no input, and emits

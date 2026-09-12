@@ -157,6 +157,22 @@ TEST_CASE("Envelope preparation preserves Cycle purpose resolution",
     REQUIRE(scratch->lowResolution);
 }
 
+TEST_CASE("Envelope preparation fixes time while retaining red and blue morph",
+        "[cycle-v2][runtime][envelope][parity]") {
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration({
+            { "red", "Red", "0.2" },
+            { "blue", "Blue", "0.8" }
+    });
+
+    REQUIRE(configuration != nullptr);
+    REQUIRE(configuration->realtimePlan.request.morph.time.getCurrentValue()
+            == Catch::Approx(0.f));
+    REQUIRE(configuration->realtimePlan.request.morph.red.getCurrentValue()
+            == Catch::Approx(0.2f));
+    REQUIRE(configuration->realtimePlan.request.morph.blue.getCurrentValue()
+            == Catch::Approx(0.8f));
+}
+
 namespace {
 
 std::vector<NodeParameter> curveParameters(std::vector<FlatCurveVertex> vertices) {
