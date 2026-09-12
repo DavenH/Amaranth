@@ -7,8 +7,9 @@ singleton edit boundaries, explicit scope validation/partitioning, and Global
 Input runtime binding are implemented. The three selectable-effect editors now
 publish processing scope through the command service, retain invalid cables,
 support stepwise repair, and undo each semantic edit. The legacy compiler path
-remains only until migration lands. Presentation, migration/layout, and preset
-conversion remain.
+remains only until migration lands. Canvas presentation now uses one compact
+global-only semantic icon, including authored invalid states, and reserves no
+scope space for voice nodes. Migration/layout and preset conversion remain.
 
 Proposed on 2026-09-11. This TDD supersedes the temporary per-node `VOICE` and
 `GLOBAL` text badges added during Cycle 1 audio-parity work. It does not change
