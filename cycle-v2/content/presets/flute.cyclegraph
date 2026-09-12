@@ -239,13 +239,6 @@
             }
         },
         {
-            "id": "staticEnvelopeMorph",
-            "kind": "modulationSource",
-            "definitionVersion": 1,
-            "position": { "x": 2140.0, "y": 780.0 },
-            "parameters": { "source": "constant", "controller": 1, "constant": 0.0 }
-        },
-        {
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
@@ -418,8 +411,6 @@
     "edges": [
         { "sourceNodeId": "morph", "sourcePortId": "modulation", "destNodeId": "voice", "destPortId": "modulation", "connectionKind": "configurationAttachment", "attachmentType": "modulationTriple" },
         { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "timeLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "staticEnvelopeMorph", "sourcePortId": "value", "destNodeId": "volumeEnvelope1", "destPortId": "red", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "staticEnvelopeMorph", "sourcePortId": "value", "destNodeId": "volumeEnvelope1", "destPortId": "blue", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "timeLayer1", "sourcePortId": "out", "destNodeId": "volumeMultiply", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeEnvelope1", "sourcePortId": "env", "destNodeId": "volumeMultiply", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "impulseResponse", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },

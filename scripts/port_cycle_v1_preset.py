@@ -719,7 +719,6 @@ def convert(source):
 
     envelope_y = {"volume": 120, "pitch": 1050, "scratch": 1280}
     envelope_ids = {}
-    static_envelope_ids = []
     for purpose in ("volume", "pitch", "scratch"):
         for index, layer in enumerate(envelope_layers(preset, purpose), 1):
             if purpose == "pitch" and not layer["properties"]["active"]:
@@ -730,20 +729,6 @@ def convert(source):
                 2450 + 310 * (index - 1), envelope_y[purpose]))
             if layer["properties"]["active"]:
                 envelope_ids[purpose] = envelope_id
-                if not layer["properties"].get("dynamic", False):
-                    static_envelope_ids.append(envelope_id)
-
-    if static_envelope_ids:
-        nodes.append(node("staticEnvelopeMorph", "modulationSource", 2140, 1280, {
-            "source": "constant",
-            "controller": 1,
-            "constant": 0.0,
-        }))
-        for envelope_id in static_envelope_ids:
-            edges.extend([
-                edge("staticEnvelopeMorph", "value", envelope_id, "red"),
-                edge("staticEnvelopeMorph", "value", envelope_id, "blue"),
-            ])
 
     volume_id = envelope_ids.get("volume")
     if volume_id is None and preset["settings"].get("Declick", True):

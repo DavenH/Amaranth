@@ -439,9 +439,6 @@
                         { "id": 6, "x": 0.73929, "y": 0.87908, "curve": 0.09808 }
                     ]
                 }
-            },
-            "portSides": {
-                "outputs": { "time": "bottom" }
             }
         },
         {
@@ -1423,13 +1420,6 @@
             }
         },
         {
-            "id": "staticEnvelopeMorph",
-            "kind": "modulationSource",
-            "definitionVersion": 1,
-            "position": { "x": 2140.0, "y": 1013.0 },
-            "parameters": { "source": "constant", "controller": 1, "constant": 0.0 }
-        },
-        {
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
@@ -1519,10 +1509,6 @@
                         { "id": 66, "x": 0.53875, "y": 1.0, "curve": 0.0 }
                     ]
                 }
-            },
-            "portSides": {
-                "inputs": { "time": "top" },
-                "outputs": { "time": "bottom" }
             }
         },
         {
@@ -1530,11 +1516,7 @@
             "kind": "delay",
             "definitionVersion": 1,
             "position": { "x": 986.17242, "y": 1386.0 },
-            "parameters": { "enabled": true, "time": 0.748, "feedback": 0.548, "spinIters": 0.624, "spin": 1.0, "wet": 1.0 },
-            "portSides": {
-                "inputs": { "time": "top" },
-                "outputs": { "time": "bottom" }
-            }
+            "parameters": { "enabled": true, "time": 0.748, "feedback": 0.548, "spinIters": 0.624, "spin": 1.0, "wet": 1.0 }
         },
         {
             "id": "output",
@@ -1739,12 +1721,6 @@
         { "sourceNodeId": "phaseOp1", "sourcePortId": "out", "destNodeId": "phaseOp2", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "phaseLayer2Process", "sourcePortId": "out", "destNodeId": "phaseOp2", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "phaseOp2", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "staticEnvelopeMorph", "sourcePortId": "value", "destNodeId": "volumeEnvelope1", "destPortId": "red", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "staticEnvelopeMorph", "sourcePortId": "value", "destNodeId": "volumeEnvelope1", "destPortId": "blue", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "staticEnvelopeMorph", "sourcePortId": "value", "destNodeId": "pitchEnvelope1", "destPortId": "red", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "staticEnvelopeMorph", "sourcePortId": "value", "destNodeId": "pitchEnvelope1", "destPortId": "blue", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "staticEnvelopeMorph", "sourcePortId": "value", "destNodeId": "scratchEnvelope1", "destPortId": "red", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "staticEnvelopeMorph", "sourcePortId": "value", "destNodeId": "scratchEnvelope1", "destPortId": "blue", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "volumeMultiply", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeEnvelope1", "sourcePortId": "env", "destNodeId": "volumeMultiply", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "waveshaper", "sourcePortId": "time", "destNodeId": "impulseResponse", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },

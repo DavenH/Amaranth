@@ -272,8 +272,83 @@ std::vector<String> topologicalOrder(
     return result;
 }
 
+bool hasLinearGlobalTopology(
+        const Array<var>& edges,
+        const StringSet& globalIds) {
+    std::unordered_map<String, int, StringHash> inputCounts;
+    std::unordered_map<String, int, StringHash> outputCounts;
+    for (const auto& encoded : edges) {
+        const auto* edge = encoded.getDynamicObject();
+        if (edge == nullptr || !isSignalEdge(*edge)) {
+            continue;
+        }
+        const String source = edge->getProperty("sourceNodeId").toString();
+        const String destination = edge->getProperty("destNodeId").toString();
+        if (globalIds.find(source) == globalIds.end()
+                || globalIds.find(destination) == globalIds.end()) {
+            continue;
+        }
+        if (++outputCounts[source] > 1 || ++inputCounts[destination] > 1) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void removePortSideOverride(
+        DynamicObject& node,
+        const Identifier& group,
+        const String& portId) {
+    auto* sides = node.getProperty("portSides").getDynamicObject();
+    auto* ports = sides != nullptr ? sides->getProperty(group).getDynamicObject() : nullptr;
+    if (ports == nullptr) {
+        return;
+    }
+    ports->removeProperty(portId);
+    if (ports->getProperties().size() == 0) {
+        sides->removeProperty(group);
+    }
+    if (sides->getProperties().size() == 0) {
+        node.removeProperty("portSides");
+    }
+}
+
+void normalizeLinearGlobalPortSides(
+        Array<var>& nodes,
+        const Array<var>& edges,
+        const StringSet& globalIds) {
+    if (!hasLinearGlobalTopology(edges, globalIds)) {
+        return;
+    }
+    for (const auto& encoded : edges) {
+        const auto* edge = encoded.getDynamicObject();
+        if (edge == nullptr || !isSignalEdge(*edge)) {
+            continue;
+        }
+        const String sourceId = edge->getProperty("sourceNodeId").toString();
+        const String destinationId = edge->getProperty("destNodeId").toString();
+        if (globalIds.find(sourceId) == globalIds.end()
+                || globalIds.find(destinationId) == globalIds.end()) {
+            continue;
+        }
+        if (auto* source = nodeWithId(nodes, sourceId)) {
+            removePortSideOverride(
+                    *source,
+                    "outputs",
+                    edge->getProperty("sourcePortId").toString());
+        }
+        if (auto* destination = nodeWithId(nodes, destinationId)) {
+            removePortSideOverride(
+                    *destination,
+                    "inputs",
+                    edge->getProperty("destPortId").toString());
+        }
+    }
+}
+
 void applyGlobalLayout(
         Array<var>& nodes,
+        const Array<var>& edges,
         const StringSet& globalIds,
         const std::vector<String>& order) {
     Rectangle<float> voice;
@@ -311,6 +386,7 @@ void applyGlobalLayout(
         x += bounds.getWidth() + GlobalAudioGraphMigration::nodeClearance;
         rowHeight = jmax(rowHeight, bounds.getHeight());
     }
+    normalizeLinearGlobalPortSides(nodes, edges, globalIds);
 }
 
 var globalInputNode() {
@@ -562,7 +638,7 @@ GlobalAudioGraphRepresentationMigration::migrate(var& graph) const {
         result.error = "Legacy global audio graph is cyclic or disconnected";
         return result;
     }
-    applyGlobalLayout(*nodes, globalIds, order);
+    applyGlobalLayout(*nodes, *edges, globalIds, order);
     root->setProperty("formatVersion", 5);
     graph = std::move(candidate);
     auto voiceMigration = migrate(graph);

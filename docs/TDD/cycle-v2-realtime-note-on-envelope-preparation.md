@@ -60,12 +60,12 @@ that result can be serviced and adopted. A note whose key or velocity changes
 its envelope cross-section therefore emits initial audio from the authored
 base morph.
 
-Guitar 3 G demonstrates the discrepancy. At MIDI 48/frame zero, Cycle 1's
-static scratch envelope begins at its legacy 0/0 cross-section with coordinate
-`0.00553`, while Cycle V2 begins at `0.22683` from the imported 0.5/0.5
-preparation. The converter now represents that static legacy ownership with
-explicit constant inputs; dynamic Cycle V2 envelopes use the routed note-on
-path specified here. Delaying the note until the requested result is
+Guitar 3 G originally appeared to demonstrate a static-envelope discrepancy,
+but the `dynamic=false` flag concerns the time/yellow dimension. Cycle V2
+Envelope has no time/yellow modulation port and already fixes that coordinate
+to zero during preparation. Its red/blue inputs remain routed normally; the
+converter must not replace them with explicit constants. Delaying a note until
+the requested result is
 ready would make scheduling latency dependent on worker timing and is outside
 the product contract.
 
@@ -342,11 +342,9 @@ nanoseconds, and capacity high-water marks.
 Focused evidence covers byte-identical mature-host/realtime intercepts,
 curves, loop metadata, and waveform samples; capacity rejection; exact
 nonzero-offset activation; independently authored input fallback; voice-state
-isolation; zero callback allocations and mutex acquisitions; and Guitar 3 G's
-frame-zero `0.00553` point. The canonical Cycle 1 export also established that
-Guitar 3 G's volume and scratch layers are `dynamic=false`; the converter now
-pins those legacy static envelopes to 0/0 explicitly instead of accidentally
-feeding the graph-wide modulation triple. A fresh MIDI 48 paired capture is
-byte-identical through both frame-zero magnitude rasters and effective morph
-triples; it attributes the next discrepancy to a uniform `1.087450` gain
-difference in spectral range shaping.
+isolation; and zero callback allocations and mutex acquisitions. The earlier
+Guitar 3 G result attributed `dynamic=false` to red/blue morph pinning and is
+superseded: Envelope fixes only its non-grammatical time/yellow coordinate to
+zero and continues to consume red/blue modulation. Audio-parity measurements
+depending on the synthetic 0/0 red/blue inputs were repeated and exposed an
+open mismatch recorded in `audio-bugs.md`.

@@ -43,12 +43,26 @@ bool hasEdge(
     });
 }
 
+DynamicObject* encodedNode(var& graph, const String& nodeId) {
+    auto* nodes = graph.getProperty("nodes", {}).getArray();
+    if (nodes == nullptr) {
+        return nullptr;
+    }
+    const auto found = std::find_if(nodes->begin(), nodes->end(), [&](const var& encoded) {
+        return encoded.getProperty("id", {}).toString() == nodeId;
+    });
+    return found != nodes->end() ? found->getDynamicObject() : nullptr;
+}
+
 }
 
 TEST_CASE("Global audio migration preserves voice layout and packs one explicit lane",
         "[cycle-v2][graph][global-audio-migration]") {
     NodeGraph graph = legacyEffectGraph();
     const Rectangle<float> voiceBounds = graph.findNode("voice")->bounds;
+    graph.findNodeForEditing("shape")->outputs.front().side = PortSide::Bottom;
+    graph.findNodeForEditing("delay")->inputs.front().side = PortSide::Top;
+    graph.findNodeForEditing("delay")->outputs.front().side = PortSide::Bottom;
 
     const auto migration = GlobalAudioGraphMigration().migrate(graph);
 
@@ -65,6 +79,9 @@ TEST_CASE("Global audio migration preserves voice layout and packs one explicit 
     REQUIRE_FALSE(hasEdge(graph, "voice", "shape"));
     REQUIRE(hasEdge(graph, "voice", "voiceOutput"));
     REQUIRE(hasEdge(graph, "globalInput", "shape"));
+    REQUIRE(graph.findNode("shape")->outputs.front().side == PortSide::Right);
+    REQUIRE(graph.findNode("delay")->inputs.front().side == PortSide::Left);
+    REQUIRE(graph.findNode("delay")->outputs.front().side == PortSide::Right);
     REQUIRE(graph.findNode("globalInput")->bounds.getY()
             >= voiceBounds.getBottom() + GlobalAudioGraphMigration::laneGap);
 
@@ -134,6 +151,30 @@ TEST_CASE("Format five graphs gain one explicit voice terminal",
     REQUIRE(loaded.succeeded());
     REQUIRE(loaded.graph.findNode("voiceOutput") != nullptr);
     REQUIRE(hasEdge(loaded.graph, "voice", "voiceOutput") == expectsVoiceConnection);
+}
+
+TEST_CASE("Global migration retains authored routing for a branching graph",
+        "[cycle-v2][graph][global-audio-migration][layout]") {
+    NodeGraph graph = legacyEffectGraph();
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Reverb, "reverb", {}));
+    graph.addEdge({
+            "shape", "time", "reverb", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.findNodeForEditing("shape")->outputs.front().side = PortSide::Bottom;
+    GraphSerializer serializer;
+    var encoded = serializer.writeJSON(graph);
+    encoded.getDynamicObject()->setProperty("formatVersion", 4);
+
+    const auto migration = GlobalAudioGraphRepresentationMigration().migrate(encoded);
+    const auto* shape = encodedNode(encoded, "shape");
+
+    REQUIRE(migration.succeeded());
+    REQUIRE(shape != nullptr);
+    REQUIRE(shape->getProperty("portSides")
+            .getProperty("outputs", {})
+            .getProperty("time", {})
+            .toString() == "bottom");
 }
 
 TEST_CASE("Ambiguous legacy boundaries are rejected without partial mutation",
