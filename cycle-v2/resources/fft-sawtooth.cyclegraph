@@ -1,6 +1,6 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 4,
+    "formatVersion": 6,
     "nodes": [
         {
             "id": "voice",
@@ -100,8 +100,22 @@
             "id": "out",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 1444.48279, "y": 0.0 },
+            "position": { "x": 108.68965, "y": 365.0 },
             "parameters": { "gain": 0.5 }
+        },
+        {
+            "id": "globalInput",
+            "kind": "globalInput",
+            "definitionVersion": 1,
+            "position": { "x": -129.31035, "y": 365.0 },
+            "parameters": {}
+        },
+        {
+            "id": "voiceOutput",
+            "kind": "voiceOutput",
+            "definitionVersion": 1,
+            "position": { "x": 1413.58618, "y": 0.0 },
+            "parameters": {}
         }
     ],
     "guides": [],
@@ -112,7 +126,8 @@
         { "sourceNodeId": "saw", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "fft", "sourcePortId": "mag", "destNodeId": "ifft", "destPortId": "mag", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "fft", "sourcePortId": "phase", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "out", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
+        { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "out", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": [
         {

@@ -710,6 +710,7 @@ TEST_CASE("Explicit global audio graph accepts zero or one voice terminal",
         "[cycle-v2][graph][audio-scope]") {
     GraphNodeFactory factory;
     NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
     graph.addEdge({
@@ -720,6 +721,7 @@ TEST_CASE("Explicit global audio graph accepts zero or one voice terminal",
     REQUIRE(GraphValidator().isValid(graph));
 
     graph.addNode(factory.createNode(NodeKind::GenericProcessor, "voiceTerminal", {}));
+    graph.addEdge({ "voiceTerminal", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     REQUIRE(GraphValidator().isValid(graph));
 
     graph.addNode(factory.createNode(NodeKind::GenericProcessor, "otherTerminal", {}));
@@ -736,6 +738,7 @@ TEST_CASE("Explicit global audio graph rejects cross-scope signal edges",
         "[cycle-v2][graph][audio-scope]") {
     GraphNodeFactory factory;
     NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
@@ -744,6 +747,7 @@ TEST_CASE("Explicit global audio graph rejects cross-scope signal edges",
             "globalIn", "time", "out", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
+    graph.addEdge({ "wave", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     const Edge voiceToGlobal {
             "wave", "out", "out", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
@@ -776,6 +780,7 @@ TEST_CASE("Neutral routing cannot participate in both audio partitions",
         "[cycle-v2][graph][audio-scope]") {
     GraphNodeFactory factory;
     NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
     graph.addNode(factory.createNode(NodeKind::GenericProcessor, "route", {}));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
@@ -807,6 +812,7 @@ TEST_CASE("Every explicit global node belongs to the Global Input to Output path
         "[cycle-v2][graph][audio-scope]") {
     GraphNodeFactory factory;
     NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));

@@ -53,6 +53,7 @@ enum class NodeKind {
     Equalizer,
     StereoSplit,
     StereoJoin,
+    VoiceOutput,
     GlobalInput,
     Output
 };

@@ -237,7 +237,7 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
 
         const Node& node = graph.getNodes()[static_cast<size_t>(nodeIndex)];
         const auto descriptor = moduleRegistry.descriptorFor(node.kind);
-        if (!descriptor.executable) {
+        if (!descriptor.executable && node.kind != NodeKind::VoiceOutput) {
             continue;
         }
         if (node.kind == NodeKind::ModulationTriple

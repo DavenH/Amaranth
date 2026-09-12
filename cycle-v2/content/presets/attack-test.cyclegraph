@@ -1,6 +1,6 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 5,
+    "formatVersion": 6,
     "nodes": [
         {
             "id": "voice",
@@ -276,6 +276,13 @@
             "kind": "globalInput",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 751.0 },
+            "parameters": {}
+        },
+        {
+            "id": "voiceOutput",
+            "kind": "voiceOutput",
+            "definitionVersion": 1,
+            "position": { "x": 48.0, "y": 0.0 },
             "parameters": {}
         }
     ],

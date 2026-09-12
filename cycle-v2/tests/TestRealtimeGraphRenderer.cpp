@@ -171,12 +171,14 @@ TEST_CASE("Realtime renderer supplies the mixed voice terminal through Global In
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "voiceTerminal", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "boundary", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
     graph.addEdge({
             "boundary", "time", "out", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
+    graph.addEdge({ "voiceTerminal", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
 
@@ -302,7 +304,7 @@ TEST_CASE("Realtime graph renderer stops immediately without a volume envelope",
     graph.removeNode("env");
     graph.removeNode("multiply");
     graph.addEdge({
-            "ifft", "time", "out", "time",
+            "ifft", "time", "voiceOutput", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
     const auto compiled = GraphCompiler().compile(graph);
@@ -337,6 +339,10 @@ TEST_CASE("Global delay continues after its source voice retires",
     NodeGraph graph = NodeGraph::createDemoGraph();
     graph.removeNode("env");
     graph.removeNode("multiply");
+    graph.addEdge({
+            "ifft", "time", "voiceOutput", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
     GraphNodeFactory factory;
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
     graph.replaceNodeParameters("delay", {

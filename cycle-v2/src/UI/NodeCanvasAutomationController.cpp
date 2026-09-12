@@ -251,6 +251,8 @@ std::optional<NodeKind> NodeCanvasAutomationController::parseNodeKind(const Stri
         { "split", NodeKind::StereoSplit },
         { "stereoJoin", NodeKind::StereoJoin },
         { "join", NodeKind::StereoJoin },
+        { "voiceOutput", NodeKind::VoiceOutput },
+        { "voiceOut", NodeKind::VoiceOutput },
         { "globalInput", NodeKind::GlobalInput },
         { "globalIn", NodeKind::GlobalInput },
         { "output", NodeKind::Output },

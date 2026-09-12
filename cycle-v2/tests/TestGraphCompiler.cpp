@@ -964,6 +964,7 @@ TEST_CASE("Compiler derives neutral global processing from Global Input",
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalInput", {}));
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
     graph.addNode(factory.createNode(
@@ -971,6 +972,7 @@ TEST_CASE("Compiler derives neutral global processing from Global Input",
             "downstream",
             {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({ "wave", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({
             "globalInput", "time", "delay", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
@@ -1006,10 +1008,12 @@ TEST_CASE("Compiler derives runtime ownership from the authored global graph",
     GraphEditor editor;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::GenericProcessor, "voiceTerminal", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "boundary", {}));
     graph.addNode(factory.createNode(NodeKind::Waveshaper, "shaper", {}));
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({ "voiceTerminal", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     REQUIRE(editor.setNodeParameter(
             graph,
             "shaper",

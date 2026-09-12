@@ -1,6 +1,6 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 5,
+    "formatVersion": 6,
     "nodes": [
         {
             "id": "voice",
@@ -500,6 +500,13 @@
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 1676.0 },
             "parameters": {}
+        },
+        {
+            "id": "voiceOutput",
+            "kind": "voiceOutput",
+            "definitionVersion": 1,
+            "position": { "x": 1264.0, "y": 619.0 },
+            "parameters": {}
         }
     ],
     "guides": [],
@@ -516,7 +523,8 @@
         { "sourceNodeId": "delay", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "magnitudeLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "phaseLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
+        { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": []
 }

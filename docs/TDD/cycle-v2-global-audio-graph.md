@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress on 2026-09-12. The authored node/capability schema, required
+Implemented on 2026-09-12. The authored node/capability schema, required
 singleton edit boundaries, explicit scope validation/partitioning, and Global
 Input runtime binding are implemented. The three selectable-effect editors
 publish processing scope through the command service, retain invalid cables,
@@ -20,11 +20,12 @@ preset, both Waveshaper processing modes, and retained error cables. The focused
 automation reports and screenshots are `/tmp/cycle-v2-global-default-*`,
 `/tmp/cycle-v2-global-long-*`, `/tmp/cycle-v2-global-mode-*`, and
 `/tmp/cycle-v2-voice-error-*`; each automation command succeeded and the
-filtered logs contained no warning, assertion, or crash.
+filtered logs contained no warning, assertion, or crash. The final disjoint
+layout evidence is `/tmp/cycle-v2-voice-output.png`; its filtered log contains
+only the JUCE version banner.
 
-The completion pass identified one remaining semantic gap: the voice graph's
-terminal is inferred from an unconsumed stereo output. The revised end state
-adds a required passive `Voice Output` sink. Its input is the sole voice-mix
+The completion pass addressed the former inferred voice terminal by adding a
+required passive `Voice Output` sink. Its input is the sole voice-mix
 boundary, while the existing gain-and-meter `Output` remains the required
 global sink. This preserves Cycle 1's post-effect preset gain and truthful
 final-output metering while making both disjoint graphs explicit and stackable.

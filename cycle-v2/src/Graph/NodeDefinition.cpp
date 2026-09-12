@@ -669,6 +669,13 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .domainNeutralProcessing()
                     .runtime(AudioModuleRole::StereoJoin, PreviewModuleRole::None)
                     .finish(),
+            buildDefinition(definition("voiceOutput", NodeKind::VoiceOutput, "Voice Output", "voice mix", "voiceOut",
+                    { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}))
+                    .help("Terminates each voice before the signals are mixed for global processing.")
+                    .requiredSingleton()
+                    .disablePreview()
+                    .presentation({}, { 190.f, 76.f })
+                    .finish(),
             buildDefinition(definition("globalInput", NodeKind::GlobalInput, "Global Input", "voice mix", "globalIn", {},
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }))
                     .help("Supplies the mixed stereo voice signal to global processing.")

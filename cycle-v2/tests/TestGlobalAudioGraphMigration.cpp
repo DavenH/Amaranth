@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "Graph/GlobalAudioGraphMigration.h"
+#include "Graph/GlobalAudioGraphRepresentationMigration.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
@@ -57,10 +58,12 @@ TEST_CASE("Global audio migration preserves voice layout and packs one explicit 
             == std::vector<String> { "globalInput", "shape", "delay", "out" });
     REQUIRE(graph.findNode("voice")->bounds == voiceBounds);
     REQUIRE(graph.findNode("globalInput") != nullptr);
+    REQUIRE(graph.findNode("voiceOutput") != nullptr);
     REQUIRE(NodeParameterMap(*graph.findNode("shape")).stringValue(
             "processingScope",
             {}) == "global");
     REQUIRE_FALSE(hasEdge(graph, "voice", "shape"));
+    REQUIRE(hasEdge(graph, "voice", "voiceOutput"));
     REQUIRE(hasEdge(graph, "globalInput", "shape"));
     REQUIRE(graph.findNode("globalInput")->bounds.getY()
             >= voiceBounds.getBottom() + GlobalAudioGraphMigration::laneGap);
@@ -90,11 +93,47 @@ TEST_CASE("Format four graphs migrate atomically to the explicit audio graph",
 
     REQUIRE(loaded.succeeded());
     REQUIRE(loaded.graph.findNode("globalInput") != nullptr);
+    REQUIRE(loaded.graph.findNode("voiceOutput") != nullptr);
     REQUIRE(hasEdge(loaded.graph, "globalInput", "shape"));
     REQUIRE_FALSE(hasEdge(loaded.graph, "voice", "shape"));
+    REQUIRE(hasEdge(loaded.graph, "voice", "voiceOutput"));
     REQUIRE(GraphCompiler().compile(loaded.graph).succeeded());
     REQUIRE((int) serializer.writeJSON(loaded.graph).getProperty("formatVersion", {})
             == GraphSerializer::currentFormatVersion);
+}
+
+TEST_CASE("Format five graphs gain one explicit voice terminal",
+        "[cycle-v2][graph][global-audio-migration][serialization]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalInput", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", { 320.f, 240.f }));
+    graph.addEdge({
+            "globalInput", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+
+    bool expectsVoiceConnection {};
+    SECTION("a unique voice terminal is connected") {
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "voice", { 80.f, 40.f }));
+        expectsVoiceConnection = true;
+    }
+    SECTION("a silent graph leaves the voice sink disconnected") {
+        expectsVoiceConnection = false;
+    }
+
+    GraphSerializer serializer;
+    var encoded = serializer.writeJSON(graph);
+    encoded.getDynamicObject()->setProperty("formatVersion", 5);
+
+    const auto migration = GlobalAudioGraphRepresentationMigration().migrate(encoded);
+    const auto loaded = serializer.readJSON(encoded);
+
+    REQUIRE(migration.succeeded());
+    REQUIRE(migration.migrated);
+    REQUIRE(loaded.succeeded());
+    REQUIRE(loaded.graph.findNode("voiceOutput") != nullptr);
+    REQUIRE(hasEdge(loaded.graph, "voice", "voiceOutput") == expectsVoiceConnection);
 }
 
 TEST_CASE("Ambiguous legacy boundaries are rejected without partial mutation",

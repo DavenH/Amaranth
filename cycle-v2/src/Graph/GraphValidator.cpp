@@ -465,13 +465,24 @@ void GraphValidator::validateAudioScopes(
         const GraphAudioScopeAnalysis& analysis,
         std::vector<GraphValidationIssue>& issues) const {
     std::vector<String> globalInputIds;
+    std::vector<String> voiceOutputIds;
     std::vector<String> outputIds;
     for (const auto& node : graph.getNodes()) {
-        if (node.kind == NodeKind::GlobalInput) {
+        if (node.kind == NodeKind::VoiceOutput) {
+            voiceOutputIds.push_back(node.id);
+        } else if (node.kind == NodeKind::GlobalInput) {
             globalInputIds.push_back(node.id);
         } else if (node.kind == NodeKind::Output) {
             outputIds.push_back(node.id);
         }
+    }
+    if (voiceOutputIds.size() != 1) {
+        addIssue(
+                issues,
+                voiceOutputIds.empty()
+                        ? GraphValidationCode::MissingRequiredNode
+                        : GraphValidationCode::DuplicateSingletonNode,
+                "Audio graph requires exactly one Voice Output");
     }
     if (globalInputIds.size() != 1) {
         addIssue(
@@ -496,7 +507,9 @@ void GraphValidator::validateAudioScopes(
                 GraphValidationCode::ConflictingProcessingScope,
                 "Routing node participates in both voice and global graphs: " + nodeId);
     }
-    if (globalInputIds.size() != 1 || outputIds.size() != 1) {
+    if (voiceOutputIds.size() != 1
+            || globalInputIds.size() != 1
+            || outputIds.size() != 1) {
         return;
     }
 
@@ -528,7 +541,7 @@ void GraphValidator::validateAudioScopes(
         }
     }
 
-    int terminalCount = 0;
+    int bypassingTerminalCount = 0;
     for (const auto& node : graph.getNodes()) {
         if (analysis.scopeFor(node.id) != AuthoredAudioScope::Voice) {
             continue;
@@ -547,14 +560,23 @@ void GraphValidator::validateAudioScopes(
                                 && analysis.scopeFor(edge.destNodeId)
                                         == AuthoredAudioScope::Voice;
                     });
-            terminalCount += consumedInVoiceGraph ? 0 : 1;
+            const bool feedsVoiceOutput = std::any_of(
+                    graph.getEdges().begin(),
+                    graph.getEdges().end(),
+                    [&](const Edge& edge) {
+                        return !edge.isAttachment()
+                                && edge.sourceNodeId == node.id
+                                && edge.sourcePortId == output.id
+                                && edge.destNodeId == voiceOutputIds.front();
+                    });
+            bypassingTerminalCount += consumedInVoiceGraph || feedsVoiceOutput ? 0 : 1;
         }
     }
-    if (terminalCount > 1) {
+    if (bypassingTerminalCount > 0) {
         addIssue(
                 issues,
                 GraphValidationCode::AmbiguousVoiceOutput,
-                "Voice graph has more than one terminal linked-stereo time output");
+                "Voice audio path does not terminate at Voice Output");
     }
 }
 

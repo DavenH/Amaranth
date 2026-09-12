@@ -73,6 +73,16 @@ DynamicObject* nodeWithId(Array<var>& nodes, const String& nodeId) {
     return nullptr;
 }
 
+const DynamicObject* nodeWithId(const Array<var>& nodes, const String& nodeId) {
+    for (const auto& encoded : nodes) {
+        const auto* node = encoded.getDynamicObject();
+        if (node != nullptr && node->getProperty("id").toString() == nodeId) {
+            return node;
+        }
+    }
+    return nullptr;
+}
+
 String kindForNode(const Array<var>& nodes, const String& nodeId) {
     for (const auto& encoded : nodes) {
         const auto* node = encoded.getDynamicObject();
@@ -324,6 +334,111 @@ var globalInputEdge(const String& destinationNodeId, const String& destinationPo
     return var(edge.release());
 }
 
+var voiceOutputNode(Point<float> position) {
+    auto node = std::make_unique<DynamicObject>();
+    node->setProperty("id", "voiceOutput");
+    node->setProperty("kind", "voiceOutput");
+    node->setProperty("definitionVersion", 1);
+    setPosition(*node, position);
+    node->setProperty("parameters", var(new DynamicObject()));
+    return var(node.release());
+}
+
+var voiceOutputEdge(const String& sourceNodeId, const String& sourcePortId) {
+    auto edge = std::make_unique<DynamicObject>();
+    edge->setProperty("sourceNodeId", sourceNodeId);
+    edge->setProperty("sourcePortId", sourcePortId);
+    edge->setProperty("destNodeId", "voiceOutput");
+    edge->setProperty("destPortId", "time");
+    edge->setProperty("connectionKind", "signal");
+    edge->setProperty("attachmentType", "none");
+    return var(edge.release());
+}
+
+bool outputCarriesLinkedStereoTime(
+        const Array<var>& nodes,
+        const Array<var>& edges,
+        const String& nodeId,
+        const String& portId,
+        StringSet& visited) {
+    if (!visited.emplace(nodeId).second) {
+        return false;
+    }
+    const auto* node = nodeWithId(nodes, nodeId);
+    const auto* definition = node != nullptr
+            ? NodeDefinitionRegistry::instance().find(node->getProperty("kind").toString())
+            : nullptr;
+    if (definition == nullptr) {
+        return false;
+    }
+    const auto output = std::find_if(
+            definition->outputs.begin(),
+            definition->outputs.end(),
+            [&](const Port& candidate) { return candidate.id == portId; });
+    if (output != definition->outputs.end()
+            && output->domain == PortDomain::TimeSignal
+            && output->channelLayout == ChannelLayout::LinkedStereo) {
+        return true;
+    }
+    if (definition->processingCapability != AudioProcessingCapability::DomainNeutral) {
+        return false;
+    }
+    return std::any_of(edges.begin(), edges.end(), [&](const var& value) {
+        const auto* edge = value.getDynamicObject();
+        if (edge == nullptr || !isSignalEdge(*edge)
+                || edge->getProperty("destNodeId").toString() != nodeId) {
+            return false;
+        }
+        StringSet branchVisited = visited;
+        return outputCarriesLinkedStereoTime(
+                nodes,
+                edges,
+                edge->getProperty("sourceNodeId").toString(),
+                edge->getProperty("sourcePortId").toString(),
+                branchVisited);
+    });
+}
+
+std::vector<std::pair<String, String>> voiceTerminals(
+        const Array<var>& nodes,
+        const Array<var>& edges) {
+    std::vector<std::pair<String, String>> terminals;
+    for (const auto& encoded : nodes) {
+        const auto* node = encoded.getDynamicObject();
+        if (node == nullptr) {
+            continue;
+        }
+        const String nodeId = node->getProperty("id").toString();
+        const auto* definition = NodeDefinitionRegistry::instance().find(
+                node->getProperty("kind").toString());
+        if (definition == nullptr
+                || definition->processingCapability == AudioProcessingCapability::GlobalOnly) {
+            continue;
+        }
+        for (const auto& output : definition->outputs) {
+            StringSet visited;
+            if (!outputCarriesLinkedStereoTime(
+                    nodes,
+                    edges,
+                    nodeId,
+                    output.id,
+                    visited)) {
+                continue;
+            }
+            const bool consumed = std::any_of(edges.begin(), edges.end(), [&](const var& value) {
+                const auto* edge = value.getDynamicObject();
+                return edge != nullptr && isSignalEdge(*edge)
+                        && edge->getProperty("sourceNodeId").toString() == nodeId
+                        && edge->getProperty("sourcePortId").toString() == output.id;
+            });
+            if (!consumed) {
+                terminals.push_back({ nodeId, output.id });
+            }
+        }
+    }
+    return terminals;
+}
+
 }
 
 GlobalAudioGraphRepresentationMigrationResult
@@ -336,7 +451,40 @@ GlobalAudioGraphRepresentationMigration::migrate(var& graph) const {
         return result;
     }
     const int version = (int) root->getProperty("formatVersion");
+    if (version == 6) {
+        return result;
+    }
     if (version == 5) {
+        auto* nodes = root->getProperty("nodes").getArray();
+        auto* edges = root->getProperty("edges").getArray();
+        if (nodes == nullptr || edges == nullptr) {
+            result.error = "Graph nodes and edges must be arrays";
+            return result;
+        }
+        if (nodeWithId(*nodes, "voiceOutput") != nullptr) {
+            result.error = "Format 5 graph already uses the reserved 'voiceOutput' identity";
+            return result;
+        }
+        const auto terminals = voiceTerminals(*nodes, *edges);
+        if (terminals.size() > 1) {
+            result.error = "Graph has multiple possible voice terminals";
+            return result;
+        }
+        const auto terminal = terminals.empty()
+                ? std::pair<String, String> {}
+                : terminals.front();
+        const auto* source = nodeWithId(*nodes, terminal.first);
+        const Rectangle<float> bounds = source != nullptr ? nodeBounds(*source) : Rectangle<float>();
+        nodes->add(voiceOutputNode({
+                bounds.getRight() + GlobalAudioGraphMigration::nodeClearance,
+                bounds.getY()
+        }));
+        if (terminal.first.isNotEmpty()) {
+            edges->add(voiceOutputEdge(terminal.first, terminal.second));
+        }
+        root->setProperty("formatVersion", 6);
+        graph = std::move(candidate);
+        result.migrated = true;
         return result;
     }
     if (version != 4) {
@@ -417,9 +565,9 @@ GlobalAudioGraphRepresentationMigration::migrate(var& graph) const {
     applyGlobalLayout(*nodes, globalIds, order);
     root->setProperty("formatVersion", 5);
     graph = std::move(candidate);
-    result.migrated = true;
-    result.globalNodeIds = order;
-    return result;
+    auto voiceMigration = migrate(graph);
+    voiceMigration.globalNodeIds = order;
+    return voiceMigration;
 }
 
 }

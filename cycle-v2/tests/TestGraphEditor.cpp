@@ -118,12 +118,14 @@ TEST_CASE("Processing scope edits retain cables until explicit repair and undo",
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "global", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
     graph.addEdge({
             "voice", "out", "shape", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
+    graph.addEdge({ "shape", "time", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({
             "global", "time", "out", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
@@ -137,7 +139,7 @@ TEST_CASE("Processing scope edits retain cables until explicit repair and undo",
     REQUIRE(changed.succeeded());
     REQUIRE(changed.changes.parameterImpacts
             == (ParameterImpact::GraphSemantics | ParameterImpact::Presentation));
-    REQUIRE(document.graph().getEdges().size() == 2);
+    REQUIRE(document.graph().getEdges().size() == 3);
     const auto invalidGlobal = GraphCompiler().compile(document.graph());
     REQUIRE_FALSE(invalidGlobal.succeeded());
     REQUIRE(std::any_of(
@@ -149,6 +151,20 @@ TEST_CASE("Processing scope edits retain cables until explicit repair and undo",
                         && issue.destNodeId == "shape";
             }));
 
+    const auto voiceOutputEdge = std::find_if(
+            document.graph().getEdges().begin(),
+            document.graph().getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "shape"
+                        && edge.destNodeId == "voiceOut";
+            });
+    REQUIRE(voiceOutputEdge != document.graph().getEdges().end());
+    REQUIRE(commands.removeEdgeAt((size_t) std::distance(
+            document.graph().getEdges().begin(),
+            voiceOutputEdge)).succeeded());
+    REQUIRE(commands.connect(
+            { "voice", "out", false },
+            { "voiceOut", "time", true }).succeeded());
     REQUIRE(commands.connect(
             { "global", "time", false },
             { "shape", "time", true }).succeeded());
@@ -164,10 +180,14 @@ TEST_CASE("Processing scope edits retain cables until explicit repair and undo",
     REQUIRE(document.undo());
     REQUIRE_FALSE(GraphCompiler().compile(document.graph()).succeeded());
     REQUIRE(document.undo());
+    REQUIRE_FALSE(GraphCompiler().compile(document.graph()).succeeded());
+    REQUIRE(document.undo());
+    REQUIRE_FALSE(GraphCompiler().compile(document.graph()).succeeded());
+    REQUIRE(document.undo());
     REQUIRE(GraphCompiler().compile(document.graph()).succeeded());
     REQUIRE(parameterValueForNode(*document.graph().findNode("shape"), "processingScope")
             == "voice");
-    REQUIRE(document.graph().getEdges().size() == 2);
+    REQUIRE(document.graph().getEdges().size() == 3);
 }
 
 TEST_CASE("Global effect scope can be repaired into the voice graph and undone",
@@ -177,6 +197,7 @@ TEST_CASE("Global effect scope can be repaired into the voice graph and undone",
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "global", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
     REQUIRE(editor.setNodeParameter(
@@ -193,23 +214,32 @@ TEST_CASE("Global effect scope can be repaired into the voice graph and undone",
             "shape", "time", "out", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
+    graph.addEdge({
+            "voice", "out", "voiceOut", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
     REQUIRE(GraphCompiler().compile(graph).succeeded());
 
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     REQUIRE(commands.setNodeParameter(
             "shape", "processingScope", "Processing", "voice").succeeded());
-    REQUIRE(document.graph().getEdges().size() == 2);
+    REQUIRE(document.graph().getEdges().size() == 3);
     REQUIRE_FALSE(GraphCompiler().compile(document.graph()).succeeded());
 
     REQUIRE(commands.connect(
             { "voice", "out", false },
             { "shape", "time", true }).succeeded());
     REQUIRE(commands.connect(
+            { "shape", "time", false },
+            { "voiceOut", "time", true }).succeeded());
+    REQUIRE(commands.connect(
             { "global", "time", false },
             { "out", "time", true }).succeeded());
     REQUIRE(GraphCompiler().compile(document.graph()).succeeded());
 
+    REQUIRE(document.undo());
+    REQUIRE_FALSE(GraphCompiler().compile(document.graph()).succeeded());
     REQUIRE(document.undo());
     REQUIRE_FALSE(GraphCompiler().compile(document.graph()).succeeded());
     REQUIRE(document.undo());

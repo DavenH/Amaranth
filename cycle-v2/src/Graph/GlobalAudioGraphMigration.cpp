@@ -7,13 +7,16 @@ namespace CycleV2 {
 
 GlobalAudioGraphMigrationResult GlobalAudioGraphMigration::migrate(NodeGraph& graph) const {
     GlobalAudioGraphMigrationResult result;
-    if (graph.findNode("globalInput") != nullptr) {
+    if (graph.findNode("voiceOutput") != nullptr
+            && graph.findNode("globalInput") != nullptr) {
         return result;
     }
 
     GraphSerializer serializer;
     var encoded = serializer.writeJSON(graph);
-    encoded.getDynamicObject()->setProperty("formatVersion", 4);
+    encoded.getDynamicObject()->setProperty(
+            "formatVersion",
+            graph.findNode("globalInput") != nullptr ? 5 : 4);
     const auto representationMigration =
             GlobalAudioGraphRepresentationMigration().migrate(encoded);
     if (!representationMigration.succeeded()) {

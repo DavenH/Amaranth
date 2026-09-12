@@ -83,9 +83,18 @@ TEST_CASE("Output owns a unity-default master gain", "[cycle-v2][graph][definiti
 TEST_CASE("Global audio graph nodes expose fixed singleton contracts",
         "[cycle-v2][graph][definitions][audio-scope]") {
     const auto& registry = NodeDefinitionRegistry::instance();
+    const auto* voiceOutput = registry.find(NodeKind::VoiceOutput);
     const auto* globalInput = registry.find(NodeKind::GlobalInput);
     const auto* output = registry.find(NodeKind::Output);
 
+    REQUIRE(voiceOutput != nullptr);
+    REQUIRE(voiceOutput->typeId == "voiceOutput");
+    REQUIRE(voiceOutput->inputs.size() == 1);
+    REQUIRE(voiceOutput->outputs.empty());
+    REQUIRE(voiceOutput->parameters.empty());
+    REQUIRE(voiceOutput->processingCapability == AudioProcessingCapability::VoiceOnly);
+    REQUIRE(voiceOutput->requiredSingleton);
+    REQUIRE_FALSE(voiceOutput->removable);
     REQUIRE(globalInput != nullptr);
     REQUIRE(globalInput->typeId == "globalInput");
     REQUIRE(globalInput->inputs.empty());
@@ -126,19 +135,22 @@ TEST_CASE("Effects declare fixed and selectable processing capabilities",
     }
 }
 
-TEST_CASE("Required global graph nodes cannot be duplicated or removed",
+TEST_CASE("Required audio graph nodes cannot be duplicated or removed",
         "[cycle-v2][graph][editor][audio-scope]") {
     GraphNodeFactory factory;
     GraphEditor editor;
     NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
 
+    REQUIRE_FALSE(editor.addNode(graph, NodeKind::VoiceOutput, {}).succeeded());
     REQUIRE_FALSE(editor.addNode(graph, NodeKind::GlobalInput, {}).succeeded());
     REQUIRE_FALSE(editor.addNode(graph, NodeKind::Output, {}).succeeded());
+    REQUIRE_FALSE(editor.removeNode(graph, "voiceOut").succeeded());
     REQUIRE_FALSE(editor.removeNode(graph, "globalIn").succeeded());
     REQUIRE_FALSE(editor.removeNode(graph, "out").succeeded());
-    REQUIRE(graph.getNodes().size() == 2);
+    REQUIRE(graph.getNodes().size() == 3);
 }
 
 TEST_CASE("Trimesh owns the spectral range parameter", "[cycle-v2][graph][definitions]") {
