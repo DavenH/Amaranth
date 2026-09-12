@@ -712,6 +712,25 @@ TEST_CASE("Bypassed Reverb spectrogram retains its configured response",
     REQUIRE(maximumBrightness > 0.25f);
 }
 
+TEST_CASE("Reverb heatmaps preserve their normalized spectrogram intensity",
+        "[cycle-v2][runtime][effects][reverb][preview][ui]") {
+    NodePreviewResult result {
+            "reverb",
+            PreviewModuleRole::ReverbSpectrogram,
+            { 0.25f, 0.25f, 0.25f, 0.25f }
+    };
+    result.gridColumns = 2;
+    result.gridRows = 2;
+    result.domain = PortDomain::SpectralMagnitudeSignal;
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(
+            result.domain);
+
+    const Image image = NodePreviewRenderer::createRuntimeHeatmapImage(result);
+
+    REQUIRE(image.isValid());
+    REQUIRE(image.getPixelAt(0, 0) == profile.getSurfaceStyle().colourForValue(0.25f));
+}
+
 TEST_CASE("Reverb Width preview follows production stereo mixing",
         "[cycle-v2][runtime][effects][reverb][preview]") {
     const auto render = [](float width) {
@@ -965,6 +984,11 @@ TEST_CASE("Output meter layout gives width to both channels", "[cycle-v2][ui]") 
     const float occupiedFraction = (natural.left.getWidth() + natural.right.getWidth()) / 190.f;
     REQUIRE(occupiedFraction >= 0.56f);
     REQUIRE(natural.faderHitTarget.getWidth() / 190.f <= 0.24f);
+    const Rectangle<float> naturalThumb = OutputMeterPresentation::gainThumbBounds(
+            { 0.f, 0.f, 190.f, 132.f },
+            0.5f);
+    REQUIRE(naturalThumb.getWidth() == Catch::Approx(30.f));
+    REQUIRE(naturalThumb.getHeight() == Catch::Approx(10.5f));
 
     const auto zoomed = OutputMeterPresentation::layout(
             { 0.f, 0.f, 380.f, 264.f },

@@ -35,9 +35,6 @@ public:
         graphics.setFont(FontOptions(10.f).withStyle(
                 getToggleState() ? "Bold" : "Regular"));
         graphics.drawText(label, getLocalBounds(), Justification::centred);
-        if (getToggleState()) {
-            graphics.fillRect(getLocalBounds().removeFromBottom(2).reduced(8, 0));
-        }
         if (hasKeyboardFocus(false)) {
             graphics.setColour(Colour(0xff65b8ff));
             graphics.drawRoundedRectangle(

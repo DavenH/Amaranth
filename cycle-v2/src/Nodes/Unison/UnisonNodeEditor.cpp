@@ -73,9 +73,6 @@ private:
             graphics.setFont(FontOptions(9.f).withStyle(
                     getToggleState() ? "Bold" : "Regular"));
             graphics.drawText(label, getLocalBounds(), Justification::centred);
-            if (getToggleState()) {
-                graphics.fillRect(getLocalBounds().removeFromBottom(2).reduced(5, 0));
-            }
         }
 
     private:

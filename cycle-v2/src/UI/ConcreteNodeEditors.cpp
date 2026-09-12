@@ -158,6 +158,8 @@ public:
         const NodeParameterMap parameters(boundNode);
         state.setProperty("enabled", parameters.boolValue("enabled", true));
         state.setProperty("range", editor->spectralRangeValue());
+        state.setProperty("spectralMode", editor->spectralModeValue());
+        state.setProperty("spectralModeVisible", editor->spectralModeVisible());
         for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
             auto* slider = new DynamicObject();
             slider->setProperty("id", axis);
@@ -292,6 +294,14 @@ private:
                 "enabled",
                 "Enabled",
                 enabled ? 1.f : 0.f);
+    }
+
+    bool setTrimeshSpectralModeValue(const String& mode) override {
+        return commands.setNodeParameterText(
+                nodeId,
+                "spectralMode",
+                "Spectral Mode",
+                mode);
     }
 
     void setTrimeshPrimaryAxisValue(const String& axis) override {

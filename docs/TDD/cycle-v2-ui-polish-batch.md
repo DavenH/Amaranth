@@ -88,3 +88,34 @@ resource preparation, or additional analysis are introduced.
 - The standalone target and focused test target build with `--parallel 10`.
   The relevant focused tests pass. A broad randomized suite run retained
   unrelated graph/Trimesh failures recorded in `ui-bugs.md`.
+
+## Follow-up Correction Slice
+
+The production review identified four corrections to the first batch:
+
+- Voice Context keeps its 440 px width, grows vertically to 300 px, uses a
+  10 px row rhythm, centres landmark labels on a 15 px inset track, and packs
+  readout text from the left edge of the value column.
+- Segmented-control dividers span the full pill height. Selection is conveyed
+  by the filled segment alone; legacy Processing Scope and Unison mode
+  underlines are removed. Spectral Trimesh exposes its existing `spectralMode`
+  parameter through the shared Auto/Add/Multiply selector in the editor header.
+- Reverb retains `ReverbSpectrogramPreviewProcessor` as the authoritative data
+  source. Its already-normalized surface uses the existing spectral grid mapper
+  without the generic magnitude tension curve, while the spectral render
+  profile remains authoritative for the inferno palette. During a transient
+  preview gap, the renderer retains the last authoritative heatmap instead of
+  switching to the qualitative cyan reflection bars.
+- Output meter mapping and hit geometry remain unchanged; only the visible
+  thumb width and height increase by 50 percent.
+
+The Trimesh selector is a discrete `GraphCommandDispatcher` edit through the
+existing editor command service. It adds no graph copies or live gesture path.
+All correction work remains O(1) except the unchanged local Reverb heatmap
+raster product.
+
+The focused Catch regressions and Voice Context, Reverb, Waveshaper, and
+Trimesh automation fixtures pass. Production-size review confirms the centred
+Voice Context landmarks and restored Reverb spectrogram. The Trimesh fixture
+publishes `multiplicative` through the shared selector; the Waveshaper fixture
+confirms the Context and Antialiasing rows share label and selector axes.

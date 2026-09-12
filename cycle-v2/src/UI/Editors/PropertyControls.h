@@ -133,7 +133,10 @@ public:
     void setKeyboardStepper(KeyboardStepper stepper);
     void setValueSnapper(ValueSnapper snapper);
     void setLandmarks(std::vector<Landmark> landmarks);
+    void setTrackEndInset(float inset);
     void setMorphPresentation(juce::Colour accent);
+    float getTrackEndInset() const { return trackEndInset; }
+    juce::Rectangle<float> visibleTrackBounds() const;
     bool keyPressed(const juce::KeyPress& key) override;
     double snapValue(double attemptedValue, DragMode dragMode) override;
     void paint(juce::Graphics& graphics) override;
@@ -147,6 +150,7 @@ private:
     ValueSnapper valueSnapper;
     std::vector<Landmark> landmarks;
     std::optional<juce::Colour> morphAccent;
+    float trackEndInset { PropertyControlMetrics::thumbWidth * 0.5f };
 };
 
 class PropertySliderRow : private juce::Slider::Listener {
@@ -170,6 +174,7 @@ public:
             double fineKeyboardStep,
             const juce::String& help);
     void setCompactLayout(bool shouldUseCompactLayout);
+    void setValueJustification(juce::Justification justification);
     void refreshValueText();
 
     const PropertySliderLayout& currentLayout() const { return layout; }
@@ -193,6 +198,7 @@ private:
     bool invalidValueText {};
     bool syncingValueText {};
     bool forceCompactLayout {};
+    juce::Justification valueJustification { juce::Justification::centredRight };
     ValueFormatter formatter;
     ValueParser parser;
     PropertySliderLayout layout;

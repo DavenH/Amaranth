@@ -241,8 +241,8 @@ void paintPropertySegmentedControl(
                 + bounds.getWidth() * (float) segment / (float) segmentCount;
         graphics.drawVerticalLine(
                 roundToInt(x),
-                bounds.getY() + 3.f,
-                bounds.getBottom() - 3.f);
+                bounds.getY(),
+                bounds.getBottom());
     }
     graphics.setColour(kControlBorder.withAlpha(0.82f));
     graphics.drawRoundedRectangle(
@@ -459,9 +459,24 @@ void PrecisionSlider::setLandmarks(std::vector<Landmark> nextLandmarks) {
     repaint();
 }
 
+void PrecisionSlider::setTrackEndInset(float inset) {
+    trackEndInset = jmax(PropertyControlMetrics::thumbWidth * 0.5f, inset);
+    repaint();
+}
+
 void PrecisionSlider::setMorphPresentation(Colour accent) {
     morphAccent = accent;
     repaint();
+}
+
+Rectangle<float> PrecisionSlider::visibleTrackBounds() const {
+    const Rectangle<float> bounds = getLookAndFeel()
+            .getSliderLayout(const_cast<PrecisionSlider&>(*this))
+            .sliderBounds.toFloat();
+    return bounds
+            .withSizeKeepingCentre(
+                    bounds.getWidth(),
+                    PropertyControlMetrics::visibleTrackHeight);
 }
 
 bool PrecisionSlider::keyPressed(const KeyPress& key) {
@@ -512,7 +527,7 @@ void PrecisionSlider::paint(Graphics& graphics) {
         return;
     }
 
-    const Rectangle<float> track = propertySliderTrackBounds(getLocalBounds().toFloat());
+    const Rectangle<float> track = visibleTrackBounds();
     graphics.setColour(Colour(0xff8793a1).withAlpha(0.72f));
     graphics.setFont(FontOptions(8.f));
     for (const auto& landmark : landmarks) {
@@ -522,11 +537,8 @@ void PrecisionSlider::paint(Graphics& graphics) {
         graphics.fillRect(Rectangle<float>(
                 PropertyControlMetrics::indicatorWidth,
                 3.f).withCentre({ x, track.getY() - 1.5f }));
-        const float labelWidth = 36.f;
-        const float labelX = jlimit(
-                0.f,
-                jmax(0.f, (float) getWidth() - labelWidth),
-                x - labelWidth * 0.5f);
+        const float labelWidth = 30.f;
+        const float labelX = x - labelWidth * 0.5f;
         graphics.drawText(
                 landmark.label,
                 Rectangle<float>(
@@ -573,7 +585,7 @@ PropertySliderRow::PropertySliderRow(Component& owner, const String& labelText) 
     value.setWantsKeyboardFocus(true);
     value.onEditorShow = [this] {
         if (TextEditor* editor = value.getCurrentTextEditor()) {
-            editor->setJustification(Justification::centredRight);
+            editor->setJustification(valueJustification);
             editor->applyFontToAllText(value.getFont());
             editor->setIndents(0, 0);
         }
@@ -614,6 +626,9 @@ void PropertySliderRow::setBounds(
             forceCompactLayout);
     label.setBounds(layout.label);
     slider.setBounds(layout.slider);
+    layout.track = slider.visibleTrackBounds().translated(
+            (float) layout.slider.getX(),
+            (float) layout.slider.getY());
     layoutValueComponents();
     label.setJustificationType(layout.compact
             ? Justification::centredLeft
@@ -623,6 +638,20 @@ void PropertySliderRow::setBounds(
 void PropertySliderRow::layoutValueComponents() {
     Rectangle<int> valueBounds = layout.value;
     const int unitWidth = propertyUnitWidth(unit.getText(), valueBounds.getWidth());
+    if (valueJustification == Justification::centredLeft) {
+        value.setBounds(valueBounds);
+        if (unitWidth > 0) {
+            const int numberWidth = roundToInt(std::ceil(
+                    value.getFont().getStringWidthFloat(value.getText())));
+            const int unitX = jmin(
+                    valueBounds.getRight() - unitWidth,
+                    valueBounds.getX() + numberWidth + kUnitGap);
+            unit.setBounds(unitX, valueBounds.getY(), unitWidth, valueBounds.getHeight());
+        } else {
+            unit.setBounds({});
+        }
+        return;
+    }
     if (unitWidth > 0) {
         unit.setBounds(valueBounds.removeFromRight(unitWidth));
         valueBounds.removeFromRight(kUnitGap);
@@ -634,6 +663,12 @@ void PropertySliderRow::layoutValueComponents() {
 
 void PropertySliderRow::setCompactLayout(bool shouldUseCompactLayout) {
     forceCompactLayout = shouldUseCompactLayout;
+}
+
+void PropertySliderRow::setValueJustification(Justification justification) {
+    valueJustification = justification;
+    value.setJustificationType(justification);
+    layoutValueComponents();
 }
 
 void PropertySliderRow::configureValuePresentation(

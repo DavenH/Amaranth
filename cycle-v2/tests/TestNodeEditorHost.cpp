@@ -498,12 +498,12 @@ TEST_CASE("Reverb heatmap palette follows its runtime spectral domain",
     runtime.gridRows = 2;
     runtime.domain = PortDomain::SpectralMagnitudeSignal;
 
-    const auto render = [&](PortDomain requestDomain) {
+    const auto render = [&](PortDomain requestDomain, const NodePreviewResult* preview) {
         Image image(Image::ARGB, 96, 64, true);
         Graphics graphics(image);
         renderer.paint(graphics, {
                 node,
-                &runtime,
+                preview,
                 image.getBounds().toFloat(),
                 TrimeshRenderProfile::fromDomain(requestDomain),
                 1.f,
@@ -512,8 +512,8 @@ TEST_CASE("Reverb heatmap palette follows its runtime spectral domain",
         return image;
     };
 
-    const Image timeRequest = render(PortDomain::TimeSignal);
-    const Image magnitudeRequest = render(PortDomain::SpectralMagnitudeSignal);
+    const Image timeRequest = render(PortDomain::TimeSignal, &runtime);
+    const Image magnitudeRequest = render(PortDomain::SpectralMagnitudeSignal, &runtime);
     REQUIRE(timeRequest.isValid());
     REQUIRE(magnitudeRequest.isValid());
     const auto checksum = [](const Image& image) {
@@ -527,6 +527,10 @@ TEST_CASE("Reverb heatmap palette follows its runtime spectral domain",
         return result;
     };
     REQUIRE(checksum(timeRequest) == checksum(magnitudeRequest));
+    const Image transientWithoutRuntime = render(
+            PortDomain::TimeSignal,
+            nullptr);
+    REQUIRE(checksum(transientWithoutRuntime) == checksum(timeRequest));
 }
 
 TEST_CASE("First compact Envelope paint synchronizes its durable curve model",
@@ -944,7 +948,7 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     NodeEditorHost host(parent, commands, presentation, resources);
     Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
 
-    REQUIRE(host.bind(&voice, { 0, 0, 440, 276 }));
+    REQUIRE(host.bind(&voice, { 0, 0, 440, 300 }));
     DynamicObject automation;
     host.appendAutomationState(automation);
     const var state = automation.getProperty("voiceContext");
@@ -1738,11 +1742,20 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
     REQUIRE(rectangleProperty(processing, "bounds").getWidth() >= 112.f);
     REQUIRE(rectangleProperty(processing, "bounds").getHeight() >= 28.f);
     REQUIRE(state.getProperty("processingGroup", {})
-            .getProperty("label", {}).toString() == "PROCESSING");
+            .getProperty("label", {}).toString() == "Processing");
     REQUIRE(state.getProperty("gainGroup", {})
             .getProperty("label", {}).toString() == "Gain");
-    REQUIRE(state.getProperty("qualityGroup", {})
-            .getProperty("label", {}).toString() == "Quality");
+    const Rectangle<float> contextLabel = rectangleProperty(state, "contextLabelBounds");
+    const Rectangle<float> contextSelector = rectangleProperty(state, "processingScopeBounds");
+    const Rectangle<float> antialiasingLabel = rectangleProperty(
+            state,
+            "antialiasingLabelBounds");
+    const Rectangle<float> oversamplingBounds = rectangleProperty(
+            state,
+            "oversamplingBounds");
+    REQUIRE(contextLabel.getRight() == Catch::Approx(antialiasingLabel.getRight()));
+    REQUIRE(contextSelector.getX() == Catch::Approx(oversamplingBounds.getX()));
+    REQUIRE(contextSelector.getRight() == Catch::Approx(oversamplingBounds.getRight()));
     auto* oversampling = dynamic_cast<PropertySegmentedSelector*>(
             editor.findChildWithID("waveshaperEditor.oversampling"));
     auto* enabled = dynamic_cast<ToggleButton*>(
@@ -1755,7 +1768,8 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
     REQUIRE(rectangleProperty(preLayout, "label").getY()
             == controlGroupBounds.getY()
                     + 2 * PropertyControlMetrics::groupLabelHeight
-                    + 28
+                    + 2 * PropertyControlMetrics::rowHeight
+                    + PropertyControlMetrics::rowGap
                     + PropertyControlMetrics::sectionGap);
     REQUIRE(oversampling != nullptr);
     REQUIRE(oversampling->getWidth() == 176);
@@ -3078,6 +3092,55 @@ TEST_CASE("Spectral Trimesh range is visible and edits as one undo transaction",
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "range") == "0.5");
 }
 
+TEST_CASE("Spectral Trimesh mode uses the shared segmented selector",
+        "[cycle-v2][editor][trimesh][mode]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    resources.activeTrimesh = &widget;
+    resources.trimeshDomain = PortDomain::SpectralMagnitudeSignal;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+
+    REQUIRE(host.bind(
+            document.graph().findNode("mesh"),
+            { 0, 0, 900, 620 },
+            document.revision()));
+    auto* selector = dynamic_cast<PropertySegmentedSelector*>(
+            host.component()->findChildWithID("trimeshEditor.spectralMode"));
+    REQUIRE(selector != nullptr);
+    REQUIRE(selector->isVisible());
+    REQUIRE(selector->selectedValue() == "auto");
+    auto* multiply = dynamic_cast<TextButton*>(selector->findChildWithID(
+            "trimeshEditor.spectralMode.multiplicative"));
+    REQUIRE(multiply != nullptr);
+
+    multiply->onClick();
+
+    REQUIRE(parameterValueForNode(
+            *document.graph().findNode("mesh"),
+            "spectralMode") == "multiplicative");
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(
+            *document.graph().findNode("mesh"),
+            "spectralMode") == "auto");
+}
+
 TEST_CASE("Live Trimesh morph commits reuse movement refresh",
         "[cycle-v2][editor][trimesh][causal]") {
     ScopedJuceInitialiser_GUI juce;
@@ -3157,7 +3220,7 @@ TEST_CASE("Voice Context hosted pitch gesture commits two updates and one undo",
             resources);
     NodeEditorHost host(owner, commands, presentation, resources);
 
-    REQUIRE(host.bind(document.graph().findNode("voice"), { 0, 0, 440, 276 }));
+    REQUIRE(host.bind(document.graph().findNode("voice"), { 0, 0, 440, 300 }));
     auto* pitch = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
             "voiceContextEditor.pitch"));
     REQUIRE(pitch != nullptr);

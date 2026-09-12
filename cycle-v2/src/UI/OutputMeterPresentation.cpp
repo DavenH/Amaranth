@@ -166,9 +166,9 @@ juce::Rectangle<float> OutputMeterPresentation::gainThumbBounds(
         float gainUnitValue,
         float zoom) {
     const auto result = layout(area, zoom);
-    const float thumbHeight = 7.f * zoom;
+    const float thumbHeight = 10.5f * zoom;
     const float thumbWidth = juce::jmin(
-            20.f * zoom,
+            30.f * zoom,
             result.faderHitTarget.getWidth());
     const float y = juce::jmap(
             juce::jlimit(0.f, 1.f, gainUnitValue),

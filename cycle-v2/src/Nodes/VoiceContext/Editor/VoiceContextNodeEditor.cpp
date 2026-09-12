@@ -16,6 +16,8 @@ namespace {
 
 constexpr int kContentInset = 24;
 constexpr int kValueWidth = 72;
+constexpr int kRowGap = 10;
+constexpr float kLandmarkEndInset = 15.f;
 
 std::vector<PropertySegmentOption> domainOptions() {
     return {
@@ -220,6 +222,8 @@ private:
         octave.slider.setLandmarks({
                 { -2.0, "-2" }, { -1.0, "-1" }, { 0.0, "0" }, { 1.0, "+1" }, { 2.0, "+2" }
         });
+        octave.slider.setTrackEndInset(kLandmarkEndInset);
+        octave.setValueJustification(Justification::centredLeft);
     }
 
     void configureVoiceLength() {
@@ -244,6 +248,8 @@ private:
                 { CycleDsp::voiceLengthUnitValue(7.0), "7" },
                 { 1.0, "148" }
         });
+        voiceLength.slider.setTrackEndInset(kLandmarkEndInset);
+        voiceLength.setValueJustification(Justification::centredLeft);
         voiceLength.slider.onValueChange = [this] {
             if (!syncingVoiceLength) {
                 resources.setVoiceLengthSeconds(
@@ -264,6 +270,8 @@ private:
                 1.0,
                 "Voice pitch offset in semitones. Arrow keys select one semitone.");
         pitch.slider.setLandmarks({ { -12.0, "-12" }, { 0.0, "0" }, { 12.0, "+12" } });
+        pitch.slider.setTrackEndInset(kLandmarkEndInset);
+        pitch.setValueJustification(Justification::centredLeft);
     }
 
     void setDomain(const String& value) {
@@ -291,7 +299,7 @@ private:
 
     static Rectangle<int> nextRow(Rectangle<int>& rows) {
         Rectangle<int> row = rows.removeFromTop(PropertyControlMetrics::rowHeight);
-        rows.removeFromTop(PropertyControlMetrics::rowGap);
+        rows.removeFromTop(kRowGap);
         return row;
     }
 

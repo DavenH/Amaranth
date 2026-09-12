@@ -123,6 +123,23 @@ TEST_CASE("Segmented property selector preserves contiguous equal hit targets",
     }
 }
 
+TEST_CASE("Landmark tracks reserve centred endpoint-label space",
+        "[cycle-v2][ui][property-controls][slider][landmarks]") {
+    ScopedJuceInitialiser_GUI juce;
+    PrecisionSlider slider;
+    slider.setBounds(0, 0, 216, 30);
+    slider.setRange(-2.0, 2.0, 1.0);
+    slider.setTrackEndInset(15.f);
+
+    const Rectangle<float> track = slider.visibleTrackBounds();
+    REQUIRE(track.getX() == Catch::Approx(15.f));
+    REQUIRE(track.getRight() == Catch::Approx(201.f));
+    REQUIRE(propertySliderValuePosition(slider, -2.0)
+            == Catch::Approx(track.getX()));
+    REQUIRE(propertySliderValuePosition(slider, 2.0)
+            == Catch::Approx(track.getRight()));
+}
+
 TEST_CASE("Property values use two significant figures without redundant decimals",
         "[cycle-v2][ui][property-controls][formatting]") {
     REQUIRE(formatPropertyReal(0.0) == "0");

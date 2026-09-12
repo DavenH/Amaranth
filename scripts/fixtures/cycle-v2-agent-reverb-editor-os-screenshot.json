@@ -1,7 +1,19 @@
 {
   "commands": [
-    { "command": "addNode", "kind": "reverb", "x": 540, "y": 280 },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/accoustic.cyclegraph"
+    },
     { "command": "openNodeEditor", "nodeId": "reverb", "waitForIdle": true, "idleDelayMs": 500 },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "reverbEditor.size",
+      "targetX": 0.68,
+      "targetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
     { "command": "inspectTargets", "area": "canvas" }
   ],
   "quit": false

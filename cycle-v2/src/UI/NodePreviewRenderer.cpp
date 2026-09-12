@@ -163,6 +163,13 @@ std::vector<float> mappedSurface(
     const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
     const bool spectral = preview.domain == PortDomain::SpectralMagnitudeSignal
             || preview.domain == PortDomain::SpectralPhaseSignal;
+    if (preview.role == PreviewModuleRole::ReverbSpectrogram && spectral) {
+        return profile.mapGridToDisplay(
+                surface,
+                preview.gridColumns,
+                preview.gridRows,
+                preview.frequencyMidiNote);
+    }
     if (meshSurface && spectral) {
         return profile.mapGridToDisplay(
                 surface,
@@ -908,6 +915,15 @@ void NodePreviewRenderer::paintQualitative(
         return;
     }
     if (kind == NodeKind::Reverb) {
+        const CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
+        if (cached.runtimeHeatmap.isValid()) {
+            drawHeatmapImage(
+                    graphics,
+                    request.area,
+                    cached.runtimeHeatmap,
+                    request.highQuality);
+            return;
+        }
         ReverbPreviewPainter().paint(graphics, request.area, request.node, request.zoom);
         return;
     }

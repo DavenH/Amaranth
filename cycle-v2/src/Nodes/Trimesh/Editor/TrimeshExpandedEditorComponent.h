@@ -5,6 +5,7 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanelHostDelegate.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "UI/EffectEnableButton.h"
+#include "UI/Editors/PropertySegmentedSelector.h"
 
 #include <JuceHeader.h>
 
@@ -19,6 +20,7 @@ public:
     virtual void closeTrimeshEditor() = 0;
     virtual void repaintTrimeshEditorOpenGL() = 0;
     virtual void setTrimeshEnabled(bool enabled) = 0;
+    virtual bool setTrimeshSpectralModeValue(const juce::String& mode) = 0;
     virtual void setTrimeshPrimaryAxisValue(const juce::String& axis) = 0;
     virtual void toggleTrimeshLinkAxisValue(const juce::String& axis) = 0;
     virtual bool beginTrimeshMorphEdit(const juce::String& id, float value) = 0;
@@ -51,6 +53,10 @@ public:
     void renderOpenGL(float scaleFactor);
     bool showsSpectralRange() const;
     float spectralRangeValue() const;
+    bool spectralModeVisible() const { return spectralModeSelector.isVisible(); }
+    const juce::String& spectralModeValue() const {
+        return spectralModeSelector.selectedValue();
+    }
 
     void paint(juce::Graphics& g) override;
     void resized() override;
@@ -68,6 +74,9 @@ private:
     void updateCursor(juce::Point<float> position);
     void updatePanelHosts();
     void updateControlsHost();
+    void updateSpectralModeControl();
+    juce::Rectangle<int> spectralModeLabelBounds() const;
+    juce::Rectangle<int> spectralModeSelectorBounds() const;
     void setLocalSpectralRange(float value);
     void setLocalMorphValue(const juce::String& id, float value);
     void setTrimeshPrimaryAxis(const juce::String& axis) override;
@@ -98,6 +107,8 @@ private:
             "Toggles this Trimesh layer",
             "Enable or disable this Trimesh layer"
     };
+    juce::Label spectralModeLabel;
+    PropertySegmentedSelector spectralModeSelector;
     Node node;
     juce::String activeMorphParameterId;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
