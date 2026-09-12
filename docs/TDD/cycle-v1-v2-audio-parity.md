@@ -1010,6 +1010,20 @@ as the scratch envelope evolves.
     Artifacts: `/private/tmp/cycle-astral-before-port/` and
     `/private/tmp/cycle-astral-after-port/`.
 
+    The factory Envelope-ownership audit is complete; migration is intentionally
+    pending the parallel global-audio preset rewrite. Across 228 paired presets,
+    193 have at least one missing Envelope-owned value or attachment: six active
+    purpose disagreements, 49 missing active-volume declick values, eleven
+    missing declick-only fallback Envelopes, and 351 active static Envelopes
+    without their constant red/blue override inputs. Correctly active volume,
+    pitch, and scratch Envelopes already route to valid semantic owners, so this
+    is a preset migration gap rather than a new DSP feature. Applying it now
+    would rewrite the same preset graph nodes and edges owned by the concurrent
+    Global Input/effect migration. Re-run
+    `scripts/audit_cycle_v1_v2_envelope_ownership.py` after merging that branch,
+    then migrate to zero findings while preserving presentation. Report:
+    `/private/tmp/cycle-parity-envelope-ownership.json`.
+
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a
 quality/architecture change, not part of Cycle 1 parity, and must retain the
