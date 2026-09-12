@@ -86,6 +86,9 @@ private:
             juce::Rectangle<int> screenArea) override;
     void selectTrimeshVertex(int index) override;
     void requestTrimeshPanelRepaint() override;
+    void setTrimeshPanelCursor(
+            TrimeshPanelHostKind host,
+            const juce::MouseCursor& cursor) override;
 
     TrimeshWidget& widget;
     TrimeshExpandedEditorDelegate* delegate {};
@@ -98,6 +101,8 @@ private:
     Node node;
     juce::String activeMorphParameterId;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
+    juce::MouseCursor panel2DCursor { juce::MouseCursor::NormalCursor };
+    juce::MouseCursor panel3DCursor { juce::MouseCursor::NormalCursor };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrimeshExpandedEditorComponent)
 };

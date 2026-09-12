@@ -1,10 +1,12 @@
 #pragma once
 
+#include <functional>
+#include <variant>
+#include <vector>
+
+#include "Graph/GraphDelta.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphSerializer.h"
-
-#include <functional>
-#include <vector>
 
 namespace CycleV2 {
 
@@ -42,6 +44,7 @@ private:
 
     NodeGraph& graphForCommand() { return currentGraph; }
     void recordBeforeChange(NodeGraph graph);
+    void recordDelta(GraphDelta delta);
     void publishChange(GraphChangeSet change);
     bool restoreGraph(NodeGraph graph);
 
@@ -49,8 +52,10 @@ private:
 
     NodeGraph currentGraph;
     juce::File currentFile;
-    std::vector<NodeGraph> undoHistory;
-    std::vector<NodeGraph> redoHistory;
+    using HistoryEntry = std::variant<NodeGraph, GraphDelta>;
+
+    std::vector<HistoryEntry> undoHistory;
+    std::vector<HistoryEntry> redoHistory;
     GraphChangeSet latestChange;
     Listener listener;
     uint64_t documentRevision { 1 };

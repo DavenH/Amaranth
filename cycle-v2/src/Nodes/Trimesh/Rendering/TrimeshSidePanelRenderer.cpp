@@ -408,25 +408,7 @@ void drawLinkRow(
         const Rectangle<float> toggle = TrimeshSidePanelRenderer::linkToggleBounds(
                 sideArea, i, showSpectralRange);
 
-        g.setColour(axis.colour.withAlpha(axis.linked ? 0.38f : 0.055f));
-        g.fillRoundedRectangle(toggle, CanvasChromeMetrics::controlCornerRadius);
-        g.setColour(axis.colour.withAlpha(axis.linked ? 0.96f : 0.32f));
-        g.drawRoundedRectangle(
-                toggle,
-                CanvasChromeMetrics::controlCornerRadius,
-                axis.linked
-                        ? CanvasChromeMetrics::activeBorderWidth
-                        : CanvasChromeMetrics::restingBorderWidth);
-
-        if (axis.linked) {
-            g.setColour(axis.colour.withAlpha(0.88f));
-            g.drawLine(
-                    toggle.getX() + 6.f,
-                    toggle.getCentreY(),
-                    toggle.getRight() - 6.f,
-                    toggle.getCentreY(),
-                    1.5f);
-        }
+        paintPropertyLinkToggle(g, toggle, axis.colour, axis.linked);
     }
 }
 

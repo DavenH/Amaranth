@@ -18,6 +18,7 @@ public:
     virtual void beginCurvePanelControllerEdit() = 0;
     virtual void curvePanelControllerEdited() = 0;
     virtual void commitCurvePanelControllerEdit() = 0;
+    virtual void setCurvePanelCursor(const MouseCursor& cursor) = 0;
 };
 
 class CurvePanelController {

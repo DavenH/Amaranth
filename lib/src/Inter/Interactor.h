@@ -88,7 +88,7 @@ public:
     void addToArray(const Array<Vertex*>& src, vector<VertexFrame>& dst);
     void addListener(InteractorListener* listener) { listeners.add(listener); }
     void removeListener(InteractorListener* listener) { listeners.remove(listener); }
-    void associateTo(Panel* panel, bool observeComponentInput = true);
+    void associateTo(Panel* panel, bool registerMouseListener = true);
     void clearSelectedAndCurrent();
     void clearSelectedAndRepaint();
     void copyVertexPositions();
@@ -240,6 +240,7 @@ protected:
     void addSelectedVertexOrToggle(Vertex* v);
 
     bool isDuplicateVertex(Vertex* v);
+    bool isDimensionLinked(int dimension);
 
     Vertex* findLinesClosestVertex(VertCube* cube, const Vertex2& mouseXY, Vertex& pos);
     Vertex* findLinesClosestVertex(VertCube* cube, const Vertex2& mouseXY);

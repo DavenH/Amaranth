@@ -217,9 +217,13 @@ void Panel2D::drawCurvesFrom(BufferXY& xy, Buffer<float> alpha,
 
     PanelRenderer* renderer = getRenderer(this);
     jassert(renderer != nullptr);
-    renderer->setCurrentLineWidth(interactor->mouseFlag(WithinReshapeThresh) ? 2.f : 1.f);
+    renderer->setCurrentLineWidth(curveLineWidth());
     renderer->fillAndOutlineColoured(positions, baseY, baseAlpha, true, true);
     renderer->setCurrentLineWidth(1.f);
+}
+
+float Panel2D::curveLineWidth() const {
+    return interactor->mouseFlag(WithinReshapeThresh) ? 2.f : 1.f;
 }
 
 void Panel2D::drawInterceptLines() {

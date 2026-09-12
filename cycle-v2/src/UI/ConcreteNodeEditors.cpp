@@ -167,11 +167,10 @@ public:
             primaryAxisButtons.add(primary);
 
             auto* link = new DynamicObject();
-            const String defaultValue = axis == "yellow" ? "1" : "0";
             link->setProperty("id", axis);
             link->setProperty(
                     "selected",
-                    parameters.boolValue("link." + axis, defaultValue.getIntValue() != 0));
+                    parameters.boolValue("link." + axis, true));
             linkToggles.add(link);
         }
         state.setProperty("morphSliders", morphSliders);

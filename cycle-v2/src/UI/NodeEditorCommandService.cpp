@@ -556,22 +556,10 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
     if (!modelUpdated) {
         return false;
     }
-    const uint64_t modelRevision = node->model != nullptr ? node->model->revision() : 0;
-    const auto result = commands.replaceNodeModel(
-            activeVertexNodeId,
-            modelRevision,
-            TrimeshNodeModelState::copyOf(
-                    activeVertexWidget->currentMesh(), modelRevision + 1));
-    if (!result.succeeded()) {
-        return false;
-    }
-    if (!result.changed) {
-        return true;
-    }
     activeVertexChanged = true;
     const uint64_t fingerprint = FingerprintBuilder()
             .add(activeVertexParameterId)
-            .add(modelRevision + 1)
+            .add(String(value, 9))
             .value();
     presentation.recordNodeEditorMovement(
             activeVertexNodeId,
@@ -595,7 +583,20 @@ void NodeEditorCommandService::endTrimeshVertexParameterEdit() {
     }
     const bool changed = activeVertexChanged;
     if (findNode(activeVertexNodeId) != nullptr && activeVertexWidget != nullptr) {
-        commands.commitTransientEdit();
+        const Node* node = findNode(activeVertexNodeId);
+        const uint64_t modelRevision = node != nullptr && node->model != nullptr
+                ? node->model->revision()
+                : 0;
+        const auto result = commands.replaceNodeModel(
+                activeVertexNodeId,
+                modelRevision,
+                TrimeshNodeModelState::copyOf(
+                        activeVertexWidget->currentMesh(), modelRevision + 1));
+        if (result.succeeded()) {
+            commands.commitTransientEdit();
+        } else {
+            commands.cancelTransientEdit();
+        }
         if (const Node* committedNode = findNode(activeVertexNodeId)) {
             activeVertexWidget->syncFromNode(*committedNode);
         }
@@ -634,11 +635,23 @@ void NodeEditorCommandService::persistTrimeshMeshEdits(
         }
         commands.beginTransientEdit();
         activeMeshNodeId = nodeId;
+        activeMeshUpdateSequence = 0;
         activeMeshChanged = false;
         presentation.selectEditedNode(nodeId);
     }
 
     const int selectedVertex = widget->selectedVertexIndexForPanel();
+    if (!gestureComplete) {
+        activeMeshChanged = true;
+        const uint64_t fingerprint = FingerprintBuilder()
+                .add(static_cast<uint64_t>(selectedVertex))
+                .add(++activeMeshUpdateSequence)
+                .value();
+        presentation.recordNodeEditorMovement(nodeId, "mesh", fingerprint);
+        presentation.repaintNodeEditor(true);
+        return;
+    }
+
     const uint64_t modelRevision = node->model != nullptr ? node->model->revision() : 0;
     const auto topology = commands.replaceNodeModel(
             nodeId,
@@ -677,6 +690,7 @@ void NodeEditorCommandService::persistTrimeshMeshEdits(
         }
     }
     activeMeshNodeId = {};
+    activeMeshUpdateSequence = 0;
     activeMeshChanged = false;
 }
 

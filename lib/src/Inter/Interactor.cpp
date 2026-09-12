@@ -4,6 +4,7 @@
 
 #include <App/AppConstants.h>
 
+#include "CurveReshapeStrategy.h"
 #include "Interactor3D.h"
 #include "UndoableActions.h"
 #include "UndoableMeshProcess.h"
@@ -176,6 +177,9 @@ void Interactor::mouseMove(const MouseEvent& e) {
 
     mouseFlag(MouseOver) = true;
     flag(DidMeshChange) = false;
+    flag(DidIncrementalMeshChange) = false;
+    wasPollingMouseOver = true;
+    lastPolledMouse = localPos;
 
     state.lastMouse = state.currentMouse;
     updateCurrentMouseFromLocalPosition(localPos);
@@ -246,6 +250,7 @@ void Interactor::timerCallback() {
 
     mouseFlag(MouseOver) = true;
     flag(DidMeshChange) = false;
+    flag(DidIncrementalMeshChange) = false;
 
     state.lastMouse = state.currentMouse;
     updateCurrentMouseFromLocalPosition(localPos);
@@ -264,6 +269,8 @@ void Interactor::timerCallback() {
 
 void Interactor::mouseDown(const MouseEvent& e) {
     state.resetActionState();
+    flag(DidMeshChange) = false;
+    flag(DidIncrementalMeshChange) = false;
     PanelState::ActionState& action = state.actionState;
 
     updateCurrentMouseFromLocalPosition(e.getPosition());
@@ -320,6 +327,9 @@ void Interactor::mouseDown(const MouseEvent& e) {
 
     // rasterizer should have added new point if applicable
     locateClosestElement();
+
+    flag(DidIncrementalMeshChange) = createSucceeded || flag(DidMeshChange);
+    flag(DidMeshChange) = flag(DidIncrementalMeshChange);
 }
 
 
@@ -365,6 +375,9 @@ void Interactor::mouseUp(const MouseEvent& e) {
 }
 
 void Interactor::mouseDrag(const MouseEvent& e) {
+    const bool previousGestureChange = flag(DidMeshChange);
+    flag(DidMeshChange) = false;
+    flag(DidIncrementalMeshChange) = false;
     state.lastMouse = state.currentMouse;
     updateCurrentMouseFromLocalPosition(e.getPosition());
 
@@ -406,6 +419,8 @@ void Interactor::mouseDrag(const MouseEvent& e) {
     showCoordinates();
     refresh();
 
+    flag(DidIncrementalMeshChange) = flag(DidMeshChange);
+    flag(DidMeshChange) = previousGestureChange || flag(DidIncrementalMeshChange);
     mouseFlag(FirstMove) = false;
 }
 
@@ -672,7 +687,7 @@ void Interactor::eraseSelected() {
     flag(DidMeshChange) = true;
 }
 
-void Interactor::associateTo(Panel* panel, bool observeComponentInput) {
+void Interactor::associateTo(Panel* panel, bool registerMouseListener) {
     if (display != nullptr) {
         display->removeMouseListener(this);
     }
@@ -680,8 +695,10 @@ void Interactor::associateTo(Panel* panel, bool observeComponentInput) {
     this->panel = panel;
     this->display = panel->comp;
 
-    if (display != nullptr && observeComponentInput) {
-        display->addMouseListener(this, false);
+    if (display != nullptr) {
+        if (registerMouseListener) {
+            display->addMouseListener(this, false);
+        }
         startTimerHz(30);
     } else {
         stopTimer();
@@ -1504,16 +1521,24 @@ float Interactor::getDragMovementScale(VertCube* cube) {
         for (int i = 0; i < dims.numHidden(); ++i) {
             Vertex* vFar    = cube->getOtherVertexAlong(dims.hidden[i], vNear);
             float dimValue  = positioner->getValue(dims.hidden[i]);
-            float distA     = fabsf(dimValue - vNear->values[dims.hidden[i]]);
-            float distB     = fabsf(dimValue - vFar->values[dims.hidden[i]]);
-            float maxDist   = jmax(distA, distB);
-            float distNearFar = fabsf(vNear->values[dims.hidden[i]] - vFar->values[dims.hidden[i]]);
-
-            scale *= (maxDist < 0.0001f) ? 1.f : distNearFar / maxDist;
+            scale *= CurveReshapeStrategy::hiddenDimensionScale(
+                    isDimensionLinked(dims.hidden[i]),
+                    dimValue,
+                    vNear->values[dims.hidden[i]],
+                    vFar->values[dims.hidden[i]]);
         }
     }
 
     return scale;
+}
+
+bool Interactor::isDimensionLinked(int dimension) {
+    switch (dimension) {
+        case Vertex::Time: return getSetting(LinkYellow) == 1;
+        case Vertex::Red:  return getSetting(LinkRed) == 1;
+        case Vertex::Blue: return getSetting(LinkBlue) == 1;
+        default:           return false;
+    }
 }
 
 void Interactor::updateDepthVerts() {
@@ -2018,9 +2043,9 @@ Array<Vertex*> Interactor::getVerticesToMove(VertCube* cube, Vertex* startVertex
 
     if(startVertex != nullptr) {
         if (cube != nullptr && dims.numHidden() > 0) {
-            bool linkYllw  = getSetting(LinkYellow) == 1;
-            bool linkRed   = getSetting(LinkRed)    == 1;
-            bool linkBlue  = getSetting(LinkBlue)   == 1;
+            bool linkYllw  = isDimensionLinked(Vertex::Time);
+            bool linkRed   = isDimensionLinked(Vertex::Red);
+            bool linkBlue  = isDimensionLinked(Vertex::Blue);
 
             int numLinks   = int(linkYllw) + int(linkRed) + int(linkBlue);
 
@@ -2044,6 +2069,12 @@ Array<Vertex*> Interactor::getVerticesToMove(VertCube* cube, Vertex* startVertex
         }
     }
 
+    for (int index = movingVerts.size() - 1; index >= 0; --index) {
+        if (movingVerts[index] == nullptr) {
+            movingVerts.remove(index);
+        }
+    }
+
     return movingVerts;
 }
 
@@ -2051,8 +2082,11 @@ void Interactor::setMovingVertsFromSelected() {
     state.selectedFrame.clear();
     vector<Vertex*>& selected = getSelected();
 
-    for (auto& it : selected) {
-        addToArray(getVerticesToMove(getClosestLine(it), it), state.selectedFrame);
+    for (Vertex* vertex : selected) {
+        if (vertex == nullptr) {
+            continue;
+        }
+        addToArray(getVerticesToMove(getClosestLine(vertex), vertex), state.selectedFrame);
     }
 }
 
@@ -2483,6 +2517,9 @@ bool Interactor::shouldDoDimensionCheck() {
 }
 
 VertCube* Interactor::getClosestLine(Vertex* vert) {
+    if (vert == nullptr) {
+        return nullptr;
+    }
     if (vert->getNumOwners() > 0) {
         MorphPosition pos = positioner->getMorphPosition();
 

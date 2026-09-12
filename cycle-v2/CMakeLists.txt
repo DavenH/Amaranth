@@ -99,14 +99,19 @@ list(APPEND APP_SOURCES
 list(REMOVE_DUPLICATES APP_SOURCES)
 
 set(GRAPH_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDelta.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/SharedAudioSamples.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeDefinition.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraph.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraphDemo.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraphEditing.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeParameterMap.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDomainResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphRenderSemanticResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphValidator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCompiler.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCommandDispatcher.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCurveStateCommands.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDocument.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphNodeFactory.cpp"

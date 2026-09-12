@@ -2,7 +2,63 @@
 
 ## Status
 
-Audit complete; remediation required. P0 findings are open (2026-09-11).
+Remediation in progress (2026-09-11). Graph transactions, audio ownership,
+indexed lookup, incremental change detection, and movement-publication fixes
+are implemented and covered at small and scaled document sizes. The remaining
+domain structural-sharing decision is blocked on the representation choice
+described under **Open Architectural Decision**; this TDD is not complete.
+
+## Implemented Remediation
+
+- Non-topological gestures use a bounded `GraphDelta` overlay. Commit, undo,
+  and redo apply its forward/inverse parameter, model-pointer, editor-state,
+  bounds, and Guide-resource fields. The durable graph is not replaced during
+  movement.
+- Audio samples use shared copy-on-write ownership. Graph metadata history and
+  topological snapshots share audio payloads rather than copying `A` samples.
+- Node, parameter, Guide-resource, Guide-target, and Guide-consumer lookups use
+  stable indexes. Multi-node translation iterates the changed node IDs.
+- The mature `Interactor` now reports `DidIncrementalMeshChange` per delivered
+  drag event while retaining its existing gesture-cumulative change flag.
+  Cycle 2 curve and Trimesh bridges publish only accepted movement events;
+  constrained/no-op events do not serialize or compare a Mesh. Moving-vertex
+  lists are null-safe, so retained selection cannot turn an invalidated entry
+  into a proximity-query crash.
+- Trimesh, flat-curve, Guide, and Envelope movement remains in the mature live
+  model. Immutable model construction is deferred to gesture commit, producing
+  one affected-domain snapshot rather than one snapshot per mouse event.
+- `GraphChangeSet` remains the single typed causal-publication contract. Delta
+  commit, undo, and redo publish that same change set to the causal runtime;
+  the scaling fixture asserts all three publications.
+- Fixed-cost counters cover graph/audio copies, Mesh copies and copied
+  topology size, model serialization, editor-state comparison, and addressed
+  collection scans. Focused fixtures run at factory and scaled unrelated sizes.
+
+## Open Architectural Decision
+
+The strict final `O(K)` domain-commit target cannot be implemented as a narrow
+adapter over the current authoritative types:
+
+- `Mesh` owns mutable `Vertex*`/`VertCube*` topology. Runtime model states own a
+  complete immutable `Mesh`, so making a durable revision from the live mature
+  editor necessarily deep-copies `V + C` today. Sharing those mutable objects
+  would let the next gesture mutate an already-published runtime revision.
+- `Node` exposes parameters as a mutable contiguous
+  `std::vector<NodeParameter>`. The graph overlay resolves a parameter by index
+  in average `O(1)`, but producing a current aggregate `Node*` view on first
+  edit copies that affected node's parameter/port vectors. A truly `O(1)`
+  scalar overlay requires changing this public storage contract or weakening
+  `editingGraph()`'s current-read guarantee.
+
+There are two coherent directions. One is to extract persistent, identity-keyed
+Mesh and node-field storage shared by mature editors, immutable runtime models,
+and graph overlays; typed deltas would update only changed identities. The
+other is to retain the current mutable/contiguous representations and explicitly
+accept one `O(V + C)` affected-domain snapshot and one `O(P)` affected-node
+materialization per gesture. The second direction meets the hard prohibition on
+per-mouse-event aggregate work but does not meet this TDD's stated final
+complexity contract. Choosing between them changes shared Cycle 1/Cycle 2 model
+ownership and is therefore not being guessed inside this remediation branch.
 
 ## Trigger
 

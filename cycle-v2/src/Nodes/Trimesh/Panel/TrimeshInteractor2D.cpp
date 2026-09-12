@@ -98,7 +98,7 @@ void TrimeshInteractor2D::mouseDrag(const MouseEvent& event) {
 
     Interactor2D::mouseDrag(event);
 
-    if (flag(DidMeshChange) && meshEditedCallback != nullptr) {
+    if (flag(DidIncrementalMeshChange) && meshEditedCallback != nullptr) {
         if (establishReshapeSelection) {
             meshEditedCallback({ false, false, true });
         }

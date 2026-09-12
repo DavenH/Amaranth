@@ -326,6 +326,12 @@ std::vector<NodeParameter> EnvelopeEditorComponent::editorControls() const {
             "Logarithmic",
             envelopePurposeAllowsLogarithmic(purpose)
                     && impl->axisScale.isLogarithmic() ? "1" : "0");
+    addEditorParameter(
+            result,
+            node,
+            "declick",
+            "Declick",
+            retainedEditorParameter(node, "declick", "0"));
     addEditorParameter(result, node, "red", "Red Morph", String(impl->redMorph.slider.getValue()));
     addEditorParameter(result, node, "blue", "Blue Morph", String(impl->blueMorph.slider.getValue()));
     addEditorParameter(result, node, "level", "Level", retainedEditorParameter(node, "level", "1"));

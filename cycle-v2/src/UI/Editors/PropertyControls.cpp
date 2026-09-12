@@ -249,6 +249,32 @@ void paintPropertySegmentedControl(
             CanvasChromeMetrics::restingBorderWidth);
 }
 
+void paintPropertyLinkToggle(
+        Graphics& graphics,
+        Rectangle<float> bounds,
+        Colour accent,
+        bool linked) {
+    graphics.setColour(accent.withAlpha(linked ? 0.38f : 0.055f));
+    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
+    graphics.setColour(accent.withAlpha(linked ? 0.96f : 0.32f));
+    graphics.drawRoundedRectangle(
+            bounds,
+            CanvasChromeMetrics::controlCornerRadius,
+            linked
+                    ? CanvasChromeMetrics::activeBorderWidth
+                    : CanvasChromeMetrics::restingBorderWidth);
+
+    if (linked) {
+        graphics.setColour(accent.withAlpha(0.88f));
+        graphics.drawLine(
+                bounds.getX() + 6.f,
+                bounds.getCentreY(),
+                bounds.getRight() - 6.f,
+                bounds.getCentreY(),
+                1.5f);
+    }
+}
+
 PropertyGroupLabel::PropertyGroupLabel(String text) :
         labelText(std::move(text)) {
     setInterceptsMouseClicks(false, false);

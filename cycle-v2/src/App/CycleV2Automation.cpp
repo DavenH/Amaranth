@@ -106,7 +106,7 @@ String cursorName(const MouseCursor& cursor) {
     if (cursor == MouseCursor::CrosshairCursor) {
         return "crosshair";
     }
-    return "normal";
+    return cursor == MouseCursor::NormalCursor ? "normal" : "custom";
 }
 
 bool automationKeyPress(const String& name, KeyPress& result) {

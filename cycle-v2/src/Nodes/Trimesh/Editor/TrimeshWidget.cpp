@@ -187,7 +187,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
                     Colour(0xffd65a5a),
                     model.getMorphPosition().red.getCurrentValue(),
                     primaryAxis == Vertex::Red,
-                    parameters.boolValue("link.red", false)
+                    parameters.boolValue("link.red", true)
             },
             TrimeshSidePanelRenderer::AxisState {
                     "Blue",
@@ -195,7 +195,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
                     Colour(0xff5f91e8),
                     model.getMorphPosition().blue.getCurrentValue(),
                     primaryAxis == Vertex::Blue,
-                    parameters.boolValue("link.blue", false)
+                    parameters.boolValue("link.blue", true)
             }
     };
 
