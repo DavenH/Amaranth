@@ -536,23 +536,16 @@ TEST_CASE("Signal probes inherit spectral mesh render semantics",
         "[cycle-v2][canvas][probe][spectral]") {
     GraphNodeFactory factory;
     NodeGraph graph;
-    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
-    voice.parameters = { { "domain", "Start Domain", "spectral" } };
     Node layer = factory.createNode(NodeKind::SpectralLayer, "layer", {});
-    layer.parameters = {
-            { "pan", "Pan", "0.5" },
-            { "range", "Range", "0.5" },
-            { "mode", "Magnitude Mode", "multiplicative" }
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+    mesh.parameters = {
+            { "signalType", "Signal Type", "spectralMagnitude" },
+            { "polarity", "Polarity", "bipolar" }
     };
 
-    graph.addNode(std::move(voice));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(std::move(mesh));
     graph.addNode(std::move(layer));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
-    graph.addEdge({
-            "voice", "context", "mesh", "context",
-            PortDomain::DomainContext, ConnectionKind::Signal
-    });
     graph.addEdge({
             "mesh", "out", "layer", "in",
             PortDomain::ControlSignal, ConnectionKind::Signal
@@ -568,7 +561,7 @@ TEST_CASE("Signal probes inherit spectral mesh render semantics",
             graph.getSignalProbes().front().id);
     REQUIRE(semantic.domain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(semantic.scalePolicy == RenderScalePolicy::Bipolar);
-    REQUIRE(semantic.role == RenderSemanticRole::SpectralMagnitudeMultiplicative);
+    REQUIRE(semantic.role == RenderSemanticRole::SpectralMagnitudeBipolar);
 }
 
 }
@@ -1308,21 +1301,12 @@ TEST_CASE("Canvas legend collapses non-signal domains into Control",
     REQUIRE(colourForDomain(PortDomain::SpectralPhaseSignal) != control);
 }
 
-TEST_CASE("Voice context compact presentation retains its selector and summary",
+TEST_CASE("Voice context compact presentation retains its summary",
         "[cycle-v2][canvas][compact-editor]") {
     Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
 
-    REQUIRE(VoiceContextCompactEditor::domainLabel(voice) == "Waveform");
-    REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "spectral");
     REQUIRE(VoiceContextCompactEditor::summaryLabel(voice)
             == "Octave 0  ·  1 second");
-
-    voice.parameters = {
-            { "domain", "Start Domain", "spectralPhase" }
-    };
-    REQUIRE(VoiceContextCompactEditor::domainLabel(voice) == "Spectral");
-    REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "waveform");
-    voice.parameters.clear();
 
     voice.parameters = {
             { "octave", "Octave", "1" },
@@ -1333,14 +1317,6 @@ TEST_CASE("Voice context compact presentation retains its selector and summary",
     };
     REQUIRE(VoiceContextCompactEditor::summaryLabel(voice)
             == "Octave 1  ·  1 second  ·  Glide");
-
-    const Rectangle<float> selector = VoiceContextCompactEditor::nodeSelectorBounds(
-            voice.bounds,
-            1.f);
-    REQUIRE(VoiceContextCompactEditor::hitNodeSelector(
-            voice.bounds,
-            1.f,
-            selector.getCentre()));
 
     const Rectangle<float> scratch = VoiceContextCompactEditor::scratchIndicatorBounds(
             voice.bounds,
@@ -1354,7 +1330,6 @@ TEST_CASE("Voice context compact presentation retains its selector and summary",
     REQUIRE(voice.bounds.contains(scratch));
     REQUIRE(voice.bounds.contains(summary));
     REQUIRE(voice.bounds.contains(scratchLabel));
-    REQUIRE_FALSE(selector.intersects(summary));
     REQUIRE_FALSE(summary.intersects(scratch));
     REQUIRE_FALSE(summary.intersects(scratchLabel));
     REQUIRE(scratch.getCentreY() == Catch::Approx(

@@ -416,30 +416,6 @@ TEST_CASE("Effect parameter edits request an open-editor rebind",
     REQUIRE(edited.effects.repaintRequested);
 }
 
-TEST_CASE("Node canvas authoring keeps voice parameter and subtitle atomic",
-        "[cycle-v2][canvas][authoring]") {
-    NodeGraph graph;
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
-    GraphDocument document(std::move(graph));
-    GraphCommandDispatcher commands(document);
-    GraphPresentationModel presentation;
-    NullEditorCommands editorCommands;
-    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
-
-    const auto edited = authoring.cycleVoiceDomain("voice");
-    REQUIRE(edited.succeeded);
-    REQUIRE(document.canUndo());
-
-    String domain;
-    REQUIRE(authoring.getNodeParameter("voice", "domain", domain));
-    REQUIRE(domain == "spectral");
-    REQUIRE(document.graph().findNode("voice")->subtitle == "spectral start");
-    REQUIRE(authoring.session().statusMessage == "Voice start domain: spectral");
-
-    REQUIRE(authoring.undo().succeeded);
-    REQUIRE(document.graph().findNode("voice")->subtitle != "spectral start");
-}
-
 TEST_CASE("Inline Pan drag publishes one undoable parameter gesture",
         "[cycle-v2][canvas][authoring][pan]") {
     NodeGraph graph;
@@ -510,10 +486,14 @@ TEST_CASE("Pan can be added to a cable as one undoable authoring command",
         "[cycle-v2][canvas][authoring][pan][cable]") {
     GraphNodeFactory factory;
     NodeGraph graph;
-    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", { 0.f, 0.f });
-    voice.parameters = { { "domain", "Start Domain", "spectral" } };
-    graph.addNode(std::move(voice));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 20.f, 80.f }));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 0.f, 0.f }));
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", { 20.f, 80.f });
+    for (NodeParameter& parameter : mesh.parameters) {
+        if (parameter.id == "signalType") {
+            parameter.value = "spectralMagnitude";
+        }
+    }
+    graph.addNode(std::move(mesh));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", { 520.f, 80.f }));
     graph.addEdge({
             "voice", "context", "mesh", "context",

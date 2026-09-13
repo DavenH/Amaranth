@@ -1,0 +1,39 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "performance.oscillatorRegionCount",
+      "equals": 1
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Note60",
+      "event": "down",
+      "targetY": 0.85
+    },
+    {
+      "command": "captureLiveAudio",
+      "durationMs": 500,
+      "path": "/private/tmp/cycle-v2-baroque-flute-live.wav",
+      "peakGreaterThan": 0.01,
+      "rmsGreaterThan": 0.005,
+      "peakLessThan": 1.0
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Note60",
+      "event": "up",
+      "targetY": 0.85
+    }
+  ],
+  "quit": true
+}

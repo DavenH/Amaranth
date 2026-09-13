@@ -2,6 +2,7 @@
 
 #include "Graph/GraphSerializer.h"
 #include "Graph/GlobalAudioGraphRepresentationMigration.h"
+#include "Graph/TrimeshSemanticRepresentationMigration.h"
 
 #include <iostream>
 
@@ -30,6 +31,12 @@ int main(int argc, char* argv[]) {
                 };
         if (!migrated.succeeded()) {
             std::cerr << migrated.error << "\n";
+            return 1;
+        }
+        const auto trimeshMigration =
+                TrimeshSemanticRepresentationMigration().migrate(encoded);
+        if (!trimeshMigration.succeeded()) {
+            std::cerr << trimeshMigration.error << "\n";
             return 1;
         }
         if (!destination.replaceWithText(GraphSerializer().toJsonString(encoded))) {

@@ -114,7 +114,6 @@ struct CompiledSignalProbe {
 
 struct CompiledVoiceContext {
     String nodeId;
-    String startDomain { "waveform" };
     int octave {};
     float voiceDurationSeconds { 1.f };
     float pitchSemitones {};

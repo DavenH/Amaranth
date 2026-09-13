@@ -2,7 +2,6 @@
 
 #include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"
-#include "UI/VoiceContextCompactEditor.h"
 #include "Graph/GraphNodeFactory.h"
 
 namespace CycleV2 {
@@ -42,10 +41,6 @@ std::optional<CanvasNodeActionKind> actionKindForNode(const Node& node) {
         return CanvasNodeActionKind::CycleOutputSide;
     }
 
-    if (node.kind == NodeKind::VoiceContext) {
-        return CanvasNodeActionKind::CycleVoiceDomain;
-    }
-
     return std::nullopt;
 }
 
@@ -54,12 +49,6 @@ bool actionContains(
         Rectangle<float> nodeBounds,
         float zoom,
         Point<float> screenPosition) {
-    if (kind == CanvasNodeActionKind::CycleVoiceDomain) {
-        return VoiceContextCompactEditor::hitNodeSelector(
-                nodeBounds,
-                zoom,
-                screenPosition);
-    }
     return nodeActionBounds(nodeBounds, zoom)
             .expanded(4.f * zoom)
             .contains(screenPosition);
@@ -75,14 +64,6 @@ String hoverTextForAction(const CanvasNodeAction& action, const NodeCanvasQueryM
 
         case CanvasNodeActionKind::CycleOutputSide:
             return "Click to move this node's output to another side.";
-
-        case CanvasNodeActionKind::CycleVoiceDomain:
-            if (const Node* node = queries.findNode(action.nodeId)) {
-                return "This voice starts in the "
-                        + VoiceContextCompactEditor::domainLabel(*node).toLowerCase()
-                        + " domain. Click to switch domains.";
-            }
-            return {};
 
     }
 

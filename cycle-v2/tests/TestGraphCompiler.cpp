@@ -87,6 +87,17 @@ const GraphBufferPlan& findBuffer(const GraphExecutionPlan& plan, const String& 
     return *found;
 }
 
+void setParameter(Node& node, const String& id, const String& value) {
+    const auto found = std::find_if(
+            node.parameters.begin(),
+            node.parameters.end(),
+            [&](const NodeParameter& parameter) {
+                return parameter.id == id;
+            });
+    REQUIRE(found != node.parameters.end());
+    found->value = value;
+}
+
 }
 
 TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]") {
@@ -94,7 +105,7 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
 
     REQUIRE(result.succeeded());
     REQUIRE(result.plan.attachments.size() == 2);
-    REQUIRE(result.plan.signalEdges.size() == 12);
+    REQUIRE(result.plan.signalEdges.size() == 14);
     REQUIRE(result.plan.buffers.size() == 15);
     REQUIRE(result.plan.steps.size() == result.plan.nodeOrder.size());
     REQUIRE(result.plan.voiceContexts.size() == 1);
@@ -116,8 +127,13 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(orderIndex(plan, "voiceOutput") < orderIndex(plan, "globalInput"));
     REQUIRE(orderIndex(plan, "globalInput") < orderIndex(plan, "out"));
 
-    REQUIRE(parameterValueForNode({ "voice", NodeKind::VoiceContext, {}, {}, findStep(plan, "voice").parameters, {}, {} },
-            "domain") == "waveform");
+    REQUIRE(std::any_of(
+            findStep(plan, "waveMesh").inputs.begin(),
+            findStep(plan, "waveMesh").inputs.end(),
+            [](const GraphStepInput& input) {
+                return input.sourceNodeId == "voice"
+                        && input.domain == PortDomain::DomainContext;
+            }));
     REQUIRE(findStep(plan, "waveMesh").audioRole == AudioModuleRole::MeshSource);
     REQUIRE(findStep(plan, "waveMesh").previewRole == PreviewModuleRole::MeshSurface);
     REQUIRE(findStep(plan, "waveMesh").cycle1AdapterBacked);
@@ -206,7 +222,7 @@ TEST_CASE("Compiler plans a time-only oscillator region per Unison lane",
             == ExecutionCoordinate::CycleField);
 }
 
-TEST_CASE("Compiler rejects oscillator operations reached by two Voice Contexts",
+TEST_CASE("Compiler rejects two active Voice Contexts before oscillator planning",
         "[cycle-v2][graph][oscillator-region]") {
     GraphNodeFactory factory;
     NodeGraph graph;
@@ -215,29 +231,32 @@ TEST_CASE("Compiler rejects oscillator operations reached by two Voice Contexts"
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "firstMesh", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "secondMesh", {}));
     graph.addNode(factory.createNode(NodeKind::Add, "merge", {}));
-    REQUIRE(GraphEditor().connect(
-            graph,
-            { "firstVoice", "context", false },
-            { "firstMesh", "context", true }).succeeded());
-    REQUIRE(GraphEditor().connect(
-            graph,
-            { "secondVoice", "context", false },
-            { "secondMesh", "context", true }).succeeded());
-    REQUIRE(GraphEditor().connect(
-            graph,
-            { "firstMesh", "out", false },
-            { "merge", "left", true }).succeeded());
-    REQUIRE(GraphEditor().connect(
-            graph,
-            { "secondMesh", "out", false },
-            { "merge", "right", true }).succeeded());
+    graph.addEdge({
+            "firstVoice", "context", "firstMesh", "context",
+            PortDomain::DomainContext, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "secondVoice", "context", "secondMesh", "context",
+            PortDomain::DomainContext, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "firstMesh", "out", "merge", "left",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "secondMesh", "out", "merge", "right",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
 
     const auto result = GraphCompiler().compile(graph);
 
     REQUIRE_FALSE(result.succeeded());
-    REQUIRE(result.compileIssues.size() == 1);
-    REQUIRE(result.compileIssues.front().code == GraphCompileCode::AmbiguousVoiceContext);
-    REQUIRE(result.compileIssues.front().message.contains("merge"));
+    REQUIRE(std::any_of(
+            result.validationIssues.begin(),
+            result.validationIssues.end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::MultipleActiveVoiceContexts;
+            }));
 }
 
 TEST_CASE("Compiler materializes sibling spectral and chained oscillator regions before Add",
@@ -578,36 +597,34 @@ TEST_CASE("Voice Context scratch reaches Trimesh branches in its oscillator regi
     }
 }
 
-TEST_CASE("Voice Context scratch defaults remain independently scoped",
+TEST_CASE("Inactive extra Voice Context does not replace the active scratch default",
         "[cycle-v2][graph][voice-context][scratch]") {
     GraphNodeFactory factory;
     GraphEditor editor;
     NodeGraph graph;
-    for (const String& suffix : { "A", "B" }) {
-        graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice" + suffix, {}));
-        graph.addNode(factory.createNode(NodeKind::Envelope, "scratch" + suffix, {}));
-        graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh" + suffix, {}));
-        REQUIRE(editor.setNodeParameter(
-                graph,
-                "scratch" + suffix,
-                "purpose",
-                "Purpose",
-                "scratch").succeeded());
-        REQUIRE(editor.connect(
-                graph,
-                { "scratch" + suffix, "env", false },
-                { "voice" + suffix, "scratch", true }).succeeded());
-        REQUIRE(editor.connect(
-                graph,
-                { "voice" + suffix, "context", false },
-                { "mesh" + suffix, "context", true }).succeeded());
-    }
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voiceA", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voiceB", {}));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "scratchA", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "meshA", {}));
+    REQUIRE(editor.setNodeParameter(
+            graph,
+            "scratchA",
+            "purpose",
+            "Purpose",
+            "scratch").succeeded());
+    REQUIRE(editor.connect(
+            graph,
+            { "voiceA", "context", false },
+            { "meshA", "context", true }).succeeded());
+    REQUIRE(editor.connect(
+            graph,
+            { "scratchA", "env", false },
+            { "voiceA", "scratch", true }).succeeded());
 
     const GraphCompileResult compiled = GraphCompiler().compile(graph);
 
     REQUIRE(compiled.succeeded());
     REQUIRE(effectiveScratchSourceNodeId(findStep(compiled.plan, "meshA")) == "scratchA");
-    REQUIRE(effectiveScratchSourceNodeId(findStep(compiled.plan, "meshB")) == "scratchB");
 }
 
 TEST_CASE("Direct Trimesh scratch overrides the Voice Context default",
@@ -835,20 +852,16 @@ TEST_CASE("Invalid graphs do not compile", "[cycle-v2][graph]") {
     REQUIRE(result.plan.nodeOrder.empty());
 }
 
-TEST_CASE("Compiler resolves source domains from voice context parameters", "[cycle-v2][graph]") {
+TEST_CASE("Compiler resolves source domains from Trimesh parameters", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;
 
-    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
-    voice.parameters = {
-            { "domain", "Start Domain", "spectral" }
-    };
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", { 240.f, 0.f });
+    setParameter(mesh, "signalType", "spectralMagnitude");
 
-    graph.addNode(std::move(voice));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 240.f, 0.f }));
+    graph.addNode(std::move(mesh));
     graph.addNode(factory.createNode(NodeKind::Add, "add", { 520.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Add, "next", { 760.f, 0.f }));
-    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, ConnectionKind::Signal });
     graph.addEdge({ "mesh", "out", "add", "left", PortDomain::ControlSignal, ConnectionKind::Signal });
     graph.addEdge({ "add", "out", "next", "left", PortDomain::ControlSignal, ConnectionKind::Signal });
 
@@ -861,25 +874,24 @@ TEST_CASE("Compiler resolves source domains from voice context parameters", "[cy
     REQUIRE(findBuffer(result.plan, "mesh", "out").domain == PortDomain::SpectralMagnitudeSignal);
 }
 
-TEST_CASE("One spectral voice context resolves magnitude and phase mesh branches",
+TEST_CASE("One implicit Voice Context supports explicit magnitude and phase branches",
         "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;
 
-    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
-    voice.parameters = {
-            { "domain", "Start Domain", "spectral" }
-    };
+    Node magnitude = factory.createNode(NodeKind::TrilinearMesh, "magnitude", {});
+    Node phaseA = factory.createNode(NodeKind::TrilinearMesh, "phaseA", {});
+    Node phaseB = factory.createNode(NodeKind::TrilinearMesh, "phaseB", {});
+    setParameter(magnitude, "signalType", "spectralMagnitude");
+    setParameter(phaseA, "signalType", "spectralPhase");
+    setParameter(phaseB, "signalType", "spectralPhase");
 
-    graph.addNode(std::move(voice));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "magnitude", {}));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "phaseA", {}));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "phaseB", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(std::move(magnitude));
+    graph.addNode(std::move(phaseA));
+    graph.addNode(std::move(phaseB));
     graph.addNode(factory.createNode(NodeKind::Add, "phaseAdd", {}));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
-    graph.addEdge({ "voice", "context", "magnitude", "context", PortDomain::DomainContext, ConnectionKind::Signal });
-    graph.addEdge({ "voice", "context", "phaseA", "context", PortDomain::DomainContext, ConnectionKind::Signal });
-    graph.addEdge({ "voice", "context", "phaseB", "context", PortDomain::DomainContext, ConnectionKind::Signal });
     graph.addEdge({ "magnitude", "out", "ifft", "mag", PortDomain::ControlSignal, ConnectionKind::Signal });
     graph.addEdge({ "phaseA", "out", "phaseAdd", "left", PortDomain::ControlSignal, ConnectionKind::Signal });
     graph.addEdge({ "phaseB", "out", "phaseAdd", "right", PortDomain::ControlSignal, ConnectionKind::Signal });
@@ -914,7 +926,7 @@ TEST_CASE("Compiler keeps wave source fixed in the time domain", "[cycle-v2][gra
     REQUIRE(findBuffer(result.plan, "wave", "out").domain == PortDomain::TimeSignal);
 }
 
-TEST_CASE("Compiler resolves mesh output domains from consuming operation context", "[cycle-v2][graph]") {
+TEST_CASE("Compiler resolves mesh output domains from explicit signal type", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;
 
@@ -927,7 +939,9 @@ TEST_CASE("Compiler resolves mesh output domains from consuming operation contex
             {},
             { { "out", "Out", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false } }
     });
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 260.f, 0.f }));
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", { 260.f, 0.f });
+    setParameter(mesh, "signalType", "spectralMagnitude");
+    graph.addNode(std::move(mesh));
     graph.addNode(factory.createNode(NodeKind::Add, "add", { 520.f, 0.f }));
     graph.addEdge({ "mag", "out", "add", "left", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal });
     graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, ConnectionKind::Signal });

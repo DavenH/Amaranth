@@ -20,7 +20,8 @@ public:
     virtual void closeTrimeshEditor() = 0;
     virtual void repaintTrimeshEditorOpenGL() = 0;
     virtual void setTrimeshEnabled(bool enabled) = 0;
-    virtual bool setTrimeshSpectralModeValue(const juce::String& mode) = 0;
+    virtual bool setTrimeshSignalTypeValue(const juce::String& signalType) = 0;
+    virtual bool setTrimeshPolarityValue(const juce::String& polarity) = 0;
     virtual void setTrimeshPrimaryAxisValue(const juce::String& axis) = 0;
     virtual void toggleTrimeshLinkAxisValue(const juce::String& axis) = 0;
     virtual bool beginTrimeshMorphEdit(const juce::String& id, float value) = 0;
@@ -55,10 +56,9 @@ public:
     float spectralRangeValue() const;
     float outputScaleValue() const;
     juce::String outputScaleParameterId() const;
-    bool spectralModeVisible() const { return spectralModeSelector.isVisible(); }
-    const juce::String& spectralModeValue() const {
-        return spectralModeSelector.selectedValue();
-    }
+    const juce::String& signalTypeValue() const { return signalTypeSelector.selectedValue(); }
+    bool polarityVisible() const { return polaritySelector.isVisible(); }
+    const juce::String& polarityValue() const { return polaritySelector.selectedValue(); }
 
     void paint(juce::Graphics& g) override;
     void resized() override;
@@ -76,9 +76,11 @@ private:
     void updateCursor(juce::Point<float> position);
     void updatePanelHosts();
     void updateControlsHost();
-    void updateSpectralModeControl();
-    juce::Rectangle<int> spectralModeLabelBounds() const;
-    juce::Rectangle<int> spectralModeSelectorBounds() const;
+    void updateSignalControls();
+    juce::Rectangle<int> signalTypeLabelBounds() const;
+    juce::Rectangle<int> signalTypeSelectorBounds() const;
+    juce::Rectangle<int> polarityLabelBounds() const;
+    juce::Rectangle<int> polaritySelectorBounds() const;
     void setLocalOutputScale(const juce::String& id, float value);
     void setLocalMorphValue(const juce::String& id, float value);
     void setTrimeshPrimaryAxis(const juce::String& axis) override;
@@ -109,8 +111,10 @@ private:
             "Toggles this Trimesh layer",
             "Enable or disable this Trimesh layer"
     };
-    juce::Label spectralModeLabel;
-    PropertySegmentedSelector spectralModeSelector;
+    juce::Label signalTypeLabel;
+    PropertySegmentedSelector signalTypeSelector;
+    juce::Label polarityLabel;
+    PropertySegmentedSelector polaritySelector;
     Node node;
     juce::String activeMorphParameterId;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };

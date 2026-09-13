@@ -6,6 +6,7 @@
 #include "Runtime/PreviewProcessorFactories.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "Graph/TrimeshSignalSemantics.h"
 #include "Nodes/Trimesh/Model/PreparedTrimeshTopology.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGridwiseDsp.h"
@@ -57,6 +58,10 @@ void normalizeBipolarValues(Values& values) {
             .clip(0.f, 1.f);
 }
 
+bool requiresDisplayNormalization(PortDomain domain, bool bipolar) {
+    return domain != PortDomain::SpectralMagnitudeSignal || bipolar;
+}
+
 class TrimeshPreviewProcessor final : public NodePreviewProcessor {
 public:
     PreviewModuleRole role() const override { return PreviewModuleRole::MeshSurface; }
@@ -68,14 +73,18 @@ public:
             return;
         }
 
-        if (reuseCapturedTraversal(context)) {
-            return;
-        }
-
         const auto configuration = context.configuration != nullptr
                 ? std::dynamic_pointer_cast<const TrimeshConfiguration>(
                         context.configuration->value)
                 : nullptr;
+        const PortDomain outputDomain = primaryOutputDomain(context.outputPorts);
+        const bool bipolar = configuration != nullptr
+                ? configuration->bipolar
+                : TrimeshSignalSemantics::isBipolar(context.parameters);
+        if (reuseCapturedTraversal(context, outputDomain, bipolar)) {
+            return;
+        }
+
         Mesh* mesh = configuration != nullptr
                 ? const_cast<Mesh*>(configuration->mesh.get())
                 : &fallbackTopology.mesh();
@@ -86,13 +95,11 @@ public:
                 ? configuration->primaryViewAxis
                 : primaryAxisFromParameter(NodeParameterMap(context.parameters)
                         .stringValue("primaryAxis", "yellow"));
-        const PortDomain outputDomain = primaryOutputDomain(context.outputPorts);
         const bool cyclic = outputDomain == PortDomain::TimeSignal;
         const size_t columnCount = std::max<size_t>(8, context.pointCount / 2);
         GuideCurveProvider* guideProvider = configuration != nullptr
                 ? configuration->guideCurveProvider.get()
                 : nullptr;
-
         context.domain = outputDomain;
         renderSlice(
                 context,
@@ -101,6 +108,7 @@ public:
                 primaryAxis,
                 cyclic,
                 outputDomain,
+                bipolar,
                 guideProvider);
         renderGrid(
                 context,
@@ -110,11 +118,15 @@ public:
                 cyclic,
                 outputDomain,
                 columnCount,
+                bipolar,
                 guideProvider);
     }
 
 private:
-    bool reuseCapturedTraversal(PreviewProcessContext& context) const {
+    bool reuseCapturedTraversal(
+            PreviewProcessContext& context,
+            PortDomain outputDomain,
+            bool bipolar) const {
         if (context.capturedOutput == nullptr
                 || !context.capturedOutput->traversalGrid.isValid()) {
             return false;
@@ -124,7 +136,9 @@ private:
         const auto& samples = context.capturedOutput->block.samples;
         context.primary.assign(grid.begin(), grid.end());
         context.secondary.assign(samples.begin(), samples.end());
-        normalizeBipolarValues(context.secondary);
+        if (requiresDisplayNormalization(outputDomain, bipolar)) {
+            normalizeBipolarValues(context.secondary);
+        }
         context.gridColumns = context.capturedOutput->traversalGrid.columns;
         context.gridRows = context.capturedOutput->traversalGrid.rows;
         context.domain = context.capturedOutput->traversalGrid.metadata.valueDomain;
@@ -139,10 +153,12 @@ private:
             int primaryAxis,
             bool cyclic,
             PortDomain outputDomain,
+            bool bipolar,
             GuideCurveProvider* guideProvider) {
         TrimeshBlockwiseDsp blockwiseDsp;
         SignalPayload slice;
         blockwiseDsp.setGuideCurveProvider(guideProvider);
+        blockwiseDsp.setBipolar(bipolar);
         blockwiseDsp.setFrequencyMidiNote(context.frequencyMidiNote);
         blockwiseDsp.prepare(&mesh, morph, primaryAxis, cyclic, outputDomain);
         blockwiseDsp.renderPrepared(
@@ -150,7 +166,9 @@ private:
                 outputDomain,
                 ChannelLayout::LinkedStereo,
                 slice);
-        normalizeBipolarValues(slice.block.samples);
+        if (requiresDisplayNormalization(outputDomain, bipolar)) {
+            normalizeBipolarValues(slice.block.samples);
+        }
         context.secondary.assign(slice.block.samples.begin(), slice.block.samples.end());
     }
 
@@ -162,10 +180,12 @@ private:
             bool cyclic,
             PortDomain outputDomain,
             size_t columnCount,
+            bool bipolar,
             GuideCurveProvider* guideProvider) {
         TrimeshGridwiseDsp gridwiseDsp;
         gridwiseDsp.setCyclic(cyclic);
         gridwiseDsp.setGuideCurveProvider(guideProvider);
+        gridwiseDsp.setBipolar(bipolar);
         gridwiseDsp.setFrequencyMidiNote(context.frequencyMidiNote);
         const auto columns = gridwiseDsp.renderColumns(
                 mesh,

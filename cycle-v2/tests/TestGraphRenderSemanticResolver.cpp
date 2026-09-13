@@ -35,33 +35,60 @@ Node pitchConsumer(String id) {
 
 }
 
-TEST_CASE("Render semantics resolve additive and multiplicative spectral scale", "[cycle-v2][graph]") {
+TEST_CASE(
+        "Trimesh render semantics keep polarity independent from graph arithmetic",
+        "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     GraphRenderSemanticResolver resolver;
-    NodeGraph additiveGraph;
-    NodeGraph multiplicativeGraph;
+    NodeGraph unipolarMultiplyGraph;
+    NodeGraph bipolarAddGraph;
 
-    additiveGraph.addNode(spectralMagnitudeSource("mag"));
-    additiveGraph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
-    additiveGraph.addNode(factory.createNode(NodeKind::Add, "add", { 460.f, 0.f }));
-    additiveGraph.addEdge({ "mag", "out", "add", "left", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal });
-    additiveGraph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, ConnectionKind::Signal });
+    Node unipolarMesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f });
+    unipolarMesh.parameters = {
+            { "signalType", "Signal Type", "spectralMagnitude" },
+            { "polarity", "Polarity", "unipolar" }
+    };
+    unipolarMultiplyGraph.addNode(spectralMagnitudeSource("mag"));
+    unipolarMultiplyGraph.addNode(std::move(unipolarMesh));
+    unipolarMultiplyGraph.addNode(
+            factory.createNode(NodeKind::Multiply, "multiply", { 460.f, 0.f }));
+    unipolarMultiplyGraph.addEdge({
+            "mag", "out", "multiply", "left",
+            PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal
+    });
+    unipolarMultiplyGraph.addEdge({
+            "mesh", "out", "multiply", "right",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
 
-    multiplicativeGraph.addNode(spectralMagnitudeSource("mag"));
-    multiplicativeGraph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
-    multiplicativeGraph.addNode(factory.createNode(NodeKind::Multiply, "multiply", { 460.f, 0.f }));
-    multiplicativeGraph.addEdge({ "mag", "out", "multiply", "left", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal });
-    multiplicativeGraph.addEdge({ "mesh", "out", "multiply", "right", PortDomain::ControlSignal, ConnectionKind::Signal });
+    Node bipolarMesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f });
+    bipolarMesh.parameters = {
+            { "signalType", "Signal Type", "spectralMagnitude" },
+            { "polarity", "Polarity", "bipolar" }
+    };
+    bipolarAddGraph.addNode(spectralMagnitudeSource("mag"));
+    bipolarAddGraph.addNode(std::move(bipolarMesh));
+    bipolarAddGraph.addNode(factory.createNode(NodeKind::Add, "add", { 460.f, 0.f }));
+    bipolarAddGraph.addEdge({
+            "mag", "out", "add", "left",
+            PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal
+    });
+    bipolarAddGraph.addEdge({
+            "mesh", "out", "add", "right",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
 
-    const NodeRenderSemantic additive = resolver.semanticForNodeOutput(additiveGraph, "mesh", "out");
-    const NodeRenderSemantic multiplicative = resolver.semanticForNodeOutput(multiplicativeGraph, "mesh", "out");
+    const NodeRenderSemantic unipolar = resolver.semanticForNodeOutput(
+            unipolarMultiplyGraph, "mesh", "out");
+    const NodeRenderSemantic bipolar = resolver.semanticForNodeOutput(
+            bipolarAddGraph, "mesh", "out");
 
-    REQUIRE(additive.domain == PortDomain::SpectralMagnitudeSignal);
-    REQUIRE(additive.scalePolicy == RenderScalePolicy::Unipolar);
-    REQUIRE(additive.role == RenderSemanticRole::SpectralMagnitudeAdditive);
-    REQUIRE(multiplicative.domain == PortDomain::SpectralMagnitudeSignal);
-    REQUIRE(multiplicative.scalePolicy == RenderScalePolicy::Bipolar);
-    REQUIRE(multiplicative.role == RenderSemanticRole::SpectralMagnitudeMultiplicative);
+    REQUIRE(unipolar.domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(unipolar.scalePolicy == RenderScalePolicy::Unipolar);
+    REQUIRE(unipolar.role == RenderSemanticRole::SpectralMagnitudeUnipolar);
+    REQUIRE(bipolar.domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(bipolar.scalePolicy == RenderScalePolicy::Bipolar);
+    REQUIRE(bipolar.role == RenderSemanticRole::SpectralMagnitudeBipolar);
 }
 
 TEST_CASE("Render semantics resolve envelope scale from downstream target", "[cycle-v2][graph]") {
@@ -80,25 +107,21 @@ TEST_CASE("Render semantics resolve envelope scale from downstream target", "[cy
     REQUIRE(semantic.role == RenderSemanticRole::EnvelopeBipolar);
 }
 
-TEST_CASE("Spectral Layer mode exposes the source mesh magnitude semantic", "[cycle-v2][graph]") {
+TEST_CASE("Trimesh polarity exposes the source mesh magnitude semantic", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     GraphRenderSemanticResolver resolver;
     NodeGraph graph;
 
-    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
-    voice.parameters = { { "domain", "Start Domain", "spectral" } };
     Node layer = factory.createNode(NodeKind::SpectralLayer, "layer", {});
-    layer.parameters = {
-            { "pan", "Pan", "0.5" },
-            { "range", "Range", "0.5" },
-            { "mode", "Magnitude Mode", "multiplicative" }
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+    mesh.parameters = {
+            { "signalType", "Signal Type", "spectralMagnitude" },
+            { "polarity", "Polarity", "bipolar" }
     };
 
-    graph.addNode(std::move(voice));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(std::move(mesh));
     graph.addNode(std::move(layer));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
-    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, ConnectionKind::Signal });
     graph.addEdge({ "mesh", "out", "layer", "in", PortDomain::ControlSignal, ConnectionKind::Signal });
     graph.addEdge({ "layer", "out", "ifft", "mag", PortDomain::ControlSignal, ConnectionKind::Signal });
 
@@ -106,26 +129,27 @@ TEST_CASE("Spectral Layer mode exposes the source mesh magnitude semantic", "[cy
 
     REQUIRE(semantic.domain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(semantic.scalePolicy == RenderScalePolicy::Bipolar);
-    REQUIRE(semantic.role == RenderSemanticRole::SpectralMagnitudeMultiplicative);
+    REQUIRE(semantic.role == RenderSemanticRole::SpectralMagnitudeBipolar);
 }
 
-TEST_CASE("Render semantics use voice context before downstream consumers exist", "[cycle-v2][graph]") {
+TEST_CASE(
+        "Render semantics use explicit Trimesh type before downstream consumers exist",
+        "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     GraphRenderSemanticResolver resolver;
     NodeGraph graph;
 
-    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
-    voice.parameters = {
-            { "domain", "Start Domain", "spectral" }
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f });
+    mesh.parameters = {
+            { "signalType", "Signal Type", "spectralMagnitude" },
+            { "polarity", "Polarity", "unipolar" }
     };
 
-    graph.addNode(std::move(voice));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
-    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addNode(std::move(mesh));
 
     const NodeRenderSemantic semantic = resolver.semanticForNodeOutput(graph, "mesh", "out");
 
     REQUIRE(semantic.domain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(semantic.scalePolicy == RenderScalePolicy::Unipolar);
-    REQUIRE(semantic.role == RenderSemanticRole::SpectralMagnitudeAdditive);
+    REQUIRE(semantic.role == RenderSemanticRole::SpectralMagnitudeUnipolar);
 }

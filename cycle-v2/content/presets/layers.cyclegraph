@@ -1,6 +1,6 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 6,
+    "formatVersion": 7,
     "nodes": [
         {
             "id": "output",

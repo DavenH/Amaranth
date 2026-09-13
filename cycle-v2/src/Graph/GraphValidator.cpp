@@ -32,15 +32,6 @@ const Port* findPort(const Node& node, const String& id, bool input) {
     return nullptr;
 }
 
-bool isFixedWaveContextMismatch(const Node& sourceNode, const Node& destNode, const Port& dest) {
-    GraphDomainResolver resolver;
-
-    return sourceNode.kind == NodeKind::VoiceContext
-        && destNode.kind == NodeKind::WaveSource
-        && dest.id == "context"
-        && resolver.domainFromVoiceContext(sourceNode) != PortDomain::TimeSignal;
-}
-
 bool isValidScratchBindingSource(const Node& sourceNode, const Port& source) {
     if (source.connectionKind != ConnectionKind::ProcessingAttachment
             || source.attachmentType != AttachmentType::ScratchEnvelope) {
@@ -200,6 +191,7 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
 
     validateOperationInputs(graph, resolution, issues);
     validateAudioScopes(graph, scopeAnalysis, issues);
+    validateVoiceContextAssignments(graph, issues);
 
     return issues;
 }
@@ -357,14 +349,6 @@ void GraphValidator::validateEdge(
         }
     }
 
-    if (isFixedWaveContextMismatch(*sourceNode, *destNode, *dest)) {
-        if (!report(
-                    GraphValidationCode::DomainMismatch,
-                    "Wave source requires waveform Voice Context: " + edge.sourceNodeId + " -> " + edge.destNodeId)) {
-            return;
-        }
-    }
-
     Port resolvedSource = *source;
     resolvedSource.domain = resolvedDomain;
 
@@ -469,6 +453,61 @@ void GraphValidator::validateOperationInputs(
                 break;
             }
         }
+    }
+}
+
+void GraphValidator::validateVoiceContextAssignments(
+        const NodeGraph& graph,
+        std::vector<GraphValidationIssue>& issues) const {
+    const int voiceContextCount = static_cast<int>(std::count_if(
+            graph.getNodes().begin(),
+            graph.getNodes().end(),
+            [](const Node& node) {
+                return node.kind == NodeKind::VoiceContext;
+            }));
+    if (voiceContextCount <= 1) {
+        return;
+    }
+
+    std::unordered_map<String, String, GraphAudioScopeAnalysis::StringHash>
+            explicitAssignments;
+    for (const auto& edge : graph.getEdges()) {
+        if (!edge.isAttachment() && edge.destPortId == "context") {
+            explicitAssignments.emplace(edge.destNodeId, edge.sourceNodeId);
+        }
+    }
+
+    NodeIdSet activeContexts;
+    for (const auto& node : graph.getNodes()) {
+        const bool acceptsContext = std::any_of(
+                node.inputs.begin(),
+                node.inputs.end(),
+                [](const Port& port) {
+                    return port.id == "context"
+                            && port.domain == PortDomain::DomainContext;
+                });
+        if (!acceptsContext) {
+            continue;
+        }
+        const auto assignment = explicitAssignments.find(node.id);
+        if (assignment == explicitAssignments.end()) {
+            addIssue(
+                    issues,
+                    GraphValidationCode::MissingVoiceContextAssignment,
+                    "Multiple Voice Contexts require an explicit context for " + node.id);
+            continue;
+        }
+        const Node* source = graph.findNode(assignment->second);
+        if (source != nullptr && source->kind == NodeKind::VoiceContext) {
+            activeContexts.emplace(source->id);
+        }
+    }
+
+    if (activeContexts.size() > 1) {
+        addIssue(
+                issues,
+                GraphValidationCode::MultipleActiveVoiceContexts,
+                "Only one Voice Context can participate until multi-oscillator semantics are defined");
     }
 }
 

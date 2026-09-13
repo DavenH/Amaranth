@@ -1293,7 +1293,6 @@ void NodeCanvasPresentation::paintNode(
 
         const Rectangle<float> preview = previewRenderer.boundsFor(node, nodeBounds, zoom);
         if (node.kind == NodeKind::VoiceContext) {
-            VoiceContextCompactEditor::paintNodeSelector(graphics, nodeBounds, zoom, node);
             VoiceContextCompactEditor::paintNodeSummary(
                     graphics,
                     nodeBounds,

@@ -308,3 +308,19 @@ Context:
 Current status: open; inspect rasterizer snapshot/intercept ownership while
 replacing a loaded mesh. This is separate from the repaired Visual DSP
 render-only primary-axis selection.
+
+## P3: Native authoring smoke inserts a global Delay into the voice graph
+
+Context:
+
+- The 2026-09-13 `authoring` native smoke creates a Delay from the FX palette
+  and inserts it between `waveMesh` and `fft` in the per-voice oscillator path.
+- The gesture succeeds, but graph validation correctly reports that the global
+  Delay is neither reachable from Global Input nor connected to Output, so the
+  fixture's `compileSucceeded` assertion fails.
+- This is independent of explicit Trimesh signal types and single Voice Context
+  inference; the focused Trimesh semantic fixture passes.
+
+Current status: open; change the generic cable-insertion smoke to use a node
+whose execution scope is legal in the selected cable, or assert insertion
+separately from compilation validity.

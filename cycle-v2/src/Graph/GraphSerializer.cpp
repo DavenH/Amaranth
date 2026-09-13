@@ -4,6 +4,7 @@
 #include "Graph/GraphValidator.h"
 #include "Graph/GlobalAudioGraphRepresentationMigration.h"
 #include "Graph/NodeDefinition.h"
+#include "Graph/TrimeshSemanticRepresentationMigration.h"
 
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
@@ -403,7 +404,9 @@ bool isScalarJSON(const var& value) {
 bool isRemovedLegacyParameter(NodeKind kind, const String& parameterId) {
     return (kind == NodeKind::Envelope && parameterId == "dynamic")
             || (kind == NodeKind::SpectralLayer
-                    && (parameterId == "range" || parameterId == "mode"));
+                    && (parameterId == "range" || parameterId == "mode"))
+            || (kind == NodeKind::VoiceContext && parameterId == "domain")
+            || (kind == NodeKind::TrilinearMesh && parameterId == "spectralMode");
 }
 
 String scalarToJSON(const var& value) {
@@ -685,6 +688,15 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         result.issues.push_back({
                 GraphLoadCode::UnsupportedVersion,
                 representationMigration.error
+        });
+        return result;
+    }
+    const auto trimeshMigration =
+            TrimeshSemanticRepresentationMigration().migrate(migratedValue);
+    if (!trimeshMigration.succeeded()) {
+        result.issues.push_back({
+                GraphLoadCode::UnsupportedVersion,
+                trimeshMigration.error
         });
         return result;
     }

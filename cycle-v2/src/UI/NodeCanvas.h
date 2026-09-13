@@ -240,7 +240,6 @@ private:
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleSinglePortLayout(const String& nodeId);
     bool cycleOutputSide(const String& nodeId);
-    bool cycleVoiceDomain(const String& nodeId);
     Rectangle<float> canvasContentBounds() const;
     WorkspaceDockLayout workspaceDockLayout() const;
     void showEdgeMenu(int edgeIndex, Point<float> screenPosition);

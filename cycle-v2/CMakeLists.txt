@@ -120,6 +120,8 @@ set(GRAPH_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphNodeFactory.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphSerializer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/TrimeshSignalSemantics.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/TrimeshSemanticRepresentationMigration.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphTransaction.cpp"
 )
 
@@ -302,6 +304,8 @@ if(BUILD_TESTING)
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDomainResolver.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphNodeFactory.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphSerializer.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/TrimeshSignalSemantics.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/TrimeshSemanticRepresentationMigration.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphValidator.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeDefinition.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraph.cpp"

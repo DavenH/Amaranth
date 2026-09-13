@@ -155,12 +155,16 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertFalse(nodes["timeLayer2"]["parameters"]["enabled"])
         self.assertFalse(nodes["magnitudeLayer2"]["parameters"]["enabled"])
         self.assertEqual(
-            nodes["magnitudeLayer1"]["parameters"]["spectralMode"],
-            "additive",
+            nodes["magnitudeLayer1"]["parameters"]["signalType"],
+            "spectralMagnitude",
         )
         self.assertEqual(
-            nodes["magnitudeLayer2"]["parameters"]["spectralMode"],
-            "multiplicative",
+            nodes["magnitudeLayer1"]["parameters"]["polarity"],
+            "unipolar",
+        )
+        self.assertEqual(
+            nodes["magnitudeLayer2"]["parameters"]["polarity"],
+            "bipolar",
         )
         self.assertEqual(nodes["magnitudeOp1"]["kind"], "add")
         self.assertEqual(nodes["magnitudeOp2"]["kind"], "multiply")

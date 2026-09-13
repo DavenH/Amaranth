@@ -19,15 +19,6 @@ constexpr int kValueWidth = 72;
 constexpr int kRowGap = 10;
 constexpr float kLandmarkEndInset = 15.f;
 
-std::vector<PropertySegmentOption> domainOptions() {
-    return {
-            { "Waveform", "waveform", "voiceContextEditor.domain.waveform",
-                    "Start voices in the waveform domain" },
-            { "Spectral", "spectral", "voiceContextEditor.domain.spectral",
-                    "Start voices in the spectral domain" }
-    };
-}
-
 std::vector<PropertySegmentOption> oversamplingOptions() {
     return {
             { "1x", "1x", "voiceContextEditor.oversampling.1x", "1x oversampling" },
@@ -111,11 +102,8 @@ public:
     void setNode(const Node& nextNode) {
         node = nextNode;
         const NodeParameterMap parameters(node);
-        const String domain = parameters.stringValue("domain", "waveform");
         const String oversamplingValue = parameters.stringValue("oversampling", "1x");
         const String controlIntervalValue = parameters.stringValue("controlInterval", "16");
-        domainSelector.setSelectedValue(
-                domain.startsWith("waveform") ? "waveform" : "spectral");
         oversamplingSelector.setSelectedValue(oversamplingValue);
         controlIntervalSelector.setSelectedValue(controlIntervalValue);
         portamento.setToggleState(
@@ -149,7 +137,6 @@ public:
         Rectangle<int> rows = getLocalBounds();
         rows.removeFromTop(header.header.getHeight());
         rows.reduce(kContentInset, 4);
-        layoutDomainRow(nextRow(rows));
         layoutSliderRow(octave, nextRow(rows));
         layoutVoiceLengthRow(nextRow(rows));
         layoutSliderRow(pitch, nextRow(rows));
@@ -161,7 +148,6 @@ public:
     var automationState() const {
         auto* state = new DynamicObject();
         state->setProperty("kind", "VOICE_CONTEXT");
-        state->setProperty("domain", domainSelector.selectedValue());
         state->setProperty("octave", propertySliderRowAutomationState(octave));
         state->setProperty("voiceLength", propertySliderRowAutomationState(voiceLength));
         state->setProperty("pitch", propertySliderRowAutomationState(pitch));
@@ -190,21 +176,14 @@ private:
     }
 
     void configureSelectors() {
-        stylePropertyLabel(domainLabel, "Domain");
         stylePropertyLabel(oversamplingLabel, "Oversampling");
         stylePropertyLabel(controlIntervalLabel, "Control interval");
-        domainSelector.setComponentID("voiceContextEditor.domain");
         oversamplingSelector.setComponentID("voiceContextEditor.oversampling");
         controlIntervalSelector.setComponentID("voiceContextEditor.controlInterval");
-        addAndMakeVisible(domainLabel);
         addAndMakeVisible(oversamplingLabel);
         addAndMakeVisible(controlIntervalLabel);
-        addAndMakeVisible(domainSelector);
         addAndMakeVisible(oversamplingSelector);
         addAndMakeVisible(controlIntervalSelector);
-        domainSelector.onChange = [this](const String& value) {
-            setDomain(value);
-        };
         oversamplingSelector.onChange = [this](const String& value) {
             setOversampling(value);
         };
@@ -293,13 +272,6 @@ private:
         pitch.setValueJustification(Justification::centredLeft);
     }
 
-    void setDomain(const String& value) {
-        if (!commands.setNodeParameterText(node.id, "domain", "Start Domain", value)) {
-            domainSelector.setSelectedValue(
-                    NodeParameterMap(node).stringValue("domain", "waveform"));
-        }
-    }
-
     void setOversampling(const String& value) {
         if (!commands.setNodeParameterText(node.id, "oversampling", "Oversampling", value)) {
             oversamplingSelector.setSelectedValue(
@@ -321,10 +293,6 @@ private:
         Rectangle<int> row = rows.removeFromTop(PropertyControlMetrics::rowHeight);
         rows.removeFromTop(kRowGap);
         return row;
-    }
-
-    void layoutDomainRow(Rectangle<int> row) {
-        layoutSelectorRow(row, domainLabel, domainSelector);
     }
 
     void layoutVoiceLengthRow(Rectangle<int> row) {
@@ -370,8 +338,6 @@ private:
     NodeEditorPresentation& presentation;
     Node node;
     TextButton close;
-    Label domainLabel;
-    PropertySegmentedSelector domainSelector { domainOptions() };
     NodePropertySliderRow octave;
     NodePropertySliderRow voiceLength;
     NodePropertySliderRow pitch;

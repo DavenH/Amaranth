@@ -514,12 +514,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                 }
                 break;
 
-            case CanvasNodeActionKind::CycleVoiceDomain:
-                if (cycleVoiceDomain(action->nodeId)) {
-                    requestCanvasRepaint();
-                }
-                break;
-
         }
 
         return;
@@ -1950,10 +1944,6 @@ bool NodeCanvas::cycleSinglePortLayout(const String& nodeId) {
 
 bool NodeCanvas::cycleOutputSide(const String& nodeId) {
     return applyAuthoringResult(authoring.cycleOutputSide(nodeId));
-}
-
-bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
-    return applyAuthoringResult(authoring.cycleVoiceDomain(nodeId));
 }
 
 void NodeCanvas::closeNodeEditor() {

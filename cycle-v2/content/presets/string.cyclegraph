@@ -1,21 +1,13 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 6,
+    "formatVersion": 7,
     "nodes": [
         {
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 475.20001, "y": 633.0 },
-            "parameters": {
-                "domain": "waveform",
-                "octave": 1,
-                "voiceLength": 0.519083969,
-                "pitch": 0.0,
-                "portamento": false,
-                "oversampling": "2x",
-                "controlInterval": "256"
-            }
+            "parameters": { "octave": 1, "voiceLength": 0.519083969, "pitch": 0.0, "portamento": false, "oversampling": "2x", "controlInterval": "256" }
         },
         {
             "id": "morph",
@@ -80,7 +72,8 @@
                 "enabled": false,
                 "gain": 0.5,
                 "range": 0.5,
-                "spectralMode": "auto",
+                "signalType": "time",
+                "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -219,7 +212,8 @@
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.55,
-                "spectralMode": "auto",
+                "signalType": "spectralMagnitude",
+                "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -290,7 +284,8 @@
                 "enabled": false,
                 "gain": 0.5,
                 "range": 0.375,
-                "spectralMode": "auto",
+                "signalType": "spectralMagnitude",
+                "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -387,7 +382,8 @@
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.4,
-                "spectralMode": "auto",
+                "signalType": "spectralPhase",
+                "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -999,7 +995,6 @@
     "edges": [
         { "sourceNodeId": "morph", "sourcePortId": "modulation", "destNodeId": "voice", "destPortId": "modulation", "connectionKind": "configurationAttachment", "attachmentType": "modulationTriple" },
         { "sourceNodeId": "unison", "sourcePortId": "unison", "destNodeId": "voice", "destPortId": "unison", "connectionKind": "configurationAttachment", "attachmentType": "unison" },
-        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "timeLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "timeLayer1", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "fft", "sourcePortId": "mag", "destNodeId": "magnitudeOp1", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "magnitudeOp1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },

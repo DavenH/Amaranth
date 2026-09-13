@@ -970,30 +970,32 @@ TEST_CASE("Graph editor reports missing edge removal", "[cycle-v2][graph]") {
 TEST_CASE("Graph editor updates node parameters", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     GraphEditor editor;
-    const size_t initialParameterCount = graph.getNodes().front().parameters.size();
+    const Node* initialMesh = graph.findNode("waveMesh");
+    REQUIRE(initialMesh != nullptr);
+    const size_t initialParameterCount = initialMesh->parameters.size();
 
     const auto updateResult = editor.setNodeParameter(
             graph,
-            "voice",
-            "domain",
-            "Start Domain",
-            "spectral");
+            "waveMesh",
+            "polarity",
+            "Polarity",
+            "unipolar");
 
     REQUIRE(updateResult.succeeded());
-    REQUIRE(updateResult.nodeId == "voice");
-    REQUIRE(parameterValueForNode(graph.getNodes().front(), "domain") == "spectral");
+    REQUIRE(updateResult.nodeId == "waveMesh");
+    REQUIRE(parameterValueForNode(*graph.findNode("waveMesh"), "polarity") == "unipolar");
 
     const auto addResult = editor.setNodeParameter(
             graph,
-            "voice",
+            "waveMesh",
             "tempoSync",
             "Tempo Sync",
             "true");
 
     REQUIRE_FALSE(addResult.succeeded());
     REQUIRE(addResult.code == GraphEditCode::UnknownParameter);
-    REQUIRE(parameterValueForNode(graph.getNodes().front(), "tempoSync").isEmpty());
-    REQUIRE(graph.getNodes().front().parameters.size() == initialParameterCount);
+    REQUIRE(parameterValueForNode(*graph.findNode("waveMesh"), "tempoSync").isEmpty());
+    REQUIRE(graph.findNode("waveMesh")->parameters.size() == initialParameterCount);
 }
 
 TEST_CASE("Graph editor validates and normalizes declared parameters", "[cycle-v2][graph][definitions]") {
@@ -1018,9 +1020,9 @@ TEST_CASE("Graph editor reports missing node parameter updates", "[cycle-v2][gra
     const auto result = GraphEditor().setNodeParameter(
             graph,
             "missing",
-            "domain",
-            "Start Domain",
-            "spectral");
+            "gain",
+            "Gain",
+            "0.5");
 
     REQUIRE_FALSE(result.succeeded());
     REQUIRE(result.code == GraphEditCode::MissingNode);

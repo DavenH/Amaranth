@@ -347,7 +347,6 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             ChannelLayout::Mono, PortPurpose::ScratchAttachment)
                     },
                     { output("context", "Context", PortDomain::DomainContext) }, {
-                            choice("domain", "Start Domain", "waveform", { "waveform", "spectral", "spectralMagnitude", "spectralPhase" }, graph | presentation | preview),
                             integer("octave", "Octave", 0, -2, 2, dsp | presentation),
                             number("voiceLength", "Voice Length",
                                     CycleDsp::voiceLengthUnitValue(1.0), 0.f, 1.f,
@@ -467,8 +466,12 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             boolean("enabled", "Enabled", true, dsp | presentation),
                             number("gain", "Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("range", "Range", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            choice("spectralMode", "Spectral Mode", "auto",
-                                    { "auto", "additive", "multiplicative" }, graph | dsp),
+                            choice("signalType", "Signal Type", "time",
+                                    { "time", "spectralMagnitude", "spectralPhase" },
+                                    graph | dsp | preview | presentation),
+                            choice("polarity", "Polarity", "unipolar",
+                                    { "unipolar", "bipolar" },
+                                    dsp | preview | presentation),
                             number("yellow", "Yellow", 0.f, 0.f, 1.f, dsp | preview | presentation),
                             number("red", "Red", defaultTrimeshKeyPosition(), 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.f, 0.f, 1.f, dsp | preview | presentation),
@@ -488,9 +491,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     "Pan", "stereo placement", "pan",
                     { input("in", "Layer", PortDomain::ControlSignal, ChannelLayout::Mono) },
                     { output("out", "Stereo", PortDomain::ControlSignal, ChannelLayout::StereoPair) }, {
-                            number("pan", "Pan", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            choice("mode", "Mode", "auto",
-                                    { "auto", "additive", "multiplicative" }, graph | dsp)
+                            number("pan", "Pan", 0.5f, 0.f, 1.f, dsp | preview | presentation)
                     }))
                     .help("Places a signal in the stereo field.")
                     .execution(NodeExecutionTrait::CoordinateTransform)

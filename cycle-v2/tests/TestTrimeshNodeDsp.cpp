@@ -860,6 +860,7 @@ TEST_CASE(
     dsp.setFrequencyMidiNote(48);
 
     SignalPayload magnitude;
+    SignalPayload bipolarMagnitude;
     SignalPayload phase;
     SignalPayload time;
     SignalPayload c5Magnitude;
@@ -868,12 +869,19 @@ TEST_CASE(
             PortDomain::SpectralMagnitudeSignal,
             ChannelLayout::Mono,
             magnitude);
+    dsp.setBipolar(true);
+    dsp.renderCycle(
+            32,
+            PortDomain::SpectralMagnitudeSignal,
+            ChannelLayout::Mono,
+            bipolarMagnitude);
     dsp.renderCycle(
             32,
             PortDomain::SpectralPhaseSignal,
             ChannelLayout::Mono,
             phase);
     dsp.renderCycle(32, PortDomain::TimeSignal, ChannelLayout::Mono, time);
+    dsp.setBipolar(false);
     dsp.setFrequencyMidiNote(72);
     dsp.renderCycle(
             32,
@@ -882,12 +890,16 @@ TEST_CASE(
             c5Magnitude);
 
     REQUIRE(magnitude.block.samples.size() == phase.block.samples.size());
+    REQUIRE(magnitude.block.samples.size() == bipolarMagnitude.block.samples.size());
     REQUIRE(magnitude.block.samples.size() == time.block.samples.size());
     REQUIRE(magnitude.block.samples.size() == c5Magnitude.block.samples.size());
     float pitchDifference {};
     float uniformSamplingDifference {};
     float phaseInterpolationDifference {};
     for (size_t index = 0; index < magnitude.block.samples.size(); ++index) {
+        REQUIRE(bipolarMagnitude.block.samples[index]
+                == Catch::Approx(magnitude.block.samples[index] * 2.f - 1.f)
+                        .margin(0.0001f));
         pitchDifference += std::abs(
                 magnitude.block.samples[index]
                 - c5Magnitude.block.samples[index]);
@@ -2197,7 +2209,7 @@ TEST_CASE("Trimesh panel bridge maps spectral grids by signal domain",
     bridge.setRenderProfile(TrimeshRenderProfile::fromSemantic({
             PortDomain::SpectralMagnitudeSignal,
             RenderScalePolicy::Bipolar,
-            RenderSemanticRole::SpectralMagnitudeMultiplicative
+            RenderSemanticRole::SpectralMagnitudeBipolar
     }));
     bridge.syncFromNode(node, 12, 4);
     const TrimeshRenderData multiplicativeMagnitude = bridge.getDataSource().getRenderData();
@@ -2242,7 +2254,7 @@ TEST_CASE("Compact and expanded Trimesh views share mapped spectral data",
             TrimeshRenderProfile::fromSemantic({
                     PortDomain::SpectralMagnitudeSignal,
                     RenderScalePolicy::Bipolar,
-                    RenderSemanticRole::SpectralMagnitudeMultiplicative
+                    RenderSemanticRole::SpectralMagnitudeBipolar
             }),
             TrimeshRenderProfile::fromDomain(PortDomain::SpectralPhaseSignal) }) {
         TrimeshWidget widget;
