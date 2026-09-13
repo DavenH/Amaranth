@@ -1559,6 +1559,36 @@ as the scratch envelope evolves.
     Artifacts: `/private/tmp/cycle-subbass-current-converter-stages/` and
     `/private/tmp/cycle-subbass-current-converter-full-48000/`.
 
+71. Share Cycle 1's interpolated-frame position boundary. Complete: Cycle
+    1's mature `CycleBasedVoice::renderInterpolatedCycles()` computes a
+    single-lane position from integer cycle count and a multi-lane position by
+    rounding the shared-frame interval to float before division. Cycle V2
+    independently reconstructed the multi-lane expression with a double
+    denominator. Evolving Organ 2 frames expose the resulting one-ULP composed
+    cycle mismatch before pitch resampling, and 48 kHz Reverb amplifies it.
+
+    Extract the existing Cycle 1 expression unchanged into
+    `OscillatorLaneCore`; both engines will call it. Cycle V2 translates its
+    lane cycle count and shared-frame positions at that boundary and retains no
+    local interpolation formula. The shared core owns arithmetic only; frame
+    scheduling, buffer lifecycle, rendering, and effects remain with their
+    existing owners. The duplicated V2 formula is deleted, focused shared-core
+    and host-partition tests pass, and Cycle 1's captured stage payload is
+    byte-identical before and after extraction.
+
+    Organ 2 frame 32 is now byte-identical at every captured stage, including
+    the composed and pitch-clocked cycle that previously differed around
+    `5.9e-8` normalized residual. Shiny's verified MIDI 36–72 matrix remains
+    deterministic and within its prior near-exact bounds. The complete Organ 2
+    dry and Reverb renders remain numerically unchanged, which falsifies this
+    primary-lane interpolation mismatch as the source of the audible 48 kHz
+    Reverb gap. The next localization boundary is the uncaptured non-primary
+    Unison lanes and their mix before global effects; do not change Reverb DSP
+    on this evidence. Artifacts:
+    `/private/tmp/cycle-organ-2-shared-frame-portion-stages/`,
+    `/private/tmp/cycle-organ-2-shared-frame-portion-full-48000/`, and
+    `/private/tmp/cycle-shiny-shared-frame-portion-full-48000/`.
+
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
 renderer concern. Slice 31 aligns the comparison harness with that ownership.

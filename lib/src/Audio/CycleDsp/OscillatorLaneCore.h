@@ -20,6 +20,13 @@ public:
     static int controlFrameStride(
             int controlIntervalSamples,
             double neutralCyclePeriod);
+    static float interpolatedFramePortion(
+            bool singleFrame,
+            long cycleCount,
+            int controlStride,
+            double futureFramePosition,
+            double lanePosition,
+            double sharedFrameInterval);
     static void advanceChainedCycle(ChainedCycleState& state, double angleDelta);
 };
 

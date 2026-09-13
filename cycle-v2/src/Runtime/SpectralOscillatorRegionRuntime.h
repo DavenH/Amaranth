@@ -36,6 +36,7 @@ public:
 private:
     struct LaneState {
         CycleDsp::ChainedCycleState clock;
+        long cycleCount {};
         std::array<ReadWriteBuffer, 2> buffers;
         std::array<std::array<float, 7>, 2> padding {};
         std::array<double, 2> samplingSpillover {};
@@ -68,6 +69,7 @@ private:
     int fixedFrameSize {};
     double sampleRate { 44100.0 };
     int controlIntervalSamples { 16 };
+    int controlStride { 1 };
     bool initialFramesReady {};
     double sharedFramePeriod {};
     double lastSharedFramePosition {};

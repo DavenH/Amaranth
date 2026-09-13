@@ -77,6 +77,7 @@ bool SpectralOscillatorRegionRuntime::prepare(
 void SpectralOscillatorRegionRuntime::reset() {
     fixedFrameSize = 0;
     initialFramesReady = false;
+    controlStride = 1;
     sharedFramePeriod = 0.0;
     lastSharedFramePosition = 0.0;
     nextSharedFramePosition = 0.0;
@@ -84,6 +85,7 @@ void SpectralOscillatorRegionRuntime::reset() {
     for (int laneIndex = 0; laneIndex < layout.order; ++laneIndex) {
         auto& lane = lanes[(size_t) laneIndex];
         lane.clock = {};
+        lane.cycleCount = 0;
         lane.padding = {};
         lane.samplingSpillover = {};
         for (auto& buffer : lane.buffers) {
@@ -175,7 +177,7 @@ bool SpectralOscillatorRegionRuntime::initializeSharedFrames(
         fixedFrameSize = 0;
         return false;
     }
-    const int controlStride = CycleDsp::OscillatorLaneCore::controlFrameStride(
+    controlStride = CycleDsp::OscillatorLaneCore::controlFrameStride(
             controlIntervalSamples,
             cyclePeriod);
     sharedFramePeriod = cyclePeriod * controlStride;
@@ -315,11 +317,14 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
         return false;
     }
 
-    const float framePortion = sharedFramePeriod > 0.0
-            ? (float) ((cycleStartPosition
-                    - (lastSharedFramePosition - sharedFramePeriod))
-                    / sharedFramePeriod)
-            : 0.f;
+    const float framePortion =
+            CycleDsp::OscillatorLaneCore::interpolatedFramePortion(
+                    layout.order == 1,
+                    lane.cycleCount,
+                    controlStride,
+                    lastSharedFramePosition,
+                    cycleStartPosition,
+                    sharedFramePeriod);
     const double sourceToDestRatio = fixedFrameSize * angleDelta;
     for (int channel = 0; channel < 2; ++channel) {
         auto composed = CycleDsp::CyclicFrameLaneRenderer::compose(
@@ -379,6 +384,7 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
         }
         lane.buffers[(size_t) channel].write(output);
     }
+    ++lane.cycleCount;
     return true;
 }
 

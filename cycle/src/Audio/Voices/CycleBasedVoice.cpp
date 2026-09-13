@@ -521,14 +521,14 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
                 group.samplesThisCycle = truncNextCume - truncCume;
                 group.sampledFrontier = truncNextCume;
 
-                int remainder = frame.cycleCount % noteState.stride;
-                float portionOfNext = singleFrame
-                                          ? remainder / float(noteState.stride)
-                                          : 1 - (futureFrame.cumePos - group.cumePos) / float(
-                                                noteState.stride * futureFrame.period);
-
-                //				jassert(portionOfNext <= 1.5f && portionOfNext >= -0.5f);
-                NumberUtils::constrain(portionOfNext, 0.f, 1.f);
+                const float portionOfNext =
+                        CycleDsp::OscillatorLaneCore::interpolatedFramePortion(
+                                singleFrame,
+                                frame.cycleCount,
+                                noteState.stride,
+                                futureFrame.cumePos,
+                                group.cumePos,
+                                noteState.stride * futureFrame.period);
                 group.cumePos = nextCume;
 
                 if (i == 0)
