@@ -14,6 +14,8 @@ namespace CycleV2 {
 
 namespace {
 
+constexpr float kCableAnnotationBaseDiameter = 28.8f;
+
 void paintProbeOrdinal(Graphics& graphics, Rectangle<float> previewBounds, int ordinal) {
     graphics.setColour(CanvasChromePalette::text.withAlpha(0.86f));
     graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
@@ -360,7 +362,7 @@ void SignalProbeRail::paintCableAnnotations(
 }
 
 float SignalProbeRail::cableAnnotationDiameter(float zoom) {
-    return 16.f * NodeCableRenderer::scaleForZoom(zoom);
+    return kCableAnnotationBaseDiameter * NodeCableRenderer::scaleForZoom(zoom);
 }
 
 const GraphPreviewResult::SignalProbePreview* SignalProbeRail::previewFor(

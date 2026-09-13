@@ -91,6 +91,9 @@ second.
 
 - `fa50d6b4` changes the marquee to the canvas-blue selection family and scales
   spy cable annotations with graph zoom.
+- The follow-up annotation refinement enlarges the complete spy badge by 80%
+  while retaining the same proportional zoom response, restoring legibility at
+  the reference canvas zoom.
 - `a5afa206` refreshes attached Mod Triple mappings without recompiling the
   graph and proves velocity, inverse-velocity, and constant behavior through
   the realtime renderer.
