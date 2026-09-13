@@ -22,6 +22,17 @@ using namespace CycleV2;
 
 namespace {
 
+const GraphExecutionStep& findStep(
+        const GraphExecutionPlan& plan,
+        const String& nodeId) {
+    const auto found = std::find_if(
+            plan.steps.begin(),
+            plan.steps.end(),
+            [&](const GraphExecutionStep& step) { return step.nodeId == nodeId; });
+    REQUIRE(found != plan.steps.end());
+    return *found;
+}
+
 const NodePreviewResult& findPreview(const GraphPreviewResult& result, const String& nodeId) {
     const auto found = std::find_if(
             result.nodes.begin(),
@@ -398,7 +409,30 @@ TEST_CASE("Graph preview executor renders every probe in the bundled spy graph",
             == TraversalGridFrequencySampling::LinearBins);
     REQUIRE(columnDifference(magMesh.traversalGrid, 0, magMesh.traversalGrid.columns - 1) > 0.01f);
     REQUIRE(*std::min_element(addMag.traversalGrid.values.begin(), addMag.traversalGrid.values.end()) >= 0.f);
-    requireMagnitudeGridAddEquals(addMag.traversalGrid, fftMagnitude.traversalGrid, magMesh.traversalGrid);
+    SignalTraversalGrid transferredMesh = magMesh.traversalGrid;
+    const auto& addStep = findStep(compileResult.plan, "addMag");
+    const auto transferInput = std::find_if(
+            addStep.inputs.begin(),
+            addStep.inputs.end(),
+            [](const GraphStepInput& input) { return input.sourceNodeId == "magMesh"; });
+    REQUIRE(transferInput != addStep.inputs.end());
+    const auto transfer = resolveSpectralMagnitudeTransfer(
+            compileResult.plan,
+            transferInput->magnitudeTransfer);
+    for (size_t column = 0; column < transferredMesh.columns; ++column) {
+        applySpectralMagnitudeTransfer(
+                {
+                        transferredMesh.values.data() + column * transferredMesh.rows,
+                        (int) transferredMesh.rows
+                },
+                transfer,
+                0,
+                (int) transferredMesh.rows);
+    }
+    requireMagnitudeGridAddEquals(
+            addMag.traversalGrid,
+            fftMagnitude.traversalGrid,
+            transferredMesh);
     REQUIRE(addSpy.gridColumns == addMag.traversalGrid.columns);
     REQUIRE(addSpy.gridRows == addMag.traversalGrid.rows);
     REQUIRE(addSpy.frequencySampling == TraversalGridFrequencySampling::LinearBins);

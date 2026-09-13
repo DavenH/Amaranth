@@ -33,10 +33,26 @@ public:
             const SignalPayload* right,
             BinarySignalOperation operation,
             size_t frameCount,
-            const AudioProcessWorkArena* arena = nullptr) {
+            const AudioProcessWorkArena* arena = nullptr,
+            const SpectralMagnitudeTransfer* leftTransfer = nullptr,
+            const SpectralMagnitudeTransfer* rightTransfer = nullptr) {
         configureOutputMetadata(output, left, right);
-        processBlock(output, left, right, operation, frameCount);
-        processTraversalGrid(output, left, right, operation, arena);
+        processBlock(
+                output,
+                left,
+                right,
+                operation,
+                frameCount,
+                leftTransfer,
+                rightTransfer);
+        processTraversalGrid(
+                output,
+                left,
+                right,
+                operation,
+                arena,
+                leftTransfer,
+                rightTransfer);
     }
 
 private:
@@ -45,7 +61,9 @@ private:
             const SignalPayload* left,
             const SignalPayload* right,
             BinarySignalOperation operation,
-            size_t frameCount) {
+            size_t frameCount,
+            const SpectralMagnitudeTransfer* leftTransfer,
+            const SpectralMagnitudeTransfer* rightTransfer) {
         const size_t channelCount = payloadChannelCount(output);
         for (size_t channel = 0; channel < channelCount; ++channel) {
             auto& outputSamples = payloadBlock(output, channel).samples;
@@ -53,6 +71,8 @@ private:
             rightOperand.resize(frameCount);
             prepareOperand(outputSamples, left, frameCount, channel, 0, false);
             prepareOperand(rightOperand, right, frameCount, channel, 0, false);
+            applyTransfer(outputSamples, leftTransfer, channel);
+            applyTransfer(rightOperand, rightTransfer, channel);
             applyOperation(outputSamples, rightOperand, operation);
             clampOutputDomain({ outputSamples.data(), (int) outputSamples.size() }, output.domain);
         }
@@ -63,7 +83,9 @@ private:
             const SignalPayload* left,
             const SignalPayload* right,
             BinarySignalOperation operation,
-            const AudioProcessWorkArena* arena) {
+            const AudioProcessWorkArena* arena,
+            const SpectralMagnitudeTransfer* leftTransfer,
+            const SpectralMagnitudeTransfer* rightTransfer) {
         const size_t channelCount = payloadChannelCount(output);
         for (size_t channel = 0; channel < channelCount; ++channel) {
             processTraversalGridChannel(
@@ -72,7 +94,9 @@ private:
                     right,
                     operation,
                     channel,
-                    arena);
+                    arena,
+                    leftTransfer,
+                    rightTransfer);
         }
     }
 
@@ -82,7 +106,9 @@ private:
             const SignalPayload* right,
             BinarySignalOperation operation,
             size_t channel,
-            const AudioProcessWorkArena* arena) {
+            const AudioProcessWorkArena* arena,
+            const SpectralMagnitudeTransfer* leftTransfer,
+            const SpectralMagnitudeTransfer* rightTransfer) {
         const SignalTraversalGrid* grid = outputGridFor(
                 output.domain,
                 left,
@@ -116,6 +142,8 @@ private:
                     outputColumn, left, *grid, column, leftMode, channel);
             prepareGridColumnOperand(
                     rightOperand, right, *grid, column, rightMode, channel);
+            applyTransfer(outputColumn, leftTransfer, channel);
+            applyTransfer(rightOperand, rightTransfer, channel);
             applyOperation(outputColumn, rightOperand, operation);
             clampOutputDomain(outputColumn, output.domain);
         }
@@ -144,6 +172,30 @@ private:
                 channel,
                 gridColumn,
                 useTraversalGrid);
+    }
+
+    static void applyTransfer(
+            std::vector<float>& values,
+            const SpectralMagnitudeTransfer* transfer,
+            size_t channel) {
+        if (transfer == nullptr) {
+            return;
+        }
+        applySpectralMagnitudeTransfer(
+                { values.data(), (int) values.size() },
+                *transfer,
+                channel,
+                (int) values.size());
+    }
+
+    static void applyTransfer(
+            Buffer<float> values,
+            const SpectralMagnitudeTransfer* transfer,
+            size_t channel) {
+        if (transfer == nullptr) {
+            return;
+        }
+        applySpectralMagnitudeTransfer(values, *transfer, channel, values.size());
     }
 
     static void prepareOperand(

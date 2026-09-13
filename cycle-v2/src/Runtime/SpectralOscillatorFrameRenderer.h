@@ -68,6 +68,8 @@ private:
         PortDomain outputDomain { PortDomain::TimeSignal };
         int leftInput { -1 };
         int rightInput { -1 };
+        SpectralMagnitudeTransfer leftTransfer;
+        SpectralMagnitudeTransfer rightTransfer;
         std::array<int, 2> outputs { -1, -1 };
         PreparedTrimeshMorphBinding morphBinding;
         std::shared_ptr<const TrimeshConfiguration> configuration;

@@ -105,3 +105,52 @@ TEST_CASE("Additive spectral pan scales the layer contribution",
     REQUIRE(left == (std::array<float, 3> {}));
     REQUIRE(right != (std::array<float, 3> {}));
 }
+
+TEST_CASE("Spectral magnitude operands use arithmetic-specific polarity transfers",
+        "[CycleDsp][spectral][magnitude][transfer]") {
+    constexpr int harmonicCount = 4;
+    constexpr float range = 1.f / 3.f;
+    const float additiveScale = Arithmetic::calcAdditiveScaling(harmonicCount);
+    std::array<float, 3> addUnipolar { 0.f, 0.5f, 1.f };
+    std::array<float, 3> addBipolar = addUnipolar;
+    std::array<float, 3> multiplyUnipolar = addUnipolar;
+    std::array<float, 3> multiplyBipolar = addUnipolar;
+
+    CycleDsp::SpectralLayerCore::shapeMagnitudeOperand(
+            { addUnipolar.data(), (int) addUnipolar.size() },
+            range,
+            true,
+            false,
+            harmonicCount);
+    CycleDsp::SpectralLayerCore::shapeMagnitudeOperand(
+            { addBipolar.data(), (int) addBipolar.size() },
+            range,
+            true,
+            true,
+            harmonicCount);
+    CycleDsp::SpectralLayerCore::shapeMagnitudeOperand(
+            { multiplyUnipolar.data(), (int) multiplyUnipolar.size() },
+            range,
+            false,
+            false,
+            harmonicCount);
+    CycleDsp::SpectralLayerCore::shapeMagnitudeOperand(
+            { multiplyBipolar.data(), (int) multiplyBipolar.size() },
+            range,
+            false,
+            true,
+            harmonicCount);
+
+    REQUIRE(addUnipolar[0] == Approx(0.f).margin(1.0e-8f));
+    REQUIRE(addUnipolar[1] == Approx(additiveScale));
+    REQUIRE(addUnipolar[2] == Approx(2.f * additiveScale));
+    REQUIRE(addBipolar[0] == Approx(-additiveScale));
+    REQUIRE(addBipolar[1] == Approx(0.f));
+    REQUIRE(addBipolar[2] == Approx(additiveScale));
+    REQUIRE(multiplyUnipolar[0] == Approx(0.f).margin(1.0e-8f));
+    REQUIRE(multiplyUnipolar[1] == Approx(0.5f));
+    REQUIRE(multiplyUnipolar[2] == Approx(1.f));
+    REQUIRE(multiplyBipolar[0] == Approx(0.f).margin(1.0e-8f));
+    REQUIRE(multiplyBipolar[1] == Approx(1.f));
+    REQUIRE(multiplyBipolar[2] == Approx(2.f));
+}

@@ -155,6 +155,10 @@ void FftSignalProcessor::processInverse(AudioProcessContext& context, bool useHa
         output.secondaryBlock.samples.resize(context.frameCount);
     }
     const size_t channelCount = stereo ? 2u : 1u;
+    const SpectralMagnitudeTransfer* magnitudeTransfer
+            = !context.magnitudeTransfers.empty()
+            ? &context.magnitudeTransfers[0]
+            : nullptr;
     for (size_t channel = 0; channel < channelCount; ++channel) {
         auto& blockwise = blockwiseFor(output.block.samples.size(), channel);
         blockwise.setHalfCycleCarryEnabled(useHalfCycleCarry);
@@ -166,14 +170,17 @@ void FftSignalProcessor::processInverse(AudioProcessContext& context, bool useHa
         blockwise.inverse(
                 payloadBlock(*magnitude, magnitudeChannel),
                 phaseBlock,
-                payloadBlock(output, channel));
+                payloadBlock(output, channel),
+                magnitudeTransfer,
+                channel);
         publishInverseTraversalGrid(
                 *magnitude,
                 phase,
                 output,
                 channel,
                 useHalfCycleCarry,
-                context.workArena);
+                context.workArena,
+                magnitudeTransfer);
     }
     publishSingleOutput(context, std::move(output));
 }
@@ -246,7 +253,8 @@ void FftSignalProcessor::publishInverseTraversalGrid(
         SignalPayload& output,
         size_t channel,
         bool useHalfCycleCarry,
-        const AudioProcessWorkArena* arena) {
+        const AudioProcessWorkArena* arena,
+        const SpectralMagnitudeTransfer* magnitudeTransfer) {
     const size_t magnitudeChannel = magnitude.isStereo() ? channel : 0;
     const auto& magnitudeGrid = payloadTraversalGrid(magnitude, magnitudeChannel);
     if (!magnitudeGrid.isValid()) {
@@ -287,7 +295,12 @@ void FftSignalProcessor::publishInverseTraversalGrid(
             phaseColumnPtr = &scratchPhaseColumn;
         }
 
-        traversalDsp.inverse(scratchMagnitudeColumn, phaseColumnPtr, scratchOutputColumn);
+        traversalDsp.inverse(
+                scratchMagnitudeColumn,
+                phaseColumnPtr,
+                scratchOutputColumn,
+                magnitudeTransfer,
+                channel);
         outputColumns.write(column, scratchOutputColumn);
     }
 }

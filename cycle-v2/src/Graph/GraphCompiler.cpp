@@ -2,6 +2,7 @@
 
 #include "Graph/GraphAudioScopeCompiler.h"
 #include "Graph/NodeParameterMap.h"
+#include "Graph/TrimeshSignalSemantics.h"
 
 #include "Nodes/Control/ModulationTriple.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
@@ -466,6 +467,93 @@ void compileRouting(GraphExecutionPlan& plan) {
         plan.maximumAttachmentCount = std::max(
                 plan.maximumAttachmentCount,
                 step.attachments.size());
+    }
+}
+
+const GraphStepInput* soleSignalInput(const GraphExecutionStep& step) {
+    const GraphStepInput* soleInput = nullptr;
+    for (const auto& input : step.inputs) {
+        if (!GraphDomainResolver::isConcreteSignalDomain(input.domain)) {
+            continue;
+        }
+        if (soleInput != nullptr) {
+            return nullptr;
+        }
+        soleInput = &input;
+    }
+    return soleInput;
+}
+
+CompiledSpectralMagnitudeTransfer compileMagnitudeTransfer(
+        const GraphExecutionPlan& plan,
+        const GraphStepInput& terminalInput,
+        bool additive) {
+    CompiledSpectralMagnitudeTransfer transfer;
+    const GraphStepInput* cursor = &terminalInput;
+
+    while (cursor->sourceStepIndex >= 0
+            && cursor->sourceStepIndex < (int) plan.steps.size()) {
+        const int sourceStepIndex = cursor->sourceStepIndex;
+        const auto& source = plan.steps[(size_t) sourceStepIndex];
+        if (source.kind == NodeKind::TrilinearMesh
+                && cursor->domain == PortDomain::SpectralMagnitudeSignal) {
+            const bool bipolar = TrimeshSignalSemantics::isBipolar(source.parameters);
+            if (additive) {
+                transfer.mode = bipolar
+                        ? SpectralMagnitudeTransferMode::AddBipolar
+                        : SpectralMagnitudeTransferMode::AddUnipolar;
+            } else {
+                transfer.mode = bipolar
+                        ? SpectralMagnitudeTransferMode::MultiplyBipolar
+                        : SpectralMagnitudeTransferMode::MultiplyUnipolar;
+            }
+            transfer.sourceBufferIndex = cursor->sourceBufferIndex;
+            transfer.sourceStepIndex = sourceStepIndex;
+            transfer.sourceOutputIndex = cursor->sourceOutputIndex;
+            return transfer;
+        }
+
+        if (source.kind == NodeKind::SpectralLayer) {
+            transfer.panStepIndices.push_back(sourceStepIndex);
+            cursor = soleSignalInput(source);
+        } else if (source.kind == NodeKind::Add
+                || source.kind == NodeKind::Multiply) {
+            cursor = soleSignalInput(source);
+        } else {
+            return {};
+        }
+
+        if (cursor == nullptr) {
+            return {};
+        }
+    }
+
+    return {};
+}
+
+void compileSpectralMagnitudeTransfers(GraphExecutionPlan& plan) {
+    for (int stepIndex = 0; stepIndex < (int) plan.steps.size(); ++stepIndex) {
+        auto& step = plan.steps[(size_t) stepIndex];
+        const bool additive = step.kind == NodeKind::Add || step.kind == NodeKind::Ifft;
+        if (!additive && step.kind != NodeKind::Multiply) {
+            continue;
+        }
+
+        for (auto& input : step.inputs) {
+            const bool magnitudeInput = input.domain == PortDomain::SpectralMagnitudeSignal
+                    && (step.kind != NodeKind::Ifft || input.destPortIndex == 0);
+            if (!magnitudeInput) {
+                continue;
+            }
+            input.magnitudeTransfer = compileMagnitudeTransfer(plan, input, additive);
+            if (input.magnitudeTransfer.isActive()) {
+                auto& sourceBuffer = plan.buffers[
+                        (size_t) input.magnitudeTransfer.sourceBufferIndex];
+                sourceBuffer.lastConsumerStep = std::max(
+                        sourceBuffer.lastConsumerStep,
+                        stepIndex);
+            }
+        }
     }
 }
 
@@ -1373,6 +1461,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
             return result;
         }
         compileRouting(result.plan);
+        compileSpectralMagnitudeTransfers(result.plan);
         GraphAudioScopeCompiler::compileVoiceMixBoundary(
                 result.plan,
                 scopeAnalysis);

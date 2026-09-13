@@ -874,6 +874,32 @@ TEST_CASE("Compiler resolves source domains from Trimesh parameters", "[cycle-v2
     REQUIRE(findBuffer(result.plan, "mesh", "out").domain == PortDomain::SpectralMagnitudeSignal);
 }
 
+TEST_CASE("Compiler lowers Trimesh polarity per arithmetic consumer",
+        "[cycle-v2][graph][spectral][transfer]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+    setParameter(mesh, "signalType", "spectralMagnitude");
+    setParameter(mesh, "polarity", "bipolar");
+    graph.addNode(std::move(mesh));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+    graph.addEdge({ "mesh", "out", "add", "left", PortDomain::ControlSignal });
+    graph.addEdge({ "mesh", "out", "multiply", "left", PortDomain::ControlSignal });
+    graph.addEdge({ "mesh", "out", "multiply", "right", PortDomain::ControlSignal });
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE(result.succeeded());
+    const auto& addTransfer = findStep(result.plan, "add").inputs[0].magnitudeTransfer;
+    const auto& multiplyTransfer
+            = findStep(result.plan, "multiply").inputs[0].magnitudeTransfer;
+    REQUIRE(addTransfer.mode == SpectralMagnitudeTransferMode::AddBipolar);
+    REQUIRE(multiplyTransfer.mode == SpectralMagnitudeTransferMode::MultiplyBipolar);
+    REQUIRE(addTransfer.sourceStepIndex == multiplyTransfer.sourceStepIndex);
+    REQUIRE(addTransfer.sourceBufferIndex == multiplyTransfer.sourceBufferIndex);
+}
+
 TEST_CASE("One implicit Voice Context supports explicit magnitude and phase branches",
         "[cycle-v2][graph]") {
     GraphNodeFactory factory;

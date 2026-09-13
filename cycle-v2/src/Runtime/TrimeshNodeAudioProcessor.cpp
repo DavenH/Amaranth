@@ -189,7 +189,7 @@ public:
                 scratchAppliesToBlock,
                 output);
         applyGain(output, context.frameCount);
-        applySpectralRange(outputPort.domain, output, context.frameCount);
+        applyPhaseRange(outputPort.domain, output, context.frameCount);
         applyEnabledIdentity(outputPort.domain, output, context.frameCount);
 
         if (context.captureTraversalGrid) {
@@ -202,8 +202,8 @@ public:
                     scratchDomain,
                     output);
             applyTraversalGain(output);
-            applySpectralRange(outputPort.domain, output.traversalGrid);
-            applySpectralRange(outputPort.domain, output.secondaryTraversalGrid);
+            applyPhaseRange(outputPort.domain, output.traversalGrid);
+            applyPhaseRange(outputPort.domain, output.secondaryTraversalGrid);
             applyEnabledIdentity(outputPort.domain, output.traversalGrid);
             applyEnabledIdentity(outputPort.domain, output.secondaryTraversalGrid);
         }
@@ -212,79 +212,51 @@ public:
     }
 
 private:
-    void shapeSpectralValues(PortDomain domain, Buffer<float> values) const {
-        if (configuration == nullptr || !configuration->appliesSpectralRange) {
+    void shapePhaseValues(PortDomain domain, Buffer<float> values) const {
+        if (configuration == nullptr || domain != PortDomain::SpectralPhaseSignal) {
             return;
         }
-        if (domain == PortDomain::SpectralMagnitudeSignal) {
-            CycleDsp::SpectralLayerCore::shapeMagnitude(
-                    values,
-                    configuration->range,
-                    !configuration->multiplicative,
-                    values.size());
-        } else if (domain == PortDomain::SpectralPhaseSignal) {
-            values.mul(CycleDsp::SpectralLayerCore::phaseOffsetScale(configuration->range)
-                    * MathConstants<float>::twoPi);
-        }
+        values.mul(CycleDsp::SpectralLayerCore::phaseOffsetScale(configuration->range)
+                * MathConstants<float>::twoPi);
     }
 
-    void applySpectralRange(
+    void applyPhaseRange(
             PortDomain domain,
             SignalPayload& output,
             size_t frameCount) const {
-        shapeSpectralValues(domain, payloadBuffer(output, frameCount));
+        shapePhaseValues(domain, payloadBuffer(output, frameCount));
         if (output.isStereo()) {
-            shapeSpectralValues(domain, payloadBuffer(output, 1, frameCount));
+            shapePhaseValues(domain, payloadBuffer(output, 1, frameCount));
         }
     }
 
-    void applySpectralRange(PortDomain domain, SignalTraversalGrid& grid) const {
-        if (!grid.isValid()) {
+    void applyPhaseRange(PortDomain domain, SignalTraversalGrid& grid) const {
+        if (!grid.isValid() || domain != PortDomain::SpectralPhaseSignal) {
             return;
         }
-        if (domain == PortDomain::SpectralMagnitudeSignal) {
-            for (size_t column = 0; column < grid.columns; ++column) {
-                shapeSpectralValues(
-                        domain,
-                        Buffer<float>(
-                                grid.values.data() + column * grid.rows,
-                                (int) grid.rows));
-            }
-            return;
-        }
-        shapeSpectralValues(
+        shapePhaseValues(
                 domain,
                 Buffer<float>(grid.values.data(), (int) grid.values.size()));
     }
 
-    float disabledIdentity(PortDomain domain) const {
-        return domain == PortDomain::SpectralMagnitudeSignal
-                        && configuration != nullptr
-                        && configuration->multiplicative
-                ? 1.f
-                : 0.f;
-    }
-
     void applyEnabledIdentity(
-            PortDomain domain,
+            PortDomain,
             SignalPayload& output,
             size_t frameCount) const {
         if (configuration == nullptr || configuration->enabled) {
             return;
         }
-        const float identity = disabledIdentity(domain);
-        payloadBuffer(output, frameCount).set(identity);
+        payloadBuffer(output, frameCount).zero();
         if (output.isStereo()) {
-            payloadBuffer(output, 1, frameCount).set(identity);
+            payloadBuffer(output, 1, frameCount).zero();
         }
     }
 
-    void applyEnabledIdentity(PortDomain domain, SignalTraversalGrid& grid) const {
+    void applyEnabledIdentity(PortDomain, SignalTraversalGrid& grid) const {
         if (configuration == nullptr || configuration->enabled || !grid.isValid()) {
             return;
         }
-        Buffer<float>(grid.values.data(), (int) grid.values.size()).set(
-                disabledIdentity(domain));
+        Buffer<float>(grid.values.data(), (int) grid.values.size()).zero();
     }
 
     void applyGain(SignalPayload& output, size_t frameCount) const {

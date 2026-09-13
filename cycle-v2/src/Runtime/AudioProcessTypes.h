@@ -3,6 +3,7 @@
 #include "Graph/NodeGraph.h"
 #include "Runtime/PreparedVector.h"
 #include "Runtime/SignalBuffer.h"
+#include "Runtime/SpectralMagnitudeTransfer.h"
 
 #include <array>
 #include <cstdint>
@@ -253,6 +254,7 @@ struct AudioProcessContext {
     const std::vector<NodeParameter>* parameterView {};
     std::vector<NodeParameter> parameters;
     PreparedVector<SignalPayload*> inputViews;
+    PreparedVector<SpectralMagnitudeTransfer> magnitudeTransfers;
     PreparedVector<SignalPayload> inputs;
     PreparedVector<AudioProcessAttachment> attachments;
     PreparedVector<AudioOutputPort> outputPorts;

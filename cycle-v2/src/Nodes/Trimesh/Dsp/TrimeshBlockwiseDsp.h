@@ -22,8 +22,6 @@ struct TrimeshConfiguration final : public INodeDspConfiguration {
     float gain { 1.f };
     float range { 0.5f };
     bool enabled { true };
-    bool appliesSpectralRange {};
-    bool multiplicative {};
     bool bipolar {};
     bool scratchSourceEnabled { true };
     std::shared_ptr<GuideCurveSnapshotProvider> guideCurveProvider;

@@ -415,6 +415,9 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         context.captureTraversalGrid = captureDiagnostics;
         context.parameterView = nullptr;
         context.inputViews.assign(workArena.inputCapacity, nullptr);
+        context.magnitudeTransfers.assign(
+                workArena.inputCapacity,
+                SpectralMagnitudeTransfer {});
         context.attachments.clear();
         context.attachments.reserve(attachmentCapacity);
         context.outputPorts.clear();
@@ -441,9 +444,17 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             }
 
             const auto inputIndex = (size_t) input.destPortIndex;
-            if (input.sourceBufferIndex >= 0
-                    && (size_t) input.sourceBufferIndex < bufferSlots.size()) {
-                context.inputViews[inputIndex] = &bufferSlots[(size_t) input.sourceBufferIndex];
+            const int sourceBufferIndex = input.magnitudeTransfer.isActive()
+                    ? input.magnitudeTransfer.sourceBufferIndex
+                    : input.sourceBufferIndex;
+            if (sourceBufferIndex >= 0
+                    && (size_t) sourceBufferIndex < bufferSlots.size()) {
+                context.inputViews[inputIndex] = &bufferSlots[(size_t) sourceBufferIndex];
+            }
+            if (input.magnitudeTransfer.isActive()) {
+                context.magnitudeTransfers[inputIndex] = resolveSpectralMagnitudeTransfer(
+                        plan,
+                        input.magnitudeTransfer);
             }
         }
 
@@ -688,6 +699,7 @@ void GraphAudioExecutor::prepareExecutionInternal(
     processContext.parameters.clear();
     processContext.inputs.clear();
     processContext.inputViews.prepare(plan.maximumInputCount);
+    processContext.magnitudeTransfers.prepare(plan.maximumInputCount);
     processContext.attachments.prepare(plan.maximumAttachmentCount);
     processContext.outputPorts.prepare(plan.maximumOutputCount);
     processContext.outputViews.prepare(plan.maximumOutputCount);

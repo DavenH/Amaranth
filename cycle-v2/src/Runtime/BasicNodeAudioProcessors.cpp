@@ -122,7 +122,21 @@ public:
             return;
         }
 
-        processor.process(output, left, right, operation, context.frameCount, context.workArena);
+        const SpectralMagnitudeTransfer* leftTransfer = context.magnitudeTransfers.size() > 0
+                ? &context.magnitudeTransfers[0]
+                : nullptr;
+        const SpectralMagnitudeTransfer* rightTransfer = context.magnitudeTransfers.size() > 1
+                ? &context.magnitudeTransfers[1]
+                : nullptr;
+        processor.process(
+                output,
+                left,
+                right,
+                operation,
+                context.frameCount,
+                context.workArena,
+                leftTransfer,
+                rightTransfer);
         publishSingleOutput(context, std::move(output));
     }
 

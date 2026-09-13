@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Runtime/AudioProcessTypes.h"
+#include "Runtime/SpectralMagnitudeTransfer.h"
 
 #include <Algo/FFT.h>
 
@@ -14,7 +15,12 @@ public:
     void resetState();
     void setHalfCycleCarryEnabled(bool shouldEnable);
     void forward(const AudioProcessBlock& input, AudioProcessBlock& magnitude, AudioProcessBlock& phase);
-    void inverse(const AudioProcessBlock& magnitude, const AudioProcessBlock* phase, AudioProcessBlock& output);
+    void inverse(
+            const AudioProcessBlock& magnitude,
+            const AudioProcessBlock* phase,
+            AudioProcessBlock& output,
+            const SpectralMagnitudeTransfer* magnitudeTransfer = nullptr,
+            size_t channel = 0);
 
 private:
     Buffer<float> blockBuffer(const AudioProcessBlock& block, size_t size) const;
