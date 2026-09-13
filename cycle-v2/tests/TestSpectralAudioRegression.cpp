@@ -282,6 +282,20 @@ TEST_CASE("Spectral reference content remains harmonic after realtime reconstruc
   #endif
 }
 
+TEST_CASE("Baroque Flute retains audible output through bipolar magnitude layers",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][audio-regression][preset]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const auto audio = renderNote(loadPresetPlan("baroque-flute"), 60);
+    const auto minimum = std::min_element(audio.begin() + startupSamples, audio.end());
+    const auto maximum = std::max_element(audio.begin() + startupSamples, audio.end());
+    const float peak = std::max(std::abs(*minimum), std::abs(*maximum));
+
+    REQUIRE(peak > 0.01f);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Prepared spectral reconstruction retains the final active harmonic",
         "[cycle-v2][runtime][oscillator-region][spectral-frame][parity]") {
   #if defined(CYCLE_V2_SOURCE_DIR)

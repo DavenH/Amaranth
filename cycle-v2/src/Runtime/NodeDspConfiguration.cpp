@@ -56,18 +56,11 @@ const Node* effectiveOperationAfterTransparentNodes(
         const bool transparentPan = destination->kind == NodeKind::SpectralLayer;
         const bool loneOperation = (destination->kind == NodeKind::Add
                         || destination->kind == NodeKind::Multiply)
-                && connectedSignalInputCount(graph, destination->id) < 2;
+                && connectedSignalInputCount(graph, destination->id) < 2
+                && connectedSignalDestination(graph, destination->id) != nullptr;
         if (!transparentPan && !loneOperation) {
             break;
         }
-        destination = connectedSignalDestination(graph, destination->id);
-    }
-    return destination;
-}
-
-const Node* operationAfterOptionalPan(const NodeGraph* graph, const String& nodeId) {
-    const Node* destination = connectedSignalDestination(graph, nodeId);
-    if (destination != nullptr && destination->kind == NodeKind::SpectralLayer) {
         destination = connectedSignalDestination(graph, destination->id);
     }
     return destination;
@@ -82,7 +75,7 @@ bool feedsSpectralRangeConsumer(const NodeGraph* graph, const String& nodeId) {
 }
 
 bool feedsMultiply(const NodeGraph* graph, const String& nodeId) {
-    const Node* destination = operationAfterOptionalPan(graph, nodeId);
+    const Node* destination = effectiveOperationAfterTransparentNodes(graph, nodeId);
     return destination != nullptr && destination->kind == NodeKind::Multiply;
 }
 

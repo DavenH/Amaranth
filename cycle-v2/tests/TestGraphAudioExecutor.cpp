@@ -1225,8 +1225,8 @@ TEST_CASE("Icycle advances pitch from the prepared Envelope instead of its previ
     REQUIRE(right->frontier == 10'561);
     REQUIRE(left->primary.size() == 341);
     REQUIRE(right->primary.size() == 341);
-    REQUIRE(left->primary.front() == Catch::Approx(0.005332866f).margin(0.00005f));
-    REQUIRE(right->primary.front() == Catch::Approx(0.0264724f).margin(0.00005f));
+    REQUIRE(left->primary.front() == Catch::Approx(0.26330784f).margin(0.00005f));
+    REQUIRE(right->primary.front() == Catch::Approx(0.095614269f).margin(0.00005f));
   #endif
 }
 

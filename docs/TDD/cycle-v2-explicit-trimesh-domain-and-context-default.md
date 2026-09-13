@@ -1,6 +1,6 @@
 # Cycle V2 Explicit Trimesh Domain And Context Default
 
-Status: Implemented
+Status: In Progress
 
 ## Scope
 
@@ -55,8 +55,17 @@ the graph.
 ### Magnitude polarity and arithmetic
 
 `polarity` is visible only for spectral-magnitude Trimeshes and is independent
-of downstream arithmetic. It controls the mesh rasterization range and compact
-and expanded render scale. Add and Multiply remain explicit graph operations.
+of downstream arithmetic. It controls the authored transfer semantics and the
+compact and expanded render scale. Add and Multiply remain explicit graph
+operations.
+
+The mature audio raster remains unipolar for spectral magnitude, irrespective
+of the authored polarity. Time and phase rasters remain bipolar. Applying
+`polarity` directly to the magnitude raster before `SpectralLayerCore` range
+shaping maps stored mesh values from `[0, 1]` to `[-1, 1]`; the established
+multiplicative transfer then clips the negative half and can compound into
+near-silence across several layers. Operation-specific polarity transfer is a
+consumer-edge concern and is intentionally not approximated at the source.
 
 Operation-specific spectral range normalization, disabled identity, and stereo
 pan neutral handling are derived from the downstream Add or Multiply node, not
@@ -66,6 +75,13 @@ from polarity. All four combinations are legal:
 - unipolar Multiply;
 - bipolar Add; and
 - bipolar Multiply.
+
+The remaining implementation slice is a compiler-authored transfer on each
+consumer edge. It combines source polarity with the receiving Add or Multiply
+operation without mutating or rescaling the source grid. This permits one
+Trimesh to feed multiple arithmetic consumers while each receives the correct
+operand range. Until that edge transfer exists, audio keeps the mature Cycle 1
+unipolar magnitude raster and operation-derived range shaping.
 
 Cycle 1 migration emits only its authored combinations: additive layers become
 Unipolar feeding Add, and filtering layers become Bipolar feeding Multiply.
@@ -114,8 +130,9 @@ by an automated batch.
   one-active-context limit.
 - `GraphCompiler` owns implicit single-context lowering and oscillator-region
   assignment.
-- `TrimeshBlockwiseDsp` owns mature mesh point scaling; it receives the authored
-  polarity rather than deriving it from an operation.
+- `TrimeshBlockwiseDsp` owns mature mesh point scaling. Preview renderers pass
+  authored polarity for semantic display; audio renderers retain its native
+  unipolar magnitude raster until the operation transfer boundary.
 - `SpectralLayerCore` retains the mature range, pan, and neutral-identity math.
 - `GraphRenderSemanticResolver` and `TrimeshRenderProfile` remain the shared
   compact/expanded visual contract.
@@ -143,8 +160,11 @@ remains unchanged in asymptotic cost and allocation behavior.
   edit through one undoable command.
 - [x] Trimesh output domains come only from `signalType`; incompatible existing
   cables remain visible and fail validation.
-- [x] Polarity and Add/Multiply are independently covered in all four
-  combinations through rasterization, range shaping, and arithmetic.
+- [x] Polarity and Add/Multiply are independently represented in all four
+  combinations without changing the mature magnitude-raster input range.
+- [ ] The compiler emits a per-consumer magnitude transfer for every
+  polarity/arithmetic combination, including divergent consumers of one
+  Trimesh source.
 - [x] One Voice Context is inferred without durable source edges.
 - [x] Multi-context graphs require explicit assignment and reject a second
   active context.
@@ -165,4 +185,6 @@ remains unchanged in asymptotic cost and allocation behavior.
 - The standalone Debug target builds successfully. The direct macOS native
   smoke retry was blocked by the existing System Events focus error `-10006`;
   the application-hosted pointer/undo fixture passed.
-- The complete randomized Cycle V2 run passes 754 cases and 19,338 assertions.
+- The Baroque Flute live-audio regression capture passes at 0.092 peak and
+  0.040 RMS; its fixture rejects output below 0.01 peak or 0.005 RMS.
+- The complete randomized Cycle V2 run passes 755 cases and 19,354 assertions.

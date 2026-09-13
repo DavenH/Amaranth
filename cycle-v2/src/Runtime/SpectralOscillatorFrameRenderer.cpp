@@ -271,8 +271,6 @@ bool SpectralOscillatorFrameRenderer::prepare(
                     operation.spectralRasterizer = std::make_unique<TrimeshBlockwiseDsp>();
                     operation.spectralRasterizer->setGuideCurveProvider(
                             operation.configuration->guideCurveProvider.get());
-                    operation.spectralRasterizer->setBipolar(
-                            operation.configuration->bipolar);
                     operation.spectralRasterizer->prepare(
                             spectralMesh,
                             operation.configuration->morph,
