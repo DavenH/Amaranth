@@ -2,8 +2,7 @@
   "commands": [
     { "command": "openGraph", "path": "../../cycle-v2/resources/with-spies.cyclegraph" },
     { "command": "openNodeEditor", "nodeId": "reverb", "waitForIdle": true, "idleDelayMs": 300 },
-    { "command": "pointer", "event": "click", "targetId": "probeRefreshMode" },
-    { "command": "assertState", "path": "probeRefreshMode", "equals": "Live" },
+    { "command": "assertState", "path": "probeRefreshMode", "equals": "On Release" },
     { "command": "assertState", "path": "previewStats.7.nodeId", "equals": "reverb" },
     { "command": "assertState", "path": "previewStats.7.role", "equals": "Reverb Spectrogram" },
     { "command": "assertState", "path": "previewStats.7.domain", "equals": "Mag" },

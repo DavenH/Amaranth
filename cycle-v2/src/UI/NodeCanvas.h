@@ -174,6 +174,8 @@ private:
     bool trimeshVertexParameterUndoPushed {};
     bool canvasOpenGlAttached {};
     bool compiledStateRefreshPending {};
+    PresentationRefreshScope compiledStateRefreshScope {
+            PresentationRefreshScope::Downstream };
     String draggingSpectralPanNodeId;
     String draggingOutputGainNodeId;
     float spectralPanDragStartValue {};
@@ -214,12 +216,14 @@ private:
 
     Point<float> viewportCentreWorld() const;
     void refreshCompiledState();
-    void refreshCompiledStateAsync();
+    void refreshCompiledStateAsync(
+            PresentationRefreshScope scope = PresentationRefreshScope::Downstream);
     void openProbeDetail(const String& probeId);
     void refreshProbeDetail();
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;
-    void scheduleCompiledStateRefresh();
+    void scheduleCompiledStateRefresh(
+            PresentationRefreshScope scope = PresentationRefreshScope::Downstream);
     void flushScheduledCompiledStateRefresh();
     void resetDocumentPresentation();
     void fitDocumentInViewport();

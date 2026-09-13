@@ -166,3 +166,20 @@ Width, and Wet edits.
   existing document-presentation reset remains effective.
 - FFT/IFFT/time-frequency proportions and iconography remain outside this
   batch by explicit direction.
+
+### Reopened Probe-policy Regression
+
+The first live-preview correction proved eventual publication only after the
+fixture switched the Spy rail to `Live`. That missed the product contract for
+the default `On Release` mode: local editor products remain live while only
+downstream traversal and probes are deferred. Local node edits now request the
+existing `CompactPreview` product for the edited node, while commit requests
+retain `PreviewTraversal` and `ProbePreview`. The cached kernel spectrogram
+remains authoritative, and the local movement path stays O(1) in unrelated
+graph and probe count.
+
+The native `reverb-preview` interaction holds the real mouse gesture open and
+asserts distinct runtime content fingerprints at two successive Wet positions
+under `On Release`. The focused app fixture's production-size captures retain
+the expanded and compact kernel-derived spectrogram presentation at both
+positions.

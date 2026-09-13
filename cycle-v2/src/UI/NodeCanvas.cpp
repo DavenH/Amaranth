@@ -1237,15 +1237,17 @@ void NodeCanvas::refreshCompiledState() {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PreviewRuntime);
     compiledStateRefreshPending = false;
+    compiledStateRefreshScope = PresentationRefreshScope::Downstream;
     editorCoordinator.clearPreviewCache();
     presentation.refresh(graph, document.revision(), document.lastChange());
     refreshProbeDetail();
 }
 
-void NodeCanvas::refreshCompiledStateAsync() {
+void NodeCanvas::refreshCompiledStateAsync(PresentationRefreshScope scope) {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PreviewRuntime);
     compiledStateRefreshPending = false;
+    compiledStateRefreshScope = PresentationRefreshScope::Downstream;
     editorCoordinator.clearPreviewCache();
     const NodeGraph& refreshGraph = commands.editingGraph();
     const GraphChangeSet& refreshChange = commands.hasTransientEdit()
@@ -1255,6 +1257,7 @@ void NodeCanvas::refreshCompiledStateAsync() {
             refreshGraph,
             document.revision(),
             refreshChange,
+            scope,
             [safeThis = SafePointer<NodeCanvas>(this)] {
                 if (safeThis == nullptr) {
                     return;
@@ -1503,14 +1506,18 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     return result;
 }
 
-void NodeCanvas::scheduleCompiledStateRefresh() {
+void NodeCanvas::scheduleCompiledStateRefresh(PresentationRefreshScope scope) {
     constexpr uint32 refreshDelayMs = 55;
 
     if (compiledStateRefreshPending) {
+        if (scope == PresentationRefreshScope::Downstream) {
+            compiledStateRefreshScope = scope;
+        }
         return;
     }
 
     compiledStateRefreshPending = true;
+    compiledStateRefreshScope = scope;
     compiledStateRefreshDueMs = Time::getMillisecondCounter() + refreshDelayMs;
 }
 
@@ -1519,7 +1526,9 @@ void NodeCanvas::flushScheduledCompiledStateRefresh() {
         return;
     }
 
-    refreshCompiledStateAsync();
+    const auto scope = compiledStateRefreshScope;
+    compiledStateRefreshScope = PresentationRefreshScope::Downstream;
+    refreshCompiledStateAsync(scope);
 }
 
 void NodeCanvas::resetDocumentPresentation() {
@@ -2168,11 +2177,14 @@ void NodeCanvas::recordNodeEditorMovement(
     const bool primaryTrimeshMorph = node != nullptr
             && node->kind == NodeKind::TrilinearMesh
             && NodeParameterMap(*node).stringValue("primaryAxis", "yellow") == field;
-    const bool deferred = primaryTrimeshMorph
+    const bool probesDeferred = primaryTrimeshMorph
             || probeRailState.refreshMode == ProbeRefreshMode::OnGestureCommit;
-    presentation.recordEditorMovement(nodeId, field, effectiveFingerprint, deferred);
-    if (!deferred) {
-        scheduleCompiledStateRefresh();
+    presentation.recordEditorMovement(nodeId, field, effectiveFingerprint, probesDeferred);
+    if (!primaryTrimeshMorph) {
+        scheduleCompiledStateRefresh(
+                probesDeferred
+                        ? PresentationRefreshScope::LocalEditor
+                        : PresentationRefreshScope::Downstream);
     }
 }
 

@@ -159,7 +159,12 @@ TEST_CASE("Queued presentation publication is inert after model destruction",
                 graph, mesh->id, "red", "Red", "0.7");
         REQUIRE(edit.succeeded());
         REQUIRE(edit.changed);
-        presentation.refreshAsync(graph, 2, edit.changes, [&] {
+        presentation.refreshAsync(
+                graph,
+                2,
+                edit.changes,
+                PresentationRefreshScope::Downstream,
+                [&] {
             completed = true;
         });
     }
@@ -415,7 +420,7 @@ TEST_CASE("Output gain edits refresh the renderer-owned compiled value",
             == Catch::Approx(CycleDsp::outputGain(0.25f)));
 }
 
-TEST_CASE("Live Reverb edits publish each kernel spectrogram before commit",
+TEST_CASE("On-release Reverb edits publish local spectrograms before commit",
         "[cycle-v2][runtime][causal][reverb][preview][regression]") {
 #if defined(CYCLE_V2_SOURCE_DIR)
     ScopedJuceInitialiser_GUI juce;
@@ -436,9 +441,14 @@ TEST_CASE("Live Reverb edits publish each kernel spectrogram before commit",
     REQUIRE(initial.role == PreviewModuleRole::ReverbSpectrogram);
     REQUIRE(initial.domain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(initial.gridRows == 1025);
+    const auto initialProbeValues = findProbePreview(
+            presentation.previewResult(), "probe9").values;
+    const size_t initialReverbProcessCount = presentation.previewAudioProcessCount("reverb");
+    const size_t initialOutputProcessCount = presentation.previewAudioProcessCount("out");
 
     commands.beginTransientEdit();
     uint64_t previousFingerprint = nodePreviewResultFingerprint(initial);
+    size_t movementCount {};
     for (const String highPass : { "0.35", "0.8" }) {
         const auto edit = commands.setNodeParameter(
                 "reverb", "highPass", "High Pass", highPass);
@@ -448,14 +458,16 @@ TEST_CASE("Live Reverb edits publish each kernel spectrogram before commit",
                 "reverb",
                 "highPass",
                 static_cast<uint64_t>(highPass.hashCode64()),
-                false);
+                true);
         bool completed {};
         presentation.refreshAsync(
                 commands.editingGraph(),
                 document.revision(),
                 commands.transientChanges(),
+                PresentationRefreshScope::LocalEditor,
                 [&] { completed = true; });
         REQUIRE(waitForAsyncRefresh(completed));
+        ++movementCount;
 
         const auto& current = findNodePreview(
                 presentation.previewResult(), "reverb");
@@ -463,15 +475,42 @@ TEST_CASE("Live Reverb edits publish each kernel spectrogram before commit",
         REQUIRE(current.domain == PortDomain::SpectralMagnitudeSignal);
         REQUIRE(current.gridRows == initial.gridRows);
         REQUIRE(nodePreviewResultFingerprint(current) != previousFingerprint);
+        REQUIRE(presentation.previewResult().renderedNodeCount == 1);
+        REQUIRE(findProbePreview(
+                presentation.previewResult(), "probe9").values == initialProbeValues);
+        REQUIRE(presentation.previewAudioProcessCount("reverb")
+                == initialReverbProcessCount + movementCount);
+        REQUIRE(presentation.previewAudioProcessCount("out") == initialOutputProcessCount);
         previousFingerprint = nodePreviewResultFingerprint(current);
     }
 
+    const auto movementTrace = presentation.updateTrace().snapshot();
+    const auto completedMovementProducts = [&](UpdateProduct product) {
+        return std::count_if(
+                movementTrace.begin(),
+                movementTrace.end(),
+                [&](const auto& event) {
+                    return event.edit.phase == EditPhase::Movement
+                            && event.nodeId == "reverb"
+                            && event.product == product
+                            && event.phase == UpdateTracePhase::Completed;
+                });
+    };
+    REQUIRE(completedMovementProducts(UpdateProduct::CompactPreview) == 2);
+    REQUIRE(completedMovementProducts(UpdateProduct::PreviewTraversal) == 0);
+    REQUIRE(completedMovementProducts(UpdateProduct::ProbePreview) == 0);
+
+    const size_t localReverbProcessCount = presentation.previewAudioProcessCount("reverb");
     commands.commitTransientEdit();
-    presentation.commitLocalEditorState(
-            "reverb",
-            "highPass",
-            static_cast<uint64_t>(String("0.8").hashCode64()),
-            document.revision());
+    bool commitCompleted {};
+    presentation.refreshAsync(
+            document.graph(),
+            document.revision(),
+            document.lastChange(),
+            PresentationRefreshScope::Downstream,
+            [&] { commitCompleted = true; });
+    REQUIRE(waitForAsyncRefresh(commitCompleted));
+    REQUIRE(presentation.previewAudioProcessCount("reverb") > localReverbProcessCount);
     REQUIRE(document.undo());
     REQUIRE(presentation.refresh(
             document.graph(),
@@ -616,6 +655,7 @@ TEST_CASE("Stengah probes reflect an asynchronous Waveshaper curve edit at the c
             document.graph(),
             document.revision(),
             document.lastChange(),
+            PresentationRefreshScope::Downstream,
             [&] { completed = true; });
     for (int attempt = 0; attempt < 200 && !completed; ++attempt) {
         MessageManager::getInstance()->runDispatchLoopUntil(10);
