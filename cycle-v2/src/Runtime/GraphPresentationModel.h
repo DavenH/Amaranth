@@ -24,6 +24,11 @@ struct GraphPresentationSnapshot {
     GraphPreviewResult previewResult;
 };
 
+enum class PresentationRefreshScope {
+    Downstream,
+    LocalEditor
+};
+
 class GraphPresentationModel {
 public:
     GraphPresentationModel();
@@ -38,6 +43,7 @@ public:
             NodeGraph graph,
             uint64_t documentRevision,
             GraphChangeSet change,
+            PresentationRefreshScope scope,
             std::function<void()> completion = {});
     void recordEditorMovement(
             const String& nodeId,
@@ -86,6 +92,7 @@ private:
         uint64_t generation {};
         NodeGraph graph;
         GraphChangeSet change;
+        PresentationRefreshScope scope { PresentationRefreshScope::Downstream };
         CausalUpdateRequest request;
         CausalUpdateResult updateResult;
         uint64_t requestFingerprint {};
@@ -111,6 +118,7 @@ private:
             GraphPresentationSnapshot& snapshot,
             const std::vector<PlannedNodeProduct>& products,
             bool renderFullGraph,
+            PresentationRefreshScope scope,
             bool& previewRendered,
             GraphAudioExecutor::CancellationCheck cancellationCheck = {});
     std::function<void()> publishAsyncRefresh(std::shared_ptr<AsyncRefresh> refresh);
@@ -121,7 +129,8 @@ private:
             uint64_t documentRevision,
             const GraphChangeSet& change,
             bool compile,
-            bool preview);
+            bool preview,
+            PresentationRefreshScope scope);
 
     GraphPresentationSnapshot current;
     GraphCompiler compiler;

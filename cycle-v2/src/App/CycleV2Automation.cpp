@@ -1872,7 +1872,11 @@ var CycleV2Automation::waitForIdle(const var& commandValue) const {
     const int delayMs = intProperty(commandValue, "delayMs", intProperty(commandValue, "idleDelayMs", 0));
 
     if (delayMs > 0) {
-        Thread::sleep((uint32) delayMs);
+        if (MessageManager::getInstance()->isThisTheMessageThread()) {
+            MessageManager::getInstance()->runDispatchLoopUntil(delayMs);
+        } else {
+            Thread::sleep((uint32) delayMs);
+        }
     }
 
     return okResult("waitForIdle");

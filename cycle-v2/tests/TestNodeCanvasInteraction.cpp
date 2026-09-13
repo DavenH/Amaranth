@@ -180,3 +180,49 @@ TEST_CASE("Node canvas interaction distinguishes pan and expanded editor capture
     REQUIRE(std::holds_alternative<std::monostate>(
             interaction.drag({}, {}, {}, {}, {})));
 }
+
+TEST_CASE("Node canvas interaction keeps one screen-space area selection rectangle",
+        "[cycle-v2][ui][interaction][selection]") {
+    NodeCanvasInteraction interaction;
+    interaction.beginAreaSelection({ 80.f, 70.f });
+
+    const auto first = interaction.drag({}, {}, {}, { 40.f, 120.f }, { -40.f, 50.f });
+    const auto* firstSelection = std::get_if<AreaSelectionDragUpdate>(&first);
+    REQUIRE(firstSelection != nullptr);
+    REQUIRE(firstSelection->moved);
+    REQUIRE(firstSelection->bounds == Rectangle<float>(40.f, 70.f, 40.f, 50.f));
+
+    const auto second = interaction.drag({}, {}, {}, { 120.f, 30.f }, { 40.f, -40.f });
+    const auto* secondSelection = std::get_if<AreaSelectionDragUpdate>(&second);
+    REQUIRE(secondSelection != nullptr);
+    REQUIRE(secondSelection->bounds == Rectangle<float>(80.f, 30.f, 40.f, 40.f));
+
+    const auto completion = interaction.finish({}, {}, { 120.f, 30.f });
+    const auto* finished = std::get_if<AreaSelectionCompletion>(&completion);
+    REQUIRE(finished != nullptr);
+    REQUIRE(finished->moved);
+    REQUIRE(finished->bounds == secondSelection->bounds);
+    REQUIRE(interaction.isIdle());
+
+    interaction.beginAreaSelection({ 20.f, 20.f });
+    const auto tiny = interaction.drag({}, {}, {}, { 22.f, 21.f }, { 2.f, 1.f });
+    REQUIRE_FALSE(std::get<AreaSelectionDragUpdate>(tiny).moved);
+    REQUIRE_FALSE(std::get<AreaSelectionCompletion>(
+            interaction.finish({}, {}, { 22.f, 21.f })).moved);
+
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "inside", { 50.f, 60.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "outside", { 500.f, 600.f }));
+    NodeCanvasViewport viewport;
+    viewport.setTransform({ 10.f, 20.f }, 0.5f);
+    const Rectangle<float> insideBounds = viewport.toScreen(
+            NodeCanvasScene::presentationWorldBounds(
+                    graph,
+                    *graph.findNode("inside")));
+    REQUIRE(interaction.nodeIdsIntersecting(
+            graph,
+            viewport,
+            insideBounds.reduced(2.f))
+            == std::vector<String> { "inside" });
+}

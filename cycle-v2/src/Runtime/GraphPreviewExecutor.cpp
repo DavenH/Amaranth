@@ -466,4 +466,15 @@ void GraphPreviewExecutor::renderIncremental(
     appendProbePreviews(result, plan, audioResult.nodes, probes);
 }
 
+void GraphPreviewExecutor::renderNodePreviewsIncremental(
+        const GraphExecutionPlan& plan,
+        const GraphAudioResultView& audioResult,
+        const std::vector<uint8_t>& dirtyNodes,
+        size_t pointCount,
+        GraphPreviewResult& result) const {
+    auto probes = std::move(result.probes);
+    result = renderPreview(plan, audioResult.nodes, pointCount, std::move(result), &dirtyNodes);
+    result.probes = std::move(probes);
+}
+
 }

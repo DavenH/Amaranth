@@ -646,9 +646,13 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         return;
     }
 
-    authoring.selectNode({});
-    interaction.beginPan(viewport.getPan());
-    expandedNodeId = {};
+    if (event.mods.isShiftDown()) {
+        interaction.beginAreaSelection(event.position);
+    } else {
+        authoring.selectNode({});
+        interaction.beginPan(viewport.getPan());
+        expandedNodeId = {};
+    }
 
     requestCanvasRepaint();
 }
@@ -767,7 +771,14 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     editorCommands.endTrimeshVertexParameterEdit();
     spliceTargetEdgeIndex = -1;
 
-    if (const auto* nodeDrag = std::get_if<NodeDragCompletion>(&completion)) {
+    if (const auto* selection = std::get_if<AreaSelectionCompletion>(&completion)) {
+        if (selection->moved) {
+            authoring.addNodesToSelection(interaction.nodeIdsIntersecting(
+                    graph,
+                    viewport,
+                    selection->bounds));
+        }
+    } else if (const auto* nodeDrag = std::get_if<NodeDragCompletion>(&completion)) {
         if (nodeDrag->moved
                 && nodeDrag->nodeIds.size() == 1
                 && spliceSelectedNodeIntoEdgeAt(event.position)) {
@@ -1040,6 +1051,11 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
     if (const auto* connection = std::get_if<PortConnectionGesture>(&interaction.gesture())) {
         pending = PendingConnectionPresentation { connection->source, connection->endpoint };
     }
+    std::optional<Rectangle<float>> areaSelectionBounds;
+    if (const auto* selection = std::get_if<AreaSelectionGesture>(&interaction.gesture());
+            selection != nullptr && selection->moved) {
+        areaSelectionBounds = selection->bounds();
+    }
 
     SnapGuidePresentation snapGuides;
     const auto* nodeDrag = std::get_if<NodeDragGesture>(&interaction.gesture());
@@ -1083,7 +1099,8 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             liveOutputMeterLevels,
             draggingSpectralPanNodeId,
             selectedNodeIds,
-            hoveredEdgeIndex
+            hoveredEdgeIndex,
+            areaSelectionBounds
     };
 }
 
@@ -1215,15 +1232,17 @@ void NodeCanvas::refreshCompiledState() {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PreviewRuntime);
     compiledStateRefreshPending = false;
+    compiledStateRefreshScope = PresentationRefreshScope::Downstream;
     editorCoordinator.clearPreviewCache();
     presentation.refresh(graph, document.revision(), document.lastChange());
     refreshProbeDetail();
 }
 
-void NodeCanvas::refreshCompiledStateAsync() {
+void NodeCanvas::refreshCompiledStateAsync(PresentationRefreshScope scope) {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PreviewRuntime);
     compiledStateRefreshPending = false;
+    compiledStateRefreshScope = PresentationRefreshScope::Downstream;
     editorCoordinator.clearPreviewCache();
     const NodeGraph& refreshGraph = commands.editingGraph();
     const GraphChangeSet& refreshChange = commands.hasTransientEdit()
@@ -1233,6 +1252,7 @@ void NodeCanvas::refreshCompiledStateAsync() {
             refreshGraph,
             document.revision(),
             refreshChange,
+            scope,
             [safeThis = SafePointer<NodeCanvas>(this)] {
                 if (safeThis == nullptr) {
                     return;
@@ -1243,6 +1263,9 @@ void NodeCanvas::refreshCompiledStateAsync() {
                     safeThis->editorCoordinator.updateHost(
                             safeThis->commands.editingGraph().findNode(safeThis->expandedNodeId),
                             safeThis->canvasContentBounds());
+                }
+                if (Component* editor = safeThis->editorCoordinator.host().component()) {
+                    editor->repaint();
                 }
                 safeThis->openGLContext.triggerRepaint();
                 safeThis->refreshProbeDetail();
@@ -1468,14 +1491,18 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     return result;
 }
 
-void NodeCanvas::scheduleCompiledStateRefresh() {
+void NodeCanvas::scheduleCompiledStateRefresh(PresentationRefreshScope scope) {
     constexpr uint32 refreshDelayMs = 55;
 
     if (compiledStateRefreshPending) {
+        if (scope == PresentationRefreshScope::Downstream) {
+            compiledStateRefreshScope = scope;
+        }
         return;
     }
 
     compiledStateRefreshPending = true;
+    compiledStateRefreshScope = scope;
     compiledStateRefreshDueMs = Time::getMillisecondCounter() + refreshDelayMs;
 }
 
@@ -1484,7 +1511,9 @@ void NodeCanvas::flushScheduledCompiledStateRefresh() {
         return;
     }
 
-    refreshCompiledStateAsync();
+    const auto scope = compiledStateRefreshScope;
+    compiledStateRefreshScope = PresentationRefreshScope::Downstream;
+    refreshCompiledStateAsync(scope);
 }
 
 void NodeCanvas::resetDocumentPresentation() {
@@ -2128,11 +2157,14 @@ void NodeCanvas::recordNodeEditorMovement(
     const bool primaryTrimeshMorph = node != nullptr
             && node->kind == NodeKind::TrilinearMesh
             && NodeParameterMap(*node).stringValue("primaryAxis", "yellow") == field;
-    const bool deferred = primaryTrimeshMorph
+    const bool probesDeferred = primaryTrimeshMorph
             || probeRailState.refreshMode == ProbeRefreshMode::OnGestureCommit;
-    presentation.recordEditorMovement(nodeId, field, effectiveFingerprint, deferred);
-    if (!deferred) {
-        scheduleCompiledStateRefresh();
+    presentation.recordEditorMovement(nodeId, field, effectiveFingerprint, probesDeferred);
+    if (!primaryTrimeshMorph) {
+        scheduleCompiledStateRefresh(
+                probesDeferred
+                        ? PresentationRefreshScope::LocalEditor
+                        : PresentationRefreshScope::Downstream);
     }
 }
 

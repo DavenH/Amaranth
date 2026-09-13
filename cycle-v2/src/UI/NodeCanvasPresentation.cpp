@@ -756,6 +756,7 @@ void NodeCanvasPresentation::paintContent(
                 NodeCanvasPresentationStage::RelationshipHighlights);
         GuideRelationshipPresentation::paintHighlights(graphics, frame);
     }
+    paintAreaSelection(graphics, frame);
     {
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
@@ -1015,6 +1016,22 @@ void NodeCanvasPresentation::paintSnapGuides(
         graphics.setColour(colourForDomain(PortDomain::PitchSignal).withAlpha(0.16f));
         graphics.drawLine(0.f, y, frame.canvasBounds.getWidth(), y, 0.75f);
     }
+}
+
+void NodeCanvasPresentation::paintAreaSelection(
+        Graphics& graphics,
+        const NodeCanvasPresentationFrame& frame) {
+    if (!frame.areaSelectionBounds.has_value()
+            || frame.areaSelectionBounds->isEmpty()) {
+        return;
+    }
+
+    const Rectangle<float> bounds = *frame.areaSelectionBounds;
+    const Colour accent = CanvasChromePalette::navigationAccent;
+    graphics.setColour(Colour(0xff163238).withAlpha(0.35f));
+    graphics.fillRect(bounds);
+    graphics.setColour(accent.withAlpha(0.90f));
+    graphics.drawRect(bounds, 1.f);
 }
 
 void NodeCanvasPresentation::paintCachedNodes(

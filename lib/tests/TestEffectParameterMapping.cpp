@@ -51,7 +51,14 @@ TEST_CASE("Effect parameter mappings preserve Cycle controls", "[CycleDsp][effec
         const float sliderRoundedValue = std::round(unitValue * 10000.f) / 10000.f;
         REQUIRE(CycleDsp::reverbKernelLength(sliderRoundedValue)
                 == (size_t) (4096 << step));
+        REQUIRE(CycleDsp::reverbSizeSnappedUnitValue(unitValue) == Approx(unitValue));
     }
+    REQUIRE(CycleDsp::reverbSizeSnappedUnitValue(0.61f)
+            == Approx(CycleDsp::reverbSizeUnitValueForStep(4)));
+    REQUIRE(CycleDsp::reverbSizeSteppedUnitValue(0.61f, false)
+            == Approx(CycleDsp::reverbSizeUnitValueForStep(3)));
+    REQUIRE(CycleDsp::reverbSizeSteppedUnitValue(0.61f, true)
+            == Approx(CycleDsp::reverbSizeUnitValueForStep(5)));
     REQUIRE(CycleDsp::reverbKernelSeconds(0.5f, 44100.0) == Approx(32768.0 / 44100.0));
     REQUIRE(CycleDsp::reverbDamping(1.f) == Approx(0.7f));
     REQUIRE(CycleDsp::reverbWetLevel(1.f) == Approx(0.25f));

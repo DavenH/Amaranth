@@ -87,6 +87,12 @@ public:
             const std::vector<uint8_t>& dirtyNodes,
             size_t pointCount,
             GraphPreviewResult& result) const;
+    void renderNodePreviewsIncremental(
+            const GraphExecutionPlan& plan,
+            const GraphAudioResultView& audioResult,
+            const std::vector<uint8_t>& dirtyNodes,
+            size_t pointCount,
+            GraphPreviewResult& result) const;
 };
 
 }

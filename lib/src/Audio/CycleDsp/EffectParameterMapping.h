@@ -21,6 +21,8 @@ float equalizerFrequencyUnitValue(float frequency);
 
 size_t reverbKernelLength(float unitValue);
 float reverbSizeUnitValueForStep(int step);
+float reverbSizeSnappedUnitValue(float unitValue);
+float reverbSizeSteppedUnitValue(float unitValue, bool increase);
 double reverbKernelSeconds(float unitValue, double sampleRate);
 float reverbDamping(float unitValue);
 float reverbWetLevel(float unitValue);

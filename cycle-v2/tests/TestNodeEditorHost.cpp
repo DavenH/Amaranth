@@ -39,6 +39,7 @@
 
 #include <Audio/CycleDsp/CycleDelay.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
+#include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Curve.h>
 #include <Curve/Mesh/VertCube.h>
@@ -1137,7 +1138,7 @@ TEST_CASE("Delay and Reverb own shared semantic property rows",
             "reverbEditor.size"));
     REQUIRE(sizeSlider != nullptr);
     REQUIRE(sizeSlider->snapValue(0.61, Slider::absoluteDrag)
-            == Catch::Approx(0.61));
+            == Catch::Approx(CycleDsp::reverbSizeUnitValueForStep(4)));
     const var wet = controlWithId(reverbAutomation, "wet");
     REQUIRE(wet.getProperty("readout", {}).toString() == "40%");
     auto* sizeValue = dynamic_cast<Label*>(host.component()->findChildWithID(

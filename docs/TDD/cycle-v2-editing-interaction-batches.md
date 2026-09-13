@@ -1,6 +1,6 @@
 # Cycle V2 Editing And Interaction Batches
 
-Status: In progress — Trimesh selection correction implemented
+Status: Implemented — vertex bulk-selection expansion intentionally deferred
 
 ## Scope
 
@@ -51,6 +51,31 @@ brightness transform while retaining the domain palette.
   candidates. One compound transaction covers all movement updates and undo.
 - Painting and automation expose every selected node while preserving the
   primary-selection compatibility field.
+
+### Shift-drag Area Selection
+
+- Shift-drag on empty canvas begins an additive marquee. It preserves the
+  existing ordered selection and primary editor target, then adds each node
+  whose presented bounds intersect the completed marquee.
+- Pointer-down and each movement update retain only two screen points and do
+  O(1) work. Mouse-up performs the single O(n) node-bounds scan required by the
+  semantic selection result. The gesture does not mutate the graph, publish a
+  document revision, capture undo, or rebuild node presentation.
+- A sub-threshold Shift press on empty canvas is a no-op. Plain empty-canvas
+  drag retains the existing pan behavior.
+- The live marquee uses one translucent fill and one crisp outline above node
+  content. Its visual rectangle and completion hit rectangle are the same
+  normalized screen-space bounds.
+
+### Area-selection Evidence
+
+- Focused interaction tests cover normalized reverse-direction geometry,
+  multiple movement updates, completion, reset, and the sub-threshold no-op.
+- The native fixture starts with an existing FFT selection, Shift-drags across
+  Voice Context and Morph, and verifies the ordered three-node selection,
+  stable FFT primary target, and unchanged document dirty state.
+- Production-size captures verify the live marquee and the final focus rings.
+  The existing Shift-click/bulk-move fixture remains the movement contract.
 
 ## Complexity
 

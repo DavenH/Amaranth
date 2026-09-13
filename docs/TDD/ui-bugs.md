@@ -238,9 +238,41 @@ attached Voice Context key value` with `SIGSEGV`. Focused tests for Reverb,
 node group movement, Trimesh selection/link highlighting, and cable hit routing
 all pass independently; this remains an open suite-isolation defect.
 
+Update 2026-09-12: the UI batch verification run with seed `4133085212`
+reported three graph-fixture expectation failures, then the existing
+`SingletonRepo.h:54` assertion and `SIGSEGV` in `Trimesh Panel3D reads
+node-backed columns through lib data retriever`. The focused marquee and live
+Reverb regressions pass independently; this remains the same open randomized
+suite-isolation defect.
+
 Update 2026-09-12: the focused `[cycle-v2][nodes][trimesh]` group reached a
 `SingletonRepo.h:54` assertion and `SIGSEGV` in `Trimesh Panel3D reads
 node-backed columns through lib data retriever` (seed `1390489111`). The same
 case also fails in isolation before exercising the morph-selection correction.
 The new morph-selection, disabled-control, and pointer-interaction cases pass
 independently; this remains open as shared test setup/lifetime work.
+
+## P3: Isolated Delay causal test expects previews from an unconnected graph
+
+Context:
+
+- `Ordinary DSP edits refresh configuration without compiling topology` fails
+  in isolation because `previewRenderCount()` remains zero instead of two.
+- The fixture contains only an unconnected Delay node, so the current runtime
+  produces no previewable execution product. The focused connected Reverb
+  causal sequence passes and the failure does not overlap Reverb kernel reuse.
+
+Current status: open; reconcile the Delay fixture topology with its preview
+count expectation rather than weakening the runtime product boundary.
+
+## P3: Parallel macOS automation launches contend for CoreMIDI
+
+Context:
+
+- Launching two Cycle V2 automation fixtures concurrently produced CoreMIDI
+  error 580 and JUCE assertions at `juce_CoreMidi_mac.mm:595`.
+- Both fixtures completed their assertions; sequential launches do not report
+  the error.
+
+Current status: open harness constraint; serialize native app fixtures on macOS
+unless the audio/MIDI device layer is explicitly disabled for automation.

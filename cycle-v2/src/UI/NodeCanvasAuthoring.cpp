@@ -105,6 +105,28 @@ bool NodeCanvasAuthoring::toggleNodeSelection(const String& nodeId) {
     return true;
 }
 
+bool NodeCanvasAuthoring::addNodesToSelection(const std::vector<String>& nodeIds) {
+    bool changed = false;
+    for (const auto& nodeId : nodeIds) {
+        if (nodeId.isEmpty()
+                || findNode(nodeId) == nullptr
+                || isNodeSelected(nodeId)) {
+            continue;
+        }
+        authoringSession.selectedNodeIds.push_back(nodeId);
+        changed = true;
+    }
+
+    if (authoringSession.selectedNodeId.isEmpty()
+            && !authoringSession.selectedNodeIds.empty()) {
+        authoringSession.selectedNodeId = authoringSession.selectedNodeIds.front();
+    }
+    if (changed) {
+        authoringSession.selectedEdgeIndex = -1;
+    }
+    return changed;
+}
+
 bool NodeCanvasAuthoring::isNodeSelected(const String& nodeId) const {
     const auto& selected = authoringSession.selectedNodeIds;
     return std::find(selected.begin(), selected.end(), nodeId) != selected.end();

@@ -549,6 +549,13 @@ class NativeEditSmoke:
         return {parameter["id"]: parameter["value"] for parameter in state["parameters"]}
 
     @staticmethod
+    def node_preview(state, node_id):
+        return next(
+            preview for preview in state["previewStats"]
+            if preview["nodeId"] == node_id
+        )
+
+    @staticmethod
     def flat_snapshot(state):
         snapshot = dict(state["model"]["state"])
         selected_id = state.get("editor", {}).get("selectedVertexId")
@@ -2197,6 +2204,52 @@ class NativeEditSmoke:
             slider,
         )
 
+    def reverb_preview_sequence(self):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(REPO, "cycle-v2", "resources", "with-spies.cyclegraph"),
+        })
+        time.sleep(SETTLE_SECONDS)
+        if self.graph_state()["probeRefreshMode"] != "On Release":
+            refresh_toggle = self.target("probeRefreshMode")
+            self.primary_click(self.point(refresh_toggle, 0.5, 0.5))
+        assert self.graph_state()["probeRefreshMode"] == "On Release"
+
+        editor = self.open_editor("reverb")
+        wet_value = float(self.parameters(editor)["wet"])
+        wet = self.target("reverbEditor.wet")
+        source = self.point(wet, wet_value, 0.5)
+        first_destination = self.point(wet, 0.85, 0.5)
+        second_destination = self.point(wet, 0.6, 0.5)
+        initial_state = self.graph_state()
+        initial_preview = self.node_preview(initial_state, "reverb")
+        initial_probe_previews = initial_state["probePreviewStats"]
+
+        self.begin_drag(source)
+        self.move_held_drag(source, first_destination)
+        first_state = self.graph_state_until(
+            lambda state: self.node_preview(state, "reverb")["contentFingerprint"]
+            != initial_preview["contentFingerprint"],
+            timeout_seconds=0.6,
+        )
+        first_preview = self.node_preview(first_state, "reverb")
+        assert first_preview["role"] == "Reverb Spectrogram", first_preview
+        assert first_preview["gridRows"] == 1025, first_preview
+        assert first_state["probePreviewStats"] == initial_probe_previews
+        self.capture("reverb-preview-first-movement", self.target("canvas"))
+
+        self.move_held_drag(first_destination, second_destination)
+        second_state = self.graph_state_until(
+            lambda state: self.node_preview(state, "reverb")["contentFingerprint"]
+            != first_preview["contentFingerprint"],
+            timeout_seconds=0.6,
+        )
+        second_preview = self.node_preview(second_state, "reverb")
+        assert second_preview["role"] == "Reverb Spectrogram", second_preview
+        assert second_preview["gridRows"] == 1025, second_preview
+        self.capture("reverb-preview-second-movement", self.target("canvas"))
+        self.release_drag(second_destination)
+
     def run(self, sequences):
         self.start()
         try:
@@ -2220,6 +2273,7 @@ class NativeEditSmoke:
                 "spectral-trimesh": self.spectral_trimesh_sequence,
                 "causal-trimesh": self.causal_trimesh_sequence,
                 "trimesh-morph-drag": self.trimesh_morph_drag_sequence,
+                "reverb-preview": self.reverb_preview_sequence,
                 "hover-cursor": self.hover_cursor_sequence,
             }
             for sequence in sequences:
@@ -2253,6 +2307,7 @@ if __name__ == "__main__":
         "spectral-trimesh",
         "causal-trimesh",
         "trimesh-morph-drag",
+        "reverb-preview",
         "hover-cursor",
     }
     if unknown:

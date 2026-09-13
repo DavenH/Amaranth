@@ -254,6 +254,10 @@ public:
         object->setProperty("gridColumns", (int) preview.gridColumns);
         object->setProperty("gridRows", (int) preview.gridRows);
         object->setProperty("sampleCount", (int) values.size());
+        object->setProperty(
+                "contentFingerprint",
+                String((int64_t) nodePreviewResultFingerprint(preview)));
+        object->setProperty("contentRevision", String((int64_t) preview.contentRevision));
         object->setProperty("minimum", minimum);
         object->setProperty("maximum", maximum);
         object->setProperty("mean", total / count);

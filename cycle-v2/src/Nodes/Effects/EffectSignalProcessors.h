@@ -9,10 +9,12 @@
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Audio/CycleDsp/EqualizerCore.h>
 #include <Audio/CycleDsp/IrModel.h>
+#include <Audio/CycleDsp/ReverbKernel.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Rasterization/Rasterizer/FXRasterizer.h>
 
 #include <array>
+#include <memory>
 
 namespace CycleV2 {
 
@@ -25,12 +27,17 @@ struct IrConfiguration final : public INodeDspConfiguration {
     float postGain { 1.f };
 };
 
+struct ReverbKernelData {
+    CycleDsp::ReverbKernelConfiguration parameters;
+    std::array<std::vector<float>, 2> channels;
+};
+
 struct ReverbConfiguration final : public INodeDspConfiguration {
     AudioModuleRole role() const override { return AudioModuleRole::Reverb; }
     bool isEnabled() const override { return enabled; }
 
     bool enabled { true };
-    std::array<std::vector<float>, 2> kernels;
+    std::shared_ptr<const ReverbKernelData> kernel;
     float width { 1.f };
     float wetLevel { 0.1f };
 };
@@ -81,7 +88,8 @@ class ReverbSignalProcessor :
         public IUnarySignalOperation {
 public:
     static std::shared_ptr<const ReverbConfiguration> buildConfiguration(
-            const std::vector<NodeParameter>& parameters);
+            const std::vector<NodeParameter>& parameters,
+            const ReverbConfiguration* previous = nullptr);
 
     void prepareExecution(const AudioExecutionSpec& spec);
     void adoptConfiguration(const PublishedNodeConfiguration& published);

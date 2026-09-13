@@ -200,9 +200,17 @@ private:
                 formatSize,
                 parseSize,
                 0.5,
-                0.01,
-                0.001,
-                "Reverb kernel duration at 44.1 kHz. Shift-drag for fine adjustment.");
+                1.0 / (CycleDsp::reverbSizeStepCount - 1),
+                1.0 / (CycleDsp::reverbSizeStepCount - 1),
+                "Reverb kernel duration at 44.1 kHz. Seven power-of-two sizes.");
+        size.slider.setValueSnapper([](double value, Slider::DragMode dragMode) {
+            return dragMode == Slider::notDragging
+                    ? value
+                    : CycleDsp::reverbSizeSnappedUnitValue((float) value);
+        });
+        size.slider.setKeyboardStepper([](double current, bool increase, bool) {
+            return CycleDsp::reverbSizeSteppedUnitValue((float) current, increase);
+        });
         std::vector<PrecisionSlider::Landmark> sizeLandmarks;
         for (int step = 0; step < CycleDsp::reverbSizeStepCount; ++step) {
             const float value = CycleDsp::reverbSizeUnitValueForStep(step);

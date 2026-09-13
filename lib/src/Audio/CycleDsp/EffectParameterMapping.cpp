@@ -75,6 +75,37 @@ float reverbSizeUnitValueForStep(int step) {
     return (std::ceil(boundary / sliderInterval) - 1.f) * sliderInterval;
 }
 
+float reverbSizeSnappedUnitValue(float value) {
+    const float normalized = unitValue(value);
+    float closestValue = reverbSizeUnitValueForStep(0);
+    float closestDistance = std::abs(normalized - closestValue);
+    for (int step = 1; step < reverbSizeStepCount; ++step) {
+        const float candidate = reverbSizeUnitValueForStep(step);
+        const float distance = std::abs(normalized - candidate);
+        if (distance < closestDistance) {
+            closestValue = candidate;
+            closestDistance = distance;
+        }
+    }
+    return closestValue;
+}
+
+float reverbSizeSteppedUnitValue(float value, bool increase) {
+    const float snapped = reverbSizeSnappedUnitValue(value);
+    int currentStep {};
+    for (int step = 1; step < reverbSizeStepCount; ++step) {
+        if (reverbSizeUnitValueForStep(step) == snapped) {
+            currentStep = step;
+            break;
+        }
+    }
+    const int nextStep = std::clamp(
+            currentStep + (increase ? 1 : -1),
+            0,
+            reverbSizeStepCount - 1);
+    return reverbSizeUnitValueForStep(nextStep);
+}
+
 double reverbKernelSeconds(float value, double sampleRate) {
     return static_cast<double>(reverbKernelLength(value)) / std::max(1.0, sampleRate);
 }

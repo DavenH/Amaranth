@@ -20,9 +20,10 @@ public:
                 ? std::dynamic_pointer_cast<const ReverbConfiguration>(
                         context.configuration->value)
                 : nullptr;
-        if (configuration == nullptr || context.pointCount == 0
-                || configuration->kernels[0].empty()
-                || configuration->kernels[1].empty()) {
+        if (configuration == nullptr || configuration->kernel == nullptr
+                || context.pointCount == 0
+                || configuration->kernel->channels[0].empty()
+                || configuration->kernel->channels[1].empty()) {
             context.primary.clear();
             context.secondary.clear();
             return;
@@ -35,7 +36,7 @@ public:
         constexpr size_t columnsPerSizeStep = 32;
 
         const unsigned kernelLog2 = NumberUtils::log2i(
-                (unsigned) configuration->kernels[0].size());
+                (unsigned) configuration->kernel->channels[0].size());
         const size_t sizeDetail = columnsPerSizeStep * (size_t) (kernelLog2 > minimumKernelLog2
                 ? kernelLog2 - minimumKernelLog2
                 : 0);
@@ -44,16 +45,16 @@ public:
         const size_t rowCount = spectralRowCount;
         const float directLevel = jmax(0.5f, configuration->width);
         const float crossLevel = jmin(0.5f, 1.f - configuration->width);
-        std::vector<float> leftResponse = configuration->kernels[0];
-        std::vector<float> rightResponse = configuration->kernels[1];
+        std::vector<float> leftResponse = configuration->kernel->channels[0];
+        std::vector<float> rightResponse = configuration->kernel->channels[1];
         Buffer<float> left(leftResponse.data(), (int) leftResponse.size());
         Buffer<float> right(rightResponse.data(), (int) rightResponse.size());
         Buffer<float> leftKernel(
-                const_cast<float*>(configuration->kernels[0].data()),
-                (int) configuration->kernels[0].size());
+                const_cast<float*>(configuration->kernel->channels[0].data()),
+                (int) configuration->kernel->channels[0].size());
         Buffer<float> rightKernel(
-                const_cast<float*>(configuration->kernels[1].data()),
-                (int) configuration->kernels[1].size());
+                const_cast<float*>(configuration->kernel->channels[1].data()),
+                (int) configuration->kernel->channels[1].size());
         left.mul(directLevel).addProduct(
                 rightKernel,
                 crossLevel);
