@@ -122,7 +122,6 @@ public:
     NodeCanvasAuthoringResult cycleOperationPortLayout(const String& nodeId);
     NodeCanvasAuthoringResult cycleSinglePortLayout(const String& nodeId);
     NodeCanvasAuthoringResult cycleOutputSide(const String& nodeId);
-    NodeCanvasAuthoringResult cycleVoiceDomain(const String& nodeId);
     bool beginSpectralPanGesture(const String& nodeId);
     bool updateSpectralPanGesture(float value);
     NodeCanvasAuthoringResult endSpectralPanGesture();

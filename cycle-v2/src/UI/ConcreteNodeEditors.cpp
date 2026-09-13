@@ -160,8 +160,9 @@ public:
         state.setProperty("range", editor->spectralRangeValue());
         state.setProperty("gain", parameters.floatValue("gain", 0.5f));
         state.setProperty("outputScale", editor->outputScaleValue());
-        state.setProperty("spectralMode", editor->spectralModeValue());
-        state.setProperty("spectralModeVisible", editor->spectralModeVisible());
+        state.setProperty("signalType", editor->signalTypeValue());
+        state.setProperty("polarity", editor->polarityValue());
+        state.setProperty("polarityVisible", editor->polarityVisible());
         for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
             auto* slider = new DynamicObject();
             slider->setProperty("id", axis);
@@ -298,12 +299,20 @@ private:
                 enabled ? 1.f : 0.f);
     }
 
-    bool setTrimeshSpectralModeValue(const String& mode) override {
+    bool setTrimeshSignalTypeValue(const String& signalType) override {
         return commands.setNodeParameterText(
                 nodeId,
-                "spectralMode",
-                "Spectral Mode",
-                mode);
+                "signalType",
+                "Signal Type",
+                signalType);
+    }
+
+    bool setTrimeshPolarityValue(const String& polarity) override {
+        return commands.setNodeParameterText(
+                nodeId,
+                "polarity",
+                "Polarity",
+                polarity);
     }
 
     void setTrimeshPrimaryAxisValue(const String& axis) override {

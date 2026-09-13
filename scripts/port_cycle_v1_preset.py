@@ -662,6 +662,8 @@ def convert(source):
     guide_assignments = []
     mesh_parameters = {
         "range": 0.5,
+        "signalType": "time",
+        "polarity": "bipolar",
         "yellow": position["time"],
         "red": position["red"],
         "blue": position["blue"],
@@ -683,7 +685,6 @@ def convert(source):
             380 + 190 * index,
             parameters,
             trimesh_model(layer["mesh"])))
-        edges.append(edge("voice", "context", layer_id, "context"))
         layer_source = (layer_id, "out")
         if abs(pan - 0.5) > 0.000001:
             nodes.append(node(
@@ -722,7 +723,10 @@ def convert(source):
             mode = "additive" if group_name == "phase" \
                 or layer["properties"]["mode"] == 0 \
                 else "multiplicative"
-            parameters["spectralMode"] = mode
+            parameters["signalType"] = "spectralPhase" \
+                if group_name == "phase" else "spectralMagnitude"
+            parameters["polarity"] = "unipolar" \
+                if mode == "additive" else "bipolar"
             operation = "add" if mode == "additive" else "multiply"
             nodes.append(node(
                 layer_id, "trilinearMesh", 1150, y + 170 * (index - 1),
@@ -736,7 +740,7 @@ def convert(source):
                     "spectralLayer",
                     1490,
                     y + 170 * (index - 1),
-                    {"pan": pan, "mode": mode}))
+                    {"pan": pan}))
                 edges.append(edge(layer_id, "out", process_id, "in"))
                 layer_source = (process_id, "out")
             edges.extend([

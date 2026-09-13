@@ -4,6 +4,8 @@
 #include <deque>
 #include <unordered_map>
 
+#include "Graph/TrimeshSignalSemantics.h"
+
 namespace CycleV2 {
 
 namespace {
@@ -18,20 +20,6 @@ bool propagatesUniversalDomain(NodeKind kind) {
     return kind == NodeKind::Add
             || kind == NodeKind::Multiply
             || kind == NodeKind::SpectralLayer;
-}
-
-PortDomain voiceContextDomain(const Node& voiceNode) {
-    const String domain = parameterValueForNode(voiceNode, "domain", "waveform");
-
-    if (domain == "spectral" || domain == "spectralMagnitude") {
-        return PortDomain::SpectralMagnitudeSignal;
-    }
-
-    if (domain == "spectralPhase") {
-        return PortDomain::SpectralPhaseSignal;
-    }
-
-    return PortDomain::TimeSignal;
 }
 
 const Port* findPort(const Node& node, const String& id, bool input) {
@@ -98,92 +86,6 @@ private:
         return found != nodeIndices.end() ? found->second : graph.getNodes().size();
     }
 
-    PortDomain contextDomain(const Node& nodeToResolve) const {
-        const size_t index = nodeIndex(nodeToResolve.id);
-        if (index >= incoming.size()) {
-            return PortDomain::ControlSignal;
-        }
-
-        for (const size_t edgeIndex : incoming[index]) {
-            const Edge& edge = edges[edgeIndex];
-            if (edge.destPortId != "context") {
-                continue;
-            }
-
-            const Node* source = node(edge.sourceNodeId);
-            if (source != nullptr && source->kind == NodeKind::VoiceContext) {
-                const PortDomain domain = voiceContextDomain(*source);
-                if (domain == PortDomain::SpectralMagnitudeSignal
-                        && parameterValueForNode(*source, "domain", "waveform") == "spectral") {
-                    const PortDomain downstream = downstreamSpectralDomain(nodeToResolve);
-                    return downstream == PortDomain::ControlSignal
-                            ? PortDomain::SpectralMagnitudeSignal
-                            : downstream;
-                }
-
-                return domain;
-            }
-        }
-
-        return PortDomain::ControlSignal;
-    }
-
-    PortDomain downstreamSpectralDomain(const Node& sourceNode) const {
-        std::deque<size_t> worklist;
-        std::vector<bool> visited(graph.getNodes().size(), false);
-        const size_t sourceIndex = nodeIndex(sourceNode.id);
-        if (sourceIndex < outgoing.size()) {
-            worklist.insert(
-                    worklist.end(),
-                    outgoing[sourceIndex].begin(),
-                    outgoing[sourceIndex].end());
-        }
-
-        PortDomain resolved = PortDomain::ControlSignal;
-        while (!worklist.empty()) {
-            const Edge& edge = edges[worklist.front()];
-            worklist.pop_front();
-
-            const Node* destination = node(edge.destNodeId);
-            if (destination == nullptr) {
-                continue;
-            }
-
-            const Port* destinationPort = findPort(*destination, edge.destPortId, true);
-            if (destinationPort == nullptr) {
-                continue;
-            }
-
-            const PortDomain candidate = destinationPort->domain;
-            if (candidate == PortDomain::SpectralMagnitudeSignal
-                    || candidate == PortDomain::SpectralPhaseSignal) {
-                if (resolved != PortDomain::ControlSignal && resolved != candidate) {
-                    return PortDomain::SpectralMagnitudeSignal;
-                }
-
-                resolved = candidate;
-                continue;
-            }
-
-            if (!propagatesUniversalDomain(destination->kind)) {
-                continue;
-            }
-
-            const size_t destinationIndex = nodeIndex(destination->id);
-            if (destinationIndex >= outgoing.size() || visited[destinationIndex]) {
-                continue;
-            }
-
-            visited[destinationIndex] = true;
-            worklist.insert(
-                    worklist.end(),
-                    outgoing[destinationIndex].begin(),
-                    outgoing[destinationIndex].end());
-        }
-
-        return resolved;
-    }
-
     PortDomain firstInputDomain(
             const Node& nodeToResolve,
             bool operationDomain) const {
@@ -226,11 +128,7 @@ private:
         PortDomain sourceDomain = source->domain;
         if (sourceDomain == PortDomain::ControlSignal
                 && GraphDomainResolver::isContextResolvedSource(*sourceNode, *source)) {
-            sourceDomain = contextDomain(*sourceNode);
-            if (sourceDomain == PortDomain::ControlSignal
-                    && sourceNode->kind == NodeKind::TrilinearMesh) {
-                sourceDomain = downstreamSpectralDomain(*sourceNode);
-            }
+            sourceDomain = TrimeshSignalSemantics::domain(*sourceNode);
         }
         if (sourceDomain == PortDomain::ControlSignal
                 && propagatesUniversalDomain(sourceNode->kind)) {
@@ -380,10 +278,6 @@ size_t edgeIndexInGraph(const NodeGraph& graph, const Edge& edge) {
     return edges.size();
 }
 
-}
-
-PortDomain GraphDomainResolver::domainFromVoiceContext(const Node& voiceNode) const {
-    return voiceContextDomain(voiceNode);
 }
 
 GraphDomainResolution GraphDomainResolver::resolve(const NodeGraph& graph) const {

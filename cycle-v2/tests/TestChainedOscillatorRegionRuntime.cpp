@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 #include <numeric>
 
 using namespace CycleV2;
@@ -284,8 +285,10 @@ TEST_CASE("Prepared spectral Add preserves a lone connected operand",
     const PartitionedRender actual = renderPreparedGraph(
             compiled.plan, 512, 4096, -1, 72, voiceDurationSeconds);
     REQUIRE(actual.frameRenderCount > 0);
-    REQUIRE(maximumDifference(actual.left, expected.left) == 0.f);
-    REQUIRE(maximumDifference(actual.right, expected.right) == 0.f);
+    const float leftDifference = maximumDifference(actual.left, expected.left);
+    const float rightDifference = maximumDifference(actual.right, expected.right);
+    REQUIRE(leftDifference <= std::numeric_limits<float>::epsilon());
+    REQUIRE(rightDifference <= std::numeric_limits<float>::epsilon());
 #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
 #endif

@@ -1,0 +1,98 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/accoustic.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "magnitudeLayer1"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.signalType",
+      "equals": "spectralMagnitude"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.polarity",
+      "equals": "unipolar"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.polarityVisible",
+      "equals": true
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-trimesh-signal-semantics.png"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "trimeshEditor.polarity.bipolar",
+      "targetX": 0.5,
+      "targetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "magnitudeLayer1",
+      "parameterId": "polarity",
+      "equals": "bipolar"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "trimeshEditor.signalType.spectralPhase",
+      "targetX": 0.5,
+      "targetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "magnitudeLayer1",
+      "parameterId": "signalType",
+      "equals": "spectralPhase"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.polarityVisible",
+      "equals": false
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "magnitudeLayer1",
+      "parameterId": "polarity",
+      "equals": "unipolar"
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "magnitudeLayer1",
+      "parameterId": "signalType",
+      "equals": "spectralMagnitude"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": true
+}

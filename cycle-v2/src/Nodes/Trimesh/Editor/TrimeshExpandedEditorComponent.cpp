@@ -12,20 +12,30 @@ namespace CycleV2 {
 namespace {
 
 const Colour kText      { 0xffe2e8ef };
-const Colour kMutedText { 0xff8793a1 };
-constexpr int kSpectralModeLabelWidth = 38;
-constexpr int kSpectralModeSelectorWidth = 210;
-constexpr int kSpectralModeGap = 8;
-constexpr int kSpectralModeHeight = 26;
+constexpr int kControlLabelWidth = 56;
+constexpr int kSignalTypeSelectorWidth = 198;
+constexpr int kPolaritySelectorWidth = 142;
+constexpr int kControlGap = 8;
+constexpr int kControlGroupGap = 14;
+constexpr int kControlHeight = 26;
 
-std::vector<PropertySegmentOption> spectralModeOptions() {
+std::vector<PropertySegmentOption> signalTypeOptions() {
     return {
-            { "Auto", "auto", "trimeshEditor.spectralMode.auto",
-                    "Infer additive or multiplicative spectral behavior" },
-            { "Add", "additive", "trimeshEditor.spectralMode.additive",
-                    "Treat this magnitude mesh as additive" },
-            { "Multiply", "multiplicative", "trimeshEditor.spectralMode.multiplicative",
-                    "Treat this magnitude mesh as multiplicative" }
+            { "Time", "time", "trimeshEditor.signalType.time",
+                    "Emit a time-domain waveform" },
+            { "Magnitude", "spectralMagnitude", "trimeshEditor.signalType.spectralMagnitude",
+                    "Emit spectral magnitudes" },
+            { "Phase", "spectralPhase", "trimeshEditor.signalType.spectralPhase",
+                    "Emit spectral phase" }
+    };
+}
+
+std::vector<PropertySegmentOption> polarityOptions() {
+    return {
+            { "Unipolar", "unipolar", "trimeshEditor.polarity.unipolar",
+                    "Map magnitude values from zero to one" },
+            { "Bipolar", "bipolar", "trimeshEditor.polarity.bipolar",
+                    "Map magnitude values from minus one to one" }
     };
 }
 
@@ -34,7 +44,8 @@ std::vector<PropertySegmentOption> spectralModeOptions() {
 TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& targetWidget) :
         widget      (targetWidget)
     ,   controls    (targetWidget)
-    ,   spectralModeSelector(spectralModeOptions()) {
+    ,   signalTypeSelector(signalTypeOptions())
+    ,   polaritySelector(polarityOptions()) {
     setOpaque(false);
     setName("TrimeshExpandedEditor");
     setInterceptsMouseClicks(true, true);
@@ -46,17 +57,30 @@ TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& ta
         }
     };
     addAndMakeVisible(enabled);
-    stylePropertyLabel(spectralModeLabel, "Mode");
-    spectralModeLabel.setJustificationType(Justification::centredRight);
-    spectralModeSelector.setComponentID("trimeshEditor.spectralMode");
-    spectralModeSelector.onChange = [this](const String& mode) {
-        if (delegate == nullptr || !delegate->setTrimeshSpectralModeValue(mode)) {
-            spectralModeSelector.setSelectedValue(
-                    NodeParameterMap(node).stringValue("spectralMode", "auto"));
+    stylePropertyLabel(signalTypeLabel, "Type");
+    signalTypeLabel.setJustificationType(Justification::centredRight);
+    signalTypeSelector.setComponentID("trimeshEditor.signalType");
+    signalTypeSelector.onChange = [this](const String& signalType) {
+        if (delegate == nullptr || !delegate->setTrimeshSignalTypeValue(signalType)) {
+            signalTypeSelector.setSelectedValue(
+                    NodeParameterMap(node).stringValue("signalType", "time"));
+            return;
+        }
+        updateSignalControls();
+    };
+    stylePropertyLabel(polarityLabel, "Polarity");
+    polarityLabel.setJustificationType(Justification::centredRight);
+    polaritySelector.setComponentID("trimeshEditor.polarity");
+    polaritySelector.onChange = [this](const String& polarity) {
+        if (delegate == nullptr || !delegate->setTrimeshPolarityValue(polarity)) {
+            polaritySelector.setSelectedValue(
+                    NodeParameterMap(node).stringValue("polarity", "unipolar"));
         }
     };
-    addAndMakeVisible(spectralModeLabel);
-    addAndMakeVisible(spectralModeSelector);
+    addAndMakeVisible(signalTypeLabel);
+    addAndMakeVisible(signalTypeSelector);
+    addAndMakeVisible(polarityLabel);
+    addAndMakeVisible(polaritySelector);
     widget.setExpandedPanelHostDelegate(this);
 }
 
@@ -75,13 +99,15 @@ void TrimeshExpandedEditorComponent::setNode(const Node& nextNode) {
     enabled.setToggleState(
             NodeParameterMap(node).boolValue("enabled", true),
             dontSendNotification);
-    spectralModeSelector.setSelectedValue(
-            NodeParameterMap(node).stringValue("spectralMode", "auto"));
+    signalTypeSelector.setSelectedValue(
+            NodeParameterMap(node).stringValue("signalType", "time"));
+    polaritySelector.setSelectedValue(
+            NodeParameterMap(node).stringValue("polarity", "unipolar"));
     if (!widget.isMeshEditGestureActive()) {
         updatePanelHosts();
     }
     updateControlsHost();
-    updateSpectralModeControl();
+    updateSignalControls();
     repaint();
 }
 
@@ -98,7 +124,7 @@ void TrimeshExpandedEditorComponent::setRenderProfile(TrimeshRenderProfile profi
     renderProfile = profile;
     widget.setRenderProfile(profile);
     controls.refreshHitRegions();
-    updateSpectralModeControl();
+    updateSignalControls();
     repaint();
 }
 
@@ -157,15 +183,8 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
     g.setColour(kText);
     g.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize));
     Rectangle<float> titleBounds = headerLayout.title;
-    if (spectralModeSelector.isVisible()) {
-        titleBounds.setRight((float) spectralModeLabel.getX() - kSpectralModeGap);
-    }
+    titleBounds.setRight((float) signalTypeLabel.getX() - kControlGap);
     g.drawText(labelForNodeKind(node.kind), titleBounds, Justification::centredLeft);
-    if (!spectralModeSelector.isVisible()) {
-        g.setColour(kMutedText);
-        g.setFont(FontOptions(CanvasChromeMetrics::captionFontSize));
-        g.drawText("Trilinear Mesh", headerLayout.title, Justification::centredRight);
-    }
 
     Rectangle<float> closeButton = closeButtonBounds();
     g.setColour(Colour(0xff0e1318));
@@ -192,7 +211,7 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
 void TrimeshExpandedEditorComponent::resized() {
     enabled.setBounds(embeddedEditorHeaderLayout(
             getLocalBounds().toFloat(), true).enabled.toNearestInt());
-    updateSpectralModeControl();
+    updateSignalControls();
     updatePanelHosts();
     updateControlsHost();
 }
@@ -469,39 +488,76 @@ void TrimeshExpandedEditorComponent::updateControlsHost() {
     enabled.toFront(false);
 }
 
-void TrimeshExpandedEditorComponent::updateSpectralModeControl() {
-    const bool visible = renderProfile.getDomain() == PortDomain::SpectralMagnitudeSignal;
-    spectralModeLabel.setVisible(visible);
-    spectralModeSelector.setVisible(visible);
-    if (visible) {
-        spectralModeLabel.setBounds(spectralModeLabelBounds());
-        spectralModeSelector.setBounds(spectralModeSelectorBounds());
-        spectralModeLabel.toFront(false);
-        spectralModeSelector.toFront(false);
-        enabled.toFront(false);
+void TrimeshExpandedEditorComponent::updateSignalControls() {
+    signalTypeLabel.setBounds(signalTypeLabelBounds());
+    signalTypeSelector.setBounds(signalTypeSelectorBounds());
+    const bool showPolarity = signalTypeSelector.selectedValue() == "spectralMagnitude";
+    polarityLabel.setVisible(showPolarity);
+    polaritySelector.setVisible(showPolarity);
+    if (showPolarity) {
+        polarityLabel.setBounds(polarityLabelBounds());
+        polaritySelector.setBounds(polaritySelectorBounds());
     }
+    signalTypeLabel.toFront(false);
+    signalTypeSelector.toFront(false);
+    polarityLabel.toFront(false);
+    polaritySelector.toFront(false);
+    enabled.toFront(false);
 }
 
-Rectangle<int> TrimeshExpandedEditorComponent::spectralModeSelectorBounds() const {
+Rectangle<int> TrimeshExpandedEditorComponent::polaritySelectorBounds() const {
     const auto header = embeddedEditorHeaderLayout(
             getLocalBounds().toFloat(), true);
     return Rectangle<int>(
-            kSpectralModeSelectorWidth,
-            kSpectralModeHeight)
+            kPolaritySelectorWidth,
+            kControlHeight)
             .withCentre({
                     roundToInt(header.enabled.getX()
                             - CanvasChromeMetrics::embeddedEditorActionGap
-                            - kSpectralModeSelectorWidth * 0.5f),
+                            - kPolaritySelectorWidth * 0.5f),
                     roundToInt(header.header.getCentreY())
             });
 }
 
-Rectangle<int> TrimeshExpandedEditorComponent::spectralModeLabelBounds() const {
-    const Rectangle<int> selector = spectralModeSelectorBounds();
+Rectangle<int> TrimeshExpandedEditorComponent::polarityLabelBounds() const {
+    const Rectangle<int> selector = polaritySelectorBounds();
     return {
-            selector.getX() - kSpectralModeGap - kSpectralModeLabelWidth,
+            selector.getX() - kControlGap - kControlLabelWidth,
             selector.getY(),
-            kSpectralModeLabelWidth,
+            kControlLabelWidth,
+            selector.getHeight()
+    };
+}
+
+Rectangle<int> TrimeshExpandedEditorComponent::signalTypeSelectorBounds() const {
+    if (signalTypeSelector.selectedValue() != "spectralMagnitude") {
+        const auto header = embeddedEditorHeaderLayout(
+                getLocalBounds().toFloat(), true);
+        return Rectangle<int>(
+                kSignalTypeSelectorWidth,
+                kControlHeight)
+                .withCentre({
+                        roundToInt(header.enabled.getX()
+                                - CanvasChromeMetrics::embeddedEditorActionGap
+                                - kSignalTypeSelectorWidth * 0.5f),
+                        roundToInt(header.header.getCentreY())
+                });
+    }
+    const Rectangle<int> polarityLabel = polarityLabelBounds();
+    return {
+            polarityLabel.getX() - kControlGroupGap - kSignalTypeSelectorWidth,
+            polarityLabel.getY(),
+            kSignalTypeSelectorWidth,
+            polarityLabel.getHeight()
+    };
+}
+
+Rectangle<int> TrimeshExpandedEditorComponent::signalTypeLabelBounds() const {
+    const Rectangle<int> selector = signalTypeSelectorBounds();
+    return {
+            selector.getX() - kControlGap - kControlLabelWidth,
+            selector.getY(),
+            kControlLabelWidth,
             selector.getHeight()
     };
 }

@@ -10,7 +10,6 @@
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"
-#include "UI/VoiceContextCompactEditor.h"
 
 namespace CycleV2 {
 
@@ -640,21 +639,6 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleOutputSide(const String& nod
         edited.outputs[0].side = side;
     });
     return graphEditResult(edit, {}, nodeId, { true });
-}
-
-NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleVoiceDomain(const String& nodeId) {
-    const Node* node = findNode(nodeId);
-    if (node == nullptr || node->kind != NodeKind::VoiceContext) {
-        return {};
-    }
-
-    const String domain = VoiceContextCompactEditor::nextDomain(*node);
-    return setVoiceContextParameter(
-            nodeId,
-            "domain",
-            "Start Domain",
-            domain,
-            "Voice start domain: " + domain);
 }
 
 bool NodeCanvasAuthoring::beginSpectralPanGesture(const String& nodeId) {

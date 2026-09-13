@@ -1,4 +1,7 @@
+#include <algorithm>
+
 #include "Graph/GraphRenderSemanticResolver.h"
+#include "Graph/TrimeshSignalSemantics.h"
 
 namespace CycleV2 {
 
@@ -12,21 +15,39 @@ const Node* GraphRenderSemanticResolver::findNode(const NodeGraph& graph, const 
     return nullptr;
 }
 
-PortDomain GraphRenderSemanticResolver::contextDomainForNode(
+bool GraphRenderSemanticResolver::isBipolarMagnitudeSource(
         const NodeGraph& graph,
-        const Node& node) const {
-    for (const auto& edge : graph.getEdges()) {
-        if (edge.isAttachment() || edge.destNodeId != node.id || edge.destPortId != "context") {
-            continue;
+        const String& nodeId) const {
+    String currentId = nodeId;
+    StringArray visited;
+    while (currentId.isNotEmpty() && !visited.contains(currentId)) {
+        visited.add(currentId);
+        const Node* node = findNode(graph, currentId);
+        if (node == nullptr) {
+            return false;
+        }
+        if (node->kind == NodeKind::TrilinearMesh) {
+            return TrimeshSignalSemantics::isBipolar(*node);
+        }
+        if (node->kind != NodeKind::SpectralLayer) {
+            return false;
         }
 
-        const Node* sourceNode = findNode(graph, edge.sourceNodeId);
-        if (sourceNode != nullptr && sourceNode->kind == NodeKind::VoiceContext) {
-            return domainResolver.domainFromVoiceContext(*sourceNode);
+        const auto input = std::find_if(
+                graph.getEdges().begin(),
+                graph.getEdges().end(),
+                [&](const Edge& edge) {
+                    return !edge.isAttachment()
+                            && edge.destNodeId == currentId
+                            && edge.destPortId == "in";
+                });
+        if (input == graph.getEdges().end()) {
+            return false;
         }
+        currentId = input->sourceNodeId;
     }
 
-    return PortDomain::ControlSignal;
+    return false;
 }
 
 NodeRenderSemantic GraphRenderSemanticResolver::semanticForNodeOutput(
@@ -63,10 +84,14 @@ NodeRenderSemantic GraphRenderSemanticResolver::semanticForNodeOutput(
 
     if (const Node* node = findNode(graph, nodeId)) {
         if (node->kind == NodeKind::TrilinearMesh && portId == "out") {
-            const PortDomain contextDomain = contextDomainForNode(graph, *node);
-            if (contextDomain != PortDomain::ControlSignal) {
-                return defaultSemanticForDomain(contextDomain);
+            NodeRenderSemantic semantic = defaultSemanticForDomain(
+                    TrimeshSignalSemantics::domain(*node));
+            if (semantic.domain == PortDomain::SpectralMagnitudeSignal
+                    && TrimeshSignalSemantics::isBipolar(*node)) {
+                semantic.scalePolicy = RenderScalePolicy::Bipolar;
+                semantic.role = RenderSemanticRole::SpectralMagnitudeBipolar;
             }
+            return semantic;
         }
 
         for (const auto& port : node->outputs) {
@@ -86,26 +111,10 @@ NodeRenderSemantic GraphRenderSemanticResolver::semanticForEdge(
     NodeRenderSemantic semantic = defaultSemanticForDomain(domain);
     const Node* destNode = findNode(graph, edge.destNodeId);
 
-    if (domain == PortDomain::SpectralMagnitudeSignal && destNode != nullptr) {
-        const Node* sourceNode = findNode(graph, edge.sourceNodeId);
-        const String sourceMode = sourceNode != nullptr
-                ? parameterValueForNode(*sourceNode, "spectralMode", "auto")
-                : "auto";
-        const String layerMode = destNode->kind == NodeKind::SpectralLayer
-                ? parameterValueForNode(*destNode, "mode", "auto")
-                : "auto";
-        const bool explicitlyAdditive = sourceMode == "additive" || layerMode == "additive";
-        const bool explicitlyMultiplicative = sourceMode == "multiplicative"
-                || layerMode == "multiplicative";
-        if (explicitlyMultiplicative
-                || (!explicitlyAdditive && destNode->kind == NodeKind::Multiply)) {
+    if (domain == PortDomain::SpectralMagnitudeSignal) {
+        if (isBipolarMagnitudeSource(graph, edge.sourceNodeId)) {
             semantic.scalePolicy = RenderScalePolicy::Bipolar;
-            semantic.role = RenderSemanticRole::SpectralMagnitudeMultiplicative;
-        } else if (explicitlyAdditive
-                || destNode->kind == NodeKind::Add
-                || destNode->kind == NodeKind::SpectralLayer) {
-            semantic.scalePolicy = RenderScalePolicy::Unipolar;
-            semantic.role = RenderSemanticRole::SpectralMagnitudeAdditive;
+            semantic.role = RenderSemanticRole::SpectralMagnitudeBipolar;
         }
     }
 
@@ -125,7 +134,7 @@ NodeRenderSemantic GraphRenderSemanticResolver::defaultSemanticForDomain(PortDom
             return { domain, RenderScalePolicy::Bipolar, RenderSemanticRole::TimeWaveform };
 
         case PortDomain::SpectralMagnitudeSignal:
-            return { domain, RenderScalePolicy::Unipolar, RenderSemanticRole::SpectralMagnitudeAdditive };
+            return { domain, RenderScalePolicy::Unipolar, RenderSemanticRole::SpectralMagnitudeUnipolar };
 
         case PortDomain::SpectralPhaseSignal:
             return { domain, RenderScalePolicy::Bipolar, RenderSemanticRole::SpectralPhase };

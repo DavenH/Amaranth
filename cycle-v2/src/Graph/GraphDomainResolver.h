@@ -13,7 +13,6 @@ struct GraphDomainResolution {
 
 class GraphDomainResolver {
 public:
-    PortDomain domainFromVoiceContext(const Node& voiceNode) const;
     GraphDomainResolution resolve(const NodeGraph& graph) const;
     PortDomain resolvedDomainForEdge(const NodeGraph& graph, const Edge& edge) const;
     PortDomain resolvedDomainForEdge(

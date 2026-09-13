@@ -19,6 +19,7 @@ public:
     };
 
     void setCyclic(bool shouldWrap);
+    void setBipolar(bool shouldUseBipolarScaling);
     void setGuideCurveProvider(GuideCurveProvider* provider);
     void setVoiceLifecycleSeed(uint32_t seed);
     void setFrequencyMidiNote(int midiNote);

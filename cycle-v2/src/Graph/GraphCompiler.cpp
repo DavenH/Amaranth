@@ -218,6 +218,54 @@ std::vector<String> buildNodeOrder(
     return buildNodeOrder(graph.getNodes(), graph.getEdges(), issues);
 }
 
+std::vector<Edge> implicitVoiceContextEdges(const NodeGraph& graph) {
+    const Node* context = nullptr;
+    for (const auto& node : graph.getNodes()) {
+        if (node.kind != NodeKind::VoiceContext) {
+            continue;
+        }
+        if (context != nullptr) {
+            return {};
+        }
+        context = &node;
+    }
+    if (context == nullptr) {
+        return {};
+    }
+
+    std::unordered_set<String, GraphAudioScopeAnalysis::StringHash>
+            explicitlyAssignedNodes;
+    for (const auto& edge : graph.getEdges()) {
+        if (!edge.isAttachment() && edge.destPortId == "context") {
+            explicitlyAssignedNodes.emplace(edge.destNodeId);
+        }
+    }
+
+    std::vector<Edge> edges;
+    for (const auto& node : graph.getNodes()) {
+        const bool acceptsContext = std::any_of(
+                node.inputs.begin(),
+                node.inputs.end(),
+                [](const Port& port) {
+                    return port.id == "context"
+                            && port.domain == PortDomain::DomainContext;
+                });
+        const bool hasContext = explicitlyAssignedNodes.find(node.id)
+                != explicitlyAssignedNodes.end();
+        if (acceptsContext && !hasContext) {
+            edges.push_back({
+                    context->id,
+                    "context",
+                    node.id,
+                    "context",
+                    PortDomain::DomainContext,
+                    ConnectionKind::Signal
+            });
+        }
+    }
+    return edges;
+}
+
 std::vector<GraphExecutionStep> buildExecutionSteps(
         const NodeGraph& graph,
         const std::vector<String>& nodeOrder,
@@ -538,7 +586,6 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
         const NodeParameterMap parameters(node);
         CompiledVoiceContext context;
         context.nodeId = node.id;
-        context.startDomain = parameters.stringValue("domain", "waveform");
         context.octave = parameters.intValue("octave", 0);
         context.voiceDurationSeconds = (float) CycleDsp::voiceLengthSeconds(
                 parameters.floatValue(
@@ -1246,7 +1293,16 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
 
     result.plan.outputGain = outputGainFor(graph);
 
-    result.plan.nodeOrder = buildNodeOrder(graph, result.compileIssues);
+    const std::vector<Edge> inferredContextEdges = implicitVoiceContextEdges(graph);
+    std::vector<Edge> orderingEdges = graph.getEdges();
+    orderingEdges.insert(
+            orderingEdges.end(),
+            inferredContextEdges.begin(),
+            inferredContextEdges.end());
+    result.plan.nodeOrder = buildNodeOrder(
+            graph.getNodes(),
+            orderingEdges,
+            result.compileIssues);
 
     if (result.compileIssues.empty()) {
         const GraphDomainResolution domainResolution = domainResolver.resolve(graph);
@@ -1254,6 +1310,10 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
                 graph,
                 result.plan.nodeOrder,
                 domainResolution);
+        result.plan.signalEdges.insert(
+                result.plan.signalEdges.end(),
+                inferredContextEdges.begin(),
+                inferredContextEdges.end());
         result.plan.buffers = buildBufferPlan(
                 graph,
                 result.plan.signalEdges,

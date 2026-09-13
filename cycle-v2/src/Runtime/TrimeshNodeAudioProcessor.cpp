@@ -95,6 +95,8 @@ public:
         morphResolver.reset(configuration->morph);
         trimeshDsp.setGuideCurveProvider(configuration->guideCurveProvider.get());
         trimeshGridDsp.setGuideCurveProvider(configuration->guideCurveProvider.get());
+        trimeshDsp.setBipolar(configuration->bipolar);
+        trimeshGridDsp.setBipolar(configuration->bipolar);
 
         trimeshDsp.prepare(
                 const_cast<Mesh*>(configuration->mesh.get()),

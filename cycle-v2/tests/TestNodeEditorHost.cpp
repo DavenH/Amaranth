@@ -957,7 +957,6 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     host.appendAutomationState(automation);
     const var state = automation.getProperty("voiceContext");
     REQUIRE(state.getProperty("kind", {}).toString() == "VOICE_CONTEXT");
-    REQUIRE(state.getProperty("domain", {}).toString() == "waveform");
     REQUIRE(state.getProperty("octave", {}).getProperty("display", {}).toString() == "0");
     REQUIRE(state.getProperty("voiceLength", {}).getProperty("display", {}).toString() == "1 s");
     REQUIRE(state.getProperty("pitch", {}).getProperty("display", {}).toString() == "0 semis");
@@ -990,16 +989,6 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     pitchValue->setText("7.5 semitones", sendNotificationSync);
     REQUIRE(commands.updates == 1);
 
-    auto* domainSelector = host.component()->findChildWithID("voiceContextEditor.domain");
-    REQUIRE(domainSelector != nullptr);
-    for (const String& domain : { String("spectral"), String("waveform") }) {
-        auto* option = dynamic_cast<TextButton*>(domainSelector->findChildWithID(
-                "voiceContextEditor.domain." + domain));
-        REQUIRE(option != nullptr);
-        option->onClick();
-        REQUIRE(commands.textParameterId == "domain");
-        REQUIRE(commands.textValue == domain);
-    }
     auto* oversamplingSelector = host.component()->findChildWithID(
             "voiceContextEditor.oversampling");
     REQUIRE(oversamplingSelector != nullptr);
@@ -3180,8 +3169,8 @@ TEST_CASE("Time Trimesh gain is visible and edits as one undo transaction",
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "gain") == "0.5");
 }
 
-TEST_CASE("Spectral Trimesh mode uses the shared segmented selector",
-        "[cycle-v2][editor][trimesh][mode]") {
+TEST_CASE("Trimesh signal type and polarity use shared segmented selectors",
+        "[cycle-v2][editor][trimesh][signal-type]") {
     ScopedJuceInitialiser_GUI juce;
     CurveTableScope curveTables;
     Component owner;
@@ -3209,24 +3198,39 @@ TEST_CASE("Spectral Trimesh mode uses the shared segmented selector",
             document.graph().findNode("mesh"),
             { 0, 0, 900, 620 },
             document.revision()));
-    auto* selector = dynamic_cast<PropertySegmentedSelector*>(
-            host.component()->findChildWithID("trimeshEditor.spectralMode"));
-    REQUIRE(selector != nullptr);
-    REQUIRE(selector->isVisible());
-    REQUIRE(selector->selectedValue() == "auto");
-    auto* multiply = dynamic_cast<TextButton*>(selector->findChildWithID(
-            "trimeshEditor.spectralMode.multiplicative"));
-    REQUIRE(multiply != nullptr);
+    auto* typeSelector = dynamic_cast<PropertySegmentedSelector*>(
+            host.component()->findChildWithID("trimeshEditor.signalType"));
+    REQUIRE(typeSelector != nullptr);
+    REQUIRE(typeSelector->isVisible());
+    REQUIRE(typeSelector->selectedValue() == "time");
+    auto* magnitude = dynamic_cast<TextButton*>(typeSelector->findChildWithID(
+            "trimeshEditor.signalType.spectralMagnitude"));
+    REQUIRE(magnitude != nullptr);
 
-    multiply->onClick();
+    magnitude->onClick();
 
     REQUIRE(parameterValueForNode(
             *document.graph().findNode("mesh"),
-            "spectralMode") == "multiplicative");
+            "signalType") == "spectralMagnitude");
+    auto* polaritySelector = dynamic_cast<PropertySegmentedSelector*>(
+            host.component()->findChildWithID("trimeshEditor.polarity"));
+    REQUIRE(polaritySelector != nullptr);
+    REQUIRE(polaritySelector->isVisible());
+    auto* bipolar = dynamic_cast<TextButton*>(polaritySelector->findChildWithID(
+            "trimeshEditor.polarity.bipolar"));
+    REQUIRE(bipolar != nullptr);
+    bipolar->onClick();
+    REQUIRE(parameterValueForNode(
+            *document.graph().findNode("mesh"),
+            "polarity") == "bipolar");
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(
             *document.graph().findNode("mesh"),
-            "spectralMode") == "auto");
+            "polarity") == "unipolar");
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(
+            *document.graph().findNode("mesh"),
+            "signalType") == "time");
 }
 
 TEST_CASE("Live Trimesh morph commits reuse movement refresh",

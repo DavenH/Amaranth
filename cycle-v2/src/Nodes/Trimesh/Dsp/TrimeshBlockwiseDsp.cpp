@@ -14,9 +14,12 @@ void ensureCurveTable() {
     }
 }
 
-Rasterization::PointScalingMode scalingModeForDomain(PortDomain domain) {
+Rasterization::PointScalingMode scalingModeForDomain(
+        PortDomain domain,
+        bool bipolar) {
     if (domain == PortDomain::TimeSignal
-            || domain == PortDomain::SpectralPhaseSignal) {
+            || domain == PortDomain::SpectralPhaseSignal
+            || bipolar) {
         return Rasterization::PointScalingMode::Bipolar;
     }
 
@@ -71,6 +74,10 @@ void TrimeshBlockwiseDsp::setPrimaryViewAxis(int axis) {
 
 void TrimeshBlockwiseDsp::setCyclic(bool shouldWrap) {
     cyclic = shouldWrap;
+}
+
+void TrimeshBlockwiseDsp::setBipolar(bool shouldUseBipolarScaling) {
+    bipolar = shouldUseBipolarScaling;
 }
 
 void TrimeshBlockwiseDsp::setGuideCurveProvider(GuideCurveProvider* provider) {
@@ -237,7 +244,7 @@ Rasterization::RasterizationRequest TrimeshBlockwiseDsp::createRequest(
     request.xMaximum = cyclic || spectral ? 1.05f : 1.f;
     request.morph = morph;
     request.primaryViewDimension = primaryViewAxis;
-    request.scalingMode = scalingModeForDomain(domain);
+    request.scalingMode = scalingModeForDomain(domain, bipolar);
     request.calcDepthDimensions = false;
     request.lowResCurves = false;
     request.interpolateCurves = domain == PortDomain::SpectralPhaseSignal;

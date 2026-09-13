@@ -34,7 +34,7 @@ struct FoldConsistency {
     float meanNormalizedError {};
 };
 
-GraphExecutionPlan loadPresetPlan(const String& name) {
+NodeGraph loadPresetGraph(const String& name) {
 #if defined(CYCLE_V2_SOURCE_DIR)
     const File preset = File(String(CYCLE_V2_SOURCE_DIR))
             .getChildFile("content")
@@ -44,15 +44,23 @@ GraphExecutionPlan loadPresetPlan(const String& name) {
     const GraphLoadResult loaded = GraphSerializer().loadJsonString(
             preset.loadFileAsString());
     REQUIRE(loaded.succeeded());
-    const auto compiled = GraphCompiler().compile(loaded.graph);
+    return loaded.graph;
+#else
+    return {};
+#endif
+}
+
+GraphExecutionPlan compilePresetGraph(const NodeGraph& graph) {
+    const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
     REQUIRE(compiled.plan.oscillatorRegions.size() == 1);
     REQUIRE(compiled.plan.oscillatorRegions.front().strategy
             == OscillatorExecutionStrategy::SharedSpectralFrame);
     return compiled.plan;
-#else
-    return {};
-#endif
+}
+
+GraphExecutionPlan loadPresetPlan(const String& name) {
+    return compilePresetGraph(loadPresetGraph(name));
 }
 
 GraphExecutionPlan loadSpectralReferencePlan() {
@@ -274,11 +282,22 @@ TEST_CASE("Spectral reference content remains harmonic after realtime reconstruc
   #endif
 }
 
-TEST_CASE("Prepared spectral reconstruction retains the final legacy harmonic",
+TEST_CASE("Prepared spectral reconstruction retains the final active harmonic",
         "[cycle-v2][runtime][oscillator-region][spectral-frame][parity]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     constexpr int midiNote = 48;
-    const auto plan = loadPresetPlan("filter-saw");
+    NodeGraph graph = loadPresetGraph("filter-saw");
+    Node* magnitude = graph.findNodeForEditing("magnitudeLayer1");
+    REQUIRE(magnitude != nullptr);
+    auto polarity = std::find_if(
+            magnitude->parameters.begin(),
+            magnitude->parameters.end(),
+            [](const NodeParameter& parameter) {
+                return parameter.id == "polarity";
+            });
+    REQUIRE(polarity != magnitude->parameters.end());
+    polarity->value = "unipolar";
+    const auto plan = compilePresetGraph(graph);
     const int frameSize = Arithmetic::getNextPow2((float) (
             1.0 / CycleDsp::OscillatorLaneCore::angleDelta(
                     midiNote,

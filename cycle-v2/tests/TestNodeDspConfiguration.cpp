@@ -1,3 +1,5 @@
+#include <array>
+
 #include <catch2/catch_test_macros.hpp>
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
@@ -127,7 +129,9 @@ TEST_CASE("Direct spectral Trimesh applies its range before IFFT",
         "[cycle-v2][runtime][configuration][spectral]") {
     GraphNodeFactory factory;
     NodeGraph graph;
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "magnitude", {}));
+    Node magnitudeNode = factory.createNode(NodeKind::TrilinearMesh, "magnitude", {});
+    setParameter(magnitudeNode, "signalType", "spectralMagnitude");
+    graph.addNode(std::move(magnitudeNode));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
     graph.addEdge({
             "magnitude",
@@ -154,35 +158,60 @@ TEST_CASE("Direct spectral Trimesh applies its range before IFFT",
     REQUIRE_FALSE(spectral->multiplicative);
 }
 
-TEST_CASE("Explicit spectral mode survives a downstream multiply",
+TEST_CASE("Trimesh polarity is independent from downstream arithmetic",
         "[cycle-v2][runtime][configuration][spectral]") {
-    GraphNodeFactory factory;
-    NodeGraph graph;
-    Node magnitude = factory.createNode(NodeKind::TrilinearMesh, "magnitude", {});
-    setParameter(magnitude, "spectralMode", "additive");
-    graph.addNode(std::move(magnitude));
-    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
-    graph.addEdge({
-            "magnitude",
-            "out",
-            "multiply",
-            "right",
-            PortDomain::SpectralMagnitudeSignal
-    });
-    const Node* storedMagnitude = graph.findNode("magnitude");
-    REQUIRE(storedMagnitude != nullptr);
+    struct Case {
+        NodeKind operation;
+        String polarity;
+        bool multiplicative;
+        bool bipolar;
+    };
+    const std::array<Case, 4> cases {{
+            { NodeKind::Add, "unipolar", false, false },
+            { NodeKind::Add, "bipolar", false, true },
+            { NodeKind::Multiply, "unipolar", true, false },
+            { NodeKind::Multiply, "bipolar", true, true }
+    }};
 
-    const auto configuration = NodeDspConfigurationFactory().create(
-            AudioModuleRole::MeshSource,
-            storedMagnitude->parameters,
-            storedMagnitude->model,
-            {},
-            &graph,
-            storedMagnitude->id);
-    const auto spectral = std::dynamic_pointer_cast<const TrimeshConfiguration>(
-            configuration);
+    for (const Case& test : cases) {
+        GraphNodeFactory factory;
+        NodeGraph graph;
+        Node magnitude = factory.createNode(NodeKind::TrilinearMesh, "magnitude", {});
+        setParameter(magnitude, "signalType", "spectralMagnitude");
+        setParameter(magnitude, "polarity", test.polarity);
+        graph.addNode(std::move(magnitude));
+        graph.addNode(factory.createNode(NodeKind::Fft, "base", {}));
+        graph.addNode(factory.createNode(test.operation, "operation", {}));
+        graph.addEdge({
+                "base",
+                "mag",
+                "operation",
+                "left",
+                PortDomain::SpectralMagnitudeSignal
+        });
+        graph.addEdge({
+                "magnitude",
+                "out",
+                "operation",
+                "right",
+                PortDomain::SpectralMagnitudeSignal
+        });
+        const Node* storedMagnitude = graph.findNode("magnitude");
+        REQUIRE(storedMagnitude != nullptr);
 
-    REQUIRE(spectral != nullptr);
-    REQUIRE(spectral->appliesSpectralRange);
-    REQUIRE_FALSE(spectral->multiplicative);
+        const auto configuration = NodeDspConfigurationFactory().create(
+                AudioModuleRole::MeshSource,
+                storedMagnitude->parameters,
+                storedMagnitude->model,
+                {},
+                &graph,
+                storedMagnitude->id);
+        const auto spectral = std::dynamic_pointer_cast<const TrimeshConfiguration>(
+                configuration);
+
+        REQUIRE(spectral != nullptr);
+        REQUIRE(spectral->appliesSpectralRange);
+        REQUIRE(spectral->multiplicative == test.multiplicative);
+        REQUIRE(spectral->bipolar == test.bipolar);
+    }
 }

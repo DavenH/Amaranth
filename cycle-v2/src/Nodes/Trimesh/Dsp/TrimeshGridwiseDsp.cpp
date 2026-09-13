@@ -19,6 +19,10 @@ void TrimeshGridwiseDsp::setCyclic(bool shouldWrap) {
     blockwiseDsp.setCyclic(shouldWrap);
 }
 
+void TrimeshGridwiseDsp::setBipolar(bool shouldUseBipolarScaling) {
+    blockwiseDsp.setBipolar(shouldUseBipolarScaling);
+}
+
 void TrimeshGridwiseDsp::setGuideCurveProvider(GuideCurveProvider* provider) {
     blockwiseDsp.setGuideCurveProvider(provider);
 }

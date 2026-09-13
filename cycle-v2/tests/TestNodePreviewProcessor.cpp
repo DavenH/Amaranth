@@ -302,7 +302,7 @@ TEST_CASE("Trimesh spectral presentation preserves the authored value scale",
     const TrimeshRenderProfile multiplicative = TrimeshRenderProfile::fromSemantic({
             PortDomain::SpectralMagnitudeSignal,
             RenderScalePolicy::Bipolar,
-            RenderSemanticRole::SpectralMagnitudeMultiplicative
+            RenderSemanticRole::SpectralMagnitudeBipolar
     });
     const TrimeshRenderProfile phase = TrimeshRenderProfile::fromDomain(
             PortDomain::SpectralPhaseSignal);
@@ -427,7 +427,7 @@ TEST_CASE("Spectral spy heatmaps map the raw Trimesh grid exactly once",
     const TrimeshRenderProfile profile = TrimeshRenderProfile::fromSemantic({
             PortDomain::SpectralMagnitudeSignal,
             RenderScalePolicy::Bipolar,
-            RenderSemanticRole::SpectralMagnitudeMultiplicative
+            RenderSemanticRole::SpectralMagnitudeBipolar
     });
 
     const Image meshImage = NodePreviewRenderer::createRuntimeHeatmapImage(mesh, profile);
@@ -953,6 +953,34 @@ TEST_CASE("Preview processors cover mesh and image summaries", "[cycle-v2][runti
     image.pointCount = 4;
     factory.create(PreviewModuleRole::Image)->render(image);
     REQUIRE(image.primary == std::vector<float> { 0.f, 1.f / 3.f, 2.f / 3.f, 1.f });
+}
+
+TEST_CASE("Captured magnitude previews preserve explicit polarity",
+        "[cycle-v2][runtime][preview][trimesh]") {
+    SignalPayload captured;
+    captured.block.samples = SignalBuffer { 0.f, 0.25f, 1.f };
+    captured.traversalGrid.values = SignalBuffer { 0.f, 0.5f, 1.f };
+    captured.traversalGrid.columns = 3;
+    captured.traversalGrid.rows = 1;
+    captured.traversalGrid.metadata.valueDomain = PortDomain::SpectralMagnitudeSignal;
+
+    PreviewProcessContext context;
+    context.pointCount = 3;
+    context.parameters = {
+            { "signalType", "Type", "spectralMagnitude" },
+            { "polarity", "Polarity", "unipolar" }
+    };
+    context.outputPorts = {
+            { "out", PortDomain::SpectralMagnitudeSignal, ChannelLayout::Mono }
+    };
+    context.capturedOutput = &captured;
+
+    NodePreviewProcessorFactory().create(PreviewModuleRole::MeshSurface)->render(context);
+    REQUIRE(context.secondary == std::vector<float> { 0.f, 0.25f, 1.f });
+
+    context.parameters[1].value = "bipolar";
+    NodePreviewProcessorFactory().create(PreviewModuleRole::MeshSurface)->render(context);
+    REQUIRE(context.secondary == std::vector<float> { 0.5f, 0.625f, 1.f });
 }
 
 TEST_CASE("Output meters report captured mono and stereo peaks", "[cycle-v2][runtime][ui]") {

@@ -1,9 +1,12 @@
+#include <algorithm>
+
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Curve/Mesh/Mesh.h>
 
 #include "Runtime/NodeDspConfiguration.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "Graph/TrimeshSignalSemantics.h"
 #include "Nodes/Control/ModulationSource.h"
 #include "Nodes/Control/ModulationTriple.h"
 #include "Nodes/Delay/DelaySignalProcessor.h"
@@ -32,6 +35,36 @@ const Node* connectedSignalDestination(const NodeGraph* graph, const String& nod
     return nullptr;
 }
 
+int connectedSignalInputCount(const NodeGraph* graph, const String& nodeId) {
+    if (graph == nullptr) {
+        return 0;
+    }
+
+    return static_cast<int>(std::count_if(
+            graph->getEdges().begin(),
+            graph->getEdges().end(),
+            [&](const Edge& edge) {
+                return !edge.isAttachment() && edge.destNodeId == nodeId;
+            }));
+}
+
+const Node* effectiveOperationAfterTransparentNodes(
+        const NodeGraph* graph,
+        const String& nodeId) {
+    const Node* destination = connectedSignalDestination(graph, nodeId);
+    while (destination != nullptr) {
+        const bool transparentPan = destination->kind == NodeKind::SpectralLayer;
+        const bool loneOperation = (destination->kind == NodeKind::Add
+                        || destination->kind == NodeKind::Multiply)
+                && connectedSignalInputCount(graph, destination->id) < 2;
+        if (!transparentPan && !loneOperation) {
+            break;
+        }
+        destination = connectedSignalDestination(graph, destination->id);
+    }
+    return destination;
+}
+
 const Node* operationAfterOptionalPan(const NodeGraph* graph, const String& nodeId) {
     const Node* destination = connectedSignalDestination(graph, nodeId);
     if (destination != nullptr && destination->kind == NodeKind::SpectralLayer) {
@@ -41,7 +74,7 @@ const Node* operationAfterOptionalPan(const NodeGraph* graph, const String& node
 }
 
 bool feedsSpectralRangeConsumer(const NodeGraph* graph, const String& nodeId) {
-    const Node* destination = operationAfterOptionalPan(graph, nodeId);
+    const Node* destination = effectiveOperationAfterTransparentNodes(graph, nodeId);
     return destination != nullptr
             && (destination->kind == NodeKind::Add
                     || destination->kind == NodeKind::Multiply
@@ -53,18 +86,7 @@ bool feedsMultiply(const NodeGraph* graph, const String& nodeId) {
     return destination != nullptr && destination->kind == NodeKind::Multiply;
 }
 
-bool resolvesMultiplicative(
-        const NodeParameterMap& parameters,
-        const String& modeParameter,
-        const NodeGraph* graph,
-        const String& nodeId) {
-    const String mode = parameters.stringValue(modeParameter, "auto");
-    if (mode == "additive") {
-        return false;
-    }
-    if (mode == "multiplicative") {
-        return true;
-    }
+bool resolvesMultiplicative(const NodeGraph* graph, const String& nodeId) {
     return feedsMultiply(graph, nodeId);
 }
 
@@ -112,11 +134,8 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
     configuration->gain = CycleDsp::outputGain(parameterMap.floatValue("gain", 0.5f));
     configuration->range = parameterMap.floatValue("range", 0.5f);
     configuration->appliesSpectralRange = feedsSpectralRangeConsumer(graph, nodeId);
-    configuration->multiplicative = resolvesMultiplicative(
-            parameterMap,
-            "spectralMode",
-            graph,
-            nodeId);
+    configuration->multiplicative = resolvesMultiplicative(graph, nodeId);
+    configuration->bipolar = TrimeshSignalSemantics::isBipolar(parameters);
     configuration->scratchSourceEnabled = scratchSourceEnabled(
             graph,
             nodeId,
@@ -172,18 +191,10 @@ String NodeDspConfigurationFactory::keyFor(
         key << ":scratchSourceEnabled="
             << (scratchSourceEnabled(graph, nodeId, scratchSourceNodeId) ? 1 : 0);
         key << ":spectralRange=" << (feedsSpectralRangeConsumer(graph, nodeId) ? 1 : 0);
-        key << ":multiplicative=" << (resolvesMultiplicative(
-                parameterMap,
-                "spectralMode",
-                graph,
-                nodeId) ? 1 : 0);
+        key << ":multiplicative=" << (resolvesMultiplicative(graph, nodeId) ? 1 : 0);
     }
     if (role == AudioModuleRole::SpectralLayer) {
-        key << ":multiplicative=" << (resolvesMultiplicative(
-                parameterMap,
-                "mode",
-                graph,
-                nodeId) ? 1 : 0);
+        key << ":multiplicative=" << (resolvesMultiplicative(graph, nodeId) ? 1 : 0);
     }
     if (role == AudioModuleRole::ImpulseResponse) {
         key << IrSignalProcessor::resourceConfigurationKey(graph, nodeId);
@@ -308,11 +319,7 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         auto configuration = std::make_shared<PanConfiguration>();
         const NodeParameterMap parameterMap(parameters);
         configuration->pan = parameterMap.floatValue("pan", 0.5f);
-        configuration->multiplicative = resolvesMultiplicative(
-                parameterMap,
-                "mode",
-                graph,
-                nodeId);
+        configuration->multiplicative = resolvesMultiplicative(graph, nodeId);
         return configuration;
     }
 

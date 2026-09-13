@@ -296,7 +296,7 @@ TEST_CASE("Graph JSON restores definition-owned structure and typed scalars", "[
     REQUIRE(nodes != nullptr);
     const var voiceJson = nodes->getReference(0);
     REQUIRE(voiceJson.getProperty("parameters", {}).getProperty("octave", {}).isInt());
-    REQUIRE(voiceJson.getProperty("parameters", {}).getProperty("domain", {}).isString());
+    REQUIRE(voiceJson.getProperty("parameters", {}).getProperty("domain", {}).isVoid());
     REQUIRE(voiceJson.getProperty("inputs", {}).isVoid());
 }
 
@@ -405,6 +405,77 @@ TEST_CASE("Graph JSON discards legacy Voice Context polyphony",
     REQUIRE(parameterValueForNode(*voice, "voices").isEmpty());
 }
 
+TEST_CASE("Format six migrates explicit Trimesh type and polarity",
+        "[cycle-v2][graph][trimesh][migration]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    for (const String& meshId : { String("addMesh"), String("multiplyMesh") }) {
+        Node mesh = factory.createNode(NodeKind::TrilinearMesh, meshId, {});
+        for (NodeParameter& parameter : mesh.parameters) {
+            if (parameter.id == "signalType") {
+                parameter.value = "spectralMagnitude";
+            }
+        }
+        graph.addNode(std::move(mesh));
+        graph.addEdge({
+                "voice", "context", meshId, "context",
+                PortDomain::DomainContext, ConnectionKind::Signal
+        });
+    }
+    graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+    graph.addEdge({
+            "addMesh", "out", "add", "right",
+            PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "multiplyMesh", "out", "multiply", "right",
+            PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal
+    });
+
+    const GraphSerializer serializer;
+    var encoded = serializer.writeJSON(graph);
+    encoded.getDynamicObject()->setProperty("formatVersion", 6);
+    auto* nodes = encoded.getProperty("nodes", {}).getArray();
+    REQUIRE(nodes != nullptr);
+    for (var& encodedNode : *nodes) {
+        auto* node = encodedNode.getDynamicObject();
+        auto* parameters = node->getProperty("parameters").getDynamicObject();
+        const String nodeId = node->getProperty("id").toString();
+        if (nodeId == "voice") {
+            parameters->setProperty("domain", "spectral");
+        } else if (nodeId == "addMesh" || nodeId == "multiplyMesh") {
+            parameters->removeProperty("signalType");
+            parameters->removeProperty("polarity");
+            parameters->setProperty(
+                    "spectralMode",
+                    nodeId == "addMesh" ? "additive" : "multiplicative");
+        }
+    }
+
+    const GraphLoadResult loaded = serializer.readJSON(encoded);
+    INFO((loaded.issues.empty() ? String() : loaded.issues.front().message));
+    REQUIRE(loaded.succeeded());
+    const Node* voice = loaded.graph.findNode("voice");
+    const Node* addMesh = loaded.graph.findNode("addMesh");
+    const Node* multiplyMesh = loaded.graph.findNode("multiplyMesh");
+    REQUIRE(voice != nullptr);
+    REQUIRE(addMesh != nullptr);
+    REQUIRE(multiplyMesh != nullptr);
+    REQUIRE(parameterValueForNode(*voice, "domain").isEmpty());
+    REQUIRE(parameterValueForNode(*addMesh, "signalType") == "spectralMagnitude");
+    REQUIRE(parameterValueForNode(*addMesh, "polarity") == "unipolar");
+    REQUIRE(parameterValueForNode(*multiplyMesh, "signalType") == "spectralMagnitude");
+    REQUIRE(parameterValueForNode(*multiplyMesh, "polarity") == "bipolar");
+    REQUIRE(std::none_of(
+            loaded.graph.getEdges().begin(),
+            loaded.graph.getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "voice" && edge.destPortId == "context";
+            }));
+}
+
 TEST_CASE("Graph JSON migrates legacy Pan range to its spectral Trimesh",
         "[cycle-v2][graph][migration][pan]") {
     GraphNodeFactory factory;
@@ -414,9 +485,21 @@ TEST_CASE("Graph JSON migrates legacy Pan range to its spectral Trimesh",
     graph.addNode(factory.createNode(NodeKind::SpectralLayer, "pan", {}));
     graph.addNode(factory.createNode(NodeKind::Add, "operation", {}));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "base",
+            "signalType",
+            "Signal Type",
+            "spectralMagnitude").succeeded());
     graph.addEdge({
             "base", "out", "operation", "left", PortDomain::SpectralMagnitudeSignal
     });
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "mesh",
+            "signalType",
+            "Signal Type",
+            "spectralMagnitude").succeeded());
     graph.addEdge({
             "mesh", "out", "pan", "in", PortDomain::SpectralMagnitudeSignal
     });
@@ -449,7 +532,7 @@ TEST_CASE("Graph JSON migrates legacy Pan range to its spectral Trimesh",
     REQUIRE(loadedPan != nullptr);
     REQUIRE(loadedMesh != nullptr);
     REQUIRE(parameterValueForNode(*loadedPan, "range").isEmpty());
-    REQUIRE(parameterValueForNode(*loadedPan, "mode") == "auto");
+    REQUIRE(parameterValueForNode(*loadedPan, "mode").isEmpty());
     REQUIRE(NodeParameterMap(*loadedMesh).floatValue("range", 0.f)
             == Catch::Approx(0.75f));
 
@@ -816,8 +899,12 @@ TEST_CASE("Astral retains the canonical spectral and Envelope control graph",
     REQUIRE(loaded.graph.findNode("legacyEnvelopeMorph") == nullptr);
     REQUIRE(output != nullptr);
     REQUIRE(NodeParameterMap(*morph).stringValue("blueSource") == "inverseVelocity");
-    REQUIRE(NodeParameterMap(*magnitude1).stringValue("spectralMode") == "additive");
-    REQUIRE(NodeParameterMap(*magnitude2).stringValue("spectralMode") == "multiplicative");
+    REQUIRE(NodeParameterMap(*magnitude1).stringValue("signalType")
+            == "spectralMagnitude");
+    REQUIRE(NodeParameterMap(*magnitude1).stringValue("polarity") == "unipolar");
+    REQUIRE(NodeParameterMap(*magnitude2).stringValue("signalType")
+            == "spectralMagnitude");
+    REQUIRE(NodeParameterMap(*magnitude2).stringValue("polarity") == "bipolar");
     REQUIRE(NodeParameterMap(*phaseProcess).floatValue("pan", 0.f)
             == Catch::Approx(0.75f));
     REQUIRE(NodeParameterMap(*output).floatValue("gain", 0.f)
@@ -867,9 +954,12 @@ TEST_CASE("Accoustic retains its canonical spectral and global effect graph",
     REQUIRE(output != nullptr);
     REQUIRE(loaded.graph.findNode("legacyEnvelopeMorph") == nullptr);
     REQUIRE(NodeParameterMap(*voice).intValue("octave", 0) == 1);
-    REQUIRE(NodeParameterMap(*magnitude1).stringValue("spectralMode") == "additive");
-    REQUIRE(NodeParameterMap(*magnitude2).stringValue("spectralMode")
-            == "multiplicative");
+    REQUIRE(NodeParameterMap(*magnitude1).stringValue("signalType")
+            == "spectralMagnitude");
+    REQUIRE(NodeParameterMap(*magnitude1).stringValue("polarity") == "unipolar");
+    REQUIRE(NodeParameterMap(*magnitude2).stringValue("signalType")
+            == "spectralMagnitude");
+    REQUIRE(NodeParameterMap(*magnitude2).stringValue("polarity") == "bipolar");
     REQUIRE(NodeParameterMap(*impulseResponse).floatValue("size", 0.f)
             == Catch::Approx(2.f / 7.f));
     REQUIRE(NodeParameterMap(*reverb).floatValue("size", 0.f)
@@ -1034,7 +1124,7 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
 
     const Node* voice = loaded.graph.findNode("voice");
     REQUIRE(voice != nullptr);
-    REQUIRE(parameterValueForNode(*voice, "domain") == "spectral");
+    REQUIRE(parameterValueForNode(*voice, "domain").isEmpty());
     REQUIRE(loaded.graph.findNode("timeLayer1") == nullptr);
     REQUIRE(loaded.graph.findNode("fft") == nullptr);
     REQUIRE(loaded.graph.findNode("magnitudeOp1") == nullptr);
@@ -1052,9 +1142,9 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
                             && edge.destPortId == destPortId;
                 });
     };
-    REQUIRE(hasEdge("voice", "context", "magnitudeLayer1", "context"));
-    REQUIRE(hasEdge("voice", "context", "phaseLayer1", "context"));
-    REQUIRE(hasEdge("voice", "context", "phaseLayer2", "context"));
+    REQUIRE_FALSE(hasEdge("voice", "context", "magnitudeLayer1", "context"));
+    REQUIRE_FALSE(hasEdge("voice", "context", "phaseLayer1", "context"));
+    REQUIRE_FALSE(hasEdge("voice", "context", "phaseLayer2", "context"));
     REQUIRE(hasEdge("scratchEnvelope", "env", "voice", "scratch"));
     REQUIRE(hasGuideAssignment(loaded.graph, "guide1", "phaseLayer1", "guide.cube.0.amp"));
     REQUIRE(hasGuideAssignment(loaded.graph, "guide1", "phaseLayer2", "guide.cube.4.phase"));
@@ -1070,6 +1160,10 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
     const Node* phaseLayerProcess2 = loaded.graph.findNode("phaseLayer2Process");
     REQUIRE(phaseLayer1 != nullptr);
     REQUIRE(phaseLayer2 != nullptr);
+    REQUIRE(NodeParameterMap(*phaseLayer1).stringValue("signalType")
+            == "spectralPhase");
+    REQUIRE(NodeParameterMap(*phaseLayer2).stringValue("signalType")
+            == "spectralPhase");
     REQUIRE(phaseLayerProcess1 != nullptr);
     REQUIRE(phaseLayerProcess2 != nullptr);
     REQUIRE(parameterValueForNode(*phaseLayerProcess1, "pan") == "1");
@@ -1080,6 +1174,8 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
             == Catch::Approx(0.575f));
     const Node* magnitudeLayer1 = loaded.graph.findNode("magnitudeLayer1");
     REQUIRE(magnitudeLayer1 != nullptr);
+    REQUIRE(NodeParameterMap(*magnitudeLayer1).stringValue("signalType")
+            == "spectralMagnitude");
     REQUIRE(loaded.graph.findNode("magnitudeLayer1Process") == nullptr);
     REQUIRE(NodeParameterMap(*magnitudeLayer1).floatValue("range", 0.f)
             == Catch::Approx(0.625f));

@@ -12,8 +12,8 @@ enum class RenderScalePolicy {
 enum class RenderSemanticRole {
     Generic,
     TimeWaveform,
-    SpectralMagnitudeAdditive,
-    SpectralMagnitudeMultiplicative,
+    SpectralMagnitudeUnipolar,
+    SpectralMagnitudeBipolar,
     SpectralPhase,
     EnvelopeUnipolar,
     EnvelopeBipolar
@@ -36,7 +36,7 @@ private:
     GraphDomainResolver domainResolver;
 
     const Node* findNode(const NodeGraph& graph, const String& id) const;
-    PortDomain contextDomainForNode(const NodeGraph& graph, const Node& node) const;
+    bool isBipolarMagnitudeSource(const NodeGraph& graph, const String& nodeId) const;
     NodeRenderSemantic semanticForEdge(
             const NodeGraph& graph,
             const Edge& edge,

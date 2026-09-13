@@ -86,7 +86,6 @@ NodeGraph NodeGraph::createDemoGraph() {
                     output("context", "Context", PortDomain::DomainContext)
             }));
     graph.replaceNodeParameters("voice", {
-            { "domain", "Start Domain", "waveform" },
             { "octave", "Octave", "0" },
             { "voiceLength", "Voice Length", "0.375" },
             { "pitch", "Pitch", "0" },
@@ -107,6 +106,10 @@ NodeGraph NodeGraph::createDemoGraph() {
                     input("blue", "Blue Morph", PortDomain::ControlSignal)
             },
             { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }));
+    graph.replaceNodeParameters("waveMesh", {
+            { "signalType", "Signal Type", "time" },
+            { "polarity", "Polarity", "bipolar" }
+    });
 
     graph.addNode(node(
             "fft",
@@ -136,6 +139,10 @@ NodeGraph NodeGraph::createDemoGraph() {
                     input("blue", "Blue Morph", PortDomain::ControlSignal)
             },
             { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo, PortSide::Bottom) }));
+    graph.replaceNodeParameters("magMesh", {
+            { "signalType", "Signal Type", "spectralMagnitude" },
+            { "polarity", "Polarity", "unipolar" }
+    });
 
     graph.addNode(node(
             "addMag",
@@ -161,6 +168,10 @@ NodeGraph NodeGraph::createDemoGraph() {
                     input("blue", "Blue Morph", PortDomain::ControlSignal)
             },
             { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo, PortSide::Top) }));
+    graph.replaceNodeParameters("phaseMesh", {
+            { "signalType", "Signal Type", "spectralPhase" },
+            { "polarity", "Polarity", "bipolar" }
+    });
 
     graph.addNode(node(
             "addPhase",
@@ -227,7 +238,6 @@ NodeGraph NodeGraph::createDemoGraph() {
             {}));
 
     graph.edges = {
-            { "voice", "context", "waveMesh", "context", PortDomain::DomainContext, ConnectionKind::Signal },
             { "scratchEnv", "env", "waveMesh", "scratch", PortDomain::EnvelopeSignal,
                     ConnectionKind::ProcessingAttachment, AttachmentType::ScratchEnvelope },
             { "scratchEnv", "env", "magMesh", "scratch", PortDomain::EnvelopeSignal,

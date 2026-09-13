@@ -18,6 +18,17 @@ bool addressesEdge(const GraphValidationIssue& issue, const Edge& edge) {
         && issue.destPortId == edge.destPortId;
 }
 
+void setParameter(Node& node, const String& id, const String& value) {
+    const auto found = std::find_if(
+            node.parameters.begin(),
+            node.parameters.end(),
+            [&](const NodeParameter& parameter) {
+                return parameter.id == id;
+            });
+    REQUIRE(found != node.parameters.end());
+    found->value = value;
+}
+
 void requireEdgeQueriesMatchBulkValidation(const NodeGraph& graph) {
     const GraphValidator validator;
     const auto issues = validator.validate(graph);
@@ -237,10 +248,8 @@ TEST_CASE("Operation nodes reject mixed resolved source domains", "[cycle-v2][gr
     GraphNodeFactory factory;
     NodeGraph graph;
 
-    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
-    voice.parameters = {
-            { "domain", "Start Domain", "spectral" }
-    };
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f });
+    setParameter(mesh, "signalType", "spectralMagnitude");
 
     graph.addNode({
             "time",
@@ -251,10 +260,8 @@ TEST_CASE("Operation nodes reject mixed resolved source domains", "[cycle-v2][gr
             {},
             { { "out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false } }
     });
-    graph.addNode(std::move(voice));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
+    graph.addNode(std::move(mesh));
     graph.addNode(factory.createNode(NodeKind::Add, "add", { 460.f, 0.f }));
-    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, ConnectionKind::Signal });
     graph.addEdge({ "time", "out", "add", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, ConnectionKind::Signal });
 
@@ -268,19 +275,15 @@ TEST_CASE("Operation nodes reject mixed resolved source domains", "[cycle-v2][gr
             }));
 }
 
-TEST_CASE("Context-resolved spectral sources cannot feed time-only transforms", "[cycle-v2][graph]") {
+TEST_CASE("Explicit spectral sources cannot feed time-only transforms", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;
 
-    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
-    voice.parameters = {
-            { "domain", "Start Domain", "spectral" }
-    };
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f });
+    setParameter(mesh, "signalType", "spectralMagnitude");
 
-    graph.addNode(std::move(voice));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
+    graph.addNode(std::move(mesh));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 460.f, 0.f }));
-    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, ConnectionKind::Signal });
     graph.addEdge({ "mesh", "out", "fft", "time", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     const auto issues = GraphValidator().validate(graph);
@@ -297,29 +300,21 @@ TEST_CASE("Resolved edge domains update while graph is invalid", "[cycle-v2][gra
     GraphNodeFactory factory;
     NodeGraph graph;
 
-    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
-    voice.parameters = {
-            { "domain", "Start Domain", "spectral" }
-    };
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f });
+    setParameter(mesh, "signalType", "spectralMagnitude");
 
-    graph.addNode(std::move(voice));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
+    graph.addNode(std::move(mesh));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 460.f, 0.f }));
-    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, ConnectionKind::Signal });
     graph.addEdge({ "mesh", "out", "fft", "time", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     const GraphValidator validator;
-    const Edge& contextEdge = graph.getEdges()[0];
-    const Edge& signalEdge = graph.getEdges()[1];
+    const Edge& signalEdge = graph.getEdges()[0];
 
     REQUIRE_FALSE(validator.isValid(graph));
-    REQUIRE_FALSE(validator.edgeHasValidationIssue(graph, contextEdge));
     REQUIRE(validator.edgeHasValidationIssue(graph, signalEdge));
     REQUIRE(validator.resolvedDomainForEdge(graph, signalEdge) == PortDomain::SpectralMagnitudeSignal);
 
-    graph.replaceNodeParameters("voice", {
-            { "domain", "Start Domain", "waveform" }
-    });
+    setParameter(*graph.findNodeForEditing("mesh"), "signalType", "time");
 
     REQUIRE(validator.isValid(graph));
     REQUIRE_FALSE(validator.edgeHasValidationIssue(graph, signalEdge));
@@ -330,44 +325,38 @@ TEST_CASE("Edge validation reports specific grammar diagnostics", "[cycle-v2][gr
     GraphNodeFactory factory;
     NodeGraph graph;
 
-    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
-    voice.parameters = {
-            { "domain", "Start Domain", "spectral" }
-    };
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f });
+    setParameter(mesh, "signalType", "spectralMagnitude");
 
-    graph.addNode(std::move(voice));
-    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 220.f, 0.f }));
-    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addNode(std::move(mesh));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 460.f, 0.f }));
+    graph.addEdge({ "mesh", "out", "fft", "time", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     const auto issue = GraphValidator().validationIssueForEdge(graph, graph.getEdges().front());
 
     REQUIRE(issue.code == GraphValidationCode::DomainMismatch);
-    REQUIRE(issue.message.contains("Wave source requires waveform Voice Context"));
-    REQUIRE(issue.sourceNodeId == "voice");
-    REQUIRE(issue.sourcePortId == "context");
-    REQUIRE(issue.destNodeId == "wave");
-    REQUIRE(issue.destPortId == "context");
+    REQUIRE(issue.message.contains("Mag -> Time"));
+    REQUIRE(issue.sourceNodeId == "mesh");
+    REQUIRE(issue.sourcePortId == "out");
+    REQUIRE(issue.destNodeId == "fft");
+    REQUIRE(issue.destPortId == "time");
 }
 
-TEST_CASE("Context-resolved spectral sources can seed additive spectral graphs", "[cycle-v2][graph]") {
+TEST_CASE("Explicit spectral sources can seed additive spectral graphs", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;
 
-    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
-    voice.parameters = {
-            { "domain", "Start Domain", "spectral" }
-    };
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f });
+    setParameter(mesh, "signalType", "spectralMagnitude");
 
-    graph.addNode(std::move(voice));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
+    graph.addNode(std::move(mesh));
     graph.addNode(factory.createNode(NodeKind::Add, "add", { 460.f, 0.f }));
-    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, ConnectionKind::Signal });
     graph.addEdge({ "mesh", "out", "add", "left", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     REQUIRE(GraphValidator().isValid(graph));
 }
 
-TEST_CASE("Uncontexted mesh operands inherit operation signal domains", "[cycle-v2][graph]") {
+TEST_CASE("Trimesh operands retain their explicit signal domains", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;
 
@@ -380,7 +369,9 @@ TEST_CASE("Uncontexted mesh operands inherit operation signal domains", "[cycle-
             {},
             { { "out", "Out", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false } }
     });
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f });
+    setParameter(mesh, "signalType", "spectralMagnitude");
+    graph.addNode(std::move(mesh));
     graph.addNode(factory.createNode(NodeKind::Add, "add", { 460.f, 0.f }));
     graph.addEdge({ "mag", "out", "add", "left", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal });
     graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, ConnectionKind::Signal });
@@ -396,6 +387,12 @@ TEST_CASE("Operation domain inference excludes Envelope and Mesh products",
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::Envelope, "envelope", {}));
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "envelope",
+            "purpose",
+            "Purpose",
+            "scratch").succeeded());
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
     graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
     graph.addEdge({ "envelope", "env", "add", "left", PortDomain::EnvelopeSignal, ConnectionKind::Signal });
@@ -404,14 +401,16 @@ TEST_CASE("Operation domain inference excludes Envelope and Mesh products",
     const auto resolution = GraphDomainResolver().resolve(graph);
 
     REQUIRE(resolution.domains[0] == PortDomain::EnvelopeSignal);
-    REQUIRE(resolution.domains[1] == PortDomain::ControlSignal);
+    REQUIRE(resolution.domains[1] == PortDomain::TimeSignal);
 }
 
-TEST_CASE("Unattached Trimesh domain follows a downstream spectral layer",
+TEST_CASE("Explicit Trimesh domain propagates through a spectral layer",
         "[cycle-v2][graph][domains]") {
     GraphNodeFactory factory;
     NodeGraph graph;
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+    setParameter(mesh, "signalType", "spectralMagnitude");
+    graph.addNode(std::move(mesh));
     graph.addNode(factory.createNode(NodeKind::SpectralLayer, "layer", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
@@ -456,55 +455,17 @@ TEST_CASE("Domain resolution terminates deterministically for invalid cycles",
     });
 }
 
-TEST_CASE("Spectral voice context marks fixed wave sources invalid", "[cycle-v2][graph]") {
+TEST_CASE("Voice Context carries oscillator configuration without a signal domain", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;
 
-    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
-    voice.parameters = {
-            { "domain", "Start Domain", "spectral" }
-    };
-
-    graph.addNode(std::move(voice));
-    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 220.f, 0.f }));
-    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
-
-    const auto issues = GraphValidator().validate(graph);
-
-    REQUIRE(std::any_of(
-            issues.begin(),
-            issues.end(),
-            [](const GraphValidationIssue& issue) {
-                return issue.code == GraphValidationCode::DomainMismatch;
-            }));
-}
-
-TEST_CASE("Fixed wave source context validity follows voice domain parameter", "[cycle-v2][graph]") {
-    GraphNodeFactory factory;
-    NodeGraph graph;
-
-    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
-    voice.parameters = {
-            { "domain", "Start Domain", "waveform" }
-    };
-
-    graph.addNode(std::move(voice));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 220.f, 0.f }));
     graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
 
     REQUIRE(GraphValidator().isValid(graph));
 
-    graph.replaceNodeParameters("voice", {
-            { "domain", "Start Domain", "spectral" }
-    });
-
-    REQUIRE_FALSE(GraphValidator().isValid(graph));
-
-    graph.replaceNodeParameters("voice", {
-            { "domain", "Start Domain", "waveform" }
-    });
-
-    REQUIRE(GraphValidator().isValid(graph));
+    REQUIRE(parameterValueForNode(*graph.findNode("voice"), "domain").isEmpty());
 }
 
 TEST_CASE("Domain context cannot connect to ordinary universal signal ports", "[cycle-v2][graph]") {
@@ -692,9 +653,7 @@ TEST_CASE("Edge queries use the authoritative bulk validation rules", "[cycle-v2
     });
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
 
-    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
-    voice.parameters = { { "domain", "Start Domain", "spectral" } };
-    graph.addNode(std::move(voice));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
 
     graph.addEdge({ "missingSource", "out", "dest", "time", PortDomain::TimeSignal, ConnectionKind::Signal });

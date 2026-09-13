@@ -14,8 +14,7 @@ namespace CycleV2 {
 enum class CanvasNodeActionKind {
     CycleOperationLayout,
     CycleSinglePortLayout,
-    CycleOutputSide,
-    CycleVoiceDomain
+    CycleOutputSide
 };
 
 struct CanvasNodeAction {

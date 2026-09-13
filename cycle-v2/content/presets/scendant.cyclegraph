@@ -1,21 +1,13 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 6,
+    "formatVersion": 7,
     "nodes": [
         {
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 633.0 },
-            "parameters": {
-                "domain": "spectral",
-                "octave": 0,
-                "voiceLength": 0.519083969,
-                "pitch": 0.0,
-                "portamento": false,
-                "oversampling": "1x",
-                "controlInterval": "64"
-            }
+            "parameters": { "octave": 0, "voiceLength": 0.519083969, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
         },
         {
             "id": "morph",
@@ -50,7 +42,8 @@
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
-                "spectralMode": "auto",
+                "signalType": "spectralMagnitude",
+                "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -151,7 +144,8 @@
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.65,
-                "spectralMode": "auto",
+                "signalType": "spectralMagnitude",
+                "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -271,7 +265,8 @@
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.35,
-                "spectralMode": "auto",
+                "signalType": "spectralPhase",
+                "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -483,8 +478,6 @@
         { "sourceNodeId": "magnitudeOp2", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "mag", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "phaseLayer1", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "delay", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "magnitudeLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "phaseLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],

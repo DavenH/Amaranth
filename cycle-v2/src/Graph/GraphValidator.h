@@ -26,7 +26,9 @@ enum class GraphValidationCode {
     ConflictingProcessingScope,
     GlobalNodeUnreachable,
     GlobalNodeCannotReachOutput,
-    AmbiguousVoiceOutput
+    AmbiguousVoiceOutput,
+    MissingVoiceContextAssignment,
+    MultipleActiveVoiceContexts
 };
 
 struct GraphValidationIssue {
@@ -63,6 +65,9 @@ private:
     void validateAudioScopes(
             const NodeGraph& graph,
             const GraphAudioScopeAnalysis& analysis,
+            std::vector<GraphValidationIssue>& issues) const;
+    void validateVoiceContextAssignments(
+            const NodeGraph& graph,
             std::vector<GraphValidationIssue>& issues) const;
     bool domainsCompatible(const Port& source, const Port& dest) const;
     bool channelLayoutsCompatible(const Port& source, const Port& dest) const;

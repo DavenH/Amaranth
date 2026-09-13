@@ -24,6 +24,7 @@ struct TrimeshConfiguration final : public INodeDspConfiguration {
     bool enabled { true };
     bool appliesSpectralRange {};
     bool multiplicative {};
+    bool bipolar {};
     bool scratchSourceEnabled { true };
     std::shared_ptr<GuideCurveSnapshotProvider> guideCurveProvider;
     size_t guideAssignmentCount {};
@@ -42,6 +43,7 @@ public:
     void setMorphPosition(const MorphPosition& morphPosition);
     void setPrimaryViewAxis(int axis);
     void setCyclic(bool shouldWrap);
+    void setBipolar(bool shouldUseBipolarScaling);
     void setGuideCurveProvider(GuideCurveProvider* provider);
     void setVoiceLifecycleSeed(uint32_t seed, int guideSeedCount = -1);
     void rasterizePrepared(int noiseSeed);
@@ -90,6 +92,7 @@ private:
     Buffer<float> outputBuffer(SignalPayload& output) const;
 
     bool cyclic { true };
+    bool bipolar {};
     int frequencyMidiNote { 48 };
     int cachedFrequencyMidiNote { -1 };
     int cachedFrequencyPositionCount {};

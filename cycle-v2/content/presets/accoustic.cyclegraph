@@ -1,21 +1,13 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 6,
+    "formatVersion": 7,
     "nodes": [
         {
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 161.65457, "y": 619.0 },
-            "parameters": {
-                "domain": "waveform",
-                "octave": 1,
-                "voiceLength": 0.41221374,
-                "pitch": 0.0,
-                "portamento": false,
-                "oversampling": "1x",
-                "controlInterval": "256"
-            }
+            "parameters": { "octave": 1, "voiceLength": 0.41221374, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "256" }
         },
         {
             "id": "morph",
@@ -57,7 +49,8 @@
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
-                "spectralMode": "auto",
+                "signalType": "time",
+                "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -183,7 +176,8 @@
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
-                "spectralMode": "additive",
+                "signalType": "spectralMagnitude",
+                "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -280,7 +274,8 @@
                 "enabled": false,
                 "gain": 0.5,
                 "range": 0.575,
-                "spectralMode": "multiplicative",
+                "signalType": "spectralMagnitude",
+                "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -364,7 +359,8 @@
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.325,
-                "spectralMode": "additive",
+                "signalType": "spectralPhase",
+                "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -428,7 +424,7 @@
             "kind": "spectralLayer",
             "definitionVersion": 1,
             "position": { "x": 1479.0, "y": 1081.0 },
-            "parameters": { "pan": 0.0, "mode": "auto" }
+            "parameters": { "pan": 0.0 }
         },
         {
             "id": "phaseLayer2",
@@ -442,7 +438,8 @@
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.35,
-                "spectralMode": "additive",
+                "signalType": "spectralPhase",
+                "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -506,7 +503,7 @@
             "kind": "spectralLayer",
             "definitionVersion": 1,
             "position": { "x": 1845.0, "y": 1081.0 },
-            "parameters": { "pan": 0.975, "mode": "auto" }
+            "parameters": { "pan": 0.975 }
         },
         {
             "id": "volumeEnvelope1",
@@ -1057,7 +1054,6 @@
     ],
     "edges": [
         { "sourceNodeId": "morph", "sourcePortId": "modulation", "destNodeId": "voice", "destPortId": "modulation", "connectionKind": "configurationAttachment", "attachmentType": "modulationTriple" },
-        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "timeLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "timeLayer1", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "fft", "sourcePortId": "mag", "destNodeId": "magnitudeOp1", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "magnitudeOp1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
