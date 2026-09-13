@@ -10,13 +10,13 @@
         "graph": "cycle-v2/content/presets/Icycle.cyclegraph",
         "sha256": "9cf6d78294219b161d7a1a8c1b07076e8c2baa368a983f84351abf257d7e2604",
         "renderOverrides": {
-            "voiceDurationSeconds": 2.2102451743580955
+            "voiceDurationSeconds": 2.210245132446289
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 1.053085198357633,
+        "v1MasterGain": 1.0530850887298584,
         "v2OutputGainUnitValue": 0.50862069,
         "v2OutputHeadroom": 0.125,
         "coverage": [

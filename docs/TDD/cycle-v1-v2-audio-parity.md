@@ -1257,12 +1257,42 @@ as the scratch envelope evolves.
     `/private/tmp/cycle-accoustic-control-interval-full-44100/`, and
     `/private/tmp/cycle-accoustic-control-interval-full/`.
 
-    This slice deliberately retains Cycle 1's minimum-one-cycle boundary.
-    Chained time-only regions currently render their recipe once per oscillator
-    cycle and therefore do not yet reproduce multi-cycle hold/interpolation at
-    very high notes when the selected interval exceeds the neutral cycle period.
-    That is a separate oscillator-reconstruction slice; a future higher-rate
-    design may also add sub-cycle updates without changing this stored contract.
+    This slice deliberately retains Cycle 1's minimum-one-cycle boundary for
+    shared spectral frames. Cycle 1's time-only `SynthUnisonVoice` remains a
+    distinct per-lane chained renderer and does not consume `ControlFreq`; V2's
+    `ChainedPerLane` strategy already preserves that contract. A future
+    higher-rate design may add sub-cycle updates without changing this stored
+    control or the parity strategies.
+
+58. Preserve engine-realized scalar precision in differential manifests.
+    Complete: Cycle 1 reads the persisted Voice Length and master level through
+    float-valued DSP controls before applying the shared exponential mappings.
+    The Cycle V2 compiled graph does the same, but the preset converter computed
+    the offline `voiceDurationSeconds` and `v1MasterGain` overrides directly in
+    Python double precision. For Organ 2, the stored duration unit `0.404580153`
+    therefore became `1.2669864718837067` seconds in the manifest rather than
+    the engine-realized `1.26698637008667`. The one-float-ULP clock difference
+    is already visible in the frame-32 scratch coordinate and is the first
+    unequal time-raster input; the long Reverb makes it material at the 48 kHz
+    compatibility boundary.
+
+    The converter now quantizes persisted unit values and mapped scalar results
+    exactly where the C++ float boundaries occur. All fourteen equivalence
+    manifests received only those realized duration/gain values; factory graphs,
+    node presentation, global routing, and DSP remain unchanged. Focused
+    converter coverage guards the exact Organ 2 values.
+
+    Organ 2's frame-32 scratch coordinate is now byte-identical, removing the
+    manifest error as a raster input. The time raster retains a smaller first
+    mismatch (`3.16e-5` normalized residual), so the complete 48 kHz Reverb
+    result is materially unchanged and remains diagnostic. This correctly moves
+    the next investigation into the mature time-raster boundary rather than the
+    Reverb implementation. The complete 44.1 kHz graph passes every audio
+    threshold at `0.99986` correlation, `0.0165` residual, and `0.07 dB`
+    spectral RMSE; both engines repeat exactly. Artifacts:
+    `/private/tmp/cycle-organ-2-realized-scalars-stages/`,
+    `/private/tmp/cycle-organ-2-realized-scalars-full-48000/`, and
+    `/private/tmp/cycle-organ-2-control-interval-full-44100/`.
 
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct

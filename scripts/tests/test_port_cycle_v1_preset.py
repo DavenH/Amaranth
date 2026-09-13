@@ -559,6 +559,31 @@ class PortCycleV1PresetTest(unittest.TestCase):
             "Cycle1 master gain maps to Output; Cycle2 fixed headroom remains separate",
         )
 
+    def test_equivalence_manifest_uses_engine_realized_control_values(self):
+        source = convertible_source()
+        source["preset"]["oscControls"]["knobs"][:3] = [
+            0.496183206,
+            0.5,
+            0.404580153,
+        ]
+        repository = Path(__file__).resolve().parents[2]
+
+        manifest = port_cycle_v1_preset.equivalence_manifest(
+            source,
+            repository / "cycle/content/presets/organ-2.cyc",
+            repository / "cycle-v2/content/presets/organ-2.cyclegraph",
+            "organ-2",
+        )
+
+        self.assertEqual(
+            manifest["v2"]["renderOverrides"]["voiceDurationSeconds"],
+            1.26698637008667,
+        )
+        self.assertEqual(
+            manifest["translation"]["v1MasterGain"],
+            0.9773595333099365,
+        )
+
     def test_missing_guide_properties_use_cycle_defaults(self):
         source = convertible_source()
         source["preset"]["meshLibrary"]["groups"][3]["layers"] = [{

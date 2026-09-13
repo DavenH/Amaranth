@@ -14,6 +14,7 @@ import json
 import math
 import os
 from pathlib import Path
+import struct
 import subprocess
 import tempfile
 
@@ -491,6 +492,20 @@ def translated_octave(octave_knob):
 
 def translated_control_interval(control_frequency_order):
     return str(1 << int(control_frequency_order))
+
+
+def engine_realized_float(value):
+    return struct.unpack("<f", struct.pack("<f", value))[0]
+
+
+def translated_voice_duration(voice_length_knob):
+    unit_value = engine_realized_float(voice_length_knob)
+    return engine_realized_float(math.exp(8.0 * unit_value - 3.0))
+
+
+def translated_master_gain(volume_knob):
+    unit_value = engine_realized_float(volume_knob)
+    return engine_realized_float(math.exp(6.0 * unit_value - 3.0))
 
 
 def translated_impulse_size(size_knob):
@@ -1058,8 +1073,8 @@ def equivalence_manifest(source, source_document, destination, factory_preset):
     preset = source["preset"]
     oscillator_knobs = list(preset["oscControls"].get("knobs", []))
     oscillator_knobs.extend([0.5] * (3 - len(oscillator_knobs)))
-    duration = math.exp(8.0 * oscillator_knobs[2] - 3.0)
-    master_gain = math.exp(6.0 * oscillator_knobs[0] - 3.0)
+    duration = translated_voice_duration(oscillator_knobs[2])
+    master_gain = translated_master_gain(oscillator_knobs[0])
     octave = translated_octave(oscillator_knobs[1])
     source_document = source_document.resolve()
     destination = destination.resolve()

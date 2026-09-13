@@ -10,13 +10,13 @@
         "graph": "cycle-v2/content/presets/flute.cyclegraph",
         "sha256": "4308c4117de14940e8f950258ec37f3c87ba51ef86b460a2e2176f42fe6d114d",
         "renderOverrides": {
-            "voiceDurationSeconds": 2.901406327604401
+            "voiceDurationSeconds": 2.9014062881469727
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 0.7773159385024441,
+        "v1MasterGain": 0.7773159146308899,
         "v2OutputGainUnitValue": 0.458015267,
         "v2OutputHeadroom": 0.125,
         "coverage": [

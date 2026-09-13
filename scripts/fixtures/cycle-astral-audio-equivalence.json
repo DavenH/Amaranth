@@ -10,13 +10,13 @@
         "graph": "cycle-v2/content/presets/astral.cyclegraph",
         "sha256": "f3d99a8d2e38e220ade729a12dfabf1a8da730f455a002e5579bc0c425e7d439",
         "renderOverrides": {
-            "voiceDurationSeconds": 7.914545649830685
+            "voiceDurationSeconds": 7.914545059204102
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 0.7092753613136085,
+        "v1MasterGain": 0.7092753648757935,
         "v2OutputGainUnitValue": 0.442748092,
         "v2OutputHeadroom": 0.125,
         "timeLayer": "timeLayer1",

@@ -10,13 +10,13 @@
         "graph": "cycle-v2/content/presets/guitar-3-g.cyclegraph",
         "sha256": "ced695c541e34fce6e00ef4bcdbb79fef10e4ec334616b9130184004aa561306",
         "renderOverrides": {
-            "voiceDurationSeconds": 4.568038808277109
+            "voiceDurationSeconds": 4.5680389404296875
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 0.9773594682052107,
+        "v1MasterGain": 0.9773595333099365,
         "v2OutputGainUnitValue": 0.496183206,
         "v2OutputHeadroom": 0.125,
         "coverage": [

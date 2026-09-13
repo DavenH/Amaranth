@@ -10,13 +10,13 @@
         "graph": "cycle-v2/content/presets/subbass-parity.cyclegraph",
         "sha256": "91fceabd39071af410fad7431702b73d15f919ebcfbb60cfa3fac3dc9d80b191",
         "renderOverrides": {
-            "voiceDurationSeconds": 0.2789115780343647
+            "voiceDurationSeconds": 0.2789115905761719
         }
     },
     "translation": {
         "midiNoteOffset": -24,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 0.9773594682052107,
+        "v1MasterGain": 0.9773595333099365,
         "v2OutputHeadroom": 0.125,
         "timeLayer": "timeLayer1",
         "magnitudeLayer": "magnitudeLayer1 -> magnitudeLayer1Process",

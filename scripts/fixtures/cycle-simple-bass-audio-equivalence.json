@@ -10,13 +10,13 @@
         "graph": "cycle-v2/content/presets/simple-bass.cyclegraph",
         "sha256": "eb45402b6d9b016b8293132f3dd1bbf6981ed4d1d65e05058eef751d69da0ef8",
         "renderOverrides": {
-            "voiceDurationSeconds": 0.24360341021593185
+            "voiceDurationSeconds": 0.2436033934354782
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 0.9773594682052107,
+        "v1MasterGain": 0.9773595333099365,
         "v2OutputGainUnitValue": 0.496183206,
         "v2OutputHeadroom": 0.125,
         "coverage": [

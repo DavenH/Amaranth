@@ -10,13 +10,13 @@
         "graph": "cycle-v2/content/presets/organ-2.cyclegraph",
         "sha256": "161a34354bad2290c337a4d43e96c58e1989a6b0658acc6584bbb0e89cba54d2",
         "renderOverrides": {
-            "voiceDurationSeconds": 1.2669864718837067
+            "voiceDurationSeconds": 1.26698637008667
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 0.9773594682052107,
+        "v1MasterGain": 0.9773595333099365,
         "v2OutputGainUnitValue": 0.496183206,
         "v2OutputHeadroom": 0.125,
         "coverage": [

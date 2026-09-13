@@ -10,13 +10,13 @@
         "graph": "cycle-v2/content/presets/shiny.cyclegraph",
         "sha256": "bdf8d030db13a717fb2a33b9de71ea06541eeca51ef1f76f97d7a852f315cb4e",
         "renderOverrides": {
-            "voiceDurationSeconds": 7.004584673331117
+            "voiceDurationSeconds": 7.004583358764648
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 0.9773594682052107,
+        "v1MasterGain": 0.9773595333099365,
         "v2OutputGainUnitValue": 0.496183206,
         "v2OutputHeadroom": 0.125,
         "coverage": [

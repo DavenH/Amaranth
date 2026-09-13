@@ -10,13 +10,13 @@
         "graph": "cycle-v2/content/presets/filter-saw.cyclegraph",
         "sha256": "1166c807b6f509b24183ff386a69d9644994d3c770fccf414b41e686fbed70f4",
         "renderOverrides": {
-            "voiceDurationSeconds": 0.47689543975042176
+            "voiceDurationSeconds": 0.47689545154571533
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 1.071117281493406,
+        "v1MasterGain": 1.0711175203323364,
         "v2OutputHeadroom": 0.125,
         "coverage": [
             "timeLayer",

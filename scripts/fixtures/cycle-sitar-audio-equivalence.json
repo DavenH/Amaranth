@@ -10,13 +10,13 @@
         "graph": "cycle-v2/content/presets/sitar.cyclegraph",
         "sha256": "cc380059b6b2d8a92c54599f2d5adfdcbd8264546a60fef26bf2fbc202fb124a",
         "renderOverrides": {
-            "voiceDurationSeconds": 0.6088500846478859
+            "voiceDurationSeconds": 0.6088501214981079
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 0.3255831470069504,
+        "v1MasterGain": 0.32558315992355347,
         "v2OutputGainUnitValue": 0.312977099,
         "v2OutputHeadroom": 0.125,
         "coverage": [
