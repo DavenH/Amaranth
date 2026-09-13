@@ -158,6 +158,10 @@ public:
         const NodeParameterMap parameters(boundNode);
         state.setProperty("enabled", parameters.boolValue("enabled", true));
         state.setProperty("range", editor->spectralRangeValue());
+        state.setProperty("gain", parameters.floatValue("gain", 0.5f));
+        state.setProperty("outputScale", editor->outputScaleValue());
+        state.setProperty("spectralMode", editor->spectralModeValue());
+        state.setProperty("spectralModeVisible", editor->spectralModeVisible());
         for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
             auto* slider = new DynamicObject();
             slider->setProperty("id", axis);
@@ -294,6 +298,14 @@ private:
                 enabled ? 1.f : 0.f);
     }
 
+    bool setTrimeshSpectralModeValue(const String& mode) override {
+        return commands.setNodeParameterText(
+                nodeId,
+                "spectralMode",
+                "Spectral Mode",
+                mode);
+    }
+
     void setTrimeshPrimaryAxisValue(const String& axis) override {
         commands.setTrimeshPrimaryAxisValue(nodeId, axis);
     }
@@ -314,15 +326,19 @@ private:
         commands.endTrimeshMorphEdit();
     }
 
-    bool beginTrimeshRangeEdit(float value) override {
-        return commands.beginNodeParameterEdit(nodeId, "range", "Range", value);
+    bool beginTrimeshOutputScaleEdit(const String& id, float value) override {
+        return commands.beginNodeParameterEdit(
+                nodeId,
+                id,
+                id == "gain" ? "Gain" : "Range",
+                value);
     }
 
-    bool updateTrimeshRangeEdit(float value) override {
+    bool updateTrimeshOutputScaleEdit(float value) override {
         return commands.updateNodeParameterEditValue(value);
     }
 
-    void endTrimeshRangeEdit() override {
+    void endTrimeshOutputScaleEdit() override {
         commands.endNodeParameterEdit();
     }
 

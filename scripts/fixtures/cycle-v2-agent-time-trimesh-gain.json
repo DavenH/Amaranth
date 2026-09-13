@@ -1,0 +1,71 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/resources/with-spies.cyclegraph"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveMesh",
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.outputScale",
+      "equals": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:waveMesh.trimeshOutputScale.gain",
+      "targetX": 0.4,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:waveMesh.trimeshOutputScale.gain",
+      "downTargetId": "expanded:waveMesh.trimeshOutputScale.gain",
+      "targetX": 0.75,
+      "targetY": 0.5,
+      "downTargetX": 0.4,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:waveMesh.trimeshOutputScale.gain",
+      "downTargetId": "expanded:waveMesh.trimeshOutputScale.gain",
+      "targetX": 0.75,
+      "targetY": 0.5,
+      "downTargetX": 0.4,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.outputScale",
+      "op": "greaterThan",
+      "value": 0.7
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-time-trimesh-gain.png"
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "gain",
+      "equals": "0.5"
+    }
+  ],
+  "quit": true
+}

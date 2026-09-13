@@ -15,7 +15,7 @@ public:
         setOpaque(false);
         setMouseCursor(
                 region.kind == TrimeshExpandedHitRegionKind::MorphControl
-                        || region.kind == TrimeshExpandedHitRegionKind::SpectralRange
+                        || region.kind == TrimeshExpandedHitRegionKind::OutputScale
                         || region.kind == TrimeshExpandedHitRegionKind::VertexParameter
                         || region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain
                 ? (region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain
@@ -27,9 +27,9 @@ public:
             setTitle("Link " + region.axisValue);
             setWantsKeyboardFocus(true);
         }
-        if (region.kind == TrimeshExpandedHitRegionKind::SpectralRange) {
-            setComponentID("trimeshEditor.range");
-            setTitle("Spectral range");
+        if (region.kind == TrimeshExpandedHitRegionKind::OutputScale) {
+            setComponentID("trimeshEditor." + region.parameterId);
+            setTitle(region.parameterId == "gain" ? "Output gain" : "Spectral range");
         }
         if (region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain) {
             setComponentID("trimesh.guideGain." + region.parameterId.fromLastOccurrenceOf(
@@ -37,8 +37,19 @@ public:
             setTitle("Guide curve gain");
             setWantsKeyboardFocus(true);
         }
-        setName(region.kind == TrimeshExpandedHitRegionKind::SpectralRange
-                ? "TrimeshSpectralRangeTarget"
+        if (region.kind == TrimeshExpandedHitRegionKind::VertexParameter) {
+            setComponentID("trimesh.vertex." + region.parameterId.fromLastOccurrenceOf(
+                    ".", false, false));
+            setTitle("Vertex " + region.parameterId.fromLastOccurrenceOf(
+                    ".", false, false));
+        }
+        if (region.kind == TrimeshExpandedHitRegionKind::VertexGuideAttachment) {
+            setComponentID("trimesh.guide." + region.parameterId.fromLastOccurrenceOf(
+                    ".", false, false));
+            setTitle("Vertex guide curve");
+        }
+        setName(region.kind == TrimeshExpandedHitRegionKind::OutputScale
+                ? "TrimeshOutputScaleTarget"
                 : "TrimeshControlTarget");
     }
 
@@ -112,6 +123,10 @@ void TrimeshControlsComponent::refreshHitRegions() {
     updateHitRegions();
 }
 
+void TrimeshControlsComponent::refreshSelectionState() {
+    updateControlEnabledStates();
+}
+
 int TrimeshControlsComponent::getPrimaryAxisButtonCount() const {
     return countControlRegions(TrimeshExpandedHitRegionKind::PrimaryAxis);
 }
@@ -120,8 +135,8 @@ int TrimeshControlsComponent::getMorphSliderCount() const {
     return countControlRegions(TrimeshExpandedHitRegionKind::MorphControl);
 }
 
-int TrimeshControlsComponent::getSpectralRangeSliderCount() const {
-    return countControlRegions(TrimeshExpandedHitRegionKind::SpectralRange);
+int TrimeshControlsComponent::getOutputScaleSliderCount() const {
+    return countControlRegions(TrimeshExpandedHitRegionKind::OutputScale);
 }
 
 int TrimeshControlsComponent::getLinkToggleButtonCount() const {
@@ -149,7 +164,7 @@ MouseCursor TrimeshControlsComponent::cursorFor(Point<float> position) {
 
     if (region != nullptr) {
         if (region->kind == TrimeshExpandedHitRegionKind::MorphControl
-                || region->kind == TrimeshExpandedHitRegionKind::SpectralRange
+                || region->kind == TrimeshExpandedHitRegionKind::OutputScale
                 || region->kind == TrimeshExpandedHitRegionKind::VertexParameter) {
             return MouseCursor::LeftRightResizeCursor;
         }
@@ -218,17 +233,16 @@ void TrimeshControlsComponent::updateHitRegions() {
 
     controlHitRegions = widget.expandedControlHitRegions(
             contentBounds,
-            widget.showsSpectralRange());
+            widget.showsOutputScale(),
+            widget.outputScaleParameterId());
 
     for (const auto& region : controlHitRegions) {
         auto component = std::make_unique<ControlTarget>(*this, region);
-        if (region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain) {
-            component->setEnabled(widget.hasGuideAttachmentForParameter(region.parameterId));
-        }
         component->setBounds(region.bounds.toNearestInt());
         addAndMakeVisible(component.get());
         controlRegions.push_back(std::move(component));
     }
+    updateControlEnabledStates();
 }
 
 int TrimeshControlsComponent::countControlRegions(TrimeshExpandedHitRegionKind kind) const {
@@ -244,8 +258,8 @@ const TrimeshExpandedHitRegion* TrimeshControlsComponent::findControlRegion(Poin
     const auto found = std::find_if(
             controlHitRegions.begin(),
             controlHitRegions.end(),
-            [position](const TrimeshExpandedHitRegion& region) {
-                return region.bounds.contains(position);
+            [this, position](const TrimeshExpandedHitRegion& region) {
+                return isControlEnabled(region) && region.bounds.contains(position);
             });
 
     if (found == controlHitRegions.end()) {
@@ -253,6 +267,25 @@ const TrimeshExpandedHitRegion* TrimeshControlsComponent::findControlRegion(Poin
     }
 
     return &*found;
+}
+
+bool TrimeshControlsComponent::isControlEnabled(
+        const TrimeshExpandedHitRegion& region) const {
+    const bool isVertexControl = region.kind == TrimeshExpandedHitRegionKind::VertexParameter
+            || region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain
+            || region.kind == TrimeshExpandedHitRegionKind::VertexGuideAttachment;
+    if (isVertexControl && widget.selectedVertexIndexForPanel() < 0) {
+        return false;
+    }
+
+    return region.kind != TrimeshExpandedHitRegionKind::VertexGuideGain
+            || widget.hasGuideAttachmentForParameter(region.parameterId);
+}
+
+void TrimeshControlsComponent::updateControlEnabledStates() {
+    for (size_t i = 0; i < controlRegions.size(); ++i) {
+        controlRegions[i]->setEnabled(isControlEnabled(controlHitRegions[i]));
+    }
 }
 
 void TrimeshControlsComponent::beginControlDrag(
@@ -284,13 +317,13 @@ void TrimeshControlsComponent::beginControlDrag(
             }
             break;
 
-        case TrimeshExpandedHitRegionKind::SpectralRange:
-            dragTarget = DragTarget::SpectralRange;
-            activeParameterId = "range";
+        case TrimeshExpandedHitRegionKind::OutputScale:
+            dragTarget = DragTarget::OutputScale;
+            activeParameterId = region.parameterId;
 
-            if (widget.spectralRangeValueAt(contentBounds, position, value)
+            if (widget.outputScaleValueAt(contentBounds, position, value)
                     && delegate != nullptr) {
-                delegate->beginTrimeshRangeControlEdit(value);
+                delegate->beginTrimeshOutputScaleControlEdit(activeParameterId, value);
             }
             break;
 
@@ -340,10 +373,10 @@ void TrimeshControlsComponent::dragControl(Point<float> position) {
             }
             break;
 
-        case DragTarget::SpectralRange:
-            if (widget.spectralRangeValueAt(contentBounds, position, value)
+        case DragTarget::OutputScale:
+            if (widget.outputScaleValueAt(contentBounds, position, value)
                     && delegate != nullptr) {
-                delegate->updateTrimeshRangeControlEdit(value);
+                delegate->updateTrimeshOutputScaleControlEdit(value);
             }
             break;
 
@@ -373,8 +406,8 @@ void TrimeshControlsComponent::dragControl(Point<float> position) {
 void TrimeshControlsComponent::endControlDrag() {
     if (dragTarget == DragTarget::Morph && delegate != nullptr) {
         delegate->endTrimeshMorphControlEdit();
-    } else if (dragTarget == DragTarget::SpectralRange && delegate != nullptr) {
-        delegate->endTrimeshRangeControlEdit();
+    } else if (dragTarget == DragTarget::OutputScale && delegate != nullptr) {
+        delegate->endTrimeshOutputScaleControlEdit();
     } else if ((dragTarget == DragTarget::VertexParameter
             || dragTarget == DragTarget::VertexGuideGain) && delegate != nullptr) {
         delegate->endTrimeshVertexControlEdit();

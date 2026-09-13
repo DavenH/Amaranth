@@ -55,6 +55,9 @@ public:
 
     bool saveGraphToFile(const File& file);
     bool loadGraphFromFile(const File& file);
+    bool isGraphDirty() const { return document.isDirty(); }
+    const File& graphFile() const { return document.file(); }
+    void setGraphDocumentStateChangedCallback(std::function<void()> callback);
     var exportAutomationState() const;
     String exportGraphJson() const;
     bool openNodeEditorForAutomation(const String& nodeId);
@@ -142,6 +145,7 @@ private:
     NodeCanvasAuthoring authoring;
     NodeCanvasInteraction interaction;
     String& selectedNodeId;
+    std::vector<String>& selectedNodeIds;
     String& expandedNodeId;
     String& editStatusMessage;
     int& selectedEdgeIndex;
@@ -156,6 +160,7 @@ private:
     std::unique_ptr<GuideCurveEditorComponent> guideEditor;
 
     int activeTrimeshVertexIndex { -1 };
+    int hoveredEdgeIndex { -1 };
     Point<float> lastMousePosition;
     String resolvedHoverText;
     bool pointerInsideCanvas {};
@@ -180,6 +185,7 @@ private:
     String draggingProbeId;
     String expandedGuideId;
     std::optional<uint64_t> guideTransactionBaseRevision;
+    std::function<void()> graphDocumentStateChangedCallback;
     uint32 compiledStateRefreshDueMs {};
     std::function<void()> overlayOcclusionChanged;
 

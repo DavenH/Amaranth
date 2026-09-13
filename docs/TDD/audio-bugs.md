@@ -623,3 +623,20 @@ Cycle V2 repeats exactly; Cycle 1 retains its separately documented
 process-level nondeterminism. Current artifacts are
 `/private/tmp/cycle-guitar-legacy-envelope-rerun/comparison.json` and
 `/private/tmp/cycle-icycle-legacy-envelope-rerun/comparison.json`.
+
+Current status: graph/runtime semantics corrected. Icycle is close but below
+its declared correlation/residual thresholds; Guitar 3 G has a material open
+parity gap. Neither prior parity claim is readmitted.
+## P2: Grouped Waveshaper tests can lose the traversal grid
+
+Context:
+
+- A grouped `[waveshaper]` Cycle V2 run on 2026-09-12 failed
+  `Stengah Waveshaper post gain changes stereo traversal and downstream audio`
+  because `lowShape.traversalGrid.isValid()` was false (Catch seed
+  `1509597871`).
+- The Waveshaper editor layout regression passes in isolation and does not
+  touch graph-audio traversal state.
+
+Current status: open; reproduce the grouped ordering independently of the UI
+layout work and isolate the missing preview traversal grid.

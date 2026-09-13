@@ -1,5 +1,6 @@
 #include <cmath>
 #include <cstring>
+#include <algorithm>
 
 #include "UI/NodeCanvasPresentation.h"
 
@@ -25,6 +26,16 @@
 namespace CycleV2 {
 
 namespace {
+
+bool isNodeSelected(const NodeCanvasPresentationFrame& frame, const String& nodeId) {
+    if (frame.selectedNodeIds.empty()) {
+        return nodeId == frame.selectedNodeId;
+    }
+    return std::find(
+            frame.selectedNodeIds.begin(),
+            frame.selectedNodeIds.end(),
+            nodeId) != frame.selectedNodeIds.end();
+}
 
 uint64_t unisonContextFingerprint(const UnisonPreviewContext& context) {
     uint64_t durationBits {};
@@ -257,7 +268,7 @@ void paintSingleModulationNode(
             graphics,
             bounds,
             CanvasChromeMetrics::panelCornerRadius * scale,
-            node.id == frame.selectedNodeId);
+            isNodeSelected(frame, node.id));
     const Rectangle<float> badge = bounds.removeFromLeft(52.f * zoom);
     graphics.setColour(CanvasChromePalette::raisedSurface);
     const float corner = CanvasChromeMetrics::panelCornerRadius * scale;
@@ -296,7 +307,7 @@ void paintTripleModulationNode(
             graphics,
             bounds,
             CanvasChromeMetrics::panelCornerRadius * scale,
-            node.id == frame.selectedNodeId);
+            isNodeSelected(frame, node.id));
     const String prefixes[] { "yellow", "red", "blue" };
     const MorphDimension dimensions[] {
             MorphDimension::Yellow,
@@ -884,7 +895,8 @@ void NodeCanvasPresentation::paintEdges(
         const NodeCableStyle style {
                 colour,
                 invalid,
-                sceneEdge.edgeIndex == frame.selectedEdgeIndex,
+                sceneEdge.edgeIndex == frame.selectedEdgeIndex
+                        || sceneEdge.edgeIndex == frame.hoveredEdgeIndex,
                 sceneEdge.edgeIndex == frame.spliceTargetEdgeIndex,
                 sceneEdge.modulationBundle
         };
@@ -1078,7 +1090,7 @@ void NodeCanvasPresentation::paintCachedNode(
             previewRenderer.nodePresentationFingerprint(node.id),
             renderContextFingerprintFor(frame, node),
             runtimePreview,
-            node.id == frame.selectedNodeId,
+            isNodeSelected(frame, node.id),
             physicalScale);
     if (!cache.hit) {
         Graphics imageGraphics(*cache.image);
@@ -1201,7 +1213,7 @@ void NodeCanvasPresentation::paintNode(
                 corner,
                 CanvasChromeMetrics::restingBorderWidth);
 
-        if (node.id == frame.selectedNodeId) {
+        if (isNodeSelected(frame, node.id)) {
             graphics.setColour(Colours::white.withAlpha(0.86f));
             graphics.drawRoundedRectangle(
                     nodeBounds.expanded(2.f),

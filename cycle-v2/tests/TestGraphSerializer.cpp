@@ -2,6 +2,7 @@
 #include <catch2/catch_approx.hpp>
 
 #include "Graph/GraphCompiler.h"
+#include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
@@ -157,6 +158,38 @@ TEST_CASE("Graph JSON preserves parameter precision needed for Cycle parity",
     REQUIRE(restored.succeeded());
     REQUIRE(NodeParameterMap(*restored.graph.findNode("voice")).floatValue(
             "voiceLength", 0.f) == Catch::Approx(0.474137931));
+}
+
+TEST_CASE("Graph document dirty state follows its save point through history",
+        "[cycle-v2][graph][dirty]") {
+    const File destination = File::getSpecialLocation(File::tempDirectory)
+            .getNonexistentChildFile("cycle-v2-dirty-state", ".cyclegraph");
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    const String movedNodeId = graph.getNodes().front().id;
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+
+    REQUIRE_FALSE(document.isDirty());
+    REQUIRE(commands.moveNode(movedNodeId, { 40.f, 40.f }).succeeded());
+    REQUIRE(document.isDirty());
+    REQUIRE(document.save(destination));
+    REQUIRE(destination.existsAsFile());
+    REQUIRE_FALSE(document.isDirty());
+
+    REQUIRE(commands.moveNode(movedNodeId, { 80.f, 80.f }).succeeded());
+    REQUIRE(document.isDirty());
+    REQUIRE(document.undo());
+    REQUIRE_FALSE(document.isDirty());
+    REQUIRE(document.redo());
+    REQUIRE(document.isDirty());
+
+    const GraphLoadResult savedGraph = GraphSerializer().loadJsonString(
+            destination.loadFileAsString());
+    INFO((savedGraph.issues.empty() ? String() : savedGraph.issues.front().message));
+    REQUIRE(savedGraph.succeeded());
+    REQUIRE(document.load(destination));
+    REQUIRE_FALSE(document.isDirty());
+    REQUIRE(destination.deleteFile());
 }
 
 TEST_CASE("Graph JSON embeds portable audio resources and node bindings",

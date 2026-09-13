@@ -552,24 +552,27 @@ void Panel::highlightSelectedVerts() {
         ScopedLock sl(interactor->getLock());
 
         vector<Vertex*>& selected = interactor->getSelected();
+        const vector<VertexFrame>& moving = interactor->getSelectedMovingVerts();
 
-        if(selected.empty()) {
+        if (selected.empty() && moving.empty()) {
             return;
         }
 
-        bool wrapsVerts = interactor->rasterizerWrapsVertices();
+        const bool wrapsVerts = interactor->rasterizerWrapsVertices();
 
-        size = selected.size();
+        size = moving.empty() ? selected.size() : moving.size();
         prepareBuffers(size);
 
         for (int i = 0; i < size; ++i) {
-            Vertex& vert = *selected[i];
+            Vertex& vert = moving.empty()
+                    ? *selected[(size_t) i]
+                    : *moving[(size_t) i].vert;
             float vals[] = {vert.values[interactor->dims.x], vert.values[interactor->dims.y]};
             int dimArr[] = {interactor->dims.x, interactor->dims.y};
 
             if (wrapsVerts) {
                 for (int j = 0; j < numElementsInArray(vals); ++j) {
-                    if(vals[j] > 1 && dimArr[j] == Vertex::Phase) {
+                    if (vals[j] > 1 && dimArr[j] == Vertex::Phase) {
                         vals[j] -= 1;
                     }
                 }

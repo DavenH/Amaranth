@@ -126,10 +126,13 @@ std::optional<CanvasNodeAction> NodeCanvasHitRouter::nodeActionAt(
 int NodeCanvasHitRouter::edgeAt(
         const NodeCanvasSceneSnapshot& scene,
         Point<float> screenPosition) const {
-    const auto hit = hitTester.hitTest(scene, screenPosition);
-    return hit.has_value() && hit->kind == NodeSceneTargetKind::Edge
-            ? hit->edgeIndex
-            : -1;
+    for (auto edge = scene.edges.rbegin(); edge != scene.edges.rend(); ++edge) {
+        if (edge->hitPath.contains(screenPosition)) {
+            return edge->edgeIndex;
+        }
+    }
+
+    return -1;
 }
 
 int NodeCanvasHitRouter::spliceTargetEdgeAt(

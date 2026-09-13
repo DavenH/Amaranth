@@ -1,0 +1,24 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/resources/with-spies.cyclegraph"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveMesh",
+      "waitForIdle": true,
+      "idleDelayMs": 700
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexIndex",
+      "equals": -1
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

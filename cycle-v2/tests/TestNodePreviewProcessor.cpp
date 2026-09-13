@@ -712,6 +712,32 @@ TEST_CASE("Bypassed Reverb spectrogram retains its configured response",
     REQUIRE(maximumBrightness > 0.25f);
 }
 
+TEST_CASE("Reverb heatmaps retain the mature spectrogram display transform",
+        "[cycle-v2][runtime][effects][reverb][preview][ui]") {
+    NodePreviewResult result {
+            "reverb",
+            PreviewModuleRole::ReverbSpectrogram,
+            { 0.25f, 0.25f, 0.25f, 0.25f }
+    };
+    result.gridColumns = 2;
+    result.gridRows = 2;
+    result.domain = PortDomain::SpectralMagnitudeSignal;
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(
+            result.domain);
+    const std::vector<float> expectedSurface = profile.mapSpectrum2DGridToDisplay(
+            result.primary,
+            result.gridColumns,
+            result.gridRows,
+            result.frequencyMidiNote);
+
+    const Image image = NodePreviewRenderer::createRuntimeHeatmapImage(result);
+
+    REQUIRE(image.isValid());
+    REQUIRE(image.getPixelAt(0, 1)
+            == profile.getSurfaceStyle().colourForValue(expectedSurface[0]));
+    REQUIRE(expectedSurface[0] > result.primary[0]);
+}
+
 TEST_CASE("Reverb Width preview follows production stereo mixing",
         "[cycle-v2][runtime][effects][reverb][preview]") {
     const auto render = [](float width) {
@@ -965,6 +991,28 @@ TEST_CASE("Output meter layout gives width to both channels", "[cycle-v2][ui]") 
     const float occupiedFraction = (natural.left.getWidth() + natural.right.getWidth()) / 190.f;
     REQUIRE(occupiedFraction >= 0.56f);
     REQUIRE(natural.faderHitTarget.getWidth() / 190.f <= 0.24f);
+    const Rectangle<float> naturalThumb = OutputMeterPresentation::gainThumbBounds(
+            { 0.f, 0.f, 190.f, 132.f },
+            0.5f);
+    REQUIRE(naturalThumb.getWidth() == Catch::Approx(30.f));
+    REQUIRE(naturalThumb.getHeight() == Catch::Approx(10.5f));
+
+    const auto zoomed = OutputMeterPresentation::layout(
+            { 0.f, 0.f, 380.f, 264.f },
+            2.f);
+    REQUIRE(zoomed.faderHitTarget.getWidth()
+            == Catch::Approx(natural.faderHitTarget.getWidth() * 2.f));
+    REQUIRE(zoomed.faderTrack.getWidth()
+            == Catch::Approx(natural.faderTrack.getWidth() * 2.f));
+    REQUIRE(zoomed.faderTrack.getHeight()
+            == Catch::Approx(natural.faderTrack.getHeight() * 2.f));
+    REQUIRE(OutputMeterPresentation::gainThumbBounds(
+            { 0.f, 0.f, 380.f, 264.f },
+            0.5f,
+            2.f).getHeight()
+            == Catch::Approx(OutputMeterPresentation::gainThumbBounds(
+                    { 0.f, 0.f, 190.f, 132.f },
+                    0.5f).getHeight() * 2.f));
 
     const Rectangle<float> channel(10.f, 20.f, 30.f, 100.f);
     REQUIRE(OutputMeterPresentation::fillBounds(channel, 0.f).getHeight() == 0.f);

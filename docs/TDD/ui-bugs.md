@@ -66,6 +66,22 @@ deserialize/serialize pass changes its JSON representation. This predates and
 is independent of the document-declick changes; regenerate that preset through
 the canonical serializer without expanding unrelated preset diffs.
 
+## P2: Trimesh preview key scale also changes the default red morph axis
+
+Context:
+
+- After merging `master` on 2026-09-13, the focused
+  `Trimesh preview pitch positions whichever morph axis owns key scale` test
+  fails independently of the audio-parity and Voice Context conflict paths.
+- With preview key scale assigned to Time at MIDI 48, Time reaches the expected
+  normalized `0.261682`, but Red also becomes `0.261682` instead of retaining
+  its neutral `0.5` value.
+- The test and the relevant Trimesh preview behavior arrived from `master`; no
+  conflict hunk touched that implementation.
+
+Current status: open; reconcile key-scale preview ownership with the intended
+single-axis contract before changing the assertion.
+
 ## P2: Envelope purpose rail-spacing assertion no longer matches layout
 
 Context:
@@ -198,3 +214,33 @@ Context:
   loading removes the legacy payload and normalization supplies `auto`.
 
 Current status: addressed by asserting the current canonical `auto` value.
+
+## P2: Full Cycle V2 suite retains cross-test graph and Trimesh failures
+
+Context:
+
+- A full randomized `CycleV2_tests` run on 2026-09-12 completed the focused UI
+  polish regressions, but reported 16 unrelated failures before a `SIGSEGV` in
+  `Clicking an open Trimesh Guide selector dismisses its popup`.
+- Other failures included graph compiler/validator connection expectations and
+  an unavailable Impulse Response test stream. None of the failing paths
+  overlap the segmented controls, Reverb preview profile, Envelope glyph, or
+  Output meter presentation changed by the UI polish batch.
+- The focused UI tests and native-size automation fixtures pass independently.
+
+Current status: open; reproduce with the recorded Catch randomness seed
+`3643743595` and isolate leaked shared Trimesh/graph fixture state before
+changing the individual expectations.
+
+Update 2026-09-12: another full run with seed `1137522538` reported 61
+order-dependent failures and ended in `Signal probe detail resolves the
+attached Voice Context key value` with `SIGSEGV`. Focused tests for Reverb,
+node group movement, Trimesh selection/link highlighting, and cable hit routing
+all pass independently; this remains an open suite-isolation defect.
+
+Update 2026-09-12: the focused `[cycle-v2][nodes][trimesh]` group reached a
+`SingletonRepo.h:54` assertion and `SIGSEGV` in `Trimesh Panel3D reads
+node-backed columns through lib data retriever` (seed `1390489111`). The same
+case also fails in isolation before exercising the morph-selection correction.
+The new morph-selection, disabled-control, and pointer-interaction cases pass
+independently; this remains open as shared test setup/lifetime work.

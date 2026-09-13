@@ -3,6 +3,7 @@
 
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/Editors/PropertyControls.h"
+#include "UI/Editors/PropertySegmentedSelector.h"
 
 using namespace CycleV2;
 using namespace juce;
@@ -80,6 +81,63 @@ TEST_CASE("Property group labels establish scope without a surrounding box",
     REQUIRE(automation.getProperty("label", {}).toString() == "IR sample");
     REQUIRE((int) automation.getProperty("bounds", {}).getProperty("x", {}) == 10);
     REQUIRE((int) automation.getProperty("bounds", {}).getProperty("width", {}) == 180);
+}
+
+TEST_CASE("Segmented property controls round only the outside endcaps",
+        "[cycle-v2][ui][property-controls][segmented][geometry]") {
+    const Rectangle<float> bounds { 0.f, 0.f, 90.f, 30.f };
+    const Path first = propertySegmentPath(bounds, 0, 3);
+    const Path middle = propertySegmentPath(bounds, 1, 3);
+    const Path last = propertySegmentPath(bounds, 2, 3);
+
+    REQUIRE_FALSE(first.contains(0.5f, 0.5f));
+    REQUIRE(first.contains(29.5f, 0.5f));
+    REQUIRE(middle.contains(30.5f, 0.5f));
+    REQUIRE(middle.contains(59.5f, 0.5f));
+    REQUIRE(last.contains(60.5f, 0.5f));
+    REQUIRE_FALSE(last.contains(89.5f, 0.5f));
+}
+
+TEST_CASE("Segmented property selector preserves contiguous equal hit targets",
+        "[cycle-v2][ui][property-controls][segmented][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    PropertySegmentedSelector selector({
+            { "One", "1", "test.one", "One" },
+            { "Two", "2", "test.two", "Two" },
+            { "Four", "4", "test.four", "Four" },
+            { "Eight", "8", "test.eight", "Eight" }
+    });
+    selector.setBounds(0, 0, 176, 30);
+    selector.resized();
+
+    int changes {};
+    selector.onChange = [&](const String&) { ++changes; };
+    selector.setSelectedValue("4", sendNotificationSync);
+
+    REQUIRE(selector.selectedValue() == "4");
+    REQUIRE(selector.selectedIndex() == 2);
+    REQUIRE(changes == 1);
+    for (int index = 0; index < 4; ++index) {
+        REQUIRE(selector.optionBounds(index)
+                == Rectangle<float>(44.f * index, 0.f, 44.f, 30.f));
+    }
+}
+
+TEST_CASE("Landmark tracks reserve centred endpoint-label space",
+        "[cycle-v2][ui][property-controls][slider][landmarks]") {
+    ScopedJuceInitialiser_GUI juce;
+    PrecisionSlider slider;
+    slider.setBounds(0, 0, 216, 30);
+    slider.setRange(-2.0, 2.0, 1.0);
+    slider.setTrackEndInset(15.f);
+
+    const Rectangle<float> track = slider.visibleTrackBounds();
+    REQUIRE(track.getX() == Catch::Approx(15.f));
+    REQUIRE(track.getRight() == Catch::Approx(201.f));
+    REQUIRE(propertySliderValuePosition(slider, -2.0)
+            == Catch::Approx(track.getX()));
+    REQUIRE(propertySliderValuePosition(slider, 2.0)
+            == Catch::Approx(track.getRight()));
 }
 
 TEST_CASE("Property values use two significant figures without redundant decimals",

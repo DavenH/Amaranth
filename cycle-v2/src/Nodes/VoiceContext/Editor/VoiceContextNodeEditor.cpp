@@ -1,6 +1,4 @@
 #include <array>
-#include <functional>
-#include <initializer_list>
 #include <optional>
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
@@ -10,13 +8,47 @@
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EditorChromeLayout.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
+#include "UI/Editors/PropertySegmentedSelector.h"
 
 namespace CycleV2 {
 
 namespace {
 
 constexpr int kContentInset = 24;
-constexpr int kVoiceLengthValueWidth = 72;
+constexpr int kValueWidth = 72;
+constexpr int kRowGap = 10;
+constexpr float kLandmarkEndInset = 15.f;
+
+std::vector<PropertySegmentOption> domainOptions() {
+    return {
+            { "Waveform", "waveform", "voiceContextEditor.domain.waveform",
+                    "Start voices in the waveform domain" },
+            { "Spectral", "spectral", "voiceContextEditor.domain.spectral",
+                    "Start voices in the spectral domain" }
+    };
+}
+
+std::vector<PropertySegmentOption> oversamplingOptions() {
+    return {
+            { "1x", "1x", "voiceContextEditor.oversampling.1x", "1x oversampling" },
+            { "2x", "2x", "voiceContextEditor.oversampling.2x", "2x oversampling" },
+            { "4x", "4x", "voiceContextEditor.oversampling.4x", "4x oversampling" },
+            { "8x", "8x", "voiceContextEditor.oversampling.8x", "8x oversampling" }
+    };
+}
+
+std::vector<PropertySegmentOption> controlIntervalOptions() {
+    return {
+            { "16", "16", "voiceContextEditor.controlInterval.16",
+                    "Samples between requested synthesis control updates." },
+            { "64", "64", "voiceContextEditor.controlInterval.64",
+                    "Samples between requested synthesis control updates." },
+            { "256", "256", "voiceContextEditor.controlInterval.256",
+                    "Samples between requested synthesis control updates." },
+            { "1024", "1024", "voiceContextEditor.controlInterval.1024",
+                    "Samples between requested synthesis control updates." }
+    };
+}
 
 String formatInteger(double value) {
     return String(roundToInt(value));
@@ -82,18 +114,10 @@ public:
         const String domain = parameters.stringValue("domain", "waveform");
         const String oversamplingValue = parameters.stringValue("oversampling", "1x");
         const String controlIntervalValue = parameters.stringValue("controlInterval", "16");
-        waveform.setToggleState(domain.startsWith("waveform"), dontSendNotification);
-        spectral.setToggleState(!domain.startsWith("waveform"), dontSendNotification);
-        for (size_t index = 0; index < oversampling.size(); ++index) {
-            oversampling[index].setToggleState(
-                    oversamplingValue == oversamplingValues[index],
-                    dontSendNotification);
-        }
-        for (size_t index = 0; index < controlIntervals.size(); ++index) {
-            controlIntervals[index].setToggleState(
-                    controlIntervalValue == controlIntervalValues[index],
-                    dontSendNotification);
-        }
+        domainSelector.setSelectedValue(
+                domain.startsWith("waveform") ? "waveform" : "spectral");
+        oversamplingSelector.setSelectedValue(oversamplingValue);
+        controlIntervalSelector.setSelectedValue(controlIntervalValue);
         portamento.setToggleState(
                 parameters.boolValue("portamento", false),
                 dontSendNotification);
@@ -126,9 +150,9 @@ public:
         rows.removeFromTop(header.header.getHeight());
         rows.reduce(kContentInset, 4);
         layoutDomainRow(nextRow(rows));
-        octave.setBounds(nextRow(rows));
+        layoutSliderRow(octave, nextRow(rows));
         layoutVoiceLengthRow(nextRow(rows));
-        pitch.setBounds(nextRow(rows));
+        layoutSliderRow(pitch, nextRow(rows));
         layoutOversamplingRow(nextRow(rows));
         layoutControlIntervalRow(nextRow(rows));
         layoutToggleRow(nextRow(rows));
@@ -137,12 +161,12 @@ public:
     var automationState() const {
         auto* state = new DynamicObject();
         state->setProperty("kind", "VOICE_CONTEXT");
-        state->setProperty("domain", waveform.getToggleState() ? "waveform" : "spectral");
+        state->setProperty("domain", domainSelector.selectedValue());
         state->setProperty("octave", propertySliderRowAutomationState(octave));
         state->setProperty("voiceLength", propertySliderRowAutomationState(voiceLength));
         state->setProperty("pitch", propertySliderRowAutomationState(pitch));
-        state->setProperty("oversampling", selectedOversampling());
-        state->setProperty("controlInterval", selectedControlInterval());
+        state->setProperty("oversampling", oversamplingSelector.selectedValue());
+        state->setProperty("controlInterval", controlIntervalSelector.selectedValue());
         state->setProperty("portamento", portamento.getToggleState());
         state->setProperty(
                 "previewVoiceLengthSeconds",
@@ -169,46 +193,26 @@ private:
         stylePropertyLabel(domainLabel, "Domain");
         stylePropertyLabel(oversamplingLabel, "Oversampling");
         stylePropertyLabel(controlIntervalLabel, "Control interval");
+        domainSelector.setComponentID("voiceContextEditor.domain");
+        oversamplingSelector.setComponentID("voiceContextEditor.oversampling");
+        controlIntervalSelector.setComponentID("voiceContextEditor.controlInterval");
         addAndMakeVisible(domainLabel);
         addAndMakeVisible(oversamplingLabel);
         addAndMakeVisible(controlIntervalLabel);
-        configureDomainSelector();
-        configureOversamplingSelector();
-        configureControlIntervalSelector();
+        addAndMakeVisible(domainSelector);
+        addAndMakeVisible(oversamplingSelector);
+        addAndMakeVisible(controlIntervalSelector);
+        domainSelector.onChange = [this](const String& value) {
+            setDomain(value);
+        };
+        oversamplingSelector.onChange = [this](const String& value) {
+            setOversampling(value);
+        };
+        controlIntervalSelector.onChange = [this](const String& value) {
+            setControlInterval(value);
+        };
         configurePortamento();
     }
-
-    void configureDomainSelector() {
-        configureOption(waveform, "Waveform", "voiceContextEditor.domain.waveform", [this] {
-            setDomain("waveform");
-        });
-        configureOption(spectral, "Spectral", "voiceContextEditor.domain.spectral", [this] {
-            setDomain("spectral");
-        });
-    }
-
-    void configureOversamplingSelector() {
-        for (size_t index = 0; index < oversampling.size(); ++index) {
-            configureOption(
-                    oversampling[index],
-                    oversamplingValues[index],
-                    "voiceContextEditor.oversampling." + oversamplingValues[index],
-                    [this, index] { setOversampling(oversamplingValues[index]); });
-        }
-    }
-
-    void configureControlIntervalSelector() {
-        for (size_t index = 0; index < controlIntervals.size(); ++index) {
-            configureOption(
-                    controlIntervals[index],
-                    controlIntervalValues[index],
-                    "voiceContextEditor.controlInterval." + controlIntervalValues[index],
-                    [this, index] { setControlInterval(controlIntervalValues[index]); });
-            controlIntervals[index].setTooltip(
-                    "Samples between requested synthesis control updates.");
-        }
-    }
-
     void configurePortamento() {
         portamento.setButtonText("Portamento");
         portamento.setComponentID("voiceContextEditor.portamento");
@@ -243,6 +247,8 @@ private:
         octave.slider.setLandmarks({
                 { -2.0, "-2" }, { -1.0, "-1" }, { 0.0, "0" }, { 1.0, "+1" }, { 2.0, "+2" }
         });
+        octave.slider.setTrackEndInset(kLandmarkEndInset);
+        octave.setValueJustification(Justification::centredLeft);
     }
 
     void configureVoiceLength() {
@@ -267,6 +273,8 @@ private:
                 { CycleDsp::voiceLengthUnitValue(7.0), "7" },
                 { 1.0, "148" }
         });
+        voiceLength.slider.setTrackEndInset(kLandmarkEndInset);
+        voiceLength.setValueJustification(Justification::centredLeft);
     }
 
     void configurePitch() {
@@ -281,36 +289,21 @@ private:
                 1.0,
                 "Voice pitch offset in semitones. Arrow keys select one semitone.");
         pitch.slider.setLandmarks({ { -12.0, "-12" }, { 0.0, "0" }, { 12.0, "+12" } });
-    }
-
-    void configureOption(
-            TextButton& button,
-            const String& text,
-            const String& id,
-            std::function<void()> action) {
-        stylePropertyButton(button, text);
-        button.setComponentID(id);
-        button.setClickingTogglesState(false);
-        button.setWantsKeyboardFocus(true);
-        button.onClick = std::move(action);
-        addAndMakeVisible(button);
+        pitch.slider.setTrackEndInset(kLandmarkEndInset);
+        pitch.setValueJustification(Justification::centredLeft);
     }
 
     void setDomain(const String& value) {
-        if (commands.setNodeParameterText(node.id, "domain", "Start Domain", value)) {
-            waveform.setToggleState(value == "waveform", dontSendNotification);
-            spectral.setToggleState(value == "spectral", dontSendNotification);
+        if (!commands.setNodeParameterText(node.id, "domain", "Start Domain", value)) {
+            domainSelector.setSelectedValue(
+                    NodeParameterMap(node).stringValue("domain", "waveform"));
         }
     }
 
     void setOversampling(const String& value) {
         if (!commands.setNodeParameterText(node.id, "oversampling", "Oversampling", value)) {
-            return;
-        }
-        for (size_t index = 0; index < oversampling.size(); ++index) {
-            oversampling[index].setToggleState(
-                    oversamplingValues[index] == value,
-                    dontSendNotification);
+            oversamplingSelector.setSelectedValue(
+                    NodeParameterMap(node).stringValue("oversampling", "1x"));
         }
     }
 
@@ -320,41 +313,18 @@ private:
                     "controlInterval",
                     "Control Interval",
                     value)) {
-            return;
-        }
-        for (size_t index = 0; index < controlIntervals.size(); ++index) {
-            controlIntervals[index].setToggleState(
-                    controlIntervalValues[index] == value,
-                    dontSendNotification);
+            controlIntervalSelector.setSelectedValue(
+                    NodeParameterMap(node).stringValue("controlInterval", "16"));
         }
     }
-
-    String selectedOversampling() const {
-        for (size_t index = 0; index < oversampling.size(); ++index) {
-            if (oversampling[index].getToggleState()) {
-                return oversamplingValues[index];
-            }
-        }
-        return {};
-    }
-
-    String selectedControlInterval() const {
-        for (size_t index = 0; index < controlIntervals.size(); ++index) {
-            if (controlIntervals[index].getToggleState()) {
-                return controlIntervalValues[index];
-            }
-        }
-        return {};
-    }
-
     static Rectangle<int> nextRow(Rectangle<int>& rows) {
         Rectangle<int> row = rows.removeFromTop(PropertyControlMetrics::rowHeight);
-        rows.removeFromTop(PropertyControlMetrics::rowGap);
+        rows.removeFromTop(kRowGap);
         return row;
     }
 
     void layoutDomainRow(Rectangle<int> row) {
-        layoutSelectorRow(row, domainLabel, { &waveform, &spectral });
+        layoutSelectorRow(row, domainLabel, domainSelector);
     }
 
     void layoutVoiceLengthRow(Rectangle<int> row) {
@@ -362,36 +332,32 @@ private:
                 row,
                 PropertyControlMetrics::labelWidth,
                 PropertyControlMetrics::inlineGap,
-                kVoiceLengthValueWidth);
+                kValueWidth);
+    }
+
+    static void layoutSliderRow(PropertySliderRow& slider, Rectangle<int> row) {
+        slider.setBounds(
+                row,
+                PropertyControlMetrics::labelWidth,
+                PropertyControlMetrics::inlineGap,
+                kValueWidth);
     }
 
     void layoutOversamplingRow(Rectangle<int> row) {
-        layoutSelectorRow(
-                row,
-                oversamplingLabel,
-                { &oversampling[0], &oversampling[1], &oversampling[2], &oversampling[3] });
+        layoutSelectorRow(row, oversamplingLabel, oversamplingSelector);
     }
 
     void layoutControlIntervalRow(Rectangle<int> row) {
-        layoutSelectorRow(
-                row,
-                controlIntervalLabel,
-                { &controlIntervals[0], &controlIntervals[1],
-                        &controlIntervals[2], &controlIntervals[3] });
+        layoutSelectorRow(row, controlIntervalLabel, controlIntervalSelector);
     }
 
     static void layoutSelectorRow(
             Rectangle<int> row,
             Label& label,
-            std::initializer_list<TextButton*> buttons) {
+            PropertySegmentedSelector& selector) {
         label.setBounds(row.removeFromLeft(PropertyControlMetrics::labelWidth));
         row.removeFromLeft(PropertyControlMetrics::inlineGap);
-        const int gaps = PropertyControlMetrics::rowGap * ((int) buttons.size() - 1);
-        const int buttonWidth = (row.getWidth() - gaps) / (int) buttons.size();
-        for (TextButton* button : buttons) {
-            button->setBounds(row.removeFromLeft(buttonWidth));
-            row.removeFromLeft(PropertyControlMetrics::rowGap);
-        }
+        selector.setBounds(row);
     }
 
     void layoutToggleRow(Rectangle<int> row) {
@@ -405,17 +371,14 @@ private:
     Node node;
     TextButton close;
     Label domainLabel;
-    TextButton waveform;
-    TextButton spectral;
+    PropertySegmentedSelector domainSelector { domainOptions() };
     NodePropertySliderRow octave;
     NodePropertySliderRow voiceLength;
     NodePropertySliderRow pitch;
     Label oversamplingLabel;
-    std::array<TextButton, 4> oversampling;
-    const std::array<String, 4> oversamplingValues { "1x", "2x", "4x", "8x" };
+    PropertySegmentedSelector oversamplingSelector { oversamplingOptions() };
     Label controlIntervalLabel;
-    std::array<TextButton, 4> controlIntervals;
-    const std::array<String, 4> controlIntervalValues { "16", "64", "256", "1024" };
+    PropertySegmentedSelector controlIntervalSelector { controlIntervalOptions() };
     ToggleButton portamento;
 };
 

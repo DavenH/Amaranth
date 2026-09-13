@@ -391,6 +391,11 @@ void Interactor2D::doReshapeCurve(const MouseEvent&) {
 
     const vector<Curve>& curves = snapshot.curves();
     const Curve& curve = curves[(size_t) curveIndex];
+    const float controlY = state.currentIcpt >= 0
+            && state.currentIcpt < (int) snapshot.intercepts().size()
+            ? snapshot.intercepts()[(size_t) state.currentIcpt].y
+            : state.currentVertex->values[dims.y];
+
     {
         ScopedLock sl(vertexLock);
 
@@ -408,9 +413,10 @@ void Interactor2D::doReshapeCurve(const MouseEvent&) {
     const Array<Vertex*> movingVerts = getVerticesToMove(state.currentCube, state.currentVertex);
     const float dragScale = getDragMovementScale(state.currentCube);
     const float delta = CurveReshapeStrategy::sharpnessDelta(
+            state.start.y,
             state.lastMouse.y,
             state.currentMouse.y,
-            (float) curve.tp.ypole,
+            controlY,
             panel->getZoomPanel()->rect.h,
             dragScale,
             curve.tp.scaleY);
