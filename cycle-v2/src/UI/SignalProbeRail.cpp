@@ -7,6 +7,7 @@
 #include "Graph/GraphValidator.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
+#include "UI/NodeCableRenderer.h"
 #include "UI/WorkspaceDock.h"
 
 namespace CycleV2 {
@@ -321,7 +322,8 @@ void SignalProbeRail::paintCableAnnotations(
         const NodeGraph& graph,
         const NodeCanvasSceneSnapshot& scene,
         Rectangle<float> workspace,
-        const SignalProbeRailState& state) const {
+        const SignalProbeRailState& state,
+        float zoom) const {
     const auto probes = orderedProbes(graph);
     for (int index = 0; index < (int) probes.size(); ++index) {
         const SignalProbe& probe = *probes[(size_t) index];
@@ -345,14 +347,20 @@ void SignalProbeRail::paintCableAnnotations(
             graphics.strokePath(tether, PathStrokeType(2.f, PathStrokeType::curved));
         }
 
-        const Rectangle<float> badge(16.f, 16.f);
+        const float diameter = cableAnnotationDiameter(zoom);
+        const Rectangle<float> badge(diameter, diameter);
         graphics.setColour(CanvasChromePalette::canvasBackground);
         graphics.fillEllipse(badge.withCentre(marker));
         graphics.setColour(colour);
-        graphics.drawEllipse(badge.withCentre(marker), active ? 2.5f : 1.8f);
-        graphics.setFont(FontOptions(9.f));
+        const float scale = diameter / 16.f;
+        graphics.drawEllipse(badge.withCentre(marker), (active ? 2.5f : 1.8f) * scale);
+        graphics.setFont(FontOptions(9.f * scale));
         graphics.drawText(String(index + 1), badge.withCentre(marker), Justification::centred);
     }
+}
+
+float SignalProbeRail::cableAnnotationDiameter(float zoom) {
+    return 16.f * NodeCableRenderer::scaleForZoom(zoom);
 }
 
 const GraphPreviewResult::SignalProbePreview* SignalProbeRail::previewFor(
