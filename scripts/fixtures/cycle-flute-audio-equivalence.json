@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/flute.cyclegraph",
-        "sha256": "4308c4117de14940e8f950258ec37f3c87ba51ef86b460a2e2176f42fe6d114d",
+        "sha256": "0a6bfe5c39c7ae64f6293a45d2cc33eb98d4892be349f31c295a4f4e20d71cb0",
         "renderOverrides": {
             "voiceDurationSeconds": 2.9014062881469727
         }

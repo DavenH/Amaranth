@@ -1422,6 +1422,24 @@ as the scratch envelope evolves.
     `/private/tmp/cycle-filter-saw-current-converter-stages/` and
     `/private/tmp/cycle-filter-saw-current-converter-full-48000/`.
 
+64. Refresh Flute's canonical model payload without weakening its verified
+    fixture. Complete: the current converter replaces shortened values in the
+    time mesh and Impulse Response and brings the volume Envelope onto the same
+    canonical representation used by the rest of the migrated library. No
+    routing, processing mode, or DSP implementation changes.
+
+    All ten node identities, every cable endpoint, positions, port sides,
+    editor dimensions, probes, and the Global Input through global IR boundary
+    are preserved. The omitted `link.*` fields retain default-true presentation
+    behavior.
+
+    The complete 48 kHz MIDI 36, 48, 60, and 72 matrix passes every existing
+    audio and repeatability check in both fresh processes. Correlation ranges
+    from `0.99702` to `0.99976`, residual from `0.0220` to `0.0771`, and
+    spectral RMSE from `0.02` to `0.17 dB`. Flute therefore remains a verified
+    fixture. Artifact:
+    `/private/tmp/cycle-flute-current-converter-full-48000/`.
+
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
 renderer concern. Slice 31 aligns the comparison harness with that ownership.
