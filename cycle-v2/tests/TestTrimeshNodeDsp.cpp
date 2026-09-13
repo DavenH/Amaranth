@@ -480,20 +480,58 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
     REQUIRE_FALSE(phaseCurveStyle.negativeColour == magCurveStyle.negativeColour);
     REQUIRE_FALSE(phaseCurveStyle.negativeColour == magCurveStyle.positiveColour);
 
-    const Image phaseGradient = phaseSurfaceStyle.gradientImage();
-    REQUIRE(phaseGradient.isValid());
-    for (const float value : { 0.2f, 0.5f, 0.8f }) {
-        const int x = roundToInt(value * (float) (phaseGradient.getWidth() - 1));
-        const Colour textureColour = phaseGradient.getPixelAt(x, 0);
-        const Colour cpuColour = phaseSurfaceStyle.colourForValue(value);
-        REQUIRE(textureColour.getFloatRed()
-                == Catch::Approx(cpuColour.getFloatRed()).margin(0.01f));
-        REQUIRE(textureColour.getFloatGreen()
-                == Catch::Approx(cpuColour.getFloatGreen()).margin(0.01f));
-        REQUIRE(textureColour.getFloatBlue()
-                == Catch::Approx(cpuColour.getFloatBlue()).margin(0.01f));
-        REQUIRE(textureColour.getFloatAlpha()
-                == Catch::Approx(cpuColour.getFloatAlpha()).margin(0.01f));
+    for (const TrimeshSurfaceStyle* style : {
+            &timeSurfaceStyle,
+            &magSurfaceStyle,
+            &phaseSurfaceStyle }) {
+        Image surfaceGradient = style->gradientImage();
+
+        REQUIRE(surfaceGradient.isValid());
+        for (const float value : { 0.2f, 0.5f, 0.8f }) {
+            const int x = roundToInt(value * (float) (surfaceGradient.getWidth() - 1));
+            const Colour textureColour = surfaceGradient.getPixelAt(x, 0);
+            const Colour compactColour = style->colourForValue(value);
+
+            REQUIRE(textureColour.getFloatRed()
+                    == Catch::Approx(compactColour.getFloatRed()).margin(0.01f));
+            REQUIRE(textureColour.getFloatGreen()
+                    == Catch::Approx(compactColour.getFloatGreen()).margin(0.01f));
+            REQUIRE(textureColour.getFloatBlue()
+                    == Catch::Approx(compactColour.getFloatBlue()).margin(0.01f));
+            REQUIRE(textureColour.getFloatAlpha()
+                    == Catch::Approx(compactColour.getFloatAlpha()).margin(0.01f));
+        }
+    }
+}
+
+TEST_CASE("Expanded Trimesh panel preserves compact spectral RGBA mapping",
+        "[cycle-v2][nodes][trimesh][compact][expanded][spectral]") {
+    ScopedJuceInitialiser_GUI juce;
+    TrimeshPanelBridge bridge;
+
+    for (const PortDomain domain : {
+            PortDomain::SpectralMagnitudeSignal,
+            PortDomain::SpectralPhaseSignal }) {
+        const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(domain);
+        const auto& style = profile.getSurfaceStyle();
+        bridge.setRenderProfile(profile);
+        const auto& expandedColours = bridge.getPanel3D().getGradientColours();
+
+        REQUIRE(expandedColours.size() == 256);
+        for (const float value : { 0.2f, 0.5f, 0.8f }) {
+            const int index = roundToInt(value * (float) (expandedColours.size() - 1));
+            const Colour expandedColour = expandedColours[(size_t) index].toColour();
+            const Colour compactColour = style.colourForValue(value);
+
+            REQUIRE(expandedColour.getFloatRed()
+                    == Catch::Approx(compactColour.getFloatRed()).margin(0.01f));
+            REQUIRE(expandedColour.getFloatGreen()
+                    == Catch::Approx(compactColour.getFloatGreen()).margin(0.01f));
+            REQUIRE(expandedColour.getFloatBlue()
+                    == Catch::Approx(compactColour.getFloatBlue()).margin(0.01f));
+            REQUIRE(expandedColour.getFloatAlpha()
+                    == Catch::Approx(compactColour.getFloatAlpha()).margin(0.01f));
+        }
     }
 }
 
@@ -2195,7 +2233,7 @@ TEST_CASE("Trimesh panel bridge maps spectral grids by signal domain",
     REQUIRE(*std::max_element(phase.surface.begin(), phase.surface.end()) <= 1.f);
 }
 
-TEST_CASE("Compact and expanded Trimesh views share mapped magnitude data",
+TEST_CASE("Compact and expanded Trimesh views share mapped spectral data",
         "[cycle-v2][nodes][trimesh][compact][expanded][spectral]") {
     ScopedJuceInitialiser_GUI juce;
     Node node {
@@ -2207,30 +2245,33 @@ TEST_CASE("Compact and expanded Trimesh views share mapped magnitude data",
             {},
             {}
     };
-    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromSemantic({
-            PortDomain::SpectralMagnitudeSignal,
-            RenderScalePolicy::Bipolar,
-            RenderSemanticRole::SpectralMagnitudeMultiplicative
-    });
-    TrimeshWidget widget;
-    Image compactImage(Image::ARGB, 220, 180, true);
-    Graphics compactGraphics(compactImage);
-    widget.paintCompact(
-            compactGraphics,
-            node,
-            compactImage.getBounds().toFloat(),
-            1.f,
-            profile);
-    const TrimeshRenderData compact = widget.renderDataForAutomation();
+    for (const TrimeshRenderProfile profile : {
+            TrimeshRenderProfile::fromSemantic({
+                    PortDomain::SpectralMagnitudeSignal,
+                    RenderScalePolicy::Bipolar,
+                    RenderSemanticRole::SpectralMagnitudeMultiplicative
+            }),
+            TrimeshRenderProfile::fromDomain(PortDomain::SpectralPhaseSignal) }) {
+        TrimeshWidget widget;
+        Image compactImage(Image::ARGB, 220, 180, true);
+        Graphics compactGraphics(compactImage);
+        widget.paintCompact(
+                compactGraphics,
+                node,
+                compactImage.getBounds().toFloat(),
+                1.f,
+                profile);
+        const TrimeshRenderData compact = widget.renderDataForAutomation();
 
-    widget.setRenderProfile(profile);
-    Image expandedImage(Image::ARGB, 900, 650, true);
-    Graphics expandedGraphics(expandedImage);
-    widget.paintExpanded(expandedGraphics, node, expandedImage.getBounds().toFloat());
-    const TrimeshRenderData expanded = widget.renderDataForAutomation();
+        widget.setRenderProfile(profile);
+        Image expandedImage(Image::ARGB, 900, 650, true);
+        Graphics expandedGraphics(expandedImage);
+        widget.paintExpanded(expandedGraphics, node, expandedImage.getBounds().toFloat());
+        const TrimeshRenderData expanded = widget.renderDataForAutomation();
 
-    REQUIRE(compact.rows == expanded.rows);
-    REQUIRE(compact.columns == expanded.columns);
-    REQUIRE(compact.slice == expanded.slice);
-    REQUIRE(compact.surface == expanded.surface);
+        REQUIRE(compact.rows == expanded.rows);
+        REQUIRE(compact.columns == expanded.columns);
+        REQUIRE(compact.slice == expanded.slice);
+        REQUIRE(compact.surface == expanded.surface);
+    }
 }

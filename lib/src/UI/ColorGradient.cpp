@@ -6,6 +6,18 @@ ColorGradient::ColorGradient() : pixelStride(3) {
 }
 
 void ColorGradient::read(Image& image, bool softerAlpha, bool isTransparent) {
+    readInternal(image, softerAlpha, isTransparent, false);
+}
+
+void ColorGradient::readPreservingAlpha(Image& image, bool isTransparent) {
+    readInternal(image, true, isTransparent, true);
+}
+
+void ColorGradient::readInternal(
+        Image& image,
+        bool softerAlpha,
+        bool isTransparent,
+        bool preserveImageAlpha) {
     jassert(! image.isNull());
 
     pixelStride = (isTransparent ? 4 : 3);
@@ -29,8 +41,11 @@ void ColorGradient::read(Image& image, bool softerAlpha, bool isTransparent) {
         float g = colour.getFloatGreen();
         float b = colour.getFloatBlue();
 
-        float alpha = i / float(image.getWidth());
-        alpha = softerAlpha ? squashSoft(alpha) : squash(alpha);
+        float alpha = colour.getFloatAlpha();
+        if (!preserveImageAlpha) {
+            alpha = i / float(image.getWidth());
+            alpha = softerAlpha ? squashSoft(alpha) : squash(alpha);
+        }
 
         colours.emplace_back(r, g, b, alpha);
 

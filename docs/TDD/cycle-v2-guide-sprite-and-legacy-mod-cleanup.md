@@ -43,6 +43,12 @@ CPU compact renderer samples `TrimeshSurfaceStyle::colourForValue`; the expanded
 OpenGL renderer consumes `gradientImage`. Spectral phase therefore needs a gradient
 generated from that same phase-colour function rather than the magnitude gradient.
 
+Production review found a second translation inside the legacy OpenGL
+`ColorGradient` loader: it discarded the gradient image's alpha and substituted
+an index-derived alpha curve. Trimesh panels require a narrow exact-image-alpha
+loading path so the compact and expanded renderers consume the same RGBA mapping.
+Other mature `ColorGradient` clients retain their existing alpha policy.
+
 ### Legacy modulation cleanup
 
 `port_cycle_v1_preset.py` is the authority for newly converted factory graphs, and
