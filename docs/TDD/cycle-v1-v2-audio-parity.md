@@ -1350,6 +1350,29 @@ as the scratch envelope evolves.
     `/private/tmp/cycle-icycle-canonical-precision-stages/` and
     `/private/tmp/cycle-icycle-canonical-precision-full-48000/`.
 
+61. Restore canonical Astral control, mesh, and Guide precision. Complete: the
+    previous semantic regeneration fixed Astral's missing and inverted state,
+    but a later compact serialization retained shortened mesh/Guide values and
+    rounded its authored red morph from `0.373831778764725` to `0.37383`.
+    Regenerating from the current, hash-matched Cycle 1 document restores the
+    converter's authoritative values without changing DSP implementations.
+
+    All 18 node identities, cable endpoints, positions, port sides, editor
+    dimensions, probes, and the merged Global Input/Delay/Output graph are
+    preserved. Default-true `link.*` presentation fields are omitted, and the
+    phase-pan node records its explicit additive mode instead of equivalent
+    topology inference.
+
+    At oscillator frame 32, magnitude and phase rasters and operands plus the
+    post-layer spectrum are byte-identical. The first difference is the shared
+    inverse-FFT boundary at `1.79e-7` normalized residual. Astral's complete
+    MIDI 48 comparison improves from the prior `0.0011` residual and `0.35 dB`
+    spectral RMSE to `0.0002` and `0.00 dB`, with `1.00000` correlation and
+    zero lag. Cycle V2 repeats exactly; Cycle 1 retains its documented
+    process-start variation. Artifacts:
+    `/private/tmp/cycle-astral-canonical-precision-stages/` and
+    `/private/tmp/cycle-astral-canonical-precision-full-48000/`.
+
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
 renderer concern. Slice 31 aligns the comparison harness with that ownership.
