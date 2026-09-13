@@ -67,7 +67,8 @@ public:
             const GraphExecutionPlan& plan,
             const GraphAudioResult& audioResult,
             const std::vector<SignalProbe>& probes,
-            size_t pointCount) const;
+            size_t pointCount,
+            const PreviewControlContext* controlContext = nullptr) const;
     GraphPreviewResult render(
             const GraphExecutionPlan& plan,
             const GraphAudioResultView& audioResult,
@@ -86,13 +87,15 @@ public:
             const std::vector<SignalProbe>& probes,
             const std::vector<uint8_t>& dirtyNodes,
             size_t pointCount,
-            GraphPreviewResult& result) const;
+            GraphPreviewResult& result,
+            const PreviewControlContext* controlContext = nullptr) const;
     void renderNodePreviewsIncremental(
             const GraphExecutionPlan& plan,
             const GraphAudioResultView& audioResult,
             const std::vector<uint8_t>& dirtyNodes,
             size_t pointCount,
-            GraphPreviewResult& result) const;
+            GraphPreviewResult& result,
+            const PreviewControlContext* controlContext = nullptr) const;
 };
 
 }

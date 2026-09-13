@@ -884,6 +884,11 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
     const int keyCode = key.getKeyCode();
     const juce_wchar keyChar = CharacterFunctions::toLowerCase(key.getTextCharacter());
 
+    if (!commandDown && keyCode == KeyPress::spaceKey && previewPlaybackToggle) {
+        previewPlaybackToggle();
+        return true;
+    }
+
     if (keyCode == KeyPress::upKey || keyCode == KeyPress::downKey) {
         const Node* selected = queries.findNode(selectedNodeId);
         if (selected != nullptr && selected->kind == NodeKind::Output) {
@@ -1235,6 +1240,9 @@ void NodeCanvas::refreshCompiledState() {
     compiledStateRefreshScope = PresentationRefreshScope::Downstream;
     editorCoordinator.clearPreviewCache();
     presentation.refresh(graph, document.revision(), document.lastChange());
+    const int midiNote = presentation.previewMidiNote();
+    editorCoordinator.previewResources().setPreviewMidiNote(midiNote);
+    globalUnisonPreviewContext.midiNote = midiNote;
     refreshProbeDetail();
 }
 
@@ -1267,6 +1275,9 @@ void NodeCanvas::refreshCompiledStateAsync(PresentationRefreshScope scope) {
                 if (Component* editor = safeThis->editorCoordinator.host().component()) {
                     editor->repaint();
                 }
+                const int midiNote = safeThis->presentation.previewMidiNote();
+                safeThis->editorCoordinator.previewResources().setPreviewMidiNote(midiNote);
+                safeThis->globalUnisonPreviewContext.midiNote = midiNote;
                 safeThis->openGLContext.triggerRepaint();
                 safeThis->refreshProbeDetail();
                 safeThis->requestCanvasRepaint();
@@ -1274,9 +1285,7 @@ void NodeCanvas::refreshCompiledStateAsync(PresentationRefreshScope scope) {
 }
 
 void NodeCanvas::openProbeDetail(const String& probeId) {
-    const int midiNote = GraphPresentationModel::auditionMidiNoteForProbe(
-            commands.editingGraph(),
-            probeId);
+    const int midiNote = presentation.previewMidiNote();
     const size_t resolution = SignalProbeDetailView::resolutionForMidiNote(
             midiNote);
     auto preview = presentation.captureProbePreview(
@@ -1786,12 +1795,27 @@ bool NodeCanvas::copyAudioPlan(
         return false;
     }
     plan = presentation.compileResult().plan;
-    revision = presentation.revision();
+    revision = presentation.audioPlanRevision();
     return true;
 }
 
 float NodeCanvas::graphOutputGain() const {
     return GraphCompiler::outputGainFor(commands.editingGraph());
+}
+
+bool NodeCanvas::setPreviewMidiNote(int midiNote) {
+    const int selectedNote = jlimit(0, 127, midiNote);
+    if (!presentation.refreshPreviewMidiNote(
+                commands.editingGraph(),
+                document.revision(),
+                selectedNote)) {
+        return false;
+    }
+    editorCoordinator.previewResources().setPreviewMidiNote(selectedNote);
+    globalUnisonPreviewContext.midiNote = selectedNote;
+    refreshProbeDetail();
+    requestCanvasRepaint();
+    return true;
 }
 
 Rectangle<int> NodeCanvas::performanceKeyboardDockBounds() const {

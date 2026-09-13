@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress (2026-09-13).
+Implemented (2026-09-13).
 
 ## Problem
 
@@ -86,3 +86,25 @@ second.
   geometry scales with graph zoom.
 - Standalone Debug, focused tests, `git diff --check`, hot-loop review, and
   production-size before/after captures pass.
+
+## Completion Evidence
+
+- `fa50d6b4` changes the marquee to the canvas-blue selection family and scales
+  spy cable annotations with graph zoom.
+- `a5afa206` refreshes attached Mod Triple mappings without recompiling the
+  graph and proves velocity, inverse-velocity, and constant behavior through
+  the realtime renderer.
+- The preview transport slice adds right-click preview-note selection, mapped
+  key-scale preview positioning, the play/stop bar, maximum Voice Context
+  duration, Space toggling, and focused automation coverage.
+- `CycleV2` and `CycleV2_tests` build with `--parallel 10`; the keyboard,
+  preview-note, attached-modulation, realtime-velocity, key-scale, voice-length,
+  marquee, and spy-scaling tests pass.
+- `cycle-v2-agent-preview-transport.json` and the existing performance-keyboard
+  fixture pass. Visual evidence is at
+  `/private/tmp/cycle-v2-preview-transport.png`; the before capture is
+  `/tmp/cycle-v2-before-transport.png`.
+- The full 753-case Cycle V2 suite reaches 750 passes. Its three remaining
+  failures are the existing African Horn canonicalization issue, the documented
+  linked-axis Trimesh expectation, and the user's in-progress Astral preset
+  content; none overlap this implementation.

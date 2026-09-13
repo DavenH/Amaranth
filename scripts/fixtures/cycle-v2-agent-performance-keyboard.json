@@ -23,7 +23,7 @@
     {
       "command": "assertState",
       "path": "performance.screenHeight",
-      "equals": 112
+      "equals": 140
     },
     {
       "command": "assertState",
@@ -48,22 +48,22 @@
     {
       "command": "assertState",
       "path": "performance.baseNote",
-      "equals": 60
+      "equals": 48
     },
     {
       "command": "assertState",
       "path": "performance.highestNote",
-      "equals": 84
+      "equals": 72
     },
     {
       "command": "assertState",
       "path": "performance.baseNoteLabel",
-      "equals": "C3"
+      "equals": "C2"
     },
     {
       "command": "assertState",
       "path": "performance.highestNoteLabel",
-      "equals": "C5"
+      "equals": "C4"
     },
     {
       "command": "assertState",
@@ -78,12 +78,12 @@
     {
       "command": "assertState",
       "path": "performance.baseNote",
-      "equals": 72
+      "equals": 60
     },
     {
       "command": "assertState",
       "path": "performance.highestNote",
-      "equals": 96
+      "equals": 84
     },
     {
       "command": "pointer",
@@ -93,7 +93,7 @@
     {
       "command": "assertState",
       "path": "performance.baseNote",
-      "equals": 60
+      "equals": 48
     },
     {
       "command": "pointer",

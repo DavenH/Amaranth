@@ -64,6 +64,15 @@ RealtimeGraphRenderer::prepareGraph(
     return prepared;
 }
 
+float RealtimeGraphRenderer::maximumVoiceDurationSeconds(
+        const GraphExecutionPlan& plan) {
+    float duration = 0.f;
+    for (const auto& context : plan.voiceContexts) {
+        duration = jmax(duration, context.voiceDurationSeconds);
+    }
+    return duration > 0.f ? duration : 1.f;
+}
+
 void RealtimeGraphRenderer::setPreparedGraph(PreparedGraph* graph) {
     if (preparedGraph == graph) {
         return;

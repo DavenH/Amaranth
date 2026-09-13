@@ -1,10 +1,13 @@
+#include <algorithm>
+
+#include <App/AppConstants.h>
+
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/FingerprintBuilder.h"
 #include "Runtime/PreviewPitchResolver.h"
 
+#include "Nodes/Control/ModulationSource.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
-
-#include <algorithm>
 
 namespace CycleV2 {
 
@@ -73,6 +76,9 @@ bool GraphPresentationModel::refresh(
 
     GraphPresentationSnapshot next = current;
     next.graphRevision = documentRevision;
+    if (!hasExplicitPreviewMidiNote) {
+        next.previewMidiNote = PreviewPitchResolver::forGraph(graph);
+    }
     if (compile) {
         next.compileResult = compiler.compile(graph);
         next.runtimeTrace = {};
@@ -124,6 +130,11 @@ bool GraphPresentationModel::refresh(
     }
 
     const bool accepted = acceptSnapshot(std::move(next));
+    if (accepted && (compile
+            || change.guidesChanged
+            || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration))) {
+        ++audioRevision;
+    }
     performance.record(
             Performance::Stage::SynchronousRefresh,
             performance.timestamp() - startedAt);
@@ -142,6 +153,29 @@ bool GraphPresentationModel::acceptSnapshot(GraphPresentationSnapshot snapshotTo
     current = std::move(snapshotToAccept);
     ++presentationRevision;
     return true;
+}
+
+bool GraphPresentationModel::refreshPreviewMidiNote(
+        const NodeGraph& graph,
+        uint64_t documentRevision,
+        int midiNote) {
+    const int selectedNote = jlimit(0, 127, midiNote);
+    if (current.previewMidiNote == selectedNote) {
+        return true;
+    }
+
+    asyncState->generation.fetch_add(1);
+    asyncWorker.cancelAndWait();
+    current.previewMidiNote = selectedNote;
+    hasExplicitPreviewMidiNote = true;
+
+    GraphChangeSet change;
+    change.parameterImpacts = ParameterImpact::Preview;
+    change.nodeIds.reserve(graph.getNodes().size());
+    for (const auto& node : graph.getNodes()) {
+        change.nodeIds.push_back(node.id);
+    }
+    return refresh(graph, documentRevision, change);
 }
 
 void GraphPresentationModel::refreshAsync(
@@ -320,8 +354,13 @@ bool GraphPresentationModel::renderPreviewProducts(
     };
     previewAudioExecutor.prepareExecution(snapshot.compileResult.plan, spec);
     AudioVoiceContext previewVoice;
-    previewVoice.controls.noteNumber = PreviewPitchResolver::forGraph(graph);
+    previewVoice.controls.noteNumber = snapshot.previewMidiNote;
     previewVoice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    PreviewControlContext previewControls;
+    previewControls.noteNumber = snapshot.previewMidiNote;
+    previewControls.lowestNote = Constants::LowestMidiNote;
+    previewControls.highestNote = Constants::HighestMidiNote;
+    previewControls.traverseVoiceTime = true;
     if (renderFullGraph) {
         const uint64_t audioStartedAt = performance.timestamp();
         const GraphAudioResult audio = previewAudioExecutor.process(
@@ -338,7 +377,8 @@ bool GraphPresentationModel::renderPreviewProducts(
                 snapshot.compileResult.plan,
                 audio,
                 graph.getSignalProbes(),
-                40);
+                40,
+                &previewControls);
         performance.record(
                 GraphPresentationPerformanceMetrics::Stage::PreviewExtraction,
                 performance.timestamp() - extractionStartedAt);
@@ -379,7 +419,8 @@ bool GraphPresentationModel::renderPreviewProducts(
                 audio,
                 dirtyNodes,
                 40,
-                snapshot.previewResult);
+                snapshot.previewResult,
+                &previewControls);
     } else {
         GraphPreviewExecutor().renderIncremental(
                 snapshot.compileResult.plan,
@@ -387,7 +428,8 @@ bool GraphPresentationModel::renderPreviewProducts(
                 graph.getSignalProbes(),
                 dirtyNodes,
                 40,
-                snapshot.previewResult);
+                snapshot.previewResult,
+                &previewControls);
     }
     performance.record(
             GraphPresentationPerformanceMetrics::Stage::PreviewExtraction,
@@ -422,6 +464,15 @@ std::function<void()> GraphPresentationModel::publishAsyncRefresh(
     }
     publishedGeneration = refresh->generation;
     updateGraph.publish(refresh->request, refresh->updateResult);
+    const bool audioConfigurationPublished = std::any_of(
+            refresh->updateResult.executed.begin(),
+            refresh->updateResult.executed.end(),
+            [](const PlannedNodeProduct& product) {
+                return product.product == UpdateProduct::AudioConfiguration;
+            });
+    if (audioConfigurationPublished) {
+        ++audioRevision;
+    }
     if (refresh->previewRendered) {
         ++previewRenders;
     }
@@ -682,6 +733,9 @@ CausalUpdateRequest GraphPresentationModel::updateRequest(
         }
         effectiveFingerprint = nodeFingerprint.value();
     }
+    effectiveFingerprint = FingerprintBuilder(effectiveFingerprint)
+            .add(current.previewMidiNote)
+            .value();
     const EditPhase phase = documentRevision > current.graphRevision
             ? EditPhase::Commit
             : EditPhase::Movement;

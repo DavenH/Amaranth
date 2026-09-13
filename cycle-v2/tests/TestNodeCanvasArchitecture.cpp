@@ -465,6 +465,9 @@ TEST_CASE("Preview pitch context follows the Modulation Triple key-scale axis",
     PreviewPitchContext context = PreviewPitchResolver::contextForNode(graph, "mesh");
     REQUIRE(context.midiNote == existingPreviewNote);
     REQUIRE(context.keyScaleAxis == "red");
+    context = PreviewPitchResolver::contextForNodeAtPreviewNote(graph, "mesh", 72);
+    REQUIRE(context.midiNote == 72);
+    REQUIRE(context.keyScaleAxis == "red");
 
     REQUIRE(GraphEditor().setNodeParameter(
             graph,
@@ -481,6 +484,9 @@ TEST_CASE("Preview pitch context follows the Modulation Triple key-scale axis",
 
     context = PreviewPitchResolver::contextForNode(graph, "mesh");
     REQUIRE(context.midiNote == existingPreviewNote);
+    REQUIRE(context.keyScaleAxis == "yellow");
+    context = PreviewPitchResolver::contextForNodeAtPreviewNote(graph, "mesh", 36);
+    REQUIRE(context.midiNote == 36);
     REQUIRE(context.keyScaleAxis == "yellow");
 }
 

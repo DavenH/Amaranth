@@ -47,6 +47,7 @@ public:
             GraphExecutionPlan plan,
             uint64_t revision,
             const AudioExecutionSpec& spec);
+    static float maximumVoiceDurationSeconds(const GraphExecutionPlan& plan);
     void setPreparedGraph(PreparedGraph* graph);
     void setSpectralStageCapture(CycleDsp::SpectralStageCaptureSink* capture) {
         spectralStageCapture = capture;

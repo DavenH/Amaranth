@@ -1563,8 +1563,17 @@ var CycleV2Automation::pointer(const var& commandValue) {
         const int noteNumber = targetId.fromFirstOccurrenceOf(
                 "PerformanceKeyboard.Note", false, false).getIntValue();
         const float velocity = jlimit(0.05f, 1.f, floatProperty(commandValue, "targetY", 0.8f));
+        const String button = stringProperty(
+                commandValue,
+                "button",
+                stringProperty(commandValue, "mouseButton")).toLowerCase();
+        const bool selectsPreview = boolProperty(commandValue, "right")
+                || button == "right"
+                || button == "secondary";
         bool handled {};
-        if (eventType == "down") {
+        if (selectsPreview && (eventType == "down" || eventType == "click")) {
+            handled = workspace.performanceSelectPreviewNoteForAutomation(noteNumber);
+        } else if (eventType == "down") {
             handled = workspace.performancePointerDownForAutomation(noteNumber, velocity);
         } else if (eventType == "drag") {
             handled = workspace.performancePointerDragForAutomation(noteNumber, velocity);
@@ -1891,6 +1900,10 @@ Component* CycleV2Automation::componentForArea(const String& area) const {
     }
     if (area == "canvas" || area == "AreaNodeCanvas") {
         return const_cast<NodeCanvas*>(&workspace.getCanvas());
+    }
+    if (area == "performanceKeyboard" || area == "AreaPerformanceKeyboard") {
+        return const_cast<PerformanceKeyboardPanel*>(
+                &workspace.performanceKeyboardForAutomation());
     }
 
     return nullptr;

@@ -19,6 +19,7 @@ namespace CycleV2 {
 
 struct GraphPresentationSnapshot {
     uint64_t graphRevision {};
+    int previewMidiNote { 48 };
     GraphCompileResult compileResult;
     RuntimeProcessTrace runtimeTrace;
     GraphPreviewResult previewResult;
@@ -39,6 +40,10 @@ public:
             uint64_t documentRevision,
             const GraphChangeSet& change = {});
     bool acceptSnapshot(GraphPresentationSnapshot snapshot);
+    bool refreshPreviewMidiNote(
+            const NodeGraph& graph,
+            uint64_t documentRevision,
+            int midiNote);
     void refreshAsync(
             NodeGraph graph,
             uint64_t documentRevision,
@@ -60,7 +65,9 @@ public:
     const GraphCompileResult& compileResult() const { return current.compileResult; }
     const RuntimeProcessTrace& runtimeTrace() const { return current.runtimeTrace; }
     const GraphPreviewResult& previewResult() const { return current.previewResult; }
+    int previewMidiNote() const { return current.previewMidiNote; }
     uint64_t revision() const { return presentationRevision; }
+    uint64_t audioPlanRevision() const { return audioRevision; }
     size_t compilationCount() const { return compilations; }
     size_t previewRenderCount() const { return previewRenders; }
     size_t previewAudioProcessCount(const String& nodeId) const {
@@ -132,6 +139,8 @@ private:
             bool preview,
             PresentationRefreshScope scope);
 
+    bool hasExplicitPreviewMidiNote {};
+
     GraphPresentationSnapshot current;
     GraphCompiler compiler;
     NodeDspConfigurationFactory configurationFactory;
@@ -140,6 +149,7 @@ private:
     mutable GraphAudioExecutor previewAudioExecutor;
     uint64_t requestedGraphRevision {};
     uint64_t presentationRevision { 1 };
+    uint64_t audioRevision { 1 };
     size_t compilations {};
     size_t previewRenders {};
     uint64_t publishedEditFingerprint {};

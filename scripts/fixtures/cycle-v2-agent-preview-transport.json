@@ -1,0 +1,85 @@
+{
+  "commands": [
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Note60",
+      "event": "click",
+      "button": "right"
+    },
+    {
+      "command": "assertState",
+      "path": "performance.previewNote",
+      "equals": 60
+    },
+    {
+      "command": "assertState",
+      "path": "performance.heldNote",
+      "equals": -1
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Play",
+      "event": "click"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "performance.previewPlaying",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "performance.heldNote",
+      "equals": 60
+    },
+    {
+      "command": "key",
+      "area": "canvas",
+      "key": "space"
+    },
+    {
+      "command": "assertState",
+      "path": "performance.previewPlaying",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "performance.heldNote",
+      "equals": -1
+    },
+    {
+      "command": "assertState",
+      "path": "performance.previewProgress",
+      "equals": 0
+    },
+    {
+      "command": "key",
+      "area": "canvas",
+      "key": "space"
+    },
+    {
+      "command": "assertState",
+      "path": "performance.previewPlaying",
+      "equals": true
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "performance.previewProgress",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "screenshot",
+      "area": "performanceKeyboard",
+      "path": "/private/tmp/cycle-v2-preview-transport.png"
+    }
+  ],
+  "quit": true
+}

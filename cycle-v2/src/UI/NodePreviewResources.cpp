@@ -36,7 +36,10 @@ TrimeshWidget& NodePreviewResources::trimeshWidget(const String& nodeId) {
 TrimeshWidget& NodePreviewResources::trimeshWidget(const Node& node) {
     TrimeshWidget& widget = trimeshWidget(node.id);
     const PreviewPitchContext preview = graph != nullptr
-            ? PreviewPitchResolver::contextForNode(*graph, node.id)
+            ? PreviewPitchResolver::contextForNodeAtPreviewNote(
+                    *graph,
+                    node.id,
+                    selectedPreviewMidiNote)
             : PreviewPitchContext {};
     widget.setPreviewMidiNote(preview.midiNote);
     widget.setPreviewKeyScaleAxis(preview.keyScaleAxis);
