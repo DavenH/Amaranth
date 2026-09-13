@@ -664,13 +664,22 @@ int Buffer<Float32>::upsampleFrom(Buffer<Float32> buff, int factor, int phase) {
 }
 
 template <>
-int Buffer<Float32>::downsampleFrom(Buffer<Float32> buff, int factor, int phase) {
-    if (sz == 0 || buff.empty())
+int Buffer<Float32>::downsampleFrom(
+        Buffer<Float32> buff, int factor, int phase, int* destinationSize) {
+    if (sz == 0 || buff.empty()) {
+        if (destinationSize != nullptr) {
+            *destinationSize = 0;
+        }
         return 0;
-    if (factor < 0)
+    }
+    if (factor < 0) {
         factor = buff.size() / sz;
+    }
     if (factor == 1) {
         buff.copyTo(*this);
+        if (destinationSize != nullptr) {
+            *destinationSize = jmin(sz, buff.size());
+        }
         return 0;
     }
 
@@ -693,6 +702,10 @@ int Buffer<Float32>::downsampleFrom(Buffer<Float32> buff, int factor, int phase)
                    ptr,                 // Destination buffer
                    1,                   // Destination stride
                    dstLen);             // Number of elements to process
+    }
+
+    if (destinationSize != nullptr) {
+        *destinationSize = dstLen;
     }
 
     return (factor + phase - srcLen % factor) % factor;

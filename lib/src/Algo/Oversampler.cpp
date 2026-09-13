@@ -116,7 +116,7 @@ void Oversampler::sampleDown(Buffer<float> src, Buffer<float> dest, bool wrapTai
     }
 
     if (wrapTail) {
-        int destSize;
+        int destSize = 0;
         Buffer<float> temp = memoryBuf.withSize(firDownDly.size());
         Buffer<float> tail = memoryBuf.section(firDownDly.size(), firDownDly.size());
 
@@ -127,9 +127,10 @@ void Oversampler::sampleDown(Buffer<float> src, Buffer<float> dest, bool wrapTai
       #else
         filterAccelerate(tail, firDownDly, accelInputDown, accelOutputDown);
       #endif
-        phase = temp.downsampleFrom(tail, oversampleFactor, phase);
+        phase = temp.downsampleFrom(tail, oversampleFactor, phase, &destSize);
 
-        dest.add(temp.withSize(destSize));
+        int samplesToWrap = jmin(destSize, dest.size());
+        dest.withSize(samplesToWrap).add(temp.withSize(samplesToWrap));
     }
 }
 

@@ -1691,6 +1691,30 @@ as the scratch envelope evolves.
     `/private/tmp/cycle-v2-amaranth2-astral-note72.wav` and
     `/private/tmp/cycle-v2-amaranth2-astral-fixed-note72.wav`.
 
+75. Restore Cycle 1 individual-Unison and Visual DSP load behavior.
+    Complete. `Blinding.cyc` migrated ten individual voices with alternating
+    hard-left/hard-right pan, but the generic post-load singleton reset invoked
+    `Unison::reset()` through `SingletonAccessor` and erased them. The preset
+    loader now calls the explicitly named `resetParameters()` while lifecycle
+    reset remains the inherited no-op. Selecting an individual voice now only
+    presents its controls and no longer republishes unchanged DSP parameters
+    while the complete voice array is pending. The focused live capture retains
+    all ten voices and reports a left/right difference RMS of `0.11789` instead
+    of bit-identical channels.
+
+    The mature pre-extraction graphic rasterizer selected the current morph
+    axis for every render through its primary-dimension provider. The narrow
+    Cycle 1 wrapper remains the compatibility boundary: it now translates the
+    live setting into the shared rasterization request for both publishing and
+    render-only entry points, without copying slicing or Guide behavior. This
+    is the stable adapter end state; the shared trilinear slicer and Guide policy
+    continue to own all domain behavior. Visual DSP's magnitude and phase
+    column loops also reuse the established direct morph-update contract from
+    `TimeColumnRasterizer`, so each red-axis column updates the current value
+    rather than only a smoothed target. A Cello regression verifies that the
+    authored phase surface changes across red and that removing its attached
+    Guide changes the rendered intercepts.
+
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
 renderer concern. Slice 31 aligns the comparison harness with that ownership.

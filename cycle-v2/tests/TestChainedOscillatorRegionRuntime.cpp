@@ -253,6 +253,33 @@ PartitionedRender renderPreparedGraph(
     return result;
 }
 
+TEST_CASE("Blinding preserves its individual Unison stereo field",
+        "[cycle-v2][runtime][oscillator-region][unison][preset][blinding]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const auto compiled = GraphCompiler().compile(
+            loadOscillatorPresetGraph("mind-blinding"));
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.voiceContexts.size() == 1);
+    const auto& lanes = compiled.plan.voiceContexts.front().lanes;
+    REQUIRE(lanes.order == 10);
+    for (int index = 0; index < lanes.order; ++index) {
+        const float expectedPan = index % 2 == 0 ? 1.f : 0.f;
+        REQUIRE(lanes[index].pan == expectedPan);
+    }
+
+    const PartitionedRender rendered = renderPreparedGraph(
+            compiled.plan,
+            512,
+            8192,
+            -1,
+            72,
+            1.f);
+    REQUIRE(maximumDifference(rendered.left, rendered.right) > 0.01f);
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
+}
+
 TEST_CASE("Prepared spectral Add preserves a lone connected operand",
         "[cycle-v2][runtime][oscillator-region][spectral-frame][add][regression]") {
 #if defined(CYCLE_V2_SOURCE_DIR)

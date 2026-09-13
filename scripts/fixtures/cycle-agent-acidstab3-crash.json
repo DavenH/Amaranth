@@ -1,0 +1,37 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "AcidStab3",
+      "waitForIdle": true,
+      "idleDelayMs": 50
+    },
+    {
+      "command": "pointer",
+      "area": "AreaMain",
+      "target": "TargMidiKeyboard",
+      "event": "down",
+      "normalizedX": 0.08,
+      "normalizedY": 0.85,
+      "waitForIdle": false
+    },
+    {
+      "command": "captureLiveAudio",
+      "path": "/private/tmp/cycle-agent-acidstab3-low-note.wav",
+      "durationMs": 4000,
+      "peakGreaterThan": 0.00001,
+      "rmsGreaterThan": 0.000001
+    },
+    {
+      "command": "pointer",
+      "area": "AreaMain",
+      "target": "TargMidiKeyboard",
+      "event": "up",
+      "normalizedX": 0.08,
+      "normalizedY": 0.85,
+      "normalizedDownX": 0.08,
+      "normalizedDownY": 0.85
+    }
+  ],
+  "quit": true
+}

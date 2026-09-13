@@ -2,9 +2,12 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <App/MeshLibrary.h>
+#include <App/Settings.h>
+#include <App/SingletonRepo.h>
 #include <Curve/Mesh/Vertex.h>
 
 #include "../Rasterization/Policies/Graphic/GraphicPolicies.h"
+#include "../Rasterization/Rasterizer/GraphicRasterizer.h"
 
 namespace {
     using Catch::Approx;
@@ -16,6 +19,27 @@ TEST_CASE("GraphicAxisPolicy exposes current morph axis as primary dimension", "
     REQUIRE(policy.primaryViewDimension(Vertex::Time) == Vertex::Time);
     REQUIRE(policy.primaryViewDimension(Vertex::Red) == Vertex::Red);
     REQUIRE(policy.primaryViewDimension(Vertex::Blue) == Vertex::Blue);
+}
+
+TEST_CASE("Graphic render-only paths follow the current morph axis", "[cycle][rasterization][graphic]") {
+    SingletonRepo repo;
+    repo.instantiate();
+    GraphicRasterizer rasterizer(
+            &repo,
+            nullptr,
+            "TestGraphicRasterizer",
+            LayerGroups::GroupPhase,
+            true,
+            0.f);
+    auto& settings = repo.get<Settings>("Settings");
+
+    settings.getGlobalSetting(AppSettings::CurrentMorphAxis) = Vertex::Red;
+    rasterizer.renderWaveformOnly();
+    REQUIRE(rasterizer.getRequest().primaryViewDimension == Vertex::Red);
+
+    settings.getGlobalSetting(AppSettings::CurrentMorphAxis) = Vertex::Blue;
+    rasterizer.renderGeometryOnly();
+    REQUIRE(rasterizer.getRequest().primaryViewDimension == Vertex::Blue);
 }
 
 TEST_CASE("GraphicMorphPositionPolicy applies scratch position for graphic layers", "[cycle][rasterization][graphic]") {

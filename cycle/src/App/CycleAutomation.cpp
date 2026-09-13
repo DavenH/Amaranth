@@ -1874,6 +1874,17 @@ namespace {
         double initial50MsRms = std::sqrt(initialSumSquares / initialRmsDenominator);
         double finalRmsDenominator = double(jmax(1, channels * finalSamples));
         double final50MsRms = std::sqrt(finalSumSquares / finalRmsDenominator);
+        double leftRightDifferenceRms = 0.0;
+
+        if (channels >= 2 && totalSamples > 0) {
+            Buffer<float> left(capture, 0);
+            Buffer<float> right(capture, 1);
+            ScopedAlloc<float> difference(totalSamples);
+            left.copyTo(difference);
+            difference.sub(right);
+            leftRightDifferenceRms = double(difference.normL2())
+                    / std::sqrt(double(totalSamples));
+        }
 
         auto json = PresetJson::object();
         json->setProperty("sampleRate", sampleRate);
@@ -1887,6 +1898,7 @@ namespace {
         json->setProperty("maxAdjacentDelta", maxAdjacentDelta);
         json->setProperty("maxNoteOffSecondDifference", maxNoteOffSecondDifference);
         json->setProperty("terminalDelta", terminalDelta);
+        json->setProperty("leftRightDifferenceRms", leftRightDifferenceRms);
         json->setProperty("channelMetrics", var(channelMetrics));
         return PresetJson::toVar(json);
     }
@@ -1919,6 +1931,13 @@ namespace {
             && checkAudioThreshold(command, metrics, "peakLessThan", "peak", "lessThan", message)
             && checkAudioThreshold(command, metrics, "rmsGreaterThan", "rms", "greaterThan", message)
             && checkAudioThreshold(command, metrics, "rmsLessThan", "rms", "lessThan", message)
+            && checkAudioThreshold(
+                    command,
+                    metrics,
+                    "leftRightDifferenceRmsGreaterThan",
+                    "leftRightDifferenceRms",
+                    "greaterThan",
+                    message)
             && checkAudioThreshold(command, metrics, "initial50MsRmsLessThan", "initial50MsRms", "lessThan", message)
             && checkAudioThreshold(command, metrics, "final50MsRmsGreaterThan", "final50MsRms", "greaterThan", message)
             && checkAudioThreshold(command, metrics, "maxAdjacentDeltaLessThan", "maxAdjacentDelta", "lessThan", message)

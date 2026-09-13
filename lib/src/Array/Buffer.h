@@ -122,8 +122,12 @@ public:
     Buffer& withPhase(int phase, Buffer workBuffer); // ptr[(i + phase)%sz] = ptr[i]
     Buffer& sort(); // sorts in ascending order
 
-    // returns phase
-    int downsampleFrom(Buffer buff, int factor = -1, int phase = 0);
+    // Returns phase and optionally writes the number of produced samples.
+    int downsampleFrom(
+            Buffer buff,
+            int factor = -1,
+            int phase = 0,
+            int* destinationSize = nullptr);
     int upsampleFrom(Buffer buff, int factor = -1, int phase = 0);
 
     /* ——————————————————————————————————————————————————————————————————————————————— */

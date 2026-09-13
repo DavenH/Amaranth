@@ -527,7 +527,7 @@ void Unison::setVoices(vector<UnivoiceData>& data) {
     getObj(SynthAudioSource).unisonOrderChanged();
 }
 
-void Unison::reset() {
+void Unison::resetParameters() {
     ParamGroup* groups[] = { &audioParams, &graphicParams };
 
     for (auto& i : groups) {
