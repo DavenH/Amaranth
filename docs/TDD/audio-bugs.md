@@ -1,5 +1,26 @@
 # Audio Bug Notes
 
+## Open: manually played Astral reported at a fixed F2 pitch
+
+Astral was reported to sound heavily distorted and remain near F2 for every
+keyboard note in the standalone Cycle V2 app. F2 is suspiciously close to the
+44.1 kHz / 512-sample audio callback cadence (86.13 Hz), but the current
+realtime renderer does not reproduce that failure. Explicit Cycle V2 device
+captures at MIDI 60 and 72 have periods near 169 and 84-85 samples respectively,
+with negligible 86 Hz energy. A focused regression now renders the complete
+Astral graph through 512-sample realtime callbacks and guards both MIDI
+fundamentals against the callback cadence.
+
+The first apparent live/offline discrepancy was invalid evidence: the generic
+`run_cycle_agent.sh` default launched Cycle 1. Cycle V2 audio investigations
+must explicitly set `CYCLE_APP_PATH` to `build/standalone-debug/cycle-v2/CycleV2.app`
+and `CYCLE_PROCESS_NAME` to `CycleV2`. The remaining discrepancy is specific to
+the reported manual session and needs a capture or exact launch/input path to
+reproduce; do not compensate it with a MIDI-note offset.
+
+Artifacts: `/private/tmp/cycle-v2-astral-live-60.wav` and
+`/private/tmp/cycle-v2-astral-live-72.wav`. Status: open 2026-09-12.
+
 ## Open: spectral reference amplitude assertions no longer match output scaling
 
 The full test suite on `cycle2/fix-audio-parity-2` fails the existing

@@ -1652,6 +1652,23 @@ as the scratch envelope evolves.
     `/private/tmp/cycle-organ-2-top-saturation-dry/`, and
     `/private/tmp/cycle-icycle-shared-saturation-full/`.
 
+74. Guard Astral's realtime pitch against host-block cadence.
+    Complete as a regression boundary; the reported manual failure remains
+    open in `audio-bugs.md`. The authoritative path is the existing compiled
+    oscillator region and `RealtimeGraphRenderer`; no DSP adapter or pitch
+    translation is appropriate. Render the complete checked-in Astral graph at
+    44.1 kHz in 512-sample callbacks for MIDI 60 and MIDI 72. Assert that the
+    expected 261.63 Hz and 523.25 Hz components dominate the 86.13 Hz callback
+    cadence by at least 40 dB, and that autocorrelation favors each note's
+    expected period over 512 samples.
+
+    The regression passes on the current renderer. Actual Cycle V2 device
+    captures likewise measure approximately 169 samples for MIDI 60 and 84-85
+    samples for MIDI 72, rather than 512. Earlier contradictory live evidence
+    came from the generic automation runner's Cycle 1 default, not Cycle V2.
+    Artifacts: `/private/tmp/cycle-v2-astral-live-60.wav` and
+    `/private/tmp/cycle-v2-astral-live-72.wav`.
+
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
 renderer concern. Slice 31 aligns the comparison harness with that ownership.
