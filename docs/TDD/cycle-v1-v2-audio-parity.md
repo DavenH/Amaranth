@@ -1495,6 +1495,25 @@ as the scratch envelope evolves.
     Artifacts: `/private/tmp/cycle-simple-bass-current-converter-stages/` and
     `/private/tmp/cycle-simple-bass-current-converter-full-48000/`.
 
+68. Refresh Sitar's canonical Guide and spectral-stack payload. Complete: the
+    current Cycle 1 document restores engine-distinct values in six Guides and
+    its four magnitude layers plus phase layer. These models continue through
+    the shared mature Guide preparation and spectral-stack implementation; no
+    local approximation is introduced.
+
+    All 14 node identities, cable endpoints, positions, port sides, editor
+    dimensions, probes, and the Global Input/Output boundary are unchanged.
+    Omitted `link.*` fields retain their presentation defaults.
+
+    At frame 32, all captured mesh rasters and spectral composition stages are
+    byte-identical; pitch resampling first differs at `0.000674` normalized
+    residual. The complete 48 kHz MIDI 48 render is zero-lag at `0.99996`
+    correlation, `0.0088` residual, and `0.39 dB` spectral RMSE, with exact
+    repeats in both apps in this run. The fixture remains diagnostic pending a
+    fresh full-pitch admission matrix because Cycle 1 has varied in previous
+    matrices. Artifacts: `/private/tmp/cycle-sitar-current-converter-stages/`
+    and `/private/tmp/cycle-sitar-current-converter-full-48000/`.
+
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
 renderer concern. Slice 31 aligns the comparison harness with that ownership.
