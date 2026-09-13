@@ -636,7 +636,8 @@ void GraphPresentationModel::refreshConfigurations(
                 spec,
                 &graph,
                 step.nodeId,
-                effectiveScratchSourceNodeId(step));
+                effectiveScratchSourceNodeId(step),
+                step.configuration.value.get());
         if (value != nullptr) {
             step.configuration = {
                     step.configuration.revision + 1,

@@ -1348,7 +1348,8 @@ void GraphCompiler::publishConfigurations(
                     spec,
                     &graph,
                     step.nodeId,
-                    effectiveScratchSourceNodeId(step));
+                    effectiveScratchSourceNodeId(step),
+                    found->publisher.current().value.get());
         });
     }
 }

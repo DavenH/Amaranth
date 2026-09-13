@@ -3,6 +3,7 @@
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
 #include "Graph/GraphNodeFactory.h"
+#include "Nodes/Effects/EffectSignalProcessors.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 #include "Runtime/NodeDspConfiguration.h"
 
@@ -79,6 +80,31 @@ TEST_CASE("Published DSP configurations outlive publisher replacement", "[cycle-
 
     REQUIRE_FALSE(oldLifetime.expired());
     REQUIRE(std::static_pointer_cast<const TestConfiguration>(first.value)->value == 11);
+}
+
+TEST_CASE("Reverb factory carries immutable kernels across mix-only publications",
+        "[cycle-v2][runtime][configuration][reverb]") {
+    Node reverb = GraphNodeFactory().createNode(NodeKind::Reverb, "reverb", {});
+    NodeDspConfigurationFactory factory;
+    const auto first = std::dynamic_pointer_cast<const ReverbConfiguration>(
+            factory.create(AudioModuleRole::Reverb, reverb.parameters, reverb.model, {}));
+    REQUIRE(first != nullptr);
+
+    setParameter(reverb, "wet", "0.8");
+    const auto wetEdit = std::dynamic_pointer_cast<const ReverbConfiguration>(
+            factory.create(
+                    AudioModuleRole::Reverb,
+                    reverb.parameters,
+                    reverb.model,
+                    {},
+                    nullptr,
+                    {},
+                    {},
+                    first.get()));
+
+    REQUIRE(wetEdit != nullptr);
+    REQUIRE(wetEdit->kernel == first->kernel);
+    REQUIRE(wetEdit->wetLevel != first->wetLevel);
 }
 
 TEST_CASE("Time Trimesh configuration applies its authored output gain",

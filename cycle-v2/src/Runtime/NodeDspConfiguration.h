@@ -103,7 +103,8 @@ public:
             const AudioExecutionSpec& spec,
             const NodeGraph* graph = nullptr,
             const String& nodeId = {},
-            const String& scratchSourceNodeId = {}) const;
+            const String& scratchSourceNodeId = {},
+            const INodeDspConfiguration* previous = nullptr) const;
     std::shared_ptr<const INodeDspConfiguration> create(
             AudioModuleRole role,
             const std::vector<NodeParameter>& parameters,

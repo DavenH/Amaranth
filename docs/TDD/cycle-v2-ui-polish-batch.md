@@ -14,8 +14,7 @@ semantics or DSP behavior:
   oversampling, while applying the same geometry to Envelope mode hover;
 - render Reverb runtime spectrograms with the runtime result's spectral domain
   profile so their palette cannot alternate with the node's time-domain profile;
-- remove explicit UI snapping from Reverb Size while retaining the mature
-  power-of-two kernel mapping in DSP;
+- expose Reverb Size as the seven effective power-of-two kernel stops;
 - replace the Envelope loop action glyph with a compact, rounded return-arrow
   silhouette;
 - scale the Output meter's visible gain-fader geometry with canvas zoom while
@@ -32,8 +31,8 @@ semantics or DSP behavior:
   `PrecisionSlider` mapping and landmark painter.
 - Reverb spectrogram data remains the authoritative prepared runtime preview;
   the UI changes only the profile used to map that spectral-magnitude result.
-- Reverb Size remains a continuous normalized parameter. Kernel allocation can
-  still quantize to the mature power-of-two sizes below the UI boundary.
+- Reverb Size snaps through the shared DSP mapping so its seven displayed
+  durations are exactly the seven kernel lengths the processor can allocate.
 - Output gain remains a relative-drag semantic edit. Zoom changes presentation
   geometry only and must keep visual and interaction tracks aligned.
 
@@ -70,7 +69,7 @@ resource preparation, or additional analysis are introduced.
 ## Completion Criteria
 
 - Geometry and semantic tests cover segmented endcaps, aligned Voice Context
-  columns, continuous Reverb Size movement, stable Reverb palette selection,
+  columns, discrete Reverb Size movement, stable Reverb palette selection,
   and proportional Output gain visuals.
 - Cycle V2 builds with `--parallel 10`, relevant tests pass, SVG parses, the
   production UI is captured at native size, and `git diff --check` is clean.
@@ -80,7 +79,7 @@ resource preparation, or additional analysis are introduced.
 ## Verification
 
 - Shared segmented geometry, Voice Context layout/commands, Waveshaper
-  publication, continuous Reverb Size, Reverb spectral palette, and zoomed
+  publication, discrete Reverb Size, Reverb spectral palette, and zoomed
   Output meter geometry have focused Catch regressions.
 - `cycle-v2-agent-ui-polish.json` verifies the aligned Voice Context tracks and
   a real nested segmented-option edit through Cycle V2 automation.
@@ -183,3 +182,24 @@ asserts distinct runtime content fingerprints at two successive Wet positions
 under `On Release`. The focused app fixture's production-size captures retain
 the expanded and compact kernel-derived spectrogram presentation at both
 positions.
+
+### Reopened Reverb Size And Update-cost Correction
+
+The continuous Size control was a misleading regression: its display changed
+between the seven power-of-two kernel lengths even though those positions did
+not expose another tail duration. Size now uses the shared
+`EffectParameterMapping` quantizer for pointer and keyboard interaction.
+
+Cycle 1 is authoritative for Reverb update boundaries. Size, Damping, and High
+Pass replace the immutable kernel resource; Wet, Width, and Enabled reuse it.
+Cycle 2 carries the previous published configuration into the configuration
+factory, shares an unchanged kernel by identity, and invalidates prepared
+convolvers only when that identity changes. This keeps a mix-only movement
+O(1) in kernel length and proves reuse without timing-sensitive assertions.
+
+The native baseline for held Wet publications measured mean worker time of
+12.71 ms: 2.57 ms configuration, 0.10 ms preview audio, and 7.47 ms preview
+extraction. Kernel reuse reduced configuration to 0.045 ms and worker time to
+9.99 ms; the truthful spectrogram extraction remained 7.49 ms. Canvas paint
+and asynchronous publication delay are measured separately and must not be
+misattributed to Reverb impulse construction.

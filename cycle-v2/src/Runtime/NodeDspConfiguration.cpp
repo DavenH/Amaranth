@@ -199,7 +199,8 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         const AudioExecutionSpec&,
         const NodeGraph* graph,
         const String& nodeId,
-        const String& scratchSourceNodeId) const {
+        const String& scratchSourceNodeId,
+        const INodeDspConfiguration* previous) const {
     if (role == AudioModuleRole::MeshSource) {
         return std::shared_ptr<const INodeDspConfiguration>(
                 buildTrimeshConfiguration(
@@ -214,6 +215,13 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
                 parameters,
                 model,
                 IrSignalProcessor::directResource(graph, nodeId));
+    }
+    if (role == AudioModuleRole::Reverb) {
+        const auto* previousReverb = previous != nullptr
+                        && previous->role() == AudioModuleRole::Reverb
+                ? static_cast<const ReverbConfiguration*>(previous)
+                : nullptr;
+        return ReverbSignalProcessor::buildConfiguration(parameters, previousReverb);
     }
 
     using Factory = std::shared_ptr<const INodeDspConfiguration> (*)(
@@ -270,10 +278,6 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         { AudioModuleRole::Waveshaper, [](AudioModuleRole, const auto& values, const auto& modelState) {
             return std::shared_ptr<const INodeDspConfiguration>(
                     WaveshaperSignalProcessor::buildConfiguration(values, modelState));
-        } },
-        { AudioModuleRole::Reverb, [](AudioModuleRole, const auto& values, const auto&) {
-            return std::shared_ptr<const INodeDspConfiguration>(
-                    ReverbSignalProcessor::buildConfiguration(values));
         } },
         { AudioModuleRole::Delay, [](AudioModuleRole, const auto& values, const auto&) {
             auto configuration = std::make_shared<DelayConfiguration>();

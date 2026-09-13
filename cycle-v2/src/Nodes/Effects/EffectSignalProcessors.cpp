@@ -15,6 +15,18 @@
 
 namespace CycleV2 {
 
+namespace {
+
+bool reverbKernelParametersEqual(
+        const CycleDsp::ReverbKernelConfiguration& first,
+        const CycleDsp::ReverbKernelConfiguration& second) {
+    return first.roomSize == second.roomSize
+            && first.damping == second.damping
+            && first.highPass == second.highPass;
+}
+
+}
+
 std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
         const std::vector<NodeParameter>& parameters,
         const NodeModelStatePtr& model,
@@ -164,28 +176,41 @@ void IrSignalProcessor::prepareConvolver(
 }
 
 std::shared_ptr<const ReverbConfiguration> ReverbSignalProcessor::buildConfiguration(
-        const std::vector<NodeParameter>& parameters) {
+        const std::vector<NodeParameter>& parameters,
+        const ReverbConfiguration* previous) {
     auto result = std::make_shared<ReverbConfiguration>();
     const NodeParameterMap parameterMap(parameters);
     result->enabled = parameterMap.boolValue("enabled", true);
-    const float roomSize = jlimit(0.f, 1.f, parameterMap.floatValue("size", 0.5f));
-    const float damping = CycleDsp::reverbDamping(parameterMap.floatValue("damp", 0.2f));
-    const float highPass = jlimit(0.f, 1.f, parameterMap.floatValue("highPass", 0.05f));
-    const size_t kernelLength = CycleDsp::reverbKernelLength(roomSize);
-
-    result->kernels[0].assign(kernelLength, 0.f);
-    result->kernels[1].assign(kernelLength, 0.f);
     result->width = jlimit(0.f, 1.f, parameterMap.floatValue("width", 1.f));
     result->wetLevel = CycleDsp::reverbWetLevel(parameterMap.floatValue("wet", 0.4f));
 
     CycleDsp::ReverbKernelConfiguration kernelConfiguration;
-    kernelConfiguration.roomSize = roomSize;
-    kernelConfiguration.damping = damping;
-    kernelConfiguration.highPass = highPass;
+    kernelConfiguration.roomSize = CycleDsp::reverbSizeSnappedUnitValue(
+            parameterMap.floatValue("size", 0.5f));
+    kernelConfiguration.damping = CycleDsp::reverbDamping(
+            parameterMap.floatValue("damp", 0.2f));
+    kernelConfiguration.highPass = jlimit(
+            0.f,
+            1.f,
+            parameterMap.floatValue("highPass", 0.05f));
+    if (previous != nullptr && previous->kernel != nullptr
+            && reverbKernelParametersEqual(
+                    previous->kernel->parameters,
+                    kernelConfiguration)) {
+        result->kernel = previous->kernel;
+        return result;
+    }
+
+    auto kernel = std::make_shared<ReverbKernelData>();
+    kernel->parameters = kernelConfiguration;
+    const size_t kernelLength = CycleDsp::reverbKernelLength(kernelConfiguration.roomSize);
+    kernel->channels[0].assign(kernelLength, 0.f);
+    kernel->channels[1].assign(kernelLength, 0.f);
     CycleDsp::buildReverbKernel(
             kernelConfiguration,
-            { result->kernels[0].data(), (int) result->kernels[0].size() },
-            { result->kernels[1].data(), (int) result->kernels[1].size() });
+            { kernel->channels[0].data(), (int) kernel->channels[0].size() },
+            { kernel->channels[1].data(), (int) kernel->channels[1].size() });
+    result->kernel = std::move(kernel);
     return result;
 }
 
@@ -209,10 +234,14 @@ void ReverbSignalProcessor::adoptConfiguration(const PublishedNodeConfiguration&
         return;
     }
 
-    configuration = std::static_pointer_cast<const ReverbConfiguration>(published.value);
+    const auto next = std::static_pointer_cast<const ReverbConfiguration>(published.value);
+    const bool kernelChanged = configuration == nullptr || configuration->kernel != next->kernel;
+    configuration = next;
     wetLevel = configuration->wetLevel;
-    for (auto& channelConvolvers : convolvers) {
-        channelConvolvers.invalidate();
+    if (kernelChanged) {
+        for (auto& channelConvolvers : convolvers) {
+            channelConvolvers.invalidate();
+        }
     }
     adoptedRevision = published.revision;
 }
@@ -259,7 +288,8 @@ void ReverbSignalProcessor::processBuffer(
         const SignalProcessPosition& position) {
     const size_t channel = std::min<size_t>(position.channel, 1);
     auto& channelConvolvers = convolvers[channel];
-    if (buffer.empty() || configuration == nullptr || configuration->kernels[channel].empty()
+    if (buffer.empty() || configuration == nullptr || configuration->kernel == nullptr
+            || configuration->kernel->channels[channel].empty()
             || channelConvolvers.active() == nullptr) {
         return;
     }
@@ -319,8 +349,8 @@ void ReverbSignalProcessor::prepareConvolver(
             headSize,
             16 * headSize,
             Buffer<float>(
-                    const_cast<float*>(configuration->kernels[channel].data()),
-                    (int) configuration->kernels[channel].size()));
+                    const_cast<float*>(configuration->kernel->channels[channel].data()),
+                    (int) configuration->kernel->channels[channel].size()));
     dryBuffers[channel].resize(frameCount);
     mixBuffers[channel].resize(frameCount);
     convolvers[channel].prepareScratch(frameCount);

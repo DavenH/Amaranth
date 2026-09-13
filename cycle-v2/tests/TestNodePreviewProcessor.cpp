@@ -603,6 +603,39 @@ TEST_CASE("Reverb preview spectrogram analyzes the generated kernel",
     REQUIRE(*std::max_element(context.primary.begin(), context.primary.end()) > 0.f);
 }
 
+TEST_CASE("Reverb configuration reuses immutable kernels for mix-only edits",
+        "[cycle-v2][runtime][effects][reverb][configuration]") {
+    std::vector<NodeParameter> parameters {
+            { "enabled", "Enabled", "1" },
+            { "size", "Size", "0.5" },
+            { "damp", "Damp", "0.2" },
+            { "width", "Width", "1" },
+            { "wet", "Wet", "0.4" },
+            { "highPass", "High Pass", "0.05" }
+    };
+    const auto setParameter = [&](const String& id, const String& value) {
+        const auto match = std::find_if(parameters.begin(), parameters.end(), [&](const auto& p) {
+            return p.id == id;
+        });
+        REQUIRE(match != parameters.end());
+        match->value = value;
+    };
+    const auto initial = ReverbSignalProcessor::buildConfiguration(parameters);
+    REQUIRE(initial->kernel != nullptr);
+
+    setParameter("wet", "0.8");
+    const auto wetEdit = ReverbSignalProcessor::buildConfiguration(parameters, initial.get());
+    REQUIRE(wetEdit->kernel == initial->kernel);
+
+    setParameter("width", "0.25");
+    const auto widthEdit = ReverbSignalProcessor::buildConfiguration(parameters, wetEdit.get());
+    REQUIRE(widthEdit->kernel == initial->kernel);
+
+    setParameter("damp", "0.7");
+    const auto dampingEdit = ReverbSignalProcessor::buildConfiguration(parameters, widthEdit.get());
+    REQUIRE(dampingEdit->kernel != initial->kernel);
+}
+
 TEST_CASE("Reverb spectrogram preserves wet high-pass and size semantics",
         "[cycle-v2][runtime][effects][reverb][preview]") {
     auto render = [](float size, float damp, float highPass, float wet) {
