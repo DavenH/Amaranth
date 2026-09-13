@@ -163,7 +163,7 @@ translation. The first broad candidates are:
 
 | Preset | Deterministic coverage | Current admission result |
 | --- | --- | --- |
-| saw | One static time mesh; no envelopes, effects, unison, or guide noise | Regenerated exactly. At MIDI 36–72 it reaches `0.98850–0.99844` correlation after the MIDI reference fix. It exposes remaining gain, onset, resampling, and Cycle 1 startup-repeatability gaps. |
+| saw | One static time mesh; no envelopes, effects, unison, or guide noise | Verified. Restoring its missing Voice Output cable, inverse-velocity mapping, canonical mesh, and Output gain makes MIDI 36–72 deterministic and zero-lag above `0.9999999999` correlation. |
 | filter-saw | One time layer and one subtractive magnitude layer; no phase, effects, unison, or guide noise | Regenerated exactly and byte-repeatable in both engines. After restoring cycle-clocked scratch, frame ownership, shared log regions, and the final active harmonic, MIDI 36–72 is zero-lag with correlation of at least `0.9999999919`. |
 | fallout | One time layer, one subtractive magnitude layer, one additive phase layer, and output gain; no envelopes, effects, unison, or guide noise | Diagnostic. Its captured time, magnitude, and phase raster/operand boundaries are byte-identical at MIDI 48/frame 32, and MIDI 36–72 remains zero-lag with `0.99974–1.00000` correlation. A fresh Cycle 1 MIDI 48 repeat selected a different floating-point payload. |
 | shiny | One time layer, two multiplicative magnitude layers, one additive phase layer, and output gain; no envelopes, effects, unison, or guide noise | Regenerated exactly from a direct canonical export. At MIDI 48/frame 32 it is byte-identical from the time frame through reconstructed spectral output. MIDI 36–72 is deterministic, zero-lag, and reaches `0.999999776–0.999999876` correlation. |
@@ -1513,6 +1513,26 @@ as the scratch envelope evolves.
     fresh full-pitch admission matrix because Cycle 1 has varied in previous
     matrices. Artifacts: `/private/tmp/cycle-sitar-current-converter-stages/`
     and `/private/tmp/cycle-sitar-current-converter-full-48000/`.
+
+69. Repair Saw's voice/global boundary and admit the minimal fixture. Complete:
+    the merged graph retained the time mesh and Voice Output nodes but lost the
+    cable between them. Its voice-local graph therefore generated no signal for
+    the disjoint global graph. The stale preset also used direct velocity and a
+    neutral Output control instead of Cycle 1's inverse velocity and authored
+    `0.534351145` value. Regeneration from the hash-matched current document
+    restores those authoritative semantics and the full-precision time mesh.
+
+    Existing node identities and positions, port sides, editor dimensions,
+    probes, and the Global Input → Output cable are preserved. The only topology
+    addition is the required `timeLayer1.out → voiceOutput.time` boundary cable;
+    no global node is connected back into the voice-local graph.
+
+    The complete 48 kHz MIDI 36, 48, 60, and 72 matrix passes every audio and
+    repeatability check in both apps. Every pitch is zero-lag above
+    `0.9999999999` correlation; residual ranges from `0.00000167` to
+    `0.0000132`, and spectral RMSE remains below `0.000100 dB`. Saw is now a
+    verified minimal time-mesh fixture. Artifact:
+    `/private/tmp/cycle-saw-current-converter-full-48000/`.
 
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
