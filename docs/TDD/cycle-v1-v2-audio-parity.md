@@ -1653,12 +1653,7 @@ as the scratch envelope evolves.
     `/private/tmp/cycle-icycle-shared-saturation-full/`.
 
 74. Guard Astral's realtime pitch against host-block cadence.
-    Complete as a regression and graph-publication boundary; the reported
-    audible failure remains open in `audio-bugs.md`. The authoritative DSP path
-    remains the existing compiled
-    oscillator region and `RealtimeGraphRenderer`; direct 44.1 kHz renders in
-    512-sample callbacks correctly distinguish MIDI 60 and MIDI 72. The live
-    investigation exposed a separate failure above that boundary:
+    Complete. The investigation exposed two independent failures. First,
     `NodeWorkspace::loadGraphFromFile()` changed the canvas document but
     deferred audio-plan publication to its 30 Hz timer. The earlier one-shot UI
     captures therefore exercised the startup graph, not Astral, and were
@@ -1672,11 +1667,23 @@ as the scratch envelope evolves.
     timer cannot run. It asserts that the adopted plan has Astral's 17
     executable nodes and one oscillator region. The captured MIDI-60
     fundamental exceeds the 86.13 Hz callback component by 48.3 dB, and the
-    same corrected path distinguishes MIDI 72. This does not reproduce the
-    reported fixed-F2 session, so no oscillator or MIDI compensation has been
-    introduced. Artifacts:
+    same corrected path distinguishes MIDI 72.
+
+    The remaining audible reproduction used the Astral graph from the
+    Amaranth2 sister worktree rather than this branch's canonical Astral. That
+    graph, canonical Dirty Guitar 2, and Time contain Add operations with one
+    input intentionally unconnected. The ordinary block processor treats the
+    missing Add input as zero, but both prepared oscillator recipes previously
+    required two inputs. Their silent preparation failure exposed the ordinary
+    IFFT processor at host-block cadence, producing a comb at 44.1 kHz / 512 =
+    86.13 Hz. Prepared spectral and chained Add operations now preserve either
+    lone operand. The exact sister Astral MIDI-72 capture moves from 10.5 dB
+    below the callback component to 31.7 dB above it. Generic identity tests
+    and Dirty Guitar 2/Time factory tests guard the prepared path. Artifacts:
     `/private/tmp/cycle-v2-astral-live-publication.wav` and
-    `/private/tmp/cycle-v2-astral-live-publication-report.json`.
+    `/private/tmp/cycle-v2-astral-live-publication-report.json`, plus
+    `/private/tmp/cycle-v2-amaranth2-astral-note72.wav` and
+    `/private/tmp/cycle-v2-amaranth2-astral-fixed-note72.wav`.
 
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct

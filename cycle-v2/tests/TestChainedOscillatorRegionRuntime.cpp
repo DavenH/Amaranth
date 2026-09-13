@@ -5,6 +5,7 @@
 #include <Audio/CycleDsp/SpectralStageCapture.h>
 #include <Util/LogRegionMapping.h>
 
+#include "Runtime/ChainedOscillatorRecipeRenderer.h"
 #include "Runtime/ChainedOscillatorRegionRuntime.h"
 #include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/PreparedOscillatorRegion.h"
@@ -249,6 +250,107 @@ PartitionedRender renderPreparedGraph(
     }
     result.frameRenderCount = executor.oscillatorFrameRenderCount(0);
     return result;
+}
+
+TEST_CASE("Prepared spectral Add preserves a lone connected operand",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][add][regression]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    NodeGraph referenceGraph = loadOscillatorPresetGraph("astral");
+    NodeGraph graph = referenceGraph;
+    GraphNodeFactory factory;
+    graph.addNode(factory.createNode(NodeKind::Add, "singleInputAdd", {}));
+    graph.removeEdgesToInput("magnitudeOp2", "left");
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "magnitudeLayer1", "out", false },
+            { "singleInputAdd", "right", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "singleInputAdd", "out", false },
+            { "magnitudeOp2", "left", true }).succeeded());
+
+    const auto reference = GraphCompiler().compile(referenceGraph);
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(reference.succeeded());
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.oscillatorRegions.size() == 1);
+    REQUIRE(SpectralOscillatorFrameRenderer::supports(
+            compiled.plan,
+            compiled.plan.oscillatorRegions.front()));
+
+    constexpr float voiceDurationSeconds = 0.633587786f;
+    const PartitionedRender expected = renderPreparedGraph(
+            reference.plan, 512, 4096, -1, 72, voiceDurationSeconds);
+    const PartitionedRender actual = renderPreparedGraph(
+            compiled.plan, 512, 4096, -1, 72, voiceDurationSeconds);
+    REQUIRE(actual.frameRenderCount > 0);
+    REQUIRE(maximumDifference(actual.left, expected.left) == 0.f);
+    REQUIRE(maximumDifference(actual.right, expected.right) == 0.f);
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
+}
+
+TEST_CASE("Prepared chained Add preserves a lone connected operand",
+        "[cycle-v2][runtime][oscillator-region][chained][add][regression]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    NodeGraph referenceGraph = loadOscillatorPresetGraph("saw");
+    NodeGraph graph = referenceGraph;
+    GraphNodeFactory factory;
+    graph.addNode(factory.createNode(NodeKind::Add, "singleInputAdd", {}));
+    graph.removeEdgesToInput("voiceOutput", "time");
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "timeLayer1", "out", false },
+            { "singleInputAdd", "right", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "singleInputAdd", "out", false },
+            { "voiceOutput", "time", true }).succeeded());
+
+    const auto reference = GraphCompiler().compile(referenceGraph);
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(reference.succeeded());
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.oscillatorRegions.size() == 1);
+    REQUIRE(ChainedOscillatorRecipeRenderer::supports(
+            compiled.plan,
+            compiled.plan.oscillatorRegions.front()));
+
+    constexpr float voiceDurationSeconds = 1.2669865f;
+    const PartitionedRender expected = renderPreparedGraph(
+            reference.plan, 512, 4096, -1, 72, voiceDurationSeconds);
+    const PartitionedRender actual = renderPreparedGraph(
+            compiled.plan, 512, 4096, -1, 72, voiceDurationSeconds);
+    REQUIRE(maximumDifference(actual.left, expected.left) == 0.f);
+    REQUIRE(maximumDifference(actual.right, expected.right) == 0.f);
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
+}
+
+TEST_CASE("Factory spectral graphs with one-sided Add use prepared oscillators",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][add][preset]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    for (const String& presetName : { String("dirty-guitar-2"), String("time") }) {
+        DYNAMIC_SECTION(presetName) {
+            const auto compiled = GraphCompiler().compile(
+                    loadOscillatorPresetGraph(presetName));
+            REQUIRE(compiled.succeeded());
+            REQUIRE_FALSE(compiled.plan.oscillatorRegions.empty());
+            REQUIRE(std::all_of(
+                    compiled.plan.oscillatorRegions.begin(),
+                    compiled.plan.oscillatorRegions.end(),
+                    [&](const OscillatorRegionPlan& region) {
+                        return supportsPreparedOscillatorRegion(
+                                compiled.plan,
+                                region);
+                    }));
+        }
+    }
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
 }
 
 TEST_CASE("Prepared Organ 2 does not use its pitch envelope as Time scratch",

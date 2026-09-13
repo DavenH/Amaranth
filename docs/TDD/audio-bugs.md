@@ -11,34 +11,45 @@ The failure repeats in isolation and is unrelated to Astral graph publication.
 Reconcile the stale structural assertion with the fixture's current audible
 parity contract. Status: open 2026-09-12.
 
-## Open: manually played Astral reported at a fixed F2 pitch
+## Resolved: one-sided Add bypassed prepared pitch reconstruction
 
 Astral was reported to sound heavily distorted and remain near F2 for every
-keyboard note in the standalone Cycle V2 app. F2 is suspiciously close to the
-44.1 kHz / 512-sample callback cadence (86.13 Hz), but Astral's prepared
-oscillator region does not reproduce it in direct or corrected device-callback
-captures.
+keyboard note in the standalone Cycle V2 app. Dirty Guitar 2 exhibited the
+same behavior. F2 is suspiciously close to the 44.1 kHz / 512-sample callback
+cadence (86.13 Hz).
 
 The investigation did find that successful graph loads updated the canvas
 synchronously while `NodeWorkspace` deferred publication of the new audio plan
 to a 30 Hz timer. Earlier one-shot UI captures therefore rendered the startup
 plan while reporting Astral's canvas state.
 
-Graph loads now prepare and publish their audio plan immediately. The timer
-still republishes later semantic edits and device-preparation changes. The
-focused `cycle-v2-agent-astral-live-publication.json` fixture deliberately
-opens Astral, starts a note, and captures the device callback without yielding
-to the message timer. It proves that the adopted plan has Astral's 17
-executable nodes and one oscillator region; MIDI 60 exceeds the 86.13 Hz
-callback component by 48.3 dB, and a separate corrected capture distinguishes
-MIDI 72. The startup graph also tracks pitch in a settled device capture, so
-the stale-plan defect is not by itself a demonstrated explanation for the
-reported fixed-F2 sound. No MIDI offset or oscillator workaround is justified
-until that remaining state is reproduced.
+Graph loads now prepare and publish their audio plan immediately. The remaining
+reproduction depended on the exact preset payload: the Astral graph in the
+Amaranth2 sister worktree and the canonical Dirty Guitar 2 graph both contain
+an Add node with only its right input connected. The ordinary
+`BinarySignalProcessor` correctly treats the absent input as zero, but the
+prepared oscillator recipes rejected the graph. Preparation failure was not
+surfaced, so realtime execution fell back to the ordinary IFFT processor and
+emitted raw host blocks. The resulting spectrum was a comb spaced at 86.13 Hz.
 
-Artifacts: `/private/tmp/cycle-v2-astral-live-publication.wav` and
-`/private/tmp/cycle-v2-astral-live-publication-report.json`. Status: graph-load
-publication defect resolved; fixed-F2 report remains open 2026-09-12.
+Both spectral-frame and chained-cycle recipes now preserve a lone Add operand,
+matching the authoritative blockwise Add semantics. The focused regression
+inserts the same right-only Add into otherwise supported spectral and chained
+graphs and proves that the output is unchanged. Factory regressions cover the
+existing Dirty Guitar 2 and Time graphs. In a live 44.1 kHz/512-sample capture
+of the exact sister-worktree Astral file, MIDI 72 moved from 10.5 dB below the
+callback-frequency component to 31.7 dB above it.
+
+The renderer still needs an explicit contract for any future oscillator region
+that compiles but cannot be prepared. Today that failure is silent and permits
+the ordinary blockwise processors to run, which can turn another unsupported
+recipe into callback-period audio. Publication should reject the plan or
+replace that region with a surfaced error/silence path rather than silently
+changing its execution model. Status: open architecture follow-up 2026-09-13.
+
+Artifacts: `/private/tmp/cycle-v2-amaranth2-astral-note72.wav` and
+`/private/tmp/cycle-v2-amaranth2-astral-fixed-note72.wav`. Status: resolved
+2026-09-13.
 
 ## Open: spectral reference amplitude assertions no longer match output scaling
 
