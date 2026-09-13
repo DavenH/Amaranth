@@ -340,6 +340,27 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertNotEqual(node["parameters"]["octave"], 7)
         self.assertEqual(reconciled["probes"], existing["probes"])
 
+    def test_presentation_reconciliation_maps_legacy_envelope_ids(self):
+        converted = port_cycle_v1_preset.convert(convertible_source())
+        converted_nodes = {node["id"]: node for node in converted["nodes"]}
+        canonical_envelope = converted_nodes["volumeEnvelope1"]
+        existing = copy.deepcopy(converted)
+        existing_envelope = next(
+            node for node in existing["nodes"]
+            if node["id"] == "volumeEnvelope1")
+        existing_envelope["id"] = "volumeEnvelope"
+        existing_envelope["position"] = {"x": 2050.0, "y": 180.0}
+        existing_envelope["parameters"]["purpose"] = "pitch"
+
+        reconciled = port_cycle_v1_preset.preserve_presentation(
+            converted, existing)
+        nodes = {node["id"]: node for node in reconciled["nodes"]}
+        envelope = nodes["volumeEnvelope1"]
+
+        self.assertEqual(envelope["position"], {"x": 2050.0, "y": 180.0})
+        self.assertEqual(
+            envelope["parameters"], canonical_envelope["parameters"])
+
     def test_converter_preserves_legacy_inverse_velocity_blue_source(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
         morph = next(node for node in converted["nodes"] if node["id"] == "morph")

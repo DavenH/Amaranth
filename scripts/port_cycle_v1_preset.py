@@ -66,6 +66,12 @@ DEFAULT_MODULATION_MAPPINGS = [
     {"in": 2, "out": 500, "dim": 2},
 ]
 
+LEGACY_PRESENTATION_NODE_IDS = {
+    "pitchEnvelope1": "pitchEnvelope",
+    "scratchEnvelope1": "scratchEnvelope",
+    "volumeEnvelope1": "volumeEnvelope",
+}
+
 LAYOUT_MARGIN = 100.0
 LAYOUT_GAP = 80.0
 LAYOUT_CELL_WIDTH = 366.0
@@ -1121,6 +1127,9 @@ def preserve_presentation(converted, existing):
     existing_nodes = {node["id"]: node for node in existing.get("nodes", [])}
     for node in converted.get("nodes", []):
         previous = existing_nodes.get(node["id"])
+        if previous is None:
+            legacy_id = LEGACY_PRESENTATION_NODE_IDS.get(node["id"])
+            previous = existing_nodes.get(legacy_id)
         if previous is None:
             continue
         for property_name in ("position", "portSides", "editorWidth", "editorHeight"):

@@ -169,7 +169,7 @@ translation. The first broad candidates are:
 | shiny | One time layer, two multiplicative magnitude layers, one additive phase layer, and output gain; no envelopes, effects, unison, or guide noise | Regenerated exactly from a direct canonical export. At MIDI 48/frame 32 it is byte-identical from the time frame through reconstructed spectral output. MIDI 36–72 is deterministic, zero-lag, and reaches `0.999999776–0.999999876` correlation. |
 | simple-bass | Time layer, one multiplicative magnitude layer, and a volume envelope; no active phase, scratch, effects, unison, or guide noise | Diagnostic. Shared document declick and the legacy split-rate volume-envelope clock are restored, and complete 75/200/400 ms notes at 48 kHz have zero lag and at least `0.99999999991` correlation. A fresh Cycle 1 MIDI 48 repeat selected a different floating-point payload. |
 | power | Time layer plus volume envelope | Regenerated exactly but rejected as an audio oracle: Cycle 1 renders silence because the active time layer has no authored waveform geometry. |
-| Subbass | Time, magnitude, phase, volume/scratch envelopes | Port manifest was strict, but current notes 48–72 fail its old output thresholds; diagnostic only. |
+| Subbass | Time mesh and volume Envelope; empty spectral/scratch layers are simplified away | Verified. The canonical octave, control interval, Envelope ownership, morph defaults, and Output value make MIDI 36–72 deterministic and zero-lag above `0.9999999998` correlation. |
 | guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Per-channel waveshaper and IR state now match Cycle 1 ownership. MIDI 36–72 meets the diagnostic audio thresholds; EQ and delay add no material gap. MIDI 36 still fails Cycle 1's raw repeat gate, so the fixture is not admitted. |
 | japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase. One corrected render repeated exactly, but a later run did not repeat in Cycle 1. Its large evolving mismatch remains diagnostic until that intermittent startup state is isolated. |
 | Icycle | Broad synthesis/effects plus six-voice Unison | Diagnostic. Regenerated from a direct canonical export while retaining node layout, port presentation, and three authored probes. Its reverb is disabled; the corrected IR size is `0.26`. Prepared per-lane pitch playback and Cycle 1's render-boundary frame latch bring the full MIDI 36–72 matrix to `0.98425–0.99997` correlation. Cycle 1's IR-enabled output intermittently selects one of two floating-point payloads across fresh processes, so the exact repeat prerequisite is not yet met. |
@@ -1533,6 +1533,31 @@ as the scratch envelope evolves.
     `0.0000132`, and spectral RMSE remains below `0.000100 dB`. Saw is now a
     verified minimal time-mesh fixture. Artifact:
     `/private/tmp/cycle-saw-current-converter-full-48000/`.
+
+70. Replace the stale handcrafted Subbass parity graph with the current
+    canonical translation. Complete: the old diagnostic retained an octave of
+    `-2`, control interval `16`, voice length `0.375`, noncanonical morph
+    constants, a neutral Output, and a pre-migration `volumeEnvelope` model.
+    The hash-matched Cycle 1 export instead requires octave `-1`, interval `64`,
+    voice length `0.215392441`, the canonical Envelope model plus the explicit
+    zero-valued legacy morph, and Output `0.496183206`.
+
+    This is a representation migration, not a new synthesis implementation.
+    Existing node presentation remains authoritative: the compatibility
+    boundary maps the legacy singular Envelope IDs to their canonical first
+    indexed IDs for position, port-side, and editor-size transfer only. It
+    never carries parameters or models across that boundary, and focused
+    coverage guards the negative semantic boundary. The old Envelope's
+    `2050,180` position is retained; the new legacy-morph node is collision-free.
+    Existing Voice Output and Global Input → Output routing is unchanged.
+
+    Frame 32 is byte-identical at every captured oscillator stage. The complete
+    requested MIDI 36, 48, 60, and 72 matrix at 48 kHz passes every audio and
+    repeatability check in both apps. Correlation remains above
+    `0.9999999998`, residual ranges from `0.00000206` to `0.0000145`, and
+    spectral RMSE remains below `0.0000584 dB`. Subbass is now verified.
+    Artifacts: `/private/tmp/cycle-subbass-current-converter-stages/` and
+    `/private/tmp/cycle-subbass-current-converter-full-48000/`.
 
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
