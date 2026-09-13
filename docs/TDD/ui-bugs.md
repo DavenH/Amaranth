@@ -291,3 +291,20 @@ Context:
 
 Current status: open harness constraint; serialize native app fixtures on macOS
 unless the audio/MIDI device layer is explicitly disabled for automation.
+
+## P2: Loading Cello emits runaway Intercept dangling-deletion assertions
+
+Context:
+
+- A focused Cycle 1 automation run opening `Cello.cyc` reached
+  `Document::open returned`, then emitted repeated `*** Dangling pointer
+  deletion! Class: Intercept` and `juce_LeakedObjectDetector.h:80` assertions.
+- The assertion stream prevented the agent report from completing within 20
+  seconds and grew to hundreds of megabytes before the launched process was
+  stopped.
+- Repro artifacts are `/private/tmp/cycle-agent-cello-red-guide-logs.txt` and
+  `/private/tmp/cycle-agent-cello-red-guide-logs.txt.raw`.
+
+Current status: open; inspect rasterizer snapshot/intercept ownership while
+replacing a loaded mesh. This is separate from the repaired Visual DSP
+render-only primary-axis selection.

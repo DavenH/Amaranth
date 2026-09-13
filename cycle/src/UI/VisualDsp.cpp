@@ -605,7 +605,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
         if (isFilterEnabled) {
             int fftIdx = jmin(zoomProgress.size() - 1, colIdx * fftProcInc);
 
-            spectRasterizer->getMorphPosition()[primeDim] = zoomProgress[fftIdx];
+            spectRasterizer->getMorphPosition()[primeDim].setValueDirect(zoomProgress[fftIdx]);
 
             for (int i = 0; i < magnGroup.size(); ++i) {
                 Buffer<float> localBuffer(freqBuffer + i * numHarmonics, numHarmonics);
@@ -675,7 +675,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
         if (isPhaseEnabled) {
             int fftIdx = jmin(zoomProgress.size() - 1, colIdx * fftProcInc);
 
-            phaseRasterizer->getMorphPosition()[primeDim] = zoomProgress[fftIdx];
+            phaseRasterizer->getMorphPosition()[primeDim].setValueDirect(zoomProgress[fftIdx]);
             workBuffer.zero();
 
             for (int i = 0; i < phaseGroup.size(); ++i) {

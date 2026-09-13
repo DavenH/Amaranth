@@ -1,0 +1,31 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "Blinding",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "exportPreset",
+      "path": "/private/tmp/cycle-agent-blinding-preset.json"
+    },
+    {
+      "command": "captureAudio",
+      "path": "/private/tmp/cycle-agent-blinding-unison.wav",
+      "durationMs": 1400,
+      "sampleRate": 44100,
+      "blockSize": 512,
+      "channels": 2,
+      "events": [
+        { "type": "noteOn", "timeMs": 0, "note": 60, "velocity": 0.8 },
+        { "type": "noteOff", "timeMs": 1000, "note": 60 }
+      ],
+      "peakGreaterThan": 0.0001,
+      "rmsGreaterThan": 0.00001,
+      "leftRightDifferenceRmsGreaterThan": 0.01,
+      "peakLessThan": 1.5
+    }
+  ],
+  "quit": true
+}
