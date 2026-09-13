@@ -1327,6 +1327,29 @@ as the scratch envelope evolves.
     `/private/tmp/cycle-organ-2-canonical-precision-full-48000/`, and
     `/private/tmp/cycle-organ-2-canonical-precision-full-44100/`.
 
+60. Restore canonical Icycle model precision while preserving the authored
+    canvas and global graph. Complete: a fresh converter reconciliation against
+    the current Cycle 1 document found shortened decimals in Icycle's meshes,
+    two Guide curves, Envelopes, and Impulse Response. The converter remains the
+    translation authority; no rasterizer, Envelope, effect, or spy behavior is
+    copied or changed.
+
+    The refresh preserves all 27 node identities, every cable endpoint, all
+    node positions and port sides, editor dimensions, and the three authored
+    probes. The Impulse Response remains global and the existing Global Input
+    through IR, Delay, and Output chain is unchanged. Explicit spectral modes
+    replace equivalent `auto` inference, while omitted `link.*` properties keep
+    their default-true presentation behavior.
+
+    The frame-64 dry diagnostic is byte-identical at every captured oscillator
+    stage and remains zero-lag at `0.99996` correlation, `0.0087` residual, and
+    `0.15 dB` spectral RMSE. With the full effect graph at 48 kHz it reaches
+    `0.99996`, `0.0084`, and `0.15 dB`; Cycle V2 repeats exactly while the
+    already documented Cycle 1 process-start variation remains. This is a
+    source-fidelity correction rather than a new runtime feature. Artifacts:
+    `/private/tmp/cycle-icycle-canonical-precision-stages/` and
+    `/private/tmp/cycle-icycle-canonical-precision-full-48000/`.
+
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
 renderer concern. Slice 31 aligns the comparison harness with that ownership.
