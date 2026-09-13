@@ -14,7 +14,7 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr float kCableAnnotationBaseDiameter = 28.8f;
+constexpr float kCableAnnotationBaseDiameter = 23.04f;
 
 void paintProbeOrdinal(Graphics& graphics, Rectangle<float> previewBounds, int ordinal) {
     graphics.setColour(CanvasChromePalette::text.withAlpha(0.86f));

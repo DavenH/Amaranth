@@ -15,7 +15,7 @@ TEST_CASE("Signal probe cable annotations scale with canvas zoom",
         "[cycle-v2][ui][signal-probe][zoom]") {
     const float reference = SignalProbeRail::cableAnnotationDiameter(0.58f);
 
-    REQUIRE(reference == Catch::Approx(20.16f));
+    REQUIRE(reference == Catch::Approx(16.128f));
     REQUIRE(SignalProbeRail::cableAnnotationDiameter(1.16f)
             == Catch::Approx(reference * 2.f));
     REQUIRE(SignalProbeRail::cableAnnotationDiameter(0.29f)
