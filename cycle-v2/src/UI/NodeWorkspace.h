@@ -19,6 +19,11 @@ public:
 
     bool saveGraphToFile(const File& file);
     bool loadGraphFromFile(const File& file);
+    bool isGraphDirty() const { return canvas.isGraphDirty(); }
+    const File& graphFile() const { return canvas.graphFile(); }
+    void setGraphDocumentStateChangedCallback(std::function<void()> callback) {
+        canvas.setGraphDocumentStateChangedCallback(std::move(callback));
+    }
     var exportAutomationState() const;
     String exportGraphJson() const;
     NodeCanvas& getCanvas() { return canvas; }

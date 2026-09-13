@@ -6,6 +6,7 @@
 #include "UI/EffectEnableButton.h"
 #include "UI/Editors/ProcessingScopeSelector.h"
 #include "UI/Editors/PropertyControls.h"
+#include "UI/Editors/PropertySegmentedSelector.h"
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
@@ -18,18 +19,15 @@ namespace {
 
 constexpr float kControlRailWidth = 336.f;
 constexpr float kPanelPreferredSize = 384.f;
-constexpr int kOversamplingWidth = 72;
-constexpr int kScopeWidth = 160;
-constexpr int kScopeHeight = 28;
+constexpr int kSelectorWidth = 176;
 
 Rectangle<int> controlGroupBounds(Rectangle<float> controlArea) {
     Rectangle<int> available = controlArea.toNearestInt().reduced(12, 12);
-    const int groupHeight = 3 * PropertyControlMetrics::groupLabelHeight
+    const int groupHeight = 2 * PropertyControlMetrics::groupLabelHeight
             + 2 * PropertyControlMetrics::compactRowHeight
+            + 2 * PropertyControlMetrics::rowHeight
             + 2 * PropertyControlMetrics::rowGap
-            + 2 * PropertyControlMetrics::sectionGap
-            + kScopeHeight
-            + PropertyControlMetrics::rowHeight;
+            + PropertyControlMetrics::sectionGap;
     return available.withSizeKeepingCentre(available.getWidth(), groupHeight);
 }
 
@@ -70,6 +68,15 @@ void configureGainControl(LabeledParameterSlider& control, const String& id) {
             "Gain in decibels. Shift-drag for fine adjustment; double-click for 0 dB.");
 }
 
+std::vector<PropertySegmentOption> oversamplingOptions() {
+    return {
+            { "1x", "1", "waveshaperEditor.oversampling.1x", "1x oversampling" },
+            { "2x", "2", "waveshaperEditor.oversampling.2x", "2x oversampling" },
+            { "4x", "4", "waveshaperEditor.oversampling.4x", "4x oversampling" },
+            { "8x", "8", "waveshaperEditor.oversampling.8x", "8x oversampling" }
+    };
+}
+
 }
 
 struct WaveshaperEditorComponent::Impl {
@@ -77,36 +84,34 @@ struct WaveshaperEditorComponent::Impl {
             processingScope ("waveshaperEditor")
         ,   preGain     (owner, "Pre Gain")
         ,   postGain    (owner, "Post Gain") {
+        stylePropertyLabel(contextLabel, "Context");
         stylePropertyLabel(oversamplingLabel, "Antialiasing");
         owner.addAndMakeVisible(processingGroup);
+        owner.addAndMakeVisible(contextLabel);
         owner.addAndMakeVisible(processingScope);
         owner.addAndMakeVisible(gainGroup);
-        owner.addAndMakeVisible(qualityGroup);
         owner.addAndMakeVisible(oversamplingLabel);
         owner.addAndMakeVisible(oversampling);
     }
 
     EffectEnableButton enabled;
-    PropertyGroupLabel processingGroup { "PROCESSING" };
+    PropertyGroupLabel processingGroup { "Processing" };
+    Label contextLabel;
     ProcessingScopeSelector processingScope;
     PropertyGroupLabel gainGroup { "Gain" };
-    PropertyGroupLabel qualityGroup { "Quality" };
     LabeledParameterSlider preGain;
     LabeledParameterSlider postGain;
-    ComboBox oversampling;
+    PropertySegmentedSelector oversampling { oversamplingOptions() };
     Label oversamplingLabel;
 };
 
 WaveshaperEditorComponent::WaveshaperEditorComponent(CurveEditorWidget& target) :
         CurveExpandedEditorComponent(target)
     ,   impl(std::make_unique<Impl>(*this)) {
-    for (int value : { 1, 2, 4, 8 }) {
-        impl->oversampling.addItem(String(value) + "x", value);
-    }
     impl->oversampling.setComponentID("waveshaperEditor.oversampling");
-    impl->oversampling.setTitle("Antialiasing");
-    impl->oversampling.setDescription("Oversampling factor: 1x, 2x, 4x, or 8x");
-    impl->oversampling.setTooltip("Oversampling factor: 1x, 2x, 4x, or 8x");
+    impl->oversampling.onChange = [this](const String&) {
+        publishDiscreteControlChange();
+    };
     impl->enabled.setComponentID("waveshaperEditor.enabled");
     setHeaderAction(impl->enabled);
     impl->processingScope.onChange = [this](const String& scope) {
@@ -122,7 +127,6 @@ WaveshaperEditorComponent::WaveshaperEditorComponent(CurveEditorWidget& target) 
 
     bindDiscreteAction(impl->enabled, [] {});
     bindContinuousControls({ &impl->preGain, &impl->postGain });
-    bindDiscreteControl(impl->oversampling);
 }
 
 WaveshaperEditorComponent::~WaveshaperEditorComponent() = default;
@@ -151,22 +155,26 @@ void WaveshaperEditorComponent::layoutEditor() {
     Rectangle<int> bounds = controlGroupBounds(editorControlBounds());
     impl->processingGroup.setBounds(
             bounds.removeFromTop(PropertyControlMetrics::groupLabelHeight));
-    impl->processingScope.setBounds(
-            bounds.removeFromTop(kScopeHeight).withWidth(kScopeWidth));
+    auto layoutSelectorRow = [](Rectangle<int> row, Label& label, Component& selector) {
+        label.setBounds(row.removeFromLeft(PropertyControlMetrics::labelWidth));
+        row.removeFromLeft(PropertyControlMetrics::inlineGap);
+        selector.setBounds(row.removeFromLeft(kSelectorWidth));
+    };
+    layoutSelectorRow(
+            bounds.removeFromTop(PropertyControlMetrics::rowHeight),
+            impl->contextLabel,
+            impl->processingScope);
+    bounds.removeFromTop(PropertyControlMetrics::rowGap);
+    layoutSelectorRow(
+            bounds.removeFromTop(PropertyControlMetrics::rowHeight),
+            impl->oversamplingLabel,
+            impl->oversampling);
     bounds.removeFromTop(PropertyControlMetrics::sectionGap);
     impl->gainGroup.setBounds(
             bounds.removeFromTop(PropertyControlMetrics::groupLabelHeight));
     impl->preGain.setBounds(bounds.removeFromTop(PropertyControlMetrics::compactRowHeight));
     bounds.removeFromTop(PropertyControlMetrics::rowGap);
     impl->postGain.setBounds(bounds.removeFromTop(PropertyControlMetrics::compactRowHeight));
-    bounds.removeFromTop(PropertyControlMetrics::sectionGap);
-    impl->qualityGroup.setBounds(
-            bounds.removeFromTop(PropertyControlMetrics::groupLabelHeight));
-
-    Rectangle<int> row = bounds.removeFromTop(PropertyControlMetrics::rowHeight);
-    impl->oversamplingLabel.setBounds(row.removeFromLeft(PropertyControlMetrics::labelWidth));
-    row.removeFromLeft(PropertyControlMetrics::inlineGap);
-    impl->oversampling.setBounds(row.removeFromLeft(kOversamplingWidth));
 }
 
 void WaveshaperEditorComponent::syncEditorFromNode() {
@@ -178,7 +186,7 @@ void WaveshaperEditorComponent::syncEditorFromNode() {
             dontSendNotification);
     impl->preGain.slider.setValue(model.preGain, dontSendNotification);
     impl->postGain.slider.setValue(model.postGain, dontSendNotification);
-    impl->oversampling.setSelectedId(model.oversampling, dontSendNotification);
+    impl->oversampling.setSelectedValue(String(model.oversampling));
     impl->preGain.refreshValueText();
     impl->postGain.refreshValueText();
 }
@@ -189,7 +197,7 @@ void WaveshaperEditorComponent::applyEditorStateToWidget() {
             static_cast<float>(impl->preGain.slider.getValue()),
             static_cast<float>(impl->postGain.slider.getValue()),
             0.5f,
-            impl->oversampling.getSelectedId());
+            impl->oversampling.selectedValue().getIntValue());
 }
 
 std::vector<NodeParameter> WaveshaperEditorComponent::editorControls() const {
@@ -203,7 +211,7 @@ std::vector<NodeParameter> WaveshaperEditorComponent::editorControls() const {
     addEditorParameter(result, node, "enabled", "Enabled", impl->enabled.getToggleState() ? "1" : "0");
     addEditorParameter(result, node, "pre", "Pre Gain", String(impl->preGain.slider.getValue(), 8));
     addEditorParameter(result, node, "post", "Post Gain", String(impl->postGain.slider.getValue(), 8));
-    addEditorParameter(result, node, "aaFactor", "AA Factor", String(impl->oversampling.getSelectedId()));
+    addEditorParameter(result, node, "aaFactor", "AA Factor", impl->oversampling.selectedValue());
     return result;
 }
 
@@ -211,8 +219,20 @@ void WaveshaperEditorComponent::appendEditorAutomation(DynamicObject& state) con
     state.setProperty("enabled", impl->enabled.getToggleState());
     state.setProperty("preGain", impl->preGain.slider.getValue());
     state.setProperty("postGain", impl->postGain.slider.getValue());
-    state.setProperty("oversampling", impl->oversampling.getSelectedId());
-    state.setProperty("oversamplingDisplay", impl->oversampling.getText());
+    state.setProperty("oversampling", impl->oversampling.selectedValue().getIntValue());
+    state.setProperty("oversamplingDisplay", impl->oversampling.selectedValue() + "x");
+    state.setProperty(
+            "contextLabelBounds",
+            editorBoundsToVar(impl->contextLabel.getBounds().toFloat()));
+    state.setProperty(
+            "processingScopeBounds",
+            editorBoundsToVar(impl->processingScope.getBounds().toFloat()));
+    state.setProperty(
+            "antialiasingLabelBounds",
+            editorBoundsToVar(impl->oversamplingLabel.getBounds().toFloat()));
+    state.setProperty(
+            "oversamplingBounds",
+            editorBoundsToVar(impl->oversampling.getBounds().toFloat()));
     state.setProperty("processingScope", impl->processingScope.automationState());
     state.setProperty(
             "processingGroup",
@@ -220,9 +240,6 @@ void WaveshaperEditorComponent::appendEditorAutomation(DynamicObject& state) con
     state.setProperty(
             "gainGroup",
             propertyGroupLabelAutomationState(impl->gainGroup));
-    state.setProperty(
-            "qualityGroup",
-            propertyGroupLabelAutomationState(impl->qualityGroup));
     state.setProperty(
             "controlGroupBounds",
             editorBoundsToVar(controlGroupBounds(editorControlBounds()).toFloat()));

@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <variant>
+#include <vector>
 
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeCanvasViewport.h"
@@ -27,6 +28,7 @@ struct CanvasPanGesture {
 
 struct NodeDragGesture {
     String nodeId;
+    std::vector<String> nodeIds;
     Rectangle<float> startBounds;
     NodeSnapGuides guides;
     bool moved {};
@@ -54,6 +56,7 @@ struct PanDragUpdate {
 
 struct NodeDragUpdate {
     String nodeId;
+    std::vector<String> nodeIds;
     Rectangle<float> bounds;
     NodeSnapGuides guides;
     bool beginTransaction {};
@@ -74,6 +77,7 @@ using NodeCanvasDragUpdate = std::variant<
 
 struct NodeDragCompletion {
     String nodeId;
+    std::vector<String> nodeIds;
     bool moved {};
 };
 
@@ -90,7 +94,10 @@ using NodeCanvasGestureCompletion = std::variant<
 class NodeCanvasInteraction {
 public:
     void beginPan(Point<float> startPan);
-    void beginNodeDrag(const String& nodeId, Rectangle<float> startBounds);
+    void beginNodeDrag(
+            const String& nodeId,
+            std::vector<String> nodeIds,
+            Rectangle<float> startBounds);
     void beginConnection(const PortAddress& source, Point<float> endpoint);
     void captureExpandedEditor();
     void reset();
@@ -113,7 +120,8 @@ public:
     SnappedNodeBounds snapNode(
             const NodeGraph& graph,
             const Node& node,
-            Rectangle<float> proposed) const;
+            Rectangle<float> proposed,
+            const std::vector<String>& excludedNodeIds = {}) const;
     NodeCanvasDragUpdate drag(
             const NodeGraph& graph,
             const NodeCanvasViewport& viewport,

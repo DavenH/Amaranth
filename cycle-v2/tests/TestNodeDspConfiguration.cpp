@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <Audio/CycleDsp/EffectParameterMapping.h>
+
 #include "Graph/GraphNodeFactory.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 #include "Runtime/NodeDspConfiguration.h"
@@ -77,6 +79,22 @@ TEST_CASE("Published DSP configurations outlive publisher replacement", "[cycle-
 
     REQUIRE_FALSE(oldLifetime.expired());
     REQUIRE(std::static_pointer_cast<const TestConfiguration>(first.value)->value == 11);
+}
+
+TEST_CASE("Time Trimesh configuration applies its authored output gain",
+        "[cycle-v2][runtime][configuration][trimesh]") {
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    setParameter(node, "gain", "0.75");
+
+    const auto configuration = std::dynamic_pointer_cast<const TrimeshConfiguration>(
+            NodeDspConfigurationFactory().create(
+                    AudioModuleRole::MeshSource,
+                    node.parameters,
+                    node.model,
+                    {}));
+
+    REQUIRE(configuration != nullptr);
+    REQUIRE(configuration->gain == CycleDsp::outputGain(0.75f));
 }
 
 TEST_CASE("Direct spectral Trimesh applies its range before IFFT",

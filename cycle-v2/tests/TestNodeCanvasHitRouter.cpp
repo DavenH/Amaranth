@@ -96,6 +96,40 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
             == Catch::Approx(500.f));
 }
 
+TEST_CASE("Cable hit routing remains available near overlapping node bounds",
+        "[cycle-v2][canvas][hit-router][cable]") {
+    NodeGraph graph;
+    const auto compileResult = GraphCompiler().compile(graph);
+    RuntimeProcessTrace runtimeTrace;
+    GraphPreviewResult previewResult;
+    NodeCanvasQueryModel queries(graph, compileResult, runtimeTrace, previewResult);
+    NodePalette palette;
+    NodeCanvasHitRouter router(graph, palette, queries);
+    NodeCanvasSceneSnapshot scene;
+    NodeSceneEdge edge;
+    edge.edgeIndex = 0;
+    edge.cablePath.startNewSubPath(20.f, 80.f);
+    edge.cablePath.lineTo(180.f, 80.f);
+    PathStrokeType(22.f).createStrokedPath(edge.hitPath, edge.cablePath);
+    scene.edges.push_back(std::move(edge));
+    const Point<float> cablePoint { 100.f, 80.f };
+    scene.targets.push_back({
+            NodeSceneTargetKind::Node,
+            "node:near-cable",
+            "near-cable",
+            {},
+            {},
+            Rectangle<float>(40.f, 40.f).withCentre(cablePoint),
+            -1,
+            100
+    });
+
+    const auto ordinaryHit = NodeCanvasHitTester().hitTest(scene, cablePoint);
+    REQUIRE(ordinaryHit.has_value());
+    REQUIRE(ordinaryHit->kind == NodeSceneTargetKind::Node);
+    REQUIRE(router.edgeAt(scene, cablePoint) == 0);
+}
+
 TEST_CASE("Single input and output nodes expose a port layout action",
         "[cycle-v2][canvas][hit-router][layout]") {
     NodeGraph graph;

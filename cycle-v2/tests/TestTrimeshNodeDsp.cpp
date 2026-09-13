@@ -21,7 +21,7 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
-#include "Nodes/Trimesh/Rendering/SpectralRangeControlRenderer.h"
+#include "Nodes/Trimesh/Rendering/OutputScaleControlRenderer.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
@@ -61,13 +61,14 @@ public:
     void updateTrimeshMorphControlEdit(float value) override { updateValue = value; }
     void endTrimeshMorphControlEdit() override { ++morphEndCount; }
 
-    void beginTrimeshRangeControlEdit(float value) override {
+    void beginTrimeshOutputScaleControlEdit(const String& id, float value) override {
+        activeParameter = id;
         beginValue = value;
         ++rangeBeginCount;
     }
 
-    void updateTrimeshRangeControlEdit(float value) override { updateValue = value; }
-    void endTrimeshRangeControlEdit() override { ++rangeEndCount; }
+    void updateTrimeshOutputScaleControlEdit(float value) override { updateValue = value; }
+    void endTrimeshOutputScaleControlEdit() override { ++rangeEndCount; }
 
     void beginTrimeshVertexControlEdit(const String& id, float value) override {
         activeParameter = id;
@@ -617,9 +618,9 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
     }
 
     const Rectangle<float> rangeRow =
-            TrimeshSidePanelRenderer::spectralRangeRowBounds(sideArea);
+            TrimeshSidePanelRenderer::outputScaleRowBounds(sideArea);
     const Rectangle<float> rangeRail =
-            TrimeshSidePanelRenderer::spectralRangeRailBounds(sideArea);
+            TrimeshSidePanelRenderer::outputScaleRailBounds(sideArea);
     REQUIRE(sideArea.contains(rangeRow));
     REQUIRE(rangeRow.contains(rangeRail));
     REQUIRE(rangeRail.getWidth() >= 96.f);
@@ -636,7 +637,7 @@ TEST_CASE("Production Trimesh controls place two-column vertex rows above morph 
     const Rectangle<float> morph =
             TrimeshSidePanelRenderer::morphRailBounds(sideArea, 0, true);
     const Rectangle<float> range =
-            TrimeshSidePanelRenderer::spectralRangeRailBounds(sideArea);
+            TrimeshSidePanelRenderer::outputScaleRailBounds(sideArea);
 
     const Rectangle<float> timeRow =
             TrimeshSidePanelRenderer::vertexParameterRowBounds(vertex, 0);
@@ -726,11 +727,11 @@ TEST_CASE("Trimesh guide gain knobs are distinct controls after Guide targets",
     REQUIRE_FALSE(gain.intersects(guide));
 }
 
-TEST_CASE("Spectral range label is vertically centred on its rail",
+TEST_CASE("Trimesh output-scale label is vertically centred on its rail",
         "[cycle-v2][nodes][trimesh][geometry][range]") {
     const Rectangle<float> row { 20.f, 40.f, 280.f, 45.f };
     const Rectangle<float> rail { 92.f, 49.f, 196.f, 7.f };
-    const Rectangle<float> label = SpectralRangeControlRenderer::labelBounds(row, rail);
+    const Rectangle<float> label = OutputScaleControlRenderer::labelBounds(row, rail);
 
     REQUIRE(label.getCentreY() == Catch::Approx(rail.getCentreY()));
 }
@@ -971,15 +972,26 @@ TEST_CASE("Trimesh node model renders compact grid data from node parameters", "
     const auto vertexParameters = model.getSelectedVertexParameters();
     const auto vertexMarkers = model.getVertexMarkers();
     REQUIRE(vertexParameters.size() == 6);
-    REQUIRE(vertexMarkers.size() >= vertexParameters.size());
-    REQUIRE(vertexParameters[0].id == "vertex.time");
-    REQUIRE(vertexParameters[1].id == "vertex.red");
-    REQUIRE(vertexParameters[2].id == "vertex.blue");
-    REQUIRE(vertexParameters[3].id == "vertex.phase");
-    REQUIRE(vertexParameters[4].id == "vertex.amp");
-    REQUIRE(vertexParameters[5].id == "vertex.curve");
+    REQUIRE(std::all_of(
+            vertexParameters.begin(),
+            vertexParameters.end(),
+            [](const TrimeshVertexParameter& parameter) {
+                return !parameter.enabled;
+            }));
+    REQUIRE_FALSE(vertexMarkers.empty());
 
-    for (const auto& parameter : vertexParameters) {
+    REQUIRE(model.selectVertex(model.currentMesh().getVerts().front()));
+    const auto selectedVertexParameters = model.getSelectedVertexParameters();
+    REQUIRE(selectedVertexParameters.size() == 6);
+    REQUIRE(selectedVertexParameters[0].id == "vertex.time");
+    REQUIRE(selectedVertexParameters[1].id == "vertex.red");
+    REQUIRE(selectedVertexParameters[2].id == "vertex.blue");
+    REQUIRE(selectedVertexParameters[3].id == "vertex.phase");
+    REQUIRE(selectedVertexParameters[4].id == "vertex.amp");
+    REQUIRE(selectedVertexParameters[5].id == "vertex.curve");
+
+    for (const auto& parameter : selectedVertexParameters) {
+        REQUIRE(parameter.enabled);
         REQUIRE(parameter.value >= parameter.minimum);
         REQUIRE(parameter.value <= parameter.maximum);
     }
@@ -991,9 +1003,16 @@ TEST_CASE("Trimesh node model exposes selected cube vertices for the side panel 
 
     model.syncFromNode(node);
 
-    const auto previewVertices = model.getSelectedCubePreviewVertices();
+    auto previewVertices = model.getSelectedCubePreviewVertices();
 
     REQUIRE(previewVertices.size() == 8);
+    REQUIRE(std::none_of(
+            previewVertices.begin(),
+            previewVertices.end(),
+            [](const auto& vertex) { return vertex.selected; }));
+
+    REQUIRE(model.selectVertex(model.currentMesh().getVerts().front()));
+    previewVertices = model.getSelectedCubePreviewVertices();
 
     bool hasSelectedVertex {};
     bool hasLowTime {};
@@ -1020,6 +1039,85 @@ TEST_CASE("Trimesh node model exposes selected cube vertices for the side panel 
     REQUIRE(hasHighRed);
     REQUIRE(hasLowBlue);
     REQUIRE(hasHighBlue);
+}
+
+TEST_CASE("Trimesh selection remains empty or explicit while morph position changes",
+        "[cycle-v2][nodes][trimesh][selection]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphEditor editor;
+    TrimeshNodeModel model;
+
+    model.syncFromNode(*graph.findNode("mesh"));
+    REQUIRE(model.getSelectedVertexIndex() == -1);
+    REQUIRE(model.getSelectedVertexParameters().size() == 6);
+    REQUIRE_FALSE(model.getSelectedVertexParameters().front().enabled);
+
+    REQUIRE(editor.setNodeParameter(
+            graph, "mesh", "yellow", "Yellow", "0.8").succeeded());
+    model.syncFromNode(*graph.findNode("mesh"));
+    REQUIRE(model.getSelectedVertexIndex() == -1);
+    REQUIRE(model.getSelectedVertexParameters().size() == 6);
+    REQUIRE_FALSE(model.getSelectedVertexParameters().front().enabled);
+
+    Vertex* selected = model.currentMesh().getVerts().front();
+    REQUIRE(model.selectVertex(selected));
+    const int selectedIndex = model.getSelectedVertexIndex();
+    REQUIRE(selectedIndex >= 0);
+    auto selectedState = std::make_unique<DynamicObject>();
+    selectedState->setProperty("selectedVertexId", selectedIndex);
+    REQUIRE(editor.setNodeEditorState(
+            graph, "mesh", var(selectedState.release())).succeeded());
+
+    REQUIRE(editor.setNodeParameter(
+            graph, "mesh", "red", "Red", "0.2").succeeded());
+    model.syncFromNode(*graph.findNode("mesh"));
+    REQUIRE(model.getSelectedVertexIndex() == selectedIndex);
+    REQUIRE(model.currentMesh().getVerts()[(size_t) selectedIndex] == selected);
+}
+
+TEST_CASE("Trimesh morph gesture ignores stale selection snapshots",
+        "[cycle-v2][nodes][trimesh][selection][morph]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node selectedNode = GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {});
+    selectedNode.editorState = selectedVertexEditorState(2);
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(selectedNode, 32, 8);
+
+    const int selectedVertex = bridge.selectedVertexIndexForPanel();
+    const auto selectedParameters = bridge.getModel().getSelectedVertexParameters();
+    REQUIRE(selectedVertex == 2);
+    REQUIRE(selectedParameters.size() == 6);
+
+    Node stalePresentation = selectedNode;
+    stalePresentation.editorState = var();
+    bridge.setMorphEditGestureActive(true);
+    for (const float value : { 0.35f, 0.75f }) {
+        for (auto& parameter : stalePresentation.parameters) {
+            if (parameter.id == "yellow") {
+                parameter.value = String(value, 6);
+            }
+        }
+        bridge.syncFromNode(stalePresentation, 32, 8);
+        REQUIRE(bridge.selectedVertexIndexForPanel() == selectedVertex);
+
+        const auto currentParameters = bridge.getModel().getSelectedVertexParameters();
+        REQUIRE(currentParameters.size() == selectedParameters.size());
+        for (size_t i = 0; i < selectedParameters.size(); ++i) {
+            REQUIRE(currentParameters[i].id == selectedParameters[i].id);
+            REQUIRE(currentParameters[i].value
+                    == Catch::Approx(selectedParameters[i].value));
+        }
+    }
+    bridge.setMorphEditGestureActive(false);
+    bridge.syncFromNode(stalePresentation, 32, 8);
+    REQUIRE(bridge.selectedVertexIndexForPanel() == -1);
 }
 
 TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][nodes][trimesh]") {
@@ -1826,20 +1924,29 @@ TEST_CASE("Trimesh link parameters drive mature linked-vertex interaction",
     TrimeshPanelBridge bridge;
     GraphEditor editor;
 
+    REQUIRE(editor.setNodeParameter(
+            graph, "mesh", "link.red", "Link Red", "0").succeeded());
+    REQUIRE(editor.setNodeParameter(
+            graph, "mesh", "link.blue", "Link Blue", "0").succeeded());
     bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
     VertCube* cube = bridge.getModel().getMeshForPanel().getCubes().front();
     Vertex* vertex = cube->getVertex(0);
     REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 2);
+    bridge.getInteractor2D().getSelected().push_back(vertex);
+    bridge.getInteractor2D().setMovingVertsFromSelected();
+    REQUIRE(bridge.getInteractor2D().getSelectedMovingVerts().size() == 2);
 
     REQUIRE(editor.setNodeParameter(
             graph, "mesh", "link.red", "Link Red", "1").succeeded());
     bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
     REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 4);
+    REQUIRE(bridge.getInteractor2D().getSelectedMovingVerts().size() == 4);
 
     REQUIRE(editor.setNodeParameter(
             graph, "mesh", "link.blue", "Link Blue", "1").succeeded());
     bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
     REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 8);
+    REQUIRE(bridge.getInteractor2D().getSelectedMovingVerts().size() == 8);
 }
 
 TEST_CASE("Trimesh panel hosts use component cursors and delegated repaint",
@@ -1894,21 +2001,26 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     controls.setNode(node);
     controls.setContentBounds({ 10.f, 42.f, 1380.f, 710.f });
 
-    REQUIRE(controls.getControlRegionCount() == 21);
+    REQUIRE(controls.getControlRegionCount() == 22);
     REQUIRE(controls.getMorphSliderCount() == 3);
-    REQUIRE(controls.getSpectralRangeSliderCount() == 0);
+    REQUIRE(controls.getOutputScaleSliderCount() == 1);
     REQUIRE(controls.getPrimaryAxisButtonCount() == 3);
     REQUIRE(controls.getLinkToggleButtonCount() == 3);
     REQUIRE(controls.getVertexParameterSliderCount() == 6);
     REQUIRE(controls.getVertexGuideGainKnobCount() == 3);
     REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 3);
-    REQUIRE(controls.getNumChildComponents() == 21);
+    REQUIRE(controls.getNumChildComponents() == 22);
+    REQUIRE_FALSE(controls.findChildWithID("trimesh.vertex.time")->isEnabled());
+    REQUIRE_FALSE(controls.findChildWithID("trimesh.vertex.amp")->isEnabled());
+    REQUIRE_FALSE(controls.findChildWithID("trimesh.guide.amp")->isEnabled());
 }
 
 TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes][trimesh]") {
     ScopedJuceInitialiser_GUI juce;
     Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    node.editorState = selectedVertexEditorState(0);
     TrimeshWidget widget;
+    widget.syncFromNode(node);
     std::array<String, 6> guideLabels;
     guideLabels[4] = "1";
     widget.setGuideAttachmentLabels(guideLabels);
@@ -1962,12 +2074,13 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     REQUIRE(delegate.updateValue > delegate.beginValue);
     REQUIRE(controls.cursorFor(morph.bounds.getCentre()) == MouseCursor::LeftRightResizeCursor);
 
-    const auto& range = findRegion(TrimeshExpandedHitRegionKind::SpectralRange);
+    const auto& range = findRegion(TrimeshExpandedHitRegionKind::OutputScale);
     controls.beginPointerInteraction(range.bounds.getCentre(), {});
     controls.continuePointerInteraction({ range.bounds.getRight(), range.bounds.getCentreY() });
     controls.endPointerInteraction();
     REQUIRE(delegate.rangeBeginCount == 1);
     REQUIRE(delegate.rangeEndCount == 1);
+    REQUIRE(delegate.activeParameter == "range");
     REQUIRE(delegate.updateValue > delegate.beginValue);
     REQUIRE(controls.cursorFor(range.bounds.getCentre()) == MouseCursor::LeftRightResizeCursor);
     Component* morphTarget {};

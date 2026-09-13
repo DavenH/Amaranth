@@ -131,7 +131,8 @@ void drawMeters(
         const NodePreviewResult& preview,
         Colour colour,
         std::optional<OutputMeterLevels> liveLevels,
-        float gainUnitValue) {
+        float gainUnitValue,
+        float zoom) {
     const float previewLeft = preview.primary.empty()
             ? 0.f
             : jlimit(0.f, 1.f, preview.primary.front());
@@ -146,7 +147,8 @@ void drawMeters(
             left,
             right,
             colour,
-            gainUnitValue);
+            gainUnitValue,
+            zoom);
 }
 
 std::vector<float> mappedSurface(
@@ -750,7 +752,8 @@ bool NodePreviewRenderer::paintRuntimeResult(
                 result,
                 colour,
                 request.liveOutputLevels,
-                NodeParameterMap(request.node).floatValue("gain", 0.5f));
+                NodeParameterMap(request.node).floatValue("gain", 0.5f),
+                request.zoom);
         return true;
     }
 
@@ -809,17 +812,21 @@ bool NodePreviewRenderer::paintRuntimeHeatmap(
         return false;
     }
 
-    const bool desaturated = request.runtimeResult->role == PreviewModuleRole::ReverbSpectrogram
+    const NodePreviewResult& result = *request.runtimeResult;
+    const TrimeshRenderProfile heatmapProfile = TrimeshRenderProfile::fromDomain(
+            result.domain);
+    const bool desaturated = result.role == PreviewModuleRole::ReverbSpectrogram
             && !NodeParameterMap(request.node).boolValue("enabled", true);
-    const String signature = runtimeSignature(*request.runtimeResult)
+    const String signature = runtimeSignature(result)
             + "|desaturated:" + String(desaturated ? 1 : 0)
-            + "|scale:" + String((int) request.profile.getScalePolicy());
+            + "|domain:" + String((int) result.domain)
+            + "|scale:" + String((int) heatmapProfile.getScalePolicy());
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
     if (!cached.runtimeHeatmap.isValid()
             || cached.runtimeHeatmapSignature != signature) {
         cached.runtimeHeatmap = createRuntimeHeatmapImage(
-                *request.runtimeResult,
-                request.profile,
+                result,
+                heatmapProfile,
                 desaturated);
         cached.runtimeHeatmapSignature = signature;
     }
@@ -901,6 +908,15 @@ void NodePreviewRenderer::paintQualitative(
         return;
     }
     if (kind == NodeKind::Reverb) {
+        const CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
+        if (cached.runtimeHeatmap.isValid()) {
+            drawHeatmapImage(
+                    graphics,
+                    request.area,
+                    cached.runtimeHeatmap,
+                    request.highQuality);
+            return;
+        }
         ReverbPreviewPainter().paint(graphics, request.area, request.node, request.zoom);
         return;
     }
@@ -957,7 +973,8 @@ void NodePreviewRenderer::paintQualitative(
                 meters,
                 colourForDomain(PortDomain::TimeSignal),
                 request.liveOutputLevels,
-                NodeParameterMap(request.node).floatValue("gain", 0.5f));
+                NodeParameterMap(request.node).floatValue("gain", 0.5f),
+                request.zoom);
         return;
     }
 

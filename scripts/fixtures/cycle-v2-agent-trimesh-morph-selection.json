@@ -1,0 +1,102 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/resources/with-spies.cyclegraph"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveMesh",
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexIndex",
+      "equals": -1
+    },
+    {
+      "command": "selectVertex",
+      "nodeId": "waveMesh",
+      "vertexIndex": 0
+    },
+    {
+      "command": "setVertexParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "vertex.phase",
+      "value": 0.27
+    },
+    {
+      "command": "setVertexParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "vertex.amp",
+      "value": 0.73
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:waveMesh.trimeshMorphRail.yellow",
+      "targetX": 0.2,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:waveMesh.trimeshMorphRail.yellow",
+      "downTargetId": "expanded:waveMesh.trimeshMorphRail.yellow",
+      "targetX": 0.55,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:waveMesh.trimeshMorphRail.yellow",
+      "downTargetId": "expanded:waveMesh.trimeshMorphRail.yellow",
+      "targetX": 0.82,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:waveMesh.trimeshMorphRail.yellow",
+      "downTargetId": "expanded:waveMesh.trimeshMorphRail.yellow",
+      "targetX": 0.82,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexIndex",
+      "equals": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.3.value",
+      "equals": 0.27
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.4.value",
+      "equals": 0.73
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "equals": "0.317"
+    }
+  ],
+  "quit": true
+}

@@ -5,6 +5,7 @@
 #include "Graph/NodeParameterMap.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EditorChromeLayout.h"
+#include "UI/Editors/PropertyControls.h"
 
 namespace CycleV2 {
 
@@ -12,12 +13,28 @@ namespace {
 
 const Colour kText      { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
+constexpr int kSpectralModeLabelWidth = 38;
+constexpr int kSpectralModeSelectorWidth = 210;
+constexpr int kSpectralModeGap = 8;
+constexpr int kSpectralModeHeight = 26;
+
+std::vector<PropertySegmentOption> spectralModeOptions() {
+    return {
+            { "Auto", "auto", "trimeshEditor.spectralMode.auto",
+                    "Infer additive or multiplicative spectral behavior" },
+            { "Add", "additive", "trimeshEditor.spectralMode.additive",
+                    "Treat this magnitude mesh as additive" },
+            { "Multiply", "multiplicative", "trimeshEditor.spectralMode.multiplicative",
+                    "Treat this magnitude mesh as multiplicative" }
+    };
+}
 
 }
 
 TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& targetWidget) :
         widget      (targetWidget)
-    ,   controls    (targetWidget) {
+    ,   controls    (targetWidget)
+    ,   spectralModeSelector(spectralModeOptions()) {
     setOpaque(false);
     setName("TrimeshExpandedEditor");
     setInterceptsMouseClicks(true, true);
@@ -29,10 +46,22 @@ TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& ta
         }
     };
     addAndMakeVisible(enabled);
+    stylePropertyLabel(spectralModeLabel, "Mode");
+    spectralModeLabel.setJustificationType(Justification::centredRight);
+    spectralModeSelector.setComponentID("trimeshEditor.spectralMode");
+    spectralModeSelector.onChange = [this](const String& mode) {
+        if (delegate == nullptr || !delegate->setTrimeshSpectralModeValue(mode)) {
+            spectralModeSelector.setSelectedValue(
+                    NodeParameterMap(node).stringValue("spectralMode", "auto"));
+        }
+    };
+    addAndMakeVisible(spectralModeLabel);
+    addAndMakeVisible(spectralModeSelector);
     widget.setExpandedPanelHostDelegate(this);
 }
 
 TrimeshExpandedEditorComponent::~TrimeshExpandedEditorComponent() {
+    widget.setMorphEditGestureActive(false);
     widget.clearExpandedPanelHostDelegate(this);
 }
 
@@ -46,10 +75,13 @@ void TrimeshExpandedEditorComponent::setNode(const Node& nextNode) {
     enabled.setToggleState(
             NodeParameterMap(node).boolValue("enabled", true),
             dontSendNotification);
+    spectralModeSelector.setSelectedValue(
+            NodeParameterMap(node).stringValue("spectralMode", "auto"));
     if (!widget.isMeshEditGestureActive()) {
         updatePanelHosts();
     }
     updateControlsHost();
+    updateSpectralModeControl();
     repaint();
 }
 
@@ -66,6 +98,7 @@ void TrimeshExpandedEditorComponent::setRenderProfile(TrimeshRenderProfile profi
     renderProfile = profile;
     widget.setRenderProfile(profile);
     controls.refreshHitRegions();
+    updateSpectralModeControl();
     repaint();
 }
 
@@ -81,12 +114,20 @@ void TrimeshExpandedEditorComponent::renderOpenGL(float scaleFactor) {
             scaleFactor);
 }
 
-bool TrimeshExpandedEditorComponent::showsSpectralRange() const {
-    return controls.getSpectralRangeSliderCount() == 1;
+bool TrimeshExpandedEditorComponent::showsOutputScale() const {
+    return controls.getOutputScaleSliderCount() == 1;
 }
 
 float TrimeshExpandedEditorComponent::spectralRangeValue() const {
     return NodeParameterMap(node).floatValue("range", 0.5f);
+}
+
+float TrimeshExpandedEditorComponent::outputScaleValue() const {
+    return NodeParameterMap(node).floatValue(outputScaleParameterId(), 0.5f);
+}
+
+String TrimeshExpandedEditorComponent::outputScaleParameterId() const {
+    return renderProfile.getSliceStyle().isSpectral() ? "range" : "gain";
 }
 
 void TrimeshExpandedEditorComponent::paint(Graphics& g) {
@@ -115,10 +156,16 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
 
     g.setColour(kText);
     g.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize));
-    g.drawText(labelForNodeKind(node.kind), headerLayout.title, Justification::centredLeft);
-    g.setColour(kMutedText);
-    g.setFont(FontOptions(CanvasChromeMetrics::captionFontSize));
-    g.drawText("Trilinear Mesh", headerLayout.title, Justification::centredRight);
+    Rectangle<float> titleBounds = headerLayout.title;
+    if (spectralModeSelector.isVisible()) {
+        titleBounds.setRight((float) spectralModeLabel.getX() - kSpectralModeGap);
+    }
+    g.drawText(labelForNodeKind(node.kind), titleBounds, Justification::centredLeft);
+    if (!spectralModeSelector.isVisible()) {
+        g.setColour(kMutedText);
+        g.setFont(FontOptions(CanvasChromeMetrics::captionFontSize));
+        g.drawText("Trilinear Mesh", headerLayout.title, Justification::centredRight);
+    }
 
     Rectangle<float> closeButton = closeButtonBounds();
     g.setColour(Colour(0xff0e1318));
@@ -145,6 +192,7 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
 void TrimeshExpandedEditorComponent::resized() {
     enabled.setBounds(embeddedEditorHeaderLayout(
             getLocalBounds().toFloat(), true).enabled.toNearestInt());
+    updateSpectralModeControl();
     updatePanelHosts();
     updateControlsHost();
 }
@@ -194,9 +242,12 @@ void TrimeshExpandedEditorComponent::toggleTrimeshLinkAxis(const String& axis) {
 void TrimeshExpandedEditorComponent::beginTrimeshMorphControlEdit(
         const String& id,
         float value) {
+    widget.setMorphEditGestureActive(true);
     if (delegate != nullptr && delegate->beginTrimeshMorphEdit(id, value)) {
         setLocalMorphValue(id, value);
+        return;
     }
+    widget.setMorphEditGestureActive(false);
 }
 
 void TrimeshExpandedEditorComponent::updateTrimeshMorphControlEdit(float value) {
@@ -209,30 +260,35 @@ void TrimeshExpandedEditorComponent::endTrimeshMorphControlEdit() {
     if (delegate != nullptr) {
         delegate->endTrimeshMorphEdit();
     }
+    widget.setMorphEditGestureActive(false);
     activeMorphParameterId = {};
 }
 
-void TrimeshExpandedEditorComponent::beginTrimeshRangeControlEdit(float value) {
-    if (delegate != nullptr && delegate->beginTrimeshRangeEdit(value)) {
-        setLocalSpectralRange(value);
+void TrimeshExpandedEditorComponent::beginTrimeshOutputScaleControlEdit(
+        const String& id,
+        float value) {
+    if (delegate != nullptr && delegate->beginTrimeshOutputScaleEdit(id, value)) {
+        setLocalOutputScale(id, value);
     }
 }
 
-void TrimeshExpandedEditorComponent::updateTrimeshRangeControlEdit(float value) {
-    if (delegate != nullptr && delegate->updateTrimeshRangeEdit(value)) {
-        setLocalSpectralRange(value);
+void TrimeshExpandedEditorComponent::updateTrimeshOutputScaleControlEdit(float value) {
+    if (delegate != nullptr && delegate->updateTrimeshOutputScaleEdit(value)) {
+        setLocalOutputScale(
+                renderProfile.getSliceStyle().isSpectral() ? "range" : "gain",
+                value);
     }
 }
 
-void TrimeshExpandedEditorComponent::endTrimeshRangeControlEdit() {
+void TrimeshExpandedEditorComponent::endTrimeshOutputScaleControlEdit() {
     if (delegate != nullptr) {
-        delegate->endTrimeshRangeEdit();
+        delegate->endTrimeshOutputScaleEdit();
     }
 }
 
-void TrimeshExpandedEditorComponent::setLocalSpectralRange(float value) {
+void TrimeshExpandedEditorComponent::setLocalOutputScale(const String& id, float value) {
     for (auto& parameter : node.parameters) {
-        if (parameter.id == "range") {
+        if (parameter.id == id) {
             parameter.value = String(jlimit(0.f, 1.f, value), 6);
             repaint();
             return;
@@ -289,9 +345,11 @@ void TrimeshExpandedEditorComponent::selectTrimeshVertex(int index) {
     if (delegate != nullptr) {
         delegate->selectTrimeshVertex(index);
     }
+    controls.refreshSelectionState();
 }
 
 void TrimeshExpandedEditorComponent::requestTrimeshPanelRepaint() {
+    controls.refreshSelectionState();
     repaint();
 
     if (delegate != nullptr) {
@@ -409,6 +467,43 @@ void TrimeshExpandedEditorComponent::updateControlsHost() {
     controls.setVisible(node.kind == NodeKind::TrilinearMesh);
     controls.toFront(false);
     enabled.toFront(false);
+}
+
+void TrimeshExpandedEditorComponent::updateSpectralModeControl() {
+    const bool visible = renderProfile.getDomain() == PortDomain::SpectralMagnitudeSignal;
+    spectralModeLabel.setVisible(visible);
+    spectralModeSelector.setVisible(visible);
+    if (visible) {
+        spectralModeLabel.setBounds(spectralModeLabelBounds());
+        spectralModeSelector.setBounds(spectralModeSelectorBounds());
+        spectralModeLabel.toFront(false);
+        spectralModeSelector.toFront(false);
+        enabled.toFront(false);
+    }
+}
+
+Rectangle<int> TrimeshExpandedEditorComponent::spectralModeSelectorBounds() const {
+    const auto header = embeddedEditorHeaderLayout(
+            getLocalBounds().toFloat(), true);
+    return Rectangle<int>(
+            kSpectralModeSelectorWidth,
+            kSpectralModeHeight)
+            .withCentre({
+                    roundToInt(header.enabled.getX()
+                            - CanvasChromeMetrics::embeddedEditorActionGap
+                            - kSpectralModeSelectorWidth * 0.5f),
+                    roundToInt(header.header.getCentreY())
+            });
+}
+
+Rectangle<int> TrimeshExpandedEditorComponent::spectralModeLabelBounds() const {
+    const Rectangle<int> selector = spectralModeSelectorBounds();
+    return {
+            selector.getX() - kSpectralModeGap - kSpectralModeLabelWidth,
+            selector.getY(),
+            kSpectralModeLabelWidth,
+            selector.getHeight()
+    };
 }
 
 }

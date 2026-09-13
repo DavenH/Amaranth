@@ -289,8 +289,8 @@ public:
         switch (kind) {
         case TrimeshExpandedHitRegionKind::MorphControl:
             return "trimeshMorphRail";
-        case TrimeshExpandedHitRegionKind::SpectralRange:
-            return "trimeshSpectralRange";
+        case TrimeshExpandedHitRegionKind::OutputScale:
+            return "trimeshOutputScale";
         case TrimeshExpandedHitRegionKind::PrimaryAxis:
             return "trimeshPrimaryAxis";
         case TrimeshExpandedHitRegionKind::LinkToggle:
@@ -461,11 +461,14 @@ public:
 
             const auto* trimeshEditor = dynamic_cast<const TrimeshExpandedEditorComponent*>(
                     editorComponent);
-            const bool showSpectralRange = trimeshEditor != nullptr
-                    && trimeshEditor->showsSpectralRange();
+            const bool showOutputScale = trimeshEditor != nullptr
+                    && trimeshEditor->showsOutputScale();
             for (const auto& region : TrimeshWidget::expandedControlHitRegions(
                     content,
-                    showSpectralRange)) {
+                    showOutputScale,
+                    trimeshEditor != nullptr
+                            ? trimeshEditor->outputScaleParameterId()
+                            : "range")) {
                 const String kind = trimeshHitRegionKind(region.kind);
                 const String suffix = region.parameterId.isNotEmpty() ? region.parameterId : region.axisValue;
                 const Rectangle<float> targetBounds =
@@ -536,8 +539,17 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("panX", context.viewport.getPan().x);
     root->setProperty("panY", context.viewport.getPan().y);
     root->setProperty("selectedNodeId", state.selectedNodeId);
+    Array<var> selectedNodeIds;
+    for (const auto& nodeId : state.selectedNodeIds) {
+        selectedNodeIds.add(nodeId);
+    }
+    root->setProperty("selectedNodeIds", selectedNodeIds);
+    root->setProperty("selectedNodeCount", selectedNodeIds.size());
     root->setProperty("expandedNodeId", state.expandedNodeId);
     root->setProperty("selectedEdgeIndex", state.selectedEdgeIndex);
+    root->setProperty("hoveredEdgeIndex", state.hoveredEdgeIndex);
+    root->setProperty("documentDirty", context.document.isDirty());
+    root->setProperty("documentFile", context.document.file().getFullPathName());
     root->setProperty("previewVoiceLengthSeconds", state.previewVoiceLengthSeconds);
     root->setProperty("editStatusMessage", state.editStatusMessage);
     root->setProperty("hoverRepaintRequestCount", (int64) state.hoverRepaintRequestCount);

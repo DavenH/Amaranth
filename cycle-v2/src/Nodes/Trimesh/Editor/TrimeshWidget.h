@@ -18,7 +18,7 @@ namespace CycleV2 {
 
 enum class TrimeshExpandedHitRegionKind {
     MorphControl,
-    SpectralRange,
+    OutputScale,
     PrimaryAxis,
     LinkToggle,
     VertexParameter,
@@ -59,6 +59,7 @@ struct TrimeshPanelRenderStats {
 class TrimeshWidget {
 public:
     void syncFromNode(const Node& node);
+    void setMorphEditGestureActive(bool active);
     void syncGuideContext(const NodeGraph& graph, const Node& node);
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
@@ -107,12 +108,15 @@ public:
     bool guideGainValueForParameter(const juce::String& parameterId, float& value);
     bool hasGuideAttachmentForParameter(const juce::String& parameterId) const;
     std::vector<TrimeshVertexParameter> vertexParametersForIndex(int vertexIndex);
-    int selectedVertexIndexForPanel();
+    int selectedVertexIndexForPanel() const;
     std::vector<TrimeshVertexMarker> vertexMarkers();
     const TrimeshRenderData& renderDataForAutomation() const;
     TrimeshPanelRenderStats panelRenderStatsForAutomation() const;
     const juce::String& guideContextKey() const { return guideConfigurationKey; }
-    bool showsSpectralRange() const { return displayProfile.getSliceStyle().isSpectral(); }
+    bool showsOutputScale() const { return true; }
+    juce::String outputScaleParameterId() const {
+        return displayProfile.getSliceStyle().isSpectral() ? "range" : "gain";
+    }
     static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> expandedWavePanelContentBounds(juce::Rectangle<float> content);
     static juce::Colour surfaceColourForDomain(float value, PortDomain domain);
@@ -128,7 +132,7 @@ public:
             const juce::String& parameterId,
             juce::Point<float> position,
             float& value) const;
-    bool spectralRangeValueAt(
+    bool outputScaleValueAt(
             juce::Rectangle<float> content,
             juce::Point<float> position,
             float& value) const;
@@ -161,7 +165,8 @@ public:
             int& vertexIndex);
     static std::vector<TrimeshExpandedHitRegion> expandedControlHitRegions(
             juce::Rectangle<float> content,
-            bool showSpectralRange);
+            bool showOutputScale,
+            const juce::String& outputScaleParameter = "range");
 
 private:
     struct CachedHeatmap {
@@ -181,15 +186,15 @@ private:
     static juce::Rectangle<float> morphRailBounds(
             juce::Rectangle<float> morphArea,
             int axisIndex,
-            bool showSpectralRange = false);
+            bool showOutputScale = false);
     static juce::Rectangle<float> primaryAxisBounds(
             juce::Rectangle<float> morphArea,
             int axisIndex,
-            bool showSpectralRange = false);
+            bool showOutputScale = false);
     static juce::Rectangle<float> linkToggleBounds(
             juce::Rectangle<float> morphArea,
             int axisIndex,
-            bool showSpectralRange = false);
+            bool showOutputScale = false);
     static juce::String primaryAxisValue(int axis);
     juce::Rectangle<float> vertexParameterPanelBounds(juce::Rectangle<float> content) const;
     static juce::Rectangle<float> vertexParameterRowBounds(juce::Rectangle<float> parameterArea, int parameterIndex);

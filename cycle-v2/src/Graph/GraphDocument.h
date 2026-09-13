@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <optional>
 #include <variant>
 #include <vector>
 
@@ -24,7 +25,7 @@ public:
 
     const NodeGraph& graph() const { return currentGraph; }
     uint64_t revision() const { return documentRevision; }
-    bool isDirty() const { return dirty; }
+    bool isDirty() const { return currentStateId != savedStateId; }
     const juce::File& file() const { return currentFile; }
     const GraphChangeSet& lastChange() const { return latestChange; }
 
@@ -46,20 +47,28 @@ private:
     void recordBeforeChange(NodeGraph graph);
     void recordDelta(GraphDelta delta);
     void publishChange(GraphChangeSet change);
-    bool restoreGraph(NodeGraph graph);
+    void publishChangeAtState(GraphChangeSet change, uint64_t stateId);
+    bool restoreGraph(NodeGraph graph, uint64_t stateId);
 
     static constexpr size_t maximumHistoryDepth = 64;
 
     NodeGraph currentGraph;
     juce::File currentFile;
-    using HistoryEntry = std::variant<NodeGraph, GraphDelta>;
+    struct HistoryEntry {
+        std::variant<NodeGraph, GraphDelta> edit;
+        uint64_t beforeStateId {};
+        uint64_t afterStateId {};
+    };
 
     std::vector<HistoryEntry> undoHistory;
     std::vector<HistoryEntry> redoHistory;
     GraphChangeSet latestChange;
     Listener listener;
     uint64_t documentRevision { 1 };
-    bool dirty {};
+    uint64_t currentStateId { 1 };
+    uint64_t savedStateId { 1 };
+    uint64_t nextStateId { 2 };
+    std::optional<uint64_t> pendingStateId;
 };
 
 }

@@ -29,15 +29,15 @@
     {
       "command": "pointer",
       "event": "down",
-      "targetId": "expanded:phaseLayer1.trimeshSpectralRange.range",
+      "targetId": "expanded:phaseLayer1.trimeshOutputScale.range",
       "targetX": 0.3,
       "targetY": 0.5
     },
     {
       "command": "pointer",
       "event": "drag",
-      "targetId": "expanded:phaseLayer1.trimeshSpectralRange.range",
-      "downTargetId": "expanded:phaseLayer1.trimeshSpectralRange.range",
+      "targetId": "expanded:phaseLayer1.trimeshOutputScale.range",
+      "downTargetId": "expanded:phaseLayer1.trimeshOutputScale.range",
       "targetX": 0.8,
       "targetY": 0.5,
       "downTargetX": 0.3,
@@ -46,8 +46,8 @@
     {
       "command": "pointer",
       "event": "up",
-      "targetId": "expanded:phaseLayer1.trimeshSpectralRange.range",
-      "downTargetId": "expanded:phaseLayer1.trimeshSpectralRange.range",
+      "targetId": "expanded:phaseLayer1.trimeshOutputScale.range",
+      "downTargetId": "expanded:phaseLayer1.trimeshOutputScale.range",
       "targetX": 0.8,
       "targetY": 0.5,
       "downTargetX": 0.3,

@@ -175,3 +175,33 @@ Context:
 
 Current status: open; compare the forward/inverse Envelope vertex delta after a
 real routed release drag without folding that investigation into hover behavior.
+
+## P2: Full Cycle V2 suite retains cross-test graph and Trimesh failures
+
+Context:
+
+- A full randomized `CycleV2_tests` run on 2026-09-12 completed the focused UI
+  polish regressions, but reported 16 unrelated failures before a `SIGSEGV` in
+  `Clicking an open Trimesh Guide selector dismisses its popup`.
+- Other failures included graph compiler/validator connection expectations and
+  an unavailable Impulse Response test stream. None of the failing paths
+  overlap the segmented controls, Reverb preview profile, Envelope glyph, or
+  Output meter presentation changed by the UI polish batch.
+- The focused UI tests and native-size automation fixtures pass independently.
+
+Current status: open; reproduce with the recorded Catch randomness seed
+`3643743595` and isolate leaked shared Trimesh/graph fixture state before
+changing the individual expectations.
+
+Update 2026-09-12: another full run with seed `1137522538` reported 61
+order-dependent failures and ended in `Signal probe detail resolves the
+attached Voice Context key value` with `SIGSEGV`. Focused tests for Reverb,
+node group movement, Trimesh selection/link highlighting, and cable hit routing
+all pass independently; this remains an open suite-isolation defect.
+
+Update 2026-09-12: the focused `[cycle-v2][nodes][trimesh]` group reached a
+`SingletonRepo.h:54` assertion and `SIGSEGV` in `Trimesh Panel3D reads
+node-backed columns through lib data retriever` (seed `1390489111`). The same
+case also fails in isolation before exercising the morph-selection correction.
+The new morph-selection, disabled-control, and pointer-interaction cases pass
+independently; this remains open as shared test setup/lifetime work.

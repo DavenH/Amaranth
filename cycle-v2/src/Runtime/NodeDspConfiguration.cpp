@@ -109,6 +109,7 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
     }
     const NodeParameterMap parameterMap(parameters);
     configuration->enabled = parameterMap.boolValue("enabled", true);
+    configuration->gain = CycleDsp::outputGain(parameterMap.floatValue("gain", 0.5f));
     configuration->range = parameterMap.floatValue("range", 0.5f);
     configuration->appliesSpectralRange = feedsSpectralRangeConsumer(graph, nodeId);
     configuration->multiplicative = resolvesMultiplicative(

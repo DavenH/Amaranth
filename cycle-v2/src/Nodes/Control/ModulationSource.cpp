@@ -139,14 +139,6 @@ String ModulationSource::idForMode(ModulationSourceMode mode) {
     return "modWheel";
 }
 
-float ModulationSource::normalizeKey(int note, int lowestNote, int highestNote) {
-    if (highestNote <= lowestNote) {
-        return 0.f;
-    }
-    return jlimit(0.f, 1.f,
-            (float) (note - lowestNote) / (float) (highestNote - lowestNote));
-}
-
 float ModulationSource::evaluate(
         const ModulationSourceConfiguration& configuration,
         const PreviewControlContext& context) {

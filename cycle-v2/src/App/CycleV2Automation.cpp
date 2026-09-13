@@ -907,6 +907,7 @@ var CycleV2Automation::snapshotState() const {
     var state = workspace.exportAutomationState();
 
     if (auto* object = objectFor(state)) {
+        object->setProperty("windowTitle", window.getName());
         object->setProperty("windowBounds", rectangleToVar(window.getBounds()));
         object->setProperty("workspaceBounds", rectangleToVar(workspace.getBounds()));
         object->setProperty("canvasBounds", rectangleToVar(workspace.getCanvas().getBounds()));
@@ -991,7 +992,11 @@ var CycleV2Automation::saveGraph(const var& commandValue) {
 var CycleV2Automation::listMenuItems() const {
     Array<var> items;
     items.add(menuItemToVar("file.openGraph", "File", "Open Preset...", true));
-    items.add(menuItemToVar("file.saveGraph", "File", "Save Preset", true));
+    items.add(menuItemToVar(
+            "file.saveGraph",
+            "File",
+            "Save Preset",
+            workspace.isGraphDirty()));
     items.add(menuItemToVar("file.saveGraphAs", "File", "Save Preset As...", true));
 
     var data = makeObject();

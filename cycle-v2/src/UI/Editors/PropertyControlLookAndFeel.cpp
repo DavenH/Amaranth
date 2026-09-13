@@ -64,8 +64,12 @@ public:
     Slider::SliderLayout getSliderLayout(Slider& slider) override {
         Slider::SliderLayout layout = LookAndFeel_V4::getSliderLayout(slider);
         if (slider.isHorizontal()) {
+            const auto* precision = dynamic_cast<const PrecisionSlider*>(&slider);
+            const float inset = precision != nullptr
+                    ? precision->getTrackEndInset()
+                    : PropertyControlMetrics::thumbWidth * 0.5f;
             layout.sliderBounds = slider.getLocalBounds().reduced(
-                    roundToInt(PropertyControlMetrics::thumbWidth * 0.5f),
+                    roundToInt(inset),
                     0);
         }
         return layout;

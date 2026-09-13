@@ -1,0 +1,15 @@
+{
+  "commands": [
+    { "command": "openNodeEditor", "nodeId": "voice", "waitForIdle": true, "idleDelayMs": 250 },
+    { "command": "assertState", "path": "expandedNodeControls.voiceContext.octave.track.x", "equals": 135 },
+    { "command": "assertState", "path": "expandedNodeControls.voiceContext.voiceLength.track.x", "equals": 135 },
+    { "command": "assertState", "path": "expandedNodeControls.voiceContext.pitch.track.x", "equals": 135 },
+    { "command": "assertState", "path": "expandedNodeControls.voiceContext.octave.track.width", "equals": 186 },
+    { "command": "assertState", "path": "expandedNodeControls.voiceContext.voiceLength.track.width", "equals": 186 },
+    { "command": "assertState", "path": "expandedNodeControls.voiceContext.pitch.track.width", "equals": 186 },
+    { "command": "inspectTargets", "area": "canvas" },
+    { "command": "pointer", "event": "click", "targetId": "voiceContextEditor.oversampling.8x", "targetX": 0.5, "targetY": 0.5, "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertNodeParameter", "nodeId": "voice", "parameterId": "oversampling", "equals": "8x" }
+  ],
+  "quit": false
+}

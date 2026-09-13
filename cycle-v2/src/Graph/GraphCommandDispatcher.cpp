@@ -417,7 +417,7 @@ void GraphCommandDispatcher::commitCompoundEdit() {
 void GraphCommandDispatcher::cancelCompoundEdit() {
     if (compoundActive && compoundChanged) {
         if (compoundBefore.has_value()) {
-            document.restoreGraph(std::move(*compoundBefore));
+            document.graphForCommand() = std::move(*compoundBefore);
         } else {
             compoundDelta.restore(document.graphForCommand());
         }

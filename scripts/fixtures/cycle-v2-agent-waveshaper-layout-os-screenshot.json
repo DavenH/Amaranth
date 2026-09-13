@@ -15,7 +15,7 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.controlGroupBounds.height",
-      "equals": 188
+      "equals": 224
     },
     {
       "command": "assertState",
@@ -24,8 +24,8 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.qualityGroup.label",
-      "equals": "Quality"
+      "path": "expandedNodeControls.effect2D.processingGroup.label",
+      "equals": "Processing"
     },
     {
       "command": "inspectPointerTargets"

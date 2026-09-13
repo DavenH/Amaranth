@@ -1,4 +1,4 @@
-#include "Nodes/Trimesh/Rendering/SpectralRangeControlRenderer.h"
+#include "Nodes/Trimesh/Rendering/OutputScaleControlRenderer.h"
 
 #include <Audio/CycleDsp/SpectralLayerCore.h>
 
@@ -22,6 +22,14 @@ Rectangle<float> labelColumnBounds(Rectangle<float> row) {
 std::vector<std::pair<float, String>> tickValues(PortDomain domain) {
     using CycleDsp::SpectralLayerCore;
 
+    if (domain == PortDomain::TimeSignal) {
+        return {
+                { 0.f, "-26" },
+                { 0.5f, "0" },
+                { 1.f, "+26" }
+        };
+    }
+
     if (domain == PortDomain::SpectralPhaseSignal) {
         return {
                 { SpectralLayerCore::rangeForPhaseOffsetScale(1.f), "1x" },
@@ -38,16 +46,24 @@ std::vector<std::pair<float, String>> tickValues(PortDomain domain) {
     };
 }
 
+String outputScaleLabel(PortDomain domain) {
+    if (domain == PortDomain::TimeSignal) {
+        return "Gain";
+    }
+
+    return domain == PortDomain::SpectralPhaseSignal ? "Width" : "Range";
 }
 
-Rectangle<float> SpectralRangeControlRenderer::labelBounds(
+}
+
+Rectangle<float> OutputScaleControlRenderer::labelBounds(
         Rectangle<float> row,
         Rectangle<float> rail) {
     Rectangle<float> label = labelColumnBounds(row).withHeight(18.f);
     return label.withCentre({ label.getCentreX(), rail.getCentreY() });
 }
 
-void SpectralRangeControlRenderer::draw(
+void OutputScaleControlRenderer::draw(
         Graphics& g,
         Rectangle<float> row,
         Rectangle<float> rail,
@@ -57,10 +73,7 @@ void SpectralRangeControlRenderer::draw(
 
     g.setColour(kText);
     g.setFont(FontOptions(12.f));
-    g.drawText(
-            domain == PortDomain::SpectralPhaseSignal ? "Width" : "Range",
-            labelBounds(row, rail),
-            Justification::centredLeft);
+    g.drawText(outputScaleLabel(domain), labelBounds(row, rail), Justification::centredLeft);
 
     g.setColour(kMutedText);
     g.setFont(FontOptions(9.f));

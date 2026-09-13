@@ -27,6 +27,7 @@ public:
             const Node& node,
             int rows,
             int columns);
+    void setMorphEditGestureActive(bool active) { morphEditGestureActive = active; }
     bool applyPreparedGuides(PreparedTrimeshGuides guides);
 
     TrimeshPanel3D& getPanel3D() { return panel3D; }
@@ -57,7 +58,7 @@ public:
     bool isMeshEditGestureActive() const { return meshEditGestureActive; }
     void renderPanel3D(juce::Rectangle<float> bounds, float scaleFactor);
     void renderPanel2D(juce::Rectangle<float> bounds, float scaleFactor);
-    int selectedVertexIndexForPanel();
+    int selectedVertexIndexForPanel() const;
 
 private:
     void refreshAfterMeshEdit(TrimeshMeshEditEvent event);
@@ -90,9 +91,13 @@ private:
     int lastPreviewMidiNote { -1 };
     int previewKeyScaleAxis { -1 };
     int lastPreviewKeyScaleAxis { -2 };
+    int lastYellowLink { -1 };
+    int lastRedLink { -1 };
+    int lastBlueLink { -1 };
     bool pendingMeshEdit {};
     bool pendingMeshEditSourceIs3D {};
     bool meshEditGestureActive {};
+    bool morphEditGestureActive {};
     bool pendingSelectionChanged {};
 };
 

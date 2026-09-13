@@ -61,6 +61,8 @@ struct NodeCanvasPresentationFrame {
     UnisonPreviewContext unisonPreviewContext;
     std::optional<OutputMeterLevels> liveOutputMeterLevels;
     String panGestureNodeId;
+    std::vector<String> selectedNodeIds;
+    int hoveredEdgeIndex { -1 };
 };
 
 struct NodePortPresentation {

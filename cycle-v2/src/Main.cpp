@@ -53,12 +53,16 @@ public:
                 const String& name,
                 CycleV2::StandaloneAudioEngine& audioEngine) :
                 DocumentWindow(name, Colour(0xff101318), allButtons)
+            ,   applicationName(name)
             ,   properties(createProperties())
             ,   fileHistory(*properties) {
             setUsingNativeTitleBar(true);
             setResizable(true, true);
             workspace = new CycleV2::NodeWorkspace(audioEngine);
             setContentOwned(workspace, true);
+            workspace->setGraphDocumentStateChangedCallback([this] {
+                updateDocumentPresentation();
+            });
 
             commandManager.registerAllCommandsForTarget(this);
             addKeyListener(commandManager.getKeyMappings());
@@ -74,9 +78,13 @@ public:
             } else {
                 centreWithSize(1280, 760);
             }
+            updateDocumentPresentation();
         }
 
         ~MainWindow() override {
+            if (workspace != nullptr) {
+                workspace->setGraphDocumentStateChangedCallback({});
+            }
           #if JUCE_MAC
             if (MenuBarModel::getMacMainMenu() == this) {
                 MenuBarModel::setMacMainMenu(nullptr);
@@ -147,6 +155,7 @@ public:
                 case CommandSaveGraph:
                     result.setInfo("Save Preset", "Save the current Cycle V2 preset", "File", 0);
                     result.addDefaultKeypress('s', ModifierKeys::commandModifier);
+                    result.setActive(workspace != nullptr && workspace->isGraphDirty());
                     break;
 
                 case CommandSaveGraphAs:
@@ -215,7 +224,7 @@ public:
 
             currentGraphFile = file;
             fileHistory.recordOpened(file);
-            menuItemsChanged();
+            updateDocumentPresentation();
             return true;
         }
 
@@ -227,8 +236,23 @@ public:
 
             currentGraphFile = file;
             fileHistory.recordSaved(file);
-            menuItemsChanged();
+            updateDocumentPresentation();
             return true;
+        }
+
+        void updateDocumentPresentation() {
+            if (workspace == nullptr) {
+                return;
+            }
+
+            const File file = workspace->graphFile();
+            const String presetName = file == File()
+                    ? "Untitled"
+                    : file.getFileNameWithoutExtension();
+            setName(applicationName + " - " + presetName
+                    + (workspace->isGraphDirty() ? "*" : ""));
+            commandManager.commandStatusChanged();
+            menuItemsChanged();
         }
 
         void chooseOpenGraph() {
@@ -291,6 +315,7 @@ public:
                     });
         }
 
+        const String applicationName;
         ApplicationCommandManager commandManager;
         std::unique_ptr<PropertiesFile> properties;
         CycleV2::GraphFileHistory fileHistory;

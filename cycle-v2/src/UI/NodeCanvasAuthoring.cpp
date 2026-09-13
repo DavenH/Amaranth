@@ -64,15 +64,55 @@ NodeCanvasAuthoring::NodeCanvasAuthoring(
 
 void NodeCanvasAuthoring::setSession(NodeCanvasAuthoringSession sessionToUse) {
     authoringSession = std::move(sessionToUse);
+    if (authoringSession.selectedNodeIds.empty()
+            && authoringSession.selectedNodeId.isNotEmpty()) {
+        authoringSession.selectedNodeIds.push_back(authoringSession.selectedNodeId);
+    }
 }
 
 void NodeCanvasAuthoring::selectNode(const String& nodeId) {
     authoringSession.selectedNodeId = nodeId;
+    authoringSession.selectedNodeIds.clear();
+    if (nodeId.isNotEmpty()) {
+        authoringSession.selectedNodeIds.push_back(nodeId);
+    }
     authoringSession.selectedEdgeIndex = -1;
+}
+
+void NodeCanvasAuthoring::makeNodePrimary(const String& nodeId) {
+    if (!isNodeSelected(nodeId)) {
+        selectNode(nodeId);
+        return;
+    }
+    authoringSession.selectedNodeId = nodeId;
+    authoringSession.selectedEdgeIndex = -1;
+}
+
+bool NodeCanvasAuthoring::toggleNodeSelection(const String& nodeId) {
+    auto& selected = authoringSession.selectedNodeIds;
+    const auto found = std::find(selected.begin(), selected.end(), nodeId);
+    if (found != selected.end()) {
+        selected.erase(found);
+        if (authoringSession.selectedNodeId == nodeId) {
+            authoringSession.selectedNodeId = selected.empty() ? String() : selected.back();
+        }
+        return false;
+    }
+
+    selected.push_back(nodeId);
+    authoringSession.selectedNodeId = nodeId;
+    authoringSession.selectedEdgeIndex = -1;
+    return true;
+}
+
+bool NodeCanvasAuthoring::isNodeSelected(const String& nodeId) const {
+    const auto& selected = authoringSession.selectedNodeIds;
+    return std::find(selected.begin(), selected.end(), nodeId) != selected.end();
 }
 
 void NodeCanvasAuthoring::selectEdge(int edgeIndex) {
     authoringSession.selectedNodeId = {};
+    authoringSession.selectedNodeIds.clear();
     authoringSession.selectedEdgeIndex = edgeIndex;
 }
 
@@ -293,6 +333,20 @@ bool NodeCanvasAuthoring::resizeNodeDuringGesture(
         const String& nodeId,
         Rectangle<float> bounds) {
     return commands.resizeNode(nodeId, bounds).succeeded();
+}
+
+bool NodeCanvasAuthoring::moveSelectedNodesDuringGesture(
+        const std::vector<String>& nodeIds,
+        const String& primaryNodeId,
+        Rectangle<float> primaryBounds) {
+    const Node* primary = commands.editingGraph().findNode(primaryNodeId);
+    if (primary == nullptr || nodeIds.empty()) {
+        return false;
+    }
+
+    const Point<float> offset = primaryBounds.getPosition()
+            - primary->bounds.getPosition();
+    return commands.translateNodes(nodeIds, offset).succeeded();
 }
 
 void NodeCanvasAuthoring::commitNodeMoveGesture() {
@@ -854,6 +908,7 @@ void NodeCanvasAuthoring::refreshPresentation() {
 
 void NodeCanvasAuthoring::clearDocumentSelection() {
     authoringSession.selectedNodeId = {};
+    authoringSession.selectedNodeIds.clear();
     authoringSession.expandedNodeId = {};
     authoringSession.selectedEdgeIndex = -1;
     authoringSession.spliceTargetEdgeIndex = -1;
