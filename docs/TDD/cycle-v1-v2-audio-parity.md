@@ -1476,6 +1476,25 @@ as the scratch envelope evolves.
     pitch. Artifact:
     `/private/tmp/cycle-guitar-3-g-current-converter-full-48000/`.
 
+67. Refresh Simple Bass's canonical Guide and Envelope payload. Complete: the
+    current converter restores engine-distinct values in both assigned Guides
+    and the volume Envelope, plus canonical time, magnitude, and phase mesh
+    serialization. Explicit spectral modes replace equivalent operation-node
+    inference; no DSP behavior is reimplemented.
+
+    All 15 node identities, cable endpoints, positions, port sides, editor
+    dimensions, probes, and the Global Input/Output boundary are unchanged.
+    Default `link.*` presentation fields are omitted.
+
+    Frame 32 matches through reconstructed spectral output and first differs at
+    the pitch-resampling boundary. The complete 48 kHz MIDI 48 render is
+    zero-lag at `0.99999999996` correlation, `0.00000945` residual, and
+    `0.0000214 dB` spectral RMSE; both apps repeat exactly in this run. The
+    fixture remains diagnostic pending a fresh full-pitch admission matrix,
+    because earlier matrices exposed intermittent Cycle 1 process variation.
+    Artifacts: `/private/tmp/cycle-simple-bass-current-converter-stages/` and
+    `/private/tmp/cycle-simple-bass-current-converter-full-48000/`.
+
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
 renderer concern. Slice 31 aligns the comparison harness with that ownership.
