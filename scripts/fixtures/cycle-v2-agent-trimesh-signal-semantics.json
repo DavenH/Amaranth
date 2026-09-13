@@ -68,6 +68,11 @@
       "equals": false
     },
     {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-trimesh-signal-semantics-phase.png"
+    },
+    {
       "command": "undo",
       "waitForIdle": true,
       "idleDelayMs": 150

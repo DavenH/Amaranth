@@ -183,7 +183,10 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
     g.setColour(kText);
     g.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize));
     Rectangle<float> titleBounds = headerLayout.title;
-    titleBounds.setRight((float) signalTypeLabel.getX() - kControlGap);
+    const int controlsLeft = polarityLabel.isVisible()
+            ? polarityLabel.getX()
+            : signalTypeLabel.getX();
+    titleBounds.setRight((float) controlsLeft - kControlGap);
     g.drawText(labelForNodeKind(node.kind), titleBounds, Justification::centredLeft);
 
     Rectangle<float> closeButton = closeButtonBounds();
@@ -506,17 +509,13 @@ void TrimeshExpandedEditorComponent::updateSignalControls() {
 }
 
 Rectangle<int> TrimeshExpandedEditorComponent::polaritySelectorBounds() const {
-    const auto header = embeddedEditorHeaderLayout(
-            getLocalBounds().toFloat(), true);
-    return Rectangle<int>(
+    const Rectangle<int> typeLabel = signalTypeLabelBounds();
+    return {
+            typeLabel.getX() - kControlGroupGap - kPolaritySelectorWidth,
+            typeLabel.getY(),
             kPolaritySelectorWidth,
-            kControlHeight)
-            .withCentre({
-                    roundToInt(header.enabled.getX()
-                            - CanvasChromeMetrics::embeddedEditorActionGap
-                            - kPolaritySelectorWidth * 0.5f),
-                    roundToInt(header.header.getCentreY())
-            });
+            typeLabel.getHeight()
+    };
 }
 
 Rectangle<int> TrimeshExpandedEditorComponent::polarityLabelBounds() const {
@@ -530,26 +529,17 @@ Rectangle<int> TrimeshExpandedEditorComponent::polarityLabelBounds() const {
 }
 
 Rectangle<int> TrimeshExpandedEditorComponent::signalTypeSelectorBounds() const {
-    if (signalTypeSelector.selectedValue() != "spectralMagnitude") {
-        const auto header = embeddedEditorHeaderLayout(
-                getLocalBounds().toFloat(), true);
-        return Rectangle<int>(
-                kSignalTypeSelectorWidth,
-                kControlHeight)
-                .withCentre({
-                        roundToInt(header.enabled.getX()
-                                - CanvasChromeMetrics::embeddedEditorActionGap
-                                - kSignalTypeSelectorWidth * 0.5f),
-                        roundToInt(header.header.getCentreY())
-                });
-    }
-    const Rectangle<int> polarityLabel = polarityLabelBounds();
-    return {
-            polarityLabel.getX() - kControlGroupGap - kSignalTypeSelectorWidth,
-            polarityLabel.getY(),
+    const auto header = embeddedEditorHeaderLayout(
+            getLocalBounds().toFloat(), true);
+    return Rectangle<int>(
             kSignalTypeSelectorWidth,
-            polarityLabel.getHeight()
-    };
+            kControlHeight)
+            .withCentre({
+                    roundToInt(header.enabled.getX()
+                            - CanvasChromeMetrics::embeddedEditorActionGap
+                            - kSignalTypeSelectorWidth * 0.5f),
+                    roundToInt(header.header.getCentreY())
+            });
 }
 
 Rectangle<int> TrimeshExpandedEditorComponent::signalTypeLabelBounds() const {

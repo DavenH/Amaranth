@@ -3206,6 +3206,9 @@ TEST_CASE("Trimesh signal type and polarity use shared segmented selectors",
     auto* magnitude = dynamic_cast<TextButton*>(typeSelector->findChildWithID(
             "trimeshEditor.signalType.spectralMagnitude"));
     REQUIRE(magnitude != nullptr);
+    auto* time = dynamic_cast<TextButton*>(typeSelector->findChildWithID(
+            "trimeshEditor.signalType.time"));
+    REQUIRE(time != nullptr);
 
     magnitude->onClick();
 
@@ -3216,6 +3219,16 @@ TEST_CASE("Trimesh signal type and polarity use shared segmented selectors",
             host.component()->findChildWithID("trimeshEditor.polarity"));
     REQUIRE(polaritySelector != nullptr);
     REQUIRE(polaritySelector->isVisible());
+    const Rectangle<int> magnitudeTypeBounds = typeSelector->getBounds();
+    REQUIRE(polaritySelector->getRight() < magnitudeTypeBounds.getX());
+
+    time->onClick();
+    REQUIRE_FALSE(polaritySelector->isVisible());
+    REQUIRE(typeSelector->getBounds() == magnitudeTypeBounds);
+
+    magnitude->onClick();
+    REQUIRE(polaritySelector->isVisible());
+    REQUIRE(typeSelector->getBounds() == magnitudeTypeBounds);
     auto* bipolar = dynamic_cast<TextButton*>(polaritySelector->findChildWithID(
             "trimeshEditor.polarity.bipolar"));
     REQUIRE(bipolar != nullptr);
@@ -3227,6 +3240,14 @@ TEST_CASE("Trimesh signal type and polarity use shared segmented selectors",
     REQUIRE(parameterValueForNode(
             *document.graph().findNode("mesh"),
             "polarity") == "unipolar");
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(
+            *document.graph().findNode("mesh"),
+            "signalType") == "time");
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(
+            *document.graph().findNode("mesh"),
+            "signalType") == "spectralMagnitude");
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(
             *document.graph().findNode("mesh"),
