@@ -1294,6 +1294,39 @@ as the scratch envelope evolves.
     `/private/tmp/cycle-organ-2-realized-scalars-full-48000/`, and
     `/private/tmp/cycle-organ-2-control-interval-full-44100/`.
 
+59. Restore canonical Organ 2 mesh and guide precision without disturbing the
+    merged graph.
+    Complete: the Organ 2 graph still contained the shortened decimal payload
+    from the initial preset port even though the converter and the canonical
+    Cycle 1 export now preserve authored floating-point text. The loss was as
+    small as a few times `1e-8` in the synthesis meshes and about `5e-6` in
+    guides and the IR curve, but it was the first oscillator-stage mismatch and
+    Reverb amplified it at the 48 kHz compatibility boundary.
+
+    Regeneration used the direct Cycle 1 canonical export as the model and
+    parameter authority and the current Cycle V2 graph as the presentation
+    authority. Node identities, cable endpoint sets, positions, port sides,
+    editor sizes, probes, and the merged global/voice-local boundary are
+    unchanged. The global Impulse Response remains attached to Global Input;
+    Delay and Reverb remain on the same global chain. Removed `link.*` values
+    were default-valued presentation properties, and explicit additive
+    spectral modes are equivalent to the existing Add-node topology.
+
+    At frame 32, the time raster, time frame, FFT, magnitude and phase rasters
+    and operands, post-layer spectrum, and reconstructed frame are now
+    byte-identical. The first difference moves to pitch resampling at only
+    `5.90e-8` normalized residual. The dry 48 kHz render improves to `0.99999`
+    correlation, `0.0041` residual, and `0.03 dB` spectral RMSE. With all
+    effects active at 48 kHz, correlation improves from `0.94272` to `0.97076`,
+    residual from `0.3336` to `0.2400`, and spectral RMSE from `16.79 dB` to
+    `9.48 dB`; both engines repeat exactly, but the Reverb-amplified boundary
+    remains diagnostic. At 44.1 kHz the complete graph reaches `1.00000`
+    correlation, `0.0031` residual, and `0.03 dB` spectral RMSE, with exact
+    repeats in both engines. Artifacts:
+    `/private/tmp/cycle-organ-2-canonical-precision-stages/` and
+    `/private/tmp/cycle-organ-2-canonical-precision-full-48000/`, and
+    `/private/tmp/cycle-organ-2-canonical-precision-full-44100/`.
+
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
 renderer concern. Slice 31 aligns the comparison harness with that ownership.
