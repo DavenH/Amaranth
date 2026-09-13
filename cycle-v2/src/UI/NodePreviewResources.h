@@ -32,6 +32,9 @@ public:
     TrimeshWidget& trimeshWidget(const Node& node);
     TrimeshWidget* findTrimeshWidget(const String& nodeId);
     void setGraph(const NodeGraph* graphToUse) { graph = graphToUse; }
+    void setPreviewMidiNote(int midiNote) {
+        selectedPreviewMidiNote = jlimit(0, 127, midiNote);
+    }
     CurveEditorWidget& curveEditorWidget(const Node& node);
     void syncCurveEditorWidget(const Node& node);
     CachedNodePreviewSprite& cachedSprite(const String& nodeId);
@@ -45,11 +48,15 @@ public:
     void detachTrimeshHosts(Component& parent);
 
 private:
+    int selectedPreviewMidiNote { 48 };
+
     NodeEditorCommandService& editorCommands;
-    const NodeGraph* graph {};
+
     std::vector<std::pair<String, std::unique_ptr<TrimeshWidget>>> trimeshWidgets;
     std::vector<std::pair<String, std::unique_ptr<CurveEditorWidget>>> curveEditorWidgets;
     std::vector<std::pair<String, CachedNodePreviewSprite>> cachedSprites;
+
+    const NodeGraph* graph {};
 };
 
 }

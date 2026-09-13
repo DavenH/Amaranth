@@ -40,10 +40,14 @@ public:
             Rectangle<float> bounds,
             Rectangle<float> clipBounds,
             float scaleFactor);
-    void renderGuidePreviewSnapshotOpenGL(Rectangle<float> bounds, float scaleFactor);
-    void renderPreviewSnapshotOpenGL(const Node& node, Rectangle<float> bounds, float scaleFactor);
+    bool renderGuidePreviewSnapshotOpenGL(Rectangle<float> bounds, float scaleFactor);
+    bool renderPreviewSnapshotOpenGL(
+            const Node& node,
+            Rectangle<float> bounds,
+            float scaleFactor);
     bool paintExpandedSnapshot(Graphics& g, Rectangle<float> bounds) const;
     bool paintPreviewSnapshot(Graphics& g, Rectangle<float> bounds) const;
+    bool hasVisiblePreviewSnapshot() const;
     void resetDocumentPresentation();
     void releaseSharedGlResources();
     int vertexCountForAutomation() const;

@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "Graph/GraphCompiler.h"
@@ -6,8 +7,20 @@
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
+#include "UI/SignalProbeRail.h"
 
 using namespace CycleV2;
+
+TEST_CASE("Signal probe cable annotations scale with canvas zoom",
+        "[cycle-v2][ui][signal-probe][zoom]") {
+    const float reference = SignalProbeRail::cableAnnotationDiameter(0.58f);
+
+    REQUIRE(reference == Catch::Approx(16.128f));
+    REQUIRE(SignalProbeRail::cableAnnotationDiameter(1.16f)
+            == Catch::Approx(reference * 2.f));
+    REQUIRE(SignalProbeRail::cableAnnotationDiameter(0.29f)
+            == Catch::Approx(reference * 0.5f));
+}
 
 namespace {
 

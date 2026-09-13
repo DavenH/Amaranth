@@ -66,6 +66,7 @@ public:
             const SignalProbe& probe,
             const NodeGraph& graph,
             const NodeCanvasSceneSnapshot& scene);
+    static float cableAnnotationDiameter(float zoom);
 
     String probeAt(
             Point<float> position,
@@ -82,7 +83,8 @@ public:
             const NodeGraph& graph,
             const NodeCanvasSceneSnapshot& scene,
             Rectangle<float> workspace,
-            const SignalProbeRailState& state) const;
+            const SignalProbeRailState& state,
+            float zoom) const;
     void paintRail(
             Graphics& graphics,
             const NodeGraph& graph,

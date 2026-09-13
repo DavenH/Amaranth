@@ -32,6 +32,15 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     canvas.setOverlayOcclusionChangedCallback([this] {
         layoutPerformanceKeyboard();
     });
+    canvas.setPreviewPlaybackToggleCallback([this] {
+        if (keyboard.isVisible()) {
+            keyboard.togglePlayback();
+        }
+    });
+    keyboard.setPreviewNote(canvas.previewMidiNote());
+    keyboard.setPreviewNoteSelectedCallback([this](int midiNote) {
+        canvas.setPreviewMidiNote(midiNote);
+    });
     startTimerHz(30);
     timerCallback();
 }
@@ -39,6 +48,7 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
 NodeWorkspace::~NodeWorkspace() {
     stopTimer();
     canvas.setOverlayOcclusionChangedCallback({});
+    canvas.setPreviewPlaybackToggleCallback({});
     keyboard.releaseAllNotes();
 }
 
@@ -193,7 +203,13 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
             keyboard.octaveUpBounds().translated(
                     keyboardBounds.getX(),
                     keyboardBounds.getY())));
-    for (int note = keyboard.baseNote(); note <= keyboard.baseNote() + 12; ++note) {
+    targets->add(pointerTarget(
+            "PerformanceKeyboard.Play",
+            "performanceTransport",
+            keyboard.playButtonBounds().translated(
+                    keyboardBounds.getX(),
+                    keyboardBounds.getY())));
+    for (int note = keyboard.baseNote(); note <= keyboard.baseNote() + 24; ++note) {
         targets->add(pointerTarget(
                 "PerformanceKeyboard.Note" + String(note),
                 "performanceKey",
@@ -245,6 +261,10 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("highestNoteLabel", keyboard.highestNoteLabel());
     object->setProperty("heldNote", keyboard.heldNote());
     object->setProperty("heldVelocity", keyboard.heldVelocity());
+    object->setProperty("previewNote", keyboard.previewNote());
+    object->setProperty("previewPlaying", keyboard.isPlaying());
+    object->setProperty("previewProgress", keyboard.playbackProgress());
+    object->setProperty("previewDurationSeconds", keyboard.playbackDurationSeconds());
     object->setProperty("audioDeviceReady", status.deviceReady);
     object->setProperty("deviceName", status.deviceName);
     object->setProperty("deviceError", status.error);
@@ -305,7 +325,7 @@ var NodeWorkspace::outputMeterStateForAutomation() const {
 bool NodeWorkspace::performancePointerDownForAutomation(
         int noteNumber,
         float velocity) {
-    if (noteNumber < keyboard.baseNote() || noteNumber > keyboard.baseNote() + 12) {
+    if (noteNumber < keyboard.baseNote() || noteNumber > keyboard.baseNote() + 24) {
         return false;
     }
     if (keyboard.heldNote() >= 0) {
@@ -329,6 +349,22 @@ bool NodeWorkspace::performancePointerUpForAutomation() {
         return false;
     }
     keyboardState.noteOff(1, keyboard.heldNote(), 0.f);
+    return true;
+}
+
+bool NodeWorkspace::performanceSelectPreviewNoteForAutomation(int noteNumber) {
+    if (noteNumber < keyboard.baseNote() || noteNumber > keyboard.baseNote() + 24) {
+        return false;
+    }
+    keyboard.setPreviewNote(noteNumber);
+    return canvas.setPreviewMidiNote(noteNumber);
+}
+
+bool NodeWorkspace::togglePreviewPlaybackForAutomation() {
+    if (!keyboard.isVisible()) {
+        return false;
+    }
+    keyboard.togglePlayback();
     return true;
 }
 
@@ -365,6 +401,8 @@ bool NodeWorkspace::publishAudioPlan(
     if (!canvas.copyAudioPlan(plan, revision)) {
         return false;
     }
+    keyboard.setPlaybackDurationSeconds(
+            RealtimeGraphRenderer::maximumVoiceDurationSeconds(plan));
     if (!forcePublication
             && revision == publishedPlanRevision
             && status.preparationRevision == publishedDevicePreparationRevision) {

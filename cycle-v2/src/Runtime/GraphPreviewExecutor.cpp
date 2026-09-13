@@ -417,13 +417,15 @@ GraphPreviewResult GraphPreviewExecutor::render(
         const GraphExecutionPlan& plan,
         const GraphAudioResult& audioResult,
         const std::vector<SignalProbe>& probes,
-        size_t pointCount) const {
+        size_t pointCount,
+        const PreviewControlContext* controlContext) const {
     std::vector<const NodeAudioResult*> nodes;
     nodes.reserve(audioResult.nodes.size());
     for (const auto& node : audioResult.nodes) {
         nodes.push_back(&node);
     }
-    GraphPreviewResult result = renderPreview(plan, nodes, pointCount);
+    GraphPreviewResult result = renderPreview(
+            plan, nodes, pointCount, {}, nullptr, controlContext);
     appendProbePreviews(result, plan, nodes, probes);
     return result;
 }
@@ -461,8 +463,15 @@ void GraphPreviewExecutor::renderIncremental(
         const std::vector<SignalProbe>& probes,
         const std::vector<uint8_t>& dirtyNodes,
         size_t pointCount,
-        GraphPreviewResult& result) const {
-    result = renderPreview(plan, audioResult.nodes, pointCount, std::move(result), &dirtyNodes);
+        GraphPreviewResult& result,
+        const PreviewControlContext* controlContext) const {
+    result = renderPreview(
+            plan,
+            audioResult.nodes,
+            pointCount,
+            std::move(result),
+            &dirtyNodes,
+            controlContext);
     appendProbePreviews(result, plan, audioResult.nodes, probes);
 }
 
@@ -471,9 +480,16 @@ void GraphPreviewExecutor::renderNodePreviewsIncremental(
         const GraphAudioResultView& audioResult,
         const std::vector<uint8_t>& dirtyNodes,
         size_t pointCount,
-        GraphPreviewResult& result) const {
+        GraphPreviewResult& result,
+        const PreviewControlContext* controlContext) const {
     auto probes = std::move(result.probes);
-    result = renderPreview(plan, audioResult.nodes, pointCount, std::move(result), &dirtyNodes);
+    result = renderPreview(
+            plan,
+            audioResult.nodes,
+            pointCount,
+            std::move(result),
+            &dirtyNodes,
+            controlContext);
     result.probes = std::move(probes);
 }
 

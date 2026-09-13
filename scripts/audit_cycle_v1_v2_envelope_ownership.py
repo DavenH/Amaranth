@@ -48,20 +48,6 @@ def has_voice_context(graph):
                for node in graph.get("nodes", []))
 
 
-def legacy_morph_ports(edges, destination_id):
-    return [
-        port
-        for port in ("red", "blue")
-        if any(
-            edge.get("sourceNodeId") == LEGACY_MORPH_NODE_ID
-            and edge.get("sourcePortId") == "value"
-            and edge.get("destNodeId") == destination_id
-            and edge.get("destPortId") == port
-            for edge in edges
-        )
-    ]
-
-
 def expected_active_layer(preset, purpose):
     active = [
         layer
@@ -75,19 +61,6 @@ def authored_morph_position(preset):
     return (preset.get("morphPanel") or {}).get("position")
 
 
-def legacy_morph_configuration(graph):
-    node = next((entry for entry in graph.get("nodes", [])
-                 if entry.get("id") == LEGACY_MORPH_NODE_ID), None)
-    if node is None:
-        return None
-    parameters = node.get("parameters", {})
-    return {
-        "kind": node.get("kind"),
-        "source": parameters.get("source"),
-        "constant": parameters.get("constant"),
-    }
-
-
 def audit_pair(name, preset, graph):
     findings = []
     if not has_voice_context(graph):
@@ -96,7 +69,19 @@ def audit_pair(name, preset, graph):
     nodes_by_purpose = envelope_nodes_by_purpose(graph)
     edges = graph.get("edges", [])
     active_layers = {}
-    active_envelope_count = 0
+    if any(node.get("id") == LEGACY_MORPH_NODE_ID
+           for node in graph.get("nodes", [])):
+        findings.append({"kind": "legacyMorphNode"})
+    legacy_edges = [
+        edge for edge in edges
+        if edge.get("sourceNodeId") == LEGACY_MORPH_NODE_ID
+        or edge.get("destNodeId") == LEGACY_MORPH_NODE_ID
+    ]
+    if legacy_edges:
+        findings.append({
+            "kind": "legacyMorphRoute",
+            "edgeCount": len(legacy_edges),
+        })
 
     for purpose in PURPOSES:
         active_layer, active_count = expected_active_layer(preset, purpose)
@@ -124,7 +109,6 @@ def audit_pair(name, preset, graph):
             continue
 
         node = active_nodes[0]
-        active_envelope_count += 1
         node_id = node["id"]
         parameters = node.get("parameters", {})
         expected_declick = (
@@ -139,17 +123,6 @@ def audit_pair(name, preset, graph):
                 "nodeId": node_id,
                 "expected": expected_declick,
                 "actual": bool(parameters.get("declick", False)),
-            })
-
-        connected_ports = legacy_morph_ports(edges, node_id)
-        missing_ports = [port for port in ("red", "blue")
-                         if port not in connected_ports]
-        if missing_ports:
-            findings.append({
-                "kind": "legacyMorphRoute",
-                "purpose": purpose,
-                "nodeId": node_id,
-                "missingPorts": missing_ports,
             })
 
         if purpose == "volume":
@@ -183,19 +156,6 @@ def audit_pair(name, preset, graph):
                 "actualNodeIds": sorted(fallback_ids),
                 "routed": routed,
             })
-
-    configuration = legacy_morph_configuration(graph)
-    expected_configuration = {
-        "kind": "modulationSource",
-        "source": "constant",
-        "constant": 0.0,
-    }
-    if active_envelope_count > 0 and configuration != expected_configuration:
-        findings.append({
-            "kind": "legacyMorphConfiguration",
-            "expected": expected_configuration,
-            "actual": configuration,
-        })
 
     return {"preset": name, "applicable": True, "findings": findings}
 

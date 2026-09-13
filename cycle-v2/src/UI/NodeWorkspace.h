@@ -27,6 +27,7 @@ public:
     var exportAutomationState() const;
     String exportGraphJson() const;
     NodeCanvas& getCanvas() { return canvas; }
+    PerformanceKeyboardPanel& performanceKeyboardForAutomation() { return keyboard; }
     bool openNodeEditorForAutomation(const String& nodeId);
     bool addNodeForAutomation(const String& kind, Point<float> position, String& nodeId);
     bool moveNodeForAutomation(const String& nodeId, Point<float> position);
@@ -68,6 +69,8 @@ public:
     bool performancePointerDownForAutomation(int noteNumber, float velocity);
     bool performancePointerDragForAutomation(int noteNumber, float velocity);
     bool performancePointerUpForAutomation();
+    bool performanceSelectPreviewNoteForAutomation(int noteNumber);
+    bool togglePreviewPlaybackForAutomation();
     StandaloneAudioEngine::LiveCapture captureLiveAudioForAutomation(int durationMs);
 
     void resized() override;

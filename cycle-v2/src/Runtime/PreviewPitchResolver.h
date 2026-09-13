@@ -22,6 +22,10 @@ public:
             const NodeGraph& graph,
             const String& nodeId,
             int fallbackMidiNote = defaultMidiNote);
+    static PreviewPitchContext contextForNodeAtPreviewNote(
+            const NodeGraph& graph,
+            const String& nodeId,
+            int previewMidiNote);
     static int forProbe(
             const NodeGraph& graph,
             const String& probeId,

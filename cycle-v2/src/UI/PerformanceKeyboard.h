@@ -19,8 +19,15 @@ public:
     Rectangle<float> noteBounds(int noteNumber) const;
     String noteLabel(int noteNumber) const;
 
+    void setPreviewNoteSelectedCallback(std::function<void(int)> callback) {
+        previewNoteSelected = std::move(callback);
+    }
+    void setPrimaryGestureStartedCallback(std::function<void()> callback) {
+        primaryGestureStarted = std::move(callback);
+    }
     void shiftOctave(int octaveDelta);
     void releaseAllNotes();
+    bool mouseDownOnKey(int midiNoteNumber, const MouseEvent& event) override;
     void resized() override;
 
 protected:
@@ -32,7 +39,6 @@ protected:
             bool isOver,
             Colour lineColour,
             Colour textColour) override;
-
 private:
     class StateListener final : public MidiKeyboardState::Listener {
     public:
@@ -64,15 +70,21 @@ private:
 
     static constexpr int visibleSemitones = 24;
 
+    int rangeStart { 48 };
+    int currentHeldNote { -1 };
+    float currentVelocity {};
+
+    std::function<void(int)> previewNoteSelected;
+    std::function<void()> primaryGestureStarted;
+
     MidiKeyboardState& keyboardState;
     MidiEventSink& eventSink;
     StateListener stateListener;
-    int rangeStart { 60 };
-    int currentHeldNote { -1 };
-    float currentVelocity {};
 };
 
-class PerformanceKeyboardPanel final : public Component {
+class PerformanceKeyboardPanel final :
+        public Component
+    ,   private Timer {
 public:
     PerformanceKeyboardPanel(MidiKeyboardState& state, MidiEventSink& sink);
 
@@ -84,8 +96,21 @@ public:
     Rectangle<float> noteBounds(int noteNumber) const;
     Rectangle<float> octaveDownBounds() const;
     Rectangle<float> octaveUpBounds() const;
+    Rectangle<float> playButtonBounds() const;
+    Rectangle<float> progressBounds() const;
 
-    void releaseAllNotes() { keyboard.releaseAllNotes(); }
+    int previewNote() const { return selectedPreviewNote; }
+    float playbackProgress() const { return progress; }
+    float playbackDurationSeconds() const { return playbackDuration; }
+    bool isPlaying() const { return playing; }
+    void setPreviewNote(int midiNote);
+    void setPreviewNoteSelectedCallback(std::function<void(int)> callback);
+    void setPlaybackDurationSeconds(float seconds);
+    bool startPlayback(double nowMilliseconds);
+    void togglePlayback();
+    void stopPlayback(bool resetProgress = true);
+    void updatePlayback(double nowMilliseconds);
+    void releaseAllNotes();
     void paint(Graphics& graphics) override;
     void resized() override;
 
@@ -100,9 +125,30 @@ private:
         bool advances;
     };
 
+    class PlayButton final : public Button {
+    public:
+        explicit PlayButton(const PerformanceKeyboardPanel& owner);
+
+        void paintButton(Graphics& graphics, bool highlighted, bool down) override;
+
+    private:
+        const PerformanceKeyboardPanel& owner;
+    };
+
+    void timerCallback() override;
+
+    bool playing {};
+    int selectedPreviewNote { 48 };
+    int playbackNote { -1 };
+    float playbackDuration { 1.f };
+    float progress {};
+    double playbackStartedAtMilliseconds {};
+
+    MidiKeyboardState& keyboardState;
     PerformanceKeyboard keyboard;
     OctaveButton octaveDown { false };
     OctaveButton octaveUp { true };
+    PlayButton playButton { *this };
 };
 
 }

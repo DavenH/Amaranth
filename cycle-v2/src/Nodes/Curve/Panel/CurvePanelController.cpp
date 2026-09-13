@@ -60,11 +60,11 @@ public:
         host->render(bounds, clipBounds, scaleFactor);
     }
 
-    void renderPreview(
+    bool renderPreview(
             Rectangle<float> bounds,
             float scaleFactor,
             uint64_t presentationRevision) override {
-        host->renderPreview(
+        return host->renderPreview(
                 bounds,
                 scaleFactor,
                 preservesInteractivePreviewZoom(),
@@ -79,6 +79,10 @@ public:
 
     bool paintPreviewSnapshot(Graphics& graphics, Rectangle<float> bounds) const override {
         return host->paintPreviewSnapshot(graphics, bounds);
+    }
+
+    bool hasVisiblePreviewSnapshot() const override {
+        return host->hasVisiblePreviewSnapshot();
     }
 
     uint64_t previewSnapshotRevision() const override {

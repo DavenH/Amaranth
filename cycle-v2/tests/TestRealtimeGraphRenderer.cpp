@@ -109,6 +109,75 @@ std::vector<float> renderAstralRealtimeNote(int midiNote) {
 #endif
 }
 
+std::vector<float> renderAttachedVelocityMapping(
+        const String& source,
+        float constant,
+        uint8 velocity) {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("bright-lead-3.cyclegraph");
+    GraphLoadResult loaded = GraphSerializer().loadJsonString(preset.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    REQUIRE(GraphEditor().setNodeParameter(
+            loaded.graph,
+            "morph",
+            "blueSource",
+            "Blue Source",
+            source).succeeded());
+    REQUIRE(GraphEditor().setNodeParameter(
+            loaded.graph,
+            "morph",
+            "blueConstant",
+            "Blue Constant",
+            String(constant)).succeeded());
+    const auto compiled = GraphCompiler().compile(loaded.graph);
+    REQUIRE(compiled.succeeded());
+
+    constexpr int blockSize = 256;
+    constexpr int sampleCount = 2048;
+    constexpr double sampleRate = 44'100.0;
+    constexpr double blockDuration = blockSize / sampleRate;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = blockSize;
+    spec.sampleRate = sampleRate;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    renderer.setPreparedGraph(prepared.get());
+    renderer.setRandomSeedForTesting(0x42564c55);
+    REQUIRE(queue.enqueue(
+            MidiMessage::noteOn(1, 60, velocity),
+            MidiEventSource::PerformanceKeyboard,
+            1.0));
+
+    AudioBuffer<float> output(2, blockSize);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    std::vector<float> samples;
+    samples.reserve(sampleCount);
+    double callbackTime = 1.0;
+    for (int start = 0; start < sampleCount; start += blockSize) {
+        renderer.process(
+                queue,
+                channels,
+                2,
+                blockSize,
+                sampleRate,
+                callbackTime);
+        samples.insert(
+                samples.end(),
+                output.getReadPointer(0),
+                output.getReadPointer(0) + blockSize);
+        callbackTime += blockDuration;
+    }
+    return samples;
+#else
+    ignoreUnused(source, constant, velocity);
+    return {};
+#endif
+}
+
 double sinusoidMagnitude(
         const std::vector<float>& samples,
         double sampleRate,
@@ -167,6 +236,27 @@ TEST_CASE("Realtime graph renderer applies Output gain separately from safety he
                 std::abs(quiet[index] - unity[index] * quietGain));
     }
     REQUIRE(maximumResidual < 1e-6f);
+}
+
+TEST_CASE("Realtime keyboard velocity follows the attached Mod Triple mapping",
+        "[cycle-v2][audio-device][realtime][modulation][velocity]") {
+    constexpr uint8 velocity = 32;
+    const auto mappedVelocity = renderAttachedVelocityMapping("velocity", 0.f, velocity);
+    const auto inverseVelocity = renderAttachedVelocityMapping("inverseVelocity", 0.f, velocity);
+    const auto constant = renderAttachedVelocityMapping("constant", 0.f, velocity);
+
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(mappedVelocity.data()),
+            (int) mappedVelocity.size()).normDiffL2({
+                const_cast<float*>(inverseVelocity.data()),
+                (int) inverseVelocity.size()
+            }) > 0.01f);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(mappedVelocity.data()),
+            (int) mappedVelocity.size()).normDiffL2({
+                const_cast<float*>(constant.data()),
+                (int) constant.size()
+            }) > 0.01f);
 }
 
 TEST_CASE("Realtime Output gain changes do not replace the graph or active voice",

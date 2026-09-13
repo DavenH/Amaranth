@@ -150,29 +150,33 @@ void CurveEditorWidget::renderGuideExpandedPanelOpenGL(
     controller->render(bounds, clipBounds, scaleFactor);
 }
 
-void CurveEditorWidget::renderGuidePreviewSnapshotOpenGL(
+bool CurveEditorWidget::renderGuidePreviewSnapshotOpenGL(
         Rectangle<float> bounds,
         float scaleFactor) {
     if (!guideResource) {
-        return;
+        return false;
     }
 
-    controller->renderPreview(bounds, scaleFactor, previewPresentationRevision);
+    return controller->renderPreview(bounds, scaleFactor, previewPresentationRevision);
 }
 
-void CurveEditorWidget::renderPreviewSnapshotOpenGL(
+bool CurveEditorWidget::renderPreviewSnapshotOpenGL(
         const Node& node,
         Rectangle<float> bounds,
         float scaleFactor) {
     if (!guideResource && node.kind != kind) {
-        return;
+        return false;
     }
 
-    controller->renderPreview(bounds, scaleFactor, previewPresentationRevision);
+    return controller->renderPreview(bounds, scaleFactor, previewPresentationRevision);
 }
 
 bool CurveEditorWidget::paintPreviewSnapshot(Graphics& g, Rectangle<float> bounds) const {
     return controller->paintPreviewSnapshot(g, bounds);
+}
+
+bool CurveEditorWidget::hasVisiblePreviewSnapshot() const {
+    return controller->hasVisiblePreviewSnapshot();
 }
 
 uint64_t CurveEditorWidget::previewSnapshotRevision() const {

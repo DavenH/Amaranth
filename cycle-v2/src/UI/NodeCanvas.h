@@ -98,9 +98,14 @@ public:
     var captureAudioForAutomation(size_t frameCount) const;
     bool copyAudioPlan(GraphExecutionPlan& plan, uint64_t& revision) const;
     float graphOutputGain() const;
+    int previewMidiNote() const { return presentation.previewMidiNote(); }
+    bool setPreviewMidiNote(int midiNote);
     Rectangle<int> performanceKeyboardDockBounds() const;
     Rectangle<float> expandedEditorBoundsForOverlay() const;
     void setOverlayOcclusionChangedCallback(std::function<void()> callback);
+    void setPreviewPlaybackToggleCallback(std::function<void()> callback) {
+        previewPlaybackToggle = std::move(callback);
+    }
     void setRealtimeOutputMeterLevels(std::optional<OutputMeterLevels> measured);
     std::optional<OutputMeterLevels> realtimeOutputMeterLevels() const {
         return liveOutputMeterLevels;
@@ -190,6 +195,7 @@ private:
     std::function<void()> graphDocumentStateChangedCallback;
     uint32 compiledStateRefreshDueMs {};
     std::function<void()> overlayOcclusionChanged;
+    std::function<void()> previewPlaybackToggle;
 
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;

@@ -735,7 +735,8 @@ void NodeCanvasPresentation::paintContent(
                             frame.dockSplitRatio,
                             frame.guideShelfState.minimized,
                             frame.probeRailState.minimized),
-                    frame.probeRailState);
+                    frame.probeRailState,
+                    frame.viewport.getZoom());
         }
     }
     {
@@ -820,6 +821,10 @@ bool NodeCanvasPresentation::renderOpenGL(
 
 bool NodeCanvasPresentation::guideShelfNeedsOpenGLPreviewRender() const {
     return guideCurveShelf.needsOpenGLPreviewRender();
+}
+
+int NodeCanvasPresentation::visibleGuidePreviewCount(const NodeGraph& graph) const {
+    return guideCurveShelf.visiblePreviewCount(graph);
 }
 
 void NodeCanvasPresentation::clearDocumentCaches() {
@@ -1027,8 +1032,8 @@ void NodeCanvasPresentation::paintAreaSelection(
     }
 
     const Rectangle<float> bounds = *frame.areaSelectionBounds;
-    const Colour accent = CanvasChromePalette::navigationAccent;
-    graphics.setColour(Colour(0xff163238).withAlpha(0.35f));
+    const Colour accent = CanvasChromePalette::areaSelection;
+    graphics.setColour(accent.withAlpha(0.20f));
     graphics.fillRect(bounds);
     graphics.setColour(accent.withAlpha(0.90f));
     graphics.drawRect(bounds, 1.f);

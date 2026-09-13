@@ -218,7 +218,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertNotIn("volumeEnvelope1", nodes)
         self.assertNotIn("volumeMultiply", nodes)
 
-    def test_active_envelopes_preserve_the_legacy_zero_cross_section(self):
+    def test_active_envelopes_use_implicit_voice_context_modulation(self):
         source = convertible_source()
         volume = {
             "properties": {"active": True, "dynamic": False},
@@ -236,25 +236,19 @@ class PortCycleV1PresetTest(unittest.TestCase):
         converted = port_cycle_v1_preset.convert(source)
         nodes = {entry["id"]: entry for entry in converted["nodes"]}
 
-        self.assertEqual(
-            nodes["legacyEnvelopeMorph"]["parameters"],
-            {"source": "constant", "controller": 1, "constant": 0.0},
-        )
+        self.assertNotIn("legacyEnvelopeMorph", nodes)
         self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["red"], 0.5)
         self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["blue"], 0.75)
-        self.assertEqual(
-            sorted(
-                edge["destPortId"]
-                for edge in converted["edges"]
-                if edge["sourceNodeId"] == "legacyEnvelopeMorph"
-            ),
-            ["blue", "red"],
-        )
+        self.assertFalse(any(
+            edge["sourceNodeId"] == "legacyEnvelopeMorph"
+            or edge["destNodeId"] == "legacyEnvelopeMorph"
+            for edge in converted["edges"]
+        ))
 
         volume["properties"]["dynamic"] = True
         converted = port_cycle_v1_preset.convert(source)
         nodes = {entry["id"]: entry for entry in converted["nodes"]}
-        self.assertIn("legacyEnvelopeMorph", nodes)
+        self.assertNotIn("legacyEnvelopeMorph", nodes)
         self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["red"], 0.5)
         self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["blue"], 0.75)
 
@@ -567,7 +561,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
 
         manifest = port_cycle_v1_preset.equivalence_manifest(
             source,
-            repository / "cycle/content/presets/saw.cyc",
+            repository / "cycle/content/presets/old/saw.cyc",
             repository / "cycle-v2/content/presets/saw.cyclegraph",
             "Saw",
         )
@@ -591,7 +585,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
 
         manifest = port_cycle_v1_preset.equivalence_manifest(
             source,
-            repository / "cycle/content/presets/organ-2.cyc",
+            repository / "cycle/content/presets/old/organ-2.cyc",
             repository / "cycle-v2/content/presets/organ-2.cyclegraph",
             "organ-2",
         )

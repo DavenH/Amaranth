@@ -2,6 +2,7 @@
 #include <catch2/catch_approx.hpp>
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
+#include <App/AppConstants.h>
 
 #include <algorithm>
 
@@ -11,6 +12,8 @@
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Control/ModulationTriple.h"
+#include "Nodes/Control/ModulationSource.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 #include "Runtime/GraphPresentationModel.h"
@@ -171,6 +174,98 @@ TEST_CASE("Queued presentation publication is inert after model destruction",
 
     MessageManager::getInstance()->runDispatchLoopUntil(20);
     REQUIRE_FALSE(completed);
+}
+
+TEST_CASE("Attached Mod Triple parameter edits refresh implicit voice modulation",
+        "[cycle-v2][runtime][modulation][voice-context][configuration]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::ModulationTriple, "morph", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "morph", "modulation", false },
+            { "voice", "modulation", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "mesh", "context", true }).succeeded());
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+
+    const auto blueConfiguration = [&]() {
+        const auto buffer = std::find_if(
+                presentation.compileResult().plan.buffers.begin(),
+                presentation.compileResult().plan.buffers.end(),
+                [](const GraphBufferPlan& candidate) {
+                    return candidate.defaultModulationSlot == DefaultModulationSlot::Blue;
+                });
+        REQUIRE(buffer != presentation.compileResult().plan.buffers.end());
+        const auto configuration = std::dynamic_pointer_cast<
+                const ModulationTripleConfiguration>(buffer->defaultModulation);
+        REQUIRE(configuration != nullptr);
+        return configuration->sources[2];
+    };
+    REQUIRE(blueConfiguration().mode == ModulationSourceMode::ModWheel);
+
+    REQUIRE(commands.setNodeParameter(
+            "morph",
+            "blueSource",
+            "Blue Source",
+            "inverseVelocity").succeeded());
+    REQUIRE(presentation.refresh(
+            document.graph(),
+            document.revision(),
+            document.lastChange()));
+
+    REQUIRE(blueConfiguration().mode == ModulationSourceMode::InverseVelocity);
+}
+
+TEST_CASE("Preview MIDI note refreshes key-scale previews without publishing audio",
+        "[cycle-v2][runtime][preview-note][modulation]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "key", {}));
+    graph.replaceNodeParameters("key", {
+            { "source", "Source", "keyScale" },
+            { "controller", "Controller", "1" },
+            { "constant", "Constant", "0.5" }
+    });
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "key", "value", "out", "time",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(graph, 1));
+    const size_t compilationCount = presentation.compilationCount();
+    const uint64_t audioPlanRevision = presentation.audioPlanRevision();
+
+    REQUIRE(presentation.refreshPreviewMidiNote(graph, 1, 72));
+
+    REQUIRE(presentation.previewMidiNote() == 72);
+    REQUIRE(presentation.compilationCount() == compilationCount);
+    REQUIRE(presentation.audioPlanRevision() == audioPlanRevision);
+    const auto& preview = findNodePreview(presentation.previewResult(), "key");
+    REQUIRE_FALSE(preview.primary.empty());
+    REQUIRE(preview.primary.front() == Catch::Approx(
+            ModulationSource::normalizeKey(
+                    72,
+                    Constants::LowestMidiNote,
+                    Constants::HighestMidiNote)));
+
+    REQUIRE(presentation.refreshPreviewMidiNote(graph, 1, 36));
+    REQUIRE(presentation.previewMidiNote() == 36);
+    REQUIRE(presentation.audioPlanRevision() == audioPlanRevision);
+    const auto& lowerPreview = findNodePreview(presentation.previewResult(), "key");
+    REQUIRE(lowerPreview.primary.front() == Catch::Approx(
+            ModulationSource::normalizeKey(
+                    36,
+                    Constants::LowestMidiNote,
+                    Constants::HighestMidiNote)));
 }
 
 TEST_CASE("Runtime keeps scratch attachments separate from signal inputs", "[cycle-v2][runtime]") {

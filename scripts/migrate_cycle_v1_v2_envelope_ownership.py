@@ -29,11 +29,11 @@ def purpose_nodes(graph, purpose):
     ]
 
 
-def remove_obsolete_static_morph(graph):
+def remove_obsolete_morph_sources(graph):
     node_ids = {
         node["id"]
         for node in graph.get("nodes", [])
-        if node.get("id") == "staticEnvelopeMorph"
+        if node.get("id") in ("staticEnvelopeMorph", "legacyEnvelopeMorph")
     }
     if not node_ids:
         return False
@@ -47,76 +47,6 @@ def remove_obsolete_static_morph(graph):
         and edge.get("destNodeId") not in node_ids
     ]
     return True
-
-
-def rectangles_overlap(left, right, gap=24.0):
-    return not (
-        left[0] + left[2] + gap <= right[0]
-        or right[0] + right[2] + gap <= left[0]
-        or left[1] + left[3] + gap <= right[1]
-        or right[1] + right[3] + gap <= left[1]
-    )
-
-
-def place_legacy_morph_node(graph, node, active_nodes):
-    width, height = port_cycle_v1_preset.node_footprint(node)
-    envelope_x = min(entry["position"]["x"] for entry in active_nodes)
-    envelope_y = min(entry["position"]["y"] for entry in active_nodes)
-    occupied = []
-    for entry in graph.get("nodes", []):
-        if entry.get("id") == node["id"] or "position" not in entry:
-            continue
-        entry_width, entry_height = port_cycle_v1_preset.node_footprint(entry)
-        occupied.append((
-            entry["position"]["x"],
-            entry["position"]["y"],
-            entry_width,
-            entry_height,
-        ))
-
-    candidates = [
-        (envelope_x - width - 80.0, envelope_y),
-        (envelope_x, envelope_y - height - 80.0),
-    ]
-    for row in range(1, len(occupied) + 2):
-        candidates.append((
-            envelope_x,
-            envelope_y - row * (height + 80.0),
-        ))
-    for x, y in candidates:
-        candidate = (x, y, width, height)
-        if not any(rectangles_overlap(candidate, bounds) for bounds in occupied):
-            node["position"] = {"x": x, "y": y}
-            return
-    raise ValueError("Could not place the legacy Envelope morph node")
-
-
-def install_legacy_envelope_morph(graph, active_nodes):
-    node_id = audit.LEGACY_MORPH_NODE_ID
-    changed = False
-    if node_with_id(graph, node_id) is None:
-        graph.setdefault("nodes", []).append(
-            port_cycle_v1_preset.legacy_envelope_morph_node())
-        changed = True
-    node = node_with_id(graph, node_id)
-    if node is None:
-        raise ValueError("Converted graph is missing legacy Envelope morph")
-    if changed:
-        place_legacy_morph_node(graph, node, active_nodes)
-
-    expected_parameters = {
-        "source": "constant",
-        "controller": 1,
-        "constant": 0.0,
-    }
-    if node.get("parameters") != expected_parameters:
-        node["parameters"] = expected_parameters
-        changed = True
-    for envelope_node in active_nodes:
-        for port in ("red", "blue"):
-            changed = append_missing_edge(graph, signal_edge(
-                node_id, "value", envelope_node["id"], port)) or changed
-    return changed
 
 
 def signal_edge(source, source_port, destination, destination_port):
@@ -216,10 +146,9 @@ def migrate_pair(preset, graph, converted):
     if not audit.has_voice_context(graph):
         return False
 
-    changed = remove_obsolete_static_morph(graph)
+    changed = remove_obsolete_morph_sources(graph)
     morph_position = audit.authored_morph_position(preset)
     active_layers = {}
-    active_nodes_for_compatibility = []
     for purpose in audit.PURPOSES:
         active_layer, active_count = audit.expected_active_layer(preset, purpose)
         if active_count > 1:
@@ -247,7 +176,6 @@ def migrate_pair(preset, graph, converted):
             raise ValueError(
                 f"Cannot identify the active {purpose} Envelope in Cycle V2")
         parameters = active_nodes[0].setdefault("parameters", {})
-        active_nodes_for_compatibility.append(active_nodes[0])
         expected_declick = (
             bool(preset.get("settings", {}).get("Declick", True))
             if purpose == "volume"
@@ -278,10 +206,6 @@ def migrate_pair(preset, graph, converted):
     declick = bool(preset.get("settings", {}).get("Declick", True))
     if active_layers["volume"] is None and declick:
         changed = install_declick_fallback(graph, converted) or changed
-    if active_nodes_for_compatibility:
-        changed = install_legacy_envelope_morph(
-            graph,
-            active_nodes_for_compatibility) or changed
     return changed
 
 

@@ -118,6 +118,17 @@ PreviewPitchContext PreviewPitchResolver::contextForNode(
     return { fallbackMidiNote, {} };
 }
 
+PreviewPitchContext PreviewPitchResolver::contextForNodeAtPreviewNote(
+        const NodeGraph& graph,
+        const String& nodeId,
+        int previewMidiNote) {
+    PreviewPitchContext context = contextForNode(graph, nodeId, previewMidiNote);
+    if (context.keyScaleAxis.isNotEmpty()) {
+        context.midiNote = jlimit(0, 127, previewMidiNote);
+    }
+    return context;
+}
+
 int PreviewPitchResolver::forProbe(
         const NodeGraph& graph,
         const String& probeId,

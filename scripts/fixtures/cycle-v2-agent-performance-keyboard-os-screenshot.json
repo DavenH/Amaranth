@@ -8,7 +8,7 @@
     {
       "command": "assertState",
       "path": "performance.screenHeight",
-      "equals": 112
+      "equals": 140
     },
     {
       "command": "assertState",

@@ -594,6 +594,9 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     guideDock->setProperty("guideTileCount", (int) state.guideDock.guideTiles.size());
     guideDock->setProperty("heatmapGuideCount", state.guideDock.heatmapGuideCount);
     guideDock->setProperty(
+            "visibleGuidePreviewCount",
+            state.guideDock.visibleGuidePreviewCount);
+    guideDock->setProperty(
             "expandedGuideHeatmapActive",
             state.guideDock.expandedGuideHeatmapActive);
     guideDock->setProperty(

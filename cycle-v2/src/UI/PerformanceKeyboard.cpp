@@ -1,6 +1,7 @@
 #include "UI/PerformanceKeyboard.h"
 
 #include "UI/CanvasChromeMetrics.h"
+#include "UI/CanvasChromePalette.h"
 #include "UI/CanvasUtilityDock.h"
 #include "UI/WorkspaceDock.h"
 
@@ -103,6 +104,21 @@ void PerformanceKeyboard::drawWhiteNote(
     graphics.drawText(label, labelBounds, Justification::centred, false);
 }
 
+bool PerformanceKeyboard::mouseDownOnKey(
+        int midiNoteNumber,
+        const MouseEvent& event) {
+    if (event.mods.isRightButtonDown() || event.mods.isPopupMenu()) {
+        if (previewNoteSelected) {
+            previewNoteSelected(midiNoteNumber);
+        }
+        return false;
+    }
+    if (primaryGestureStarted) {
+        primaryGestureStarted();
+    }
+    return true;
+}
+
 void PerformanceKeyboard::StateListener::handleNoteOn(
         MidiKeyboardState*,
         int midiChannel,
@@ -146,18 +162,30 @@ void PerformanceKeyboard::handleNoteOff(
 PerformanceKeyboardPanel::PerformanceKeyboardPanel(
         MidiKeyboardState& state,
         MidiEventSink& sink) :
-        keyboard(state, sink) {
+        keyboardState(state)
+    ,   keyboard(state, sink) {
     setName("PerformanceKeyboardPanel");
     setWantsKeyboardFocus(false);
     setMouseClickGrabsKeyboardFocus(false);
     addAndMakeVisible(keyboard);
     addAndMakeVisible(octaveDown);
     addAndMakeVisible(octaveUp);
+    addAndMakeVisible(playButton);
 
     octaveDown.setTooltip("Lower keyboard by one octave");
     octaveUp.setTooltip("Raise keyboard by one octave");
-    octaveDown.onClick = [this] { keyboard.shiftOctave(-1); };
-    octaveUp.onClick = [this] { keyboard.shiftOctave(1); };
+    playButton.setTooltip("Play the preview note for the voice duration");
+    octaveDown.onClick = [this] {
+        stopPlayback();
+        keyboard.shiftOctave(-1);
+    };
+    octaveUp.onClick = [this] {
+        stopPlayback();
+        keyboard.shiftOctave(1);
+    };
+    playButton.onClick = [this] { togglePlayback(); };
+    keyboard.setPrimaryGestureStartedCallback([this] { stopPlayback(); });
+    keyboard.setHighlightedNote(selectedPreviewNote);
 }
 
 PerformanceKeyboardPanel::OctaveButton::OctaveButton(bool advancesOctave) :
@@ -198,20 +226,164 @@ Rectangle<float> PerformanceKeyboardPanel::octaveUpBounds() const {
     return octaveUp.getBounds().toFloat();
 }
 
+Rectangle<float> PerformanceKeyboardPanel::playButtonBounds() const {
+    return playButton.getBounds().toFloat();
+}
+
+Rectangle<float> PerformanceKeyboardPanel::progressBounds() const {
+    const Rectangle<float> button = playButtonBounds();
+    return {
+            0.f,
+            button.getY(),
+            (float) getWidth(),
+            button.getHeight()
+    };
+}
+
+void PerformanceKeyboardPanel::setPreviewNote(int midiNote) {
+    selectedPreviewNote = jlimit(0, 127, midiNote);
+    keyboard.setHighlightedNote(selectedPreviewNote);
+}
+
+void PerformanceKeyboardPanel::setPreviewNoteSelectedCallback(
+        std::function<void(int)> callback) {
+    keyboard.setPreviewNoteSelectedCallback([this, callback = std::move(callback)](int note) {
+        setPreviewNote(note);
+        if (callback) {
+            callback(note);
+        }
+    });
+}
+
+void PerformanceKeyboardPanel::setPlaybackDurationSeconds(float seconds) {
+    playbackDuration = jmax(0.001f, seconds);
+}
+
+bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
+    stopPlayback();
+    playbackNote = selectedPreviewNote;
+    progress = 0.f;
+    playbackStartedAtMilliseconds = nowMilliseconds;
+    playing = true;
+    keyboardState.noteOn(1, playbackNote, 0.8f);
+    startTimerHz(60);
+    repaint();
+    return true;
+}
+
+void PerformanceKeyboardPanel::togglePlayback() {
+    if (playing) {
+        stopPlayback();
+        return;
+    }
+    startPlayback(Time::getMillisecondCounterHiRes());
+}
+
+void PerformanceKeyboardPanel::stopPlayback(bool resetProgress) {
+    stopTimer();
+    if (playbackNote >= 0) {
+        keyboardState.noteOff(1, playbackNote, 0.f);
+    }
+    playbackNote = -1;
+    playing = false;
+    if (resetProgress) {
+        progress = 0.f;
+    }
+    repaint();
+}
+
+void PerformanceKeyboardPanel::updatePlayback(double nowMilliseconds) {
+    if (!playing) {
+        return;
+    }
+    const double elapsedSeconds = jmax(
+            0.0,
+            (nowMilliseconds - playbackStartedAtMilliseconds) / 1000.0);
+    progress = jlimit(
+            0.f,
+            1.f,
+            (float) (elapsedSeconds / (double) playbackDuration));
+    if (progress >= 1.f) {
+        stopPlayback(false);
+    }
+    repaint(progressBounds().getSmallestIntegerContainer().expanded(2));
+}
+
+void PerformanceKeyboardPanel::releaseAllNotes() {
+    stopPlayback();
+    keyboard.releaseAllNotes();
+}
+
 void PerformanceKeyboardPanel::paint(Graphics& graphics) {
     const Rectangle<float> bounds = getLocalBounds().toFloat().reduced(0.75f);
     CanvasUtilityDock::paintSurface(graphics, bounds);
+
+    const Rectangle<float> track = progressBounds();
+    graphics.setColour(CanvasChromePalette::raisedSurface.withAlpha(0.34f));
+    graphics.fillRect(track);
+    if (progress > 0.f) {
+        graphics.setColour(CanvasChromePalette::focus.withAlpha(0.13f));
+        graphics.fillRect(track.withWidth(track.getWidth() * progress));
+    }
 }
 
 void PerformanceKeyboardPanel::resized() {
     constexpr int buttonWidth = 28;
     constexpr int controlGap = 4;
+    constexpr int transportHeight = 31;
     Rectangle<int> content = getLocalBounds().reduced(6);
+    Rectangle<int> transport = content.removeFromTop(transportHeight);
+    playButton.setBounds(transport.withSizeKeepingCentre(buttonWidth, transportHeight));
+    content.removeFromTop(controlGap);
     octaveDown.setBounds(content.removeFromLeft(buttonWidth));
     content.removeFromLeft(controlGap);
     octaveUp.setBounds(content.removeFromRight(buttonWidth));
     content.removeFromRight(controlGap);
     keyboard.setBounds(content);
+}
+
+PerformanceKeyboardPanel::PlayButton::PlayButton(
+        const PerformanceKeyboardPanel& panel) :
+        Button  ("Preview playback")
+    ,   owner   (panel) {
+    setName("PerformanceKeyboard.Play");
+    setMouseCursor(MouseCursor::PointingHandCursor);
+    setWantsKeyboardFocus(true);
+}
+
+void PerformanceKeyboardPanel::PlayButton::paintButton(
+        Graphics& graphics,
+        bool highlighted,
+        bool down) {
+    Rectangle<float> bounds = getLocalBounds().toFloat().reduced(2.f);
+    const auto colours = CanvasChromePalette::control(
+            highlighted || hasKeyboardFocus(true)
+                    ? CanvasChromeControlState::Focused
+                    : CanvasChromeControlState::Resting);
+    graphics.setColour(colours.surface.brighter(down ? 0.08f : 0.f));
+    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
+    graphics.setColour(colours.border);
+    graphics.drawRoundedRectangle(
+            bounds,
+            CanvasChromeMetrics::controlCornerRadius,
+            CanvasChromeMetrics::restingBorderWidth);
+
+    const Rectangle<float> glyph = bounds.withSizeKeepingCentre(10.f, 10.f);
+    graphics.setColour(colours.text);
+    if (owner.isPlaying()) {
+        graphics.fillRect(glyph.reduced(1.f));
+        return;
+    }
+    Path play;
+    play.startNewSubPath(glyph.getX() + 1.f, glyph.getY());
+    play.lineTo(glyph.getRight(), glyph.getCentreY());
+    play.lineTo(glyph.getX() + 1.f, glyph.getBottom());
+    play.closeSubPath();
+    graphics.fillPath(play);
+}
+
+void PerformanceKeyboardPanel::timerCallback() {
+    updatePlayback(Time::getMillisecondCounterHiRes());
 }
 
 }
