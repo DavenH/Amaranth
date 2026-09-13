@@ -119,3 +119,10 @@ Trimesh automation fixtures pass. Production-size review confirms the centred
 Voice Context landmarks and restored Reverb spectrogram. The Trimesh fixture
 publishes `multiplicative` through the shared selector; the Waveshaper fixture
 confirms the Context and Antialiasing rows share label and selector axes.
+
+The Reverb fixture now opens the connected runtime Reverb in `with-spies`
+rather than creating an uncompiled orphan node, and captures the canvas rather
+than the unreliable macOS window surface. Its runtime stats report a
+384-by-1025 `Reverb Spectrogram` magnitude grid, and the native capture confirms
+that the compact and expanded views retain the same inferno heatmap after Size,
+Width, and Wet edits.
