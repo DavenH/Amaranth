@@ -310,6 +310,13 @@ transferred to its upstream Trimesh before the Pan is removed.
 14. Preserved decimal legacy mesh versions before applying the mature pre-1.1
     Guide/effect coordinate migration, preventing 1.2--1.8 Guide, Waveshaper,
     and IR Modeller meshes from being rotated as version 1 data.
+15. Removed the stale IPP-only gate around per-voice sinc setup and tail
+    finalization, allowing AcidStab3's authored realtime sinc mode to use the
+    existing JUCE/Accelerate resampler on Apple Silicon. Also restored the
+    resampler's intended exhausted-window rejection boundary before its source
+    copy so invalid state cannot become realtime memory corruption. Restored the
+    downsampled output count lost in the Accelerate oversampler port so cyclical
+    oscillator tails wrap only their produced samples.
 
 ## Verification
 
@@ -331,6 +338,10 @@ transferred to its upstream Trimesh before the Pan is removed.
   Modeller vertices against their source XML coordinates with zero differences.
   Focused migration tests cover both a true version-1 coordinate conversion and
   unchanged 1.7/1.8 coordinates through canonical and live-document loading.
+- The focused resampler regression recreates the exhausted source window and
+  passes without an invalid copy. The oversampler regression checks the exact
+  wrapped-tail extent. The AcidStab3 live fixture holds MIDI note 41 for four
+  seconds and requires non-silent realtime output without a crash.
 
 ## Current Inventory
 

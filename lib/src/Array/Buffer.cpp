@@ -542,22 +542,34 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::clip(Ipp##T low, Ipp##T high)   \
 
 #define constructDownsample(T)                                  \
 template<>                                                      \
-int Buffer<Ipp##T>::downsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
+int Buffer<Ipp##T>::downsampleFrom(                             \
+        Buffer<Ipp##T> buff, int factor, int phase, int* destinationSize) \
 {                                                               \
-    if(sz == 0 || buff.empty())                                 \
+    if(sz == 0 || buff.empty()) {                               \
+        if (destinationSize != nullptr) {                       \
+            *destinationSize = 0;                              \
+        }                                                       \
         return 0;                                               \
-    if(factor < 0)                                              \
+    }                                                           \
+    if(factor < 0) {                                            \
         factor = buff.size() / sz;                              \
+    }                                                           \
                                                                 \
     if(factor == 1) {                                           \
         buff.copyTo(*this);                                     \
+        if (destinationSize != nullptr) {                       \
+            *destinationSize = jmin(sz, buff.size());          \
+        }                                                       \
         return 0;                                               \
     }                                                           \
                                                                 \
-    int destSize;                                               \
+    int destSize = 0;                                           \
                                                                 \
     ippsSampleDown_##T(buff.ptr, buff.size(), ptr,              \
                        &destSize, factor, &phase);              \
+    if (destinationSize != nullptr) {                           \
+        *destinationSize = destSize;                            \
+    }                                                           \
     return phase;                                               \
 }
 
