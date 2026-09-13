@@ -219,6 +219,7 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
     graph.addNode(std::move(secondTarget));
     GuideCurveResource guide;
     guide.id = "guide1";
+    guide.shelfOrder = 4;
     REQUIRE(graph.addGuideCurve(std::move(guide)));
     REQUIRE(graph.assignGuideCurve({
             "guide1",

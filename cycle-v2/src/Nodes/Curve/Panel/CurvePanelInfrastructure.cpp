@@ -76,11 +76,15 @@ constexpr uint32_t TextureBake = 1u << 2;
 
 }
 
-void CurvePanelSnapshotCache::publish(Image nextImage, bool hasVisibleContent) {
+bool CurvePanelSnapshotCache::publish(Image nextImage, bool hasVisibleContent) {
+    if (!nextImage.isValid() || !hasVisibleContent) {
+        return false;
+    }
     const ScopedLock scopedLock(lock);
     image = std::move(nextImage);
-    visibleContent = hasVisibleContent;
+    visibleContent = true;
     ++publicationRevision;
+    return true;
 }
 
 bool CurvePanelSnapshotCache::paint(
@@ -99,6 +103,11 @@ bool CurvePanelSnapshotCache::paint(
     }
     graphics.drawImage(image, bounds);
     return true;
+}
+
+bool CurvePanelSnapshotCache::hasVisibleSnapshot() const {
+    const ScopedLock scopedLock(lock);
+    return image.isValid() && visibleContent;
 }
 
 void CurvePanelSnapshotCache::clear() {
@@ -233,7 +242,7 @@ void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float sca
             | CurvePanelInvalidation::Owner);
 }
 
-void CurvePanelHost::renderPreview(
+bool CurvePanelHost::renderPreview(
         Rectangle<float> bounds,
         float scaleFactor,
         bool preserveInteractiveZoom,
@@ -242,7 +251,7 @@ void CurvePanelHost::renderPreview(
         uint64_t presentationRevision) {
     if (bounds.isEmpty()) {
         renderSurfaceVisible = false;
-        return;
+        return false;
     }
     auto renderKey = previewRenderKey(
             bounds,
@@ -251,14 +260,15 @@ void CurvePanelHost::renderPreview(
             contentRevision,
             presentationRevision);
     if (previewRenderCache.canReuse(renderKey)) {
-        return;
+        return true;
     }
 
     if (!renderPreviewUncached(bounds, scaleFactor, preserveInteractiveZoom)) {
-        return;
+        return false;
     }
     renderKey.invalidationGeneration = previewInvalidationGeneration.load();
     previewRenderCache.didRender(renderKey);
+    return true;
 }
 
 bool CurvePanelHost::renderPreviewUncached(
@@ -296,8 +306,7 @@ bool CurvePanelHost::renderPreviewUncached(
             bounds, scaleFactor, nextImage, hasVisibleContent)) {
         return false;
     }
-    previewSnapshot.publish(std::move(nextImage), hasVisibleContent);
-    return true;
+    return previewSnapshot.publish(std::move(nextImage), hasVisibleContent);
 }
 
 bool CurvePanelHost::paintExpandedSnapshot(Graphics& graphics, Rectangle<float> bounds) const {

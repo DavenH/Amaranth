@@ -479,6 +479,22 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
     REQUIRE(phaseCurveStyle.positiveColour.toColour() == colourForDomain(PortDomain::SpectralPhaseSignal).withAlpha(0.84f));
     REQUIRE_FALSE(phaseCurveStyle.negativeColour == magCurveStyle.negativeColour);
     REQUIRE_FALSE(phaseCurveStyle.negativeColour == magCurveStyle.positiveColour);
+
+    const Image phaseGradient = phaseSurfaceStyle.gradientImage();
+    REQUIRE(phaseGradient.isValid());
+    for (const float value : { 0.2f, 0.5f, 0.8f }) {
+        const int x = roundToInt(value * (float) (phaseGradient.getWidth() - 1));
+        const Colour textureColour = phaseGradient.getPixelAt(x, 0);
+        const Colour cpuColour = phaseSurfaceStyle.colourForValue(value);
+        REQUIRE(textureColour.getFloatRed()
+                == Catch::Approx(cpuColour.getFloatRed()).margin(0.01f));
+        REQUIRE(textureColour.getFloatGreen()
+                == Catch::Approx(cpuColour.getFloatGreen()).margin(0.01f));
+        REQUIRE(textureColour.getFloatBlue()
+                == Catch::Approx(cpuColour.getFloatBlue()).margin(0.01f));
+        REQUIRE(textureColour.getFloatAlpha()
+                == Catch::Approx(cpuColour.getFloatAlpha()).margin(0.01f));
+    }
 }
 
 TEST_CASE("Expanded Trimesh surfaces use their complete layout rows", "[cycle-v2][nodes][trimesh][ui]") {
@@ -1835,7 +1851,7 @@ TEST_CASE("Trimesh preview pitch positions whichever morph axis owns key scale",
     REQUIRE(bridge.getModel().getMorphPosition().time.getCurrentValue()
             == Catch::Approx(c3Position));
     REQUIRE(bridge.getModel().getMorphPosition().red.getCurrentValue()
-            == Catch::Approx(0.5f));
+            == Catch::Approx(c3Position));
 
     bridge.setPreviewKeyScaleAxis(Vertex::Blue);
     bridge.setPreviewMidiNote(72);
@@ -1845,7 +1861,7 @@ TEST_CASE("Trimesh preview pitch positions whichever morph axis owns key scale",
             Constants::LowestMidiNote,
             Constants::HighestMidiNote);
     REQUIRE(bridge.getModel().getMorphPosition().time.getCurrentValue()
-            == Catch::Approx(0.5f));
+            == Catch::Approx(0.f));
     REQUIRE(bridge.getModel().getMorphPosition().blue.getCurrentValue()
             == Catch::Approx(c5Position));
 

@@ -38,12 +38,13 @@ public:
             Rectangle<float> bounds,
             Rectangle<float> clipBounds,
             float scaleFactor) = 0;
-    virtual void renderPreview(
+    virtual bool renderPreview(
             Rectangle<float> bounds,
             float scaleFactor,
             uint64_t presentationRevision) = 0;
     virtual bool paintExpandedSnapshot(Graphics& graphics, Rectangle<float> bounds) const = 0;
     virtual bool paintPreviewSnapshot(Graphics& graphics, Rectangle<float> bounds) const = 0;
+    virtual bool hasVisiblePreviewSnapshot() const = 0;
     virtual uint64_t previewSnapshotRevision() const = 0;
     virtual void resetDocumentPresentation() = 0;
     virtual void releaseSharedGlResources() = 0;

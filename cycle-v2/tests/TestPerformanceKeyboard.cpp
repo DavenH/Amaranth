@@ -158,10 +158,14 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     REQUIRE(octaveUp.getX() > panel.noteBounds(72).getRight());
     REQUIRE(play.getCentreX() == Catch::Approx(panel.getWidth() * 0.5f).margin(0.5f));
     REQUIRE(progress.getCentreY() == Catch::Approx(play.getCentreY()));
+    REQUIRE(progress.getHeight() == play.getHeight());
+    REQUIRE(progress.getHeight() == 31.f);
+    REQUIRE(progress.getX() == 0.f);
+    REQUIRE(progress.getRight() == panel.getWidth());
     REQUIRE(progress.getWidth() > play.getWidth());
     REQUIRE(whiteKey.getWidth() >= 25.f);
-    REQUIRE(whiteAspect == 4.f);
-    REQUIRE(blackAspect == 4.f);
+    REQUIRE(whiteAspect == Catch::Approx(3.72f));
+    REQUIRE(blackAspect == Catch::Approx(3.72f));
     REQUIRE(blackKey.getWidth() < whiteKey.getWidth());
     REQUIRE(blackKey.getHeight() < whiteKey.getHeight());
     REQUIRE_FALSE(panel.noteBounds(72).isEmpty());
@@ -173,7 +177,7 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     REQUIRE(panel.octaveDownBounds().getHeight() == compactWhiteKey.getHeight());
     REQUIRE(panel.octaveUpBounds().getHeight() == compactWhiteKey.getHeight());
     REQUIRE(compactWhiteKey.getWidth() == 25.f);
-    REQUIRE(compactWhiteKey.getHeight() == 100.f);
+    REQUIRE(compactWhiteKey.getHeight() == 93.f);
 }
 
 TEST_CASE("Performance keyboard preview transport follows its configured duration",

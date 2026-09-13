@@ -79,6 +79,7 @@ public:
             const GuideCurveShelfState& state,
             const WorkspaceDockFocus& focus) const;
     bool needsOpenGLPreviewRender() const;
+    int visiblePreviewCount(const NodeGraph& graph) const;
     bool renderOpenGL(
             const NodeGraph& graph,
             Rectangle<float> workspace,

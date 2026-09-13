@@ -627,6 +627,12 @@ process-level nondeterminism. Current artifacts are
 Current status: graph/runtime semantics corrected. Icycle is close but below
 its declared correlation/residual thresholds; Guitar 3 G has a material open
 parity gap. Neither prior parity claim is readmitted.
+
+Product update (2026-09-13): the factory `legacyEnvelopeMorph` compatibility
+nodes described above are intentionally removed. Normal implicit Voice Context
+modulation now takes precedence over exact preservation of Cycle 1's stuck
+Envelope cross-section.
+
 ## P2: Grouped Waveshaper tests can lose the traversal grid
 
 Context:
@@ -640,3 +646,13 @@ Context:
 
 Current status: open; reproduce the grouped ordering independently of the UI
 layout work and isolate the missing preview traversal grid.
+
+## Resolved: preset-port manifest source location
+
+Context:
+
+- The Cycle 1 `saw.cyc` and `organ-2.cyc` fixtures moved under the preset
+  library's `old/` directory.
+- Manifest tests now resolve those tracked fixtures at their current location.
+
+Current status: resolved; the full converter test module passes.

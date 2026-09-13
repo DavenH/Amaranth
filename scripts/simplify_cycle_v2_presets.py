@@ -18,6 +18,7 @@ SILENT_GRAPH_NODE_KINDS = {
     "multiply",
     "output",
 }
+LEGACY_ENVELOPE_MORPH_ID = "legacyEnvelopeMorph"
 
 
 def scalar_json(value):
@@ -121,6 +122,24 @@ def remove_nodes(document, node_ids):
     ]
     if not document.get("audioResourceBindings"):
         document.pop("audioResourceBindings", None)
+
+
+def remove_legacy_envelope_morph(document, report):
+    node_ids = {
+        node["id"]
+        for node in document.get("nodes", [])
+        if node.get("id") == LEGACY_ENVELOPE_MORPH_ID
+    }
+    if not node_ids:
+        return
+    incident_edges = sum(
+        edge.get("sourceNodeId") in node_ids
+        or edge.get("destNodeId") in node_ids
+        for edge in document.get("edges", [])
+    )
+    remove_nodes(document, node_ids)
+    report["legacyEnvelopeMorph"] += len(node_ids)
+    report["legacyEnvelopeMorphEdges"] += incident_edges
 
 
 def retarget_probe_sources(document, removed_node_id, source_edge):
@@ -531,6 +550,7 @@ def prune_isolated_nodes(document, report):
 
 def simplify_graph(document):
     report = Counter()
+    remove_legacy_envelope_morph(document, report)
     collapse_silent_empty_time_graph(document, report)
     bypass_empty_spectral_layers(document, report)
     bypass_neutral_pan(document, report)
@@ -551,6 +571,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("paths", nargs="+", type=Path)
     parser.add_argument("--write", action="store_true")
+    parser.add_argument("--legacy-envelope-morph-only", action="store_true")
     args = parser.parse_args()
 
     totals = Counter()
@@ -559,7 +580,13 @@ def main():
         for path in graph_paths(requested):
             original = path.read_text(encoding="utf-8")
             document = json.loads(original)
-            report = simplify_graph(document)
+            if args.legacy_envelope_morph_only:
+                report = Counter()
+                remove_legacy_envelope_morph(document, report)
+                if not report:
+                    continue
+            else:
+                report = simplify_graph(document)
             encoded = canonical_json(document) + "\n"
             if encoded == original:
                 continue

@@ -813,7 +813,7 @@ TEST_CASE("Astral retains the canonical spectral and Envelope control graph",
     REQUIRE(magnitude1 != nullptr);
     REQUIRE(magnitude2 != nullptr);
     REQUIRE(phaseProcess != nullptr);
-    REQUIRE(loaded.graph.findNode("legacyEnvelopeMorph") != nullptr);
+    REQUIRE(loaded.graph.findNode("legacyEnvelopeMorph") == nullptr);
     REQUIRE(output != nullptr);
     REQUIRE(NodeParameterMap(*morph).stringValue("blueSource") == "inverseVelocity");
     REQUIRE(NodeParameterMap(*magnitude1).stringValue("spectralMode") == "additive");
@@ -828,7 +828,7 @@ TEST_CASE("Astral retains the canonical spectral and Envelope control graph",
             [](const Edge& edge) {
                 return edge.sourceNodeId == "legacyEnvelopeMorph";
             });
-    REQUIRE(envelopeMorphEdges == 4);
+    REQUIRE(envelopeMorphEdges == 0);
     REQUIRE(std::any_of(
             loaded.graph.getEdges().begin(),
             loaded.graph.getEdges().end(),
@@ -865,7 +865,7 @@ TEST_CASE("Accoustic retains its canonical spectral and global effect graph",
     REQUIRE(impulseResponse != nullptr);
     REQUIRE(reverb != nullptr);
     REQUIRE(output != nullptr);
-    REQUIRE(loaded.graph.findNode("legacyEnvelopeMorph") != nullptr);
+    REQUIRE(loaded.graph.findNode("legacyEnvelopeMorph") == nullptr);
     REQUIRE(NodeParameterMap(*voice).intValue("octave", 0) == 1);
     REQUIRE(NodeParameterMap(*magnitude1).stringValue("spectralMode") == "additive");
     REQUIRE(NodeParameterMap(*magnitude2).stringValue("spectralMode")

@@ -140,7 +140,7 @@ TEST_CASE("Curve document replacement clears snapshots and changes preview ident
     Image rendered(Image::ARGB, 8, 8, true);
     Graphics renderedGraphics(rendered);
     renderedGraphics.fillAll(Colours::white);
-    snapshot.publish(rendered, true);
+    REQUIRE(snapshot.publish(rendered, true));
     REQUIRE(snapshot.revision() > emptyRevision);
     const uint64_t publishedRevision = snapshot.revision();
 
@@ -153,6 +153,15 @@ TEST_CASE("Curve document replacement clears snapshots and changes preview ident
             destination.getBounds().toFloat(),
             false));
     REQUIRE(snapshot.revision() > publishedRevision);
+
+    const uint64_t clearedRevision = snapshot.revision();
+    Image emptyCapture(Image::RGB, 8, 8, true);
+    REQUIRE_FALSE(snapshot.publish(emptyCapture, false));
+    REQUIRE(snapshot.revision() == clearedRevision);
+    REQUIRE_FALSE(snapshot.paint(
+            destinationGraphics,
+            destination.getBounds().toFloat(),
+            false));
 
     ScopedJuceInitialiser_GUI juce;
     CurveTableScope curveTable;

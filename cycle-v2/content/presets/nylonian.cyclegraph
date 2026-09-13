@@ -41,6 +41,7 @@
             "position": { "x": 480.0, "y": 386.0 },
             "parameters": {
                 "enabled": true,
+                "gain": 0.5,
                 "range": 0.5,
                 "spectralMode": "auto",
                 "yellow": 0.5,

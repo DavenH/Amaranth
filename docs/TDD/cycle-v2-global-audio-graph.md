@@ -42,6 +42,11 @@ its audio-edge port-side overrides so definition-owned left-input/right-output
 routing produces direct horizontal cables. Branching global topology retains
 authored side overrides.
 
+Product update (2026-09-13): the explicit `legacyEnvelopeMorph` compatibility
+exception is superseded. Factory graphs and conversion tooling now use normal
+implicit Voice Context modulation and must not materialize that constant-zero
+source or its Envelope routes.
+
 The corrected Icycle production capture is
 `/tmp/cycle-v2-icycle-routing-fixed.png`. Its global chain remains compact and
 loads with zero validation issues. Its focused automation report and filtered log are

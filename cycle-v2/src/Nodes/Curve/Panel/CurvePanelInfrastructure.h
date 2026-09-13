@@ -32,8 +32,9 @@ private:
 
 class CurvePanelSnapshotCache {
 public:
-    void publish(juce::Image image, bool hasVisibleContent);
+    bool publish(juce::Image image, bool hasVisibleContent);
     bool paint(juce::Graphics& graphics, juce::Rectangle<float> bounds, bool resample) const;
+    bool hasVisibleSnapshot() const;
     void clear();
     uint64_t revision() const { return publicationRevision.load(); }
 
@@ -103,7 +104,7 @@ public:
     Component* component();
     Component* componentIfCreated();
     void render(Rectangle<float> bounds, Rectangle<float> clipBounds, float scaleFactor);
-    void renderPreview(
+    bool renderPreview(
             Rectangle<float> bounds,
             float scaleFactor,
             bool preserveInteractiveZoom,
@@ -112,6 +113,7 @@ public:
             uint64_t presentationRevision);
     bool paintExpandedSnapshot(Graphics& graphics, Rectangle<float> bounds) const;
     bool paintPreviewSnapshot(Graphics& graphics, Rectangle<float> bounds) const;
+    bool hasVisiblePreviewSnapshot() const { return previewSnapshot.hasVisibleSnapshot(); }
     uint64_t previewSnapshotRevision() const { return previewSnapshot.revision(); }
     bool usesCursor(const MouseCursor& cursor) const;
     void resetDocumentPresentation();

@@ -1445,6 +1445,7 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
             dockInteraction->focus().target);
     dock.keyboardFocusItemId = dockInteraction->focus().itemId;
     dock.expandedGuideId = expandedGuideId;
+    dock.visibleGuidePreviewCount = canvasPresentation.visibleGuidePreviewCount(graph);
     for (const auto& guide : graph.getGuideCurves()) {
         dock.heatmapGuideCount += guide.heatmapAssetId.isNotEmpty() ? 1 : 0;
     }

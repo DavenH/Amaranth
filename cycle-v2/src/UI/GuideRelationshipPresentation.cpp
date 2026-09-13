@@ -50,12 +50,20 @@ bool isVisibleTarget(
 Point<float> tetherStart(
         const NodeCanvasPresentationFrame& frame,
         const GuideCurveResource& guide) {
+    int tileIndex = 0;
+    const auto& guides = frame.graph.getGuideCurves();
+    for (int index = 0; index < (int) guides.size(); ++index) {
+        if (guides[(size_t) index].id == guide.id) {
+            tileIndex = index;
+            break;
+        }
+    }
     const Rectangle<float> tile = GuideCurveShelf::tileBoundsFor(
             frame.workspaceBounds,
             frame.probeRailState,
             frame.dockSplitRatio,
             frame.guideShelfState,
-            guide.shelfOrder);
+            tileIndex);
     const WorkspaceDockLayout dock = WorkspaceDock::layout(
             frame.workspaceBounds,
             {

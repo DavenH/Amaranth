@@ -54,6 +54,30 @@ def graph(nodes, edges):
 
 
 class SimplifyCycleV2PresetsTest(unittest.TestCase):
+    def test_legacy_envelope_morph_and_incident_routes_are_removed(self):
+        document = graph([
+            node("voice", "voiceContext"),
+            node("legacyEnvelopeMorph", "modulationSource"),
+            node("envelope", "envelope"),
+        ], [
+            edge("legacyEnvelopeMorph", "value", "envelope", "red"),
+            edge("voice", "context", "legacyEnvelopeMorph", "value"),
+        ])
+
+        report = simplify.simplify_graph(document)
+
+        self.assertEqual(report["legacyEnvelopeMorph"], 1)
+        self.assertEqual(report["legacyEnvelopeMorphEdges"], 2)
+        self.assertNotIn(
+            "legacyEnvelopeMorph",
+            {item["id"] for item in document["nodes"]},
+        )
+        self.assertFalse(any(
+            edge["sourceNodeId"] == "legacyEnvelopeMorph"
+            or edge["destNodeId"] == "legacyEnvelopeMorph"
+            for edge in document["edges"]
+        ))
+
     def test_unused_guides_remain_available_and_keep_their_slot_identity(self):
         document = graph([], [])
         document["guides"] = [

@@ -6,12 +6,14 @@
     },
     { "command": "waitForIdle", "idleDelayMs": 600 },
     { "command": "assertState", "path": "guideCount", "equals": 1 },
+    { "command": "assertState", "path": "guideDock.visibleGuidePreviewCount", "equals": 1 },
     {
       "command": "openGraph",
       "path": "../../cycle-v2/content/presets/guitar-4-g.cyclegraph"
     },
     { "command": "waitForIdle", "idleDelayMs": 800 },
     { "command": "assertState", "path": "guideCount", "equals": 1 },
+    { "command": "assertState", "path": "guideDock.visibleGuidePreviewCount", "equals": 1 },
     { "command": "assertState", "path": "validationIssueCount", "equals": 0 },
     { "command": "assertState", "path": "compileSucceeded", "equals": true },
     { "command": "inspectTargets", "area": "canvas" }

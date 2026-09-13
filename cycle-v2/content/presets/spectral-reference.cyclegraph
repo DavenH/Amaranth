@@ -24,6 +24,7 @@
             "position": { "x": 300.0, "y": 0.0 },
             "parameters": {
                 "enabled": true,
+                "gain": 0.5,
                 "range": 0.5,
                 "spectralMode": "auto",
                 "yellow": 0.5,
@@ -94,6 +95,7 @@
             "position": { "x": 300.0, "y": 360.0 },
             "parameters": {
                 "enabled": true,
+                "gain": 0.5,
                 "range": 0.5,
                 "spectralMode": "auto",
                 "yellow": 0.5,

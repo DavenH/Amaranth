@@ -316,6 +316,19 @@ bool GuideCurveShelf::needsOpenGLPreviewRender() const {
     return false;
 }
 
+int GuideCurveShelf::visiblePreviewCount(const NodeGraph& graph) const {
+    int count = 0;
+    for (const auto& guide : graph.getGuideCurves()) {
+        const auto found = previews.find(guide.id);
+        if (found != previews.end()
+                && found->second.widget != nullptr
+                && found->second.widget->hasVisiblePreviewSnapshot()) {
+            ++count;
+        }
+    }
+    return count;
+}
+
 bool GuideCurveShelf::renderOpenGL(
         const NodeGraph& graph,
         Rectangle<float> workspace,
@@ -328,7 +341,7 @@ bool GuideCurveShelf::renderOpenGL(
         return false;
     }
 
-    bool rendered {};
+    bool attempted {};
     const Rectangle<float> shelf = boundsFor(workspace, dockState, splitRatio, state);
     for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
         const GuideCurveResource& guide = graph.getGuideCurves()[(size_t) index];
@@ -349,11 +362,15 @@ bool GuideCurveShelf::renderOpenGL(
                 captureWorkspace.getY() + 4.f,
                 thumbnail.getWidth(),
                 thumbnail.getHeight());
-        preview.widget->renderGuidePreviewSnapshotOpenGL(captureBounds, scaleFactor);
-        preview.needsOpenGLRender = false;
-        rendered = true;
+        const bool captured = preview.widget->renderGuidePreviewSnapshotOpenGL(
+                captureBounds,
+                scaleFactor);
+        if (captured) {
+            preview.needsOpenGLRender = false;
+        }
+        attempted = true;
     }
-    return rendered;
+    return attempted;
 }
 
 void GuideCurveShelf::resetDocumentPreviews() {

@@ -1112,6 +1112,12 @@ as the scratch envelope evolves.
     correlation `0.97486` and residual `0.2228` to zero lag, correlation
     `0.99996`, and residual `0.0087`. Cycle V2 repeats exactly; the documented
     Cycle 1 process-level variation keeps both fixtures diagnostic. Reports:
+
+    Product update (2026-09-13): exact preservation of Cycle 1's stuck zero
+    Envelope morph is no longer desired. The `legacyEnvelopeMorph` nodes and
+    routes are removed from factory content and conversion tooling in favor of
+    normal implicit Voice Context modulation. Audio comparisons involving those
+    Envelopes should expect this intentional divergence.
     `/private/tmp/cycle-parity-envelope-legacy-morph-migration.json` and
     `/private/tmp/cycle-parity-envelope-legacy-morph-final.json`. Audio:
     `/private/tmp/cycle-guitar-legacy-envelope-rerun/comparison.json` and

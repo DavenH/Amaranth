@@ -231,14 +231,12 @@ Rectangle<float> PerformanceKeyboardPanel::playButtonBounds() const {
 }
 
 Rectangle<float> PerformanceKeyboardPanel::progressBounds() const {
-    constexpr float horizontalInset = 8.f;
-    constexpr float trackHeight = 4.f;
     const Rectangle<float> button = playButtonBounds();
     return {
-            horizontalInset,
-            button.getCentreY() - trackHeight * 0.5f,
-            (float) getWidth() - horizontalInset * 2.f,
-            trackHeight
+            0.f,
+            button.getY(),
+            (float) getWidth(),
+            button.getHeight()
     };
 }
 
@@ -321,20 +319,18 @@ void PerformanceKeyboardPanel::paint(Graphics& graphics) {
     CanvasUtilityDock::paintSurface(graphics, bounds);
 
     const Rectangle<float> track = progressBounds();
-    graphics.setColour(CanvasChromePalette::raisedSurface);
-    graphics.fillRoundedRectangle(track, track.getHeight() * 0.5f);
+    graphics.setColour(CanvasChromePalette::raisedSurface.withAlpha(0.34f));
+    graphics.fillRect(track);
     if (progress > 0.f) {
-        graphics.setColour(CanvasChromePalette::focus.withAlpha(0.88f));
-        graphics.fillRoundedRectangle(
-                track.withWidth(track.getWidth() * progress),
-                track.getHeight() * 0.5f);
+        graphics.setColour(CanvasChromePalette::focus.withAlpha(0.13f));
+        graphics.fillRect(track.withWidth(track.getWidth() * progress));
     }
 }
 
 void PerformanceKeyboardPanel::resized() {
     constexpr int buttonWidth = 28;
     constexpr int controlGap = 4;
-    constexpr int transportHeight = 24;
+    constexpr int transportHeight = 31;
     Rectangle<int> content = getLocalBounds().reduced(6);
     Rectangle<int> transport = content.removeFromTop(transportHeight);
     playButton.setBounds(transport.withSizeKeepingCentre(buttonWidth, transportHeight));

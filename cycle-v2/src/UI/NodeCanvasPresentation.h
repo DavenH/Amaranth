@@ -104,6 +104,7 @@ public:
             bool besideAction);
     void paintStatus(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     bool guideShelfNeedsOpenGLPreviewRender() const;
+    int visibleGuidePreviewCount(const NodeGraph& graph) const;
     void clearDocumentCaches();
     SignalProbeRail& probeRail() { return signalProbeRail; }
 

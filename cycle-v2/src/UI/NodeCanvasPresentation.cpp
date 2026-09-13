@@ -823,6 +823,10 @@ bool NodeCanvasPresentation::guideShelfNeedsOpenGLPreviewRender() const {
     return guideCurveShelf.needsOpenGLPreviewRender();
 }
 
+int NodeCanvasPresentation::visibleGuidePreviewCount(const NodeGraph& graph) const {
+    return guideCurveShelf.visiblePreviewCount(graph);
+}
+
 void NodeCanvasPresentation::clearDocumentCaches() {
     nodeLayerCache.clear();
     signalProbeRail.clearPreviewCache();

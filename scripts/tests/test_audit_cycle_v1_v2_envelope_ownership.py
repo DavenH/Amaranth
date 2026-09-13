@@ -74,7 +74,7 @@ def legacy_edge(destination, port):
 
 
 class EnvelopeOwnershipAuditTest(unittest.TestCase):
-    def test_active_envelopes_require_owner_and_legacy_morph_routes(self):
+    def test_active_envelopes_require_owner_routes(self):
         source = preset(
             volume=[layer(True, True)],
             pitch=[layer(True, True)],
@@ -87,21 +87,17 @@ class EnvelopeOwnershipAuditTest(unittest.TestCase):
                 envelope("volume", "volume"),
                 envelope("pitch", "pitch"),
                 envelope("scratch", "scratch"),
-                legacy_morph(),
             ],
             "edges": [
                 edge("volume", "volumeMultiply", "right"),
                 edge("pitch", "voice", "pitch"),
                 edge("scratch", "voice", "scratch"),
-                *(legacy_edge(node_id, port)
-                  for node_id in ("volume", "pitch", "scratch")
-                  for port in ("red", "blue")),
             ],
         }
 
         self.assertEqual(audit.audit_pair("complete", source, graph)["findings"], [])
 
-    def test_active_volume_reports_declick_and_missing_legacy_morph_route(self):
+    def test_active_volume_reports_declick_and_stale_legacy_morph_route(self):
         source = preset(volume=[layer(True, False)], declick=True)
         graph = {
             "nodes": [
@@ -117,13 +113,12 @@ class EnvelopeOwnershipAuditTest(unittest.TestCase):
         findings = audit.audit_pair("missing", source, graph)["findings"]
 
         self.assertEqual([finding["kind"] for finding in findings], [
-            "declick",
             "legacyMorphRoute",
-            "legacyMorphConfiguration",
+            "declick",
         ])
-        self.assertEqual(findings[1]["missingPorts"], ["blue"])
+        self.assertEqual(findings[0]["edgeCount"], 1)
 
-    def test_authored_morph_values_remain_valid_behind_the_legacy_override(self):
+    def test_legacy_morph_node_and_routes_are_rejected(self):
         source = preset(volume=[layer(True, False)], declick=False)
         volume = envelope("volume", "volume")
         volume["parameters"]["red"] = 0.0
@@ -142,7 +137,10 @@ class EnvelopeOwnershipAuditTest(unittest.TestCase):
 
         findings = audit.audit_pair("morph", source, graph)["findings"]
 
-        self.assertEqual(findings, [])
+        self.assertEqual([finding["kind"] for finding in findings], [
+            "legacyMorphNode",
+            "legacyMorphRoute",
+        ])
 
     def test_inactive_volume_reports_missing_declick_fallback(self):
         findings = audit.audit_pair(
@@ -174,7 +172,7 @@ class EnvelopeOwnershipAuditTest(unittest.TestCase):
         self.assertFalse(result["applicable"])
         self.assertEqual(result["findings"], [])
 
-    def test_missing_source_morph_position_does_not_change_compatibility(self):
+    def test_missing_source_morph_position_needs_no_compatibility_node(self):
         source = preset(volume=[layer(True, False)], declick=False)
         del source["morphPanel"]["position"]
         volume = envelope("volume", "volume")
@@ -183,16 +181,13 @@ class EnvelopeOwnershipAuditTest(unittest.TestCase):
             "nodes": [
                 {"id": "voice", "kind": "voiceContext"},
                 volume,
-                legacy_morph(),
             ],
             "edges": [
                 edge("volume", "volumeMultiply", "right"),
-                legacy_edge("volume", "red"),
-                legacy_edge("volume", "blue"),
             ],
         }
 
-        findings = audit.audit_pair("legacy-morph", source, graph)["findings"]
+        findings = audit.audit_pair("implicit-morph", source, graph)["findings"]
 
         self.assertEqual(findings, [])
 

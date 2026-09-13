@@ -55,6 +55,7 @@
             "position": { "x": 480.0, "y": 619.0 },
             "parameters": {
                 "enabled": true,
+                "gain": 0.5,
                 "range": 0.5,
                 "spectralMode": "auto",
                 "yellow": 0.5,
@@ -141,6 +142,7 @@
             },
             "parameters": {
                 "enabled": true,
+                "gain": 0.5,
                 "range": 0.725,
                 "spectralMode": "auto",
                 "yellow": 0.5,
@@ -250,6 +252,7 @@
             },
             "parameters": {
                 "enabled": true,
+                "gain": 0.5,
                 "range": 0.55,
                 "spectralMode": "auto",
                 "yellow": 0.5,
@@ -320,6 +323,7 @@
             },
             "parameters": {
                 "enabled": true,
+                "gain": 0.5,
                 "range": 0.5,
                 "spectralMode": "auto",
                 "yellow": 0.5,
@@ -416,6 +420,7 @@
             },
             "parameters": {
                 "enabled": true,
+                "gain": 0.5,
                 "range": 0.5,
                 "spectralMode": "auto",
                 "yellow": 0.5,
@@ -512,6 +517,7 @@
             },
             "parameters": {
                 "enabled": true,
+                "gain": 0.5,
                 "range": 0.5,
                 "spectralMode": "auto",
                 "yellow": 0.5,
@@ -673,6 +679,7 @@
             },
             "parameters": {
                 "enabled": true,
+                "gain": 0.5,
                 "range": 0.5,
                 "spectralMode": "auto",
                 "yellow": 0.5,
@@ -743,6 +750,7 @@
             },
             "parameters": {
                 "enabled": true,
+                "gain": 0.5,
                 "range": 0.5,
                 "spectralMode": "auto",
                 "yellow": 0.5,
