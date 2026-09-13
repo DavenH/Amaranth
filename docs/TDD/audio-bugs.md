@@ -1,6 +1,6 @@
 # Audio Bug Notes
 
-## Open: Subbass realtime fixture asserts the pre-reconciliation octave
+## Resolved: Subbass realtime fixture asserted the pre-reconciliation octave
 
 The full `standalone-debug` CTest run fails
 `Strictly ported subbass fixture renders through the realtime path` because the
@@ -9,7 +9,9 @@ test still expects octave `-2`, while the canonical preset reconciliation in
 moved the remaining legacy reference translation into the comparison manifest.
 The failure repeats in isolation and is unrelated to Astral graph publication.
 Reconcile the stale structural assertion with the fixture's current audible
-parity contract. Status: open 2026-09-12.
+parity contract. The assertion now guards octave `-1`; the manifest continues
+to own the separate `-12` legacy MIDI-reference translation. Status: resolved
+2026-09-13.
 
 ## Resolved: one-sided Add bypassed prepared pitch reconstruction
 
