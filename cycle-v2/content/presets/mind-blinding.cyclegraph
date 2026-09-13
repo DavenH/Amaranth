@@ -46,13 +46,22 @@
             "kind": "unison",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 861.0 },
-            "parameters": { "enabled": true, "mode": "group", "order": 10, "width": 13.16, "panSpread": 1.0, "phase": 0.504, "jitter": 0.504 },
+            "parameters": { "enabled": true, "mode": "individual", "order": 10, "width": 13.16, "panSpread": 1.0, "phase": 0.504, "jitter": 0.504 },
             "model": {
                 "schema": "unisonVoices",
                 "version": 1,
                 "revision": 1,
                 "voices": [
-                    { "detune": 0.5, "pan": 0.5, "phase": 0.0 }
+                    { "detune": 0.0171360075, "pan": 1.0, "phase": 0.755926907 },
+                    { "detune": 0.0975031257, "pan": 0.0, "phase": 0.837316871 },
+                    { "detune": 0.243894219, "pan": 1.0, "phase": 0.608154595 },
+                    { "detune": 0.279909313, "pan": 0.0, "phase": 0.578251421 },
+                    { "detune": 0.412692457, "pan": 1.0, "phase": 0.114806019 },
+                    { "detune": 0.559083581, "pan": 0.0, "phase": 0.297643781 },
+                    { "detune": 0.660870671, "pan": 1.0, "phase": 0.081442371 },
+                    { "detune": 0.793653786, "pan": 0.0, "phase": 0.737996995 },
+                    { "detune": 0.921144903, "pan": 1.0, "phase": 0.899885952 },
+                    { "detune": 0.958923995, "pan": 0.0, "phase": 0.268204629 }
                 ]
             }
         },

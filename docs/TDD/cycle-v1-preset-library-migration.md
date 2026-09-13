@@ -317,6 +317,11 @@ transferred to its upstream Trimesh before the Pan is removed.
     copy so invalid state cannot become realtime memory corruption. Restored the
     downsampled output count lost in the Accelerate oversampler port so cyclical
     oscillator tails wrap only their produced samples.
+16. Restored individual-mode Unison conversion as structured voice state. The
+   Blinding migration now carries all ten authored detune, phase, and alternating
+   hard-pan values into the shared Cycle DSP layout instead of substituting the
+   default group layout. Legacy presets above Cycle V2's ten-voice capacity are
+   rejected explicitly rather than truncated.
 
 ## Verification
 
@@ -381,6 +386,10 @@ transferred to its upstream Trimesh before the Pan is removed.
   an open prepared-oscillator bit-exactness regression recorded in
   `audio-bugs.md`; its magnitude is below `3.1e-8`, but the exact host-partition
   contract remains intentionally failing until the runtime boundary is fixed.
+- Expanded-library individual-mode Unison presets with more than ten stored
+  voices remain blocked on a product decision about raising the shared maximum
+  or defining a lossless legacy reduction. The converter reports these presets
+  explicitly and does not emit a truncated graph.
 
 ## Final Verification
 
