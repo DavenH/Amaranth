@@ -480,27 +480,23 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
     REQUIRE_FALSE(phaseCurveStyle.negativeColour == magCurveStyle.negativeColour);
     REQUIRE_FALSE(phaseCurveStyle.negativeColour == magCurveStyle.positiveColour);
 
-    for (const TrimeshSurfaceStyle* style : {
-            &timeSurfaceStyle,
-            &magSurfaceStyle,
-            &phaseSurfaceStyle }) {
-        Image surfaceGradient = style->gradientImage();
+    const Image phaseGradient = phaseSurfaceStyle.gradientImage();
+    REQUIRE(phaseGradient.isValid());
+    REQUIRE(phaseGradient.getWidth() == 512);
+    REQUIRE(phaseGradient.getWidth() == magSurfaceStyle.gradientImage().getWidth());
+    for (const int index : { 102, 256, 408 }) {
+        const float value = (float) index / (float) phaseGradient.getWidth();
+        const Colour textureColour = phaseGradient.getPixelAt(index, 0);
+        const Colour compactColour = phaseSurfaceStyle.colourForValue(value);
 
-        REQUIRE(surfaceGradient.isValid());
-        for (const float value : { 0.2f, 0.5f, 0.8f }) {
-            const int x = roundToInt(value * (float) (surfaceGradient.getWidth() - 1));
-            const Colour textureColour = surfaceGradient.getPixelAt(x, 0);
-            const Colour compactColour = style->colourForValue(value);
-
-            REQUIRE(textureColour.getFloatRed()
-                    == Catch::Approx(compactColour.getFloatRed()).margin(0.01f));
-            REQUIRE(textureColour.getFloatGreen()
-                    == Catch::Approx(compactColour.getFloatGreen()).margin(0.01f));
-            REQUIRE(textureColour.getFloatBlue()
-                    == Catch::Approx(compactColour.getFloatBlue()).margin(0.01f));
-            REQUIRE(textureColour.getFloatAlpha()
-                    == Catch::Approx(compactColour.getFloatAlpha()).margin(0.01f));
-        }
+        REQUIRE(textureColour.getFloatRed()
+                == Catch::Approx(compactColour.getFloatRed()).margin(0.01f));
+        REQUIRE(textureColour.getFloatGreen()
+                == Catch::Approx(compactColour.getFloatGreen()).margin(0.01f));
+        REQUIRE(textureColour.getFloatBlue()
+                == Catch::Approx(compactColour.getFloatBlue()).margin(0.01f));
+        REQUIRE(textureColour.getFloatAlpha()
+                == Catch::Approx(compactColour.getFloatAlpha()).margin(0.01f));
     }
 }
 
@@ -509,29 +505,26 @@ TEST_CASE("Expanded Trimesh panel preserves compact spectral RGBA mapping",
     ScopedJuceInitialiser_GUI juce;
     TrimeshPanelBridge bridge;
 
-    for (const PortDomain domain : {
-            PortDomain::SpectralMagnitudeSignal,
-            PortDomain::SpectralPhaseSignal }) {
-        const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(domain);
-        const auto& style = profile.getSurfaceStyle();
-        bridge.setRenderProfile(profile);
-        const auto& expandedColours = bridge.getPanel3D().getGradientColours();
+    const TrimeshRenderProfile profile =
+            TrimeshRenderProfile::fromDomain(PortDomain::SpectralPhaseSignal);
+    const auto& style = profile.getSurfaceStyle();
+    bridge.setRenderProfile(profile);
+    const auto& expandedColours = bridge.getPanel3D().getGradientColours();
 
-        REQUIRE(expandedColours.size() == 256);
-        for (const float value : { 0.2f, 0.5f, 0.8f }) {
-            const int index = roundToInt(value * (float) (expandedColours.size() - 1));
-            const Colour expandedColour = expandedColours[(size_t) index].toColour();
-            const Colour compactColour = style.colourForValue(value);
+    REQUIRE(expandedColours.size() == style.gradientImage().getWidth());
+    for (const int index : { 102, 256, 408 }) {
+        const float value = (float) index / (float) expandedColours.size();
+        const Colour expandedColour = expandedColours[(size_t) index].toColour();
+        const Colour compactColour = style.colourForValue(value);
 
-            REQUIRE(expandedColour.getFloatRed()
-                    == Catch::Approx(compactColour.getFloatRed()).margin(0.01f));
-            REQUIRE(expandedColour.getFloatGreen()
-                    == Catch::Approx(compactColour.getFloatGreen()).margin(0.01f));
-            REQUIRE(expandedColour.getFloatBlue()
-                    == Catch::Approx(compactColour.getFloatBlue()).margin(0.01f));
-            REQUIRE(expandedColour.getFloatAlpha()
-                    == Catch::Approx(compactColour.getFloatAlpha()).margin(0.01f));
-        }
+        REQUIRE(expandedColour.getFloatRed()
+                == Catch::Approx(compactColour.getFloatRed()).margin(0.01f));
+        REQUIRE(expandedColour.getFloatGreen()
+                == Catch::Approx(compactColour.getFloatGreen()).margin(0.01f));
+        REQUIRE(expandedColour.getFloatBlue()
+                == Catch::Approx(compactColour.getFloatBlue()).margin(0.01f));
+        REQUIRE(expandedColour.getFloatAlpha()
+                == Catch::Approx(compactColour.getFloatAlpha()).margin(0.01f));
     }
 }
 

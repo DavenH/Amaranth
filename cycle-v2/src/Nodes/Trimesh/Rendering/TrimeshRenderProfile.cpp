@@ -39,49 +39,30 @@ Colour sampleGradient(Image& gradient, float value) {
     return gradient.getPixelAt(x, 0);
 }
 
-Colour surfaceColour(PortDomain domain, float value) {
+Colour phaseSurfaceColour(float value) {
     const float v = jlimit(0.f, 1.f, value);
-    if (domain == PortDomain::SpectralMagnitudeSignal) {
-        const float alpha = jmin(1.f, 25.f * v * v);
-        return sampleGradient(burntalumGradientImage(), v).withAlpha(alpha);
-    }
-    if (domain != PortDomain::SpectralPhaseSignal) {
-        return sampleGradient(blueGradientImage(), v).withAlpha(0.82f);
-    }
-
     const Colour negative(0xffff7a3d);
     const Colour centre(0xff120d18);
     const Colour positive(0xffb887ff);
     const Colour colour = v < 0.5f
             ? negative.interpolatedWith(centre, v * 2.f)
             : centre.interpolatedWith(positive, (v - 0.5f) * 2.f);
-    const float distanceFromCentre = v < 0.5f ? 0.5f - v : v - 0.5f;
-    return colour.withAlpha(v <= 0.f
-            ? 0.f
-            : jlimit(0.18f, 0.90f, 0.28f + distanceFromCentre * 1.24f));
+    return colour.withAlpha(v < 0.2f ? 5.f * v : 1.f);
 }
 
-Image createSurfaceGradient(PortDomain domain) {
-    constexpr int width = 256;
-    Image result(Image::ARGB, width, 1, true);
-    for (int x = 0; x < width; ++x) {
-        result.setPixelAt(
-                x,
-                0,
-                surfaceColour(domain, (float) x / (float) (width - 1)));
-    }
-    return result;
-}
-
-Image& surfaceGradientImage(PortDomain domain) {
-    static Image time = createSurfaceGradient(PortDomain::TimeSignal);
-    static Image magnitude = createSurfaceGradient(PortDomain::SpectralMagnitudeSignal);
-    static Image phase = createSurfaceGradient(PortDomain::SpectralPhaseSignal);
-
-    if (domain == PortDomain::SpectralMagnitudeSignal) {
-        return magnitude;
-    }
-    return domain == PortDomain::SpectralPhaseSignal ? phase : time;
+Image& phaseGradientImage() {
+    static Image image = [] {
+        const int width = burntalumGradientImage().getWidth();
+        Image result(Image::ARGB, width, 1, true);
+        for (int x = 0; x < width; ++x) {
+            result.setPixelAt(
+                    x,
+                    0,
+                    phaseSurfaceColour((float) x / (float) width));
+        }
+        return result;
+    }();
+    return image;
 }
 
 Color positiveCurveColourFor(bool spectral, bool phase) {
@@ -325,11 +306,29 @@ void TrimeshRenderProfile::mapValuesToDisplay(Buffer<float> values) const {
 }
 
 Image TrimeshSurfaceStyle::gradientImage() const {
-    return surfaceGradientImage(domain);
+    if (domain == PortDomain::SpectralPhaseSignal) {
+        return phaseGradientImage();
+    }
+    const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
+            || domain == PortDomain::SpectralPhaseSignal;
+    return spectral ? burntalumGradientImage() : blueGradientImage();
 }
 
 Colour TrimeshSurfaceStyle::colourForValue(float value) const {
-    return surfaceColour(domain, value);
+    const float v = jlimit(0.f, 1.f, value);
+    const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
+            || domain == PortDomain::SpectralPhaseSignal;
+
+    if (domain == PortDomain::SpectralPhaseSignal) {
+        return phaseSurfaceColour(v);
+    }
+
+    if (spectral) {
+        const float alpha = jmin(1.f, 25.f * v * v);
+        return sampleGradient(burntalumGradientImage(), v).withAlpha(alpha);
+    }
+
+    return sampleGradient(blueGradientImage(), v).withAlpha(0.82f);
 }
 
 TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :

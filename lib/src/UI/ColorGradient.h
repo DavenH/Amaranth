@@ -13,7 +13,6 @@ class ColorGradient {
 public:
     ColorGradient();
     void read(Image& image, bool softerAlpha = true, bool isTransparent = false);
-    void readPreservingAlpha(Image& image, bool isTransparent = false);
     void multiplyAlpha(float alpha);
 
     Buffer<Int8u> getPixels()       { return pixels;                      }
@@ -24,12 +23,6 @@ public:
     vector<Color>& getColours()     { return colours;                     }
 
 private:
-    void readInternal(
-            Image& image,
-            bool softerAlpha,
-            bool isTransparent,
-            bool preserveImageAlpha);
-
     int pixelStride;
 
     vector<Color> colours;

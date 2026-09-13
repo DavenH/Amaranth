@@ -44,10 +44,15 @@ OpenGL renderer consumes `gradientImage`. Spectral phase therefore needs a gradi
 generated from that same phase-colour function rather than the magnitude gradient.
 
 Production review found a second translation inside the legacy OpenGL
-`ColorGradient` loader: it discarded the gradient image's alpha and substituted
-an index-derived alpha curve. Trimesh panels require a narrow exact-image-alpha
-loading path so the compact and expanded renderers consume the same RGBA mapping.
-Other mature `ColorGradient` clients retain their existing alpha policy.
+`ColorGradient` loader: it deliberately substitutes a monotonic index-derived
+alpha curve needed by the mature quad renderer. Compact phase rendering must use
+that same alpha policy. Passing its two-sided preview alpha into the 3D renderer
+made magnitude opaque and exposed phase surfaces as broad slabs.
+
+The mature `Panel3D` colour lookup addresses a fixed 512-entry table. The first
+phase-specific gradient used only 256 entries, so values above the midpoint read
+past the image and produced clipping and unrelated green pixels. Phase gradients
+therefore inherit the established spectral gradient width.
 
 ### Legacy modulation cleanup
 

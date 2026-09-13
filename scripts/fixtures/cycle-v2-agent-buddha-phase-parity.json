@@ -1,0 +1,35 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/buddha.cyclegraph"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 700
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-buddha-phase-compact.png"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "phaseLayer1"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeId",
+      "equals": "phaseLayer1"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 700
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

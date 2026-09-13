@@ -47,7 +47,7 @@ void TrimeshPanel3D::applyGradientForProfile() {
     Image image = surfaceStyle.gradientImage();
 
     isTransparent = surfaceStyle.textureUsesAlpha;
-    gradient.readPreservingAlpha(image, isTransparent);
+    gradient.read(image, true, isTransparent);
 }
 
 }
