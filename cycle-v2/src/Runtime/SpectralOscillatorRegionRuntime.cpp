@@ -368,8 +368,7 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
                 padding[6],
                 lane.samplingSpillover[(size_t) channel],
                 Resampling::Hermite);
-        if (laneIndex == 0
-                && context.voice != nullptr
+        if (context.voice != nullptr
                 && context.voice->spectralStageCapture != nullptr
                 && renderer.frameRenderCount() > 0) {
             context.voice->spectralStageCapture->capture({
@@ -379,7 +378,8 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
                     context.midiNote,
                     channel,
                     output,
-                    composed
+                    composed,
+                    laneIndex
             });
         }
         lane.buffers[(size_t) channel].write(output);

@@ -1589,6 +1589,35 @@ as the scratch envelope evolves.
     `/private/tmp/cycle-organ-2-shared-frame-portion-full-48000/`, and
     `/private/tmp/cycle-shiny-shared-frame-portion-full-48000/`.
 
+72. Observe individual Unison lanes at the existing spectral capture boundary.
+    Complete: Organ 2 is exact through the shared reconstructed frame and
+    its first pitch-clocked lane, while its complete dry render retains a small
+    residual that Reverb amplifies. The current diagnostic sink suppresses all
+    non-primary lanes in both engines, so it cannot distinguish lane synthesis
+    from the downstream mix.
+
+    Extend `SpectralStageCaptureRecorder` with a selected lane index and carry
+    that index as capture metadata. The mature renderers continue to own lane
+    synthesis and merely publish each pitch-clocked lane to the diagnostic
+    sink; the recorder remains the sole owner of selection, allocation, and
+    serialization. Shared pre-lane stages retain lane zero for backward
+    compatibility. Both automation endpoints and the comparison harness
+    translate one optional `stageCaptureLaneIndex` value at the boundary. This
+    is diagnostic-only: it must not alter scheduling, oscillator state, mixing,
+    effect processing, or production graph semantics. Delete the renderer-side
+    lane-zero filters, cover selection and metadata in the shared recorder, and
+    compare every Organ 2 lane before changing DSP.
+
+    At frame 32, lanes zero and one are byte-identical in both channels. Lanes
+    two and three are the first unequal boundary: their Cycle 1/V2 frontiers
+    are respectively `10411/10748` and `10361/10698`, and their resampled-cycle
+    residuals are about `0.0250` and `0.0242`. Their composed-cycle residuals
+    remain below `0.00045`. This rules out Reverb, panning, and the summation
+    itself as the first divergence and identifies the non-primary lane
+    scheduling boundary. Artifacts:
+    `/private/tmp/cycle-organ-2-lane-0-stages/` through
+    `/private/tmp/cycle-organ-2-lane-3-stages/`.
+
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
 renderer concern. Slice 31 aligns the comparison harness with that ownership.

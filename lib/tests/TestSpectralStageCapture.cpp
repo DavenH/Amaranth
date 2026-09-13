@@ -82,7 +82,7 @@ TEST_CASE("Spectral stage recorder writes hashed raw payload metadata") {
     const juce::var manifest = juce::JSON::parse(
             temporary.getFile().loadFileAsString());
     REQUIRE(manifest.getProperty("schema", {}).toString()
-            == "cycle-spectral-stage-capture.v1");
+            == "cycle-spectral-stage-capture.v2");
     const auto* records = manifest.getProperty("records", {}).getArray();
     REQUIRE(records != nullptr);
     REQUIRE(records->size() == 1);
@@ -159,5 +159,56 @@ TEST_CASE("Pitch-clocked stage metadata identifies the composed source cycle") {
     REQUIRE((int) encoded.getProperty("secondaryValueCount", {}) == 3);
 
     const juce::File raw(encoded.getProperty("rawPath", {}).toString());
+    REQUIRE(raw.deleteFile());
+}
+
+TEST_CASE("Spectral stage recorder selects one Unison lane") {
+    SpectralStageCaptureRecorder recorder;
+    REQUIRE(recorder.prepare(8, 2, 0, 1));
+
+    std::array<float, 2> laneZero { 1.f, 2.f };
+    std::array<float, 2> laneOne { 3.f, 4.f };
+    recorder.capture({
+            SpectralStage::PitchClockedCycle,
+            2,
+            500,
+            60,
+            0,
+            { laneZero.data(), (int) laneZero.size() },
+            {},
+            0
+    });
+    REQUIRE(recorder.record(SpectralStage::PitchClockedCycle, 0) == nullptr);
+
+    recorder.capture({
+            SpectralStage::PitchClockedCycle,
+            2,
+            500,
+            60,
+            0,
+            { laneOne.data(), (int) laneOne.size() },
+            {},
+            1
+    });
+    const auto* captured = recorder.record(
+            SpectralStage::PitchClockedCycle,
+            0);
+    REQUIRE(captured != nullptr);
+    REQUIRE(captured->laneIndex == 1);
+    REQUIRE(captured->primary[0] == 3.f);
+    REQUIRE(captured->primary[1] == 4.f);
+
+    juce::TemporaryFile temporary(".json");
+    juce::String error;
+    REQUIRE(recorder.write(temporary.getFile(), error));
+    const juce::var manifest = juce::JSON::parse(
+            temporary.getFile().loadFileAsString());
+    REQUIRE((int) manifest.getProperty("targetLaneIndex", {}) == 1);
+    const auto* records = manifest.getProperty("records", {}).getArray();
+    REQUIRE(records != nullptr);
+    REQUIRE(records->size() == 1);
+    REQUIRE((int) records->getReference(0).getProperty("laneIndex", {}) == 1);
+    const juce::File raw(
+            records->getReference(0).getProperty("rawPath", {}).toString());
     REQUIRE(raw.deleteFile());
 }
