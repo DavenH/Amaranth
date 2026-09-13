@@ -54,6 +54,7 @@ public:
     void selectNode(const String& nodeId);
     void makeNodePrimary(const String& nodeId);
     bool toggleNodeSelection(const String& nodeId);
+    bool addNodesToSelection(const std::vector<String>& nodeIds);
     bool isNodeSelected(const String& nodeId) const;
     void selectEdge(int edgeIndex);
     bool clearSelection();

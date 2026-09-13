@@ -1,6 +1,6 @@
 # Cycle V2 UI Polish Batch
 
-Status: Partial — easy batch complete; staged follow-ups open
+Status: Implemented — time-frequency redesign intentionally deferred
 
 ## Scope
 
@@ -55,15 +55,17 @@ semantics or DSP behavior:
 All changes are O(1) per paint or edit. No graph/model copies, serialization,
 resource preparation, or additional analysis are introduced.
 
-## Deferred Stages
+## Follow-up Disposition
 
-- Reproduce and repair blank Guide Curve shelf snapshots across preset changes;
-  this crosses the document/OpenGL snapshot lifecycle and needs a focused
-  fixture before mutation.
-- Reconcile Spectral Phase compact and expanded colour/scale semantics using a
-  shared source-to-display contract.
-- Redesign time-frequency node proportions and iconography as one production-
-  size node family, including FFT, IFFT, and spectral views.
+- Guide Curve shelf snapshots pass the focused preset-replacement fixture; a
+  production OpenGL capture confirms the replacement preset's guide is
+  populated, so no additional replacement renderer was added.
+- Spectral Phase compact and expanded views already share
+  `TrimeshRenderProfile` and its bipolar orange/purple scale. Focused mapping
+  tests and a production OpenGL capture confirm parity, so no second mapping
+  path was introduced.
+- Time-frequency node proportions and iconography remain deferred by explicit
+  product direction.
 
 ## Completion Criteria
 
@@ -72,8 +74,8 @@ resource preparation, or additional analysis are introduced.
   and proportional Output gain visuals.
 - Cycle V2 builds with `--parallel 10`, relevant tests pass, SVG parses, the
   production UI is captured at native size, and `git diff --check` is clean.
-- The completed local batch is committed; deferred stages remain explicitly
-  open above.
+- The completed local batch is committed; the intentionally skipped
+  time-frequency redesign remains explicit above.
 
 ## Verification
 
@@ -126,3 +128,41 @@ than the unreliable macOS window surface. Its runtime stats report a
 384-by-1025 `Reverb Spectrogram` magnitude grid, and the native capture confirms
 that the compact and expanded views retain the same inferno heatmap after Size,
 Width, and Wet edits.
+
+## Reopened Live-preview Contract
+
+- `ReverbSpectrogramPreviewProcessor` remains the sole source of Reverb visual
+  content. Slider edits must never substitute a qualitative reflection diagram
+  or another fallback for its kernel-derived magnitude grid.
+- A live slider movement records one transient semantic edit, asynchronously
+  refreshes the affected runtime traversal, publishes a new preview content
+  revision, and explicitly repaints the already-bound editor component. The
+  editor binding itself remains stable during the gesture so control state is
+  not reset by asynchronous completion.
+- Regression coverage uses a connected Reverb, performs two movement updates,
+  and checks the `Reverb Spectrogram` role, magnitude domain, grid dimensions,
+  and content fingerprint before commit and after undo.
+- Spectral Phase compact and expanded Trimesh rendering must both receive the
+  same `GraphRenderSemanticResolver` profile. Domain-only fallback profiles are
+  not authoritative where graph context establishes a more specific scale or
+  role.
+- The Guide Curve preset-reset fixture is rerun as lifecycle verification; no
+  replacement implementation is introduced unless that focused reproduction
+  fails.
+
+### Follow-up Verification
+
+- The connected native Reverb fixture now advances the real UI message loop,
+  observes two distinct in-gesture kernel-spectrogram fingerprints, retains the
+  `Reverb Spectrogram` magnitude grid throughout, and returns to the original
+  fingerprint on undo. Both expanded screenshots retain the mature spectral
+  heatmap; no qualitative fallback was added.
+- Spectral Phase already shares `TrimeshRenderProfile` between compact and
+  expanded rendering. Focused compact/expanded pitch-region tests pass, and the
+  native OpenGL capture confirms the phase surface and bipolar trace use the
+  same orange-centre-purple profile. No duplicate scale adapter was needed.
+- The preset-reset fixture passes with a native capture of `guitar-4-g`; its
+  Guide Curve tile is populated after switching from `sat-bass`, confirming the
+  existing document-presentation reset remains effective.
+- FFT/IFFT/time-frequency proportions and iconography remain outside this
+  batch by explicit direction.

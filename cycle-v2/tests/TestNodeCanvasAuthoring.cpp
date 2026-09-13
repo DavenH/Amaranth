@@ -134,6 +134,11 @@ TEST_CASE("Node canvas authoring keeps a toggled selection and bulk move in one 
     REQUIRE(authoring.session().selectedNodeId == "out");
     REQUIRE(authoring.toggleNodeSelection("wave"));
 
+    REQUIRE_FALSE(authoring.addNodesToSelection({ "out", "wave", "missing" }));
+    REQUIRE(authoring.session().selectedNodeIds
+            == std::vector<String> { "out", "wave" });
+    REQUIRE(authoring.session().selectedNodeId == "wave");
+
     const Rectangle<float> waveStart = document.graph().findNode("wave")->bounds;
     const Rectangle<float> outStart = document.graph().findNode("out")->bounds;
     authoring.beginNodeMoveGesture();

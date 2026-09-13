@@ -199,6 +199,13 @@ attached Voice Context key value` with `SIGSEGV`. Focused tests for Reverb,
 node group movement, Trimesh selection/link highlighting, and cable hit routing
 all pass independently; this remains an open suite-isolation defect.
 
+Update 2026-09-12: the UI batch verification run with seed `4133085212`
+reported three graph-fixture expectation failures, then the existing
+`SingletonRepo.h:54` assertion and `SIGSEGV` in `Trimesh Panel3D reads
+node-backed columns through lib data retriever`. The focused marquee and live
+Reverb regressions pass independently; this remains the same open randomized
+suite-isolation defect.
+
 Update 2026-09-12: the focused `[cycle-v2][nodes][trimesh]` group reached a
 `SingletonRepo.h:54` assertion and `SIGSEGV` in `Trimesh Panel3D reads
 node-backed columns through lib data retriever` (seed `1390489111`). The same

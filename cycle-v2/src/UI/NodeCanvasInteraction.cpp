@@ -131,6 +131,10 @@ void NodeCanvasInteraction::beginPan(Point<float> startPan) {
     currentGesture = CanvasPanGesture { startPan };
 }
 
+void NodeCanvasInteraction::beginAreaSelection(Point<float> start) {
+    currentGesture = AreaSelectionGesture { start, start };
+}
+
 void NodeCanvasInteraction::beginNodeDrag(
         const String& nodeId,
         std::vector<String> nodeIds,
@@ -202,6 +206,21 @@ std::optional<PortAddress> NodeCanvasInteraction::connectionTargetAt(
     return bestTarget;
 }
 
+std::vector<String> NodeCanvasInteraction::nodeIdsIntersecting(
+        const NodeGraph& graph,
+        const NodeCanvasViewport& viewport,
+        Rectangle<float> screenBounds) const {
+    std::vector<String> result;
+    for (const auto& node : graph.getNodes()) {
+        const Rectangle<float> nodeBounds = viewport.toScreen(
+                NodeCanvasScene::presentationWorldBounds(graph, node));
+        if (screenBounds.intersects(nodeBounds)) {
+            result.push_back(node.id);
+        }
+    }
+    return result;
+}
+
 SnappedNodeBounds NodeCanvasInteraction::snapNode(
         const NodeGraph& graph,
         const Node& node,
@@ -251,6 +270,15 @@ NodeCanvasDragUpdate NodeCanvasInteraction::drag(
         Point<float> dragOffset) {
     if (auto* pan = std::get_if<CanvasPanGesture>(&currentGesture)) {
         return PanDragUpdate { pan->startPan + dragOffset };
+    }
+
+    if (auto* selection = std::get_if<AreaSelectionGesture>(&currentGesture)) {
+        selection->current = screenPosition;
+        selection->moved = dragOffset.getDistanceFromOrigin() > 3.f;
+        return AreaSelectionDragUpdate {
+                selection->bounds(),
+                selection->moved
+        };
     }
 
     if (auto* connection = std::get_if<PortConnectionGesture>(&currentGesture)) {
@@ -306,7 +334,11 @@ NodeCanvasGestureCompletion NodeCanvasInteraction::finish(
         Point<float> screenPosition) {
     NodeCanvasGestureCompletion completion;
 
-    if (const auto* nodeDrag = std::get_if<NodeDragGesture>(&currentGesture)) {
+    if (const auto* selection = std::get_if<AreaSelectionGesture>(&currentGesture)) {
+        AreaSelectionGesture finished = *selection;
+        finished.current = screenPosition;
+        completion = AreaSelectionCompletion { finished.bounds(), finished.moved };
+    } else if (const auto* nodeDrag = std::get_if<NodeDragGesture>(&currentGesture)) {
         completion = NodeDragCompletion {
                 nodeDrag->nodeId,
                 nodeDrag->nodeIds,

@@ -63,6 +63,7 @@ struct NodeCanvasPresentationFrame {
     String panGestureNodeId;
     std::vector<String> selectedNodeIds;
     int hoveredEdgeIndex { -1 };
+    std::optional<Rectangle<float>> areaSelectionBounds;
 };
 
 struct NodePortPresentation {
@@ -117,6 +118,7 @@ private:
             float physicalScale);
     void paintPendingConnection(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintSnapGuides(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
+    void paintAreaSelection(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintCachedNodes(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintInlinePanGesture(
             Graphics& graphics,

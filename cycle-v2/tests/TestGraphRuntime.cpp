@@ -87,6 +87,13 @@ NodeModelStatePtr horizontalGuideModel(float y, uint64_t revision) {
     return CurveNodeModelState::copyOf(curve, revision);
 }
 
+bool waitForAsyncRefresh(bool& completed) {
+    for (int attempt = 0; attempt < 300 && !completed; ++attempt) {
+        MessageManager::getInstance()->runDispatchLoopUntil(10);
+    }
+    return completed;
+}
+
 }
 
 TEST_CASE("Runtime traces compiled graph execution", "[cycle-v2][runtime]") {
@@ -406,6 +413,76 @@ TEST_CASE("Output gain edits refresh the renderer-owned compiled value",
     REQUIRE(presentation.compilationCount() == initialCompilations);
     REQUIRE(presentation.compileResult().plan.outputGain
             == Catch::Approx(CycleDsp::outputGain(0.25f)));
+}
+
+TEST_CASE("Live Reverb edits publish each kernel spectrogram before commit",
+        "[cycle-v2][runtime][causal][reverb][preview][regression]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    ScopedJuceInitialiser_GUI juce;
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("resources")
+            .getChildFile("with-spies.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    GraphChangeSet topology;
+    topology.topologyChanged = true;
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), topology));
+
+    const NodePreviewResult initial = findNodePreview(
+            presentation.previewResult(), "reverb");
+    REQUIRE(initial.role == PreviewModuleRole::ReverbSpectrogram);
+    REQUIRE(initial.domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(initial.gridRows == 1025);
+
+    commands.beginTransientEdit();
+    uint64_t previousFingerprint = nodePreviewResultFingerprint(initial);
+    for (const String highPass : { "0.35", "0.8" }) {
+        const auto edit = commands.setNodeParameter(
+                "reverb", "highPass", "High Pass", highPass);
+        REQUIRE(edit.succeeded());
+        REQUIRE(edit.changed);
+        presentation.recordEditorMovement(
+                "reverb",
+                "highPass",
+                static_cast<uint64_t>(highPass.hashCode64()),
+                false);
+        bool completed {};
+        presentation.refreshAsync(
+                commands.editingGraph(),
+                document.revision(),
+                commands.transientChanges(),
+                [&] { completed = true; });
+        REQUIRE(waitForAsyncRefresh(completed));
+
+        const auto& current = findNodePreview(
+                presentation.previewResult(), "reverb");
+        REQUIRE(current.role == PreviewModuleRole::ReverbSpectrogram);
+        REQUIRE(current.domain == PortDomain::SpectralMagnitudeSignal);
+        REQUIRE(current.gridRows == initial.gridRows);
+        REQUIRE(nodePreviewResultFingerprint(current) != previousFingerprint);
+        previousFingerprint = nodePreviewResultFingerprint(current);
+    }
+
+    commands.commitTransientEdit();
+    presentation.commitLocalEditorState(
+            "reverb",
+            "highPass",
+            static_cast<uint64_t>(String("0.8").hashCode64()),
+            document.revision());
+    REQUIRE(document.undo());
+    REQUIRE(presentation.refresh(
+            document.graph(),
+            document.revision(),
+            document.lastChange()));
+    REQUIRE(nodePreviewResultFingerprint(findNodePreview(
+            presentation.previewResult(), "reverb"))
+            == nodePreviewResultFingerprint(initial));
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
 }
 
 TEST_CASE("Adding a second signal probe refreshes its compiled preview address",

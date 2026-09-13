@@ -26,6 +26,20 @@ struct CanvasPanGesture {
     Point<float> startPan;
 };
 
+struct AreaSelectionGesture {
+    Point<float> start;
+    Point<float> current;
+    bool moved {};
+
+    Rectangle<float> bounds() const {
+        return Rectangle<float>::leftTopRightBottom(
+                jmin(start.x, current.x),
+                jmin(start.y, current.y),
+                jmax(start.x, current.x),
+                jmax(start.y, current.y));
+    }
+};
+
 struct NodeDragGesture {
     String nodeId;
     std::vector<String> nodeIds;
@@ -46,12 +60,18 @@ struct ExpandedEditorGesture {
 using NodeCanvasGesture = std::variant<
         std::monostate,
         CanvasPanGesture,
+        AreaSelectionGesture,
         NodeDragGesture,
         PortConnectionGesture,
         ExpandedEditorGesture>;
 
 struct PanDragUpdate {
     Point<float> pan;
+};
+
+struct AreaSelectionDragUpdate {
+    Rectangle<float> bounds;
+    bool moved {};
 };
 
 struct NodeDragUpdate {
@@ -72,12 +92,18 @@ struct ConnectionDragUpdate {
 using NodeCanvasDragUpdate = std::variant<
         std::monostate,
         PanDragUpdate,
+        AreaSelectionDragUpdate,
         NodeDragUpdate,
         ConnectionDragUpdate>;
 
 struct NodeDragCompletion {
     String nodeId;
     std::vector<String> nodeIds;
+    bool moved {};
+};
+
+struct AreaSelectionCompletion {
+    Rectangle<float> bounds;
     bool moved {};
 };
 
@@ -88,12 +114,14 @@ struct ConnectionCompletion {
 
 using NodeCanvasGestureCompletion = std::variant<
         std::monostate,
+        AreaSelectionCompletion,
         NodeDragCompletion,
         ConnectionCompletion>;
 
 class NodeCanvasInteraction {
 public:
     void beginPan(Point<float> startPan);
+    void beginAreaSelection(Point<float> start);
     void beginNodeDrag(
             const String& nodeId,
             std::vector<String> nodeIds,
@@ -116,6 +144,10 @@ public:
             const NodeCanvasSceneSnapshot& scene,
             const PortAddress& source,
             Point<float> screenPosition) const;
+    std::vector<String> nodeIdsIntersecting(
+            const NodeGraph& graph,
+            const NodeCanvasViewport& viewport,
+            Rectangle<float> screenBounds) const;
 
     SnappedNodeBounds snapNode(
             const NodeGraph& graph,
