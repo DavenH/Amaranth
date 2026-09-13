@@ -61,6 +61,7 @@ TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& ta
 }
 
 TrimeshExpandedEditorComponent::~TrimeshExpandedEditorComponent() {
+    widget.setMorphEditGestureActive(false);
     widget.clearExpandedPanelHostDelegate(this);
 }
 
@@ -241,9 +242,12 @@ void TrimeshExpandedEditorComponent::toggleTrimeshLinkAxis(const String& axis) {
 void TrimeshExpandedEditorComponent::beginTrimeshMorphControlEdit(
         const String& id,
         float value) {
+    widget.setMorphEditGestureActive(true);
     if (delegate != nullptr && delegate->beginTrimeshMorphEdit(id, value)) {
         setLocalMorphValue(id, value);
+        return;
     }
+    widget.setMorphEditGestureActive(false);
 }
 
 void TrimeshExpandedEditorComponent::updateTrimeshMorphControlEdit(float value) {
@@ -256,6 +260,7 @@ void TrimeshExpandedEditorComponent::endTrimeshMorphControlEdit() {
     if (delegate != nullptr) {
         delegate->endTrimeshMorphEdit();
     }
+    widget.setMorphEditGestureActive(false);
     activeMorphParameterId = {};
 }
 
@@ -340,9 +345,11 @@ void TrimeshExpandedEditorComponent::selectTrimeshVertex(int index) {
     if (delegate != nullptr) {
         delegate->selectTrimeshVertex(index);
     }
+    controls.refreshSelectionState();
 }
 
 void TrimeshExpandedEditorComponent::requestTrimeshPanelRepaint() {
+    controls.refreshSelectionState();
     repaint();
 
     if (delegate != nullptr) {

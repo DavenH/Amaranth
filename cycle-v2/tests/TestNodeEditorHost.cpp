@@ -2847,10 +2847,17 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
             NodeKind::TrilinearMesh,
             "mesh",
             {}));
+    auto editorState = std::make_unique<DynamicObject>();
+    editorState->setProperty("selectedVertexId", 2);
+    REQUIRE(GraphEditor().setNodeEditorState(
+            graph, "mesh", var(editorState.release())).succeeded());
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher dispatcher(document);
     RecordingPresentation presentation;
     NullResources resources;
+    TrimeshWidget widget;
+    widget.syncFromNode(*document.graph().findNode("mesh"));
+    resources.activeTrimesh = &widget;
     NodeEditorCommandService commands(
             owner,
             document,
@@ -2858,17 +2865,32 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
             presentation,
             resources);
 
+    const int selectedVertex = widget.selectedVertexIndexForPanel();
+    const auto selectedParameters = widget.vertexParametersForIndex(selectedVertex);
+    REQUIRE(selectedVertex == 2);
+    REQUIRE(selectedParameters.size() == 6);
+
+    widget.setMorphEditGestureActive(true);
     REQUIRE(commands.beginTrimeshMorphEdit("mesh", "yellow", 0.6f));
+    REQUIRE(commands.updateTrimeshMorphEditValue(0.7f));
     REQUIRE(commands.updateTrimeshMorphEditValue(0.8f));
+    REQUIRE(widget.selectedVertexIndexForPanel() == selectedVertex);
+    const auto morphedParameters = widget.vertexParametersForIndex(selectedVertex);
+    REQUIRE(morphedParameters.size() == selectedParameters.size());
+    for (size_t i = 0; i < selectedParameters.size(); ++i) {
+        REQUIRE(morphedParameters[i].id == selectedParameters[i].id);
+        REQUIRE(morphedParameters[i].value == Catch::Approx(selectedParameters[i].value));
+    }
     commands.endTrimeshMorphEdit();
+    widget.setMorphEditGestureActive(false);
 
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0.800");
-    REQUIRE(presentation.recordedMovements == 2);
+    REQUIRE(presentation.recordedMovements == 3);
     REQUIRE(presentation.immediateRefreshes == 0);
     REQUIRE(presentation.localCommits == 1);
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
-    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0.5");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0");
 }
 
 TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one edit",

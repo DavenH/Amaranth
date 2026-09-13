@@ -29,6 +29,10 @@ void TrimeshWidget::syncFromNode(const Node& node) {
     bridge.syncFromNode(node, kPreviewRows, kPreviewColumns);
 }
 
+void TrimeshWidget::setMorphEditGestureActive(bool active) {
+    bridge.setMorphEditGestureActive(active);
+}
+
 void TrimeshWidget::syncGuideContext(const NodeGraph& graph, const Node& node) {
     if (bridge.isMeshEditGestureActive()) {
         return;
@@ -290,7 +294,7 @@ bool TrimeshWidget::setVertexGuideGain(
 bool TrimeshWidget::guideGainValueForParameter(
         const String& parameterId,
         float& value) {
-    const int selectedVertex = bridge.getModel().getResolvedSelectedVertexIndex();
+    const int selectedVertex = bridge.getModel().getSelectedVertexIndex();
     if (selectedVertex < 0) {
         return false;
     }
@@ -310,7 +314,7 @@ std::vector<TrimeshVertexParameter> TrimeshWidget::vertexParametersForIndex(int 
     return bridge.getModel().getVertexParametersForIndex(vertexIndex);
 }
 
-int TrimeshWidget::selectedVertexIndexForPanel() {
+int TrimeshWidget::selectedVertexIndexForPanel() const {
     return bridge.selectedVertexIndexForPanel();
 }
 

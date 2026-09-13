@@ -148,7 +148,11 @@ void TrimeshPanelBridge::syncFromNode(
             previewKeyScaleAxis,
             previewMidiNote);
     const bool meshReplaced = !meshEditGestureActive
-            && model.syncFromNode(presentationNode);
+            && model.syncFromNode(
+                    presentationNode,
+                    morphEditGestureActive
+                            ? TrimeshSelectionSyncPolicy::PreserveCurrent
+                            : TrimeshSelectionSyncPolicy::SynchronizeFromNode);
     if (meshReplaced) {
         stopTimer();
         pendingMeshEdit = false;
@@ -323,7 +327,7 @@ void TrimeshPanelBridge::clearInteractionPointers() {
     interactor3D.clearSelectedAndCurrent();
 }
 
-int TrimeshPanelBridge::selectedVertexIndexForPanel() {
+int TrimeshPanelBridge::selectedVertexIndexForPanel() const {
     return model.getSelectedVertexIndex();
 }
 

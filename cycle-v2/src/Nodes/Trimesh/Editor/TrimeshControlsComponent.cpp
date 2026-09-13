@@ -37,6 +37,17 @@ public:
             setTitle("Guide curve gain");
             setWantsKeyboardFocus(true);
         }
+        if (region.kind == TrimeshExpandedHitRegionKind::VertexParameter) {
+            setComponentID("trimesh.vertex." + region.parameterId.fromLastOccurrenceOf(
+                    ".", false, false));
+            setTitle("Vertex " + region.parameterId.fromLastOccurrenceOf(
+                    ".", false, false));
+        }
+        if (region.kind == TrimeshExpandedHitRegionKind::VertexGuideAttachment) {
+            setComponentID("trimesh.guide." + region.parameterId.fromLastOccurrenceOf(
+                    ".", false, false));
+            setTitle("Vertex guide curve");
+        }
         setName(region.kind == TrimeshExpandedHitRegionKind::OutputScale
                 ? "TrimeshOutputScaleTarget"
                 : "TrimeshControlTarget");
@@ -110,6 +121,10 @@ void TrimeshControlsComponent::setContentBounds(Rectangle<float> nextContentBoun
 void TrimeshControlsComponent::refreshHitRegions() {
     lastHitRegionContentBounds = {};
     updateHitRegions();
+}
+
+void TrimeshControlsComponent::refreshSelectionState() {
+    updateControlEnabledStates();
 }
 
 int TrimeshControlsComponent::getPrimaryAxisButtonCount() const {
@@ -223,13 +238,11 @@ void TrimeshControlsComponent::updateHitRegions() {
 
     for (const auto& region : controlHitRegions) {
         auto component = std::make_unique<ControlTarget>(*this, region);
-        if (region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain) {
-            component->setEnabled(widget.hasGuideAttachmentForParameter(region.parameterId));
-        }
         component->setBounds(region.bounds.toNearestInt());
         addAndMakeVisible(component.get());
         controlRegions.push_back(std::move(component));
     }
+    updateControlEnabledStates();
 }
 
 int TrimeshControlsComponent::countControlRegions(TrimeshExpandedHitRegionKind kind) const {
@@ -245,8 +258,8 @@ const TrimeshExpandedHitRegion* TrimeshControlsComponent::findControlRegion(Poin
     const auto found = std::find_if(
             controlHitRegions.begin(),
             controlHitRegions.end(),
-            [position](const TrimeshExpandedHitRegion& region) {
-                return region.bounds.contains(position);
+            [this, position](const TrimeshExpandedHitRegion& region) {
+                return isControlEnabled(region) && region.bounds.contains(position);
             });
 
     if (found == controlHitRegions.end()) {
@@ -254,6 +267,25 @@ const TrimeshExpandedHitRegion* TrimeshControlsComponent::findControlRegion(Poin
     }
 
     return &*found;
+}
+
+bool TrimeshControlsComponent::isControlEnabled(
+        const TrimeshExpandedHitRegion& region) const {
+    const bool isVertexControl = region.kind == TrimeshExpandedHitRegionKind::VertexParameter
+            || region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain
+            || region.kind == TrimeshExpandedHitRegionKind::VertexGuideAttachment;
+    if (isVertexControl && widget.selectedVertexIndexForPanel() < 0) {
+        return false;
+    }
+
+    return region.kind != TrimeshExpandedHitRegionKind::VertexGuideGain
+            || widget.hasGuideAttachmentForParameter(region.parameterId);
+}
+
+void TrimeshControlsComponent::updateControlEnabledStates() {
+    for (size_t i = 0; i < controlRegions.size(); ++i) {
+        controlRegions[i]->setEnabled(isControlEnabled(controlHitRegions[i]));
+    }
 }
 
 void TrimeshControlsComponent::beginControlDrag(

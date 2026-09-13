@@ -658,6 +658,8 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
 
     for (int i = 0; i < (int) parameters.size(); ++i) {
         const auto& parameter = parameters[(size_t) i];
+        Graphics::ScopedSaveState rowState(g);
+        g.setOpacity(parameter.enabled ? 1.f : 0.55f);
         const auto row = vertexParameterRowBounds(area, i, heightScale);
         const auto labelBox = vertexLabelBounds(row);
         const bool showRowGuideControls = guideControls == GuideControls::Visible

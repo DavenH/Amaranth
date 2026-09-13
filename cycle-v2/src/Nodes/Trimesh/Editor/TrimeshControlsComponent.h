@@ -39,6 +39,7 @@ public:
     void setNode(const Node& nextNode);
     void setContentBounds(juce::Rectangle<float> nextContentBounds);
     void refreshHitRegions();
+    void refreshSelectionState();
     int getControlRegionCount() const { return static_cast<int>(controlRegions.size()); }
     int getMorphSliderCount() const;
     int getOutputScaleSliderCount() const;
@@ -80,6 +81,8 @@ private:
     bool adjustGuideGainFromKeyboard(
             const TrimeshExpandedHitRegion& region,
             float amount);
+    bool isControlEnabled(const TrimeshExpandedHitRegion& region) const;
+    void updateControlEnabledStates();
 
     TrimeshWidget& widget;
     TrimeshControlsDelegate* delegate {};

@@ -59,6 +59,7 @@ struct TrimeshPanelRenderStats {
 class TrimeshWidget {
 public:
     void syncFromNode(const Node& node);
+    void setMorphEditGestureActive(bool active);
     void syncGuideContext(const NodeGraph& graph, const Node& node);
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
@@ -107,7 +108,7 @@ public:
     bool guideGainValueForParameter(const juce::String& parameterId, float& value);
     bool hasGuideAttachmentForParameter(const juce::String& parameterId) const;
     std::vector<TrimeshVertexParameter> vertexParametersForIndex(int vertexIndex);
-    int selectedVertexIndexForPanel();
+    int selectedVertexIndexForPanel() const;
     std::vector<TrimeshVertexMarker> vertexMarkers();
     const TrimeshRenderData& renderDataForAutomation() const;
     TrimeshPanelRenderStats panelRenderStatsForAutomation() const;

@@ -39,6 +39,7 @@ struct TrimeshVertexParameter {
     float minimum {};
     float maximum { 1.f };
     float guideGain { 0.5f };
+    bool enabled { true };
 };
 
 struct TrimeshVertexMarker {
@@ -64,6 +65,11 @@ struct TrimeshDerivedRevisions {
     uint64_t selectedControl {};
     uint64_t dspPrep {};
     uint64_t aggregate {};
+};
+
+enum class TrimeshSelectionSyncPolicy {
+    SynchronizeFromNode,
+    PreserveCurrent
 };
 
 enum class TrimeshDerivedProduct : uint32_t {
@@ -94,7 +100,10 @@ public:
     TrimeshNodeModel(const TrimeshNodeModel&) = delete;
     TrimeshNodeModel& operator=(const TrimeshNodeModel&) = delete;
 
-    bool syncFromNode(const Node& node);
+    bool syncFromNode(
+            const Node& node,
+            TrimeshSelectionSyncPolicy selectionPolicy =
+                    TrimeshSelectionSyncPolicy::SynchronizeFromNode);
     bool applyPreparedGuides(
             const Mesh& preparedMesh,
             std::shared_ptr<GuideCurveSnapshotProvider> provider);

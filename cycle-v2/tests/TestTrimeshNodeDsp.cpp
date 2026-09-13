@@ -971,7 +971,13 @@ TEST_CASE("Trimesh node model renders compact grid data from node parameters", "
 
     const auto vertexParameters = model.getSelectedVertexParameters();
     const auto vertexMarkers = model.getVertexMarkers();
-    REQUIRE(vertexParameters.empty());
+    REQUIRE(vertexParameters.size() == 6);
+    REQUIRE(std::all_of(
+            vertexParameters.begin(),
+            vertexParameters.end(),
+            [](const TrimeshVertexParameter& parameter) {
+                return !parameter.enabled;
+            }));
     REQUIRE_FALSE(vertexMarkers.empty());
 
     REQUIRE(model.selectVertex(model.currentMesh().getVerts().front()));
@@ -985,6 +991,7 @@ TEST_CASE("Trimesh node model renders compact grid data from node parameters", "
     REQUIRE(selectedVertexParameters[5].id == "vertex.curve");
 
     for (const auto& parameter : selectedVertexParameters) {
+        REQUIRE(parameter.enabled);
         REQUIRE(parameter.value >= parameter.minimum);
         REQUIRE(parameter.value <= parameter.maximum);
     }
@@ -1046,13 +1053,15 @@ TEST_CASE("Trimesh selection remains empty or explicit while morph position chan
 
     model.syncFromNode(*graph.findNode("mesh"));
     REQUIRE(model.getSelectedVertexIndex() == -1);
-    REQUIRE(model.getSelectedVertexParameters().empty());
+    REQUIRE(model.getSelectedVertexParameters().size() == 6);
+    REQUIRE_FALSE(model.getSelectedVertexParameters().front().enabled);
 
     REQUIRE(editor.setNodeParameter(
             graph, "mesh", "yellow", "Yellow", "0.8").succeeded());
     model.syncFromNode(*graph.findNode("mesh"));
     REQUIRE(model.getSelectedVertexIndex() == -1);
-    REQUIRE(model.getSelectedVertexParameters().empty());
+    REQUIRE(model.getSelectedVertexParameters().size() == 6);
+    REQUIRE_FALSE(model.getSelectedVertexParameters().front().enabled);
 
     Vertex* selected = model.currentMesh().getVerts().front();
     REQUIRE(model.selectVertex(selected));
@@ -1068,6 +1077,47 @@ TEST_CASE("Trimesh selection remains empty or explicit while morph position chan
     model.syncFromNode(*graph.findNode("mesh"));
     REQUIRE(model.getSelectedVertexIndex() == selectedIndex);
     REQUIRE(model.currentMesh().getVerts()[(size_t) selectedIndex] == selected);
+}
+
+TEST_CASE("Trimesh morph gesture ignores stale selection snapshots",
+        "[cycle-v2][nodes][trimesh][selection][morph]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node selectedNode = GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {});
+    selectedNode.editorState = selectedVertexEditorState(2);
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(selectedNode, 32, 8);
+
+    const int selectedVertex = bridge.selectedVertexIndexForPanel();
+    const auto selectedParameters = bridge.getModel().getSelectedVertexParameters();
+    REQUIRE(selectedVertex == 2);
+    REQUIRE(selectedParameters.size() == 6);
+
+    Node stalePresentation = selectedNode;
+    stalePresentation.editorState = var();
+    bridge.setMorphEditGestureActive(true);
+    for (const float value : { 0.35f, 0.75f }) {
+        for (auto& parameter : stalePresentation.parameters) {
+            if (parameter.id == "yellow") {
+                parameter.value = String(value, 6);
+            }
+        }
+        bridge.syncFromNode(stalePresentation, 32, 8);
+        REQUIRE(bridge.selectedVertexIndexForPanel() == selectedVertex);
+
+        const auto currentParameters = bridge.getModel().getSelectedVertexParameters();
+        REQUIRE(currentParameters.size() == selectedParameters.size());
+        for (size_t i = 0; i < selectedParameters.size(); ++i) {
+            REQUIRE(currentParameters[i].id == selectedParameters[i].id);
+            REQUIRE(currentParameters[i].value
+                    == Catch::Approx(selectedParameters[i].value));
+        }
+    }
+    bridge.setMorphEditGestureActive(false);
+    bridge.syncFromNode(stalePresentation, 32, 8);
+    REQUIRE(bridge.selectedVertexIndexForPanel() == -1);
 }
 
 TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][nodes][trimesh]") {
@@ -1960,12 +2010,17 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     REQUIRE(controls.getVertexGuideGainKnobCount() == 3);
     REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 3);
     REQUIRE(controls.getNumChildComponents() == 22);
+    REQUIRE_FALSE(controls.findChildWithID("trimesh.vertex.time")->isEnabled());
+    REQUIRE_FALSE(controls.findChildWithID("trimesh.vertex.amp")->isEnabled());
+    REQUIRE_FALSE(controls.findChildWithID("trimesh.guide.amp")->isEnabled());
 }
 
 TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes][trimesh]") {
     ScopedJuceInitialiser_GUI juce;
     Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    node.editorState = selectedVertexEditorState(0);
     TrimeshWidget widget;
+    widget.syncFromNode(node);
     std::array<String, 6> guideLabels;
     guideLabels[4] = "1";
     widget.setGuideAttachmentLabels(guideLabels);

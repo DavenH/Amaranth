@@ -82,7 +82,9 @@ TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept
     return *this;
 }
 
-bool TrimeshNodeModel::syncFromNode(const Node& node) {
+bool TrimeshNodeModel::syncFromNode(
+        const Node& node,
+        TrimeshSelectionSyncPolicy selectionPolicy) {
     const NodeParameterMap parameters(node);
     const MorphPosition nextMorph {
             parameters.floatValue("yellow", 0.5f),
@@ -106,7 +108,8 @@ bool TrimeshNodeModel::syncFromNode(const Node& node) {
         bumpPrimaryAxisRevision();
     }
 
-    if (nextSelectedVertexIndex != selectedVertexIndex) {
+    if (selectionPolicy == TrimeshSelectionSyncPolicy::SynchronizeFromNode
+            && nextSelectedVertexIndex != selectedVertexIndex) {
         selectedVertexIndex = nextSelectedVertexIndex;
         bumpSelectedControlRevision();
     }
@@ -258,7 +261,19 @@ std::vector<TrimeshVertexParameter> TrimeshNodeModel::getVertexParametersForInde
 }
 
 std::vector<TrimeshVertexParameter> TrimeshNodeModel::getSelectedVertexParameters() {
-    return getVertexParametersForIndex(selectedVertexIndex);
+    auto parameters = getVertexParametersForIndex(selectedVertexIndex);
+    if (!parameters.empty()) {
+        return parameters;
+    }
+
+    return {
+            { "vertex.time", "time", 0.f, 0.f, 1.f, 0.5f, false },
+            { "vertex.red", "red", 0.f, 0.f, 1.f, 0.5f, false },
+            { "vertex.blue", "blue", 0.f, 0.f, 1.f, 0.5f, false },
+            { "vertex.phase", "phase", 0.f, 0.f, 1.f, 0.5f, false },
+            { "vertex.amp", "amp", 0.f, 0.f, 1.f, 0.5f, false },
+            { "vertex.curve", "curve", 0.f, 0.f, 1.f, 0.5f, false }
+    };
 }
 
 std::vector<TrimeshVertexMarker> TrimeshNodeModel::getVertexMarkers() {

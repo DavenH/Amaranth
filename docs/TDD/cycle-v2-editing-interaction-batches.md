@@ -1,6 +1,6 @@
 # Cycle V2 Editing And Interaction Batches
 
-Status: In progress — first interaction batch implemented
+Status: In progress — Trimesh selection correction implemented
 
 ## Scope
 
@@ -21,9 +21,12 @@ brightness transform while retaining the domain palette.
 - Node Shift-selection and bulk movement retain one primary editor target and
   commit one bounds-delta transaction. The native automation fixture covers
   selection, movement, and removal.
-- Trimesh selection is empty until an explicit user selection is made. Morph
-  changes preserve that explicit selection, and linked-axis highlights reuse
-  the mature `selectedFrame` movement set.
+- Trimesh selection is empty until an explicit user selection is made. The six
+  vertex-property rows remain visible in that state but are visually disabled
+  and non-interactive. A morph gesture changes only the preview position: the
+  explicit selected-vertex identity and all displayed vertex-property values
+  remain fixed until another vertex selection is made. Linked-axis highlights
+  reuse the mature `selectedFrame` movement set.
 - New Trimesh nodes already default all three link parameters on; focused
   factory tests guard that contract.
 - Cable popup hit testing is independent of overlapping node-body targets, and
@@ -71,6 +74,34 @@ path.
   control is authoritative. `Curve::tp.ypole` is raster metadata for one
   prepared curvelet and can disagree with the editable control on Envelope's
   blended, uneven segments, which caused the apparent inversion.
+
+## Trimesh Morph-Selection Correction
+
+- `TrimeshNodeModel` remains authoritative for explicit selection and vertex
+  values. The mature interactors remain authoritative for selecting vertices.
+- `TrimeshExpandedEditorComponent` marks the lifetime of a morph gesture;
+  `TrimeshPanelBridge` suppresses only editor-state selection resynchronization
+  during that lifetime. Morph parameter, render invalidation, and dispatcher
+  behavior remain unchanged.
+- Normal node binding still synchronizes durable `selectedVertexId`, so undo,
+  load, and an explicit selection command remain authoritative outside a morph
+  gesture.
+- Disabled placeholder rows reuse the existing six parameter descriptors and
+  side-panel geometry. They do not create a fallback vertex and cannot dispatch
+  a vertex or guide edit.
+- Morph movement remains O(1) with respect to graph and mesh size. The gesture
+  does not copy a graph or mesh, serialize state, or scan vertices.
+
+### Correction Evidence
+
+- Focused model, disabled-control, pointer-interaction, and command-service
+  tests pass, including two morph updates, commit, and undo.
+- The native fixture selects vertex 0, assigns recognizable phase/amp values,
+  performs two morph drag updates, and confirms the selected index and both
+  values remain unchanged.
+- The production OS capture
+  `/private/tmp/cycle-v2-trimesh-inactive-os.png` confirms all six property rows
+  remain visible and visibly inactive with no explicit selection.
 
 ## Dirty-State Contract
 

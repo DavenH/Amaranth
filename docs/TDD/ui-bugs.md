@@ -198,3 +198,10 @@ order-dependent failures and ended in `Signal probe detail resolves the
 attached Voice Context key value` with `SIGSEGV`. Focused tests for Reverb,
 node group movement, Trimesh selection/link highlighting, and cable hit routing
 all pass independently; this remains an open suite-isolation defect.
+
+Update 2026-09-12: the focused `[cycle-v2][nodes][trimesh]` group reached a
+`SingletonRepo.h:54` assertion and `SIGSEGV` in `Trimesh Panel3D reads
+node-backed columns through lib data retriever` (seed `1390489111`). The same
+case also fails in isolation before exercising the morph-selection correction.
+The new morph-selection, disabled-control, and pointer-interaction cases pass
+independently; this remains open as shared test setup/lifetime work.
