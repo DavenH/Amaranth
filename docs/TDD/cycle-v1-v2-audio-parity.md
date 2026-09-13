@@ -1398,6 +1398,30 @@ as the scratch envelope evolves.
     `/private/tmp/cycle-japan-drum-canonical-precision-stages/` and
     `/private/tmp/cycle-japan-drum-canonical-precision-full-48000/`.
 
+63. Reconcile Filter Saw's Envelope payload and Output control. Complete: the
+    current converter found that the checked-in graph still carried the older
+    scratch-Envelope representation, shortened mesh values, and a neutral
+    Output value instead of Cycle 1's authored `0.511450382`. The refreshed
+    graph uses the canonical Envelope conversion and records the translated
+    Output control in the manifest; it introduces no new playback or
+    rasterization behavior.
+
+    All 14 node identities, cable endpoints, canvas positions, port sides,
+    editor dimensions, probes, and the Global Input/Output boundary are
+    unchanged. The magnitude layer's explicit multiplicative mode replaces
+    equivalent Multiply-node inference, and removed `link.*` values are
+    presentation defaults.
+
+    Frame 32 matches through spectral reconstruction and first differs in
+    pitch resampling at `7.56e-5` normalized residual. Across MIDI 36, 48, 60,
+    and 72 at 48 kHz, every comparison is zero-lag with correlation above
+    `0.99999999`; residual ranges from `0.0000363` to `0.0001271`, and spectral
+    RMSE from `0.0000647` to `0.000159 dB`. Cycle V2 repeats exactly at every
+    pitch. Cycle 1 varies only on the MIDI 48 repeat, so the fixture remains
+    diagnostic without weakening its repeatability gate. Artifacts:
+    `/private/tmp/cycle-filter-saw-current-converter-stages/` and
+    `/private/tmp/cycle-filter-saw-current-converter-full-48000/`.
+
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
 renderer concern. Slice 31 aligns the comparison harness with that ownership.

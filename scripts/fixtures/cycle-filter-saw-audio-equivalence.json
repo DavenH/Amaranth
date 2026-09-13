@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/filter-saw.cyclegraph",
-        "sha256": "1166c807b6f509b24183ff386a69d9644994d3c770fccf414b41e686fbed70f4",
+        "sha256": "89d7ffdf60f01bf3a3bc154e7151c0fc7673ccd99db48c71297676873d8bd80c",
         "renderOverrides": {
             "voiceDurationSeconds": 0.47689545154571533
         }
@@ -17,6 +17,7 @@
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
         "v1MasterGain": 1.0711175203323364,
+        "v2OutputGainUnitValue": 0.511450382,
         "v2OutputHeadroom": 0.125,
         "coverage": [
             "timeLayer",
