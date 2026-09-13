@@ -1440,6 +1440,23 @@ as the scratch envelope evolves.
     fixture. Artifact:
     `/private/tmp/cycle-flute-current-converter-full-48000/`.
 
+65. Refresh Shiny's canonical multi-layer and Guide precision. Complete: the
+    converter restores the current Cycle 1 values in its time, magnitude, and
+    phase meshes plus the assigned Guide curves. Explicit multiplicative and
+    additive modes replace equivalent operation-node inference; no renderer or
+    spectral-composition behavior changes.
+
+    All 14 node identities, cable endpoints, positions, port sides, editor
+    dimensions, probes, and the Global Input/Output boundary are unchanged.
+    Default-valued `link.*` presentation fields are omitted.
+
+    The complete 48 kHz MIDI 36, 48, 60, and 72 matrix passes every audio and
+    repeatability check in both engines. Every pitch is zero-lag with
+    correlation above `0.99999977`; residual ranges from `0.000498` to
+    `0.000669`, and spectral RMSE remains below `0.00292 dB`. Shiny remains a
+    verified deterministic multi-layer fixture. Artifact:
+    `/private/tmp/cycle-shiny-current-converter-full-48000/`.
+
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
 renderer concern. Slice 31 aligns the comparison harness with that ownership.
