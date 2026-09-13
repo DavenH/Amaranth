@@ -94,8 +94,8 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
 
     REQUIRE(result.succeeded());
     REQUIRE(result.plan.attachments.size() == 2);
-    REQUIRE(result.plan.signalEdges.size() == 11);
-    REQUIRE(result.plan.buffers.size() == 13);
+    REQUIRE(result.plan.signalEdges.size() == 12);
+    REQUIRE(result.plan.buffers.size() == 15);
     REQUIRE(result.plan.steps.size() == result.plan.nodeOrder.size());
     REQUIRE(result.plan.voiceContexts.size() == 1);
 
@@ -112,7 +112,9 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(orderIndex(plan, "addPhase") < orderIndex(plan, "ifft"));
     REQUIRE(orderIndex(plan, "ifft") < orderIndex(plan, "multiply"));
     REQUIRE(orderIndex(plan, "env") < orderIndex(plan, "multiply"));
-    REQUIRE(orderIndex(plan, "multiply") < orderIndex(plan, "out"));
+    REQUIRE(orderIndex(plan, "multiply") < orderIndex(plan, "voiceOutput"));
+    REQUIRE(orderIndex(plan, "voiceOutput") < orderIndex(plan, "globalInput"));
+    REQUIRE(orderIndex(plan, "globalInput") < orderIndex(plan, "out"));
 
     REQUIRE(parameterValueForNode({ "voice", NodeKind::VoiceContext, {}, {}, findStep(plan, "voice").parameters, {}, {} },
             "domain") == "waveform");
@@ -370,6 +372,8 @@ TEST_CASE("Voice Context defaults resolve per axis with explicit override preced
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph, "voice", "octave", "Octave", "1").succeeded());
     Node triple = factory.createNode(NodeKind::ModulationTriple, "triple", {});
     for (auto& parameter : triple.parameters) {
         if (parameter.id == "yellowSource" || parameter.id == "blueSource") {
@@ -411,6 +415,26 @@ TEST_CASE("Voice Context defaults resolve per axis with explicit override preced
             implicit->defaultModulation);
     REQUIRE(configuration != nullptr);
     REQUIRE(configuration->sources[0].constant == Catch::Approx(0.2f));
+    REQUIRE(implicit->defaultModulationNoteOffset == 12);
+}
+
+TEST_CASE("Voice Context compiles its synthesis control interval",
+        "[cycle-v2][graph][voice-context][control-rate]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "voice",
+            "controlInterval",
+            "Control Interval",
+            "256").succeeded());
+
+    const auto compiled = GraphCompiler().compile(graph);
+
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.voiceContexts.size() == 1);
+    REQUIRE(compiled.plan.voiceContexts.front().controlIntervalSamples == 256);
 }
 
 TEST_CASE("Voice Context defaults reach volume and scratch Envelope sidechains",

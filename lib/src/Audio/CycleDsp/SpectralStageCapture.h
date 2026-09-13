@@ -32,6 +32,7 @@ struct SpectralStageFrame {
     int channel {};
     Buffer<float> primary;
     Buffer<float> secondary;
+    int laneIndex {};
 };
 
 class SpectralStageCaptureSink {
@@ -48,6 +49,7 @@ struct CapturedSpectralStage {
     int channel {};
     Buffer<float> primary;
     Buffer<float> secondary;
+    int laneIndex {};
     bool captured {};
 };
 
@@ -59,7 +61,8 @@ public:
     bool prepare(
             int maximumValueCount,
             size_t targetFrameIndex,
-            int targetOccurrenceIndex = 0);
+            int targetOccurrenceIndex = 0,
+            int targetLaneIndex = 0);
     void reset();
     void capture(const SpectralStageFrame& frame) noexcept override;
 
@@ -74,6 +77,7 @@ private:
     int maximumValues {};
     size_t targetFrame {};
     int targetOccurrence {};
+    int targetLane {};
     ScopedAlloc<float> payloadMemory;
     std::array<CapturedSpectralStage, stageCount * channelCount> records;
     std::array<int, stageCount * channelCount> occurrenceCounts {};

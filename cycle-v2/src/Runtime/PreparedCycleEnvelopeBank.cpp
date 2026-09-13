@@ -107,11 +107,7 @@ void PreparedCycleEnvelopeBank::applyLifecycleEvent(
             entry.playback.noteOn();
             std::fill(entry.active.begin(), entry.active.end(), true);
         } else if (event.type == NoteLifecycleType::NoteOff) {
-            const bool releases = entry.playback.noteOff(
-                    entry.source->cycleEnvelopePlaybackView());
-            if (!releases) {
-                std::fill(entry.active.begin(), entry.active.end(), false);
-            }
+            entry.playback.noteOff(entry.source->cycleEnvelopePlaybackView());
         } else {
             entry.playback.noteOn();
             std::fill(entry.active.begin(), entry.active.end(), false);

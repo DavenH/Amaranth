@@ -142,6 +142,24 @@ TEST_CASE("Graph documents save canonical JSON with stable line endings",
     REQUIRE(destination.deleteFile());
 }
 
+TEST_CASE("Graph JSON preserves parameter precision needed for Cycle parity",
+        "[cycle-v2][graph]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "voice",
+            "voiceLength",
+            "Voice",
+            "0.474137931").succeeded());
+
+    const String encoded = GraphSerializer().toJsonString(graph);
+    REQUIRE(encoded.contains("\"voiceLength\": 0.474137931"));
+    const GraphLoadResult restored = GraphSerializer().loadJsonString(encoded);
+    REQUIRE(restored.succeeded());
+    REQUIRE(NodeParameterMap(*restored.graph.findNode("voice")).floatValue(
+            "voiceLength", 0.f) == Catch::Approx(0.474137931));
+}
+
 TEST_CASE("Graph document dirty state follows its save point through history",
         "[cycle-v2][graph][dirty]") {
     const File destination = File::getSpecialLocation(File::tempDirectory)
@@ -717,7 +735,9 @@ TEST_CASE("Legacy preset ports omit disabled effects and preserve delay controls
 
     for (const NodeGraph* graph : { &african, &baroque, &stengah }) {
         for (const Node& node : graph->getNodes()) {
-            REQUIRE(parameterValueForNode(node, "enabled") != "0");
+            if (node.kind != NodeKind::Envelope) {
+                REQUIRE(parameterValueForNode(node, "enabled") != "0");
+            }
         }
         const auto modulationEdges = std::count_if(
                 graph->getEdges().begin(),
@@ -747,6 +767,12 @@ TEST_CASE("Legacy preset ports omit disabled effects and preserve delay controls
     REQUIRE(african.findNode("equalizer") == nullptr);
     REQUIRE(african.findNode("reverb") == nullptr);
     REQUIRE(stengah.findNode("reverb") == nullptr);
+    REQUIRE(baroque.findNode("scratchEnvelope") != nullptr);
+    REQUIRE(stengah.findNode("pitchEnvelope") != nullptr);
+    REQUIRE(parameterValueForNode(
+            *baroque.findNode("scratchEnvelope"), "enabled") == "0");
+    REQUIRE(parameterValueForNode(
+            *stengah.findNode("pitchEnvelope"), "enabled") == "0");
 
     const Node* africanDelay = african.findNode("delay");
     const Node* baroqueDelay = baroque.findNode("delay");
@@ -764,6 +790,105 @@ TEST_CASE("Legacy preset ports omit disabled effects and preserve delay controls
     REQUIRE(parameterValueForNode(*stengahDelay, "spinIters") == "0.644");
     REQUIRE(parameterValueForNode(*stengahDelay, "spin") == "0.976");
     REQUIRE(parameterValueForNode(*stengahDelay, "wet") == "0.7");
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Astral retains the canonical spectral and Envelope control graph",
+        "[cycle-v2][graph][presets][astral]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            contentPreset("astral.cyclegraph").loadFileAsString());
+    INFO((loaded.issues.empty() ? String() : loaded.issues.front().message));
+    REQUIRE(loaded.succeeded());
+    REQUIRE(GraphCompiler().compile(loaded.graph).succeeded());
+
+    const Node* morph = loaded.graph.findNode("morph");
+    const Node* magnitude1 = loaded.graph.findNode("magnitudeLayer1");
+    const Node* magnitude2 = loaded.graph.findNode("magnitudeLayer2");
+    const Node* phaseProcess = loaded.graph.findNode("phaseLayer1Process");
+    const Node* output = loaded.graph.findNode("output");
+    REQUIRE(morph != nullptr);
+    REQUIRE(magnitude1 != nullptr);
+    REQUIRE(magnitude2 != nullptr);
+    REQUIRE(phaseProcess != nullptr);
+    REQUIRE(loaded.graph.findNode("legacyEnvelopeMorph") != nullptr);
+    REQUIRE(output != nullptr);
+    REQUIRE(NodeParameterMap(*morph).stringValue("blueSource") == "inverseVelocity");
+    REQUIRE(NodeParameterMap(*magnitude1).stringValue("spectralMode") == "additive");
+    REQUIRE(NodeParameterMap(*magnitude2).stringValue("spectralMode") == "multiplicative");
+    REQUIRE(NodeParameterMap(*phaseProcess).floatValue("pan", 0.f)
+            == Catch::Approx(0.75f));
+    REQUIRE(NodeParameterMap(*output).floatValue("gain", 0.f)
+            == Catch::Approx(0.442748092f));
+    const auto envelopeMorphEdges = std::count_if(
+            loaded.graph.getEdges().begin(),
+            loaded.graph.getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "legacyEnvelopeMorph";
+            });
+    REQUIRE(envelopeMorphEdges == 4);
+    REQUIRE(std::any_of(
+            loaded.graph.getEdges().begin(),
+            loaded.graph.getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "phaseLayer1Process"
+                        && edge.destNodeId == "ifft"
+                        && edge.destPortId == "phase";
+            }));
+    REQUIRE(loaded.graph.findNode("magnitudeOp1") == nullptr);
+    REQUIRE(loaded.graph.findNode("pan") == nullptr);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Accoustic retains its canonical spectral and global effect graph",
+        "[cycle-v2][graph][presets][accoustic]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            contentPreset("accoustic.cyclegraph").loadFileAsString());
+    INFO((loaded.issues.empty() ? String() : loaded.issues.front().message));
+    REQUIRE(loaded.succeeded());
+    REQUIRE(GraphCompiler().compile(loaded.graph).succeeded());
+
+    const Node* voice = loaded.graph.findNode("voice");
+    const Node* magnitude1 = loaded.graph.findNode("magnitudeLayer1");
+    const Node* magnitude2 = loaded.graph.findNode("magnitudeLayer2");
+    const Node* impulseResponse = loaded.graph.findNode("impulseResponse");
+    const Node* reverb = loaded.graph.findNode("reverb");
+    const Node* output = loaded.graph.findNode("output");
+    REQUIRE(voice != nullptr);
+    REQUIRE(magnitude1 != nullptr);
+    REQUIRE(magnitude2 != nullptr);
+    REQUIRE(impulseResponse != nullptr);
+    REQUIRE(reverb != nullptr);
+    REQUIRE(output != nullptr);
+    REQUIRE(loaded.graph.findNode("legacyEnvelopeMorph") != nullptr);
+    REQUIRE(NodeParameterMap(*voice).intValue("octave", 0) == 1);
+    REQUIRE(NodeParameterMap(*magnitude1).stringValue("spectralMode") == "additive");
+    REQUIRE(NodeParameterMap(*magnitude2).stringValue("spectralMode")
+            == "multiplicative");
+    REQUIRE(NodeParameterMap(*impulseResponse).floatValue("size", 0.f)
+            == Catch::Approx(2.f / 7.f));
+    REQUIRE(NodeParameterMap(*reverb).floatValue("size", 0.f)
+            == Catch::Approx(0.112000003f));
+    REQUIRE(NodeParameterMap(*output).floatValue("gain", 0.f)
+            == Catch::Approx(0.557251908f));
+
+    const auto hasEdge = [&](const String& source, const String& destination) {
+        return std::any_of(
+                loaded.graph.getEdges().begin(),
+                loaded.graph.getEdges().end(),
+                [&](const Edge& edge) {
+                    return edge.sourceNodeId == source
+                            && edge.destNodeId == destination;
+                });
+    };
+    REQUIRE(hasEdge("volumeMultiply", "voiceOutput"));
+    REQUIRE(hasEdge("globalInput", "impulseResponse"));
+    REQUIRE(hasEdge("reverb", "output"));
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
@@ -789,10 +914,19 @@ TEST_CASE("African Horn keeps its populated mesh path in the time domain",
             [](const Edge& edge) {
                 return edge.sourceNodeId == "timeAdd1"
                         && edge.sourcePortId == "out"
-                        && edge.destNodeId == "delay"
-                        && edge.destPortId == "time";
+                        && edge.destNodeId == "volumeMultiply"
+                        && edge.destPortId == "left";
             });
     REQUIRE(directTimePath != loaded.graph.getEdges().end());
+    REQUIRE(std::any_of(
+            loaded.graph.getEdges().begin(),
+            loaded.graph.getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "volumeMultiply"
+                        && edge.sourcePortId == "out"
+                        && edge.destNodeId == "voiceOutput"
+                        && edge.destPortId == "time";
+            }));
 
     const auto guideAssignments = std::count_if(
             loaded.graph.getGuideAssignments().begin(),

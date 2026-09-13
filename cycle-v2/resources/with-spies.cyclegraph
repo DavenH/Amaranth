@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 8.05236, "y": 457.91464 },
-            "parameters": { "domain": "waveform", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
+            "parameters": {
+                "domain": "waveform",
+                "octave": 0,
+                "voiceLength": 0.375,
+                "pitch": 0.0,
+                "portamento": false,
+                "oversampling": "1x",
+                "controlInterval": "16"
+            }
         },
         {
             "id": "waveMesh",
@@ -17,6 +25,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
+                "spectralMode": "auto",
                 "yellow": 0.317,
                 "red": 0.108,
                 "blue": 0.0,
@@ -161,6 +170,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
+                "spectralMode": "auto",
                 "yellow": 0.5,
                 "red": 0.411,
                 "blue": 0.184,
@@ -308,6 +318,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
+                "spectralMode": "auto",
                 "yellow": 0.495,
                 "red": 0.0,
                 "blue": 0.205,
@@ -456,7 +467,7 @@
             "kind": "waveshaper",
             "definitionVersion": 1,
             "position": { "x": 240.50752, "y": 1151.0 },
-            "parameters": { "enabled": true, "pre": 0.5, "post": 0.5, "aaFactor": "1", "processingScope": "global" },
+            "parameters": { "processingScope": "global", "enabled": true, "pre": 0.5, "post": 0.5, "aaFactor": "1" },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
@@ -482,7 +493,7 @@
             "kind": "impulseResponse",
             "definitionVersion": 1,
             "position": { "x": 529.50751, "y": 1151.0 },
-            "parameters": { "enabled": true, "size": 0.0, "post": 0.618, "highPass": 0.0, "processingScope": "global" },
+            "parameters": { "processingScope": "global", "enabled": true, "size": 0.0, "post": 0.618, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
@@ -516,7 +527,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 2370.6897, "y": 134.13789 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": true, "red": 0.143, "blue": 0.012, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": true, "declick": false, "red": 0.143, "blue": 0.012, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -644,7 +655,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 2.50753, "y": 52.62711 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,

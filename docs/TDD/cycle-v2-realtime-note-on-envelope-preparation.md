@@ -25,19 +25,20 @@ Cycle 1 establishes the audible contract:
   the audio callback;
 - JUCE dispatches a note-on to `SynthesizerVoice::startNote()` at its sample
   offset;
-- `startNote()` routes key and inverse velocity, then calls
-  `initialiseEnvMeshes()` before rendering the note; only legacy envelope
-  layers marked `dynamic` consume those routed values, while static layers
-  retain their existing cross-section;
+- `startNote()` routes key and inverse velocity into smoothed targets, then
+  calls `initialiseEnvMeshes()` before rendering the note;
 - `initialiseEnvMeshes()` materializes every active volume, pitch, and scratch
-  envelope at the routed red/blue cross-section; and
-- the first sample after the event therefore observes the routed envelope.
+  envelope; and
+- `SynthesizerVoice::updateSmoothedParameters()` is empty, so the current
+  red/blue values consumed by rasterization remain at their initialized zero.
 
 The legacy repository performs the same sequence with direct
-`calcCrossPoints()` calls. Cycle 1's timing and routed-value semantics are
-authoritative. Its mutex acquisition, UI-owned modulation routing, mutable
-mesh access, and allocation-capable rasterizer call are implementation defects
-and must not be copied.
+`calcCrossPoints()` calls. Imported factory graphs preserve Cycle 1's audible
+zero cross-section explicitly. Newly authored V2 Envelopes retain the intended
+routed-value semantics and synchronous note-on timing defined by this TDD.
+Cycle 1's mutex acquisition, UI-owned modulation routing, mutable mesh access,
+empty smoothing update, and allocation-capable rasterizer call are
+implementation defects and must not be copied.
 
 The mature behavior to reuse unchanged is held in the shared rasterization
 pipeline:

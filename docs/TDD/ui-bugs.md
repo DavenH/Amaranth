@@ -66,6 +66,22 @@ deserialize/serialize pass changes its JSON representation. This predates and
 is independent of the document-declick changes; regenerate that preset through
 the canonical serializer without expanding unrelated preset diffs.
 
+## P2: Trimesh preview key scale also changes the default red morph axis
+
+Context:
+
+- After merging `master` on 2026-09-13, the focused
+  `Trimesh preview pitch positions whichever morph axis owns key scale` test
+  fails independently of the audio-parity and Voice Context conflict paths.
+- With preview key scale assigned to Time at MIDI 48, Time reaches the expected
+  normalized `0.261682`, but Red also becomes `0.261682` instead of retaining
+  its neutral `0.5` value.
+- The test and the relevant Trimesh preview behavior arrived from `master`; no
+  conflict hunk touched that implementation.
+
+Current status: open; reconcile key-scale preview ownership with the intended
+single-axis contract before changing the assertion.
+
 ## P2: Envelope purpose rail-spacing assertion no longer matches layout
 
 Context:
@@ -175,6 +191,29 @@ Context:
 
 Current status: open; compare the forward/inverse Envelope vertex delta after a
 real routed release drag without folding that investigation into hover behavior.
+
+## P2: Complexity regression test omitted Guide noise seed
+
+Context:
+
+- The 2026-09-12 tests-preset build failed while compiling
+  `TestInteractionComplexityParity.cpp` because its `GuideCurveResource`
+  aggregate still used the field order from before `noiseSeed` was introduced.
+- Production Guide behavior was unaffected; the test fixture passed its model
+  pointer into the integer seed field and no longer compiled.
+
+Current status: addressed by supplying the default `-1` seed explicitly.
+
+## P2: Legacy Pan migration test expected the removed pre-mode schema
+
+Context:
+
+- The 2026-09-12 graph suite failed after loading a legacy Pan `mode` because
+  the test still expected no Pan mode parameter.
+- Pan now owns the canonical `auto`/`additive`/`multiplicative` mode parameter;
+  loading removes the legacy payload and normalization supplies `auto`.
+
+Current status: addressed by asserting the current canonical `auto` value.
 
 ## P2: Full Cycle V2 suite retains cross-test graph and Trimesh failures
 

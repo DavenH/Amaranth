@@ -136,13 +136,22 @@ bool SpectralOscillatorFrameRenderer::supports(
             }
             continue;
         }
-        if (!inputComesFromRegion(inputForPort(step, 0), regionSteps)) {
+        const bool leftInRegion = inputComesFromRegion(
+                inputForPort(step, 0), regionSteps);
+        const bool rightInRegion = inputComesFromRegion(
+                inputForPort(step, 1), regionSteps);
+        if (step.audioRole == AudioModuleRole::Add) {
+            if (!leftInRegion && !rightInRegion) {
+                return false;
+            }
+            continue;
+        }
+        if (!leftInRegion) {
             return false;
         }
         if ((step.audioRole == AudioModuleRole::Ifft
-                    || step.audioRole == AudioModuleRole::Add
                     || step.audioRole == AudioModuleRole::Multiply)
-                && !inputComesFromRegion(inputForPort(step, 1), regionSteps)) {
+                && !rightInRegion) {
             return false;
         }
     }
@@ -213,11 +222,16 @@ bool SpectralOscillatorFrameRenderer::prepare(
                 || (step.audioRole == AudioModuleRole::Fft
                         && operation.outputs[1] < 0)
                 || (!sourceRole(step.audioRole)
+                        && step.audioRole != AudioModuleRole::Add
                         && operation.leftInput < 0)
                 || ((step.audioRole == AudioModuleRole::Ifft
-                            || step.audioRole == AudioModuleRole::Add
                             || step.audioRole == AudioModuleRole::Multiply)
                         && operation.rightInput < 0)) {
+            return false;
+        }
+        if (step.audioRole == AudioModuleRole::Add
+                && operation.leftInput < 0
+                && operation.rightInput < 0) {
             return false;
         }
 
@@ -630,8 +644,13 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
             case OperationType::Add:
                 for (int channel = 0; channel < 2; ++channel) {
                     auto output = slot(operation.outputs[0], channel, count);
-                    slot(operation.leftInput, channel, count).copyTo(output);
-                    output.add(slot(operation.rightInput, channel, count));
+                    output.zero();
+                    if (operation.leftInput >= 0) {
+                        slot(operation.leftInput, channel, count).copyTo(output);
+                    }
+                    if (operation.rightInput >= 0) {
+                        output.add(slot(operation.rightInput, channel, count));
+                    }
                     if (operation.outputDomain == PortDomain::SpectralMagnitudeSignal) {
                         output.threshLT(0.f);
                     }

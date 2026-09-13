@@ -253,7 +253,7 @@ TEST_CASE("Legacy presets round trip through Document into stable current JSON",
 
 TEST_CASE("Legacy presets can migrate to canonical JSON without live document application",
           "[cycle][preset][migration]") {
-    File presetFile(String(CYCLE_SOURCE_DIR) + "/content/presets/calming-keys.cyc");
+    File presetFile(String(CYCLE_SOURCE_DIR) + "/content/presets/old/calming-keys.cyc");
 
     REQUIRE(presetFile.existsAsFile());
 
@@ -271,7 +271,7 @@ TEST_CASE("Legacy pierce preset restores modulation matrix wiring", "[cycle][pre
     auto& repo = harness.getRepo();
     auto& document = repo.get<Document>("Document");
     auto& modMatrix = repo.get<ModMatrixPanel>("ModMatrixPanel");
-    File presetFile(String(CYCLE_SOURCE_DIR) + "/content/presets/pierce.cyc");
+    File presetFile(String(CYCLE_SOURCE_DIR) + "/content/presets/old/pierce.cyc");
 
     REQUIRE(presetFile.existsAsFile());
 

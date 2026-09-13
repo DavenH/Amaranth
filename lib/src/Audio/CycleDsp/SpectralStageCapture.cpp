@@ -51,14 +51,18 @@ String secondaryPayloadName(SpectralStage stage) {
 bool SpectralStageCaptureRecorder::prepare(
         int maximumValueCount,
         size_t targetFrameIndex,
-        int targetOccurrenceIndex) {
-    if (maximumValueCount <= 0 || targetOccurrenceIndex < 0) {
+        int targetOccurrenceIndex,
+        int targetLaneIndex) {
+    if (maximumValueCount <= 0
+            || targetOccurrenceIndex < 0
+            || targetLaneIndex < 0) {
         return false;
     }
 
     maximumValues = maximumValueCount;
     targetFrame = targetFrameIndex;
     targetOccurrence = targetOccurrenceIndex;
+    targetLane = targetLaneIndex;
     payloadMemory.resize(
             stageCount * channelCount * 2 * maximumValues);
     reset();
@@ -91,6 +95,7 @@ void SpectralStageCaptureRecorder::capture(
         const SpectralStageFrame& frame) noexcept {
     const int stage = stageIndex(frame.stage);
     if (frame.frameIndex != targetFrame
+            || frame.laneIndex != targetLane
             || stage < 0
             || frame.channel < 0
             || frame.channel >= channelCount
@@ -114,6 +119,7 @@ void SpectralStageCaptureRecorder::capture(
     captured.frameIndex = frame.frameIndex;
     captured.frontier = frame.frontier;
     captured.midiNote = frame.midiNote;
+    captured.laneIndex = frame.laneIndex;
     captured.primary = captured.primary.withSize(frame.primary.size());
     captured.secondary = captured.secondary.withSize(frame.secondary.size());
     captured.captured = true;
@@ -150,6 +156,7 @@ bool SpectralStageCaptureRecorder::write(
         const String stem = manifest.getFileNameWithoutExtension()
                 + "-" + spectralStageName(captured.stage)
                 + "-frame-" + String((int64) captured.frameIndex)
+                + "-lane-" + String(captured.laneIndex)
                 + "-channel-" + String(captured.channel);
         const File payload = manifest.getSiblingFile(stem + ".f32le");
         std::unique_ptr<FileOutputStream> stream(payload.createOutputStream());
@@ -175,6 +182,7 @@ bool SpectralStageCaptureRecorder::write(
         object->setProperty("frontier", (int64) captured.frontier);
         object->setProperty("midiNote", captured.midiNote);
         object->setProperty("channel", captured.channel);
+        object->setProperty("laneIndex", captured.laneIndex);
         object->setProperty("primary", primaryPayloadName(captured.stage));
         object->setProperty("primaryValueCount", captured.primary.size());
         object->setProperty("secondary", secondaryPayloadName(captured.stage));
@@ -186,9 +194,10 @@ bool SpectralStageCaptureRecorder::write(
 
     var root = new DynamicObject();
     auto* object = root.getDynamicObject();
-    object->setProperty("schema", "cycle-spectral-stage-capture.v1");
+    object->setProperty("schema", "cycle-spectral-stage-capture.v2");
     object->setProperty("targetFrameIndex", (int64) targetFrame);
     object->setProperty("targetOccurrenceIndex", targetOccurrence);
+    object->setProperty("targetLaneIndex", targetLane);
     object->setProperty("records", encodedRecords);
     if (!manifest.replaceWithText(JSON::toString(root, true) + "\n")) {
         error = "Could not write spectral stage manifest: "

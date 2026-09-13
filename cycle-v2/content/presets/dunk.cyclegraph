@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 400.0 },
-            "parameters": { "domain": "waveform", "octave": -2, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
+            "parameters": {
+                "domain": "waveform",
+                "octave": -1,
+                "voiceLength": 0.290076336,
+                "pitch": 0.0,
+                "portamento": false,
+                "oversampling": "1x",
+                "controlInterval": "256"
+            }
         },
         {
             "id": "morph",
@@ -31,7 +39,7 @@
             "kind": "unison",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 628.0 },
-            "parameters": { "enabled": true, "mode": "group", "order": 5, "width": 37.24, "panSpread": 0.0, "phase": 0.008, "jitter": 1.0 },
+            "parameters": { "enabled": true, "mode": "group", "order": 5, "width": 37.240000000000002, "panSpread": 0.0, "phase": 0.008, "jitter": 1.0 },
             "model": {
                 "schema": "unisonVoices",
                 "version": 1,
@@ -49,6 +57,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
+                "spectralMode": "auto",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -427,7 +436,7 @@
             "kind": "impulseResponse",
             "definitionVersion": 1,
             "position": { "x": 338.0, "y": 954.0 },
-            "parameters": { "enabled": true, "size": 0.28571, "post": 0.38, "highPass": 0.0, "processingScope": "global" },
+            "parameters": { "processingScope": "global", "enabled": true, "size": 0.142857143, "post": 0.38, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
@@ -519,7 +528,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 906.0, "y": 954.0 },
-            "parameters": {}
+            "parameters": { "gain": 0.5 }
         },
         {
             "id": "globalInput",

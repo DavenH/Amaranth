@@ -172,3 +172,16 @@ Suggested direction:
 - Keep node shells and node contents in the same render layer unless the whole
   node widget moves to GL, because split shell/content rendering breaks
   overlap z-order.
+
+## Cycle V2 Trimesh Panel Test Fixture Ownership
+
+Status: open after the 2026-09-11 audio-parity verification run.
+
+`Trimesh Panel3D reads node-backed columns through lib data retriever` crashes
+in isolation at `SingletonRepo.h:54`. The test constructs a bare
+`SingletonRepo` and then constructs `TrimeshPanel3D`, whose inherited panel
+initialization expects registered singleton dependencies. Repair the fixture to
+provide the real minimal panel environment, or move the data-retriever contract
+below panel construction. Do not weaken `SingletonRepo` lookup or add nullable
+production behavior for this test. This failure is unrelated to the Voice
+Context/Envelope parity slice; its focused runtime Envelope tests pass.

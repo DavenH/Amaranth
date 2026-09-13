@@ -7,7 +7,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 338.0, "y": 100.0 },
-            "parameters": {}
+            "parameters": { "gain": 0.5 }
         },
         {
             "id": "globalInput",

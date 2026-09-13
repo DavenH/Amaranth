@@ -21,6 +21,7 @@ namespace {
 
 constexpr auto formatId = "cycle-v2-graph";
 constexpr int maximumDecimalPlaces = 5;
+constexpr int parameterDecimalPlaces = 15;
 constexpr int maximumLineLength = 140;
 
 struct StringHash {
@@ -409,6 +410,10 @@ String scalarToJSON(const var& value) {
     return JSON::toString(value, true, maximumDecimalPlaces);
 }
 
+String parameterScalarToJSON(const var& value) {
+    return JSON::toString(value, true, parameterDecimalPlaces);
+}
+
 String meshScalarToJSON(const var& value) {
     if (!value.isDouble()) {
         return scalarToJSON(value);
@@ -448,7 +453,10 @@ bool isMeshVertexObject(const DynamicObject& object) {
             && object.hasProperty("id");
 }
 
-String singleLineObject(const DynamicObject& object, bool meshVertexObject) {
+String singleLineObject(
+        const DynamicObject& object,
+        bool meshVertexObject,
+        bool parameterObject) {
     String result { "{ " };
     bool first = true;
     for (const auto& property : object.getProperties()) {
@@ -461,7 +469,9 @@ String singleLineObject(const DynamicObject& object, bool meshVertexObject) {
         result << scalarToJSON(property.name.toString()) << ": "
                << (meshVertexObject
                         ? meshScalarToJSON(property.value)
-                        : scalarToJSON(property.value));
+                        : parameterObject
+                                ? parameterScalarToJSON(property.value)
+                                : scalarToJSON(property.value));
         first = false;
     }
     return first ? String("{}") : result + " }";
@@ -485,11 +495,22 @@ void appendIndent(String& output, int depth) {
     output << String::repeatedString("    ", depth);
 }
 
-void appendCanonicalJSON(const var& value, int depth, String& output);
+void appendCanonicalJSON(
+        const var& value,
+        int depth,
+        String& output,
+        bool parameterObject = false);
 
-void appendCanonicalObject(const DynamicObject& object, int depth, String& output) {
+void appendCanonicalObject(
+        const DynamicObject& object,
+        int depth,
+        String& output,
+        bool parameterObject) {
     const bool meshVertexObject = isMeshVertexObject(object);
-    const String compact = singleLineObject(object, meshVertexObject);
+    const String compact = singleLineObject(
+            object,
+            meshVertexObject,
+            parameterObject);
     const bool edgeObject = object.hasProperty("sourceNodeId")
             && object.hasProperty("destNodeId");
     if (compact.isNotEmpty()
@@ -506,7 +527,11 @@ void appendCanonicalObject(const DynamicObject& object, int depth, String& outpu
     for (const auto& property : properties) {
         appendIndent(output, depth + 1);
         output << scalarToJSON(property.name.toString()) << ": ";
-        appendCanonicalJSON(property.value, depth + 1, output);
+        appendCanonicalJSON(
+                property.value,
+                depth + 1,
+                output,
+                parameterObject || property.name == Identifier("parameters"));
         output << (++index < properties.size() ? ",\n" : "\n");
     }
     appendIndent(output, depth);
@@ -530,13 +555,19 @@ void appendCanonicalArray(const Array<var>& values, int depth, String& output) {
     output << "]";
 }
 
-void appendCanonicalJSON(const var& value, int depth, String& output) {
+void appendCanonicalJSON(
+        const var& value,
+        int depth,
+        String& output,
+        bool parameterObject) {
     if (const auto* object = value.getDynamicObject()) {
-        appendCanonicalObject(*object, depth, output);
+        appendCanonicalObject(*object, depth, output, parameterObject);
     } else if (const auto* array = value.getArray()) {
         appendCanonicalArray(*array, depth, output);
     } else {
-        output << scalarToJSON(value);
+        output << (parameterObject
+                ? parameterScalarToJSON(value)
+                : scalarToJSON(value));
     }
 }
 

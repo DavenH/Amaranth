@@ -1,5 +1,58 @@
 # Audio Bug Notes
 
+## Resolved: Subbass realtime fixture asserted the pre-reconciliation octave
+
+The full `standalone-debug` CTest run fails
+`Strictly ported subbass fixture renders through the realtime path` because the
+test still expects octave `-2`, while the canonical preset reconciliation in
+`b2129dc0` deliberately changed `subbass-parity.cyclegraph` to octave `-1` and
+moved the remaining legacy reference translation into the comparison manifest.
+The failure repeats in isolation and is unrelated to Astral graph publication.
+Reconcile the stale structural assertion with the fixture's current audible
+parity contract. The assertion now guards octave `-1`; the manifest continues
+to own the separate `-12` legacy MIDI-reference translation. Status: resolved
+2026-09-13.
+
+## Resolved: one-sided Add bypassed prepared pitch reconstruction
+
+Astral was reported to sound heavily distorted and remain near F2 for every
+keyboard note in the standalone Cycle V2 app. Dirty Guitar 2 exhibited the
+same behavior. F2 is suspiciously close to the 44.1 kHz / 512-sample callback
+cadence (86.13 Hz).
+
+The investigation did find that successful graph loads updated the canvas
+synchronously while `NodeWorkspace` deferred publication of the new audio plan
+to a 30 Hz timer. Earlier one-shot UI captures therefore rendered the startup
+plan while reporting Astral's canvas state.
+
+Graph loads now prepare and publish their audio plan immediately. The remaining
+reproduction depended on the exact preset payload: the Astral graph in the
+Amaranth2 sister worktree and the canonical Dirty Guitar 2 graph both contain
+an Add node with only its right input connected. The ordinary
+`BinarySignalProcessor` correctly treats the absent input as zero, but the
+prepared oscillator recipes rejected the graph. Preparation failure was not
+surfaced, so realtime execution fell back to the ordinary IFFT processor and
+emitted raw host blocks. The resulting spectrum was a comb spaced at 86.13 Hz.
+
+Both spectral-frame and chained-cycle recipes now preserve a lone Add operand,
+matching the authoritative blockwise Add semantics. The focused regression
+inserts the same right-only Add into otherwise supported spectral and chained
+graphs and proves that the output is unchanged. Factory regressions cover the
+existing Dirty Guitar 2 and Time graphs. In a live 44.1 kHz/512-sample capture
+of the exact sister-worktree Astral file, MIDI 72 moved from 10.5 dB below the
+callback-frequency component to 31.7 dB above it.
+
+The renderer still needs an explicit contract for any future oscillator region
+that compiles but cannot be prepared. Today that failure is silent and permits
+the ordinary blockwise processors to run, which can turn another unsupported
+recipe into callback-period audio. Publication should reject the plan or
+replace that region with a surfaced error/silence path rather than silently
+changing its execution model. Status: open architecture follow-up 2026-09-13.
+
+Artifacts: `/private/tmp/cycle-v2-amaranth2-astral-note72.wav` and
+`/private/tmp/cycle-v2-amaranth2-astral-fixed-note72.wav`. Status: resolved
+2026-09-13.
+
 ## Open: spectral reference amplitude assertions no longer match output scaling
 
 The full test suite on `cycle2/fix-audio-parity-2` fails the existing
@@ -104,7 +157,7 @@ Current status: open; trace why `GraphPreviewExecutor` omits this connected
 phase probe after successful audio execution before changing the preset or
 preview expectations.
 
-## Open: Cycle V2 compiled Voice Context pitch fields are only partially consumed
+## Resolved for parity: Cycle V2 Voice Context pitch fields
 
 Context:
 
@@ -113,13 +166,18 @@ Context:
   one octave above Cycle 1.
 - The octave now becomes an integer MIDI-note offset at the prepared region
   boundary and has a focused equivalence test.
-- The neighbouring fractional `pitchSemitones`, `portamento`, and oscillator
-  oversampling fields remain compiled without a corresponding realtime
-  oscillator consumption path. They are outside the strict Subbass fixture but
-  represent the same incomplete Voice Context adoption.
+- Cycle 1 has no base-pitch or portamento controls. The converter's zero/off
+  values are neutral V2 state, not omitted Cycle 1 behavior.
+- Realtime oscillator oversampling remains a future V2 feature. Stengah is the
+  only factory graph with a non-default imported value, and its pure spectral
+  voice never enters Cycle 1's time-cycle oversampling/downsampling branch.
+- A separate converter error folded the already translated legacy reference
+  note into stored octave. Correcting Cycle 1's actual control rounding updates
+  twelve factory graphs and moves Accoustic dry MIDI 48 from `0.19646` to
+  `0.99733` correlation; Subbass reaches `0.99997`.
 
-Current status: open for the remaining pitch/glide/oversampling semantics; the
-octave path is addressed on 2026-09-06.
+Current status: Cycle 1 parity is resolved. Base pitch, portamento, and audible
+oscillator oversampling require a separate feature TDD rather than parity code.
 
 ## Open: Cycle V1/V2 exact parity differs beyond live spectral refresh
 
@@ -129,9 +187,9 @@ Context:
   historical verified thresholds. At 48 kHz, MIDI 48, 60, and 72 report
   correlations of `0.96886`, `0.95866`, and `0.95695`; the same trend remains
   at 44.1 kHz.
-- Fresh Cycle 1 canonical exports do not convert exactly to several newly
-  merged graphs. `accoustic` differs in morph/link state, envelope state,
-  reverb size, and IR high-pass; `Icycle` and `organ-2` differ in reverb size.
+- Fresh Cycle 1 canonical exports did not convert exactly to several newly
+  merged graphs. Accoustic, Icycle, and Organ 2 have now been reconciled while
+  preserving their Cycle V2 presentation and explicit global topology.
   These are preset-input failures, not yet DSP verdicts. `guitar-3-g` and
   `japan-drum` were regenerated from live exports and now match the converter
   exactly while retaining their prior presentation.
@@ -328,11 +386,11 @@ Saw renders align at zero lag with effectively `1.00000` correlation and
 time-frame boundary and are now the next localization target.
 
 A separate converter audit also found that legacy modulation input 2 means
-`1-Velocity`; future ports now map it to Cycle V2 `inverseVelocity`. The
-remaining Voice Context key coordinate is `0.3738318` in Cycle 1 because its
-legacy range is MIDI 20–127, versus `0.3779528` in Cycle V2's current 0–127
-default. Filter Saw is invariant in red and blue, so those coordinate
-differences do not explain this fixture's residual audio.
+`1-Velocity`; future ports now map it to Cycle V2 `inverseVelocity`. Cycle V2
+now shares Cycle 1's MIDI 20–127 normalization range. Voice Context octave is
+also applied to inherited key-scale modulation as of parity slice 56. Filter
+Saw is invariant in red and blue, so neither correction explains this
+fixture's remaining residual audio.
 
 New artifacts:
 
@@ -532,20 +590,19 @@ waveshaper-only renders now match byte-for-byte, as does the complete two-render
 MIDI 36–72 matrix in both engines. Icycle is admitted as a verified fixture;
 artifact: `/tmp/cycle-icycle-full-settled-matrix/comparison.json`.
 
-## Open: remeasure parity after correcting Envelope dynamic-flag translation
+## Resolved: preserve Cycle 1's effective Envelope cross-section
 
 Context:
 
-- The Cycle 1 converter previously interpreted Envelope `dynamic=false` as a
-  request to replace red/blue modulation with explicit constant-zero inputs.
-- The flag applies to the time/yellow dimension. Cycle V2 Envelope has no such
-  input and already fixes time to zero during preparation; red/blue remain
-  grammatically valid Voice Context modulation.
-- The synthetic Constant Modulation node and cables were removed from Icycle,
-  Flute, Guitar 3 G, and Organ 2. Focused graph tests now assert their real
-  red/blue bindings and the fixed-zero preparation-time coordinate.
-- Earlier Guitar 3 G frame-zero and Icycle full-matrix measurements used the
-  incorrect constant red/blue routing and are not current parity evidence.
+- `dynamic=false` applies to live rerasterization, not to the red/blue grammar.
+  Removing the explicit zero source was therefore structurally plausible, but
+  it did not preserve the mature renderer's audible behavior.
+- Cycle 1's `EnvRasterizer::updateValue()` updates smoothed targets. Its
+  `SynthesizerVoice::updateSmoothedParameters()` is empty, so the current
+  red/blue values consumed by rasterization remain at their initialized zero.
+- Cycle V2's general Envelope inputs retain their intended absolute Voice
+  Context modulation. Imported factory graphs represent the Cycle 1 defect
+  explicitly with one `legacyEnvelopeMorph` constant-zero source.
 
 One-note diagnostic reruns after the correction produced:
 
@@ -555,8 +612,17 @@ One-note diagnostic reruns after the correction produced:
   `0.9527` residual, `10.51 dB` spectral error, and `0.9325` cyclogram
   difference.
 
-Artifacts are `/tmp/cycle-icycle-corrected-envelope/comparison.json` and
-`/tmp/cycle-guitar-3-g-corrected-envelope/comparison.json`.
+Those failing artifacts are `/private/tmp/cycle-icycle-envelope-ownership-rerun-fresh/comparison.json`
+and `/private/tmp/cycle-guitar-envelope-ownership-rerun-fresh/comparison.json`.
+
+After migrating all 191 affected graphs, Guitar 3 G MIDI 48 is zero-lag at
+`1.00000` correlation, `0.0008` residual, `0.03 dB` spectral error, and
+`0.0006` cyclogram difference. Icycle is zero-lag at `0.99996` correlation,
+`0.0087` residual, `0.15 dB` spectral error, and `0.0117` cyclogram difference.
+Cycle V2 repeats exactly; Cycle 1 retains its separately documented
+process-level nondeterminism. Current artifacts are
+`/private/tmp/cycle-guitar-legacy-envelope-rerun/comparison.json` and
+`/private/tmp/cycle-icycle-legacy-envelope-rerun/comparison.json`.
 
 Current status: graph/runtime semantics corrected. Icycle is close but below
 its declared correlation/residual thresholds; Guitar 3 G has a material open

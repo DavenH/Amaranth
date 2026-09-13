@@ -244,9 +244,6 @@ void SynthFilterVoice::capturePitchClockedCycle(
         uint64_t frontier,
         Buffer<float> samples,
         Buffer<float> composedCycle) {
-    if (laneIndex != 0) {
-        return;
-    }
     CycleDsp::SpectralStageCaptureSink* capture =
             audioSource->getSpectralStageCaptureForTesting();
     if (capture == nullptr) {
@@ -260,7 +257,8 @@ void SynthFilterVoice::capturePitchClockedCycle(
             noteState.lastNoteNumber,
             channel,
             samples,
-            composedCycle
+            composedCycle,
+            laneIndex
     });
 }
 

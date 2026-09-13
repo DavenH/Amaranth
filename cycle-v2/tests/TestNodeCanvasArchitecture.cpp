@@ -1004,10 +1004,24 @@ TEST_CASE("Graph presentation preserves configuration revision history across re
             .getChildFile("default.cyclegraph");
     NodeGraph graph = GraphSerializer().fromJsonString(defaultGraph.loadFileAsString());
     GraphNodeFactory factory;
-    graph.replaceNodeParameters("waveshaper",
-            factory.createNode(NodeKind::Waveshaper, "defaults", {}).parameters);
-    graph.replaceNodeParameters("ir",
-            factory.createNode(NodeKind::ImpulseResponse, "defaults", {}).parameters);
+    auto waveshaperParameters = factory.createNode(
+            NodeKind::Waveshaper, "defaults", {}).parameters;
+    auto irParameters = factory.createNode(
+            NodeKind::ImpulseResponse, "defaults", {}).parameters;
+    const auto retainGlobalScope = [](std::vector<NodeParameter>& parameters) {
+        const auto scope = std::find_if(
+                parameters.begin(),
+                parameters.end(),
+                [](const auto& parameter) {
+                    return parameter.id == "processingScope";
+                });
+        REQUIRE(scope != parameters.end());
+        scope->value = "global";
+    };
+    retainGlobalScope(waveshaperParameters);
+    retainGlobalScope(irParameters);
+    graph.replaceNodeParameters("waveshaper", std::move(waveshaperParameters));
+    graph.replaceNodeParameters("ir", std::move(irParameters));
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     GraphPresentationModel presentation;
@@ -1293,10 +1307,8 @@ TEST_CASE("Voice context compact presentation retains its selector and summary",
 
     REQUIRE(VoiceContextCompactEditor::domainLabel(voice) == "Waveform");
     REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "spectral");
-    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice, 1.0)
+    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice)
             == "Octave 0  ·  1 second");
-    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice, 0.25)
-            == "Octave 0  ·  0.25 seconds");
 
     voice.parameters = {
             { "domain", "Start Domain", "spectralPhase" }
@@ -1307,12 +1319,13 @@ TEST_CASE("Voice context compact presentation retains its selector and summary",
 
     voice.parameters = {
             { "octave", "Octave", "1" },
+            { "voiceLength", "Voice Length", "0.375" },
             { "pitch", "Pitch", "-5" },
             { "portamento", "Portamento", "1" },
             { "oversampling", "Oversampling", "4x" }
     };
-    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice, 2.0)
-            == "Octave 1  ·  2 seconds  ·  Glide");
+    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice)
+            == "Octave 1  ·  1 second  ·  Glide");
 
     const Rectangle<float> selector = VoiceContextCompactEditor::nodeSelectorBounds(
             voice.bounds,

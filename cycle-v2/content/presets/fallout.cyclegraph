@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 633.0 },
-            "parameters": { "domain": "waveform", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
+            "parameters": {
+                "domain": "waveform",
+                "octave": 0,
+                "voiceLength": 0.404580153,
+                "pitch": 0.0,
+                "portamento": false,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -45,7 +53,18 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": { "x": 480.0, "y": 619.0 },
-            "parameters": { "range": 0.5, "yellow": 0.5, "red": 0.5, "blue": 0.5, "primaryAxis": "yellow", "enabled": true },
+            "parameters": {
+                "enabled": true,
+                "range": 0.5,
+                "spectralMode": "auto",
+                "yellow": 0.5,
+                "red": 0.5,
+                "blue": 0.5,
+                "primaryAxis": "yellow",
+                "link.yellow": true,
+                "link.red": true,
+                "link.blue": true
+            },
             "model": {
                 "schema": "trimesh",
                 "version": 2,
@@ -91,7 +110,21 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": { "x": 1216.0, "y": 100.0 },
-            "parameters": { "range": 0.5, "yellow": 0.5, "red": 0.5, "blue": 0.5, "primaryAxis": "yellow", "enabled": true },
+            "portSides": {
+                "outputs": { "out": "bottom" }
+            },
+            "parameters": {
+                "enabled": true,
+                "range": 0.5,
+                "spectralMode": "auto",
+                "yellow": 0.5,
+                "red": 0.5,
+                "blue": 0.5,
+                "primaryAxis": "yellow",
+                "link.yellow": true,
+                "link.red": true,
+                "link.blue": true
+            },
             "model": {
                 "schema": "trimesh",
                 "version": 2,
@@ -130,9 +163,6 @@
                         }
                     ]
                 }
-            },
-            "portSides": {
-                "outputs": { "out": "bottom" }
             }
         },
         {
@@ -140,17 +170,31 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 1284.0, "y": 449.0 },
-            "parameters": {},
             "portSides": {
                 "inputs": { "right": "top" }
-            }
+            },
+            "parameters": {}
         },
         {
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": { "x": 1216.0, "y": 987.0 },
-            "parameters": { "range": 0.55, "yellow": 0.5, "red": 0.5, "blue": 0.5, "primaryAxis": "yellow", "enabled": true },
+            "portSides": {
+                "outputs": { "out": "top" }
+            },
+            "parameters": {
+                "enabled": true,
+                "range": 0.55,
+                "spectralMode": "auto",
+                "yellow": 0.5,
+                "red": 0.5,
+                "blue": 0.5,
+                "primaryAxis": "yellow",
+                "link.yellow": true,
+                "link.red": true,
+                "link.blue": true
+            },
             "model": {
                 "schema": "trimesh",
                 "version": 2,
@@ -189,9 +233,6 @@
                         }
                     ]
                 }
-            },
-            "portSides": {
-                "outputs": { "out": "top" }
             }
         },
         {
@@ -199,17 +240,17 @@
             "kind": "add",
             "definitionVersion": 1,
             "position": { "x": 1284.0, "y": 789.0 },
-            "parameters": {},
             "portSides": {
                 "inputs": { "right": "bottom" }
-            }
+            },
+            "parameters": {}
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 338.0, "y": 1352.0 },
-            "parameters": { "gain": 0.49618 }
+            "parameters": { "gain": 0.496183206 }
         },
         {
             "id": "globalInput",

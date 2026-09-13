@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 633.0 },
-            "parameters": { "domain": "spectral", "octave": -2, "pitch": 0.0, "portamento": false, "oversampling": "2x" }
+            "parameters": {
+                "domain": "spectral",
+                "octave": -1,
+                "voiceLength": 0.694656489,
+                "pitch": 0.0,
+                "portamento": false,
+                "oversampling": "2x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -38,7 +46,7 @@
             "kind": "unison",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 861.0 },
-            "parameters": { "enabled": true, "mode": "group", "order": 7, "width": 21.56, "panSpread": 1.0, "phase": 0.848, "jitter": 0.896 },
+            "parameters": { "enabled": true, "mode": "group", "order": 7, "width": 21.559999999999999, "panSpread": 1.0, "phase": 0.848, "jitter": 0.896 },
             "model": {
                 "schema": "unisonVoices",
                 "version": 1,
@@ -56,6 +64,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
+                "spectralMode": "auto",
                 "yellow": 0.0,
                 "red": 0.37383,
                 "blue": 0.0,
@@ -154,6 +163,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.8,
+                "spectralMode": "auto",
                 "yellow": 0.0,
                 "red": 0.37383,
                 "blue": 0.0,
@@ -272,6 +282,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.725,
+                "spectralMode": "auto",
                 "yellow": 0.0,
                 "red": 0.37383,
                 "blue": 0.0,
@@ -377,7 +388,7 @@
             "kind": "waveshaper",
             "definitionVersion": 1,
             "position": { "x": 338.0, "y": 1352.0 },
-            "parameters": { "enabled": true, "pre": 0.452, "post": 0.408, "aaFactor": "2", "processingScope": "global" },
+            "parameters": { "processingScope": "global", "enabled": true, "pre": 0.452, "post": 0.408, "aaFactor": "2" },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
@@ -402,6 +413,7 @@
             "definitionVersion": 1,
             "position": { "x": 627.0, "y": 1352.0 },
             "parameters": {
+                "processingScope": "global",
                 "enabled": true,
                 "band1Gain": 0.5,
                 "band2Gain": 0.5,
@@ -412,8 +424,7 @@
                 "band2Frequency": 0.5,
                 "band3Frequency": 0.5,
                 "band4Frequency": 0.5,
-                "band5Frequency": 0.852,
-                "processingScope": "global"
+                "band5Frequency": 0.852
             }
         },
         {
@@ -428,7 +439,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 1195.0, "y": 1352.0 },
-            "parameters": {}
+            "parameters": { "gain": 0.5 }
         },
         {
             "id": "globalInput",

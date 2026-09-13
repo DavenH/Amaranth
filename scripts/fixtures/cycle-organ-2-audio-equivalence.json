@@ -8,15 +8,15 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/organ-2.cyclegraph",
-        "sha256": "e95543046770b41b337db34141df85711478b1ecf1c8bef5c93fc008f562172d",
+        "sha256": "939980960d7d4a3fcd483501523ade6a307abc2269ac3a170f6ddcb71b83c37a",
         "renderOverrides": {
-            "voiceDurationSeconds": 1.2669864718837067
+            "voiceDurationSeconds": 1.26698637008667
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 0.9773594682052107,
+        "v1MasterGain": 0.9773595333099365,
         "v2OutputGainUnitValue": 0.496183206,
         "v2OutputHeadroom": 0.125,
         "coverage": [

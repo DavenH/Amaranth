@@ -1,6 +1,6 @@
 {
     "schema": "cycle-v1-v2-audio-equivalence.v1",
-    "status": "verified",
+    "status": "diagnostic",
     "v1": {
         "factoryPreset": "Icycle",
         "sourceDocument": "cycle/content/presets/icycle.cyc",
@@ -8,15 +8,15 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/Icycle.cyclegraph",
-        "sha256": "0938ee5f5e733c01a31d4569106a8044a079dfd11f1a8ba2564f05733f4406bb",
+        "sha256": "893d55f99797fce73ca870db1372b7f885c5faefe4c5c63ed679b72f510b6e3e",
         "renderOverrides": {
-            "voiceDurationSeconds": 2.2102451743580955
+            "voiceDurationSeconds": 2.210245132446289
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 1.053085198357633,
+        "v1MasterGain": 1.0530850887298584,
         "v2OutputGainUnitValue": 0.50862069,
         "v2OutputHeadroom": 0.125,
         "coverage": [
@@ -34,7 +34,9 @@
         ],
         "determinism": "guide noise is disabled, Unison layout is deterministic, and offline parameter smoothing is settled before capture",
         "inputValidation": "regenerated from a direct Cycle 1 canonical file export while preserving Cycle V2 presentation and probes",
-        "knownRuntimeGaps": [],
+        "knownRuntimeGaps": [
+            "Cycle 1 full-effect output intermittently selects one of two floating-point payloads across fresh processes when the impulse response is enabled"
+        ],
         "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
     },
     "effectBindings": {

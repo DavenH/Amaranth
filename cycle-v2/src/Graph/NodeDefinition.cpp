@@ -1,3 +1,4 @@
+#include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Audio/CycleDsp/IrModel.h>
 #include <Audio/CycleDsp/UnisonCore.h>
 #include <App/AppConstants.h>
@@ -348,9 +349,17 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { output("context", "Context", PortDomain::DomainContext) }, {
                             choice("domain", "Start Domain", "waveform", { "waveform", "spectral", "spectralMagnitude", "spectralPhase" }, graph | presentation | preview),
                             integer("octave", "Octave", 0, -2, 2, dsp | presentation),
+                            number("voiceLength", "Voice Length",
+                                    CycleDsp::voiceLengthUnitValue(1.0), 0.f, 1.f,
+                                    dsp | preview | presentation),
                             number("pitch", "Pitch", 0.f, -48.f, 48.f, dsp | presentation),
                             boolean("portamento", "Portamento", false, dsp | presentation),
-                            choice("oversampling", "Oversampling", "1x", { "1x", "2x", "4x", "8x" }, dsp | reset | presentation)
+                            choice("oversampling", "Oversampling", "1x",
+                                    { "1x", "2x", "4x", "8x" },
+                                    dsp | reset | presentation),
+                            choice("controlInterval", "Control Interval", "16",
+                                    { "16", "64", "256", "1024" },
+                                    dsp | reset | presentation)
                     }))
                     .help("Sets pitch, timing, and voice behaviour before synthesis.")
                     .execution(NodeExecutionTrait::ConfigurationOnly)

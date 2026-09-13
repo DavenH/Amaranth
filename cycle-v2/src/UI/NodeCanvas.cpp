@@ -183,11 +183,6 @@ NodeCanvas::NodeCanvas() :
             AppSettings::GuideShelfMinimized) != 0;
     probeRailState.minimized = settings.getGlobalSettingValue(
             AppSettings::SpyShelfMinimized) != 0;
-    globalUnisonPreviewContext.voiceDurationSeconds = jlimit(
-            CycleDsp::voiceLengthSeconds(0.f),
-            CycleDsp::voiceLengthSeconds(1.f),
-            settings.getGlobalSettingValue(
-                    AppSettings::PreviewVoiceLengthMilliseconds) / 1000.0);
     probeRailState.expanded = settings.getGlobalSettingValue(AppSettings::GuideSpyDockExpanded) != 0;
     probeRailState.expandedHeight = jmax(
             WorkspaceDock::minimumExpandedHeight,
@@ -1255,24 +1250,6 @@ void NodeCanvas::refreshCompiledStateAsync() {
             });
 }
 
-void NodeCanvas::setVoiceLengthSeconds(double seconds) {
-    const double duration = jlimit(
-            CycleDsp::voiceLengthSeconds(0.f),
-            CycleDsp::voiceLengthSeconds(1.f),
-            seconds);
-    if (std::abs(globalUnisonPreviewContext.voiceDurationSeconds - duration) < 0.0005) {
-        return;
-    }
-    globalUnisonPreviewContext.voiceDurationSeconds = duration;
-    settings.getGlobalSetting(AppSettings::PreviewVoiceLengthMilliseconds) =
-            roundToInt(duration * 1000.0);
-    if (voiceLengthChangedCallback) {
-        voiceLengthChangedCallback(duration);
-    }
-    editStatusMessage = "Voice length: " + formatPropertyReal(duration) + " seconds";
-    requestCanvasRepaint();
-}
-
 void NodeCanvas::openProbeDetail(const String& probeId) {
     const int midiNote = GraphPresentationModel::auditionMidiNoteForProbe(
             commands.editingGraph(),
@@ -1311,10 +1288,18 @@ void NodeCanvas::refreshProbeDetail() {
 }
 
 UnisonPreviewContext NodeCanvas::unisonPreviewContext() const {
-    return NodeCanvasPresentation::unisonPreviewContextFor(
+    UnisonPreviewContext context = NodeCanvasPresentation::unisonPreviewContextFor(
             presentation.compileResult().plan,
             expandedNodeId,
             globalUnisonPreviewContext);
+    const Node* expandedNode = commands.editingGraph().findNode(expandedNodeId);
+    if (expandedNode != nullptr && expandedNode->kind == NodeKind::VoiceContext) {
+        context.voiceDurationSeconds = CycleDsp::voiceLengthSeconds(
+                NodeParameterMap(*expandedNode).floatValue(
+                        "voiceLength",
+                        CycleDsp::voiceLengthUnitValue(1.0)));
+    }
+    return context;
 }
 
 std::optional<NodeAudioResourceSummary> NodeCanvas::audioResourceSummary(
@@ -1392,7 +1377,7 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
             static_cast<size_t>(CanvasPerformanceMetrics::RepaintScope::Status)];
     result.selectedEdgeIndex = selectedEdgeIndex;
     result.hoveredEdgeIndex = hoveredEdgeIndex;
-    result.previewVoiceLengthSeconds = globalUnisonPreviewContext.voiceDurationSeconds;
+    result.previewVoiceLengthSeconds = unisonPreviewContext().voiceDurationSeconds;
     result.probeRefreshMode = probeRailState.refreshMode;
     result.probeDetailId = probeDetailState.probeId;
     result.probeDetailResolution = probeDetailState.resolution;
@@ -1800,11 +1785,6 @@ Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
 
 void NodeCanvas::setOverlayOcclusionChangedCallback(std::function<void()> callback) {
     overlayOcclusionChanged = std::move(callback);
-}
-
-void NodeCanvas::setVoiceLengthChangedCallback(
-        std::function<void(double)> callback) {
-    voiceLengthChangedCallback = std::move(callback);
 }
 
 void NodeCanvas::setGraphDocumentStateChangedCallback(

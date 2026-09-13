@@ -8,15 +8,15 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/guitar-3-g.cyclegraph",
-        "sha256": "e3465410cd27f1e6ea2e3f4124b87fea5a349a77ed0de3d53714b2ce47ea0944",
+        "sha256": "3c04b03276a082031a3592f334a83fac50d3d597652f5a0f92ed35cf261db33f",
         "renderOverrides": {
-            "voiceDurationSeconds": 4.568038808277109
+            "voiceDurationSeconds": 4.5680389404296875
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 0.9773594682052107,
+        "v1MasterGain": 0.9773595333099365,
         "v2OutputGainUnitValue": 0.496183206,
         "v2OutputHeadroom": 0.125,
         "coverage": [

@@ -222,6 +222,9 @@ private:
     void mixVoiceBoundary(
             const GraphExecutionPlan& plan,
             size_t frameCount) const;
+    void loadCompleteVoiceBoundary(
+            const GraphExecutionPlan& plan,
+            size_t frameCount) const;
     void loadMixedVoiceBoundary(
             const GraphExecutionPlan& plan,
             size_t frameCount) const;

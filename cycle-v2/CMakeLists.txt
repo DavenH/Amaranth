@@ -55,7 +55,7 @@ generate_svg_data(
     genericProcessor voiceContext scratchDefaultOverride waveSource imageSource trilinearMesh
     modulationSource modulationTriple
     fft ifft envelope add multiply guideCurve impulseResponse waveshaper
-    spectralLayer unison reverb delay equalizer stereoSplit stereoJoin globalInput output
+    spectralLayer unison reverb delay equalizer stereoSplit stereoJoin globalInput voiceOutput output
 )
 
 generate_svg_data(

@@ -1,6 +1,8 @@
 #include "UI/Editors/PropertyControls.h"
 #include "UI/VoiceContextCompactEditor.h"
 
+#include <Audio/CycleDsp/EffectParameterMapping.h>
+
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EnvelopePurposeIconRenderer.h"
 #include "UI/NodePortGeometry.h"
@@ -82,10 +84,13 @@ String VoiceContextCompactEditor::nextDomain(const Node& node) {
     return isSpectral(node) ? "waveform" : "spectral";
 }
 
-String VoiceContextCompactEditor::summaryLabel(
-        const Node& node,
-        double voiceDurationSeconds) {
+String VoiceContextCompactEditor::summaryLabel(const Node& node) {
     const String octave = parameterValueForNode(node, "octave", "0");
+    const double voiceDurationSeconds = CycleDsp::voiceLengthSeconds(
+            parameterValueForNode(
+                    node,
+                    "voiceLength",
+                    String(CycleDsp::voiceLengthUnitValue(1.0))).getFloatValue());
     String summary = "Octave " + octave + "  ·  " + durationText(voiceDurationSeconds);
     if (portamentoEnabled(node)) {
         summary += "  ·  Glide";
@@ -143,13 +148,12 @@ void VoiceContextCompactEditor::paintNodeSummary(
         Graphics& graphics,
         Rectangle<float> nodeBounds,
         float zoom,
-        const Node& node,
-        double voiceDurationSeconds) {
+        const Node& node) {
     const Rectangle<float> summary = summaryBounds(nodeBounds, zoom);
     graphics.setColour(kText.withAlpha(0.88f));
     graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize * zoom));
     graphics.drawText(
-            summaryLabel(node, voiceDurationSeconds),
+            summaryLabel(node),
             summary,
             Justification::centred);
 }

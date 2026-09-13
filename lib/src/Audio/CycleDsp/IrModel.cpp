@@ -88,6 +88,7 @@ void rasterizeIrImpulse(
         Buffer<float> impulse,
         Oversampler& oversampler,
         double padding) {
+    oversampler.resetDelayLine();
     const double delta = (1. - padding) / (double) (impulse.size() - 1);
     const int samplingSize = impulse.size() * oversampler.getOversampleFactor();
     Buffer<float> oversampled = oversampler.getMemoryBuffer(samplingSize);

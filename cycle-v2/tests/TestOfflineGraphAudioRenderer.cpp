@@ -497,7 +497,7 @@ TEST_CASE("Strictly ported subbass fixture renders through the realtime path",
 #if defined(CYCLE_V2_SOURCE_DIR)
     const auto plan = subbassParityPlan();
     REQUIRE(plan.voiceContexts.size() == 1);
-    REQUIRE(plan.voiceContexts.front().octave == -2);
+    REQUIRE(plan.voiceContexts.front().octave == -1);
     const auto capture = OfflineGraphAudioRenderer::render(
             plan,
             11,

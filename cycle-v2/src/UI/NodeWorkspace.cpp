@@ -32,10 +32,6 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     canvas.setOverlayOcclusionChangedCallback([this] {
         layoutPerformanceKeyboard();
     });
-    canvas.setVoiceLengthChangedCallback([this](double durationSeconds) {
-        audioEngine.setVoiceDurationSeconds((float) durationSeconds);
-    });
-    audioEngine.setVoiceDurationSeconds((float) canvas.voiceLengthSeconds());
     startTimerHz(30);
     timerCallback();
 }
@@ -43,7 +39,6 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
 NodeWorkspace::~NodeWorkspace() {
     stopTimer();
     canvas.setOverlayOcclusionChangedCallback({});
-    canvas.setVoiceLengthChangedCallback({});
     keyboard.releaseAllNotes();
 }
 
@@ -56,6 +51,9 @@ bool NodeWorkspace::loadGraphFromFile(const File& file) {
     if (!canvas.loadGraphFromFile(file)) {
         return false;
     }
+    const auto status = audioEngine.status();
+    audioEngine.setGraphOutputGain(canvas.graphOutputGain());
+    publishAudioPlan(status, true);
     layoutPerformanceKeyboard();
     return true;
 }
@@ -254,6 +252,12 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("blockSize", status.blockSize);
     object->setProperty("callbackCount", (int64) status.renderer.callbackCount);
     object->setProperty("graphRevision", (int64) status.renderer.graphRevision);
+    object->setProperty(
+            "executionStepCount",
+            (int) status.renderer.executionStepCount);
+    object->setProperty(
+            "oscillatorRegionCount",
+            (int) status.renderer.oscillatorRegionCount);
     object->setProperty("activeVoiceCount", (int) status.renderer.activeVoiceCount);
     object->setProperty("droppedMidiEvents", (int) status.renderer.droppedMidiEvents);
     object->setProperty("peak", status.renderer.peak);
@@ -350,22 +354,33 @@ void NodeWorkspace::timerCallback() {
     previousDeviceReady = status.deviceReady;
     layoutPerformanceKeyboard();
 
+    publishAudioPlan(status, false);
+}
+
+bool NodeWorkspace::publishAudioPlan(
+        const StandaloneAudioEngine::Status& status,
+        bool forcePublication) {
     GraphExecutionPlan plan;
     uint64_t revision {};
     if (!canvas.copyAudioPlan(plan, revision)) {
-        return;
+        return false;
     }
-    if (revision == publishedPlanRevision
+    if (!forcePublication
+            && revision == publishedPlanRevision
             && status.preparationRevision == publishedDevicePreparationRevision) {
-        return;
+        return true;
     }
-    if (publishedPlanRevision != 0 && revision != publishedPlanRevision) {
+    if (!forcePublication
+            && publishedPlanRevision != 0
+            && revision != publishedPlanRevision) {
         keyboard.releaseAllNotes();
     }
-    if (audioEngine.publishGraph(std::move(plan), revision)) {
-        publishedPlanRevision = revision;
-        publishedDevicePreparationRevision = status.preparationRevision;
+    if (!audioEngine.publishGraph(std::move(plan), revision)) {
+        return false;
     }
+    publishedPlanRevision = revision;
+    publishedDevicePreparationRevision = status.preparationRevision;
+    return true;
 }
 
 void NodeWorkspace::updateOutputMeter(const StandaloneAudioEngine::Status& status) {

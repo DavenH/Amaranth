@@ -89,6 +89,7 @@ struct GraphBufferPlan {
     int lastConsumerStep { -1 };
     DefaultModulationSlot defaultModulationSlot { DefaultModulationSlot::None };
     std::shared_ptr<const INodeDspConfiguration> defaultModulation;
+    int defaultModulationNoteOffset {};
 };
 
 struct GraphDependencyIndex {
@@ -115,9 +116,11 @@ struct CompiledVoiceContext {
     String nodeId;
     String startDomain { "waveform" };
     int octave {};
+    float voiceDurationSeconds { 1.f };
     float pitchSemitones {};
     bool portamento {};
     int oversampling { 1 };
+    int controlIntervalSamples { 16 };
     std::shared_ptr<const INodeDspConfiguration> defaultModulation;
     std::shared_ptr<const INodeDspConfiguration> pitchEnvelope;
     String pitchEnvelopeNodeId;

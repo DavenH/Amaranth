@@ -106,6 +106,16 @@ bool isLinkedStereoTimeOutput(const Port& port) {
             && port.channelLayout == ChannelLayout::LinkedStereo;
 }
 
+bool usesExplicitAudioGraph(const NodeGraph& graph) {
+    return std::any_of(
+            graph.getNodes().begin(),
+            graph.getNodes().end(),
+            [](const Node& node) {
+                return node.kind == NodeKind::GlobalInput
+                        || node.kind == NodeKind::VoiceOutput;
+            });
+}
+
 void addIssue(
         std::vector<GraphValidationIssue>& issues,
         GraphValidationCode code,
@@ -154,13 +164,14 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
     EdgeIssueReporter reporter(issues);
     const GraphDomainResolution resolution = domainResolver.resolve(graph);
     const auto scopeAnalysis = GraphAudioScopeAnalyzer().analyze(graph);
+    const bool explicitAudioGraph = usesExplicitAudioGraph(graph);
 
     for (size_t edgeIndex = 0; edgeIndex < graph.getEdges().size(); ++edgeIndex) {
         validateEdge(
                 graph,
                 graph.getEdges()[edgeIndex],
                 resolution.domains[edgeIndex],
-                &scopeAnalysis,
+                explicitAudioGraph ? &scopeAnalysis : nullptr,
                 reporter);
     }
 
@@ -204,11 +215,12 @@ bool GraphValidator::edgeHasValidationIssue(const NodeGraph& graph, const Edge& 
 GraphValidationIssue GraphValidator::validationIssueForEdge(const NodeGraph& graph, const Edge& edge) const {
     EdgeIssueReporter reporter;
     const auto analysis = GraphAudioScopeAnalyzer().analyze(graph);
+    const bool explicitAudioGraph = usesExplicitAudioGraph(graph);
     validateEdge(
             graph,
             edge,
             domainResolver.resolvedDomainForEdge(graph, edge),
-            &analysis,
+            explicitAudioGraph ? &analysis : nullptr,
             reporter);
     return reporter.getFirstIssue();
 }
@@ -475,6 +487,13 @@ void GraphValidator::validateAudioScopes(
         } else if (node.kind == NodeKind::Output) {
             outputIds.push_back(node.id);
         }
+    }
+    // NodeGraph does not retain its serialized format version. Durable graphs are
+    // migrated before validation, while tests and domain clients also compile
+    // boundary-free graph fragments. The presence of either explicit boundary
+    // opts the graph into the format-six audio grammar.
+    if (voiceOutputIds.empty() && globalInputIds.empty()) {
+        return;
     }
     if (voiceOutputIds.size() != 1) {
         addIssue(

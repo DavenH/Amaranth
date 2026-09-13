@@ -14,6 +14,7 @@ import json
 import math
 import os
 from pathlib import Path
+import struct
 import subprocess
 import tempfile
 
@@ -65,6 +66,12 @@ DEFAULT_MODULATION_MAPPINGS = [
     {"in": 2, "out": 500, "dim": 2},
 ]
 
+LEGACY_PRESENTATION_NODE_IDS = {
+    "pitchEnvelope1": "pitchEnvelope",
+    "scratchEnvelope1": "scratchEnvelope",
+    "volumeEnvelope1": "volumeEnvelope",
+}
+
 LAYOUT_MARGIN = 100.0
 LAYOUT_GAP = 80.0
 LAYOUT_CELL_WIDTH = 366.0
@@ -105,6 +112,27 @@ def graph_migrator_path():
         "CycleV2GraphMigrator is required; build the tests preset first")
 
 
+def restore_numeric_precision(migrated, original):
+    if isinstance(migrated, dict) and isinstance(original, dict):
+        for key in migrated.keys() & original.keys():
+            migrated[key] = restore_numeric_precision(migrated[key], original[key])
+        return migrated
+    if isinstance(migrated, list) and isinstance(original, list):
+        if len(migrated) != len(original):
+            return migrated
+        return [
+            restore_numeric_precision(migrated_value, original_value)
+            for migrated_value, original_value in zip(migrated, original)
+        ]
+    numeric_types = (int, float)
+    if not isinstance(migrated, bool) \
+            and not isinstance(original, bool) \
+            and isinstance(migrated, numeric_types) \
+            and isinstance(original, numeric_types):
+        return original
+    return migrated
+
+
 def migrate_global_audio_graph(graph):
     with tempfile.TemporaryDirectory(prefix="cycle-v2-migration-") as directory:
         source = Path(directory) / "legacy.cyclegraph"
@@ -119,8 +147,23 @@ def migrate_global_audio_graph(graph):
         if completed.returncode != 0:
             detail = completed.stderr.strip() or completed.stdout.strip()
             raise ValueError(f"Global audio graph migration failed: {detail}")
-        with destination.open(encoding="utf-8") as migrated:
-            return json.load(migrated)
+        with destination.open(encoding="utf-8") as migrated_file:
+            migrated = json.load(migrated_file)
+
+    original_nodes = {node["id"]: node for node in graph.get("nodes", [])}
+    for migrated_node in migrated.get("nodes", []):
+        original_node = original_nodes.get(migrated_node["id"])
+        if original_node is None:
+            continue
+        for property_name in ("parameters", "model"):
+            if property_name in migrated_node and property_name in original_node:
+                migrated_node[property_name] = restore_numeric_precision(
+                    migrated_node[property_name], original_node[property_name])
+    for property_name in ("guides", "guideHeatmaps"):
+        if property_name in migrated and property_name in graph:
+            migrated[property_name] = restore_numeric_precision(
+                migrated[property_name], graph[property_name])
+    return migrated
 
 
 def node(node_id, kind, x, y, parameters=None, model=None):
@@ -134,6 +177,19 @@ def node(node_id, kind, x, y, parameters=None, model=None):
     if model is not None:
         result["model"] = model
     return result
+
+
+def legacy_envelope_morph_node():
+    return node(
+        "legacyEnvelopeMorph",
+        "modulationSource",
+        2140,
+        1280,
+        {
+            "source": "constant",
+            "controller": 1,
+            "constant": 0.0,
+        })
 
 
 def node_footprint(entry):
@@ -306,6 +362,11 @@ def apply_compact_layout(nodes):
     for node_id in numbered_node_ids(nodes_by_id, "scratchEnvelope"):
         set_node_position(nodes_by_id, node_id, auxiliary_x, auxiliary_y)
         auxiliary_x += NODE_FOOTPRINTS["envelope"][0] + LAYOUT_GAP
+    set_node_position(
+        nodes_by_id,
+        "legacyEnvelopeMorph",
+        auxiliary_x,
+        auxiliary_y)
 
     visible_nodes = [
         entry for entry in nodes if entry["kind"] != "spectralLayer"
@@ -432,8 +493,31 @@ def active_envelope_layer(preset, purpose):
 
 def translated_octave(octave_knob):
     mapped_octave = 4.0 * (octave_knob - 0.5) + 0.5
-    preset_octave = math.floor(mapped_octave + 0.5)
-    return preset_octave + LEGACY_MIDI_REFERENCE_OFFSET // 12
+    return round(mapped_octave)
+
+
+def translated_control_interval(control_frequency_order):
+    return str(1 << int(control_frequency_order))
+
+
+def engine_realized_float(value):
+    return struct.unpack("<f", struct.pack("<f", value))[0]
+
+
+def translated_voice_duration(voice_length_knob):
+    unit_value = engine_realized_float(voice_length_knob)
+    return engine_realized_float(math.exp(8.0 * unit_value - 3.0))
+
+
+def translated_master_gain(volume_knob):
+    unit_value = engine_realized_float(volume_knob)
+    return engine_realized_float(math.exp(6.0 * unit_value - 3.0))
+
+
+def translated_impulse_size(size_knob):
+    """Return Cycle V2's canonical knob value for Cycle 1's IR length."""
+    exponent = int(7.0 + size_knob * 7.0 + 1.0e-5)
+    return (exponent - 7.0) / 7.0
 
 
 def resolved_guide_noise_seed(properties, guide_index):
@@ -534,6 +618,8 @@ def convert(source):
     oscillator_knobs.extend([0.5] * (3 - len(oscillator_knobs)))
     octave = translated_octave(oscillator_knobs[1])
     oversampling = preset["settings"].get("OversampleFactorRltm", 1)
+    control_interval = translated_control_interval(
+        preset["settings"].get("ControlFreq", 8))
     modulation_sources = modulation_sources_for_preset(preset)
     guide_layers = groups[MESH_GROUPS["guides"]]["layers"]
     has_spectral_layers = any(
@@ -545,9 +631,11 @@ def convert(source):
         node("voice", "voiceContext", 100, 520, {
             "domain": "waveform",
             "octave": octave,
+            "voiceLength": oscillator_knobs[2],
             "pitch": 0.0,
             "portamento": False,
             "oversampling": f"{oversampling}x",
+            "controlInterval": control_interval,
         }),
         node("morph", "modulationTriple", 100, 100, {
             "yellowSource": modulation_sources["yellow"],
@@ -719,6 +807,7 @@ def convert(source):
 
     envelope_y = {"volume": 120, "pitch": 1050, "scratch": 1280}
     envelope_ids = {}
+    active_envelope_ids = []
     for purpose in ("volume", "pitch", "scratch"):
         for index, layer in enumerate(envelope_layers(preset, purpose), 1):
             if purpose == "pitch" and not layer["properties"]["active"]:
@@ -729,6 +818,15 @@ def convert(source):
                 2450 + 310 * (index - 1), envelope_y[purpose]))
             if layer["properties"]["active"]:
                 envelope_ids[purpose] = envelope_id
+                active_envelope_ids.append(envelope_id)
+
+    if active_envelope_ids:
+        nodes.append(legacy_envelope_morph_node())
+        for envelope_id in active_envelope_ids:
+            edges.extend([
+                edge("legacyEnvelopeMorph", "value", envelope_id, "red"),
+                edge("legacyEnvelopeMorph", "value", envelope_id, "blue"),
+            ])
 
     volume_id = envelope_ids.get("volume")
     if volume_id is None and preset["settings"].get("Declick", True):
@@ -760,7 +858,7 @@ def convert(source):
         impulse_layer = groups[MESH_GROUPS["impulseResponse"]]["layers"][0]
         nodes.append(node("impulseResponse", "impulseResponse", 2600, 660, {
             "enabled": True,
-            "size": impulse["knobs"][0],
+            "size": translated_impulse_size(impulse["knobs"][0]),
             "post": impulse["knobs"][1],
             "highPass": impulse["knobs"][2] if len(impulse["knobs"]) > 2 else 0.0,
         }, flat_curve_model(impulse_layer["mesh"])))
@@ -981,8 +1079,8 @@ def equivalence_manifest(source, source_document, destination, factory_preset):
     preset = source["preset"]
     oscillator_knobs = list(preset["oscControls"].get("knobs", []))
     oscillator_knobs.extend([0.5] * (3 - len(oscillator_knobs)))
-    duration = math.exp(8.0 * oscillator_knobs[2] - 3.0)
-    master_gain = math.exp(6.0 * oscillator_knobs[0] - 3.0)
+    duration = translated_voice_duration(oscillator_knobs[2])
+    master_gain = translated_master_gain(oscillator_knobs[0])
     octave = translated_octave(oscillator_knobs[1])
     source_document = source_document.resolve()
     destination = destination.resolve()
@@ -1029,6 +1127,9 @@ def preserve_presentation(converted, existing):
     existing_nodes = {node["id"]: node for node in existing.get("nodes", [])}
     for node in converted.get("nodes", []):
         previous = existing_nodes.get(node["id"])
+        if previous is None:
+            legacy_id = LEGACY_PRESENTATION_NODE_IDS.get(node["id"])
+            previous = existing_nodes.get(legacy_id)
         if previous is None:
             continue
         for property_name in ("position", "portSides", "editorWidth", "editorHeight"):

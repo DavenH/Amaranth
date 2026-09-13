@@ -106,15 +106,15 @@ implementation does not yet guarantee that result is available for the first
 sample; until it does, the latched policy is incomplete. Changes remain
 available to the next note.
 
-The Guitar 3 G parity fixture demonstrates the missing boundary. Its looping
-scratch envelope depends strongly on key and velocity. At MIDI 48/frame zero,
-Cycle 1 starts from the routed cross-section at `0.00553`, while Cycle V2 starts
-from the persistent 0.5/0.5 preparation at `0.22683`. The bounded request is
-published at note-on, which is too late to define the already-started voice.
-The initial result must instead follow
-`cycle-v2-realtime-note-on-envelope-preparation.md`. General-purpose realtime
-`EnvRasterizer` use remains forbidden; the new contract requires an extracted
-shared core with fixed-capacity voice storage.
+The original Guitar 3 G characterization attributed Cycle 1's frame-zero
+`0.00553` scratch coordinate to routed key and velocity. A later source trace
+showed that the mature renderer never advances those smoothed morph targets;
+the value comes from its initialized `0/0` cross-section. Imported factory
+graphs now preserve that legacy behavior explicitly. The bounded request for
+ordinary V2 Envelope modulation is still materialized synchronously at note-on
+so newly authored graphs do not begin from a stale persistent preparation.
+General-purpose realtime `EnvRasterizer` use remains forbidden; the contract
+uses the extracted shared core with fixed-capacity voice storage.
 
 If Voice Context later enables live adoption, a meaningful change to
 `effectiveMorph` requests a new immutable prepared envelope. Once ready, the

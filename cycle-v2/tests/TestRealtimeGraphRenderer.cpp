@@ -55,6 +55,100 @@ std::vector<float> renderOutputGain(float gainUnitValue, float& compiledGain) {
     };
 }
 
+std::vector<float> renderAstralRealtimeNote(int midiNote) {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("astral.cyclegraph");
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            preset.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    const auto compiled = GraphCompiler().compile(loaded.graph);
+    REQUIRE(compiled.succeeded());
+
+    constexpr int blockSize = 512;
+    constexpr int sampleCount = 8192;
+    constexpr double sampleRate = 44'100.0;
+    constexpr double blockDuration = blockSize / sampleRate;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = blockSize;
+    spec.sampleRate = sampleRate;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    renderer.setPreparedGraph(prepared.get());
+    REQUIRE(queue.enqueue(
+            MidiMessage::noteOn(1, midiNote, (uint8) 102),
+            MidiEventSource::PerformanceKeyboard,
+            1.0));
+
+    AudioBuffer<float> output(2, blockSize);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    std::vector<float> samples;
+    samples.reserve(sampleCount);
+    double callbackTime = 1.0;
+    for (int start = 0; start < sampleCount; start += blockSize) {
+        renderer.process(
+                queue,
+                channels,
+                2,
+                blockSize,
+                sampleRate,
+                callbackTime);
+        samples.insert(
+                samples.end(),
+                output.getReadPointer(0),
+                output.getReadPointer(0) + blockSize);
+        callbackTime += blockDuration;
+    }
+    return samples;
+#else
+    ignoreUnused(midiNote);
+    return {};
+#endif
+}
+
+double sinusoidMagnitude(
+        const std::vector<float>& samples,
+        double sampleRate,
+        double frequency) {
+    constexpr size_t start = 4096;
+    constexpr size_t count = 4096;
+    REQUIRE(samples.size() >= start + count);
+    double real {};
+    double imaginary {};
+    for (size_t index = 0; index < count; ++index) {
+        const double phase = MathConstants<double>::twoPi
+                * frequency
+                * (double) index
+                / sampleRate;
+        const double window = 0.5 - 0.5 * std::cos(
+                MathConstants<double>::twoPi * (double) index / (double) (count - 1));
+        const double sample = (double) samples[start + index] * window;
+        real += sample * std::cos(phase);
+        imaginary -= sample * std::sin(phase);
+    }
+    return std::sqrt(real * real + imaginary * imaginary);
+}
+
+double lagCorrelation(const std::vector<float>& samples, size_t lag) {
+    constexpr size_t start = 2048;
+    constexpr size_t count = 4096;
+    REQUIRE(samples.size() >= start + count + lag);
+    double product {};
+    double firstEnergy {};
+    double secondEnergy {};
+    for (size_t index = 0; index < count; ++index) {
+        const double first = samples[start + index];
+        const double second = samples[start + index + lag];
+        product += first * second;
+        firstEnergy += first * first;
+        secondEnergy += second * second;
+    }
+    return product / std::sqrt(firstEnergy * secondEnergy);
+}
+
 }
 
 TEST_CASE("Realtime graph renderer applies Output gain separately from safety headroom",
@@ -164,6 +258,33 @@ TEST_CASE("Realtime graph renderer turns MIDI note gestures into graph audio",
         callbackTime += 256.0 / 44100.0;
     }
     REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 0);
+}
+
+TEST_CASE("Astral realtime pitch follows MIDI rather than the audio callback period",
+        "[cycle-v2][audio-device][realtime][midi][astral][parity]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    constexpr double sampleRate = 44'100.0;
+    constexpr double callbackFrequency = sampleRate / 512.0;
+    const std::vector<float> midi60 = renderAstralRealtimeNote(60);
+    const std::vector<float> midi72 = renderAstralRealtimeNote(72);
+    const double midi60Fundamental = sinusoidMagnitude(midi60, sampleRate, 261.625565);
+    const double midi72Fundamental = sinusoidMagnitude(midi72, sampleRate, 523.251131);
+    const double midi60CallbackTone = sinusoidMagnitude(
+            midi60,
+            sampleRate,
+            callbackFrequency);
+    const double midi72CallbackTone = sinusoidMagnitude(
+            midi72,
+            sampleRate,
+            callbackFrequency);
+
+    REQUIRE(midi60Fundamental > midi60CallbackTone * 100.0);
+    REQUIRE(midi72Fundamental > midi72CallbackTone * 100.0);
+    REQUIRE(lagCorrelation(midi60, 169) > lagCorrelation(midi60, 512));
+    REQUIRE(lagCorrelation(midi72, 84) > lagCorrelation(midi72, 512));
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
 }
 
 TEST_CASE("Realtime renderer supplies the mixed voice terminal through Global Input",
@@ -296,6 +417,65 @@ TEST_CASE("Realtime voice length updates the active voice-time clock",
 
     REQUIRE(slowDelta > 0.f);
     REQUIRE(fastDelta == Catch::Approx(10.f * slowDelta).margin(1.0e-6f));
+}
+
+TEST_CASE("Realtime voice-time clock uses the compiled Voice Context length",
+        "[cycle-v2][audio-device][realtime][voice-context][voice-length]") {
+    const auto renderDelta = [](float voiceLength) {
+        GraphNodeFactory factory;
+        GraphEditor editor;
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+        graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+        graph.addNode(factory.createNode(NodeKind::ModulationSource, "time", {}));
+        graph.replaceNodeParameters("time", {
+                { "source", "Source", "voiceTime" },
+                { "controller", "Controller", "1" },
+                { "constant", "Constant", "0.5" }
+        });
+        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        REQUIRE(editor.setNodeParameter(
+                graph,
+                "voice",
+                "voiceLength",
+                "Voice Length",
+                String(voiceLength)).succeeded());
+        REQUIRE(editor.connect(
+                graph,
+                { "voice", "context", false },
+                { "mesh", "context", true }).succeeded());
+        REQUIRE(editor.connect(
+                graph,
+                { "time", "value", false },
+                { "out", "time", true }).succeeded());
+        const auto compiled = GraphCompiler().compile(graph);
+        REQUIRE(compiled.succeeded());
+        REQUIRE(compiled.plan.voiceContexts.front().voiceDurationSeconds
+                == Catch::Approx(CycleDsp::voiceLengthSeconds(voiceLength)));
+
+        constexpr int frameCount = 10;
+        constexpr double sampleRate = 1'000.0;
+        AudioExecutionSpec spec;
+        spec.maximumFrameCount = frameCount;
+        spec.sampleRate = sampleRate;
+        auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 31, spec);
+        RealtimeGraphRenderer renderer;
+        RealtimeMidiEventQueue queue;
+        renderer.setPreparedGraph(prepared.get());
+        REQUIRE(queue.enqueue(
+                MidiMessage::noteOn(1, 60, (uint8) 100),
+                MidiEventSource::PerformanceKeyboard,
+                1.0));
+        AudioBuffer<float> output(2, frameCount);
+        float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+        renderer.process(queue, channels, 2, frameCount, sampleRate, 1.0);
+        return output.getSample(0, frameCount - 1) - output.getSample(0, 0);
+    };
+
+    const float oneSecond = renderDelta(CycleDsp::voiceLengthUnitValue(1.0));
+    const float oneTenthSecond = renderDelta(CycleDsp::voiceLengthUnitValue(0.1));
+    REQUIRE(oneSecond > 0.f);
+    REQUIRE(oneTenthSecond == Catch::Approx(10.f * oneSecond).margin(1.0e-6f));
 }
 
 TEST_CASE("Realtime graph renderer stops immediately without a volume envelope",
@@ -455,22 +635,23 @@ TEST_CASE("Compiled linked-stereo graph preserves distinct channels through Dela
             NodeKind::StereoJoin,
             "delayStereoJoin",
             {}));
-    REQUIRE(GraphEditor().connect(
-            graph,
-            { "impulseResponse", "time", false },
-            { "delayStereoSplit", "time", true }).succeeded());
-    REQUIRE(GraphEditor().connect(
-            graph,
-            { "delayStereoSplit", "left", false },
-            { "delayStereoJoin", "left", true }).succeeded());
-    REQUIRE(GraphEditor().connect(
-            graph,
-            { "delayStereoSplit", "right", false },
-            { "delayStereoJoin", "right", true }).succeeded());
-    REQUIRE(GraphEditor().connect(
-            graph,
-            { "delayStereoJoin", "time", false },
-            { "delay", "time", true }).succeeded());
+    graph.addEdge({
+            "impulseResponse", "time", "delayStereoSplit", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "delayStereoSplit", "left", "delayStereoJoin", "left",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "delayStereoSplit", "right", "delayStereoJoin", "right",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "delayStereoJoin", "time", "delay", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    REQUIRE(GraphValidator().isValid(graph));
 
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());

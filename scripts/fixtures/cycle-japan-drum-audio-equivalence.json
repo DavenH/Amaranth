@@ -8,15 +8,16 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/japan-drum.cyclegraph",
-        "sha256": "73878bc3a57e2ec2370fb0f125a4eb4e0fb8b1f60667fe250f94ed4f91af61c5",
+        "sha256": "e32d2ac23d7a8bdad1572e1a8434469dc104b015f15116c7962df11953538be8",
         "renderOverrides": {
-            "voiceDurationSeconds": 1.0113605585319552
+            "voiceDurationSeconds": 1.0113605260849
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 1.693364807744112,
+        "v1MasterGain": 1.6933647394180298,
+        "v2OutputGainUnitValue": 0.58778626,
         "v2OutputHeadroom": 0.125,
         "coverage": [
             "twoTimeLayers",

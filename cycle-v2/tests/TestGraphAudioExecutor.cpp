@@ -180,6 +180,50 @@ const NodeAudioResult& findNodeAudio(const GraphAudioResult& result, const Strin
     return *found;
 }
 
+struct TimeRasterCapture {
+    uint64_t frontier {};
+    float time {};
+};
+
+TimeRasterCapture captureIcycleTimeRaster(
+        const File& preset,
+        size_t captureFrame,
+        size_t blockSize,
+        size_t sampleCount,
+        size_t noteOffSample = 0) {
+    NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    CycleDsp::SpectralStageCaptureRecorder recorder;
+    REQUIRE(recorder.prepare(2048, captureFrame));
+    OfflineGraphAudioRequest request;
+    request.sampleRate = 48'000.;
+    request.blockSize = blockSize;
+    request.sampleCount = sampleCount;
+    request.voiceDurationSeconds = 2.2102451f;
+    request.outputGain = 1.f;
+    request.ratePolicy = OfflineGraphAudioRatePolicy::LegacyInternal44100;
+    request.controlNoteOffset = 12;
+    request.spectralStageCapture = &recorder;
+    request.events.push_back({ 0, MidiMessage::noteOn(1, 48, 0.8f) });
+    if (noteOffSample > 0) {
+        request.events.push_back({ noteOffSample, MidiMessage::noteOff(1, 48) });
+    }
+
+    const auto result = OfflineGraphAudioRenderer::render(
+            std::move(compiled.plan),
+            1,
+            request);
+    const auto* timeRaster = recorder.record(
+            CycleDsp::SpectralStage::TimeRaster, 0);
+    REQUIRE(result.succeeded);
+    REQUIRE(timeRaster != nullptr);
+    REQUIRE(timeRaster->captured);
+    REQUIRE(timeRaster->secondary.size() == 3);
+    return { timeRaster->frontier, timeRaster->secondary[0] };
+}
+
 const SignalBuffer& samples(const SignalPayload& payload) {
     return payload.block.samples;
 }
@@ -1092,8 +1136,8 @@ TEST_CASE("Graph control edges drive absolute Envelope morph without graph edits
     REQUIRE(parameterValueForNode(*graph.findNode("env"), "red") == "0.5");
 }
 
-TEST_CASE("Guitar 3 G maps its scratch Envelope to Voice Context red and blue",
-        "[cycle-v2][runtime][envelope][modulation][preset]") {
+TEST_CASE("Guitar 3 G retains the Cycle 1 legacy Envelope cross-section",
+        "[cycle-v2][runtime][envelope][note-start][parity][preset]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     const File preset = File(String(CYCLE_V2_SOURCE_DIR))
             .getChildFile("content")
@@ -1103,25 +1147,42 @@ TEST_CASE("Guitar 3 G maps its scratch Envelope to Voice Context red and blue",
     NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
-    REQUIRE(graph.findNode("staticEnvelopeMorph") == nullptr);
-    const auto scratchStep = std::find_if(
-            compiled.plan.steps.begin(),
-            compiled.plan.steps.end(),
-            [](const auto& step) { return step.nodeId == "scratchEnvelope1"; });
-    REQUIRE(scratchStep != compiled.plan.steps.end());
-    const auto hasInput = [&](const String& sourcePortId) {
-        return std::any_of(
-                scratchStep->inputs.begin(),
-                scratchStep->inputs.end(),
-                [&](const auto& input) { return input.sourcePortId == sourcePortId; });
-    };
-    REQUIRE(hasInput("default.2"));
-    REQUIRE(hasInput("default.3"));
+    REQUIRE(graph.findNode("legacyEnvelopeMorph") != nullptr);
+
+    CycleDsp::SpectralStageCaptureRecorder recorder;
+    REQUIRE(recorder.prepare(2048, 0));
+    OfflineGraphAudioRequest request;
+    request.sampleRate = 48'000.;
+    request.blockSize = 512;
+    request.sampleCount = 4096;
+    request.voiceDurationSeconds = 4.5680388f;
+    request.outputGain = 1.f;
+    request.ratePolicy = OfflineGraphAudioRatePolicy::LegacyInternal44100;
+    request.controlNoteOffset = 12;
+    request.spectralStageCapture = &recorder;
+    request.events.push_back({ 0, MidiMessage::noteOn(1, 48, 0.8f) });
+    const auto result = OfflineGraphAudioRenderer::render(compiled.plan, 1, request);
+    const auto* magnitude = recorder.record(
+            CycleDsp::SpectralStage::MagnitudeRaster, 0);
+    const auto* operand = recorder.record(
+            CycleDsp::SpectralStage::MagnitudeOperand, 0);
+
+    REQUIRE(result.succeeded);
+    REQUIRE(magnitude != nullptr);
+    REQUIRE(magnitude->captured);
+    REQUIRE_FALSE(magnitude->secondary.empty());
+    REQUIRE(magnitude->secondary.front()
+            == Catch::Approx(0.00553f).margin(0.00001f));
+    REQUIRE(operand != nullptr);
+    REQUIRE(operand->captured);
+    REQUIRE_FALSE(operand->primary.empty());
+    REQUIRE(operand->primary.front()
+            == Catch::Approx(0.02985745f).margin(0.00000001f));
   #endif
 }
 
 TEST_CASE("Icycle advances pitch from the prepared Envelope instead of its preview",
-        "[cycle-v2][runtime][envelope][pitch][unison][parity][preset]") {
+        "[cycle-v2][runtime][envelope][pitch][unison][preset]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     const File preset = File(String(CYCLE_V2_SOURCE_DIR))
             .getChildFile("content")
@@ -1164,12 +1225,93 @@ TEST_CASE("Icycle advances pitch from the prepared Envelope instead of its previ
     REQUIRE(right != nullptr);
     REQUIRE(left->captured);
     REQUIRE(right->captured);
-    REQUIRE(left->frontier == 10'561);
-    REQUIRE(right->frontier == 10'561);
+    REQUIRE(left->frontier == 10'562);
+    REQUIRE(right->frontier == 10'562);
     REQUIRE(left->primary.size() == 341);
     REQUIRE(right->primary.size() == 341);
-    REQUIRE(left->primary.front() == Catch::Approx(0.26331103f).margin(0.00002f));
-    REQUIRE(right->primary.front() == Catch::Approx(0.09561445f).margin(0.00002f));
+    REQUIRE(left->primary.front() == Catch::Approx(0.2668371f).margin(0.00005f));
+    REQUIRE(right->primary.front() == Catch::Approx(0.1515495f).margin(0.00005f));
+  #endif
+}
+
+TEST_CASE("Organ 2 schedules a non-primary Unison lane under the Cycle 1 frame",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][unison][parity][preset]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("organ-2.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    CycleDsp::SpectralStageCaptureRecorder recorder;
+    REQUIRE(recorder.prepare(2048, 32, 0, 2));
+    OfflineGraphAudioRequest request;
+    request.sampleRate = 48'000.;
+    request.blockSize = 512;
+    request.sampleCount = 12'000;
+    request.voiceDurationSeconds = 1.2669864f;
+    request.outputGain = 1.f;
+    request.ratePolicy = OfflineGraphAudioRatePolicy::LegacyInternal44100;
+    request.controlNoteOffset = 12;
+    request.spectralStageCapture = &recorder;
+    request.events.push_back({ 37, MidiMessage::noteOn(1, 48, 0.8f) });
+
+    const auto result = OfflineGraphAudioRenderer::render(
+            std::move(compiled.plan),
+            1,
+            request);
+    const auto* lane = recorder.record(
+            CycleDsp::SpectralStage::PitchClockedCycle,
+            0);
+    REQUIRE(result.succeeded);
+    REQUIRE(lane != nullptr);
+    REQUIRE(lane->laneIndex == 2);
+    REQUIRE(lane->frameIndex == 32);
+    REQUIRE(lane->frontier == 10'411);
+    REQUIRE(lane->primary.size() == 339);
+    REQUIRE(lane->secondary.size() == 512);
+    REQUIRE(lane->primary.front()
+            == Catch::Approx(-0.0281200204f).margin(0.00000001f));
+    REQUIRE(lane->secondary.front()
+            == Catch::Approx(-0.0272194277f).margin(0.00000001f));
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Icycle scratch Envelope loop timing is host-block invariant",
+        "[cycle-v2][runtime][envelope][scratch][loop][preset]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("Icycle.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    const auto aligned = captureIcycleTimeRaster(preset, 64, 256, 24'500);
+    const auto partitioned = captureIcycleTimeRaster(preset, 64, 193, 24'500);
+    REQUIRE(aligned.frontier == 21'575);
+    REQUIRE(partitioned.frontier == aligned.frontier);
+    REQUIRE(partitioned.time == Catch::Approx(aligned.time).margin(0.0000001f));
+  #endif
+}
+
+TEST_CASE("Icycle Note Off leaves its no-release scratch Envelope advancing",
+        "[cycle-v2][runtime][envelope][scratch][release][preset]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("Icycle.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    const auto held = captureIcycleTimeRaster(preset, 80, 256, 31'000);
+    const auto released = captureIcycleTimeRaster(
+            preset, 80, 256, 31'000, 21'600);
+    REQUIRE(released.frontier == 26'969);
+    REQUIRE(released.frontier == held.frontier);
+    REQUIRE(released.time == Catch::Approx(held.time).margin(0.0000001f));
   #endif
 }
 
