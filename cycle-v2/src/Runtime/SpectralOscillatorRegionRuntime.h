@@ -54,6 +54,9 @@ private:
     bool renderCyclesUntilReady(
             const PreparedOscillatorProcessContext& context,
             SpectralOscillatorFrameRenderer& renderer);
+    bool renderMultiLaneCyclesUntilReady(
+            const PreparedOscillatorProcessContext& context,
+            SpectralOscillatorFrameRenderer& renderer);
     bool renderLaneCycle(
             int laneIndex,
             const PreparedOscillatorProcessContext& context,

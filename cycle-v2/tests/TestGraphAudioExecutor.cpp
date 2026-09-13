@@ -1234,6 +1234,54 @@ TEST_CASE("Icycle advances pitch from the prepared Envelope instead of its previ
   #endif
 }
 
+TEST_CASE("Organ 2 schedules a non-primary Unison lane under the Cycle 1 frame",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][unison][parity][preset]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("organ-2.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    CycleDsp::SpectralStageCaptureRecorder recorder;
+    REQUIRE(recorder.prepare(2048, 32, 0, 2));
+    OfflineGraphAudioRequest request;
+    request.sampleRate = 48'000.;
+    request.blockSize = 512;
+    request.sampleCount = 12'000;
+    request.voiceDurationSeconds = 1.2669864f;
+    request.outputGain = 1.f;
+    request.ratePolicy = OfflineGraphAudioRatePolicy::LegacyInternal44100;
+    request.controlNoteOffset = 12;
+    request.spectralStageCapture = &recorder;
+    request.events.push_back({ 37, MidiMessage::noteOn(1, 48, 0.8f) });
+
+    const auto result = OfflineGraphAudioRenderer::render(
+            std::move(compiled.plan),
+            1,
+            request);
+    const auto* lane = recorder.record(
+            CycleDsp::SpectralStage::PitchClockedCycle,
+            0);
+    REQUIRE(result.succeeded);
+    REQUIRE(lane != nullptr);
+    REQUIRE(lane->laneIndex == 2);
+    REQUIRE(lane->frameIndex == 32);
+    REQUIRE(lane->frontier == 10'411);
+    REQUIRE(lane->primary.size() == 339);
+    REQUIRE(lane->secondary.size() == 512);
+    REQUIRE(lane->primary.front()
+            == Catch::Approx(-0.0281200204f).margin(0.00000001f));
+    REQUIRE(lane->secondary.front()
+            == Catch::Approx(-0.0272194277f).margin(0.00000001f));
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Icycle scratch Envelope loop timing is host-block invariant",
         "[cycle-v2][runtime][envelope][scratch][loop][preset]") {
   #if defined(CYCLE_V2_SOURCE_DIR)

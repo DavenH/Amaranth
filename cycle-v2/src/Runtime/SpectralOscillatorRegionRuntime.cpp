@@ -258,6 +258,10 @@ bool SpectralOscillatorRegionRuntime::refreshSharedFramesThrough(
 bool SpectralOscillatorRegionRuntime::renderCyclesUntilReady(
         const PreparedOscillatorProcessContext& context,
         SpectralOscillatorFrameRenderer& renderer) {
+    if (layout.order > 1) {
+        return renderMultiLaneCyclesUntilReady(context, renderer);
+    }
+
     const int requiredSamples = context.left.size();
     const double renderHorizon = (double) context.voiceSampleStart
             + requiredSamples;
@@ -283,6 +287,53 @@ bool SpectralOscillatorRegionRuntime::renderCyclesUntilReady(
                     renderer)
                 || !renderLaneCycle(nextLane, context, renderer)) {
             return false;
+        }
+    }
+}
+
+bool SpectralOscillatorRegionRuntime::renderMultiLaneCyclesUntilReady(
+        const PreparedOscillatorProcessContext& context,
+        SpectralOscillatorFrameRenderer& renderer) {
+    const double renderHorizon = (double) context.voiceSampleStart
+            + context.left.size();
+    while (true) {
+        long minimumFrontier = lanes.front().clock.sampledFrontier;
+        for (int laneIndex = 1; laneIndex < layout.order; ++laneIndex) {
+            minimumFrontier = jmin(
+                    minimumFrontier,
+                    lanes[(size_t) laneIndex].clock.sampledFrontier);
+        }
+        if (minimumFrontier >= renderHorizon) {
+            return true;
+        }
+
+        const auto& primaryLane = lanes.front();
+        if (CycleDsp::OscillatorLaneCore::sharedFrameSaturated(
+                    false,
+                    primaryLane.cycleCount,
+                    0,
+                    primaryLane.clock.cumulativePosition,
+                    lastSharedFramePosition)
+                && !refreshSharedFramesThrough(
+                        nextSharedFramePosition,
+                        context,
+                        renderer)) {
+            return false;
+        }
+
+        for (int laneIndex = 0; laneIndex < layout.order; ++laneIndex) {
+            auto& lane = lanes[(size_t) laneIndex];
+            while (lane.clock.sampledFrontier < renderHorizon
+                    && CycleDsp::OscillatorLaneCore::laneWithinSharedFrame(
+                            false,
+                            lane.cycleCount,
+                            0,
+                            lane.clock.cumulativePosition,
+                            lastSharedFramePosition)) {
+                if (!renderLaneCycle(laneIndex, context, renderer)) {
+                    return false;
+                }
+            }
         }
     }
 }

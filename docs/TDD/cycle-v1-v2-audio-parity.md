@@ -1618,6 +1618,40 @@ as the scratch envelope evolves.
     `/private/tmp/cycle-organ-2-lane-0-stages/` through
     `/private/tmp/cycle-organ-2-lane-3-stages/`.
 
+73. Align multi-lane saturation with Cycle 1's shared-frame scheduler.
+    Complete: Cycle 1 renders every Unison lane, in lane order, until each has
+    reached the current future-frame position; only the primary lane then
+    permits the next shared frame to advance. Cycle V2 instead selects the
+    chronologically earliest lane and asks the shared renderer to look one
+    complete frame interval ahead before every cycle. Faster non-primary lanes
+    can therefore consume a later shared-frame pair than Cycle 1.
+
+    Extract Cycle 1's existing saturated-frame and within-frame predicates to
+    `OscillatorLaneCore` and call them from the mature renderer unchanged.
+    Cycle V2 will use those shared predicates to orchestrate multi-lane groups
+    in Cycle 1 lane order while retaining its existing single-lane path, ring
+    buffers, envelope bank, cycle compositor, Hermite resampler, and output
+    mix. Delete the chronological earliest-lane selection for multi-lane
+    spectral regions. The intended stable state is one shared owner for the
+    scheduling predicates and app-local lifecycle/buffer orchestration; no DSP
+    transfer function or effect behavior is copied.
+
+    Organ 2's frame-32 lanes now share the Cycle 1 frontiers: lanes two and
+    three move from `10748/10698` to `10411/10361`; lane three is byte-identical
+    and lanes one and two retain only about `2e-7` normalized payload residual.
+    With Reverb disabled, the complete MIDI-48 output improves from roughly
+    `0.0031` residual to `3.97e-7`, `0.99999999999995` correlation, and
+    `0.000081 dB` spectral RMSE, with both engines byte-repeatable. The six-lane
+    Icycle MIDI 36–72 matrix improves to `2.18e-6–7.89e-6` residual and below
+    `0.0011 dB` spectral RMSE; Cycle 1 retains its previously documented
+    intermittent MIDI-48 process variability. Organ 2's full Reverb output is
+    still diagnostic because that global processor amplifies the remaining
+    sub-micro residual. Artifacts:
+    `/private/tmp/cycle-organ-2-top-saturation-lane-1-stages/` through
+    `/private/tmp/cycle-organ-2-top-saturation-lane-3-stages/`,
+    `/private/tmp/cycle-organ-2-top-saturation-dry/`, and
+    `/private/tmp/cycle-icycle-shared-saturation-full/`.
+
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
 renderer concern. Slice 31 aligns the comparison harness with that ownership.

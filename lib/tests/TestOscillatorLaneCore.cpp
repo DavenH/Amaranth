@@ -93,6 +93,27 @@ TEST_CASE("Interpolated frame position preserves the Cycle 1 precision boundary"
             frameInterval) == legacyPortion);
 }
 
+TEST_CASE("Shared spectral scheduling preserves Cycle 1 lane saturation",
+        "[cycle-dsp][oscillator-lane][scheduling][parity]") {
+    REQUIRE_FALSE(CycleDsp::OscillatorLaneCore::sharedFrameSaturated(
+            false, 0, 0, 999.99, 1000.0));
+    REQUIRE(CycleDsp::OscillatorLaneCore::sharedFrameSaturated(
+            false, 0, 0, 1000.0, 1000.0));
+    REQUIRE(CycleDsp::OscillatorLaneCore::laneWithinSharedFrame(
+            false, 0, 0, 999.99, 1000.0));
+    REQUIRE_FALSE(CycleDsp::OscillatorLaneCore::laneWithinSharedFrame(
+            false, 0, 0, 1000.0, 1000.0));
+
+    REQUIRE_FALSE(CycleDsp::OscillatorLaneCore::sharedFrameSaturated(
+            true, 3, 4, 2000.0, 1000.0));
+    REQUIRE(CycleDsp::OscillatorLaneCore::sharedFrameSaturated(
+            true, 4, 4, 0.0, 1000.0));
+    REQUIRE(CycleDsp::OscillatorLaneCore::laneWithinSharedFrame(
+            true, 3, 4, 2000.0, 1000.0));
+    REQUIRE_FALSE(CycleDsp::OscillatorLaneCore::laneWithinSharedFrame(
+            true, 4, 4, 0.0, 1000.0));
+}
+
 TEST_CASE("Cyclic frame composition preserves the unshifted first cycle",
         "[cycle-dsp][oscillator-lane][cyclic-frame]") {
     float currentData[] { 10.f, 11.f, 12.f, 13.f, 14.f, 15.f, 16.f, 17.f };

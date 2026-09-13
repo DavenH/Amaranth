@@ -457,9 +457,13 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
     long lastSampleToRender = noteState.totalSamplesPlayed + (long) numSamples;
 
     while (frame.frontier < lastSampleToRender) {
-        bool isSaturated = singleFrame
-                               ? frame.cycleCount == futureFrame.cycleCount
-                               : frame.cumePos >= futureFrame.cumePos;
+        const bool isSaturated =
+                CycleDsp::OscillatorLaneCore::sharedFrameSaturated(
+                        singleFrame,
+                        frame.cycleCount,
+                        futureFrame.cycleCount,
+                        frame.cumePos,
+                        futureFrame.cumePos);
 
         if (isSaturated || futureFrame.cycleCount < 0) {
             futureFrame.period = 1 / getAngleDelta(noteState.lastNoteNumber, 0, 0.5f);
@@ -511,8 +515,13 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
             NumberUtils::constrain(uniPan, 0.f, 1.f);
             Arithmetic::getPans(uniPan, pans[0], pans[1]);
 
-            while (group.sampledFrontier < lastSampleToRender &&
-                   (singleFrame ? frame.cycleCount < futureFrame.cycleCount : group.cumePos < futureFrame.cumePos)) {
+            while (group.sampledFrontier < lastSampleToRender
+                    && CycleDsp::OscillatorLaneCore::laneWithinSharedFrame(
+                            singleFrame,
+                            frame.cycleCount,
+                            futureFrame.cycleCount,
+                            group.cumePos,
+                            futureFrame.cumePos)) {
                 int truncCume = resamplingAlgo == Resampling::Sinc ? ceil(group.cumePos) : int(group.cumePos);
                 double nextCume = group.cumePos + dperiod;
                 int truncNextCume = resamplingAlgo == Resampling::Sinc ? ceil(nextCume) : int(nextCume);

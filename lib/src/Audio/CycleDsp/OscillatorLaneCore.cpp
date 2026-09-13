@@ -70,6 +70,28 @@ float OscillatorLaneCore::interpolatedFramePortion(
     return std::clamp((float) portion, 0.f, 1.f);
 }
 
+bool OscillatorLaneCore::sharedFrameSaturated(
+        bool singleFrame,
+        long renderedCycleCount,
+        long futureCycleCount,
+        double primaryLanePosition,
+        double futureFramePosition) {
+    return singleFrame
+            ? renderedCycleCount == futureCycleCount
+            : primaryLanePosition >= futureFramePosition;
+}
+
+bool OscillatorLaneCore::laneWithinSharedFrame(
+        bool singleFrame,
+        long renderedCycleCount,
+        long futureCycleCount,
+        double lanePosition,
+        double futureFramePosition) {
+    return singleFrame
+            ? renderedCycleCount < futureCycleCount
+            : lanePosition < futureFramePosition;
+}
+
 void OscillatorLaneCore::advanceChainedCycle(
         ChainedCycleState& state,
         double angleDelta) {
