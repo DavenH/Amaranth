@@ -26,6 +26,10 @@ public:
     void updateGeometry(Mesh* mesh, float oscPhase = 0.f);
     void updateWaveform() override;
     void updateWaveform(Mesh* mesh, float oscPhase = 0.f);
+    void renderGeometryOnly(float oscPhase = 0.f);
+    void renderGeometryOnly(Mesh* mesh, float oscPhase = 0.f);
+    void renderWaveformOnly(float oscPhase = 0.f);
+    void renderWaveformOnly(Mesh* mesh, float oscPhase = 0.f);
     void reset() override { cleanUp(); }
 
     Interactor* getInteractor() const { return interactor; }

@@ -708,6 +708,45 @@ class PortCycleV1PresetTest(unittest.TestCase):
             for edge in converted["edges"]
         ))
 
+    def test_individual_unison_preserves_cycle_one_voice_layout(self):
+        source = convertible_source()
+        source["preset"]["effects"]["Unison"].update({
+            "enabled": True,
+            "groupMode": False,
+            "voices": [
+                {"fine": 0.1, "pan": 1.0, "phase": 0.2},
+                {"fine": 0.7, "pan": 0.0, "phase": 0.8},
+            ],
+        })
+
+        converted = port_cycle_v1_preset.convert(source)
+        unison = next(node for node in converted["nodes"] if node["id"] == "unison")
+
+        self.assertEqual(unison["parameters"]["mode"], "individual")
+        self.assertEqual(unison["parameters"]["order"], 2)
+        self.assertEqual(unison["model"]["voices"], [
+            {"detune": 0.1, "pan": 1.0, "phase": 0.2},
+            {"detune": 0.7, "pan": 0.0, "phase": 0.8},
+        ])
+
+    def test_individual_unison_reports_voice_counts_beyond_cycle_two_capacity(self):
+        source = convertible_source()
+        source["preset"]["effects"]["Unison"].update({
+            "enabled": True,
+            "groupMode": False,
+            "voices": [
+                {"fine": 0.5, "pan": 0.5, "phase": 0.0}
+                for _ in range(port_cycle_v1_preset.MAXIMUM_UNISON_VOICES + 1)
+            ],
+        })
+
+        issues = port_cycle_v1_preset.validate_conversion(source)
+
+        self.assertIn(
+            "individual-mode Unison has 11 voices; Cycle V2 supports 10",
+            issues,
+        )
+
     def test_drawn_impulse_response_preserves_the_shared_cycle_length(self):
         source = convertible_source()
         source["preset"]["effects"]["ImpulseModeller"].update({

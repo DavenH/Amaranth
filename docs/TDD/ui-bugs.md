@@ -5,6 +5,21 @@
 There are no open deterministic P0 or P1 regressions as of 2026-09-09.
 Resolved and no-longer-reproducing entries have been removed from this ledger.
 
+## P2: Cycle 1 default factory preset key no longer resolves
+
+Context:
+
+- The 2026-09-13 expanded Cycle 1 preset export sweep logged
+  `FileManager::openFactoryPreset failed to resolve presetName="ooh-aah"` and
+  asserted at `FileManager.cpp:174` during asynchronous startup.
+- The preset library now contains `OohAah.cyc`; explicit loading and export of
+  all 276 files succeeded, so this is limited to the stale default-preset key or
+  filename-resolution policy.
+- Repro log: `/private/tmp/cycle-preset-migration.log`.
+
+Current status: open; select the intended default and make its persisted key
+follow the factory preset filename-resolution contract.
+
 ## P2: Intermittent CoreMIDI endpoint assertion during automation startup
 
 Context:
@@ -276,3 +291,20 @@ Context:
 
 Current status: open harness constraint; serialize native app fixtures on macOS
 unless the audio/MIDI device layer is explicitly disabled for automation.
+
+## P2: Loading Cello emits runaway Intercept dangling-deletion assertions
+
+Context:
+
+- A focused Cycle 1 automation run opening `Cello.cyc` reached
+  `Document::open returned`, then emitted repeated `*** Dangling pointer
+  deletion! Class: Intercept` and `juce_LeakedObjectDetector.h:80` assertions.
+- The assertion stream prevented the agent report from completing within 20
+  seconds and grew to hundreds of megabytes before the launched process was
+  stopped.
+- Repro artifacts are `/private/tmp/cycle-agent-cello-red-guide-logs.txt` and
+  `/private/tmp/cycle-agent-cello-red-guide-logs.txt.raw`.
+
+Current status: open; inspect rasterizer snapshot/intercept ownership while
+replacing a loaded mesh. This is separate from the repaired Visual DSP
+render-only primary-axis selection.

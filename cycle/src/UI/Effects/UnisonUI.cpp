@@ -234,9 +234,13 @@ void UnisonUI::VoiceSelector::selectionChanged() {
     Unison::ParamGroup& group = panel->unison->getGraphicParams();
     Unison::UnivoiceData& data = group.voices[currentIndex];
 
-    panel->paramGroup->setKnobValue(Unison::Pan, data.pan, false);
-    panel->paramGroup->setKnobValue(Unison::Phase, data.phase, false);
-    panel->paramGroup->setKnobValue(Unison::Fine, data.finePct, false);
+    auto* panKnob = panel->paramGroup->getKnob<Slider>(Unison::Pan);
+    auto* phaseKnob = panel->paramGroup->getKnob<Slider>(Unison::Phase);
+    auto* fineKnob = panel->paramGroup->getKnob<Slider>(Unison::Fine);
+
+    panKnob->setValue(data.pan, dontSendNotification);
+    phaseKnob->setValue(data.phase, dontSendNotification);
+    fineKnob->setValue(data.finePct, dontSendNotification);
 }
 
 void UnisonUI::VoiceSelector::rowClicked(int row) {
@@ -296,7 +300,7 @@ bool UnisonUI::readXML(const XmlElement* element) {
         bool oldWasGroup = modeBox.getSelectedId() == Group;
         bool isGroup 	 = effectElem->getBoolAttribute("mode", true);
 
-        unison->reset();
+        unison->resetParameters();
 
         setEffectEnabled(effectElem->getBoolAttribute("enabled"), false, true);
 
@@ -394,7 +398,7 @@ bool UnisonUI::readJSON(const var& object) {
     bool oldWasGroup = modeBox.getSelectedId() == Group;
     bool isGroup = PresetJson::boolProperty(object, "groupMode", true);
 
-    unison->reset();
+    unison->resetParameters();
     setEffectEnabled(PresetJson::boolProperty(object, "enabled", false), false, true);
 
     modeBox.setSelectedId(Group, dontSendNotification);

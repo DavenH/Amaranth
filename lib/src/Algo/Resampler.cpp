@@ -231,14 +231,12 @@ Buffer<float> Resampler::resample(Buffer<float> input) {
     jassert(haveReset);
     jassert(! fixed || history >= windowToHistory(window, dstToSrc));
 
-    input.copyTo(source + lastread);
-    lastread += input.size();
-
-    jassert(lastread <= source.size());
-
-    if(lastread > source.size()) {
+    if (input.size() > source.size() || lastread > source.size() - input.size()) {
         return {dest, 0};
     }
+
+    input.copyTo(source + lastread);
+    lastread += input.size();
 
     int sourceSize = lastread - history - (int) time;
 

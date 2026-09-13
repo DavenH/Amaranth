@@ -38,6 +38,7 @@ ENVELOPE_GROUPS = {
 }
 
 LEGACY_MIDI_REFERENCE_OFFSET = -12
+MAXIMUM_UNISON_VOICES = 10
 
 MODULATION_SOURCE_NAMES = {
     1: "voiceTime",
@@ -642,10 +643,24 @@ def convert(source):
     unison = preset["effects"]["Unison"]
     if unison["enabled"]:
         knobs = unison["knobs"]
+        group_mode = unison.get("groupMode", True)
+        individual_voices = unison.get("voices", [])
+        order = min(MAXIMUM_UNISON_VOICES, int(10 * knobs[3] + 1)) \
+            if group_mode else len(individual_voices)
+        voices = [{"detune": 0.5, "pan": 0.5, "phase": 0.0}]
+        if not group_mode:
+            voices = [
+                {
+                    "detune": voice.get("fine", 0.5),
+                    "pan": voice.get("pan", 0.5),
+                    "phase": voice.get("phase", 0.0),
+                }
+                for voice in individual_voices
+            ]
         nodes.append(node("unison", "unison", 100, 300, {
             "enabled": True,
-            "mode": "group",
-            "order": min(10, int(10 * knobs[3] + 1)),
+            "mode": "group" if group_mode else "individual",
+            "order": order,
             "width": 70.0 * knobs[0],
             "panSpread": knobs[1],
             "phase": knobs[2],
@@ -654,7 +669,7 @@ def convert(source):
             "schema": "unisonVoices",
             "version": 1,
             "revision": 1,
-            "voices": [{"detune": 0.5, "pan": 0.5, "phase": 0.0}],
+            "voices": voices,
         }))
         edges.append(edge(
             "unison", "unison", "voice", "unison",
@@ -950,9 +965,15 @@ def validate_conversion(source):
             for layer in envelope_layers(preset, "wavePitch")):
         issues.append("active wave-pitch Envelope has no Cycle V2 destination")
 
-    if preset["effects"]["Unison"]["enabled"] \
-            and not preset["effects"]["Unison"].get("groupMode", True):
-        issues.append("active individual-mode Unison mapping is not implemented")
+    unison = preset["effects"]["Unison"]
+    if unison["enabled"] and not unison.get("groupMode", True):
+        voice_count = len(unison.get("voices", []))
+        if voice_count == 0:
+            issues.append("active individual-mode Unison has no voices")
+        elif voice_count > MAXIMUM_UNISON_VOICES:
+            issues.append(
+                f"individual-mode Unison has {voice_count} voices; "
+                f"Cycle V2 supports {MAXIMUM_UNISON_VOICES}")
     impulse = preset["effects"]["ImpulseModeller"]
     if impulse["enabled"] and impulse.get("waveLoaded", False):
         issues.append("sample-backed ImpulseModeller has no Cycle V2 resource mapping")

@@ -1,5 +1,42 @@
 # Audio Bug Notes
 
+## Resolved: AcidStab3 crashed in uninitialized sinc resampling
+
+Loading the legacy `AcidStab3.cyc` preset and auditioning low notes produced
+four repeatable macOS crashes on the realtime audio thread. The preset selects
+sinc for realtime resampling. Each crash entered `Buffer<float>::copyTo()` from
+`Resampler::resample()` and `CycleBasedVoice::renderInterpolatedCycles()` while
+copying a 512- or 1024-sample oscillator cycle.
+
+The immediate cause was a stale `USE_IPP` gate in `CycleBasedVoice`: its sinc
+path ran on Apple Silicon, but allocation, initialization, reset, and priming of
+the newer JUCE/Accelerate resampler were still omitted there. Uninitialized
+source/destination sizes then corrupted the resampler memory layout. Sinc voice
+setup and tail finalization now use the existing platform-independent
+`Resampler` implementation on every platform.
+
+`Resampler::resample()` also already had an exhausted-source-window rejection
+path, but it tested `lastread` only after copying into `source + lastread`. The
+capacity test now runs before pointer arithmetic or copying. A focused resampler
+regression creates that retained-window condition and proves the second input is
+rejected without touching invalid memory.
+
+The repaired path also exposed an independent bug in the oscillator
+oversampler's cyclical-tail handling. The IPP implementation used to receive the
+number of produced downsampled samples from `ippsSampleDown`, but that count was
+left uninitialized when the shared `Buffer::downsampleFrom` call replaced it.
+`downsampleFrom` now reports its exact output count on both IPP and Accelerate,
+and the oversampler adds only that portion of its tail. A focused test verifies
+that the wrapped tail affects exactly the produced prefix.
+
+The AcidStab3 automation fixture opens the preset, immediately auditions low
+note 41, requests a four-second realtime capture, and requires non-silent
+output.
+
+Artifacts: `/private/tmp/cycle-agent-acidstab3-fixed-report.json` and
+`/private/tmp/cycle-agent-acidstab3-offline-final-report.json`. Status:
+resolved 2026-09-13.
+
 ## Resolved: Subbass realtime fixture asserted the pre-reconciliation octave
 
 The full `standalone-debug` CTest run fails

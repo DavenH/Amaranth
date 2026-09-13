@@ -1,6 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 
+#include <cmath>
 #include <string>
+#include <vector>
 
 #include <App/Doc/Document.h>
 #include <App/Doc/DocumentDetails.h>
@@ -10,10 +13,13 @@
 #include <App/SingletonRepo.h>
 #include <Design/Updating/Updater.h>
 #include <Curve/Curve.h>
+#include <Curve/Mesh/Vertex.h>
 #include <JuceHeader.h>
 
 #include "../Initializer.h"
 #include <Inter/Interactor.h>
+#include "../../Audio/Effects/Unison.h"
+#include "../../Curve/Rasterization/Rasterizer/GraphicRasterizer.h"
 #include "../../Util/CycleEnums.h"
 #include "../../UI/Effects/EffectGuiRegistry.h"
 #include "../../UI/Effects/IrModellerUI.h"
@@ -26,6 +32,7 @@
 #include "../../UI/VertexPanels/GuideCurvePanel.h"
 
 using namespace juce;
+using Catch::Approx;
 
 namespace {
     void seedDefaultMeshLibrary(SingletonRepo& repo) {
@@ -264,6 +271,169 @@ TEST_CASE("Legacy presets can migrate to canonical JSON without live document ap
     REQUIRE(root->getProperty("format").toString() == "amaranth-preset");
     REQUIRE(int(root->getProperty("schemaVersion")) == 2);
     REQUIRE(PresetJson::getObject(root->getProperty("preset")) != nullptr);
+}
+
+TEST_CASE("Cycle 1.8 presets restore split envelopes and authored master volume",
+          "[cycle][preset][migration]") {
+    File multilayerPreset(String(CYCLE_SOURCE_DIR) + "/content/presets/Epiano2.cyc");
+    REQUIRE(multilayerPreset.existsAsFile());
+
+    var migrated = Document::readPresetJSON(multilayerPreset.getFullPathName(), 0xc0dedbad);
+    var preset = PresetJson::property(migrated, "preset");
+    var meshLibraryJson = PresetJson::property(preset, "meshLibrary");
+    const auto* meshGroups = PresetJson::getArray(PresetJson::property(meshLibraryJson, "groups"));
+    REQUIRE(meshGroups != nullptr);
+    REQUIRE(isPositiveAndBelow(LayerGroups::GroupScratch, meshGroups->size()));
+
+    const auto* scratchMeshLayers = PresetJson::getArray(
+            PresetJson::property(meshGroups->getReference(LayerGroups::GroupScratch), "layers"));
+    REQUIRE(scratchMeshLayers != nullptr);
+    REQUIRE(scratchMeshLayers->size() == 4);
+
+    var envelopeProps = PresetJson::property(preset, "envelopeProps");
+    var envelopeGroups = PresetJson::property(envelopeProps, "groups");
+    var scratchEnvelopeGroup = PresetJson::property(envelopeGroups, "scratch");
+    const auto* scratchEnvelopeLayers = PresetJson::getArray(
+            PresetJson::property(scratchEnvelopeGroup, "layers"));
+    REQUIRE(scratchEnvelopeLayers != nullptr);
+    REQUIRE(scratchEnvelopeLayers->size() == 4);
+
+    CycleTestHarness harness;
+    auto& repo = harness.getRepo();
+    auto& document = repo.get<Document>("Document");
+    auto& meshLibrary = repo.get<MeshLibrary>("MeshLibrary");
+    auto& oscControls = repo.get<OscControlPanel>("OscControlPanel");
+    File presetFile(String(CYCLE_SOURCE_DIR) + "/content/presets/CalmingKeys.cyc");
+
+    REQUIRE(presetFile.existsAsFile());
+
+    {
+        ScopedPresetLoadSuppression suppressPresetUpdates(repo);
+        REQUIRE(document.open(presetFile.getFullPathName()));
+    }
+
+    const auto& volumeGroup = meshLibrary.getLayerGroup(LayerGroups::GroupVolume);
+    const auto& scratchGroup = meshLibrary.getLayerGroup(LayerGroups::GroupScratch);
+    const auto& wavePitchGroup = meshLibrary.getLayerGroup(LayerGroups::GroupWavePitch);
+    const auto& guideGroup = meshLibrary.getLayerGroup(LayerGroups::GroupGuideCurve);
+    const auto& irModelGroup = meshLibrary.getLayerGroup(LayerGroups::GroupIrModeller);
+
+    REQUIRE(volumeGroup.size() == 1);
+    REQUIRE(volumeGroup.layers[0].mesh->getNumVerts() > 0);
+    REQUIRE(volumeGroup.layers[0].props->active);
+    REQUIRE(scratchGroup.size() == 1);
+    REQUIRE(scratchGroup.layers[0].mesh->getNumVerts() > 0);
+    REQUIRE(wavePitchGroup.size() == 1);
+    REQUIRE(guideGroup.size() == 1);
+    REQUIRE(guideGroup.layers[0].mesh->getNumVerts() == 6);
+    REQUIRE(guideGroup.layers[0].mesh->getVerts()[0]->values[Vertex::Time] == Approx(0.0));
+    REQUIRE(guideGroup.layers[0].mesh->getVerts()[0]->values[Vertex::Phase]
+            == Approx(0.047311931848526));
+    REQUIRE(guideGroup.layers[0].mesh->getVerts()[0]->values[Vertex::Amp]
+            == Approx(0.458333313465118));
+    REQUIRE(irModelGroup.size() == 1);
+    REQUIRE(irModelGroup.layers[0].mesh->getNumVerts() == 12);
+    REQUIRE(irModelGroup.layers[0].mesh->getVerts()[3]->values[Vertex::Phase]
+            == Approx(0.067500002682209));
+    REQUIRE(irModelGroup.layers[0].mesh->getVerts()[3]->values[Vertex::Amp] == Approx(1.0));
+    REQUIRE(oscControls.getVolumeScale()
+            == Approx(OscControlPanel::scaleVolume(0.35384615384615381f)));
+}
+
+TEST_CASE("Post-load lifecycle reset preserves individual Unison voices",
+          "[cycle][preset][unison]") {
+    CycleTestHarness harness;
+    auto& repo = harness.getRepo();
+    auto& document = repo.get<Document>("Document");
+    auto& effects = repo.get<EffectGuiRegistry>("EffectGuiRegistry");
+    auto& unison = repo.get<Unison>("Unison");
+    File presetFile(String(CYCLE_SOURCE_DIR) + "/content/presets/Blinding.cyc");
+
+    document.registerSavable(&effects);
+    REQUIRE(presetFile.existsAsFile());
+
+    {
+        ScopedPresetLoadSuppression suppressPresetUpdates(repo);
+        REQUIRE(document.open(presetFile.getFullPathName()));
+    }
+
+    REQUIRE(unison.getGraphicParams().voices.size() == 10);
+    repo.resetSingletons();
+    REQUIRE(unison.getGraphicParams().voices.size() == 10);
+
+    unison.audioThreadUpdate();
+    REQUIRE(unison.getOrder(true) == 10);
+    REQUIRE(unison.isStereo());
+}
+
+TEST_CASE("Cello Visual DSP phase rendering follows its red axis and guide curve",
+          "[cycle][preset][rasterization][guide-curves]") {
+    CycleTestHarness harness;
+    auto& repo = harness.getRepo();
+    auto& document = repo.get<Document>("Document");
+    auto& meshLibrary = repo.get<MeshLibrary>("MeshLibrary");
+    auto& guidePanel = repo.get<GuideCurvePanel>("GuideCurvePanel");
+    auto& rasterizer = repo.get<PhaseRasterizer>("PhaseRasterizer");
+    auto& settings = repo.get<Settings>("Settings");
+    File presetFile(String(CYCLE_SOURCE_DIR) + "/content/presets/Cello.cyc");
+
+    REQUIRE(presetFile.existsAsFile());
+
+    {
+        ScopedPresetLoadSuppression suppressPresetUpdates(repo);
+        REQUIRE(document.open(presetFile.getFullPathName()));
+    }
+
+    Mesh* phaseMesh = meshLibrary.getCurrentMesh(LayerGroups::GroupPhase);
+    REQUIRE(phaseMesh != nullptr);
+    REQUIRE(phaseMesh->hasEnoughCubesForCrossSection());
+    REQUIRE(phaseMesh->getCubes()[0]->guideCurveAt(Vertex::Red) >= 0);
+
+    guidePanel.rasterizeAllTables();
+    settings.getGlobalSetting(AppSettings::CurrentMorphAxis) = Vertex::Red;
+
+    MorphPosition lowRed;
+    lowRed.time.setValueDirect(0.5f);
+    lowRed.red.setValueDirect(0.25f);
+    lowRed.blue.setValueDirect(0.5f);
+    rasterizer.setMorphPosition(lowRed);
+    rasterizer.renderWaveformOnly(phaseMesh);
+    std::vector<Intercept> lowRedIntercepts = rasterizer.result().intercepts;
+
+    MorphPosition highRed = lowRed;
+    highRed.red.setValueDirect(0.75f);
+    rasterizer.setMorphPosition(highRed);
+    rasterizer.renderWaveformOnly(phaseMesh);
+    std::vector<Intercept> highRedIntercepts = rasterizer.result().intercepts;
+
+    REQUIRE_FALSE(lowRedIntercepts.empty());
+    REQUIRE(highRedIntercepts.size() == lowRedIntercepts.size());
+
+    bool surfaceChanged = false;
+    for (size_t index = 0; index < lowRedIntercepts.size(); ++index) {
+        const Intercept& low = lowRedIntercepts[index];
+        const Intercept& high = highRedIntercepts[index];
+        surfaceChanged |= std::abs(low.x - high.x) > 0.0001f;
+        surfaceChanged |= std::abs(low.y - high.y) > 0.0001f;
+        surfaceChanged |= std::abs(low.adjustedX - high.adjustedX) > 0.0001f;
+    }
+
+    REQUIRE(surfaceChanged);
+
+    rasterizer.setGuideCurveProvider(nullptr);
+    rasterizer.renderWaveformOnly(phaseMesh);
+    const std::vector<Intercept>& unguidedIntercepts = rasterizer.result().intercepts;
+    REQUIRE(unguidedIntercepts.size() == highRedIntercepts.size());
+
+    bool guideChangedSurface = false;
+    for (size_t index = 0; index < highRedIntercepts.size(); ++index) {
+        guideChangedSurface |= std::abs(
+                highRedIntercepts[index].adjustedX
+                - unguidedIntercepts[index].adjustedX) > 0.0001f;
+    }
+
+    REQUIRE(guideChangedSurface);
+    rasterizer.setGuideCurveProvider(&guidePanel);
 }
 
 TEST_CASE("Legacy pierce preset restores modulation matrix wiring", "[cycle][preset][mod-matrix]") {

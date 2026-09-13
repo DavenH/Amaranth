@@ -163,7 +163,6 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
         for (int i = 0; i < noteState.numUnisonVoices; ++i) {
             int sourceSize, destSize;
             double outputToInputRate = 1. / (double(noteState.nextPow2) * groups[i].angleDelta);
-          #ifdef USE_IPP
             groups[i].resamplers[Left].initWithHistory(rolloffRelFreq, windowAlpha, outputToInputRate,
                                                        getConstant(ResamplerLatency), numPolyphaseSteps,
                                                        resampleBufferSize, sourceSize, destSize);
@@ -171,7 +170,6 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
             groups[i].resamplers[Right].initWithHistory(rolloffRelFreq, windowAlpha, outputToInputRate,
                                                         getConstant(ResamplerLatency), numPolyphaseSteps,
                                                         resampleBufferSize, sourceSize, destSize);
-          #endif
 
             sourceSizes.push_back(sourceSize);
             destSizes.push_back(destSize);
@@ -184,12 +182,10 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
         for (int i = 0; i < noteState.numUnisonVoices; ++i) {
             for (int c = 0; c < 2; ++c) {
                 Resampler& resampler = groups[i].resamplers[c];
-              #ifdef USE_IPP
                 resampler.source = resamplingMemory.place(sourceSizes[i]);
                 resampler.dest = resamplingMemory.place(destSizes[i]);
                 resampler.reset();
                 resampler.primeWithZeros();
-              #endif
                 // pad with one sample to eliminate possibility of resampling problems
                 groups[i].cycleBuffer[c].write(0);
             }
@@ -733,8 +729,6 @@ void CycleBasedVoice::fillLatency(StereoBuffer& channelPair) {
             }
 
             if (resamplingAlgo == Resampling::Sinc) {
-#ifdef USE_IPP
-
                 // to be accurate we'd have to process the osc latency tail through the resampler and then get the tail...
                 for (int i = 0; i < noteState.numUnisonVoices; ++i) {
                     VoiceParameterGroup& group = groups[i];
@@ -751,7 +745,6 @@ void CycleBasedVoice::fillLatency(StereoBuffer& channelPair) {
                         .add(resamplerTail)
                         .withSize(jmin((int) resamplerTail.size(), numSamples - start));
                 }
-#endif
             } else {
                 sumBuffer.add(oscTail);
             }

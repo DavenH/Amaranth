@@ -60,6 +60,26 @@ void GraphicRasterizer::updateWaveform(Mesh* mesh, float oscPhase) {
     Rasterization::GraphicRasterizer::updateWaveform(mesh, oscPhase);
 }
 
+void GraphicRasterizer::renderGeometryOnly(float oscPhase) {
+    prepareRequestForRender();
+    Rasterization::GraphicRasterizer::renderGeometryOnly(oscPhase);
+}
+
+void GraphicRasterizer::renderGeometryOnly(Mesh* mesh, float oscPhase) {
+    prepareRequestForRender();
+    Rasterization::GraphicRasterizer::renderGeometryOnly(mesh, oscPhase);
+}
+
+void GraphicRasterizer::renderWaveformOnly(float oscPhase) {
+    prepareRequestForRender();
+    Rasterization::GraphicRasterizer::renderWaveformOnly(oscPhase);
+}
+
+void GraphicRasterizer::renderWaveformOnly(Mesh* mesh, float oscPhase) {
+    prepareRequestForRender();
+    Rasterization::GraphicRasterizer::renderWaveformOnly(mesh, oscPhase);
+}
+
 void GraphicRasterizer::prepareRequestForRender() {
     int currentMorphAxis = repo->get<Settings>("Settings").getGlobalSetting(AppSettings::CurrentMorphAxis);
     setPrimaryViewDimension(

@@ -79,7 +79,7 @@ public:
     void setVoices(vector<UnivoiceData>& data);
     void setGroupMode(bool isGroupMode);
     void modeChanged();
-    void reset() override;
+    void resetParameters();
     bool removeVoice(int unisonIdx);
     bool addVoice(const UnivoiceData& data, bool async = true);
 
