@@ -1,25 +1,44 @@
 # Audio Bug Notes
 
+## Open: Subbass realtime fixture asserts the pre-reconciliation octave
+
+The full `standalone-debug` CTest run fails
+`Strictly ported subbass fixture renders through the realtime path` because the
+test still expects octave `-2`, while the canonical preset reconciliation in
+`b2129dc0` deliberately changed `subbass-parity.cyclegraph` to octave `-1` and
+moved the remaining legacy reference translation into the comparison manifest.
+The failure repeats in isolation and is unrelated to Astral graph publication.
+Reconcile the stale structural assertion with the fixture's current audible
+parity contract. Status: open 2026-09-12.
+
 ## Open: manually played Astral reported at a fixed F2 pitch
 
 Astral was reported to sound heavily distorted and remain near F2 for every
 keyboard note in the standalone Cycle V2 app. F2 is suspiciously close to the
-44.1 kHz / 512-sample audio callback cadence (86.13 Hz), but the current
-realtime renderer does not reproduce that failure. Explicit Cycle V2 device
-captures at MIDI 60 and 72 have periods near 169 and 84-85 samples respectively,
-with negligible 86 Hz energy. A focused regression now renders the complete
-Astral graph through 512-sample realtime callbacks and guards both MIDI
-fundamentals against the callback cadence.
+44.1 kHz / 512-sample callback cadence (86.13 Hz), but Astral's prepared
+oscillator region does not reproduce it in direct or corrected device-callback
+captures.
 
-The first apparent live/offline discrepancy was invalid evidence: the generic
-`run_cycle_agent.sh` default launched Cycle 1. Cycle V2 audio investigations
-must explicitly set `CYCLE_APP_PATH` to `build/standalone-debug/cycle-v2/CycleV2.app`
-and `CYCLE_PROCESS_NAME` to `CycleV2`. The remaining discrepancy is specific to
-the reported manual session and needs a capture or exact launch/input path to
-reproduce; do not compensate it with a MIDI-note offset.
+The investigation did find that successful graph loads updated the canvas
+synchronously while `NodeWorkspace` deferred publication of the new audio plan
+to a 30 Hz timer. Earlier one-shot UI captures therefore rendered the startup
+plan while reporting Astral's canvas state.
 
-Artifacts: `/private/tmp/cycle-v2-astral-live-60.wav` and
-`/private/tmp/cycle-v2-astral-live-72.wav`. Status: open 2026-09-12.
+Graph loads now prepare and publish their audio plan immediately. The timer
+still republishes later semantic edits and device-preparation changes. The
+focused `cycle-v2-agent-astral-live-publication.json` fixture deliberately
+opens Astral, starts a note, and captures the device callback without yielding
+to the message timer. It proves that the adopted plan has Astral's 17
+executable nodes and one oscillator region; MIDI 60 exceeds the 86.13 Hz
+callback component by 48.3 dB, and a separate corrected capture distinguishes
+MIDI 72. The startup graph also tracks pitch in a settled device capture, so
+the stale-plan defect is not by itself a demonstrated explanation for the
+reported fixed-F2 sound. No MIDI offset or oscillator workaround is justified
+until that remaining state is reproduced.
+
+Artifacts: `/private/tmp/cycle-v2-astral-live-publication.wav` and
+`/private/tmp/cycle-v2-astral-live-publication-report.json`. Status: graph-load
+publication defect resolved; fixed-F2 report remains open 2026-09-12.
 
 ## Open: spectral reference amplitude assertions no longer match output scaling
 

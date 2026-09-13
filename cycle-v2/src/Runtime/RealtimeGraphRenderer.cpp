@@ -79,6 +79,12 @@ void RealtimeGraphRenderer::setPreparedGraph(PreparedGraph* graph) {
         graphOutputGain = nextGain;
     }
     activeRevision.store(graph == nullptr ? 0 : graph->revision, std::memory_order_release);
+    activeExecutionStepCount.store(
+            graph == nullptr ? 0 : graph->plan.steps.size(),
+            std::memory_order_release);
+    activeOscillatorRegionCount.store(
+            graph == nullptr ? 0 : graph->plan.oscillatorRegions.size(),
+            std::memory_order_release);
 }
 
 void RealtimeGraphRenderer::setVoiceDurationSeconds(float durationSeconds) {
