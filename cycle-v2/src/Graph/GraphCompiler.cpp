@@ -1218,6 +1218,22 @@ void GraphCompiler::refreshVoiceContexts(
             plan.configurationAttachments,
             plan.attachments,
             plan.signalEdges);
+    for (auto& buffer : plan.buffers) {
+        if (buffer.defaultModulationSlot == DefaultModulationSlot::None) {
+            continue;
+        }
+        const auto context = std::find_if(
+                plan.voiceContexts.begin(),
+                plan.voiceContexts.end(),
+                [&](const CompiledVoiceContext& candidate) {
+                    return candidate.nodeId == buffer.sourceNodeId;
+                });
+        if (context == plan.voiceContexts.end()) {
+            continue;
+        }
+        buffer.defaultModulation = context->defaultModulation;
+        buffer.defaultModulationNoteOffset = context->octave * 12;
+    }
 }
 
 GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {

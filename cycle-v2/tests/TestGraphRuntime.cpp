@@ -11,6 +11,7 @@
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Control/ModulationTriple.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 #include "Runtime/GraphPresentationModel.h"
@@ -171,6 +172,54 @@ TEST_CASE("Queued presentation publication is inert after model destruction",
 
     MessageManager::getInstance()->runDispatchLoopUntil(20);
     REQUIRE_FALSE(completed);
+}
+
+TEST_CASE("Attached Mod Triple parameter edits refresh implicit voice modulation",
+        "[cycle-v2][runtime][modulation][voice-context][configuration]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::ModulationTriple, "morph", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "morph", "modulation", false },
+            { "voice", "modulation", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "mesh", "context", true }).succeeded());
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+
+    const auto blueConfiguration = [&]() {
+        const auto buffer = std::find_if(
+                presentation.compileResult().plan.buffers.begin(),
+                presentation.compileResult().plan.buffers.end(),
+                [](const GraphBufferPlan& candidate) {
+                    return candidate.defaultModulationSlot == DefaultModulationSlot::Blue;
+                });
+        REQUIRE(buffer != presentation.compileResult().plan.buffers.end());
+        const auto configuration = std::dynamic_pointer_cast<
+                const ModulationTripleConfiguration>(buffer->defaultModulation);
+        REQUIRE(configuration != nullptr);
+        return configuration->sources[2];
+    };
+    REQUIRE(blueConfiguration().mode == ModulationSourceMode::ModWheel);
+
+    REQUIRE(commands.setNodeParameter(
+            "morph",
+            "blueSource",
+            "Blue Source",
+            "inverseVelocity").succeeded());
+    REQUIRE(presentation.refresh(
+            document.graph(),
+            document.revision(),
+            document.lastChange()));
+
+    REQUIRE(blueConfiguration().mode == ModulationSourceMode::InverseVelocity);
 }
 
 TEST_CASE("Runtime keeps scratch attachments separate from signal inputs", "[cycle-v2][runtime]") {
