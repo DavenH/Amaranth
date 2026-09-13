@@ -11,6 +11,7 @@
 #include <App/SingletonRepo.h>
 #include <Design/Updating/Updater.h>
 #include <Curve/Curve.h>
+#include <Curve/Mesh/Vertex.h>
 #include <JuceHeader.h>
 
 #include "../Initializer.h"
@@ -310,6 +311,8 @@ TEST_CASE("Cycle 1.8 presets restore split envelopes and authored master volume"
     const auto& volumeGroup = meshLibrary.getLayerGroup(LayerGroups::GroupVolume);
     const auto& scratchGroup = meshLibrary.getLayerGroup(LayerGroups::GroupScratch);
     const auto& wavePitchGroup = meshLibrary.getLayerGroup(LayerGroups::GroupWavePitch);
+    const auto& guideGroup = meshLibrary.getLayerGroup(LayerGroups::GroupGuideCurve);
+    const auto& irModelGroup = meshLibrary.getLayerGroup(LayerGroups::GroupIrModeller);
 
     REQUIRE(volumeGroup.size() == 1);
     REQUIRE(volumeGroup.layers[0].mesh->getNumVerts() > 0);
@@ -317,6 +320,18 @@ TEST_CASE("Cycle 1.8 presets restore split envelopes and authored master volume"
     REQUIRE(scratchGroup.size() == 1);
     REQUIRE(scratchGroup.layers[0].mesh->getNumVerts() > 0);
     REQUIRE(wavePitchGroup.size() == 1);
+    REQUIRE(guideGroup.size() == 1);
+    REQUIRE(guideGroup.layers[0].mesh->getNumVerts() == 6);
+    REQUIRE(guideGroup.layers[0].mesh->getVerts()[0]->values[Vertex::Time] == Approx(0.0));
+    REQUIRE(guideGroup.layers[0].mesh->getVerts()[0]->values[Vertex::Phase]
+            == Approx(0.047311931848526));
+    REQUIRE(guideGroup.layers[0].mesh->getVerts()[0]->values[Vertex::Amp]
+            == Approx(0.458333313465118));
+    REQUIRE(irModelGroup.size() == 1);
+    REQUIRE(irModelGroup.layers[0].mesh->getNumVerts() == 12);
+    REQUIRE(irModelGroup.layers[0].mesh->getVerts()[3]->values[Vertex::Phase]
+            == Approx(0.067500002682209));
+    REQUIRE(irModelGroup.layers[0].mesh->getVerts()[3]->values[Vertex::Amp] == Approx(1.0));
     REQUIRE(oscControls.getVolumeScale()
             == Approx(OscControlPanel::scaleVolume(0.35384615384615381f)));
 }

@@ -91,6 +91,21 @@ curves or alter gain semantics. The stable deletion target is the existing
 duplicate envelope restoration in `Envelope2D::readJSON`; once envelope meshes
 have one canonical restore owner, this join can feed that owner directly.
 
+### Legacy effect and Guide coordinate versions
+
+Legacy Guide, Waveshaper, and IR Modeller meshes share `Mesh::updateToVersion()`
+as the authoritative coordinate migration. Only mesh versions in the original
+`[1.0, 1.1)` interval store two-dimensional coordinates in `time` and `phase`
+and require translation to `phase` and `amp`. The 2014--15 archive stores
+decimal versions from 1.2 through 1.8 and already uses the current coordinates.
+
+`PresetMigrator` must retain the XML version as a floating-point value while
+deciding whether to apply this translation. Truncating `1.8` to integer `1`
+misclassifies the newer mesh, rotating its coordinates and producing the
+collapsed Guide and IR Modeller shapes. Successfully translated pre-1.1 meshes
+are marked with the current mesh format version, matching
+`Mesh::updateToVersion()`; newer meshes pass through unchanged.
+
 ### Layer enablement
 
 Cycle 1's `properties.active` is authored layer state for connected or populated
@@ -292,6 +307,9 @@ transferred to its upstream Trimesh before the Pan is removed.
     envelope geometry and properties, restored `ScratchLayer` stacks, and added
     focused canonical plus live-document regressions for envelope and master
     control restoration.
+14. Preserved decimal legacy mesh versions before applying the mature pre-1.1
+    Guide/effect coordinate migration, preventing 1.2--1.8 Guide, Waveshaper,
+    and IR Modeller meshes from being rotated as version 1 data.
 
 ## Verification
 
@@ -309,6 +327,10 @@ transferred to its upstream Trimesh before the Pan is removed.
   loader with zero failures. For all 75 property-split presets, source and
   canonical volume, pitch, wave-pitch, and scratch vertex/layer counts match;
   all authored `OscControls` values match exactly.
+- A second 276-file product sweep compared all 28,924 Guide, Waveshaper, and IR
+  Modeller vertices against their source XML coordinates with zero differences.
+  Focused migration tests cover both a true version-1 coordinate conversion and
+  unchanged 1.7/1.8 coordinates through canonical and live-document loading.
 
 ## Current Inventory
 

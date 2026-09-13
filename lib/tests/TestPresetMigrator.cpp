@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
+#include "../src/App/AppConstants.h"
 #include "../src/App/Doc/Document.h"
 #include "../src/App/Doc/DocumentDetails.h"
 #include "../src/App/MeshLibrary.h"
@@ -180,6 +181,13 @@ TEST_CASE("PresetMigrator remaps legacy V1 XML sections into current mesh groups
         </Mesh>
       </FreqMesh1>
     </FreqLayer>
+    <GuideLayer>
+      <GuideMesh0>
+        <Mesh name="GuideMesh" version="1.8">
+          <Vertex time="0.12" phase="0.34" amp="0.56" key="0" mod="0" weight="0.78" id="3"/>
+        </Mesh>
+      </GuideMesh0>
+    </GuideLayer>
     <WaveShaperLayer>
       <ShaperMesh>
         <Mesh name="WaveShaperMesh" version="1">
@@ -187,6 +195,13 @@ TEST_CASE("PresetMigrator remaps legacy V1 XML sections into current mesh groups
         </Mesh>
       </ShaperMesh>
     </WaveShaperLayer>
+    <TubeModelLayer>
+      <TubeModelMesh0>
+        <Mesh name="IrModelMesh" version="1.7">
+          <Vertex time="0.21" phase="0.43" amp="0.65" key="0" mod="0" weight="0.87" id="4"/>
+        </Mesh>
+      </TubeModelMesh0>
+    </TubeModelLayer>
     <EnvLayer>
       <EnvVolumeMesh>
         <EnvelopeMesh name="VolEnv" primaryEnabled="0" sustainIndex="2" sustainIndex2="5">
@@ -224,7 +239,7 @@ TEST_CASE("PresetMigrator remaps legacy V1 XML sections into current mesh groups
     var preset = property(root, "preset");
     const auto& groups = requireArray(property(property(preset, "meshLibrary"), "groups"));
 
-    REQUIRE(groups.size() >= 10);
+    REQUIRE(groups.size() >= 11);
 
     const auto& timeLayers = requireArray(property(groups.getReference(4), "layers"));
     REQUIRE(timeLayers.size() == 1);
@@ -256,7 +271,29 @@ TEST_CASE("PresetMigrator remaps legacy V1 XML sections into current mesh groups
 
     const auto& waveshaperLayers = requireArray(property(groups.getReference(9), "layers"));
     REQUIRE(waveshaperLayers.size() == 1);
-    REQUIRE(property(property(waveshaperLayers.getReference(0), "mesh"), "name").toString() == "WaveShaperMesh");
+    var waveshaperMesh = property(waveshaperLayers.getReference(0), "mesh");
+    const auto& waveshaperVertices = requireArray(property(waveshaperMesh, "vertices"));
+    REQUIRE(property(waveshaperMesh, "name").toString() == "WaveShaperMesh");
+    REQUIRE(double(property(waveshaperMesh, "version")) == Approx(Constants::MeshFormatVersion));
+    REQUIRE(double(property(waveshaperVertices.getReference(0), "time")) == Approx(0.0));
+    REQUIRE(double(property(waveshaperVertices.getReference(0), "phase")) == Approx(0.9));
+    REQUIRE(double(property(waveshaperVertices.getReference(0), "amp")) == Approx(0.8));
+
+    const auto& guideLayers = requireArray(property(groups.getReference(GroupGuideCurve), "layers"));
+    var guideMesh = property(guideLayers.getReference(0), "mesh");
+    const auto& guideVertices = requireArray(property(guideMesh, "vertices"));
+    REQUIRE(double(property(guideMesh, "version")) == Approx(1.8));
+    REQUIRE(double(property(guideVertices.getReference(0), "time")) == Approx(0.12));
+    REQUIRE(double(property(guideVertices.getReference(0), "phase")) == Approx(0.34));
+    REQUIRE(double(property(guideVertices.getReference(0), "amp")) == Approx(0.56));
+
+    const auto& irModelLayers = requireArray(property(groups.getReference(GroupIrModeller), "layers"));
+    var irModelMesh = property(irModelLayers.getReference(0), "mesh");
+    const auto& irModelVertices = requireArray(property(irModelMesh, "vertices"));
+    REQUIRE(double(property(irModelMesh, "version")) == Approx(1.7));
+    REQUIRE(double(property(irModelVertices.getReference(0), "time")) == Approx(0.21));
+    REQUIRE(double(property(irModelVertices.getReference(0), "phase")) == Approx(0.43));
+    REQUIRE(double(property(irModelVertices.getReference(0), "amp")) == Approx(0.65));
 
     const auto& guides = requireArray(property(property(preset, "guideCurveProps"), "guides"));
     REQUIRE(guides.size() == 1);

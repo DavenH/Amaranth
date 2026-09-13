@@ -34,6 +34,7 @@ namespace {
     Identifier formatKey("format");
     Identifier schemaVersionKey("schemaVersion");
     Identifier presetKey("preset");
+    constexpr double legacyPhaseAmpVersionEnd = 1.1;
 
     enum ModMatrixInputId {
             VoiceTimeInput      = 1
@@ -220,7 +221,7 @@ namespace {
         }
 
         json->setProperty("name", meshElem->getStringAttribute("name", "unnamed"));
-        json->setProperty("version", meshElem->getIntAttribute("version", 1));
+        json->setProperty("version", meshElem->getDoubleAttribute("version", 1.0));
 
         for (auto vertexElem : meshElem->getChildWithTagNameIterator("Vertex")) {
             auto vertex = PresetJson::object();
@@ -296,10 +297,10 @@ namespace {
             return;
         }
 
-        int version = int(mesh->getProperty("version"));
+        double version = double(mesh->getProperty("version"));
         auto* vertices = PresetJson::getArray(mesh->getProperty("vertices"));
 
-        if (version < 1 || version >= Constants::MeshFormatVersion || vertices == nullptr) {
+        if (version < 1.0 || version >= legacyPhaseAmpVersionEnd || vertices == nullptr) {
             return;
         }
 
@@ -318,6 +319,7 @@ namespace {
             vertex->setProperty("time", 0.0);
         }
 
+        mesh->setProperty("version", Constants::MeshFormatVersion);
     }
 
     void migrateLegacyGroups(Array<var>& groups, std::initializer_list<int> groupIndices) {
