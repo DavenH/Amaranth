@@ -26,9 +26,9 @@ public:
     virtual bool beginTrimeshMorphEdit(const juce::String& id, float value) = 0;
     virtual bool updateTrimeshMorphEdit(float value) = 0;
     virtual void endTrimeshMorphEdit() = 0;
-    virtual bool beginTrimeshRangeEdit(float value) = 0;
-    virtual bool updateTrimeshRangeEdit(float value) = 0;
-    virtual void endTrimeshRangeEdit() = 0;
+    virtual bool beginTrimeshOutputScaleEdit(const juce::String& id, float value) = 0;
+    virtual bool updateTrimeshOutputScaleEdit(float value) = 0;
+    virtual void endTrimeshOutputScaleEdit() = 0;
     virtual void beginTrimeshVertexParameterEdit(const juce::String& id, float value) = 0;
     virtual void updateTrimeshVertexParameterEdit(float value) = 0;
     virtual void endTrimeshVertexParameterEdit() = 0;
@@ -51,8 +51,10 @@ public:
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
     void renderOpenGL(float scaleFactor);
-    bool showsSpectralRange() const;
+    bool showsOutputScale() const;
     float spectralRangeValue() const;
+    float outputScaleValue() const;
+    juce::String outputScaleParameterId() const;
     bool spectralModeVisible() const { return spectralModeSelector.isVisible(); }
     const juce::String& spectralModeValue() const {
         return spectralModeSelector.selectedValue();
@@ -77,16 +79,16 @@ private:
     void updateSpectralModeControl();
     juce::Rectangle<int> spectralModeLabelBounds() const;
     juce::Rectangle<int> spectralModeSelectorBounds() const;
-    void setLocalSpectralRange(float value);
+    void setLocalOutputScale(const juce::String& id, float value);
     void setLocalMorphValue(const juce::String& id, float value);
     void setTrimeshPrimaryAxis(const juce::String& axis) override;
     void toggleTrimeshLinkAxis(const juce::String& axis) override;
     void beginTrimeshMorphControlEdit(const juce::String& id, float value) override;
     void updateTrimeshMorphControlEdit(float value) override;
     void endTrimeshMorphControlEdit() override;
-    void beginTrimeshRangeControlEdit(float value) override;
-    void updateTrimeshRangeControlEdit(float value) override;
-    void endTrimeshRangeControlEdit() override;
+    void beginTrimeshOutputScaleControlEdit(const juce::String& id, float value) override;
+    void updateTrimeshOutputScaleControlEdit(float value) override;
+    void endTrimeshOutputScaleControlEdit() override;
     void beginTrimeshVertexControlEdit(const juce::String& id, float value) override;
     void updateTrimeshVertexControlEdit(float value) override;
     void endTrimeshVertexControlEdit() override;

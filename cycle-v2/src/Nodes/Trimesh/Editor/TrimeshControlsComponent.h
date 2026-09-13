@@ -18,9 +18,9 @@ public:
     virtual void beginTrimeshMorphControlEdit(const juce::String& id, float value) = 0;
     virtual void updateTrimeshMorphControlEdit(float value) = 0;
     virtual void endTrimeshMorphControlEdit() = 0;
-    virtual void beginTrimeshRangeControlEdit(float value) = 0;
-    virtual void updateTrimeshRangeControlEdit(float value) = 0;
-    virtual void endTrimeshRangeControlEdit() = 0;
+    virtual void beginTrimeshOutputScaleControlEdit(const juce::String& id, float value) = 0;
+    virtual void updateTrimeshOutputScaleControlEdit(float value) = 0;
+    virtual void endTrimeshOutputScaleControlEdit() = 0;
     virtual void beginTrimeshVertexControlEdit(const juce::String& id, float value) = 0;
     virtual void updateTrimeshVertexControlEdit(float value) = 0;
     virtual void endTrimeshVertexControlEdit() = 0;
@@ -41,7 +41,7 @@ public:
     void refreshHitRegions();
     int getControlRegionCount() const { return static_cast<int>(controlRegions.size()); }
     int getMorphSliderCount() const;
-    int getSpectralRangeSliderCount() const;
+    int getOutputScaleSliderCount() const;
     int getPrimaryAxisButtonCount() const;
     int getLinkToggleButtonCount() const;
     int getVertexParameterSliderCount() const;
@@ -63,7 +63,7 @@ private:
     enum class DragTarget {
         None,
         Morph,
-        SpectralRange,
+        OutputScale,
         VertexParameter,
         VertexGuideGain
     };

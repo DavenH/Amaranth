@@ -113,12 +113,20 @@ void TrimeshExpandedEditorComponent::renderOpenGL(float scaleFactor) {
             scaleFactor);
 }
 
-bool TrimeshExpandedEditorComponent::showsSpectralRange() const {
-    return controls.getSpectralRangeSliderCount() == 1;
+bool TrimeshExpandedEditorComponent::showsOutputScale() const {
+    return controls.getOutputScaleSliderCount() == 1;
 }
 
 float TrimeshExpandedEditorComponent::spectralRangeValue() const {
     return NodeParameterMap(node).floatValue("range", 0.5f);
+}
+
+float TrimeshExpandedEditorComponent::outputScaleValue() const {
+    return NodeParameterMap(node).floatValue(outputScaleParameterId(), 0.5f);
+}
+
+String TrimeshExpandedEditorComponent::outputScaleParameterId() const {
+    return renderProfile.getSliceStyle().isSpectral() ? "range" : "gain";
 }
 
 void TrimeshExpandedEditorComponent::paint(Graphics& g) {
@@ -251,27 +259,31 @@ void TrimeshExpandedEditorComponent::endTrimeshMorphControlEdit() {
     activeMorphParameterId = {};
 }
 
-void TrimeshExpandedEditorComponent::beginTrimeshRangeControlEdit(float value) {
-    if (delegate != nullptr && delegate->beginTrimeshRangeEdit(value)) {
-        setLocalSpectralRange(value);
+void TrimeshExpandedEditorComponent::beginTrimeshOutputScaleControlEdit(
+        const String& id,
+        float value) {
+    if (delegate != nullptr && delegate->beginTrimeshOutputScaleEdit(id, value)) {
+        setLocalOutputScale(id, value);
     }
 }
 
-void TrimeshExpandedEditorComponent::updateTrimeshRangeControlEdit(float value) {
-    if (delegate != nullptr && delegate->updateTrimeshRangeEdit(value)) {
-        setLocalSpectralRange(value);
+void TrimeshExpandedEditorComponent::updateTrimeshOutputScaleControlEdit(float value) {
+    if (delegate != nullptr && delegate->updateTrimeshOutputScaleEdit(value)) {
+        setLocalOutputScale(
+                renderProfile.getSliceStyle().isSpectral() ? "range" : "gain",
+                value);
     }
 }
 
-void TrimeshExpandedEditorComponent::endTrimeshRangeControlEdit() {
+void TrimeshExpandedEditorComponent::endTrimeshOutputScaleControlEdit() {
     if (delegate != nullptr) {
-        delegate->endTrimeshRangeEdit();
+        delegate->endTrimeshOutputScaleEdit();
     }
 }
 
-void TrimeshExpandedEditorComponent::setLocalSpectralRange(float value) {
+void TrimeshExpandedEditorComponent::setLocalOutputScale(const String& id, float value) {
     for (auto& parameter : node.parameters) {
-        if (parameter.id == "range") {
+        if (parameter.id == id) {
             parameter.value = String(jlimit(0.f, 1.f, value), 6);
             repaint();
             return;

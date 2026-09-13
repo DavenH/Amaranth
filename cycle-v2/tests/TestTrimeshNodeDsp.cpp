@@ -21,7 +21,7 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
-#include "Nodes/Trimesh/Rendering/SpectralRangeControlRenderer.h"
+#include "Nodes/Trimesh/Rendering/OutputScaleControlRenderer.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
@@ -61,13 +61,14 @@ public:
     void updateTrimeshMorphControlEdit(float value) override { updateValue = value; }
     void endTrimeshMorphControlEdit() override { ++morphEndCount; }
 
-    void beginTrimeshRangeControlEdit(float value) override {
+    void beginTrimeshOutputScaleControlEdit(const String& id, float value) override {
+        activeParameter = id;
         beginValue = value;
         ++rangeBeginCount;
     }
 
-    void updateTrimeshRangeControlEdit(float value) override { updateValue = value; }
-    void endTrimeshRangeControlEdit() override { ++rangeEndCount; }
+    void updateTrimeshOutputScaleControlEdit(float value) override { updateValue = value; }
+    void endTrimeshOutputScaleControlEdit() override { ++rangeEndCount; }
 
     void beginTrimeshVertexControlEdit(const String& id, float value) override {
         activeParameter = id;
@@ -617,9 +618,9 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
     }
 
     const Rectangle<float> rangeRow =
-            TrimeshSidePanelRenderer::spectralRangeRowBounds(sideArea);
+            TrimeshSidePanelRenderer::outputScaleRowBounds(sideArea);
     const Rectangle<float> rangeRail =
-            TrimeshSidePanelRenderer::spectralRangeRailBounds(sideArea);
+            TrimeshSidePanelRenderer::outputScaleRailBounds(sideArea);
     REQUIRE(sideArea.contains(rangeRow));
     REQUIRE(rangeRow.contains(rangeRail));
     REQUIRE(rangeRail.getWidth() >= 96.f);
@@ -636,7 +637,7 @@ TEST_CASE("Production Trimesh controls place two-column vertex rows above morph 
     const Rectangle<float> morph =
             TrimeshSidePanelRenderer::morphRailBounds(sideArea, 0, true);
     const Rectangle<float> range =
-            TrimeshSidePanelRenderer::spectralRangeRailBounds(sideArea);
+            TrimeshSidePanelRenderer::outputScaleRailBounds(sideArea);
 
     const Rectangle<float> timeRow =
             TrimeshSidePanelRenderer::vertexParameterRowBounds(vertex, 0);
@@ -726,11 +727,11 @@ TEST_CASE("Trimesh guide gain knobs are distinct controls after Guide targets",
     REQUIRE_FALSE(gain.intersects(guide));
 }
 
-TEST_CASE("Spectral range label is vertically centred on its rail",
+TEST_CASE("Trimesh output-scale label is vertically centred on its rail",
         "[cycle-v2][nodes][trimesh][geometry][range]") {
     const Rectangle<float> row { 20.f, 40.f, 280.f, 45.f };
     const Rectangle<float> rail { 92.f, 49.f, 196.f, 7.f };
-    const Rectangle<float> label = SpectralRangeControlRenderer::labelBounds(row, rail);
+    const Rectangle<float> label = OutputScaleControlRenderer::labelBounds(row, rail);
 
     REQUIRE(label.getCentreY() == Catch::Approx(rail.getCentreY()));
 }
@@ -1950,15 +1951,15 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     controls.setNode(node);
     controls.setContentBounds({ 10.f, 42.f, 1380.f, 710.f });
 
-    REQUIRE(controls.getControlRegionCount() == 21);
+    REQUIRE(controls.getControlRegionCount() == 22);
     REQUIRE(controls.getMorphSliderCount() == 3);
-    REQUIRE(controls.getSpectralRangeSliderCount() == 0);
+    REQUIRE(controls.getOutputScaleSliderCount() == 1);
     REQUIRE(controls.getPrimaryAxisButtonCount() == 3);
     REQUIRE(controls.getLinkToggleButtonCount() == 3);
     REQUIRE(controls.getVertexParameterSliderCount() == 6);
     REQUIRE(controls.getVertexGuideGainKnobCount() == 3);
     REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 3);
-    REQUIRE(controls.getNumChildComponents() == 21);
+    REQUIRE(controls.getNumChildComponents() == 22);
 }
 
 TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes][trimesh]") {
@@ -2018,12 +2019,13 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     REQUIRE(delegate.updateValue > delegate.beginValue);
     REQUIRE(controls.cursorFor(morph.bounds.getCentre()) == MouseCursor::LeftRightResizeCursor);
 
-    const auto& range = findRegion(TrimeshExpandedHitRegionKind::SpectralRange);
+    const auto& range = findRegion(TrimeshExpandedHitRegionKind::OutputScale);
     controls.beginPointerInteraction(range.bounds.getCentre(), {});
     controls.continuePointerInteraction({ range.bounds.getRight(), range.bounds.getCentreY() });
     controls.endPointerInteraction();
     REQUIRE(delegate.rangeBeginCount == 1);
     REQUIRE(delegate.rangeEndCount == 1);
+    REQUIRE(delegate.activeParameter == "range");
     REQUIRE(delegate.updateValue > delegate.beginValue);
     REQUIRE(controls.cursorFor(range.bounds.getCentre()) == MouseCursor::LeftRightResizeCursor);
     Component* morphTarget {};

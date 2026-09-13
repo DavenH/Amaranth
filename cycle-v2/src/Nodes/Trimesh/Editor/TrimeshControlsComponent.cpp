@@ -15,7 +15,7 @@ public:
         setOpaque(false);
         setMouseCursor(
                 region.kind == TrimeshExpandedHitRegionKind::MorphControl
-                        || region.kind == TrimeshExpandedHitRegionKind::SpectralRange
+                        || region.kind == TrimeshExpandedHitRegionKind::OutputScale
                         || region.kind == TrimeshExpandedHitRegionKind::VertexParameter
                         || region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain
                 ? (region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain
@@ -27,9 +27,9 @@ public:
             setTitle("Link " + region.axisValue);
             setWantsKeyboardFocus(true);
         }
-        if (region.kind == TrimeshExpandedHitRegionKind::SpectralRange) {
-            setComponentID("trimeshEditor.range");
-            setTitle("Spectral range");
+        if (region.kind == TrimeshExpandedHitRegionKind::OutputScale) {
+            setComponentID("trimeshEditor." + region.parameterId);
+            setTitle(region.parameterId == "gain" ? "Output gain" : "Spectral range");
         }
         if (region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain) {
             setComponentID("trimesh.guideGain." + region.parameterId.fromLastOccurrenceOf(
@@ -37,8 +37,8 @@ public:
             setTitle("Guide curve gain");
             setWantsKeyboardFocus(true);
         }
-        setName(region.kind == TrimeshExpandedHitRegionKind::SpectralRange
-                ? "TrimeshSpectralRangeTarget"
+        setName(region.kind == TrimeshExpandedHitRegionKind::OutputScale
+                ? "TrimeshOutputScaleTarget"
                 : "TrimeshControlTarget");
     }
 
@@ -120,8 +120,8 @@ int TrimeshControlsComponent::getMorphSliderCount() const {
     return countControlRegions(TrimeshExpandedHitRegionKind::MorphControl);
 }
 
-int TrimeshControlsComponent::getSpectralRangeSliderCount() const {
-    return countControlRegions(TrimeshExpandedHitRegionKind::SpectralRange);
+int TrimeshControlsComponent::getOutputScaleSliderCount() const {
+    return countControlRegions(TrimeshExpandedHitRegionKind::OutputScale);
 }
 
 int TrimeshControlsComponent::getLinkToggleButtonCount() const {
@@ -149,7 +149,7 @@ MouseCursor TrimeshControlsComponent::cursorFor(Point<float> position) {
 
     if (region != nullptr) {
         if (region->kind == TrimeshExpandedHitRegionKind::MorphControl
-                || region->kind == TrimeshExpandedHitRegionKind::SpectralRange
+                || region->kind == TrimeshExpandedHitRegionKind::OutputScale
                 || region->kind == TrimeshExpandedHitRegionKind::VertexParameter) {
             return MouseCursor::LeftRightResizeCursor;
         }
@@ -218,7 +218,8 @@ void TrimeshControlsComponent::updateHitRegions() {
 
     controlHitRegions = widget.expandedControlHitRegions(
             contentBounds,
-            widget.showsSpectralRange());
+            widget.showsOutputScale(),
+            widget.outputScaleParameterId());
 
     for (const auto& region : controlHitRegions) {
         auto component = std::make_unique<ControlTarget>(*this, region);
@@ -284,13 +285,13 @@ void TrimeshControlsComponent::beginControlDrag(
             }
             break;
 
-        case TrimeshExpandedHitRegionKind::SpectralRange:
-            dragTarget = DragTarget::SpectralRange;
-            activeParameterId = "range";
+        case TrimeshExpandedHitRegionKind::OutputScale:
+            dragTarget = DragTarget::OutputScale;
+            activeParameterId = region.parameterId;
 
-            if (widget.spectralRangeValueAt(contentBounds, position, value)
+            if (widget.outputScaleValueAt(contentBounds, position, value)
                     && delegate != nullptr) {
-                delegate->beginTrimeshRangeControlEdit(value);
+                delegate->beginTrimeshOutputScaleControlEdit(activeParameterId, value);
             }
             break;
 
@@ -340,10 +341,10 @@ void TrimeshControlsComponent::dragControl(Point<float> position) {
             }
             break;
 
-        case DragTarget::SpectralRange:
-            if (widget.spectralRangeValueAt(contentBounds, position, value)
+        case DragTarget::OutputScale:
+            if (widget.outputScaleValueAt(contentBounds, position, value)
                     && delegate != nullptr) {
-                delegate->updateTrimeshRangeControlEdit(value);
+                delegate->updateTrimeshOutputScaleControlEdit(value);
             }
             break;
 
@@ -373,8 +374,8 @@ void TrimeshControlsComponent::dragControl(Point<float> position) {
 void TrimeshControlsComponent::endControlDrag() {
     if (dragTarget == DragTarget::Morph && delegate != nullptr) {
         delegate->endTrimeshMorphControlEdit();
-    } else if (dragTarget == DragTarget::SpectralRange && delegate != nullptr) {
-        delegate->endTrimeshRangeControlEdit();
+    } else if (dragTarget == DragTarget::OutputScale && delegate != nullptr) {
+        delegate->endTrimeshOutputScaleControlEdit();
     } else if ((dragTarget == DragTarget::VertexParameter
             || dragTarget == DragTarget::VertexGuideGain) && delegate != nullptr) {
         delegate->endTrimeshVertexControlEdit();

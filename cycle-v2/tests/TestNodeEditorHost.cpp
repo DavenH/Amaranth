@@ -3079,7 +3079,7 @@ TEST_CASE("Spectral Trimesh range is visible and edits as one undo transaction",
             document.revision()));
     auto* editor = dynamic_cast<TrimeshExpandedEditorComponent*>(host.component());
     REQUIRE(editor != nullptr);
-    REQUIRE(editor->showsSpectralRange());
+    REQUIRE(editor->showsOutputScale());
 
     DynamicObject state;
     host.appendAutomationState(state);
@@ -3092,6 +3092,49 @@ TEST_CASE("Spectral Trimesh range is visible and edits as one undo transaction",
     REQUIRE(presentation.immediateRefreshes == 1);
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "range") == "0.5");
+}
+
+TEST_CASE("Time Trimesh gain is visible and edits as one undo transaction",
+        "[cycle-v2][editor][trimesh][gain]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    resources.activeTrimesh = &widget;
+    resources.trimeshDomain = PortDomain::TimeSignal;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+
+    REQUIRE(host.bind(
+            document.graph().findNode("mesh"),
+            { 0, 0, 900, 620 },
+            document.revision()));
+    auto* editor = dynamic_cast<TrimeshExpandedEditorComponent*>(host.component());
+    REQUIRE(editor != nullptr);
+    REQUIRE(editor->showsOutputScale());
+    REQUIRE(editor->outputScaleValue() == Catch::Approx(0.5f));
+
+    REQUIRE(commands.beginNodeParameterEdit("mesh", "gain", "Gain", 0.6f));
+    REQUIRE(commands.updateNodeParameterEditValue(0.7f));
+    commands.endNodeParameterEdit();
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "gain") == "0.700000");
+    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "gain") == "0.5");
 }
 
 TEST_CASE("Spectral Trimesh mode uses the shared segmented selector",

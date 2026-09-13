@@ -289,8 +289,8 @@ public:
         switch (kind) {
         case TrimeshExpandedHitRegionKind::MorphControl:
             return "trimeshMorphRail";
-        case TrimeshExpandedHitRegionKind::SpectralRange:
-            return "trimeshSpectralRange";
+        case TrimeshExpandedHitRegionKind::OutputScale:
+            return "trimeshOutputScale";
         case TrimeshExpandedHitRegionKind::PrimaryAxis:
             return "trimeshPrimaryAxis";
         case TrimeshExpandedHitRegionKind::LinkToggle:
@@ -461,11 +461,14 @@ public:
 
             const auto* trimeshEditor = dynamic_cast<const TrimeshExpandedEditorComponent*>(
                     editorComponent);
-            const bool showSpectralRange = trimeshEditor != nullptr
-                    && trimeshEditor->showsSpectralRange();
+            const bool showOutputScale = trimeshEditor != nullptr
+                    && trimeshEditor->showsOutputScale();
             for (const auto& region : TrimeshWidget::expandedControlHitRegions(
                     content,
-                    showSpectralRange)) {
+                    showOutputScale,
+                    trimeshEditor != nullptr
+                            ? trimeshEditor->outputScaleParameterId()
+                            : "range")) {
                 const String kind = trimeshHitRegionKind(region.kind);
                 const String suffix = region.parameterId.isNotEmpty() ? region.parameterId : region.axisValue;
                 const Rectangle<float> targetBounds =

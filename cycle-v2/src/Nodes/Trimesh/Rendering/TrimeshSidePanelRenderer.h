@@ -32,9 +32,9 @@ public:
             const std::vector<TrimeshCubePreviewVertex>& cubeVertices,
             const std::vector<TrimeshVertexParameter>& parameters,
             const std::array<juce::String, 6>& guideAttachmentLabels,
-            bool showSpectralRange,
-            PortDomain spectralDomain,
-            float spectralRange);
+            bool showOutputScale,
+            PortDomain outputDomain,
+            float outputScale);
     static void drawMorphCubePreview(
             juce::Graphics& g,
             juce::Rectangle<float> area,
@@ -55,11 +55,11 @@ public:
 
     static juce::Rectangle<float> morphCubeBounds(
             juce::Rectangle<float> sideArea,
-            bool showSpectralRange = false);
+            bool showOutputScale = false);
     static juce::Rectangle<float> morphRailBounds(
             juce::Rectangle<float> sideArea,
             int axisIndex,
-            bool showSpectralRange = false);
+            bool showOutputScale = false);
     static juce::Rectangle<float> morphMarkerBounds(
             juce::Rectangle<float> rail,
             float value);
@@ -69,16 +69,16 @@ public:
     static juce::Rectangle<float> primaryAxisBounds(
             juce::Rectangle<float> sideArea,
             int axisIndex,
-            bool showSpectralRange = false);
+            bool showOutputScale = false);
     static juce::Rectangle<float> linkToggleBounds(
             juce::Rectangle<float> sideArea,
             int axisIndex,
-            bool showSpectralRange = false);
-    static juce::Rectangle<float> spectralRangeRowBounds(juce::Rectangle<float> sideArea);
-    static juce::Rectangle<float> spectralRangeRailBounds(juce::Rectangle<float> sideArea);
+            bool showOutputScale = false);
+    static juce::Rectangle<float> outputScaleRowBounds(juce::Rectangle<float> sideArea);
+    static juce::Rectangle<float> outputScaleRailBounds(juce::Rectangle<float> sideArea);
     static juce::Rectangle<float> vertexParameterPanelBounds(
             juce::Rectangle<float> sideArea,
-            bool showSpectralRange = false);
+            bool showOutputScale = false);
     static juce::Rectangle<float> vertexParameterRowBounds(
             juce::Rectangle<float> parameterArea,
             int parameterIndex,

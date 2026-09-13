@@ -6,7 +6,7 @@
 
 namespace CycleV2 {
 
-class SpectralRangeControlRenderer {
+class OutputScaleControlRenderer {
 public:
     static juce::Rectangle<float> labelBounds(
             juce::Rectangle<float> row,

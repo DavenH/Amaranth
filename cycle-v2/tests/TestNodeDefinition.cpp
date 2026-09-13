@@ -161,11 +161,17 @@ TEST_CASE("Required audio graph nodes cannot be duplicated or removed",
 
 TEST_CASE("Trimesh owns the spectral range parameter", "[cycle-v2][graph][definitions]") {
     const Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    const auto gain = std::find_if(
+            node.parameters.begin(),
+            node.parameters.end(),
+            [](const NodeParameter& parameter) { return parameter.id == "gain"; });
     const auto range = std::find_if(
             node.parameters.begin(),
             node.parameters.end(),
             [](const NodeParameter& parameter) { return parameter.id == "range"; });
 
+    REQUIRE(gain != node.parameters.end());
+    REQUIRE(gain->value == "0.5");
     REQUIRE(range != node.parameters.end());
     REQUIRE(range->value == "0.5");
 }

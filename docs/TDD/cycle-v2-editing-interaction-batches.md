@@ -85,6 +85,29 @@ path.
   window owns title and command presentation. Automation exposes the same
   document state for regression tests.
 
+## Trimesh Output-Scale Contract
+
+- The existing lower range rail is the shared Trimesh output-scale affordance.
+  Spectral magnitude and phase retain their mature `range` mapping and
+  Range/Width labels. A time-domain Trimesh binds the same rail to normalized
+  `gain`, labels it Gain, and uses `CycleDsp::outputGain`; 0.5 remains unity.
+- The parameter edit continues through `NodeEditorCommandService` and
+  `GraphCommandDispatcher` as one transient gesture and one undo transaction.
+  `TrimeshConfiguration::gain` is the existing runtime application point, so
+  no second scaling algorithm or render traversal is introduced.
+
+### Completion Evidence
+
+- The shared editor control and automation hit region are named Output Scale;
+  only their domain binding and visible label vary.
+- Focused definition, DSP configuration, editor gesture, and undo tests pass
+  for the time-domain `gain` binding while the existing spectral `range`
+  contract remains covered.
+- The editor sequence test publishes two values in one gesture before commit
+  and undo. The native time-Trimesh fixture performs the pointer gesture,
+  verifies the resulting output-scale value, undoes to unity, and captures
+  `/private/tmp/cycle-v2-time-trimesh-gain.png` for production-size review.
+
 ## Trimesh Default Morph Contract
 
 - `PreviewPitchResolver::defaultMidiNote` owns the preview key, and

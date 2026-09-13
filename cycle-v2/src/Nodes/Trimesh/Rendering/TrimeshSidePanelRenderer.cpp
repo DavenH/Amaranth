@@ -3,7 +3,7 @@
 #include <cmath>
 #include <limits>
 
-#include "Nodes/Trimesh/Rendering/SpectralRangeControlRenderer.h"
+#include "Nodes/Trimesh/Rendering/OutputScaleControlRenderer.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/Editors/PropertyControls.h"
@@ -131,42 +131,42 @@ bool usesWideColumnLayout(Rectangle<float> sideArea) {
     return sideInnerBounds(sideArea).getWidth() >= kWideLayoutMinimumWidth;
 }
 
-float morphControlsHeight(bool showSpectralRange) {
+float morphControlsHeight(bool showOutputScale) {
     const float morphHeight = kMorphHeaderH
             + kMorphTopGap
             + 3.f * kMorphRowHeight
             + 2.f * 5.f;
-    return showSpectralRange
+    return showOutputScale
             ? morphHeight + kRangeSectionGap + kMorphHeaderH + kRangeTopGap + kRangeRowHeight
             : morphHeight;
 }
 
-float upperPanelHeight(Rectangle<float> sideArea, bool showSpectralRange) {
+float upperPanelHeight(Rectangle<float> sideArea, bool showOutputScale) {
     const auto inner = sideInnerBounds(sideArea);
     const float desired = jlimit(150.f, 240.f, inner.getHeight() * 0.58f);
     const float available = inner.getHeight()
             - kVertexGap
-            - morphControlsHeight(showSpectralRange);
+            - morphControlsHeight(showOutputScale);
     return jmax(110.f, jmin(desired, available));
 }
 
-Rectangle<float> upperPanelBounds(Rectangle<float> sideArea, bool showSpectralRange) {
+Rectangle<float> upperPanelBounds(Rectangle<float> sideArea, bool showOutputScale) {
     auto inner = sideInnerBounds(sideArea);
-    return inner.removeFromTop(upperPanelHeight(sideArea, showSpectralRange));
+    return inner.removeFromTop(upperPanelHeight(sideArea, showOutputScale));
 }
 
-Rectangle<float> vertexParameterAreaBounds(Rectangle<float> sideArea, bool showSpectralRange) {
+Rectangle<float> vertexParameterAreaBounds(Rectangle<float> sideArea, bool showOutputScale) {
     if (usesWideColumnLayout(sideArea)) {
         auto inner = sideInnerBounds(sideArea);
         const float availableHeight = inner.getHeight()
                 - kVertexGap
-                - morphControlsHeight(showSpectralRange);
+                - morphControlsHeight(showOutputScale);
         return inner.removeFromTop(jmin(
                 kWideVertexPanelHeight,
                 jmax(110.f, availableHeight)));
     }
 
-    auto upper = upperPanelBounds(sideArea, showSpectralRange);
+    auto upper = upperPanelBounds(sideArea, showOutputScale);
     const float availableWidth = jmax(0.f, upper.getWidth() - kColumnGap);
     const float desiredWidth = jlimit(
             kVertexPanelMinWidth,
@@ -175,35 +175,35 @@ Rectangle<float> vertexParameterAreaBounds(Rectangle<float> sideArea, bool showS
     return upper.removeFromRight(jmin(availableWidth, desiredWidth));
 }
 
-Rectangle<float> lowerControlsBounds(Rectangle<float> sideArea, bool showSpectralRange) {
+Rectangle<float> lowerControlsBounds(Rectangle<float> sideArea, bool showOutputScale) {
     auto lower = sideInnerBounds(sideArea);
-    const Rectangle<float> vertex = vertexParameterAreaBounds(sideArea, showSpectralRange);
+    const Rectangle<float> vertex = vertexParameterAreaBounds(sideArea, showOutputScale);
     lower.removeFromTop(vertex.getHeight() + kVertexGap);
     return lower;
 }
 
-Rectangle<float> cubeStackBounds(Rectangle<float> sideArea, bool showSpectralRange) {
+Rectangle<float> cubeStackBounds(Rectangle<float> sideArea, bool showOutputScale) {
     if (usesWideColumnLayout(sideArea)) {
-        auto lower = lowerControlsBounds(sideArea, showSpectralRange);
+        auto lower = lowerControlsBounds(sideArea, showOutputScale);
         const float morphWidth = lower.getWidth() * kWideMorphPanelWidthRatio;
         lower.removeFromLeft(morphWidth + kColumnGap);
         return lower;
     }
 
-    auto upper = upperPanelBounds(sideArea, showSpectralRange);
-    const Rectangle<float> vertex = vertexParameterAreaBounds(sideArea, showSpectralRange);
+    auto upper = upperPanelBounds(sideArea, showOutputScale);
+    const Rectangle<float> vertex = vertexParameterAreaBounds(sideArea, showOutputScale);
     upper.removeFromRight(vertex.getWidth() + kColumnGap);
     return upper;
 }
 
-Rectangle<float> morphControlsBounds(Rectangle<float> sideArea, bool showSpectralRange) {
+Rectangle<float> morphControlsBounds(Rectangle<float> sideArea, bool showOutputScale) {
     if (usesWideColumnLayout(sideArea)) {
-        auto lower = lowerControlsBounds(sideArea, showSpectralRange);
+        auto lower = lowerControlsBounds(sideArea, showOutputScale);
         return lower.removeFromLeft(lower.getWidth() * kWideMorphPanelWidthRatio);
     }
 
     auto inner = sideInnerBounds(sideArea);
-    inner.removeFromTop(upperPanelHeight(sideArea, showSpectralRange) + kVertexGap);
+    inner.removeFromTop(upperPanelHeight(sideArea, showOutputScale) + kVertexGap);
     return inner;
 }
 
@@ -241,8 +241,8 @@ Path cubeFacePath(const std::array<Point<float>, 8>& points, int faceIndex) {
 Rectangle<float> axisRowBounds(
         Rectangle<float> sideArea,
         int axisIndex,
-        bool showSpectralRange) {
-    auto controls = morphControlsBounds(sideArea, showSpectralRange);
+        bool showOutputScale) {
+    auto controls = morphControlsBounds(sideArea, showOutputScale);
     controls.removeFromTop(kMorphHeaderH + kMorphTopGap);
 
     return {
@@ -373,11 +373,11 @@ void drawPrimaryAxisButtons(
         Graphics& g,
         Rectangle<float> sideArea,
         const std::array<TrimeshSidePanelRenderer::AxisState, 3>& axes,
-        bool showSpectralRange) {
+        bool showOutputScale) {
     for (int i = 0; i < (int) axes.size(); ++i) {
         const auto& axis = axes[(size_t) i];
         const Rectangle<float> button = TrimeshSidePanelRenderer::primaryAxisBounds(
-                sideArea, i, showSpectralRange);
+                sideArea, i, showOutputScale);
 
         g.setColour(axis.colour.withAlpha(axis.primary ? 0.42f : 0.055f));
         g.fillRoundedRectangle(button, CanvasChromeMetrics::controlCornerRadius);
@@ -402,11 +402,11 @@ void drawLinkRow(
         Graphics& g,
         Rectangle<float> sideArea,
         const std::array<TrimeshSidePanelRenderer::AxisState, 3>& axes,
-        bool showSpectralRange) {
+        bool showOutputScale) {
     for (int i = 0; i < (int) axes.size(); ++i) {
         const auto& axis = axes[(size_t) i];
         const Rectangle<float> toggle = TrimeshSidePanelRenderer::linkToggleBounds(
-                sideArea, i, showSpectralRange);
+                sideArea, i, showOutputScale);
 
         paintPropertyLinkToggle(g, toggle, axis.colour, axis.linked);
     }
@@ -421,12 +421,12 @@ void TrimeshSidePanelRenderer::drawSidePanel(
         const std::vector<TrimeshCubePreviewVertex>& cubeVertices,
         const std::vector<TrimeshVertexParameter>& parameters,
         const std::array<String, 6>& guideAttachmentLabels,
-        bool showSpectralRange,
-        PortDomain spectralDomain,
-        float spectralRange) {
-    auto morphControls = morphControlsBounds(area, showSpectralRange);
+        bool showOutputScale,
+        PortDomain outputDomain,
+        float outputScale) {
+    auto morphControls = morphControlsBounds(area, showOutputScale);
 
-    Rectangle<float> cube = morphCubeBounds(area, showSpectralRange);
+    Rectangle<float> cube = morphCubeBounds(area, showOutputScale);
     drawMorphCubePreview(g, cube, axes, cubeVertices);
 
     paintPropertyGroupLabel(
@@ -436,28 +436,28 @@ void TrimeshSidePanelRenderer::drawSidePanel(
 
     drawMorphColumnHeaders(
             g,
-            axisRowBounds(area, 0, showSpectralRange),
-            primaryAxisBounds(area, 0, showSpectralRange),
-            linkToggleBounds(area, 0, showSpectralRange));
+            axisRowBounds(area, 0, showOutputScale),
+            primaryAxisBounds(area, 0, showOutputScale),
+            linkToggleBounds(area, 0, showOutputScale));
 
     for (int i = 0; i < (int) axes.size(); ++i) {
         drawAxisSlider(
                 g,
-                axisRowBounds(area, i, showSpectralRange),
-                morphRailBounds(area, i, showSpectralRange),
+                axisRowBounds(area, i, showOutputScale),
+                morphRailBounds(area, i, showOutputScale),
                 axes[(size_t) i]);
     }
 
-    drawPrimaryAxisButtons(g, area, axes, showSpectralRange);
-    drawLinkRow(g, area, axes, showSpectralRange);
+    drawPrimaryAxisButtons(g, area, axes, showOutputScale);
+    drawLinkRow(g, area, axes, showOutputScale);
     drawVertexParameters(
             g,
-            vertexParameterPanelBounds(area, showSpectralRange),
+            vertexParameterPanelBounds(area, showOutputScale),
             parameters,
             guideAttachmentLabels);
 
-    if (showSpectralRange) {
-        const Rectangle<float> rangeRow = spectralRangeRowBounds(area);
+    if (showOutputScale) {
+        const Rectangle<float> rangeRow = outputScaleRowBounds(area);
         const Rectangle<float> divider(
                 rangeRow.getX(),
                 rangeRow.getY() - kMorphHeaderH - kMorphTopGap,
@@ -469,12 +469,12 @@ void TrimeshSidePanelRenderer::drawSidePanel(
                 divider.getCentreY() - 0.5f,
                 divider.getWidth(),
                 1.f));
-        SpectralRangeControlRenderer::draw(
+        OutputScaleControlRenderer::draw(
                 g,
                 rangeRow,
-                spectralRangeRailBounds(area),
-                spectralDomain,
-                spectralRange);
+                outputScaleRailBounds(area),
+                outputDomain,
+                outputScale);
     }
 }
 
@@ -734,15 +734,15 @@ void TrimeshSidePanelRenderer::drawMorphColumnHeaders(
 
 Rectangle<float> TrimeshSidePanelRenderer::morphCubeBounds(
         Rectangle<float> sideArea,
-        bool showSpectralRange) {
-    return cubeStackBounds(sideArea, showSpectralRange).reduced(0.f, 0.f);
+        bool showOutputScale) {
+    return cubeStackBounds(sideArea, showOutputScale).reduced(0.f, 0.f);
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::morphRailBounds(
         Rectangle<float> sideArea,
         int axisIndex,
-        bool showSpectralRange) {
-    auto row = axisRowBounds(sideArea, axisIndex, showSpectralRange);
+        bool showOutputScale) {
+    auto row = axisRowBounds(sideArea, axisIndex, showOutputScale);
     row.removeFromLeft(kAxisLabelW + 10.f);
     row.removeFromRight(kAxisButtonSize * 2.f + kRowButtonGap * 3.f + 6.f);
     return row.withSizeKeepingCentre(jmax(36.f, row.getWidth()), 7.f);
@@ -764,8 +764,8 @@ Rectangle<float> TrimeshSidePanelRenderer::morphColumnHeaderBounds(
 Rectangle<float> TrimeshSidePanelRenderer::primaryAxisBounds(
         Rectangle<float> sideArea,
         int axisIndex,
-        bool showSpectralRange) {
-    auto row = axisRowBounds(sideArea, axisIndex, showSpectralRange);
+        bool showOutputScale) {
+    auto row = axisRowBounds(sideArea, axisIndex, showOutputScale);
     return {
             row.getRight() - kAxisButtonSize * 2.f - kRowButtonGap * 2.f,
             row.getCentreY() - kAxisButtonSize * 0.5f,
@@ -777,8 +777,8 @@ Rectangle<float> TrimeshSidePanelRenderer::primaryAxisBounds(
 Rectangle<float> TrimeshSidePanelRenderer::linkToggleBounds(
         Rectangle<float> sideArea,
         int axisIndex,
-        bool showSpectralRange) {
-    auto row = axisRowBounds(sideArea, axisIndex, showSpectralRange);
+        bool showOutputScale) {
+    auto row = axisRowBounds(sideArea, axisIndex, showOutputScale);
     return {
             row.getRight() - kAxisButtonSize - kRowButtonGap,
             row.getCentreY() - kAxisButtonSize * 0.5f,
@@ -787,7 +787,7 @@ Rectangle<float> TrimeshSidePanelRenderer::linkToggleBounds(
     };
 }
 
-Rectangle<float> TrimeshSidePanelRenderer::spectralRangeRowBounds(Rectangle<float> sideArea) {
+Rectangle<float> TrimeshSidePanelRenderer::outputScaleRowBounds(Rectangle<float> sideArea) {
     const Rectangle<float> lastMorph = axisRowBounds(sideArea, 2, true);
     const float y = lastMorph.getBottom()
             + kRangeSectionGap
@@ -801,8 +801,8 @@ Rectangle<float> TrimeshSidePanelRenderer::spectralRangeRowBounds(Rectangle<floa
     };
 }
 
-Rectangle<float> TrimeshSidePanelRenderer::spectralRangeRailBounds(Rectangle<float> sideArea) {
-    auto row = spectralRangeRowBounds(sideArea);
+Rectangle<float> TrimeshSidePanelRenderer::outputScaleRailBounds(Rectangle<float> sideArea) {
+    auto row = outputScaleRowBounds(sideArea);
     row.removeFromLeft(kAxisLabelW + 10.f);
     row.removeFromRight(8.f);
     return {
@@ -815,8 +815,8 @@ Rectangle<float> TrimeshSidePanelRenderer::spectralRangeRailBounds(Rectangle<flo
 
 Rectangle<float> TrimeshSidePanelRenderer::vertexParameterPanelBounds(
         Rectangle<float> sideArea,
-        bool showSpectralRange) {
-    return vertexParameterAreaBounds(sideArea, showSpectralRange);
+        bool showOutputScale) {
+    return vertexParameterAreaBounds(sideArea, showOutputScale);
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRowBounds(

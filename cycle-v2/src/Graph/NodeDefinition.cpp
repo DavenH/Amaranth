@@ -456,6 +456,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                               ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue) },
                     { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }, {
                             boolean("enabled", "Enabled", true, dsp | presentation),
+                            number("gain", "Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("range", "Range", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             choice("spectralMode", "Spectral Mode", "auto",
                                     { "auto", "additive", "multiplicative" }, graph | dsp),
