@@ -1,0 +1,54 @@
+{
+    "schema": "cycle-v1-v2-audio-equivalence.v1",
+    "status": "diagnostic",
+    "v1": {
+        "factoryPreset": "accoustic",
+        "sourceDocument": "cycle/content/presets/accoustic.cyc",
+        "sha256": "376f31927170cca9e3679cb5305f9de0147ae32d8e90e094ba510c630a02e846"
+    },
+    "v2": {
+        "graph": "cycle-v2/content/presets/accoustic.cyclegraph",
+        "sha256": "96b2e966abd50fb22fa8cc1f1771c95c6c9138c98ca0933b1f21a71fbb92f338",
+        "renderOverrides": {
+            "voiceDurationSeconds": 1.3467711210250854
+        }
+    },
+    "translation": {
+        "midiNoteOffset": 12,
+        "legacyMidiReferenceOffset": -12,
+        "v1MasterGain": 1.409889817237854,
+        "v2OutputGainUnitValue": 0.557251908,
+        "v2OutputHeadroom": 0.125,
+        "timeLayer": "timeLayer1",
+        "magnitudeLayer": "magnitudeLayer1 -> magnitudeLayer1Process",
+        "phaseLayer": "phaseLayer1 -> phaseLayer1Process",
+        "volumeEnvelope": "volumeEnvelope when active",
+        "scratchEnvelope": "scratchEnvelope when active",
+        "morph": "morph",
+        "knownRuntimeGaps": [
+            "The 48 kHz full global-effect render exceeds the spectral threshold because Reverb accumulates the remaining upstream numerical residual",
+            "Evolving raster coordinates retain sub-1e-7 float differences after matching control-frame frontiers"
+        ],
+        "constantGainPolicy": "Cycle1 master gain maps to Output; Cycle2 fixed headroom remains separate"
+    },
+    "thresholds": {
+        "correlationMin": 0.98,
+        "gainMatchedResidualMax": 0.2,
+        "spectrumRmseDbMax": 6.0,
+        "cyclogramMeanRowDifferenceMax": 0.2
+    },
+    "effectBindings": {
+        "ir": {
+            "v1Area": "AreaImpulse",
+            "v2Node": "impulseResponse"
+        },
+        "delay": {
+            "v1Area": "AreaDelay",
+            "v2Node": "delay"
+        },
+        "reverb": {
+            "v1Area": "AreaReverb",
+            "v2Node": "reverb"
+        }
+    }
+}

@@ -1,6 +1,6 @@
 {
     "schema": "cycle-v1-v2-audio-equivalence.v1",
-    "status": "verified",
+    "status": "diagnostic",
     "v1": {
         "factoryPreset": "simple-bass",
         "sourceDocument": "cycle/content/presets/simple-bass.cyc",
@@ -8,15 +8,15 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/simple-bass.cyclegraph",
-        "sha256": "3b08c4a575362f53560fb7382ee8b0301956312e3fb19dc2bb2a47265a4a5810",
+        "sha256": "2673f3595da2fd7812ece87b1ebe334a94a2172f01b13c24fc3146dfb306a698",
         "renderOverrides": {
-            "voiceDurationSeconds": 0.24360341021593185
+            "voiceDurationSeconds": 0.2436033934354782
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 0.9773594682052107,
+        "v1MasterGain": 0.9773595333099365,
         "v2OutputGainUnitValue": 0.496183206,
         "v2OutputHeadroom": 0.125,
         "coverage": [
@@ -28,7 +28,9 @@
         ],
         "determinism": "pitch and scratch envelopes, spectral phase, effects, unison, and guide noise are disabled",
         "inputValidation": "regenerated from a direct Cycle 1 canonical file export on 2026-09-09",
-        "knownRuntimeGaps": [],
+        "knownRuntimeGaps": [
+            "Cycle 1 MIDI 48 selected a different floating-point payload on a fresh repeat during the 2026-09-12 admission recheck"
+        ],
         "constantGainPolicy": "Cycle1 master gain maps to Output; Cycle2 fixed headroom remains separate"
     },
     "thresholds": {

@@ -158,6 +158,45 @@ TEST_CASE("IR curve-to-kernel path preserves spectral golden samples without DC"
     }
 }
 
+TEST_CASE("IR curve-to-kernel preparation is independent of prior resampler state",
+        "[cycle-dsp][ir][repeatability]") {
+    constexpr int length = 128;
+    constexpr int oversampledLength = length * 2;
+    std::array<float, 2> waveX { -1.f, 2.f };
+    std::array<float, 2> waveY { -0.4f, 0.7f };
+    std::array<float, 2> slope {};
+    std::array<float, 2> area {};
+    std::array<float, length> first {};
+    std::array<float, length> second {};
+    std::array<float, oversampledLength> scratch {};
+
+    Rasterization::WaveformBuffers waveform(
+            { waveX.data(), (int) waveX.size() },
+            { waveY.data(), (int) waveY.size() },
+            {},
+            { slope.data(), (int) slope.size() },
+            { area.data(), (int) area.size() },
+            0,
+            1);
+    Oversampler oversampler(8);
+    oversampler.setOversampleFactor(2);
+    oversampler.setMemoryBuffer({ scratch.data(), (int) scratch.size() });
+    const Rasterization::SamplerView sampler(waveform, true);
+
+    CycleDsp::rasterizeIrImpulse(
+            sampler,
+            { first.data(), length },
+            oversampler,
+            CycleDsp::irDomainPadding);
+    CycleDsp::rasterizeIrImpulse(
+            sampler,
+            { second.data(), length },
+            oversampler,
+            CycleDsp::irDomainPadding);
+
+    REQUIRE(first == second);
+}
+
 TEST_CASE("IR frequency prefilter removes DC at every positive cutoff",
         "[cycle-dsp][ir][high-pass][dc]") {
     constexpr int length = 128;

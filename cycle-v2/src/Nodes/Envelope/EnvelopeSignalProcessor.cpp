@@ -206,7 +206,7 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
         const double sampleRateIncrement = context.timing.sampleRate > 0.
                 ? 1. / context.timing.sampleRate
                 : 0.;
-        const float routedTimeIncrement = current->volumePurpose
+        const double routedTimeIncrement = current->volumePurpose
                         && voice.controls.normalizedVolumeEnvelopeTimeIncrement > 0.f
                 ? voice.controls.normalizedVolumeEnvelopeTimeIncrement
                 : voice.controls.normalizedVoiceTimeIncrement;

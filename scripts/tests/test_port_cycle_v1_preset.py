@@ -149,6 +149,8 @@ class PortCycleV1PresetTest(unittest.TestCase):
         converted = port_cycle_v1_preset.convert(source)
         nodes = {entry["id"]: entry for entry in converted["nodes"]}
 
+        self.assertEqual(nodes["voice"]["parameters"]["voiceLength"], 0.5)
+        self.assertEqual(nodes["voice"]["parameters"]["controlInterval"], "256")
         self.assertTrue(nodes["timeLayer1"]["parameters"]["enabled"])
         self.assertFalse(nodes["timeLayer2"]["parameters"]["enabled"])
         self.assertFalse(nodes["magnitudeLayer2"]["parameters"]["enabled"])
@@ -163,6 +165,27 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertEqual(nodes["magnitudeOp1"]["kind"], "add")
         self.assertEqual(nodes["magnitudeOp2"]["kind"], "multiply")
         self.assertEqual(nodes["phaseOp1"]["kind"], "add")
+
+    def test_converter_preserves_full_voice_length_precision(self):
+        source = convertible_source()
+        source["preset"]["oscControls"]["knobs"][2] = 0.474137931
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {entry["id"]: entry for entry in converted["nodes"]}
+
+        self.assertEqual(
+            nodes["voice"]["parameters"]["voiceLength"],
+            0.474137931,
+        )
+
+    def test_converter_translates_cycle_one_control_frequency_order(self):
+        source = convertible_source()
+        source["preset"]["settings"]["ControlFreq"] = 6
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {entry["id"]: entry for entry in converted["nodes"]}
+
+        self.assertEqual(nodes["voice"]["parameters"]["controlInterval"], "64")
 
     def test_converter_persists_cycle_one_guide_noise_seeds(self):
         self.assertEqual(
@@ -195,7 +218,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertNotIn("volumeEnvelope1", nodes)
         self.assertNotIn("volumeMultiply", nodes)
 
-    def test_static_envelopes_keep_red_blue_modulation_without_a_time_input(self):
+    def test_active_envelopes_preserve_the_legacy_zero_cross_section(self):
         source = convertible_source()
         volume = {
             "properties": {"active": True, "dynamic": False},
@@ -213,14 +236,25 @@ class PortCycleV1PresetTest(unittest.TestCase):
         converted = port_cycle_v1_preset.convert(source)
         nodes = {entry["id"]: entry for entry in converted["nodes"]}
 
-        self.assertNotIn("staticEnvelopeMorph", nodes)
+        self.assertEqual(
+            nodes["legacyEnvelopeMorph"]["parameters"],
+            {"source": "constant", "controller": 1, "constant": 0.0},
+        )
         self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["red"], 0.5)
         self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["blue"], 0.75)
+        self.assertEqual(
+            sorted(
+                edge["destPortId"]
+                for edge in converted["edges"]
+                if edge["sourceNodeId"] == "legacyEnvelopeMorph"
+            ),
+            ["blue", "red"],
+        )
 
         volume["properties"]["dynamic"] = True
         converted = port_cycle_v1_preset.convert(source)
         nodes = {entry["id"]: entry for entry in converted["nodes"]}
-        self.assertNotIn("staticEnvelopeMorph", nodes)
+        self.assertIn("legacyEnvelopeMorph", nodes)
         self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["red"], 0.5)
         self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["blue"], 0.75)
 
@@ -305,6 +339,27 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertEqual(node["portSides"], {"outputs": {"context": "bottom"}})
         self.assertNotEqual(node["parameters"]["octave"], 7)
         self.assertEqual(reconciled["probes"], existing["probes"])
+
+    def test_presentation_reconciliation_maps_legacy_envelope_ids(self):
+        converted = port_cycle_v1_preset.convert(convertible_source())
+        converted_nodes = {node["id"]: node for node in converted["nodes"]}
+        canonical_envelope = converted_nodes["volumeEnvelope1"]
+        existing = copy.deepcopy(converted)
+        existing_envelope = next(
+            node for node in existing["nodes"]
+            if node["id"] == "volumeEnvelope1")
+        existing_envelope["id"] = "volumeEnvelope"
+        existing_envelope["position"] = {"x": 2050.0, "y": 180.0}
+        existing_envelope["parameters"]["purpose"] = "pitch"
+
+        reconciled = port_cycle_v1_preset.preserve_presentation(
+            converted, existing)
+        nodes = {node["id"]: node for node in reconciled["nodes"]}
+        envelope = nodes["volumeEnvelope1"]
+
+        self.assertEqual(envelope["position"], {"x": 2050.0, "y": 180.0})
+        self.assertEqual(
+            envelope["parameters"], canonical_envelope["parameters"])
 
     def test_converter_preserves_legacy_inverse_velocity_blue_source(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
@@ -525,6 +580,31 @@ class PortCycleV1PresetTest(unittest.TestCase):
             "Cycle1 master gain maps to Output; Cycle2 fixed headroom remains separate",
         )
 
+    def test_equivalence_manifest_uses_engine_realized_control_values(self):
+        source = convertible_source()
+        source["preset"]["oscControls"]["knobs"][:3] = [
+            0.496183206,
+            0.5,
+            0.404580153,
+        ]
+        repository = Path(__file__).resolve().parents[2]
+
+        manifest = port_cycle_v1_preset.equivalence_manifest(
+            source,
+            repository / "cycle/content/presets/organ-2.cyc",
+            repository / "cycle-v2/content/presets/organ-2.cyclegraph",
+            "organ-2",
+        )
+
+        self.assertEqual(
+            manifest["v2"]["renderOverrides"]["voiceDurationSeconds"],
+            1.26698637008667,
+        )
+        self.assertEqual(
+            manifest["translation"]["v1MasterGain"],
+            0.9773595333099365,
+        )
+
     def test_missing_guide_properties_use_cycle_defaults(self):
         source = convertible_source()
         source["preset"]["meshLibrary"]["groups"][3]["layers"] = [{
@@ -634,7 +714,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
             for edge in converted["edges"]
         ))
 
-    def test_drawn_impulse_response_uses_the_shared_cycle_mapping(self):
+    def test_drawn_impulse_response_preserves_the_shared_cycle_length(self):
         source = convertible_source()
         source["preset"]["effects"]["ImpulseModeller"].update({
             "enabled": True,
@@ -653,11 +733,17 @@ class PortCycleV1PresetTest(unittest.TestCase):
 
         self.assertEqual(impulse["parameters"], {
             "enabled": True,
-            "size": 0.2,
+            "size": 1.0 / 7.0,
             "post": 0.3,
             "highPass": 0.4,
             "processingScope": "global",
         })
+
+    def test_impulse_response_size_is_canonicalized_to_a_power_of_two(self):
+        self.assertEqual(
+            port_cycle_v1_preset.translated_impulse_size(0.328),
+            2.0 / 7.0,
+        )
 
     def test_legacy_impulse_response_defaults_missing_high_pass(self):
         source = convertible_source()
@@ -757,9 +843,10 @@ class PortCycleV1PresetTest(unittest.TestCase):
             issues,
         )
 
-    def test_octave_translation_includes_legacy_midi_reference(self):
+    def test_octave_translation_matches_cycle_one_control_rounding(self):
         self.assertEqual(port_cycle_v1_preset.translated_octave(0.5), 0)
-        self.assertEqual(port_cycle_v1_preset.translated_octave(0.198473282), -2)
+        self.assertEqual(port_cycle_v1_preset.translated_octave(0.198473282), -1)
+        self.assertEqual(port_cycle_v1_preset.translated_octave(0.534351145), 1)
 
 
 if __name__ == "__main__":

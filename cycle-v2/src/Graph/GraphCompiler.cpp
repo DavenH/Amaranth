@@ -426,7 +426,13 @@ int dependencyNodeIndex(const GraphDependencyIndex& index, const String& nodeId)
     return found != index.nodeIndexById.end() ? found->second : -1;
 }
 
-void compileDependencyIndex(GraphExecutionPlan& plan) {
+std::vector<Edge> effectiveExecutionDependencies(
+        const NodeGraph& graph,
+        const GraphExecutionPlan& plan);
+
+void compileDependencyIndex(
+        const NodeGraph& graph,
+        GraphExecutionPlan& plan) {
     auto& index = plan.dependencyIndex;
     index.nodeIds = plan.nodeOrder;
     index.dependents.assign(index.nodeIds.size(), {});
@@ -459,8 +465,7 @@ void compileDependencyIndex(GraphExecutionPlan& plan) {
         }
     };
 
-    appendEdges(plan.signalEdges);
-    appendEdges(plan.attachments);
+    appendEdges(effectiveExecutionDependencies(graph, plan));
     appendEdges(plan.configurationAttachments);
 }
 
@@ -535,11 +540,18 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
         context.nodeId = node.id;
         context.startDomain = parameters.stringValue("domain", "waveform");
         context.octave = parameters.intValue("octave", 0);
+        context.voiceDurationSeconds = (float) CycleDsp::voiceLengthSeconds(
+                parameters.floatValue(
+                        "voiceLength",
+                        CycleDsp::voiceLengthUnitValue(1.0)));
         context.pitchSemitones = parameters.floatValue("pitch", 0.f);
         context.portamento = parameters.boolValue("portamento", false);
         context.oversampling = jmax(
                 1,
                 parameters.stringValue("oversampling", "1x").getIntValue());
+        context.controlIntervalSamples = jmax(
+                1,
+                parameters.stringValue("controlInterval", "16").getIntValue());
         context.defaultModulation = defaultModulation;
         auto unison = defaultUnison;
         context.unison = unison;
@@ -827,6 +839,25 @@ std::vector<Edge> effectiveExecutionDependencies(
         }
         dependencies.push_back(attachment);
     }
+    const auto globalInput = std::find_if(
+            graph.getNodes().begin(),
+            graph.getNodes().end(),
+            [](const Node& node) { return node.kind == NodeKind::GlobalInput; });
+    const auto voiceOutput = std::find_if(
+            graph.getNodes().begin(),
+            graph.getNodes().end(),
+            [](const Node& node) { return node.kind == NodeKind::VoiceOutput; });
+    if (globalInput != graph.getNodes().end()
+            && voiceOutput != graph.getNodes().end()) {
+        dependencies.push_back({
+                voiceOutput->id,
+                "time",
+                globalInput->id,
+                "time",
+                PortDomain::TimeSignal,
+                ConnectionKind::Signal
+        });
+    }
     return dependencies;
 }
 
@@ -880,7 +911,8 @@ void compileDefaultModulationInputs(
                         -1,
                         -1,
                         port.defaultModulationSlot,
-                        context->defaultModulation
+                        context->defaultModulation,
+                        context->octave * 12
                 });
             }
             step.inputs.push_back({
@@ -1268,7 +1300,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
         GraphAudioScopeCompiler::compileVoiceMixBoundary(
                 result.plan,
                 scopeAnalysis);
-        compileDependencyIndex(result.plan);
+        compileDependencyIndex(graph, result.plan);
         refreshSignalProbes(graph, result.plan);
         publishConfigurations(graph, result.plan.steps);
     }

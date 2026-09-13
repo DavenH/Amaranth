@@ -88,6 +88,7 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.replaceNodeParameters("voice", {
             { "domain", "Start Domain", "waveform" },
             { "octave", "Octave", "0" },
+            { "voiceLength", "Voice Length", "0.375" },
             { "pitch", "Pitch", "0" },
             { "portamento", "Portamento", "0" },
             { "oversampling", "Oversampling", "1x" }

@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 400.0 },
-            "parameters": { "domain": "waveform", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
+            "parameters": {
+                "domain": "waveform",
+                "octave": 0,
+                "voiceLength": 0.404580153,
+                "pitch": 0.0,
+                "portamento": false,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -49,6 +57,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
+                "spectralMode": "auto",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -102,7 +111,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 338.0, "y": 954.0 },
-            "parameters": {}
+            "parameters": { "gain": 0.5 }
         },
         {
             "id": "globalInput",

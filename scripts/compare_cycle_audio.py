@@ -208,7 +208,10 @@ def repeatability(reference_wav, repeat_wavs):
 def load_stage_capture(path):
     with path.open(encoding="utf-8") as source:
         manifest = json.load(source)
-    if manifest.get("schema") != "cycle-spectral-stage-capture.v1":
+    if manifest.get("schema") not in {
+            "cycle-spectral-stage-capture.v1",
+            "cycle-spectral-stage-capture.v2",
+    }:
         raise ValueError(f"Unsupported spectral stage capture schema: {path}")
 
     records = {}
@@ -313,12 +316,14 @@ def compare_stage_captures(reference_path, candidate_path):
                 "frameIndex": left["frameIndex"],
                 "frontier": left["frontier"],
                 "midiNote": left["midiNote"],
+                "laneIndex": left.get("laneIndex", 0),
             }
         if right is not None:
             comparison["v2"] = {
                 "frameIndex": right["frameIndex"],
                 "frontier": right["frontier"],
                 "midiNote": right["midiNote"],
+                "laneIndex": right.get("laneIndex", 0),
             }
         if left is not None and right is not None:
             comparison["primary"] = compare_stage_values(
@@ -371,6 +376,8 @@ def render_note(manifest, note, output_directory, arguments):
         capture_v2["stageCaptureFrameIndex"] = arguments.stage_frame_index
         capture_v1["stageCaptureOccurrenceIndex"] = arguments.stage_occurrence_index
         capture_v2["stageCaptureOccurrenceIndex"] = arguments.stage_occurrence_index
+        capture_v1["stageCaptureLaneIndex"] = arguments.stage_lane_index
+        capture_v2["stageCaptureLaneIndex"] = arguments.stage_lane_index
     v1_script = note_directory / "cycle-v1-automation.json"
     v2_script = note_directory / "cycle-v2-automation.json"
 
@@ -453,6 +460,7 @@ def render_note(manifest, note, output_directory, arguments):
                 repeat_capture.pop("stageCapturePath", None)
                 repeat_capture.pop("stageCaptureFrameIndex", None)
                 repeat_capture.pop("stageCaptureOccurrenceIndex", None)
+                repeat_capture.pop("stageCaptureLaneIndex", None)
             render_capture(
                 SCRIPT_DIR / wrapper,
                 note_directory / f"cycle-{engine}-repeat-{repeat}-automation.json",
@@ -561,6 +569,12 @@ def parse_arguments():
         type=int,
         default=0,
         help="zero-based repeated stage occurrence to capture within the selected frame",
+    )
+    parser.add_argument(
+        "--stage-lane-index",
+        type=int,
+        default=0,
+        help="zero-based Unison lane to capture with --capture-stages",
     )
     parser.add_argument("--no-fail", action="store_true")
     return parser.parse_args()

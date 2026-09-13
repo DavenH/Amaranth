@@ -1543,6 +1543,7 @@ TEST_CASE("Trimesh panel data source adapts node grid data to Panel3D columns", 
 }
 
 TEST_CASE("Trimesh Panel3D reads node-backed columns through lib data retriever", "[cycle-v2][nodes][trimesh]") {
+    ScopedJuceInitialiser_GUI juce;
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
@@ -1552,13 +1553,10 @@ TEST_CASE("Trimesh Panel3D reads node-backed columns through lib data retriever"
             {},
             {}
     };
-    SingletonRepo repo;
-    TrimeshNodeModel model;
-    TrimeshPanelDataSource source;
-    TrimeshPanel3D panel(&repo, source);
-
-    model.syncFromNode(node);
-    source.rebuild(model, 12, 4);
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(node, 12, 4);
+    auto& panel = bridge.getPanel3D();
+    auto& source = bridge.getDataSource();
 
     REQUIRE(panel.shouldDrawGrid());
     REQUIRE(panel.getColumns().size() == 4);

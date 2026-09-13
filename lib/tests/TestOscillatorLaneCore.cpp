@@ -57,6 +57,63 @@ TEST_CASE("Chained lane scheduling retains fractional cycle boundaries",
     REQUIRE(state.sampledFrontier == 401);
 }
 
+TEST_CASE("Control frame stride preserves the Cycle 1 cycle-clocked contract",
+        "[cycle-dsp][oscillator-lane][control-rate][parity]") {
+    REQUIRE(CycleDsp::OscillatorLaneCore::controlFrameStride(16, 168.5) == 1);
+    REQUIRE(CycleDsp::OscillatorLaneCore::controlFrameStride(256, 168.5) == 2);
+    REQUIRE(CycleDsp::OscillatorLaneCore::controlFrameStride(1024, 168.5) == 6);
+    REQUIRE(CycleDsp::OscillatorLaneCore::controlFrameStride(0, 168.5) == 1);
+    REQUIRE(CycleDsp::OscillatorLaneCore::controlFrameStride(256, 0.0) == 1);
+}
+
+TEST_CASE("Interpolated frame position preserves the Cycle 1 precision boundary",
+        "[cycle-dsp][oscillator-lane][interpolation][parity]") {
+    REQUIRE(CycleDsp::OscillatorLaneCore::interpolatedFramePortion(
+            true,
+            5,
+            4,
+            1000.0,
+            750.0,
+            500.0) == 0.25f);
+
+    const double futurePosition = 25575.57837117975;
+    const double lanePosition = 25322.469779209365;
+    const double frameInterval = 331.39172955174166;
+    const float legacyPortion = (float) (1.0
+            - (futurePosition - lanePosition) / (float) frameInterval);
+    const float doubleIntervalPortion = (float) (1.0
+            - (futurePosition - lanePosition) / frameInterval);
+    REQUIRE(legacyPortion != doubleIntervalPortion);
+    REQUIRE(CycleDsp::OscillatorLaneCore::interpolatedFramePortion(
+            false,
+            31,
+            2,
+            futurePosition,
+            lanePosition,
+            frameInterval) == legacyPortion);
+}
+
+TEST_CASE("Shared spectral scheduling preserves Cycle 1 lane saturation",
+        "[cycle-dsp][oscillator-lane][scheduling][parity]") {
+    REQUIRE_FALSE(CycleDsp::OscillatorLaneCore::sharedFrameSaturated(
+            false, 0, 0, 999.99, 1000.0));
+    REQUIRE(CycleDsp::OscillatorLaneCore::sharedFrameSaturated(
+            false, 0, 0, 1000.0, 1000.0));
+    REQUIRE(CycleDsp::OscillatorLaneCore::laneWithinSharedFrame(
+            false, 0, 0, 999.99, 1000.0));
+    REQUIRE_FALSE(CycleDsp::OscillatorLaneCore::laneWithinSharedFrame(
+            false, 0, 0, 1000.0, 1000.0));
+
+    REQUIRE_FALSE(CycleDsp::OscillatorLaneCore::sharedFrameSaturated(
+            true, 3, 4, 2000.0, 1000.0));
+    REQUIRE(CycleDsp::OscillatorLaneCore::sharedFrameSaturated(
+            true, 4, 4, 0.0, 1000.0));
+    REQUIRE(CycleDsp::OscillatorLaneCore::laneWithinSharedFrame(
+            true, 3, 4, 2000.0, 1000.0));
+    REQUIRE_FALSE(CycleDsp::OscillatorLaneCore::laneWithinSharedFrame(
+            true, 4, 4, 0.0, 1000.0));
+}
+
 TEST_CASE("Cyclic frame composition preserves the unshifted first cycle",
         "[cycle-dsp][oscillator-lane][cyclic-frame]") {
     float currentData[] { 10.f, 11.f, 12.f, 13.f, 14.f, 15.f, 16.f, 17.f };

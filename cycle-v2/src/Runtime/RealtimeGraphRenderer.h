@@ -31,6 +31,8 @@ public:
     struct Diagnostics {
         uint64_t callbackCount {};
         uint64_t graphRevision {};
+        size_t executionStepCount {};
+        size_t oscillatorRegionCount {};
         size_t activeVoiceCount {};
         size_t droppedMidiEvents {};
         float peak {};
@@ -76,6 +78,8 @@ public:
         return {
                 callbackCounter.load(std::memory_order_acquire),
                 activeRevision.load(std::memory_order_acquire),
+                activeExecutionStepCount.load(std::memory_order_acquire),
+                activeOscillatorRegionCount.load(std::memory_order_acquire),
                 activeVoices.load(std::memory_order_acquire),
                 events.droppedEventCount(),
                 outputPeak.load(std::memory_order_acquire),
@@ -129,7 +133,7 @@ private:
     size_t scheduledEventCount {};
     std::array<float, 8192> metricsScratch;
     uint64_t nextVoiceOrder {};
-    std::atomic<float> voiceDurationSeconds { 7.f };
+    std::atomic<float> voiceDurationOverrideSeconds {};
     double volumeEnvelopeClockSampleRate {};
     float outputGain { defaultOutputGain };
     SmoothedParameter graphOutputGain { 1.f };
@@ -141,6 +145,8 @@ private:
 
     std::atomic<uint64_t> callbackCounter {};
     std::atomic<uint64_t> activeRevision {};
+    std::atomic<size_t> activeExecutionStepCount {};
+    std::atomic<size_t> activeOscillatorRegionCount {};
     std::atomic<size_t> activeVoices {};
     std::atomic<float> outputPeak {};
     std::atomic<float> outputRms {};

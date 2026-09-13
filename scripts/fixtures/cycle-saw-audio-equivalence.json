@@ -1,6 +1,6 @@
 {
     "schema": "cycle-v1-v2-audio-equivalence.v1",
-    "status": "diagnostic",
+    "status": "verified",
     "v1": {
         "factoryPreset": "saw",
         "sourceDocument": "cycle/content/presets/saw.cyc",
@@ -8,15 +8,16 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/saw.cyclegraph",
-        "sha256": "0bd70f85dbe88c352c16ba717628a42f701ad69b9aabf2669857ae3d2c97df66",
+        "sha256": "8c384733dd457fb844aa24f9c2c930d9a1c71decf8b5d944c852e93367400800",
         "renderOverrides": {
-            "voiceDurationSeconds": 1.2669864718837067
+            "voiceDurationSeconds": 1.26698637008667
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 1.2288845278673892,
+        "v1MasterGain": 1.2288846969604492,
+        "v2OutputGainUnitValue": 0.534351145,
         "v2OutputHeadroom": 0.125,
         "coverage": [
             "timeLayer"

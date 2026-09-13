@@ -155,8 +155,8 @@ struct AudioVoiceControls {
     int highestNote { Constants::HighestMidiNote };
     float velocity { 1.f };
     float normalizedVoiceTime {};
-    float normalizedVoiceTimeIncrement {};
-    float normalizedVolumeEnvelopeTimeIncrement {};
+    double normalizedVoiceTimeIncrement {};
+    double normalizedVolumeEnvelopeTimeIncrement {};
     float channelPressure {};
     std::array<float, 128> controllers {};
 };

@@ -28,6 +28,15 @@ const GraphStepInput* inputForPort(
     return found != step.inputs.end() ? &*found : nullptr;
 }
 
+bool inputComesFromRegion(
+        const GraphStepInput* input,
+        const std::vector<bool>& regionSteps) {
+    return input != nullptr
+            && input->sourceStepIndex >= 0
+            && input->sourceStepIndex < (int) regionSteps.size()
+            && regionSteps[(size_t) input->sourceStepIndex];
+}
+
 }
 
 bool ChainedOscillatorRecipeRenderer::supports(
@@ -69,16 +78,13 @@ bool ChainedOscillatorRecipeRenderer::supports(
             }
             continue;
         }
-        const auto* left = inputForPort(step, 0);
-        const auto* right = inputForPort(step, 1);
-        if (left == nullptr
-                || right == nullptr
-                || left->sourceStepIndex < 0
-                || right->sourceStepIndex < 0
-                || left->sourceStepIndex >= (int) regionSteps.size()
-                || right->sourceStepIndex >= (int) regionSteps.size()
-                || !regionSteps[(size_t) left->sourceStepIndex]
-                || !regionSteps[(size_t) right->sourceStepIndex]) {
+        const bool leftInRegion = inputComesFromRegion(
+                inputForPort(step, 0), regionSteps);
+        const bool rightInRegion = inputComesFromRegion(
+                inputForPort(step, 1), regionSteps);
+        if ((step.audioRole == AudioModuleRole::Add && !leftInRegion && !rightInRegion)
+                || (step.audioRole == AudioModuleRole::Multiply
+                        && (!leftInRegion || !rightInRegion))) {
             return false;
         }
     }
@@ -150,9 +156,20 @@ bool ChainedOscillatorRecipeRenderer::prepare(
                     : OperationType::Multiply;
             const auto* left = inputForPort(step, 0);
             const auto* right = inputForPort(step, 1);
-            operation.leftInput = operationForStep[(size_t) left->sourceStepIndex];
-            operation.rightInput = operationForStep[(size_t) right->sourceStepIndex];
-            if (operation.leftInput < 0 || operation.rightInput < 0) {
+            const auto operationIndexForInput = [&](const GraphStepInput* input) {
+                return input != nullptr
+                                && input->sourceStepIndex >= 0
+                                && input->sourceStepIndex < (int) operationForStep.size()
+                        ? operationForStep[(size_t) input->sourceStepIndex]
+                        : -1;
+            };
+            operation.leftInput = operationIndexForInput(left);
+            operation.rightInput = operationIndexForInput(right);
+            if ((operation.type == OperationType::Add
+                        && operation.leftInput < 0
+                        && operation.rightInput < 0)
+                    || (operation.type == OperationType::Multiply
+                        && (operation.leftInput < 0 || operation.rightInput < 0))) {
                 return false;
             }
         }
@@ -256,13 +273,33 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
             continue;
         }
 
-        operationBuffer(operation.leftInput, 0, request.sampleCount).copyTo(outputLeft);
-        operationBuffer(operation.leftInput, 1, request.sampleCount).copyTo(outputRight);
         if (operation.type == OperationType::Pan) {
+            operationBuffer(operation.leftInput, 0, request.sampleCount).copyTo(outputLeft);
+            operationBuffer(operation.leftInput, 1, request.sampleCount).copyTo(outputRight);
             outputLeft.mul(operation.leftPan);
             outputRight.mul(operation.rightPan);
             continue;
         }
+        if (operation.type == OperationType::Add) {
+            outputLeft.zero();
+            outputRight.zero();
+            if (operation.leftInput >= 0) {
+                outputLeft.add(operationBuffer(
+                        operation.leftInput, 0, request.sampleCount));
+                outputRight.add(operationBuffer(
+                        operation.leftInput, 1, request.sampleCount));
+            }
+            if (operation.rightInput >= 0) {
+                outputLeft.add(operationBuffer(
+                        operation.rightInput, 0, request.sampleCount));
+                outputRight.add(operationBuffer(
+                        operation.rightInput, 1, request.sampleCount));
+            }
+            continue;
+        }
+
+        operationBuffer(operation.leftInput, 0, request.sampleCount).copyTo(outputLeft);
+        operationBuffer(operation.leftInput, 1, request.sampleCount).copyTo(outputRight);
         const auto rightLeft = operationBuffer(
                 operation.rightInput,
                 0,
@@ -271,13 +308,8 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
                 operation.rightInput,
                 1,
                 request.sampleCount);
-        if (operation.type == OperationType::Add) {
-            outputLeft.add(rightLeft);
-            outputRight.add(rightRight);
-        } else {
-            outputLeft.mul(rightLeft);
-            outputRight.mul(rightRight);
-        }
+        outputLeft.mul(rightLeft);
+        outputRight.mul(rightRight);
     }
 
     operationBuffer(outputOperation, 0, request.sampleCount).copyTo(left);

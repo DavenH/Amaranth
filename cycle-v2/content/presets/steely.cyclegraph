@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 400.0 },
-            "parameters": { "domain": "waveform", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
+            "parameters": {
+                "domain": "waveform",
+                "octave": 0,
+                "voiceLength": 0.290076336,
+                "pitch": 0.0,
+                "portamento": false,
+                "oversampling": "1x",
+                "controlInterval": "256"
+            }
         },
         {
             "id": "morph",
@@ -34,6 +42,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
+                "spectralMode": "auto",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -230,7 +239,7 @@
             "kind": "impulseResponse",
             "definitionVersion": 1,
             "position": { "x": 338.0, "y": 751.0 },
-            "parameters": { "enabled": true, "size": 0.28571, "post": 0.296, "highPass": 0.0, "processingScope": "global" },
+            "parameters": { "processingScope": "global", "enabled": true, "size": 0.142857143, "post": 0.296, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
@@ -330,6 +339,7 @@
             "definitionVersion": 1,
             "position": { "x": 642.0, "y": 751.0 },
             "parameters": {
+                "processingScope": "global",
                 "enabled": true,
                 "band1Gain": 0.5,
                 "band2Gain": 0.5,
@@ -340,8 +350,7 @@
                 "band2Frequency": 0.5,
                 "band3Frequency": 0.5,
                 "band4Frequency": 0.536,
-                "band5Frequency": 0.792,
-                "processingScope": "global"
+                "band5Frequency": 0.792
             }
         },
         {
@@ -356,7 +365,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 1210.0, "y": 751.0 },
-            "parameters": {}
+            "parameters": { "gain": 0.5 }
         },
         {
             "id": "globalInput",

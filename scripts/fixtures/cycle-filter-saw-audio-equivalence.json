@@ -8,15 +8,16 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/filter-saw.cyclegraph",
-        "sha256": "21cca59aeee7a2360f5c887308290ba5570ecc72fee31aa003941ebf8a565e5c",
+        "sha256": "89d7ffdf60f01bf3a3bc154e7151c0fc7673ccd99db48c71297676873d8bd80c",
         "renderOverrides": {
-            "voiceDurationSeconds": 0.47689543975042176
+            "voiceDurationSeconds": 0.47689545154571533
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 1.071117281493406,
+        "v1MasterGain": 1.0711175203323364,
+        "v2OutputGainUnitValue": 0.511450382,
         "v2OutputHeadroom": 0.125,
         "coverage": [
             "timeLayer",

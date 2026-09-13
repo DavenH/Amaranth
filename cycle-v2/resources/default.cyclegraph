@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 238.96552, "y": 420.0 },
-            "parameters": { "domain": "waveform", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
+            "parameters": {
+                "domain": "waveform",
+                "octave": 0,
+                "voiceLength": 0.375,
+                "pitch": 0.0,
+                "portamento": false,
+                "oversampling": "1x",
+                "controlInterval": "16"
+            }
         },
         {
             "id": "waveMesh",
@@ -17,6 +25,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
+                "spectralMode": "auto",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -161,6 +170,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
+                "spectralMode": "auto",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -308,6 +318,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
+                "spectralMode": "auto",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -456,7 +467,7 @@
             "kind": "waveshaper",
             "definitionVersion": 1,
             "position": { "x": 476.96552, "y": 1178.44824 },
-            "parameters": { "enabled": true, "pre": 0.5, "post": 0.5, "aaFactor": "1", "processingScope": "global" },
+            "parameters": { "processingScope": "global", "enabled": true, "pre": 0.5, "post": 0.5, "aaFactor": "1" },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
@@ -479,7 +490,7 @@
             "kind": "impulseResponse",
             "definitionVersion": 1,
             "position": { "x": 765.96552, "y": 1178.44824 },
-            "parameters": { "enabled": true, "size": 0.14286, "post": 0.5, "highPass": 0.5, "processingScope": "global" },
+            "parameters": { "processingScope": "global", "enabled": true, "size": 0.142857143, "post": 0.5, "highPass": 0.5 },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
@@ -508,7 +519,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 1632.0, "y": 159.99994 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -635,7 +646,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 290.96552, "y": 76.41379 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,

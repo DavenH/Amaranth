@@ -52,6 +52,23 @@ TEST_CASE("Demo graph validates", "[cycle-v2][graph]") {
     REQUIRE(GraphValidator().isValid(graph));
 }
 
+TEST_CASE("Boundary-free graph fragments retain legacy validation semantics",
+        "[cycle-v2][graph][audio-scope]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "wave", "out", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+
+    const auto issues = GraphValidator().validate(graph);
+    REQUIRE(std::none_of(issues.begin(), issues.end(), [](const auto& issue) {
+        return issue.code == GraphValidationCode::MissingRequiredNode;
+    }));
+}
+
 TEST_CASE("Demo graph exposes stable node kinds", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     const auto& nodes = graph.getNodes();

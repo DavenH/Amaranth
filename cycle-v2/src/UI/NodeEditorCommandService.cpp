@@ -193,6 +193,7 @@ void NodeEditorCommandService::endNodeParameterEdit() {
                     activeParameterField,
                     activeParameterFingerprint,
                     document.revision());
+            presentation.scheduleNodeEditorRefresh();
         } else {
             presentation.refreshNodeEditorPresentation();
         }

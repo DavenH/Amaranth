@@ -8,15 +8,15 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/shiny.cyclegraph",
-        "sha256": "02ce5dae869bdb069e4aee76372af3b87fc0246619f68a9bb3ca59d6bb7024ec",
+        "sha256": "a08c4062b4627b8e51e3e400e36e239fa7bf84d2ef43e953095e84f098801483",
         "renderOverrides": {
-            "voiceDurationSeconds": 7.004584673331117
+            "voiceDurationSeconds": 7.004583358764648
         }
     },
     "translation": {
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
-        "v1MasterGain": 0.9773594682052107,
+        "v1MasterGain": 0.9773595333099365,
         "v2OutputGainUnitValue": 0.496183206,
         "v2OutputHeadroom": 0.125,
         "coverage": [

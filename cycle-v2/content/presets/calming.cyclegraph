@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 633.0 },
-            "parameters": { "domain": "waveform", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
+            "parameters": {
+                "domain": "waveform",
+                "octave": 0,
+                "voiceLength": 0.404580153,
+                "pitch": 0.0,
+                "portamento": false,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -63,6 +71,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
+                "spectralMode": "auto",
                 "yellow": 0.0,
                 "red": 0.37383,
                 "blue": 0.0,
@@ -122,6 +131,7 @@
             "parameters": {
                 "enabled": true,
                 "range": 0.625,
+                "spectralMode": "auto",
                 "yellow": 0.0,
                 "red": 0.37383,
                 "blue": 0.0,
@@ -198,7 +208,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 1526.80005, "y": 817.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -319,7 +329,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 338.0, "y": 1187.0 },
-            "parameters": {}
+            "parameters": { "gain": 0.5 }
         },
         {
             "id": "globalInput",
@@ -334,6 +344,13 @@
             "definitionVersion": 1,
             "position": { "x": 2100.0, "y": 619.0 },
             "parameters": {}
+        },
+        {
+            "id": "legacyEnvelopeMorph",
+            "kind": "modulationSource",
+            "definitionVersion": 1,
+            "position": { "x": 1230.80005, "y": 817.0 },
+            "parameters": { "source": "constant", "controller": 1, "constant": 0.0 }
         }
     ],
     "guides": [],
@@ -351,7 +368,9 @@
         { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "volumeMultiply", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeEnvelope1", "sourcePortId": "env", "destNodeId": "volumeMultiply", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
+        { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "legacyEnvelopeMorph", "sourcePortId": "value", "destNodeId": "volumeEnvelope1", "destPortId": "red", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "legacyEnvelopeMorph", "sourcePortId": "value", "destNodeId": "volumeEnvelope1", "destPortId": "blue", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": []
 }

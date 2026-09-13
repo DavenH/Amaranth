@@ -74,6 +74,9 @@ public:
 
 private:
     void timerCallback() override;
+    bool publishAudioPlan(
+            const StandaloneAudioEngine::Status& status,
+            bool forcePublication);
     void layoutPerformanceKeyboard();
     void updateOutputMeter(const StandaloneAudioEngine::Status& status);
     var outputMeterStateForAutomation() const;

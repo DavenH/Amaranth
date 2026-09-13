@@ -9,6 +9,31 @@ namespace CycleV2 {
 
 using namespace juce;
 
+namespace {
+
+float voiceDurationSecondsFor(
+        const GraphExecutionPlan& plan,
+        float durationOverride) {
+    if (durationOverride > 0.f) {
+        return jmax(durationOverride, 0.001f);
+    }
+    if (plan.oscillatorRegions.empty()) {
+        return 1.f;
+    }
+    const String& contextNodeId = plan.oscillatorRegions.front().voiceContextNodeId;
+    const auto context = std::find_if(
+            plan.voiceContexts.begin(),
+            plan.voiceContexts.end(),
+            [&](const CompiledVoiceContext& candidate) {
+                return candidate.nodeId == contextNodeId;
+            });
+    return context != plan.voiceContexts.end()
+            ? jmax(context->voiceDurationSeconds, 0.001f)
+            : 1.f;
+}
+
+}
+
 RealtimeGraphRenderer::RealtimeGraphRenderer() {
     midiControls.prepare(maximumEventsPerChannel);
     for (auto& voice : voices) {
@@ -54,10 +79,16 @@ void RealtimeGraphRenderer::setPreparedGraph(PreparedGraph* graph) {
         graphOutputGain = nextGain;
     }
     activeRevision.store(graph == nullptr ? 0 : graph->revision, std::memory_order_release);
+    activeExecutionStepCount.store(
+            graph == nullptr ? 0 : graph->plan.steps.size(),
+            std::memory_order_release);
+    activeOscillatorRegionCount.store(
+            graph == nullptr ? 0 : graph->plan.oscillatorRegions.size(),
+            std::memory_order_release);
 }
 
 void RealtimeGraphRenderer::setVoiceDurationSeconds(float durationSeconds) {
-    voiceDurationSeconds.store(
+    voiceDurationOverrideSeconds.store(
             jmax(durationSeconds, 0.001f),
             std::memory_order_release);
 }
@@ -270,15 +301,19 @@ void RealtimeGraphRenderer::renderVoices(
         int frameCount,
         double sampleRate) {
     size_t activeCount = 0;
-    const float durationSeconds = voiceDurationSeconds.load(std::memory_order_acquire);
-    const float timeIncrement = sampleRate > 0.
-            ? 1.f / ((float) sampleRate * durationSeconds)
+    const float durationOverride = voiceDurationOverrideSeconds.load(std::memory_order_acquire);
+    const float durationSeconds = voiceDurationSecondsFor(
+            preparedGraph->plan,
+            durationOverride);
+    const float inverseDuration = 1.f / durationSeconds;
+    const double timeIncrement = sampleRate > 0.
+            ? inverseDuration / sampleRate
             : 0.f;
     const double volumeClockSampleRate = volumeEnvelopeClockSampleRate > 0.
             ? volumeEnvelopeClockSampleRate
             : sampleRate;
-    const float volumeEnvelopeTimeIncrement = volumeClockSampleRate > 0.
-            ? 1.f / ((float) volumeClockSampleRate * durationSeconds)
+    const double volumeEnvelopeTimeIncrement = volumeClockSampleRate > 0.
+            ? inverseDuration / volumeClockSampleRate
             : 0.f;
 
     preparedGraph->executor.beginRealtimeVoiceMix(
@@ -310,7 +345,8 @@ void RealtimeGraphRenderer::renderVoices(
 
         voice.normalizedTime = jmin(
                 1.f,
-                voice.normalizedTime + timeIncrement * (float) frameCount);
+                voice.normalizedTime
+                        + (float) (timeIncrement * (double) frameCount));
         if (voice.released && !preparedGraph->executor.hasActiveVoiceTail(
                 voice.context.voiceIndex)) {
             voice.active = false;

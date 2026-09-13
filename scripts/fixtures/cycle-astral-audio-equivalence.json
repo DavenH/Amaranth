@@ -1,0 +1,53 @@
+{
+    "schema": "cycle-v1-v2-audio-equivalence.v1",
+    "status": "diagnostic",
+    "v1": {
+        "factoryPreset": "astral",
+        "sourceDocument": "cycle/content/presets/astral.cyc",
+        "sha256": "d6abd815c7063a6b8b767c3898d9e15b1e45073399dfa6828c603b0941ec2e4f"
+    },
+    "v2": {
+        "graph": "cycle-v2/content/presets/astral.cyclegraph",
+        "sha256": "b86f7ffd671b701685e1dbbdc32315f7934689ee5a4f999d283f83fd4fb83476",
+        "renderOverrides": {
+            "voiceDurationSeconds": 7.914545059204102
+        }
+    },
+    "translation": {
+        "midiNoteOffset": 0,
+        "legacyMidiReferenceOffset": -12,
+        "v1MasterGain": 0.7092753648757935,
+        "v2OutputGainUnitValue": 0.442748092,
+        "v2OutputHeadroom": 0.125,
+        "timeLayer": "timeLayer1",
+        "magnitudeLayer": "magnitudeLayer1 -> magnitudeLayer1Process",
+        "phaseLayer": "phaseLayer1 -> phaseLayer1Process",
+        "volumeEnvelope": "volumeEnvelope when active",
+        "scratchEnvelope": "scratchEnvelope when active",
+        "morph": "morph",
+        "constantGainPolicy": "Cycle1 master gain maps to Output; Cycle2 fixed headroom remains separate",
+        "coverage": [
+            "multipleMagnitudeLayers",
+            "phaseLayer",
+            "volumeEnvelope",
+            "scratchEnvelope",
+            "delay"
+        ],
+        "knownRuntimeGaps": [
+            "Cycle 1 is not byte-repeatable under the current deterministic render request"
+        ]
+    },
+    "effectBindings": {
+        "delay": {
+            "v1Area": "AreaDelay",
+            "v2Node": "delay"
+        }
+    },
+    "thresholds": {
+        "correlationMin": 0.98,
+        "gainMatchedResidualMax": 0.2,
+        "spectrumRmseDbMax": 6.0,
+        "cyclogramMeanRowDifferenceMax": 0.2,
+        "exactSamplesRequired": false
+    }
+}

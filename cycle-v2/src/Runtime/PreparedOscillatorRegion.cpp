@@ -143,7 +143,8 @@ public:
                         maximumCycleSamples,
                         maximumFixedFrameSize,
                         spec.sampleRate,
-                        context.lanes);
+                        context.lanes,
+                        context.controlIntervalSamples);
     }
 
     void reset() override {

@@ -599,8 +599,12 @@ GlobalAudioGraphRepresentationMigration::migrate(var& graph) const {
 
     String destinationNodeId = relocatedDestination;
     String destinationPortId { "time" };
+    String voiceTerminalNodeId;
+    String voiceTerminalPortId;
     if (destinationNodeId.isEmpty() && !boundaries.empty()) {
         const auto* boundary = edges->getReference(boundaries.front()).getDynamicObject();
+        voiceTerminalNodeId = boundary->getProperty("sourceNodeId").toString();
+        voiceTerminalPortId = boundary->getProperty("sourcePortId").toString();
         destinationNodeId = boundary->getProperty("destNodeId").toString();
         destinationPortId = boundary->getProperty("destPortId").toString();
         edges->remove(boundaries.front());
@@ -639,6 +643,22 @@ GlobalAudioGraphRepresentationMigration::migrate(var& graph) const {
         return result;
     }
     applyGlobalLayout(*nodes, *edges, globalIds, order);
+    if (voiceTerminalNodeId.isNotEmpty()) {
+        const auto* source = nodeWithId(*nodes, voiceTerminalNodeId);
+        const Rectangle<float> bounds = source != nullptr
+                ? nodeBounds(*source)
+                : Rectangle<float>();
+        nodes->add(voiceOutputNode({
+                bounds.getRight() + GlobalAudioGraphMigration::nodeClearance,
+                bounds.getY()
+        }));
+        edges->add(voiceOutputEdge(voiceTerminalNodeId, voiceTerminalPortId));
+        root->setProperty("formatVersion", 6);
+        graph = std::move(candidate);
+        result.migrated = true;
+        result.globalNodeIds = order;
+        return result;
+    }
     root->setProperty("formatVersion", 5);
     graph = std::move(candidate);
     auto voiceMigration = migrate(graph);

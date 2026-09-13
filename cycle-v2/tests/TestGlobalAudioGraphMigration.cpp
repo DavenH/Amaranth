@@ -119,6 +119,50 @@ TEST_CASE("Format four graphs migrate atomically to the explicit audio graph",
             == GraphSerializer::currentFormatVersion);
 }
 
+TEST_CASE("Format four migration retains its resolved voice boundary source",
+        "[cycle-v2][graph][global-audio-migration][serialization]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "envelope", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+    graph.addNode(factory.createNode(NodeKind::ImpulseResponse, "ir", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "voice", "context", "mesh", "context",
+            PortDomain::DomainContext, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "mesh", "out", "multiply", "left",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "envelope", "env", "multiply", "right",
+            PortDomain::EnvelopeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "multiply", "out", "ir", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "ir", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+
+    GraphSerializer serializer;
+    var encoded = serializer.writeJSON(graph);
+    encoded.getDynamicObject()->setProperty("formatVersion", 4);
+
+    const auto migration = GlobalAudioGraphRepresentationMigration().migrate(encoded);
+    const auto loaded = serializer.readJSON(encoded);
+
+    REQUIRE(migration.succeeded());
+    REQUIRE(loaded.succeeded());
+    REQUIRE(hasEdge(loaded.graph, "multiply", "voiceOutput"));
+    REQUIRE(hasEdge(loaded.graph, "globalInput", "ir"));
+}
+
 TEST_CASE("Format five graphs gain one explicit voice terminal",
         "[cycle-v2][graph][global-audio-migration][serialization]") {
     GraphNodeFactory factory;

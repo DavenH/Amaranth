@@ -667,7 +667,7 @@ TEST_CASE("Graph preview executor captures a probe after splicing Reverb into th
     graph.addNode(factory.createNode(NodeKind::Reverb, "reverb", { 2900.f, 500.f }));
 
     const auto outputEdge = std::find_if(graph.getEdges().begin(), graph.getEdges().end(), [](const auto& edge) {
-        return edge.sourceNodeId == "multiply" && edge.destNodeId == "out";
+        return edge.sourceNodeId == "globalInput" && edge.destNodeId == "out";
     });
     REQUIRE(outputEdge != graph.getEdges().end());
     const size_t outputEdgeIndex = (size_t) std::distance(graph.getEdges().begin(), outputEdge);

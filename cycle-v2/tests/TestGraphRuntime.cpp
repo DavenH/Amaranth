@@ -108,7 +108,7 @@ TEST_CASE("Runtime traces compiled graph execution", "[cycle-v2][runtime]") {
     REQUIRE(trace.nodes.back().nodeId == "out");
     REQUIRE(findTraceNode(trace, "voice").kind == NodeKind::VoiceContext);
     REQUIRE(findTraceNode(trace, "voice").audioRole == AudioModuleRole::VoiceContext);
-    REQUIRE(findTraceNode(trace, "voice").parameters.size() == 5);
+    REQUIRE(findTraceNode(trace, "voice").parameters.size() == 7);
     REQUIRE(std::none_of(
             findTraceNode(trace, "voice").parameters.begin(),
             findTraceNode(trace, "voice").parameters.end(),
@@ -545,6 +545,7 @@ TEST_CASE("Adding a second signal probe refreshes its compiled preview address",
     REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
     REQUIRE(presentation.previewResult().probes.size() == 1);
     REQUIRE(presentation.previewResult().probes.front().connected);
+    const auto firstProbeValues = presentation.previewResult().probes.front().values;
     REQUIRE(commands.toggleSignalProbe(2, 0.6f).succeeded());
     REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
 
@@ -552,6 +553,7 @@ TEST_CASE("Adding a second signal probe refreshes its compiled preview address",
     REQUIRE(presentation.previewResult().probes.size() == 2);
     REQUIRE(presentation.previewResult().probes[0].connected);
     REQUIRE(presentation.previewResult().probes[1].connected);
+    REQUIRE(presentation.previewResult().probes[0].values == firstProbeValues);
 }
 
 TEST_CASE("A first spectral Trimesh probe is connected immediately",
