@@ -1457,6 +1457,25 @@ as the scratch envelope evolves.
     verified deterministic multi-layer fixture. Artifact:
     `/private/tmp/cycle-shiny-current-converter-full-48000/`.
 
+66. Refresh Guitar 3 G's canonical Envelope and effect-curve payload. Complete:
+    the current Cycle 1 export restores full authored values in its magnitude
+    and phase meshes, scratch and volume Envelopes, Waveshaper curve, and
+    Impulse Response. Explicit additive modes replace equivalent graph
+    inference. No effect DSP or Envelope playback logic changes.
+
+    All 17 node identities, cable endpoints, positions, port sides, editor
+    dimensions, probes, and the merged Global Input through Waveshaper, IR, EQ,
+    Delay, and Output chain are unchanged. Waveshaper and IR remain explicitly
+    global. Default `link.*` presentation values are omitted.
+
+    A 1.2-second 48 kHz MIDI 48 render covers the held note, release, and 800 ms
+    of continuing global effect tail. It is zero-lag at `0.99999992`
+    correlation, `0.000400` residual, `0.00443 dB` spectral RMSE, and both apps
+    repeat exactly. The fixture remains diagnostic pending its existing full
+    pitch-matrix admission check; this slice does not infer admission from one
+    pitch. Artifact:
+    `/private/tmp/cycle-guitar-3-g-current-converter-full-48000/`.
+
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
 renderer concern. Slice 31 aligns the comparison harness with that ownership.
