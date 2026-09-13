@@ -1373,6 +1373,31 @@ as the scratch envelope evolves.
     `/private/tmp/cycle-astral-canonical-precision-stages/` and
     `/private/tmp/cycle-astral-canonical-precision-full-48000/`.
 
+62. Reconcile Japan Drum's remaining canonical controls and authored payload.
+    Complete: unlike the preceding precision-only refreshes, the audit found
+    three audible stale-port errors. Japan Drum used direct velocity where
+    Cycle 1 uses inverse velocity, left Output at its neutral value instead of
+    the authored `0.58778626`, and retained shortened values throughout its two
+    time layers, three magnitude layers, phase layer, volume Envelope, and four
+    assigned Guides. The converter is the authority for all translations.
+
+    The regenerated graph preserves all 15 node identities, every cable
+    endpoint, positions, port sides, editor dimensions, probes, and its existing
+    Global Input/Output boundary. Explicit additive or multiplicative modes
+    replace equivalent operation-node inference; omitted `link.*` values use
+    their defaults. The manifest now declares the translated Output control so
+    the differential harness compares the master stage at equal gain.
+
+    At frame 32, all mesh rasters, spectral operands, and the post-layer
+    spectrum are byte-identical. The shared inverse FFT first differs at only
+    `1.50e-7` normalized residual. The complete 48 kHz MIDI 48 render is
+    zero-lag with `0.9999999998` correlation, `0.0000177` residual, and
+    `0.000163 dB` spectral RMSE. Cycle V2 repeats exactly; Cycle 1 retains the
+    already documented fresh-process variation, so the fixture remains
+    diagnostic. Artifacts:
+    `/private/tmp/cycle-japan-drum-canonical-precision-stages/` and
+    `/private/tmp/cycle-japan-drum-canonical-precision-full-48000/`.
+
 The separate output-control gap is resolved: Output owns a Cycle 1-mapped
 vertical master fader, while the fixed safety headroom remains a distinct
 renderer concern. Slice 31 aligns the comparison harness with that ownership.

@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/japan-drum.cyclegraph",
-        "sha256": "f19c71c65396caa947e505ce2df240076ecc41584010220dad39816738909aab",
+        "sha256": "e32d2ac23d7a8bdad1572e1a8434469dc104b015f15116c7962df11953538be8",
         "renderOverrides": {
             "voiceDurationSeconds": 1.0113605260849
         }
@@ -17,6 +17,7 @@
         "midiNoteOffset": 0,
         "legacyMidiReferenceOffset": -12,
         "v1MasterGain": 1.6933647394180298,
+        "v2OutputGainUnitValue": 0.58778626,
         "v2OutputHeadroom": 0.125,
         "coverage": [
             "twoTimeLayers",
