@@ -65,6 +65,20 @@ namespace {
         LegacyModWheelMapping = 4
     };
 
+    struct EnvelopeGroupMapping {
+        const char* xmlTag;
+        const char* jsonKey;
+        const char* currentIndexAttr;
+        int groupIndex;
+    };
+
+    const EnvelopeGroupMapping envelopeGroupMappings[] = {
+        { "VolumeProps",    "volume",    "volumeCurrentIndex",    GroupVolumeCurrent    },
+        { "PitchProps",     "pitch",     "pitchCurrentIndex",     GroupPitchCurrent     },
+        { "ScratchProps",   "scratch",   "scratchCurrentIndex",   GroupScratchCurrent   },
+        { "WavePitchProps", "wavePitch", "wavePitchCurrentIndex", GroupWavePitchCurrent }
+    };
+
     String getAttributeString(const XmlElement* element, const String& name, const String& fallback = {}) {
         return element == nullptr ? fallback : element->getStringAttribute(name, fallback);
     }
@@ -580,6 +594,16 @@ namespace {
             }
         }
 
+        XmlElement* scratchLayer = allMeshesElem->getChildByName("ScratchLayer");
+        bool hasScratchLayers = false;
+
+        if (scratchLayer != nullptr) {
+            for (auto wrapperElem : scratchLayer->getChildIterator()) {
+                hasScratchLayers |= wrapperElem != nullptr
+                                 && wrapperElem->getChildByName("EnvelopeMesh") != nullptr;
+            }
+        }
+
         if (XmlElement* envLayer = allMeshesElem->getChildByName("EnvLayer")) {
             struct EnvMapping {
                 const char* xmlName;
@@ -594,6 +618,10 @@ namespace {
             };
 
             for (const auto& envMapping : envMappings) {
+                if (envMapping.groupIndex == GroupScratchCurrent && hasScratchLayers) {
+                    continue;
+                }
+
                 if (XmlElement* wrapperElem = envLayer->getChildByName(envMapping.xmlName)) {
                     var props = emptyProps(true);
 
@@ -606,6 +634,25 @@ namespace {
                     addLegacyLayer(groups, envMapping.groupIndex, MeshLibrary::TypeEnvelope,
                                    parseEnvelopeMesh(wrapperElem), props);
                 }
+            }
+        }
+
+        if (hasScratchLayers) {
+            for (auto wrapperElem : scratchLayer->getChildIterator()) {
+                if (wrapperElem == nullptr || wrapperElem->getChildByName("EnvelopeMesh") == nullptr) {
+                    continue;
+                }
+
+                var props = emptyProps(true);
+
+                if (XmlElement* envMesh = wrapperElem->getChildByName("EnvelopeMesh")) {
+                    if (auto* propsJson = PresetJson::getObject(props)) {
+                        propsJson->setProperty("active", envMesh->getBoolAttribute("primaryEnabled", true));
+                    }
+                }
+
+                addLegacyLayer(groups, GroupScratchCurrent, MeshLibrary::TypeEnvelope,
+                               parseEnvelopeMesh(wrapperElem), props);
             }
         }
 
@@ -717,20 +764,7 @@ namespace {
             return {};
         }
 
-        struct EnvelopeGroupMapping {
-            const char* xmlTag;
-            const char* jsonKey;
-            const char* currentIndexAttr;
-        };
-
-        const EnvelopeGroupMapping mappings[] = {
-            { "VolumeProps", "volume", "volumeCurrentIndex" },
-            { "PitchProps", "pitch", "pitchCurrentIndex" },
-            { "ScratchProps", "scratch", "scratchCurrentIndex" },
-            { "WavePitchProps", "wavePitch", "wavePitchCurrentIndex" }
-        };
-
-        for (const auto& mapping : mappings) {
+        for (const auto& mapping : envelopeGroupMappings) {
             auto group = PresetJson::object();
             Array<var> layers;
 
@@ -743,6 +777,94 @@ namespace {
                 layers.add(PresetJson::toVar(layer));
             }
 
+            group->setProperty("layers", var(layers));
+            groups->setProperty(mapping.jsonKey, PresetJson::toVar(group));
+        }
+
+        json->setProperty("currentGroup", envProps->getIntAttribute("currentEnvGroup", GroupVolumeCurrent));
+        json->setProperty("groups", PresetJson::toVar(groups));
+        return PresetJson::toVar(json);
+    }
+
+    void applyLegacyEnvelopePropertyOverrides(var layerValue, const XmlElement* propsElem) {
+        auto* layer = PresetJson::getObject(layerValue);
+        var properties = layer == nullptr ? var() : layer->getProperty("properties");
+        auto* props = PresetJson::getObject(properties);
+
+        if (props == nullptr || propsElem == nullptr) {
+            return;
+        }
+
+        if (propsElem->hasAttribute("active")) {
+            props->setProperty("active", propsElem->getBoolAttribute("active"));
+        }
+
+        if (propsElem->hasAttribute("dynamic")) {
+            props->setProperty("dynamic", propsElem->getBoolAttribute("dynamic"));
+        }
+
+        if (propsElem->hasAttribute("global")) {
+            props->setProperty("global", propsElem->getBoolAttribute("global"));
+        }
+
+        if (propsElem->hasAttribute("sync")) {
+            props->setProperty("tempoSync", propsElem->getBoolAttribute("sync"));
+        } else if (propsElem->hasAttribute("tempo-sync")) {
+            props->setProperty("tempoSync", propsElem->getBoolAttribute("tempo-sync"));
+        }
+
+        if (propsElem->hasAttribute("log")) {
+            props->setProperty("logarithmic", propsElem->getBoolAttribute("log"));
+        } else if (propsElem->hasAttribute("logarithmic")) {
+            props->setProperty("logarithmic", propsElem->getBoolAttribute("logarithmic"));
+        }
+
+        if (propsElem->hasAttribute("scale")) {
+            props->setProperty("scale", propsElem->getIntAttribute("scale"));
+        }
+    }
+
+    var parseLegacyEnvelopeProps(XmlElement* presetElement, const var& meshLibrary) {
+        XmlElement* envProps = presetElement == nullptr
+                             ? nullptr
+                             : presetElement->getChildByName("EnvelopeProps");
+        const auto* meshGroups = PresetJson::getArray(PresetJson::property(meshLibrary, "groups"));
+
+        if (envProps == nullptr || meshGroups == nullptr) {
+            return {};
+        }
+
+        auto json = PresetJson::object();
+        auto groups = PresetJson::object();
+
+        for (const auto& mapping : envelopeGroupMappings) {
+            auto group = PresetJson::object();
+            Array<var> layers;
+            Array<XmlElement*> propertyElements;
+
+            for (auto propsElem : envProps->getChildWithTagNameIterator(mapping.xmlTag)) {
+                propertyElements.add(propsElem);
+            }
+
+            if (isPositiveAndBelow(mapping.groupIndex, meshGroups->size())) {
+                const var& meshGroup = meshGroups->getReference(mapping.groupIndex);
+                const auto* meshLayers = PresetJson::getArray(PresetJson::property(meshGroup, "layers"));
+
+                if (meshLayers != nullptr) {
+                    for (int layerIndex = 0; layerIndex < meshLayers->size(); ++layerIndex) {
+                        var layerValue = meshLayers->getReference(layerIndex);
+
+                        if (isPositiveAndBelow(layerIndex, propertyElements.size())) {
+                            applyLegacyEnvelopePropertyOverrides(layerValue,
+                                                                 propertyElements.getUnchecked(layerIndex));
+                        }
+
+                        layers.add(layerValue);
+                    }
+                }
+            }
+
+            group->setProperty("currentLayer", envProps->getIntAttribute(mapping.currentIndexAttr, 0));
             group->setProperty("layers", var(layers));
             groups->setProperty(mapping.jsonKey, PresetJson::toVar(group));
         }
@@ -973,11 +1095,13 @@ var PresetMigrator::migrateV1XmlToCurrentJson(const XmlElement* presetElement, c
 
     if (presetElement != nullptr) {
         var meshLibrary;
+        bool hasLegacyMeshLibrary = false;
 
         if (XmlElement* meshLibraryElem = presetElement->getChildByName("MeshLibrary")) {
             meshLibrary = parseCurrentMeshLibrary(meshLibraryElem);
             preset->setProperty("meshLibrary", meshLibrary);
         } else if (presetElement->getChildByName("AllMeshes") != nullptr) {
+            hasLegacyMeshLibrary = true;
             meshLibrary = migrateLegacyAllMeshes(const_cast<XmlElement*>(presetElement));
             preset->setProperty("meshLibrary", meshLibrary);
         }
@@ -1009,7 +1133,11 @@ var PresetMigrator::migrateV1XmlToCurrentJson(const XmlElement* presetElement, c
             preset->setProperty("guideCurveProps", guideCurves);
         }
 
-        if (var envelopeProps = parseEnvelopeProps(const_cast<XmlElement*>(presetElement)); !envelopeProps.isVoid()) {
+        var envelopeProps = hasLegacyMeshLibrary
+                          ? parseLegacyEnvelopeProps(const_cast<XmlElement*>(presetElement), meshLibrary)
+                          : parseEnvelopeProps(const_cast<XmlElement*>(presetElement));
+
+        if (!envelopeProps.isVoid()) {
             preset->setProperty("envelopeProps", envelopeProps);
         }
 

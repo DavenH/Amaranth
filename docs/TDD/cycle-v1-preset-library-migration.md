@@ -2,9 +2,12 @@
 
 ## Status
 
-Complete. All 229 Cycle 1 factory sources have a Cycle V2 destination. Generated
-graphs omit structural no-ops, preserve authored spectral range on Trimesh, and
-use compact, authorable, non-overlapping layouts.
+In progress: legacy-library migration is complete for the original 229-source
+inventory, but the later 2014--15 archive exposed an additional Cycle 1 XML
+compatibility boundary. Generated graphs omit structural no-ops, preserve
+authored spectral range on Trimesh, and use compact, authorable,
+non-overlapping layouts. The compatibility follow-up below must complete before
+the expanded library is considered migrated.
 
 ## Goal
 
@@ -54,6 +57,39 @@ and its blocker is recorded in this TDD, `ui-bugs.md`, `audio-bugs.md`, or
 The stable end state is a repeatable batch workflow around the existing
 product export and graph converter. Canonical JSON is an intermediate build
 artifact, not another checked-in preset format or compatibility layer.
+
+### Cycle 1.7--1.8 split envelope storage compatibility
+
+The 2014--15 presets retain envelope geometry under legacy
+`AllMeshes/EnvLayer` and `AllMeshes/ScratchLayer`, while some files add a
+property-only `EnvelopeProps` section. Cycle 1.7 contains both forms, so the
+product version is useful supporting evidence but is not a sufficient schema
+discriminator. Three archived files also report 1.2 in the header and 1.1 in
+the preset root. The presence of `AllMeshes`, `ScratchLayer`, and property-only
+envelope elements is therefore the authoritative structural contract; version
+values are diagnostic metadata and do not select the translation alone.
+
+`PresetMigrator` will perform a narrow ownership translation:
+
+- preserve volume, pitch, and wave-pitch geometry from `EnvLayer`;
+- restore every scratch envelope from `ScratchLayer` when that section exists,
+  retaining the older `EnvSpeedMesh` fallback for presets without it;
+- combine those meshes with the corresponding ordered property-only
+  `VolumeProps`, `PitchProps`, `ScratchProps`, and `WavePitchProps` entries;
+- translate the historical `sync` and `log` property names to canonical
+  `tempoSync` and `logarithmic`; and
+- preserve `OscControls` values unchanged. Its first knob is the authored
+  master-volume value, so no speculative gain remapping belongs at this
+  boundary. Restoring the volume envelope also restores the attenuation that
+  was lost when the property-only section previously replaced it with an empty
+  default mesh.
+
+The mature legacy mesh/envelope readers and current `MeshLibrary`/`Envelope2D`
+JSON readers remain authoritative. This adapter only joins geometry and
+properties separated by the historical schema. It must not evaluate envelope
+curves or alter gain semantics. The stable deletion target is the existing
+duplicate envelope restoration in `Envelope2D::readJSON`; once envelope meshes
+have one canonical restore owner, this join can feed that owner directly.
 
 ### Layer enablement
 
@@ -252,6 +288,10 @@ transferred to its upstream Trimesh before the Pan is removed.
 12. Promoted the remaining additive empty-time spectral seeds to spectral Voice
     Context, removed their zero FFT/Add scaffolding, and horizontally compacted
     the downstream graph while preserving authorable port positions.
+13. Audited the expanded 276-file 2014--15 Cycle 1 library, joined split legacy
+    envelope geometry and properties, restored `ScratchLayer` stacks, and added
+    focused canonical plus live-document regressions for envelope and master
+    control restoration.
 
 ## Verification
 
@@ -265,10 +305,16 @@ transferred to its upstream Trimesh before the Pan is removed.
 - No existing migrated graph is overwritten, including local user changes.
 - `git diff --check`, applicable Python tests, Cycle V2 semantic tests, and the
   standalone build pass.
+- The expanded Cycle 1 library sweep exports all 276 files through the product
+  loader with zero failures. For all 75 property-split presets, source and
+  canonical volume, pitch, wave-pitch, and scratch vertex/layer counts match;
+  all authored `OscControls` values match exactly.
 
 ## Current Inventory
 
-- Source `.cyc` files: 229.
+- Original Cycle V2 migration inventory: 229 source `.cyc` files. The expanded
+  Cycle 1 compatibility inventory now contains 276 files; producing or updating
+  Cycle V2 destinations for that expanded set is a separate migration pass.
 - Existing source-derived Cycle V2 graphs protected from regeneration:
   African Horn, Alto Sax, Baroque Flute, Stengah, and the Subbass parity graph.
 - Direct canonical migrations: 229. Four early ZIP-container presets

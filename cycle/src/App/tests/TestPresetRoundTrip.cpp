@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 
 #include <string>
 
@@ -26,6 +27,7 @@
 #include "../../UI/VertexPanels/GuideCurvePanel.h"
 
 using namespace juce;
+using Catch::Approx;
 
 namespace {
     void seedDefaultMeshLibrary(SingletonRepo& repo) {
@@ -264,6 +266,59 @@ TEST_CASE("Legacy presets can migrate to canonical JSON without live document ap
     REQUIRE(root->getProperty("format").toString() == "amaranth-preset");
     REQUIRE(int(root->getProperty("schemaVersion")) == 2);
     REQUIRE(PresetJson::getObject(root->getProperty("preset")) != nullptr);
+}
+
+TEST_CASE("Cycle 1.8 presets restore split envelopes and authored master volume",
+          "[cycle][preset][migration]") {
+    File multilayerPreset(String(CYCLE_SOURCE_DIR) + "/content/presets/Epiano2.cyc");
+    REQUIRE(multilayerPreset.existsAsFile());
+
+    var migrated = Document::readPresetJSON(multilayerPreset.getFullPathName(), 0xc0dedbad);
+    var preset = PresetJson::property(migrated, "preset");
+    var meshLibraryJson = PresetJson::property(preset, "meshLibrary");
+    const auto* meshGroups = PresetJson::getArray(PresetJson::property(meshLibraryJson, "groups"));
+    REQUIRE(meshGroups != nullptr);
+    REQUIRE(isPositiveAndBelow(LayerGroups::GroupScratch, meshGroups->size()));
+
+    const auto* scratchMeshLayers = PresetJson::getArray(
+            PresetJson::property(meshGroups->getReference(LayerGroups::GroupScratch), "layers"));
+    REQUIRE(scratchMeshLayers != nullptr);
+    REQUIRE(scratchMeshLayers->size() == 4);
+
+    var envelopeProps = PresetJson::property(preset, "envelopeProps");
+    var envelopeGroups = PresetJson::property(envelopeProps, "groups");
+    var scratchEnvelopeGroup = PresetJson::property(envelopeGroups, "scratch");
+    const auto* scratchEnvelopeLayers = PresetJson::getArray(
+            PresetJson::property(scratchEnvelopeGroup, "layers"));
+    REQUIRE(scratchEnvelopeLayers != nullptr);
+    REQUIRE(scratchEnvelopeLayers->size() == 4);
+
+    CycleTestHarness harness;
+    auto& repo = harness.getRepo();
+    auto& document = repo.get<Document>("Document");
+    auto& meshLibrary = repo.get<MeshLibrary>("MeshLibrary");
+    auto& oscControls = repo.get<OscControlPanel>("OscControlPanel");
+    File presetFile(String(CYCLE_SOURCE_DIR) + "/content/presets/CalmingKeys.cyc");
+
+    REQUIRE(presetFile.existsAsFile());
+
+    {
+        ScopedPresetLoadSuppression suppressPresetUpdates(repo);
+        REQUIRE(document.open(presetFile.getFullPathName()));
+    }
+
+    const auto& volumeGroup = meshLibrary.getLayerGroup(LayerGroups::GroupVolume);
+    const auto& scratchGroup = meshLibrary.getLayerGroup(LayerGroups::GroupScratch);
+    const auto& wavePitchGroup = meshLibrary.getLayerGroup(LayerGroups::GroupWavePitch);
+
+    REQUIRE(volumeGroup.size() == 1);
+    REQUIRE(volumeGroup.layers[0].mesh->getNumVerts() > 0);
+    REQUIRE(volumeGroup.layers[0].props->active);
+    REQUIRE(scratchGroup.size() == 1);
+    REQUIRE(scratchGroup.layers[0].mesh->getNumVerts() > 0);
+    REQUIRE(wavePitchGroup.size() == 1);
+    REQUIRE(oscControls.getVolumeScale()
+            == Approx(OscControlPanel::scaleVolume(0.35384615384615381f)));
 }
 
 TEST_CASE("Legacy pierce preset restores modulation matrix wiring", "[cycle][preset][mod-matrix]") {

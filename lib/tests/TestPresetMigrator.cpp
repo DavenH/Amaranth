@@ -274,6 +274,101 @@ TEST_CASE("PresetMigrator remaps legacy V1 XML sections into current mesh groups
     REQUIRE(hasMapping(modMatrixMappings, 101, 400, 2));
 }
 
+TEST_CASE("PresetMigrator joins split legacy envelope meshes and properties", "[preset][migration]") {
+    auto presetXml = parseXml(R"xml(
+<Preset VersionValue="1.8">
+  <AllMeshes>
+    <EnvLayer>
+      <EnvVolumeMesh>
+        <EnvelopeMesh name="VolumeEnvelope">
+          <MainMesh><Mesh name="VolumeMain"><Vertex time="0" phase="0.25" amp="0.75" id="1"/></Mesh></MainMesh>
+        </EnvelopeMesh>
+      </EnvVolumeMesh>
+      <EnvPitchMesh>
+        <EnvelopeMesh name="PitchEnvelope">
+          <MainMesh><Mesh name="PitchMain"><Vertex time="0" phase="0.5" amp="0.5" id="2"/></Mesh></MainMesh>
+        </EnvelopeMesh>
+      </EnvPitchMesh>
+      <EnvSpeedMesh>
+        <EnvelopeMesh name="ObsoleteScratchEnvelope">
+          <MainMesh><Mesh name="ObsoleteScratchMain"/></MainMesh>
+        </EnvelopeMesh>
+      </EnvSpeedMesh>
+      <EnvWavePitchMesh>
+        <EnvelopeMesh name="WavePitchEnvelope">
+          <MainMesh><Mesh name="WavePitchMain"><Vertex time="0" phase="0.4" amp="0.6" id="3"/></Mesh></MainMesh>
+        </EnvelopeMesh>
+      </EnvWavePitchMesh>
+    </EnvLayer>
+    <ScratchLayer>
+      <ScratchMesh0>
+        <EnvelopeMesh name="ScratchOne">
+          <MainMesh><Mesh name="ScratchOneMain"><Vertex time="0" phase="0.1" amp="0.2" id="4"/></Mesh></MainMesh>
+        </EnvelopeMesh>
+      </ScratchMesh0>
+      <ScratchMesh1>
+        <EnvelopeMesh name="ScratchTwo">
+          <MainMesh><Mesh name="ScratchTwoMain"><Vertex time="0" phase="0.3" amp="0.4" id="5"/></Mesh></MainMesh>
+        </EnvelopeMesh>
+      </ScratchMesh1>
+    </ScratchLayer>
+  </AllMeshes>
+  <OscControls>
+    <Knobs>
+      <Knob number="0" value="0.35384615384615381"/>
+      <Knob number="1" value="0.5"/>
+      <Knob number="2" value="0.72519084"/>
+    </Knobs>
+  </OscControls>
+  <EnvelopeProps currentEnvGroup="2" scratchCurrentIndex="1">
+    <VolumeProps dynamic="1" global="0" sync="1" scale="4" active="1" log="1"/>
+    <PitchProps dynamic="0" global="0" sync="0" scale="1" active="0"/>
+    <ScratchProps dynamic="1" global="1" sync="0" scale="8" active="1"/>
+    <ScratchProps dynamic="0" global="0" sync="1" scale="16" active="0"/>
+  </EnvelopeProps>
+</Preset>
+)xml");
+
+    REQUIRE(presetXml != nullptr);
+
+    DocumentDetails details;
+    details.setName("Split Envelopes");
+    details.setProductVersion(1.8);
+
+    var root = PresetMigrator::migrateXmlToCurrentJson(presetXml.get(), details);
+    var preset = property(root, "preset");
+    const auto& meshGroups = requireArray(property(property(preset, "meshLibrary"), "groups"));
+    const auto& meshVolumeLayers = requireArray(property(meshGroups.getReference(GroupVolume), "layers"));
+    const auto& meshScratchLayers = requireArray(property(meshGroups.getReference(GroupScratch), "layers"));
+
+    REQUIRE(property(property(meshVolumeLayers.getReference(0), "mesh"), "name").toString() == "VolumeEnvelope");
+    REQUIRE(meshScratchLayers.size() == 2);
+    REQUIRE(property(property(meshScratchLayers.getReference(0), "mesh"), "name").toString() == "ScratchOne");
+    REQUIRE(property(property(meshScratchLayers.getReference(1), "mesh"), "name").toString() == "ScratchTwo");
+
+    var envelopeProps = property(preset, "envelopeProps");
+    var envelopeGroups = property(envelopeProps, "groups");
+    const auto& volumeLayers = requireArray(property(property(envelopeGroups, "volume"), "layers"));
+    const auto& scratchLayers = requireArray(property(property(envelopeGroups, "scratch"), "layers"));
+    const auto& wavePitchLayers = requireArray(property(property(envelopeGroups, "wavePitch"), "layers"));
+    var volumeProperties = property(volumeLayers.getReference(0), "properties");
+
+    REQUIRE(property(property(volumeLayers.getReference(0), "mesh"), "name").toString() == "VolumeEnvelope");
+    REQUIRE(bool(property(volumeProperties, "dynamic")));
+    REQUIRE(bool(property(volumeProperties, "tempoSync")));
+    REQUIRE(bool(property(volumeProperties, "logarithmic")));
+    REQUIRE(int(property(volumeProperties, "scale")) == 4);
+    REQUIRE(scratchLayers.size() == 2);
+    REQUIRE(int(property(property(envelopeGroups, "scratch"), "currentLayer")) == 1);
+    REQUIRE_FALSE(bool(property(property(scratchLayers.getReference(1), "properties"), "active")));
+    REQUIRE(bool(property(property(scratchLayers.getReference(1), "properties"), "tempoSync")));
+    REQUIRE(wavePitchLayers.size() == 1);
+    REQUIRE(property(property(wavePitchLayers.getReference(0), "mesh"), "name").toString() == "WavePitchEnvelope");
+
+    const auto& oscKnobs = requireArray(property(property(preset, "oscControls"), "knobs"));
+    REQUIRE(double(oscKnobs.getReference(0)) == Approx(0.35384615384615381));
+}
+
 TEST_CASE("PresetMigrator converts legacy mod mapping into default mod matrix wiring", "[preset][migration]") {
     auto presetXml = parseXml(R"xml(
 <Preset>
