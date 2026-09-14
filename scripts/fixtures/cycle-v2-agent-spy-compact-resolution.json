@@ -1,0 +1,52 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.gridColumns",
+      "equals": 256
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.gridRows",
+      "equals": 512
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.2.gridColumns",
+      "equals": 256
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.2.gridRows",
+      "equals": 257
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.4.gridColumns",
+      "equals": 256
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.4.gridRows",
+      "equals": 257
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 300
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

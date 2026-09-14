@@ -13,6 +13,8 @@ namespace CycleV2 {
 
 namespace {
 
+constexpr size_t kCompactPreviewFrameCount = 512;
+
 GraphPreviewResult captureProbePreviews(
         const NodeGraph& graph,
         const GraphExecutionPlan& plan,
@@ -346,9 +348,8 @@ bool GraphPresentationModel::renderPreviewProducts(
         return true;
     }
 
-    constexpr size_t previewFrameCount = 128;
     const AudioExecutionSpec spec {
-            previewFrameCount,
+            kCompactPreviewFrameCount,
             44100.0,
             ChannelLayout::LinkedStereo
     };
@@ -366,7 +367,7 @@ bool GraphPresentationModel::renderPreviewProducts(
         const GraphAudioResult audio = previewAudioExecutor.process(
                 graph,
                 snapshot.compileResult.plan,
-                previewFrameCount,
+                kCompactPreviewFrameCount,
                 {},
                 previewVoice);
         performance.record(
@@ -402,7 +403,7 @@ bool GraphPresentationModel::renderPreviewProducts(
     const GraphAudioResultView audio = previewAudioExecutor.processIncrementalIndexed(
             graph,
             snapshot.compileResult.plan,
-            previewFrameCount,
+            kCompactPreviewFrameCount,
             dirtyNodes,
             previewVoice,
             cancellationCheck);
