@@ -223,6 +223,14 @@ configuration attachments, and processing attachments are excluded because
 their distribution/bundle geometry is distinct; missing obstacle-aware routing
 for domain-context fanout is recorded in `ui-bugs.md`.
 
+A direct two-Trimesh spectral operation uses a vertical operand column feeding
+a right-hand Add or Multiply through default right-to-left ports. A scratch
+Envelope shared by that column sits to its left and centers across the targets,
+so its fanout does not cross either node. Port rotations remain available for
+longer accumulator chains where vertical clearance requires them. The explicit
+global-audio lane stays below and near the left side of the voice graph instead
+of being pushed below the deepest spectral auxiliary.
+
 ### Empty spectral-layer identity
 
 An authored spectral layer with no mesh vertices has no spectral content.
@@ -277,8 +285,10 @@ transferred to its upstream Trimesh before the Pan is removed.
   `PresetMigrator` schema fixes cannot be bypassed by a stale application bundle.
 - The batch driver owns only command sequencing, artifact paths, and a result
   report; it contains no preset-domain translation.
-- The converter owns offline type/value/routing translation and deterministic
-  `.cyclegraph` serialization.
+- The converter owns offline type/value/routing translation. The Cycle V2
+  `GraphSerializer` owns final `.cyclegraph` defaults, model versions, numeric
+  spelling, and formatting; the converter normalizes only line endings after
+  invoking it. Re-serializing converter output must therefore be byte-identical.
 - Cycle V2 owns load, validation, compilation, save/reload canonicalization,
   preview, and audio-render verification.
 
@@ -344,6 +354,12 @@ transferred to its upstream Trimesh before the Pan is removed.
    the existing Cycle V2 Modulation Triple path authoritative and admits the
    replacement Blinding preset without treating its ordinary ModWheel mapping
    as an unsupported modulation feature.
+19. Folded the reviewed Blinding arrangement into the generated-layout rules:
+   direct spectral operands stack vertically with default ports, their shared
+   scratch Envelope fans out from the left, and the global lane stays closer to
+   the main graph. Routed final converter output through Cycle V2's serializer
+   so the first ordinary save no longer rewrites legacy precision, defaults,
+   model versions, and JSON shape across the whole file.
 
 ## Verification
 
@@ -424,8 +440,9 @@ transferred to its upstream Trimesh before the Pan is removed.
 
 ## Final Verification
 
-- Converter unit tests: 53 passed, including legacy pitch-envelope modulation,
-  empty magnitude and phase meshes,
+- Converter unit tests: 55 passed, including legacy pitch-envelope modulation,
+  direct spectral operand layout, serializer idempotence, empty magnitude and
+  phase meshes,
   all-empty spectral stacks, centred Pan, range ownership, and inactive pitch
   Envelope omission.
 - Cycle 1 archive migration tests: 111 assertions across 5 cases passed.

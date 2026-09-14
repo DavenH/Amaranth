@@ -79,6 +79,12 @@ LAYOUT_MARGIN = 100.0
 LAYOUT_GAP = 80.0
 LAYOUT_CELL_WIDTH = 366.0
 LAYOUT_SPINE_Y = 900.0
+LAYOUT_DIRECT_STACK_GAP = 34.0
+LAYOUT_DIRECT_OPERATION_GAP = 128.0
+LAYOUT_DIRECT_LAYER_OFFSET = 168.0
+LAYOUT_SCRATCH_FANOUT_GAP = 170.0
+LAYOUT_GLOBAL_LANE_Y = 1424.0
+LAYOUT_GLOBAL_NODE_GAP = 48.0
 
 NODE_FOOTPRINTS = {
     "voiceContext": (280.0, 148.0),
@@ -115,58 +121,41 @@ def graph_migrator_path():
         "CycleV2GraphMigrator is required; build the tests preset first")
 
 
-def restore_numeric_precision(migrated, original):
-    if isinstance(migrated, dict) and isinstance(original, dict):
-        for key in migrated.keys() & original.keys():
-            migrated[key] = restore_numeric_precision(migrated[key], original[key])
-        return migrated
-    if isinstance(migrated, list) and isinstance(original, list):
-        if len(migrated) != len(original):
-            return migrated
-        return [
-            restore_numeric_precision(migrated_value, original_value)
-            for migrated_value, original_value in zip(migrated, original)
-        ]
-    numeric_types = (int, float)
-    if not isinstance(migrated, bool) \
-            and not isinstance(original, bool) \
-            and isinstance(migrated, numeric_types) \
-            and isinstance(original, numeric_types):
-        return original
-    return migrated
+def run_graph_migrator(source, destination, raw=False):
+    arguments = [str(graph_migrator_path())]
+    if raw:
+        arguments.append("--raw")
+    arguments.extend((str(source), str(destination)))
+    completed = subprocess.run(
+        arguments,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        detail = completed.stderr.strip() or completed.stdout.strip()
+        raise ValueError(f"Cycle V2 graph migration failed: {detail}")
+
+
+def write_canonical_graph(graph, destination):
+    with tempfile.TemporaryDirectory(
+            prefix="cycle-v2-serialization-") as directory:
+        source = Path(directory) / "input.cyclegraph"
+        source.write_text(json.dumps(graph), encoding="utf-8")
+        run_graph_migrator(source, destination)
+    canonical = destination.read_text(encoding="utf-8")
+    with destination.open("w", encoding="utf-8", newline="\n") as output:
+        output.write(canonical)
 
 
 def migrate_global_audio_graph(graph):
     with tempfile.TemporaryDirectory(prefix="cycle-v2-migration-") as directory:
         source = Path(directory) / "legacy.cyclegraph"
-        destination = Path(directory) / "explicit.cyclegraph"
+        explicit = Path(directory) / "explicit.cyclegraph"
         source.write_text(json.dumps(graph, indent=4) + "\n", encoding="utf-8")
-        completed = subprocess.run(
-            [str(graph_migrator_path()), "--raw", str(source), str(destination)],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        if completed.returncode != 0:
-            detail = completed.stderr.strip() or completed.stdout.strip()
-            raise ValueError(f"Global audio graph migration failed: {detail}")
-        with destination.open(encoding="utf-8") as migrated_file:
-            migrated = json.load(migrated_file)
-
-    original_nodes = {node["id"]: node for node in graph.get("nodes", [])}
-    for migrated_node in migrated.get("nodes", []):
-        original_node = original_nodes.get(migrated_node["id"])
-        if original_node is None:
-            continue
-        for property_name in ("parameters", "model"):
-            if property_name in migrated_node and property_name in original_node:
-                migrated_node[property_name] = restore_numeric_precision(
-                    migrated_node[property_name], original_node[property_name])
-    for property_name in ("guides", "guideHeatmaps"):
-        if property_name in migrated and property_name in graph:
-            migrated[property_name] = restore_numeric_precision(
-                migrated[property_name], graph[property_name])
-    return migrated
+        run_graph_migrator(source, explicit, raw=True)
+        with explicit.open(encoding="utf-8") as migrated_file:
+            return json.load(migrated_file)
 
 
 def node(node_id, kind, x, y, parameters=None, model=None):
@@ -215,11 +204,57 @@ def layer_mesh_has_vertices(layer):
     return bool(vertices)
 
 
+def direct_layer_pair_operation(nodes_by_id, edges, layer_ids):
+    if len(layer_ids) != 2:
+        return None
+    destinations = []
+    for layer_id in layer_ids:
+        destinations.extend(
+            graph_edge["destNodeId"]
+            for graph_edge in edges
+            if graph_edge["sourceNodeId"] == layer_id
+            and graph_edge["destNodeId"] in nodes_by_id
+            and nodes_by_id[graph_edge["destNodeId"]]["kind"]
+            in ("add", "multiply")
+        )
+    if len(destinations) == 2 and destinations[0] == destinations[1]:
+        return destinations[0]
+    return None
+
+
 def layout_accumulator_branch(
-        nodes_by_id, prefix, start_x, operation_y, mesh_direction):
+        nodes_by_id, edges, prefix, start_x, operation_y, mesh_direction):
     layer_ids = numbered_node_ids(nodes_by_id, f"{prefix}Layer")
     if not layer_ids:
         return start_x
+
+    pair_operation = direct_layer_pair_operation(nodes_by_id, edges, layer_ids)
+    if pair_operation is not None:
+        mesh_height = NODE_FOOTPRINTS["trilinearMesh"][1]
+        top_y = operation_y \
+            - (mesh_height + LAYOUT_DIRECT_STACK_GAP) / 2.0
+        set_node_position(nodes_by_id, layer_ids[0], start_x, top_y)
+        set_node_position(
+            nodes_by_id,
+            layer_ids[1],
+            start_x,
+            top_y + mesh_height + LAYOUT_DIRECT_STACK_GAP)
+        operation_x = start_x + NODE_FOOTPRINTS["trilinearMesh"][0] \
+            + LAYOUT_DIRECT_OPERATION_GAP
+        set_node_position(nodes_by_id, pair_operation, operation_x, operation_y)
+        return operation_x + NODE_FOOTPRINTS["add"][0]
+
+    operation_ids = {
+        graph_edge["destNodeId"]
+        for graph_edge in edges
+        if graph_edge["destNodeId"] in nodes_by_id
+        and nodes_by_id[graph_edge["destNodeId"]]["kind"] in ("add", "multiply")
+        and graph_edge["sourceNodeId"] in layer_ids
+    }
+    if len(layer_ids) == 1 and not operation_ids:
+        mesh_y = operation_y + LAYOUT_DIRECT_LAYER_OFFSET * mesh_direction
+        set_node_position(nodes_by_id, layer_ids[0], start_x, mesh_y)
+        return start_x + NODE_FOOTPRINTS["trilinearMesh"][0]
 
     for zero_index, layer_id in enumerate(layer_ids):
         x = start_x + zero_index * LAYOUT_CELL_WIDTH
@@ -320,9 +355,9 @@ def apply_compact_layout(nodes, edges):
 
     spectral_start_x = fft_x + NODE_FOOTPRINTS["fft"][0] + 120.0
     magnitude_end_x = layout_accumulator_branch(
-        nodes_by_id, "magnitude", spectral_start_x, transform_y - 170.0, -1)
+        nodes_by_id, edges, "magnitude", spectral_start_x, transform_y - 150.0, -1)
     phase_end_x = layout_accumulator_branch(
-        nodes_by_id, "phase", spectral_start_x, transform_y + 170.0, 1)
+        nodes_by_id, edges, "phase", spectral_start_x, transform_y + 170.0, 1)
     spectral_end_x = max(magnitude_end_x, phase_end_x)
     ifft_x = spectral_end_x + 110.0
     set_node_position(nodes_by_id, "ifft", ifft_x, transform_y)
@@ -379,10 +414,26 @@ def apply_compact_layout(nodes, edges):
             and graph_edge["destNodeId"] in nodes_by_id
         ]
         if target_ids:
-            target_id = min(
-                target_ids,
-                key=lambda candidate: nodes_by_id[candidate]["position"]["x"])
-            target_position = nodes_by_id[target_id]["position"]
+            target_positions = [
+                nodes_by_id[target_id]["position"] for target_id in target_ids
+            ]
+            target_xs = {position["x"] for position in target_positions}
+            envelope_width, envelope_height = node_footprint(
+                nodes_by_id[node_id])
+            if len(target_ids) > 1 and len(target_xs) == 1:
+                target_centres = [
+                    position["y"] + NODE_FOOTPRINTS["trilinearMesh"][1] / 2.0
+                    for position in target_positions
+                ]
+                set_node_position(
+                    nodes_by_id,
+                    node_id,
+                    min(target_xs) - envelope_width - LAYOUT_SCRATCH_FANOUT_GAP,
+                    sum(target_centres) / len(target_centres)
+                    - envelope_height / 2.0)
+                continue
+            target_position = min(
+                target_positions, key=lambda position: position["x"])
             envelope_height = node_footprint(nodes_by_id[node_id])[1]
             set_node_position(
                 nodes_by_id,
@@ -398,10 +449,26 @@ def apply_compact_layout(nodes, edges):
     min_x = min(entry["position"]["x"] for entry in visible_nodes)
     min_y = min(entry["position"]["y"] for entry in visible_nodes)
     offset_x = LAYOUT_MARGIN - min_x
-    offset_y = LAYOUT_MARGIN - min_y
+    offset_y = max(0.0, LAYOUT_MARGIN - min_y)
     for entry in nodes:
         entry["position"]["x"] += offset_x
         entry["position"]["y"] += offset_y
+
+
+def tighten_global_audio_layout(nodes):
+    nodes_by_id = {entry["id"]: entry for entry in nodes}
+    voice = nodes_by_id.get("voice")
+    if voice is None or "globalInput" not in nodes_by_id:
+        return
+
+    x = voice["position"]["x"] + LAYOUT_GLOBAL_NODE_GAP
+    for node_id in (
+            "globalInput", "waveshaper", "impulseResponse", "equalizer",
+            "delay", "reverb", "output"):
+        if node_id not in nodes_by_id:
+            continue
+        set_node_position(nodes_by_id, node_id, x, LAYOUT_GLOBAL_LANE_Y)
+        x += node_footprint(nodes_by_id[node_id])[0] + LAYOUT_GLOBAL_NODE_GAP
 
 
 def edge(source, source_port, destination, destination_port,
@@ -989,7 +1056,9 @@ def convert(source):
     }
     simplify_graph(graph)
     apply_compact_layout(graph["nodes"], graph["edges"])
-    return migrate_global_audio_graph(graph)
+    migrated = migrate_global_audio_graph(graph)
+    tighten_global_audio_layout(migrated["nodes"])
+    return migrated
 
 
 def validate_conversion(source):
@@ -1233,9 +1302,7 @@ def main():
         with args.destination.open(encoding="utf-8") as existing_file:
             converted = preserve_presentation(converted, json.load(existing_file))
     args.destination.parent.mkdir(parents=True, exist_ok=True)
-    with args.destination.open("w", encoding="utf-8") as destination_file:
-        json.dump(converted, destination_file, indent=4)
-        destination_file.write("\n")
+    write_canonical_graph(converted, args.destination)
     if args.manifest is not None:
         if not args.strict_audio_parity:
             raise ValueError("--manifest requires --strict-audio-parity")

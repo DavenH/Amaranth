@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import copy
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -287,9 +289,13 @@ class PortCycleV1PresetTest(unittest.TestCase):
             + port_cycle_v1_preset.node_footprint(node)[1]
             for node in converted["nodes"] if node["kind"] in voice_kinds
         )
-        self.assertGreaterEqual(
+        self.assertLess(
             nodes["globalInput"]["position"]["y"],
             voice_bottom + 96.0,
+        )
+        self.assertGreater(
+            nodes["globalInput"]["position"]["x"],
+            nodes["voice"]["position"]["x"],
         )
 
         mesh = nodes["magnitudeLayer1"]
@@ -315,6 +321,71 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertGreater(
             nodes["output"]["position"]["y"],
             nodes["ifft"]["position"]["y"])
+
+    def test_direct_spectral_pair_uses_a_left_to_right_operand_stack(self):
+        source = convertible_source()
+        groups = source["preset"]["meshLibrary"]["groups"]
+        groups[4]["layers"] = groups[4]["layers"][:1]
+        for index, layer in enumerate(groups[5]["layers"]):
+            layer["properties"]["active"] = True
+            layer["properties"]["mode"] = index
+            layer["properties"]["scratchChannel"] = 0
+            layer["mesh"]["vertices"] = [1]
+        groups[6]["layers"][0]["properties"]["active"] = True
+        groups[6]["layers"][0]["mesh"]["vertices"] = [1]
+        groups[2]["layers"] = [{
+            "properties": {"active": True, "logarithmic": False},
+            "mesh": {
+                "mainMesh": {"vertices": [], "cubes": [{}, {}]},
+            },
+        }]
+        source["preset"]["effects"]["Delay"]["enabled"] = True
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+        first = nodes["magnitudeLayer1"]
+        second = nodes["magnitudeLayer2"]
+        operation = nodes["magnitudeOp2"]
+        scratch = nodes["scratchEnvelope1"]
+
+        self.assertEqual(first["position"]["x"], second["position"]["x"])
+        self.assertLess(first["position"]["y"], second["position"]["y"])
+        self.assertGreater(
+            operation["position"]["x"],
+            first["position"]["x"]
+            + port_cycle_v1_preset.node_footprint(first)[0])
+        self.assertNotIn("portSides", first)
+        self.assertNotIn("portSides", second)
+        self.assertNotIn("portSides", operation)
+        self.assertLess(scratch["position"]["x"], first["position"]["x"])
+        self.assertNotIn("portSides", scratch)
+        self.assertGreater(
+            nodes["phaseLayer1"]["position"]["y"],
+            second["position"]["y"])
+        self.assertEqual(
+            nodes["globalInput"]["position"]["y"],
+            nodes["delay"]["position"]["y"])
+        self.assertLess(
+            nodes["globalInput"]["position"]["x"],
+            nodes["delay"]["position"]["x"])
+
+    def test_canonical_graph_writer_is_serialization_idempotent(self):
+        repository = Path(__file__).resolve().parents[2]
+        source = repository / "cycle-v2/resources/default.cyclegraph"
+        graph = json.loads(source.read_text(encoding="utf-8"))
+
+        with tempfile.TemporaryDirectory() as directory:
+            first = Path(directory) / "first.cyclegraph"
+            second = Path(directory) / "second.cyclegraph"
+            port_cycle_v1_preset.write_canonical_graph(graph, first)
+            canonical = json.loads(first.read_text(encoding="utf-8"))
+            port_cycle_v1_preset.write_canonical_graph(canonical, second)
+
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+            self.assertNotIn(b"\r\n", first.read_bytes())
 
     def test_voice_context_attachments_form_an_ordered_left_column(self):
         source = convertible_source()
@@ -913,13 +984,11 @@ class PortCycleV1PresetTest(unittest.TestCase):
             node for node in converted["nodes"]
             if node["id"] == "impulseResponse")
 
-        self.assertEqual(impulse["parameters"], {
-            "enabled": True,
-            "size": 1.0 / 7.0,
-            "post": 0.3,
-            "highPass": 0.4,
-            "processingScope": "global",
-        })
+        self.assertTrue(impulse["parameters"]["enabled"])
+        self.assertAlmostEqual(impulse["parameters"]["size"], 1.0 / 7.0)
+        self.assertEqual(impulse["parameters"]["post"], 0.3)
+        self.assertEqual(impulse["parameters"]["highPass"], 0.4)
+        self.assertEqual(impulse["parameters"]["processingScope"], "global")
 
     def test_impulse_response_size_is_canonicalized_to_a_power_of_two(self):
         self.assertEqual(
