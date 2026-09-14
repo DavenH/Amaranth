@@ -106,6 +106,37 @@ collapsed Guide and IR Modeller shapes. Successfully translated pre-1.1 meshes
 are marked with the current mesh format version, matching
 `Mesh::updateToVersion()`; newer meshes pass through unchanged.
 
+### Arbitrary legacy modulation matrices
+
+Cycle 1's `ModMatrixPanel::route()` is authoritative for matrix semantics: each
+valid `(input, output, dimension)` tuple assigns one source to one destination
+axis, and tuple order has no meaning. The 2014--15 library contains reordered
+default matrices, intentionally sparse destinations, per-destination MIDI CC
+sources, and Utility inputs. Comparing the serialized list against one fixed
+ordering therefore rejects representable state.
+
+Cycle 1 canonical export must include the twenty live Utility knob values owned
+by `ModMatrixPanel` alongside inputs, outputs, and mappings. This is narrow state
+exposure only; the mature legacy document loader remains responsible for
+restoring the knobs before export. Current JSON reads restore the optional array
+and retain zero defaults when older canonical data omits it.
+
+The converter decodes each valid output ID to its exact retained Trimesh or
+Envelope axis. One Modulation Triple attached to Voice Context carries the
+modal source for each axis, including a constant at the authored morph position
+when an axis is usually unmapped. Minority mappings use shared Modulation Source
+nodes connected directly to the affected axis; an absent tuple remains the
+node's authored constant. This reuses Cycle V2's existing explicit modulation
+inputs and source runtime unchanged. MIDI input 101 remains Mod Wheel, other
+100--199 inputs become their numbered MIDI CC, and Utility inputs become their
+exported constant values. Conflicting sources for one destination axis and
+references to unavailable Utility state remain explicit blockers.
+
+The stable end state is native Cycle V2 graph modulation: there is no runtime
+legacy matrix adapter. Generated layout keeps override sources in a compact
+left-hand control column and avoids routing their fan-out through unrelated
+nodes.
+
 ### Layer enablement
 
 Cycle 1's `properties.active` is authored layer state for connected or populated
