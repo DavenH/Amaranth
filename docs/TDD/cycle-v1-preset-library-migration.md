@@ -335,7 +335,7 @@ transferred to its upstream Trimesh before the Pan is removed.
    default group layout. Legacy presets above Cycle V2's ten-voice capacity are
    rejected explicitly rather than truncated.
 17. Rebuilt Cycle 1 after the v1.8 envelope/effect compatibility changes and
-   regenerated a four-preset review batch. Removed the invented default scratch
+   regenerated a five-preset review batch. Removed the invented default scratch
    model, preserved per-mesh `scratchChannel` routing including two-channel
    presets, carried the shared Cycle 1/Cycle V2 voice-length unit value unchanged,
    and reorganized Voice Context attachments into a compact left-hand stack.
@@ -360,8 +360,9 @@ transferred to its upstream Trimesh before the Pan is removed.
   Modeller vertices against their source XML coordinates with zero differences.
   Focused migration tests cover both a true version-1 coordinate conversion and
   unchanged 1.7/1.8 coordinates through canonical and live-document loading.
-- The regenerated four-preset review batch loads and compiles with exact
-  Cycle 1 voice durations of 1.450489, 1.266986, 0.998458, and 1.121317 seconds.
+- The regenerated five-preset review batch loads and compiles with exact
+  Cycle 1 voice durations of 1.450489, 1.266986, 0.998458, 1.121317, and
+  1.521729 seconds.
   App-rendered screenshots confirm restored effect curves, compact Voice Context
   fan-in, and local placement for the two channel-specific scratch Envelopes.
 - The focused resampler regression recreates the exhausted source window and
@@ -411,6 +412,10 @@ transferred to its upstream Trimesh before the Pan is removed.
   voices remain blocked on a product decision about raising the shared maximum
   or defining a lossless legacy reduction. The converter reports these presets
   explicitly and does not emit a truncated graph.
+- The replacement `Blinding.cyc` remains absent after a fresh v1.8 export because
+  its modulation matrix differs from the supported fixed mapping. The converter
+  rejected it before emission; the newer modulation-output numbering remains a
+  separate lossless-mapping slice.
 
 ## Final Verification
 
