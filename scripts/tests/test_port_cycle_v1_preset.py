@@ -438,6 +438,29 @@ class PortCycleV1PresetTest(unittest.TestCase):
 
         self.assertEqual(morph["parameters"]["blueSource"], "modWheel")
 
+    def test_converter_canonicalizes_legacy_pitch_envelope_modulation_id(self):
+        source = convertible_source()
+        pitch = {
+            "properties": {"active": False, "dynamic": False},
+            "mesh": {
+                "mainMesh": {"vertices": [], "cubes": []},
+                "loopIndices": [],
+                "sustainIndices": [],
+            },
+        }
+        source["preset"]["meshLibrary"]["groups"][1]["layers"] = [pitch]
+        mappings = port_cycle_v1_preset.default_modulation_mappings_for_preset(
+            source["preset"], 101)
+        for mapping in mappings:
+            if mapping["out"] == 450:
+                mapping["out"] = 401
+        source["preset"]["modMatrix"]["mappings"] = mappings
+
+        converted = port_cycle_v1_preset.convert(source)
+        morph = next(node for node in converted["nodes"] if node["id"] == "morph")
+
+        self.assertEqual(morph["parameters"]["blueSource"], "modWheel")
+
     def test_time_layer_pan_uses_the_inline_pan_operation(self):
         source = convertible_source()
         source["preset"]["meshLibrary"]["groups"][4]["layers"][0] \

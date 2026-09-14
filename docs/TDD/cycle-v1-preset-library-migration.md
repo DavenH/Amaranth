@@ -339,6 +339,11 @@ transferred to its upstream Trimesh before the Pan is removed.
    model, preserved per-mesh `scratchChannel` routing including two-channel
    presets, carried the shared Cycle 1/Cycle V2 voice-length unit value unchanged,
    and reorganized Voice Context attachments into a compact left-hand stack.
+18. Canonicalized the obsolete Cycle 1 pitch-envelope modulation destination
+   `401` to its current `450` identifier at the converter boundary. This keeps
+   the existing Cycle V2 Modulation Triple path authoritative and admits the
+   replacement Blinding preset without treating its ordinary ModWheel mapping
+   as an unsupported modulation feature.
 
 ## Verification
 
@@ -412,14 +417,15 @@ transferred to its upstream Trimesh before the Pan is removed.
   voices remain blocked on a product decision about raising the shared maximum
   or defining a lossless legacy reduction. The converter reports these presets
   explicitly and does not emit a truncated graph.
-- The replacement `Blinding.cyc` remains absent after a fresh v1.8 export because
-  its modulation matrix differs from the supported fixed mapping. The converter
-  rejected it before emission; the newer modulation-output numbering remains a
-  separate lossless-mapping slice.
+- The replacement `Blinding.cyc` is emitted as `blinding.cyclegraph`. Its v1.3
+  matrix uses the obsolete pitch-envelope output ID 401; the converter
+  canonicalizes that representation to ID 450 before recognizing its standard
+  ModWheel-based Modulation Triple mapping.
 
 ## Final Verification
 
-- Converter unit tests: 28 passed, including empty magnitude and phase meshes,
+- Converter unit tests: 53 passed, including legacy pitch-envelope modulation,
+  empty magnitude and phase meshes,
   all-empty spectral stacks, centred Pan, range ownership, and inactive pitch
   Envelope omission.
 - Cycle 1 archive migration tests: 111 assertions across 5 cases passed.

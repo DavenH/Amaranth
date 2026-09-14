@@ -38,6 +38,8 @@ ENVELOPE_GROUPS = {
 }
 
 LEGACY_MIDI_REFERENCE_OFFSET = -12
+LEGACY_PITCH_ENVELOPE_OUTPUT_ID = 401
+PITCH_ENVELOPE_OUTPUT_ID = 450
 MAXIMUM_UNISON_VOICES = 10
 
 MODULATION_SOURCE_NAMES = {
@@ -591,10 +593,20 @@ def default_modulation_mappings_for_preset(preset, blue_input=2):
     return result
 
 
+def canonical_modulation_mappings(mappings):
+    result = copy.deepcopy(mappings)
+    for mapping in result:
+        if mapping["out"] == LEGACY_PITCH_ENVELOPE_OUTPUT_ID:
+            mapping["out"] = PITCH_ENVELOPE_OUTPUT_ID
+    return result
+
+
 def modulation_sources_for_preset(preset):
     actual = preset.get("modMatrix", {}).get("mappings")
     if actual is None:
         actual = default_modulation_mappings_for_preset(preset)
+    else:
+        actual = canonical_modulation_mappings(actual)
 
     for blue_input in (2, 101):
         if actual == default_modulation_mappings_for_preset(preset, blue_input):
