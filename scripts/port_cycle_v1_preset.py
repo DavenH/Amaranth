@@ -8,6 +8,7 @@ guide curves, envelope meshes, and cube-component guide assignments.
 """
 
 import argparse
+from collections import Counter
 import copy
 import hashlib
 import json
@@ -45,10 +46,15 @@ MAXIMUM_UNISON_VOICES = 10
 MODULATION_SOURCE_NAMES = {
     1: "voiceTime",
     2: "inverseVelocity",
-    3: "inverseVelocity",
     4: "keyScale",
-    5: "aftertouch",
+    5: "channelPressure",
     101: "modWheel",
+}
+
+DEFAULT_AXIS_INPUTS = {
+    "yellow": 1,
+    "red": 4,
+    "blue": 2,
 }
 
 DEFAULT_MODULATION_MAPPINGS = [
@@ -89,6 +95,7 @@ LAYOUT_GLOBAL_NODE_GAP = 48.0
 NODE_FOOTPRINTS = {
     "voiceContext": (280.0, 148.0),
     "modulationTriple": (280.0, 126.0),
+    "modulationSource": (250.0, 48.0),
     "trilinearMesh": (286.0, 269.0),
     "spectralLayer": (80.0, 80.0),
     "fft": (278.0, 178.0),
@@ -141,8 +148,10 @@ def write_canonical_graph(graph, destination):
     with tempfile.TemporaryDirectory(
             prefix="cycle-v2-serialization-") as directory:
         source = Path(directory) / "input.cyclegraph"
+        first_pass = Path(directory) / "first.cyclegraph"
         source.write_text(json.dumps(graph), encoding="utf-8")
-        run_graph_migrator(source, destination)
+        run_graph_migrator(source, first_pass)
+        run_graph_migrator(first_pass, destination)
     canonical = destination.read_text(encoding="utf-8")
     with destination.open("w", encoding="utf-8", newline="\n") as output:
         output.write(canonical)
@@ -185,6 +194,22 @@ def set_port_side(nodes_by_id, node_id, group, port_id, side):
         return
     port_sides = nodes_by_id[node_id].setdefault("portSides", {})
     port_sides.setdefault(group, {})[port_id] = side
+
+
+def position_is_clear(nodes_by_id, node_id, x, y, ignored_ids=()):
+    width, height = node_footprint(nodes_by_id[node_id])
+    ignored = set(ignored_ids)
+    ignored.add(node_id)
+    for other_id, other in nodes_by_id.items():
+        if other_id in ignored or other["kind"] == "spectralLayer":
+            continue
+        other_x = other["position"]["x"]
+        other_y = other["position"]["y"]
+        other_width, other_height = node_footprint(other)
+        if x < other_x + other_width and other_x < x + width \
+                and y < other_y + other_height and other_y < y + height:
+            return False
+    return True
 
 
 def numbered_node_ids(nodes_by_id, prefix, suffix=""):
@@ -288,6 +313,9 @@ def layout_accumulator_branch(
 
 def apply_compact_layout(nodes, edges):
     nodes_by_id = {entry["id"]: entry for entry in nodes}
+    if "voice" not in nodes_by_id:
+        set_node_position(nodes_by_id, "output", LAYOUT_MARGIN, LAYOUT_MARGIN)
+        return
     spine_y = LAYOUT_SPINE_Y
     transform_y = spine_y - 14.0
     voice_attachments = {}
@@ -421,31 +449,75 @@ def apply_compact_layout(nodes, edges):
                 position["x"] for position in target_positions)
             envelope_width, envelope_height = node_footprint(
                 nodes_by_id[node_id])
-            if len(target_ids) > 1:
-                target_centres = [
-                    position["y"] + NODE_FOOTPRINTS["trilinearMesh"][1] / 2.0
-                    for position in target_positions
-                ]
-                set_node_position(
+            target_centres = [
+                position["y"] + NODE_FOOTPRINTS["trilinearMesh"][1] / 2.0
+                for position in target_positions
+            ]
+            candidate_x = leftmost_target_x - envelope_width \
+                - LAYOUT_SCRATCH_FANOUT_GAP
+            candidate_y = sum(target_centres) / len(target_centres) \
+                - envelope_height / 2.0
+            ignored_ids = [
+                candidate_id for candidate_id in nodes_by_id
+                if candidate_id.startswith("modulationOverride")
+            ]
+            while not position_is_clear(
                     nodes_by_id,
                     node_id,
-                    leftmost_target_x
-                    - envelope_width
-                    - LAYOUT_SCRATCH_FANOUT_GAP,
-                    sum(target_centres) / len(target_centres)
-                    - envelope_height / 2.0)
-                continue
-            target_position = min(
-                target_positions, key=lambda position: position["x"])
-            envelope_height = node_footprint(nodes_by_id[node_id])[1]
+                    candidate_x,
+                    candidate_y,
+                    ignored_ids):
+                candidate_x -= envelope_width + LAYOUT_GAP
             set_node_position(
-                nodes_by_id,
-                node_id,
-                target_position["x"],
-                target_position["y"] - envelope_height - LAYOUT_GAP)
-            set_port_side(nodes_by_id, node_id, "outputs", "env", "bottom")
+                nodes_by_id, node_id, candidate_x, candidate_y)
         else:
             set_node_position(nodes_by_id, node_id, time_start_x, auxiliary_y)
+
+    modulation_targets = {}
+    for graph_edge in edges:
+        source_id = graph_edge["sourceNodeId"]
+        if not source_id.startswith("modulationOverride"):
+            continue
+        target_sources = modulation_targets.setdefault(
+            graph_edge["destNodeId"], [])
+        if source_id not in target_sources:
+            target_sources.append(source_id)
+    unplaced_override_ids = {
+        source_id
+        for source_ids in modulation_targets.values()
+        for source_id in source_ids
+    }
+    for target_id, source_ids in modulation_targets.items():
+        target = nodes_by_id[target_id]
+        target_height = node_footprint(target)[1]
+        source_height = NODE_FOOTPRINTS["modulationTriple"][1]
+        source_gap = 12.0
+        source_x = target["position"]["x"]
+        direction = -1.0
+        if target["kind"] == "trilinearMesh" \
+                and target["parameters"].get("signalType") == "spectralPhase":
+            direction = 1.0
+        source_y = target["position"]["y"] - source_height - LAYOUT_GAP \
+            if direction < 0.0 \
+            else target["position"]["y"] + target_height + LAYOUT_GAP
+        for index, source_id in enumerate(source_ids):
+            candidate_y = source_y \
+                + direction * index * (source_height + source_gap)
+            ignored_ids = unplaced_override_ids - {source_id}
+            while not position_is_clear(
+                    nodes_by_id,
+                    source_id,
+                    source_x,
+                    candidate_y,
+                    ignored_ids):
+                candidate_y += direction * (source_height + source_gap)
+            set_node_position(
+                nodes_by_id,
+                source_id,
+                source_x,
+                candidate_y)
+            unplaced_override_ids.remove(source_id)
+
     visible_nodes = [
         entry for entry in nodes if entry["kind"] != "spectralLayer"
     ]
@@ -461,16 +533,43 @@ def apply_compact_layout(nodes, edges):
 def tighten_global_audio_layout(nodes):
     nodes_by_id = {entry["id"]: entry for entry in nodes}
     voice = nodes_by_id.get("voice")
-    if voice is None or "globalInput" not in nodes_by_id:
+    if "globalInput" not in nodes_by_id:
         return
 
+    if voice is None:
+        global_y = LAYOUT_MARGIN
+        if "voiceOutput" in nodes_by_id:
+            set_node_position(
+                nodes_by_id, "voiceOutput", LAYOUT_MARGIN, LAYOUT_MARGIN)
+            global_y += node_footprint(nodes_by_id["voiceOutput"])[1] \
+                + LAYOUT_GLOBAL_NODE_GAP
+        x = LAYOUT_MARGIN
+        for node_id in (
+                "globalInput", "waveshaper", "impulseResponse", "equalizer",
+                "delay", "reverb", "output"):
+            if node_id not in nodes_by_id:
+                continue
+            set_node_position(nodes_by_id, node_id, x, global_y)
+            x += node_footprint(nodes_by_id[node_id])[0] + LAYOUT_GLOBAL_NODE_GAP
+        return
+
+    global_node_ids = {
+        "globalInput", "waveshaper", "impulseResponse", "equalizer",
+        "delay", "reverb", "output",
+    }
+    voice_bottom = max(
+        entry["position"]["y"] + node_footprint(entry)[1]
+        for entry in nodes
+        if entry["id"] not in global_node_ids
+        and entry["kind"] != "spectralLayer")
+    global_y = max(LAYOUT_GLOBAL_LANE_Y, voice_bottom + LAYOUT_GLOBAL_NODE_GAP)
     x = voice["position"]["x"] + LAYOUT_GLOBAL_NODE_GAP
     for node_id in (
             "globalInput", "waveshaper", "impulseResponse", "equalizer",
             "delay", "reverb", "output"):
         if node_id not in nodes_by_id:
             continue
-        set_node_position(nodes_by_id, node_id, x, LAYOUT_GLOBAL_LANE_Y)
+        set_node_position(nodes_by_id, node_id, x, global_y)
         x += node_footprint(nodes_by_id[node_id])[0] + LAYOUT_GLOBAL_NODE_GAP
 
 
@@ -507,6 +606,23 @@ def flat_curve_model(mesh):
             "vertices": vertices,
         },
     }
+
+
+def flat_curve_validation_issue(mesh):
+    vertices = mesh.get("vertices", [])
+    if len(vertices) < 2:
+        return "fewer than two vertices"
+    identities = set()
+    for vertex in vertices:
+        identity = vertex["id"]
+        if identity in identities:
+            return f"duplicate vertex id {identity}"
+        identities.add(identity)
+        for field in ("phase", "amp", "weight"):
+            value = vertex[field]
+            if not math.isfinite(value) or value < 0.0 or value > 1.0:
+                return f"vertex {identity} {field} is outside [0, 1]: {value}"
+    return None
 
 
 def trimesh_model(mesh):
@@ -671,21 +787,138 @@ def canonical_modulation_mappings(mappings):
     return result
 
 
-def modulation_sources_for_preset(preset):
+def modulation_mappings_for_preset(preset):
     actual = preset.get("modMatrix", {}).get("mappings")
     if actual is None:
         actual = default_modulation_mappings_for_preset(preset)
-    else:
-        actual = canonical_modulation_mappings(actual)
+    return canonical_modulation_mappings(actual)
 
-    for blue_input in (2, 101):
-        if actual == default_modulation_mappings_for_preset(preset, blue_input):
-            return {
-                "yellow": "voiceTime",
-                "red": "keyScale",
-                "blue": MODULATION_SOURCE_NAMES[blue_input],
-            }
-    return None
+
+def modulation_mapping_index(preset):
+    result = {}
+    for mapping in modulation_mappings_for_preset(preset):
+        key = (mapping["out"], mapping["dim"])
+        if key in result and result[key] != mapping["in"]:
+            raise ValueError(
+                f"conflicting modulation sources for output {key[0]} "
+                f"dimension {key[1]}")
+        result[key] = mapping["in"]
+    return result
+
+
+def modulation_source_configuration(preset, input_id, fallback_constant=0.5):
+    if input_id in MODULATION_SOURCE_NAMES:
+        return {
+            "source": MODULATION_SOURCE_NAMES[input_id],
+            "controller": 1,
+            "constant": 0.5,
+        }
+    if 100 <= input_id < 200:
+        return {
+            "source": "midiCC",
+            "controller": input_id - 100,
+            "constant": 0.5,
+        }
+    if 200 <= input_id < 220:
+        utilities = preset.get("modMatrix", {}).get("utilities")
+        utility_index = input_id - 200
+        if utilities is None or utility_index >= len(utilities):
+            raise ValueError(
+                f"modulation utility {utility_index + 1} has no exported value")
+        return {
+            "source": "constant",
+            "controller": 1,
+            "constant": utilities[utility_index],
+        }
+    if input_id >= 220:
+        return {
+            "source": "constant",
+            "controller": 1,
+            "constant": fallback_constant,
+        }
+    raise ValueError(f"unsupported modulation input {input_id}")
+
+
+def modulation_validation_issues(preset):
+    try:
+        mappings = modulation_mapping_index(preset)
+        for input_id in mappings.values():
+            modulation_source_configuration(preset, input_id)
+    except ValueError as error:
+        return [str(error)]
+    return []
+
+
+def append_modulation_overrides(
+        preset, nodes, edges, output_bindings, position):
+    mappings = modulation_mapping_index(preset)
+    axes = ("yellow", "red", "blue")
+    baseline_inputs = {}
+    for dimension, axis in enumerate(axes):
+        candidates = [
+            mappings.get((output_id, dimension))
+            for output_id, (_, dimensions) in output_bindings.items()
+            if dimension in dimensions
+        ]
+        counts = Counter(candidates)
+        maximum_count = max(counts.values(), default=0)
+        preferred = DEFAULT_AXIS_INPUTS[axis]
+        if counts.get(preferred) == maximum_count:
+            baseline_inputs[axis] = preferred
+        else:
+            baseline_inputs[axis] = next(
+                (input_id for input_id in candidates
+                 if counts[input_id] == maximum_count),
+                preferred)
+
+    morph = next(entry for entry in nodes if entry["id"] == "morph")
+    for axis, input_id in baseline_inputs.items():
+        constant = position["time" if axis == "yellow" else axis]
+        configuration = {
+            "source": "constant",
+            "controller": 1,
+            "constant": constant,
+        } if input_id is None else modulation_source_configuration(
+            preset, input_id, constant)
+        morph["parameters"][f"{axis}Source"] = configuration["source"]
+        morph["parameters"][f"{axis}Controller"] = configuration["controller"]
+        morph["parameters"][f"{axis}Constant"] = configuration["constant"]
+
+    target_overrides = {}
+    for output_id, (node_id, dimensions) in output_bindings.items():
+        for dimension in dimensions:
+            axis = axes[dimension]
+            input_id = mappings.get((output_id, dimension))
+            if input_id == baseline_inputs[axis]:
+                continue
+            if input_id is None:
+                configuration = {
+                    "source": "constant",
+                    "controller": 1,
+                    "constant": position["time" if axis == "yellow" else axis],
+                }
+            else:
+                configuration = modulation_source_configuration(
+                    preset,
+                    input_id,
+                    position["time" if axis == "yellow" else axis])
+            target_overrides.setdefault(node_id, {})[axis] = configuration
+
+    for index, (target_id, overrides) in enumerate(target_overrides.items(), 1):
+        source_id = f"modulationOverride{index}"
+        parameters = {}
+        for axis in axes:
+            configuration = overrides.get(axis, {
+                "source": "constant",
+                "controller": 1,
+                "constant": position["time" if axis == "yellow" else axis],
+            })
+            parameters[f"{axis}Source"] = configuration["source"]
+            parameters[f"{axis}Controller"] = configuration["controller"]
+            parameters[f"{axis}Constant"] = configuration["constant"]
+        nodes.append(node(source_id, "modulationTriple", 100, 100, parameters))
+        for axis in overrides:
+            edges.append(edge(source_id, axis, target_id, axis))
 
 
 def envelope_node(preset, layer, purpose, node_id, x, y, level=1.0):
@@ -733,7 +966,6 @@ def convert(source):
     oversampling = preset["settings"].get("OversampleFactorRltm", 1)
     control_interval = translated_control_interval(
         preset["settings"].get("ControlFreq", 8))
-    modulation_sources = modulation_sources_for_preset(preset)
     guide_layers = groups[MESH_GROUPS["guides"]]["layers"]
     has_spectral_layers = any(
         layer_mesh_has_vertices(layer)
@@ -751,13 +983,13 @@ def convert(source):
             "controlInterval": control_interval,
         }),
         node("morph", "modulationTriple", 100, 100, {
-            "yellowSource": modulation_sources["yellow"],
+            "yellowSource": "voiceTime",
             "yellowController": 1,
             "yellowConstant": position["time"],
-            "redSource": modulation_sources["red"],
+            "redSource": "keyScale",
             "redController": 1,
             "redConstant": position["red"],
-            "blueSource": modulation_sources["blue"],
+            "blueSource": "inverseVelocity",
             "blueController": 1,
             "blueConstant": position["blue"],
         }),
@@ -806,6 +1038,7 @@ def convert(source):
             "unison", "unison", "voice", "unison",
             "configurationAttachment", "unison"))
     guide_assignments = []
+    modulation_output_bindings = {}
     mesh_parameters = {
         "range": 0.5,
         "signalType": "time",
@@ -831,6 +1064,8 @@ def convert(source):
             380 + 190 * index,
             parameters,
             trimesh_model(layer["mesh"])))
+        modulation_output_bindings[100 + 3 * (index - 1)] = \
+            (layer_id, (0, 1, 2))
         layer_source = (layer_id, "out")
         if abs(pan - 0.5) > 0.000001:
             nodes.append(node(
@@ -856,7 +1091,8 @@ def convert(source):
     def append_spectral_stack(group_name, fft_port, ifft_port, y):
         signal = ("fft", fft_port)
         emitted_index = 0
-        for layer in groups[MESH_GROUPS[group_name]]["layers"]:
+        for source_index, layer in enumerate(
+                groups[MESH_GROUPS[group_name]]["layers"]):
             if not layer_mesh_has_vertices(layer):
                 continue
             emitted_index += 1
@@ -878,6 +1114,9 @@ def convert(source):
             nodes.append(node(
                 layer_id, "trilinearMesh", 1150, y + 170 * (index - 1),
                 parameters, trimesh_model(layer["mesh"])))
+            output_base = 200 if group_name == "magnitude" else 300
+            modulation_output_bindings[output_base + 3 * source_index] = \
+                (layer_id, (0, 1, 2))
             nodes.append(node(operation_id, operation, 1810, y + 170 * (index - 1)))
             pan = layer["properties"].get("pan", 0.5)
             layer_source = (layer_id, "out")
@@ -952,6 +1191,10 @@ def convert(source):
                 2450 + 310 * (index - 1), envelope_y[purpose]))
             if layer["properties"]["active"]:
                 envelope_ids[purpose][index - 1] = envelope_id
+                output_base = {"volume": 400, "pitch": 450, "scratch": 500}[
+                    purpose]
+                modulation_output_bindings[output_base + 2 * (index - 1)] = \
+                    (envelope_id, (1, 2))
 
     volume_id = next(iter(envelope_ids["volume"].values()), None)
     if volume_id is None and preset["settings"].get("Declick", True):
@@ -1042,6 +1285,13 @@ def convert(source):
                 scratch_id, "env", mesh_node_id, "scratch",
                 "processingAttachment", "scratchEnvelope"))
 
+    append_modulation_overrides(
+        preset,
+        nodes,
+        edges,
+        modulation_output_bindings,
+        position)
+
     nodes.append(node("output", "output", 3150, 500, {
         "gain": oscillator_knobs[0],
     }))
@@ -1119,16 +1369,30 @@ def validate_conversion(source):
             issues.append(
                 f"individual-mode Unison has {voice_count} voices; "
                 f"Cycle V2 supports {MAXIMUM_UNISON_VOICES}")
+        else:
+            for index, voice in enumerate(unison.get("voices", []), 1):
+                for field in ("fine", "pan", "phase"):
+                    value = voice.get(field, 0.0)
+                    if not math.isfinite(value) or value < 0.0 or value > 1.0:
+                        issues.append(
+                            f"individual-mode Unison voice {index} {field} "
+                            f"is outside [0, 1]: {value}")
+                        break
     impulse = preset["effects"]["ImpulseModeller"]
     if impulse["enabled"] and impulse.get("waveLoaded", False):
         issues.append("sample-backed ImpulseModeller has no Cycle V2 resource mapping")
     if impulse["enabled"] \
             and not groups[MESH_GROUPS["impulseResponse"]]["layers"]:
         issues.append("active ImpulseModeller has no authored curve layer")
+    if impulse["enabled"] \
+            and groups[MESH_GROUPS["impulseResponse"]]["layers"]:
+        issue = flat_curve_validation_issue(
+            groups[MESH_GROUPS["impulseResponse"]]["layers"][0]["mesh"])
+        if issue is not None:
+            issues.append(f"ImpulseModeller curve is not representable: {issue}")
     if preset.get("multisample", {}).get("samples", []):
         issues.append("external multisamples have no Cycle V2 destination")
-    if modulation_sources_for_preset(preset) is None:
-        issues.append("modulation matrix differs from the supported fixed mapping")
+    issues.extend(modulation_validation_issues(preset))
 
     oversampling = preset["settings"].get("OversampleFactorRltm", 1)
     if oversampling not in (1, 2, 4, 8):
@@ -1137,6 +1401,17 @@ def validate_conversion(source):
     if waveshaper["enabled"] \
             and not groups[MESH_GROUPS["waveshaper"]]["layers"]:
         issues.append("active Waveshaper has no authored curve layer")
+    if waveshaper["enabled"] \
+            and groups[MESH_GROUPS["waveshaper"]]["layers"]:
+        issue = flat_curve_validation_issue(
+            groups[MESH_GROUPS["waveshaper"]]["layers"][0]["mesh"])
+        if issue is not None:
+            issues.append(f"Waveshaper curve is not representable: {issue}")
+    guide_layers = groups[MESH_GROUPS["guides"]]["layers"]
+    for index, layer in enumerate(guide_layers, 1):
+        issue = flat_curve_validation_issue(layer["mesh"])
+        if issue is not None:
+            issues.append(f"Guide {index} curve is not representable: {issue}")
     return issues
 
 
@@ -1181,8 +1456,7 @@ def validate_audio_parity_subset(source):
 
     if preset.get("multisample", {}).get("samples", []):
         issues.append("external multisamples are not supported by strict audio parity")
-    if modulation_sources_for_preset(preset) is None:
-        issues.append("modulation matrix differs from the supported fixed mapping")
+    issues.extend(modulation_validation_issues(preset))
 
     oversampling = preset["settings"].get("OversampleFactorRltm", 1)
     if oversampling not in (1, 2, 4, 8):

@@ -556,6 +556,163 @@ class PortCycleV1PresetTest(unittest.TestCase):
 
         self.assertEqual(morph["parameters"]["blueSource"], "modWheel")
 
+    def test_converter_accepts_reordered_default_modulation_mappings(self):
+        source = convertible_source()
+        source["preset"]["modMatrix"]["mappings"].reverse()
+
+        converted = port_cycle_v1_preset.convert(source)
+
+        self.assertFalse(any(
+            node["id"].startswith("modulationOverride")
+            for node in converted["nodes"]
+        ))
+
+    def test_converter_overrides_an_unmapped_axis_with_morph_position(self):
+        source = convertible_source()
+        mappings = source["preset"]["modMatrix"]["mappings"]
+        mappings[:] = [
+            mapping for mapping in mappings
+            if not (mapping["out"] == 100 and mapping["dim"] == 2)
+        ]
+
+        converted = port_cycle_v1_preset.convert(source)
+        override = next(
+            node for node in converted["nodes"]
+            if node["id"].startswith("modulationOverride"))
+
+        self.assertEqual(override["parameters"]["blueSource"], "constant")
+        self.assertEqual(override["parameters"]["blueConstant"], 0.75)
+        self.assertTrue(any(
+            graph_edge["sourceNodeId"] == override["id"]
+            and graph_edge["sourcePortId"] == "blue"
+            and graph_edge["destNodeId"] == "timeLayer1"
+            and graph_edge["destPortId"] == "blue"
+            for graph_edge in converted["edges"]
+        ))
+
+    def test_converter_preserves_per_destination_midi_cc_mapping(self):
+        source = convertible_source()
+        mapping = next(
+            mapping for mapping in source["preset"]["modMatrix"]["mappings"]
+            if mapping["out"] == 100 and mapping["dim"] == 2)
+        mapping["in"] = 174
+
+        converted = port_cycle_v1_preset.convert(source)
+        override = next(
+            node for node in converted["nodes"]
+            if node["id"].startswith("modulationOverride"))
+
+        self.assertEqual(override["parameters"]["blueSource"], "midiCC")
+        self.assertEqual(override["parameters"]["blueController"], 74)
+
+    def test_modulation_binding_follows_a_retained_spectral_layer(self):
+        source = convertible_source()
+        magnitude_layers = source["preset"]["meshLibrary"]["groups"][5]["layers"]
+        magnitude_layers[0]["mesh"]["vertices"] = []
+        magnitude_layers[1]["mesh"]["vertices"] = [1]
+        magnitude_layers[1]["properties"]["active"] = True
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+        mapping = next(
+            mapping for mapping in source["preset"]["modMatrix"]["mappings"]
+            if mapping["out"] == 203 and mapping["dim"] == 2)
+        mapping["in"] = 174
+
+        converted = port_cycle_v1_preset.convert(source)
+
+        self.assertTrue(any(
+            graph_edge["sourceNodeId"].startswith("modulationOverride")
+            and graph_edge["destNodeId"] == "magnitudeLayer1"
+            and graph_edge["destPortId"] == "blue"
+            for graph_edge in converted["edges"]
+        ))
+
+    def test_converter_preserves_utility_modulation_value(self):
+        source = convertible_source()
+        source["preset"]["modMatrix"]["utilities"] = [0.37] + [0.0] * 19
+        mapping = next(
+            mapping for mapping in source["preset"]["modMatrix"]["mappings"]
+            if mapping["out"] == 100 and mapping["dim"] == 2)
+        mapping["in"] = 200
+
+        converted = port_cycle_v1_preset.convert(source)
+        override = next(
+            node for node in converted["nodes"]
+            if node["id"].startswith("modulationOverride"))
+
+        self.assertEqual(override["parameters"]["blueSource"], "constant")
+        self.assertEqual(override["parameters"]["blueConstant"], 0.37)
+
+    def test_converter_rejects_a_live_utility_without_exported_state(self):
+        source = convertible_source()
+        mapping = next(
+            mapping for mapping in source["preset"]["modMatrix"]["mappings"]
+            if mapping["out"] == 100 and mapping["dim"] == 2)
+        mapping["in"] = 200
+
+        issues = port_cycle_v1_preset.validate_conversion(source)
+
+        self.assertIn("modulation utility 1 has no exported value", issues)
+
+    def test_converter_preserves_an_undriven_legacy_utility_as_constant(self):
+        source = convertible_source()
+        mapping = next(
+            mapping for mapping in source["preset"]["modMatrix"]["mappings"]
+            if mapping["out"] == 100 and mapping["dim"] == 2)
+        mapping["in"] = 500
+
+        converted = port_cycle_v1_preset.convert(source)
+        override = next(
+            node for node in converted["nodes"]
+            if node["id"].startswith("modulationOverride"))
+
+        self.assertEqual(override["parameters"]["blueSource"], "constant")
+        self.assertEqual(override["parameters"]["blueConstant"], 0.75)
+
+    def test_converter_uses_constant_modal_axes_for_an_empty_matrix(self):
+        source = convertible_source()
+        source["preset"]["modMatrix"]["mappings"] = []
+
+        converted = port_cycle_v1_preset.convert(source)
+        morph = next(node for node in converted["nodes"] if node["id"] == "morph")
+
+        self.assertEqual(morph["parameters"]["yellowSource"], "constant")
+        self.assertEqual(morph["parameters"]["redSource"], "constant")
+        self.assertEqual(morph["parameters"]["blueSource"], "constant")
+        self.assertFalse(any(
+            node["id"].startswith("modulationOverride")
+            for node in converted["nodes"]
+        ))
+
+    def test_converter_maps_aftertouch_to_channel_pressure(self):
+        source = convertible_source()
+        mapping = next(
+            mapping for mapping in source["preset"]["modMatrix"]["mappings"]
+            if mapping["out"] == 100 and mapping["dim"] == 2)
+        mapping["in"] = 5
+
+        converted = port_cycle_v1_preset.convert(source)
+        override = next(
+            node for node in converted["nodes"]
+            if node["id"].startswith("modulationOverride"))
+
+        self.assertEqual(
+            override["parameters"]["blueSource"],
+            "channelPressure")
+
+    def test_converter_rejects_conflicting_modulation_mappings(self):
+        source = convertible_source()
+        source["preset"]["modMatrix"]["mappings"].append({
+            "in": 101,
+            "out": 100,
+            "dim": 2,
+        })
+
+        issues = port_cycle_v1_preset.validate_conversion(source)
+
+        self.assertTrue(any("conflicting modulation" in issue for issue in issues))
+
     def test_converter_canonicalizes_legacy_pitch_envelope_modulation_id(self):
         source = convertible_source()
         pitch = {
@@ -870,7 +1027,10 @@ class PortCycleV1PresetTest(unittest.TestCase):
         source = convertible_source()
         source["preset"]["meshLibrary"]["groups"][3]["layers"] = [{
             "properties": {"active": True},
-            "mesh": {"vertices": [], "cubes": []},
+            "mesh": {"vertices": [
+                {"id": 0, "phase": 0.0, "amp": 0.5, "weight": 0.5},
+                {"id": 1, "phase": 1.0, "amp": 0.5, "weight": 0.5},
+            ], "cubes": []},
         }]
         source["preset"]["meshLibrary"]["groups"][4]["layers"][0]["mesh"]["cubes"] = [{
             "guides": {"phase": 0},
@@ -1023,7 +1183,10 @@ class PortCycleV1PresetTest(unittest.TestCase):
         })
         source["preset"]["meshLibrary"]["groups"][10]["layers"] = [{
             "properties": {"active": True},
-            "mesh": {"vertices": [], "cubes": []},
+            "mesh": {"vertices": [
+                {"id": 0, "phase": 0.0, "amp": 0.5, "weight": 0.5},
+                {"id": 1, "phase": 1.0, "amp": 0.5, "weight": 0.5},
+            ], "cubes": []},
         }]
 
         converted = port_cycle_v1_preset.convert(source)
@@ -1052,7 +1215,10 @@ class PortCycleV1PresetTest(unittest.TestCase):
         })
         source["preset"]["meshLibrary"]["groups"][10]["layers"] = [{
             "properties": {"active": True},
-            "mesh": {"vertices": [], "cubes": []},
+            "mesh": {"vertices": [
+                {"id": 0, "phase": 0.0, "amp": 0.5, "weight": 0.5},
+                {"id": 1, "phase": 1.0, "amp": 0.5, "weight": 0.5},
+            ], "cubes": []},
         }]
 
         converted = port_cycle_v1_preset.convert(source)

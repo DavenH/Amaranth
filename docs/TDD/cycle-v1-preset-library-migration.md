@@ -2,12 +2,11 @@
 
 ## Status
 
-In progress: legacy-library migration is complete for the original 229-source
-inventory, but the later 2014--15 archive exposed an additional Cycle 1 XML
-compatibility boundary. Generated graphs omit structural no-ops, preserve
-authored spectral range on Trimesh, and use compact, authorable,
-non-overlapping layouts. The compatibility follow-up below must complete before
-the expanded library is considered migrated.
+Complete for every representable preset in the expanded 276-source inventory.
+Thirty presets remain explicitly blocked by Cycle V2 normalized model or
+individual-Unison limits; no partial graph is emitted for them. Generated
+graphs omit structural no-ops, preserve authored modulation and spectral state,
+and use compact, authorable, non-overlapping layouts.
 
 ## Goal
 
@@ -124,18 +123,22 @@ and retain zero defaults when older canonical data omits it.
 The converter decodes each valid output ID to its exact retained Trimesh or
 Envelope axis. One Modulation Triple attached to Voice Context carries the
 modal source for each axis, including a constant at the authored morph position
-when an axis is usually unmapped. Minority mappings use shared Modulation Source
-nodes connected directly to the affected axis; an absent tuple remains the
-node's authored constant. This reuses Cycle V2's existing explicit modulation
-inputs and source runtime unchanged. MIDI input 101 remains Mod Wheel, other
-100--199 inputs become their numbered MIDI CC, and Utility inputs become their
-exported constant values. Conflicting sources for one destination axis and
-references to unavailable Utility state remain explicit blockers.
+when an axis is usually unmapped. Minority mappings use a target-local
+Modulation Triple connected directly to the affected axes; this represents up
+to three overrides without a row of redundant single-source nodes. An absent
+tuple remains the node's authored constant. This reuses Cycle V2's existing
+explicit modulation inputs and source runtime unchanged. MIDI input 101 remains
+Mod Wheel, other 100--199 inputs become their numbered MIDI CC, and valid
+Utility inputs 200--219 become their exported constant values. Historical
+input IDs above the twenty actual Utility knobs were never driven by
+`updateDsp()` in Cycle 1 and therefore retain the authored morph position.
+Conflicting sources for one destination axis and references to unavailable
+live Utility state remain explicit blockers.
 
 The stable end state is native Cycle V2 graph modulation: there is no runtime
-legacy matrix adapter. Generated layout keeps override sources in a compact
-left-hand control column and avoids routing their fan-out through unrelated
-nodes.
+legacy matrix adapter. Generated layout keeps each override Triple adjacent to
+its consumer, above magnitude/time targets or below phase targets, and avoids
+routing control cables through unrelated nodes.
 
 ### Layer enablement
 
@@ -392,11 +395,15 @@ transferred to its upstream Trimesh before the Pan is removed.
    so the first ordinary save no longer rewrites legacy precision, defaults,
    model versions, and JSON shape across the whole file.
 20. Added a second four-preset review batch: Acid Loop, Ambi Wave, Rise and
-   Shine, and Woaio. Generalized shared scratch-envelope placement across
-   consumers in different columns so the envelope remains left of the whole
-   fan-out instead of sending control cables across intermediate nodes. Replaced
-   the first review fixture's ineffective duration-existence checks with exact
-   Voice Context parameter assertions.
+    Shine, and Woaio. Generalized shared scratch-envelope placement across
+    consumers in different columns so the envelope remains left of the whole
+    fan-out instead of sending control cables across intermediate nodes. Replaced
+    the first review fixture's ineffective duration-existence checks with exact
+    Voice Context parameter assertions.
+21. Added arbitrary per-destination modulation conversion using native Cycle V2
+    Modulation Triple inputs, a collision-safe lowercase kebab-case batch tool,
+    explicit normalized-model diagnostics, and the remaining 236 representable
+    expanded-library graphs. The ten reviewed graphs were preserved unchanged.
 
 ## Verification
 
@@ -480,10 +487,25 @@ transferred to its upstream Trimesh before the Pan is removed.
   matrix uses the obsolete pitch-envelope output ID 401; the converter
   canonicalizes that representation to ID 450 before recognizing its standard
   ModWheel-based Modulation Triple mapping.
+- Expanded-library accounting: all 276 sources export through the rebuilt Cycle
+  1 application. Cycle V2 now contains 246 current factory graphs: ten reviewed
+  destinations retained unchanged and 236 newly generated lowercase kebab-case
+  destinations. Thirty sources are withheld rather than approximated: ten have
+  11--36 individual Unison voices, nine contain individual Unison values outside
+  Cycle V2's normalized state domain, five contain IR curve coordinates above
+  one, and six contain a negative Guide sharpness. Batch conversion reports zero
+  collisions and zero unexpected failures.
+- Thirty-four emitted presets require non-default per-destination modulation.
+  They use 65 target-local Modulation Triples in total; every other retained
+  destination inherits the modal attached Triple. The generated 236-graph set
+  has no compact-node overlaps. The only overlap in the current 246-graph root
+  library is in the protected reviewed `acid-loop.cyclegraph`.
 
 ## Final Verification
 
-- Converter unit tests: 56 passed, including legacy pitch-envelope modulation,
+- Converter unit tests: 66 passed, including legacy pitch-envelope modulation,
+  reordered and sparse matrices, MIDI CC, Utility, channel-pressure overrides,
+  conflict rejection,
   direct spectral operand layout, serializer idempotence, empty magnitude and
   phase meshes, shared scratch fan-out across columns, all-empty spectral
   stacks, centred Pan, range ownership, and inactive pitch Envelope omission.
@@ -516,6 +538,11 @@ transferred to its upstream Trimesh before the Pan is removed.
   operation layout in `/private/tmp/cycle-v2-layout-thrash-final.png`, and the
   empty-phase bypass plus down-left volume Envelope placement in
   `/private/tmp/cycle-v2-phase-bypass-alto-sax-1.png`.
+- The expanded 246-preset current library opened and compiled in one Cycle V2
+  application session; all 492 open/assert automation commands passed. A
+  production canvas capture of `satisfaction.cyclegraph`, the densest emitted
+  modulation case with seven local override Triples, is stored at
+  `/private/tmp/cycle-v2-satisfaction-layout.png`.
 - Standalone Cycle and Cycle V2 builds passed on macOS.
 - The complete Cycle V2 binary passes 612 of 615 cases. The three unrelated
   failures are `african-horn.cyclegraph` lacking newly explicit default
