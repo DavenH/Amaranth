@@ -316,6 +316,68 @@ class PortCycleV1PresetTest(unittest.TestCase):
             nodes["output"]["position"]["y"],
             nodes["ifft"]["position"]["y"])
 
+    def test_voice_context_attachments_form_an_ordered_left_column(self):
+        source = convertible_source()
+        envelope_mesh = {
+            "mainMesh": {
+                "vertices": [],
+                "cubes": [{}, {}],
+            },
+        }
+        groups = source["preset"]["meshLibrary"]["groups"]
+        groups[1]["layers"] = [{
+            "properties": {"active": True, "logarithmic": False},
+            "mesh": copy.deepcopy(envelope_mesh),
+        }]
+        groups[2]["layers"] = [{
+            "properties": {"active": True, "logarithmic": False},
+            "mesh": copy.deepcopy(envelope_mesh),
+        }]
+        for group_index in (4, 6):
+            for layer in groups[group_index]["layers"]:
+                layer["properties"]["scratchChannel"] = 0
+        source["preset"]["effects"]["Unison"]["enabled"] = True
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+        attachment_ids = (
+            "morph", "pitchEnvelope1", "unison", "scratchEnvelope1")
+
+        self.assert_compact_nodes_do_not_overlap(converted)
+        self.assertEqual(
+            {nodes[node_id]["position"]["x"] for node_id in attachment_ids},
+            {port_cycle_v1_preset.LAYOUT_MARGIN},
+        )
+        self.assertEqual(
+            sorted(attachment_ids, key=lambda node_id: nodes[node_id]["position"]["y"]),
+            list(attachment_ids),
+        )
+        self.assertLess(nodes["morph"]["position"]["x"],
+                        nodes["voice"]["position"]["x"])
+        self.assertLess(nodes["voice"]["position"]["x"],
+                        nodes["timeLayer1"]["position"]["x"])
+
+    def test_effect_curve_uses_canonical_phase_and_amplitude_coordinates(self):
+        model = port_cycle_v1_preset.flat_curve_model({
+            "vertices": [{
+                "id": 4,
+                "time": 0.91,
+                "phase": 0.37,
+                "amp": 0.63,
+                "weight": 0.25,
+            }],
+        })
+
+        self.assertEqual(model["state"]["vertices"], [{
+            "id": 5,
+            "x": 0.37,
+            "y": 0.63,
+            "curve": 0.25,
+        }])
+
     def test_presentation_reconciliation_does_not_preserve_semantics(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
         existing = copy.deepcopy(converted)
@@ -427,7 +489,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
             for node in converted["nodes"]
         ))
 
-    def test_implicit_scratch_envelope_reuses_cycle_two_default_model(self):
+    def test_active_scratch_envelope_without_mesh_is_rejected(self):
         source = convertible_source()
         source["preset"]["meshLibrary"]["groups"][2]["layers"] = [{
             "properties": {"active": True},
@@ -437,16 +499,55 @@ class PortCycleV1PresetTest(unittest.TestCase):
             port_cycle_v1_preset.default_modulation_mappings_for_preset(
                 source["preset"])
 
-        converted = port_cycle_v1_preset.convert(source)
-        scratch_node = next(
-            node for node in converted["nodes"]
-            if node["id"] == "scratchEnvelope1")
+        with self.assertRaisesRegex(
+                ValueError,
+                "active scratch Envelope 1 has no authored mesh"):
+            port_cycle_v1_preset.convert(source)
 
-        self.assertTrue(scratch_node["parameters"]["enabled"])
-        self.assertEqual(
-            scratch_node["model"],
-            port_cycle_v1_preset.default_envelope_model(),
-        )
+    def test_absent_scratch_envelope_leaves_scratch_ports_unconnected(self):
+        converted = port_cycle_v1_preset.convert(convertible_source())
+
+        self.assertFalse(any(
+            edge["destPortId"] == "scratch"
+            for edge in converted["edges"]
+        ))
+
+    def test_scratch_channels_attach_their_authored_envelopes(self):
+        source = convertible_source()
+        scratch_mesh = {
+            "mainMesh": {
+                "vertices": [],
+                "cubes": [{}, {}],
+            },
+        }
+        source["preset"]["meshLibrary"]["groups"][2]["layers"] = [
+            {
+                "properties": {"active": True, "logarithmic": False},
+                "mesh": copy.deepcopy(scratch_mesh),
+            },
+            {
+                "properties": {"active": True, "logarithmic": False},
+                "mesh": copy.deepcopy(scratch_mesh),
+            },
+        ]
+        groups = source["preset"]["meshLibrary"]["groups"]
+        groups[4]["layers"][0]["properties"]["scratchChannel"] = 0
+        groups[5]["layers"][0]["mesh"]["vertices"] = [1]
+        groups[5]["layers"][0]["properties"]["scratchChannel"] = 1
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        converted = port_cycle_v1_preset.convert(source)
+        scratch_edges = {
+            (edge["sourceNodeId"], edge["destNodeId"])
+            for edge in converted["edges"]
+            if edge["destPortId"] == "scratch"
+        }
+
+        self.assertIn(("scratchEnvelope1", "timeLayer1"), scratch_edges)
+        self.assertIn(("scratchEnvelope2", "magnitudeLayer1"), scratch_edges)
+        self.assertNotIn(("scratchEnvelope1", "voice"), scratch_edges)
 
     def test_document_declick_retains_only_a_neutral_volume_envelope(self):
         converted = port_cycle_v1_preset.convert(convertible_source())

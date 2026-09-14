@@ -148,10 +148,20 @@ spectral fan-in, IFFT, effects, and Output. Magnitude meshes sit in aligned rows
 above their accumulator operations; phase meshes use corresponding rows below.
 Layer stacks remain in monotonic lanes because the operation rotator always
 keeps its output on the right; a generated switchback would otherwise persist a
-layout the user could not reproduce. Modulation, Unison, pitch, scratch, and
-inactive Envelope nodes occupy aligned auxiliary lanes without competing with
-the audio spine. The active pitch Envelope is placed immediately left of Voice
-with their connected ports aligned.
+layout the user could not reproduce. Voice Context configuration sources occupy
+one ordered column to its left, matching the destination-port order: Modulation
+Triple, pitch Envelope, Unison, and the inherited scratch Envelope when present.
+Voice Context is vertically centred against that compact stack, and the audio
+mesh chain continues to its right. Scratch Envelopes assigned to individual
+Cycle 1 mesh channels remain local attachments in a separate auxiliary lane.
+
+Cycle 1 `scratchChannel` is authoritative per time, magnitude, and phase layer.
+The converter attaches each effective scratch Envelope only to meshes selecting
+its channel; a complete common fanout may collapse to the equivalent Voice
+Context default. A missing or inactive scratch Envelope leaves the corresponding
+scratch port unconnected and uses voice time. An active scratch entry with a
+missing canonical mesh blocks conversion instead of borrowing Cycle V2's
+default volume-envelope geometry.
 
 The layout contract is mechanical: no compact node rectangles overlap after
 Cycle V2 resolves their natural sizes, ordinary horizontal gaps are consistent,
@@ -263,6 +273,8 @@ transferred to its upstream Trimesh before the Pan is removed.
 ## Lifecycle And Ownership
 
 - Cycle 1 owns `.cyc` loading and canonical export on its GUI/message thread.
+- Each export batch rebuilds and launches the current Cycle 1 target so recent
+  `PresetMigrator` schema fixes cannot be bypassed by a stale application bundle.
 - The batch driver owns only command sequencing, artifact paths, and a result
   report; it contains no preset-domain translation.
 - The converter owns offline type/value/routing translation and deterministic
@@ -322,6 +334,11 @@ transferred to its upstream Trimesh before the Pan is removed.
    hard-pan values into the shared Cycle DSP layout instead of substituting the
    default group layout. Legacy presets above Cycle V2's ten-voice capacity are
    rejected explicitly rather than truncated.
+17. Rebuilt Cycle 1 after the v1.8 envelope/effect compatibility changes and
+   regenerated a four-preset review batch. Removed the invented default scratch
+   model, preserved per-mesh `scratchChannel` routing including two-channel
+   presets, carried the shared Cycle 1/Cycle V2 voice-length unit value unchanged,
+   and reorganized Voice Context attachments into a compact left-hand stack.
 
 ## Verification
 
@@ -343,6 +360,10 @@ transferred to its upstream Trimesh before the Pan is removed.
   Modeller vertices against their source XML coordinates with zero differences.
   Focused migration tests cover both a true version-1 coordinate conversion and
   unchanged 1.7/1.8 coordinates through canonical and live-document loading.
+- The regenerated four-preset review batch loads and compiles with exact
+  Cycle 1 voice durations of 1.450489, 1.266986, 0.998458, and 1.121317 seconds.
+  App-rendered screenshots confirm restored effect curves, compact Voice Context
+  fan-in, and local placement for the two channel-specific scratch Envelopes.
 - The focused resampler regression recreates the exhausted source window and
   passes without an invalid copy. The oversampler regression checks the exact
   wrapped-tail extent. The AcidStab3 live fixture holds MIDI note 41 for four

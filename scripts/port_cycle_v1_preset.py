@@ -9,7 +9,6 @@ guide curves, envelope meshes, and cube-component guide assignments.
 
 import argparse
 import copy
-import functools
 import hashlib
 import json
 import math
@@ -250,29 +249,44 @@ def layout_accumulator_branch(
     return right_edge
 
 
-def apply_compact_layout(nodes):
+def apply_compact_layout(nodes, edges):
     nodes_by_id = {entry["id"]: entry for entry in nodes}
     spine_y = LAYOUT_SPINE_Y
     transform_y = spine_y - 14.0
-    pitch_envelopes = numbered_node_ids(nodes_by_id, "pitchEnvelope")
-    pitch_envelopes.sort(key=lambda node_id: bool(
-        nodes_by_id[node_id]["parameters"].get("enabled", False)))
-    for index, node_id in enumerate(pitch_envelopes):
-        set_node_position(
-            nodes_by_id,
-            node_id,
-            LAYOUT_MARGIN + index * (
-                NODE_FOOTPRINTS["envelope"][0] + LAYOUT_GAP),
-            spine_y + 34.0)
-    main_start_x = LAYOUT_MARGIN + len(pitch_envelopes) * (
-        NODE_FOOTPRINTS["envelope"][0] + LAYOUT_GAP)
+    voice_attachments = {}
+    for graph_edge in edges:
+        if graph_edge["destNodeId"] == "voice":
+            voice_attachments[graph_edge["destPortId"]] = \
+                graph_edge["sourceNodeId"]
+    attachment_ids = [
+        voice_attachments[port_id]
+        for port_id in ("modulation", "pitch", "unison", "scratch")
+        if port_id in voice_attachments
+    ]
+    attachment_gap = 44.0
+    attachment_height = sum(
+        node_footprint(nodes_by_id[node_id])[1]
+        for node_id in attachment_ids)
+    attachment_height += attachment_gap * max(0, len(attachment_ids) - 1)
+    attachment_y = spine_y - attachment_height / 2.0
+    for node_id in attachment_ids:
+        set_node_position(nodes_by_id, node_id, LAYOUT_MARGIN, attachment_y)
+        attachment_y += node_footprint(nodes_by_id[node_id])[1] + attachment_gap
 
-    set_node_position(nodes_by_id, "morph", main_start_x, spine_y - 300.0)
-    set_node_position(nodes_by_id, "voice", main_start_x, spine_y)
-    set_node_position(nodes_by_id, "unison", main_start_x, spine_y + 228.0)
+    attachment_width = max(
+        (node_footprint(nodes_by_id[node_id])[0] for node_id in attachment_ids),
+        default=0.0)
+    main_start_x = LAYOUT_MARGIN + attachment_width + LAYOUT_GAP
+    voice_height = node_footprint(nodes_by_id["voice"])[1]
+    set_node_position(
+        nodes_by_id,
+        "voice",
+        main_start_x,
+        spine_y - voice_height / 2.0)
 
     time_layers = numbered_node_ids(nodes_by_id, "timeLayer")
-    time_start_x = main_start_x + 380.0
+    time_start_x = main_start_x \
+        + NODE_FOOTPRINTS["voiceContext"][0] + 100.0
     set_node_position(nodes_by_id, "timeLayer1", time_start_x, transform_y)
     set_node_position(
         nodes_by_id,
@@ -347,10 +361,35 @@ def apply_compact_layout(nodes):
             volume_anchor_x + index * volume_cell_width,
             volume_y)
 
-    auxiliary_x = time_start_x
-    for node_id in numbered_node_ids(nodes_by_id, "scratchEnvelope"):
-        set_node_position(nodes_by_id, node_id, auxiliary_x, auxiliary_y)
-        auxiliary_x += NODE_FOOTPRINTS["envelope"][0] + LAYOUT_GAP
+    attached_node_ids = set(attachment_ids)
+    local_envelopes = [
+        node_id
+        for prefix in ("pitchEnvelope", "scratchEnvelope")
+        for node_id in numbered_node_ids(nodes_by_id, prefix)
+        if node_id not in attached_node_ids
+    ]
+    for node_id in local_envelopes:
+        target_ids = [
+            graph_edge["destNodeId"]
+            for graph_edge in edges
+            if graph_edge["sourceNodeId"] == node_id
+            and graph_edge["destPortId"] == "scratch"
+            and graph_edge["destNodeId"] in nodes_by_id
+        ]
+        if target_ids:
+            target_id = min(
+                target_ids,
+                key=lambda candidate: nodes_by_id[candidate]["position"]["x"])
+            target_position = nodes_by_id[target_id]["position"]
+            envelope_height = node_footprint(nodes_by_id[node_id])[1]
+            set_node_position(
+                nodes_by_id,
+                node_id,
+                target_position["x"],
+                target_position["y"] - envelope_height - LAYOUT_GAP)
+            set_port_side(nodes_by_id, node_id, "outputs", "env", "bottom")
+        else:
+            set_node_position(nodes_by_id, node_id, time_start_x, auxiliary_y)
     visible_nodes = [
         entry for entry in nodes if entry["kind"] != "spectralLayer"
     ]
@@ -429,19 +468,6 @@ def envelope_model(layer, morph):
     }
 
 
-@functools.lru_cache(maxsize=1)
-def default_envelope_model():
-    repository = Path(__file__).resolve().parents[1]
-    default_graph = repository / "cycle-v2" / "resources" / "default.cyclegraph"
-    with default_graph.open(encoding="utf-8") as graph_file:
-        graph = json.load(graph_file)
-
-    for graph_node in graph["nodes"]:
-        if graph_node["kind"] == "envelope":
-            return graph_node["model"]
-    raise ValueError("Cycle V2 default graph has no Envelope model")
-
-
 def require_single_active_layer(groups, group_name):
     layers = groups[MESH_GROUPS[group_name]]["layers"]
     active = [layer for layer in layers if layer["properties"]["active"]]
@@ -485,6 +511,15 @@ def active_envelope_layer(preset, purpose):
         raise ValueError(
             f"Expected at most one active {purpose} envelope, found {len(active)}")
     return active[0] if active else None
+
+
+def effective_scratch_envelope(layer):
+    if not layer["properties"]["active"]:
+        return False
+    mesh = layer.get("mesh")
+    if mesh is None:
+        return False
+    return len(mesh.get("mainMesh", {}).get("cubes", [])) > 1
 
 
 def translated_octave(octave_knob):
@@ -573,7 +608,6 @@ def modulation_sources_for_preset(preset):
 
 def envelope_node(preset, layer, purpose, node_id, x, y, level=1.0):
     morph = morph_state(preset)
-    mesh = layer.get("mesh")
     return node(
         node_id,
         "envelope",
@@ -589,8 +623,7 @@ def envelope_node(preset, layer, purpose, node_id, x, y, level=1.0):
             "declick": bool(preset["settings"].get("Declick", True))
                 if purpose == "volume" else False,
         },
-        envelope_model(layer, morph)
-            if mesh is not None else copy.deepcopy(default_envelope_model()),
+        envelope_model(layer, morph),
     )
 
 
@@ -700,7 +733,7 @@ def convert(source):
         "blue": position["blue"],
         "primaryAxis": axes[morph["primaryAxis"]],
     }
-    all_mesh_node_ids = []
+    mesh_scratch_channels = {}
 
     time_source = None
     for index, layer in enumerate(groups[MESH_GROUPS["time"]]["layers"], 1):
@@ -725,7 +758,8 @@ def convert(source):
             edges.append(edge(layer_id, "out", process_id, "in"))
             layer_source = (process_id, "out")
         guide_assignments.extend(guide_assignments_for_layer(layer, layer_id))
-        all_mesh_node_ids.append(layer_id)
+        mesh_scratch_channels[layer_id] = \
+            layer["properties"].get("scratchChannel", -1)
         if time_source is None:
             time_source = layer_source
             continue
@@ -779,7 +813,8 @@ def convert(source):
                 edge(layer_source[0], layer_source[1], operation_id, "right"),
             ])
             guide_assignments.extend(guide_assignments_for_layer(layer, layer_id))
-            all_mesh_node_ids.append(layer_id)
+            mesh_scratch_channels[layer_id] = \
+                layer["properties"].get("scratchChannel", -1)
             signal = (operation_id, "out")
         edges.append(edge(signal[0], signal[1], "ifft", ifft_port))
 
@@ -822,19 +857,21 @@ def convert(source):
         }, flat_curve_model(waveshaper_layers[0]["mesh"])))
 
     envelope_y = {"volume": 120, "pitch": 1050, "scratch": 1280}
-    envelope_ids = {}
+    envelope_ids = {purpose: {} for purpose in ("volume", "pitch", "scratch")}
     for purpose in ("volume", "pitch", "scratch"):
         for index, layer in enumerate(envelope_layers(preset, purpose), 1):
             if purpose == "pitch" and not layer["properties"]["active"]:
+                continue
+            if purpose == "scratch" and not effective_scratch_envelope(layer):
                 continue
             envelope_id = f"{purpose}Envelope{index}"
             nodes.append(envelope_node(
                 preset, layer, purpose, envelope_id,
                 2450 + 310 * (index - 1), envelope_y[purpose]))
             if layer["properties"]["active"]:
-                envelope_ids[purpose] = envelope_id
+                envelope_ids[purpose][index - 1] = envelope_id
 
-    volume_id = envelope_ids.get("volume")
+    volume_id = next(iter(envelope_ids["volume"].values()), None)
     if volume_id is None and preset["settings"].get("Declick", True):
         volume_id = "volumeEnvelope1"
         volume_layers = envelope_layers(preset, "volume")
@@ -913,12 +950,12 @@ def convert(source):
         edges.append(edge(signal_node, signal_port, "reverb", "time"))
         signal_node = "reverb"
         signal_port = "time"
-    pitch_id = envelope_ids.get("pitch")
+    pitch_id = next(iter(envelope_ids["pitch"].values()), None)
     if pitch_id is not None:
         edges.append(edge(pitch_id, "env", "voice", "pitch"))
-    scratch_id = envelope_ids.get("scratch")
-    if scratch_id is not None:
-        for mesh_node_id in all_mesh_node_ids:
+    for mesh_node_id, scratch_channel in mesh_scratch_channels.items():
+        scratch_id = envelope_ids["scratch"].get(scratch_channel)
+        if scratch_id is not None:
             edges.append(edge(
                 scratch_id, "env", mesh_node_id, "scratch",
                 "processingAttachment", "scratchEnvelope"))
@@ -938,8 +975,8 @@ def convert(source):
         "edges": edges,
         "probes": [],
     }
-    apply_compact_layout(nodes)
     simplify_graph(graph)
+    apply_compact_layout(graph["nodes"], graph["edges"])
     return migrate_global_audio_graph(graph)
 
 
@@ -975,9 +1012,13 @@ def validate_conversion(source):
             bool(layer["properties"]["active"])
             for layer in envelope_layers(preset, purpose)
         )
-        if active_count > 1:
+        if active_count > 1 and purpose != "scratch":
             issues.append(
                 f"{purpose} has {active_count} active Envelopes; Cycle V2 accepts one")
+    for index, layer in enumerate(envelope_layers(preset, "scratch"), 1):
+        if layer["properties"]["active"] and layer.get("mesh") is None:
+            issues.append(
+                f"active scratch Envelope {index} has no authored mesh")
     wave_loaded = preset["effects"]["ImpulseModeller"].get("waveLoaded", False) \
         or bool(preset.get("multisample", {}).get("samples", []))
     if wave_loaded and any(

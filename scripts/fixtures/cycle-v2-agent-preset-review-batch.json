@@ -1,0 +1,33 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/pick-chorus.cyclegraph"
+    },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    { "command": "assertState", "path": "previewVoiceLengthSeconds", "approx": 1.4504890441894531, "tolerance": 0.000001 },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-pick-chorus-review.png" },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/res-lead.cyclegraph"
+    },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    { "command": "assertState", "path": "previewVoiceLengthSeconds", "approx": 1.26698637008667, "tolerance": 0.000001 },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-res-lead-review.png" },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/squelch.cyclegraph"
+    },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    { "command": "assertState", "path": "previewVoiceLengthSeconds", "approx": 0.9984581470489502, "tolerance": 0.000001 },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-squelch-review.png" },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/trance-stab-4.cyclegraph"
+    },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    { "command": "assertState", "path": "previewVoiceLengthSeconds", "approx": 1.1213170289993286, "tolerance": 0.000001 },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-trance-stab-4-review.png" }
+  ],
+  "quit": true
+}

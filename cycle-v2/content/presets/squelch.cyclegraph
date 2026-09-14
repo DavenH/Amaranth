@@ -7,8 +7,8 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": {
-                "x": 100.0,
-                "y": 633.0
+                "x": 475.2,
+                "y": 559.0
             },
             "parameters": {
                 "octave": -1,
@@ -25,7 +25,7 @@
             "definitionVersion": 1,
             "position": {
                 "x": 100.0,
-                "y": 333.0
+                "y": 426.0
             },
             "parameters": {
                 "yellowSource": "voiceTime",
@@ -44,7 +44,7 @@
             "kind": "fft",
             "definitionVersion": 1,
             "position": {
-                "x": 886.0,
+                "x": 1261.2,
                 "y": 619.0
             },
             "parameters": {
@@ -57,7 +57,7 @@
             "kind": "ifft",
             "definitionVersion": 1,
             "position": {
-                "x": 1544.0,
+                "x": 1919.2,
                 "y": 619.0
             },
             "parameters": {
@@ -70,7 +70,7 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": {
-                "x": 480.0,
+                "x": 855.2,
                 "y": 619.0
             },
             "parameters": {
@@ -89,7 +89,7 @@
                 "revision": 1,
                 "mesh": {
                     "name": "TimeMesh0",
-                    "version": 1,
+                    "version": 1.2,
                     "vertices": [
                         {
                             "time": 0.0,
@@ -902,7 +902,7 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": {
-                "x": 1216.0,
+                "x": 1591.2,
                 "y": 100.0
             },
             "parameters": {
@@ -921,7 +921,7 @@
                 "revision": 1,
                 "mesh": {
                     "name": "FreqMesh0",
-                    "version": 1,
+                    "version": 1.2,
                     "vertices": [
                         {
                             "time": 0.0,
@@ -1239,7 +1239,7 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": {
-                "x": 1284.0,
+                "x": 1659.2,
                 "y": 449.0
             },
             "parameters": {},
@@ -1254,7 +1254,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": {
-                "x": 1526.8,
+                "x": 1902.0,
                 "y": 817.0
             },
             "parameters": {
@@ -1278,7 +1278,7 @@
                         "name": "Mesh",
                         "mainMesh": {
                             "name": "Mesh",
-                            "version": 1,
+                            "version": 1.2,
                             "vertices": [
                                 {
                                     "time": 0.0,
@@ -1809,8 +1809,8 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": {
-                "x": 480.0,
-                "y": 1336.0
+                "x": 100.0,
+                "y": 596.0
             },
             "parameters": {
                 "enabled": true,
@@ -1830,10 +1830,10 @@
                     "type": "envelope",
                     "revision": 1,
                     "mesh": {
-                        "name": "CycleV2Envelope",
+                        "name": "ScratchMesh0",
                         "mainMesh": {
-                            "name": "CycleV2Envelope",
-                            "version": 2,
+                            "name": "ScratchMesh0",
+                            "version": 1.2,
                             "vertices": [
                                 {
                                     "time": 0.0,
@@ -1872,7 +1872,7 @@
                                     "id": 3
                                 },
                                 {
-                                    "time": 0.001,
+                                    "time": 1.0,
                                     "phase": 0.0,
                                     "amp": 0.0,
                                     "key": 0.0,
@@ -1881,7 +1881,7 @@
                                     "id": 4
                                 },
                                 {
-                                    "time": 0.001,
+                                    "time": 1.0,
                                     "phase": 0.0,
                                     "amp": 0.0,
                                     "key": 0.0,
@@ -1890,7 +1890,7 @@
                                     "id": 5
                                 },
                                 {
-                                    "time": 0.001,
+                                    "time": 1.0,
                                     "phase": 0.0,
                                     "amp": 0.0,
                                     "key": 1.0,
@@ -1899,7 +1899,7 @@
                                     "id": 6
                                 },
                                 {
-                                    "time": 0.001,
+                                    "time": 1.0,
                                     "phase": 0.0,
                                     "amp": 0.0,
                                     "key": 1.0,
@@ -1909,435 +1909,219 @@
                                 },
                                 {
                                     "time": 0.0,
-                                    "phase": 0.05,
+                                    "phase": 0.999000013,
                                     "amp": 1.0,
                                     "key": 0.0,
                                     "mod": 0.0,
-                                    "weight": 0.5,
+                                    "weight": 1.0,
                                     "id": 8
                                 },
                                 {
                                     "time": 0.0,
-                                    "phase": 0.05,
+                                    "phase": 0.999000013,
                                     "amp": 1.0,
                                     "key": 0.0,
                                     "mod": 1.0,
-                                    "weight": 0.5,
+                                    "weight": 1.0,
                                     "id": 9
                                 },
                                 {
                                     "time": 0.0,
-                                    "phase": 0.05,
+                                    "phase": 0.999000013,
                                     "amp": 1.0,
                                     "key": 1.0,
                                     "mod": 0.0,
-                                    "weight": 0.5,
+                                    "weight": 1.0,
                                     "id": 10
                                 },
                                 {
                                     "time": 0.0,
-                                    "phase": 0.05,
+                                    "phase": 0.999000013,
                                     "amp": 1.0,
                                     "key": 1.0,
                                     "mod": 1.0,
-                                    "weight": 0.5,
+                                    "weight": 1.0,
                                     "id": 11
                                 },
                                 {
-                                    "time": 0.001,
-                                    "phase": 0.05,
+                                    "time": 1.0,
+                                    "phase": 0.999000013,
                                     "amp": 1.0,
                                     "key": 0.0,
                                     "mod": 0.0,
-                                    "weight": 0.5,
+                                    "weight": 1.0,
                                     "id": 12
                                 },
                                 {
-                                    "time": 0.001,
-                                    "phase": 0.05,
+                                    "time": 1.0,
+                                    "phase": 0.999000013,
                                     "amp": 1.0,
                                     "key": 0.0,
                                     "mod": 1.0,
-                                    "weight": 0.5,
+                                    "weight": 1.0,
                                     "id": 13
                                 },
                                 {
-                                    "time": 0.001,
-                                    "phase": 0.05,
+                                    "time": 1.0,
+                                    "phase": 0.999000013,
                                     "amp": 1.0,
                                     "key": 1.0,
                                     "mod": 0.0,
-                                    "weight": 0.5,
+                                    "weight": 1.0,
                                     "id": 14
                                 },
                                 {
-                                    "time": 0.001,
-                                    "phase": 0.05,
+                                    "time": 1.0,
+                                    "phase": 0.999000013,
                                     "amp": 1.0,
                                     "key": 1.0,
                                     "mod": 1.0,
-                                    "weight": 0.5,
+                                    "weight": 1.0,
                                     "id": 15
                                 },
                                 {
                                     "time": 0.0,
-                                    "phase": 0.7,
-                                    "amp": 0.8,
+                                    "phase": 0.335892498,
+                                    "amp": 1.0,
                                     "key": 0.0,
                                     "mod": 0.0,
-                                    "weight": 0.3,
+                                    "weight": 0.0,
                                     "id": 16
                                 },
                                 {
                                     "time": 0.0,
-                                    "phase": 0.7,
-                                    "amp": 0.94,
+                                    "phase": 0.335892498,
+                                    "amp": 1.0,
                                     "key": 0.0,
                                     "mod": 1.0,
-                                    "weight": 0.3,
+                                    "weight": 0.0,
                                     "id": 17
                                 },
                                 {
                                     "time": 0.0,
-                                    "phase": 0.7,
-                                    "amp": 0.42,
+                                    "phase": 0.335892498,
+                                    "amp": 1.0,
                                     "key": 1.0,
                                     "mod": 0.0,
-                                    "weight": 0.3,
+                                    "weight": 0.0,
                                     "id": 18
                                 },
                                 {
                                     "time": 0.0,
-                                    "phase": 0.7,
-                                    "amp": 0.94,
+                                    "phase": 0.335892498,
+                                    "amp": 1.0,
                                     "key": 1.0,
                                     "mod": 1.0,
-                                    "weight": 0.3,
+                                    "weight": 0.0,
                                     "id": 19
                                 },
                                 {
-                                    "time": 0.001,
-                                    "phase": 0.7,
-                                    "amp": 0.8,
+                                    "time": 1.0,
+                                    "phase": 0.230326295,
+                                    "amp": 0.786885262,
                                     "key": 0.0,
                                     "mod": 0.0,
-                                    "weight": 0.3,
+                                    "weight": 0.0,
                                     "id": 20
                                 },
                                 {
-                                    "time": 0.001,
-                                    "phase": 0.7,
-                                    "amp": 0.94,
+                                    "time": 1.0,
+                                    "phase": 0.230326295,
+                                    "amp": 0.786885262,
                                     "key": 0.0,
                                     "mod": 1.0,
-                                    "weight": 0.3,
+                                    "weight": 0.0,
                                     "id": 21
                                 },
                                 {
-                                    "time": 0.001,
-                                    "phase": 0.7,
-                                    "amp": 0.42,
+                                    "time": 1.0,
+                                    "phase": 0.230326295,
+                                    "amp": 0.786885262,
                                     "key": 1.0,
                                     "mod": 0.0,
-                                    "weight": 0.3,
+                                    "weight": 0.0,
                                     "id": 22
                                 },
                                 {
-                                    "time": 0.001,
-                                    "phase": 0.7,
-                                    "amp": 0.94,
+                                    "time": 1.0,
+                                    "phase": 0.230326295,
+                                    "amp": 0.786885262,
                                     "key": 1.0,
                                     "mod": 1.0,
-                                    "weight": 0.3,
+                                    "weight": 0.0,
                                     "id": 23
                                 },
                                 {
                                     "time": 0.0,
-                                    "phase": 0.999,
-                                    "amp": 0.8,
+                                    "phase": 0.0345489495,
+                                    "amp": 0.0,
                                     "key": 0.0,
                                     "mod": 0.0,
-                                    "weight": 1.0,
+                                    "weight": 0.0,
                                     "id": 24
                                 },
                                 {
                                     "time": 0.0,
-                                    "phase": 0.999,
-                                    "amp": 0.8,
+                                    "phase": 0.0345489495,
+                                    "amp": 0.0,
                                     "key": 0.0,
                                     "mod": 1.0,
-                                    "weight": 1.0,
+                                    "weight": 0.0,
                                     "id": 25
                                 },
                                 {
                                     "time": 0.0,
-                                    "phase": 0.999,
-                                    "amp": 0.8,
+                                    "phase": 0.0345489495,
+                                    "amp": 0.0,
                                     "key": 1.0,
                                     "mod": 0.0,
-                                    "weight": 1.0,
+                                    "weight": 0.0,
                                     "id": 26
                                 },
                                 {
                                     "time": 0.0,
-                                    "phase": 0.999,
-                                    "amp": 0.8,
+                                    "phase": 0.0345489495,
+                                    "amp": 0.0,
                                     "key": 1.0,
                                     "mod": 1.0,
-                                    "weight": 1.0,
+                                    "weight": 0.0,
                                     "id": 27
                                 },
                                 {
-                                    "time": 0.001,
-                                    "phase": 0.999,
-                                    "amp": 0.8,
+                                    "time": 1.0,
+                                    "phase": 0.0633397326,
+                                    "amp": 0.0491803288,
                                     "key": 0.0,
                                     "mod": 0.0,
-                                    "weight": 1.0,
+                                    "weight": 0.0,
                                     "id": 28
                                 },
                                 {
-                                    "time": 0.001,
-                                    "phase": 0.999,
-                                    "amp": 0.8,
+                                    "time": 1.0,
+                                    "phase": 0.0633397326,
+                                    "amp": 0.0491803288,
                                     "key": 0.0,
                                     "mod": 1.0,
-                                    "weight": 1.0,
+                                    "weight": 0.0,
                                     "id": 29
                                 },
                                 {
-                                    "time": 0.001,
-                                    "phase": 0.999,
-                                    "amp": 0.8,
+                                    "time": 1.0,
+                                    "phase": 0.0633397326,
+                                    "amp": 0.0491803288,
                                     "key": 1.0,
                                     "mod": 0.0,
-                                    "weight": 1.0,
+                                    "weight": 0.0,
                                     "id": 30
                                 },
                                 {
-                                    "time": 0.001,
-                                    "phase": 0.999,
-                                    "amp": 0.8,
+                                    "time": 1.0,
+                                    "phase": 0.0633397326,
+                                    "amp": 0.0491803288,
                                     "key": 1.0,
                                     "mod": 1.0,
-                                    "weight": 1.0,
+                                    "weight": 0.0,
                                     "id": 31
-                                },
-                                {
-                                    "time": 0.0,
-                                    "phase": 1.075,
-                                    "amp": 0.6,
-                                    "key": 0.0,
-                                    "mod": 0.0,
-                                    "weight": 0.0,
-                                    "id": 32
-                                },
-                                {
-                                    "time": 0.0,
-                                    "phase": 1.075,
-                                    "amp": 0.6,
-                                    "key": 0.0,
-                                    "mod": 1.0,
-                                    "weight": 0.0,
-                                    "id": 33
-                                },
-                                {
-                                    "time": 0.0,
-                                    "phase": 1.075,
-                                    "amp": 0.6,
-                                    "key": 1.0,
-                                    "mod": 0.0,
-                                    "weight": 0.0,
-                                    "id": 34
-                                },
-                                {
-                                    "time": 0.0,
-                                    "phase": 1.075,
-                                    "amp": 0.6,
-                                    "key": 1.0,
-                                    "mod": 1.0,
-                                    "weight": 0.0,
-                                    "id": 35
-                                },
-                                {
-                                    "time": 0.001,
-                                    "phase": 1.075,
-                                    "amp": 0.6,
-                                    "key": 0.0,
-                                    "mod": 0.0,
-                                    "weight": 0.0,
-                                    "id": 36
-                                },
-                                {
-                                    "time": 0.001,
-                                    "phase": 1.075,
-                                    "amp": 0.6,
-                                    "key": 0.0,
-                                    "mod": 1.0,
-                                    "weight": 0.0,
-                                    "id": 37
-                                },
-                                {
-                                    "time": 0.001,
-                                    "phase": 1.075,
-                                    "amp": 0.6,
-                                    "key": 1.0,
-                                    "mod": 0.0,
-                                    "weight": 0.0,
-                                    "id": 38
-                                },
-                                {
-                                    "time": 0.001,
-                                    "phase": 1.075,
-                                    "amp": 0.6,
-                                    "key": 1.0,
-                                    "mod": 1.0,
-                                    "weight": 0.0,
-                                    "id": 39
-                                },
-                                {
-                                    "time": 0.0,
-                                    "phase": 1.15,
-                                    "amp": 0.0,
-                                    "key": 0.0,
-                                    "mod": 0.0,
-                                    "weight": 0.0,
-                                    "id": 40
-                                },
-                                {
-                                    "time": 0.0,
-                                    "phase": 1.15,
-                                    "amp": 0.0,
-                                    "key": 0.0,
-                                    "mod": 1.0,
-                                    "weight": 0.0,
-                                    "id": 41
-                                },
-                                {
-                                    "time": 0.0,
-                                    "phase": 1.15,
-                                    "amp": 0.0,
-                                    "key": 1.0,
-                                    "mod": 0.0,
-                                    "weight": 0.0,
-                                    "id": 42
-                                },
-                                {
-                                    "time": 0.0,
-                                    "phase": 1.15,
-                                    "amp": 0.0,
-                                    "key": 1.0,
-                                    "mod": 1.0,
-                                    "weight": 0.0,
-                                    "id": 43
-                                },
-                                {
-                                    "time": 0.001,
-                                    "phase": 1.15,
-                                    "amp": 0.0,
-                                    "key": 0.0,
-                                    "mod": 0.0,
-                                    "weight": 0.0,
-                                    "id": 44
-                                },
-                                {
-                                    "time": 0.001,
-                                    "phase": 1.15,
-                                    "amp": 0.0,
-                                    "key": 0.0,
-                                    "mod": 1.0,
-                                    "weight": 0.0,
-                                    "id": 45
-                                },
-                                {
-                                    "time": 0.001,
-                                    "phase": 1.15,
-                                    "amp": 0.0,
-                                    "key": 1.0,
-                                    "mod": 0.0,
-                                    "weight": 0.0,
-                                    "id": 46
-                                },
-                                {
-                                    "time": 0.001,
-                                    "phase": 1.15,
-                                    "amp": 0.0,
-                                    "key": 1.0,
-                                    "mod": 1.0,
-                                    "weight": 0.0,
-                                    "id": 47
-                                },
-                                {
-                                    "time": 0.0,
-                                    "phase": 1.25,
-                                    "amp": 0.0,
-                                    "key": 0.0,
-                                    "mod": 0.0,
-                                    "weight": 0.0,
-                                    "id": 48
-                                },
-                                {
-                                    "time": 0.0,
-                                    "phase": 1.25,
-                                    "amp": 0.0,
-                                    "key": 0.0,
-                                    "mod": 1.0,
-                                    "weight": 0.0,
-                                    "id": 49
-                                },
-                                {
-                                    "time": 0.0,
-                                    "phase": 1.25,
-                                    "amp": 0.0,
-                                    "key": 1.0,
-                                    "mod": 0.0,
-                                    "weight": 0.0,
-                                    "id": 50
-                                },
-                                {
-                                    "time": 0.0,
-                                    "phase": 1.25,
-                                    "amp": 0.0,
-                                    "key": 1.0,
-                                    "mod": 1.0,
-                                    "weight": 0.0,
-                                    "id": 51
-                                },
-                                {
-                                    "time": 0.001,
-                                    "phase": 1.25,
-                                    "amp": 0.0,
-                                    "key": 0.0,
-                                    "mod": 0.0,
-                                    "weight": 0.0,
-                                    "id": 52
-                                },
-                                {
-                                    "time": 0.001,
-                                    "phase": 1.25,
-                                    "amp": 0.0,
-                                    "key": 0.0,
-                                    "mod": 1.0,
-                                    "weight": 0.0,
-                                    "id": 53
-                                },
-                                {
-                                    "time": 0.001,
-                                    "phase": 1.25,
-                                    "amp": 0.0,
-                                    "key": 1.0,
-                                    "mod": 0.0,
-                                    "weight": 0.0,
-                                    "id": 54
-                                },
-                                {
-                                    "time": 0.001,
-                                    "phase": 1.25,
-                                    "amp": 0.0,
-                                    "key": 1.0,
-                                    "mod": 1.0,
-                                    "weight": 0.0,
-                                    "id": 55
                                 }
                             ],
                             "cubes": [
@@ -2361,7 +2145,7 @@
                                         "curve": -1
                                     },
                                     "gains": {
-                                        "time": 0.5585,
+                                        "time": 0.558496237,
                                         "key": 0.5,
                                         "mod": 0.5,
                                         "phase": 0.5,
@@ -2389,7 +2173,7 @@
                                         "curve": -1
                                     },
                                     "gains": {
-                                        "time": 0.5585,
+                                        "time": 0.558496237,
                                         "key": 0.5,
                                         "mod": 0.5,
                                         "phase": 0.5,
@@ -2417,7 +2201,7 @@
                                         "curve": -1
                                     },
                                     "gains": {
-                                        "time": 0.5585,
+                                        "time": 0.558496237,
                                         "key": 0.5,
                                         "mod": 0.5,
                                         "phase": 0.5,
@@ -2445,91 +2229,7 @@
                                         "curve": -1
                                     },
                                     "gains": {
-                                        "time": 0.5585,
-                                        "key": 0.5,
-                                        "mod": 0.5,
-                                        "phase": 0.5,
-                                        "amp": 0.5,
-                                        "curve": 0.5
-                                    }
-                                },
-                                {
-                                    "vertexIds": [
-                                        32,
-                                        33,
-                                        34,
-                                        35,
-                                        36,
-                                        37,
-                                        38,
-                                        39
-                                    ],
-                                    "guides": {
-                                        "time": -1,
-                                        "key": -1,
-                                        "mod": -1,
-                                        "phase": -1,
-                                        "amp": -1,
-                                        "curve": -1
-                                    },
-                                    "gains": {
-                                        "time": 0.5585,
-                                        "key": 0.5,
-                                        "mod": 0.5,
-                                        "phase": 0.5,
-                                        "amp": 0.5,
-                                        "curve": 0.5
-                                    }
-                                },
-                                {
-                                    "vertexIds": [
-                                        40,
-                                        41,
-                                        42,
-                                        43,
-                                        44,
-                                        45,
-                                        46,
-                                        47
-                                    ],
-                                    "guides": {
-                                        "time": -1,
-                                        "key": -1,
-                                        "mod": -1,
-                                        "phase": -1,
-                                        "amp": -1,
-                                        "curve": -1
-                                    },
-                                    "gains": {
-                                        "time": 0.5585,
-                                        "key": 0.5,
-                                        "mod": 0.5,
-                                        "phase": 0.5,
-                                        "amp": 0.5,
-                                        "curve": 0.5
-                                    }
-                                },
-                                {
-                                    "vertexIds": [
-                                        48,
-                                        49,
-                                        50,
-                                        51,
-                                        52,
-                                        53,
-                                        54,
-                                        55
-                                    ],
-                                    "guides": {
-                                        "time": -1,
-                                        "key": -1,
-                                        "mod": -1,
-                                        "phase": -1,
-                                        "amp": -1,
-                                        "curve": -1
-                                    },
-                                    "gains": {
-                                        "time": 0.5585,
+                                        "time": 0.558496237,
                                         "key": 0.5,
                                         "mod": 0.5,
                                         "phase": 0.5,
@@ -2541,22 +2241,19 @@
                         },
                         "loopIndices": [],
                         "sustainIndices": [
-                            3
+                            1
                         ]
                     },
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": true,
-                    "blueLinked": true,
+                    "redLinked": false,
+                    "blueLinked": false,
                     "cubeIds": [
                         1,
                         2,
                         3,
-                        4,
-                        5,
-                        6,
-                        7
+                        4
                     ]
                 }
             }
@@ -2566,7 +2263,7 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": {
-                "x": 1902.0,
+                "x": 2277.2,
                 "y": 619.0
             },
             "parameters": {}
@@ -2577,7 +2274,7 @@
             "definitionVersion": 1,
             "position": {
                 "x": 338.0,
-                "y": 1676.0
+                "y": 1157.0
             },
             "parameters": {
                 "gain": 0.496183206
@@ -2589,7 +2286,7 @@
             "definitionVersion": 1,
             "position": {
                 "x": 100.0,
-                "y": 1676.0
+                "y": 1157.0
             },
             "parameters": {}
         },
@@ -2598,7 +2295,7 @@
             "kind": "voiceOutput",
             "definitionVersion": 1,
             "position": {
-                "x": 2100.0,
+                "x": 2475.19995,
                 "y": 619.0
             },
             "parameters": {}
@@ -2628,32 +2325,32 @@
                     "vertices": [
                         {
                             "id": 1,
-                            "x": 0.0,
-                            "y": 0.0525000021,
+                            "x": 0.0525000021,
+                            "y": 0.5,
                             "curve": 0.0
                         },
                         {
                             "id": 2,
-                            "x": 0.0,
-                            "y": 0.0625,
+                            "x": 0.0625,
+                            "y": 0.5,
                             "curve": 1.0
                         },
                         {
                             "id": 3,
-                            "x": 0.0,
-                            "y": 0.9375,
+                            "x": 0.9375,
+                            "y": 0.5,
                             "curve": 1.0
                         },
                         {
                             "id": 4,
-                            "x": 0.0,
-                            "y": 0.94749999,
+                            "x": 0.94749999,
+                            "y": 0.5,
                             "curve": 0.0
                         },
                         {
                             "id": 5,
-                            "x": 0.0,
-                            "y": 0.152145639,
+                            "x": 0.152145639,
+                            "y": 0.31205675,
                             "curve": 0.0
                         }
                     ]
