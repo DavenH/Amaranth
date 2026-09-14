@@ -2,7 +2,7 @@
   "commands": [
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/accoustic.cyclegraph"
+      "path": "../../cycle-v2/content/presets/old/accoustic.cyclegraph"
     },
     { "command": "openNodeEditor", "nodeId": "reverb", "waitForIdle": true, "idleDelayMs": 500 },
     {

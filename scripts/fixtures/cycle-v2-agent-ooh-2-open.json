@@ -2,7 +2,7 @@
   "commands": [
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/ooh-2.cyclegraph"
+      "path": "../../cycle-v2/content/presets/old/ooh-2.cyclegraph"
     },
     {
       "command": "waitForIdle",

@@ -7,7 +7,7 @@
         "sha256": "4f8f8945c77537a655b3e17661b38f59c614a1707b668700541e5a5e14de3245"
     },
     "v2": {
-        "graph": "cycle-v2/content/presets/organ-2.cyclegraph",
+        "graph": "cycle-v2/content/presets/old/organ-2.cyclegraph",
         "sha256": "939980960d7d4a3fcd483501523ade6a307abc2269ac3a170f6ddcb71b83c37a",
         "renderOverrides": {
             "voiceDurationSeconds": 1.26698637008667

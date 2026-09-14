@@ -7,7 +7,7 @@
         "sha256": "4dc3444582421d18ef48336df9b7934ca8499213af12ac4913df579f45444cc8"
     },
     "v2": {
-        "graph": "cycle-v2/content/presets/japan-drum.cyclegraph",
+        "graph": "cycle-v2/content/presets/old/japan-drum.cyclegraph",
         "sha256": "e32d2ac23d7a8bdad1572e1a8434469dc104b015f15116c7962df11953538be8",
         "renderOverrides": {
             "voiceDurationSeconds": 1.0113605260849

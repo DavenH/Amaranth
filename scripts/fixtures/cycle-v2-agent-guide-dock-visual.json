@@ -2,7 +2,7 @@
   "commands": [
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+      "path": "../../cycle-v2/content/presets/old/baroque-flute.cyclegraph"
     },
     { "command": "waitForIdle", "idleDelayMs": 800 },
     { "command": "assertState", "path": "guideDock.selectedGuideId", "equals": "" },

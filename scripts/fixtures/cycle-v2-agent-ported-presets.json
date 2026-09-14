@@ -2,7 +2,7 @@
   "commands": [
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+      "path": "../../cycle-v2/content/presets/old/baroque-flute.cyclegraph"
     },
     {
       "command": "assertState",
@@ -38,7 +38,7 @@
     },
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/african-horn.cyclegraph"
+      "path": "../../cycle-v2/content/presets/old/african-horn.cyclegraph"
     },
     {
       "command": "assertState",
@@ -73,7 +73,7 @@
     },
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/alto-sax.cyclegraph"
+      "path": "../../cycle-v2/content/presets/old/alto-sax.cyclegraph"
     },
     {
       "command": "assertState",
@@ -109,7 +109,7 @@
     },
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+      "path": "../../cycle-v2/content/presets/old/stengah.cyclegraph"
     },
     {
       "command": "assertState",

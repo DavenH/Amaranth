@@ -1,6 +1,6 @@
 {
   "commands": [
-    { "command": "openGraph", "path": "../../cycle-v2/content/presets/accoustic.cyclegraph" },
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/old/accoustic.cyclegraph" },
     { "command": "pointer", "event": "click", "targetId": "node:fft", "targetX": 0.5, "targetY": 0.5 },
     { "command": "assertState", "path": "selectedNodeIds.0", "equals": "fft" },
     { "command": "pointer", "area": "canvas", "event": "down", "x": 110, "y": 170, "shift": true },

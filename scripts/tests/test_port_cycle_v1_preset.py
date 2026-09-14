@@ -566,7 +566,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
         manifest = port_cycle_v1_preset.equivalence_manifest(
             source,
             repository / "cycle/content/presets/old/saw.cyc",
-            repository / "cycle-v2/content/presets/saw.cyclegraph",
+            repository / "cycle-v2/content/presets/old/saw.cyclegraph",
             "Saw",
         )
         translation = manifest["translation"]
@@ -590,7 +590,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
         manifest = port_cycle_v1_preset.equivalence_manifest(
             source,
             repository / "cycle/content/presets/old/organ-2.cyc",
-            repository / "cycle-v2/content/presets/organ-2.cyclegraph",
+            repository / "cycle-v2/content/presets/old/organ-2.cyclegraph",
             "organ-2",
         )
 
