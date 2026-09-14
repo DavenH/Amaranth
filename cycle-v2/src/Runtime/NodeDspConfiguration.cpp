@@ -165,7 +165,11 @@ String NodeDspConfigurationFactory::keyFor(
         key << ":" << parameter.id << "=" << parameter.value;
     }
     if (model != nullptr) {
-        key << ":model=" << model->schemaId() << ":" << String((int64) model->revision());
+        key << ":model=" << model->schemaId()
+                << ":" << model->schemaVersion()
+                << ":" << String((int64) model->revision())
+                << ":" << String::toHexString(
+                        (int64) reinterpret_cast<uintptr_t>(model.get()));
     }
     if (graph != nullptr) {
         key << TrimeshGuidePreparation::configurationKey(*graph, nodeId);

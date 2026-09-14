@@ -14,8 +14,16 @@
     { "command": "waitForIdle", "idleDelayMs": 800 },
     { "command": "assertState", "path": "probeCount", "equals": 5 },
     { "command": "assertState", "path": "probePreviewStats.0.probeId", "equals": "probe" },
+    { "command": "assertState", "path": "probePreviewStats.0.absoluteSum", "greaterThan": 3000 },
     { "command": "assertState", "path": "probePreviewStats.1.probeId", "equals": "probe2" },
     { "command": "assertState", "path": "probePreviewStats.1.domain", "equals": "Mag" },
+    { "command": "assertState", "path": "previewStats.2.nodeId", "equals": "timeLayer1" },
+    { "command": "assertState", "path": "previewStats.2.absoluteSum", "greaterThan": 3000 },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-preset-cache-reset.png"
+    },
     { "command": "inspectTargets", "area": "canvas" }
   ],
   "quit": true
