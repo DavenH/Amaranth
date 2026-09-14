@@ -427,6 +427,27 @@ class PortCycleV1PresetTest(unittest.TestCase):
             for node in converted["nodes"]
         ))
 
+    def test_implicit_scratch_envelope_reuses_cycle_two_default_model(self):
+        source = convertible_source()
+        source["preset"]["meshLibrary"]["groups"][2]["layers"] = [{
+            "properties": {"active": True},
+            "mesh": None,
+        }]
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        converted = port_cycle_v1_preset.convert(source)
+        scratch_node = next(
+            node for node in converted["nodes"]
+            if node["id"] == "scratchEnvelope1")
+
+        self.assertTrue(scratch_node["parameters"]["enabled"])
+        self.assertEqual(
+            scratch_node["model"],
+            port_cycle_v1_preset.default_envelope_model(),
+        )
+
     def test_document_declick_retains_only_a_neutral_volume_envelope(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
 

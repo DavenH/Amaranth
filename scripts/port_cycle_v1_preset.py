@@ -9,6 +9,7 @@ guide curves, envelope meshes, and cube-component guide assignments.
 
 import argparse
 import copy
+import functools
 import hashlib
 import json
 import math
@@ -428,6 +429,19 @@ def envelope_model(layer, morph):
     }
 
 
+@functools.lru_cache(maxsize=1)
+def default_envelope_model():
+    repository = Path(__file__).resolve().parents[1]
+    default_graph = repository / "cycle-v2" / "resources" / "default.cyclegraph"
+    with default_graph.open(encoding="utf-8") as graph_file:
+        graph = json.load(graph_file)
+
+    for graph_node in graph["nodes"]:
+        if graph_node["kind"] == "envelope":
+            return graph_node["model"]
+    raise ValueError("Cycle V2 default graph has no Envelope model")
+
+
 def require_single_active_layer(groups, group_name):
     layers = groups[MESH_GROUPS[group_name]]["layers"]
     active = [layer for layer in layers if layer["properties"]["active"]]
@@ -559,6 +573,7 @@ def modulation_sources_for_preset(preset):
 
 def envelope_node(preset, layer, purpose, node_id, x, y, level=1.0):
     morph = morph_state(preset)
+    mesh = layer.get("mesh")
     return node(
         node_id,
         "envelope",
@@ -574,7 +589,8 @@ def envelope_node(preset, layer, purpose, node_id, x, y, level=1.0):
             "declick": bool(preset["settings"].get("Declick", True))
                 if purpose == "volume" else False,
         },
-        envelope_model(layer, morph),
+        envelope_model(layer, morph)
+            if mesh is not None else copy.deepcopy(default_envelope_model()),
     )
 
 
