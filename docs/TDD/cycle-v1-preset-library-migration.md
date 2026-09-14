@@ -495,6 +495,18 @@ transferred to its upstream Trimesh before the Pan is removed.
   Cycle V2's normalized state domain, five contain IR curve coordinates above
   one, and six contain a negative Guide sharpness. Batch conversion reports zero
   collisions and zero unexpected failures.
+- Exact blocker inventory:
+  - individual Unison above ten voices: `angry-lead`, `octave-lead`,
+    `saw-lead-3`, `silver`, `silver-2`, `snappy-saw`, `squishy-saw`, `string`,
+    `string-2`, and `supersaw`;
+  - individual Unison values outside Cycle V2's normalized model:
+    `aah`, `calming-keys`, `esurience`, `esurience-2`, `ping`, `pwm-lead-2`,
+    `syn-brass-2`, `trance-stab-4-b`, and `trance-stab-6`;
+  - IR vertices outside the normalized curve domain: `bass-5`,
+    `bass-trumpet`, `brasshat`, `harpsichord-3`, and `saxophone-2`; and
+  - negative Guide sharpness outside the normalized curve domain: `dicey`,
+    `tanpura`, `tanpura-pad`, `tanpura-pad-2`, `tanpura-pad-3`, and
+    `tanpura-pluck`.
 - Thirty-four emitted presets require non-default per-destination modulation.
   They use 65 target-local Modulation Triples in total; every other retained
   destination inherits the modal attached Triple. The generated 236-graph set
