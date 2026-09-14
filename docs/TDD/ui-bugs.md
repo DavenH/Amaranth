@@ -20,6 +20,21 @@ Context:
 Current status: open; select the intended default and make its persisted key
 follow the factory preset filename-resolution contract.
 
+## P1: Opening a graph can discard unsaved edits without confirmation
+
+Context:
+
+- Moving a node now publishes the normal dirty-document presentation, exposing
+  the same unsaved state as other semantic graph edits.
+- Opening another preset while the current graph is dirty replaces the document
+  without a save/discard/cancel decision.
+- This branch intentionally fixes dirty-state publication only; the document-open
+  confirmation is separate window/document-lifecycle work.
+
+Current status: open; prompt to save, discard, or cancel before replacing a dirty
+graph, and clear the dirty state only after a successful save or confirmed
+discard.
+
 ## P2: Intermittent CoreMIDI endpoint assertion during automation startup
 
 Context:
