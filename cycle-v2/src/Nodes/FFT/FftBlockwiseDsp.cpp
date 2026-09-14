@@ -93,7 +93,9 @@ void FftBlockwiseDsp::forward(
 void FftBlockwiseDsp::inverse(
         const AudioProcessBlock& magnitude,
         const AudioProcessBlock* phase,
-        AudioProcessBlock& output) {
+        AudioProcessBlock& output,
+        const SpectralMagnitudeTransfer* magnitudeTransfer,
+        size_t channel) {
     prepare(output.samples.size());
 
     output.samples.resize(preparedFrameCount);
@@ -113,6 +115,13 @@ void FftBlockwiseDsp::inverse(
 
     const bool hasDcRow = magnitude.samples.size() >= fullBinCount;
     copySpectralRows(magnitude, 0, hasDcRow ? 0 : 1, magnitudeBuffer);
+    if (magnitudeTransfer != nullptr) {
+        applySpectralMagnitudeTransfer(
+                magnitudeBuffer,
+                *magnitudeTransfer,
+                channel,
+                (int) fullBinCount);
+    }
 
     if (phase != nullptr) {
         copySpectralRows(*phase, 0, hasDcRow ? 0 : 1, phaseBuffer);

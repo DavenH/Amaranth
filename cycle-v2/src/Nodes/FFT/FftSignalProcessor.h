@@ -35,7 +35,8 @@ private:
             SignalPayload& output,
             size_t channel,
             bool useHalfCycleCarry,
-            const AudioProcessWorkArena* arena);
+            const AudioProcessWorkArena* arena,
+            const SpectralMagnitudeTransfer* magnitudeTransfer);
 
     std::array<FftBlockwiseDsp, 2> blockwiseDsp;
     std::array<std::vector<std::unique_ptr<FftBlockwiseDsp>>, 2>

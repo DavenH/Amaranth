@@ -4,6 +4,7 @@
 #include "Graph/GraphValidator.h"
 #include "Runtime/NodeDspConfiguration.h"
 #include "Runtime/NodeModuleRegistry.h"
+#include "Runtime/SpectralMagnitudeTransfer.h"
 
 #include <Audio/CycleDsp/UnisonCore.h>
 
@@ -62,6 +63,7 @@ struct GraphStepInput {
     int sourceOutputIndex { -1 };
     PortDomain domain {};
     ChannelLayout channelLayout { ChannelLayout::Mono };
+    CompiledSpectralMagnitudeTransfer magnitudeTransfer;
 };
 
 struct GraphStepOutput {

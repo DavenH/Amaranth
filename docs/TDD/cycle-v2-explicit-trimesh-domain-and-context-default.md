@@ -1,6 +1,6 @@
 # Cycle V2 Explicit Trimesh Domain And Context Default
 
-Status: In Progress
+Status: Complete
 
 ## Scope
 
@@ -76,12 +76,36 @@ from polarity. All four combinations are legal:
 - bipolar Add; and
 - bipolar Multiply.
 
-The remaining implementation slice is a compiler-authored transfer on each
-consumer edge. It combines source polarity with the receiving Add or Multiply
-operation without mutating or rescaling the source grid. This permits one
-Trimesh to feed multiple arithmetic consumers while each receives the correct
-operand range. Until that edge transfer exists, audio keeps the mature Cycle 1
-unipolar magnitude raster and operation-derived range shaping.
+The compiler authors a transfer on each consumer edge. It combines source
+polarity with the receiving Add or Multiply operation without mutating or
+rescaling the source grid. This permits one Trimesh to feed multiple arithmetic
+consumers while each receives the correct operand range. Audio keeps the mature
+Cycle 1 unipolar magnitude raster and applies operation-derived range shaping
+at the consumer boundary.
+
+Let `x` be the canonical Trimesh magnitude in `[0, 1]`, `d` the mature
+`magnitudeDynamicRange(range)`, `q = x^d`, `s = 2^d`, and `a` the mature
+harmonic-count additive scale. The compiled input transfer is:
+
+| Consumer | Polarity | Operand transfer |
+| --- | --- | --- |
+| Add | Unipolar | `q * s * a` |
+| Add | Bipolar | `(q * s - 1) * a` |
+| Multiply | Unipolar | `q` |
+| Multiply | Bipolar | `q * s` |
+
+This preserves both Cycle 1 combinations exactly. Bipolar transfers place the
+authored midpoint at the receiving operation's identity: zero for Add and one
+for Multiply. A disabled source is resolved at the same boundary to zero for
+Add or one for Multiply, so one disabled source can safely feed unlike
+consumers. Spectral pan is applied after the transfer, using additive gain or
+multiplicative interpolation toward one as appropriate.
+
+The compiled input retains graph provenance while optionally reading the
+canonical Trimesh buffer through transparent Pan and single-input arithmetic
+nodes. That lets divergent consumers receive independent transfer and pan
+semantics without cloning the source mesh, mutating its buffer, or adding
+durable graph nodes.
 
 Cycle 1 migration emits only its authored combinations: additive layers become
 Unipolar feeding Add, and filtering layers become Bipolar feeding Multiply.
@@ -132,7 +156,8 @@ by an automated batch.
   assignment.
 - `TrimeshBlockwiseDsp` owns mature mesh point scaling. Preview renderers pass
   authored polarity for semantic display; audio renderers retain its native
-  unipolar magnitude raster until the operation transfer boundary.
+  unipolar magnitude raster and consume it through the compiled operation
+  transfer boundary.
 - `SpectralLayerCore` retains the mature range, pan, and neutral-identity math.
 - `GraphRenderSemanticResolver` and `TrimeshRenderProfile` remain the shared
   compact/expanded visual contract.
@@ -141,10 +166,13 @@ by an automated batch.
 
 ## Complexity
 
-Parameter reads and single-context lookup are O(1) per node after one O(V+E)
-compile-time graph scan. Live selector edits use the existing parameter command
-path and do not clone a graph, serialize state, or scan mesh vertices. DSP work
-remains unchanged in asymptotic cost and allocation behavior.
+Parameter reads and single-context lookup are O(1) per node after compile-time
+graph scans. Transfer lowering walks only the transparent upstream chain of
+each spectral arithmetic input. Live selector edits use the existing parameter
+command path and do not clone a graph, serialize state, or scan mesh vertices.
+Each consumer transforms only its own operand buffer with preallocated vector
+operations; DSP work remains unchanged in asymptotic cost and allocation
+behavior.
 
 ## Deletion Targets
 
@@ -162,7 +190,7 @@ remains unchanged in asymptotic cost and allocation behavior.
   cables remain visible and fail validation.
 - [x] Polarity and Add/Multiply are independently represented in all four
   combinations without changing the mature magnitude-raster input range.
-- [ ] The compiler emits a per-consumer magnitude transfer for every
+- [x] The compiler emits a per-consumer magnitude transfer for every
   polarity/arithmetic combination, including divergent consumers of one
   Trimesh source.
 - [x] One Voice Context is inferred without durable source edges.
@@ -187,4 +215,6 @@ remains unchanged in asymptotic cost and allocation behavior.
   the application-hosted pointer/undo fixture passed.
 - The Baroque Flute live-audio regression capture passes at 0.092 peak and
   0.040 RMS; its fixture rejects output below 0.01 peak or 0.005 RMS.
-- The complete randomized Cycle V2 run passes 755 cases and 19,354 assertions.
+- The Mind Blinding regression verifies two compiled bipolar Multiply inputs
+  and a finite, non-silent render.
+- The complete CTest matrix passes all 1,048 discovered tests in 198.23 seconds.

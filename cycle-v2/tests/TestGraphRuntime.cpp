@@ -775,6 +775,45 @@ TEST_CASE("Stengah probes reflect an asynchronous Waveshaper curve edit at the c
   #endif
 }
 
+TEST_CASE("Preset transitions replace equal-revision Trimesh DSP content",
+        "[cycle-v2][runtime][presets][configuration]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File presets = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets");
+    const NodeGraph african = GraphSerializer().fromJsonString(
+            presets.getChildFile("african-horn.cyclegraph").loadFileAsString());
+    const NodeGraph baroque = GraphSerializer().fromJsonString(
+            presets.getChildFile("baroque-flute.cyclegraph").loadFileAsString());
+    GraphChangeSet topology;
+    topology.topologyChanged = true;
+
+    GraphPresentationModel transitioned;
+    REQUIRE(transitioned.refresh(african, 1, topology));
+    REQUIRE(transitioned.refresh(baroque, 2, topology));
+
+    GraphPresentationModel clean;
+    REQUIRE(clean.refresh(baroque, 1, topology));
+
+    const auto& transitionedMesh = findNodePreview(
+            transitioned.previewResult(), "timeLayer1");
+    const auto& cleanMesh = findNodePreview(clean.previewResult(), "timeLayer1");
+    REQUIRE(transitionedMesh.primary == cleanMesh.primary);
+
+    const auto& transitionedProbe = findProbePreview(
+            transitioned.previewResult(), "probe");
+    const auto& cleanProbe = findProbePreview(clean.previewResult(), "probe");
+    REQUIRE(transitionedProbe.values == cleanProbe.values);
+
+    const GraphAudioResult transitionedAudio = transitioned.captureAudio(baroque, 512);
+    const GraphAudioResult cleanAudio = clean.captureAudio(baroque, 512);
+    REQUIRE(transitionedAudio.output.block.samples
+            == cleanAudio.output.block.samples);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Stengah upstream probes remain stable across spectral pan edits",
         "[cycle-v2][runtime][causal][pan][presets]") {
   #if defined(CYCLE_V2_SOURCE_DIR)

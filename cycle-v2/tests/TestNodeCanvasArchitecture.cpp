@@ -513,6 +513,9 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
     REQUIRE(presentation.previewResult().probes.size() == 1);
     const GraphPreviewResult::SignalProbePreview compactBefore =
             presentation.previewResult().probes.front();
+    REQUIRE(compactBefore.gridColumns == 256);
+    REQUIRE(compactBefore.gridRows == 512);
+    REQUIRE(compactBefore.values.size() == 256 * 512);
     const size_t resolution = SignalProbeDetailView::resolutionForMidiNote(60);
     const auto detail = presentation.captureProbePreview(
             graph,
@@ -530,6 +533,56 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
     REQUIRE(compactAfter.gridColumns == compactBefore.gridColumns);
     REQUIRE(compactAfter.gridRows == compactBefore.gridRows);
     REQUIRE(compactAfter.values == compactBefore.values);
+}
+
+TEST_CASE("Compact spectral probes retain the shared high-resolution traversal",
+        "[cycle-v2][canvas][probe][compact][spectral][regression]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "voice", "context", "mesh", "context",
+            PortDomain::DomainContext, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "mesh", "out", "fft", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "fft", "mag", "ifft", "mag",
+            PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "fft", "phase", "ifft", "phase",
+            PortDomain::SpectralPhaseSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "ifft", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addSignalProbe({
+            "magnitudeProbe",
+            "fft",
+            "mag",
+            "ifft",
+            "mag",
+            "Magnitude",
+            0.5f,
+            0
+    });
+
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(graph, 1));
+    REQUIRE(presentation.previewResult().probes.size() == 1);
+    const auto& compact = presentation.previewResult().probes.front();
+    REQUIRE(compact.connected);
+    REQUIRE(compact.gridColumns == 256);
+    REQUIRE(compact.gridRows == 257);
+    REQUIRE(compact.values.size() == 256 * 257);
 }
 
 TEST_CASE("Signal probes inherit spectral mesh render semantics",

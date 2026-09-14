@@ -204,19 +204,29 @@ bool SpectralOscillatorFrameRenderer::prepare(
             slotsForStep[(size_t) stepIndex][outputIndex] = operation.outputs[outputIndex];
         }
 
-        const auto inputSlot = [&](int portIndex) {
+        const auto inputSlot = [&](int portIndex, SpectralMagnitudeTransfer& transfer) {
             const auto* input = inputForPort(step, portIndex);
-            if (input == nullptr
-                    || input->sourceStepIndex < 0
-                    || input->sourceOutputIndex < 0
-                    || input->sourceOutputIndex >= 2) {
+            if (input == nullptr) {
                 return -1;
             }
-            return slotsForStep[(size_t) input->sourceStepIndex]
-                    [(size_t) input->sourceOutputIndex];
+            int sourceStepIndex = input->sourceStepIndex;
+            int sourceOutputIndex = input->sourceOutputIndex;
+            if (input->magnitudeTransfer.isActive()) {
+                transfer = resolveSpectralMagnitudeTransfer(
+                        plan,
+                        input->magnitudeTransfer);
+                sourceStepIndex = input->magnitudeTransfer.sourceStepIndex;
+                sourceOutputIndex = input->magnitudeTransfer.sourceOutputIndex;
+            }
+            if (sourceStepIndex < 0
+                    || sourceOutputIndex < 0
+                    || sourceOutputIndex >= 2) {
+                return -1;
+            }
+            return slotsForStep[(size_t) sourceStepIndex][(size_t) sourceOutputIndex];
         };
-        operation.leftInput = inputSlot(0);
-        operation.rightInput = inputSlot(1);
+        operation.leftInput = inputSlot(0, operation.leftTransfer);
+        operation.rightInput = inputSlot(1, operation.rightTransfer);
 
         if (operation.outputs[0] < 0
                 || (step.audioRole == AudioModuleRole::Fft
@@ -311,7 +321,7 @@ bool SpectralOscillatorFrameRenderer::prepare(
     slotMemory.resize(2 * slotCount * slotStride);
     const int maximumBinCount = RealFftFullPolarSpectrum::binCountForBufferSize(
             maximumFrameSize);
-    magnitudeScratch.resize(maximumBinCount);
+    magnitudeScratch.resize(maximumFrameSize);
     phaseScratch.resize(maximumBinCount);
     phaseHarmonicScale.resize(maximumBinCount - 1);
     CycleDsp::SpectralLayerCore::preparePhaseHarmonicScale(
@@ -416,6 +426,27 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
     const int activeHarmonicCount = jmin(
             RealFftFullPolarSpectrum::binCountForBufferSize(frameSize) - 1,
             LogRegionMapping(midiNote + LogRegionMapping::legacyMidiNoteBias).regionSize());
+    const auto applyMagnitudeOperand = [&](
+            Buffer<float> values,
+            const SpectralMagnitudeTransfer& transfer,
+            int channel) {
+        applySpectralMagnitudeTransfer(
+                values,
+                transfer,
+                (size_t) channel,
+                activeHarmonicCount);
+        if (!transfer.isActive()) {
+            return;
+        }
+        captureStage(
+                context,
+                CycleDsp::SpectralStage::MagnitudeOperand,
+                renderCount,
+                voiceSampleFrontier,
+                midiNote,
+                channel,
+                values.section(1, activeHarmonicCount));
+    };
     for (auto& operation : operations) {
         const int count = valueCount(operation.outputDomain, frameSize);
         auto leftOutput = slot(operation.outputs[0], 0, count);
@@ -480,13 +511,8 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
 
             case OperationType::SpectralTrimesh:
                 if (!operation.configuration->enabled) {
-                    const float identity = operation.outputDomain
-                                            == PortDomain::SpectralMagnitudeSignal
-                                    && operation.configuration->multiplicative
-                            ? 1.f
-                            : 0.f;
-                    leftOutput.set(identity);
-                    rightOutput.set(identity);
+                    leftOutput.zero();
+                    rightOutput.zero();
                     break;
                 }
                 operation.spectralRasterizer->setFrequencyMidiNote(
@@ -521,15 +547,7 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                     }
                 }
                 leftOutput.mul(operation.configuration->gain);
-                if (operation.configuration->appliesSpectralRange
-                        && operation.outputDomain == PortDomain::SpectralMagnitudeSignal) {
-                    CycleDsp::SpectralLayerCore::shapeMagnitude(
-                            leftOutput,
-                            operation.configuration->range,
-                            !operation.configuration->multiplicative,
-                            activeHarmonicCount);
-                } else if (operation.configuration->appliesSpectralRange
-                        && operation.outputDomain == PortDomain::SpectralPhaseSignal) {
+                if (operation.outputDomain == PortDomain::SpectralPhaseSignal) {
                     leftOutput.mul(CycleDsp::SpectralLayerCore::phaseOffsetScale(
                             operation.configuration->range) * MathConstants<float>::twoPi);
                     for (int channel = 0; channel < 2; ++channel) {
@@ -544,19 +562,6 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                     }
                     leftOutput.section(1, count - 1).mul(
                             phaseHarmonicScale.withSize(count - 1));
-                }
-                if (operation.outputDomain
-                        == PortDomain::SpectralMagnitudeSignal) {
-                    for (int channel = 0; channel < 2; ++channel) {
-                        captureStage(
-                                context,
-                                CycleDsp::SpectralStage::MagnitudeOperand,
-                                renderCount,
-                                voiceSampleFrontier,
-                                midiNote,
-                                channel,
-                                leftOutput.section(1, activeHarmonicCount));
-                    }
                 }
                 leftOutput.copyTo(rightOutput);
                 break;
@@ -608,6 +613,7 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                     auto magnitude = magnitudeScratch.withSize(binCount);
                     auto phase = phaseScratch.withSize(binCount);
                     slot(operation.leftInput, channel, binCount).copyTo(magnitude);
+                    applyMagnitudeOperand(magnitude, operation.leftTransfer, channel);
                     slot(operation.rightInput, channel, binCount).copyTo(phase);
                     captureStage(
                             context,
@@ -647,9 +653,20 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                     output.zero();
                     if (operation.leftInput >= 0) {
                         slot(operation.leftInput, channel, count).copyTo(output);
+                        applyMagnitudeOperand(output, operation.leftTransfer, channel);
                     }
                     if (operation.rightInput >= 0) {
-                        output.add(slot(operation.rightInput, channel, count));
+                        if (operation.rightTransfer.isActive()) {
+                            auto operand = magnitudeScratch.withSize(count);
+                            slot(operation.rightInput, channel, count).copyTo(operand);
+                            applyMagnitudeOperand(
+                                    operand,
+                                    operation.rightTransfer,
+                                    channel);
+                            output.add(operand);
+                        } else {
+                            output.add(slot(operation.rightInput, channel, count));
+                        }
                     }
                     if (operation.outputDomain == PortDomain::SpectralMagnitudeSignal) {
                         output.threshLT(0.f);
@@ -661,7 +678,15 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                 for (int channel = 0; channel < 2; ++channel) {
                     auto output = slot(operation.outputs[0], channel, count);
                     slot(operation.leftInput, channel, count).copyTo(output);
-                    output.mul(slot(operation.rightInput, channel, count));
+                    applyMagnitudeOperand(output, operation.leftTransfer, channel);
+                    if (operation.rightTransfer.isActive()) {
+                        auto operand = magnitudeScratch.withSize(count);
+                        slot(operation.rightInput, channel, count).copyTo(operand);
+                        applyMagnitudeOperand(operand, operation.rightTransfer, channel);
+                        output.mul(operand);
+                    } else {
+                        output.mul(slot(operation.rightInput, channel, count));
+                    }
                     if (operation.outputDomain == PortDomain::SpectralMagnitudeSignal) {
                         output.threshLT(0.f);
                     }

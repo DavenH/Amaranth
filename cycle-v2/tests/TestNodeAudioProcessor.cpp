@@ -333,7 +333,7 @@ TEST_CASE("Disabled layer sources publish operation identities",
     REQUIRE(output(meshContext).block.samples == std::vector<float>(4, 0.f));
 }
 
-TEST_CASE("Spectral Trimesh derives disabled identity from operation topology",
+TEST_CASE("Spectral Trimesh publishes a canonical zero raster when disabled",
         "[cycle-v2][runtime][layers][enabled][spectral]") {
     GraphNodeFactory nodeFactory;
     NodeGraph graph;
@@ -365,7 +365,6 @@ TEST_CASE("Spectral Trimesh derives disabled identity from operation topology",
     const auto spectral = std::dynamic_pointer_cast<const TrimeshConfiguration>(configuration);
     REQUIRE(spectral != nullptr);
     REQUIRE_FALSE(spectral->enabled);
-    REQUIRE(spectral->multiplicative);
 
     auto processor = NodeAudioProcessorFactory().create(AudioModuleRole::MeshSource);
     REQUIRE(processor != nullptr);
@@ -382,7 +381,7 @@ TEST_CASE("Spectral Trimesh derives disabled identity from operation topology",
     context.inputs.push_back(payload({ 0.2f, 0.3f, 0.4f, 0.5f }));
     context.inputs.front().domain = PortDomain::SpectralMagnitudeSignal;
     processor->process(context);
-    REQUIRE(output(context).block.samples == std::vector<float>(4, 1.f));
+    REQUIRE(output(context).block.samples == std::vector<float>(4, 0.f));
 }
 
 TEST_CASE("Pan configuration key follows spectral operation topology",
@@ -997,6 +996,46 @@ TEST_CASE("Utility audio processors add and multiply inputs", "[cycle-v2][runtim
     factory.create(AudioModuleRole::Multiply)->process(multiplyContext);
 
     REQUIRE(output(multiplyContext).block.samples == std::vector<float> { 0.5f, 2.f, 4.5f, 8.f });
+}
+
+TEST_CASE("Spectral arithmetic applies polarity at each consumer input",
+        "[cycle-v2][runtime][spectral][transfer]") {
+    NodeAudioProcessorFactory factory;
+    SignalPayload positive = payload({ 10.f, 10.f, 10.f });
+    positive.domain = PortDomain::SpectralMagnitudeSignal;
+    SignalPayload canonical = payload({ 0.f, 0.5f, 1.f });
+    canonical.domain = PortDomain::SpectralMagnitudeSignal;
+
+    AudioProcessContext addContext;
+    addContext.frameCount = 3;
+    addContext.inputs = { positive, canonical };
+    addContext.magnitudeTransfers = {
+            {},
+            { SpectralMagnitudeTransferMode::AddBipolar, 1.f / 3.f }
+    };
+    factory.create(AudioModuleRole::Add)->process(addContext);
+
+    AudioProcessContext multiplyContext;
+    multiplyContext.frameCount = 3;
+    multiplyContext.inputs = { positive, canonical };
+    multiplyContext.magnitudeTransfers = {
+            {},
+            { SpectralMagnitudeTransferMode::MultiplyBipolar, 1.f / 3.f }
+    };
+    factory.create(AudioModuleRole::Multiply)->process(multiplyContext);
+
+    REQUIRE(output(addContext).block.samples[1] == Catch::Approx(10.f));
+    REQUIRE(output(multiplyContext).block.samples[1] == Catch::Approx(10.f));
+
+    addContext.outputs.clear();
+    addContext.magnitudeTransfers[1].enabled = false;
+    factory.create(AudioModuleRole::Add)->process(addContext);
+    multiplyContext.outputs.clear();
+    multiplyContext.magnitudeTransfers[1].enabled = false;
+    factory.create(AudioModuleRole::Multiply)->process(multiplyContext);
+
+    REQUIRE(output(addContext).block.samples == std::vector<float>(3, 10.f));
+    REQUIRE(output(multiplyContext).block.samples == std::vector<float>(3, 10.f));
 }
 
 TEST_CASE("Spectral layer processor makes phase panning explicit in both payload forms",

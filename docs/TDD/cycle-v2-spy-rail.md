@@ -105,6 +105,20 @@ Expanded rail tiles:
 - open a larger preview on double-click;
 - publish selection back to the cable marker.
 
+Compact probes share one 512-sample diagnostic traversal with ordinary graph
+previews. Trimesh traversal therefore supplies 256 horizontal columns, while
+time-domain probes retain 512 rows and spectral probes retain the 257 unique
+FFT rows. The rail scales that native payload to the tile; it must not enlarge
+a 64-column or 65-row traversal into the production-size preview. All probes
+are extracted from the same traversal pass, so higher compact resolution does
+not introduce a second graph render.
+
+`GraphPresentationModel.cpp` is at the orchestration review threshold (824
+lines). This slice only names and raises its existing shared preview frame
+constant; it adds no lifecycle, routing branch, rendering algorithm, or new
+responsibility. Splitting the orchestrator for this bounded value change would
+broaden the patch without producing a cohesive ownership extraction.
+
 Tile order, labels, and display settings belong to graph content. Rail height
 and collapsed state do not.
 
@@ -215,6 +229,11 @@ editor.
   C3/C5-dependent Trimesh panel row/key metadata, compact/expanded spectral
   value-region correspondence, and compact-payload immutability during a lazy
   detail capture.
+- Compact-payload tests require 256 Trimesh columns, 512 time rows, and 257
+  unique spectral rows from the shared 512-sample diagnostic traversal.
+- `cycle-v2-agent-spy-compact-resolution.json` asserts those native dimensions
+  for time, magnitude, and phase probes and captures the production rail at
+  `/private/tmp/cycle-v2-spy-compact-resolution-os.png`.
 - `cycle-v2-agent-spy-detail.json` verifies the lazy 256-sample Stengah detail
   traversal and captures matching compact/detail structure at
   `/private/tmp/cycle-v2-spy-compact.png` and

@@ -449,3 +449,30 @@ TEST_CASE("Fractional-period MIDI spectral reconstruction remains phase-folded",
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
 }
+
+TEST_CASE("Mind Blinding multiplies both bipolar magnitude operands",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][polarity]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const auto plan = loadPresetPlan("mind-blinding");
+    const auto operation = std::find_if(
+            plan.steps.begin(),
+            plan.steps.end(),
+            [](const GraphExecutionStep& step) {
+                return step.nodeId == "magnitudeOp2";
+            });
+    REQUIRE(operation != plan.steps.end());
+    REQUIRE(operation->inputs.size() == 2);
+    for (const auto& input : operation->inputs) {
+        REQUIRE(input.magnitudeTransfer.mode
+                == SpectralMagnitudeTransferMode::MultiplyBipolar);
+    }
+
+    const auto frame = renderFixedFrame(plan, 60);
+    REQUIRE(std::all_of(frame.begin(), frame.end(), [](float sample) {
+        return std::isfinite(sample);
+    }));
+    REQUIRE(*std::max_element(frame.begin(), frame.end()) > 1.0e-4f);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}

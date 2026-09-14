@@ -545,7 +545,7 @@ TEST_CASE("Graph JSON migrates legacy Pan range to its spectral Trimesh",
             loadedMesh->id);
     const auto spectral = std::dynamic_pointer_cast<const TrimeshConfiguration>(configuration);
     REQUIRE(spectral != nullptr);
-    REQUIRE_FALSE(spectral->multiplicative);
+    REQUIRE_FALSE(spectral->bipolar);
 }
 
 TEST_CASE("Graph JSON migrates pre-typed format two edge metadata",

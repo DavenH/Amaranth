@@ -154,8 +154,7 @@ TEST_CASE("Direct spectral Trimesh applies its range before IFFT",
             configuration);
 
     REQUIRE(spectral != nullptr);
-    REQUIRE(spectral->appliesSpectralRange);
-    REQUIRE_FALSE(spectral->multiplicative);
+    REQUIRE_FALSE(spectral->bipolar);
 }
 
 TEST_CASE("Trimesh polarity is independent from downstream arithmetic",
@@ -163,14 +162,13 @@ TEST_CASE("Trimesh polarity is independent from downstream arithmetic",
     struct Case {
         NodeKind operation;
         String polarity;
-        bool multiplicative;
         bool bipolar;
     };
     const std::array<Case, 4> cases {{
-            { NodeKind::Add, "unipolar", false, false },
-            { NodeKind::Add, "bipolar", false, true },
-            { NodeKind::Multiply, "unipolar", true, false },
-            { NodeKind::Multiply, "bipolar", true, true }
+            { NodeKind::Add, "unipolar", false },
+            { NodeKind::Add, "bipolar", true },
+            { NodeKind::Multiply, "unipolar", false },
+            { NodeKind::Multiply, "bipolar", true }
     }};
 
     for (const Case& test : cases) {
@@ -210,8 +208,6 @@ TEST_CASE("Trimesh polarity is independent from downstream arithmetic",
                 configuration);
 
         REQUIRE(spectral != nullptr);
-        REQUIRE(spectral->appliesSpectralRange);
-        REQUIRE(spectral->multiplicative == test.multiplicative);
         REQUIRE(spectral->bipolar == test.bipolar);
     }
 }

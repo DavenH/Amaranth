@@ -53,14 +53,33 @@ public:
             float range,
             bool additive,
             int harmonicCount) {
+        shapeMagnitudeOperand(values, range, additive, !additive, harmonicCount);
+    }
+
+    static void shapeMagnitudeOperand(
+            Buffer<float> values,
+            float range,
+            bool additive,
+            bool bipolar,
+            int harmonicCount) {
         const float dynamicRange = magnitudeDynamicRange(range);
         const float threshold = powf(1.0e-19f, 1.f / dynamicRange);
-        float scale = powf(2.f, dynamicRange);
+        const float rangeScale = powf(2.f, dynamicRange);
+
+        values.threshLT(threshold).pow(dynamicRange);
         if (additive) {
-            scale *= Arithmetic::calcAdditiveScaling(harmonicCount);
+            if (bipolar) {
+                values.mul(rangeScale).sub(1.f);
+            } else {
+                values.mul(rangeScale);
+            }
+            values.mul(Arithmetic::calcAdditiveScaling(harmonicCount));
+            return;
         }
 
-        values.threshLT(threshold).pow(dynamicRange).mul(scale);
+        if (bipolar) {
+            values.mul(rangeScale);
+        }
     }
 
     static void applyMultiplicativePan(Buffer<float> values, float channelGain) {

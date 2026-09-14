@@ -471,7 +471,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                                     graph | dsp | preview | presentation),
                             choice("polarity", "Polarity", "unipolar",
                                     { "unipolar", "bipolar" },
-                                    dsp | preview | presentation),
+                                    graph | dsp | preview | presentation),
                             number("yellow", "Yellow", 0.f, 0.f, 1.f, dsp | preview | presentation),
                             number("red", "Red", defaultTrimeshKeyPosition(), 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.f, 0.f, 1.f, dsp | preview | presentation),
