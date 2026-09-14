@@ -82,7 +82,7 @@ LAYOUT_SPINE_Y = 900.0
 LAYOUT_DIRECT_STACK_GAP = 34.0
 LAYOUT_DIRECT_OPERATION_GAP = 128.0
 LAYOUT_DIRECT_LAYER_OFFSET = 168.0
-LAYOUT_SCRATCH_FANOUT_GAP = 170.0
+LAYOUT_SCRATCH_FANOUT_GAP = 180.0
 LAYOUT_GLOBAL_LANE_Y = 1424.0
 LAYOUT_GLOBAL_NODE_GAP = 48.0
 
@@ -417,10 +417,11 @@ def apply_compact_layout(nodes, edges):
             target_positions = [
                 nodes_by_id[target_id]["position"] for target_id in target_ids
             ]
-            target_xs = {position["x"] for position in target_positions}
+            leftmost_target_x = min(
+                position["x"] for position in target_positions)
             envelope_width, envelope_height = node_footprint(
                 nodes_by_id[node_id])
-            if len(target_ids) > 1 and len(target_xs) == 1:
+            if len(target_ids) > 1:
                 target_centres = [
                     position["y"] + NODE_FOOTPRINTS["trilinearMesh"][1] / 2.0
                     for position in target_positions
@@ -428,7 +429,9 @@ def apply_compact_layout(nodes, edges):
                 set_node_position(
                     nodes_by_id,
                     node_id,
-                    min(target_xs) - envelope_width - LAYOUT_SCRATCH_FANOUT_GAP,
+                    leftmost_target_x
+                    - envelope_width
+                    - LAYOUT_SCRATCH_FANOUT_GAP,
                     sum(target_centres) / len(target_centres)
                     - envelope_height / 2.0)
                 continue

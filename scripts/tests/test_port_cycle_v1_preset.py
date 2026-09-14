@@ -372,6 +372,53 @@ class PortCycleV1PresetTest(unittest.TestCase):
             nodes["globalInput"]["position"]["x"],
             nodes["delay"]["position"]["x"])
 
+    def test_shared_scratch_fanout_stays_left_of_spread_consumers(self):
+        source = convertible_source()
+        groups = source["preset"]["meshLibrary"]["groups"]
+        for group_index in (4, 5):
+            for layer in groups[group_index]["layers"]:
+                layer["properties"]["active"] = True
+                layer["properties"]["scratchChannel"] = 0
+                layer["mesh"]["vertices"] = [1]
+        groups[2]["layers"] = [{
+            "properties": {"active": True, "logarithmic": False},
+            "mesh": {
+                "mainMesh": {"vertices": [], "cubes": [{}, {}]},
+            },
+        }]
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+        self.assert_compact_nodes_do_not_overlap(converted)
+        scratch = nodes["scratchEnvelope1"]
+        consumers = [
+            nodes[node_id]
+            for node_id in (
+                "timeLayer1", "timeLayer2",
+                "magnitudeLayer1", "magnitudeLayer2",
+            )
+        ]
+        consumer_centres = [
+            node["position"]["y"]
+            + port_cycle_v1_preset.node_footprint(node)[1] / 2.0
+            for node in consumers
+        ]
+        scratch_width, scratch_height = \
+            port_cycle_v1_preset.node_footprint(scratch)
+
+        self.assertLess(
+            scratch["position"]["x"] + scratch_width,
+            min(node["position"]["x"] for node in consumers),
+        )
+        self.assertAlmostEqual(
+            scratch["position"]["y"] + scratch_height / 2.0,
+            sum(consumer_centres) / len(consumer_centres),
+        )
+        self.assertNotIn("portSides", scratch)
+
     def test_canonical_graph_writer_is_serialization_idempotent(self):
         repository = Path(__file__).resolve().parents[2]
         source = repository / "cycle-v2/resources/default.cyclegraph"

@@ -360,6 +360,12 @@ transferred to its upstream Trimesh before the Pan is removed.
    the main graph. Routed final converter output through Cycle V2's serializer
    so the first ordinary save no longer rewrites legacy precision, defaults,
    model versions, and JSON shape across the whole file.
+20. Added a second four-preset review batch: Acid Loop, Ambi Wave, Rise and
+   Shine, and Woaio. Generalized shared scratch-envelope placement across
+   consumers in different columns so the envelope remains left of the whole
+   fan-out instead of sending control cables across intermediate nodes. Replaced
+   the first review fixture's ineffective duration-existence checks with exact
+   Voice Context parameter assertions.
 
 ## Verification
 
@@ -386,6 +392,12 @@ transferred to its upstream Trimesh before the Pan is removed.
   1.521729 seconds.
   App-rendered screenshots confirm restored effect curves, compact Voice Context
   fan-in, and local placement for the two channel-specific scratch Envelopes.
+- The second four-preset review batch loads and compiles with exact Cycle 1
+  voice-length unit values. With Voice Context active, Cycle V2 realizes them as
+  1.386431, 1.266986, 4.042836, and 4.463208 seconds. Production-size canvas
+  captures cover an absent scratch connection, a shared scratch fan-out across
+  four meshes, a four-layer magnitude chain, and short and long global effects
+  lanes.
 - The focused resampler regression recreates the exhausted source window and
   passes without an invalid copy. The oversampler regression checks the exact
   wrapped-tail extent. The AcidStab3 live fixture holds MIDI note 41 for four
@@ -440,11 +452,10 @@ transferred to its upstream Trimesh before the Pan is removed.
 
 ## Final Verification
 
-- Converter unit tests: 55 passed, including legacy pitch-envelope modulation,
+- Converter unit tests: 56 passed, including legacy pitch-envelope modulation,
   direct spectral operand layout, serializer idempotence, empty magnitude and
-  phase meshes,
-  all-empty spectral stacks, centred Pan, range ownership, and inactive pitch
-  Envelope omission.
+  phase meshes, shared scratch fan-out across columns, all-empty spectral
+  stacks, centred Pan, range ownership, and inactive pitch Envelope omission.
 - Cycle 1 archive migration tests: 111 assertions across 5 cases passed.
 - Cycle V2 layer enablement tests: 14 assertions across 2 cases passed.
 - The focused layout coverage passes 308,437 assertions across 9 cases,
