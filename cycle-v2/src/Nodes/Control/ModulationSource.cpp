@@ -20,6 +20,7 @@ float controllerValue(const PreviewControlContext& context, int controller) {
 
 PreviewControlContext previewContextForVoice(
         const AudioVoiceContext& voice,
+        const ModulationSourceConfiguration& configuration,
         int noteOffset = 0) {
     PreviewControlContext context;
     context.voiceTime = voice.controls.normalizedVoiceTime;
@@ -28,7 +29,14 @@ PreviewControlContext previewContextForVoice(
     context.lowestNote = voice.controls.lowestNote;
     context.highestNote = voice.controls.highestNote;
     context.channelPressure = voice.controls.channelPressure;
-    context.controllers = voice.controls.controllers;
+    if (configuration.mode == ModulationSourceMode::ModWheel) {
+        context.controllers[(size_t) kModWheelController]
+                = voice.controls.controllerValue(kModWheelController);
+    } else if (configuration.mode == ModulationSourceMode::MidiController) {
+        const int controller = jlimit(0, 127, configuration.controller);
+        context.controllers[(size_t) controller]
+                = voice.controls.controllerValue(controller);
+    }
     return context;
 }
 
@@ -193,7 +201,10 @@ void ModulationSource::renderAudioBlock(
         const AudioVoiceContext& voice,
         Buffer<float> values,
         int noteOffset) {
-    PreviewControlContext current = previewContextForVoice(voice, noteOffset);
+    PreviewControlContext current = previewContextForVoice(
+            voice,
+            configuration,
+            noteOffset);
     if (configuration.mode == ModulationSourceMode::VoiceTime) {
         values.ramp(
                 jlimit(0.f, 1.f, voice.controls.normalizedVoiceTime),

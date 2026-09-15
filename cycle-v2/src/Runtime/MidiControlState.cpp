@@ -57,7 +57,7 @@ void MidiControlState::ingest(const MidiMessage& message, size_t sampleOffset) {
 void MidiControlState::populateVoice(AudioVoiceContext& voice, int midiChannel) const {
     const ChannelState& channel = channels[(size_t) channelIndex(midiChannel)];
     voice.controls.channelPressure = channel.blockStartPressure;
-    voice.controls.controllers = channel.blockStartControllers;
+    voice.controls.controllerSnapshot = &channel.blockStartControllers;
     jassert(voice.controlEvents.capacity() >= eventCapacity);
     if (voice.controlEvents.capacity() < channel.events.size()) {
         voice.controlEvents.clear();

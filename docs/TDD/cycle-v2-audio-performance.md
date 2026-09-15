@@ -71,7 +71,7 @@ counter. Instrumentation cannot back-pressure audio or change rendering.
 | Realtime arenas | Every graph buffer reserved block plus `F*max(F,C)` grid payload in the work arena; mix already omitted grids. | Slice 4c gives realtime voice/global preparation zero diagnostic-grid capacity and reports block/grid storage high-water values. Boundary-only mix slots and lifetime reuse remain candidates. |
 | Output path | Output is cleared before a valid overwrite, copied from the graph boundary, ramped/clipped, then scanned repeatedly for RMS/finiteness/peak. | The redundant L1 reduction and scratch copy/absolute/max passes are removed in slice 1 using `Buffer::minmax`; output clear/copy remain for a later bounded change. |
 | Live capture | Inactive capture performed an atomic callback-counter RMW every callback. | Slice 4b passes the renderer callback id into capture; inactive capture now performs only its target-state load. |
-| MIDI controls | All 128 controller values are copied into every active voice every block. | Share an immutable block snapshot or compile only referenced controllers. |
+| MIDI controls | All 128 controller values were copied into every active voice and again into every modulation render. | Slice 4d shares the immutable channel block snapshot with voices and extracts only the configured controller into a render-local timeline. |
 
 `A` is active voices, `Svoice`/`Sglobal` are compiled steps of that scope,
 `B` is plan buffers, `M` is modulation bindings, `F` is maximum audio frames,
@@ -311,3 +311,12 @@ Focused tests prove complete execution still owns grid storage, realtime
 execution owns none, and the prepared realtime path remains allocation- and
 lock-free. Boundary-only voice-mix allocation and buffer lifetime reuse remain
 separate candidates because they require a compiler-owned storage plan.
+
+## Slice 4d Result (2026-09-15)
+
+Each voice now references its MIDI channel's immutable block-start controller
+snapshot rather than copying 128 floats. Modulation rendering extracts only
+the configured CC (or CC 1 for Mod Wheel) into its local timeline; other source
+modes copy no controller array. Timed controller and pressure events remain
+local overlays with the same sample offsets. Focused MIDI-state, modulation,
+realtime allocation/lock, voice-stealing, and deferred-event tests pass.
