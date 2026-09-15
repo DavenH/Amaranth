@@ -547,7 +547,11 @@ through IFFT` reconstructed sample zero as `3.17889` from `-0.999597` (maximum
 error `4.17849`) because `GraphAudioExecutor` treated every processor inside an
 oscillator region as its materialization step. Restricting materialization to
 the compiled region's `materializationStepIndex` preserves both FFT outputs and
-the IFFT round trip. The focused bundled and direct FFT/IFFT regressions pass.
+the IFFT round trip. A follow-up also restored the oscillator boundary's
+zero-DC contract before Unison composition; the diagnostic traversal now
+matches the DC removal already used by Cycle 1 visual transforms and Cycle 2's
+realtime spectral renderer. The focused bundled and direct FFT/IFFT regressions
+pass with the expected zero-mean reconstruction.
 
 ## Open: Guitar 3 G effects diverge after an equivalent voice output
 

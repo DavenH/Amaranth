@@ -167,6 +167,20 @@ float columnDifference(
     return sum;
 }
 
+float maximumAbsoluteColumnMean(const SignalTraversalGrid& grid) {
+    REQUIRE(grid.isValid());
+
+    float maximum = 0.f;
+    for (size_t column = 0; column < grid.columns; ++column) {
+        float sum = 0.f;
+        for (size_t row = 0; row < grid.rows; ++row) {
+            sum += grid.values[column * grid.rows + row];
+        }
+        maximum = std::max(maximum, std::abs(sum / (float) grid.rows));
+    }
+    return maximum;
+}
+
 void requireGridDeltaEquals(
         const SignalTraversalGrid& after,
         const SignalTraversalGrid& before,
@@ -633,6 +647,12 @@ TEST_CASE("Pwm Lead Spy preserves looping scratch and composed Unison lanes",
     const auto& composed = findProbePreview(withUnison.second, "probe");
     REQUIRE(composed.connected);
     REQUIRE(composed.domain == PortDomain::TimeSignal);
+    REQUIRE(maximumAbsoluteColumnMean(findAudio(
+            withUnison.first,
+            "ifft").output.traversalGrid) < 1.0e-5f);
+    REQUIRE(maximumAbsoluteColumnMean(findAudio(
+            withUnison.first,
+            "volumeMultiply").output.traversalGrid) < 1.0e-5f);
 
     REQUIRE(GraphEditor().setNodeParameter(
             graph,
@@ -710,10 +730,19 @@ TEST_CASE("Bundled FFT diagnostic graph preserves its sawtooth probe through IFF
     REQUIRE(maximumHarmonicRatioError < 0.002f);
 
     float maximumReconstructionError = 0.f;
-    for (size_t sample = 0; sample < source.values.size(); ++sample) {
-        maximumReconstructionError = jmax(
-                maximumReconstructionError,
-                std::abs(roundTrip.values[sample] - source.values[sample]));
+    for (size_t column = 0; column < source.gridColumns; ++column) {
+        const size_t offset = column * source.gridRows;
+        float sum = 0.f;
+        for (size_t row = 0; row < source.gridRows; ++row) {
+            sum += source.values[offset + row];
+        }
+        const float sourceMean = sum / (float) source.gridRows;
+        for (size_t row = 0; row < source.gridRows; ++row) {
+            maximumReconstructionError = jmax(
+                    maximumReconstructionError,
+                    std::abs(roundTrip.values[offset + row]
+                            - (source.values[offset + row] - sourceMean)));
+        }
     }
     REQUIRE(maximumReconstructionError < 1.0e-5f);
   #endif

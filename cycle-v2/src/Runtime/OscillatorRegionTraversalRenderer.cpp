@@ -28,13 +28,6 @@ bool OscillatorRegionTraversalRenderer::render(
             || workspace.size() < (int) (3 * grid.rows)) {
         return false;
     }
-    if (layout.order == 1
-            && layout[0].detuneCents == 0.f
-            && layout[0].phaseCycles == 0.f
-            && pitchEnvelopeUnitValues.empty()) {
-        return true;
-    }
-
     workspace.resetPlacement();
     Buffer<float> source = workspace.place((int) grid.rows);
     Buffer<float> shifted = workspace.place((int) grid.rows);
@@ -60,6 +53,7 @@ bool OscillatorRegionTraversalRenderer::render(
                 grid.values.data() + column * grid.rows,
                 (int) grid.rows);
         destination.copyTo(source);
+        source.add(-source.mean());
         const double pitchSemitones = CycleDsp::UnisonCore::pitchSemitonesForUnitValue(
                 pitchUnitValue(column, grid.columns));
         const double pitchFrequencyOffset = CycleDsp::UnisonCore::frequencyForMidiPitch(
