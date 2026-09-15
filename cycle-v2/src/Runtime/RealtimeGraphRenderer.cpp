@@ -501,6 +501,27 @@ void RealtimeGraphRenderer::renderVoices(
         performanceSample->spectralTransferBindingVisitCount
                 = operationCounts.spectralTransferBindingVisits;
         performanceSample->contextPatchCount = operationCounts.contextPatches;
+        const auto& oscillator = operationCounts.oscillator;
+        performanceSample->oscillatorRegionRenderCount
+                = oscillator.regionRenderCount;
+        performanceSample->oscillatorRecipeRenderCount
+                = oscillator.recipeRenderCount;
+        performanceSample->oscillatorLaneCycleCount
+                = oscillator.laneCycleCount;
+        performanceSample->oscillatorMixedLaneCount
+                = oscillator.mixedLaneCount;
+        performanceSample->oscillatorStageDurations[(size_t)
+                AudioPerformanceMetrics::OscillatorStage::RegionRendering]
+                = oscillator.regionDurationMicroseconds;
+        performanceSample->oscillatorStageDurations[(size_t)
+                AudioPerformanceMetrics::OscillatorStage::RecipeRendering]
+                = oscillator.recipeDurationMicroseconds;
+        performanceSample->oscillatorStageDurations[(size_t)
+                AudioPerformanceMetrics::OscillatorStage::LaneRendering]
+                = oscillator.laneDurationMicroseconds;
+        performanceSample->oscillatorStageDurations[(size_t)
+                AudioPerformanceMetrics::OscillatorStage::OutputMixing]
+                = oscillator.mixDurationMicroseconds;
     }
 }
 

@@ -38,6 +38,10 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     first.modulationBindingVisitCount = 2;
     first.spectralTransferBindingVisitCount = 5;
     first.contextPatchCount = 11;
+    first.oscillatorRegionRenderCount = 2;
+    first.oscillatorRecipeRenderCount = 3;
+    first.oscillatorLaneCycleCount = 4;
+    first.oscillatorMixedLaneCount = 5;
     first.dequeuedMidiEventCount = 2;
     first.sortedMidiItemCount = 4;
     first.compactedMidiItemCount = 1;
@@ -45,6 +49,10 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     first.gridStorageValues = 4096;
     first.stageDurations[static_cast<size_t>(
             AudioPerformanceMetrics::Stage::VoiceRendering)] = 1'200;
+    first.oscillatorStageDurations[static_cast<size_t>(
+            AudioPerformanceMetrics::OscillatorStage::RegionRendering)] = 1'000;
+    first.oscillatorStageDurations[static_cast<size_t>(
+            AudioPerformanceMetrics::OscillatorStage::RecipeRendering)] = 700;
     metrics.publishRealtimeSample(first);
 
     auto second = beginSample(metrics);
@@ -57,6 +65,10 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     second.modulationBindingVisitCount = 4;
     second.spectralTransferBindingVisitCount = 7;
     second.contextPatchCount = 13;
+    second.oscillatorRegionRenderCount = 4;
+    second.oscillatorRecipeRenderCount = 6;
+    second.oscillatorLaneCycleCount = 8;
+    second.oscillatorMixedLaneCount = 10;
     second.dequeuedMidiEventCount = 3;
     second.sortedMidiItemCount = 6;
     second.compactedMidiItemCount = 2;
@@ -64,6 +76,10 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     second.gridStorageValues = 8192;
     second.stageDurations[static_cast<size_t>(
             AudioPerformanceMetrics::Stage::VoiceRendering)] = 4'500;
+    second.oscillatorStageDurations[static_cast<size_t>(
+            AudioPerformanceMetrics::OscillatorStage::RegionRendering)] = 4'000;
+    second.oscillatorStageDurations[static_cast<size_t>(
+            AudioPerformanceMetrics::OscillatorStage::RecipeRendering)] = 3'000;
     metrics.publishRealtimeSample(second);
 
     REQUIRE(metrics.snapshot().callbackDuration.count == 0);
@@ -78,6 +94,10 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     REQUIRE(snapshot.totalModulationBindingVisits == 6);
     REQUIRE(snapshot.totalSpectralTransferBindingVisits == 12);
     REQUIRE(snapshot.totalContextPatches == 24);
+    REQUIRE(snapshot.totalOscillatorRegionRenders == 6);
+    REQUIRE(snapshot.totalOscillatorRecipeRenders == 9);
+    REQUIRE(snapshot.totalOscillatorLaneCycles == 12);
+    REQUIRE(snapshot.totalOscillatorMixedLanes == 15);
     REQUIRE(snapshot.totalDequeuedMidiEvents == 5);
     REQUIRE(snapshot.totalSortedMidiItems == 10);
     REQUIRE(snapshot.totalCompactedMidiItems == 3);
@@ -90,6 +110,9 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     REQUIRE(snapshot.stages[static_cast<size_t>(
             AudioPerformanceMetrics::Stage::VoiceRendering)]
                     .totalMicroseconds == 5'700);
+    REQUIRE(snapshot.oscillatorStages[static_cast<size_t>(
+            AudioPerformanceMetrics::OscillatorStage::RegionRendering)]
+                    .totalMicroseconds == 5'000);
 
     const var exported = metrics.toVar();
     REQUIRE(property(exported, "schema").toString()
@@ -119,6 +142,9 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
             "meanContextPatches") == Catch::Approx(12.0));
     REQUIRE((int64) property(
             property(exported, "workload"),
+            "totalOscillatorRecipeRenders") == 9);
+    REQUIRE((int64) property(
+            property(exported, "workload"),
             "totalSortedMidiItems") == 10);
     REQUIRE((int64) property(
             property(exported, "workload"),
@@ -126,6 +152,9 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     REQUIRE((int64) property(
             property(property(exported, "stages"), "voiceRendering"),
             "count") == 2);
+    REQUIRE((double) property(
+            property(property(exported, "oscillatorStages"), "recipeRendering"),
+            "meanMs") == Catch::Approx(1.85));
 }
 
 TEST_CASE("Audio performance reset rejects samples from the old generation",

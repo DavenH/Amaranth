@@ -1,5 +1,6 @@
 #include "Runtime/ChainedOscillatorRegionRuntime.h"
 
+#include "Runtime/AudioPerformanceMetrics.h"
 #include "Runtime/PreparedOscillatorRegion.h"
 
 #include <Util/Arithmetic.h>
@@ -75,6 +76,9 @@ bool ChainedOscillatorRegionRuntime::process(
             return false;
         }
 
+        const uint64_t mixStartedAt = context.performanceCounts == nullptr
+                ? 0
+                : AudioPerformanceMetrics::timestampMicroseconds();
         auto& lane = lanes[(size_t) laneIndex];
         float leftPan {};
         float rightPan {};
@@ -83,6 +87,11 @@ bool ChainedOscillatorRegionRuntime::process(
         right.addProduct(lane.buffers[1].read(right.size()), level * rightPan);
         lane.buffers[0].retract();
         lane.buffers[1].retract();
+        if (context.performanceCounts != nullptr) {
+            context.performanceCounts->mixDurationMicroseconds
+                    += AudioPerformanceMetrics::timestampMicroseconds() - mixStartedAt;
+            ++context.performanceCounts->mixedLaneCount;
+        }
     }
     return true;
 }
@@ -154,6 +163,9 @@ bool ChainedOscillatorRegionRuntime::renderUntilReady(
                 lane.clock.samplesThisCycle);
         cycleLeft.zero();
         cycleRight.zero();
+        const uint64_t recipeStartedAt = context.performanceCounts == nullptr
+                ? 0
+                : AudioPerformanceMetrics::timestampMicroseconds();
         renderer.renderCycle({
                 laneIndex,
                 lane.clock.samplesThisCycle,
@@ -165,6 +177,11 @@ bool ChainedOscillatorRegionRuntime::renderUntilReady(
                         0.0,
                         cycleStart - context.voiceSampleStart)
         }, cycleLeft, cycleRight);
+        if (context.performanceCounts != nullptr) {
+            context.performanceCounts->recipeDurationMicroseconds
+                    += AudioPerformanceMetrics::timestampMicroseconds() - recipeStartedAt;
+            ++context.performanceCounts->recipeRenderCount;
+        }
         lane.buffers[0].write(cycleLeft);
         lane.buffers[1].write(cycleRight);
     }

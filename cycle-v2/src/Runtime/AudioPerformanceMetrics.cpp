@@ -133,6 +133,10 @@ AudioPerformanceMetrics::Snapshot AudioPerformanceMetrics::snapshot() const {
             aggregateData.totalModulationBindingVisits,
             aggregateData.totalSpectralTransferBindingVisits,
             aggregateData.totalContextPatches,
+            aggregateData.totalOscillatorRegionRenders,
+            aggregateData.totalOscillatorRecipeRenders,
+            aggregateData.totalOscillatorLaneCycles,
+            aggregateData.totalOscillatorMixedLanes,
             aggregateData.totalDequeuedMidiEvents,
             aggregateData.totalSortedMidiItems,
             aggregateData.totalCompactedMidiItems,
@@ -145,7 +149,8 @@ AudioPerformanceMetrics::Snapshot AudioPerformanceMetrics::snapshot() const {
             aggregateData.maximumExecutionStepCount,
             aggregateData.callbackDuration,
             aggregateData.deadlineUtilizationPermille,
-            aggregateData.stages
+            aggregateData.stages,
+            aggregateData.oscillatorStages
         };
 }
 
@@ -203,6 +208,18 @@ var AudioPerformanceMetrics::toVar() const {
                     : (double) current.totalContextPatches
                             / (double) current.callbackDuration.count);
     workload->setProperty(
+            "totalOscillatorRegionRenders",
+            (int64) current.totalOscillatorRegionRenders);
+    workload->setProperty(
+            "totalOscillatorRecipeRenders",
+            (int64) current.totalOscillatorRecipeRenders);
+    workload->setProperty(
+            "totalOscillatorLaneCycles",
+            (int64) current.totalOscillatorLaneCycles);
+    workload->setProperty(
+            "totalOscillatorMixedLanes",
+            (int64) current.totalOscillatorMixedLanes);
+    workload->setProperty(
             "totalDequeuedMidiEvents",
             (int64) current.totalDequeuedMidiEvents);
     workload->setProperty("totalSortedMidiItems", (int64) current.totalSortedMidiItems);
@@ -236,6 +253,15 @@ var AudioPerformanceMetrics::toVar() const {
                 performanceDistributionToVar(current.stages[index]));
     }
     root->setProperty("stages", var(stages));
+
+    auto* oscillatorStages = new DynamicObject();
+    for (size_t index = 0; index < oscillatorStageCount; ++index) {
+        const OscillatorStage stage = static_cast<OscillatorStage>(index);
+        oscillatorStages->setProperty(
+                label(stage),
+                performanceDistributionToVar(current.oscillatorStages[index]));
+    }
+    root->setProperty("oscillatorStages", var(oscillatorStages));
     return var(root);
 }
 
@@ -267,6 +293,17 @@ const char* AudioPerformanceMetrics::label(Stage stage) {
     return "unknown";
 }
 
+const char* AudioPerformanceMetrics::label(OscillatorStage stage) {
+    switch (stage) {
+        case OscillatorStage::RegionRendering:  return "regionRendering";
+        case OscillatorStage::RecipeRendering:  return "recipeRendering";
+        case OscillatorStage::LaneRendering:    return "laneRendering";
+        case OscillatorStage::OutputMixing:     return "outputMixing";
+        case OscillatorStage::Count:            break;
+    }
+    return "unknown";
+}
+
 void AudioPerformanceMetrics::aggregate(const RealtimeSample& sample) {
     recordPerformanceSample(
             aggregateData.callbackDuration,
@@ -288,6 +325,12 @@ void AudioPerformanceMetrics::aggregate(const RealtimeSample& sample) {
     aggregateData.totalSpectralTransferBindingVisits
             += sample.spectralTransferBindingVisitCount;
     aggregateData.totalContextPatches += sample.contextPatchCount;
+    aggregateData.totalOscillatorRegionRenders
+            += sample.oscillatorRegionRenderCount;
+    aggregateData.totalOscillatorRecipeRenders
+            += sample.oscillatorRecipeRenderCount;
+    aggregateData.totalOscillatorLaneCycles += sample.oscillatorLaneCycleCount;
+    aggregateData.totalOscillatorMixedLanes += sample.oscillatorMixedLaneCount;
     aggregateData.totalDequeuedMidiEvents += sample.dequeuedMidiEventCount;
     aggregateData.totalSortedMidiItems += sample.sortedMidiItemCount;
     aggregateData.totalCompactedMidiItems += sample.compactedMidiItemCount;
@@ -315,6 +358,13 @@ void AudioPerformanceMetrics::aggregate(const RealtimeSample& sample) {
             recordPerformanceSample(
                     aggregateData.stages[index],
                     sample.stageDurations[index]);
+        }
+    }
+    for (size_t index = 0; index < oscillatorStageCount; ++index) {
+        if (sample.oscillatorStageDurations[index] > 0) {
+            recordPerformanceSample(
+                    aggregateData.oscillatorStages[index],
+                    sample.oscillatorStageDurations[index]);
         }
     }
 }

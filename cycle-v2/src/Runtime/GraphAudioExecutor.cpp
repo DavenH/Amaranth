@@ -1,5 +1,6 @@
 #include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/AudioProcessContextUtils.h"
+#include "Runtime/AudioPerformanceMetrics.h"
 #include "Nodes/Control/ModulationTriple.h"
 
 #include <algorithm>
@@ -468,7 +469,10 @@ GraphAudioResult GraphAudioExecutor::processInternal(
                     bufferSlots.data(),
                     bufferSlots.size(),
                     frameCount,
-                    output);
+                    output,
+                    operationCounts == nullptr
+                            ? nullptr
+                            : &operationCounts->oscillator);
             if (captureDiagnostics) {
                 const int oscillatorNoteNumber = voice.oscillatorNoteNumber >= 0
                         ? voice.oscillatorNoteNumber
@@ -1017,7 +1021,8 @@ void GraphAudioExecutor::renderOscillatorRegion(
         const SignalPayload* signalBuffers,
         size_t signalBufferCount,
         size_t frameCount,
-        SignalPayload& output) {
+        SignalPayload& output,
+        OscillatorRegionPerformanceCounts* performanceCounts) {
     Buffer<float> left(output.block.samples.data(), (int) frameCount);
     Buffer<float> right(output.secondaryBlock.samples.data(), (int) frameCount);
     left.zero();
@@ -1049,9 +1054,18 @@ void GraphAudioExecutor::renderOscillatorRegion(
                 voice.controls.velocity,
                 pitchEnvelope,
                 left.section((int) start, (int) count),
-                right.section((int) start, (int) count)
+                right.section((int) start, (int) count),
+                performanceCounts
         };
+        const uint64_t startedAt = performanceCounts == nullptr
+                ? 0
+                : AudioPerformanceMetrics::timestampMicroseconds();
         const bool rendered = region.processor->process(context);
+        if (performanceCounts != nullptr) {
+            performanceCounts->regionDurationMicroseconds
+                    += AudioPerformanceMetrics::timestampMicroseconds() - startedAt;
+            ++performanceCounts->regionRenderCount;
+        }
         jassert(rendered);
         region.voiceSamplePosition += count;
     };
