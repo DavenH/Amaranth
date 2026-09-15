@@ -489,7 +489,9 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             continue;
         }
 
-        if (oscillatorRegion != nullptr) {
+        const bool oscillatorMaterializer = oscillatorRegion != nullptr
+                && stepIndex == (size_t) oscillatorRegion->materializationStepIndex;
+        if (oscillatorMaterializer) {
             SignalPayload output;
             if (captureDiagnostics) {
                 processor->process(context);

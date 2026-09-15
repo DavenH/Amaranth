@@ -2,7 +2,10 @@
 
 ## Status
 
-Implemented 2026-09-15.
+Implemented 2026-09-15. A production screenshot comparison after the first
+slice exposed two additional defects: every internal spectral step was treated
+as the oscillator materializer, and the Signal Spy display mapping discarded
+detail above unity. Both are covered by the completed follow-up slice.
 
 ## Problem
 
@@ -96,6 +99,13 @@ their exact pre-materialization graph values.
   downstream Trimesh through the second half of the traversal, then compares
   the eight-voice Spy against an actual Unison bypass while holding the raw
   magnitude grid constant.
+- `GraphAudioExecutor` now reserves oscillator-region materialization for the
+  compiled region's final materialization step. Internal FFT, magnitude, phase,
+  and IFFT processors retain their own traversal products instead of repeatedly
+  discarding outputs and applying Unison.
+- Time Signal Spy presentation uses bounded signed compression. This preserves
+  the exact captured grid while keeping above-unity oscillator values distinct
+  instead of clipping them into a binary noise texture.
 - Focused Envelope, PWM Lead, and shared Unison tests pass. Cycle 1 tests and
   the Cycle V2 standalone target compile. The PWM Lead automation fixture
   passes and captures both compact and expanded Spy views at
