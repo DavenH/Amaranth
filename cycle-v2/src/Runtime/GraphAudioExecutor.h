@@ -67,6 +67,8 @@ public:
             const AudioExecutionSpec& spec) const;
     size_t preparationCount(const String& nodeId, int voiceIndex = 0) const;
     size_t serviceNonRealtimePreparation() const;
+    size_t preparedBlockStorageValueCount() const;
+    size_t preparedGridStorageValueCount() const;
     bool hasActiveVoiceTail(int voiceIndex) const;
     bool hasVoiceTailProcessor(int voiceIndex) const;
     size_t oscillatorFrameRenderCount(int voiceIndex) const;

@@ -41,6 +41,8 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     first.dequeuedMidiEventCount = 2;
     first.sortedMidiItemCount = 4;
     first.compactedMidiItemCount = 1;
+    first.blockStorageValues = 2048;
+    first.gridStorageValues = 4096;
     first.stageDurations[static_cast<size_t>(
             AudioPerformanceMetrics::Stage::VoiceRendering)] = 1'200;
     metrics.publishRealtimeSample(first);
@@ -58,6 +60,8 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     second.dequeuedMidiEventCount = 3;
     second.sortedMidiItemCount = 6;
     second.compactedMidiItemCount = 2;
+    second.blockStorageValues = 4096;
+    second.gridStorageValues = 8192;
     second.stageDurations[static_cast<size_t>(
             AudioPerformanceMetrics::Stage::VoiceRendering)] = 4'500;
     metrics.publishRealtimeSample(second);
@@ -77,6 +81,8 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     REQUIRE(snapshot.totalDequeuedMidiEvents == 5);
     REQUIRE(snapshot.totalSortedMidiItems == 10);
     REQUIRE(snapshot.totalCompactedMidiItems == 3);
+    REQUIRE(snapshot.maximumBlockStorageValues == 4096);
+    REQUIRE(snapshot.maximumGridStorageValues == 8192);
     REQUIRE(snapshot.latestGraphRevision == 18);
     REQUIRE(snapshot.maximumActiveVoiceCount == 4);
     REQUIRE(snapshot.maximumScheduledMidiEventCount == 3);
@@ -114,6 +120,9 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     REQUIRE((int64) property(
             property(exported, "workload"),
             "totalSortedMidiItems") == 10);
+    REQUIRE((int64) property(
+            property(exported, "workload"),
+            "maximumGridStorageValues") == 8192);
     REQUIRE((int64) property(
             property(property(exported, "stages"), "voiceRendering"),
             "count") == 2);

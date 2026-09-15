@@ -68,7 +68,7 @@ counter. Instrumentation cannot back-pressure audio or change rendering.
 | Spectral transfer | Every executor spectral input/voice/block repeated downcasts and scanned Pan steps. | Implemented in slice 3b: preparation resolves transfer values; executor block lookup is `O(1)` per connected input. Oscillator-frame transfer work remains under its authoritative preparation path. |
 | Released voice tail | Every released voice/block scanned all plan steps and resolved processors. | Implemented in slice 2: direct prepared tail processor references make the query `O(T)`. |
 | MIDI scheduling | Every callback sorted all scheduled/future events and moved the remaining suffix. | Slice 4a skips sorting when no new events arrived and reports dequeued, sorted-item, and compacted-item totals. Retained future events remain sorted. |
-| Realtime arenas | Every graph buffer reserves block plus `F*max(F,C)` grid payload in both work and voice-mix arenas. | Separate diagnostic grid storage from realtime block storage; allocate mix storage only for voice/global boundary buffers, then consider lifetime-based slot reuse. |
+| Realtime arenas | Every graph buffer reserved block plus `F*max(F,C)` grid payload in the work arena; mix already omitted grids. | Slice 4c gives realtime voice/global preparation zero diagnostic-grid capacity and reports block/grid storage high-water values. Boundary-only mix slots and lifetime reuse remain candidates. |
 | Output path | Output is cleared before a valid overwrite, copied from the graph boundary, ramped/clipped, then scanned repeatedly for RMS/finiteness/peak. | The redundant L1 reduction and scratch copy/absolute/max passes are removed in slice 1 using `Buffer::minmax`; output clear/copy remain for a later bounded change. |
 | Live capture | Inactive capture performed an atomic callback-counter RMW every callback. | Slice 4b passes the renderer callback id into capture; inactive capture now performs only its target-state load. |
 | MIDI controls | All 128 controller values are copied into every active voice every block. | Share an immutable block snapshot or compile only referenced controllers. |
@@ -300,3 +300,14 @@ Cycle V2 now passes the renderer's existing callback sequence into
 for `AudioHub`, while the externally sequenced entry point checks capture state
 before touching samples and performs no callback-counter RMW. Tests cover both
 the inactive fast path and preserved first/last callback identifiers.
+
+## Slice 4c Result (2026-09-15)
+
+Realtime voice/global preparation now assigns zero capacity to diagnostic
+traversal grids. Complete diagnostic/preview execution retains its existing
+`F*max(F,C)` grid capacity and behavior. The prepared renderer caches block and
+grid storage value counts for telemetry; aggregation exposes their maxima.
+Focused tests prove complete execution still owns grid storage, realtime
+execution owns none, and the prepared realtime path remains allocation- and
+lock-free. Boundary-only voice-mix allocation and buffer lifetime reuse remain
+separate candidates because they require a compiler-owned storage plan.

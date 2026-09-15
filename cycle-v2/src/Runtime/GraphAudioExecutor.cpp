@@ -597,8 +597,10 @@ void GraphAudioExecutor::prepareExecutionInternal(
         int voiceIndex,
         ProcessingPass pass) const {
     NodeAudioProcessorFactory factory;
-    const size_t gridValueCapacity = spec.maximumFrameCount
-            * std::max(spec.maximumFrameCount, plan.maximumTraversalColumns);
+    const size_t gridValueCapacity = pass == ProcessingPass::Complete
+            ? spec.maximumFrameCount
+                    * std::max(spec.maximumFrameCount, plan.maximumTraversalColumns)
+            : 0;
     const bool workspaceMatches = workArena.frameCapacity == spec.maximumFrameCount
             && workArena.inputCapacity == plan.maximumInputCount
             && workArena.outputCapacity == plan.maximumOutputCount
@@ -1058,6 +1060,16 @@ size_t GraphAudioExecutor::serviceNonRealtimePreparation() const {
         }
     }
     return preparedCount;
+}
+
+size_t GraphAudioExecutor::preparedBlockStorageValueCount() const {
+    return (size_t) workArena.blockMemory.size()
+            + (size_t) voiceMixArena.blockMemory.size();
+}
+
+size_t GraphAudioExecutor::preparedGridStorageValueCount() const {
+    return (size_t) workArena.gridMemory.size()
+            + (size_t) voiceMixArena.gridMemory.size();
 }
 
 bool GraphAudioExecutor::hasActiveVoiceTail(int voiceIndex) const {

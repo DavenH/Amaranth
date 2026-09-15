@@ -45,6 +45,8 @@ public:
         uint32_t modulationBindingVisitCount {};
         uint32_t spectralTransferBindingVisitCount {};
         uint32_t contextPatchCount {};
+        uint64_t blockStorageValues {};
+        uint64_t gridStorageValues {};
         std::array<uint64_t, stageCount> stageDurations {};
     };
 
@@ -62,6 +64,8 @@ public:
         uint64_t totalDequeuedMidiEvents {};
         uint64_t totalSortedMidiItems {};
         uint64_t totalCompactedMidiItems {};
+        uint64_t maximumBlockStorageValues {};
+        uint64_t maximumGridStorageValues {};
         uint64_t latestGraphRevision {};
         uint32_t maximumFrameCount {};
         uint16_t maximumActiveVoiceCount {};
@@ -116,6 +120,8 @@ private:
         uint64_t totalDequeuedMidiEvents {};
         uint64_t totalSortedMidiItems {};
         uint64_t totalCompactedMidiItems {};
+        uint64_t maximumBlockStorageValues {};
+        uint64_t maximumGridStorageValues {};
         uint64_t latestGraphRevision {};
         uint32_t maximumFrameCount {};
         uint16_t maximumActiveVoiceCount {};

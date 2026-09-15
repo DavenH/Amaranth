@@ -136,6 +136,8 @@ AudioPerformanceMetrics::Snapshot AudioPerformanceMetrics::snapshot() const {
             aggregateData.totalDequeuedMidiEvents,
             aggregateData.totalSortedMidiItems,
             aggregateData.totalCompactedMidiItems,
+            aggregateData.maximumBlockStorageValues,
+            aggregateData.maximumGridStorageValues,
             aggregateData.latestGraphRevision,
             aggregateData.maximumFrameCount,
             aggregateData.maximumActiveVoiceCount,
@@ -207,6 +209,12 @@ var AudioPerformanceMetrics::toVar() const {
     workload->setProperty(
             "totalCompactedMidiItems",
             (int64) current.totalCompactedMidiItems);
+    workload->setProperty(
+            "maximumBlockStorageValues",
+            (int64) current.maximumBlockStorageValues);
+    workload->setProperty(
+            "maximumGridStorageValues",
+            (int64) current.maximumGridStorageValues);
     workload->setProperty("latestGraphRevision", (int64) current.latestGraphRevision);
     workload->setProperty("maximumFrameCount", (int) current.maximumFrameCount);
     workload->setProperty(
@@ -283,6 +291,12 @@ void AudioPerformanceMetrics::aggregate(const RealtimeSample& sample) {
     aggregateData.totalDequeuedMidiEvents += sample.dequeuedMidiEventCount;
     aggregateData.totalSortedMidiItems += sample.sortedMidiItemCount;
     aggregateData.totalCompactedMidiItems += sample.compactedMidiItemCount;
+    aggregateData.maximumBlockStorageValues = std::max(
+            aggregateData.maximumBlockStorageValues,
+            sample.blockStorageValues);
+    aggregateData.maximumGridStorageValues = std::max(
+            aggregateData.maximumGridStorageValues,
+            sample.gridStorageValues);
     aggregateData.latestGraphRevision = sample.graphRevision;
     aggregateData.maximumFrameCount = std::max(
             aggregateData.maximumFrameCount,

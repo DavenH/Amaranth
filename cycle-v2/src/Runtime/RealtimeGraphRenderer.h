@@ -27,6 +27,8 @@ public:
         AudioExecutionSpec spec;
         GraphAudioExecutor executor;
         ScopedAlloc<float> outputGainRamp;
+        uint64_t blockStorageValues {};
+        uint64_t gridStorageValues {};
     };
 
     struct Diagnostics {

@@ -2542,6 +2542,7 @@ TEST_CASE("Prepared graph audio processing performs no allocations or locks",
     AudioExecutionSpec spec;
     spec.maximumFrameCount = 64;
     executor.prepareExecution(compileResult.plan, spec);
+    REQUIRE(executor.preparedGridStorageValueCount() > 0);
     AudioVoiceContext voice;
     voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     REQUIRE(executor.processRealtime(compileResult.plan, 64, {}, voice).isValid());
@@ -2746,6 +2747,8 @@ TEST_CASE("Prepared realtime voice mixing performs no allocations or locks",
     AudioExecutionSpec spec;
     spec.maximumFrameCount = 64;
     auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+    REQUIRE(prepared->blockStorageValues > 0);
+    REQUIRE(prepared->gridStorageValues == 0);
     RealtimeGraphRenderer renderer;
     RealtimeMidiEventQueue queue;
     renderer.setPreparedGraph(prepared.get());

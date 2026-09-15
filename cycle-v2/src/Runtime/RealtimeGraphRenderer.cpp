@@ -61,6 +61,10 @@ RealtimeGraphRenderer::prepareGraph(
     prepared->executor.prepareRealtimeGlobalExecution(
             prepared->plan,
             prepared->spec);
+    prepared->blockStorageValues
+            = prepared->executor.preparedBlockStorageValueCount();
+    prepared->gridStorageValues
+            = prepared->executor.preparedGridStorageValueCount();
     return prepared;
 }
 
@@ -130,6 +134,12 @@ uint64_t RealtimeGraphRenderer::process(
         performanceSample->executionStepCount = preparedGraph == nullptr
                 ? 0
                 : (uint32_t) preparedGraph->plan.steps.size();
+        performanceSample->blockStorageValues = preparedGraph == nullptr
+                ? 0
+                : preparedGraph->blockStorageValues;
+        performanceSample->gridStorageValues = preparedGraph == nullptr
+                ? 0
+                : preparedGraph->gridStorageValues;
     }
 
     if (preparedGraph == nullptr
