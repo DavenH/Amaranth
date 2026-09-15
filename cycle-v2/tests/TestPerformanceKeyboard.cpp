@@ -210,8 +210,16 @@ TEST_CASE("Performance mod wheel drag controls preview CC 1 and audition start",
     PerformanceKeyboardPanel panel(state, sink);
     panel.setBounds(0, 0, 489, 140);
     std::vector<int> previewValues;
+    int gestureStarts = 0;
+    int gestureEnds = 0;
     panel.setModWheelValueChangedCallback([&previewValues](int value) {
         previewValues.push_back(value);
+    });
+    panel.setModWheelGestureStartedCallback([&gestureStarts] {
+        ++gestureStarts;
+    });
+    panel.setModWheelGestureEndedCallback([&gestureEnds] {
+        ++gestureEnds;
     });
 
     Component* wheel = nullptr;
@@ -227,19 +235,27 @@ TEST_CASE("Performance mod wheel drag controls preview CC 1 and audition start",
 
     wheel->mouseDown(keyboardMouseEvent(
             *wheel,
-            { wheel->getWidth() * 0.5f, (float) wheel->getHeight() },
+            { wheel->getWidth() * 0.5f, wheel->getHeight() * 0.5f },
             ModifierKeys::leftButtonModifier));
     wheel->mouseDrag(keyboardMouseEvent(
             *wheel,
             { wheel->getWidth() * 0.5f, 0.f },
             ModifierKeys::leftButtonModifier));
+    wheel->mouseUp(keyboardMouseEvent(
+            *wheel,
+            { wheel->getWidth() * 0.5f, 0.f },
+            {}));
 
     REQUIRE(panel.modWheelValue() == 127);
+    REQUIRE(previewValues.size() == 2);
+    REQUIRE(previewValues.front() > 0);
     REQUIRE_FALSE(sink.messages.empty());
     REQUIRE(sink.messages.back().isController());
     REQUIRE(sink.messages.back().getControllerNumber() == 1);
     REQUIRE(sink.messages.back().getControllerValue() == 127);
     REQUIRE(previewValues.back() == 127);
+    REQUIRE(gestureStarts == 1);
+    REQUIRE(gestureEnds == 1);
 
     REQUIRE(wheel->keyPressed(KeyPress(KeyPress::downKey)));
     REQUIRE(panel.modWheelValue() == 126);

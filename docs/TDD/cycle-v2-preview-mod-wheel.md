@@ -52,6 +52,14 @@ refreshes downstream compact previews and signal-probe spies. Expanded spy
 capture reads the same snapshot value. This is presentation state only: it does
 not mutate, serialize, compile, or revise the durable graph.
 
+Wheel pointer interaction follows the probe rail refresh policy. In `On
+Release`, pointer movement emits MIDI and repaints the wheel but defers all
+presentation traversal until mouse-up. In `Live`, one immutable graph snapshot
+is captured at gesture start and each movement submits the latest wheel value
+to the existing cancellable background preview worker. Superseded work cannot
+publish. Keyboard steps and automation value changes are atomic edits and
+publish immediately.
+
 At normal canvas sizes, `CanvasUtilityDock` centres the complete keyboard panel
 at the top margin. The panel widens only enough to accommodate the wheel while
 retaining 25-pixel white keys. The top-left status width is capped before the
@@ -61,10 +69,14 @@ horizontally centred and fully contained.
 
 ## Complexity And Boundaries
 
-- Pointer movement, value publication, playback start, and layout remain O(1).
+- Wheel repaint and MIDI publication remain O(1). Preview work scales only
+  with the established affected downstream product.
+- `On Release` performs no graph copy or preview work during movement. `Live`
+  captures one immutable graph snapshot at the gesture boundary; movement
+  updates share it and never clone the graph.
 - Preview recomputation is bounded by the existing downstream preview product;
   it does not compile, publish an audio plan, or prepare durable resources.
-- No graph clone, serialization, compilation, resource preparation, or durable
+- No graph serialization, compilation, resource preparation, or durable
   mutation occurs during a wheel drag.
 - The panel translates a transient value to an existing MIDI CC message only;
   `MidiControlState` and modulation-source evaluation remain unchanged.
@@ -78,6 +90,9 @@ horizontally centred and fully contained.
   matching note-off.
 - Two successive wheel updates refresh node previews and connected spies with
   the matching normalized CC 1 value without compilation or audio publication.
+- In `On Release`, two pointer movements emit their MIDI values without a spy
+  refresh, then mouse-up publishes exactly the final value. In `Live`, movement
+  refreshes are asynchronous and latest-only.
 - `honerism-3` renders its spy from loaded mesh/configuration state, responds to
   two wheel values, and remains byte-for-byte stable when the already-selected
   audition key is selected again.
@@ -144,3 +159,16 @@ horizontally centred and fully contained.
 - Five focused CTest cases pass with 71 assertions, the standalone Cycle V2
   target builds with `--parallel 10`, `git diff --check` passes, and the
   modified production paths introduce no scalar math in hot loops.
+- Wheel pointer-down and mouse-up now delimit a presentation gesture. `On
+  Release` leaves the presentation snapshot and render count unchanged across
+  two pointer values, then performs one final downstream refresh at mouse-up.
+  MIDI CC 1 still publishes on each value change.
+- `Live` captures one immutable graph snapshot at gesture start and submits
+  shared-snapshot, cancellable async refreshes, so no movement clones the graph
+  and stale work cannot publish. The focused runtime test queues two values and
+  verifies that the final node preview and spy contain the latest value.
+- The honerism pointer fixture now exercises both policies in one 30-command
+  sequence. Its render count remains 2 through the On Release drag, becomes 3
+  at release, and becomes 4 after a Live drag; all commands pass with no
+  filtered runtime warning or assertion. The production-size screenshot was
+  reviewed with the keyboard and spy shelf unobstructed.

@@ -110,6 +110,8 @@ public:
     void setPreviewNote(int midiNote);
     void setPreviewNoteSelectedCallback(std::function<void(int)> callback);
     void setModWheelValueChangedCallback(std::function<void(int)> callback);
+    void setModWheelGestureStartedCallback(std::function<void()> callback);
+    void setModWheelGestureEndedCallback(std::function<void()> callback);
     void setModWheelValue(int value);
     void setPlaybackDurationSeconds(float seconds);
     bool startPlayback(double nowMilliseconds);
@@ -155,9 +157,12 @@ private:
         bool keyPressed(const KeyPress& key) override;
         void mouseDown(const MouseEvent& event) override;
         void mouseDrag(const MouseEvent& event) override;
+        void mouseUp(const MouseEvent& event) override;
         void paint(Graphics& graphics) override;
 
         std::function<void(int)> onValueChanged;
+        std::function<void()> onGestureStarted;
+        std::function<void()> onGestureEnded;
 
     private:
         Rectangle<float> wheelTrack() const;
@@ -177,6 +182,8 @@ private:
     double playbackStartedAtMilliseconds {};
 
     std::function<void(int)> modWheelValueChanged;
+    std::function<void()> modWheelGestureStarted;
+    std::function<void()> modWheelGestureEnded;
 
     MidiKeyboardState& keyboardState;
     MidiEventSink& eventSink;

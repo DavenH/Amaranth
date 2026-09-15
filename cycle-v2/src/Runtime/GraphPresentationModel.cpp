@@ -246,6 +246,29 @@ bool GraphPresentationModel::refreshPreviewModWheelValue(
             modWheelPreviewRootNodeIds);
 }
 
+bool GraphPresentationModel::refreshPreviewModWheelValueAsync(
+        std::shared_ptr<const NodeGraph> graph,
+        uint64_t documentRevision,
+        int value,
+        std::function<void()> completion) {
+    const int selectedValue = jlimit(0, 127, value);
+    if (graph == nullptr || current.previewModWheelValue == selectedValue) {
+        return graph != nullptr;
+    }
+
+    current.previewModWheelValue = selectedValue;
+    GraphChangeSet change;
+    change.parameterImpacts = ParameterImpact::Preview;
+    change.nodeIds = modWheelPreviewRootNodeIds;
+    refreshAsync(
+            std::move(graph),
+            documentRevision,
+            std::move(change),
+            PresentationRefreshScope::Downstream,
+            std::move(completion));
+    return true;
+}
+
 bool GraphPresentationModel::refreshPreviewControls(
         const NodeGraph& graph,
         uint64_t documentRevision,
@@ -266,10 +289,27 @@ void GraphPresentationModel::refreshAsync(
         GraphChangeSet change,
         PresentationRefreshScope scope,
         std::function<void()> completion) {
+    refreshAsync(
+            std::make_shared<const NodeGraph>(std::move(graph)),
+            documentRevision,
+            std::move(change),
+            scope,
+            std::move(completion));
+}
+
+void GraphPresentationModel::refreshAsync(
+        std::shared_ptr<const NodeGraph> graph,
+        uint64_t documentRevision,
+        GraphChangeSet change,
+        PresentationRefreshScope scope,
+        std::function<void()> completion) {
     using Performance = GraphPresentationPerformanceMetrics;
     const uint64_t requestedAt = performance.timestamp();
+    if (graph == nullptr) {
+        return;
+    }
     if (current.graphRevision == 0 || requiresCompilation(change)) {
-        refresh(graph, documentRevision, change);
+        refresh(*graph, documentRevision, change);
         performance.record(
                 Performance::Stage::EndToEnd,
                 performance.timestamp() - requestedAt);
@@ -286,7 +326,7 @@ void GraphPresentationModel::refreshAsync(
     GraphPresentationSnapshot next = current;
     next.graphRevision = documentRevision;
     const auto request = updateRequest(
-            graph,
+            *graph,
             next.compileResult.plan,
             documentRevision,
             change,
@@ -389,7 +429,7 @@ bool GraphPresentationModel::executeAsyncProducts(
             });
     if (preparesConfiguration) {
         const uint64_t startedAt = performance.timestamp();
-        refreshConfigurations(refresh.graph, next.compileResult.plan, refresh.change.nodeIds);
+        refreshConfigurations(*refresh.graph, next.compileResult.plan, refresh.change.nodeIds);
         performance.record(
                 GraphPresentationPerformanceMetrics::Stage::Configuration,
                 performance.timestamp() - startedAt);
@@ -400,7 +440,7 @@ bool GraphPresentationModel::executeAsyncProducts(
     }
 
     return renderPreviewProducts(
-            refresh.graph,
+            *refresh.graph,
             next,
             products,
             false,

@@ -209,6 +209,16 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
             modWheelValueChanged(value);
         }
     };
+    modWheel.onGestureStarted = [this] {
+        if (modWheelGestureStarted) {
+            modWheelGestureStarted();
+        }
+    };
+    modWheel.onGestureEnded = [this] {
+        if (modWheelGestureEnded) {
+            modWheelGestureEnded();
+        }
+    };
     keyboard.setPrimaryGestureStartedCallback([this] { stopPlayback(); });
     keyboard.setHighlightedNote(selectedPreviewNote);
 }
@@ -288,6 +298,16 @@ void PerformanceKeyboardPanel::setPreviewNoteSelectedCallback(
 void PerformanceKeyboardPanel::setModWheelValueChangedCallback(
         std::function<void(int)> callback) {
     modWheelValueChanged = std::move(callback);
+}
+
+void PerformanceKeyboardPanel::setModWheelGestureStartedCallback(
+        std::function<void()> callback) {
+    modWheelGestureStarted = std::move(callback);
+}
+
+void PerformanceKeyboardPanel::setModWheelGestureEndedCallback(
+        std::function<void()> callback) {
+    modWheelGestureEnded = std::move(callback);
 }
 
 void PerformanceKeyboardPanel::setModWheelValue(int value) {
@@ -429,6 +449,9 @@ void PerformanceKeyboardPanel::ModWheel::mouseDown(const MouseEvent& event) {
     if (!event.mods.isLeftButtonDown()) {
         return;
     }
+    if (onGestureStarted) {
+        onGestureStarted();
+    }
     if (isShowing()) {
         grabKeyboardFocus();
     }
@@ -440,6 +463,12 @@ void PerformanceKeyboardPanel::ModWheel::mouseDrag(const MouseEvent& event) {
         return;
     }
     updateFromPointer(event.position.y);
+}
+
+void PerformanceKeyboardPanel::ModWheel::mouseUp(const MouseEvent&) {
+    if (onGestureEnded) {
+        onGestureEnded();
+    }
 }
 
 void PerformanceKeyboardPanel::ModWheel::paint(Graphics& graphics) {

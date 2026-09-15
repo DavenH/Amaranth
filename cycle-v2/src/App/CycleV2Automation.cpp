@@ -1610,8 +1610,16 @@ var CycleV2Automation::pointer(const var& commandValue) {
                 1.f,
                 floatProperty(commandValue, "targetY", 0.5f));
         const int value = roundToInt((1.f - position) * 127.f);
-        const bool handled = eventType == "up"
-                || workspace.performanceSetModWheelForAutomation(value);
+        bool handled {};
+        if (eventType == "down") {
+            handled = workspace.performanceBeginModWheelGestureForAutomation(value);
+        } else if (eventType == "drag") {
+            handled = workspace.performanceUpdateModWheelGestureForAutomation(value);
+        } else if (eventType == "up") {
+            handled = workspace.performanceEndModWheelGestureForAutomation();
+        } else {
+            handled = workspace.performanceSetModWheelForAutomation(value);
+        }
         if (!handled) {
             return failedResult("pointer", "Performance mod wheel gesture could not be applied");
         }

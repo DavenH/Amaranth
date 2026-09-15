@@ -270,6 +270,7 @@ TEST_CASE("Preview MIDI note refreshes key-scale previews without publishing aud
 
 TEST_CASE("Preview mod wheel refreshes modulation previews and spies without publishing audio",
         "[cycle-v2][runtime][preview-mod-wheel][modulation][probe]") {
+    ScopedJuceInitialiser_GUI juce;
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::ModulationSource, "mod", {}));
@@ -312,7 +313,7 @@ TEST_CASE("Preview mod wheel refreshes modulation previews and spies without pub
             == Catch::Approx(32.f / 127.f));
 
     REQUIRE(presentation.refreshPreviewModWheelValue(graph, 1, 96));
-    const auto& higherProbe = findProbePreview(
+    const auto higherProbe = findProbePreview(
             presentation.previewResult(), graph.getSignalProbes().front().id);
     const auto higherDetail = presentation.captureProbePreview(
             graph, graph.getSignalProbes().front().id, 64, 48);
@@ -322,6 +323,23 @@ TEST_CASE("Preview mod wheel refreshes modulation previews and spies without pub
             == Catch::Approx(96.f / 127.f));
     REQUIRE(higherProbe.values != lowerProbe.values);
     REQUIRE(higherDetail->values != lowerDetail->values);
+
+    const auto sharedGraph = std::make_shared<const NodeGraph>(graph);
+    bool latestCompleted {};
+    REQUIRE(presentation.refreshPreviewModWheelValueAsync(
+            sharedGraph, 1, 24));
+    REQUIRE(presentation.refreshPreviewModWheelValueAsync(
+            sharedGraph,
+            1,
+            112,
+            [&latestCompleted] { latestCompleted = true; }));
+    REQUIRE(waitForAsyncRefresh(latestCompleted));
+    REQUIRE(presentation.previewModWheelValue() == 112);
+    REQUIRE(findNodePreview(presentation.previewResult(), "mod").primary.front()
+            == Catch::Approx(112.f / 127.f));
+    REQUIRE(findProbePreview(
+            presentation.previewResult(), graph.getSignalProbes().front().id).values
+            != higherProbe.values);
     REQUIRE(presentation.compilationCount() == compilationCount);
     REQUIRE(presentation.audioPlanRevision() == audioPlanRevision);
     REQUIRE(presentation.previewAudioProcessCount("constant") == unrelatedProcessCount);

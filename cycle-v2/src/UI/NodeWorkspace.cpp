@@ -42,7 +42,13 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
         canvas.setPreviewMidiNote(midiNote);
     });
     keyboard.setModWheelValueChangedCallback([this](int value) {
-        canvas.setPreviewModWheelValue(value);
+        canvas.updatePreviewModWheelGesture(value);
+    });
+    keyboard.setModWheelGestureStartedCallback([this] {
+        canvas.beginPreviewModWheelGesture();
+    });
+    keyboard.setModWheelGestureEndedCallback([this] {
+        canvas.endPreviewModWheelGesture();
     });
     startTimerHz(30);
     timerCallback();
@@ -53,6 +59,8 @@ NodeWorkspace::~NodeWorkspace() {
     canvas.setOverlayOcclusionChangedCallback({});
     canvas.setPreviewPlaybackToggleCallback({});
     keyboard.setModWheelValueChangedCallback({});
+    keyboard.setModWheelGestureStartedCallback({});
+    keyboard.setModWheelGestureEndedCallback({});
     keyboard.releaseAllNotes();
 }
 
@@ -388,6 +396,28 @@ bool NodeWorkspace::performanceSetModWheelForAutomation(int value) {
         return false;
     }
     keyboard.setModWheelValue(value);
+    return true;
+}
+
+bool NodeWorkspace::performanceBeginModWheelGestureForAutomation(int value) {
+    if (!keyboard.isVisible()) {
+        return false;
+    }
+    canvas.beginPreviewModWheelGesture();
+    keyboard.setModWheelValue(value);
+    return true;
+}
+
+bool NodeWorkspace::performanceUpdateModWheelGestureForAutomation(int value) {
+    if (!keyboard.isVisible()) {
+        return false;
+    }
+    keyboard.setModWheelValue(value);
+    return true;
+}
+
+bool NodeWorkspace::performanceEndModWheelGestureForAutomation() {
+    canvas.endPreviewModWheelGesture();
     return true;
 }
 

@@ -49,6 +49,11 @@ public:
             const NodeGraph& graph,
             uint64_t documentRevision,
             int value);
+    bool refreshPreviewModWheelValueAsync(
+            std::shared_ptr<const NodeGraph> graph,
+            uint64_t documentRevision,
+            int value,
+            std::function<void()> completion = {});
     void refreshAsync(
             NodeGraph graph,
             uint64_t documentRevision,
@@ -103,7 +108,7 @@ private:
     struct AsyncRefresh {
         std::shared_ptr<AsyncState> state;
         uint64_t generation {};
-        NodeGraph graph;
+        std::shared_ptr<const NodeGraph> graph;
         GraphChangeSet change;
         PresentationRefreshScope scope { PresentationRefreshScope::Downstream };
         CausalUpdateRequest request;
@@ -122,6 +127,12 @@ private:
             const NodeGraph& graph,
             uint64_t documentRevision,
             std::vector<String> rootNodeIds);
+    void refreshAsync(
+            std::shared_ptr<const NodeGraph> graph,
+            uint64_t documentRevision,
+            GraphChangeSet change,
+            PresentationRefreshScope scope,
+            std::function<void()> completion);
     void refreshConfigurations(
             const NodeGraph& graph,
             GraphExecutionPlan& plan,
