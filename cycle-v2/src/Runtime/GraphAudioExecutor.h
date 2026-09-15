@@ -73,7 +73,8 @@ public:
             const GraphExecutionPlan& plan,
             size_t frameCount,
             AudioProcessTiming timing,
-            AudioVoiceContext voice) const;
+            AudioVoiceContext voice,
+            size_t traversalColumnCount = 0) const;
     GraphAudioResultView processIncremental(
             const NodeGraph& graph,
             const GraphExecutionPlan& plan,
@@ -143,6 +144,7 @@ private:
         uint64_t revision {};
         String configurationKey;
         size_t maximumFrameCount {};
+        size_t traversalColumnCount {};
         double sampleRate {};
         PortDomain domain { PortDomain::ControlSignal };
         ChannelLayout channelLayout { ChannelLayout::Mono };
@@ -153,6 +155,7 @@ private:
             return revision == other.revision
                     && configurationKey == other.configurationKey
                     && maximumFrameCount == other.maximumFrameCount
+                    && traversalColumnCount == other.traversalColumnCount
                     && sampleRate == other.sampleRate
                     && domain == other.domain
                     && channelLayout == other.channelLayout
@@ -184,6 +187,7 @@ private:
         int voiceIndex {};
         const GraphExecutionPlan* plan {};
         size_t maximumFrameCount {};
+        size_t traversalColumnCount {};
         double sampleRate {};
         std::vector<NodeAudioProcessor*> processors;
         std::vector<std::unique_ptr<OscillatorRegion>> oscillatorRegions;
@@ -218,7 +222,8 @@ private:
             const std::vector<uint8_t>* dirtyNodes = nullptr,
             const CancellationCheck& cancellationCheck = {},
             GraphAudioResultView* incrementalResult = nullptr,
-            ProcessingPass pass = ProcessingPass::Complete) const;
+            ProcessingPass pass = ProcessingPass::Complete,
+            size_t traversalColumnCount = 0) const;
     void mixVoiceBoundary(
             const GraphExecutionPlan& plan,
             size_t frameCount) const;

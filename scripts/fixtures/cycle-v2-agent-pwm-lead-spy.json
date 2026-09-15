@@ -2,7 +2,7 @@
   "commands": [
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/old/stengah.cyclegraph"
+      "path": "../../cycle-v2/content/presets/pwm-lead.cyclegraph"
     },
     {
       "command": "assertState",
@@ -15,20 +15,30 @@
       "equals": true
     },
     {
+      "command": "assertState",
+      "path": "probePreviewStats.0.gridColumns",
+      "equals": 256
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.gridRows",
+      "equals": 512
+    },
+    {
       "command": "waitForIdle",
-      "idleDelayMs": 250
+      "idleDelayMs": 300
     },
     {
       "command": "screenshot",
       "area": "canvas",
-      "path": "/private/tmp/cycle-v2-spy-compact.png"
+      "path": "/private/tmp/cycle-v2-pwm-lead-spy.png"
     },
     {
       "command": "pointer",
       "area": "canvas",
       "event": "doubleClick",
-      "x": 980,
-      "y": 880,
+      "x": 979,
+      "y": 875,
       "waitForIdle": true,
       "idleDelayMs": 300
     },
@@ -38,27 +48,9 @@
       "equals": true
     },
     {
-      "command": "assertState",
-      "path": "probeDetailResolution",
-      "equals": 256
-    },
-    {
-      "command": "assertState",
-      "path": "probeDetailColumns",
-      "equals": 512
-    },
-    {
-      "command": "assertState",
-      "path": "probeDetailRows",
-      "equals": 129
-    },
-    {
-      "command": "inspectPointerTargets"
-    },
-    {
       "command": "screenshot",
       "area": "canvas",
-      "path": "/private/tmp/cycle-v2-spy-detail.png"
+      "path": "/private/tmp/cycle-v2-pwm-lead-spy-detail.png"
     }
   ],
   "quit": true

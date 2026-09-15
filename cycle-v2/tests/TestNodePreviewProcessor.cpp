@@ -188,6 +188,22 @@ TEST_CASE("Signal spy heatmaps preserve absolute time-signal gain",
     REQUIRE(differs);
 }
 
+TEST_CASE("Signal spy heatmaps preserve detail above unity gain",
+        "[cycle-v2][runtime][probe][ui]") {
+    NodePreviewResult result;
+    result.role = PreviewModuleRole::SignalSpy;
+    result.primary = { -1.f, 1.f, -8.f, 8.f };
+    result.gridColumns = 2;
+    result.gridRows = 2;
+    result.domain = PortDomain::TimeSignal;
+
+    const Image image = NodePreviewRenderer::createRuntimeHeatmapImage(result);
+
+    REQUIRE(image.isValid());
+    CHECK(image.getPixelAt(0, 1) != image.getPixelAt(1, 1));
+    CHECK(image.getPixelAt(0, 0) != image.getPixelAt(1, 0));
+}
+
 TEST_CASE("Spectral preview frequency mapping follows the Cycle logarithmic sampler",
         "[cycle-v2][runtime][probe][spectral][ui]") {
     constexpr size_t rows = 257;

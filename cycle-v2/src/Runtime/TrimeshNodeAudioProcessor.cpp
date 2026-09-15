@@ -18,6 +18,12 @@ namespace {
 
 constexpr size_t kDefaultTraversalColumns = 8;
 
+size_t traversalColumnsFor(size_t frameCount, size_t requestedColumns) {
+    return requestedColumns > 0
+            ? requestedColumns
+            : std::max(kDefaultTraversalColumns, frameCount / 2);
+}
+
 size_t traversalRowsForDomain(PortDomain domain, size_t frameCount) {
     if ((domain == PortDomain::SpectralMagnitudeSignal
             || domain == PortDomain::SpectralPhaseSignal)
@@ -107,12 +113,14 @@ public:
                 *const_cast<Mesh*>(configuration->mesh.get()),
                 configuration->morph,
                 configuration->primaryViewAxis,
-                std::max(kDefaultTraversalColumns, spec.maximumFrameCount / 2),
+                traversalColumnsFor(
+                        spec.maximumFrameCount,
+                        spec.traversalColumnCount),
                 traversalRowsForDomain(preparedDomain, spec.maximumFrameCount),
                 preparedDomain);
-        traversalMorphs.resize(std::max(
-                kDefaultTraversalColumns,
-                spec.maximumFrameCount / 2));
+        traversalMorphs.resize(traversalColumnsFor(
+                spec.maximumFrameCount,
+                spec.traversalColumnCount));
     }
 
     void process(AudioProcessContext& context) override {
@@ -350,9 +358,9 @@ private:
             const SignalPayload* scratch,
             Rasterization::ScratchSourceDomain scratchDomain,
             SignalPayload& output) {
-        const size_t columnCount = std::max(
-                kDefaultTraversalColumns,
-                context.frameCount / 2);
+        const size_t columnCount = traversalColumnsFor(
+                context.frameCount,
+                context.traversalColumnCount);
         const size_t rowCount = traversalRowsForDomain(
                 outputPort.domain,
                 context.frameCount);

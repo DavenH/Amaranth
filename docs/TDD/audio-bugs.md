@@ -533,6 +533,28 @@ pitch-clocked Hermite resampling. Artifacts:
 Current status: spectral reconstruction boundary resolved; remaining
 deterministic output residual is tracked at pitch-clocked cycle resampling.
 
+Recheck 2026-09-15: the grouped `[oscillator-region]` run again fails
+`Prepared spectral reconstruction retains the final active harmonic` because
+the captured final magnitude is zero. The same run also contains missing
+preset-fixture failures and the known split-block tolerance failure. The Spy
+traversal fix does not alter `SpectralOscillatorFrameRenderer`, and its focused
+PWM Lead regression passes; treat this as an open baseline audit rather than
+changing the established harmonic contract. Command:
+`build/tests/cycle-v2/CycleV2_tests "[oscillator-region]"`.
+
+Resolved 2026-09-15: `Bundled FFT diagnostic graph preserves its sawtooth probe
+through IFFT` reconstructed sample zero as `3.17889` from `-0.999597` (maximum
+error `4.17849`) because `GraphAudioExecutor` treated every processor inside an
+oscillator region as its materialization step. Restricting materialization to
+the compiled region's `materializationStepIndex` preserves both FFT outputs and
+the IFFT round trip. A follow-up also restored the oscillator boundary's
+zero-DC contract before Unison composition; the diagnostic traversal now
+matches the DC removal already used by Cycle 1 visual transforms and Cycle 2's
+realtime spectral renderer. It also converts Cycle 2's full-bipolar runtime
+grid to Cycle 1's half-bipolar visual scale before lane composition. The
+focused bundled and direct FFT/IFFT regressions pass with the expected centred,
+half-scale reconstruction.
+
 ## Open: Guitar 3 G effects diverge after an equivalent voice output
 
 Context:

@@ -234,7 +234,12 @@ editor.
 - `cycle-v2-agent-spy-compact-resolution.json` asserts those native dimensions
   for time, magnitude, and phase probes and captures the production rail at
   `/private/tmp/cycle-v2-spy-compact-resolution-os.png`.
-- `cycle-v2-agent-spy-detail.json` verifies the lazy 256-sample Stengah detail
+- Expanded Spy capture rasterizes 512 columns independently of the preview
+  note. Its rows are rasterized at the note-cycle power-of-two resolution;
+  resolutions above 512 are reduced only after that full traversal. The larger
+  view therefore never reruns the graph at compact horizontal resolution or
+  loses low-note vertical detail before rasterization.
+- `cycle-v2-agent-spy-detail.json` verifies the lazy 512-column Stengah detail
   traversal and captures matching compact/detail structure at
   `/private/tmp/cycle-v2-spy-compact.png` and
   `/private/tmp/cycle-v2-spy-detail.png`.

@@ -23,8 +23,6 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr float kSignedLogDisplayScale = 0.1442695f;
-
 float fastSin(float value) {
     return (float) dsp::FastMathApproximations::sin((double) value);
 }
@@ -190,18 +188,9 @@ std::vector<float> mappedSurface(
     } else if (preview.role == PreviewModuleRole::SignalSpy
             && preview.domain == PortDomain::TimeSignal) {
         std::vector<float> magnitude = surface;
-        Buffer<float>(magnitude.data(), (int) magnitude.size())
-                .abs()
-                .clip(0.f, 1.f)
-                .mul(31.f)
-                .add(1.f)
-                .ln()
-                .mul(kSignedLogDisplayScale);
-        for (size_t index = 0; index < surface.size(); ++index) {
-            surface[index] = values[index] < 0.f
-                    ? 0.5f - magnitude[index]
-                    : 0.5f + magnitude[index];
-        }
+        Buffer<float> magnitudeBuffer(magnitude.data(), (int) magnitude.size());
+        magnitudeBuffer.abs().add(1.f);
+        buffer.div(magnitudeBuffer).mul(0.5f).add(0.5f);
     } else if (preview.domain == PortDomain::TimeSignal) {
         float minimum {};
         float maximum {};
