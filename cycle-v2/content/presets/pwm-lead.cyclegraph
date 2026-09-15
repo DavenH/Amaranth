@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 945.60004, "y": 455.0 },
+            "position": { "x": 930.40009, "y": 337.0 },
             "parameters": { "octave": 0, "voiceLength": 0.496183206, "pitch": 0.0, "portamento": false, "oversampling": "2x", "controlInterval": "64" }
         },
         {
@@ -44,7 +44,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 585.60004, "y": 507.0 },
+            "position": { "x": 609.60004, "y": 507.0 },
             "parameters": { "enabled": true, "mode": "group", "order": 8, "width": 16.800000000000001, "panSpread": 1.0, "phase": 1.0, "jitter": 1.0 },
             "model": {
                 "schema": "unisonVoices",
@@ -655,7 +655,7 @@
             "id": "voiceOutput",
             "kind": "voiceOutput",
             "definitionVersion": 1,
-            "position": { "x": 2945.6001, "y": 886.0 },
+            "position": { "x": 2998.18433, "y": 886.0 },
             "parameters": {}
         }
     ],
