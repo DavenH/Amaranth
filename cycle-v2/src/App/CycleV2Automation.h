@@ -48,6 +48,7 @@ private:
     var invokePaletteItem(const var& commandValue);
     var captureAudio(const var& commandValue);
     var captureLiveAudio(const var& commandValue);
+    var sendMidi(const var& commandValue);
     var openNodeEditor(const var& commandValue);
     var addNode(const var& commandValue);
     var inspectPointerTargets() const;
@@ -55,6 +56,8 @@ private:
     var inspectOpenGLDiagnostics() const;
     var inspectCanvasPerformance() const;
     var resetCanvasPerformance();
+    var inspectAudioPerformance() const;
+    var resetAudioPerformance();
     var requestCanvasOpenGLFrame();
     var moveNode(const var& commandValue);
     var connectPorts(const var& commandValue);

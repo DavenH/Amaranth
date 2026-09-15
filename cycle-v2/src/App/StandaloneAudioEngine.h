@@ -39,6 +39,8 @@ public:
     void setVoiceDurationSeconds(float durationSeconds);
     void setGraphOutputGain(float gain);
     Status status() const;
+    juce::var audioPerformance();
+    void resetAudioPerformance();
     LiveCapture captureLiveAudio(int durationMs);
 
     bool enqueueMidiMessage(
@@ -71,6 +73,8 @@ private:
     juce::AudioDeviceManager deviceManager;
     RealtimeMidiEventQueue midiEvents;
     RealtimeGraphRenderer renderer;
+    AudioPerformanceMetrics audioPerformanceMetrics;
+    AudioPerformanceMetrics::RealtimeSample realtimePerformanceSample;
     std::vector<std::unique_ptr<PreparedGraph>> graphOwners;
     std::atomic<PreparedGraph*> pendingGraph {};
     std::atomic<PreparedGraph*> retiredGraph {};

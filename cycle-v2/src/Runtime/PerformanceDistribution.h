@@ -19,6 +19,9 @@ struct PerformanceDistribution {
 void recordPerformanceSample(
         PerformanceDistribution& distribution,
         uint64_t microseconds);
+double performancePercentileValue(
+        const PerformanceDistribution& distribution,
+        double percentile);
 double performancePercentileMilliseconds(
         const PerformanceDistribution& distribution,
         double percentile);

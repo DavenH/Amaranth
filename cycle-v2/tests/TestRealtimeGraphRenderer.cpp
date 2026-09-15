@@ -220,6 +220,56 @@ double lagCorrelation(const std::vector<float>& samples, size_t lag) {
 
 }
 
+TEST_CASE("Realtime audio telemetry does not change rendered output",
+        "[cycle-v2][audio-device][realtime][performance]") {
+    const auto render = [](bool instrumented) {
+        const auto compiled = GraphCompiler().compile(NodeGraph::createDemoGraph());
+        REQUIRE(compiled.succeeded());
+        AudioExecutionSpec spec;
+        spec.maximumFrameCount = 256;
+        auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 23, spec);
+        RealtimeGraphRenderer renderer;
+        RealtimeMidiEventQueue queue;
+        renderer.setPreparedGraph(prepared.get());
+        renderer.setRandomSeedForTesting(0x41554449);
+        REQUIRE(queue.enqueue(
+                MidiMessage::noteOn(1, 60, (uint8) 100),
+                MidiEventSource::PerformanceKeyboard,
+                1.0));
+        AudioBuffer<float> output(2, 256);
+        float* channels[] {
+                output.getWritePointer(0),
+                output.getWritePointer(1)
+            };
+        AudioPerformanceMetrics::RealtimeSample sample;
+        renderer.process(
+                queue,
+                channels,
+                2,
+                256,
+                44'100.0,
+                1.0,
+                instrumented ? &sample : nullptr);
+        if (instrumented) {
+            REQUIRE(sample.graphRevision == 23);
+            REQUIRE(sample.executionStepCount == compiled.plan.steps.size());
+            REQUIRE(sample.activeVoiceCount == 1);
+        }
+        return std::vector<float>(
+                output.getReadPointer(0),
+                output.getReadPointer(0) + output.getNumSamples());
+    };
+
+    const auto plain = render(false);
+    const auto instrumented = render(true);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(plain.data()),
+            (int) plain.size()).normDiffL2({
+                const_cast<float*>(instrumented.data()),
+                (int) instrumented.size()
+            }) == 0.f);
+}
+
 TEST_CASE("Realtime graph renderer applies Output gain separately from safety headroom",
         "[cycle-v2][audio-device][realtime][output][gain]") {
     float quietGain {};

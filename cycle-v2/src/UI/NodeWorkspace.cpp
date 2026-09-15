@@ -232,6 +232,14 @@ void NodeWorkspace::resetCanvasPerformanceForAutomation() {
     canvas.resetPerformanceMetricsForAutomation();
 }
 
+var NodeWorkspace::inspectAudioPerformanceForAutomation() const {
+    return audioEngine.audioPerformance();
+}
+
+void NodeWorkspace::resetAudioPerformanceForAutomation() {
+    audioEngine.resetAudioPerformance();
+}
+
 void NodeWorkspace::requestCanvasOpenGLFrameForAutomation() {
     canvas.requestOpenGLFrameForAutomation();
 }
@@ -366,6 +374,10 @@ bool NodeWorkspace::togglePreviewPlaybackForAutomation() {
     }
     keyboard.togglePlayback();
     return true;
+}
+
+bool NodeWorkspace::enqueueMidiForAutomation(const MidiMessage& message) {
+    return audioEngine.enqueueMidiMessage(message, MidiEventSource::Hardware);
 }
 
 StandaloneAudioEngine::LiveCapture NodeWorkspace::captureLiveAudioForAutomation(

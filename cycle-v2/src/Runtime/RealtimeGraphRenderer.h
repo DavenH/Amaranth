@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <memory>
 
+#include "Runtime/AudioPerformanceMetrics.h"
 #include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/MidiControlState.h"
 #include "Runtime/RealtimeMidiEventQueue.h"
@@ -73,7 +74,8 @@ public:
             int outputChannelCount,
             int frameCount,
             double sampleRate,
-            double callbackStartSeconds);
+            double callbackStartSeconds,
+            AudioPerformanceMetrics::RealtimeSample* performanceSample = nullptr);
     void resetVoices();
     Diagnostics diagnostics(const RealtimeMidiEventQueue& events) const {
         return {
@@ -116,7 +118,8 @@ private:
             float* const* outputChannels,
             int outputChannelCount,
             int frameCount,
-            double sampleRate);
+            double sampleRate,
+            AudioPerformanceMetrics::RealtimeSample* performanceSample);
     void publishMetrics(
             float* const* outputChannels,
             int outputChannelCount,
@@ -132,7 +135,6 @@ private:
     MidiControlState midiControls;
     std::array<RealtimeMidiEvent, maximumScheduledEvents> scheduledEvents;
     size_t scheduledEventCount {};
-    std::array<float, 8192> metricsScratch;
     uint64_t nextVoiceOrder {};
     std::atomic<float> voiceDurationOverrideSeconds {};
     double volumeEnvelopeClockSampleRate {};

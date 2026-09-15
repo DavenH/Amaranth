@@ -108,11 +108,25 @@ void RealtimeGraphRenderer::process(
         int outputChannelCount,
         int frameCount,
         double sampleRate,
-        double callbackStartSeconds) {
-    for (int channel = 0; channel < outputChannelCount; ++channel) {
-        if (outputChannels[channel] != nullptr) {
-            Buffer<float>(outputChannels[channel], frameCount).zero();
+        double callbackStartSeconds,
+        AudioPerformanceMetrics::RealtimeSample* performanceSample) {
+    {
+        AudioPerformanceMetrics::ScopedRealtimeStage stage(
+                performanceSample,
+                AudioPerformanceMetrics::Stage::OutputClear);
+        for (int channel = 0; channel < outputChannelCount; ++channel) {
+            if (outputChannels[channel] != nullptr) {
+                Buffer<float>(outputChannels[channel], frameCount).zero();
+            }
         }
+    }
+    if (performanceSample != nullptr) {
+        performanceSample->graphRevision = preparedGraph == nullptr
+                ? 0
+                : preparedGraph->revision;
+        performanceSample->executionStepCount = preparedGraph == nullptr
+                ? 0
+                : (uint32_t) preparedGraph->plan.steps.size();
     }
 
     callbackCounter.fetch_add(1, std::memory_order_relaxed);
@@ -127,10 +141,36 @@ void RealtimeGraphRenderer::process(
         return;
     }
 
-    beginBlock();
-    consumeEvents(events, frameCount, sampleRate, callbackStartSeconds);
-    renderVoices(outputChannels, outputChannelCount, frameCount, sampleRate);
-    publishMetrics(outputChannels, outputChannelCount, frameCount);
+    {
+        AudioPerformanceMetrics::ScopedRealtimeStage stage(
+                performanceSample,
+                AudioPerformanceMetrics::Stage::BlockSetup);
+        beginBlock();
+    }
+
+    {
+        AudioPerformanceMetrics::ScopedRealtimeStage stage(
+                performanceSample,
+                AudioPerformanceMetrics::Stage::MidiScheduling);
+        consumeEvents(events, frameCount, sampleRate, callbackStartSeconds);
+    }
+    if (performanceSample != nullptr) {
+        performanceSample->scheduledMidiEventCount = (uint16_t) scheduledEventCount;
+    }
+
+    renderVoices(
+            outputChannels,
+            outputChannelCount,
+            frameCount,
+            sampleRate,
+            performanceSample);
+
+    {
+        AudioPerformanceMetrics::ScopedRealtimeStage stage(
+                performanceSample,
+                AudioPerformanceMetrics::Stage::MeterPublication);
+        publishMetrics(outputChannels, outputChannelCount, frameCount);
+    }
 }
 
 void RealtimeGraphRenderer::resetVoices() {
@@ -308,91 +348,113 @@ void RealtimeGraphRenderer::renderVoices(
         float* const* outputChannels,
         int outputChannelCount,
         int frameCount,
-        double sampleRate) {
+        double sampleRate,
+        AudioPerformanceMetrics::RealtimeSample* performanceSample) {
     size_t activeCount = 0;
-    const float durationOverride = voiceDurationOverrideSeconds.load(std::memory_order_acquire);
-    const float durationSeconds = voiceDurationSecondsFor(
-            preparedGraph->plan,
-            durationOverride);
-    const float inverseDuration = 1.f / durationSeconds;
-    const double timeIncrement = sampleRate > 0.
-            ? inverseDuration / sampleRate
-            : 0.f;
-    const double volumeClockSampleRate = volumeEnvelopeClockSampleRate > 0.
-            ? volumeEnvelopeClockSampleRate
-            : sampleRate;
-    const double volumeEnvelopeTimeIncrement = volumeClockSampleRate > 0.
-            ? inverseDuration / volumeClockSampleRate
-            : 0.f;
+    {
+        AudioPerformanceMetrics::ScopedRealtimeStage stage(
+                performanceSample,
+                AudioPerformanceMetrics::Stage::VoiceRendering);
+        const float durationOverride = voiceDurationOverrideSeconds.load(
+                std::memory_order_acquire);
+        const float durationSeconds = voiceDurationSecondsFor(
+                preparedGraph->plan,
+                durationOverride);
+        const float inverseDuration = 1.f / durationSeconds;
+        const double timeIncrement = sampleRate > 0.
+                ? inverseDuration / sampleRate
+                : 0.f;
+        const double volumeClockSampleRate = volumeEnvelopeClockSampleRate > 0.
+                ? volumeEnvelopeClockSampleRate
+                : sampleRate;
+        const double volumeEnvelopeTimeIncrement = volumeClockSampleRate > 0.
+                ? inverseDuration / volumeClockSampleRate
+                : 0.f;
 
-    preparedGraph->executor.beginRealtimeVoiceMix(
-            preparedGraph->plan,
-            (size_t) frameCount);
+        preparedGraph->executor.beginRealtimeVoiceMix(
+                preparedGraph->plan,
+                (size_t) frameCount);
 
-    for (auto& voice : voices) {
-        if (!voice.active) {
-            continue;
+        for (auto& voice : voices) {
+            if (!voice.active) {
+                continue;
+            }
+            voice.context.controls.noteNumber = jlimit(
+                    0,
+                    127,
+                    voice.noteNumber + controlNoteOffset);
+            voice.context.oscillatorNoteNumber = voice.noteNumber;
+            voice.context.controls.velocity = voice.velocity;
+            voice.context.controls.normalizedVoiceTime = voice.normalizedTime;
+            voice.context.controls.normalizedVoiceTimeIncrement = timeIncrement;
+            voice.context.controls.normalizedVolumeEnvelopeTimeIncrement
+                    = volumeEnvelopeTimeIncrement;
+            voice.context.spectralStageCapture = spectralStageCapture;
+            midiControls.populateVoice(voice.context, voice.midiChannel);
+
+            preparedGraph->executor.processRealtimeVoiceToMix(
+                    preparedGraph->plan,
+                    (size_t) frameCount,
+                    { sampleRate },
+                    voice.context);
+
+            voice.normalizedTime = jmin(
+                    1.f,
+                    voice.normalizedTime
+                            + (float) (timeIncrement * (double) frameCount));
+            if (voice.released && !preparedGraph->executor.hasActiveVoiceTail(
+                    voice.context.voiceIndex)) {
+                voice.active = false;
+            }
+            if (voice.active) {
+                ++activeCount;
+            }
         }
-        voice.context.controls.noteNumber = jlimit(
-                0,
-                127,
-                voice.noteNumber + controlNoteOffset);
-        voice.context.oscillatorNoteNumber = voice.noteNumber;
-        voice.context.controls.velocity = voice.velocity;
-        voice.context.controls.normalizedVoiceTime = voice.normalizedTime;
-        voice.context.controls.normalizedVoiceTimeIncrement = timeIncrement;
-        voice.context.controls.normalizedVolumeEnvelopeTimeIncrement
-                = volumeEnvelopeTimeIncrement;
-        voice.context.spectralStageCapture = spectralStageCapture;
-        midiControls.populateVoice(voice.context, voice.midiChannel);
+    }
+    if (performanceSample != nullptr) {
+        performanceSample->activeVoiceCount = (uint16_t) activeCount;
+    }
 
-        preparedGraph->executor.processRealtimeVoiceToMix(
+    GraphAudioOutputView output;
+    {
+        AudioPerformanceMetrics::ScopedRealtimeStage stage(
+                performanceSample,
+                AudioPerformanceMetrics::Stage::GlobalRendering);
+        output = preparedGraph->executor.processRealtimeGlobal(
                 preparedGraph->plan,
                 (size_t) frameCount,
-                { sampleRate },
-                voice.context);
-
-        voice.normalizedTime = jmin(
-                1.f,
-                voice.normalizedTime
-                        + (float) (timeIncrement * (double) frameCount));
-        if (voice.released && !preparedGraph->executor.hasActiveVoiceTail(
-                voice.context.voiceIndex)) {
-            voice.active = false;
-        }
-        if (voice.active) {
-            ++activeCount;
-        }
+                { sampleRate });
     }
 
-    const auto output = preparedGraph->executor.processRealtimeGlobal(
-            preparedGraph->plan,
-            (size_t) frameCount,
-            { sampleRate });
-    if (output.isValid() && output.payload != nullptr && outputChannelCount > 0) {
-        const auto& payload = *output.payload;
-        if (outputChannels[0] != nullptr) {
-            Buffer<float>(const_cast<float*>(payload.block.samples.data()), frameCount)
-                    .copyTo(Buffer<float>(outputChannels[0], frameCount));
+    {
+        AudioPerformanceMetrics::ScopedRealtimeStage stage(
+                performanceSample,
+                AudioPerformanceMetrics::Stage::OutputConditioning);
+        if (output.isValid() && output.payload != nullptr && outputChannelCount > 0) {
+            const auto& payload = *output.payload;
+            if (outputChannels[0] != nullptr) {
+                Buffer<float>(const_cast<float*>(payload.block.samples.data()), frameCount)
+                        .copyTo(Buffer<float>(outputChannels[0], frameCount));
+            }
+            if (outputChannelCount > 1 && outputChannels[1] != nullptr) {
+                const SignalBuffer& right = payload.isStereo()
+                        ? payload.secondaryBlock.samples
+                        : payload.block.samples;
+                Buffer<float>(const_cast<float*>(right.data()), frameCount)
+                        .copyTo(Buffer<float>(outputChannels[1], frameCount));
+            }
         }
-        if (outputChannelCount > 1 && outputChannels[1] != nullptr) {
-            const SignalBuffer& right = payload.isStereo()
-                    ? payload.secondaryBlock.samples
-                    : payload.block.samples;
-            Buffer<float>(const_cast<float*>(right.data()), frameCount)
-                    .copyTo(Buffer<float>(outputChannels[1], frameCount));
-        }
-    }
 
-    graphOutputGain = requestedGraphOutputGain.load(std::memory_order_acquire);
-    graphOutputGain.update(frameCount);
-    for (int channel = 0; channel < jmin(2, outputChannelCount); ++channel) {
-        if (outputChannels[channel] != nullptr) {
-            graphOutputGain.maybeApplyRamp(
-                    preparedGraph->outputGainRamp.withSize(frameCount),
-                    Buffer<float>(outputChannels[channel], frameCount),
-                    outputGain);
-            Buffer<float>(outputChannels[channel], frameCount).clip(-1.f, 1.f);
+        graphOutputGain = requestedGraphOutputGain.load(std::memory_order_acquire);
+        graphOutputGain.update(frameCount);
+        for (int channel = 0; channel < jmin(2, outputChannelCount); ++channel) {
+            if (outputChannels[channel] != nullptr) {
+                graphOutputGain.maybeApplyRamp(
+                        preparedGraph->outputGainRamp.withSize(frameCount),
+                        Buffer<float>(outputChannels[channel], frameCount),
+                        outputGain);
+                Buffer<float>(outputChannels[channel], frameCount).clip(-1.f, 1.f);
+            }
         }
     }
     activeVoices.store(activeCount, std::memory_order_relaxed);
@@ -413,19 +475,16 @@ void RealtimeGraphRenderer::publishMetrics(
         }
         Buffer<float> output(outputChannels[channel], frameCount);
         const float norm = output.normL2();
-        const float magnitude = output.normL1();
-        if (!std::isfinite(norm) || !std::isfinite(magnitude)) {
+        if (!std::isfinite(norm)) {
             output.zero();
             continue;
         }
-        if ((size_t) frameCount <= metricsScratch.size()) {
-            Buffer<float> absolute(metricsScratch.data(), frameCount);
-            output.copyTo(absolute);
-            absolute.abs();
-            channelPeaks[(size_t) channel] = absolute.max();
-            channelMeasured[(size_t) channel] = true;
-            peak = jmax(peak, channelPeaks[(size_t) channel]);
-        }
+        float minimum {};
+        float maximum {};
+        output.minmax(minimum, maximum);
+        channelPeaks[(size_t) channel] = jmax(-minimum, maximum);
+        channelMeasured[(size_t) channel] = true;
+        peak = jmax(peak, channelPeaks[(size_t) channel]);
         squaredNorm += (double) norm * (double) norm;
         ++measuredChannels;
     }

@@ -133,6 +133,33 @@ public:
     }
 };
 
+TEST_CASE("Audio performance realtime handoff does not allocate or lock",
+        "[cycle-v2][audio][performance][realtime-safety]") {
+    AudioPerformanceMetrics metrics;
+    metrics.resetAndEnable();
+    size_t allocationCount {};
+    size_t lockCount {};
+    {
+        ScopedRealtimeAllocationCount allocations;
+        ScopedRealtimeLockCount locks;
+        for (int callback = 0; callback < 64; ++callback) {
+            AudioPerformanceMetrics::RealtimeSample sample;
+            const bool started = metrics.beginRealtimeSample(
+                    sample,
+                    256,
+                    48'000.0);
+            if (started) {
+                metrics.publishRealtimeSample(sample);
+            }
+        }
+        allocationCount = allocations.count();
+        lockCount = locks.count();
+    }
+
+    REQUIRE(allocationCount == 0);
+    REQUIRE(lockCount == 0);
+}
+
 class FanOutObserver final : public GraphProcessObserver {
 public:
     void nodeProcessed(const String& nodeId, const AudioProcessContext& context) override {
