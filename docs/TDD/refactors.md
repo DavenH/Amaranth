@@ -1,5 +1,19 @@
 # Refactor Notes
 
+## Cycle V2 presentation gesture and refresh-policy ownership
+
+Status: active in
+[`cycle-v2-causal-update-graph.md`](cycle-v2-causal-update-graph.md), reopened
+2026-09-15.
+
+The causal planner is in production, but gesture lifecycle and the
+`On Release` / `Live` choice are duplicated across editor commands, the canvas,
+and `GraphPresentationModel`. Extract one pure refresh policy, one shared
+presentation-gesture session, and one scheduler over the existing
+`NodeUpdateGraph`; then delete caller-side mode branches, broad editor refresh
+escape hatches, and control-specific async paths. Do not add another adapter or
+copy domain rendering behavior into the shared session.
+
 ## Cycle V2 first-class layer stack ownership
 
 The Cycle 1 preset migration preserves Envelope and Trilinear Mesh enablement
