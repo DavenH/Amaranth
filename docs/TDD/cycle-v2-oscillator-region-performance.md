@@ -2,7 +2,45 @@
 
 ## Status
 
-Implemented (2026-09-15).
+Source-rendering optimization in progress (2026-09-15). The original region
+and recipe attribution slices are implemented.
+
+## Source Optimization Design
+
+Start from `3db65105` on `cycle2/optimization-2`. First split each source into
+morph resolution, rasterization (including request/configuration), sampling,
+gain/phase scaling, and stereo copy. Use optional callback-owned POD counters
+with nanosecond accumulation for sub-microsecond stages; export totals, calls,
+and means through the existing non-realtime telemetry handoff. Shared lane
+rasterization accepts the same optional measurements without depending on
+Cycle V2. No render behavior, ownership, random draws, or lifecycle changes
+belong in this instrumentation slice.
+
+The authoritative implementations remain `TrilinearMeshRasterizer`,
+`VoiceRasterizer`, `WaveformBakePolicy`, and `WaveformSampler`. Prepared meshes
+and guide providers retain their current ownership. Each voice/lane retains
+its mutable chaining, smoothing, and random state. Configuration setters and
+mesh-validity checks inspected so far are O(1); harmonic positions already
+reuse the shared default `LogRegions` table when dimensions match. Do not add
+another position cache without measured evidence.
+
+After baseline captures, record a concrete optimization and its complexity
+contract here before implementation. Preserve shared-core behavior exactly;
+do not cache a complete source solely on unchanged morph because guide noise,
+chaining advancement, and lifecycle state can still change. No new adapter or
+replacement rasterization algorithm is planned.
+
+The spectral frame renderer was already at the translation-unit review
+threshold. Its capture plumbing repeated frame identity at every stage. Move
+that metadata into `SpectralFrameCapture` beside the authoritative capture sink;
+the renderer delegates publication and becomes smaller while timing is added.
+This helper translates capture metadata only and owns no rendering behavior.
+
+Completion for this follow-up requires a measured source optimization,
+operation-count evidence for any complexity claim, repeated Release spectral
+and chained 0/1/4/8-voice captures, exact-output/parity and realtime checks,
+refactor/style review, and committed changes. Deferred speculative work must
+be identified explicitly rather than represented as implemented.
 
 ## Problem
 
@@ -227,6 +265,37 @@ Artifacts:
    representative Release workloads.
 
 ## Verification
+
+### Source-stage baseline (Release)
+
+The first successful eight-voice split, in microseconds per source operation:
+
+| Source | Morph | Rasterization | Sampling | Gain/phase | Stereo copy |
+|---|---:|---:|---:|---:|---:|
+| Baroque spectral | 0.114 | 5.165 | 0.730 | 0.051 | 0.035 |
+| Baroque time | 0.147 | 4.724 | 0.491 | 0.026 | 0.055 |
+| African Horn time | 0.108 | 4.811 | 0.885 | 0 (unity) | 0.051 |
+
+Artifacts: `/private/tmp/cycle-v2-source-baseline-spectral-2.json`,
+`/private/tmp/cycle-v2-source-baseline-spectral-3.json`, and
+`/private/tmp/cycle-v2-source-baseline-chained-1.json`. These are the unchanged
+0/1/4/8-voice fixtures. The first launch failed to produce a report; the retry
+disabled focus-by-bundle-ID because another worktree has the same bundle ID.
+
+A five-second macOS sample of eight-voice spectral playback, with timing
+telemetry disabled, attributes 359 samples to `rasterizePrepared`: 203 beneath
+waveform baking, including 97 in guide baking and 68 in derivative/integral
+finalization. Approximately 60 are in mesh slicing. Within guide baking,
+55 samples are in strided `Buffer::downsampleFrom`. This is evidence to examine
+immutable guide resampling and unused integral preparation before introducing
+topology caches or direct harmonic rasterization. The sample is statistical,
+not an exact duration decomposition. Artifact:
+`/private/tmp/cycle-v2-source-spectral-sample.txt`.
+
+Instrumentation validation: Release build passes; the combined performance,
+realtime and output-parity selection passes 474 assertions in 19 cases;
+shared voice rasterizer tests pass 70 assertions in 9 cases. The source timer
+does no timestamp reads or counter updates when its optional pointer is null.
 
 - `CycleV2_tests '[cycle-v2][audio][performance]'`: 313 assertions in 5 cases.
 - `CycleV2_tests '[cycle-v2][runtime][realtime]'`: 138 assertions in 13 cases.

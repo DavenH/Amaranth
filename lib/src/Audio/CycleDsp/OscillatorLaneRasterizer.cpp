@@ -29,7 +29,9 @@ void configure(
 
 void OscillatorLaneRasterizer::prime(
         Rasterization::VoiceRasterizer& rasterizer,
-        const ChainedRasterizationRequest& request) {
+        const ChainedRasterizationRequest& request,
+        SourceRenderPerformance* performance) {
+    ScopedSourceRenderStage measured(performance, SourceRenderStage::Rasterization);
     if (request.state == nullptr) {
         return;
     }
@@ -41,18 +43,22 @@ void OscillatorLaneRasterizer::prime(
 void OscillatorLaneRasterizer::render(
         Rasterization::VoiceRasterizer& rasterizer,
         const ChainedRasterizationRequest& request,
-        Buffer<float> output) {
+        Buffer<float> output,
+        SourceRenderPerformance* performance) {
     if (request.state == nullptr || request.angleDelta <= 0.0) {
         output.zero();
         return;
     }
 
+    ScopedSourceRenderStage rasterStage(performance, SourceRenderStage::Rasterization);
     configure(rasterizer, request);
     rasterizer.setInterceptPadding((float) std::max(
             -request.state->spillover,
             request.angleDelta));
     rasterizer.renderChained(request.phaseCycles);
+    rasterStage.finish();
 
+    ScopedSourceRenderStage samplingStage(performance, SourceRenderStage::Sampling);
     const auto sampler = rasterizer.sampler();
     if (sampler.isSampleable()) {
         request.state->spillover = sampler.sampleWithInterval(
@@ -72,16 +78,20 @@ void OscillatorLaneRasterizer::render(
 bool OscillatorLaneRasterizer::renderFixedFrame(
         Rasterization::VoiceRasterizer& rasterizer,
         const FixedFrameRasterizationRequest& request,
-        Buffer<float> output) {
+        Buffer<float> output,
+        SourceRenderPerformance* performance) {
     if (request.mesh == nullptr || output.empty()) {
         output.zero();
         return false;
     }
 
+    ScopedSourceRenderStage rasterStage(performance, SourceRenderStage::Rasterization);
     configure(rasterizer, request);
     const double interval = 1.0 / (double) output.size();
     rasterizer.setInterceptPadding((float) interval * 2.f);
     rasterizer.renderOrdinary(request.mesh, request.phaseCycles);
+    rasterStage.finish();
+    ScopedSourceRenderStage samplingStage(performance, SourceRenderStage::Sampling);
     const auto sampler = rasterizer.sampler();
     if (!sampler.isSampleable()) {
         output.zero();

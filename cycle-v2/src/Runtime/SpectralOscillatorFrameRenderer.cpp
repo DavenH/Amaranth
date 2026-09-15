@@ -35,32 +35,6 @@ bool sourceRole(AudioModuleRole role) {
             || role == AudioModuleRole::WaveSource;
 }
 
-void captureStage(
-        const PreparedOscillatorProcessContext* context,
-        CycleDsp::SpectralStage stage,
-        size_t frameIndex,
-        uint64_t voiceSampleFrontier,
-        int midiNote,
-        int channel,
-        Buffer<float> primary,
-        Buffer<float> secondary = {}) {
-    if (context == nullptr
-            || context->voice == nullptr
-            || context->voice->spectralStageCapture == nullptr) {
-        return;
-    }
-
-    context->voice->spectralStageCapture->capture({
-            stage,
-            frameIndex,
-            voiceSampleFrontier,
-            midiNote,
-            channel,
-            primary,
-            secondary
-    });
-}
-
 const GraphStepInput* inputForPort(
         const GraphExecutionStep& step,
         int portIndex) {
@@ -423,7 +397,12 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                 (int) elapsedSamples,
                 context->voice->controls.normalizedVoiceTimeIncrement);
     }
-    const uint64_t voiceSampleFrontier = (uint64_t) voiceSamplePosition;
+    CycleDsp::SpectralFrameCapture frameCapture(
+            context != nullptr && context->voice != nullptr
+                    ? context->voice->spectralStageCapture : nullptr,
+            renderCount,
+            (uint64_t) voiceSamplePosition,
+            midiNote);
     const int activeHarmonicCount = jmin(
             RealFftFullPolarSpectrum::binCountForBufferSize(frameSize) - 1,
             LogRegionMapping(midiNote + LogRegionMapping::legacyMidiNoteBias).regionSize());
@@ -439,12 +418,8 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
         if (!transfer.isActive()) {
             return;
         }
-        captureStage(
-                context,
+        frameCapture.capture(
                 CycleDsp::SpectralStage::MagnitudeOperand,
-                renderCount,
-                voiceSampleFrontier,
-                midiNote,
                 channel,
                 values.section(1, activeHarmonicCount));
     };
@@ -476,7 +451,12 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
         auto leftOutput = slot(operation.outputs[0], 0, count);
         auto rightOutput = slot(operation.outputs[0], 1, count);
         MorphPosition morph;
+        auto* sourcePerformance = performanceCounts == nullptr ? nullptr
+                : operation.type == OperationType::SpectralTrimesh
+                        ? &performanceCounts->spectralSources : &performanceCounts->timeSources;
         if (operation.configuration != nullptr) {
+            CycleDsp::ScopedSourceRenderStage morphStage(
+                    sourcePerformance, CycleDsp::SourceRenderStage::MorphResolution);
             const TrimeshMorphInputs inputs = context != nullptr
                     ? operation.morphBinding.inputsFor(
                             *context,
@@ -510,7 +490,8 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                                 frameRandom.nextInt(
                                         GuideCurveProvider::tableSize)
                         },
-                        leftOutput);
+                        leftOutput,
+                        sourcePerformance);
                 {
                     std::array<float, 3> morphValues {
                             morph.time.getCurrentValue(),
@@ -518,35 +499,45 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                             morph.blue.getCurrentValue()
                     };
                     for (int channel = 0; channel < 2; ++channel) {
-                        captureStage(
-                                context,
+                        frameCapture.capture(
                                 CycleDsp::SpectralStage::TimeRaster,
-                                renderCount,
-                                voiceSampleFrontier,
-                                midiNote,
                                 channel,
                                 leftOutput,
                                 { morphValues.data(), (int) morphValues.size() });
                     }
                 }
-                leftOutput.mul(operation.configuration->gain);
-                leftOutput.copyTo(rightOutput);
+                {
+                    CycleDsp::ScopedSourceRenderStage gainStage(
+                            sourcePerformance, CycleDsp::SourceRenderStage::Gain);
+                    leftOutput.mul(operation.configuration->gain);
+                }
+                {
+                    CycleDsp::ScopedSourceRenderStage copyStage(
+                            sourcePerformance, CycleDsp::SourceRenderStage::StereoCopy);
+                    leftOutput.copyTo(rightOutput);
+                }
                 break;
 
-            case OperationType::SpectralTrimesh:
+            case OperationType::SpectralTrimesh: {
                 if (!operation.configuration->enabled) {
                     leftOutput.zero();
                     rightOutput.zero();
                     break;
                 }
+                CycleDsp::ScopedSourceRenderStage rasterStage(
+                        sourcePerformance, CycleDsp::SourceRenderStage::Rasterization);
                 operation.spectralRasterizer->setFrequencyMidiNote(
                         midiNote + LogRegionMapping::legacyMidiNoteBias);
                 operation.spectralRasterizer->setMorphPosition(morph);
                 operation.spectralRasterizer->rasterizePrepared(
                         frameRandom.nextInt(GuideCurveProvider::tableSize));
+                rasterStage.finish();
+                CycleDsp::ScopedSourceRenderStage samplingStage(
+                        sourcePerformance, CycleDsp::SourceRenderStage::Sampling);
                 leftOutput.zero();
                 operation.spectralRasterizer->renderPreparedHarmonicsInto(
                         leftOutput.section(1, count - 1));
+                samplingStage.finish();
                 if (operation.outputDomain == PortDomain::SpectralMagnitudeSignal
                         || operation.outputDomain == PortDomain::SpectralPhaseSignal) {
                     const auto stage = operation.outputDomain
@@ -559,36 +550,34 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                             morph.blue.getCurrentValue()
                     };
                     for (int channel = 0; channel < 2; ++channel) {
-                        captureStage(
-                                context,
+                        frameCapture.capture(
                                 stage,
-                                renderCount,
-                                voiceSampleFrontier,
-                                midiNote,
                                 channel,
                                 leftOutput.section(1, activeHarmonicCount),
                                 { morphValues.data(), (int) morphValues.size() });
                     }
                 }
+                CycleDsp::ScopedSourceRenderStage gainStage(
+                        sourcePerformance, CycleDsp::SourceRenderStage::Gain);
                 leftOutput.mul(operation.configuration->gain);
                 if (operation.outputDomain == PortDomain::SpectralPhaseSignal) {
                     leftOutput.mul(CycleDsp::SpectralLayerCore::phaseOffsetScale(
                             operation.configuration->range) * MathConstants<float>::twoPi);
                     for (int channel = 0; channel < 2; ++channel) {
-                        captureStage(
-                                context,
+                        frameCapture.capture(
                                 CycleDsp::SpectralStage::PhaseOperand,
-                                renderCount,
-                                voiceSampleFrontier,
-                                midiNote,
                                 channel,
                                 leftOutput.section(1, activeHarmonicCount));
                     }
                     leftOutput.section(1, count - 1).mul(
                             phaseHarmonicScale.withSize(count - 1));
                 }
+                gainStage.finish();
+                CycleDsp::ScopedSourceRenderStage copyStage(
+                        sourcePerformance, CycleDsp::SourceRenderStage::StereoCopy);
                 leftOutput.copyTo(rightOutput);
                 break;
+            }
 
             case OperationType::SpectralLayer:
                 applyPan(
@@ -606,24 +595,16 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                         frameSize);
                 for (int channel = 0; channel < 2; ++channel) {
                     auto timeFrame = slot(operation.leftInput, channel, frameSize);
-                    captureStage(
-                            context,
+                    frameCapture.capture(
                             CycleDsp::SpectralStage::TimeFrame,
-                            renderCount,
-                            voiceSampleFrontier,
-                            midiNote,
                             channel,
                             timeFrame);
                     auto magnitude = slot(operation.outputs[0], channel, binCount);
                     auto phase = slot(operation.outputs[1], channel, binCount);
                     transform->forward(timeFrame);
                     transform->copyFullPolarSpectrumTo(magnitude, phase);
-                    captureStage(
-                            context,
+                    frameCapture.capture(
                             CycleDsp::SpectralStage::ForwardFft,
-                            renderCount,
-                            voiceSampleFrontier,
-                            midiNote,
                             channel,
                             magnitude.section(1, activeHarmonicCount),
                             phase.section(1, activeHarmonicCount));
@@ -639,12 +620,8 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                     slot(operation.leftInput, channel, binCount).copyTo(magnitude);
                     applyMagnitudeOperand(magnitude, operation.leftTransfer, channel);
                     slot(operation.rightInput, channel, binCount).copyTo(phase);
-                    captureStage(
-                            context,
+                    frameCapture.capture(
                             CycleDsp::SpectralStage::PostLayerSpectrum,
-                            renderCount,
-                            voiceSampleFrontier,
-                            midiNote,
                             channel,
                             magnitude.section(1, activeHarmonicCount),
                             phase.section(1, activeHarmonicCount));
@@ -659,12 +636,8 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                             magnitude,
                             phase);
                     transform->inverse(slot(operation.outputs[0], channel, frameSize));
-                    captureStage(
-                            context,
+                    frameCapture.capture(
                             CycleDsp::SpectralStage::ReconstructedFrame,
-                            renderCount,
-                            voiceSampleFrontier,
-                            midiNote,
                             channel,
                             slot(operation.outputs[0], channel, frameSize));
                 }

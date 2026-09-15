@@ -67,6 +67,8 @@ public:
         std::array<uint64_t, oscillatorRecipeStageCount> oscillatorRecipeStageDurations {};
         std::array<uint32_t, oscillatorRecipeStageCount>
                 oscillatorRecipeStageOperationCounts {};
+        CycleDsp::SourceRenderPerformance timeSources;
+        CycleDsp::SourceRenderPerformance spectralSources;
     };
 
     struct Snapshot {
@@ -102,6 +104,8 @@ public:
                 oscillatorRecipeStages;
         std::array<uint64_t, oscillatorRecipeStageCount>
                 totalOscillatorRecipeStageOperations {};
+        CycleDsp::SourceRenderPerformance timeSources;
+        CycleDsp::SourceRenderPerformance spectralSources;
     };
 
     class ScopedRealtimeStage final {
@@ -186,6 +190,8 @@ private:
                 oscillatorRecipeStages;
         std::array<uint64_t, oscillatorRecipeStageCount>
                 totalOscillatorRecipeStageOperations {};
+        CycleDsp::SourceRenderPerformance timeSources;
+        CycleDsp::SourceRenderPerformance spectralSources;
     };
 
     void aggregate(const RealtimeSample& sample);

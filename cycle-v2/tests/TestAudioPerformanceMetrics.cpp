@@ -57,6 +57,11 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
             OscillatorRecipeStage::TimeSourceRendering)] = 400;
     first.oscillatorRecipeStageOperationCounts[static_cast<size_t>(
             OscillatorRecipeStage::TimeSourceRendering)] = 6;
+    const size_t rasterStage = (size_t) CycleDsp::SourceRenderStage::Rasterization;
+    first.timeSources.nanoseconds[rasterStage] = 2'100;
+    first.timeSources.operations[rasterStage] = 3;
+    first.spectralSources.nanoseconds[rasterStage] = 4'500;
+    first.spectralSources.operations[rasterStage] = 2;
     metrics.publishRealtimeSample(first);
 
     auto second = beginSample(metrics);
@@ -88,6 +93,8 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
             OscillatorRecipeStage::TimeSourceRendering)] = 1'500;
     second.oscillatorRecipeStageOperationCounts[static_cast<size_t>(
             OscillatorRecipeStage::TimeSourceRendering)] = 12;
+    second.timeSources.nanoseconds[rasterStage] = 3'900;
+    second.timeSources.operations[rasterStage] = 2;
     metrics.publishRealtimeSample(second);
 
     REQUIRE(metrics.snapshot().callbackDuration.count == 0);
@@ -174,6 +181,15 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     REQUIRE((double) property(timeSource, "meanMs") == Catch::Approx(0.95));
     REQUIRE((int64) property(timeSource, "totalOperations") == 18);
     REQUIRE((double) property(timeSource, "meanOperations") == Catch::Approx(9.0));
+    const var sourceStages = property(exported, "oscillatorSourceStages");
+    const var timeRaster = property(property(sourceStages, "time"), "rasterization");
+    const var spectralRaster = property(property(sourceStages, "spectral"), "rasterization");
+    REQUIRE((int64) property(timeRaster, "totalNanoseconds") == 6'000);
+    REQUIRE((int64) property(timeRaster, "totalOperations") == 5);
+    REQUIRE((double) property(timeRaster, "meanMs") == Catch::Approx(0.003));
+    REQUIRE((double) property(timeRaster, "meanOperationMicroseconds") == Catch::Approx(1.2));
+    REQUIRE((int64) property(spectralRaster, "totalNanoseconds") == 4'500);
+    REQUIRE((int64) property(spectralRaster, "totalOperations") == 2);
 }
 
 TEST_CASE("Audio performance reset rejects samples from the old generation",

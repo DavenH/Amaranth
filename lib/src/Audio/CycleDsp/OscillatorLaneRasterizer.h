@@ -3,6 +3,8 @@
 #include <Curve/Rasterization/Rasterizer/VoiceRasterizer.h>
 #include <Obj/MorphPosition.h>
 
+#include "SourceRenderPerformance.h"
+
 class Mesh;
 
 namespace CycleDsp {
@@ -27,15 +29,18 @@ class OscillatorLaneRasterizer {
 public:
     static void prime(
             Rasterization::VoiceRasterizer& rasterizer,
-            const ChainedRasterizationRequest& request);
+            const ChainedRasterizationRequest& request,
+            SourceRenderPerformance* performance = nullptr);
     static void render(
             Rasterization::VoiceRasterizer& rasterizer,
             const ChainedRasterizationRequest& request,
-            Buffer<float> output);
+            Buffer<float> output,
+            SourceRenderPerformance* performance = nullptr);
     static bool renderFixedFrame(
             Rasterization::VoiceRasterizer& rasterizer,
             const FixedFrameRasterizationRequest& request,
-            Buffer<float> output);
+            Buffer<float> output,
+            SourceRenderPerformance* performance = nullptr);
 };
 
 }

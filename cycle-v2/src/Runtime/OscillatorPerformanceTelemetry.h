@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <Audio/CycleDsp/SourceRenderPerformance.h>
+
 namespace CycleV2 {
 
 enum class OscillatorRecipeStage : uint8_t {
@@ -29,6 +31,8 @@ struct OscillatorRegionPerformanceCounts {
     uint32_t mixedLaneCount {};
     std::array<uint64_t, oscillatorRecipeStageCount> recipeStageDurations {};
     std::array<uint32_t, oscillatorRecipeStageCount> recipeStageOperationCounts {};
+    CycleDsp::SourceRenderPerformance timeSources;
+    CycleDsp::SourceRenderPerformance spectralSources;
 };
 
 }

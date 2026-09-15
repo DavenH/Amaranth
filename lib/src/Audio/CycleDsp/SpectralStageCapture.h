@@ -41,6 +41,24 @@ public:
     virtual void capture(const SpectralStageFrame& frame) noexcept = 0;
 };
 
+class SpectralFrameCapture {
+public:
+    SpectralFrameCapture(
+            SpectralStageCaptureSink* sink,
+            size_t frameIndex,
+            uint64_t frontier,
+            int midiNote);
+    void capture(
+            SpectralStage stage,
+            int channel,
+            Buffer<float> primary,
+            Buffer<float> secondary = {}) const;
+
+private:
+    SpectralStageCaptureSink* sink;
+    SpectralStageFrame frame;
+};
+
 struct CapturedSpectralStage {
     SpectralStage stage { SpectralStage::TimeFrame };
     size_t frameIndex {};

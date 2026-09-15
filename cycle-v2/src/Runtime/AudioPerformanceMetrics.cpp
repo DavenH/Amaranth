@@ -15,6 +15,25 @@ size_t indexFor(AudioPerformanceMetrics::Stage stage) {
     return static_cast<size_t>(stage);
 }
 
+var sourcePerformanceToVar(
+        const CycleDsp::SourceRenderPerformance& counts,
+        uint64_t callbackCount) {
+    static constexpr std::array<const char*, CycleDsp::SourceRenderPerformance::stageCount>
+            labels { "morphResolution", "rasterization", "sampling", "gain", "stereoCopy" };
+    auto* root = new DynamicObject();
+    for (size_t index = 0; index < labels.size(); ++index) {
+        auto* stage = new DynamicObject();
+        stage->setProperty("totalNanoseconds", (int64) counts.nanoseconds[index]);
+        stage->setProperty("totalOperations", (int64) counts.operations[index]);
+        stage->setProperty("meanMs", callbackCount == 0 ? 0.0
+                : (double) counts.nanoseconds[index] / (double) callbackCount / 1.0e6);
+        stage->setProperty("meanOperationMicroseconds", counts.operations[index] == 0 ? 0.0
+                : (double) counts.nanoseconds[index] / (double) counts.operations[index] / 1000.0);
+        root->setProperty(labels[index], var(stage));
+    }
+    return var(root);
+}
+
 var utilizationToVar(const PerformanceDistribution& distribution) {
     auto* object = new DynamicObject();
     object->setProperty("count", (int64) distribution.count);
@@ -169,7 +188,9 @@ AudioPerformanceMetrics::Snapshot AudioPerformanceMetrics::snapshot() const {
             aggregateData.stages,
             aggregateData.oscillatorStages,
             aggregateData.oscillatorRecipeStages,
-            aggregateData.totalOscillatorRecipeStageOperations
+            aggregateData.totalOscillatorRecipeStageOperations,
+            aggregateData.timeSources,
+            aggregateData.spectralSources
         };
 }
 
@@ -301,6 +322,12 @@ var AudioPerformanceMetrics::toVar() const {
         oscillatorRecipeStages->setProperty(label(stage), stageValue);
     }
     root->setProperty("oscillatorRecipeStages", var(oscillatorRecipeStages));
+    auto* sources = new DynamicObject();
+    sources->setProperty("time", sourcePerformanceToVar(
+            current.timeSources, current.callbackDuration.count));
+    sources->setProperty("spectral", sourcePerformanceToVar(
+            current.spectralSources, current.callbackDuration.count));
+    root->setProperty("oscillatorSourceStages", var(sources));
     return var(root);
 }
 
@@ -362,6 +389,8 @@ const char* AudioPerformanceMetrics::label(OscillatorRecipeStage stage) {
 }
 
 void AudioPerformanceMetrics::aggregate(const RealtimeSample& sample) {
+    aggregateData.timeSources.add(sample.timeSources);
+    aggregateData.spectralSources.add(sample.spectralSources);
     recordPerformanceSample(
             aggregateData.callbackDuration,
             sample.callbackDurationMicroseconds);

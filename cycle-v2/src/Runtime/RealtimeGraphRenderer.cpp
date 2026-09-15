@@ -528,6 +528,8 @@ void RealtimeGraphRenderer::renderVoices(
             performanceSample->oscillatorRecipeStageOperationCounts[index]
                     = oscillator.recipeStageOperationCounts[index];
         }
+        performanceSample->timeSources = oscillator.timeSources;
+        performanceSample->spectralSources = oscillator.spectralSources;
     }
 }
 
