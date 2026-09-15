@@ -710,3 +710,22 @@ Context:
 
 Current status: open; choose the intended Astral parity fixture and update the
 test path without weakening its audio assertions.
+
+## P2: Offline spectral parity fixtures have stale expectations and paths
+
+Context:
+
+- On 2026-09-15, `Offline spectral capture records equivalent harmonic
+  boundaries` produced a time-raster secondary value of `0.225972116` instead
+  of the asserted `0.7148094`. The failure reproduces with block-time spectral
+  transfer resolution restored, so it is independent of prepared transfer
+  binding. The older value is also discussed in the open same-clock spectral
+  residual investigation above.
+- `Offline guide seed controls spectral oscillator noise deterministically`
+  fails while loading `content/presets/sitar.cyclegraph`; that file now lives
+  at `content/presets/old/sitar.cyclegraph`, alongside distinct current Sitar
+  variants.
+
+Current status: open; reconcile the time-raster assertion with the current
+frontier contract and choose the intended Sitar fixture before updating its
+path.
