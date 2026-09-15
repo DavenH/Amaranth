@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress (2026-09-15).
+Implemented (2026-09-15).
 
 ## Problem
 
@@ -68,8 +68,8 @@ counter. Instrumentation cannot back-pressure audio or change rendering.
 | Spectral transfer | Every executor spectral input/voice/block repeated downcasts and scanned Pan steps. | Implemented in slice 3b: preparation resolves transfer values; executor block lookup is `O(1)` per connected input. Oscillator-frame transfer work remains under its authoritative preparation path. |
 | Released voice tail | Every released voice/block scanned all plan steps and resolved processors. | Implemented in slice 2: direct prepared tail processor references make the query `O(T)`. |
 | MIDI scheduling | Every callback sorted all scheduled/future events and moved the remaining suffix. | Slice 4a skips sorting when no new events arrived and reports dequeued, sorted-item, and compacted-item totals. Retained future events remain sorted. |
-| Realtime arenas | Every graph buffer reserved block plus `F*max(F,C)` grid payload in the work arena; mix already omitted grids. | Slice 4c gives realtime voice/global preparation zero diagnostic-grid capacity and reports block/grid storage high-water values. Boundary-only mix slots and lifetime reuse remain candidates. |
-| Output path | Output is cleared before a valid overwrite, copied from the graph boundary, ramped/clipped, then scanned repeatedly for RMS/finiteness/peak. | The redundant L1 reduction and scratch copy/absolute/max passes are removed in slice 1 using `Buffer::minmax`; output clear/copy remain for a later bounded change. |
+| Realtime arenas | Every graph buffer reserved block plus `F*max(F,C)` grid payload in the work arena; mix already omitted grids. | Slice 4c gives realtime voice/global preparation zero diagnostic-grid capacity and reports block/grid storage high-water values. Boundary-only mix slots and lifetime reuse require a compiler-owned liveness plan; retain until storage telemetry demonstrates material pressure. |
+| Output path | Output is cleared before a valid overwrite, copied from the graph boundary, ramped/clipped, then scanned repeatedly for RMS/finiteness/peak. | Slice 1 removes redundant meter reductions and scratch passes. Retain clear/copy: they establish deterministic silence and isolate graph storage from device-owned buffers, while the measured clear, conditioning/copy, and meter total is at most 0.010 ms across the representative windows. |
 | Live capture | Inactive capture performed an atomic callback-counter RMW every callback. | Slice 4b passes the renderer callback id into capture; inactive capture now performs only its target-state load. |
 | MIDI controls | All 128 controller values were copied into every active voice and again into every modulation render. | Slice 4d shares the immutable channel block snapshot with voices and extracts only the configured controller into a render-local timeline. |
 
@@ -320,3 +320,40 @@ the configured CC (or CC 1 for Mod Wheel) into its local timeline; other source
 modes copy no controller array. Timed controller and pressure events remain
 local overlays with the same sample offsets. Focused MIDI-state, modulation,
 realtime allocation/lock, voice-stealing, and deferred-event tests pass.
+
+## Final Findings And Follow-ups (2026-09-15)
+
+The representative Baroque Flute graph contains a spectral oscillator chain and
+a global delay. In the final 8-voice Debug window, voice rendering consumed
+5.847 of the 5.960 ms mean callback duration (98.1%), while global rendering
+consumed 0.107 ms (1.8%). The combined output clear, conditioning/copy, and
+meter phases consumed 0.003 ms. At zero voices those output phases consumed
+0.010 ms. This isolates any remaining material CPU opportunity to mature voice
+DSP, principally the oscillator-region frame renderer, rather than graph
+dispatch, the global chain, or output bookkeeping.
+
+No oscillator, FFT/IFFT, convolution, resampling, or oversampling algorithm is
+changed here. A follow-up should first add internal phase counters beneath the
+authoritative oscillator-region renderer and capture Release as well as Debug
+profiles. Only a measured internal stage should then receive its own focused
+TDD. This avoids replacing mature DSP on the strength of a broad voice-phase
+measurement.
+
+Boundary-only mix slots and general arena lifetime reuse are also deferred.
+They require the graph compiler to own buffer liveness and aliasing; introducing
+local executor reuse would cross the current ownership boundary. The permanent
+block/grid storage high-water telemetry is the trigger for that compiler work.
+
+## Verification
+
+- Standalone Debug `CycleV2`, `CycleV2_tests`, and `AmaranthLib_tests` targets
+  build successfully with at least ten parallel jobs.
+- Focused performance, realtime executor, modulation/MIDI, deferred-event,
+  voice lifecycle, and shared capture tests pass.
+- Scaling tests cover unrelated scope steps, processors, buffers, routes, Pan
+  indices, diagnostic grids, and controller snapshots with deterministic
+  operation counts or structural contracts.
+- Modified hot paths contain no scalar `std::pow`, `std::sqrt`, `std::abs`, or
+  `std::isfinite` calls in per-sample/per-bin loops; `git diff --check` passes.
+- `clang-tidy` was not available in the configured shell, so no tidy result is
+  claimed.
