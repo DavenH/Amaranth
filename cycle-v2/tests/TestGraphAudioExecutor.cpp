@@ -2602,6 +2602,56 @@ TEST_CASE("Prepared default modulation ignores unrelated graph buffers",
     REQUIRE(operationCounts.modulationBindingVisits == bindingCount);
 }
 
+TEST_CASE("Prepared spectral transfers do not traverse pan chains per block",
+        "[cycle-v2][runtime][realtime][spectral][performance][complexity]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+    for (auto& parameter : mesh.parameters) {
+        if (parameter.id == "signalType") {
+            parameter.value = "spectralMagnitude";
+        }
+    }
+    graph.addNode(std::move(mesh));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
+    graph.addEdge({
+            "mesh", "out", "add", "left",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+    auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    size_t transferBindingCount {};
+    constexpr size_t unrelatedPanIndexCount = 128;
+    for (auto& step : compiled.plan.steps) {
+        for (auto& input : step.inputs) {
+            if (!input.magnitudeTransfer.isActive()) {
+                continue;
+            }
+            ++transferBindingCount;
+            input.magnitudeTransfer.panStepIndices.resize(
+                    unrelatedPanIndexCount,
+                    -1);
+        }
+    }
+    REQUIRE(transferBindingCount == 1);
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 64;
+    GraphAudioExecutor executor;
+    executor.prepareExecution(compiled.plan, spec);
+    GraphExecutionOperationCounts operationCounts;
+    executor.processRealtime(
+            compiled.plan,
+            64,
+            {},
+            {},
+            nullptr,
+            &operationCounts);
+
+    REQUIRE(operationCounts.spectralTransferBindingVisits == transferBindingCount);
+}
+
 TEST_CASE("Prepared spectral stage recording performs no allocations",
         "[cycle-v2][runtime][realtime][spectral][parity]") {
     CycleDsp::SpectralStageCaptureRecorder recorder;

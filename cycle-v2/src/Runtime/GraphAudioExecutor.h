@@ -47,6 +47,7 @@ struct GraphAudioOutputView {
 struct GraphExecutionOperationCounts {
     uint32_t stepVisits {};
     uint32_t modulationBindingVisits {};
+    uint32_t spectralTransferBindingVisits {};
 };
 
 class GraphAudioExecutor {
@@ -205,6 +206,7 @@ private:
         std::vector<size_t> stepIndices;
         std::vector<NodeAudioProcessor*> tailProcessors;
         std::vector<ModulationBinding> modulationBindings;
+        std::vector<std::vector<SpectralMagnitudeTransfer>> spectralTransfersByStep;
         std::vector<std::unique_ptr<OscillatorRegion>> oscillatorRegions;
         std::vector<OscillatorRegion*> oscillatorRegionByStep;
     };

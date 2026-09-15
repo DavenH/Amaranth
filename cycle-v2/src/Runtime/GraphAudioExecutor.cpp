@@ -441,7 +441,10 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             }
         }
 
-        for (const auto& input : step.inputs) {
+        for (size_t stepInputIndex = 0;
+                stepInputIndex < step.inputs.size();
+                ++stepInputIndex) {
+            const auto& input = step.inputs[stepInputIndex];
             if (input.destPortIndex < 0) {
                 continue;
             }
@@ -455,9 +458,12 @@ GraphAudioResult GraphAudioExecutor::processInternal(
                 context.inputViews[inputIndex] = &bufferSlots[(size_t) sourceBufferIndex];
             }
             if (input.magnitudeTransfer.isActive()) {
-                context.magnitudeTransfers[inputIndex] = resolveSpectralMagnitudeTransfer(
-                        plan,
-                        input.magnitudeTransfer);
+                context.magnitudeTransfers[inputIndex]
+                        = preparedVoice->second.spectralTransfersByStep[stepIndex]
+                                [stepInputIndex];
+                if (operationCounts != nullptr) {
+                    ++operationCounts->spectralTransferBindingVisits;
+                }
             }
         }
 
@@ -719,6 +725,8 @@ void GraphAudioExecutor::prepareExecutionInternal(
     preparedVoice.stepIndices.reserve(plan.steps.size());
     preparedVoice.tailProcessors.clear();
     preparedVoice.modulationBindings.clear();
+    preparedVoice.spectralTransfersByStep.clear();
+    preparedVoice.spectralTransfersByStep.resize(plan.steps.size());
     if (pass != ProcessingPass::Global) {
         preparedVoice.modulationBindings.reserve(plan.buffers.size());
         for (size_t bufferIndex = 0; bufferIndex < plan.buffers.size(); ++bufferIndex) {
@@ -749,6 +757,16 @@ void GraphAudioExecutor::prepareExecutionInternal(
             continue;
         }
         preparedVoice.stepIndices.push_back(stepIndex);
+        auto& spectralTransfers = preparedVoice.spectralTransfersByStep[stepIndex];
+        spectralTransfers.resize(step.inputs.size());
+        for (size_t inputIndex = 0; inputIndex < step.inputs.size(); ++inputIndex) {
+            const auto& input = step.inputs[inputIndex];
+            if (input.magnitudeTransfer.isActive()) {
+                spectralTransfers[inputIndex] = resolveSpectralMagnitudeTransfer(
+                        plan,
+                        input.magnitudeTransfer);
+            }
+        }
         CachedProcessor& cached = processorFor(
                 step.nodeId,
                 voiceIndex,

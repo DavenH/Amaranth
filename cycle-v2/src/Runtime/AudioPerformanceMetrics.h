@@ -40,6 +40,7 @@ public:
         uint16_t scheduledMidiEventCount {};
         uint32_t executionStepVisitCount {};
         uint32_t modulationBindingVisitCount {};
+        uint32_t spectralTransferBindingVisitCount {};
         std::array<uint64_t, stageCount> stageDurations {};
     };
 
@@ -52,6 +53,7 @@ public:
         uint64_t totalVoiceBlocks {};
         uint64_t totalExecutionStepVisits {};
         uint64_t totalModulationBindingVisits {};
+        uint64_t totalSpectralTransferBindingVisits {};
         uint64_t latestGraphRevision {};
         uint32_t maximumFrameCount {};
         uint16_t maximumActiveVoiceCount {};
@@ -101,6 +103,7 @@ private:
         uint64_t totalVoiceBlocks {};
         uint64_t totalExecutionStepVisits {};
         uint64_t totalModulationBindingVisits {};
+        uint64_t totalSpectralTransferBindingVisits {};
         uint64_t latestGraphRevision {};
         uint32_t maximumFrameCount {};
         uint16_t maximumActiveVoiceCount {};

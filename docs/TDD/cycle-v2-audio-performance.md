@@ -65,7 +65,7 @@ counter. Instrumentation cannot back-pressure audio or change rendering.
 | Scope filtering | Every active voice and the global pass scanned all execution steps and rejected the other scope. | Implemented in slice 2: prepared voice/global step indices execute `O(A*Svoice + Sglobal)`, independent of unrelated scope steps. |
 | Per-step context | Each execution rebuilds maximum-capacity input/output metadata, `String` fields, attachments, output-presence scans, and route resolution. | Prebind immutable prepared context/routes once; block work patches only frame, timing, voice, and payload pointers. |
 | Default modulation | Every voice/block scanned every plan buffer and performed configuration downcasts. | Implemented in slice 3a: preparation stores typed source/buffer bindings; block work is `O(M)` rather than `O(B)`. |
-| Spectral transfer | Every spectral input/voice/block repeats downcasts and scans Pan steps. | Resolve transfer bindings in prepared execution state; block lookup is `O(1)` per connected input. |
+| Spectral transfer | Every executor spectral input/voice/block repeated downcasts and scanned Pan steps. | Implemented in slice 3b: preparation resolves transfer values; executor block lookup is `O(1)` per connected input. Oscillator-frame transfer work remains under its authoritative preparation path. |
 | Released voice tail | Every released voice/block scanned all plan steps and resolved processors. | Implemented in slice 2: direct prepared tail processor references make the query `O(T)`. |
 | MIDI scheduling | Every callback sorts all scheduled/future events and moves the remaining suffix. | Do no sort without new events; measure queue depth and moves, then use sorted merge or a bounded heap if the distribution justifies it. |
 | Realtime arenas | Every graph buffer reserves block plus `F*max(F,C)` grid payload in both work and voice-mix arenas. | Separate diagnostic grid storage from realtime block storage; allocate mix storage only for voice/global boundary buffers, then consider lifetime-based slot reuse. |
@@ -245,3 +245,20 @@ This fixture has few unrelated buffers, so the timing change is within Debug
 run noise; the operation-count contract captures the structural improvement.
 
 Artifact: `/private/tmp/cycle-v2-audio-performance-modulation.json`.
+
+## Slice 3b Result (2026-09-15)
+
+Executor preparation now resolves spectral magnitude transfer configuration and
+Pan chains into values indexed by step and input. A block copies the prepared
+value for each active binding; it performs no configuration downcast or Pan
+chain traversal. The scaling test gives one active transfer 128 inert Pan
+indices and proves callback work remains one binding visit.
+
+Baroque Flute telemetry reported zero executor spectral-transfer visits because
+its spectral chain is materialized by the existing oscillator-region renderer,
+not by per-block executor steps. Callback means remained within Debug run noise
+at 0.884, 2.424, 3.431, and 5.950 ms, with zero overruns or telemetry drops.
+The retained oscillator-region path should be profiled separately in slice 5
+before changing its mature frame renderer.
+
+Artifact: `/private/tmp/cycle-v2-audio-performance-spectral.json`.

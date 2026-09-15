@@ -468,6 +468,8 @@ void RealtimeGraphRenderer::renderVoices(
         performanceSample->executionStepVisitCount = operationCounts.stepVisits;
         performanceSample->modulationBindingVisitCount
                 = operationCounts.modulationBindingVisits;
+        performanceSample->spectralTransferBindingVisitCount
+                = operationCounts.spectralTransferBindingVisits;
     }
 }
 
