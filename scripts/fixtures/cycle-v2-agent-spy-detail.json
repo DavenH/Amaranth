@@ -27,8 +27,8 @@
       "command": "pointer",
       "area": "canvas",
       "event": "doubleClick",
-      "x": 292,
-      "y": 850,
+      "x": 980,
+      "y": 880,
       "waitForIdle": true,
       "idleDelayMs": 300
     },
@@ -45,7 +45,7 @@
     {
       "command": "assertState",
       "path": "probeDetailColumns",
-      "equals": 128
+      "equals": 512
     },
     {
       "command": "assertState",

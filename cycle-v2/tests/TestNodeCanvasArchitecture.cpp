@@ -348,6 +348,7 @@ TEST_CASE("Signal probe detail uses the audition-note period resolution",
     REQUIRE(SignalProbeDetailView::resolutionForMidiNote(48) == 512);
     REQUIRE(SignalProbeDetailView::resolutionForMidiNote(60) == 256);
     REQUIRE(SignalProbeDetailView::resolutionForMidiNote(72) == 128);
+    REQUIRE(SignalProbeDetailView::resolutionForMidiNote(36) == 1024);
 
     const Rectangle<float> content { 0.f, 0.f, 1200.f, 610.f };
     const Rectangle<float> detail = SignalProbeDetailView::boundsFor(content);
@@ -516,18 +517,31 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
     REQUIRE(compactBefore.gridColumns == 256);
     REQUIRE(compactBefore.gridRows == 512);
     REQUIRE(compactBefore.values.size() == 256 * 512);
-    const size_t resolution = SignalProbeDetailView::resolutionForMidiNote(60);
+    const size_t resolution = SignalProbeDetailView::resolutionForMidiNote(72);
     const auto detail = presentation.captureProbePreview(
             graph,
             graph.getSignalProbes().front().id,
             resolution,
-            60);
+            72);
 
     REQUIRE(detail.has_value());
     REQUIRE(detail->connected);
-    REQUIRE(detail->gridColumns == resolution / 2);
+    REQUIRE(detail->gridColumns == 512);
     REQUIRE(detail->gridRows == resolution);
     REQUIRE(detail->values.size() == detail->gridColumns * resolution);
+
+    const size_t lowNoteResolution = SignalProbeDetailView::resolutionForMidiNote(36);
+    const auto lowNoteDetail = presentation.captureProbePreview(
+            graph,
+            graph.getSignalProbes().front().id,
+            lowNoteResolution,
+            36);
+    REQUIRE(lowNoteResolution == 1024);
+    REQUIRE(lowNoteDetail.has_value());
+    REQUIRE(lowNoteDetail->gridColumns == 512);
+    REQUIRE(lowNoteDetail->gridRows == 512);
+    REQUIRE(lowNoteDetail->values.size() == 512 * 512);
+
     const GraphPreviewResult::SignalProbePreview& compactAfter =
             presentation.previewResult().probes.front();
     REQUIRE(compactAfter.gridColumns == compactBefore.gridColumns);

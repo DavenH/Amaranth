@@ -85,7 +85,7 @@ public:
     std::optional<GraphPreviewResult::SignalProbePreview> captureProbePreview(
             const NodeGraph& graph,
             const String& probeId,
-            size_t frameCount,
+            size_t rasterRowCount,
             int midiNote) const;
 
 private:

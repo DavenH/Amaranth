@@ -192,7 +192,10 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
             && !(current->volumePurpose && current->declick)) {
         outputBuffer.set(current->neutralValue);
         if (context.captureTraversalGrid) {
-            publishTraversalGrid(output, context.workArena);
+            publishTraversalGrid(
+                    output,
+                    context.traversalColumnCount,
+                    context.workArena);
         }
         publishSingleOutput(context, std::move(output));
         return;
@@ -233,20 +236,26 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
 
     outputBuffer.mul(level);
     if (context.captureTraversalGrid) {
-        publishTraversalGrid(output, context.workArena);
+        publishTraversalGrid(
+                output,
+                context.traversalColumnCount,
+                context.workArena);
     }
     publishSingleOutput(context, std::move(output));
 }
 
 void EnvelopeSignalProcessor::publishTraversalGrid(
         SignalPayload& output,
+        size_t requestedColumns,
         const AudioProcessWorkArena* arena) {
     if (output.block.samples.empty()) {
         clearTraversalGrid(output.traversalGrid);
         return;
     }
 
-    const size_t columns = std::max(defaultTraversalColumns, output.block.samples.size());
+    const size_t columns = requestedColumns > 0
+            ? requestedColumns
+            : std::max(defaultTraversalColumns, output.block.samples.size());
     traversalMemory.ensureSize((int) columns);
     Buffer<float> values = traversalMemory.place((int) columns);
     const EnvelopeConfiguration* current = preparedConfiguration();

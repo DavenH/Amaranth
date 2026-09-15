@@ -85,7 +85,9 @@ public:
         if (context.captureTraversalGrid) {
             publishImageTraversalGrid(
                     output,
-                    std::max(kDefaultTraversalColumns, context.frameCount),
+                    context.traversalColumnCount > 0
+                            ? context.traversalColumnCount
+                            : std::max(kDefaultTraversalColumns, context.frameCount),
                     level,
                     context.workArena);
             if (output.isStereo()) {

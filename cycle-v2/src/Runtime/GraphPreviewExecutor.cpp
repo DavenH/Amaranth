@@ -9,11 +9,57 @@ namespace CycleV2 {
 
 namespace {
 
+size_t reducedProbeRowsForDomain(PortDomain domain, size_t timeRows) {
+    if (domain == PortDomain::SpectralMagnitudeSignal
+            || domain == PortDomain::SpectralPhaseSignal) {
+        return timeRows / 2 + 1;
+    }
+    return timeRows;
+}
+
 uint64_t nextPreviewContentRevision() {
     static std::atomic<uint64_t> nextRevision { 1 };
     return nextRevision.fetch_add(1, std::memory_order_relaxed);
 }
 
+}
+
+void GraphPreviewExecutor::reduceProbeRows(
+        GraphPreviewResult::SignalProbePreview& preview,
+        size_t timeRows) {
+    if (!preview.connected || preview.gridColumns == 0 || preview.gridRows == 0) {
+        return;
+    }
+    const size_t targetRows = reducedProbeRowsForDomain(preview.domain, timeRows);
+    if (targetRows == 0 || targetRows >= preview.gridRows) {
+        return;
+    }
+
+    const bool retainsNyquist = preview.domain == PortDomain::SpectralMagnitudeSignal
+            || preview.domain == PortDomain::SpectralPhaseSignal;
+    const size_t sourceIntervals = retainsNyquist
+            ? preview.gridRows - 1
+            : preview.gridRows;
+    const size_t targetIntervals = retainsNyquist
+            ? targetRows - 1
+            : targetRows;
+    if (targetIntervals == 0 || sourceIntervals % targetIntervals != 0) {
+        return;
+    }
+
+    const int factor = (int) (sourceIntervals / targetIntervals);
+    std::vector<float> reduced(preview.gridColumns * targetRows);
+    for (size_t column = 0; column < preview.gridColumns; ++column) {
+        Buffer<float> source(
+                preview.values.data() + column * preview.gridRows,
+                (int) preview.gridRows);
+        Buffer<float> destination(
+                reduced.data() + column * targetRows,
+                (int) targetRows);
+        destination.downsampleFrom(source, factor);
+    }
+    preview.values = std::move(reduced);
+    preview.gridRows = targetRows;
 }
 
 uint64_t nodePreviewResultFingerprint(const NodePreviewResult& preview) {

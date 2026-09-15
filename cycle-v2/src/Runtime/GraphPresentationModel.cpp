@@ -14,17 +14,15 @@ namespace CycleV2 {
 namespace {
 
 constexpr size_t kCompactPreviewFrameCount = 512;
+constexpr size_t kExpandedProbeColumnCount = 512;
+constexpr size_t kMaximumExpandedProbeRows = 512;
 
 GraphPreviewResult captureProbePreviews(
         const NodeGraph& graph,
         const GraphExecutionPlan& plan,
         size_t frameCount,
         int midiNote) {
-    AudioExecutionSpec spec;
-    spec.maximumFrameCount = frameCount;
-    spec.sampleRate = 44100.0;
     GraphAudioExecutor captureExecutor;
-    captureExecutor.prepareExecution(plan, spec);
 
     AudioVoiceContext voice;
     voice.controls.noteNumber = jlimit(0, 127, midiNote);
@@ -34,7 +32,8 @@ GraphPreviewResult captureProbePreviews(
             plan,
             frameCount,
             {},
-            voice);
+            voice,
+            kExpandedProbeColumnCount);
     return GraphPreviewExecutor().render(
             plan,
             audio,
@@ -616,18 +615,18 @@ std::optional<GraphPreviewResult::SignalProbePreview>
 GraphPresentationModel::captureProbePreview(
         const NodeGraph& graph,
         const String& probeId,
-        size_t frameCount,
+        size_t rasterRowCount,
         int midiNote) const {
-    if (!current.compileResult.succeeded() || frameCount == 0) {
+    if (!current.compileResult.succeeded() || rasterRowCount == 0) {
         return std::nullopt;
     }
 
-    const GraphPreviewResult previews = captureProbePreviews(
+    GraphPreviewResult previews = captureProbePreviews(
             graph,
             current.compileResult.plan,
-            frameCount,
+            rasterRowCount,
             midiNote);
-    const auto found = std::find_if(
+    auto found = std::find_if(
             previews.probes.begin(),
             previews.probes.end(),
             [&](const auto& preview) {
@@ -637,6 +636,9 @@ GraphPresentationModel::captureProbePreview(
         return std::nullopt;
     }
 
+    GraphPreviewExecutor::reduceProbeRows(
+            *found,
+            std::min(rasterRowCount, kMaximumExpandedProbeRows));
     return *found;
 }
 
