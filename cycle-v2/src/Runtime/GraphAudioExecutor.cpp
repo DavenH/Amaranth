@@ -347,26 +347,20 @@ GraphAudioResult GraphAudioExecutor::processInternal(
     realtimeOutput = nullptr;
 
     if (pass != ProcessingPass::Global) {
-        for (size_t bufferIndex = 0; bufferIndex < plan.buffers.size(); ++bufferIndex) {
-            const auto& buffer = plan.buffers[bufferIndex];
-            if (buffer.defaultModulationSlot == DefaultModulationSlot::None) {
-                continue;
-            }
-            const auto configuration = std::dynamic_pointer_cast<
-                    const ModulationTripleConfiguration>(buffer.defaultModulation);
-            if (configuration == nullptr) {
-                continue;
-            }
-            const int sourceIndex = (int) buffer.defaultModulationSlot - 1;
-            SignalPayload& payload = bufferSlots[bufferIndex];
+        if (operationCounts != nullptr) {
+            operationCounts->modulationBindingVisits += (uint32_t)
+                    preparedVoice->second.modulationBindings.size();
+        }
+        for (const auto& binding : preparedVoice->second.modulationBindings) {
+            SignalPayload& payload = bufferSlots[binding.bufferIndex];
             payload.domain = PortDomain::ControlSignal;
             payload.channelLayout = ChannelLayout::Mono;
             payload.block.samples.resize(frameCount);
             ModulationSource::renderAudioBlock(
-                    configuration->sources[(size_t) sourceIndex],
+                    *binding.source,
                     voice,
                     { payload.block.samples.data(), (int) frameCount },
-                    buffer.defaultModulationNoteOffset);
+                    binding.noteOffset);
         }
     }
 
@@ -724,6 +718,27 @@ void GraphAudioExecutor::prepareExecutionInternal(
     preparedVoice.stepIndices.clear();
     preparedVoice.stepIndices.reserve(plan.steps.size());
     preparedVoice.tailProcessors.clear();
+    preparedVoice.modulationBindings.clear();
+    if (pass != ProcessingPass::Global) {
+        preparedVoice.modulationBindings.reserve(plan.buffers.size());
+        for (size_t bufferIndex = 0; bufferIndex < plan.buffers.size(); ++bufferIndex) {
+            const auto& buffer = plan.buffers[bufferIndex];
+            if (buffer.defaultModulationSlot == DefaultModulationSlot::None) {
+                continue;
+            }
+            const auto configuration = std::dynamic_pointer_cast<
+                    const ModulationTripleConfiguration>(buffer.defaultModulation);
+            if (configuration == nullptr) {
+                continue;
+            }
+            const int sourceIndex = (int) buffer.defaultModulationSlot - 1;
+            preparedVoice.modulationBindings.push_back({
+                    bufferIndex,
+                    &configuration->sources[(size_t) sourceIndex],
+                    buffer.defaultModulationNoteOffset
+            });
+        }
+    }
 
     for (size_t stepIndex = 0; stepIndex < plan.steps.size(); ++stepIndex) {
         const auto& step = plan.steps[stepIndex];

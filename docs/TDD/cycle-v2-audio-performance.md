@@ -64,7 +64,7 @@ counter. Instrumentation cannot back-pressure audio or change rendering.
 | Processor retirement | `removeUnreferencedProcessors()` ran after every active voice and global pass, scanning processors, prepared voices, and each voice processor list. | Implemented in slice 2: retirement runs after preparation, before publication; callback cleanup is `O(1)`. |
 | Scope filtering | Every active voice and the global pass scanned all execution steps and rejected the other scope. | Implemented in slice 2: prepared voice/global step indices execute `O(A*Svoice + Sglobal)`, independent of unrelated scope steps. |
 | Per-step context | Each execution rebuilds maximum-capacity input/output metadata, `String` fields, attachments, output-presence scans, and route resolution. | Prebind immutable prepared context/routes once; block work patches only frame, timing, voice, and payload pointers. |
-| Default modulation | Every voice/block scans every plan buffer and performs configuration downcasts. | Compile only actual modulation bindings; iterate `O(M)` rather than `O(B)`. |
+| Default modulation | Every voice/block scanned every plan buffer and performed configuration downcasts. | Implemented in slice 3a: preparation stores typed source/buffer bindings; block work is `O(M)` rather than `O(B)`. |
 | Spectral transfer | Every spectral input/voice/block repeats downcasts and scans Pan steps. | Resolve transfer bindings in prepared execution state; block lookup is `O(1)` per connected input. |
 | Released voice tail | Every released voice/block scanned all plan steps and resolved processors. | Implemented in slice 2: direct prepared tail processor references make the query `O(T)`. |
 | MIDI scheduling | Every callback sorts all scheduled/future events and moves the remaining suffix. | Do no sort without new events; measure queue depth and moves, then use sorted merge or a bounded heap if the distribution justifies it. |
@@ -227,3 +227,21 @@ Artifacts:
 
 - `/private/tmp/cycle-v2-audio-performance-pre-executor.json`
 - `/private/tmp/cycle-v2-audio-performance-report.json`
+
+## Slice 3a Result (2026-09-15)
+
+Preparation now resolves default modulation configurations once and stores only
+the typed source, destination buffer index, and note offset needed by block
+rendering. Realtime execution no longer scans all graph buffers or performs
+configuration downcasts. Telemetry reports binding visits, and a scaling test
+proves that adding 128 unrelated buffers leaves the visit count equal to the
+actual modulation binding count.
+
+The Baroque Flute fixture contains three default modulation bindings per active
+voice. Live telemetry reported exactly `3*A` binding visits for `A` active
+voices (0, 3, 12, and 24 across the four windows), with zero deadline overruns
+and telemetry drops. Callback means were 0.921, 2.427, 3.370, and 5.980 ms.
+This fixture has few unrelated buffers, so the timing change is within Debug
+run noise; the operation-count contract captures the structural improvement.
+
+Artifact: `/private/tmp/cycle-v2-audio-performance-modulation.json`.

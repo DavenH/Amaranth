@@ -2559,6 +2559,49 @@ TEST_CASE("Prepared graph audio processing performs no allocations or locks",
     REQUIRE(locks.count() == 0);
 }
 
+TEST_CASE("Prepared default modulation ignores unrelated graph buffers",
+        "[cycle-v2][runtime][realtime][modulation][performance][complexity]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::ModulationTriple,
+            "preparedTriple",
+            {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "preparedTriple", "modulation", false },
+            { "voice", "modulation", true }).succeeded());
+    auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    const size_t bindingCount = (size_t) std::count_if(
+            compiled.plan.buffers.begin(),
+            compiled.plan.buffers.end(),
+            [](const GraphBufferPlan& buffer) {
+                return buffer.defaultModulationSlot != DefaultModulationSlot::None;
+            });
+    REQUIRE(bindingCount > 0);
+
+    constexpr size_t unrelatedBufferCount = 128;
+    compiled.plan.buffers.resize(
+            compiled.plan.buffers.size() + unrelatedBufferCount);
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 64;
+    GraphAudioExecutor executor;
+    executor.prepareExecution(compiled.plan, spec);
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    GraphExecutionOperationCounts operationCounts;
+    const auto output = executor.processRealtime(
+            compiled.plan,
+            64,
+            {},
+            voice,
+            nullptr,
+            &operationCounts);
+
+    REQUIRE(output.isValid());
+    REQUIRE(operationCounts.modulationBindingVisits == bindingCount);
+}
+
 TEST_CASE("Prepared spectral stage recording performs no allocations",
         "[cycle-v2][runtime][realtime][spectral][parity]") {
     CycleDsp::SpectralStageCaptureRecorder recorder;

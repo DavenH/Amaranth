@@ -466,6 +466,8 @@ void RealtimeGraphRenderer::renderVoices(
     activeVoices.store(activeCount, std::memory_order_relaxed);
     if (performanceSample != nullptr) {
         performanceSample->executionStepVisitCount = operationCounts.stepVisits;
+        performanceSample->modulationBindingVisitCount
+                = operationCounts.modulationBindingVisits;
     }
 }
 

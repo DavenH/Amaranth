@@ -11,6 +11,8 @@
 
 namespace CycleV2 {
 
+struct ModulationSourceConfiguration;
+
 struct NodeAudioResult {
     String nodeId;
     SignalPayload output;
@@ -44,6 +46,7 @@ struct GraphAudioOutputView {
 
 struct GraphExecutionOperationCounts {
     uint32_t stepVisits {};
+    uint32_t modulationBindingVisits {};
 };
 
 class GraphAudioExecutor {
@@ -177,6 +180,12 @@ private:
     };
 
     struct PreparedVoice {
+        struct ModulationBinding {
+            size_t bufferIndex {};
+            const ModulationSourceConfiguration* source {};
+            int noteOffset {};
+        };
+
         struct OscillatorRegion {
             int planRegionIndex { -1 };
             int materializationStepIndex { -1 };
@@ -195,6 +204,7 @@ private:
         std::vector<NodeAudioProcessor*> processors;
         std::vector<size_t> stepIndices;
         std::vector<NodeAudioProcessor*> tailProcessors;
+        std::vector<ModulationBinding> modulationBindings;
         std::vector<std::unique_ptr<OscillatorRegion>> oscillatorRegions;
         std::vector<OscillatorRegion*> oscillatorRegionByStep;
     };
