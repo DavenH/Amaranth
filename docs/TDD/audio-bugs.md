@@ -693,3 +693,20 @@ Context:
 - Manifest tests now resolve those tracked fixtures at their current location.
 
 Current status: resolved; the full converter test module passes.
+
+## P2: Astral realtime fixture still references the pre-migration preset path
+
+Context:
+
+- A fresh `standalone-debug` build on 2026-09-15 passed the focused prepared
+  realtime suite (9 cases, 118 assertions), but the broader
+  `[cycle-v2][audio-device][realtime]` run failed one of 16 cases at
+  `TestRealtimeGraphRenderer.cpp:66` because `loaded.succeeded()` was false.
+- `renderAstralRealtimeNote()` loads
+  `cycle-v2/content/presets/astral.cyclegraph`, while the tracked legacy file is
+  now `cycle-v2/content/presets/old/astral.cyclegraph` and the current variants
+  have distinct names.
+- The failure occurs during fixture loading before realtime rendering.
+
+Current status: open; choose the intended Astral parity fixture and update the
+test path without weakening its audio assertions.
