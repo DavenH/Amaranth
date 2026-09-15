@@ -41,6 +41,9 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     keyboard.setPreviewNoteSelectedCallback([this](int midiNote) {
         canvas.setPreviewMidiNote(midiNote);
     });
+    keyboard.setModWheelValueChangedCallback([this](int value) {
+        canvas.setPreviewModWheelValue(value);
+    });
     startTimerHz(30);
     timerCallback();
 }
@@ -49,6 +52,7 @@ NodeWorkspace::~NodeWorkspace() {
     stopTimer();
     canvas.setOverlayOcclusionChangedCallback({});
     canvas.setPreviewPlaybackToggleCallback({});
+    keyboard.setModWheelValueChangedCallback({});
     keyboard.releaseAllNotes();
 }
 

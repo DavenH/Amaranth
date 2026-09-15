@@ -100,6 +100,7 @@ public:
     float graphOutputGain() const;
     int previewMidiNote() const { return presentation.previewMidiNote(); }
     bool setPreviewMidiNote(int midiNote);
+    bool setPreviewModWheelValue(int value);
     Rectangle<int> performanceKeyboardDockBounds() const;
     Rectangle<float> expandedEditorBoundsForOverlay() const;
     void setOverlayOcclusionChangedCallback(std::function<void()> callback);

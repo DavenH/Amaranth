@@ -187,7 +187,12 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
         keyboard.shiftOctave(1);
     };
     playButton.onClick = [this] { togglePlayback(); };
-    modWheel.onValueChanged = [this](int) { sendModWheelValue(); };
+    modWheel.onValueChanged = [this](int value) {
+        sendModWheelValue();
+        if (modWheelValueChanged) {
+            modWheelValueChanged(value);
+        }
+    };
     keyboard.setPrimaryGestureStartedCallback([this] { stopPlayback(); });
     keyboard.setHighlightedNote(selectedPreviewNote);
 }
@@ -261,6 +266,11 @@ void PerformanceKeyboardPanel::setPreviewNoteSelectedCallback(
             callback(note);
         }
     });
+}
+
+void PerformanceKeyboardPanel::setModWheelValueChangedCallback(
+        std::function<void(int)> callback) {
+    modWheelValueChanged = std::move(callback);
 }
 
 void PerformanceKeyboardPanel::setModWheelValue(int value) {

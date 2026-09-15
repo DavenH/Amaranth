@@ -37,6 +37,13 @@ respond. Starting preview playback emits the stored CC 1 value immediately
 before note-on, guaranteeing that spacebar audition uses the selected value
 even after renderer or graph lifecycle changes.
 
+The same adjustment also updates the transient presentation snapshot. Preview
+audio and direct node previews receive the normalized CC 1 value through their
+existing control contexts, then the established preview invalidation path
+refreshes downstream compact previews and signal-probe spies. Expanded spy
+capture reads the same snapshot value. This is presentation state only: it does
+not mutate, serialize, compile, or revise the durable graph.
+
 At normal canvas sizes, `CanvasUtilityDock` centres the complete keyboard panel
 at the top margin. The panel widens only enough to accommodate the wheel while
 retaining 25-pixel white keys. The top-left status width is capped before the
@@ -47,6 +54,8 @@ horizontally centred and fully contained.
 ## Complexity And Boundaries
 
 - Pointer movement, value publication, playback start, and layout remain O(1).
+- Preview recomputation is bounded by the existing downstream preview product;
+  it does not compile, publish an audio plan, or prepare durable resources.
 - No graph clone, serialization, compilation, resource preparation, or durable
   mutation occurs during a wheel drag.
 - The panel translates a transient value to an existing MIDI CC message only;
@@ -59,6 +68,8 @@ horizontally centred and fully contained.
   CC 1 with the matching 7-bit value.
 - Preview start emits CC 1 before the selected note-on; stop still emits the
   matching note-off.
+- Two successive wheel updates refresh node previews and connected spies with
+  the matching normalized CC 1 value without compilation or audio publication.
 - Automation exposes and can drag the mod wheel through the real keyboard
   target contract.
 - Normal layout centres the panel at the canvas top, preserves 25-pixel white
@@ -93,3 +104,16 @@ horizontally centred and fully contained.
   unavailable in this environment. The full 1,065-test CTest run retains 40
   unrelated preset/audio failures recorded in `audio-bugs.md`; all keyboard
   and layout tests pass within the same discovery.
+- Wheel changes now enter the presentation snapshot as normalized CC 1 for
+  both audio traversal and direct node previews. Invalidation starts only at
+  modulation-source configurations that consume the mod wheel (including MIDI
+  CC 1 mappings) and propagates through the existing downstream preview graph.
+  Those roots are cached when DSP configurations publish, so pointer movement
+  does not scan unrelated graph nodes to rediscover them.
+- The focused presentation test performs two wheel updates and verifies the
+  modulation preview, compact spy, and expanded spy all change, while an
+  unrelated modulation branch's process count, compilation count, and audio
+  plan revision remain unchanged. The three focused CTest cases pass with 52
+  assertions total, and the standalone target builds with `--parallel 10`.
+- The real pointer-path preview-transport fixture passes all 20 commands with
+  a final wheel value of 95 and no filtered launch-log errors.

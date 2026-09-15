@@ -193,6 +193,10 @@ TEST_CASE("Performance mod wheel drag controls preview CC 1 and audition start",
     RecordingMidiSink sink;
     PerformanceKeyboardPanel panel(state, sink);
     panel.setBounds(0, 0, 489, 140);
+    std::vector<int> previewValues;
+    panel.setModWheelValueChangedCallback([&previewValues](int value) {
+        previewValues.push_back(value);
+    });
 
     Component* wheel = nullptr;
     for (int i = 0; i < panel.getNumChildComponents(); ++i) {
@@ -219,10 +223,12 @@ TEST_CASE("Performance mod wheel drag controls preview CC 1 and audition start",
     REQUIRE(sink.messages.back().isController());
     REQUIRE(sink.messages.back().getControllerNumber() == 1);
     REQUIRE(sink.messages.back().getControllerValue() == 127);
+    REQUIRE(previewValues.back() == 127);
 
     REQUIRE(wheel->keyPressed(KeyPress(KeyPress::downKey)));
     REQUIRE(panel.modWheelValue() == 126);
     REQUIRE(sink.messages.back().getControllerValue() == 126);
+    REQUIRE(previewValues.back() == 126);
 
     panel.setPreviewNote(55);
     sink.messages.clear();

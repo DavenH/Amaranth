@@ -107,6 +107,7 @@ public:
     bool isPlaying() const { return playing; }
     void setPreviewNote(int midiNote);
     void setPreviewNoteSelectedCallback(std::function<void(int)> callback);
+    void setModWheelValueChangedCallback(std::function<void(int)> callback);
     void setModWheelValue(int value);
     void setPlaybackDurationSeconds(float seconds);
     bool startPlayback(double nowMilliseconds);
@@ -172,6 +173,8 @@ private:
     float playbackDuration { 1.f };
     float progress {};
     double playbackStartedAtMilliseconds {};
+
+    std::function<void(int)> modWheelValueChanged;
 
     MidiKeyboardState& keyboardState;
     MidiEventSink& eventSink;

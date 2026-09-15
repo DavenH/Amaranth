@@ -20,6 +20,7 @@ namespace CycleV2 {
 struct GraphPresentationSnapshot {
     uint64_t graphRevision {};
     int previewMidiNote { 48 };
+    int previewModWheelValue {};
     GraphCompileResult compileResult;
     RuntimeProcessTrace runtimeTrace;
     GraphPreviewResult previewResult;
@@ -44,6 +45,10 @@ public:
             const NodeGraph& graph,
             uint64_t documentRevision,
             int midiNote);
+    bool refreshPreviewModWheelValue(
+            const NodeGraph& graph,
+            uint64_t documentRevision,
+            int value);
     void refreshAsync(
             NodeGraph graph,
             uint64_t documentRevision,
@@ -66,6 +71,7 @@ public:
     const RuntimeProcessTrace& runtimeTrace() const { return current.runtimeTrace; }
     const GraphPreviewResult& previewResult() const { return current.previewResult; }
     int previewMidiNote() const { return current.previewMidiNote; }
+    int previewModWheelValue() const { return current.previewModWheelValue; }
     uint64_t revision() const { return presentationRevision; }
     uint64_t audioPlanRevision() const { return audioRevision; }
     size_t compilationCount() const { return compilations; }
@@ -112,6 +118,10 @@ private:
 
     bool requiresCompilation(const GraphChangeSet& change) const;
     bool requiresPreview(const GraphChangeSet& change) const;
+    bool refreshPreviewControls(
+            const NodeGraph& graph,
+            uint64_t documentRevision,
+            std::vector<String> rootNodeIds);
     void refreshConfigurations(
             const NodeGraph& graph,
             GraphExecutionPlan& plan,
@@ -156,6 +166,7 @@ private:
     uint64_t publishedGeneration {};
     std::optional<EditIdentity> latestMovementIdentity;
     String latestMovementStream;
+    std::vector<String> modWheelPreviewRootNodeIds;
     MessageThreadWorker asyncWorker;
     std::shared_ptr<AsyncState> asyncState;
     GraphPresentationPerformanceMetrics performance;

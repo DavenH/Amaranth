@@ -7,6 +7,7 @@
 #include "Runtime/PreviewPitchResolver.h"
 
 #include "Nodes/Control/ModulationSource.h"
+#include "Nodes/Control/ModulationTriple.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 
 namespace CycleV2 {
@@ -17,15 +18,46 @@ constexpr size_t kCompactPreviewFrameCount = 512;
 constexpr size_t kExpandedProbeColumnCount = 512;
 constexpr size_t kMaximumExpandedProbeRows = 512;
 
+bool usesModWheel(const ModulationSourceConfiguration& configuration) {
+    return configuration.mode == ModulationSourceMode::ModWheel
+            || (configuration.mode == ModulationSourceMode::MidiController
+                    && configuration.controller == 1);
+}
+
+std::vector<String> modWheelPreviewRoots(const GraphExecutionPlan& plan) {
+    std::vector<String> roots;
+    for (const auto& step : plan.steps) {
+        if (const auto source = std::dynamic_pointer_cast<
+                    const ModulationSourceConfiguration>(step.configuration.value)) {
+            if (usesModWheel(*source)) {
+                roots.push_back(step.nodeId);
+            }
+            continue;
+        }
+        const auto triple = std::dynamic_pointer_cast<
+                const ModulationTripleConfiguration>(step.configuration.value);
+        if (triple != nullptr
+                && std::any_of(
+                        triple->sources.begin(),
+                        triple->sources.end(),
+                        usesModWheel)) {
+            roots.push_back(step.nodeId);
+        }
+    }
+    return roots;
+}
+
 GraphPreviewResult captureProbePreviews(
         const NodeGraph& graph,
         const GraphExecutionPlan& plan,
         size_t frameCount,
-        int midiNote) {
+        int midiNote,
+        int modWheelValue) {
     GraphAudioExecutor captureExecutor;
 
     AudioVoiceContext voice;
     voice.controls.noteNumber = jlimit(0, 127, midiNote);
+    voice.controls.controllers[1] = (float) jlimit(0, 127, modWheelValue) / 127.f;
     voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     const GraphAudioResult audio = captureExecutor.process(
             graph,
@@ -134,6 +166,7 @@ bool GraphPresentationModel::refresh(
     if (accepted && (compile
             || change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration))) {
+        modWheelPreviewRootNodeIds = modWheelPreviewRoots(current.compileResult.plan);
         ++audioRevision;
     }
     performance.record(
@@ -170,12 +203,44 @@ bool GraphPresentationModel::refreshPreviewMidiNote(
     current.previewMidiNote = selectedNote;
     hasExplicitPreviewMidiNote = true;
 
+    std::vector<String> roots;
+    roots.reserve(graph.getNodes().size());
+    for (const auto& node : graph.getNodes()) {
+        roots.push_back(node.id);
+    }
+    return refreshPreviewControls(graph, documentRevision, std::move(roots));
+}
+
+bool GraphPresentationModel::refreshPreviewModWheelValue(
+        const NodeGraph& graph,
+        uint64_t documentRevision,
+        int value) {
+    const int selectedValue = jlimit(0, 127, value);
+    if (current.previewModWheelValue == selectedValue) {
+        return true;
+    }
+
+    asyncState->generation.fetch_add(1);
+    asyncWorker.cancelAndWait();
+    current.previewModWheelValue = selectedValue;
+
+    return refreshPreviewControls(
+            graph,
+            documentRevision,
+            modWheelPreviewRootNodeIds);
+}
+
+bool GraphPresentationModel::refreshPreviewControls(
+        const NodeGraph& graph,
+        uint64_t documentRevision,
+        std::vector<String> rootNodeIds) {
+    if (rootNodeIds.empty()) {
+        return true;
+    }
+
     GraphChangeSet change;
     change.parameterImpacts = ParameterImpact::Preview;
-    change.nodeIds.reserve(graph.getNodes().size());
-    for (const auto& node : graph.getNodes()) {
-        change.nodeIds.push_back(node.id);
-    }
+    change.nodeIds = std::move(rootNodeIds);
     return refresh(graph, documentRevision, change);
 }
 
@@ -355,9 +420,13 @@ bool GraphPresentationModel::renderPreviewProducts(
     previewAudioExecutor.prepareExecution(snapshot.compileResult.plan, spec);
     AudioVoiceContext previewVoice;
     previewVoice.controls.noteNumber = snapshot.previewMidiNote;
+    previewVoice.controls.controllers[1]
+            = (float) snapshot.previewModWheelValue / 127.f;
     previewVoice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     PreviewControlContext previewControls;
     previewControls.noteNumber = snapshot.previewMidiNote;
+    previewControls.controllers[1]
+            = (float) snapshot.previewModWheelValue / 127.f;
     previewControls.lowestNote = Constants::LowestMidiNote;
     previewControls.highestNote = Constants::HighestMidiNote;
     previewControls.traverseVoiceTime = true;
@@ -471,6 +540,7 @@ std::function<void()> GraphPresentationModel::publishAsyncRefresh(
                 return product.product == UpdateProduct::AudioConfiguration;
             });
     if (audioConfigurationPublished) {
+        modWheelPreviewRootNodeIds = modWheelPreviewRoots(current.compileResult.plan);
         ++audioRevision;
     }
     if (refresh->previewRendered) {
@@ -625,7 +695,8 @@ GraphPresentationModel::captureProbePreview(
             graph,
             current.compileResult.plan,
             rasterRowCount,
-            midiNote);
+            midiNote,
+            current.previewModWheelValue);
     auto found = std::find_if(
             previews.probes.begin(),
             previews.probes.end(),
@@ -738,6 +809,7 @@ CausalUpdateRequest GraphPresentationModel::updateRequest(
     }
     effectiveFingerprint = FingerprintBuilder(effectiveFingerprint)
             .add(current.previewMidiNote)
+            .add(current.previewModWheelValue)
             .value();
     const EditPhase phase = documentRevision > current.graphRevision
             ? EditPhase::Commit

@@ -268,6 +268,65 @@ TEST_CASE("Preview MIDI note refreshes key-scale previews without publishing aud
                     Constants::HighestMidiNote)));
 }
 
+TEST_CASE("Preview mod wheel refreshes modulation previews and spies without publishing audio",
+        "[cycle-v2][runtime][preview-mod-wheel][modulation][probe]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "mod", {}));
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "constant", {}));
+    graph.replaceNodeParameters("constant", {
+            { "source", "Source", "constant" },
+            { "controller", "Controller", "1" },
+            { "constant", "Constant", "0.5" }
+    });
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "mod", "value", "mesh", "blue",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "voice", "context", "mesh", "context",
+            PortDomain::DomainContext, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "mesh", "out", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 2, 0.5f).succeeded());
+
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(graph, 1));
+    const size_t compilationCount = presentation.compilationCount();
+    const uint64_t audioPlanRevision = presentation.audioPlanRevision();
+    const size_t unrelatedProcessCount = presentation.previewAudioProcessCount("constant");
+
+    REQUIRE(presentation.refreshPreviewModWheelValue(graph, 1, 32));
+    const auto lowerProbe = findProbePreview(
+            presentation.previewResult(), graph.getSignalProbes().front().id);
+    const auto lowerDetail = presentation.captureProbePreview(
+            graph, graph.getSignalProbes().front().id, 64, 48);
+    REQUIRE(lowerDetail.has_value());
+    REQUIRE(findNodePreview(presentation.previewResult(), "mod").primary.front()
+            == Catch::Approx(32.f / 127.f));
+
+    REQUIRE(presentation.refreshPreviewModWheelValue(graph, 1, 96));
+    const auto& higherProbe = findProbePreview(
+            presentation.previewResult(), graph.getSignalProbes().front().id);
+    const auto higherDetail = presentation.captureProbePreview(
+            graph, graph.getSignalProbes().front().id, 64, 48);
+    REQUIRE(higherDetail.has_value());
+    REQUIRE(presentation.previewModWheelValue() == 96);
+    REQUIRE(findNodePreview(presentation.previewResult(), "mod").primary.front()
+            == Catch::Approx(96.f / 127.f));
+    REQUIRE(higherProbe.values != lowerProbe.values);
+    REQUIRE(higherDetail->values != lowerDetail->values);
+    REQUIRE(presentation.compilationCount() == compilationCount);
+    REQUIRE(presentation.audioPlanRevision() == audioPlanRevision);
+    REQUIRE(presentation.previewAudioProcessCount("constant") == unrelatedProcessCount);
+}
+
 TEST_CASE("Runtime keeps scratch attachments separate from signal inputs", "[cycle-v2][runtime]") {
     const NodeGraph graph = NodeGraph::createDemoGraph();
     const auto compileResult = GraphCompiler().compile(graph);

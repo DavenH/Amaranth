@@ -1813,6 +1813,18 @@ bool NodeCanvas::setPreviewMidiNote(int midiNote) {
     return true;
 }
 
+bool NodeCanvas::setPreviewModWheelValue(int value) {
+    if (!presentation.refreshPreviewModWheelValue(
+                commands.editingGraph(),
+                document.revision(),
+                value)) {
+        return false;
+    }
+    refreshProbeDetail();
+    requestCanvasRepaint();
+    return true;
+}
+
 Rectangle<int> NodeCanvas::performanceKeyboardDockBounds() const {
     return CanvasUtilityDock::layout(canvasContentBounds()).keyboard.toNearestInt();
 }
