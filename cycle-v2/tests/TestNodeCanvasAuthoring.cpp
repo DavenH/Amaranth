@@ -150,13 +150,16 @@ TEST_CASE("Node canvas authoring keeps a toggled selection and bulk move in one 
             authoring.session().selectedNodeIds,
             "wave",
             waveStart.translated(25.f, 12.f)));
-    authoring.commitNodeMoveGesture();
+    const auto moveResult = authoring.commitNodeMoveGesture();
 
+    REQUIRE(moveResult.graphChanged);
+    REQUIRE(document.isDirty());
     REQUIRE(document.graph().findNode("wave")->bounds
             == waveStart.translated(25.f, 12.f));
     REQUIRE(document.graph().findNode("out")->bounds
             == outStart.translated(25.f, 12.f));
     REQUIRE(document.undo());
+    REQUIRE_FALSE(document.isDirty());
     REQUIRE(document.graph().findNode("wave")->bounds == waveStart);
     REQUIRE(document.graph().findNode("out")->bounds == outStart);
 }

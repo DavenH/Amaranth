@@ -2,7 +2,7 @@
   "commands": [
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/spectral-reference.cyclegraph"
+      "path": "../../cycle-v2/content/presets/old/spectral-reference.cyclegraph"
     },
     {
       "command": "captureAudio",

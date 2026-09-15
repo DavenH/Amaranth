@@ -88,7 +88,7 @@ public:
             const std::vector<juce::String>& nodeIds,
             juce::Point<float> offset);
     void beginCompoundEdit();
-    void commitCompoundEdit();
+    bool commitCompoundEdit();
     void cancelCompoundEdit();
     void beginTransientEdit();
     void commitTransientEdit();

@@ -456,6 +456,27 @@ TEST_CASE("Legacy pierce preset restores modulation matrix wiring", "[cycle][pre
     REQUIRE(hasMapping(modMatrix.mappings, ModMatrixPanel::ModWheel, ModMatrixPanel::TimeSurfId, ModMatrixPanel::BlueDim));
 }
 
+TEST_CASE("Modulation matrix JSON preserves Utility values", "[cycle][preset][mod-matrix]") {
+    CycleTestHarness harness;
+    auto& modMatrix = harness.getRepo().get<ModMatrixPanel>("ModMatrixPanel");
+    modMatrix.initializeDefaults();
+    modMatrix.getParamGroup().setKnobValue(0, 0.23f, false);
+    modMatrix.getParamGroup().setKnobValue(19, 0.87f, false);
+
+    var encoded = modMatrix.writeJSON();
+    modMatrix.getParamGroup().setKnobValue(0, 0.0f, false);
+    modMatrix.getParamGroup().setKnobValue(19, 0.0f, false);
+
+    REQUIRE(modMatrix.readJSON(encoded));
+    REQUIRE(modMatrix.getUtilityValue(0) == Approx(0.23f));
+    REQUIRE(modMatrix.getUtilityValue(19) == Approx(0.87f));
+
+    encoded.getDynamicObject()->removeProperty("utilities");
+    REQUIRE(modMatrix.readJSON(encoded));
+    REQUIRE(modMatrix.getUtilityValue(0) == Approx(0.0f));
+    REQUIRE(modMatrix.getUtilityValue(19) == Approx(0.0f));
+}
+
 TEST_CASE("Guide curve noise contribution is bipolar", "[cycle][guide-curves]") {
     CycleTestHarness harness;
     auto& guidePanel = harness.getRepo().get<GuideCurvePanel>("GuideCurvePanel");

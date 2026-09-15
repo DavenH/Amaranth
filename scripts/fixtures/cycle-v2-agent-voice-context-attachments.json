@@ -1,6 +1,6 @@
 {
   "commands": [
-    { "command": "openGraph", "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph" },
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/old/baroque-flute.cyclegraph" },
     { "command": "deleteNode", "nodeId": "morph" },
     { "command": "deleteNode", "nodeId": "timeLayer1" },
     { "command": "deleteNode", "nodeId": "fft" },

@@ -1,0 +1,45 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/resources/default.cyclegraph"
+    },
+    { "command": "assertState", "path": "documentDirty", "equals": false },
+    { "command": "assertState", "path": "windowTitle", "equals": "cycle-v2 - default" },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "node:voice",
+      "targetX": 0.5,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "node:voice",
+      "downTargetId": "node:voice",
+      "targetX": 0.7,
+      "targetY": 0.5,
+      "downTargetX": 0.5,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "node:voice",
+      "downTargetId": "node:voice",
+      "targetX": 0.7,
+      "targetY": 0.5,
+      "downTargetX": 0.5,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    { "command": "assertState", "path": "documentDirty", "equals": true },
+    { "command": "assertState", "path": "windowTitle", "equals": "cycle-v2 - default*" },
+    { "command": "undo" },
+    { "command": "assertState", "path": "documentDirty", "equals": false },
+    { "command": "assertState", "path": "windowTitle", "equals": "cycle-v2 - default" }
+  ],
+  "quit": true
+}

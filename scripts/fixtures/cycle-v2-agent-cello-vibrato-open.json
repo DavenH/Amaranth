@@ -2,7 +2,7 @@
   "commands": [
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/time.cyclegraph"
+      "path": "../../cycle-v2/content/presets/old/time.cyclegraph"
     },
     {
       "command": "pointer",
@@ -19,7 +19,7 @@
     },
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/cello-vibrato.cyclegraph"
+      "path": "../../cycle-v2/content/presets/old/cello-vibrato.cyclegraph"
     },
     { "command": "waitForIdle", "idleDelayMs": 1000 },
     {
@@ -49,12 +49,12 @@
     },
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/solo-string-2.cyclegraph"
+      "path": "../../cycle-v2/content/presets/old/solo-string-2.cyclegraph"
     },
     { "command": "waitForIdle", "idleDelayMs": 300 },
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/cello-vibrato.cyclegraph"
+      "path": "../../cycle-v2/content/presets/old/cello-vibrato.cyclegraph"
     },
     { "command": "waitForIdle", "idleDelayMs": 1000 },
     {

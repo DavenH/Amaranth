@@ -1017,6 +1017,7 @@ var ModMatrixPanel::writeJSON() const {
     json->setProperty("inputs", var(inputsArray));
     json->setProperty("outputs", var(outputsArray));
     json->setProperty("mappings", var(mappingsArray));
+    json->setProperty("utilities", paramGroup->writeKnobJSON());
 
     return PresetJson::toVar(json);
 }
@@ -1077,6 +1078,15 @@ bool ModMatrixPanel::readJSON(const var& object) {
     }
 
     sanitizeMappings();
+
+    const var utilities = PresetJson::property(object, "utilities");
+    if (!utilities.isVoid()) {
+        paramGroup->readKnobJSON(utilities);
+    } else {
+        for (int index = 0; index < paramGroup->getNumParams(); ++index) {
+            paramGroup->setKnobValue(index, 0.0, false);
+        }
+    }
 
     if (inputs.isEmpty() || outputs.isEmpty()) {
         initializeDefaults();

@@ -35,6 +35,7 @@ namespace {
     Identifier schemaVersionKey("schemaVersion");
     Identifier presetKey("preset");
     constexpr double legacyPhaseAmpVersionEnd = 1.1;
+    constexpr int modMatrixUtilityCount = 20;
 
     enum ModMatrixInputId {
             VoiceTimeInput      = 1
@@ -128,6 +129,13 @@ namespace {
         mappings.add(PresetJson::toVar(mapping));
     }
 
+    var defaultModMatrixUtilities() {
+        Array<var> utilities;
+        utilities.resize(modMatrixUtilityCount);
+        utilities.fill(0.0);
+        return var(utilities);
+    }
+
     var createLegacyDefaultModMatrix(const var& meshLibrary, int legacyModMappingId) {
         auto json = PresetJson::object();
         Array<var> inputs, outputs, mappings;
@@ -173,6 +181,7 @@ namespace {
         json->setProperty("inputs", var(inputs));
         json->setProperty("outputs", var(outputs));
         json->setProperty("mappings", var(mappings));
+        json->setProperty("utilities", defaultModMatrixUtilities());
         return PresetJson::toVar(json);
     }
 
@@ -910,6 +919,7 @@ namespace {
         json->setProperty("inputs", var(inputs));
         json->setProperty("outputs", var(outputs));
         json->setProperty("mappings", var(mappings));
+        json->setProperty("utilities", defaultModMatrixUtilities());
         return PresetJson::toVar(json);
     }
 

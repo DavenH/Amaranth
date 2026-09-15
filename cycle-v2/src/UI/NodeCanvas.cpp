@@ -776,12 +776,12 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
         if (nodeDrag->moved
                 && nodeDrag->nodeIds.size() == 1
                 && spliceSelectedNodeIntoEdgeAt(event.position)) {
-            authoring.commitNodeMoveGesture();
+            applyAuthoringResult(authoring.commitNodeMoveGesture());
             requestCanvasRepaint();
             return;
         }
 
-        authoring.commitNodeMoveGesture();
+        applyAuthoringResult(authoring.commitNodeMoveGesture());
     } else if (const auto* connection = std::get_if<ConnectionCompletion>(&completion);
             connection != nullptr && connection->target.has_value()) {
         const auto result = authoring.connectPorts(connection->source, *connection->target);

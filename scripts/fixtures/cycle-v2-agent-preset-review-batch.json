@@ -1,0 +1,40 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/pick-chorus.cyclegraph"
+    },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    { "command": "assertNodeParameter", "nodeId": "voice", "parameterId": "voiceLength", "equals": "0.421487603" },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-pick-chorus-review.png" },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/res-lead.cyclegraph"
+    },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    { "command": "assertNodeParameter", "nodeId": "voice", "parameterId": "voiceLength", "equals": "0.404580153" },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-res-lead-review.png" },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/squelch.cyclegraph"
+    },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    { "command": "assertNodeParameter", "nodeId": "voice", "parameterId": "voiceLength", "equals": "0.374807119" },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-squelch-review.png" },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/trance-stab-4.cyclegraph"
+    },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    { "command": "assertNodeParameter", "nodeId": "voice", "parameterId": "voiceLength", "equals": "0.389312977" },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-trance-stab-4-review.png" },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/acidic-3.cyclegraph"
+    },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    { "command": "assertNodeParameter", "nodeId": "voice", "parameterId": "voiceLength", "equals": "0.427480916" },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-acidic-3-review.png" }
+  ],
+  "quit": true
+}

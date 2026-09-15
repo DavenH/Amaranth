@@ -154,8 +154,12 @@ TEST_CASE("PresetMigrator migrates current XML sections into V2 JSON", "[preset]
     REQUIRE(bool(property(property(morphPanel, "rangeEnabled"), "blue")));
 
     const auto& mappings = requireArray(property(property(preset, "modMatrix"), "mappings"));
+    const auto& utilities = requireArray(property(property(preset, "modMatrix"), "utilities"));
     REQUIRE(mappings.size() == 1);
     REQUIRE(int(property(mappings.getReference(0), "dim")) == 1);
+    REQUIRE(utilities.size() == 20);
+    REQUIRE(double(utilities.getReference(0)) == Approx(0.0));
+    REQUIRE(double(utilities.getReference(19)) == Approx(0.0));
 }
 
 TEST_CASE("PresetMigrator remaps legacy V1 XML sections into current mesh groups", "[preset][migration]") {

@@ -2,12 +2,11 @@
 
 ## Status
 
-In progress: legacy-library migration is complete for the original 229-source
-inventory, but the later 2014--15 archive exposed an additional Cycle 1 XML
-compatibility boundary. Generated graphs omit structural no-ops, preserve
-authored spectral range on Trimesh, and use compact, authorable,
-non-overlapping layouts. The compatibility follow-up below must complete before
-the expanded library is considered migrated.
+Complete for every representable preset in the expanded 276-source inventory.
+Thirty presets remain explicitly blocked by Cycle V2 normalized model or
+individual-Unison limits; no partial graph is emitted for them. Generated
+graphs omit structural no-ops, preserve authored modulation and spectral state,
+and use compact, authorable, non-overlapping layouts.
 
 ## Goal
 
@@ -106,6 +105,41 @@ collapsed Guide and IR Modeller shapes. Successfully translated pre-1.1 meshes
 are marked with the current mesh format version, matching
 `Mesh::updateToVersion()`; newer meshes pass through unchanged.
 
+### Arbitrary legacy modulation matrices
+
+Cycle 1's `ModMatrixPanel::route()` is authoritative for matrix semantics: each
+valid `(input, output, dimension)` tuple assigns one source to one destination
+axis, and tuple order has no meaning. The 2014--15 library contains reordered
+default matrices, intentionally sparse destinations, per-destination MIDI CC
+sources, and Utility inputs. Comparing the serialized list against one fixed
+ordering therefore rejects representable state.
+
+Cycle 1 canonical export must include the twenty live Utility knob values owned
+by `ModMatrixPanel` alongside inputs, outputs, and mappings. This is narrow state
+exposure only; the mature legacy document loader remains responsible for
+restoring the knobs before export. Current JSON reads restore the optional array
+and retain zero defaults when older canonical data omits it.
+
+The converter decodes each valid output ID to its exact retained Trimesh or
+Envelope axis. One Modulation Triple attached to Voice Context carries the
+modal source for each axis, including a constant at the authored morph position
+when an axis is usually unmapped. Minority mappings use a target-local
+Modulation Triple connected directly to the affected axes; this represents up
+to three overrides without a row of redundant single-source nodes. An absent
+tuple remains the node's authored constant. This reuses Cycle V2's existing
+explicit modulation inputs and source runtime unchanged. MIDI input 101 remains
+Mod Wheel, other 100--199 inputs become their numbered MIDI CC, and valid
+Utility inputs 200--219 become their exported constant values. Historical
+input IDs above the twenty actual Utility knobs were never driven by
+`updateDsp()` in Cycle 1 and therefore retain the authored morph position.
+Conflicting sources for one destination axis and references to unavailable
+live Utility state remain explicit blockers.
+
+The stable end state is native Cycle V2 graph modulation: there is no runtime
+legacy matrix adapter. Generated layout keeps each override Triple adjacent to
+its consumer, above magnitude/time targets or below phase targets, and avoids
+routing control cables through unrelated nodes.
+
 ### Layer enablement
 
 Cycle 1's `properties.active` is authored layer state for connected or populated
@@ -148,10 +182,20 @@ spectral fan-in, IFFT, effects, and Output. Magnitude meshes sit in aligned rows
 above their accumulator operations; phase meshes use corresponding rows below.
 Layer stacks remain in monotonic lanes because the operation rotator always
 keeps its output on the right; a generated switchback would otherwise persist a
-layout the user could not reproduce. Modulation, Unison, pitch, scratch, and
-inactive Envelope nodes occupy aligned auxiliary lanes without competing with
-the audio spine. The active pitch Envelope is placed immediately left of Voice
-with their connected ports aligned.
+layout the user could not reproduce. Voice Context configuration sources occupy
+one ordered column to its left, matching the destination-port order: Modulation
+Triple, pitch Envelope, Unison, and the inherited scratch Envelope when present.
+Voice Context is vertically centred against that compact stack, and the audio
+mesh chain continues to its right. Scratch Envelopes assigned to individual
+Cycle 1 mesh channels remain local attachments in a separate auxiliary lane.
+
+Cycle 1 `scratchChannel` is authoritative per time, magnitude, and phase layer.
+The converter attaches each effective scratch Envelope only to meshes selecting
+its channel; a complete common fanout may collapse to the equivalent Voice
+Context default. A missing or inactive scratch Envelope leaves the corresponding
+scratch port unconnected and uses voice time. An active scratch entry with a
+missing canonical mesh blocks conversion instead of borrowing Cycle V2's
+default volume-envelope geometry.
 
 The layout contract is mechanical: no compact node rectangles overlap after
 Cycle V2 resolves their natural sizes, ordinary horizontal gaps are consistent,
@@ -213,6 +257,14 @@ configuration attachments, and processing attachments are excluded because
 their distribution/bundle geometry is distinct; missing obstacle-aware routing
 for domain-context fanout is recorded in `ui-bugs.md`.
 
+A direct two-Trimesh spectral operation uses a vertical operand column feeding
+a right-hand Add or Multiply through default right-to-left ports. A scratch
+Envelope shared by that column sits to its left and centers across the targets,
+so its fanout does not cross either node. Port rotations remain available for
+longer accumulator chains where vertical clearance requires them. The explicit
+global-audio lane stays below and near the left side of the voice graph instead
+of being pushed below the deepest spectral auxiliary.
+
 ### Empty spectral-layer identity
 
 An authored spectral layer with no mesh vertices has no spectral content.
@@ -263,10 +315,14 @@ transferred to its upstream Trimesh before the Pan is removed.
 ## Lifecycle And Ownership
 
 - Cycle 1 owns `.cyc` loading and canonical export on its GUI/message thread.
+- Each export batch rebuilds and launches the current Cycle 1 target so recent
+  `PresetMigrator` schema fixes cannot be bypassed by a stale application bundle.
 - The batch driver owns only command sequencing, artifact paths, and a result
   report; it contains no preset-domain translation.
-- The converter owns offline type/value/routing translation and deterministic
-  `.cyclegraph` serialization.
+- The converter owns offline type/value/routing translation. The Cycle V2
+  `GraphSerializer` owns final `.cyclegraph` defaults, model versions, numeric
+  spelling, and formatting; the converter normalizes only line endings after
+  invoking it. Re-serializing converter output must therefore be byte-identical.
 - Cycle V2 owns load, validation, compilation, save/reload canonicalization,
   preview, and audio-render verification.
 
@@ -322,6 +378,32 @@ transferred to its upstream Trimesh before the Pan is removed.
    hard-pan values into the shared Cycle DSP layout instead of substituting the
    default group layout. Legacy presets above Cycle V2's ten-voice capacity are
    rejected explicitly rather than truncated.
+17. Rebuilt Cycle 1 after the v1.8 envelope/effect compatibility changes and
+   regenerated a five-preset review batch. Removed the invented default scratch
+   model, preserved per-mesh `scratchChannel` routing including two-channel
+   presets, carried the shared Cycle 1/Cycle V2 voice-length unit value unchanged,
+   and reorganized Voice Context attachments into a compact left-hand stack.
+18. Canonicalized the obsolete Cycle 1 pitch-envelope modulation destination
+   `401` to its current `450` identifier at the converter boundary. This keeps
+   the existing Cycle V2 Modulation Triple path authoritative and admits the
+   replacement Blinding preset without treating its ordinary ModWheel mapping
+   as an unsupported modulation feature.
+19. Folded the reviewed Blinding arrangement into the generated-layout rules:
+   direct spectral operands stack vertically with default ports, their shared
+   scratch Envelope fans out from the left, and the global lane stays closer to
+   the main graph. Routed final converter output through Cycle V2's serializer
+   so the first ordinary save no longer rewrites legacy precision, defaults,
+   model versions, and JSON shape across the whole file.
+20. Added a second four-preset review batch: Acid Loop, Ambi Wave, Rise and
+    Shine, and Woaio. Generalized shared scratch-envelope placement across
+    consumers in different columns so the envelope remains left of the whole
+    fan-out instead of sending control cables across intermediate nodes. Replaced
+    the first review fixture's ineffective duration-existence checks with exact
+    Voice Context parameter assertions.
+21. Added arbitrary per-destination modulation conversion using native Cycle V2
+    Modulation Triple inputs, a collision-safe lowercase kebab-case batch tool,
+    explicit normalized-model diagnostics, and the remaining 236 representable
+    expanded-library graphs. The ten reviewed graphs were preserved unchanged.
 
 ## Verification
 
@@ -343,6 +425,17 @@ transferred to its upstream Trimesh before the Pan is removed.
   Modeller vertices against their source XML coordinates with zero differences.
   Focused migration tests cover both a true version-1 coordinate conversion and
   unchanged 1.7/1.8 coordinates through canonical and live-document loading.
+- The regenerated five-preset review batch loads and compiles with exact
+  Cycle 1 voice durations of 1.450489, 1.266986, 0.998458, 1.121317, and
+  1.521729 seconds.
+  App-rendered screenshots confirm restored effect curves, compact Voice Context
+  fan-in, and local placement for the two channel-specific scratch Envelopes.
+- The second four-preset review batch loads and compiles with exact Cycle 1
+  voice-length unit values. With Voice Context active, Cycle V2 realizes them as
+  1.386431, 1.266986, 4.042836, and 4.463208 seconds. Production-size canvas
+  captures cover an absent scratch connection, a shared scratch fan-out across
+  four meshes, a four-layer magnitude chain, and short and long global effects
+  lanes.
 - The focused resampler regression recreates the exhausted source window and
   passes without an invalid copy. The oversampler regression checks the exact
   wrapped-tail extent. The AcidStab3 live fixture holds MIDI note 41 for four
@@ -390,12 +483,44 @@ transferred to its upstream Trimesh before the Pan is removed.
   voices remain blocked on a product decision about raising the shared maximum
   or defining a lossless legacy reduction. The converter reports these presets
   explicitly and does not emit a truncated graph.
+- The replacement `Blinding.cyc` is emitted as `blinding.cyclegraph`. Its v1.3
+  matrix uses the obsolete pitch-envelope output ID 401; the converter
+  canonicalizes that representation to ID 450 before recognizing its standard
+  ModWheel-based Modulation Triple mapping.
+- Expanded-library accounting: all 276 sources export through the rebuilt Cycle
+  1 application. Cycle V2 now contains 246 current factory graphs: ten reviewed
+  destinations retained unchanged and 236 newly generated lowercase kebab-case
+  destinations. Thirty sources are withheld rather than approximated: ten have
+  11--36 individual Unison voices, nine contain individual Unison values outside
+  Cycle V2's normalized state domain, five contain IR curve coordinates above
+  one, and six contain a negative Guide sharpness. Batch conversion reports zero
+  collisions and zero unexpected failures.
+- Exact blocker inventory:
+  - individual Unison above ten voices: `angry-lead`, `octave-lead`,
+    `saw-lead-3`, `silver`, `silver-2`, `snappy-saw`, `squishy-saw`, `string`,
+    `string-2`, and `supersaw`;
+  - individual Unison values outside Cycle V2's normalized model:
+    `aah`, `calming-keys`, `esurience`, `esurience-2`, `ping`, `pwm-lead-2`,
+    `syn-brass-2`, `trance-stab-4-b`, and `trance-stab-6`;
+  - IR vertices outside the normalized curve domain: `bass-5`,
+    `bass-trumpet`, `brasshat`, `harpsichord-3`, and `saxophone-2`; and
+  - negative Guide sharpness outside the normalized curve domain: `dicey`,
+    `tanpura`, `tanpura-pad`, `tanpura-pad-2`, `tanpura-pad-3`, and
+    `tanpura-pluck`.
+- Thirty-four emitted presets require non-default per-destination modulation.
+  They use 65 target-local Modulation Triples in total; every other retained
+  destination inherits the modal attached Triple. The generated 236-graph set
+  has no compact-node overlaps. The only overlap in the current 246-graph root
+  library is in the protected reviewed `acid-loop.cyclegraph`.
 
 ## Final Verification
 
-- Converter unit tests: 28 passed, including empty magnitude and phase meshes,
-  all-empty spectral stacks, centred Pan, range ownership, and inactive pitch
-  Envelope omission.
+- Converter unit tests: 66 passed, including legacy pitch-envelope modulation,
+  reordered and sparse matrices, MIDI CC, Utility, channel-pressure overrides,
+  conflict rejection,
+  direct spectral operand layout, serializer idempotence, empty magnitude and
+  phase meshes, shared scratch fan-out across columns, all-empty spectral
+  stacks, centred Pan, range ownership, and inactive pitch Envelope omission.
 - Cycle 1 archive migration tests: 111 assertions across 5 cases passed.
 - Cycle V2 layer enablement tests: 14 assertions across 2 cases passed.
 - The focused layout coverage passes 308,437 assertions across 9 cases,
@@ -425,6 +550,11 @@ transferred to its upstream Trimesh before the Pan is removed.
   operation layout in `/private/tmp/cycle-v2-layout-thrash-final.png`, and the
   empty-phase bypass plus down-left volume Envelope placement in
   `/private/tmp/cycle-v2-phase-bypass-alto-sax-1.png`.
+- The expanded 246-preset current library opened and compiled in one Cycle V2
+  application session; all 492 open/assert automation commands passed. A
+  production canvas capture of `satisfaction.cyclegraph`, the densest emitted
+  modulation case with seven local override Triples, is stored at
+  `/private/tmp/cycle-v2-satisfaction-layout.png`.
 - Standalone Cycle and Cycle V2 builds passed on macOS.
 - The complete Cycle V2 binary passes 612 of 615 cases. The three unrelated
   failures are `african-horn.cyclegraph` lacking newly explicit default

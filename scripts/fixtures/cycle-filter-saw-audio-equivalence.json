@@ -7,7 +7,7 @@
         "sha256": "68bf7ad855eb5d76c44762368358e95bb336b8e72593cf0ab16c9bf19b2a6963"
     },
     "v2": {
-        "graph": "cycle-v2/content/presets/filter-saw.cyclegraph",
+        "graph": "cycle-v2/content/presets/old/filter-saw.cyclegraph",
         "sha256": "89d7ffdf60f01bf3a3bc154e7151c0fc7673ccd99db48c71297676873d8bd80c",
         "renderOverrides": {
             "voiceDurationSeconds": 0.47689545154571533

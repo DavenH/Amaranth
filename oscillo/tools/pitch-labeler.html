@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oscillo Piano Labeler</title>
+<style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    body { margin: 0; background: #11161a; color: #d9e1e7; }
+    header, .controls, .editor { display: flex; gap: 10px; align-items: center; padding: 10px 14px; }
+    header { background: #172027; border-bottom: 1px solid #34434d; }
+    header h1 { margin: 0 auto 0 0; font-size: 18px; }
+    button, input { background: #202b32; color: inherit; border: 1px solid #52636e; border-radius: 4px; padding: 6px 9px; }
+    button:hover { background: #2b3b45; }
+    button.primary { background: #285f78; }
+    canvas { display: block; width: calc(100% - 28px); height: 420px; margin: 0 14px; background: #0c1114; cursor: crosshair; }
+    .controls { flex-wrap: wrap; }
+    .controls label { display: flex; gap: 6px; align-items: center; }
+    .controls input[type=range] { width: 180px; }
+    .editor { border-top: 1px solid #34434d; }
+    .editor input[type=number] { width: 90px; font-variant-numeric: tabular-nums; }
+    #status { color: #93a7b2; font-variant-numeric: tabular-nums; }
+    #selection { min-width: 250px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .help { padding: 0 14px 14px; color: #8497a2; font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+    <h1>Oscillo piano onset labeler</h1>
+    <input id="file" type="file" accept="audio/*,.json">
+    <button id="loadRepo">Load repository recording</button>
+    <button id="import">Import JSON</button>
+    <button id="export" disabled>Export JSON</button>
+</header>
+<div class="controls">
+    <button id="play" disabled>Play / pause</button>
+    <button id="previous" disabled>Previous</button>
+    <button id="next" disabled>Next</button>
+    <label>View start <input id="viewStart" type="range" min="0" max="1" step="0.001" value="0"></label>
+    <label>Window <input id="viewDuration" type="range" min="2" max="60" step="1" value="20"></label>
+    <span id="status">Load an audio file to begin.</span>
+    <span><b style="color:#fff12b">▌</b> selected &nbsp; <b style="color:#ff8b55">▌</b> first strike for note &nbsp; <b style="color:#80b7ff">▌</b> other strike</span>
+</div>
+<canvas id="waveform"></canvas>
+<div class="editor">
+    <label><b>Current note</b> <input id="currentMidi" type="number" min="21" max="108" step="1" value="21"></label>
+    <strong id="currentNote">A0</strong>
+    <span id="selection">No label selected</span>
+    <label>Time <input id="time" type="number" step="0.001"></label>
+    <label>MIDI <input id="midi" type="number" min="0" max="127" step="1"></label>
+    <button id="add" disabled>Add at playhead</button>
+    <button id="remove" disabled>Delete</button>
+</div>
+<div class="help">
+    Click empty waveform space to add a strike for the current note. Click or drag a marker to
+    select or reposition it. Up/down changes the current note; left/right moves the audio cursor
+    by 500 ms (Shift: 2 seconds); Space plays/pauses; [ and ] move the selected onset by 10 ms;
+    Delete removes it.
+</div>
+<audio id="audio"></audio>
+<script>
+const FIRST_MIDI = 21;
+const canvas = document.querySelector('#waveform');
+const ctx = canvas.getContext('2d');
+const audio = document.querySelector('#audio');
+const ui = Object.fromEntries([...document.querySelectorAll('[id]')].map(x => [x.id, x]));
+let audioContext;
+let audioBuffer;
+let mono;
+let labels = [];
+let selected = -1;
+let dragIndex = -1;
+let currentMidi = FIRST_MIDI;
+let sourceName = 'piano-notes-all.mp3';
+
+function noteName(midi) {
+    const names = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+    return names[midi % 12] + (Math.floor(midi / 12) - 1);
+}
+
+function frequency(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+function viewStart() { return Number(ui.viewStart.value) * Math.max(0, audio.duration - viewDuration()); }
+function viewDuration() { return Math.min(Number(ui.viewDuration.value), audio.duration || 20); }
+
+async function decode(blob, name) {
+    sourceName = name;
+    audioContext ||= new AudioContext();
+    const bytes = await blob.arrayBuffer();
+    audioBuffer = await audioContext.decodeAudioData(bytes.slice(0));
+    mono = audioBuffer.getChannelData(0);
+    audio.src = URL.createObjectURL(blob);
+    ui.play.disabled = ui.add.disabled = false;
+    ui.viewDuration.max = Math.ceil(audio.duration);
+    ui.status.textContent = `${name}: ${audio.duration.toFixed(2)} s, ${audioBuffer.sampleRate} Hz`;
+    draw();
+}
+
+async function loadRepositoryRecording() {
+    const response = await fetch('../content/piano-notes-all.mp3');
+    if (!response.ok) throw new Error('Serve oscillo/ over HTTP to use this button.');
+    await decode(await response.blob(), 'piano-notes-all.mp3');
+}
+
+function enableEditing() {
+    const disabled = labels.length === 0;
+    ui.export.disabled = ui.previous.disabled = ui.next.disabled = ui.remove.disabled = disabled;
+    ui.status.textContent = `${labels.length} manual strike annotations.`;
+}
+
+function select(index, seek = false) {
+    if (!labels.length) { selected = -1; return updateEditor(); }
+    selected = Math.max(0, Math.min(labels.length - 1, index));
+    if (seek) audio.currentTime = Math.max(0, labels[selected].time_sec - 0.08);
+    setCurrentMidi(labels[selected].midi);
+    updateEditor(); draw();
+}
+
+function setCurrentMidi(midi) {
+    currentMidi = Math.max(21, Math.min(108, Number(midi)));
+    ui.currentMidi.value = currentMidi;
+    ui.currentNote.textContent = noteName(currentMidi);
+}
+
+function updateEditor() {
+    if (selected < 0) {
+        ui.selection.textContent = 'No label selected';
+        ui.time.value = ui.midi.value = '';
+        return;
+    }
+    const x = labels[selected];
+    const strikeNumber = labels.slice(0, selected + 1).filter(label => label.midi === x.midi).length;
+    ui.selection.textContent = `${selected + 1}/${labels.length} · ${noteName(x.midi)} · strike ${strikeNumber}`;
+    ui.time.value = x.time_sec.toFixed(3);
+    ui.midi.value = x.midi;
+}
+
+function addAtTime(time) {
+    const label = { time_sec: time, midi: currentMidi, confidence: 1 };
+    labels.push(label);
+    labels.sort((a,b) => a.time_sec - b.time_sec);
+    select(labels.indexOf(label));
+    enableEditing();
+    return selected;
+}
+
+function addAtPlayhead() { addAtTime(audio.currentTime); }
+
+function removeSelected() {
+    if (selected < 0) return;
+    labels.splice(selected, 1);
+    select(Math.min(selected, labels.length - 1)); enableEditing();
+}
+
+function exportJson() {
+    const output = labels.map(x => ({
+        time_sec: Number(x.time_sec.toFixed(3)), midi: x.midi, note: noteName(x.midi),
+        freq_hz: Number(frequency(x.midi).toFixed(2)), confidence: Number((x.confidence ?? 1).toFixed(2))
+    }));
+    const blob = new Blob([JSON.stringify(output, null, 2) + '\n'], {type:'application/json'});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = sourceName.replace(/\.[^.]+$/, '') + '.json';
+    link.click(); URL.revokeObjectURL(link.href);
+}
+
+function importJson() {
+    const input = document.createElement('input'); input.type = 'file'; input.accept = '.json';
+    input.onchange = async () => {
+        labels = JSON.parse(await input.files[0].text()).map(x => ({...x, time_sec:Number(x.time_sec), midi:Number(x.midi)}));
+        labels.sort((a,b) => a.time_sec - b.time_sec); selected = labels.length ? 0 : -1;
+        enableEditing(); select(selected, true);
+    };
+    input.click();
+}
+
+function timeAtX(x) { return viewStart() + x / canvas.clientWidth * viewDuration(); }
+function xAtTime(time) { return (time - viewStart()) / viewDuration() * canvas.clientWidth; }
+
+function moveCursor(deltaSeconds) {
+    audio.currentTime = Math.max(0, Math.min(audio.duration, audio.currentTime + deltaSeconds));
+    const duration = viewDuration();
+    const maximumStart = Math.max(0, audio.duration - duration);
+    let start = viewStart();
+    if (audio.currentTime < start) start = audio.currentTime;
+    if (audio.currentTime > start + duration) start = audio.currentTime - duration;
+    ui.viewStart.value = maximumStart > 0 ? start / maximumStart : 0;
+    draw();
+}
+
+function draw() {
+    const scale = devicePixelRatio;
+    const width = canvas.clientWidth, height = canvas.clientHeight;
+    if (canvas.width !== width * scale || canvas.height !== height * scale) {
+        canvas.width = width * scale; canvas.height = height * scale; ctx.setTransform(scale,0,0,scale,0,0);
+    }
+    ctx.fillStyle = '#0c1114'; ctx.fillRect(0,0,width,height);
+    if (!mono) return;
+    const start = Math.floor(viewStart() * audioBuffer.sampleRate);
+    const end = Math.min(mono.length, Math.floor((viewStart() + viewDuration()) * audioBuffer.sampleRate));
+    const perPixel = Math.max(1, Math.floor((end - start) / width));
+    ctx.strokeStyle = '#56a7aa'; ctx.beginPath();
+    for (let x=0; x<width; ++x) {
+        let lo=1, hi=-1;
+        for (let i=start+x*perPixel; i<Math.min(end,start+(x+1)*perPixel); ++i) { lo=Math.min(lo,mono[i]); hi=Math.max(hi,mono[i]); }
+        ctx.moveTo(x, (1-hi)*height/2); ctx.lineTo(x, (1-lo)*height/2);
+    }
+    ctx.stroke();
+    labels.forEach((label,index) => {
+        const x=xAtTime(label.time_sec); if (x<0||x>width) return;
+        const firstForNote = index === 0 || labels[index - 1].midi !== label.midi;
+        ctx.strokeStyle=index===selected?'#fff12b':firstForNote?'#ff8b55':'#80b7ff'; ctx.lineWidth=index===selected?3:1;
+        ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,height);ctx.stroke();
+        if(firstForNote){ctx.fillStyle='#d9e1e7';ctx.fillText(noteName(label.midi),x+3,14);}
+    });
+    const playX=xAtTime(audio.currentTime); ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(playX,0);ctx.lineTo(playX,height);ctx.stroke();
+}
+
+ui.file.onchange = async () => { const f=ui.file.files[0]; if(f.type.includes('json')||f.name.endsWith('.json')) return; await decode(f,f.name); };
+ui.loadRepo.onclick = () => loadRepositoryRecording().catch(e => ui.status.textContent=e.message);
+ui.play.onclick = () => audio.paused ? audio.play() : audio.pause();
+ui.previous.onclick = () => select(selected-1,true); ui.next.onclick = () => select(selected+1,true);
+ui.add.onclick=addAtPlayhead; ui.remove.onclick=removeSelected;
+ui.export.onclick=exportJson; ui.import.onclick=importJson;
+ui.viewStart.oninput=ui.viewDuration.oninput=draw;
+ui.currentMidi.onchange=()=>setCurrentMidi(ui.currentMidi.value);
+ui.time.onchange=()=>{if(selected>=0){labels[selected].time_sec=Number(ui.time.value);labels.sort((a,b)=>a.time_sec-b.time_sec);selected=labels.indexOf(labels.find(x=>x.time_sec===Number(ui.time.value)));draw();}};
+ui.midi.onchange=()=>{if(selected>=0){labels[selected].midi=Number(ui.midi.value);setCurrentMidi(labels[selected].midi);updateEditor();draw();}};
+audio.ontimeupdate=draw;
+canvas.onpointerdown=e=>{const t=timeAtX(e.offsetX);let best=-1,distance=8/canvas.clientWidth*viewDuration();labels.forEach((x,i)=>{const d=Math.abs(x.time_sec-t);if(d<distance){distance=d;best=i;}});if(best>=0){dragIndex=best;select(best,true);}else{audio.currentTime=t;dragIndex=addAtTime(t);}canvas.setPointerCapture(e.pointerId);};
+canvas.onpointermove=e=>{if(dragIndex>=0){labels[dragIndex].time_sec=Math.max(0,Math.min(audio.duration,timeAtX(e.offsetX)));updateEditor();draw();}};
+canvas.onpointerup=e=>{const active=selected>=0?labels[selected]:null;dragIndex=-1;canvas.releasePointerCapture(e.pointerId);labels.sort((a,b)=>a.time_sec-b.time_sec);if(active)selected=labels.indexOf(active);updateEditor();draw();};
+window.onkeydown=e=>{if(e.target.matches('input'))return;if(e.code==='Space'){e.preventDefault();ui.play.click();}else if(e.key==='ArrowDown'){e.preventDefault();setCurrentMidi(currentMidi-1);}else if(e.key==='ArrowUp'){e.preventDefault();setCurrentMidi(currentMidi+1);}else if(e.key==='ArrowLeft'){e.preventDefault();moveCursor(e.shiftKey ? -2.0 : -0.5);}else if(e.key==='ArrowRight'){e.preventDefault();moveCursor(e.shiftKey ? 2.0 : 0.5);}else if(selected>=0&&e.key==='['){labels[selected].time_sec-=.01;updateEditor();draw();}else if(selected>=0&&e.key===']'){labels[selected].time_sec+=.01;updateEditor();draw();}else if(selected>=0&&(e.key==='Delete'||e.key==='Backspace')){e.preventDefault();removeSelected();}};
+setCurrentMidi(FIRST_MIDI);
+new ResizeObserver(draw).observe(canvas);
+</script>
+</body>
+</html>

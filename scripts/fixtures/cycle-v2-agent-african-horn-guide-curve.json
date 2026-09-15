@@ -2,7 +2,7 @@
   "commands": [
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/african-horn.cyclegraph"
+      "path": "../../cycle-v2/content/presets/old/african-horn.cyclegraph"
     },
     {
       "command": "openMeshPopup",

@@ -2,7 +2,7 @@
   "commands": [
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+      "path": "../../cycle-v2/content/presets/old/stengah.cyclegraph"
     },
     {
       "command": "openMeshPopup",
@@ -48,7 +48,7 @@
     },
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+      "path": "../../cycle-v2/content/presets/old/stengah.cyclegraph"
     },
     {
       "command": "setNodeParameter",

@@ -370,8 +370,18 @@ bool NodeCanvasAuthoring::moveSelectedNodesDuringGesture(
     return commands.translateNodes(nodeIds, offset).succeeded();
 }
 
-void NodeCanvasAuthoring::commitNodeMoveGesture() {
-    commands.commitCompoundEdit();
+NodeCanvasAuthoringResult NodeCanvasAuthoring::commitNodeMoveGesture() {
+    const bool changed = commands.commitCompoundEdit();
+    if (changed) {
+        refreshPresentation();
+    }
+
+    NodeCanvasAuthoringResult result = handledResult(
+            true,
+            changed ? "Node moved" : String(),
+            { changed });
+    result.graphChanged = changed;
+    return result;
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::connectPorts(

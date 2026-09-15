@@ -78,7 +78,7 @@ public:
             const std::vector<String>& nodeIds,
             const String& primaryNodeId,
             Rectangle<float> primaryBounds);
-    void commitNodeMoveGesture();
+    NodeCanvasAuthoringResult commitNodeMoveGesture();
     NodeCanvasAuthoringResult connectPorts(
             const PortAddress& source,
             const PortAddress& destination);

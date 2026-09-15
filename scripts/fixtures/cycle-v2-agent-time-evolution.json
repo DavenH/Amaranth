@@ -2,7 +2,7 @@
   "commands": [
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/dunk-2.cyclegraph",
+      "path": "../../cycle-v2/content/presets/old/dunk-2.cyclegraph",
       "waitForIdle": true,
       "idleDelayMs": 300
     },
@@ -23,7 +23,7 @@
     },
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/pwm.cyclegraph",
+      "path": "../../cycle-v2/content/presets/old/pwm.cyclegraph",
       "waitForIdle": true,
       "idleDelayMs": 300
     },

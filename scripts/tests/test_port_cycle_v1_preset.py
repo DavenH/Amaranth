@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import copy
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -287,9 +289,13 @@ class PortCycleV1PresetTest(unittest.TestCase):
             + port_cycle_v1_preset.node_footprint(node)[1]
             for node in converted["nodes"] if node["kind"] in voice_kinds
         )
-        self.assertGreaterEqual(
+        self.assertLess(
             nodes["globalInput"]["position"]["y"],
             voice_bottom + 96.0,
+        )
+        self.assertGreater(
+            nodes["globalInput"]["position"]["x"],
+            nodes["voice"]["position"]["x"],
         )
 
         mesh = nodes["magnitudeLayer1"]
@@ -315,6 +321,180 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertGreater(
             nodes["output"]["position"]["y"],
             nodes["ifft"]["position"]["y"])
+
+    def test_direct_spectral_pair_uses_a_left_to_right_operand_stack(self):
+        source = convertible_source()
+        groups = source["preset"]["meshLibrary"]["groups"]
+        groups[4]["layers"] = groups[4]["layers"][:1]
+        for index, layer in enumerate(groups[5]["layers"]):
+            layer["properties"]["active"] = True
+            layer["properties"]["mode"] = index
+            layer["properties"]["scratchChannel"] = 0
+            layer["mesh"]["vertices"] = [1]
+        groups[6]["layers"][0]["properties"]["active"] = True
+        groups[6]["layers"][0]["mesh"]["vertices"] = [1]
+        groups[2]["layers"] = [{
+            "properties": {"active": True, "logarithmic": False},
+            "mesh": {
+                "mainMesh": {"vertices": [], "cubes": [{}, {}]},
+            },
+        }]
+        source["preset"]["effects"]["Delay"]["enabled"] = True
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+        first = nodes["magnitudeLayer1"]
+        second = nodes["magnitudeLayer2"]
+        operation = nodes["magnitudeOp2"]
+        scratch = nodes["scratchEnvelope1"]
+
+        self.assertEqual(first["position"]["x"], second["position"]["x"])
+        self.assertLess(first["position"]["y"], second["position"]["y"])
+        self.assertGreater(
+            operation["position"]["x"],
+            first["position"]["x"]
+            + port_cycle_v1_preset.node_footprint(first)[0])
+        self.assertNotIn("portSides", first)
+        self.assertNotIn("portSides", second)
+        self.assertNotIn("portSides", operation)
+        self.assertLess(scratch["position"]["x"], first["position"]["x"])
+        self.assertNotIn("portSides", scratch)
+        self.assertGreater(
+            nodes["phaseLayer1"]["position"]["y"],
+            second["position"]["y"])
+        self.assertEqual(
+            nodes["globalInput"]["position"]["y"],
+            nodes["delay"]["position"]["y"])
+        self.assertLess(
+            nodes["globalInput"]["position"]["x"],
+            nodes["delay"]["position"]["x"])
+
+    def test_shared_scratch_fanout_stays_left_of_spread_consumers(self):
+        source = convertible_source()
+        groups = source["preset"]["meshLibrary"]["groups"]
+        for group_index in (4, 5):
+            for layer in groups[group_index]["layers"]:
+                layer["properties"]["active"] = True
+                layer["properties"]["scratchChannel"] = 0
+                layer["mesh"]["vertices"] = [1]
+        groups[2]["layers"] = [{
+            "properties": {"active": True, "logarithmic": False},
+            "mesh": {
+                "mainMesh": {"vertices": [], "cubes": [{}, {}]},
+            },
+        }]
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+        self.assert_compact_nodes_do_not_overlap(converted)
+        scratch = nodes["scratchEnvelope1"]
+        consumers = [
+            nodes[node_id]
+            for node_id in (
+                "timeLayer1", "timeLayer2",
+                "magnitudeLayer1", "magnitudeLayer2",
+            )
+        ]
+        consumer_centres = [
+            node["position"]["y"]
+            + port_cycle_v1_preset.node_footprint(node)[1] / 2.0
+            for node in consumers
+        ]
+        scratch_width, scratch_height = \
+            port_cycle_v1_preset.node_footprint(scratch)
+
+        self.assertLess(
+            scratch["position"]["x"] + scratch_width,
+            min(node["position"]["x"] for node in consumers),
+        )
+        self.assertAlmostEqual(
+            scratch["position"]["y"] + scratch_height / 2.0,
+            sum(consumer_centres) / len(consumer_centres),
+        )
+        self.assertNotIn("portSides", scratch)
+
+    def test_canonical_graph_writer_is_serialization_idempotent(self):
+        repository = Path(__file__).resolve().parents[2]
+        source = repository / "cycle-v2/resources/default.cyclegraph"
+        graph = json.loads(source.read_text(encoding="utf-8"))
+
+        with tempfile.TemporaryDirectory() as directory:
+            first = Path(directory) / "first.cyclegraph"
+            second = Path(directory) / "second.cyclegraph"
+            port_cycle_v1_preset.write_canonical_graph(graph, first)
+            canonical = json.loads(first.read_text(encoding="utf-8"))
+            port_cycle_v1_preset.write_canonical_graph(canonical, second)
+
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+            self.assertNotIn(b"\r\n", first.read_bytes())
+
+    def test_voice_context_attachments_form_an_ordered_left_column(self):
+        source = convertible_source()
+        envelope_mesh = {
+            "mainMesh": {
+                "vertices": [],
+                "cubes": [{}, {}],
+            },
+        }
+        groups = source["preset"]["meshLibrary"]["groups"]
+        groups[1]["layers"] = [{
+            "properties": {"active": True, "logarithmic": False},
+            "mesh": copy.deepcopy(envelope_mesh),
+        }]
+        groups[2]["layers"] = [{
+            "properties": {"active": True, "logarithmic": False},
+            "mesh": copy.deepcopy(envelope_mesh),
+        }]
+        for group_index in (4, 6):
+            for layer in groups[group_index]["layers"]:
+                layer["properties"]["scratchChannel"] = 0
+        source["preset"]["effects"]["Unison"]["enabled"] = True
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+        attachment_ids = (
+            "morph", "pitchEnvelope1", "unison", "scratchEnvelope1")
+
+        self.assert_compact_nodes_do_not_overlap(converted)
+        self.assertEqual(
+            {nodes[node_id]["position"]["x"] for node_id in attachment_ids},
+            {port_cycle_v1_preset.LAYOUT_MARGIN},
+        )
+        self.assertEqual(
+            sorted(attachment_ids, key=lambda node_id: nodes[node_id]["position"]["y"]),
+            list(attachment_ids),
+        )
+        self.assertLess(nodes["morph"]["position"]["x"],
+                        nodes["voice"]["position"]["x"])
+        self.assertLess(nodes["voice"]["position"]["x"],
+                        nodes["timeLayer1"]["position"]["x"])
+
+    def test_effect_curve_uses_canonical_phase_and_amplitude_coordinates(self):
+        model = port_cycle_v1_preset.flat_curve_model({
+            "vertices": [{
+                "id": 4,
+                "time": 0.91,
+                "phase": 0.37,
+                "amp": 0.63,
+                "weight": 0.25,
+            }],
+        })
+
+        self.assertEqual(model["state"]["vertices"], [{
+            "id": 5,
+            "x": 0.37,
+            "y": 0.63,
+            "curve": 0.25,
+        }])
 
     def test_presentation_reconciliation_does_not_preserve_semantics(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
@@ -376,6 +556,186 @@ class PortCycleV1PresetTest(unittest.TestCase):
 
         self.assertEqual(morph["parameters"]["blueSource"], "modWheel")
 
+    def test_converter_accepts_reordered_default_modulation_mappings(self):
+        source = convertible_source()
+        source["preset"]["modMatrix"]["mappings"].reverse()
+
+        converted = port_cycle_v1_preset.convert(source)
+
+        self.assertFalse(any(
+            node["id"].startswith("modulationOverride")
+            for node in converted["nodes"]
+        ))
+
+    def test_converter_overrides_an_unmapped_axis_with_morph_position(self):
+        source = convertible_source()
+        mappings = source["preset"]["modMatrix"]["mappings"]
+        mappings[:] = [
+            mapping for mapping in mappings
+            if not (mapping["out"] == 100 and mapping["dim"] == 2)
+        ]
+
+        converted = port_cycle_v1_preset.convert(source)
+        override = next(
+            node for node in converted["nodes"]
+            if node["id"].startswith("modulationOverride"))
+
+        self.assertEqual(override["parameters"]["blueSource"], "constant")
+        self.assertEqual(override["parameters"]["blueConstant"], 0.75)
+        self.assertTrue(any(
+            graph_edge["sourceNodeId"] == override["id"]
+            and graph_edge["sourcePortId"] == "blue"
+            and graph_edge["destNodeId"] == "timeLayer1"
+            and graph_edge["destPortId"] == "blue"
+            for graph_edge in converted["edges"]
+        ))
+
+    def test_converter_preserves_per_destination_midi_cc_mapping(self):
+        source = convertible_source()
+        mapping = next(
+            mapping for mapping in source["preset"]["modMatrix"]["mappings"]
+            if mapping["out"] == 100 and mapping["dim"] == 2)
+        mapping["in"] = 174
+
+        converted = port_cycle_v1_preset.convert(source)
+        override = next(
+            node for node in converted["nodes"]
+            if node["id"].startswith("modulationOverride"))
+
+        self.assertEqual(override["parameters"]["blueSource"], "midiCC")
+        self.assertEqual(override["parameters"]["blueController"], 74)
+
+    def test_modulation_binding_follows_a_retained_spectral_layer(self):
+        source = convertible_source()
+        magnitude_layers = source["preset"]["meshLibrary"]["groups"][5]["layers"]
+        magnitude_layers[0]["mesh"]["vertices"] = []
+        magnitude_layers[1]["mesh"]["vertices"] = [1]
+        magnitude_layers[1]["properties"]["active"] = True
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+        mapping = next(
+            mapping for mapping in source["preset"]["modMatrix"]["mappings"]
+            if mapping["out"] == 203 and mapping["dim"] == 2)
+        mapping["in"] = 174
+
+        converted = port_cycle_v1_preset.convert(source)
+
+        self.assertTrue(any(
+            graph_edge["sourceNodeId"].startswith("modulationOverride")
+            and graph_edge["destNodeId"] == "magnitudeLayer1"
+            and graph_edge["destPortId"] == "blue"
+            for graph_edge in converted["edges"]
+        ))
+
+    def test_converter_preserves_utility_modulation_value(self):
+        source = convertible_source()
+        source["preset"]["modMatrix"]["utilities"] = [0.37] + [0.0] * 19
+        mapping = next(
+            mapping for mapping in source["preset"]["modMatrix"]["mappings"]
+            if mapping["out"] == 100 and mapping["dim"] == 2)
+        mapping["in"] = 200
+
+        converted = port_cycle_v1_preset.convert(source)
+        override = next(
+            node for node in converted["nodes"]
+            if node["id"].startswith("modulationOverride"))
+
+        self.assertEqual(override["parameters"]["blueSource"], "constant")
+        self.assertEqual(override["parameters"]["blueConstant"], 0.37)
+
+    def test_converter_rejects_a_live_utility_without_exported_state(self):
+        source = convertible_source()
+        mapping = next(
+            mapping for mapping in source["preset"]["modMatrix"]["mappings"]
+            if mapping["out"] == 100 and mapping["dim"] == 2)
+        mapping["in"] = 200
+
+        issues = port_cycle_v1_preset.validate_conversion(source)
+
+        self.assertIn("modulation utility 1 has no exported value", issues)
+
+    def test_converter_preserves_an_undriven_legacy_utility_as_constant(self):
+        source = convertible_source()
+        mapping = next(
+            mapping for mapping in source["preset"]["modMatrix"]["mappings"]
+            if mapping["out"] == 100 and mapping["dim"] == 2)
+        mapping["in"] = 500
+
+        converted = port_cycle_v1_preset.convert(source)
+        override = next(
+            node for node in converted["nodes"]
+            if node["id"].startswith("modulationOverride"))
+
+        self.assertEqual(override["parameters"]["blueSource"], "constant")
+        self.assertEqual(override["parameters"]["blueConstant"], 0.75)
+
+    def test_converter_uses_constant_modal_axes_for_an_empty_matrix(self):
+        source = convertible_source()
+        source["preset"]["modMatrix"]["mappings"] = []
+
+        converted = port_cycle_v1_preset.convert(source)
+        morph = next(node for node in converted["nodes"] if node["id"] == "morph")
+
+        self.assertEqual(morph["parameters"]["yellowSource"], "constant")
+        self.assertEqual(morph["parameters"]["redSource"], "constant")
+        self.assertEqual(morph["parameters"]["blueSource"], "constant")
+        self.assertFalse(any(
+            node["id"].startswith("modulationOverride")
+            for node in converted["nodes"]
+        ))
+
+    def test_converter_maps_aftertouch_to_channel_pressure(self):
+        source = convertible_source()
+        mapping = next(
+            mapping for mapping in source["preset"]["modMatrix"]["mappings"]
+            if mapping["out"] == 100 and mapping["dim"] == 2)
+        mapping["in"] = 5
+
+        converted = port_cycle_v1_preset.convert(source)
+        override = next(
+            node for node in converted["nodes"]
+            if node["id"].startswith("modulationOverride"))
+
+        self.assertEqual(
+            override["parameters"]["blueSource"],
+            "channelPressure")
+
+    def test_converter_rejects_conflicting_modulation_mappings(self):
+        source = convertible_source()
+        source["preset"]["modMatrix"]["mappings"].append({
+            "in": 101,
+            "out": 100,
+            "dim": 2,
+        })
+
+        issues = port_cycle_v1_preset.validate_conversion(source)
+
+        self.assertTrue(any("conflicting modulation" in issue for issue in issues))
+
+    def test_converter_canonicalizes_legacy_pitch_envelope_modulation_id(self):
+        source = convertible_source()
+        pitch = {
+            "properties": {"active": False, "dynamic": False},
+            "mesh": {
+                "mainMesh": {"vertices": [], "cubes": []},
+                "loopIndices": [],
+                "sustainIndices": [],
+            },
+        }
+        source["preset"]["meshLibrary"]["groups"][1]["layers"] = [pitch]
+        mappings = port_cycle_v1_preset.default_modulation_mappings_for_preset(
+            source["preset"], 101)
+        for mapping in mappings:
+            if mapping["out"] == 450:
+                mapping["out"] = 401
+        source["preset"]["modMatrix"]["mappings"] = mappings
+
+        converted = port_cycle_v1_preset.convert(source)
+        morph = next(node for node in converted["nodes"] if node["id"] == "morph")
+
+        self.assertEqual(morph["parameters"]["blueSource"], "modWheel")
+
     def test_time_layer_pan_uses_the_inline_pan_operation(self):
         source = convertible_source()
         source["preset"]["meshLibrary"]["groups"][4]["layers"][0] \
@@ -426,6 +786,66 @@ class PortCycleV1PresetTest(unittest.TestCase):
             node["id"].startswith("pitchEnvelope")
             for node in converted["nodes"]
         ))
+
+    def test_active_scratch_envelope_without_mesh_is_rejected(self):
+        source = convertible_source()
+        source["preset"]["meshLibrary"]["groups"][2]["layers"] = [{
+            "properties": {"active": True},
+            "mesh": None,
+        }]
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        with self.assertRaisesRegex(
+                ValueError,
+                "active scratch Envelope 1 has no authored mesh"):
+            port_cycle_v1_preset.convert(source)
+
+    def test_absent_scratch_envelope_leaves_scratch_ports_unconnected(self):
+        converted = port_cycle_v1_preset.convert(convertible_source())
+
+        self.assertFalse(any(
+            edge["destPortId"] == "scratch"
+            for edge in converted["edges"]
+        ))
+
+    def test_scratch_channels_attach_their_authored_envelopes(self):
+        source = convertible_source()
+        scratch_mesh = {
+            "mainMesh": {
+                "vertices": [],
+                "cubes": [{}, {}],
+            },
+        }
+        source["preset"]["meshLibrary"]["groups"][2]["layers"] = [
+            {
+                "properties": {"active": True, "logarithmic": False},
+                "mesh": copy.deepcopy(scratch_mesh),
+            },
+            {
+                "properties": {"active": True, "logarithmic": False},
+                "mesh": copy.deepcopy(scratch_mesh),
+            },
+        ]
+        groups = source["preset"]["meshLibrary"]["groups"]
+        groups[4]["layers"][0]["properties"]["scratchChannel"] = 0
+        groups[5]["layers"][0]["mesh"]["vertices"] = [1]
+        groups[5]["layers"][0]["properties"]["scratchChannel"] = 1
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        converted = port_cycle_v1_preset.convert(source)
+        scratch_edges = {
+            (edge["sourceNodeId"], edge["destNodeId"])
+            for edge in converted["edges"]
+            if edge["destPortId"] == "scratch"
+        }
+
+        self.assertIn(("scratchEnvelope1", "timeLayer1"), scratch_edges)
+        self.assertIn(("scratchEnvelope2", "magnitudeLayer1"), scratch_edges)
+        self.assertNotIn(("scratchEnvelope1", "voice"), scratch_edges)
 
     def test_document_declick_retains_only_a_neutral_volume_envelope(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
@@ -566,7 +986,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
         manifest = port_cycle_v1_preset.equivalence_manifest(
             source,
             repository / "cycle/content/presets/old/saw.cyc",
-            repository / "cycle-v2/content/presets/saw.cyclegraph",
+            repository / "cycle-v2/content/presets/old/saw.cyclegraph",
             "Saw",
         )
         translation = manifest["translation"]
@@ -590,7 +1010,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
         manifest = port_cycle_v1_preset.equivalence_manifest(
             source,
             repository / "cycle/content/presets/old/organ-2.cyc",
-            repository / "cycle-v2/content/presets/organ-2.cyclegraph",
+            repository / "cycle-v2/content/presets/old/organ-2.cyclegraph",
             "organ-2",
         )
 
@@ -607,7 +1027,10 @@ class PortCycleV1PresetTest(unittest.TestCase):
         source = convertible_source()
         source["preset"]["meshLibrary"]["groups"][3]["layers"] = [{
             "properties": {"active": True},
-            "mesh": {"vertices": [], "cubes": []},
+            "mesh": {"vertices": [
+                {"id": 0, "phase": 0.0, "amp": 0.5, "weight": 0.5},
+                {"id": 1, "phase": 1.0, "amp": 0.5, "weight": 0.5},
+            ], "cubes": []},
         }]
         source["preset"]["meshLibrary"]["groups"][4]["layers"][0]["mesh"]["cubes"] = [{
             "guides": {"phase": 0},
@@ -760,7 +1183,10 @@ class PortCycleV1PresetTest(unittest.TestCase):
         })
         source["preset"]["meshLibrary"]["groups"][10]["layers"] = [{
             "properties": {"active": True},
-            "mesh": {"vertices": [], "cubes": []},
+            "mesh": {"vertices": [
+                {"id": 0, "phase": 0.0, "amp": 0.5, "weight": 0.5},
+                {"id": 1, "phase": 1.0, "amp": 0.5, "weight": 0.5},
+            ], "cubes": []},
         }]
 
         converted = port_cycle_v1_preset.convert(source)
@@ -768,13 +1194,11 @@ class PortCycleV1PresetTest(unittest.TestCase):
             node for node in converted["nodes"]
             if node["id"] == "impulseResponse")
 
-        self.assertEqual(impulse["parameters"], {
-            "enabled": True,
-            "size": 1.0 / 7.0,
-            "post": 0.3,
-            "highPass": 0.4,
-            "processingScope": "global",
-        })
+        self.assertTrue(impulse["parameters"]["enabled"])
+        self.assertAlmostEqual(impulse["parameters"]["size"], 1.0 / 7.0)
+        self.assertEqual(impulse["parameters"]["post"], 0.3)
+        self.assertEqual(impulse["parameters"]["highPass"], 0.4)
+        self.assertEqual(impulse["parameters"]["processingScope"], "global")
 
     def test_impulse_response_size_is_canonicalized_to_a_power_of_two(self):
         self.assertEqual(
@@ -791,7 +1215,10 @@ class PortCycleV1PresetTest(unittest.TestCase):
         })
         source["preset"]["meshLibrary"]["groups"][10]["layers"] = [{
             "properties": {"active": True},
-            "mesh": {"vertices": [], "cubes": []},
+            "mesh": {"vertices": [
+                {"id": 0, "phase": 0.0, "amp": 0.5, "weight": 0.5},
+                {"id": 1, "phase": 1.0, "amp": 0.5, "weight": 0.5},
+            ], "cubes": []},
         }]
 
         converted = port_cycle_v1_preset.convert(source)

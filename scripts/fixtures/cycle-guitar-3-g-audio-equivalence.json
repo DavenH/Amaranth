@@ -7,7 +7,7 @@
         "sha256": "28e5d4f2152a7fa43f616ce1b562d74326f0e442d091efb9bd0544562ec871e2"
     },
     "v2": {
-        "graph": "cycle-v2/content/presets/guitar-3-g.cyclegraph",
+        "graph": "cycle-v2/content/presets/old/guitar-3-g.cyclegraph",
         "sha256": "3c04b03276a082031a3592f334a83fac50d3d597652f5a0f92ed35cf261db33f",
         "renderOverrides": {
             "voiceDurationSeconds": 4.5680389404296875

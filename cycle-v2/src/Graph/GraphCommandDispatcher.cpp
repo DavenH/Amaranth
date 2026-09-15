@@ -390,13 +390,14 @@ void GraphCommandDispatcher::beginCompoundEdit() {
     compoundDepth = 1;
 }
 
-void GraphCommandDispatcher::commitCompoundEdit() {
+bool GraphCommandDispatcher::commitCompoundEdit() {
     if (!compoundActive) {
-        return;
+        return false;
     }
     if (--compoundDepth > 0) {
-        return;
+        return false;
     }
+    const bool changed = compoundChanged;
     if (compoundChanged) {
         if (compoundBefore.has_value()) {
             document.recordBeforeChange(std::move(*compoundBefore));
@@ -412,6 +413,7 @@ void GraphCommandDispatcher::commitCompoundEdit() {
     compoundChanged = false;
     compoundChanges = {};
     compoundDepth = 0;
+    return changed;
 }
 
 void GraphCommandDispatcher::cancelCompoundEdit() {
