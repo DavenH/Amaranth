@@ -26,11 +26,16 @@ bool usesModWheel(const ModulationSourceConfiguration& configuration) {
 
 std::vector<String> modWheelPreviewRoots(const GraphExecutionPlan& plan) {
     std::vector<String> roots;
+    const auto appendRoot = [&](const String& nodeId) {
+        if (std::find(roots.begin(), roots.end(), nodeId) == roots.end()) {
+            roots.push_back(nodeId);
+        }
+    };
     for (const auto& step : plan.steps) {
         if (const auto source = std::dynamic_pointer_cast<
                     const ModulationSourceConfiguration>(step.configuration.value)) {
             if (usesModWheel(*source)) {
-                roots.push_back(step.nodeId);
+                appendRoot(step.nodeId);
             }
             continue;
         }
@@ -41,7 +46,18 @@ std::vector<String> modWheelPreviewRoots(const GraphExecutionPlan& plan) {
                         triple->sources.begin(),
                         triple->sources.end(),
                         usesModWheel)) {
-            roots.push_back(step.nodeId);
+            appendRoot(step.nodeId);
+        }
+    }
+    for (const auto& context : plan.voiceContexts) {
+        const auto triple = std::dynamic_pointer_cast<
+                const ModulationTripleConfiguration>(context.defaultModulation);
+        if (triple != nullptr
+                && std::any_of(
+                        triple->sources.begin(),
+                        triple->sources.end(),
+                        usesModWheel)) {
+            appendRoot(context.nodeId);
         }
     }
     return roots;

@@ -11,6 +11,14 @@ cannot set the modulation-wheel input used by that audition. The keyboard also
 occupies the lower-right utility column, separating the primary audition
 control from the canvas centre and competing with the minimap and legend.
 
+The initial implementation discovered mod-wheel consumers only among executable
+steps. Presets such as `honerism-3` attach a configuration-only Modulation
+Triple to a Voice Context, so no live wheel invalidation reached the implicit
+mesh modulation inputs or their downstream spy. Preset loading could also
+resolve a different preview pitch without synchronizing the keyboard's visible
+selection, making a right-click on the apparently selected key trigger the
+first correct spy render.
+
 ## Authoritative Implementations
 
 - `PerformanceKeyboardPanel` owns transient preview transport state and emits
@@ -70,6 +78,9 @@ horizontally centred and fully contained.
   matching note-off.
 - Two successive wheel updates refresh node previews and connected spies with
   the matching normalized CC 1 value without compilation or audio publication.
+- `honerism-3` renders its spy from loaded mesh/configuration state, responds to
+  two wheel values, and remains byte-for-byte stable when the already-selected
+  audition key is selected again.
 - Automation exposes and can drag the mod wheel through the real keyboard
   target contract.
 - Normal layout centres the panel at the canvas top, preserves 25-pixel white
@@ -117,3 +128,19 @@ horizontally centred and fully contained.
   assertions total, and the standalone target builds with `--parallel 10`.
 - The real pointer-path preview-transport fixture passes all 20 commands with
   a final wheel value of 95 and no filtered launch-log errors.
+- Mod-wheel dependency discovery now includes the published default modulation
+  configuration on each Voice Context. This covers configuration-only attached
+  Modulation Triples and follows the compiler's implicit context edges into mesh
+  oscillator regions without adding a parallel graph traversal.
+- The `honerism-3` regression test proves that the initial spy matches a fresh
+  render of the loaded plan, two wheel values change both `magnitudeLayer1` and
+  the downstream spy, and reselecting the active preview note performs no
+  render. Compilation and audio-plan revisions remain unchanged.
+- Preset loading synchronizes the keyboard with the presentation pitch and
+  reveals that note with one bounded octave-range adjustment. The focused
+  `cycle-v2-agent-honerism-mod-spy.json` pointer fixture passes all 14 commands;
+  production-size before/after captures show the loaded C#4 selection and the
+  spy changing between wheel positions 0 and 114.
+- Five focused CTest cases pass with 71 assertions, the standalone Cycle V2
+  target builds with `--parallel 10`, `git diff --check` passes, and the
+  modified production paths introduce no scalar math in hot loops.

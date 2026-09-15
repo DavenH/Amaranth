@@ -26,6 +26,7 @@ public:
         primaryGestureStarted = std::move(callback);
     }
     void shiftOctave(int octaveDelta);
+    void revealNote(int midiNote);
     void releaseAllNotes();
     bool mouseDownOnKey(int midiNoteNumber, const MouseEvent& event) override;
     void resized() override;
@@ -67,6 +68,7 @@ private:
             int midiChannel,
             int midiNoteNumber,
             float velocity);
+    void setRangeStart(int noteNumber);
 
     static constexpr int visibleSemitones = 24;
 

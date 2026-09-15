@@ -1,0 +1,77 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/honerism-3.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "performance.previewNote",
+      "equals": 73
+    },
+    {
+      "command": "assertState",
+      "path": "performance.baseNote",
+      "equals": 60
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.connected",
+      "equals": true
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-honerism-mod-spy-low.png"
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.ModWheel",
+      "event": "down",
+      "targetY": 0.75
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.ModWheel",
+      "event": "drag",
+      "targetY": 0.1
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.ModWheel",
+      "event": "up",
+      "targetY": 0.1
+    },
+    {
+      "command": "assertState",
+      "path": "performance.modWheelValue",
+      "equals": 114
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 300
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-honerism-mod-spy-high.png"
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Note73",
+      "event": "click",
+      "button": "right"
+    },
+    {
+      "command": "assertState",
+      "path": "performance.previewNote",
+      "equals": 73
+    }
+  ],
+  "quit": true
+}

@@ -65,6 +65,7 @@ bool NodeWorkspace::loadGraphFromFile(const File& file) {
     if (!canvas.loadGraphFromFile(file)) {
         return false;
     }
+    keyboard.setPreviewNote(canvas.previewMidiNote());
     const auto status = audioEngine.status();
     audioEngine.setGraphOutputGain(canvas.graphOutputGain());
     publishAudioPlan(status, true);

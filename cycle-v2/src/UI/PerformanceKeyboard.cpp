@@ -45,7 +45,23 @@ String PerformanceKeyboard::noteLabel(int noteNumber) const {
 }
 
 void PerformanceKeyboard::shiftOctave(int octaveDelta) {
-    const int nextStart = jlimit(0, 127 - visibleSemitones, rangeStart + octaveDelta * 12);
+    setRangeStart(rangeStart + octaveDelta * 12);
+}
+
+void PerformanceKeyboard::revealNote(int midiNote) {
+    const int selectedNote = jlimit(0, 127, midiNote);
+    int nextStart = rangeStart;
+    while (selectedNote < nextStart) {
+        nextStart = jmax(0, nextStart - 12);
+    }
+    while (selectedNote > nextStart + visibleSemitones) {
+        nextStart = jmin(127 - visibleSemitones, nextStart + 12);
+    }
+    setRangeStart(nextStart);
+}
+
+void PerformanceKeyboard::setRangeStart(int noteNumber) {
+    const int nextStart = jlimit(0, 127 - visibleSemitones, noteNumber);
     if (nextStart == rangeStart) {
         return;
     }
@@ -255,6 +271,7 @@ Rectangle<float> PerformanceKeyboardPanel::progressBounds() const {
 
 void PerformanceKeyboardPanel::setPreviewNote(int midiNote) {
     selectedPreviewNote = jlimit(0, 127, midiNote);
+    keyboard.revealNote(selectedPreviewNote);
     keyboard.setHighlightedNote(selectedPreviewNote);
 }
 

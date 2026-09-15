@@ -133,6 +133,22 @@ TEST_CASE("Performance keyboard right click selects preview note without soundin
     REQUIRE(sink.messages.empty());
 }
 
+TEST_CASE("Performance keyboard keeps a loaded preview note visible",
+        "[cycle-v2][keyboard][preview-note][preset]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    panel.setBounds(0, 0, 489, 140);
+
+    panel.setPreviewNote(73);
+
+    REQUIRE(panel.previewNote() == 73);
+    REQUIRE(panel.baseNote() == 60);
+    REQUIRE_FALSE(panel.noteBounds(73).isEmpty());
+    REQUIRE(sink.messages.empty());
+}
+
 TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
         "[cycle-v2][keyboard][ui]") {
     ScopedJuceInitialiser_GUI gui;

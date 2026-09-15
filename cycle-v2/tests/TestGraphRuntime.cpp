@@ -327,6 +327,74 @@ TEST_CASE("Preview mod wheel refreshes modulation previews and spies without pub
     REQUIRE(presentation.previewAudioProcessCount("constant") == unrelatedProcessCount);
 }
 
+TEST_CASE("Honerism attached modulation refreshes mesh spies from loaded state",
+        "[cycle-v2][runtime][preview-mod-wheel][probe][preset]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("honerism-3.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    const NodeGraph graph = GraphSerializer().fromJsonString(
+            preset.loadFileAsString());
+    REQUIRE(graph.findSignalProbe("probe") != nullptr);
+
+    GraphPresentationModel presentation;
+    GraphChangeSet topology;
+    topology.topologyChanged = true;
+    REQUIRE(presentation.refresh(graph, 1, topology));
+    const auto initialSpy = findProbePreview(
+            presentation.previewResult(), "probe").values;
+    const auto initialMesh = findNodePreview(
+            presentation.previewResult(), "magnitudeLayer1").primary;
+    REQUIRE_FALSE(initialSpy.empty());
+    AudioVoiceContext initialVoice;
+    initialVoice.controls.noteNumber = presentation.previewMidiNote();
+    initialVoice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    const auto expectedAudio = GraphAudioExecutor().process(
+            graph,
+            presentation.compileResult().plan,
+            512,
+            {},
+            initialVoice);
+    const auto expectedPreview = GraphPreviewExecutor().render(
+            presentation.compileResult().plan,
+            expectedAudio,
+            graph.getSignalProbes(),
+            40);
+    REQUIRE(findProbePreview(expectedPreview, "probe").values == initialSpy);
+    const size_t compilationCount = presentation.compilationCount();
+    const uint64_t audioPlanRevision = presentation.audioPlanRevision();
+
+    REQUIRE(presentation.refreshPreviewModWheelValue(graph, 1, 32));
+    const auto lowerSpy = findProbePreview(
+            presentation.previewResult(), "probe").values;
+    const auto lowerMesh = findNodePreview(
+            presentation.previewResult(), "magnitudeLayer1").primary;
+    REQUIRE(lowerSpy != initialSpy);
+    REQUIRE(lowerMesh != initialMesh);
+
+    REQUIRE(presentation.refreshPreviewModWheelValue(graph, 1, 96));
+    const auto higherSpy = findProbePreview(
+            presentation.previewResult(), "probe").values;
+    const auto higherMesh = findNodePreview(
+            presentation.previewResult(), "magnitudeLayer1").primary;
+    REQUIRE(higherSpy != lowerSpy);
+    REQUIRE(higherMesh != lowerMesh);
+
+    const size_t previewRenderCount = presentation.previewRenderCount();
+    REQUIRE(presentation.refreshPreviewMidiNote(
+            graph, 1, presentation.previewMidiNote()));
+    REQUIRE(findProbePreview(presentation.previewResult(), "probe").values
+            == higherSpy);
+    REQUIRE(presentation.previewRenderCount() == previewRenderCount);
+    REQUIRE(presentation.compilationCount() == compilationCount);
+    REQUIRE(presentation.audioPlanRevision() == audioPlanRevision);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Runtime keeps scratch attachments separate from signal inputs", "[cycle-v2][runtime]") {
     const NodeGraph graph = NodeGraph::createDemoGraph();
     const auto compileResult = GraphCompiler().compile(graph);
