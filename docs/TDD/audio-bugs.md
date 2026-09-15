@@ -729,3 +729,9 @@ Context:
 Current status: open; reconcile the time-raster assertion with the current
 frontier contract and choose the intended Sitar fixture before updating its
 path.
+
+Update 2026-09-15: a broad randomized runtime batch (seed `1479899913`) also
+failed `Spectral frame refresh count is independent of Unison order` for the
+64-sample partition: maximum difference `0.023058094` exceeded the existing
+`0.02` tolerance. Focused realtime executor and prepared-context tests pass;
+retain this as an open oscillator-region partition/parity issue.
