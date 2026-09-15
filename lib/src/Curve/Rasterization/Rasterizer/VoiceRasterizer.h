@@ -48,8 +48,8 @@ public:
      * Chains the minimum necessary number of points from the previous call to
      * the head of the subsequent call, preserving continuity between cycles.
      */
-    const RenderResult& renderOrdinary(Mesh* mesh, float phase);
-    const RenderResult& renderChained(float phase);
+    const RenderResult& renderOrdinary(Mesh* mesh, float phase, WaveformBakeWork* work = nullptr);
+    const RenderResult& renderChained(float phase, WaveformBakeWork* work = nullptr);
     void prepare(
             const VoiceRasterizerPreparation& preparation,
             const std::vector<VoiceCycleState*>& states = {});
@@ -75,7 +75,7 @@ public:
 private:
     WaveformBuffers currentWaveform() const;
     bool currentWaveformIsSampleable() const;
-    bool bakeChainedWaveform();
+    bool bakeChainedWaveform(WaveformBakeWork* work);
     void cleanChainedOutput();
     const RenderResult& renderVoiceSlice(float oscPhase);
     void appendVoiceCubeIntercept(

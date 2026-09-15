@@ -2,6 +2,7 @@
 
 #include <Curve/Mesh/Vertex.h>
 #include "Policies/Core/PointScalingPolicy.h"
+#include "WaveformBakeWork.h"
 #include "../../Inter/Dimensions.h"
 #include "../../Obj/MorphPosition.h"
 
@@ -17,6 +18,7 @@ namespace Rasterization {
         bool cyclic { true };
         bool decoupleComponentDeforms {};
         bool integralSampling {};
+        bool prepareIntegrals { true };
         bool interpolateCurves {};
         bool lowResCurves {};
         bool overrideDimension {};
@@ -28,6 +30,7 @@ namespace Rasterization {
         float interceptPadding {};
         float xMinimum {};
         float xMaximum { 1.f };
+        WaveformBakeWork* waveformWork {};
     };
 
     struct GeometryRenderCommand {

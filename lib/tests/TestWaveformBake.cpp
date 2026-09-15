@@ -1,3 +1,4 @@
+#include <array>
 #include <memory>
 
 #include <catch2/catch_test_macros.hpp>
@@ -6,6 +7,7 @@
 #include "../src/Curve/Mesh/Mesh.h"
 #include "Support/LegacyMeshRasterizer.h"
 #include "../src/Curve/Rasterization/Policies/Curves/CurvePolicies.h"
+#include "../src/Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h"
 #include "../src/Curve/Mesh/VertCube.h"
 #include "RasterizerCompare.h"
 
@@ -132,4 +134,54 @@ TEST_CASE("Waveform bake path keeps MeshRasterizer wave snapshots deterministic"
     RasterizerCompare::requireSnapshotNear(
             RasterizerCompare::capture(second),
             RasterizerCompare::capture(first));
+}
+
+TEST_CASE("Point-only waveform preparation preserves samples and omits integral work",
+        "[rasterization][waveform][parity][complexity]") {
+    CurveTableScope curveTableScope;
+    auto mesh = createWaveformBakeMesh();
+    Rasterization::TrilinearMeshRasterizer full;
+    Rasterization::TrilinearMeshRasterizer points;
+    Rasterization::WaveformBakeWork fullWork;
+    Rasterization::WaveformBakeWork pointWork;
+    std::array<float, 512> expected {};
+    std::array<float, 512> actual {};
+
+    for (bool cyclic : { false, true }) {
+        for (bool interpolate : { false, true }) {
+            for (float time : { 0.f, 0.37f, 0.81f, 1.f }) {
+                Rasterization::RasterizationRequest request;
+                request.morph = MorphPosition(time, 0.5f, 0.5f);
+                request.cyclic = cyclic;
+                request.calcDepthDimensions = false;
+                request.interpolateCurves = interpolate;
+                request.waveformWork = &fullWork;
+                auto& reference = full.renderWaveform({ *mesh, request, 0.f });
+                request.prepareIntegrals = false;
+                request.waveformWork = &pointWork;
+                auto& output = points.renderWaveform({ *mesh, request, 0.f });
+                REQUIRE(reference.sampleable);
+                REQUIRE(output.sampleable);
+                REQUIRE(reference.waveform.waveX.normDiffL2(output.waveform.waveX) == 0.f);
+                REQUIRE(reference.waveform.waveY.normDiffL2(output.waveform.waveY) == 0.f);
+                REQUIRE(reference.waveform.slope.normDiffL2(output.waveform.slope) == 0.f);
+                REQUIRE(output.waveform.area.empty());
+                REQUIRE_FALSE(reference.waveform.area.empty());
+                full.sampler().sampleWithInterval({ expected.data(), 512 }, 1.0 / 512.0, 0.0);
+                points.sampler().sampleWithInterval({ actual.data(), 512 }, 1.0 / 512.0, 0.0);
+                REQUIRE(actual == expected);
+
+                // Restoring integral sampling through an incremental request must rebuild its storage.
+                request.prepareIntegrals = true;
+                request.waveformWork = nullptr;
+                Rasterization::CurveWaveformBuilder().rebakeAffectedRange(output, request, 0, 1);
+                REQUIRE(reference.waveform.area.normDiffL2(output.waveform.area) == 0.f);
+                REQUIRE(reference.waveform.waveY.normDiffL2(output.waveform.waveY) == 0.f);
+            }
+        }
+    }
+    REQUIRE(fullWork.waveformSegments > 0);
+    REQUIRE(fullWork.integralSegments == fullWork.waveformSegments);
+    REQUIRE(pointWork.waveformSegments == fullWork.waveformSegments);
+    REQUIRE(pointWork.integralSegments == 0);
 }

@@ -37,7 +37,7 @@ void OscillatorLaneRasterizer::prime(
     }
     configure(rasterizer, request);
     rasterizer.setInterceptPadding((float) request.angleDelta);
-    rasterizer.renderChained(request.phaseCycles);
+    rasterizer.renderChained(request.phaseCycles, performance == nullptr ? nullptr : &performance->waveform);
 }
 
 void OscillatorLaneRasterizer::render(
@@ -55,7 +55,7 @@ void OscillatorLaneRasterizer::render(
     rasterizer.setInterceptPadding((float) std::max(
             -request.state->spillover,
             request.angleDelta));
-    rasterizer.renderChained(request.phaseCycles);
+    rasterizer.renderChained(request.phaseCycles, performance == nullptr ? nullptr : &performance->waveform);
     rasterStage.finish();
 
     ScopedSourceRenderStage samplingStage(performance, SourceRenderStage::Sampling);
@@ -89,7 +89,8 @@ bool OscillatorLaneRasterizer::renderFixedFrame(
     configure(rasterizer, request);
     const double interval = 1.0 / (double) output.size();
     rasterizer.setInterceptPadding((float) interval * 2.f);
-    rasterizer.renderOrdinary(request.mesh, request.phaseCycles);
+    rasterizer.renderOrdinary(
+            request.mesh, request.phaseCycles, performance == nullptr ? nullptr : &performance->waveform);
     rasterStage.finish();
     ScopedSourceRenderStage samplingStage(performance, SourceRenderStage::Sampling);
     const auto sampler = rasterizer.sampler();

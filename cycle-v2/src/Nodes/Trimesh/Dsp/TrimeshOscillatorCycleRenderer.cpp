@@ -28,6 +28,7 @@ bool TrimeshOscillatorCycleRenderer::prepare(
         auto& lane = lanes[(size_t) laneIndex];
         lane.rasterizer.setGuideCurveProvider(configuration->guideCurveProvider.get());
         lane.rasterizer.setCalcDepthDimensions(false);
+        lane.rasterizer.setPrepareIntegrals(false);
         lane.rasterizer.setScalingMode(Rasterization::PointScalingMode::Bipolar);
         lane.rasterizer.prepare(preparation, { &lane.state });
     }

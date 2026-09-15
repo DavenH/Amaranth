@@ -21,6 +21,8 @@ var sourcePerformanceToVar(
     static constexpr std::array<const char*, CycleDsp::SourceRenderPerformance::stageCount>
             labels { "morphResolution", "rasterization", "sampling", "gain", "stereoCopy" };
     auto* root = new DynamicObject();
+    root->setProperty("waveformSegments", (int64) counts.waveform.waveformSegments);
+    root->setProperty("integralSegments", (int64) counts.waveform.integralSegments);
     for (size_t index = 0; index < labels.size(); ++index) {
         auto* stage = new DynamicObject();
         stage->setProperty("totalNanoseconds", (int64) counts.nanoseconds[index]);

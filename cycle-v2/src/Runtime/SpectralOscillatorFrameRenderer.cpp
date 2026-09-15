@@ -238,6 +238,7 @@ bool SpectralOscillatorFrameRenderer::prepare(
                     operation.timeRasterizer = std::make_unique<
                             Rasterization::VoiceRasterizer>();
                     operation.timeRasterizer->setCalcDepthDimensions(false);
+                    operation.timeRasterizer->setPrepareIntegrals(false);
                     operation.timeRasterizer->setGuideCurveProvider(
                             operation.configuration->guideCurveProvider.get());
                     operation.timeRasterizer->setScalingMode(
@@ -530,7 +531,8 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                         midiNote + LogRegionMapping::legacyMidiNoteBias);
                 operation.spectralRasterizer->setMorphPosition(morph);
                 operation.spectralRasterizer->rasterizePrepared(
-                        frameRandom.nextInt(GuideCurveProvider::tableSize));
+                        frameRandom.nextInt(GuideCurveProvider::tableSize),
+                        sourcePerformance == nullptr ? nullptr : &sourcePerformance->waveform);
                 rasterStage.finish();
                 CycleDsp::ScopedSourceRenderStage samplingStage(
                         sourcePerformance, CycleDsp::SourceRenderStage::Sampling);

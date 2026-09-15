@@ -2,8 +2,12 @@
 
 ## Status
 
-Source-rendering optimization in progress (2026-09-15). The original region
-and recipe attribution slices are implemented.
+Measured source-rendering optimization complete (2026-09-15): detailed source
+attribution, immutable guide sampling products, and point-only waveform
+preparation are implemented and verified. The original region and recipe
+attribution slices remain implemented. Speculative topology and direct-sampling
+changes are explicitly deferred below; no chained wall-time improvement is
+claimed beyond capture variability.
 
 ## Source Optimization Design
 
@@ -352,3 +356,118 @@ does no timestamp reads or counter updates when its optional pointer is null.
   assertions in 1 case.
 - Debug and Release `CycleV2` standalone targets build successfully.
 - Both profiling fixtures complete for Debug and Release with 0/1/4/8 voices.
+
+### Final source optimization measurements (Release)
+
+The comparison below uses the unchanged spectral and chained 0/1/4/8-voice
+fixtures with detailed telemetry enabled in both baseline and final binaries.
+Spectral values are arithmetic means of two baseline and two final captures;
+chained values use one detailed baseline and three final captures. They are
+descriptive local measurements, not confidence intervals. Callback and recipe
+durations are milliseconds; rasterization is microseconds per source operation.
+
+| Graph | Voices | Callback before | Callback after | Recipe before | Recipe after | Raster before | Raster after |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Baroque Flute | 0 | 0.134 | 0.140 | 0 | 0 | 0 | 0 |
+| Baroque Flute | 1 | 0.534 | 0.534 | 0.401 | 0.393 | 8.378 | 7.590 |
+| Baroque Flute | 4 | 1.700 | 1.575 | 1.493 | 1.366 | 6.052 | 5.128 |
+| Baroque Flute | 8 | 2.635 | 2.501 | 2.328 | 2.185 | 5.256 | 4.579 |
+| African Horn | 0 | 0.128 | 0.121 | 0 | 0 | 0 | 0 |
+| African Horn | 1 | 0.333 | 0.323 | 0.201 | 0.191 | 8.065 | 7.533 |
+| African Horn | 4 | 0.964 | 0.940 | 0.755 | 0.739 | 5.521 | 5.340 |
+| African Horn | 8 | 1.978 | 1.963 | 1.708 | 1.688 | 4.811 | 4.693 |
+
+At eight voices, spectral rasterization falls from 5.165--5.347 to
+4.543--4.615 microseconds/source: approximately **12.9%** using the two-run
+means. Recipe time falls **6.1%**, and callback time **5.1%**. An earlier
+provisional capture measured 3.880 microseconds/source, but is excluded from
+this final-executable comparison; repeated captures support the smaller gain.
+African Horn final rasterization spans 4.583--4.835 microseconds/source and
+callbacks span 1.920--2.009 ms, overlapping the baseline. Its small mean changes
+are within observed variability, so a reliable chained speedup is not established.
+
+Operation counts establish the removed work independently of timing:
+
+- Shared guide tests cover every resolution ratio 1--256 and prove zero runtime
+  downsampling for prepared sizes. Unsupported sizes still use the original
+  sampler. For an 8,192-sample guide, preparation stores 149 distinct products,
+  45,203 floats (180,812 bytes), plus the fixed 257-entry offset table. This is
+  per immutable guide snapshot in a prepared provider, not per voice. Consumers
+  of that provider reuse it, but existing preparation creates separate providers
+  for different Trimesh configurations and includes every graph guide. Memory
+  therefore scales with guides times distinct providers. Cross-provider
+  immutable-product sharing is a follow-up in `refactors.md`, not implemented.
+- Full and point-only waveform tests produce the same number of waveform
+  segments. Full preparation computes N integral segments; point-only computes
+  zero. Final eight-voice telemetry reports roughly 7.89 million spectral
+  segments plus 0.79 million time-source segments for Baroque, and 3.65--3.74
+  million time-source segments for African Horn, with **zero integral segments**
+  throughout. Capture totals vary slightly with callback count.
+- Remaining waveform/slope work is still O(rendered samples), and mesh slicing
+  retains its existing traversal complexity. There is no claim of incremental
+  topology rendering or reduced asymptotic total source complexity.
+
+Final artifacts:
+
+- `/private/tmp/cycle-v2-source-final-spectral-{2,3}.json`
+- `/private/tmp/cycle-v2-source-final-chained-{1,2,3}.json`
+- `/private/tmp/cycle-v2-source-final-parity-report.json`
+
+### Exact output and engineering verification
+
+Deterministic one-second captures use 44.1 kHz, 512-sample blocks, two channels,
+seed 12345, note 60 at velocity 0.8, and release at 700 ms. Baroque's baseline,
+guide-only, and final WAV files compare byte-for-byte identically. African
+Horn's current-preset baseline and final also compare byte-for-byte identically.
+Its reused baseline path contained two appended RIFF files; compare the last
+264,704 bytes with the final WAV, not the entire concatenated file. The capture
+writer issue is recorded separately in `audio-bugs.md` and remains open.
+
+- Release `CycleV2`: `cmake --build --preset standalone-release --target CycleV2
+  --parallel 10` passes.
+- Debug tests: `cmake --build --preset tests --target CycleV2_tests
+  AmaranthLib_tests --parallel 10` passes.
+- Shared `[rasterization],[guide][dsp]`: **24,444 assertions / 85 cases** pass.
+- Cycle V2 performance, realtime, Trimesh DSP/guide-grid, and voice-time parity
+  selection: **572 assertions / 26 cases** pass. Coverage includes telemetry
+  on/off output parity and realtime allocation/locking guards.
+- Final `ctest --test-dir build/tests -R 'Prepared guide samples|Point-only
+  waveform|Realtime audio telemetry|Prepared realtime voice mixing'
+  --output-on-failure`: **4/4 tests pass**.
+- Final filtered fixture logs contain no assertions or errors.
+- Production diff reviewed for shared authority, abstraction boundaries, and
+  style. Integral preparation is one shared helper used by full and incremental
+  bakes; no copied rasterization, graph lookup, new node-kind branch, allocation,
+  or locking was added to rendering. Spectral capture metadata was extracted
+  into its existing capture module, leaving the frame renderer smaller than
+  at the starting commit. No transitional adapter or deletion target remains.
+- `git diff --check` and modified-hot-path scalar-math checks pass. CLion's
+  clang-tidy was attempted with the Release compilation database. After supplying
+  the installed compiler resource directory, it still fails on the existing
+  JUCE `AudioPluginInstance`/`AudioProcessor` constructor compatibility error.
+  Available diagnostics were reviewed; Buffer-by-value suggestions are retained
+  as the established non-owning view convention. This is not a clean full
+  clang-tidy result. Log: `/private/tmp/cycle-v2-source-clang-tidy.log`.
+  The dependency-free `SourceRenderPerformance.cpp` passes clang-tidy with
+  explicit installed SDK/libc++ paths.
+
+The broader shared suite also exposed an uninitialized terminal `Curve::curveRes`;
+initializing it to zero preserves the existing parity assertion and sampled
+output. Two existing Organ 2 parity fixtures now use the archived preset path.
+Both incidental findings and their resolutions are recorded in `audio-bugs.md`.
+
+### Remaining opportunities, not implemented
+
+The source split makes morph resolution, gain, and stereo copying too small to
+justify lifecycle-sensitive caching or a lazy-stereo representation in this
+slice. Configuration/mesh-validity checks are O(1); ordinary harmonic positions
+already reuse `LogRegions`. Guide preparation was the measured immutable work
+worth sharing, without caching noise or mutable phase/lifecycle state.
+
+Direct harmonic-only rasterization, prepared topology/frontiers, and incremental
+curve transforms require a further shared-core design and evidence that they
+preserve guide, interpolation, chaining, and random-consumption semantics.
+Chained curve preparation remains material in the CPU sample; removing unused
+integrals alone has not demonstrated a reliable wall-time gain there. None of
+those algorithms was approximated or duplicated. FFT/IFFT, final lane mixing,
+and graph add/multiply were left unchanged.

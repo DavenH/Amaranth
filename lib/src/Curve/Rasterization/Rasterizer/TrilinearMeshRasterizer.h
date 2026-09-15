@@ -193,6 +193,10 @@ namespace Rasterization {
             request.integralSampling = does;
         }
 
+        void setPrepareIntegrals(bool prepare) {
+            request.prepareIntegrals = prepare;
+        }
+
         void setInterpolateCurves(bool interpolate) {
             request.interpolateCurves = interpolate;
         }

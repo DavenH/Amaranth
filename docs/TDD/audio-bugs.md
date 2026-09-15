@@ -1,5 +1,26 @@
 # Audio Bug Notes
 
+## Open: offline capture appends when the WAV path already exists
+
+On 2026-09-15, two `captureAudio` commands reused
+`/private/tmp/cycle-v2-source-chained-before.wav`. The file contained two
+consecutive 264,704-byte RIFF files (529,408 bytes total), although the second
+report describes only the latest one-second capture. The newest RIFF starts
+at byte 264,704 and compares exactly with the optimized capture. Reproduction:
+capture twice to one existing path. The capture writer should replace or
+truncate its output; use unique paths until this is addressed. This is separate
+from oscillator rendering and remains open.
+
+## Resolved: waveform parity compared an uninitialized terminal curve size
+
+The rasterization suite exposed `actual.curveRes == expected.curveRes` as
+`0 == 998507208` in `RasterizerCompare.h:114`, from
+`FXRasterizer mesh adapter matches direct vertex list rasterization` (seed
+2766437482). The terminal curve is not baked, and `Curve::nullify()` did not
+initialize its `curveRes`. Initialize it to zero; this changes no sampled
+waveform and keeps the existing parity assertion intact. Found during the
+2026-09-15 source-rendering optimization.
+
 ## Resolved: Organ 2 oscillator parity tests referenced an archived path
 
 During source-rendering optimization on 2026-09-15, two voice-time parity

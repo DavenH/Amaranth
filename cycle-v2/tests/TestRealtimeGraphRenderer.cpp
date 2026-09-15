@@ -251,6 +251,8 @@ TEST_CASE("Realtime audio telemetry does not change rendered output",
                 1.0,
                 instrumented ? &sample : nullptr);
         if (instrumented) {
+            REQUIRE(sample.timeSources.waveform.waveformSegments > 0);
+            REQUIRE(sample.timeSources.waveform.integralSegments == 0);
             REQUIRE(sample.graphRevision == 23);
             REQUIRE(sample.executionStepCount == compiled.plan.steps.size());
             REQUIRE(sample.activeVoiceCount == 1);

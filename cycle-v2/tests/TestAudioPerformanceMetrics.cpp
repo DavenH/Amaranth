@@ -60,6 +60,7 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     const size_t rasterStage = (size_t) CycleDsp::SourceRenderStage::Rasterization;
     first.timeSources.nanoseconds[rasterStage] = 2'100;
     first.timeSources.operations[rasterStage] = 3;
+    first.timeSources.waveform = { 75, 0 };
     first.spectralSources.nanoseconds[rasterStage] = 4'500;
     first.spectralSources.operations[rasterStage] = 2;
     metrics.publishRealtimeSample(first);
@@ -95,6 +96,7 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
             OscillatorRecipeStage::TimeSourceRendering)] = 12;
     second.timeSources.nanoseconds[rasterStage] = 3'900;
     second.timeSources.operations[rasterStage] = 2;
+    second.timeSources.waveform = { 125, 0 };
     metrics.publishRealtimeSample(second);
 
     REQUIRE(metrics.snapshot().callbackDuration.count == 0);
@@ -182,6 +184,8 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     REQUIRE((int64) property(timeSource, "totalOperations") == 18);
     REQUIRE((double) property(timeSource, "meanOperations") == Catch::Approx(9.0));
     const var sourceStages = property(exported, "oscillatorSourceStages");
+    REQUIRE((int64) property(property(sourceStages, "time"), "waveformSegments") == 200);
+    REQUIRE((int64) property(property(sourceStages, "time"), "integralSegments") == 0);
     const var timeRaster = property(property(sourceStages, "time"), "rasterization");
     const var spectralRaster = property(property(sourceStages, "spectral"), "rasterization");
     REQUIRE((int64) property(timeRaster, "totalNanoseconds") == 6'000);

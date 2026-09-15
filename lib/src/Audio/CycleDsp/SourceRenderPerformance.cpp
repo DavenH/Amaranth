@@ -14,6 +14,8 @@ uint64_t timestampNanoseconds() noexcept {
 }
 
 void SourceRenderPerformance::add(const SourceRenderPerformance& other) noexcept {
+    waveform.waveformSegments += other.waveform.waveformSegments;
+    waveform.integralSegments += other.waveform.integralSegments;
     for (size_t index = 0; index < stageCount; ++index) {
         nanoseconds[index] += other.nanoseconds[index];
         operations[index] += other.operations[index];

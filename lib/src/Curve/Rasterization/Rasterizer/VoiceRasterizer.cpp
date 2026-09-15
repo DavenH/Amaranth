@@ -66,21 +66,24 @@ bool VoiceRasterizer::isPreparedFor(const Mesh& candidate) const {
     return preparation.interceptCapacity >= (size_t) candidate.getNumCubes();
 }
 
-const RenderResult& VoiceRasterizer::renderOrdinary(Mesh* mesh, float phase) {
+const RenderResult& VoiceRasterizer::renderOrdinary(Mesh* mesh, float phase, WaveformBakeWork* work) {
     activeOutput = ActiveOutput::Ordinary;
     if (!hasPreparedCapacity(mesh)) {
         ++renderDiagnostics.capacityFailureCount;
         return result();
     }
 
-    renderWaveformOnly(mesh, phase);
+    setMesh(mesh);
+    auto request = getRequest();
+    request.waveformWork = work;
+    renderTrilinearWaveform(*mesh, request, phase);
     ++renderDiagnostics.sliceCount;
     ++renderDiagnostics.sortCount;
     ++renderDiagnostics.bakeCount;
     return result();
 }
 
-const RenderResult& VoiceRasterizer::renderChained(float oscPhase) {
+const RenderResult& VoiceRasterizer::renderChained(float oscPhase, WaveformBakeWork* work) {
     activeOutput = ActiveOutput::Chained;
 
     if (mesh == nullptr || mesh->getNumCubes() == 0 || state == nullptr) {
@@ -122,7 +125,7 @@ const RenderResult& VoiceRasterizer::renderChained(float oscPhase) {
                 chainResult.curves,
                 getRequest().interceptPadding);
 
-        if (!bakeChainedWaveform()) {
+        if (!bakeChainedWaveform(work)) {
             return chainResult;
         }
     }
@@ -150,7 +153,7 @@ WaveformBuffers VoiceRasterizer::currentWaveform() const {
     return activeOutput == ActiveOutput::Chained ? chainResult.waveform : waveform();
 }
 
-bool VoiceRasterizer::bakeChainedWaveform() {
+bool VoiceRasterizer::bakeChainedWaveform(WaveformBakeWork* work) {
     if (chainResult.intercepts.size() < 2) {
         cleanChainedOutput();
         return false;
@@ -161,6 +164,8 @@ bool VoiceRasterizer::bakeChainedWaveform() {
 
     Rasterization::WaveformBakePolicy::Context context;
     context.lowResCurves = getRequest().lowResCurves;
+    context.prepareIntegrals = getRequest().prepareIntegrals;
+    context.work = work;
     context.decoupleComponentDfrms = getRequest().decoupleComponentDeforms;
     context.noiseSeed = getRequest().noiseSeed;
     context.morph = getRequest().morph;

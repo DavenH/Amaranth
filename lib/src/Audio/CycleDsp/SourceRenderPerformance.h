@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <Curve/Rasterization/WaveformBakeWork.h>
+
 namespace CycleDsp {
 
 enum class SourceRenderStage : uint8_t {
@@ -20,6 +22,7 @@ struct SourceRenderPerformance {
 
     std::array<uint64_t, stageCount> nanoseconds {};
     std::array<uint64_t, stageCount> operations {};
+    Rasterization::WaveformBakeWork waveform;
 
     void add(const SourceRenderPerformance& other) noexcept;
 };
