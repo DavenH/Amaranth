@@ -1,6 +1,7 @@
 #include "Runtime/SpectralOscillatorFrameRenderer.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "Runtime/AudioPerformanceMetrics.h"
 
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Audio/CycleDsp/SpectralLayerCore.h>
@@ -448,6 +449,29 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                 values.section(1, activeHarmonicCount));
     };
     for (auto& operation : operations) {
+        const auto performanceStage = [&] {
+            switch (operation.type) {
+                case OperationType::TimeTrimesh:
+                    return OscillatorRecipeStage::TimeSourceRendering;
+                case OperationType::SpectralTrimesh:
+                    return OscillatorRecipeStage::SpectralSourceRendering;
+                case OperationType::Fft:
+                    return OscillatorRecipeStage::ForwardTransform;
+                case OperationType::Ifft:
+                    return OscillatorRecipeStage::InverseTransform;
+                case OperationType::SpectralLayer:
+                case OperationType::Add:
+                case OperationType::Multiply:
+                    return OscillatorRecipeStage::GraphCombining;
+            }
+            return OscillatorRecipeStage::GraphCombining;
+        }();
+        auto* performanceCounts = context == nullptr
+                ? nullptr
+                : context->performanceCounts;
+        AudioPerformanceMetrics::ScopedOscillatorRecipeStage measuredStage(
+                performanceCounts,
+                performanceStage);
         const int count = valueCount(operation.outputDomain, frameSize);
         auto leftOutput = slot(operation.outputs[0], 0, count);
         auto rightOutput = slot(operation.outputs[0], 1, count);

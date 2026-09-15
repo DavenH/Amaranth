@@ -259,6 +259,8 @@ TEST_CASE("Realtime audio telemetry does not change rendered output",
             REQUIRE(sample.oscillatorMixedLaneCount > 0);
             REQUIRE(sample.oscillatorStageDurations[(size_t)
                     AudioPerformanceMetrics::OscillatorStage::RegionRendering] > 0);
+            REQUIRE(sample.oscillatorRecipeStageOperationCounts[(size_t)
+                    OscillatorRecipeStage::TimeSourceRendering] > 0);
         }
         return std::vector<float>(
                 output.getReadPointer(0),

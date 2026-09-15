@@ -53,6 +53,10 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
             AudioPerformanceMetrics::OscillatorStage::RegionRendering)] = 1'000;
     first.oscillatorStageDurations[static_cast<size_t>(
             AudioPerformanceMetrics::OscillatorStage::RecipeRendering)] = 700;
+    first.oscillatorRecipeStageDurations[static_cast<size_t>(
+            OscillatorRecipeStage::TimeSourceRendering)] = 400;
+    first.oscillatorRecipeStageOperationCounts[static_cast<size_t>(
+            OscillatorRecipeStage::TimeSourceRendering)] = 6;
     metrics.publishRealtimeSample(first);
 
     auto second = beginSample(metrics);
@@ -80,6 +84,10 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
             AudioPerformanceMetrics::OscillatorStage::RegionRendering)] = 4'000;
     second.oscillatorStageDurations[static_cast<size_t>(
             AudioPerformanceMetrics::OscillatorStage::RecipeRendering)] = 3'000;
+    second.oscillatorRecipeStageDurations[static_cast<size_t>(
+            OscillatorRecipeStage::TimeSourceRendering)] = 1'500;
+    second.oscillatorRecipeStageOperationCounts[static_cast<size_t>(
+            OscillatorRecipeStage::TimeSourceRendering)] = 12;
     metrics.publishRealtimeSample(second);
 
     REQUIRE(metrics.snapshot().callbackDuration.count == 0);
@@ -113,6 +121,11 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     REQUIRE(snapshot.oscillatorStages[static_cast<size_t>(
             AudioPerformanceMetrics::OscillatorStage::RegionRendering)]
                     .totalMicroseconds == 5'000);
+    REQUIRE(snapshot.oscillatorRecipeStages[static_cast<size_t>(
+            OscillatorRecipeStage::TimeSourceRendering)]
+                    .totalMicroseconds == 1'900);
+    REQUIRE(snapshot.totalOscillatorRecipeStageOperations[static_cast<size_t>(
+            OscillatorRecipeStage::TimeSourceRendering)] == 18);
 
     const var exported = metrics.toVar();
     REQUIRE(property(exported, "schema").toString()
@@ -155,6 +168,12 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     REQUIRE((double) property(
             property(property(exported, "oscillatorStages"), "recipeRendering"),
             "meanMs") == Catch::Approx(1.85));
+    const var timeSource = property(
+            property(exported, "oscillatorRecipeStages"),
+            "timeSourceRendering");
+    REQUIRE((double) property(timeSource, "meanMs") == Catch::Approx(0.95));
+    REQUIRE((int64) property(timeSource, "totalOperations") == 18);
+    REQUIRE((double) property(timeSource, "meanOperations") == Catch::Approx(9.0));
 }
 
 TEST_CASE("Audio performance reset rejects samples from the old generation",

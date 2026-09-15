@@ -1,10 +1,10 @@
 #pragma once
 
 #include "Runtime/NodeDspConfiguration.h"
+#include "Runtime/OscillatorPerformanceTelemetry.h"
 
 #include <Array/Buffer.h>
 
-#include <cstdint>
 #include <memory>
 
 namespace CycleV2 {
@@ -13,17 +13,6 @@ struct GraphExecutionPlan;
 struct OscillatorRegionPlan;
 struct CompiledVoiceContext;
 class NodeAudioProcessor;
-
-struct OscillatorRegionPerformanceCounts {
-    uint64_t regionDurationMicroseconds {};
-    uint64_t recipeDurationMicroseconds {};
-    uint64_t laneDurationMicroseconds {};
-    uint64_t mixDurationMicroseconds {};
-    uint32_t regionRenderCount {};
-    uint32_t recipeRenderCount {};
-    uint32_t laneCycleCount {};
-    uint32_t mixedLaneCount {};
-};
 
 struct PreparedOscillatorProcessContext {
     const AudioVoiceContext* voice {};

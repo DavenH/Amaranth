@@ -1,5 +1,7 @@
 #include "Runtime/ChainedOscillatorRecipeRenderer.h"
 
+#include "Runtime/AudioPerformanceMetrics.h"
+
 #include <Util/Arithmetic.h>
 
 #include <algorithm>
@@ -235,6 +237,15 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
         auto& operation = operations[(size_t) operationIndex];
         auto outputLeft = operationBuffer(operationIndex, 0, request.sampleCount);
         auto outputRight = operationBuffer(operationIndex, 1, request.sampleCount);
+        auto* performanceCounts = request.processContext == nullptr
+                ? nullptr
+                : request.processContext->performanceCounts;
+        const OscillatorRecipeStage performanceStage = operation.trimesh != nullptr
+                ? OscillatorRecipeStage::TimeSourceRendering
+                : OscillatorRecipeStage::GraphCombining;
+        AudioPerformanceMetrics::ScopedOscillatorRecipeStage measuredStage(
+                performanceCounts,
+                performanceStage);
         if (operation.trimesh != nullptr) {
             MorphPosition morph = operation.configuration->morph;
             if (request.processContext != nullptr) {

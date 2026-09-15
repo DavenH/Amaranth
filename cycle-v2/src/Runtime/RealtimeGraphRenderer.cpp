@@ -522,6 +522,12 @@ void RealtimeGraphRenderer::renderVoices(
         performanceSample->oscillatorStageDurations[(size_t)
                 AudioPerformanceMetrics::OscillatorStage::OutputMixing]
                 = oscillator.mixDurationMicroseconds;
+        for (size_t index = 0; index < oscillatorRecipeStageCount; ++index) {
+            performanceSample->oscillatorRecipeStageDurations[index]
+                    = oscillator.recipeStageDurations[index];
+            performanceSample->oscillatorRecipeStageOperationCounts[index]
+                    = oscillator.recipeStageOperationCounts[index];
+        }
     }
 }
 

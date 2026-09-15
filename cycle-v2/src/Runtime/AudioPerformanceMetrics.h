@@ -1,12 +1,13 @@
 #pragma once
 
+#include "Runtime/OscillatorPerformanceTelemetry.h"
+#include "Runtime/PerformanceDistribution.h"
+
 #include <JuceHeader.h>
 
 #include <array>
 #include <atomic>
 #include <cstdint>
-
-#include "Runtime/PerformanceDistribution.h"
 
 namespace CycleV2 {
 
@@ -63,6 +64,9 @@ public:
         uint64_t gridStorageValues {};
         std::array<uint64_t, stageCount> stageDurations {};
         std::array<uint64_t, oscillatorStageCount> oscillatorStageDurations {};
+        std::array<uint64_t, oscillatorRecipeStageCount> oscillatorRecipeStageDurations {};
+        std::array<uint32_t, oscillatorRecipeStageCount>
+                oscillatorRecipeStageOperationCounts {};
     };
 
     struct Snapshot {
@@ -94,6 +98,10 @@ public:
         PerformanceDistribution deadlineUtilizationPermille;
         std::array<PerformanceDistribution, stageCount> stages;
         std::array<PerformanceDistribution, oscillatorStageCount> oscillatorStages;
+        std::array<PerformanceDistribution, oscillatorRecipeStageCount>
+                oscillatorRecipeStages;
+        std::array<uint64_t, oscillatorRecipeStageCount>
+                totalOscillatorRecipeStageOperations {};
     };
 
     class ScopedRealtimeStage final {
@@ -107,6 +115,23 @@ public:
     private:
         RealtimeSample* measuredSample;
         Stage measuredStage;
+        uint64_t startMicroseconds;
+    };
+
+    class ScopedOscillatorRecipeStage final {
+    public:
+        ScopedOscillatorRecipeStage(
+                OscillatorRegionPerformanceCounts* counts,
+                OscillatorRecipeStage stage) noexcept;
+        ~ScopedOscillatorRecipeStage();
+
+        ScopedOscillatorRecipeStage(const ScopedOscillatorRecipeStage&) = delete;
+        ScopedOscillatorRecipeStage& operator=(
+                const ScopedOscillatorRecipeStage&) = delete;
+
+    private:
+        OscillatorRegionPerformanceCounts* measuredCounts;
+        size_t measuredStageIndex;
         uint64_t startMicroseconds;
     };
 
@@ -128,6 +153,7 @@ public:
             uint64_t startMicroseconds) noexcept;
     static const char* label(Stage stage);
     static const char* label(OscillatorStage stage);
+    static const char* label(OscillatorRecipeStage stage);
 
 private:
     struct Aggregate {
@@ -156,6 +182,10 @@ private:
         PerformanceDistribution deadlineUtilizationPermille;
         std::array<PerformanceDistribution, stageCount> stages;
         std::array<PerformanceDistribution, oscillatorStageCount> oscillatorStages;
+        std::array<PerformanceDistribution, oscillatorRecipeStageCount>
+                oscillatorRecipeStages;
+        std::array<uint64_t, oscillatorRecipeStageCount>
+                totalOscillatorRecipeStageOperations {};
     };
 
     void aggregate(const RealtimeSample& sample);

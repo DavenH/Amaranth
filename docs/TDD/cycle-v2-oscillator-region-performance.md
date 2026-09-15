@@ -144,9 +144,91 @@ This is the narrowest evidence-backed boundary: recipe evaluation consumes
 roughly 94--95% of oscillator-region time in Release for both independent
 rendering paths.
 
+## Production Hotspot Attribution
+
+The follow-up slice keeps Release telemetry available and divides recipe time
+by the prepared operation families that perform production work:
+
+- time-domain mesh source rendering, including morph resolution;
+- spectral mesh source rendering, including morph resolution;
+- forward transforms;
+- inverse transforms;
+- graph combining: pan, magnitude transfer, add, and multiply.
+
+Each family reports callback duration distributions and executed-operation
+counts. Unattributed recipe time remains visible as the difference from total
+recipe duration and covers fixed per-frame setup and final output copies. This
+avoids assigning orchestration overhead to a DSP operation family.
+
+The slice is complete when Release 0/1/4/8-voice captures for both representative
+graphs identify the dominant production operation family, tests cover the new
+handoff/schema, and output parity plus realtime allocation/locking coverage
+remain green.
+
+### Production Release Measurements
+
+The telemetry is present in Release builds and is enabled only during a
+measurement window. With telemetry disabled, the renderer receives no
+performance-count pointer and performs neither timestamp reads nor counter
+updates. The automation endpoint successfully captured all fields from the
+Release standalone executable.
+
+Durations below are mean milliseconds per callback. `Other` is total recipe
+time minus the measured operation families and covers per-frame setup and final
+output copies.
+
+| Graph | Voices | Recipe | Time source | Spectral source | Forward FFT | Inverse FFT | Combining | Other |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Baroque Flute | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Baroque Flute | 1 | 0.301 | 0.052 | 0.186 | 0.016 | 0.012 | 0.030 | 0.005 |
+| Baroque Flute | 4 | 1.367 | 0.209 | 0.925 | 0.049 | 0.044 | 0.119 | 0.020 |
+| Baroque Flute | 8 | 2.217 | 0.343 | 1.524 | 0.071 | 0.065 | 0.183 | 0.031 |
+| African Horn | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| African Horn | 1 | 0.167 | 0.162 | 0 | 0 | 0 | 0.003 | 0.002 |
+| African Horn | 4 | 0.706 | 0.684 | 0 | 0 | 0 | 0.013 | 0.009 |
+| African Horn | 8 | 1.649 | 1.603 | 0 | 0 | 0 | 0.026 | 0.020 |
+
+At eight voices, Baroque Flute spends 68.8% of recipe time rendering spectral
+mesh sources and 15.5% rendering its time-domain source. Graph combining is
+8.3%, while both transforms together are only 6.1%. Its topology executes four
+spectral source operations, one time source, one forward transform, one inverse
+transform, and four combining operations per recipe. The spectral source cost
+is therefore both individually material (about 6.0 microseconds per operation)
+and repeated four times per generated frame.
+
+African Horn spends 97.2% of recipe time rendering time-domain mesh sources.
+It executes two time sources and one combining operation per recipe. At eight
+voices, time sources average about 5.8 microseconds per operation while the
+combining operation averages about 0.19 microseconds.
+
+Two operation-level Release captures put the eight-voice callback at
+2.30--2.52 milliseconds for Baroque Flute and 1.90--1.99 milliseconds for
+African Horn. Despite that absolute run-to-run variation, the dominant shares
+were stable: spectral source rendering remained about 68% for Baroque Flute
+and time source rendering remained about 97% for African Horn. Normal
+production playback has no detailed-timing overhead because telemetry is
+disabled outside an explicit measurement window.
+
+Artifacts:
+
+- `/private/tmp/cycle-v2-oscillator-spectral-production.json`
+- `/private/tmp/cycle-v2-oscillator-chained-production.json`
+
+### Production Optimization Order
+
+1. Profile and optimize spectral mesh rasterization in
+   `TrimeshBlockwiseDsp::rasterizePrepared` and harmonic sampling in
+   `renderPreparedHarmonicsInto`. This is the largest aggregate spectral cost.
+2. Profile and optimize the shared time-domain mesh path used through
+   `OscillatorLaneRasterizer`; it dominates the chained graph and remains the
+   second-largest spectral-graph family.
+3. Leave FFT/IFFT and graph combining alone until rasterization work is
+   reduced. Together they are materially smaller than source rendering in the
+   representative Release workloads.
+
 ## Verification
 
-- `CycleV2_tests '[cycle-v2][audio][performance]'`: 308 assertions in 5 cases.
+- `CycleV2_tests '[cycle-v2][audio][performance]'`: 313 assertions in 5 cases.
 - `CycleV2_tests '[cycle-v2][runtime][realtime]'`: 138 assertions in 13 cases.
 - `CycleV2_tests '[cycle-v2][audio-device][realtime][performance]'`: 12
   assertions in 1 case.
