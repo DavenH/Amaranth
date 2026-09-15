@@ -38,6 +38,9 @@ public:
         uint32_t executionStepCount {};
         uint16_t activeVoiceCount {};
         uint16_t scheduledMidiEventCount {};
+        uint16_t dequeuedMidiEventCount {};
+        uint16_t sortedMidiItemCount {};
+        uint16_t compactedMidiItemCount {};
         uint32_t executionStepVisitCount {};
         uint32_t modulationBindingVisitCount {};
         uint32_t spectralTransferBindingVisitCount {};
@@ -56,6 +59,9 @@ public:
         uint64_t totalModulationBindingVisits {};
         uint64_t totalSpectralTransferBindingVisits {};
         uint64_t totalContextPatches {};
+        uint64_t totalDequeuedMidiEvents {};
+        uint64_t totalSortedMidiItems {};
+        uint64_t totalCompactedMidiItems {};
         uint64_t latestGraphRevision {};
         uint32_t maximumFrameCount {};
         uint16_t maximumActiveVoiceCount {};
@@ -107,6 +113,9 @@ private:
         uint64_t totalModulationBindingVisits {};
         uint64_t totalSpectralTransferBindingVisits {};
         uint64_t totalContextPatches {};
+        uint64_t totalDequeuedMidiEvents {};
+        uint64_t totalSortedMidiItems {};
+        uint64_t totalCompactedMidiItems {};
         uint64_t latestGraphRevision {};
         uint32_t maximumFrameCount {};
         uint16_t maximumActiveVoiceCount {};

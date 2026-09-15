@@ -880,12 +880,32 @@ TEST_CASE("Realtime graph renderer defers events beyond the current callback",
 
     AudioBuffer<float> output(2, 64);
     float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
-    renderer.process(queue, channels, 2, 64, 44100.0, 1.0);
+    AudioPerformanceMetrics::RealtimeSample firstPerformance;
+    renderer.process(
+            queue,
+            channels,
+            2,
+            64,
+            44100.0,
+            1.0,
+            &firstPerformance);
     REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 0);
+    REQUIRE(firstPerformance.dequeuedMidiEventCount == 1);
+    REQUIRE(firstPerformance.sortedMidiItemCount == 1);
 
-    renderer.process(queue, channels, 2, 64, 44100.0, 2.0);
+    AudioPerformanceMetrics::RealtimeSample secondPerformance;
+    renderer.process(
+            queue,
+            channels,
+            2,
+            64,
+            44100.0,
+            2.0,
+            &secondPerformance);
     REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 1);
     REQUIRE(renderer.diagnostics(queue).peak > 0.f);
+    REQUIRE(secondPerformance.dequeuedMidiEventCount == 0);
+    REQUIRE(secondPerformance.sortedMidiItemCount == 0);
 }
 
 TEST_CASE("Fully released spectral notes repeat on the same voice instance",

@@ -93,6 +93,12 @@ public:
     }
 
 private:
+    struct MidiSchedulingOperationCounts {
+        uint16_t dequeuedEvents {};
+        uint16_t sortedItems {};
+        uint16_t compactedItems {};
+    };
+
     struct Voice {
         AudioVoiceContext context;
         MidiEventSource source { MidiEventSource::PerformanceKeyboard };
@@ -106,7 +112,7 @@ private:
     };
 
     void beginBlock();
-    void consumeEvents(
+    MidiSchedulingOperationCounts consumeEvents(
             RealtimeMidiEventQueue& queue,
             int frameCount,
             double sampleRate,

@@ -38,6 +38,9 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     first.modulationBindingVisitCount = 2;
     first.spectralTransferBindingVisitCount = 5;
     first.contextPatchCount = 11;
+    first.dequeuedMidiEventCount = 2;
+    first.sortedMidiItemCount = 4;
+    first.compactedMidiItemCount = 1;
     first.stageDurations[static_cast<size_t>(
             AudioPerformanceMetrics::Stage::VoiceRendering)] = 1'200;
     metrics.publishRealtimeSample(first);
@@ -52,6 +55,9 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     second.modulationBindingVisitCount = 4;
     second.spectralTransferBindingVisitCount = 7;
     second.contextPatchCount = 13;
+    second.dequeuedMidiEventCount = 3;
+    second.sortedMidiItemCount = 6;
+    second.compactedMidiItemCount = 2;
     second.stageDurations[static_cast<size_t>(
             AudioPerformanceMetrics::Stage::VoiceRendering)] = 4'500;
     metrics.publishRealtimeSample(second);
@@ -68,6 +74,9 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     REQUIRE(snapshot.totalModulationBindingVisits == 6);
     REQUIRE(snapshot.totalSpectralTransferBindingVisits == 12);
     REQUIRE(snapshot.totalContextPatches == 24);
+    REQUIRE(snapshot.totalDequeuedMidiEvents == 5);
+    REQUIRE(snapshot.totalSortedMidiItems == 10);
+    REQUIRE(snapshot.totalCompactedMidiItems == 3);
     REQUIRE(snapshot.latestGraphRevision == 18);
     REQUIRE(snapshot.maximumActiveVoiceCount == 4);
     REQUIRE(snapshot.maximumScheduledMidiEventCount == 3);
@@ -102,6 +111,9 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     REQUIRE((double) property(
             property(exported, "workload"),
             "meanContextPatches") == Catch::Approx(12.0));
+    REQUIRE((int64) property(
+            property(exported, "workload"),
+            "totalSortedMidiItems") == 10);
     REQUIRE((int64) property(
             property(property(exported, "stages"), "voiceRendering"),
             "count") == 2);

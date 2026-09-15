@@ -152,7 +152,16 @@ void RealtimeGraphRenderer::process(
         AudioPerformanceMetrics::ScopedRealtimeStage stage(
                 performanceSample,
                 AudioPerformanceMetrics::Stage::MidiScheduling);
-        consumeEvents(events, frameCount, sampleRate, callbackStartSeconds);
+        const auto counts = consumeEvents(
+                events,
+                frameCount,
+                sampleRate,
+                callbackStartSeconds);
+        if (performanceSample != nullptr) {
+            performanceSample->dequeuedMidiEventCount = counts.dequeuedEvents;
+            performanceSample->sortedMidiItemCount = counts.sortedItems;
+            performanceSample->compactedMidiItemCount = counts.compactedItems;
+        }
     }
     if (performanceSample != nullptr) {
         performanceSample->scheduledMidiEventCount = (uint16_t) scheduledEventCount;
@@ -194,11 +203,13 @@ void RealtimeGraphRenderer::beginBlock() {
     }
 }
 
-void RealtimeGraphRenderer::consumeEvents(
+RealtimeGraphRenderer::MidiSchedulingOperationCounts
+RealtimeGraphRenderer::consumeEvents(
         RealtimeMidiEventQueue& queue,
         int frameCount,
         double sampleRate,
         double callbackStartSeconds) {
+    MidiSchedulingOperationCounts counts;
     if (queue.consumeRecoveryRequest(MidiEventSource::PerformanceKeyboard)) {
         releaseSource(MidiEventSource::PerformanceKeyboard, 0);
     }
@@ -209,17 +220,21 @@ void RealtimeGraphRenderer::consumeEvents(
     RealtimeMidiEvent event;
     while (scheduledEventCount < scheduledEvents.size() && queue.dequeue(event)) {
         scheduledEvents[scheduledEventCount++] = event;
+        ++counts.dequeuedEvents;
     }
 
-    std::sort(
-            scheduledEvents.begin(),
-            scheduledEvents.begin() + scheduledEventCount,
-            [](const auto& left, const auto& right) {
-                if (left.timestampSeconds == right.timestampSeconds) {
-                    return left.sequence < right.sequence;
-                }
-                return left.timestampSeconds < right.timestampSeconds;
-            });
+    if (counts.dequeuedEvents > 0) {
+        counts.sortedItems = (uint16_t) scheduledEventCount;
+        std::sort(
+                scheduledEvents.begin(),
+                scheduledEvents.begin() + scheduledEventCount,
+                [](const auto& left, const auto& right) {
+                    if (left.timestampSeconds == right.timestampSeconds) {
+                        return left.sequence < right.sequence;
+                    }
+                    return left.timestampSeconds < right.timestampSeconds;
+                });
+    }
 
     const double callbackEndSeconds = callbackStartSeconds
             + (double) frameCount / sampleRate;
@@ -237,12 +252,14 @@ void RealtimeGraphRenderer::consumeEvents(
     }
 
     if (consumedCount > 0) {
+        counts.compactedItems = (uint16_t) (scheduledEventCount - consumedCount);
         std::move(
                 scheduledEvents.begin() + consumedCount,
                 scheduledEvents.begin() + scheduledEventCount,
                 scheduledEvents.begin());
         scheduledEventCount -= consumedCount;
     }
+    return counts;
 }
 
 void RealtimeGraphRenderer::applyEvent(

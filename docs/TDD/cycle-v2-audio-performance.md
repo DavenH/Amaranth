@@ -67,7 +67,7 @@ counter. Instrumentation cannot back-pressure audio or change rendering.
 | Default modulation | Every voice/block scanned every plan buffer and performed configuration downcasts. | Implemented in slice 3a: preparation stores typed source/buffer bindings; block work is `O(M)` rather than `O(B)`. |
 | Spectral transfer | Every executor spectral input/voice/block repeated downcasts and scanned Pan steps. | Implemented in slice 3b: preparation resolves transfer values; executor block lookup is `O(1)` per connected input. Oscillator-frame transfer work remains under its authoritative preparation path. |
 | Released voice tail | Every released voice/block scanned all plan steps and resolved processors. | Implemented in slice 2: direct prepared tail processor references make the query `O(T)`. |
-| MIDI scheduling | Every callback sorts all scheduled/future events and moves the remaining suffix. | Do no sort without new events; measure queue depth and moves, then use sorted merge or a bounded heap if the distribution justifies it. |
+| MIDI scheduling | Every callback sorted all scheduled/future events and moved the remaining suffix. | Slice 4a skips sorting when no new events arrived and reports dequeued, sorted-item, and compacted-item totals. Retained future events remain sorted. |
 | Realtime arenas | Every graph buffer reserves block plus `F*max(F,C)` grid payload in both work and voice-mix arenas. | Separate diagnostic grid storage from realtime block storage; allocate mix storage only for voice/global boundary buffers, then consider lifetime-based slot reuse. |
 | Output path | Output is cleared before a valid overwrite, copied from the graph boundary, ramped/clipped, then scanned repeatedly for RMS/finiteness/peak. | The redundant L1 reduction and scratch copy/absolute/max passes are removed in slice 1 using `Buffer::minmax`; output clear/copy remain for a later bounded change. |
 | Live capture | Inactive capture performs an atomic callback-counter RMW every callback. | Gate inactive capture before RMW or reuse the renderer callback id. |
@@ -282,3 +282,13 @@ four/eight-voice difference is within Debug run noise because mature oscillator
 DSP dominates those windows. No window reported an overrun or telemetry drop.
 
 Artifact: `/private/tmp/cycle-v2-audio-performance-context.json`.
+
+## Slice 4a Result (2026-09-15)
+
+MIDI scheduling now preserves the sorted retained suffix without invoking
+`std::sort` on callbacks where the queue contributed no new events. Telemetry
+records dequeued events, sorted items, and compacted items so a later change to
+sorted merge or a bounded heap can be justified by actual queue distributions.
+The deferred-event sequence test proves the first callback sorts the new item,
+the next callback performs zero sort work, and the event still activates its
+voice at the intended future callback.
