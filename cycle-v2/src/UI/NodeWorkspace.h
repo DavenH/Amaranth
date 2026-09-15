@@ -72,6 +72,7 @@ public:
     bool performancePointerDragForAutomation(int noteNumber, float velocity);
     bool performancePointerUpForAutomation();
     bool performanceSelectPreviewNoteForAutomation(int noteNumber);
+    bool performanceSetModWheelForAutomation(int value);
     bool togglePreviewPlaybackForAutomation();
     bool enqueueMidiForAutomation(const juce::MidiMessage& message);
     StandaloneAudioEngine::LiveCapture captureLiveAudioForAutomation(int durationMs);

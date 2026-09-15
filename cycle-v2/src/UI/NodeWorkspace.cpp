@@ -192,6 +192,12 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
 
     const Rectangle<float> keyboardBounds = keyboard.getBounds().toFloat();
     targets->add(pointerTarget(
+            "PerformanceKeyboard.ModWheel",
+            "performanceModWheel",
+            keyboard.modWheelBounds().translated(
+                    keyboardBounds.getX(),
+                    keyboardBounds.getY())));
+    targets->add(pointerTarget(
             "PerformanceKeyboard.OctaveDown",
             "performanceOctave",
             keyboard.octaveDownBounds().translated(
@@ -269,6 +275,7 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("highestNoteLabel", keyboard.highestNoteLabel());
     object->setProperty("heldNote", keyboard.heldNote());
     object->setProperty("heldVelocity", keyboard.heldVelocity());
+    object->setProperty("modWheelValue", keyboard.modWheelValue());
     object->setProperty("previewNote", keyboard.previewNote());
     object->setProperty("previewPlaying", keyboard.isPlaying());
     object->setProperty("previewProgress", keyboard.playbackProgress());
@@ -305,6 +312,9 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("whiteKeyAspect", whiteKeyAspect);
     object->setProperty("octaveButtonWidth", octaveButton.getWidth());
     object->setProperty("octaveButtonHeight", octaveButton.getHeight());
+    object->setProperty(
+            "modWheelBounds",
+            rectangleToVar(keyboard.modWheelBounds()));
     object->setProperty(
             "occludedByExpandedEditor",
             performanceOccludedByExpandedEditor);
@@ -366,6 +376,14 @@ bool NodeWorkspace::performanceSelectPreviewNoteForAutomation(int noteNumber) {
     }
     keyboard.setPreviewNote(noteNumber);
     return canvas.setPreviewMidiNote(noteNumber);
+}
+
+bool NodeWorkspace::performanceSetModWheelForAutomation(int value) {
+    if (!keyboard.isVisible()) {
+        return false;
+    }
+    keyboard.setModWheelValue(value);
+    return true;
 }
 
 bool NodeWorkspace::togglePreviewPlaybackForAutomation() {

@@ -17,7 +17,7 @@ class CanvasUtilityDock {
 public:
     static constexpr float margin = 18.f;
     static constexpr float gap = 8.f;
-    static constexpr float preferredKeyboardWidth = 451.f;
+    static constexpr float preferredKeyboardWidth = 489.f;
     static constexpr float preferredKeyboardHeight = 140.5f;
     static constexpr float preferredLegendHeight =
             98.f * CanvasChromeMetrics::legendScale;

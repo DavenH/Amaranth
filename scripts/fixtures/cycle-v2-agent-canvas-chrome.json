@@ -32,12 +32,12 @@
     {
       "command": "assertState",
       "path": "performance.screenWidth",
-      "equals": 451
+      "equals": 489
     },
     {
       "command": "assertState",
       "path": "performance.screenHeight",
-      "equals": 112
+      "equals": 140
     },
     {
       "command": "inspectTargets",

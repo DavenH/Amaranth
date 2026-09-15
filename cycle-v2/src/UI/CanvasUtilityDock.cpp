@@ -31,21 +31,34 @@ CanvasUtilityDockLayout CanvasUtilityDock::layout(juce::Rectangle<float> content
     const float keyboardBottom = contentBounds.getBottom() - margin;
     const float compactKeyboardTop =
             result.legend.getY() + minimumCompactLegendHeight + gap;
-    const float availableKeyboardHeight =
-            juce::jmax(0.f, keyboardBottom - compactKeyboardTop);
-    const float keyboardHeight =
-            juce::jmin(preferredKeyboardHeight, availableKeyboardHeight);
-    result.keyboard = {
-            right - keyboardWidth,
-            keyboardBottom - keyboardHeight,
+    const float centredKeyboardX = contentBounds.getCentreX() - keyboardWidth * 0.5f;
+    const juce::Rectangle<float> preferredKeyboard {
+            centredKeyboardX,
+            contentBounds.getY() + margin,
             keyboardWidth,
-            keyboardHeight
+            preferredKeyboardHeight
+    };
+    const juce::Rectangle<float> spacedKeyboard = preferredKeyboard.expanded(gap);
+    const bool overlapsRightUtilities = spacedKeyboard.intersects(result.minimap)
+            || spacedKeyboard.intersects(result.legend);
+    const float keyboardTop = overlapsRightUtilities
+            ? compactKeyboardTop
+            : preferredKeyboard.getY();
+    const float availableKeyboardHeight = juce::jmax(0.f, keyboardBottom - keyboardTop);
+    result.keyboard = {
+            centredKeyboardX,
+            keyboardTop,
+            keyboardWidth,
+            juce::jmin(preferredKeyboardHeight, availableKeyboardHeight)
     };
 
     const float statusLeft = contentBounds.getX() + margin;
+    const float statusRight = overlapsRightUtilities
+            ? result.minimap.getX() - gap
+            : juce::jmin(result.minimap.getX(), result.keyboard.getX()) - gap;
     const float statusWidth = juce::jmin(
             560.f,
-            juce::jmax(0.f, result.minimap.getX() - gap - statusLeft));
+            juce::jmax(0.f, statusRight - statusLeft));
     result.status = {
             statusLeft,
             contentBounds.getY() + margin,

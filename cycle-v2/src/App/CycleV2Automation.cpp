@@ -1604,6 +1604,26 @@ var CycleV2Automation::pointer(const var& commandValue) {
     }
 
     const String eventType = stringProperty(commandValue, "event", stringProperty(commandValue, "pointerEvent", "click"));
+    if (targetId == "PerformanceKeyboard.ModWheel") {
+        const float position = jlimit(
+                0.f,
+                1.f,
+                floatProperty(commandValue, "targetY", 0.5f));
+        const int value = roundToInt((1.f - position) * 127.f);
+        const bool handled = eventType == "up"
+                || workspace.performanceSetModWheelForAutomation(value);
+        if (!handled) {
+            return failedResult("pointer", "Performance mod wheel gesture could not be applied");
+        }
+
+        var data = makeObject();
+        auto* object = objectFor(data);
+        object->setProperty("event", eventType);
+        object->setProperty("area", "workspace");
+        object->setProperty("targetId", targetId);
+        object->setProperty("value", value);
+        return okResult("pointer", data);
+    }
     if (targetId.startsWith("PerformanceKeyboard.Note")) {
         const int noteNumber = targetId.fromFirstOccurrenceOf(
                 "PerformanceKeyboard.Note", false, false).getIntValue();

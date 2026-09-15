@@ -139,7 +139,7 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     MidiKeyboardState state;
     RecordingMidiSink sink;
     PerformanceKeyboardPanel panel(state, sink);
-    panel.setBounds(0, 0, 451, 140);
+    panel.setBounds(0, 0, 489, 140);
 
     const Rectangle<float> whiteKey = panel.noteBounds(60);
     const Rectangle<float> blackKey = panel.noteBounds(61);
@@ -147,11 +147,15 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     const float blackAspect = blackKey.getHeight() / blackKey.getWidth();
     const Rectangle<float> octaveDown = panel.octaveDownBounds();
     const Rectangle<float> octaveUp = panel.octaveUpBounds();
+    const Rectangle<float> modWheel = panel.modWheelBounds();
     const Rectangle<float> play = panel.playButtonBounds();
     const Rectangle<float> progress = panel.progressBounds();
 
     REQUIRE(octaveDown.getWidth() == 28.f);
     REQUIRE(octaveUp.getWidth() == 28.f);
+    REQUIRE(modWheel.getWidth() == 32.f);
+    REQUIRE(modWheel.getHeight() == whiteKey.getHeight());
+    REQUIRE(modWheel.getRight() < octaveDown.getX());
     REQUIRE(octaveDown.getHeight() == whiteKey.getHeight());
     REQUIRE(octaveUp.getHeight() == whiteKey.getHeight());
     REQUIRE(octaveDown.getRight() < whiteKey.getX());
@@ -172,12 +176,67 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     REQUIRE(panel.getLocalBounds().toFloat().contains(whiteKey));
     REQUIRE(panel.getLocalBounds().toFloat().contains(panel.noteBounds(72)));
 
-    panel.setBounds(0, 0, 451, 140);
+    panel.setBounds(0, 0, 464, 117);
     const Rectangle<float> compactWhiteKey = panel.noteBounds(48);
+    REQUIRE(panel.modWheelBounds().getWidth() == 24.f);
+    REQUIRE(panel.modWheelBounds().getHeight() == compactWhiteKey.getHeight());
     REQUIRE(panel.octaveDownBounds().getHeight() == compactWhiteKey.getHeight());
     REQUIRE(panel.octaveUpBounds().getHeight() == compactWhiteKey.getHeight());
     REQUIRE(compactWhiteKey.getWidth() == 25.f);
-    REQUIRE(compactWhiteKey.getHeight() == 93.f);
+    REQUIRE(compactWhiteKey.getHeight() == 76.f);
+}
+
+TEST_CASE("Performance mod wheel drag controls preview CC 1 and audition start",
+        "[cycle-v2][keyboard][mod-wheel][transport]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    panel.setBounds(0, 0, 489, 140);
+
+    Component* wheel = nullptr;
+    for (int i = 0; i < panel.getNumChildComponents(); ++i) {
+        Component* child = panel.getChildComponent(i);
+        if (child->getName() == "PerformanceKeyboard.ModWheel") {
+            wheel = child;
+            break;
+        }
+    }
+    REQUIRE(wheel != nullptr);
+    REQUIRE(wheel->getName() == "PerformanceKeyboard.ModWheel");
+
+    wheel->mouseDown(keyboardMouseEvent(
+            *wheel,
+            { wheel->getWidth() * 0.5f, (float) wheel->getHeight() },
+            ModifierKeys::leftButtonModifier));
+    wheel->mouseDrag(keyboardMouseEvent(
+            *wheel,
+            { wheel->getWidth() * 0.5f, 0.f },
+            ModifierKeys::leftButtonModifier));
+
+    REQUIRE(panel.modWheelValue() == 127);
+    REQUIRE_FALSE(sink.messages.empty());
+    REQUIRE(sink.messages.back().isController());
+    REQUIRE(sink.messages.back().getControllerNumber() == 1);
+    REQUIRE(sink.messages.back().getControllerValue() == 127);
+
+    REQUIRE(wheel->keyPressed(KeyPress(KeyPress::downKey)));
+    REQUIRE(panel.modWheelValue() == 126);
+    REQUIRE(sink.messages.back().getControllerValue() == 126);
+
+    panel.setPreviewNote(55);
+    sink.messages.clear();
+    REQUIRE(panel.startPlayback(1'000.0));
+    REQUIRE(sink.messages.size() == 2);
+    REQUIRE(sink.messages[0].isController());
+    REQUIRE(sink.messages[0].getControllerNumber() == 1);
+    REQUIRE(sink.messages[0].getControllerValue() == 126);
+    REQUIRE(sink.messages[1].isNoteOn());
+    REQUIRE(sink.messages[1].getNoteNumber() == 55);
+
+    panel.stopPlayback();
+    REQUIRE(sink.messages.back().isNoteOff());
+    REQUIRE(sink.messages.back().getNoteNumber() == 55);
 }
 
 TEST_CASE("Performance keyboard preview transport follows its configured duration",
@@ -186,7 +245,7 @@ TEST_CASE("Performance keyboard preview transport follows its configured duratio
     MidiKeyboardState state;
     RecordingMidiSink sink;
     PerformanceKeyboardPanel panel(state, sink);
-    panel.setBounds(0, 0, 451, 140);
+    panel.setBounds(0, 0, 489, 140);
     panel.setPreviewNote(55);
     panel.setPlaybackDurationSeconds(2.f);
 
@@ -234,8 +293,9 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
 
     REQUIRE(layout.minimap.getRight() == content.getRight() - CanvasUtilityDock::margin);
     REQUIRE(layout.legend.getRight() == layout.minimap.getRight());
-    REQUIRE(layout.keyboard.getRight() == layout.minimap.getRight());
-    REQUIRE(layout.keyboard.getWidth() == 451.f);
+    REQUIRE(layout.keyboard.getCentreX() == content.getCentreX());
+    REQUIRE(layout.keyboard.getY() == content.getY() + CanvasUtilityDock::margin);
+    REQUIRE(layout.keyboard.getWidth() == 489.f);
     REQUIRE(layout.keyboard.getHeight() == 140.5f);
     REQUIRE(layout.status.getX() == content.getX() + CanvasUtilityDock::margin);
     REQUIRE(layout.status.getY() == content.getY() + CanvasUtilityDock::margin);
@@ -244,6 +304,9 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
     REQUIRE(layout.legend.getHeight()
             == Catch::Approx(CanvasUtilityDock::preferredLegendHeight));
     REQUIRE_FALSE(layout.status.intersects(layout.minimap));
+    REQUIRE_FALSE(layout.status.intersects(layout.keyboard));
+    REQUIRE_FALSE(layout.minimap.intersects(layout.keyboard));
+    REQUIRE_FALSE(layout.legend.intersects(layout.keyboard));
     REQUIRE(content.contains(layout.minimap));
     REQUIRE(content.contains(layout.legend));
     REQUIRE(content.contains(layout.keyboard));
@@ -251,8 +314,9 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
 
     const Rectangle<float> compactContent { 0.f, 0.f, 500.f, 300.f };
     const CanvasUtilityDockLayout compact = CanvasUtilityDock::layout(compactContent);
-    REQUIRE(compact.keyboard.getWidth() == 451.f);
+    REQUIRE(compact.keyboard.getWidth() == 464.f);
     REQUIRE(compact.keyboard.getHeight() == 117.f);
+    REQUIRE(compact.keyboard.getCentreX() == compactContent.getCentreX());
     REQUIRE(compact.legend.getHeight() >= CanvasUtilityDock::minimumCompactLegendHeight);
     REQUIRE(compact.minimap.getHeight() == 92.f);
     REQUIRE_FALSE(compact.status.intersects(compact.minimap));

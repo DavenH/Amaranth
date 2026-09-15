@@ -96,15 +96,18 @@ public:
     Rectangle<float> noteBounds(int noteNumber) const;
     Rectangle<float> octaveDownBounds() const;
     Rectangle<float> octaveUpBounds() const;
+    Rectangle<float> modWheelBounds() const;
     Rectangle<float> playButtonBounds() const;
     Rectangle<float> progressBounds() const;
 
+    int modWheelValue() const { return modWheel.value(); }
     int previewNote() const { return selectedPreviewNote; }
     float playbackProgress() const { return progress; }
     float playbackDurationSeconds() const { return playbackDuration; }
     bool isPlaying() const { return playing; }
     void setPreviewNote(int midiNote);
     void setPreviewNoteSelectedCallback(std::function<void(int)> callback);
+    void setModWheelValue(int value);
     void setPlaybackDurationSeconds(float seconds);
     bool startPlayback(double nowMilliseconds);
     void togglePlayback();
@@ -135,7 +138,33 @@ private:
         const PerformanceKeyboardPanel& owner;
     };
 
+    class ModWheel final :
+            public Component
+        ,   public SettableTooltipClient {
+    public:
+        ModWheel();
+
+        int value() const { return currentValue; }
+        void setValue(int value, bool sendNotification);
+
+        void focusGained(FocusChangeType cause) override;
+        void focusLost(FocusChangeType cause) override;
+        bool keyPressed(const KeyPress& key) override;
+        void mouseDown(const MouseEvent& event) override;
+        void mouseDrag(const MouseEvent& event) override;
+        void paint(Graphics& graphics) override;
+
+        std::function<void(int)> onValueChanged;
+
+    private:
+        Rectangle<float> wheelTrack() const;
+        void updateFromPointer(float y);
+
+        int currentValue {};
+    };
+
     void timerCallback() override;
+    void sendModWheelValue();
 
     bool playing {};
     int selectedPreviewNote { 48 };
@@ -145,9 +174,11 @@ private:
     double playbackStartedAtMilliseconds {};
 
     MidiKeyboardState& keyboardState;
+    MidiEventSink& eventSink;
     PerformanceKeyboard keyboard;
     OctaveButton octaveDown { false };
     OctaveButton octaveUp { true };
+    ModWheel modWheel;
     PlayButton playButton { *this };
 };
 
