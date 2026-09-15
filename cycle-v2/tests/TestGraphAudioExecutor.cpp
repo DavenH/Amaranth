@@ -1899,7 +1899,7 @@ TEST_CASE("Trimesh sawtooth survives an FFT and IFFT graph round trip",
             maximumReconstructionError = jmax(
                     maximumReconstructionError,
                     std::abs(reconstructed.traversalGrid.values[offset + row]
-                            - (saw.traversalGrid.values[offset + row] - sourceMean)));
+                            - 0.5f * (saw.traversalGrid.values[offset + row] - sourceMean)));
         }
     }
     REQUIRE(maximumReconstructionError < 1.0e-5f);

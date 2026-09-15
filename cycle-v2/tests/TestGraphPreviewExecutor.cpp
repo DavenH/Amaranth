@@ -741,7 +741,7 @@ TEST_CASE("Bundled FFT diagnostic graph preserves its sawtooth probe through IFF
             maximumReconstructionError = jmax(
                     maximumReconstructionError,
                     std::abs(roundTrip.values[offset + row]
-                            - (source.values[offset + row] - sourceMean)));
+                            - 0.5f * (source.values[offset + row] - sourceMean)));
         }
     }
     REQUIRE(maximumReconstructionError < 1.0e-5f);

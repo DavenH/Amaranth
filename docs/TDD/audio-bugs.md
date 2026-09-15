@@ -550,8 +550,10 @@ the compiled region's `materializationStepIndex` preserves both FFT outputs and
 the IFFT round trip. A follow-up also restored the oscillator boundary's
 zero-DC contract before Unison composition; the diagnostic traversal now
 matches the DC removal already used by Cycle 1 visual transforms and Cycle 2's
-realtime spectral renderer. The focused bundled and direct FFT/IFFT regressions
-pass with the expected zero-mean reconstruction.
+realtime spectral renderer. It also converts Cycle 2's full-bipolar runtime
+grid to Cycle 1's half-bipolar visual scale before lane composition. The
+focused bundled and direct FFT/IFFT regressions pass with the expected centred,
+half-scale reconstruction.
 
 ## Open: Guitar 3 G effects diverge after an equivalent voice output
 

@@ -53,7 +53,7 @@ bool OscillatorRegionTraversalRenderer::render(
                 grid.values.data() + column * grid.rows,
                 (int) grid.rows);
         destination.copyTo(source);
-        source.add(-source.mean());
+        source.add(-source.mean()).mul(0.5f);
         const double pitchSemitones = CycleDsp::UnisonCore::pitchSemitonesForUnitValue(
                 pitchUnitValue(column, grid.columns));
         const double pitchFrequencyOffset = CycleDsp::UnisonCore::frequencyForMidiPitch(

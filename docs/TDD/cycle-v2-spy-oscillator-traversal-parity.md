@@ -103,11 +103,11 @@ their exact pre-materialization graph values.
   compiled region's final materialization step. Internal FFT, magnitude, phase,
   and IFFT processors retain their own traversal products instead of repeatedly
   discarding outputs and applying Unison.
-- Oscillator materialization removes each source column's DC component before
-  Unison composition, matching the `Transform::setRemovesOffset(true)` policy
-  used by both Cycle 1 visual synthesis and Cycle 2 realtime spectral synthesis.
-  This prevents a nominally bipolar waveform's residual offset from being
-  multiplied by every Unison lane.
+- Oscillator materialization converts the full-bipolar runtime traversal to
+  Cycle 1's half-bipolar visual scale and removes each source column's DC
+  component before Unison composition. This matches Cycle 1's
+  `PointScalingMode::HalfBipolar` plus `Transform::setRemovesOffset(true)`
+  policies and prevents residual offset from being multiplied by every lane.
 - Time Signal Spy presentation uses bounded signed compression. This preserves
   the exact captured grid while keeping above-unity oscillator values distinct
   instead of clipping them into a binary noise texture.
