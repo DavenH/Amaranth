@@ -247,10 +247,8 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
     }
 
     const size_t columns = std::max(defaultTraversalColumns, output.block.samples.size());
-    traversalMemory.ensureSize((int) (2 * columns));
-    Buffer<float> positions = traversalMemory.place((int) columns);
+    traversalMemory.ensureSize((int) columns);
     Buffer<float> values = traversalMemory.place((int) columns);
-    positions.ramp(0.f, 1.f / (float) columns);
     const EnvelopeConfiguration* current = preparedConfiguration();
     if (current == nullptr) {
         clearTraversalGrid(output.traversalGrid);
@@ -261,14 +259,26 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
         values.set(current->neutralValue);
     } else {
         const auto prepared = preparedPlaybackView();
-        const Rasterization::SamplerView sampler(
-                prepared.display.waveform,
-                prepared.display.sampleable);
-        // Envelope padding may end before the final traversal position. The bulk
-        // sampler intentionally silences every result when any position is invalid.
-        int currentIndex = sampler.initialIndex();
+        Rasterization::EnvelopePlaybackEngine traversalPlayback;
+        traversalPlayback.ensureVoiceCount(1);
+        traversalPlayback.setOneSamplePerCycle(true);
+        traversalPlayback.validate(prepared);
+        traversalPlayback.noteOn();
+        MeshLibrary::EnvProps traversalProps;
+        traversalProps.active = true;
+        const double advancement = columns > 1
+                ? 1.0 / (double) (columns - 1)
+                : 1.0;
         for (int column = 0; column < values.size(); ++column) {
-            values[column] = sampler.sampleAt(positions[column], currentIndex);
+            traversalPlayback.renderToBuffer(
+                    prepared,
+                    1,
+                    advancement,
+                    Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
+                    traversalProps,
+                    1.f);
+            values[column] = traversalPlayback.sustainLevel(
+                    Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex);
         }
         if (current->logarithmic) {
             Arithmetic::applyInvLogMapping(values, 30.f);

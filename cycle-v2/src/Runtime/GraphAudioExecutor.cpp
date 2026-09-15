@@ -379,8 +379,7 @@ GraphAudioResult GraphAudioExecutor::processInternal(
                 preparedVoice->second,
                 stepIndex);
         if (oscillatorRegion != nullptr
-                && (!captureDiagnostics
-                        || oscillatorRegion->processor->replacesDiagnosticProcessors())
+                && !captureDiagnostics
                 && stepIndex != (size_t) oscillatorRegion->materializationStepIndex) {
             continue;
         }
@@ -490,10 +489,16 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             continue;
         }
 
-        if (oscillatorRegion != nullptr
-                && (!captureDiagnostics
-                        || oscillatorRegion->processor->replacesDiagnosticProcessors())) {
-            auto output = makeOutputPayload(context, 0);
+        if (oscillatorRegion != nullptr) {
+            SignalPayload output;
+            if (captureDiagnostics) {
+                processor->process(context);
+                if (!context.outputs.empty()) {
+                    output = std::move(context.outputs.front());
+                }
+            } else {
+                output = makeOutputPayload(context, 0);
+            }
             output.domain = PortDomain::TimeSignal;
             output.channelLayout = ChannelLayout::StereoPair;
             output.block.samples.resize(frameCount);
@@ -506,6 +511,19 @@ GraphAudioResult GraphAudioExecutor::processInternal(
                     bufferSlots.size(),
                     frameCount,
                     output);
+            if (captureDiagnostics) {
+                const int oscillatorNoteNumber = voice.oscillatorNoteNumber >= 0
+                        ? voice.oscillatorNoteNumber
+                        : voice.controls.noteNumber;
+                const int midiNote = oscillatorNoteNumber
+                        + oscillatorRegion->midiNoteOffset;
+                oscillatorRegion->processor->renderTraversal(
+                        output.traversalGrid,
+                        midiNote);
+                oscillatorRegion->processor->renderTraversal(
+                        output.secondaryTraversalGrid,
+                        midiNote);
+            }
             publishSingleOutput(context, std::move(output));
         } else {
             processor->process(context);

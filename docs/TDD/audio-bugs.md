@@ -533,6 +533,21 @@ pitch-clocked Hermite resampling. Artifacts:
 Current status: spectral reconstruction boundary resolved; remaining
 deterministic output residual is tracked at pitch-clocked cycle resampling.
 
+Recheck 2026-09-15: the grouped `[oscillator-region]` run again fails
+`Prepared spectral reconstruction retains the final active harmonic` because
+the captured final magnitude is zero. The same run also contains missing
+preset-fixture failures and the known split-block tolerance failure. The Spy
+traversal fix does not alter `SpectralOscillatorFrameRenderer`, and its focused
+PWM Lead regression passes; treat this as an open baseline audit rather than
+changing the established harmonic contract. Command:
+`build/tests/cycle-v2/CycleV2_tests "[oscillator-region]"`.
+
+The same baseline audit finds that `Bundled FFT diagnostic graph preserves its
+sawtooth probe through IFFT` reconstructs sample zero as `3.17889` from
+`-0.999597` (maximum error `4.17849`) even when oscillator traversal composition
+returns immediately for its neutral one-lane context. This is an independent
+flat FFT/IFFT traversal regression; current status: open.
+
 ## Open: Guitar 3 G effects diverge after an equivalent voice output
 
 Context:

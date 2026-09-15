@@ -1,10 +1,13 @@
 #pragma once
 
+#include <array>
+
 #include <App/AppConstants.h>
 #include <App/MeshLibrary.h>
 #include <Array/Buffer.h>
 #include <Array/Column.h>
 #include <Array/ScopedAlloc.h>
+#include <Audio/CycleDsp/UnisonColumnMixer.h>
 #include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 #include <Util/Arithmetic.h>
 #include <Util/NumberUtils.h>
@@ -85,6 +88,8 @@ namespace Cycle::Rasterization {
             for (auto& col : columns) {
                 columnSize = col.size();
                 float unitKey = Arithmetic::getUnitValueForGraphicNote(col.midiKey, midiRange);
+                std::array<float, CycleDsp::maximumUnisonOrder> phases {};
+                std::array<float, CycleDsp::maximumUnisonOrder> gains {};
 
                 memBuf.resetPlacement();
                 columnBuf        = memBuf.place(columnSize);
@@ -94,7 +99,6 @@ namespace Cycle::Rasterization {
                 jassert(!(columnSize & (columnSize - 1)));
 
                 col.copyTo(columnBuf);
-                col.zero();
 
                 for (int i = 0; i < unisonOrder; ++i) {
                     MeshLibrary::EnvProps* pitchProps =
@@ -128,46 +132,19 @@ namespace Cycle::Rasterization {
                     float phaseOffset = timePerColEnv * envHzAbove + timePerColUni * uniHzAbove;
 
                     double totalPhase = cumePhases[i] + uniPhase;
-                    double scaledPhase = columnSize * (totalPhase + 10000);
-                    long truncPhase = (long) scaledPhase;
-                    double remainder = scaledPhase - truncPhase;
-
-                    int phase = truncPhase & (columnSize - 1);
-
+                    phases[(size_t) i] = (float) totalPhase;
+                    gains[(size_t) i] = relativePan;
                     cumePhases[i] += phaseOffset;
-
-                    jassert(remainder >= 0 && remainder <= 1);
-
-                    if (context.interpolate) {
-                        if (phase != 0 || remainder != 0) {
-                            if (phase != 0) {
-                                columnBuf.offset(phase).copyTo(phaseMoveBuffer);
-                                columnBuf.copyTo(phaseMoveBuffer + (columnSize - phase));
-                            } else {
-                                columnBuf.copyTo(phaseMoveBuffer);
-                            }
-
-                            VecOps::mul(phaseMoveBuffer, 1.f - (float) remainder, phaseMoveBuffer2);
-                            phaseMoveBuffer2.addProduct(phaseMoveBuffer + 1, remainder);
-                            phaseMoveBuffer2[columnSize - 1] =
-                                    (1 - remainder) * phaseMoveBuffer[columnSize - 1]
-                                    + remainder * phaseMoveBuffer[0];
-
-                            col.addProduct(phaseMoveBuffer2, relativePan);
-                        } else {
-                            col.addProduct(columnBuf, relativePan);
-                        }
-                    } else {
-                        if (phase != 0) {
-                            columnBuf.offset(phase).copyTo(phaseMoveBuffer);
-                            columnBuf.copyTo(phaseMoveBuffer.offset(columnSize - (int) phase));
-
-                            col.addProduct(phaseMoveBuffer, relativePan);
-                        } else {
-                            col.addProduct(columnBuf, relativePan);
-                        }
-                    }
                 }
+                CycleDsp::UnisonColumnMixer::mix(
+                        columnBuf,
+                        col,
+                        phases.data(),
+                        gains.data(),
+                        unisonOrder,
+                        phaseMoveBuffer,
+                        phaseMoveBuffer2,
+                        context.interpolate);
             }
         }
 

@@ -1,0 +1,57 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/pwm-lead.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.connected",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.gridColumns",
+      "equals": 256
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.gridRows",
+      "equals": 512
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 300
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-pwm-lead-spy.png"
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "doubleClick",
+      "x": 979,
+      "y": 875,
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "probeDetailOpen",
+      "equals": true
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-pwm-lead-spy-detail.png"
+    }
+  ],
+  "quit": true
+}

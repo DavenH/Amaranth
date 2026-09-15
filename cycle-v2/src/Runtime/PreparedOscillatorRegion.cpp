@@ -1,8 +1,7 @@
-#include <algorithm>
-
 #include "Runtime/PreparedOscillatorRegion.h"
 #include "Runtime/ChainedOscillatorRecipeRenderer.h"
 #include "Runtime/ChainedOscillatorRegionRuntime.h"
+#include "Runtime/OscillatorRegionTraversalRenderer.h"
 #include "Runtime/SpectralOscillatorFrameRenderer.h"
 #include "Runtime/SpectralOscillatorRegionRuntime.h"
 #include "Graph/GraphCompiler.h"
@@ -20,45 +19,8 @@ const SignalPayload* PreparedOscillatorProcessContext::signalAt(
 
 namespace {
 
-bool regionContainsNode(
-        const GraphExecutionPlan& plan,
-        const OscillatorRegionPlan& region,
-        const String& nodeId) {
-    return std::any_of(
-            region.stepIndices.begin(),
-            region.stepIndices.end(),
-            [&](int stepIndex) {
-                return stepIndex >= 0
-                        && stepIndex < (int) plan.steps.size()
-                        && plan.steps[(size_t) stepIndex].nodeId == nodeId;
-            });
-}
-
-bool hasExternalProcessorConsumer(
-        const GraphExecutionPlan& plan,
-        const OscillatorRegionPlan& region) {
-    return std::any_of(
-            plan.signalEdges.begin(),
-            plan.signalEdges.end(),
-            [&](const Edge& edge) {
-                if (!regionContainsNode(plan, region, edge.sourceNodeId)
-                        || regionContainsNode(plan, region, edge.destNodeId)) {
-                    return false;
-                }
-                const auto destination = std::find_if(
-                        plan.steps.begin(),
-                        plan.steps.end(),
-                        [&](const GraphExecutionStep& step) {
-                            return step.nodeId == edge.destNodeId;
-                        });
-                return destination != plan.steps.end() && !destination->outputSink;
-            });
-}
-
 class PreparedChainedOscillatorRegion final : public PreparedOscillatorRegion {
 public:
-    bool replacesDiagnosticProcessors() const override { return replaceDiagnostics; }
-
     bool prepare(
             const GraphExecutionPlan& plan,
             const OscillatorRegionPlan& region,
@@ -66,19 +28,7 @@ public:
             const AudioExecutionSpec& spec,
             int maximumCycleSamples,
             const std::vector<NodeAudioProcessor*>& processors) {
-        const bool hasScratchAttachment = std::any_of(
-                plan.steps.begin(),
-                plan.steps.end(),
-                [](const GraphExecutionStep& step) {
-                    return std::any_of(
-                            step.attachments.begin(),
-                            step.attachments.end(),
-                            [](const GraphStepAttachment& attachment) {
-                                return attachment.destPortId == "scratch";
-                            });
-                });
-        replaceDiagnostics = !hasScratchAttachment
-                && !hasExternalProcessorConsumer(plan, region);
+        traversalRenderer.prepare(context, spec.maximumFrameCount);
         auto preparedRenderer = std::make_unique<ChainedOscillatorRecipeRenderer>();
         if (!preparedRenderer->prepare(
                     plan,
@@ -111,15 +61,18 @@ public:
         return runtime.process(context, *renderer);
     }
 
+    bool renderTraversal(SignalTraversalGrid& grid, int midiNote) override {
+        return traversalRenderer.render(grid, midiNote);
+    }
+
 private:
-    bool replaceDiagnostics { true };
     ChainedOscillatorRegionRuntime runtime;
+    OscillatorRegionTraversalRenderer traversalRenderer;
     std::unique_ptr<OscillatorCycleRenderer> renderer;
 };
 
 class PreparedSpectralOscillatorRegion final : public PreparedOscillatorRegion {
 public:
-    bool replacesDiagnosticProcessors() const override { return false; }
     size_t frameRenderCount() const override { return renderer.frameRenderCount(); }
 
     bool prepare(
@@ -131,6 +84,7 @@ public:
             const std::vector<NodeAudioProcessor*>& processors) {
         const int maximumFixedFrameSize = Arithmetic::getNextPow2(
                 (float) maximumCycleSamples);
+        traversalRenderer.prepare(context, spec.maximumFrameCount);
         return renderer.prepare(
                     plan,
                     region,
@@ -160,9 +114,14 @@ public:
         return runtime.process(context, renderer);
     }
 
+    bool renderTraversal(SignalTraversalGrid& grid, int midiNote) override {
+        return traversalRenderer.render(grid, midiNote);
+    }
+
 private:
     SpectralOscillatorFrameRenderer renderer;
     SpectralOscillatorRegionRuntime runtime;
+    OscillatorRegionTraversalRenderer traversalRenderer;
 };
 
 }
