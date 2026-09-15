@@ -129,6 +129,7 @@ AudioPerformanceMetrics::Snapshot AudioPerformanceMetrics::snapshot() const {
             aggregateData.deadlineOverruns,
             aggregateData.totalFrames,
             aggregateData.totalVoiceBlocks,
+            aggregateData.totalExecutionStepVisits,
             aggregateData.latestGraphRevision,
             aggregateData.maximumFrameCount,
             aggregateData.maximumActiveVoiceCount,
@@ -159,6 +160,15 @@ var AudioPerformanceMetrics::toVar() const {
     auto* workload = new DynamicObject();
     workload->setProperty("totalFrames", (int64) current.totalFrames);
     workload->setProperty("totalVoiceBlocks", (int64) current.totalVoiceBlocks);
+    workload->setProperty(
+            "totalExecutionStepVisits",
+            (int64) current.totalExecutionStepVisits);
+    workload->setProperty(
+            "meanExecutionStepVisits",
+            current.callbackDuration.count == 0
+                    ? 0.0
+                    : (double) current.totalExecutionStepVisits
+                            / (double) current.callbackDuration.count);
     workload->setProperty("latestGraphRevision", (int64) current.latestGraphRevision);
     workload->setProperty("maximumFrameCount", (int) current.maximumFrameCount);
     workload->setProperty(
@@ -227,6 +237,7 @@ void AudioPerformanceMetrics::aggregate(const RealtimeSample& sample) {
     }
     aggregateData.totalFrames += sample.frameCount;
     aggregateData.totalVoiceBlocks += sample.activeVoiceCount;
+    aggregateData.totalExecutionStepVisits += sample.executionStepVisitCount;
     aggregateData.latestGraphRevision = sample.graphRevision;
     aggregateData.maximumFrameCount = std::max(
             aggregateData.maximumFrameCount,

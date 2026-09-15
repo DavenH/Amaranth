@@ -34,6 +34,7 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     first.activeVoiceCount = 2;
     first.scheduledMidiEventCount = 3;
     first.executionStepCount = 21;
+    first.executionStepVisitCount = 15;
     first.stageDurations[static_cast<size_t>(
             AudioPerformanceMetrics::Stage::VoiceRendering)] = 1'200;
     metrics.publishRealtimeSample(first);
@@ -44,6 +45,7 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     second.graphRevision = 18;
     second.activeVoiceCount = 4;
     second.executionStepCount = 22;
+    second.executionStepVisitCount = 30;
     second.stageDurations[static_cast<size_t>(
             AudioPerformanceMetrics::Stage::VoiceRendering)] = 4'500;
     metrics.publishRealtimeSample(second);
@@ -56,6 +58,7 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     REQUIRE(snapshot.deadlineOverruns == 1);
     REQUIRE(snapshot.totalFrames == 512);
     REQUIRE(snapshot.totalVoiceBlocks == 6);
+    REQUIRE(snapshot.totalExecutionStepVisits == 45);
     REQUIRE(snapshot.latestGraphRevision == 18);
     REQUIRE(snapshot.maximumActiveVoiceCount == 4);
     REQUIRE(snapshot.maximumScheduledMidiEventCount == 3);
@@ -78,6 +81,9 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     REQUIRE((int64) property(
             property(exported, "workload"),
             "totalVoiceBlocks") == 6);
+    REQUIRE((double) property(
+            property(exported, "workload"),
+            "meanExecutionStepVisits") == Catch::Approx(22.5));
     REQUIRE((int64) property(
             property(property(exported, "stages"), "voiceRendering"),
             "count") == 2);

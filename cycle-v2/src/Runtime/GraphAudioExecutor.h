@@ -42,6 +42,10 @@ struct GraphAudioOutputView {
     bool isValid() const { return payload != nullptr; }
 };
 
+struct GraphExecutionOperationCounts {
+    uint32_t stepVisits {};
+};
+
 class GraphAudioExecutor {
 public:
     using CancellationCheck = std::function<bool()>;
@@ -101,7 +105,8 @@ public:
             size_t frameCount,
             AudioProcessTiming timing,
             const AudioVoiceContext& voice,
-            GraphProcessObserver* observer = nullptr) const;
+            GraphProcessObserver* observer = nullptr,
+            GraphExecutionOperationCounts* operationCounts = nullptr) const;
     void beginRealtimeVoiceMix(
             const GraphExecutionPlan& plan,
             size_t frameCount) const;
@@ -109,11 +114,13 @@ public:
             const GraphExecutionPlan& plan,
             size_t frameCount,
             AudioProcessTiming timing,
-            const AudioVoiceContext& voice) const;
+            const AudioVoiceContext& voice,
+            GraphExecutionOperationCounts* operationCounts = nullptr) const;
     GraphAudioOutputView processRealtimeGlobal(
             const GraphExecutionPlan& plan,
             size_t frameCount,
-            AudioProcessTiming timing) const;
+            AudioProcessTiming timing,
+            GraphExecutionOperationCounts* operationCounts = nullptr) const;
 
 private:
     enum class ProcessingPass {
@@ -186,6 +193,8 @@ private:
         size_t maximumFrameCount {};
         double sampleRate {};
         std::vector<NodeAudioProcessor*> processors;
+        std::vector<size_t> stepIndices;
+        std::vector<NodeAudioProcessor*> tailProcessors;
         std::vector<std::unique_ptr<OscillatorRegion>> oscillatorRegions;
         std::vector<OscillatorRegion*> oscillatorRegionByStep;
     };
@@ -218,7 +227,8 @@ private:
             const std::vector<uint8_t>* dirtyNodes = nullptr,
             const CancellationCheck& cancellationCheck = {},
             GraphAudioResultView* incrementalResult = nullptr,
-            ProcessingPass pass = ProcessingPass::Complete) const;
+            ProcessingPass pass = ProcessingPass::Complete,
+            GraphExecutionOperationCounts* operationCounts = nullptr) const;
     void mixVoiceBoundary(
             const GraphExecutionPlan& plan,
             size_t frameCount) const;

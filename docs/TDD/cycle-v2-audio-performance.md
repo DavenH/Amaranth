@@ -61,12 +61,12 @@ counter. Instrumentation cannot back-pressure audio or change rendering.
 | Operation | Current cost | Required cost and disposition |
 | --- | --- | --- |
 | Callback observability | Aggregate atomics only; no phase or deadline history. | `O(1)` bounded POD publication per enabled callback; implement first. |
-| Processor retirement | `removeUnreferencedProcessors()` runs after every active voice and global pass, scanning processors, prepared voices, and each voice processor list. | No graph reachability changes inside a callback. Move retirement to preparation/adoption/reclamation so callback cleanup is `O(1)`. |
-| Scope filtering | Every active voice and the global pass scan all execution steps and reject the other scope. | Compile voice/global step indices once; execute `O(A*Svoice + Sglobal)`, independent of unrelated scope steps. |
+| Processor retirement | `removeUnreferencedProcessors()` ran after every active voice and global pass, scanning processors, prepared voices, and each voice processor list. | Implemented in slice 2: retirement runs after preparation, before publication; callback cleanup is `O(1)`. |
+| Scope filtering | Every active voice and the global pass scanned all execution steps and rejected the other scope. | Implemented in slice 2: prepared voice/global step indices execute `O(A*Svoice + Sglobal)`, independent of unrelated scope steps. |
 | Per-step context | Each execution rebuilds maximum-capacity input/output metadata, `String` fields, attachments, output-presence scans, and route resolution. | Prebind immutable prepared context/routes once; block work patches only frame, timing, voice, and payload pointers. |
 | Default modulation | Every voice/block scans every plan buffer and performs configuration downcasts. | Compile only actual modulation bindings; iterate `O(M)` rather than `O(B)`. |
 | Spectral transfer | Every spectral input/voice/block repeats downcasts and scans Pan steps. | Resolve transfer bindings in prepared execution state; block lookup is `O(1)` per connected input. |
-| Released voice tail | Every released voice/block scans all plan steps and resolves processors. | Store direct prepared tail processor references; query only tail processors. |
+| Released voice tail | Every released voice/block scanned all plan steps and resolved processors. | Implemented in slice 2: direct prepared tail processor references make the query `O(T)`. |
 | MIDI scheduling | Every callback sorts all scheduled/future events and moves the remaining suffix. | Do no sort without new events; measure queue depth and moves, then use sorted merge or a bounded heap if the distribution justifies it. |
 | Realtime arenas | Every graph buffer reserves block plus `F*max(F,C)` grid payload in both work and voice-mix arenas. | Separate diagnostic grid storage from realtime block storage; allocate mix storage only for voice/global boundary buffers, then consider lifetime-based slot reuse. |
 | Output path | Output is cleared before a valid overwrite, copied from the graph boundary, ramped/clipped, then scanned repeatedly for RMS/finiteness/peak. | The redundant L1 reduction and scratch copy/absolute/max passes are removed in slice 1 using `Buffer::minmax`; output clear/copy remain for a later bounded change. |
@@ -192,4 +192,38 @@ phase under polyphony. This establishes the baseline for executor slices 2 and
 Artifacts:
 
 - `/private/tmp/cycle-v2-audio-performance-baseline.json`
+- `/private/tmp/cycle-v2-audio-performance-report.json`
+
+## Slice 2 Result (2026-09-15)
+
+Each prepared voice/global entry now owns its applicable step-index list and
+tail-processor list. Realtime execution no longer filters the whole plan, and
+tail queries no longer scan unrelated steps. Processor reachability cleanup
+runs after preparation instead of after every voice/global pass. The telemetry
+schema now reports prepared step visits per callback.
+
+A scaling test appends 128 unrelated global steps and proves the voice pass
+still visits only its two voice steps; the global pass visits its own prepared
+steps. The plan-replacement test proves a stale processor is retired by
+preparation without requiring a subsequent audio block. Existing realtime
+allocation/lock and output-view contracts remain green.
+
+On the same Baroque Flute fixture, the prepared plan has 16 voice steps and
+three global steps. Telemetry reports exactly `3 + 16*A` visits for `A` active
+voices. Compared with the immediately preceding build:
+
+| Active voices | Callback mean before | Callback mean after | Voice phase before | Voice phase after |
+| ---: | ---: | ---: | ---: | ---: |
+| 0 | 1.132 ms | 0.860 ms | 0.004 ms | 0.004 ms |
+| 1 | 2.562 ms | 2.383 ms | 1.984 ms | 1.965 ms |
+| 4 | 3.748 ms | 3.355 ms | 3.550 ms | 3.243 ms |
+| 8 | 6.793 ms | 6.009 ms | 6.593 ms | 5.894 ms |
+
+The eight-voice callback mean fell 11.6%. All windows again reported zero
+deadline overruns and zero telemetry drops. Debug timings remain noisy, so the
+operation-count contract—not a timing threshold—is the regression guard.
+
+Artifacts:
+
+- `/private/tmp/cycle-v2-audio-performance-pre-executor.json`
 - `/private/tmp/cycle-v2-audio-performance-report.json`

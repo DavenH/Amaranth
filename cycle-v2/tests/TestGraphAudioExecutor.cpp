@@ -1759,6 +1759,62 @@ TEST_CASE("Prepared graph audio dispatch remains available for every voice", "[c
     REQUIRE(executor.preparationCount("wave", 1) == 1);
 }
 
+TEST_CASE("Realtime passes visit only their prepared ownership scope",
+        "[cycle-v2][runtime][realtime][performance][complexity]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "voiceTerminal", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "voiceTerminal", "out", "voiceOut", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "globalIn", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    constexpr size_t unrelatedGlobalStepCount = 128;
+    for (size_t index = 0; index < unrelatedGlobalStepCount; ++index) {
+        GraphExecutionStep step;
+        step.nodeId = "unusedGlobal" + String(index);
+        step.ownershipScope = RuntimeOwnershipScope::Global;
+        compiled.plan.steps.push_back(std::move(step));
+    }
+    const size_t voiceStepCount = (size_t) std::count_if(
+            compiled.plan.steps.begin(),
+            compiled.plan.steps.end(),
+            [](const auto& step) {
+                return step.ownershipScope != RuntimeOwnershipScope::Global;
+            });
+    const size_t globalStepCount = compiled.plan.steps.size() - voiceStepCount;
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 16;
+    GraphAudioExecutor executor;
+    executor.prepareRealtimeVoiceExecution(compiled.plan, spec, 0);
+    executor.prepareRealtimeGlobalExecution(compiled.plan, spec);
+    AudioVoiceContext voice;
+    voice.voiceIndex = 0;
+    GraphExecutionOperationCounts voiceCounts;
+    executor.beginRealtimeVoiceMix(compiled.plan, 16);
+    executor.processRealtimeVoiceToMix(
+            compiled.plan,
+            16,
+            {},
+            voice,
+            &voiceCounts);
+    REQUIRE(voiceCounts.stepVisits == voiceStepCount);
+
+    GraphExecutionOperationCounts globalCounts;
+    executor.processRealtimeGlobal(compiled.plan, 16, {}, &globalCounts);
+    REQUIRE(globalCounts.stepVisits == globalStepCount);
+}
+
 TEST_CASE("Graph plan replacement removes stale processor state", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph firstGraph;
@@ -1774,9 +1830,12 @@ TEST_CASE("Graph plan replacement removes stale processor state", "[cycle-v2][ru
     replacementGraph.addNode(factory.createNode(NodeKind::ImageSource, "newImage", {}));
     const auto replacement = GraphCompiler().compile(replacementGraph);
     REQUIRE(replacement.succeeded());
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 8;
+    executor.prepareExecution(replacement.plan, spec);
+    REQUIRE(executor.preparationCount("oldWave") == 0);
     REQUIRE_FALSE(executor.process(replacementGraph, replacement.plan, 8).nodes.empty());
 
-    REQUIRE(executor.preparationCount("oldWave") == 0);
     REQUIRE(executor.preparationCount("newImage") == 1);
 }
 

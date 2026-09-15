@@ -351,6 +351,10 @@ void RealtimeGraphRenderer::renderVoices(
         double sampleRate,
         AudioPerformanceMetrics::RealtimeSample* performanceSample) {
     size_t activeCount = 0;
+    GraphExecutionOperationCounts operationCounts;
+    GraphExecutionOperationCounts* measuredOperations = performanceSample == nullptr
+            ? nullptr
+            : &operationCounts;
     {
         AudioPerformanceMetrics::ScopedRealtimeStage stage(
                 performanceSample,
@@ -396,7 +400,8 @@ void RealtimeGraphRenderer::renderVoices(
                     preparedGraph->plan,
                     (size_t) frameCount,
                     { sampleRate },
-                    voice.context);
+                    voice.context,
+                    measuredOperations);
 
             voice.normalizedTime = jmin(
                     1.f,
@@ -423,7 +428,8 @@ void RealtimeGraphRenderer::renderVoices(
         output = preparedGraph->executor.processRealtimeGlobal(
                 preparedGraph->plan,
                 (size_t) frameCount,
-                { sampleRate });
+                { sampleRate },
+                measuredOperations);
     }
 
     {
@@ -458,6 +464,9 @@ void RealtimeGraphRenderer::renderVoices(
         }
     }
     activeVoices.store(activeCount, std::memory_order_relaxed);
+    if (performanceSample != nullptr) {
+        performanceSample->executionStepVisitCount = operationCounts.stepVisits;
+    }
 }
 
 void RealtimeGraphRenderer::publishMetrics(

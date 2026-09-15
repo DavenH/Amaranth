@@ -197,14 +197,20 @@ GraphAudioOutputView GraphAudioExecutor::processRealtime(
         size_t frameCount,
         AudioProcessTiming timing,
         const AudioVoiceContext& voice,
-        GraphProcessObserver* observer) const {
+        GraphProcessObserver* observer,
+        GraphExecutionOperationCounts* operationCounts) const {
     processInternal(
             plan,
             frameCount,
             timing,
             voice,
             false,
-            observer);
+            observer,
+            nullptr,
+            {},
+            nullptr,
+            ProcessingPass::Complete,
+            operationCounts);
     return { realtimeOutput };
 }
 
@@ -240,7 +246,8 @@ void GraphAudioExecutor::processRealtimeVoiceToMix(
         const GraphExecutionPlan& plan,
         size_t frameCount,
         AudioProcessTiming timing,
-        const AudioVoiceContext& voice) const {
+        const AudioVoiceContext& voice,
+        GraphExecutionOperationCounts* operationCounts) const {
     processInternal(
             plan,
             frameCount,
@@ -251,14 +258,16 @@ void GraphAudioExecutor::processRealtimeVoiceToMix(
             nullptr,
             {},
             nullptr,
-            ProcessingPass::Voice);
+            ProcessingPass::Voice,
+            operationCounts);
     mixVoiceBoundary(plan, frameCount);
 }
 
 GraphAudioOutputView GraphAudioExecutor::processRealtimeGlobal(
         const GraphExecutionPlan& plan,
         size_t frameCount,
-        AudioProcessTiming timing) const {
+        AudioProcessTiming timing,
+        GraphExecutionOperationCounts* operationCounts) const {
     loadMixedVoiceBoundary(plan, frameCount);
     AudioVoiceContext context;
     context.voiceIndex = globalProcessorIndex;
@@ -272,7 +281,8 @@ GraphAudioOutputView GraphAudioExecutor::processRealtimeGlobal(
             nullptr,
             {},
             nullptr,
-            ProcessingPass::Global);
+            ProcessingPass::Global,
+            operationCounts);
     return { realtimeOutput };
 }
 
@@ -286,7 +296,8 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         const std::vector<uint8_t>* dirtyNodes,
         const CancellationCheck& cancellationCheck,
         GraphAudioResultView* incrementalResult,
-        ProcessingPass pass) const {
+        ProcessingPass pass,
+        GraphExecutionOperationCounts* operationCounts) const {
     if (captureDiagnostics) {
         AudioExecutionSpec executionSpec;
         executionSpec.maximumFrameCount = frameCount;
@@ -359,7 +370,10 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         }
     }
 
-    for (size_t stepIndex = 0; stepIndex < plan.steps.size(); ++stepIndex) {
+    if (operationCounts != nullptr) {
+        operationCounts->stepVisits += (uint32_t) preparedVoice->second.stepIndices.size();
+    }
+    for (const size_t stepIndex : preparedVoice->second.stepIndices) {
         if (dirtyNodes != nullptr && cancellationCheck && !cancellationCheck()) {
             if (incrementalResult != nullptr) {
                 incrementalResult->cancelled = true;
@@ -367,11 +381,6 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             return result;
         }
         const auto& step = plan.steps[stepIndex];
-        const bool globalStep = step.ownershipScope == RuntimeOwnershipScope::Global;
-        if ((pass == ProcessingPass::Voice && globalStep)
-                || (pass == ProcessingPass::Global && !globalStep)) {
-            continue;
-        }
         if (pass == ProcessingPass::Complete && step.kind == NodeKind::GlobalInput) {
             loadCompleteVoiceBoundary(plan, frameCount);
         }
@@ -615,8 +624,6 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         }
     }
 
-    removeUnreferencedProcessors();
-
     return result;
 }
 
@@ -714,14 +721,19 @@ void GraphAudioExecutor::prepareExecutionInternal(
     preparedVoice.sampleRate = spec.sampleRate;
     preparedVoice.processors.clear();
     preparedVoice.processors.reserve(plan.steps.size());
+    preparedVoice.stepIndices.clear();
+    preparedVoice.stepIndices.reserve(plan.steps.size());
+    preparedVoice.tailProcessors.clear();
 
-    for (const auto& step : plan.steps) {
+    for (size_t stepIndex = 0; stepIndex < plan.steps.size(); ++stepIndex) {
+        const auto& step = plan.steps[stepIndex];
         const bool globalStep = step.ownershipScope == RuntimeOwnershipScope::Global;
         if ((pass == ProcessingPass::Voice && globalStep)
                 || (pass == ProcessingPass::Global && !globalStep)) {
             preparedVoice.processors.push_back(nullptr);
             continue;
         }
+        preparedVoice.stepIndices.push_back(stepIndex);
         CachedProcessor& cached = processorFor(
                 step.nodeId,
                 voiceIndex,
@@ -729,6 +741,9 @@ void GraphAudioExecutor::prepareExecutionInternal(
                 factory);
         NodeAudioProcessor* processor = cached.processor.get();
         preparedVoice.processors.push_back(processor);
+        if (step.ownsVoiceTail && processor != nullptr) {
+            preparedVoice.tailProcessors.push_back(processor);
+        }
         if (processor == nullptr) {
             continue;
         }
@@ -805,6 +820,7 @@ void GraphAudioExecutor::prepareExecutionInternal(
             preparedVoice.oscillatorRegions.push_back(std::move(preparedRegion));
         }
     }
+    removeUnreferencedProcessors();
 }
 
 void GraphAudioExecutor::mixVoiceBoundary(
@@ -1051,12 +1067,9 @@ bool GraphAudioExecutor::hasVoiceTailProcessor(int voiceIndex, bool activeOnly) 
         return false;
     }
 
-    const auto& voice = found->second;
-    for (size_t stepIndex = 0; stepIndex < voice.plan->steps.size(); ++stepIndex) {
-        if (voice.plan->steps[stepIndex].ownsVoiceTail
-                && stepIndex < voice.processors.size()
-                && voice.processors[stepIndex] != nullptr
-                && (!activeOnly || voice.processors[stepIndex]->isVoiceActive())) {
+    for (NodeAudioProcessor* processor : found->second.tailProcessors) {
+        if (processor != nullptr
+                && (!activeOnly || processor->isVoiceActive())) {
             return true;
         }
     }
