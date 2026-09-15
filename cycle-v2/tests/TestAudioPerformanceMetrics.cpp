@@ -37,6 +37,7 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     first.executionStepVisitCount = 15;
     first.modulationBindingVisitCount = 2;
     first.spectralTransferBindingVisitCount = 5;
+    first.contextPatchCount = 11;
     first.stageDurations[static_cast<size_t>(
             AudioPerformanceMetrics::Stage::VoiceRendering)] = 1'200;
     metrics.publishRealtimeSample(first);
@@ -50,6 +51,7 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     second.executionStepVisitCount = 30;
     second.modulationBindingVisitCount = 4;
     second.spectralTransferBindingVisitCount = 7;
+    second.contextPatchCount = 13;
     second.stageDurations[static_cast<size_t>(
             AudioPerformanceMetrics::Stage::VoiceRendering)] = 4'500;
     metrics.publishRealtimeSample(second);
@@ -65,6 +67,7 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     REQUIRE(snapshot.totalExecutionStepVisits == 45);
     REQUIRE(snapshot.totalModulationBindingVisits == 6);
     REQUIRE(snapshot.totalSpectralTransferBindingVisits == 12);
+    REQUIRE(snapshot.totalContextPatches == 24);
     REQUIRE(snapshot.latestGraphRevision == 18);
     REQUIRE(snapshot.maximumActiveVoiceCount == 4);
     REQUIRE(snapshot.maximumScheduledMidiEventCount == 3);
@@ -96,6 +99,9 @@ TEST_CASE("Audio performance metrics aggregate realtime samples off-thread",
     REQUIRE((double) property(
             property(exported, "workload"),
             "meanSpectralTransferBindingVisits") == Catch::Approx(6.0));
+    REQUIRE((double) property(
+            property(exported, "workload"),
+            "meanContextPatches") == Catch::Approx(12.0));
     REQUIRE((int64) property(
             property(property(exported, "stages"), "voiceRendering"),
             "count") == 2);

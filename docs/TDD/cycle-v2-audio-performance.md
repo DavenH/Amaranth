@@ -63,7 +63,7 @@ counter. Instrumentation cannot back-pressure audio or change rendering.
 | Callback observability | Aggregate atomics only; no phase or deadline history. | `O(1)` bounded POD publication per enabled callback; implement first. |
 | Processor retirement | `removeUnreferencedProcessors()` ran after every active voice and global pass, scanning processors, prepared voices, and each voice processor list. | Implemented in slice 2: retirement runs after preparation, before publication; callback cleanup is `O(1)`. |
 | Scope filtering | Every active voice and the global pass scanned all execution steps and rejected the other scope. | Implemented in slice 2: prepared voice/global step indices execute `O(A*Svoice + Sglobal)`, independent of unrelated scope steps. |
-| Per-step context | Each execution rebuilds maximum-capacity input/output metadata, `String` fields, attachments, output-presence scans, and route resolution. | Prebind immutable prepared context/routes once; block work patches only frame, timing, voice, and payload pointers. |
+| Per-step context | Each execution rebuilt maximum-capacity input/output metadata, `String` fields, attachments, output-presence scans, and route resolution. | Implemented in slice 3c: preparation owns routed contexts; block work patches frame, timing, voice, capture mode, and output state only. |
 | Default modulation | Every voice/block scanned every plan buffer and performed configuration downcasts. | Implemented in slice 3a: preparation stores typed source/buffer bindings; block work is `O(M)` rather than `O(B)`. |
 | Spectral transfer | Every executor spectral input/voice/block repeated downcasts and scanned Pan steps. | Implemented in slice 3b: preparation resolves transfer values; executor block lookup is `O(1)` per connected input. Oscillator-frame transfer work remains under its authoritative preparation path. |
 | Released voice tail | Every released voice/block scanned all plan steps and resolved processors. | Implemented in slice 2: direct prepared tail processor references make the query `O(T)`. |
@@ -262,3 +262,23 @@ The retained oscillator-region path should be profiled separately in slice 5
 before changing its mature frame renderer.
 
 Artifact: `/private/tmp/cycle-v2-audio-performance-spectral.json`.
+
+## Slice 3c Result (2026-09-15)
+
+Each prepared execution step now owns its routed `AudioProcessContext`,
+including input/output payload pointers, output-port metadata, attachments,
+spectral values, and output-presence classification. Per block, the executor
+patches only frame count, timing, voice, traversal-capture mode, and the active
+output list. A scaling test adds 128 unrelated routes to an Output step and
+proves identical samples and an unchanged number of context patches.
+
+Live Baroque Flute telemetry reports 3 context patches while idle and 8, 23,
+and 43 at 1, 4, and 8 active voices. This is smaller than prepared-step visits
+because oscillator-region members that do not materialize a block are skipped
+before context patching. Compared with the preceding spectral-binding run,
+callback means changed from 0.884/2.424/3.431/5.950 ms to
+0.392/2.065/3.371/5.960 ms. The idle and one-voice reductions are clear; the
+four/eight-voice difference is within Debug run noise because mature oscillator
+DSP dominates those windows. No window reported an overrun or telemetry drop.
+
+Artifact: `/private/tmp/cycle-v2-audio-performance-context.json`.

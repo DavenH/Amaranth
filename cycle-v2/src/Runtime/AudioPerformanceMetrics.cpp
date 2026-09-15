@@ -132,6 +132,7 @@ AudioPerformanceMetrics::Snapshot AudioPerformanceMetrics::snapshot() const {
             aggregateData.totalExecutionStepVisits,
             aggregateData.totalModulationBindingVisits,
             aggregateData.totalSpectralTransferBindingVisits,
+            aggregateData.totalContextPatches,
             aggregateData.latestGraphRevision,
             aggregateData.maximumFrameCount,
             aggregateData.maximumActiveVoiceCount,
@@ -188,6 +189,13 @@ var AudioPerformanceMetrics::toVar() const {
             current.callbackDuration.count == 0
                     ? 0.0
                     : (double) current.totalSpectralTransferBindingVisits
+                            / (double) current.callbackDuration.count);
+    workload->setProperty("totalContextPatches", (int64) current.totalContextPatches);
+    workload->setProperty(
+            "meanContextPatches",
+            current.callbackDuration.count == 0
+                    ? 0.0
+                    : (double) current.totalContextPatches
                             / (double) current.callbackDuration.count);
     workload->setProperty("latestGraphRevision", (int64) current.latestGraphRevision);
     workload->setProperty("maximumFrameCount", (int) current.maximumFrameCount);
@@ -261,6 +269,7 @@ void AudioPerformanceMetrics::aggregate(const RealtimeSample& sample) {
     aggregateData.totalModulationBindingVisits += sample.modulationBindingVisitCount;
     aggregateData.totalSpectralTransferBindingVisits
             += sample.spectralTransferBindingVisitCount;
+    aggregateData.totalContextPatches += sample.contextPatchCount;
     aggregateData.latestGraphRevision = sample.graphRevision;
     aggregateData.maximumFrameCount = std::max(
             aggregateData.maximumFrameCount,

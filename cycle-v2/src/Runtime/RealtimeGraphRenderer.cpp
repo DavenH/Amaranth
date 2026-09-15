@@ -470,6 +470,7 @@ void RealtimeGraphRenderer::renderVoices(
                 = operationCounts.modulationBindingVisits;
         performanceSample->spectralTransferBindingVisitCount
                 = operationCounts.spectralTransferBindingVisits;
+        performanceSample->contextPatchCount = operationCounts.contextPatches;
     }
 }
 

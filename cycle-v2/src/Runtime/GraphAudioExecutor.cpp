@@ -312,12 +312,12 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             || bufferSlots.size() != plan.buffers.size()
             || preparedVoice == preparedVoices.end()
             || preparedVoice->second.plan != &plan
-            || preparedVoice->second.processors.size() != plan.steps.size()) {
+            || preparedVoice->second.processors.size() != plan.steps.size()
+            || preparedVoice->second.steps.size() != plan.steps.size()) {
         jassertfalse;
         return {};
     }
 
-    const size_t attachmentCapacity = plan.maximumAttachmentCount;
     GraphAudioResult result;
     bool cacheMatchesPlan = !captureDiagnostics
             || diagnosticNodeIds.size() == plan.steps.size();
@@ -409,86 +409,22 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             continue;
         }
 
-        AudioProcessContext& context = processContext;
+        auto& preparedStep = preparedVoice->second.steps[stepIndex];
+        AudioProcessContext& context = preparedStep.context;
         context.frameCount = frameCount;
         context.timing = timing;
         context.voiceView = &voice;
-        context.workArena = &workArena;
-        context.configuration = &step.configuration;
         context.captureTraversalGrid = captureDiagnostics;
-        context.parameterView = nullptr;
-        context.inputViews.assign(workArena.inputCapacity, nullptr);
-        context.magnitudeTransfers.assign(
-                workArena.inputCapacity,
-                SpectralMagnitudeTransfer {});
-        context.attachments.clear();
-        context.attachments.reserve(attachmentCapacity);
-        context.outputPorts.clear();
-        context.outputPorts.reserve(step.outputs.size());
-        context.outputViews.assign(step.outputs.size(), nullptr);
         context.outputs.clear();
-        context.outputs.reserve(workArena.outputCapacity);
-
-        for (size_t outputIndex = 0; outputIndex < step.outputs.size(); ++outputIndex) {
-            const auto& output = step.outputs[outputIndex];
-            context.outputPorts.push_back({
-                    output.portId,
-                    output.domain,
-                    output.channelLayout
-            });
-            if (output.bufferIndex >= 0) {
-                context.outputViews[outputIndex] = &bufferSlots[(size_t) output.bufferIndex];
-            }
-        }
-
-        for (size_t stepInputIndex = 0;
-                stepInputIndex < step.inputs.size();
-                ++stepInputIndex) {
-            const auto& input = step.inputs[stepInputIndex];
-            if (input.destPortIndex < 0) {
-                continue;
-            }
-
-            const auto inputIndex = (size_t) input.destPortIndex;
-            const int sourceBufferIndex = input.magnitudeTransfer.isActive()
-                    ? input.magnitudeTransfer.sourceBufferIndex
-                    : input.sourceBufferIndex;
-            if (sourceBufferIndex >= 0
-                    && (size_t) sourceBufferIndex < bufferSlots.size()) {
-                context.inputViews[inputIndex] = &bufferSlots[(size_t) sourceBufferIndex];
-            }
-            if (input.magnitudeTransfer.isActive()) {
-                context.magnitudeTransfers[inputIndex]
-                        = preparedVoice->second.spectralTransfersByStep[stepIndex]
-                                [stepInputIndex];
-                if (operationCounts != nullptr) {
-                    ++operationCounts->spectralTransferBindingVisits;
-                }
-            }
-        }
-
-        for (const auto& attachment : step.attachments) {
-            if (attachment.sourceBufferIndex < 0
-                    || (size_t) attachment.sourceBufferIndex >= bufferSlots.size()) {
-                continue;
-            }
-
-            context.attachments.push_back({
-                    attachment.sourceNodeId,
-                    attachment.sourcePortId,
-                    attachment.destPortId,
-                    attachment.domain,
-                    &bufferSlots[(size_t) attachment.sourceBufferIndex]
-            });
+        if (operationCounts != nullptr) {
+            ++operationCounts->contextPatches;
+            operationCounts->spectralTransferBindingVisits
+                    += preparedStep.spectralTransferBindingCount;
         }
 
         const bool outputNode = step.outputSink;
-        const bool hasBufferOutput = std::any_of(
-                step.outputs.begin(), step.outputs.end(), [](const auto& output) {
-                    return output.bufferIndex >= 0;
-                });
         if (!captureDiagnostics && observer == nullptr
-                && !hasBufferOutput && !outputNode) {
+                && !preparedStep.hasBufferOutput && !outputNode) {
             continue;
         }
         if (!captureDiagnostics && outputNode) {
@@ -702,15 +638,6 @@ void GraphAudioExecutor::prepareExecutionInternal(
             }
         }
     }
-    processContext.outputs.clear();
-    processContext.parameters.clear();
-    processContext.inputs.clear();
-    processContext.inputViews.prepare(plan.maximumInputCount);
-    processContext.magnitudeTransfers.prepare(plan.maximumInputCount);
-    processContext.attachments.prepare(plan.maximumAttachmentCount);
-    processContext.outputPorts.prepare(plan.maximumOutputCount);
-    processContext.outputViews.prepare(plan.maximumOutputCount);
-    processContext.outputs.prepare(plan.maximumOutputCount);
     PreparedVoice& preparedVoice = preparedVoices[voiceIndex];
     const bool globalPreparation = pass == ProcessingPass::Global;
     const bool rebuildOscillatorRegions = !globalPreparation
@@ -725,8 +652,8 @@ void GraphAudioExecutor::prepareExecutionInternal(
     preparedVoice.stepIndices.reserve(plan.steps.size());
     preparedVoice.tailProcessors.clear();
     preparedVoice.modulationBindings.clear();
-    preparedVoice.spectralTransfersByStep.clear();
-    preparedVoice.spectralTransfersByStep.resize(plan.steps.size());
+    preparedVoice.steps.clear();
+    preparedVoice.steps.resize(plan.steps.size());
     if (pass != ProcessingPass::Global) {
         preparedVoice.modulationBindings.reserve(plan.buffers.size());
         for (size_t bufferIndex = 0; bufferIndex < plan.buffers.size(); ++bufferIndex) {
@@ -757,16 +684,8 @@ void GraphAudioExecutor::prepareExecutionInternal(
             continue;
         }
         preparedVoice.stepIndices.push_back(stepIndex);
-        auto& spectralTransfers = preparedVoice.spectralTransfersByStep[stepIndex];
-        spectralTransfers.resize(step.inputs.size());
-        for (size_t inputIndex = 0; inputIndex < step.inputs.size(); ++inputIndex) {
-            const auto& input = step.inputs[inputIndex];
-            if (input.magnitudeTransfer.isActive()) {
-                spectralTransfers[inputIndex] = resolveSpectralMagnitudeTransfer(
-                        plan,
-                        input.magnitudeTransfer);
-            }
-        }
+        auto& preparedStep = preparedVoice.steps[stepIndex];
+        prepareStepContext(plan, step, preparedStep);
         CachedProcessor& cached = processorFor(
                 step.nodeId,
                 voiceIndex,
@@ -854,6 +773,75 @@ void GraphAudioExecutor::prepareExecutionInternal(
         }
     }
     removeUnreferencedProcessors();
+}
+
+void GraphAudioExecutor::prepareStepContext(
+        const GraphExecutionPlan& plan,
+        const GraphExecutionStep& step,
+        PreparedVoice::Step& preparedStep) const {
+    AudioProcessContext& context = preparedStep.context;
+    context.workArena = &workArena;
+    context.configuration = &step.configuration;
+    context.parameterView = nullptr;
+    context.parameters.clear();
+    context.inputs.clear();
+    context.inputViews.prepare(plan.maximumInputCount);
+    context.inputViews.assign(plan.maximumInputCount, nullptr);
+    context.magnitudeTransfers.prepare(plan.maximumInputCount);
+    context.magnitudeTransfers.assign(
+            plan.maximumInputCount,
+            SpectralMagnitudeTransfer {});
+    context.attachments.prepare(plan.maximumAttachmentCount);
+    context.outputPorts.prepare(plan.maximumOutputCount);
+    context.outputViews.prepare(plan.maximumOutputCount);
+    context.outputViews.assign(step.outputs.size(), nullptr);
+    context.outputs.prepare(plan.maximumOutputCount);
+
+    for (size_t outputIndex = 0; outputIndex < step.outputs.size(); ++outputIndex) {
+        const auto& output = step.outputs[outputIndex];
+        context.outputPorts.push_back({
+                output.portId,
+                output.domain,
+                output.channelLayout
+        });
+        if (output.bufferIndex >= 0) {
+            context.outputViews[outputIndex]
+                    = &bufferSlots[(size_t) output.bufferIndex];
+            preparedStep.hasBufferOutput = true;
+        }
+    }
+    for (const auto& input : step.inputs) {
+        if (input.destPortIndex < 0) {
+            continue;
+        }
+        const size_t inputIndex = (size_t) input.destPortIndex;
+        const int sourceBufferIndex = input.magnitudeTransfer.isActive()
+                ? input.magnitudeTransfer.sourceBufferIndex
+                : input.sourceBufferIndex;
+        if (sourceBufferIndex >= 0
+                && (size_t) sourceBufferIndex < bufferSlots.size()) {
+            context.inputViews[inputIndex] = &bufferSlots[(size_t) sourceBufferIndex];
+        }
+        if (input.magnitudeTransfer.isActive()) {
+            context.magnitudeTransfers[inputIndex] = resolveSpectralMagnitudeTransfer(
+                    plan,
+                    input.magnitudeTransfer);
+            ++preparedStep.spectralTransferBindingCount;
+        }
+    }
+    for (const auto& attachment : step.attachments) {
+        if (attachment.sourceBufferIndex < 0
+                || (size_t) attachment.sourceBufferIndex >= bufferSlots.size()) {
+            continue;
+        }
+        context.attachments.push_back({
+                attachment.sourceNodeId,
+                attachment.sourcePortId,
+                attachment.destPortId,
+                attachment.domain,
+                &bufferSlots[(size_t) attachment.sourceBufferIndex]
+        });
+    }
 }
 
 void GraphAudioExecutor::mixVoiceBoundary(

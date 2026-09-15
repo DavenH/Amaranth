@@ -48,6 +48,7 @@ struct GraphExecutionOperationCounts {
     uint32_t stepVisits {};
     uint32_t modulationBindingVisits {};
     uint32_t spectralTransferBindingVisits {};
+    uint32_t contextPatches {};
 };
 
 class GraphAudioExecutor {
@@ -198,6 +199,12 @@ private:
             bool active {};
         };
 
+        struct Step {
+            AudioProcessContext context;
+            uint32_t spectralTransferBindingCount {};
+            bool hasBufferOutput {};
+        };
+
         int voiceIndex {};
         const GraphExecutionPlan* plan {};
         size_t maximumFrameCount {};
@@ -206,7 +213,7 @@ private:
         std::vector<size_t> stepIndices;
         std::vector<NodeAudioProcessor*> tailProcessors;
         std::vector<ModulationBinding> modulationBindings;
-        std::vector<std::vector<SpectralMagnitudeTransfer>> spectralTransfersByStep;
+        std::vector<Step> steps;
         std::vector<std::unique_ptr<OscillatorRegion>> oscillatorRegions;
         std::vector<OscillatorRegion*> oscillatorRegionByStep;
     };
@@ -255,12 +262,15 @@ private:
             const AudioExecutionSpec& spec,
             int voiceIndex,
             ProcessingPass pass) const;
+    void prepareStepContext(
+            const GraphExecutionPlan& plan,
+            const GraphExecutionStep& step,
+            PreparedVoice::Step& preparedStep) const;
 
     static constexpr int globalProcessorIndex = -1;
 
     mutable AudioProcessWorkArena workArena;
     mutable AudioProcessWorkArena voiceMixArena;
-    mutable AudioProcessContext processContext;
     mutable std::vector<SignalPayload> bufferSlots;
     mutable std::vector<SignalPayload> voiceMixSlots;
     mutable const SignalPayload* realtimeOutput {};

@@ -2652,6 +2652,68 @@ TEST_CASE("Prepared spectral transfers do not traverse pan chains per block",
     REQUIRE(operationCounts.spectralTransferBindingVisits == transferBindingCount);
 }
 
+TEST_CASE("Prepared step contexts avoid block-time route assembly",
+        "[cycle-v2][runtime][realtime][performance][complexity]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "wave", "out", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    const auto baseline = GraphCompiler().compile(graph);
+    REQUIRE(baseline.succeeded());
+    auto expanded = baseline;
+    auto outputStep = std::find_if(
+            expanded.plan.steps.begin(),
+            expanded.plan.steps.end(),
+            [](const GraphExecutionStep& step) {
+                return step.outputSink;
+            });
+    REQUIRE(outputStep != expanded.plan.steps.end());
+    const int sourceBufferIndex = outputStep->inputs.front().sourceBufferIndex;
+    constexpr size_t unrelatedRouteCount = 128;
+    for (size_t routeIndex = 0; routeIndex < unrelatedRouteCount; ++routeIndex) {
+        GraphStepInput input;
+        input.destPortIndex = (int) routeIndex + 1;
+        input.sourceBufferIndex = sourceBufferIndex;
+        outputStep->inputs.push_back(std::move(input));
+    }
+    expanded.plan.maximumInputCount = unrelatedRouteCount + 1;
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 64;
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    GraphAudioExecutor baselineExecutor;
+    GraphAudioExecutor expandedExecutor;
+    baselineExecutor.prepareExecution(baseline.plan, spec);
+    expandedExecutor.prepareExecution(expanded.plan, spec);
+    GraphExecutionOperationCounts baselineCounts;
+    GraphExecutionOperationCounts expandedCounts;
+    const auto baselineOutput = baselineExecutor.processRealtime(
+            baseline.plan,
+            64,
+            {},
+            voice,
+            nullptr,
+            &baselineCounts);
+    const auto expandedOutput = expandedExecutor.processRealtime(
+            expanded.plan,
+            64,
+            {},
+            voice,
+            nullptr,
+            &expandedCounts);
+
+    REQUIRE(baselineOutput.isValid());
+    REQUIRE(expandedOutput.isValid());
+    REQUIRE(expandedOutput.payload->block.samples
+            == baselineOutput.payload->block.samples);
+    REQUIRE(expandedCounts.contextPatches == baselineCounts.contextPatches);
+}
+
 TEST_CASE("Prepared spectral stage recording performs no allocations",
         "[cycle-v2][runtime][realtime][spectral][parity]") {
     CycleDsp::SpectralStageCaptureRecorder recorder;
