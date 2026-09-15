@@ -1,8 +1,29 @@
 #pragma once
 
+#include <array>
+#include <cstdint>
+#include <vector>
+
 #include "GuideCurveProvider.h"
 
-#include <cstdint>
+class PreparedGuideCurveTable {
+public:
+    static constexpr int maximumResolutionRatio = 256;
+
+    // Call off-thread again whenever the source table changes.
+    void prepare(Buffer<float> table);
+    bool copyTo(Buffer<float> destination) const;
+
+private:
+    int tableSize {};
+    std::array<int, maximumResolutionRatio + 1> offsets {};
+    std::vector<float> samples;
+};
+
+struct GuideCurveSamplingWork {
+    uint64_t preparedCopies {};
+    uint64_t downsampleOperations {};
+};
 
 struct GuideCurveTableParameters {
     float noiseLevel {};
@@ -28,5 +49,7 @@ public:
             Buffer<float> phaseScratch,
             const GuideCurveTableParameters& parameters,
             Buffer<float> destination,
-            const GuideCurveProvider::NoiseContext& context);
+            const GuideCurveProvider::NoiseContext& context,
+            const PreparedGuideCurveTable* prepared = nullptr,
+            GuideCurveSamplingWork* work = nullptr);
 };

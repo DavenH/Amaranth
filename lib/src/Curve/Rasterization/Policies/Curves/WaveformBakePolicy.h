@@ -5,6 +5,7 @@
 
 #include <App/AppConstants.h>
 #include <Array/VecOps.h>
+#include <Curve/GuideCurveTableDsp.h>
 
 #include "../../WaveformBuffers.h"
 #include "../../GuideCurveOffsetSeeds.h"
@@ -67,7 +68,8 @@ namespace Rasterization {
                         scaleRatio /= 2.f;
                     }
 
-                    int truncRatio = jlimit(1, 256, int(scaleRatio + 0.5f));
+                    int truncRatio = jlimit(
+                            1, PreparedGuideCurveTable::maximumResolutionRatio, int(scaleRatio + 0.5f));
                     thisCurve.curveRes = tableSize / truncRatio;
                 } else {
                     thisCurve.curveRes = jmin(thisRes, nextRes);

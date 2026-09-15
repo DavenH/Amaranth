@@ -266,6 +266,55 @@ Artifacts:
 
 ## Verification
 
+### Immutable guide sampling design
+
+Prepare the guide downsampling products off-thread alongside each immutable
+Cycle V2 guide snapshot. `WaveformBakePolicy` requests lengths `tableSize / r`
+for integer resolution ratios 1 through 256. A shared
+`PreparedGuideCurveTable` stores those exact products using the existing
+`Buffer::downsampleFrom`; runtime performs an O(1) length lookup and contiguous
+copy. Unsupported sizes retain the authoritative downsampling path. Preparation
+cost and memory are bounded by `tableSize * H(256)` floats per guide (less after
+duplicate lengths are removed); mutable noise/phase/vertical offsets are never
+cached. The existing `GuideCurveTableDsp` continues to apply them, in the same
+order, on every render. Source instances sharing a guide provider share these
+immutable products. No lifecycle or random state is moved or skipped.
+
+This removes strided sampling from prepared calls; the asymptotic destination
+cost stays O(sample count). Optional work counters distinguish prepared copies
+from fallback downsampling. Tests must compare exact samples over all supported
+lengths, fallback lengths, seeds, phase/noise/DC combinations, and preparation
+replacement. The stable end state is shared-core guide sampling with optional
+immutable preparation; no compatibility layer or copied DSP is introduced.
+
+Implemented: two Release captures reduce eight-voice spectral rasterization
+from 5.165--5.347 to 4.846--4.859 microseconds/source (about 7.7% using the
+two-run means). Recipe time moves from 2.289--2.368 to 2.237--2.251 ms/callback.
+The deterministic Baroque WAV is byte-for-byte identical before/after.
+Artifacts: `/private/tmp/cycle-v2-source-guide-spectral-{1,2}.json` and
+`/private/tmp/cycle-v2-source-spectral-{before,guide}.wav`. Shared guide DSP
+tests pass 12,580 assertions in 3 cases, including counters proving zero
+runtime downsampling at all 256 supported resolution ratios. The constant
+ratio bound is shared with the bake policy to prevent preparation drift.
+
+### Point-sampling derivative design
+
+The chained CPU sample attributes 50 samples to waveform finalization, alongside
+151 in curve preparation and 139 in baking. Both representative oscillator
+paths use point sampling; segment integral areas are computed but never read.
+Add an explicit shared request capability to omit integral preparation while
+retaining identical waveform points, slopes, clipping, padding, guide handling,
+and sampling. The default remains full waveform preparation for existing
+callers. Cycle V2 oscillator sources select point-only preparation. An omitted
+area buffer is empty, so integral sampling cannot accidentally consume stale
+data. Full renders rebind it; incremental rebuilds honor the same capability.
+
+Optional bake counters report waveform segments and integral segments through
+source telemetry. The expected work reduction is from N integral segments per
+raster to zero, while waveform and slope work remains O(N). Tests compare
+exact point samples and transitions back to full preparation. No topology,
+curve-evaluation, noise, or chaining algorithm changes belong in this slice.
+
 ### Source-stage baseline (Release)
 
 The first successful eight-voice split, in microseconds per source operation:

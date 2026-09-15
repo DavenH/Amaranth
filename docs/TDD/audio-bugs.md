@@ -1,5 +1,13 @@
 # Audio Bug Notes
 
+## Resolved: Organ 2 oscillator parity tests referenced an archived path
+
+During source-rendering optimization on 2026-09-15, two voice-time parity
+tests failed at `TestChainedOscillatorRegionRuntime.cpp:91` with
+`loaded.succeeded() == false`. `3db65105` already stores this fixture only at
+`content/presets/old/organ-2.cyclegraph`. Point these two historical parity
+tests at that exact archive; their DSP expectations remain unchanged.
+
 ## Resolved: AcidStab3 crashed in uninitialized sinc resampling
 
 Loading the legacy `AcidStab3.cyc` preset and auditioning low notes produced
