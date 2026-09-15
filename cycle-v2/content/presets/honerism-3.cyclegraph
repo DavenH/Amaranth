@@ -1545,5 +1545,16 @@
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "waveshaper", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": []
+    "probes": [
+        {
+            "id": "probe",
+            "sourceNodeId": "volumeMultiply",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "voiceOutput",
+            "anchorDestPortId": "time",
+            "label": "Spy 1",
+            "tapPosition": 0.5,
+            "railOrder": 0
+        }
+    ]
 }
