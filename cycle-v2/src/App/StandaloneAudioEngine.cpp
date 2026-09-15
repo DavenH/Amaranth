@@ -175,7 +175,7 @@ void StandaloneAudioEngine::audioDeviceIOCallbackWithContext(
         adoptPendingGraph();
     }
 
-    renderer.process(
+    const uint64_t callback = renderer.process(
             midiEvents,
             outputChannelData,
             outputChannelCount,
@@ -188,7 +188,11 @@ void StandaloneAudioEngine::audioDeviceIOCallbackWithContext(
         AudioPerformanceMetrics::ScopedRealtimeStage stage(
                 measuredSample,
                 AudioPerformanceMetrics::Stage::LiveCapture);
-        liveCapture.append(outputChannelData, outputChannelCount, frameCount);
+        liveCapture.append(
+                outputChannelData,
+                outputChannelCount,
+                frameCount,
+                callback);
     }
     if (measuredSample != nullptr) {
         audioPerformanceMetrics.publishRealtimeSample(*measuredSample);

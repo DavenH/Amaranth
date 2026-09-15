@@ -102,7 +102,7 @@ void RealtimeGraphRenderer::setVoiceDurationSeconds(float durationSeconds) {
             std::memory_order_release);
 }
 
-void RealtimeGraphRenderer::process(
+uint64_t RealtimeGraphRenderer::process(
         RealtimeMidiEventQueue& events,
         float* const* outputChannels,
         int outputChannelCount,
@@ -110,6 +110,9 @@ void RealtimeGraphRenderer::process(
         double sampleRate,
         double callbackStartSeconds,
         AudioPerformanceMetrics::RealtimeSample* performanceSample) {
+    const uint64_t callback = callbackCounter.fetch_add(
+            1,
+            std::memory_order_relaxed) + 1;
     {
         AudioPerformanceMetrics::ScopedRealtimeStage stage(
                 performanceSample,
@@ -129,7 +132,6 @@ void RealtimeGraphRenderer::process(
                 : (uint32_t) preparedGraph->plan.steps.size();
     }
 
-    callbackCounter.fetch_add(1, std::memory_order_relaxed);
     if (preparedGraph == nullptr
             || frameCount <= 0
             || (size_t) frameCount > preparedGraph->spec.maximumFrameCount) {
@@ -138,7 +140,7 @@ void RealtimeGraphRenderer::process(
         outputRms.store(0.f, std::memory_order_relaxed);
         outputLeftPeak.store(0.f, std::memory_order_relaxed);
         outputRightPeak.store(0.f, std::memory_order_relaxed);
-        return;
+        return callback;
     }
 
     {
@@ -180,6 +182,7 @@ void RealtimeGraphRenderer::process(
                 AudioPerformanceMetrics::Stage::MeterPublication);
         publishMetrics(outputChannels, outputChannelCount, frameCount);
     }
+    return callback;
 }
 
 void RealtimeGraphRenderer::resetVoices() {

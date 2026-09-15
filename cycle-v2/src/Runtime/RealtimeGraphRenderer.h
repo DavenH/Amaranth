@@ -68,7 +68,7 @@ public:
         deterministicRandomSeed = seed;
         hasDeterministicRandomSeed = true;
     }
-    void process(
+    uint64_t process(
             RealtimeMidiEventQueue& events,
             float* const* outputChannels,
             int outputChannelCount,

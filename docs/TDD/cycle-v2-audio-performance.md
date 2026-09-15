@@ -70,7 +70,7 @@ counter. Instrumentation cannot back-pressure audio or change rendering.
 | MIDI scheduling | Every callback sorted all scheduled/future events and moved the remaining suffix. | Slice 4a skips sorting when no new events arrived and reports dequeued, sorted-item, and compacted-item totals. Retained future events remain sorted. |
 | Realtime arenas | Every graph buffer reserves block plus `F*max(F,C)` grid payload in both work and voice-mix arenas. | Separate diagnostic grid storage from realtime block storage; allocate mix storage only for voice/global boundary buffers, then consider lifetime-based slot reuse. |
 | Output path | Output is cleared before a valid overwrite, copied from the graph boundary, ramped/clipped, then scanned repeatedly for RMS/finiteness/peak. | The redundant L1 reduction and scratch copy/absolute/max passes are removed in slice 1 using `Buffer::minmax`; output clear/copy remain for a later bounded change. |
-| Live capture | Inactive capture performs an atomic callback-counter RMW every callback. | Gate inactive capture before RMW or reuse the renderer callback id. |
+| Live capture | Inactive capture performed an atomic callback-counter RMW every callback. | Slice 4b passes the renderer callback id into capture; inactive capture now performs only its target-state load. |
 | MIDI controls | All 128 controller values are copied into every active voice every block. | Share an immutable block snapshot or compile only referenced controllers. |
 
 `A` is active voices, `Svoice`/`Sglobal` are compiled steps of that scope,
@@ -292,3 +292,11 @@ sorted merge or a bounded heap can be justified by actual queue distributions.
 The deferred-event sequence test proves the first callback sorts the new item,
 the next callback performs zero sort work, and the event still activates its
 voice at the intended future callback.
+
+## Slice 4b Result (2026-09-15)
+
+Cycle V2 now passes the renderer's existing callback sequence into
+`AudioCallbackCapture`. The shared capture retains its self-counting entry point
+for `AudioHub`, while the externally sequenced entry point checks capture state
+before touching samples and performs no callback-counter RMW. Tests cover both
+the inactive fast path and preserved first/last callback identifiers.
