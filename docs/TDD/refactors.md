@@ -1,5 +1,21 @@
 # Refactor Notes
 
+## Share immutable guide products across prepared providers
+
+`TrimeshGuidePreparation::prepare` currently creates one guide provider per
+Trimesh configuration and prepares every graph guide. The measured oscillator
+optimization adds exact immutable downsampling products (180,812 bytes per
+8,192-sample guide plus offsets) to each provider snapshot. Voices sharing that
+configuration reuse the products, but separate configurations duplicate them.
+
+Separate immutable guide tables/sampling products from provider-local phase
+scratch, and share them by prepared guide identity across configurations.
+Preserve graph guide slot mapping, replacement lifetime, and per-render noise
+semantics; do not share mutable scratch or add realtime lookup/locking. Consider
+preparing only assigned guides once slot mapping has an explicit contract.
+This is an off-thread memory/preparation improvement, not a reason to replace
+the authoritative `GuideCurveTableDsp` sampling behavior.
+
 ## Cycle V2 first-class layer stack ownership
 
 The Cycle 1 preset migration preserves Envelope and Trilinear Mesh enablement

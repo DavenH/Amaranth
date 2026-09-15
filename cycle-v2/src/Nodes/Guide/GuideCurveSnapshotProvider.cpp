@@ -33,6 +33,7 @@ bool GuideCurveSnapshotProvider::addGuide(
 
     if (!resource.enabled) {
         Buffer<float>(snapshot.table.data(), (int) snapshot.table.size()).zero();
+        snapshot.samplingTable.prepare({ snapshot.table.data(), (int) snapshot.table.size() });
         guides.push_back(std::move(snapshot));
         return true;
     }
@@ -46,6 +47,7 @@ bool GuideCurveSnapshotProvider::addGuide(
             table)) {
         return false;
     }
+    snapshot.samplingTable.prepare(table);
     guides.push_back(std::move(snapshot));
     return true;
 }
@@ -83,7 +85,8 @@ void GuideCurveSnapshotProvider::sampleDownAddNoise(
             Buffer<float>(phaseScratch.data(), (int) phaseScratch.size()),
             guide->parameters,
             destination,
-            context);
+            context,
+            &guide->samplingTable);
 }
 
 Buffer<Float32> GuideCurveSnapshotProvider::getTable(int guideIndex) {

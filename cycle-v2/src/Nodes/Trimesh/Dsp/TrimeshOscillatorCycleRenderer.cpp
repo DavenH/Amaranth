@@ -3,6 +3,8 @@
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Curve/Curve.h>
 
+#include "Runtime/PreparedOscillatorRegion.h"
+
 namespace CycleV2 {
 
 bool TrimeshOscillatorCycleRenderer::prepare(
@@ -26,6 +28,7 @@ bool TrimeshOscillatorCycleRenderer::prepare(
         auto& lane = lanes[(size_t) laneIndex];
         lane.rasterizer.setGuideCurveProvider(configuration->guideCurveProvider.get());
         lane.rasterizer.setCalcDepthDimensions(false);
+        lane.rasterizer.setPrepareIntegrals(false);
         lane.rasterizer.setScalingMode(Rasterization::PointScalingMode::Bipolar);
         lane.rasterizer.prepare(preparation, { &lane.state });
     }
@@ -88,6 +91,10 @@ void TrimeshOscillatorCycleRenderer::renderCycleAtMorph(
     }
 
     auto& lane = lanes[(size_t) request.laneIndex];
+    auto* performance = request.processContext != nullptr
+                    && request.processContext->performanceCounts != nullptr
+            ? &request.processContext->performanceCounts->timeSources
+            : nullptr;
     CycleDsp::ChainedRasterizationRequest rasterRequest {
             const_cast<Mesh*>(configuration->mesh.get()),
             &lane.state,
@@ -97,10 +104,11 @@ void TrimeshOscillatorCycleRenderer::renderCycleAtMorph(
             noiseSeed
     };
     if (!lane.primed) {
-        CycleDsp::OscillatorLaneRasterizer::prime(lane.rasterizer, rasterRequest);
+        CycleDsp::OscillatorLaneRasterizer::prime(lane.rasterizer, rasterRequest, performance);
         lane.primed = true;
     }
-    CycleDsp::OscillatorLaneRasterizer::render(lane.rasterizer, rasterRequest, left);
+    CycleDsp::OscillatorLaneRasterizer::render(lane.rasterizer, rasterRequest, left, performance);
+    CycleDsp::ScopedSourceRenderStage copyStage(performance, CycleDsp::SourceRenderStage::StereoCopy);
     left.copyTo(right);
 }
 

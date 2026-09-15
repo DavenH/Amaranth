@@ -53,6 +53,7 @@ public:
 
     void nullify() {
         waveIdx         = 0;
+        curveRes        = 0;
         tableCurveIdx   = 0;
         tableCurvePos   = 0;
         resIndex        = 0;

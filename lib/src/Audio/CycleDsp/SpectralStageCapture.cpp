@@ -7,6 +7,33 @@ namespace CycleDsp {
 
 using namespace juce;
 
+SpectralFrameCapture::SpectralFrameCapture(
+        SpectralStageCaptureSink* sink,
+        size_t frameIndex,
+        uint64_t frontier,
+        int midiNote) :
+        sink(sink) {
+    frame.frameIndex = frameIndex;
+    frame.frontier = frontier;
+    frame.midiNote = midiNote;
+}
+
+void SpectralFrameCapture::capture(
+        SpectralStage stage,
+        int channel,
+        Buffer<float> primary,
+        Buffer<float> secondary) const {
+    if (sink == nullptr) {
+        return;
+    }
+    auto capturedFrame = frame;
+    capturedFrame.stage = stage;
+    capturedFrame.channel = channel;
+    capturedFrame.primary = primary;
+    capturedFrame.secondary = secondary;
+    sink->capture(capturedFrame);
+}
+
 namespace {
 
 String primaryPayloadName(SpectralStage stage) {

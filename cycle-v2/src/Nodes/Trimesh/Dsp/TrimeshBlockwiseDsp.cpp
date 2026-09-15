@@ -94,10 +94,12 @@ void TrimeshBlockwiseDsp::setVoiceLifecycleSeed(
     configureGuideCurveSeeds(preparedDomain);
 }
 
-void TrimeshBlockwiseDsp::rasterizePrepared(int noiseSeed) {
+void TrimeshBlockwiseDsp::rasterizePrepared(int noiseSeed, Rasterization::WaveformBakeWork* work) {
     this->noiseSeed = noiseSeed;
     if (mesh != nullptr && mesh->hasEnoughCubesForCrossSection()) {
-        rasterizer.renderWaveform({ *mesh, createRequest(preparedDomain), 0.f });
+        auto request = createRequest(preparedDomain);
+        request.waveformWork = work;
+        rasterizer.renderWaveform({ *mesh, request, 0.f });
     }
 }
 
@@ -246,6 +248,7 @@ Rasterization::RasterizationRequest TrimeshBlockwiseDsp::createRequest(
     request.primaryViewDimension = primaryViewAxis;
     request.scalingMode = scalingModeForDomain(domain, bipolar);
     request.calcDepthDimensions = false;
+    request.prepareIntegrals = false;
     request.lowResCurves = false;
     request.interpolateCurves = domain == PortDomain::SpectralPhaseSignal;
     request.noiseSeed = noiseSeed;

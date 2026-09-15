@@ -44,7 +44,7 @@ public:
     void setBipolar(bool shouldUseBipolarScaling);
     void setGuideCurveProvider(GuideCurveProvider* provider);
     void setVoiceLifecycleSeed(uint32_t seed, int guideSeedCount = -1);
-    void rasterizePrepared(int noiseSeed);
+    void rasterizePrepared(int noiseSeed, Rasterization::WaveformBakeWork* work = nullptr);
     void setFrequencyMidiNote(int midiNote);
 
     void renderCycle(

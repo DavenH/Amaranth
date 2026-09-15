@@ -1,12 +1,13 @@
 #pragma once
 
+#include "Runtime/OscillatorPerformanceTelemetry.h"
+#include "Runtime/PerformanceDistribution.h"
+
 #include <JuceHeader.h>
 
 #include <array>
 #include <atomic>
 #include <cstdint>
-
-#include "Runtime/PerformanceDistribution.h"
 
 namespace CycleV2 {
 
@@ -25,7 +26,17 @@ public:
         Count
     };
 
+    enum class OscillatorStage : uint8_t {
+        RegionRendering,
+        RecipeRendering,
+        LaneRendering,
+        OutputMixing,
+        Count
+    };
+
     static constexpr size_t stageCount = static_cast<size_t>(Stage::Count);
+    static constexpr size_t oscillatorStageCount
+            = static_cast<size_t>(OscillatorStage::Count);
     static constexpr size_t queueCapacity = 256;
 
     struct RealtimeSample {
@@ -45,9 +56,19 @@ public:
         uint32_t modulationBindingVisitCount {};
         uint32_t spectralTransferBindingVisitCount {};
         uint32_t contextPatchCount {};
+        uint32_t oscillatorRegionRenderCount {};
+        uint32_t oscillatorRecipeRenderCount {};
+        uint32_t oscillatorLaneCycleCount {};
+        uint32_t oscillatorMixedLaneCount {};
         uint64_t blockStorageValues {};
         uint64_t gridStorageValues {};
         std::array<uint64_t, stageCount> stageDurations {};
+        std::array<uint64_t, oscillatorStageCount> oscillatorStageDurations {};
+        std::array<uint64_t, oscillatorRecipeStageCount> oscillatorRecipeStageDurations {};
+        std::array<uint32_t, oscillatorRecipeStageCount>
+                oscillatorRecipeStageOperationCounts {};
+        CycleDsp::SourceRenderPerformance timeSources;
+        CycleDsp::SourceRenderPerformance spectralSources;
     };
 
     struct Snapshot {
@@ -61,6 +82,10 @@ public:
         uint64_t totalModulationBindingVisits {};
         uint64_t totalSpectralTransferBindingVisits {};
         uint64_t totalContextPatches {};
+        uint64_t totalOscillatorRegionRenders {};
+        uint64_t totalOscillatorRecipeRenders {};
+        uint64_t totalOscillatorLaneCycles {};
+        uint64_t totalOscillatorMixedLanes {};
         uint64_t totalDequeuedMidiEvents {};
         uint64_t totalSortedMidiItems {};
         uint64_t totalCompactedMidiItems {};
@@ -74,6 +99,13 @@ public:
         PerformanceDistribution callbackDuration;
         PerformanceDistribution deadlineUtilizationPermille;
         std::array<PerformanceDistribution, stageCount> stages;
+        std::array<PerformanceDistribution, oscillatorStageCount> oscillatorStages;
+        std::array<PerformanceDistribution, oscillatorRecipeStageCount>
+                oscillatorRecipeStages;
+        std::array<uint64_t, oscillatorRecipeStageCount>
+                totalOscillatorRecipeStageOperations {};
+        CycleDsp::SourceRenderPerformance timeSources;
+        CycleDsp::SourceRenderPerformance spectralSources;
     };
 
     class ScopedRealtimeStage final {
@@ -87,6 +119,23 @@ public:
     private:
         RealtimeSample* measuredSample;
         Stage measuredStage;
+        uint64_t startMicroseconds;
+    };
+
+    class ScopedOscillatorRecipeStage final {
+    public:
+        ScopedOscillatorRecipeStage(
+                OscillatorRegionPerformanceCounts* counts,
+                OscillatorRecipeStage stage) noexcept;
+        ~ScopedOscillatorRecipeStage();
+
+        ScopedOscillatorRecipeStage(const ScopedOscillatorRecipeStage&) = delete;
+        ScopedOscillatorRecipeStage& operator=(
+                const ScopedOscillatorRecipeStage&) = delete;
+
+    private:
+        OscillatorRegionPerformanceCounts* measuredCounts;
+        size_t measuredStageIndex;
         uint64_t startMicroseconds;
     };
 
@@ -107,6 +156,8 @@ public:
             Stage stage,
             uint64_t startMicroseconds) noexcept;
     static const char* label(Stage stage);
+    static const char* label(OscillatorStage stage);
+    static const char* label(OscillatorRecipeStage stage);
 
 private:
     struct Aggregate {
@@ -117,6 +168,10 @@ private:
         uint64_t totalModulationBindingVisits {};
         uint64_t totalSpectralTransferBindingVisits {};
         uint64_t totalContextPatches {};
+        uint64_t totalOscillatorRegionRenders {};
+        uint64_t totalOscillatorRecipeRenders {};
+        uint64_t totalOscillatorLaneCycles {};
+        uint64_t totalOscillatorMixedLanes {};
         uint64_t totalDequeuedMidiEvents {};
         uint64_t totalSortedMidiItems {};
         uint64_t totalCompactedMidiItems {};
@@ -130,6 +185,13 @@ private:
         PerformanceDistribution callbackDuration;
         PerformanceDistribution deadlineUtilizationPermille;
         std::array<PerformanceDistribution, stageCount> stages;
+        std::array<PerformanceDistribution, oscillatorStageCount> oscillatorStages;
+        std::array<PerformanceDistribution, oscillatorRecipeStageCount>
+                oscillatorRecipeStages;
+        std::array<uint64_t, oscillatorRecipeStageCount>
+                totalOscillatorRecipeStageOperations {};
+        CycleDsp::SourceRenderPerformance timeSources;
+        CycleDsp::SourceRenderPerformance spectralSources;
     };
 
     void aggregate(const RealtimeSample& sample);

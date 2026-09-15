@@ -251,9 +251,25 @@ TEST_CASE("Realtime audio telemetry does not change rendered output",
                 1.0,
                 instrumented ? &sample : nullptr);
         if (instrumented) {
+            REQUIRE(sample.timeSources.waveform.waveformSegments > 0);
+            REQUIRE(sample.timeSources.waveform.integralSegments == 0);
             REQUIRE(sample.graphRevision == 23);
             REQUIRE(sample.executionStepCount == compiled.plan.steps.size());
             REQUIRE(sample.activeVoiceCount == 1);
+            REQUIRE(sample.oscillatorRegionRenderCount > 0);
+            REQUIRE(sample.oscillatorRecipeRenderCount > 0);
+            REQUIRE(sample.oscillatorMixedLaneCount > 0);
+            REQUIRE(sample.oscillatorStageDurations[(size_t)
+                    AudioPerformanceMetrics::OscillatorStage::RegionRendering] > 0);
+            REQUIRE(sample.oscillatorRecipeStageOperationCounts[(size_t)
+                    OscillatorRecipeStage::TimeSourceRendering] > 0);
+            for (const auto stage : {
+                    CycleDsp::SourceRenderStage::MorphResolution,
+                    CycleDsp::SourceRenderStage::Rasterization,
+                    CycleDsp::SourceRenderStage::Sampling,
+                    CycleDsp::SourceRenderStage::StereoCopy }) {
+                REQUIRE(sample.timeSources.operations[(size_t) stage] > 0);
+            }
         }
         return std::vector<float>(
                 output.getReadPointer(0),

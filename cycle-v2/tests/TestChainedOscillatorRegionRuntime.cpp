@@ -163,7 +163,7 @@ TEST_CASE("Prepared trimesh morph binding preserves fractional voice position",
 TEST_CASE("Prepared Organ 2 time mesh inherits the attached Voice Time source",
         "[cycle-v2][runtime][oscillator-region][voice-time][organ-2][parity]") {
 #if defined(CYCLE_V2_SOURCE_DIR)
-    const auto compiled = GraphCompiler().compile(loadPresetGraph("organ-2"));
+    const auto compiled = GraphCompiler().compile(loadPresetGraph("old/organ-2"));
     REQUIRE(compiled.succeeded());
     const auto timeLayer = std::find_if(
             compiled.plan.steps.begin(),
@@ -386,7 +386,7 @@ TEST_CASE("Factory spectral graphs with one-sided Add use prepared oscillators",
 TEST_CASE("Prepared Organ 2 does not use its pitch envelope as Time scratch",
         "[cycle-v2][runtime][oscillator-region][voice-time][organ-2][parity]") {
 #if defined(CYCLE_V2_SOURCE_DIR)
-    const auto compiled = GraphCompiler().compile(loadOscillatorPresetGraph("organ-2"));
+    const auto compiled = GraphCompiler().compile(loadOscillatorPresetGraph("old/organ-2"));
     REQUIRE(compiled.succeeded());
     CycleDsp::SpectralStageCaptureRecorder stages;
     REQUIRE(stages.prepare(4096, 16));

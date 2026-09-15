@@ -95,12 +95,18 @@ namespace Rasterization {
                 int endCurve,
                 GuideCurveProvider* guideCurveProvider = nullptr,
                 GuideCurveOffsetSeeds* offsetSeeds = nullptr) {
+            if (request.prepareIntegrals && output.waveform.area.empty()) {
+                renderResult(output, request, guideCurveProvider, offsetSeeds);
+                return;
+            }
             GuideCurveOffsetSeeds* resolvedOffsetSeeds = offsetSeeds != nullptr
                     ? offsetSeeds
                     : &fallbackOffsetSeeds;
 
             WaveformBakePolicy::Context bakeContext;
             bakeContext.lowResCurves = request.lowResCurves;
+            bakeContext.prepareIntegrals = request.prepareIntegrals;
+            bakeContext.work = request.waveformWork;
             bakeContext.morph = request.morph;
             bakeContext.decoupleComponentDfrms = request.decoupleComponentDeforms;
             bakeContext.noiseSeed = request.noiseSeed;
@@ -158,6 +164,8 @@ namespace Rasterization {
                 AllocateTarget allocateTarget) const {
             WaveformBakePolicy::Context bakeContext;
             bakeContext.lowResCurves = request.lowResCurves;
+            bakeContext.prepareIntegrals = request.prepareIntegrals;
+            bakeContext.work = request.waveformWork;
             bakeContext.morph = request.morph;
             bakeContext.decoupleComponentDfrms = request.decoupleComponentDeforms;
             bakeContext.noiseSeed = request.noiseSeed;

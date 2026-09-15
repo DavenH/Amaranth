@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Runtime/NodeDspConfiguration.h"
+#include "Runtime/OscillatorPerformanceTelemetry.h"
 
 #include <Array/Buffer.h>
 
@@ -26,6 +27,7 @@ struct PreparedOscillatorProcessContext {
     Buffer<float> pitchEnvelope;
     Buffer<float> left;
     Buffer<float> right;
+    OscillatorRegionPerformanceCounts* performanceCounts {};
 
     const SignalPayload* signalAt(int bufferIndex) const;
 };

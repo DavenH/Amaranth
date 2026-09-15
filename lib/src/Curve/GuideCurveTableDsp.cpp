@@ -1,3 +1,5 @@
+#include <Array/VecOps.h>
+
 #include "GuideCurveTableDsp.h"
 
 namespace {
@@ -63,6 +65,40 @@ void addVerticalOffset(
 
 }
 
+void PreparedGuideCurveTable::prepare(Buffer<float> table) {
+    tableSize = table.size();
+    offsets.fill(-1);
+    int sampleCount = 0;
+    for (int ratio = 1; ratio <= maximumResolutionRatio; ++ratio) {
+        const int size = tableSize / ratio;
+        if (size > 0 && tableSize / size == ratio) {
+            offsets[(size_t) ratio] = sampleCount;
+            sampleCount += size;
+        }
+    }
+    samples.resize((size_t) sampleCount);
+    for (int ratio = 1; ratio <= maximumResolutionRatio; ++ratio) {
+        const int offset = offsets[(size_t) ratio];
+        if (offset >= 0) {
+            Buffer<float>(samples.data() + offset, tableSize / ratio).downsampleFrom(table);
+        }
+    }
+}
+
+bool PreparedGuideCurveTable::copyTo(Buffer<float> destination) const {
+    if (destination.empty()) {
+        return false;
+    }
+    const int ratio = tableSize / destination.size();
+    if (ratio < 1 || ratio > maximumResolutionRatio
+            || tableSize / ratio != destination.size()
+            || offsets[(size_t) ratio] < 0) {
+        return false;
+    }
+    VecOps::copy(samples.data() + offsets[(size_t) ratio], destination.get(), destination.size());
+    return true;
+}
+
 void GuideCurveTableDsp::initializeNoise(Buffer<float> noise) {
     uint32_t seed = 0x47554944u;
     noise.rand(seed).sub(0.5f);
@@ -94,8 +130,17 @@ void GuideCurveTableDsp::sampleDownAddNoise(
         Buffer<float> phaseScratch,
         const GuideCurveTableParameters& parameters,
         Buffer<float> destination,
-        const GuideCurveProvider::NoiseContext& context) {
-    destination.downsampleFrom(table);
+        const GuideCurveProvider::NoiseContext& context,
+        const PreparedGuideCurveTable* prepared,
+        GuideCurveSamplingWork* work) {
+    const bool copied = prepared != nullptr && prepared->copyTo(destination);
+    if (!copied) {
+        destination.downsampleFrom(table);
+    }
+    if (work != nullptr) {
+        work->preparedCopies += copied ? 1 : 0;
+        work->downsampleOperations += copied ? 0 : 1;
+    }
     rotatePhase(destination, phaseScratch, parameters, context);
     addNoise(destination, noise, parameters, context);
     addVerticalOffset(destination, noise, parameters, context);

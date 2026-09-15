@@ -49,6 +49,7 @@ struct GraphExecutionOperationCounts {
     uint32_t modulationBindingVisits {};
     uint32_t spectralTransferBindingVisits {};
     uint32_t contextPatches {};
+    OscillatorRegionPerformanceCounts oscillator;
 };
 
 class GraphAudioExecutor {
@@ -240,7 +241,8 @@ private:
             const SignalPayload* signalBuffers,
             size_t signalBufferCount,
             size_t frameCount,
-            SignalPayload& output);
+            SignalPayload& output,
+            OscillatorRegionPerformanceCounts* performanceCounts);
     bool hasVoiceTailProcessor(int voiceIndex, bool activeOnly) const;
     GraphAudioResult processInternal(
             const GraphExecutionPlan& plan,
