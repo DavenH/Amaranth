@@ -6,14 +6,14 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 460.0, "y": 826.0 },
+            "position": { "x": 244.0, "y": 610.0 },
             "parameters": { "octave": 0, "voiceLength": 0.470580488, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 837.0 },
+            "position": { "x": -116.0, "y": 621.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -808,7 +808,7 @@
             "id": "magnitudeLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1942.0, "y": 387.0 },
+            "position": { "x": 1942.0, "y": 50.07994 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -965,7 +965,7 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1576.0, "y": 1254.0 },
+            "position": { "x": 1576.0, "y": 1232.5 },
             "portSides": {
                 "outputs": { "out": "top" }
             },
@@ -1066,7 +1066,7 @@
             "id": "phaseOp1",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 1644.0, "y": 1056.0 },
+            "position": { "x": 1644.0, "y": 920.0 },
             "portSides": {
                 "inputs": { "right": "bottom" }
             },
@@ -1076,7 +1076,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2618.80005, "y": 1084.0 },
+            "position": { "x": 2618.80005, "y": 1122.06799 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1360,7 +1360,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1091.59998, "y": 399.5 },
+            "position": { "x": 1551.52771, "y": 84.07993 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1551,7 +1551,7 @@
             "id": "scratchEnvelope2",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 725.59998, "y": 399.5 },
+            "position": { "x": 1163.38123, "y": 421.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1652,7 +1652,7 @@
             "id": "scratchEnvelope3",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1100.80005, "y": 1266.5 },
+            "position": { "x": 1182.37415, "y": 1266.5 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1850,7 +1850,7 @@
             "id": "equalizer",
             "kind": "equalizer",
             "definitionVersion": 1,
-            "position": { "x": 746.0, "y": 1571.0 },
+            "position": { "x": -60.0, "y": 1247.42249 },
             "parameters": {
                 "processingScope": "global",
                 "enabled": true,
@@ -1870,21 +1870,21 @@
             "id": "reverb",
             "kind": "reverb",
             "definitionVersion": 1,
-            "position": { "x": 1050.0, "y": 1571.0 },
+            "position": { "x": 244.0, "y": 1247.42249 },
             "parameters": { "enabled": true, "size": 0.304000003, "damp": 0.200000003, "width": 1.0, "wet": 0.132000012, "highPass": 0.05 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 1314.0, "y": 1571.0 },
+            "position": { "x": 508.0, "y": 1247.42249 },
             "parameters": { "gain": 0.566176471 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 508.0, "y": 1571.0 },
+            "position": { "x": -298.0, "y": 1247.42249 },
             "parameters": {}
         },
         {

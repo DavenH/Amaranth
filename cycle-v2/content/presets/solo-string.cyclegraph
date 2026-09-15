@@ -6,14 +6,14 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 475.20001, "y": 826.0 },
+            "position": { "x": 421.92007, "y": 49.36523 },
             "parameters": { "octave": 1, "voiceLength": 0.465629607, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "256" }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 693.0 },
+            "position": { "x": 46.72003, "y": -83.63477 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -44,7 +44,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 855.20001, "y": 886.0 },
+            "position": { "x": 864.30487, "y": 886.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -227,7 +227,7 @@
             "id": "magnitudeLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1957.19995, "y": 387.0 },
+            "position": { "x": 1957.20007, "y": 381.3652 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -299,7 +299,7 @@
             "id": "magnitudeLayer3",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 2323.19995, "y": 387.0 },
+            "position": { "x": 2323.19995, "y": 381.3652 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -384,7 +384,7 @@
             "id": "magnitudeLayer4",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 2689.19995, "y": 387.0 },
+            "position": { "x": 2689.19995, "y": 72.87493 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -456,14 +456,17 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1659.19995, "y": 1224.0 },
+            "position": { "x": 1602.39172, "y": 1190.61536 },
+            "portSides": {
+                "outputs": { "out": "top" }
+            },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.2,
                 "signalType": "spectralPhase",
                 "polarity": "unipolar",
-                "yellow": 0.5,
+                "yellow": 0.082,
                 "red": 0.5,
                 "blue": 0.5,
                 "primaryAxis": "yellow",
@@ -541,7 +544,10 @@
             "id": "phaseOp1",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 1810.0, "y": 820.0 },
+            "position": { "x": 1670.39172, "y": 920.0 },
+            "portSides": {
+                "inputs": { "right": "bottom" }
+            },
             "parameters": {}
         },
         {
@@ -555,7 +561,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 3000.0, "y": 1084.0 },
+            "position": { "x": 3048.92969, "y": 517.36523 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -682,7 +688,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 863.0 },
+            "position": { "x": 31.52003, "y": 86.36523 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1419,21 +1425,21 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 380.0, "y": 524.25 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "position": { "x": 31.52003, "y": 387.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.025, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 30,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 30,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
                             "name": "Mesh",
-                            "version": 1,
+                            "version": 2,
                             "vertices": [
                                 { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 0 },
                                 { "time": 0.0, "phase": 0.0008905275, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 1 },
@@ -2028,8 +2034,8 @@
                         "sustainIndices": [ 44 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
-                    "blue": 0.5,
+                    "red": 0.025,
+                    "blue": 0.0,
                     "redLinked": false,
                     "blueLinked": false,
                     "cubeIds": [
@@ -2080,20 +2086,24 @@
                         45
                     ]
                 }
-            }
+            },
+            "editor": {}
         },
         {
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 3375.19995, "y": 886.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 761.20001, "y": 1541.0 },
+            "position": { "x": -411.74734, "y": 920.0 },
             "parameters": { "processingScope": "global", "enabled": true, "size": 0.142857143, "post": 0.552, "highPass": 0.052 },
             "model": {
                 "schema": "flatCurve",
@@ -2160,21 +2170,21 @@
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 1065.19995, "y": 1541.0 },
+            "position": { "x": -107.74741, "y": 920.0 },
             "parameters": { "enabled": true, "time": 0.5, "feedback": 0.5, "wet": 0.1, "spin": 0.5, "spinIters": 0.5 }
         },
         {
             "id": "reverb",
             "kind": "reverb",
             "definitionVersion": 1,
-            "position": { "x": 1329.19995, "y": 1541.0 },
+            "position": { "x": 156.25259, "y": 920.0 },
             "parameters": { "enabled": true, "size": 0.376000003, "damp": 0.112, "width": 1.0, "wet": 0.208000012, "highPass": 0.05 }
         },
         {
             "id": "modulationOverride1",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 2689.19995, "y": 181.0 },
+            "position": { "x": 2288.21387, "y": 194.82622 },
             "parameters": {
                 "yellowSource": "constant",
                 "yellowController": 1,
@@ -2191,14 +2201,14 @@
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 1593.19995, "y": 1541.0 },
+            "position": { "x": 420.25259, "y": 920.0 },
             "parameters": { "gain": 0.37704918 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 523.20001, "y": 1541.0 },
+            "position": { "x": -649.74731, "y": 920.0 },
             "parameters": {}
         },
         {
@@ -2206,6 +2216,20 @@
             "kind": "voiceOutput",
             "definitionVersion": 1,
             "position": { "x": 3573.19995, "y": 886.0 },
+            "parameters": {}
+        },
+        {
+            "id": "voiceTime",
+            "kind": "scratchDefaultOverride",
+            "definitionVersion": 1,
+            "position": { "x": 1326.88965, "y": 1224.61536 },
+            "parameters": {}
+        },
+        {
+            "id": "voiceTime2",
+            "kind": "scratchDefaultOverride",
+            "definitionVersion": 1,
+            "position": { "x": 2394.21387, "y": 86.36523 },
             "parameters": {}
         }
     ],
@@ -2666,15 +2690,16 @@
         { "sourceNodeId": "volumeEnvelope1", "sourcePortId": "env", "destNodeId": "volumeMultiply", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "impulseResponse", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "delay", "sourcePortId": "time", "destNodeId": "reverb", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "pitchEnvelope1", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "pitch", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "scratchEnvelope1", "sourcePortId": "env", "destNodeId": "timeLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
-        { "sourceNodeId": "scratchEnvelope1", "sourcePortId": "env", "destNodeId": "magnitudeLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
-        { "sourceNodeId": "scratchEnvelope1", "sourcePortId": "env", "destNodeId": "magnitudeLayer2", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
-        { "sourceNodeId": "scratchEnvelope1", "sourcePortId": "env", "destNodeId": "magnitudeLayer3", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
-        { "sourceNodeId": "modulationOverride1", "sourcePortId": "blue", "destNodeId": "magnitudeLayer4", "destPortId": "blue", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "reverb", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "impulseResponse", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
+        { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "modulationOverride1", "sourcePortId": "yellow", "destNodeId": "magnitudeLayer4", "destPortId": "yellow", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "modulationOverride1", "sourcePortId": "red", "destNodeId": "magnitudeLayer4", "destPortId": "red", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "modulationOverride1", "sourcePortId": "blue", "destNodeId": "magnitudeLayer4", "destPortId": "blue", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "scratchEnvelope1", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
+        { "sourceNodeId": "pitchEnvelope1", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "pitch", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "voiceTime", "sourcePortId": "scratch", "destNodeId": "phaseLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
+        { "sourceNodeId": "voiceTime2", "sourcePortId": "scratch", "destNodeId": "magnitudeLayer4", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" }
     ],
     "probes": []
 }

@@ -327,7 +327,7 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1591.19983, "y": 1020.99994 },
+            "position": { "x": 1591.19995, "y": 885.00006 },
             "portSides": {
                 "outputs": { "out": "top" }
             },
@@ -389,7 +389,7 @@
             "id": "phaseOp1",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 1659.19995, "y": 789.0 },
+            "position": { "x": 1659.20007, "y": 653.00012 },
             "portSides": {
                 "inputs": { "right": "bottom" }
             },
@@ -399,14 +399,14 @@
             "id": "phaseLayer1Process",
             "kind": "spectralLayer",
             "definitionVersion": 1,
-            "position": { "x": 1854.19995, "y": 1081.0 },
+            "position": { "x": 1854.20007, "y": 945.00006 },
             "parameters": { "pan": 1.0 }
         },
         {
             "id": "phaseLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1957.19995, "y": 1020.99994 },
+            "position": { "x": 1957.20007, "y": 885.00006 },
             "portSides": {
                 "outputs": { "out": "top" }
             },
@@ -468,7 +468,7 @@
             "id": "phaseOp2",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 2025.19995, "y": 789.0 },
+            "position": { "x": 2025.20007, "y": 653.00012 },
             "portSides": {
                 "inputs": { "right": "bottom" }
             },
@@ -478,14 +478,14 @@
             "id": "phaseLayer2Process",
             "kind": "spectralLayer",
             "definitionVersion": 1,
-            "position": { "x": 2220.19995, "y": 1081.0 },
+            "position": { "x": 2220.2002, "y": 945.00006 },
             "parameters": { "pan": 0.0 }
         },
         {
             "id": "waveshaper",
             "kind": "waveshaper",
             "definitionVersion": 1,
-            "position": { "x": 393.17242, "y": 1386.0 },
+            "position": { "x": 1298.19995, "y": 1334.51648 },
             "parameters": { "processingScope": "global", "enabled": true, "pre": 0.512, "post": 0.472, "aaFactor": "1" },
             "model": {
                 "schema": "flatCurve",
@@ -510,7 +510,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2268.0, "y": 817.0 },
+            "position": { "x": 2313.76318, "y": 311.0 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1489,13 +1489,16 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 2643.19995, "y": 619.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 682.17242, "y": 1386.0 },
+            "position": { "x": 1587.19995, "y": 1334.51648 },
             "parameters": { "processingScope": "global", "enabled": true, "size": 0.142857143, "post": 0.508, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
@@ -1580,21 +1583,21 @@
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 986.17242, "y": 1386.0 },
+            "position": { "x": 1891.19983, "y": 1334.51648 },
             "parameters": { "enabled": true, "time": 0.748, "feedback": 0.548, "wet": 1.0, "spin": 1.0, "spinIters": 0.624 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 1250.17236, "y": 1386.0 },
+            "position": { "x": 2155.19971, "y": 1334.51648 },
             "parameters": { "gain": 0.50862069 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 155.17242, "y": 1386.0 },
+            "position": { "x": 1060.19995, "y": 1334.51648 },
             "parameters": {}
         },
         {

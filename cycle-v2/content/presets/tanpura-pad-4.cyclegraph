@@ -6,14 +6,14 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 475.20001, "y": 826.0 },
+            "position": { "x": 411.20007, "y": 556.0 },
             "parameters": { "octave": -1, "voiceLength": 0.598591549, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 556.0 },
+            "position": { "x": 36.00006, "y": 374.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -44,7 +44,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 726.0 },
+            "position": { "x": 36.00006, "y": 544.0 },
             "parameters": { "enabled": true, "mode": "group", "order": 6, "width": 3.08, "panSpread": 0.0, "phase": 0.843999982, "jitter": 0.5 },
             "model": {
                 "schema": "unisonVoices",
@@ -668,7 +668,7 @@
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
                 "polarity": "unipolar",
-                "yellow": 0.5,
+                "yellow": 0.0,
                 "red": 0.5,
                 "blue": 0.5,
                 "primaryAxis": "yellow",
@@ -808,7 +808,7 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1659.19995, "y": 1224.0 },
+            "position": { "x": 1305.19983, "y": 1226.62512 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -880,7 +880,7 @@
             "id": "phaseOp1",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 1810.0, "y": 820.0 },
+            "position": { "x": 1838.87622, "y": 1106.13708 },
             "parameters": {}
         },
         {
@@ -894,7 +894,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2268.0, "y": 1084.0 },
+            "position": { "x": 2332.4519, "y": 556.0 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1008,7 +1008,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 1000.0 },
+            "position": { "x": 36.00006, "y": 818.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1096,42 +1096,45 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2643.19995, "y": 886.0 },
+            "position": { "x": 2690.4519, "y": 886.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 761.20001, "y": 1541.0 },
+            "position": { "x": 211.20004, "y": 1383.49329 },
             "parameters": { "enabled": true, "time": 0.5, "feedback": 0.5, "wet": 0.328, "spin": 0.5, "spinIters": 0.5 }
         },
         {
             "id": "reverb",
             "kind": "reverb",
             "definitionVersion": 1,
-            "position": { "x": 1025.19995, "y": 1541.0 },
+            "position": { "x": 475.20004, "y": 1383.49329 },
             "parameters": { "enabled": true, "size": 0.564000003, "damp": 0.200000003, "width": 0.436, "wet": 0.300000012, "highPass": 0.034 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 1289.19995, "y": 1541.0 },
+            "position": { "x": 739.20007, "y": 1383.49329 },
             "parameters": { "gain": 0.503649635 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 523.20001, "y": 1541.0 },
+            "position": { "x": -26.79996, "y": 1383.49329 },
             "parameters": {}
         },
         {
             "id": "voiceOutput",
             "kind": "voiceOutput",
             "definitionVersion": 1,
-            "position": { "x": 2841.19995, "y": 886.0 },
+            "position": { "x": 2888.4519, "y": 886.0 },
             "parameters": {}
         }
     ],
