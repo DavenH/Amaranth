@@ -11,6 +11,8 @@
 
 namespace CycleV2 {
 
+struct ModulationSourceConfiguration;
+
 struct NodeAudioResult {
     String nodeId;
     SignalPayload output;
@@ -42,6 +44,13 @@ struct GraphAudioOutputView {
     bool isValid() const { return payload != nullptr; }
 };
 
+struct GraphExecutionOperationCounts {
+    uint32_t stepVisits {};
+    uint32_t modulationBindingVisits {};
+    uint32_t spectralTransferBindingVisits {};
+    uint32_t contextPatches {};
+};
+
 class GraphAudioExecutor {
 public:
     using CancellationCheck = std::function<bool()>;
@@ -58,6 +67,8 @@ public:
             const AudioExecutionSpec& spec) const;
     size_t preparationCount(const String& nodeId, int voiceIndex = 0) const;
     size_t serviceNonRealtimePreparation() const;
+    size_t preparedBlockStorageValueCount() const;
+    size_t preparedGridStorageValueCount() const;
     bool hasActiveVoiceTail(int voiceIndex) const;
     bool hasVoiceTailProcessor(int voiceIndex) const;
     size_t oscillatorFrameRenderCount(int voiceIndex) const;
@@ -102,7 +113,8 @@ public:
             size_t frameCount,
             AudioProcessTiming timing,
             const AudioVoiceContext& voice,
-            GraphProcessObserver* observer = nullptr) const;
+            GraphProcessObserver* observer = nullptr,
+            GraphExecutionOperationCounts* operationCounts = nullptr) const;
     void beginRealtimeVoiceMix(
             const GraphExecutionPlan& plan,
             size_t frameCount) const;
@@ -110,11 +122,13 @@ public:
             const GraphExecutionPlan& plan,
             size_t frameCount,
             AudioProcessTiming timing,
-            const AudioVoiceContext& voice) const;
+            const AudioVoiceContext& voice,
+            GraphExecutionOperationCounts* operationCounts = nullptr) const;
     GraphAudioOutputView processRealtimeGlobal(
             const GraphExecutionPlan& plan,
             size_t frameCount,
-            AudioProcessTiming timing) const;
+            AudioProcessTiming timing,
+            GraphExecutionOperationCounts* operationCounts = nullptr) const;
 
 private:
     enum class ProcessingPass {
@@ -173,6 +187,12 @@ private:
     };
 
     struct PreparedVoice {
+        struct ModulationBinding {
+            size_t bufferIndex {};
+            const ModulationSourceConfiguration* source {};
+            int noteOffset {};
+        };
+
         struct OscillatorRegion {
             int planRegionIndex { -1 };
             int materializationStepIndex { -1 };
@@ -184,12 +204,22 @@ private:
             bool active {};
         };
 
+        struct Step {
+            AudioProcessContext context;
+            uint32_t spectralTransferBindingCount {};
+            bool hasBufferOutput {};
+        };
+
         int voiceIndex {};
         const GraphExecutionPlan* plan {};
         size_t maximumFrameCount {};
         size_t traversalColumnCount {};
         double sampleRate {};
         std::vector<NodeAudioProcessor*> processors;
+        std::vector<size_t> stepIndices;
+        std::vector<NodeAudioProcessor*> tailProcessors;
+        std::vector<ModulationBinding> modulationBindings;
+        std::vector<Step> steps;
         std::vector<std::unique_ptr<OscillatorRegion>> oscillatorRegions;
         std::vector<OscillatorRegion*> oscillatorRegionByStep;
     };
@@ -223,6 +253,7 @@ private:
             const CancellationCheck& cancellationCheck = {},
             GraphAudioResultView* incrementalResult = nullptr,
             ProcessingPass pass = ProcessingPass::Complete,
+            GraphExecutionOperationCounts* operationCounts = nullptr,
             size_t traversalColumnCount = 0) const;
     void mixVoiceBoundary(
             const GraphExecutionPlan& plan,
@@ -238,12 +269,15 @@ private:
             const AudioExecutionSpec& spec,
             int voiceIndex,
             ProcessingPass pass) const;
+    void prepareStepContext(
+            const GraphExecutionPlan& plan,
+            const GraphExecutionStep& step,
+            PreparedVoice::Step& preparedStep) const;
 
     static constexpr int globalProcessorIndex = -1;
 
     mutable AudioProcessWorkArena workArena;
     mutable AudioProcessWorkArena voiceMixArena;
-    mutable AudioProcessContext processContext;
     mutable std::vector<SignalPayload> bufferSlots;
     mutable std::vector<SignalPayload> voiceMixSlots;
     mutable const SignalPayload* realtimeOutput {};

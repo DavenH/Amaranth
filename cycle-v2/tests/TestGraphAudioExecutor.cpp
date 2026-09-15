@@ -133,6 +133,33 @@ public:
     }
 };
 
+TEST_CASE("Audio performance realtime handoff does not allocate or lock",
+        "[cycle-v2][audio][performance][realtime-safety]") {
+    AudioPerformanceMetrics metrics;
+    metrics.resetAndEnable();
+    size_t allocationCount {};
+    size_t lockCount {};
+    {
+        ScopedRealtimeAllocationCount allocations;
+        ScopedRealtimeLockCount locks;
+        for (int callback = 0; callback < 64; ++callback) {
+            AudioPerformanceMetrics::RealtimeSample sample;
+            const bool started = metrics.beginRealtimeSample(
+                    sample,
+                    256,
+                    48'000.0);
+            if (started) {
+                metrics.publishRealtimeSample(sample);
+            }
+        }
+        allocationCount = allocations.count();
+        lockCount = locks.count();
+    }
+
+    REQUIRE(allocationCount == 0);
+    REQUIRE(lockCount == 0);
+}
+
 class FanOutObserver final : public GraphProcessObserver {
 public:
     void nodeProcessed(const String& nodeId, const AudioProcessContext& context) override {
@@ -1732,6 +1759,62 @@ TEST_CASE("Prepared graph audio dispatch remains available for every voice", "[c
     REQUIRE(executor.preparationCount("wave", 1) == 1);
 }
 
+TEST_CASE("Realtime passes visit only their prepared ownership scope",
+        "[cycle-v2][runtime][realtime][performance][complexity]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "voiceTerminal", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "voiceTerminal", "out", "voiceOut", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "globalIn", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    constexpr size_t unrelatedGlobalStepCount = 128;
+    for (size_t index = 0; index < unrelatedGlobalStepCount; ++index) {
+        GraphExecutionStep step;
+        step.nodeId = "unusedGlobal" + String(index);
+        step.ownershipScope = RuntimeOwnershipScope::Global;
+        compiled.plan.steps.push_back(std::move(step));
+    }
+    const size_t voiceStepCount = (size_t) std::count_if(
+            compiled.plan.steps.begin(),
+            compiled.plan.steps.end(),
+            [](const auto& step) {
+                return step.ownershipScope != RuntimeOwnershipScope::Global;
+            });
+    const size_t globalStepCount = compiled.plan.steps.size() - voiceStepCount;
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 16;
+    GraphAudioExecutor executor;
+    executor.prepareRealtimeVoiceExecution(compiled.plan, spec, 0);
+    executor.prepareRealtimeGlobalExecution(compiled.plan, spec);
+    AudioVoiceContext voice;
+    voice.voiceIndex = 0;
+    GraphExecutionOperationCounts voiceCounts;
+    executor.beginRealtimeVoiceMix(compiled.plan, 16);
+    executor.processRealtimeVoiceToMix(
+            compiled.plan,
+            16,
+            {},
+            voice,
+            &voiceCounts);
+    REQUIRE(voiceCounts.stepVisits == voiceStepCount);
+
+    GraphExecutionOperationCounts globalCounts;
+    executor.processRealtimeGlobal(compiled.plan, 16, {}, &globalCounts);
+    REQUIRE(globalCounts.stepVisits == globalStepCount);
+}
+
 TEST_CASE("Graph plan replacement removes stale processor state", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph firstGraph;
@@ -1747,9 +1830,12 @@ TEST_CASE("Graph plan replacement removes stale processor state", "[cycle-v2][ru
     replacementGraph.addNode(factory.createNode(NodeKind::ImageSource, "newImage", {}));
     const auto replacement = GraphCompiler().compile(replacementGraph);
     REQUIRE(replacement.succeeded());
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 8;
+    executor.prepareExecution(replacement.plan, spec);
+    REQUIRE(executor.preparationCount("oldWave") == 0);
     REQUIRE_FALSE(executor.process(replacementGraph, replacement.plan, 8).nodes.empty());
 
-    REQUIRE(executor.preparationCount("oldWave") == 0);
     REQUIRE(executor.preparationCount("newImage") == 1);
 }
 
@@ -2464,6 +2550,7 @@ TEST_CASE("Prepared graph audio processing performs no allocations or locks",
     AudioExecutionSpec spec;
     spec.maximumFrameCount = 64;
     executor.prepareExecution(compileResult.plan, spec);
+    REQUIRE(executor.preparedGridStorageValueCount() > 0);
     AudioVoiceContext voice;
     voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     REQUIRE(executor.processRealtime(compileResult.plan, 64, {}, voice).isValid());
@@ -2479,6 +2566,161 @@ TEST_CASE("Prepared graph audio processing performs no allocations or locks",
     REQUIRE(minimumOutput.isValid());
     REQUIRE(allocations.count() == 0);
     REQUIRE(locks.count() == 0);
+}
+
+TEST_CASE("Prepared default modulation ignores unrelated graph buffers",
+        "[cycle-v2][runtime][realtime][modulation][performance][complexity]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::ModulationTriple,
+            "preparedTriple",
+            {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "preparedTriple", "modulation", false },
+            { "voice", "modulation", true }).succeeded());
+    auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    const size_t bindingCount = (size_t) std::count_if(
+            compiled.plan.buffers.begin(),
+            compiled.plan.buffers.end(),
+            [](const GraphBufferPlan& buffer) {
+                return buffer.defaultModulationSlot != DefaultModulationSlot::None;
+            });
+    REQUIRE(bindingCount > 0);
+
+    constexpr size_t unrelatedBufferCount = 128;
+    compiled.plan.buffers.resize(
+            compiled.plan.buffers.size() + unrelatedBufferCount);
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 64;
+    GraphAudioExecutor executor;
+    executor.prepareExecution(compiled.plan, spec);
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    GraphExecutionOperationCounts operationCounts;
+    const auto output = executor.processRealtime(
+            compiled.plan,
+            64,
+            {},
+            voice,
+            nullptr,
+            &operationCounts);
+
+    REQUIRE(output.isValid());
+    REQUIRE(operationCounts.modulationBindingVisits == bindingCount);
+}
+
+TEST_CASE("Prepared spectral transfers do not traverse pan chains per block",
+        "[cycle-v2][runtime][realtime][spectral][performance][complexity]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+    for (auto& parameter : mesh.parameters) {
+        if (parameter.id == "signalType") {
+            parameter.value = "spectralMagnitude";
+        }
+    }
+    graph.addNode(std::move(mesh));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
+    graph.addEdge({
+            "mesh", "out", "add", "left",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+    auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    size_t transferBindingCount {};
+    constexpr size_t unrelatedPanIndexCount = 128;
+    for (auto& step : compiled.plan.steps) {
+        for (auto& input : step.inputs) {
+            if (!input.magnitudeTransfer.isActive()) {
+                continue;
+            }
+            ++transferBindingCount;
+            input.magnitudeTransfer.panStepIndices.resize(
+                    unrelatedPanIndexCount,
+                    -1);
+        }
+    }
+    REQUIRE(transferBindingCount == 1);
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 64;
+    GraphAudioExecutor executor;
+    executor.prepareExecution(compiled.plan, spec);
+    GraphExecutionOperationCounts operationCounts;
+    executor.processRealtime(
+            compiled.plan,
+            64,
+            {},
+            {},
+            nullptr,
+            &operationCounts);
+
+    REQUIRE(operationCounts.spectralTransferBindingVisits == transferBindingCount);
+}
+
+TEST_CASE("Prepared step contexts avoid block-time route assembly",
+        "[cycle-v2][runtime][realtime][performance][complexity]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "wave", "out", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    const auto baseline = GraphCompiler().compile(graph);
+    REQUIRE(baseline.succeeded());
+    auto expanded = baseline;
+    auto outputStep = std::find_if(
+            expanded.plan.steps.begin(),
+            expanded.plan.steps.end(),
+            [](const GraphExecutionStep& step) {
+                return step.outputSink;
+            });
+    REQUIRE(outputStep != expanded.plan.steps.end());
+    const int sourceBufferIndex = outputStep->inputs.front().sourceBufferIndex;
+    constexpr size_t unrelatedRouteCount = 128;
+    for (size_t routeIndex = 0; routeIndex < unrelatedRouteCount; ++routeIndex) {
+        GraphStepInput input;
+        input.destPortIndex = (int) routeIndex + 1;
+        input.sourceBufferIndex = sourceBufferIndex;
+        outputStep->inputs.push_back(std::move(input));
+    }
+    expanded.plan.maximumInputCount = unrelatedRouteCount + 1;
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 64;
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    GraphAudioExecutor baselineExecutor;
+    GraphAudioExecutor expandedExecutor;
+    baselineExecutor.prepareExecution(baseline.plan, spec);
+    expandedExecutor.prepareExecution(expanded.plan, spec);
+    GraphExecutionOperationCounts baselineCounts;
+    GraphExecutionOperationCounts expandedCounts;
+    const auto baselineOutput = baselineExecutor.processRealtime(
+            baseline.plan,
+            64,
+            {},
+            voice,
+            nullptr,
+            &baselineCounts);
+    const auto expandedOutput = expandedExecutor.processRealtime(
+            expanded.plan,
+            64,
+            {},
+            voice,
+            nullptr,
+            &expandedCounts);
+
+    REQUIRE(baselineOutput.isValid());
+    REQUIRE(expandedOutput.isValid());
+    REQUIRE(expandedOutput.payload->block.samples
+            == baselineOutput.payload->block.samples);
+    REQUIRE(expandedCounts.contextPatches == baselineCounts.contextPatches);
 }
 
 TEST_CASE("Prepared spectral stage recording performs no allocations",
@@ -2512,7 +2754,10 @@ TEST_CASE("Prepared realtime voice mixing performs no allocations or locks",
     REQUIRE(compiled.succeeded());
     AudioExecutionSpec spec;
     spec.maximumFrameCount = 64;
+    spec.traversalColumnCount = 512;
     auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+    REQUIRE(prepared->blockStorageValues > 0);
+    REQUIRE(prepared->gridStorageValues == 0);
     RealtimeGraphRenderer renderer;
     RealtimeMidiEventQueue queue;
     renderer.setPreparedGraph(prepared.get());

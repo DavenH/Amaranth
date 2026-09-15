@@ -126,6 +126,7 @@ set(GRAPH_SOURCES
 )
 
 set(RUNTIME_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/AudioPerformanceMetrics.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/BasicNodeAudioProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ChainedOscillatorRecipeRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ChainedOscillatorRegionRuntime.cpp"

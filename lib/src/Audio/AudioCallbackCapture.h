@@ -25,6 +25,11 @@ public:
             float* const* outputChannelData,
             int outputChannelCount,
             int frameCount);
+    void append(
+            float* const* outputChannelData,
+            int outputChannelCount,
+            int frameCount,
+            uint64_t callback);
     void cancel();
 
     bool isCapturing() const;

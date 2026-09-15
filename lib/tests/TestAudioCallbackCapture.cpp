@@ -67,3 +67,22 @@ TEST_CASE("Cancelled audio callback capture does not report completion",
     REQUIRE(result.left.empty());
     REQUIRE(result.right.empty());
 }
+
+TEST_CASE("Audio callback capture accepts an external callback sequence",
+        "[audio][device][capture]") {
+    AudioCallbackCapture capture;
+    std::array<float, 64> mono;
+    mono.fill(0.25f);
+    float* channels[] { mono.data() };
+
+    capture.append(channels, 1, (int) mono.size(), 40);
+    REQUIRE(capture.callbackCount() == 0);
+    REQUIRE(capture.begin(8000.0, 8));
+    capture.append(channels, 1, (int) mono.size(), 41);
+    const auto result = capture.waitForCompletion(10);
+
+    REQUIRE(result.completed);
+    REQUIRE(result.firstCallback == 41);
+    REQUIRE(result.lastCallback == 41);
+    REQUIRE(capture.callbackCount() == 41);
+}

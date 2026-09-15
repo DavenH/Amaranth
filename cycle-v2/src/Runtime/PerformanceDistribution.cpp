@@ -35,7 +35,7 @@ void recordPerformanceSample(
     ++distribution.buckets[bucketFor(microseconds)];
 }
 
-double performancePercentileMilliseconds(
+double performancePercentileValue(
         const PerformanceDistribution& distribution,
         double percentile) {
     if (distribution.count == 0) {
@@ -52,10 +52,16 @@ double performancePercentileMilliseconds(
             const uint64_t upper = index < bucketUpperMicroseconds.size()
                     ? bucketUpperMicroseconds[index]
                     : distribution.maximumMicroseconds;
-            return (double) upper / 1000.0;
+            return (double) upper;
         }
     }
-    return (double) distribution.maximumMicroseconds / 1000.0;
+    return (double) distribution.maximumMicroseconds;
+}
+
+double performancePercentileMilliseconds(
+        const PerformanceDistribution& distribution,
+        double percentile) {
+    return performancePercentileValue(distribution, percentile) / 1000.0;
 }
 
 var performanceDistributionToVar(

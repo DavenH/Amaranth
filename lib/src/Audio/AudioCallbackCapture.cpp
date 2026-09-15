@@ -66,10 +66,19 @@ void AudioCallbackCapture::append(
         int outputChannelCount,
         int frameCount) {
     const uint64_t callback = callbacks.fetch_add(1, std::memory_order_acq_rel) + 1;
+    append(outputChannelData, outputChannelCount, frameCount, callback);
+}
+
+void AudioCallbackCapture::append(
+        float* const* outputChannelData,
+        int outputChannelCount,
+        int frameCount,
+        uint64_t callback) {
     const size_t target = targetFrames.load(std::memory_order_acquire);
     if (target == 0 || frameCount <= 0) {
         return;
     }
+    callbacks.store(callback, std::memory_order_relaxed);
 
     const size_t currentPosition = position.load(std::memory_order_relaxed);
     if (currentPosition >= target) {

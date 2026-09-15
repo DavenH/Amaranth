@@ -748,6 +748,15 @@ var CycleV2Automation::runCommand(const var& commandValue) {
     if (command == "resetCanvasPerformance") {
         return resetCanvasPerformance();
     }
+    if (command == "inspectAudioPerformance") {
+        return inspectAudioPerformance();
+    }
+    if (command == "resetAudioPerformance") {
+        return resetAudioPerformance();
+    }
+    if (command == "sendMidi") {
+        return sendMidi(commandValue);
+    }
     if (command == "requestCanvasOpenGLFrame") {
         return requestCanvasOpenGLFrame();
     }
@@ -1261,6 +1270,42 @@ var CycleV2Automation::inspectCanvasPerformance() const {
 var CycleV2Automation::resetCanvasPerformance() {
     workspace.resetCanvasPerformanceForAutomation();
     return okResult("resetCanvasPerformance");
+}
+
+var CycleV2Automation::inspectAudioPerformance() const {
+    return okResult(
+            "inspectAudioPerformance",
+            workspace.inspectAudioPerformanceForAutomation());
+}
+
+var CycleV2Automation::resetAudioPerformance() {
+    workspace.resetAudioPerformanceForAutomation();
+    return okResult("resetAudioPerformance");
+}
+
+var CycleV2Automation::sendMidi(const var& commandValue) {
+    const String type = stringProperty(commandValue, "type");
+    const int channel = jlimit(1, 16, intProperty(commandValue, "channel", 1));
+    const int note = jlimit(0, 127, intProperty(commandValue, "note", 60));
+    MidiMessage message;
+    if (type == "noteOn") {
+        const float velocity = jlimit(
+                0.f,
+                1.f,
+                floatProperty(commandValue, "velocity", 0.8f));
+        message = MidiMessage::noteOn(channel, note, velocity);
+    } else if (type == "noteOff") {
+        message = MidiMessage::noteOff(channel, note);
+    } else if (type == "allNotesOff") {
+        message = MidiMessage::allNotesOff(channel);
+    } else {
+        return failedResult("sendMidi", "Unknown MIDI event type: " + type);
+    }
+
+    if (!workspace.enqueueMidiForAutomation(message)) {
+        return failedResult("sendMidi", "The realtime MIDI queue is full");
+    }
+    return okResult("sendMidi");
 }
 
 var CycleV2Automation::requestCanvasOpenGLFrame() {

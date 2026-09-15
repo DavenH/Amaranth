@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <memory>
 
+#include "Runtime/AudioPerformanceMetrics.h"
 #include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/MidiControlState.h"
 #include "Runtime/RealtimeMidiEventQueue.h"
@@ -26,6 +27,8 @@ public:
         AudioExecutionSpec spec;
         GraphAudioExecutor executor;
         ScopedAlloc<float> outputGainRamp;
+        uint64_t blockStorageValues {};
+        uint64_t gridStorageValues {};
     };
 
     struct Diagnostics {
@@ -67,13 +70,14 @@ public:
         deterministicRandomSeed = seed;
         hasDeterministicRandomSeed = true;
     }
-    void process(
+    uint64_t process(
             RealtimeMidiEventQueue& events,
             float* const* outputChannels,
             int outputChannelCount,
             int frameCount,
             double sampleRate,
-            double callbackStartSeconds);
+            double callbackStartSeconds,
+            AudioPerformanceMetrics::RealtimeSample* performanceSample = nullptr);
     void resetVoices();
     Diagnostics diagnostics(const RealtimeMidiEventQueue& events) const {
         return {
@@ -91,6 +95,12 @@ public:
     }
 
 private:
+    struct MidiSchedulingOperationCounts {
+        uint16_t dequeuedEvents {};
+        uint16_t sortedItems {};
+        uint16_t compactedItems {};
+    };
+
     struct Voice {
         AudioVoiceContext context;
         MidiEventSource source { MidiEventSource::PerformanceKeyboard };
@@ -104,7 +114,7 @@ private:
     };
 
     void beginBlock();
-    void consumeEvents(
+    MidiSchedulingOperationCounts consumeEvents(
             RealtimeMidiEventQueue& queue,
             int frameCount,
             double sampleRate,
@@ -116,7 +126,8 @@ private:
             float* const* outputChannels,
             int outputChannelCount,
             int frameCount,
-            double sampleRate);
+            double sampleRate,
+            AudioPerformanceMetrics::RealtimeSample* performanceSample);
     void publishMetrics(
             float* const* outputChannels,
             int outputChannelCount,
@@ -132,7 +143,6 @@ private:
     MidiControlState midiControls;
     std::array<RealtimeMidiEvent, maximumScheduledEvents> scheduledEvents;
     size_t scheduledEventCount {};
-    std::array<float, 8192> metricsScratch;
     uint64_t nextVoiceOrder {};
     std::atomic<float> voiceDurationOverrideSeconds {};
     double volumeEnvelopeClockSampleRate {};

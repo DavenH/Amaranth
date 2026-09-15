@@ -62,6 +62,8 @@ public:
     var inspectOpenGLDiagnosticsForAutomation() const;
     var inspectCanvasPerformanceForAutomation() const;
     void resetCanvasPerformanceForAutomation();
+    var inspectAudioPerformanceForAutomation() const;
+    void resetAudioPerformanceForAutomation();
     void requestCanvasOpenGLFrameForAutomation();
     var captureAudioForAutomation(size_t frameCount) const;
     bool copyAudioPlanForAutomation(GraphExecutionPlan& plan, uint64_t& revision) const;
@@ -71,6 +73,7 @@ public:
     bool performancePointerUpForAutomation();
     bool performanceSelectPreviewNoteForAutomation(int noteNumber);
     bool togglePreviewPlaybackForAutomation();
+    bool enqueueMidiForAutomation(const juce::MidiMessage& message);
     StandaloneAudioEngine::LiveCapture captureLiveAudioForAutomation(int durationMs);
 
     void resized() override;

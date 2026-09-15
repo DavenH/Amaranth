@@ -160,6 +160,14 @@ struct AudioVoiceControls {
     double normalizedVolumeEnvelopeTimeIncrement {};
     float channelPressure {};
     std::array<float, 128> controllers {};
+    const std::array<float, 128>* controllerSnapshot {};
+
+    float controllerValue(int controller) const {
+        const auto& values = controllerSnapshot == nullptr
+                ? controllers
+                : *controllerSnapshot;
+        return values[(size_t) jlimit(0, 127, controller)];
+    }
 };
 
 struct AudioVoiceContext {

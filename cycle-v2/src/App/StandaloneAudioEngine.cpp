@@ -120,6 +120,15 @@ StandaloneAudioEngine::Status StandaloneAudioEngine::status() const {
     };
 }
 
+var StandaloneAudioEngine::audioPerformance() {
+    audioPerformanceMetrics.serviceNonRealtime();
+    return audioPerformanceMetrics.toVar();
+}
+
+void StandaloneAudioEngine::resetAudioPerformance() {
+    audioPerformanceMetrics.resetAndEnable();
+}
+
 StandaloneAudioEngine::LiveCapture StandaloneAudioEngine::captureLiveAudio(
         int durationMs) {
     const double sampleRate = currentSampleRate.load(std::memory_order_acquire);
@@ -152,15 +161,42 @@ void StandaloneAudioEngine::audioDeviceIOCallbackWithContext(
         int outputChannelCount,
         int frameCount,
         const AudioIODeviceCallbackContext&) {
-    adoptPendingGraph();
-    renderer.process(
+    AudioPerformanceMetrics::RealtimeSample* measuredSample
+            = audioPerformanceMetrics.beginRealtimeSample(
+                    realtimePerformanceSample,
+                    frameCount,
+                    currentSampleRate.load(std::memory_order_relaxed))
+            ? &realtimePerformanceSample
+            : nullptr;
+    {
+        AudioPerformanceMetrics::ScopedRealtimeStage stage(
+                measuredSample,
+                AudioPerformanceMetrics::Stage::GraphAdoption);
+        adoptPendingGraph();
+    }
+
+    const uint64_t callback = renderer.process(
             midiEvents,
             outputChannelData,
             outputChannelCount,
             frameCount,
             currentSampleRate.load(std::memory_order_relaxed),
-            currentTimeSeconds());
-    liveCapture.append(outputChannelData, outputChannelCount, frameCount);
+            currentTimeSeconds(),
+            measuredSample);
+
+    {
+        AudioPerformanceMetrics::ScopedRealtimeStage stage(
+                measuredSample,
+                AudioPerformanceMetrics::Stage::LiveCapture);
+        liveCapture.append(
+                outputChannelData,
+                outputChannelCount,
+                frameCount,
+                callback);
+    }
+    if (measuredSample != nullptr) {
+        audioPerformanceMetrics.publishRealtimeSample(*measuredSample);
+    }
 }
 
 void StandaloneAudioEngine::audioDeviceAboutToStart(AudioIODevice* device) {
@@ -188,6 +224,7 @@ void StandaloneAudioEngine::handleIncomingMidiMessage(
 }
 
 void StandaloneAudioEngine::timerCallback() {
+    audioPerformanceMetrics.serviceNonRealtime();
     PreparedGraph* retired = retiredGraph.exchange(nullptr, std::memory_order_acq_rel);
     reclaimGraph(retired);
     for (const auto& graph : graphOwners) {

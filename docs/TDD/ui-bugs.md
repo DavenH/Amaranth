@@ -340,6 +340,20 @@ Current status: open; change the generic cable-insertion smoke to use a node
 whose execution scope is legal in the selected cable, or assert insertion
 separately from compilation validity.
 
+## P3: Baroque preset transition omits the expected probe preview
+
+Context:
+
+- On 2026-09-15, `Preset transitions replace equal-revision Trimesh DSP
+  content` failed in isolation at `findProbePreview(..., "probe")` after the
+  African Horn to Baroque Flute presentation refresh.
+- The failure occurs before the test's audio-capture comparison and reproduces
+  with the audio executor's prepared-plan retirement disabled, so it is not
+  caused by the realtime dispatch optimization.
+
+Current status: open; inspect preset probe identity and incremental preview
+publication across equal-revision configuration transitions.
+
 ## P3: Stengah Spy test expects probes absent from the current fixture
 
 Context:

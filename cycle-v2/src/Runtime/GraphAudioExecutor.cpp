@@ -122,6 +122,7 @@ GraphAudioResult GraphAudioExecutor::process(
             {},
             nullptr,
             ProcessingPass::Complete,
+            nullptr,
             traversalColumnCount);
 }
 
@@ -204,14 +205,20 @@ GraphAudioOutputView GraphAudioExecutor::processRealtime(
         size_t frameCount,
         AudioProcessTiming timing,
         const AudioVoiceContext& voice,
-        GraphProcessObserver* observer) const {
+        GraphProcessObserver* observer,
+        GraphExecutionOperationCounts* operationCounts) const {
     processInternal(
             plan,
             frameCount,
             timing,
             voice,
             false,
-            observer);
+            observer,
+            nullptr,
+            {},
+            nullptr,
+            ProcessingPass::Complete,
+            operationCounts);
     return { realtimeOutput };
 }
 
@@ -247,7 +254,8 @@ void GraphAudioExecutor::processRealtimeVoiceToMix(
         const GraphExecutionPlan& plan,
         size_t frameCount,
         AudioProcessTiming timing,
-        const AudioVoiceContext& voice) const {
+        const AudioVoiceContext& voice,
+        GraphExecutionOperationCounts* operationCounts) const {
     processInternal(
             plan,
             frameCount,
@@ -258,14 +266,16 @@ void GraphAudioExecutor::processRealtimeVoiceToMix(
             nullptr,
             {},
             nullptr,
-            ProcessingPass::Voice);
+            ProcessingPass::Voice,
+            operationCounts);
     mixVoiceBoundary(plan, frameCount);
 }
 
 GraphAudioOutputView GraphAudioExecutor::processRealtimeGlobal(
         const GraphExecutionPlan& plan,
         size_t frameCount,
-        AudioProcessTiming timing) const {
+        AudioProcessTiming timing,
+        GraphExecutionOperationCounts* operationCounts) const {
     loadMixedVoiceBoundary(plan, frameCount);
     AudioVoiceContext context;
     context.voiceIndex = globalProcessorIndex;
@@ -279,7 +289,8 @@ GraphAudioOutputView GraphAudioExecutor::processRealtimeGlobal(
             nullptr,
             {},
             nullptr,
-            ProcessingPass::Global);
+            ProcessingPass::Global,
+            operationCounts);
     return { realtimeOutput };
 }
 
@@ -294,6 +305,7 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         const CancellationCheck& cancellationCheck,
         GraphAudioResultView* incrementalResult,
         ProcessingPass pass,
+        GraphExecutionOperationCounts* operationCounts,
         size_t traversalColumnCount) const {
     if (captureDiagnostics) {
         AudioExecutionSpec executionSpec;
@@ -310,12 +322,12 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             || bufferSlots.size() != plan.buffers.size()
             || preparedVoice == preparedVoices.end()
             || preparedVoice->second.plan != &plan
-            || preparedVoice->second.processors.size() != plan.steps.size()) {
+            || preparedVoice->second.processors.size() != plan.steps.size()
+            || preparedVoice->second.steps.size() != plan.steps.size()) {
         jassertfalse;
         return {};
     }
 
-    const size_t attachmentCapacity = plan.maximumAttachmentCount;
     GraphAudioResult result;
     bool cacheMatchesPlan = !captureDiagnostics
             || diagnosticNodeIds.size() == plan.steps.size();
@@ -345,30 +357,27 @@ GraphAudioResult GraphAudioExecutor::processInternal(
     realtimeOutput = nullptr;
 
     if (pass != ProcessingPass::Global) {
-        for (size_t bufferIndex = 0; bufferIndex < plan.buffers.size(); ++bufferIndex) {
-            const auto& buffer = plan.buffers[bufferIndex];
-            if (buffer.defaultModulationSlot == DefaultModulationSlot::None) {
-                continue;
-            }
-            const auto configuration = std::dynamic_pointer_cast<
-                    const ModulationTripleConfiguration>(buffer.defaultModulation);
-            if (configuration == nullptr) {
-                continue;
-            }
-            const int sourceIndex = (int) buffer.defaultModulationSlot - 1;
-            SignalPayload& payload = bufferSlots[bufferIndex];
+        if (operationCounts != nullptr) {
+            operationCounts->modulationBindingVisits += (uint32_t)
+                    preparedVoice->second.modulationBindings.size();
+        }
+        for (const auto& binding : preparedVoice->second.modulationBindings) {
+            SignalPayload& payload = bufferSlots[binding.bufferIndex];
             payload.domain = PortDomain::ControlSignal;
             payload.channelLayout = ChannelLayout::Mono;
             payload.block.samples.resize(frameCount);
             ModulationSource::renderAudioBlock(
-                    configuration->sources[(size_t) sourceIndex],
+                    *binding.source,
                     voice,
                     { payload.block.samples.data(), (int) frameCount },
-                    buffer.defaultModulationNoteOffset);
+                    binding.noteOffset);
         }
     }
 
-    for (size_t stepIndex = 0; stepIndex < plan.steps.size(); ++stepIndex) {
+    if (operationCounts != nullptr) {
+        operationCounts->stepVisits += (uint32_t) preparedVoice->second.stepIndices.size();
+    }
+    for (const size_t stepIndex : preparedVoice->second.stepIndices) {
         if (dirtyNodes != nullptr && cancellationCheck && !cancellationCheck()) {
             if (incrementalResult != nullptr) {
                 incrementalResult->cancelled = true;
@@ -376,11 +385,6 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             return result;
         }
         const auto& step = plan.steps[stepIndex];
-        const bool globalStep = step.ownershipScope == RuntimeOwnershipScope::Global;
-        if ((pass == ProcessingPass::Voice && globalStep)
-                || (pass == ProcessingPass::Global && !globalStep)) {
-            continue;
-        }
         if (pass == ProcessingPass::Complete && step.kind == NodeKind::GlobalInput) {
             loadCompleteVoiceBoundary(plan, frameCount);
         }
@@ -414,81 +418,23 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             continue;
         }
 
-        AudioProcessContext& context = processContext;
+        auto& preparedStep = preparedVoice->second.steps[stepIndex];
+        AudioProcessContext& context = preparedStep.context;
         context.frameCount = frameCount;
         context.traversalColumnCount = preparedVoice->second.traversalColumnCount;
         context.timing = timing;
         context.voiceView = &voice;
-        context.workArena = &workArena;
-        context.configuration = &step.configuration;
         context.captureTraversalGrid = captureDiagnostics;
-        context.parameterView = nullptr;
-        context.inputViews.assign(workArena.inputCapacity, nullptr);
-        context.magnitudeTransfers.assign(
-                workArena.inputCapacity,
-                SpectralMagnitudeTransfer {});
-        context.attachments.clear();
-        context.attachments.reserve(attachmentCapacity);
-        context.outputPorts.clear();
-        context.outputPorts.reserve(step.outputs.size());
-        context.outputViews.assign(step.outputs.size(), nullptr);
         context.outputs.clear();
-        context.outputs.reserve(workArena.outputCapacity);
-
-        for (size_t outputIndex = 0; outputIndex < step.outputs.size(); ++outputIndex) {
-            const auto& output = step.outputs[outputIndex];
-            context.outputPorts.push_back({
-                    output.portId,
-                    output.domain,
-                    output.channelLayout
-            });
-            if (output.bufferIndex >= 0) {
-                context.outputViews[outputIndex] = &bufferSlots[(size_t) output.bufferIndex];
-            }
-        }
-
-        for (const auto& input : step.inputs) {
-            if (input.destPortIndex < 0) {
-                continue;
-            }
-
-            const auto inputIndex = (size_t) input.destPortIndex;
-            const int sourceBufferIndex = input.magnitudeTransfer.isActive()
-                    ? input.magnitudeTransfer.sourceBufferIndex
-                    : input.sourceBufferIndex;
-            if (sourceBufferIndex >= 0
-                    && (size_t) sourceBufferIndex < bufferSlots.size()) {
-                context.inputViews[inputIndex] = &bufferSlots[(size_t) sourceBufferIndex];
-            }
-            if (input.magnitudeTransfer.isActive()) {
-                context.magnitudeTransfers[inputIndex] = resolveSpectralMagnitudeTransfer(
-                        plan,
-                        input.magnitudeTransfer);
-            }
-        }
-
-        for (const auto& attachment : step.attachments) {
-            if (attachment.sourceBufferIndex < 0
-                    || (size_t) attachment.sourceBufferIndex >= bufferSlots.size()) {
-                continue;
-            }
-
-            context.attachments.push_back({
-                    attachment.sourceNodeId,
-                    attachment.sourcePortId,
-                    attachment.destPortId,
-                    attachment.domain,
-                    &bufferSlots[(size_t) attachment.sourceBufferIndex]
-            });
+        if (operationCounts != nullptr) {
+            ++operationCounts->contextPatches;
+            operationCounts->spectralTransferBindingVisits
+                    += preparedStep.spectralTransferBindingCount;
         }
 
         const bool outputNode = step.outputSink;
-        const bool hasBufferOutput = std::any_of(
-                step.outputs.begin(), step.outputs.end(), [](const auto& output) {
-                    return output.bufferIndex >= 0;
-                });
         if (!captureDiagnostics && observer == nullptr
-                && !hasBufferOutput && !outputNode) {
+                && !preparedStep.hasBufferOutput && !outputNode) {
             continue;
         }
         if (!captureDiagnostics && outputNode) {
@@ -645,8 +591,6 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         }
     }
 
-    removeUnreferencedProcessors();
-
     return result;
 }
 
@@ -687,8 +631,9 @@ void GraphAudioExecutor::prepareExecutionInternal(
     const size_t traversalColumnCapacity = spec.traversalColumnCount > 0
             ? std::max(spec.traversalColumnCount, plan.maximumTraversalColumns)
             : std::max(spec.maximumFrameCount, plan.maximumTraversalColumns);
-    const size_t gridValueCapacity = spec.maximumFrameCount
-            * traversalColumnCapacity;
+    const size_t gridValueCapacity = pass == ProcessingPass::Complete
+            ? spec.maximumFrameCount * traversalColumnCapacity
+            : 0;
     const bool workspaceMatches = workArena.frameCapacity == spec.maximumFrameCount
             && workArena.inputCapacity == plan.maximumInputCount
             && workArena.outputCapacity == plan.maximumOutputCount
@@ -728,15 +673,6 @@ void GraphAudioExecutor::prepareExecutionInternal(
             }
         }
     }
-    processContext.outputs.clear();
-    processContext.parameters.clear();
-    processContext.inputs.clear();
-    processContext.inputViews.prepare(plan.maximumInputCount);
-    processContext.magnitudeTransfers.prepare(plan.maximumInputCount);
-    processContext.attachments.prepare(plan.maximumAttachmentCount);
-    processContext.outputPorts.prepare(plan.maximumOutputCount);
-    processContext.outputViews.prepare(plan.maximumOutputCount);
-    processContext.outputs.prepare(plan.maximumOutputCount);
     PreparedVoice& preparedVoice = preparedVoices[voiceIndex];
     const bool globalPreparation = pass == ProcessingPass::Global;
     const bool rebuildOscillatorRegions = !globalPreparation
@@ -748,14 +684,44 @@ void GraphAudioExecutor::prepareExecutionInternal(
     preparedVoice.sampleRate = spec.sampleRate;
     preparedVoice.processors.clear();
     preparedVoice.processors.reserve(plan.steps.size());
+    preparedVoice.stepIndices.clear();
+    preparedVoice.stepIndices.reserve(plan.steps.size());
+    preparedVoice.tailProcessors.clear();
+    preparedVoice.modulationBindings.clear();
+    preparedVoice.steps.clear();
+    preparedVoice.steps.resize(plan.steps.size());
+    if (pass != ProcessingPass::Global) {
+        preparedVoice.modulationBindings.reserve(plan.buffers.size());
+        for (size_t bufferIndex = 0; bufferIndex < plan.buffers.size(); ++bufferIndex) {
+            const auto& buffer = plan.buffers[bufferIndex];
+            if (buffer.defaultModulationSlot == DefaultModulationSlot::None) {
+                continue;
+            }
+            const auto configuration = std::dynamic_pointer_cast<
+                    const ModulationTripleConfiguration>(buffer.defaultModulation);
+            if (configuration == nullptr) {
+                continue;
+            }
+            const int sourceIndex = (int) buffer.defaultModulationSlot - 1;
+            preparedVoice.modulationBindings.push_back({
+                    bufferIndex,
+                    &configuration->sources[(size_t) sourceIndex],
+                    buffer.defaultModulationNoteOffset
+            });
+        }
+    }
 
-    for (const auto& step : plan.steps) {
+    for (size_t stepIndex = 0; stepIndex < plan.steps.size(); ++stepIndex) {
+        const auto& step = plan.steps[stepIndex];
         const bool globalStep = step.ownershipScope == RuntimeOwnershipScope::Global;
         if ((pass == ProcessingPass::Voice && globalStep)
                 || (pass == ProcessingPass::Global && !globalStep)) {
             preparedVoice.processors.push_back(nullptr);
             continue;
         }
+        preparedVoice.stepIndices.push_back(stepIndex);
+        auto& preparedStep = preparedVoice.steps[stepIndex];
+        prepareStepContext(plan, step, preparedStep);
         CachedProcessor& cached = processorFor(
                 step.nodeId,
                 voiceIndex,
@@ -763,6 +729,9 @@ void GraphAudioExecutor::prepareExecutionInternal(
                 factory);
         NodeAudioProcessor* processor = cached.processor.get();
         preparedVoice.processors.push_back(processor);
+        if (step.ownsVoiceTail && processor != nullptr) {
+            preparedVoice.tailProcessors.push_back(processor);
+        }
         if (processor == nullptr) {
             continue;
         }
@@ -839,6 +808,76 @@ void GraphAudioExecutor::prepareExecutionInternal(
             }
             preparedVoice.oscillatorRegions.push_back(std::move(preparedRegion));
         }
+    }
+    removeUnreferencedProcessors();
+}
+
+void GraphAudioExecutor::prepareStepContext(
+        const GraphExecutionPlan& plan,
+        const GraphExecutionStep& step,
+        PreparedVoice::Step& preparedStep) const {
+    AudioProcessContext& context = preparedStep.context;
+    context.workArena = &workArena;
+    context.configuration = &step.configuration;
+    context.parameterView = nullptr;
+    context.parameters.clear();
+    context.inputs.clear();
+    context.inputViews.prepare(plan.maximumInputCount);
+    context.inputViews.assign(plan.maximumInputCount, nullptr);
+    context.magnitudeTransfers.prepare(plan.maximumInputCount);
+    context.magnitudeTransfers.assign(
+            plan.maximumInputCount,
+            SpectralMagnitudeTransfer {});
+    context.attachments.prepare(plan.maximumAttachmentCount);
+    context.outputPorts.prepare(plan.maximumOutputCount);
+    context.outputViews.prepare(plan.maximumOutputCount);
+    context.outputViews.assign(step.outputs.size(), nullptr);
+    context.outputs.prepare(plan.maximumOutputCount);
+
+    for (size_t outputIndex = 0; outputIndex < step.outputs.size(); ++outputIndex) {
+        const auto& output = step.outputs[outputIndex];
+        context.outputPorts.push_back({
+                output.portId,
+                output.domain,
+                output.channelLayout
+        });
+        if (output.bufferIndex >= 0) {
+            context.outputViews[outputIndex]
+                    = &bufferSlots[(size_t) output.bufferIndex];
+            preparedStep.hasBufferOutput = true;
+        }
+    }
+    for (const auto& input : step.inputs) {
+        if (input.destPortIndex < 0) {
+            continue;
+        }
+        const size_t inputIndex = (size_t) input.destPortIndex;
+        const int sourceBufferIndex = input.magnitudeTransfer.isActive()
+                ? input.magnitudeTransfer.sourceBufferIndex
+                : input.sourceBufferIndex;
+        if (sourceBufferIndex >= 0
+                && (size_t) sourceBufferIndex < bufferSlots.size()) {
+            context.inputViews[inputIndex] = &bufferSlots[(size_t) sourceBufferIndex];
+        }
+        if (input.magnitudeTransfer.isActive()) {
+            context.magnitudeTransfers[inputIndex] = resolveSpectralMagnitudeTransfer(
+                    plan,
+                    input.magnitudeTransfer);
+            ++preparedStep.spectralTransferBindingCount;
+        }
+    }
+    for (const auto& attachment : step.attachments) {
+        if (attachment.sourceBufferIndex < 0
+                || (size_t) attachment.sourceBufferIndex >= bufferSlots.size()) {
+            continue;
+        }
+        context.attachments.push_back({
+                attachment.sourceNodeId,
+                attachment.sourcePortId,
+                attachment.destPortId,
+                attachment.domain,
+                &bufferSlots[(size_t) attachment.sourceBufferIndex]
+        });
     }
 }
 
@@ -1058,6 +1097,16 @@ size_t GraphAudioExecutor::serviceNonRealtimePreparation() const {
     return preparedCount;
 }
 
+size_t GraphAudioExecutor::preparedBlockStorageValueCount() const {
+    return (size_t) workArena.blockMemory.size()
+            + (size_t) voiceMixArena.blockMemory.size();
+}
+
+size_t GraphAudioExecutor::preparedGridStorageValueCount() const {
+    return (size_t) workArena.gridMemory.size()
+            + (size_t) voiceMixArena.gridMemory.size();
+}
+
 bool GraphAudioExecutor::hasActiveVoiceTail(int voiceIndex) const {
     return hasVoiceTailProcessor(voiceIndex, true);
 }
@@ -1086,12 +1135,9 @@ bool GraphAudioExecutor::hasVoiceTailProcessor(int voiceIndex, bool activeOnly) 
         return false;
     }
 
-    const auto& voice = found->second;
-    for (size_t stepIndex = 0; stepIndex < voice.plan->steps.size(); ++stepIndex) {
-        if (voice.plan->steps[stepIndex].ownsVoiceTail
-                && stepIndex < voice.processors.size()
-                && voice.processors[stepIndex] != nullptr
-                && (!activeOnly || voice.processors[stepIndex]->isVoiceActive())) {
+    for (NodeAudioProcessor* processor : found->second.tailProcessors) {
+        if (processor != nullptr
+                && (!activeOnly || processor->isVoiceActive())) {
             return true;
         }
     }

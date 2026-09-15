@@ -216,7 +216,8 @@ TEST_CASE("MIDI control state preserves block start values and ordered events",
     state.prepareVoice(first);
     state.populateVoice(first, 2);
 
-    REQUIRE(first.controls.controllers[74] == 0.f);
+    REQUIRE(first.controls.controllerSnapshot != nullptr);
+    REQUIRE(first.controls.controllerValue(74) == 0.f);
     REQUIRE(first.controls.channelPressure == 0.f);
     REQUIRE(first.controlEvents.size() == 2);
     REQUIRE(first.controlEvents[0].sampleOffset == 2);
@@ -226,14 +227,16 @@ TEST_CASE("MIDI control state preserves block start values and ordered events",
     AudioVoiceContext next;
     state.prepareVoice(next);
     state.populateVoice(next, 2);
-    REQUIRE(next.controls.controllers[74] == Catch::Approx(32.f / 127.f));
+    REQUIRE(next.controls.controllerSnapshot == first.controls.controllerSnapshot);
+    REQUIRE(next.controls.controllerValue(74) == Catch::Approx(32.f / 127.f));
     REQUIRE(next.controls.channelPressure == Catch::Approx(96.f / 127.f));
     REQUIRE(next.controlEvents.empty());
 
     AudioVoiceContext otherChannel;
     state.prepareVoice(otherChannel);
     state.populateVoice(otherChannel, 1);
-    REQUIRE(otherChannel.controls.controllers[74] == 0.f);
+    REQUIRE(otherChannel.controls.controllerSnapshot != first.controls.controllerSnapshot);
+    REQUIRE(otherChannel.controls.controllerValue(74) == 0.f);
     REQUIRE(otherChannel.controls.channelPressure == 0.f);
 }
 
@@ -254,7 +257,7 @@ TEST_CASE("MIDI control state bounds event storage and reports overflow",
     state.beginBlock();
     REQUIRE(state.droppedEventCount() == 0);
     state.populateVoice(voice, 1);
-    REQUIRE(voice.controls.controllers[1] == Catch::Approx(96.f / 127.f));
+    REQUIRE(voice.controls.controllerValue(1) == Catch::Approx(96.f / 127.f));
 }
 
 TEST_CASE("Voice-time preview traversal is explicit and stateless",

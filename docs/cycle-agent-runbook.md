@@ -140,6 +140,10 @@ Common command families:
   and coalescing, and JUCE/OpenGL frame-duration distributions. Use
   `cycle-v2-agent-canvas-performance.json` as the stable before/after baseline
   for canvas optimization work.
+- `resetAudioPerformance`, `inspectAudioPerformance`: start an opt-in audio
+  measurement generation and inspect callback/deadline distributions, phase
+  durations, workload, overruns, and telemetry drops. Use `sendMidi` with
+  `noteOn`, `noteOff`, or `allNotesOff` for stable polyphony workloads.
 - `captureAudio`: render scheduled MIDI events offline, optionally write a WAV,
   and return amplitude metrics for assertions.
 - `exportState`, `exportPreset`, `exportMeshState`: export scoped JSON, reusing

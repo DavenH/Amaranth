@@ -715,3 +715,45 @@ Context:
 - Manifest tests now resolve those tracked fixtures at their current location.
 
 Current status: resolved; the full converter test module passes.
+
+## P2: Astral realtime fixture still references the pre-migration preset path
+
+Context:
+
+- A fresh `standalone-debug` build on 2026-09-15 passed the focused prepared
+  realtime suite (9 cases, 118 assertions), but the broader
+  `[cycle-v2][audio-device][realtime]` run failed one of 16 cases at
+  `TestRealtimeGraphRenderer.cpp:66` because `loaded.succeeded()` was false.
+- `renderAstralRealtimeNote()` loads
+  `cycle-v2/content/presets/astral.cyclegraph`, while the tracked legacy file is
+  now `cycle-v2/content/presets/old/astral.cyclegraph` and the current variants
+  have distinct names.
+- The failure occurs during fixture loading before realtime rendering.
+
+Current status: open; choose the intended Astral parity fixture and update the
+test path without weakening its audio assertions.
+
+## P2: Offline spectral parity fixtures have stale expectations and paths
+
+Context:
+
+- On 2026-09-15, `Offline spectral capture records equivalent harmonic
+  boundaries` produced a time-raster secondary value of `0.225972116` instead
+  of the asserted `0.7148094`. The failure reproduces with block-time spectral
+  transfer resolution restored, so it is independent of prepared transfer
+  binding. The older value is also discussed in the open same-clock spectral
+  residual investigation above.
+- `Offline guide seed controls spectral oscillator noise deterministically`
+  fails while loading `content/presets/sitar.cyclegraph`; that file now lives
+  at `content/presets/old/sitar.cyclegraph`, alongside distinct current Sitar
+  variants.
+
+Current status: open; reconcile the time-raster assertion with the current
+frontier contract and choose the intended Sitar fixture before updating its
+path.
+
+Update 2026-09-15: a broad randomized runtime batch (seed `1479899913`) also
+failed `Spectral frame refresh count is independent of Unison order` for the
+64-sample partition: maximum difference `0.023058094` exceeded the existing
+`0.02` tolerance. Focused realtime executor and prepared-context tests pass;
+retain this as an open oscillator-region partition/parity issue.
