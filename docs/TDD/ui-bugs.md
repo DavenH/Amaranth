@@ -353,3 +353,15 @@ Context:
 
 Current status: open; inspect preset probe identity and incremental preview
 publication across equal-revision configuration transitions.
+
+## P3: Stengah Spy test expects probes absent from the current fixture
+
+Context:
+
+- The grouped `[cycle-v2][runtime][probe][presets]` run on 2026-09-14 fails
+  `Stengah spies render the exact output selected by each probe` because the
+  freshly migrated `stengah.cyclegraph` contains an empty `probes` array.
+- The focused PWM Lead Spy regression uses its checked-in probe and passes.
+
+Current status: open fixture/test synchronization issue; restore the intended
+Stengah probes or update the test fixture at its authoring boundary.

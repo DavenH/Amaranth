@@ -1974,11 +1974,19 @@ TEST_CASE("Trimesh sawtooth survives an FFT and IFFT graph round trip",
     REQUIRE(maximumHarmonicRatioError < 0.002f);
 
     float maximumReconstructionError = 0.f;
-    for (size_t sample = 0; sample < saw.traversalGrid.values.size(); ++sample) {
-        maximumReconstructionError = jmax(
-                maximumReconstructionError,
-                std::abs(reconstructed.traversalGrid.values[sample]
-                        - saw.traversalGrid.values[sample]));
+    for (size_t column = 0; column < saw.traversalGrid.columns; ++column) {
+        const size_t offset = column * saw.traversalGrid.rows;
+        float sourceSum = 0.f;
+        for (size_t row = 0; row < saw.traversalGrid.rows; ++row) {
+            sourceSum += saw.traversalGrid.values[offset + row];
+        }
+        const float sourceMean = sourceSum / (float) saw.traversalGrid.rows;
+        for (size_t row = 0; row < saw.traversalGrid.rows; ++row) {
+            maximumReconstructionError = jmax(
+                    maximumReconstructionError,
+                    std::abs(reconstructed.traversalGrid.values[offset + row]
+                            - 0.5f * (saw.traversalGrid.values[offset + row] - sourceMean)));
+        }
     }
     REQUIRE(maximumReconstructionError < 1.0e-5f);
 }
@@ -2746,6 +2754,7 @@ TEST_CASE("Prepared realtime voice mixing performs no allocations or locks",
     REQUIRE(compiled.succeeded());
     AudioExecutionSpec spec;
     spec.maximumFrameCount = 64;
+    spec.traversalColumnCount = 512;
     auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
     REQUIRE(prepared->blockStorageValues > 0);
     REQUIRE(prepared->gridStorageValues == 0);

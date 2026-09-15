@@ -780,14 +780,33 @@ TEST_CASE("Envelope traversal samples phase across grid columns", "[cycle-v2][ru
 
     const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
     REQUIRE(configuration != nullptr);
-    auto sampler = configuration->rasterizer->sampler();
-    REQUIRE(sampler.isSampleable());
+    const auto expectedTraversal = [&](size_t columns) {
+        Rasterization::EnvelopePlaybackEngine expectedPlayback;
+        expectedPlayback.ensureVoiceCount(1);
+        expectedPlayback.setOneSamplePerCycle(true);
+        expectedPlayback.validate(configuration->rasterizer->preparedPlaybackView());
+        expectedPlayback.noteOn();
+        MeshLibrary::EnvProps expectedProps;
+        expectedProps.active = true;
+        std::vector<float> expected(columns);
+        for (size_t column = 0; column < columns; ++column) {
+            expectedPlayback.renderToBuffer(
+                    configuration->rasterizer->preparedPlaybackView(),
+                    1,
+                    1.0 / (double) (columns - 1),
+                    Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
+                    expectedProps,
+                    1.f);
+            expected[column] = expectedPlayback.sustainLevel(
+                    Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex);
+        }
+        return expected;
+    };
+    const auto expected = expectedTraversal(envelope.traversalGrid.columns);
 
     for (size_t column = 0; column < envelope.traversalGrid.columns; ++column) {
         const float columnValue = envelope.traversalGrid.values[column * envelope.traversalGrid.rows];
-        const float expected = sampler.sampleAt(
-                (double) column / (double) envelope.traversalGrid.columns);
-        REQUIRE(columnValue == Catch::Approx(expected));
+        REQUIRE(columnValue == Catch::Approx(expected[column]));
         for (size_t row = 1; row < envelope.traversalGrid.rows; ++row) {
             REQUIRE(envelope.traversalGrid.values[column * envelope.traversalGrid.rows + row]
                     == Catch::Approx(columnValue));
@@ -824,9 +843,9 @@ TEST_CASE("Envelope traversal samples phase across grid columns", "[cycle-v2][ru
 
     const SignalTraversalGrid& wider = output(widerContext).traversalGrid;
     REQUIRE(wider.columns == 12);
+    const auto widerExpected = expectedTraversal(wider.columns);
     for (size_t column = 0; column < wider.columns; ++column) {
-        REQUIRE(wider.values[column * wider.rows] == Catch::Approx(sampler.sampleAt(
-                (double) column / (double) wider.columns)));
+        REQUIRE(wider.values[column * wider.rows] == Catch::Approx(widerExpected[column]));
     }
 
     REQUIRE(envelope.traversalGrid.values[0]

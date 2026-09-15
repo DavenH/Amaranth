@@ -54,6 +54,10 @@ struct GraphPreviewResult {
 
 class GraphPreviewExecutor {
 public:
+    static void reduceProbeRows(
+            GraphPreviewResult::SignalProbePreview& preview,
+            size_t timeRows);
+
     GraphPreviewResult render(const GraphExecutionPlan& plan, size_t pointCount) const;
     GraphPreviewResult render(
             const GraphExecutionPlan& plan,

@@ -167,6 +167,20 @@ float columnDifference(
     return sum;
 }
 
+float maximumAbsoluteColumnMean(const SignalTraversalGrid& grid) {
+    REQUIRE(grid.isValid());
+
+    float maximum = 0.f;
+    for (size_t column = 0; column < grid.columns; ++column) {
+        float sum = 0.f;
+        for (size_t row = 0; row < grid.rows; ++row) {
+            sum += grid.values[column * grid.rows + row];
+        }
+        maximum = std::max(maximum, std::abs(sum / (float) grid.rows));
+    }
+    return maximum;
+}
+
 void requireGridDeltaEquals(
         const SignalTraversalGrid& after,
         const SignalTraversalGrid& before,
@@ -579,6 +593,87 @@ TEST_CASE("Icycle spies preserve traversal change across voice time",
   #endif
 }
 
+TEST_CASE("Pwm Lead Spy preserves looping scratch and composed Unison lanes",
+        "[cycle-v2][runtime][probe][presets][scratch][unison]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("pwm-lead.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+
+    NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    REQUIRE(graph.findSignalProbe("probe") != nullptr);
+    const auto render = [](const NodeGraph& graphToRender) {
+        const auto compiled = GraphCompiler().compile(graphToRender);
+        REQUIRE(compiled.succeeded());
+        const auto audio = GraphAudioExecutor().process(
+                graphToRender,
+                compiled.plan,
+                512);
+        const auto preview = GraphPreviewExecutor().render(
+                compiled.plan,
+                audio,
+                graphToRender.getSignalProbes(),
+                512);
+        return std::pair<GraphAudioResult, GraphPreviewResult> {
+                std::move(audio),
+                std::move(preview)
+        };
+    };
+
+    const auto enabledPlan = GraphCompiler().compile(graph);
+    REQUIRE(enabledPlan.succeeded());
+    REQUIRE(enabledPlan.plan.voiceContexts.front().lanes.order == 8);
+    const auto withUnison = render(graph);
+    const auto requireChangingSecondHalf = [](const SignalTraversalGrid& grid) {
+        REQUIRE(grid.isValid());
+        const size_t half = grid.columns / 2;
+        const std::vector<float> secondHalf(
+                grid.values.begin() + (int) (half * grid.rows),
+                grid.values.end());
+        REQUIRE(interColumnDifferenceSum(
+                secondHalf,
+                grid.columns - half,
+                grid.rows) > 0.01f);
+    };
+    requireChangingSecondHalf(findAudio(
+            withUnison.first,
+            "scratchEnvelope1").output.traversalGrid);
+    requireChangingSecondHalf(findAudio(
+            withUnison.first,
+            "timeLayer1").output.traversalGrid);
+
+    const auto& composed = findProbePreview(withUnison.second, "probe");
+    REQUIRE(composed.connected);
+    REQUIRE(composed.domain == PortDomain::TimeSignal);
+    REQUIRE(maximumAbsoluteColumnMean(findAudio(
+            withUnison.first,
+            "ifft").output.traversalGrid) < 1.0e-5f);
+    REQUIRE(maximumAbsoluteColumnMean(findAudio(
+            withUnison.first,
+            "volumeMultiply").output.traversalGrid) < 1.0e-5f);
+
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "unison",
+            "enabled",
+            "Enabled",
+            "0").succeeded());
+    const auto singleLanePlan = GraphCompiler().compile(graph);
+    REQUIRE(singleLanePlan.succeeded());
+    REQUIRE_FALSE(singleLanePlan.plan.voiceContexts.front().unison->isEnabled());
+    const auto withoutUnison = render(graph);
+    const auto& singleLane = findProbePreview(withoutUnison.second, "probe");
+    REQUIRE(singleLane.connected);
+    REQUIRE(absoluteDifferenceSum(composed.values, singleLane.values) > 0.01f);
+    REQUIRE(findAudio(withUnison.first, "magnitudeLayer1").output.traversalGrid.values
+            == findAudio(withoutUnison.first, "magnitudeLayer1").output.traversalGrid.values);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Bundled FFT diagnostic graph preserves its sawtooth probe through IFFT",
         "[cycle-v2][runtime][fft][probe]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
@@ -635,10 +730,19 @@ TEST_CASE("Bundled FFT diagnostic graph preserves its sawtooth probe through IFF
     REQUIRE(maximumHarmonicRatioError < 0.002f);
 
     float maximumReconstructionError = 0.f;
-    for (size_t sample = 0; sample < source.values.size(); ++sample) {
-        maximumReconstructionError = jmax(
-                maximumReconstructionError,
-                std::abs(roundTrip.values[sample] - source.values[sample]));
+    for (size_t column = 0; column < source.gridColumns; ++column) {
+        const size_t offset = column * source.gridRows;
+        float sum = 0.f;
+        for (size_t row = 0; row < source.gridRows; ++row) {
+            sum += source.values[offset + row];
+        }
+        const float sourceMean = sum / (float) source.gridRows;
+        for (size_t row = 0; row < source.gridRows; ++row) {
+            maximumReconstructionError = jmax(
+                    maximumReconstructionError,
+                    std::abs(roundTrip.values[offset + row]
+                            - 0.5f * (source.values[offset + row] - sourceMean)));
+        }
     }
     REQUIRE(maximumReconstructionError < 1.0e-5f);
   #endif

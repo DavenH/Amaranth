@@ -253,6 +253,7 @@ struct AudioProcessWorkArena {
 
 struct AudioProcessContext {
     size_t frameCount {};
+    size_t traversalColumnCount {};
     AudioProcessTiming timing;
     const AudioVoiceContext* voiceView {};
     AudioVoiceContext voice;

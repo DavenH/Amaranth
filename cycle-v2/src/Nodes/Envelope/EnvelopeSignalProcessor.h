@@ -55,7 +55,10 @@ private:
     void renderNeutralSegment(Buffer<float> output, size_t start, size_t count);
     void applyAttackDeclick(Buffer<float> rendered);
     void renderReleaseDeclick(Buffer<float> rendered);
-    void publishTraversalGrid(SignalPayload& output, const AudioProcessWorkArena* arena);
+    void publishTraversalGrid(
+            SignalPayload& output,
+            size_t requestedColumns,
+            const AudioProcessWorkArena* arena);
 
     static constexpr size_t defaultTraversalColumns = 8;
     Rasterization::EnvelopePlaybackEngine playback;

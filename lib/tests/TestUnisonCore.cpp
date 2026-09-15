@@ -2,6 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include <Audio/CycleDsp/UnisonCore.h>
+#include <Audio/CycleDsp/UnisonColumnMixer.h>
 
 using Catch::Matchers::WithinAbs;
 
@@ -172,4 +173,43 @@ TEST_CASE("Unison phase integrates the authoritative pitch-envelope mapping",
         return result;
     };
     REQUIRE(travelled(rising) > travelled(neutral));
+}
+
+TEST_CASE("Unison column mixing preserves Cycle 1 rotation and interpolation",
+        "[unison][dsp][preview]") {
+    float sourceValues[] { 0.f, 1.f, 2.f, 3.f };
+    float mixedValues[4] {};
+    float shiftedValues[4] {};
+    float interpolatedValues[4] {};
+    const float phases[] { 0.f, 0.25f };
+    const float gains[] { 1.f, 0.5f };
+
+    REQUIRE(CycleDsp::UnisonColumnMixer::mix(
+            { sourceValues, 4 },
+            { mixedValues, 4 },
+            phases,
+            gains,
+            2,
+            { shiftedValues, 4 },
+            { interpolatedValues, 4 },
+            false));
+    REQUIRE_THAT(mixedValues[0], WithinAbs(0.5f, 0.000001));
+    REQUIRE_THAT(mixedValues[1], WithinAbs(2.f, 0.000001));
+    REQUIRE_THAT(mixedValues[2], WithinAbs(3.5f, 0.000001));
+    REQUIRE_THAT(mixedValues[3], WithinAbs(3.f, 0.000001));
+
+    const float halfSamplePhase[] { 0.125f };
+    REQUIRE(CycleDsp::UnisonColumnMixer::mix(
+            { sourceValues, 4 },
+            { mixedValues, 4 },
+            halfSamplePhase,
+            gains,
+            1,
+            { shiftedValues, 4 },
+            { interpolatedValues, 4 },
+            true));
+    REQUIRE_THAT(mixedValues[0], WithinAbs(0.5f, 0.000001));
+    REQUIRE_THAT(mixedValues[1], WithinAbs(1.5f, 0.000001));
+    REQUIRE_THAT(mixedValues[2], WithinAbs(2.5f, 0.000001));
+    REQUIRE_THAT(mixedValues[3], WithinAbs(1.5f, 0.000001));
 }
