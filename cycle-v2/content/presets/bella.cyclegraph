@@ -809,14 +809,14 @@
             "kind": "reverb",
             "definitionVersion": 1,
             "position": { "x": 1065.19995, "y": 1571.0 },
-            "parameters": { "enabled": true, "size": 0.852000003, "damp": 0.388000003, "width": 1.0, "wet": 0.140000012, "highPass": 0.0 }
+            "parameters": { "enabled": true, "size": 0.852000003, "damp": 0.388000003, "width": 1.0, "wet": 0.28358, "highPass": 0.0 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 1329.19995, "y": 1571.0 },
-            "parameters": { "gain": 0.488549618 }
+            "parameters": { "gain": 0.61355 }
         },
         {
             "id": "globalInput",
@@ -1078,21 +1078,21 @@
             "dcOffset": 0.0,
             "phase": 0.0,
             "noiseSeed": 6793,
-            "revision": 1,
+            "revision": 4,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 4,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 4,
                     "vertices": [
-                        { "id": 1, "x": 0.0525, "y": 0.5, "curve": 0.0 },
-                        { "id": 2, "x": 0.06199, "y": 0.7765, "curve": 1.0 },
+                        { "id": 1, "x": 0.04275, "y": 0.5, "curve": 0.0 },
+                        { "id": 2, "x": 0.0505, "y": 0.76702, "curve": 1.0 },
                         { "id": 3, "x": 0.9375, "y": 0.5, "curve": 1.0 },
                         { "id": 4, "x": 0.9475, "y": 0.5, "curve": 0.0 },
-                        { "id": 5, "x": 0.06356, "y": 0.50691, "curve": 0.76189 }
+                        { "id": 5, "x": 0.0512, "y": 0.50454, "curve": 0.76189 }
                     ]
                 }
             }
