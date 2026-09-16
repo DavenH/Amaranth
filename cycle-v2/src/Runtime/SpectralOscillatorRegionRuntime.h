@@ -2,6 +2,7 @@
 
 #include "Runtime/SpectralOscillatorFrameRenderer.h"
 
+#include <Audio/CycleDsp/FixedTimeCyclicFrameCompositor.h>
 #include <Audio/CycleDsp/OscillatorLaneCore.h>
 #include <Audio/CycleDsp/UnisonCore.h>
 #include <Array/RingBuffer.h>
@@ -20,7 +21,8 @@ public:
             int maximumFixedFrameSizeToUse,
             double sampleRateToUse,
             const CycleDsp::UnisonVoiceLayout& layoutToUse,
-            int controlIntervalSamplesToUse = 16);
+            int controlIntervalSamplesToUse = 16,
+            bool pitchIndependentControlToUse = false);
     void reset();
     bool process(
             const PreparedOscillatorProcessContext& context,
@@ -41,6 +43,7 @@ private:
         std::array<std::array<float, 7>, 2> padding {};
         std::array<double, 2> samplingSpillover {};
         std::array<Buffer<float>, 2> lastLerpHalf;
+        double phaseCycles {};
     };
 
     int fixedFrameSizeFor(int midiNote) const;
@@ -61,6 +64,13 @@ private:
             int laneIndex,
             const PreparedOscillatorProcessContext& context,
             const SpectralOscillatorFrameRenderer& renderer);
+    bool processFixedTime(
+            const PreparedOscillatorProcessContext& context,
+            SpectralOscillatorFrameRenderer& renderer);
+    bool renderFixedTimeFrontier(
+            uint64_t frontier,
+            const PreparedOscillatorProcessContext& context,
+            SpectralOscillatorFrameRenderer& renderer);
     void latchCurrentFrames();
     size_t blockSampleOffsetFor(
             uint64_t voiceSample,
@@ -72,12 +82,15 @@ private:
     int fixedFrameSize {};
     double sampleRate { 44100.0 };
     int controlIntervalSamples { 16 };
+    bool pitchIndependentControl {};
     int controlStride { 1 };
     bool initialFramesReady {};
     double sharedFramePeriod {};
     double lastSharedFramePosition {};
     double nextSharedFramePosition {};
     uint64_t lastSharedFrameFrontier {};
+    uint64_t transitionStart {};
+    CycleDsp::FixedTimeFrameClock fixedTimeClock;
     CycleDsp::UnisonVoiceLayout layout;
     std::array<LaneState, CycleDsp::maximumUnisonOrder> lanes;
     std::array<Buffer<float>, 2> currentFrames;
@@ -88,6 +101,7 @@ private:
     Buffer<float> shiftedCurrentFrame;
     Buffer<float> shiftedPreviousFrame;
     Buffer<float> previousHalfFrame;
+    Buffer<float> transitionWeights;
     std::array<Buffer<float>, 2> resampleScratch;
     ScopedAlloc<float> laneBufferMemory;
     ScopedAlloc<float> frameMemory;

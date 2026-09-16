@@ -786,3 +786,19 @@ failed `Spectral frame refresh count is independent of Unison order` for the
 64-sample partition: maximum difference `0.023058094` exceeded the existing
 `0.02` tolerance. Focused realtime executor and prepared-context tests pass;
 retain this as an open oscillator-region partition/parity issue.
+
+## P2: Shared-library spectral capture tests cannot write temporary artifacts
+
+Context:
+
+- A 2026-09-16 full `AmaranthLib_tests` run failed all three
+  `SpectralStageCaptureRecorder::write` cases because the recorder returned
+  false for the JUCE temporary file. The failures reproduce in isolation and
+  occur before any payload assertion.
+- The same run also failed existing Settings and Multisample tests while
+  opening temporary files, indicating a common test-environment or temporary
+  file setup issue rather than the pitch-independent compositor.
+
+Current status: open; inspect the temporary-file paths and returned recorder
+error under the standalone-debug test environment. The focused shared-DSP
+fixed-time compositor suite passes 91 assertions.

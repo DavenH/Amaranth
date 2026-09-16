@@ -120,6 +120,7 @@ struct CompiledVoiceContext {
     float voiceDurationSeconds { 1.f };
     float pitchSemitones {};
     bool portamento {};
+    bool pitchIndependentSpectralControl {};
     int oversampling { 1 };
     int controlIntervalSamples { 16 };
     std::shared_ptr<const INodeDspConfiguration> defaultModulation;

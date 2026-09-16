@@ -2,7 +2,56 @@
 
 ## Status
 
-Proposed.
+In progress. The experimental Cycle V2 path is implemented behind the
+`pitchIndependentSpectralControl` Voice Context flag. The legacy path remains
+the default. Cycle 1 integration and the full shipping-quality interval and
+polyphony measurement matrix remain open, so this TDD is not complete.
+
+## Experimental Cycle V2 Implementation
+
+Implemented 2026-09-16:
+
+- `FixedTimeFrameClock` owns the pitch-independent absolute voice-sample
+  frontiers, and `FixedTimeCyclicFrameCompositor` owns periodic Hermite lookup,
+  phase-aligned two-frame composition, and complementary raised-cosine weights
+  in the shared Cycle DSP library.
+- `SpectralOscillatorRegionRuntime` selects the fixed-time path only when the
+  compiled Voice Context flag is true. It continues to invoke the existing
+  `SpectralOscillatorFrameRenderer` once per frontier, retaining its mature
+  morph, scratch, rasterization, FFT, layer, harmonic-cutoff, and IFFT order.
+- Each prepared runtime retains two frames and a precomputed transition table.
+  Lane phase is continuous and lane-local; rendered frames remain shared across
+  Unison lanes. The realtime path allocates and locks zero times after prepare.
+- `acoustic-high-control-rate.cyclegraph` is a copy of Acoustic with the flag
+  enabled and a 64-sample interval. The original Acoustic preset remains on its
+  256-sample legacy whole-cycle cadence.
+
+The application boundary translates compiled Voice Context configuration,
+process timing, and rendered frame buffers into the shared clock/compositor.
+It does not copy spectral or mesh-domain behavior. The stable end state is for
+Cycle 1 to consume this same shared core before the flag becomes a general
+shipping quality mode; no V2-only spectral renderer was introduced.
+
+Focused evidence:
+
+- MIDI 21 renders eight frames in the first 512 output samples at a 64-sample
+  interval, before the first oscillator cycle completes.
+- Output and frame counts are byte-identical for host blocks of 1, 16, 64,
+  127, 256, and 512 samples.
+- Events immediately before and on a frontier are visible to that frontier;
+  an event immediately after it waits for the following frontier.
+- Frame-render count remains eight when Unison order increases from one to
+  four, while lane phase and stereo pan remain lane-local.
+- Shared-DSP tests cover clock sequences, complementary weights, identical
+  frames, opposite frames, phase-locked lookup, and periodic wrap.
+
+One-voice Debug measurements at 44.1 kHz with 512-sample callbacks recorded no
+deadline overruns. Legacy Acoustic averaged 0.916 ms per callback and 7.85%
+deadline utilization over 44 callbacks. The 64-sample experimental copy
+averaged 2.091 ms and 17.97% over 46 callbacks, producing exactly eight recipe
+renders per active callback. These measurements justify keeping the mode
+opt-in; they do not select a shipping default. The reproducible automation
+fixture is `scripts/fixtures/cycle-v2-agent-acoustic-fixed-time-control.json`.
 
 This design extends Cycle's spectral oscillator with a control-frame cadence
 that may be shorter than one oscillator cycle. It does not replace the existing

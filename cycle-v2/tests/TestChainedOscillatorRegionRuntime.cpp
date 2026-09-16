@@ -903,6 +903,128 @@ TEST_CASE("High spectral notes use the compiled factory control interval",
   #endif
 }
 
+TEST_CASE("Pitch-independent spectral control updates a bass note within one cycle",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][fixed-time-control]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const auto compiled = GraphCompiler().compile(
+            loadOscillatorPresetGraph("acoustic-high-control-rate"));
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.voiceContexts.size() == 1);
+    REQUIRE(compiled.plan.voiceContexts.front().pitchIndependentSpectralControl);
+    REQUIRE(compiled.plan.voiceContexts.front().controlIntervalSamples == 64);
+
+    constexpr int sampleCount = 512;
+    const PartitionedRender reference = renderPreparedGraph(
+            compiled.plan,
+            512,
+            sampleCount,
+            -1,
+            21,
+            0.496183206f);
+    REQUIRE(reference.frameRenderCount == 8);
+    REQUIRE(std::any_of(
+            reference.left.begin(),
+            reference.left.end(),
+            [](float sample) { return sample != 0.f; }));
+
+    for (const int blockSize : { 1, 16, 64, 127, 256 }) {
+        DYNAMIC_SECTION("block size " << blockSize) {
+            const PartitionedRender partitioned = renderPreparedGraph(
+                    compiled.plan,
+                    blockSize,
+                    sampleCount,
+                    -1,
+                    21,
+                    0.496183206f);
+            REQUIRE(partitioned.frameRenderCount == reference.frameRenderCount);
+            REQUIRE(partitioned.left == reference.left);
+            REQUIRE(partitioned.right == reference.right);
+        }
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Pitch-independent spectral frontiers preserve timed control causality",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][fixed-time-control][timed-control]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    NodeGraph graph = loadFilterSawGraph();
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "voice",
+            "pitchIndependentSpectralControl",
+            "Pitch-independent spectral control",
+            "1").succeeded());
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "morph",
+            "yellowSource",
+            "Yellow Source",
+            "midiCC").succeeded());
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "morph",
+            "yellowController",
+            "Yellow Controller",
+            "74").succeeded());
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "scratchEnvelope1",
+            "enabled",
+            "Enabled",
+            "0").succeeded());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.voiceContexts.front().controlIntervalSamples == 64);
+
+    const PartitionedRender before = renderPreparedGraph(
+            compiled.plan, 512, 256, 63);
+    const PartitionedRender on = renderPreparedGraph(
+            compiled.plan, 512, 256, 64);
+    const PartitionedRender after = renderPreparedGraph(
+            compiled.plan, 512, 256, 65);
+    REQUIRE(before.left == on.left);
+    REQUIRE(before.right == on.right);
+    REQUIRE(after.left != on.left);
+    REQUIRE(after.right != on.right);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Pitch-independent spectral frame generation is shared across Unison lanes",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][fixed-time-control][unison]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const auto compiled = GraphCompiler().compile(
+            loadOscillatorPresetGraph("acoustic-high-control-rate"));
+    REQUIRE(compiled.succeeded());
+    GraphExecutionPlan singlePlan = compiled.plan;
+    GraphExecutionPlan unisonPlan = compiled.plan;
+
+    CycleDsp::UnisonGroupConfiguration singleConfiguration;
+    singleConfiguration.order = 1;
+    singlePlan.voiceContexts.front().lanes
+            = CycleDsp::UnisonCore::makeGroupLayout(singleConfiguration);
+    CycleDsp::UnisonGroupConfiguration unisonConfiguration;
+    unisonConfiguration.order = 4;
+    unisonConfiguration.detuneWidthCents = 18.f;
+    unisonConfiguration.panSpread = 1.f;
+    unisonPlan.voiceContexts.front().lanes
+            = CycleDsp::UnisonCore::makeGroupLayout(unisonConfiguration);
+
+    const PartitionedRender single = renderPreparedGraph(
+            singlePlan, 256, 512, -1, 21, 0.496183206f);
+    const PartitionedRender unison = renderPreparedGraph(
+            unisonPlan, 256, 512, -1, 21, 0.496183206f);
+    REQUIRE(single.frameRenderCount == 8);
+    REQUIRE(unison.frameRenderCount == single.frameRenderCount);
+    REQUIRE(unison.left != unison.right);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Prepared oscillator preset matrix is independent of host block partitions",
         "[cycle-v2][runtime][oscillator-region][live-modulation][partition-matrix]") {
   #if defined(CYCLE_V2_SOURCE_DIR)

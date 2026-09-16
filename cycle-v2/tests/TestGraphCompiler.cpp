@@ -456,6 +456,25 @@ TEST_CASE("Voice Context compiles its synthesis control interval",
     REQUIRE(compiled.plan.voiceContexts.front().controlIntervalSamples == 256);
 }
 
+TEST_CASE("Voice Context compiles pitch-independent spectral control",
+        "[cycle-v2][graph][voice-context][control-rate]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "voice",
+            "pitchIndependentSpectralControl",
+            "Pitch-independent spectral control",
+            "1").succeeded());
+
+    const auto compiled = GraphCompiler().compile(graph);
+
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.voiceContexts.size() == 1);
+    REQUIRE(compiled.plan.voiceContexts.front().pitchIndependentSpectralControl);
+}
+
 TEST_CASE("Voice Context defaults reach volume and scratch Envelope sidechains",
         "[cycle-v2][graph][voice-context][modulation][envelope]") {
     GraphNodeFactory factory;

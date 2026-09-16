@@ -53,6 +53,7 @@ TEST_CASE("Voice Context exposes typed voice configuration inputs", "[cycle-v2][
     REQUIRE(parameterValueForNode(voice, "voiceLength")
             == String(CycleDsp::voiceLengthUnitValue(1.0f)));
     REQUIRE(parameterValueForNode(voice, "controlInterval") == "16");
+    REQUIRE(parameterValueForNode(voice, "pitchIndependentSpectralControl") == "0");
     REQUIRE(voice.bounds.getWidth() == 280.f);
     REQUIRE(voice.bounds.getHeight() == 182.f);
 
