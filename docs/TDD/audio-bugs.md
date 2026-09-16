@@ -802,3 +802,15 @@ Context:
 Current status: open; inspect the temporary-file paths and returned recorder
 error under the standalone-debug test environment. The focused shared-DSP
 fixed-time compositor suite passes 91 assertions.
+
+## P2: Offline Voice Context octave test references a missing preset
+
+Context: On 2026-09-16, `CycleV2_tests '[voice-context]'` passed 32 cases and
+failed `Compiled Voice Context octave reaches the oscillator region` at
+`TestOfflineGraphAudioRenderer.cpp:28` (`REQUIRE(loaded.succeeded())`). Its
+`spectralReferencePlan()` loads `content/presets/spectral-reference.cyclegraph`,
+which is absent from this checkout. The focused Voice Context editor test
+passes 61 assertions.
+
+Current status: open; restore the reference fixture or update that test to use
+the intended maintained preset.

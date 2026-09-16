@@ -109,6 +109,9 @@ public:
         portamento.setToggleState(
                 parameters.boolValue("portamento", false),
                 dontSendNotification);
+        pitchIndependentSpectralControl.setToggleState(
+                parameters.boolValue("pitchIndependentSpectralControl", false),
+                dontSendNotification);
         octave.bind(node.id, parameters.floatValue("octave", 0.f));
         voiceLength.bind(
                 node.id,
@@ -142,7 +145,8 @@ public:
         layoutSliderRow(pitch, nextRow(rows));
         layoutOversamplingRow(nextRow(rows));
         layoutControlIntervalRow(nextRow(rows));
-        layoutToggleRow(nextRow(rows));
+        layoutToggleRow(nextRow(rows), portamento);
+        layoutToggleRow(nextRow(rows), pitchIndependentSpectralControl);
     }
 
     var automationState() const {
@@ -154,6 +158,8 @@ public:
         state->setProperty("oversampling", oversamplingSelector.selectedValue());
         state->setProperty("controlInterval", controlIntervalSelector.selectedValue());
         state->setProperty("portamento", portamento.getToggleState());
+        state->setProperty("pitchIndependentSpectralControl",
+                pitchIndependentSpectralControl.getToggleState());
         state->setProperty(
                 "previewVoiceLengthSeconds",
                 CycleDsp::voiceLengthSeconds((float) voiceLength.slider.getValue()));
@@ -191,6 +197,7 @@ private:
             setControlInterval(value);
         };
         configurePortamento();
+        configurePitchIndependentSpectralControl();
     }
     void configurePortamento() {
         portamento.setButtonText("Portamento");
@@ -204,6 +211,22 @@ private:
                     portamento.getToggleState() ? 1.f : 0.f);
         };
         addAndMakeVisible(portamento);
+    }
+
+    void configurePitchIndependentSpectralControl() {
+        pitchIndependentSpectralControl.setButtonText("Pitch-independent spectral control");
+        pitchIndependentSpectralControl.setComponentID(
+                "voiceContextEditor.pitchIndependentSpectralControl");
+        pitchIndependentSpectralControl.setTooltip(
+                "Render spectral frames at the control interval regardless of note pitch.");
+        pitchIndependentSpectralControl.onClick = [this] {
+            commands.setNodeParameterValue(
+                    node.id,
+                    "pitchIndependentSpectralControl",
+                    "Pitch-independent spectral control",
+                    pitchIndependentSpectralControl.getToggleState() ? 1.f : 0.f);
+        };
+        addAndMakeVisible(pitchIndependentSpectralControl);
     }
 
     void configureSliders() {
@@ -328,10 +351,10 @@ private:
         selector.setBounds(row);
     }
 
-    void layoutToggleRow(Rectangle<int> row) {
+    static void layoutToggleRow(Rectangle<int> row, ToggleButton& toggle) {
         row.removeFromLeft(PropertyControlMetrics::labelWidth
                 + PropertyControlMetrics::inlineGap);
-        portamento.setBounds(row);
+        toggle.setBounds(row);
     }
 
     NodeEditorCommands& commands;
@@ -346,6 +369,7 @@ private:
     Label controlIntervalLabel;
     PropertySegmentedSelector controlIntervalSelector { controlIntervalOptions() };
     ToggleButton portamento;
+    ToggleButton pitchIndependentSpectralControl;
 };
 
 class VoiceContextNodeEditor final : public NodeEditor {

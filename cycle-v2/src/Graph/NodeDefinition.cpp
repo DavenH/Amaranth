@@ -355,7 +355,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             boolean("portamento", "Portamento", false, dsp | presentation),
                             boolean("pitchIndependentSpectralControl",
                                     "Pitch-independent spectral control", false,
-                                    dsp | reset),
+                                    dsp | reset | presentation),
                             choice("oversampling", "Oversampling", "1x",
                                     { "1x", "2x", "4x", "8x" },
                                     dsp | reset | presentation),

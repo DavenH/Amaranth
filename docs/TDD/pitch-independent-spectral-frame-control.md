@@ -25,6 +25,9 @@ Implemented 2026-09-16:
 - `acoustic-high-control-rate.cyclegraph` is a copy of Acoustic with the flag
   enabled and a 64-sample interval. The original Acoustic preset remains on its
   256-sample legacy whole-cycle cadence.
+- The expanded Voice Context properties expose the experimental flag beside
+  the control interval. Scratch and morph inputs resolve at each fixed-time
+  frontier; the cycle-envelope bank advances by the elapsed samples there.
 
 The application boundary translates compiled Voice Context configuration,
 process timing, and rendered frame buffers into the shared clock/compositor.
