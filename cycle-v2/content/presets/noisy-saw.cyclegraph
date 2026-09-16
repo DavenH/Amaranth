@@ -51,7 +51,7 @@
                 "range": 0.5,
                 "signalType": "time",
                 "polarity": "bipolar",
-                "yellow": 0.5,
+                "yellow": 0.317,
                 "red": 0.5,
                 "blue": 0.5,
                 "primaryAxis": "yellow",

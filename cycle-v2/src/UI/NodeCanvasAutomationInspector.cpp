@@ -762,6 +762,10 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("validationIssues", validationIssues);
     root->setProperty("compileIssues", compileIssues);
     root->setProperty("nodeOrder", nodeOrder);
+    root->setProperty("previewModWheelValue", context.presentation.previewModWheelValue());
+    root->setProperty(
+            "previewRenderCount",
+            static_cast<int>(context.presentation.previewRenderCount()));
     root->setProperty("previewStats", previewStats);
     root->setProperty("probePreviewStats", probePreviewStats);
 

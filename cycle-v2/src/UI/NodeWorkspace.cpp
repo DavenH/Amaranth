@@ -41,6 +41,15 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     keyboard.setPreviewNoteSelectedCallback([this](int midiNote) {
         canvas.setPreviewMidiNote(midiNote);
     });
+    keyboard.setModWheelValueChangedCallback([this](int value) {
+        canvas.updatePreviewModWheelGesture(value);
+    });
+    keyboard.setModWheelGestureStartedCallback([this] {
+        canvas.beginPreviewModWheelGesture();
+    });
+    keyboard.setModWheelGestureEndedCallback([this] {
+        canvas.endPreviewModWheelGesture();
+    });
     startTimerHz(30);
     timerCallback();
 }
@@ -49,6 +58,9 @@ NodeWorkspace::~NodeWorkspace() {
     stopTimer();
     canvas.setOverlayOcclusionChangedCallback({});
     canvas.setPreviewPlaybackToggleCallback({});
+    keyboard.setModWheelValueChangedCallback({});
+    keyboard.setModWheelGestureStartedCallback({});
+    keyboard.setModWheelGestureEndedCallback({});
     keyboard.releaseAllNotes();
 }
 
@@ -61,6 +73,7 @@ bool NodeWorkspace::loadGraphFromFile(const File& file) {
     if (!canvas.loadGraphFromFile(file)) {
         return false;
     }
+    keyboard.setPreviewNote(canvas.previewMidiNote());
     const auto status = audioEngine.status();
     audioEngine.setGraphOutputGain(canvas.graphOutputGain());
     publishAudioPlan(status, true);
@@ -192,6 +205,12 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
 
     const Rectangle<float> keyboardBounds = keyboard.getBounds().toFloat();
     targets->add(pointerTarget(
+            "PerformanceKeyboard.ModWheel",
+            "performanceModWheel",
+            keyboard.modWheelBounds().translated(
+                    keyboardBounds.getX(),
+                    keyboardBounds.getY())));
+    targets->add(pointerTarget(
             "PerformanceKeyboard.OctaveDown",
             "performanceOctave",
             keyboard.octaveDownBounds().translated(
@@ -269,6 +288,7 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("highestNoteLabel", keyboard.highestNoteLabel());
     object->setProperty("heldNote", keyboard.heldNote());
     object->setProperty("heldVelocity", keyboard.heldVelocity());
+    object->setProperty("modWheelValue", keyboard.modWheelValue());
     object->setProperty("previewNote", keyboard.previewNote());
     object->setProperty("previewPlaying", keyboard.isPlaying());
     object->setProperty("previewProgress", keyboard.playbackProgress());
@@ -305,6 +325,9 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("whiteKeyAspect", whiteKeyAspect);
     object->setProperty("octaveButtonWidth", octaveButton.getWidth());
     object->setProperty("octaveButtonHeight", octaveButton.getHeight());
+    object->setProperty(
+            "modWheelBounds",
+            rectangleToVar(keyboard.modWheelBounds()));
     object->setProperty(
             "occludedByExpandedEditor",
             performanceOccludedByExpandedEditor);
@@ -366,6 +389,36 @@ bool NodeWorkspace::performanceSelectPreviewNoteForAutomation(int noteNumber) {
     }
     keyboard.setPreviewNote(noteNumber);
     return canvas.setPreviewMidiNote(noteNumber);
+}
+
+bool NodeWorkspace::performanceSetModWheelForAutomation(int value) {
+    if (!keyboard.isVisible()) {
+        return false;
+    }
+    keyboard.setModWheelValue(value);
+    return true;
+}
+
+bool NodeWorkspace::performanceBeginModWheelGestureForAutomation(int value) {
+    if (!keyboard.isVisible()) {
+        return false;
+    }
+    canvas.beginPreviewModWheelGesture();
+    keyboard.setModWheelValue(value);
+    return true;
+}
+
+bool NodeWorkspace::performanceUpdateModWheelGestureForAutomation(int value) {
+    if (!keyboard.isVisible()) {
+        return false;
+    }
+    keyboard.setModWheelValue(value);
+    return true;
+}
+
+bool NodeWorkspace::performanceEndModWheelGestureForAutomation() {
+    canvas.endPreviewModWheelGesture();
+    return true;
 }
 
 bool NodeWorkspace::togglePreviewPlaybackForAutomation() {

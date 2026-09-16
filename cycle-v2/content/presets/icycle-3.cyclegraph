@@ -257,7 +257,7 @@
             "id": "magnitudeLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 2427.6001, "y": 387.0 },
+            "position": { "x": 2427.6001, "y": 251.0 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -701,7 +701,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 565.83331 },
+            "position": { "x": 945.59991, "y": 300.07062 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -942,7 +942,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 2392.6001, "y": 1571.0 },
-            "parameters": { "gain": 0.426470588 }
+            "parameters": { "gain": 0.726471 }
         },
         {
             "id": "globalInput",

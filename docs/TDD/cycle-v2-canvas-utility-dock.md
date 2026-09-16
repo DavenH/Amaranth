@@ -4,6 +4,11 @@
 
 Implemented (2026-08-25).
 
+The keyboard's former lower-right alignment is superseded by
+`cycle-v2-preview-mod-wheel.md`, which places the expanded keyboard at the top
+centre while retaining this document's screen-space ownership and utility
+occlusion contracts.
+
 ## Problem
 
 The canvas currently presents utilities as unrelated overlays. The minimap has

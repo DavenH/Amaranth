@@ -100,6 +100,10 @@ public:
     float graphOutputGain() const;
     int previewMidiNote() const { return presentation.previewMidiNote(); }
     bool setPreviewMidiNote(int midiNote);
+    bool setPreviewModWheelValue(int value);
+    void beginPreviewModWheelGesture();
+    bool updatePreviewModWheelGesture(int value);
+    void endPreviewModWheelGesture();
     Rectangle<int> performanceKeyboardDockBounds() const;
     Rectangle<float> expandedEditorBoundsForOverlay() const;
     void setOverlayOcclusionChangedCallback(std::function<void()> callback);
@@ -196,6 +200,12 @@ private:
     uint32 compiledStateRefreshDueMs {};
     std::function<void()> overlayOcclusionChanged;
     std::function<void()> previewPlaybackToggle;
+    bool previewModWheelGestureActive {};
+    bool previewModWheelGestureChanged {};
+    int previewModWheelGestureValue {};
+    ProbeRefreshMode previewModWheelGestureRefreshMode {
+            ProbeRefreshMode::OnGestureCommit };
+    std::shared_ptr<const NodeGraph> previewModWheelGestureGraph;
 
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
@@ -221,6 +231,7 @@ private:
             PresentationRefreshScope scope = PresentationRefreshScope::Downstream);
     void openProbeDetail(const String& probeId);
     void refreshProbeDetail();
+    void finishPreviewModWheelRefresh();
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh(

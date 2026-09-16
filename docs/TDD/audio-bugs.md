@@ -1,5 +1,19 @@
 # Audio Bug Notes
 
+## Open: Full Cycle V2 suite retains broad preset and spectral failures
+
+The 2026-09-15 `ctest --test-dir build/tests -j10 --output-on-failure`
+run completed 1,065 tests with 1,025 passing and 40 failing. The failures are
+outside the preview mod-wheel UI slice and include missing factory-fixture
+loads, the existing African Horn canonical graph mismatch, Stengah/Astral/
+Organ 2 spectral expectations, and several prepared-oscillator parity cases.
+The new mod-wheel test and all six neighboring performance-keyboard/layout
+tests pass in the same CTest discovery. Full output is in
+`build/tests/Testing/Temporary/LastTest.log`.
+
+Current status: open; reconcile the active preset/audio work independently of
+the presentation-only keyboard control.
+
 ## Open: offline capture appends when the WAV path already exists
 
 On 2026-09-15, two `captureAudio` commands reused

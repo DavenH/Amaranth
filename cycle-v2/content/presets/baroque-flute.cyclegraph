@@ -700,20 +700,20 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 2634.0, "y": 1084.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.111, "blue": 0.098, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 10,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 10,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
                             "name": "Mesh",
-                            "version": 1,
+                            "version": 2,
                             "vertices": [
                                 { "time": 0.0, "phase": 0.0, "amp": 0.0061728433, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 0 },
                                 { "time": 0.0, "phase": 0.0, "amp": 0.0061728433, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 1 },
@@ -840,13 +840,14 @@
                         "sustainIndices": [ 0, 1, 2, 3 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
-                    "blue": 0.5,
+                    "red": 0.111,
+                    "blue": 0.098,
                     "redLinked": false,
                     "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
                 }
-            }
+            },
+            "editor": {}
         },
         {
             "id": "pitchEnvelope1",
@@ -1692,7 +1693,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 1025.19995, "y": 1571.0 },
-            "parameters": { "gain": 0.519083969 }
+            "parameters": { "gain": 0.627417 }
         },
         {
             "id": "globalInput",
@@ -1750,20 +1751,20 @@
             "dcOffset": 0.0,
             "phase": 0.0,
             "noiseSeed": 2633,
-            "revision": 1,
+            "revision": 7,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 7,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 7,
                     "vertices": [
-                        { "id": 1, "x": 0.0716, "y": 0.00296, "curve": 1.0 },
+                        { "id": 1, "x": 0.05803, "y": 0.00296, "curve": 1.0 },
                         { "id": 2, "x": 0.9375, "y": 0.5, "curve": 1.0 },
-                        { "id": 3, "x": 0.14044, "y": 0.55325, "curve": 0.3322 },
-                        { "id": 4, "x": 0.06892, "y": 0.5503, "curve": 0.7569 }
+                        { "id": 3, "x": 0.12756, "y": 0.55325, "curve": 0.3322 },
+                        { "id": 4, "x": 0.05465, "y": 0.55978, "curve": 0.7569 }
                     ]
                 }
             }

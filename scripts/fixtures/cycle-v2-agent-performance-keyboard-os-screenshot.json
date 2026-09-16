@@ -3,7 +3,7 @@
     {
       "command": "assertState",
       "path": "performance.screenWidth",
-      "equals": 451
+      "equals": 489
     },
     {
       "command": "assertState",
@@ -18,7 +18,7 @@
     {
       "command": "assertState",
       "path": "performance.whiteKeyAspect",
-      "equals": 4.0
+      "equals": 3.72
     },
     {
       "command": "assertState",
@@ -28,7 +28,7 @@
     {
       "command": "assertState",
       "path": "performance.octaveButtonHeight",
-      "equals": 100
+      "equals": 93
     },
     {
       "command": "inspectPointerTargets"

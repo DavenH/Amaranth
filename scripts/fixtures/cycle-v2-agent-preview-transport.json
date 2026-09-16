@@ -18,6 +18,29 @@
     },
     {
       "command": "pointer",
+      "targetId": "PerformanceKeyboard.ModWheel",
+      "event": "down",
+      "targetY": 0.75
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.ModWheel",
+      "event": "drag",
+      "targetY": 0.25
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.ModWheel",
+      "event": "up",
+      "targetY": 0.25
+    },
+    {
+      "command": "assertState",
+      "path": "performance.modWheelValue",
+      "equals": 95
+    },
+    {
+      "command": "pointer",
       "targetId": "PerformanceKeyboard.Play",
       "event": "click"
     },
