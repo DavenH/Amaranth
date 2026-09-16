@@ -34,6 +34,7 @@ public:
 private:
     struct GuideSnapshot {
         std::vector<float> table;
+        PreparedGuideCurveTable samplingTable;
         GuideCurveTableParameters parameters;
         int density {};
     };

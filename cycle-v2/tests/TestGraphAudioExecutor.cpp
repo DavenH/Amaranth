@@ -2771,7 +2771,8 @@ TEST_CASE("Prepared realtime voice mixing performs no allocations or locks",
 
     ScopedRealtimeAllocationCount allocations;
     ScopedRealtimeLockCount locks;
-    renderer.process(queue, channels, 2, 64, 44100.0, 1.01);
+    AudioPerformanceMetrics::RealtimeSample performance;
+    renderer.process(queue, channels, 2, 64, 44100.0, 1.01, &performance);
 
     REQUIRE(allocations.count() == 0);
     REQUIRE(locks.count() == 0);

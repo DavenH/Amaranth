@@ -5,8 +5,10 @@
 
 #include <App/AppConstants.h>
 #include <Array/VecOps.h>
+#include <Curve/GuideCurveTableDsp.h>
 
 #include "../../WaveformBuffers.h"
+#include "../../WaveformBakeWork.h"
 #include "../../GuideCurveOffsetSeeds.h"
 #include "CurvePolicies.h"
 #include "../../../Curve.h"
@@ -20,7 +22,9 @@ namespace Rasterization {
         struct Context {
             bool lowResCurves {};
             bool decoupleComponentDfrms {};
+            bool prepareIntegrals { true };
             int noiseSeed {};
+            WaveformBakeWork* work {};
 
             MorphPosition morph;
             GuideCurveProvider* guideCurveProvider {};
@@ -67,7 +71,8 @@ namespace Rasterization {
                         scaleRatio /= 2.f;
                     }
 
-                    int truncRatio = jlimit(1, 256, int(scaleRatio + 0.5f));
+                    int truncRatio = jlimit(
+                            1, PreparedGuideCurveTable::maximumResolutionRatio, int(scaleRatio + 0.5f));
                     thisCurve.curveRes = tableSize / truncRatio;
                 } else {
                     thisCurve.curveRes = jmin(thisRes, nextRes);
@@ -291,19 +296,17 @@ namespace Rasterization {
 
             Buffer<float> slp = slope.withSize(resSubOne);
             Buffer<float> dif = diffX.withSize(resSubOne);
-            Buffer<float> are = area.withSize(resSubOne);
-
             VecOps::sub(waveX + 1, waveX, dif);
             VecOps::sub(waveY + 1, waveY, slp);
-            // The integrated sampler consumes complete segments as trapezoid areas.
-            VecOps::add(waveY + 1, waveY, are);
             dif.threshLT(1e-6f);
             slp.div(dif);
-            are.mul(dif).mul(0.5f);
+            prepareSegmentIntegrals(context, 0, resSubOne);
 
             diffX.offset(resSubOne).zero();
             slope.offset(resSubOne).zero();
-            area.offset(resSubOne).zero();
+            if (!area.empty()) {
+                area.offset(resSubOne).zero();
+            }
         }
 
         static void finalizeRange(
@@ -323,20 +326,38 @@ namespace Rasterization {
             if (derivativeSize > 0) {
                 Buffer<float> dif = diffX.section(derivativeStart, derivativeSize);
                 Buffer<float> slp = slope.section(derivativeStart, derivativeSize);
-                Buffer<float> are = area.section(derivativeStart, derivativeSize);
                 VecOps::sub(waveX + derivativeStart + 1, waveX + derivativeStart, dif);
                 VecOps::sub(waveY + derivativeStart + 1, waveY + derivativeStart, slp);
-                // Keep incrementally rebuilt segment integrals identical to a full bake.
-                VecOps::add(waveY + derivativeStart + 1, waveY + derivativeStart, are);
                 dif.threshLT(1e-6f);
                 slp.div(dif);
-                are.mul(dif).mul(0.5f);
+                prepareSegmentIntegrals(context, derivativeStart, derivativeSize);
             }
 
             if (waveEnd == waveX.size()) {
                 diffX.back() = 0.f;
                 slope.back() = 0.f;
-                area.back() = 0.f;
+                if (!area.empty()) {
+                    area.back() = 0.f;
+                }
+            }
+        }
+
+        static void prepareSegmentIntegrals(Context& context, int start, int size) {
+            if (context.work != nullptr) {
+                context.work->waveformSegments += (uint64_t) size;
+            }
+            if (!context.prepareIntegrals) {
+                context.waveform.area->nullify();
+                return;
+            }
+
+            // The integrated sampler consumes complete segments as trapezoid areas.
+            auto area = context.waveform.area->section(start, size);
+            auto diff = context.waveform.diffX->section(start, size);
+            VecOps::add(*context.waveform.waveY + start + 1, *context.waveform.waveY + start, area);
+            area.mul(diff).mul(0.5f);
+            if (context.work != nullptr) {
+                context.work->integralSegments += (uint64_t) size;
             }
         }
 

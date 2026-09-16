@@ -1,5 +1,7 @@
 #include "Runtime/SpectralOscillatorRegionRuntime.h"
 
+#include "Runtime/AudioPerformanceMetrics.h"
+
 #include <Algo/Resampling.h>
 #include <Audio/CycleDsp/CyclicFrameLaneRenderer.h>
 #include <Audio/CycleDsp/SpectralStageCapture.h>
@@ -119,6 +121,9 @@ bool SpectralOscillatorRegionRuntime::process(
     const float level = context.velocity
             * CycleDsp::UnisonCore::voiceLevelScale(layout.order);
     for (int laneIndex = 0; laneIndex < layout.order; ++laneIndex) {
+        const uint64_t mixStartedAt = context.performanceCounts == nullptr
+                ? 0
+                : AudioPerformanceMetrics::timestampMicroseconds();
         auto& lane = lanes[(size_t) laneIndex];
         float leftPan {};
         float rightPan {};
@@ -127,6 +132,11 @@ bool SpectralOscillatorRegionRuntime::process(
         right.addProduct(lane.buffers[1].read(right.size()), level * rightPan);
         lane.buffers[0].retract();
         lane.buffers[1].retract();
+        if (context.performanceCounts != nullptr) {
+            context.performanceCounts->mixDurationMicroseconds
+                    += AudioPerformanceMetrics::timestampMicroseconds() - mixStartedAt;
+            ++context.performanceCounts->mixedLaneCount;
+        }
     }
     latchCurrentFrames();
     return true;
@@ -184,8 +194,14 @@ bool SpectralOscillatorRegionRuntime::initializeSharedFrames(
     if (!CycleDsp::CyclicFrameLaneRenderer::makeHalfFrameFades(
                 fixedFrameSize,
                 fadeIn.withSize(halfSize),
-                fadeOut.withSize(halfSize))
-            || !renderer.renderFrame(
+                fadeOut.withSize(halfSize))) {
+        fixedFrameSize = 0;
+        return false;
+    }
+    const uint64_t recipeStartedAt = context.performanceCounts == nullptr
+            ? 0
+            : AudioPerformanceMetrics::timestampMicroseconds();
+    const bool frameRendered = renderer.renderFrame(
                     fixedFrameSize,
                     context.midiNote,
                     context,
@@ -193,7 +209,13 @@ bool SpectralOscillatorRegionRuntime::initializeSharedFrames(
                     0,
                     1,
                     currentFrames[0].withSize(fixedFrameSize),
-                    currentFrames[1].withSize(fixedFrameSize))) {
+                    currentFrames[1].withSize(fixedFrameSize));
+    if (context.performanceCounts != nullptr) {
+        context.performanceCounts->recipeDurationMicroseconds
+                += AudioPerformanceMetrics::timestampMicroseconds() - recipeStartedAt;
+        ++context.performanceCounts->recipeRenderCount;
+    }
+    if (!frameRendered) {
         fixedFrameSize = 0;
         return false;
     }
@@ -237,7 +259,10 @@ bool SpectralOscillatorRegionRuntime::refreshSharedFramesThrough(
                     .copyTo(previousFrames[(size_t) channel]
                             .withSize(fixedFrameSize));
         }
-        if (!renderer.renderFrame(
+        const uint64_t recipeStartedAt = context.performanceCounts == nullptr
+                ? 0
+                : AudioPerformanceMetrics::timestampMicroseconds();
+        const bool frameRendered = renderer.renderFrame(
                 fixedFrameSize,
                 context.midiNote,
                 context,
@@ -245,7 +270,13 @@ bool SpectralOscillatorRegionRuntime::refreshSharedFramesThrough(
                 nextSharedFramePosition,
                 elapsedSamples,
                 currentFrames[0].withSize(fixedFrameSize),
-                currentFrames[1].withSize(fixedFrameSize))) {
+                currentFrames[1].withSize(fixedFrameSize));
+        if (context.performanceCounts != nullptr) {
+            context.performanceCounts->recipeDurationMicroseconds
+                    += AudioPerformanceMetrics::timestampMicroseconds() - recipeStartedAt;
+            ++context.performanceCounts->recipeRenderCount;
+        }
+        if (!frameRendered) {
             return false;
         }
         lastSharedFramePosition = nextSharedFramePosition;
@@ -342,6 +373,9 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
         int laneIndex,
         const PreparedOscillatorProcessContext& context,
         const SpectralOscillatorFrameRenderer& renderer) {
+    const uint64_t laneStartedAt = context.performanceCounts == nullptr
+            ? 0
+            : AudioPerformanceMetrics::timestampMicroseconds();
     auto& lane = lanes[(size_t) laneIndex];
     const double cycleStartPosition = lane.clock.cumulativePosition;
     const uint64_t cycleStart = (uint64_t) cycleStartPosition;
@@ -436,6 +470,11 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
         lane.buffers[(size_t) channel].write(output);
     }
     ++lane.cycleCount;
+    if (context.performanceCounts != nullptr) {
+        context.performanceCounts->laneDurationMicroseconds
+                += AudioPerformanceMetrics::timestampMicroseconds() - laneStartedAt;
+        ++context.performanceCounts->laneCycleCount;
+    }
     return true;
 }
 

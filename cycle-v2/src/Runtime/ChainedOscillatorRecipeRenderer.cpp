@@ -1,5 +1,7 @@
 #include "Runtime/ChainedOscillatorRecipeRenderer.h"
 
+#include "Runtime/AudioPerformanceMetrics.h"
+
 #include <Util/Arithmetic.h>
 
 #include <algorithm>
@@ -235,8 +237,20 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
         auto& operation = operations[(size_t) operationIndex];
         auto outputLeft = operationBuffer(operationIndex, 0, request.sampleCount);
         auto outputRight = operationBuffer(operationIndex, 1, request.sampleCount);
+        auto* performanceCounts = request.processContext == nullptr
+                ? nullptr
+                : request.processContext->performanceCounts;
+        const OscillatorRecipeStage performanceStage = operation.trimesh != nullptr
+                ? OscillatorRecipeStage::TimeSourceRendering
+                : OscillatorRecipeStage::GraphCombining;
+        AudioPerformanceMetrics::ScopedOscillatorRecipeStage measuredStage(
+                performanceCounts,
+                performanceStage);
         if (operation.trimesh != nullptr) {
             MorphPosition morph = operation.configuration->morph;
+            auto* sourcePerformance = performanceCounts == nullptr ? nullptr : &performanceCounts->timeSources;
+            CycleDsp::ScopedSourceRenderStage morphStage(
+                    sourcePerformance, CycleDsp::SourceRenderStage::MorphResolution);
             if (request.processContext != nullptr) {
                 const uint64_t frontier = (uint64_t) request.cycleStartSample;
                 const size_t elapsedSamples = frontier > operation.lastMorphFrontier
@@ -260,6 +274,7 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
                         operation.lastMorphFrontier,
                         frontier);
             }
+            morphStage.finish();
             operation.trimesh->renderCycleAtMorph(
                     request,
                     morph,
@@ -267,6 +282,8 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
                     outputLeft,
                     outputRight);
             if (operation.gain != 1.f) {
+                CycleDsp::ScopedSourceRenderStage gainStage(
+                        sourcePerformance, CycleDsp::SourceRenderStage::Gain);
                 outputLeft.mul(operation.gain);
                 outputRight.mul(operation.gain);
             }

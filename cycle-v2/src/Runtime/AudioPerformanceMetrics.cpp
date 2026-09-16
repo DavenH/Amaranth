@@ -15,6 +15,27 @@ size_t indexFor(AudioPerformanceMetrics::Stage stage) {
     return static_cast<size_t>(stage);
 }
 
+var sourcePerformanceToVar(
+        const CycleDsp::SourceRenderPerformance& counts,
+        uint64_t callbackCount) {
+    static constexpr std::array<const char*, CycleDsp::SourceRenderPerformance::stageCount>
+            labels { "morphResolution", "rasterization", "sampling", "gain", "stereoCopy" };
+    auto* root = new DynamicObject();
+    root->setProperty("waveformSegments", (int64) counts.waveform.waveformSegments);
+    root->setProperty("integralSegments", (int64) counts.waveform.integralSegments);
+    for (size_t index = 0; index < labels.size(); ++index) {
+        auto* stage = new DynamicObject();
+        stage->setProperty("totalNanoseconds", (int64) counts.nanoseconds[index]);
+        stage->setProperty("totalOperations", (int64) counts.operations[index]);
+        stage->setProperty("meanMs", callbackCount == 0 ? 0.0
+                : (double) counts.nanoseconds[index] / (double) callbackCount / 1.0e6);
+        stage->setProperty("meanOperationMicroseconds", counts.operations[index] == 0 ? 0.0
+                : (double) counts.nanoseconds[index] / (double) counts.operations[index] / 1000.0);
+        root->setProperty(labels[index], var(stage));
+    }
+    return var(root);
+}
+
 var utilizationToVar(const PerformanceDistribution& distribution) {
     auto* object = new DynamicObject();
     object->setProperty("count", (int64) distribution.count);
@@ -53,6 +74,23 @@ AudioPerformanceMetrics::ScopedRealtimeStage::~ScopedRealtimeStage() {
     if (measuredSample != nullptr) {
         finishStage(*measuredSample, measuredStage, startMicroseconds);
     }
+}
+
+AudioPerformanceMetrics::ScopedOscillatorRecipeStage::ScopedOscillatorRecipeStage(
+        OscillatorRegionPerformanceCounts* counts,
+        OscillatorRecipeStage stage) noexcept
+        : measuredCounts(counts),
+          measuredStageIndex(static_cast<size_t>(stage)),
+          startMicroseconds(counts == nullptr ? 0 : timestampMicroseconds()) {
+}
+
+AudioPerformanceMetrics::ScopedOscillatorRecipeStage::~ScopedOscillatorRecipeStage() {
+    if (measuredCounts == nullptr) {
+        return;
+    }
+    measuredCounts->recipeStageDurations[measuredStageIndex]
+            += timestampMicroseconds() - startMicroseconds;
+    ++measuredCounts->recipeStageOperationCounts[measuredStageIndex];
 }
 
 bool AudioPerformanceMetrics::beginRealtimeSample(
@@ -133,6 +171,10 @@ AudioPerformanceMetrics::Snapshot AudioPerformanceMetrics::snapshot() const {
             aggregateData.totalModulationBindingVisits,
             aggregateData.totalSpectralTransferBindingVisits,
             aggregateData.totalContextPatches,
+            aggregateData.totalOscillatorRegionRenders,
+            aggregateData.totalOscillatorRecipeRenders,
+            aggregateData.totalOscillatorLaneCycles,
+            aggregateData.totalOscillatorMixedLanes,
             aggregateData.totalDequeuedMidiEvents,
             aggregateData.totalSortedMidiItems,
             aggregateData.totalCompactedMidiItems,
@@ -145,7 +187,12 @@ AudioPerformanceMetrics::Snapshot AudioPerformanceMetrics::snapshot() const {
             aggregateData.maximumExecutionStepCount,
             aggregateData.callbackDuration,
             aggregateData.deadlineUtilizationPermille,
-            aggregateData.stages
+            aggregateData.stages,
+            aggregateData.oscillatorStages,
+            aggregateData.oscillatorRecipeStages,
+            aggregateData.totalOscillatorRecipeStageOperations,
+            aggregateData.timeSources,
+            aggregateData.spectralSources
         };
 }
 
@@ -203,6 +250,18 @@ var AudioPerformanceMetrics::toVar() const {
                     : (double) current.totalContextPatches
                             / (double) current.callbackDuration.count);
     workload->setProperty(
+            "totalOscillatorRegionRenders",
+            (int64) current.totalOscillatorRegionRenders);
+    workload->setProperty(
+            "totalOscillatorRecipeRenders",
+            (int64) current.totalOscillatorRecipeRenders);
+    workload->setProperty(
+            "totalOscillatorLaneCycles",
+            (int64) current.totalOscillatorLaneCycles);
+    workload->setProperty(
+            "totalOscillatorMixedLanes",
+            (int64) current.totalOscillatorMixedLanes);
+    workload->setProperty(
             "totalDequeuedMidiEvents",
             (int64) current.totalDequeuedMidiEvents);
     workload->setProperty("totalSortedMidiItems", (int64) current.totalSortedMidiItems);
@@ -236,6 +295,41 @@ var AudioPerformanceMetrics::toVar() const {
                 performanceDistributionToVar(current.stages[index]));
     }
     root->setProperty("stages", var(stages));
+
+    auto* oscillatorStages = new DynamicObject();
+    for (size_t index = 0; index < oscillatorStageCount; ++index) {
+        const OscillatorStage stage = static_cast<OscillatorStage>(index);
+        oscillatorStages->setProperty(
+                label(stage),
+                performanceDistributionToVar(current.oscillatorStages[index]));
+    }
+    root->setProperty("oscillatorStages", var(oscillatorStages));
+
+    auto* oscillatorRecipeStages = new DynamicObject();
+    for (size_t index = 0; index < oscillatorRecipeStageCount; ++index) {
+        const OscillatorRecipeStage stage
+                = static_cast<OscillatorRecipeStage>(index);
+        var stageValue = performanceDistributionToVar(
+                current.oscillatorRecipeStages[index]);
+        auto* stageObject = stageValue.getDynamicObject();
+        stageObject->setProperty(
+                "totalOperations",
+                (int64) current.totalOscillatorRecipeStageOperations[index]);
+        stageObject->setProperty(
+                "meanOperations",
+                current.callbackDuration.count == 0
+                        ? 0.0
+                        : (double) current.totalOscillatorRecipeStageOperations[index]
+                                / (double) current.callbackDuration.count);
+        oscillatorRecipeStages->setProperty(label(stage), stageValue);
+    }
+    root->setProperty("oscillatorRecipeStages", var(oscillatorRecipeStages));
+    auto* sources = new DynamicObject();
+    sources->setProperty("time", sourcePerformanceToVar(
+            current.timeSources, current.callbackDuration.count));
+    sources->setProperty("spectral", sourcePerformanceToVar(
+            current.spectralSources, current.callbackDuration.count));
+    root->setProperty("oscillatorSourceStages", var(sources));
     return var(root);
 }
 
@@ -267,7 +361,38 @@ const char* AudioPerformanceMetrics::label(Stage stage) {
     return "unknown";
 }
 
+const char* AudioPerformanceMetrics::label(OscillatorStage stage) {
+    switch (stage) {
+        case OscillatorStage::RegionRendering:  return "regionRendering";
+        case OscillatorStage::RecipeRendering:  return "recipeRendering";
+        case OscillatorStage::LaneRendering:    return "laneRendering";
+        case OscillatorStage::OutputMixing:     return "outputMixing";
+        case OscillatorStage::Count:            break;
+    }
+    return "unknown";
+}
+
+const char* AudioPerformanceMetrics::label(OscillatorRecipeStage stage) {
+    switch (stage) {
+        case OscillatorRecipeStage::TimeSourceRendering:
+            return "timeSourceRendering";
+        case OscillatorRecipeStage::SpectralSourceRendering:
+            return "spectralSourceRendering";
+        case OscillatorRecipeStage::ForwardTransform:
+            return "forwardTransform";
+        case OscillatorRecipeStage::InverseTransform:
+            return "inverseTransform";
+        case OscillatorRecipeStage::GraphCombining:
+            return "graphCombining";
+        case OscillatorRecipeStage::Count:
+            break;
+    }
+    return "unknown";
+}
+
 void AudioPerformanceMetrics::aggregate(const RealtimeSample& sample) {
+    aggregateData.timeSources.add(sample.timeSources);
+    aggregateData.spectralSources.add(sample.spectralSources);
     recordPerformanceSample(
             aggregateData.callbackDuration,
             sample.callbackDurationMicroseconds);
@@ -288,6 +413,12 @@ void AudioPerformanceMetrics::aggregate(const RealtimeSample& sample) {
     aggregateData.totalSpectralTransferBindingVisits
             += sample.spectralTransferBindingVisitCount;
     aggregateData.totalContextPatches += sample.contextPatchCount;
+    aggregateData.totalOscillatorRegionRenders
+            += sample.oscillatorRegionRenderCount;
+    aggregateData.totalOscillatorRecipeRenders
+            += sample.oscillatorRecipeRenderCount;
+    aggregateData.totalOscillatorLaneCycles += sample.oscillatorLaneCycleCount;
+    aggregateData.totalOscillatorMixedLanes += sample.oscillatorMixedLaneCount;
     aggregateData.totalDequeuedMidiEvents += sample.dequeuedMidiEventCount;
     aggregateData.totalSortedMidiItems += sample.sortedMidiItemCount;
     aggregateData.totalCompactedMidiItems += sample.compactedMidiItemCount;
@@ -315,6 +446,22 @@ void AudioPerformanceMetrics::aggregate(const RealtimeSample& sample) {
             recordPerformanceSample(
                     aggregateData.stages[index],
                     sample.stageDurations[index]);
+        }
+    }
+    for (size_t index = 0; index < oscillatorStageCount; ++index) {
+        if (sample.oscillatorStageDurations[index] > 0) {
+            recordPerformanceSample(
+                    aggregateData.oscillatorStages[index],
+                    sample.oscillatorStageDurations[index]);
+        }
+    }
+    for (size_t index = 0; index < oscillatorRecipeStageCount; ++index) {
+        aggregateData.totalOscillatorRecipeStageOperations[index]
+                += sample.oscillatorRecipeStageOperationCounts[index];
+        if (sample.oscillatorRecipeStageDurations[index] > 0) {
+            recordPerformanceSample(
+                    aggregateData.oscillatorRecipeStages[index],
+                    sample.oscillatorRecipeStageDurations[index]);
         }
     }
 }
