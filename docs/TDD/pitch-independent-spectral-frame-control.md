@@ -56,6 +56,30 @@ renders per active callback. These measurements justify keeping the mode
 opt-in; they do not select a shipping default. The reproducible automation
 fixture is `scripts/fixtures/cycle-v2-agent-acoustic-fixed-time-control.json`.
 
+### C1 control-interval comparison (2026-09-16)
+
+Two realtime passes used the same Acoustic graph with its Voice Context octave
+offset set to zero, MIDI C1 (note 24), one voice, velocity 0.8, and only the
+control interval and experimental flag varied. The macOS standalone Debug build
+ran at 44.1 kHz with 512-sample callbacks (11.61 ms deadline). Each measurement
+window covered about 0.38 seconds after note startup. Means below are weighted
+by measured callback count across the two passes; recipe renders are per callback.
+
+| Interval | Flag off: mean callback / recipes | Flag on: mean callback / recipes | Flag on: deadline use / worst callback |
+| --- | ---: | ---: | ---: |
+| 16 samples | 0.436 ms / 0.36 | 9.014 ms / 32.00 | 77.6% / 9.678 ms |
+| 64 samples | 0.389 ms / 0.38 | 2.463 ms / 8.00 | 21.2% / 2.692 ms |
+| 256 samples | 0.662 ms / 0.39 | 2.111 ms / 2.00 | 18.1% / 2.387 ms |
+| 1024 samples | 0.705 ms / 0.37 | 1.222 ms / 0.51 | 10.5% / 2.016 ms |
+
+There were no deadline overruns or telemetry drops in the 16 measurements.
+With the flag off, all four settings are clamped to at least one oscillator
+cycle between frames at C1, so their recipe counts are effectively identical;
+their small callback-time differences reflect short realtime windows and
+background load. The 16-sample fixed-time mode leaves little headroom for
+additional voices in this Debug run. These are one-voice measurements, not a
+shipping polyphony limit.
+
 This design extends Cycle's spectral oscillator with a control-frame cadence
 that may be shorter than one oscillator cycle. It does not replace the existing
 spectral renderer with convolution, change the authored spectral-layer model,
