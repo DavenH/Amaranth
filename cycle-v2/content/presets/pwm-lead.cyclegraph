@@ -721,6 +721,16 @@
             "label": "Spy 1",
             "tapPosition": 0.5,
             "railOrder": 0
+        },
+        {
+            "id": "probe2",
+            "sourceNodeId": "timeLayer1",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "fft",
+            "anchorDestPortId": "time",
+            "label": "Spy 2",
+            "tapPosition": 0.5,
+            "railOrder": 1
         }
     ]
 }

@@ -2,16 +2,52 @@
 
 ## Status
 
-Complete.
+In progress (reopened 2026-09-15).
+
+The production causal planner, product identities, audit trace, incremental
+preview execution, and latest-only worker publication landed in July 2026.
+The prior `Complete` status was premature: probe-refresh policy and gesture
+lifecycle remain distributed across UI callers, and `GraphPresentationModel`
+still combines policy, scheduling, rendering, and publication. The completion
+criteria requiring one production update policy and independently executable
+products therefore remain unmet.
 
 ## Problem
 
-Cycle V2 has invalidation policy objects, but its production editor path does
-not execute work through them. `NodeUpdateGraph` is currently exercised by
-tests without governing `GraphPresentationModel`, editor-local rasterization,
-or graph preview execution. Consequently, the application can satisfy policy
-tests while a single pointer edit still rasterizes, serializes, publishes,
-compiles, or traverses more than once.
+The original implementation gap was that Cycle V2 had invalidation policy
+objects without routing its production editor path through them. The first
+implementation made `NodeUpdateGraph` the production causal planner, but it
+did not establish a single owner for edit policy or gesture lifecycle.
+
+`NodeUpdateGraph` is now primarily a cohesive execution kernel: it receives
+explicit invalidations, calculates affected products, merges converging paths,
+tracks fingerprints, and rejects stale generations. It does not choose between
+`OnGestureCommit` and `LiveLatest`. That choice is reconstructed by its callers.
+
+The 2026-09-15 mod-wheel policy correction exposed the cost of this missing
+boundary. A behavior that should have selected an existing gesture policy
+required 212 added production lines across the keyboard, workspace, canvas,
+presentation model, and automation layers. It introduced wheel-specific
+gesture state and a wheel-specific asynchronous presentation entry point.
+The verification work was appropriate, but the production plumbing was not.
+
+The current policy distribution includes:
+
+- ten explicit `ProbeRefreshMode` branches across `NodeEditorCommandService`
+  and `NodeCanvas`;
+- separate gesture state machines for ordinary parameters, paired parameters,
+  morphs, vertex parameters, mesh edits, curves, and the preview mod wheel;
+- twelve direct `refreshNodeEditorPresentation()` calls in
+  `NodeEditorCommandService`;
+- synchronous, asynchronous, scheduled, and value-specific refresh entry
+  points exposed through `NodeCanvas` and `GraphPresentationModel`; and
+- direct broad presentation refreshes from both `NodeCanvas` and
+  `NodeCanvasAuthoring`.
+
+As of the reopening audit, `GraphPresentationModel.cpp` is 954 lines,
+`NodeEditorCommandService.cpp` is 805 lines, and `NodeCanvas.cpp` is 2,349
+lines. File size alone is not the defect; the defect is that all three own
+parts of the same gesture-to-derived-product decision.
 
 The current paths also conflate four different lifetimes:
 
@@ -48,6 +84,12 @@ system must make the unit and cause of work explicit and auditable.
 - Support an application preference that updates probes either on gesture
   commit or continuously from the latest movement state.
 - Preserve immediate local feedback in both modes.
+- Make the refresh preference a value consumed by one policy object rather
+  than a branch repeated by each editor or control.
+- Give every continuous control the same presentation-gesture session instead
+  of adding control-specific lifecycle and worker plumbing.
+- Keep `NodeUpdateGraph` ignorant of UI preferences and keep widgets ignorant
+  of graph snapshots, refresh scopes, workers, and probe publication.
 
 ## Cycle V1 Reuse Decision
 
@@ -355,6 +397,132 @@ edit, not that obsolete intermediate frames consume the full graph.
 Mouse-up in live mode persists the state but does not rerun a preview whose
 input fingerprint matches the final movement.
 
+## Corrective Architecture
+
+The policy and lifecycle correction introduces four explicit boundaries. The
+names below describe responsibilities; implementation naming may vary, but the
+boundaries and deletion targets are required.
+
+### Refresh policy
+
+A pure `PresentationRefreshPolicy` translates semantic edit context into a
+refresh decision:
+
+```cpp
+struct PresentationEditContext {
+    EditPhase phase { EditPhase::Movement };
+    ProbeRefreshMode probeMode { ProbeRefreshMode::OnGestureCommit };
+    UpdateProduct localProduct { UpdateProduct::LocalSlice };
+    bool downstreamChanged {};
+    bool finalMovementAlreadyPublished {};
+};
+
+enum class DownstreamRefresh {
+    None,
+    LatestAsync,
+    CommitAsync,
+    ReuseLatest
+};
+
+struct PresentationRefreshDecision {
+    std::optional<UpdateProduct> localProduct;
+    DownstreamRefresh downstream { DownstreamRefresh::None };
+};
+```
+
+The policy contains no graph, widget, worker, or renderer references. Domain
+code supplies semantic facts such as whether a Trimesh morph changes the
+effective downstream product; the policy does not rediscover domain behavior
+through `NodeKind` switching. Changing the application preference changes the
+policy input once. Callers must not branch on `ProbeRefreshMode`.
+
+### Presentation gesture session
+
+One `PresentationGestureSession` owns the shared begin/update/commit/cancel
+lifecycle for continuous presentation edits. It retains the source stream,
+durable base revision, latest effective fingerprint, change status, final
+semantic delta, and any immutable graph snapshot required by live downstream
+work. It delegates durable graph mutation to `GraphCommandDispatcher` and
+delegates refresh choice to `PresentationRefreshPolicy`.
+
+Widgets and domain editors report semantic gesture events only. They do not
+capture graphs, choose synchronous versus asynchronous refresh, flush workers,
+or know whether probes are live. Discrete changes use the same session as a
+single-update gesture rather than bypassing the policy.
+
+### Presentation scheduler
+
+A `PresentationRefreshScheduler` consumes refresh decisions and typed product
+invalidations. It owns coalescing, immutable job input, latest-only generation,
+cancellation, worker execution, and message-thread publication. It is the sole
+owner of synchronous-local versus asynchronous-downstream scheduling.
+
+`NodeUpdateGraph` remains the authoritative dirty-DAG planner and exactly-once
+ledger below this scheduler. Move `ProbeRefreshMode` out of
+`NodeUpdateGraph.h`; a planner must not own an application UI preference even
+if it does not currently consult it.
+
+### Presentation model facade
+
+`GraphPresentationModel` becomes the authoritative published snapshot and a
+facade over independently owned compilation/configuration, preview rendering,
+and scheduling services. It must not grow a new value-specific sync/async API
+for each preview control. Preview pitch, mod wheel, and future performance
+controls submit typed semantic deltas through the same session and scheduler.
+
+The stable end state is:
+
+```text
+UI control or domain editor
+    -> PresentationGestureSession
+    -> PresentationRefreshPolicy
+    -> PresentationRefreshScheduler
+    -> NodeUpdateGraph
+    -> product executors and atomic snapshot publication
+```
+
+This is a direct extraction of existing behavior, not a compatibility layer.
+There must be no parallel old and new refresh policy after migration.
+
+## Corrective Deletion Targets
+
+- Delete every `ProbeRefreshMode` branch from `NodeEditorCommandService` and
+  `NodeCanvas`; only `PresentationRefreshPolicy` may interpret that mode.
+- Delete the mod-wheel-specific gesture state from `NodeCanvas` and the
+  mod-wheel-specific async refresh entry point from `GraphPresentationModel`.
+- Replace the separate parameter, pair, morph, vertex, mesh, curve, and preview
+  control scheduling state with the shared session. Domain state needed to
+  produce a semantic delta remains with its domain editor.
+- Remove `scheduleNodeEditorRefresh()`, `flushNodeEditorRefresh()`, and
+  `refreshNodeEditorPresentation()` from `NodeEditorPresentation` after all
+  callers submit typed gesture events.
+- Remove direct broad refresh calls for ordinary semantic edits from
+  `NodeCanvas`, `NodeCanvasAuthoring`, and editor command paths. Initial load,
+  topology replacement, and explicit recovery may retain named full-refresh
+  operations.
+- Extract request construction and edit-gate ownership from
+  `GraphPresentationModel`; delete `latestMovementIdentity` and
+  `latestMovementStream` once the shared session owns those identities.
+- Move preview rendering/extraction and async lifecycle mechanics out of
+  `GraphPresentationModel` so its high-level methods read as snapshot
+  orchestration rather than product implementation.
+- Delete test fakes that encode the old schedule/flush/immediate-refresh API.
+  Tests must observe policy decisions, planned products, and publication.
+
+## Corrective Complexity Contracts
+
+- Policy evaluation and gesture bookkeeping are O(1).
+- `OnGestureCommit` movement performs no graph clone, downstream traversal,
+  probe render, configuration preparation, or worker synchronization.
+- `LiveLatest` captures at most one immutable graph snapshot per gesture.
+  Movement updates share it and never clone the complete graph.
+- The live queue is bounded per source/product and obsolete work cannot delay
+  or publish over the newest accepted value.
+- Commit performs no derived work when the final live movement fingerprint is
+  already current.
+- Adding another continuous preview control requires a semantic-delta adapter,
+  not a new policy branch, gesture state machine, or async model method.
+
 ## Audit Trace
 
 Every planned product emits diagnostic events into a bounded trace:
@@ -480,23 +648,34 @@ Wall-clock measurements are secondary acceptance evidence. Once semantic
 counts pass, sustained movement must keep local editor interaction responsive
 in a Debug build without waiting for downstream traversal.
 
-## Implementation Sequence
+## Corrective Implementation Sequence
 
-1. Add edit/gesture identity and the bounded audit trace around the current
-   paths to establish failing multiplicity evidence.
-2. Introduce atomic transient edit sessions and remove graph serialization from
-   movement callbacks.
-3. Turn `NodeUpdateGraph` into the production causal planner over the compiled
-   dependency index, or replace it and delete the test-only object.
-4. Split `GraphPresentationModel` compilation, configuration preparation,
-   incremental traversal, and probe publication into independently executable
-   products.
-5. Wire Envelope, Trimesh, and flat curve editors through the same edit
-   lifecycle and product scheduler.
-6. Add the central application setting and Spy rail toggle, then implement both
-   policies.
-7. Run the refactor, style, semantic verification, standalone build, and native
-   smoke gates before declaring the TDD complete.
+The existing planner, trace, incremental preview executor, preference toggle,
+and latest-only publication are retained. Correct the ownership boundaries in
+small behavior-preserving slices:
+
+1. Add characterization tests covering the current parameter, pair, morph,
+   vertex, mesh, curve, and mod-wheel gesture decisions under both modes.
+   Assert products and operation counts, not UI callback names.
+2. Introduce the pure `PresentationRefreshPolicy` with a complete movement /
+   commit / cancel truth table. Route existing callers through it before moving
+   lifecycle state, then delete all caller-side mode branches.
+3. Introduce `PresentationGestureSession` and migrate ordinary parameter
+   gestures plus the mod wheel as the first two deliberately different clients.
+   Prove two updates, final commit, downstream publication, and undo where the
+   edit is durable.
+4. Migrate paired parameters, curves, Trimesh morph, vertex parameter, and mesh
+   gestures. Preserve each domain's authoritative normalizer and local render
+   implementation; do not generalize domain algorithms into the session.
+5. Extract `PresentationRefreshScheduler` from `NodeCanvas` and
+   `GraphPresentationModel`. Preserve the current `NodeUpdateGraph`, worker,
+   cancellation, incremental executor, and atomic-publication behavior.
+6. Extract request construction and preview product execution from
+   `GraphPresentationModel`, then remove broad and value-specific refresh
+   escape hatches.
+7. Run operation-count scale tests, focused semantic tests, the native policy
+   fixtures, standalone build, refactor review, style checks, and deletion
+   audit before restoring `Complete` status.
 
 ## Completion Criteria
 
@@ -514,3 +693,11 @@ in a Debug build without waiting for downstream traversal.
 - Cycle V2 has one production update policy and no test-only shadow policy.
 - Tests prove both the Cycle v1 exactly-once invariant and the Cycle V2 typed,
   incremental extensions.
+- No UI/editor caller branches on `ProbeRefreshMode`.
+- Every continuous control uses the shared presentation-gesture lifecycle;
+  adding a control does not add refresh scheduling or worker code.
+- `GraphPresentationModel` owns published state but does not implement gesture
+  policy, UI debouncing, or value-specific async control paths.
+- `NodeUpdateGraph` owns causal planning and product freshness but no UI policy.
+- Every corrective deletion target is absent. This TDD must remain in progress
+  while any old and new policy path coexist.

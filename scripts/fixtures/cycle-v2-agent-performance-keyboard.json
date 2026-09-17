@@ -18,7 +18,7 @@
     {
       "command": "assertState",
       "path": "performance.screenWidth",
-      "equals": 451
+      "equals": 489
     },
     {
       "command": "assertState",
@@ -33,7 +33,7 @@
     {
       "command": "assertState",
       "path": "performance.whiteKeyAspect",
-      "equals": 4.0
+      "equals": 3.72
     },
     {
       "command": "assertState",
@@ -43,7 +43,35 @@
     {
       "command": "assertState",
       "path": "performance.octaveButtonHeight",
-      "equals": 100
+      "equals": 93
+    },
+    {
+      "command": "assertState",
+      "path": "performance.modWheelValue",
+      "equals": 0
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.ModWheel",
+      "event": "down",
+      "targetY": 0.8
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.ModWheel",
+      "event": "drag",
+      "targetY": 0.25
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.ModWheel",
+      "event": "up",
+      "targetY": 0.25
+    },
+    {
+      "command": "assertState",
+      "path": "performance.modWheelValue",
+      "equals": 95
     },
     {
       "command": "assertState",

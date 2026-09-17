@@ -1813,6 +1813,80 @@ bool NodeCanvas::setPreviewMidiNote(int midiNote) {
     return true;
 }
 
+bool NodeCanvas::setPreviewModWheelValue(int value) {
+    if (!presentation.refreshPreviewModWheelValue(
+                commands.editingGraph(),
+                document.revision(),
+                value)) {
+        return false;
+    }
+    refreshProbeDetail();
+    requestCanvasRepaint();
+    return true;
+}
+
+void NodeCanvas::beginPreviewModWheelGesture() {
+    if (previewModWheelGestureActive) {
+        return;
+    }
+
+    previewModWheelGestureActive = true;
+    previewModWheelGestureChanged = false;
+    previewModWheelGestureValue = presentation.previewModWheelValue();
+    previewModWheelGestureRefreshMode = probeRailState.refreshMode;
+    if (previewModWheelGestureRefreshMode == ProbeRefreshMode::LiveLatest) {
+        previewModWheelGestureGraph = std::make_shared<const NodeGraph>(
+                commands.editingGraph());
+    }
+}
+
+bool NodeCanvas::updatePreviewModWheelGesture(int value) {
+    const int selectedValue = jlimit(0, 127, value);
+    if (!previewModWheelGestureActive) {
+        return setPreviewModWheelValue(selectedValue);
+    }
+    if (previewModWheelGestureValue == selectedValue) {
+        return true;
+    }
+
+    previewModWheelGestureValue = selectedValue;
+    previewModWheelGestureChanged = true;
+    if (previewModWheelGestureRefreshMode == ProbeRefreshMode::OnGestureCommit) {
+        return true;
+    }
+
+    return presentation.refreshPreviewModWheelValueAsync(
+            previewModWheelGestureGraph,
+            document.revision(),
+            selectedValue,
+            [safeThis = SafePointer<NodeCanvas>(this)] {
+                if (safeThis != nullptr) {
+                    safeThis->finishPreviewModWheelRefresh();
+                }
+            });
+}
+
+void NodeCanvas::endPreviewModWheelGesture() {
+    if (!previewModWheelGestureActive) {
+        return;
+    }
+
+    const bool shouldPublish = previewModWheelGestureChanged
+            && previewModWheelGestureRefreshMode == ProbeRefreshMode::OnGestureCommit;
+    const int finalValue = previewModWheelGestureValue;
+    previewModWheelGestureActive = false;
+    previewModWheelGestureChanged = false;
+    previewModWheelGestureGraph.reset();
+    if (shouldPublish) {
+        setPreviewModWheelValue(finalValue);
+    }
+}
+
+void NodeCanvas::finishPreviewModWheelRefresh() {
+    refreshProbeDetail();
+    requestCanvasRepaint();
+}
+
 Rectangle<int> NodeCanvas::performanceKeyboardDockBounds() const {
     return CanvasUtilityDock::layout(canvasContentBounds()).keyboard.toNearestInt();
 }

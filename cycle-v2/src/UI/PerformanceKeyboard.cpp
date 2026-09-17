@@ -45,7 +45,23 @@ String PerformanceKeyboard::noteLabel(int noteNumber) const {
 }
 
 void PerformanceKeyboard::shiftOctave(int octaveDelta) {
-    const int nextStart = jlimit(0, 127 - visibleSemitones, rangeStart + octaveDelta * 12);
+    setRangeStart(rangeStart + octaveDelta * 12);
+}
+
+void PerformanceKeyboard::revealNote(int midiNote) {
+    const int selectedNote = jlimit(0, 127, midiNote);
+    int nextStart = rangeStart;
+    while (selectedNote < nextStart) {
+        nextStart = jmax(0, nextStart - 12);
+    }
+    while (selectedNote > nextStart + visibleSemitones) {
+        nextStart = jmin(127 - visibleSemitones, nextStart + 12);
+    }
+    setRangeStart(nextStart);
+}
+
+void PerformanceKeyboard::setRangeStart(int noteNumber) {
+    const int nextStart = jlimit(0, 127 - visibleSemitones, noteNumber);
     if (nextStart == rangeStart) {
         return;
     }
@@ -163,6 +179,7 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
         MidiKeyboardState& state,
         MidiEventSink& sink) :
         keyboardState(state)
+    ,   eventSink(sink)
     ,   keyboard(state, sink) {
     setName("PerformanceKeyboardPanel");
     setWantsKeyboardFocus(false);
@@ -170,10 +187,12 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
     addAndMakeVisible(keyboard);
     addAndMakeVisible(octaveDown);
     addAndMakeVisible(octaveUp);
+    addAndMakeVisible(modWheel);
     addAndMakeVisible(playButton);
 
     octaveDown.setTooltip("Lower keyboard by one octave");
     octaveUp.setTooltip("Raise keyboard by one octave");
+    modWheel.setTooltip("Preview modulation wheel");
     playButton.setTooltip("Play the preview note for the voice duration");
     octaveDown.onClick = [this] {
         stopPlayback();
@@ -184,6 +203,22 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
         keyboard.shiftOctave(1);
     };
     playButton.onClick = [this] { togglePlayback(); };
+    modWheel.onValueChanged = [this](int value) {
+        sendModWheelValue();
+        if (modWheelValueChanged) {
+            modWheelValueChanged(value);
+        }
+    };
+    modWheel.onGestureStarted = [this] {
+        if (modWheelGestureStarted) {
+            modWheelGestureStarted();
+        }
+    };
+    modWheel.onGestureEnded = [this] {
+        if (modWheelGestureEnded) {
+            modWheelGestureEnded();
+        }
+    };
     keyboard.setPrimaryGestureStartedCallback([this] { stopPlayback(); });
     keyboard.setHighlightedNote(selectedPreviewNote);
 }
@@ -226,6 +261,10 @@ Rectangle<float> PerformanceKeyboardPanel::octaveUpBounds() const {
     return octaveUp.getBounds().toFloat();
 }
 
+Rectangle<float> PerformanceKeyboardPanel::modWheelBounds() const {
+    return modWheel.getBounds().toFloat();
+}
+
 Rectangle<float> PerformanceKeyboardPanel::playButtonBounds() const {
     return playButton.getBounds().toFloat();
 }
@@ -242,6 +281,7 @@ Rectangle<float> PerformanceKeyboardPanel::progressBounds() const {
 
 void PerformanceKeyboardPanel::setPreviewNote(int midiNote) {
     selectedPreviewNote = jlimit(0, 127, midiNote);
+    keyboard.revealNote(selectedPreviewNote);
     keyboard.setHighlightedNote(selectedPreviewNote);
 }
 
@@ -255,6 +295,25 @@ void PerformanceKeyboardPanel::setPreviewNoteSelectedCallback(
     });
 }
 
+void PerformanceKeyboardPanel::setModWheelValueChangedCallback(
+        std::function<void(int)> callback) {
+    modWheelValueChanged = std::move(callback);
+}
+
+void PerformanceKeyboardPanel::setModWheelGestureStartedCallback(
+        std::function<void()> callback) {
+    modWheelGestureStarted = std::move(callback);
+}
+
+void PerformanceKeyboardPanel::setModWheelGestureEndedCallback(
+        std::function<void()> callback) {
+    modWheelGestureEnded = std::move(callback);
+}
+
+void PerformanceKeyboardPanel::setModWheelValue(int value) {
+    modWheel.setValue(value, true);
+}
+
 void PerformanceKeyboardPanel::setPlaybackDurationSeconds(float seconds) {
     playbackDuration = jmax(0.001f, seconds);
 }
@@ -265,6 +324,7 @@ bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
     progress = 0.f;
     playbackStartedAtMilliseconds = nowMilliseconds;
     playing = true;
+    sendModWheelValue();
     keyboardState.noteOn(1, playbackNote, 0.8f);
     startTimerHz(60);
     repaint();
@@ -328,18 +388,147 @@ void PerformanceKeyboardPanel::paint(Graphics& graphics) {
 }
 
 void PerformanceKeyboardPanel::resized() {
-    constexpr int buttonWidth = 28;
-    constexpr int controlGap = 4;
     constexpr int transportHeight = 31;
-    Rectangle<int> content = getLocalBounds().reduced(6);
+    const bool compact = getWidth() < roundToInt(CanvasUtilityDock::preferredKeyboardWidth);
+    const int panelInset = compact ? 4 : 6;
+    const int buttonWidth = compact ? 25 : 28;
+    const int controlGap = compact ? 2 : 4;
+    const int wheelGap = compact ? 3 : 6;
+    const int wheelWidth = compact ? 24 : 32;
+    Rectangle<int> content = getLocalBounds().reduced(panelInset);
     Rectangle<int> transport = content.removeFromTop(transportHeight);
     playButton.setBounds(transport.withSizeKeepingCentre(buttonWidth, transportHeight));
     content.removeFromTop(controlGap);
+    modWheel.setBounds(content.removeFromLeft(wheelWidth));
+    content.removeFromLeft(wheelGap);
     octaveDown.setBounds(content.removeFromLeft(buttonWidth));
     content.removeFromLeft(controlGap);
     octaveUp.setBounds(content.removeFromRight(buttonWidth));
     content.removeFromRight(controlGap);
     keyboard.setBounds(content);
+}
+
+PerformanceKeyboardPanel::ModWheel::ModWheel() {
+    setName("PerformanceKeyboard.ModWheel");
+    setMouseCursor(MouseCursor::UpDownResizeCursor);
+    setWantsKeyboardFocus(true);
+}
+
+void PerformanceKeyboardPanel::ModWheel::setValue(
+        int value,
+        bool sendNotification) {
+    const int nextValue = jlimit(0, 127, value);
+    if (nextValue == currentValue) {
+        return;
+    }
+    currentValue = nextValue;
+    repaint();
+    if (sendNotification && onValueChanged) {
+        onValueChanged(currentValue);
+    }
+}
+
+bool PerformanceKeyboardPanel::ModWheel::keyPressed(const KeyPress& key) {
+    const int keyCode = key.getKeyCode();
+    if (keyCode != KeyPress::upKey && keyCode != KeyPress::downKey) {
+        return false;
+    }
+    setValue(currentValue + (keyCode == KeyPress::upKey ? 1 : -1), true);
+    return true;
+}
+
+void PerformanceKeyboardPanel::ModWheel::focusGained(FocusChangeType) {
+    repaint();
+}
+
+void PerformanceKeyboardPanel::ModWheel::focusLost(FocusChangeType) {
+    repaint();
+}
+
+void PerformanceKeyboardPanel::ModWheel::mouseDown(const MouseEvent& event) {
+    if (!event.mods.isLeftButtonDown()) {
+        return;
+    }
+    if (onGestureStarted) {
+        onGestureStarted();
+    }
+    if (isShowing()) {
+        grabKeyboardFocus();
+    }
+    updateFromPointer(event.position.y);
+}
+
+void PerformanceKeyboardPanel::ModWheel::mouseDrag(const MouseEvent& event) {
+    if (!event.mods.isLeftButtonDown()) {
+        return;
+    }
+    updateFromPointer(event.position.y);
+}
+
+void PerformanceKeyboardPanel::ModWheel::mouseUp(const MouseEvent&) {
+    if (onGestureEnded) {
+        onGestureEnded();
+    }
+}
+
+void PerformanceKeyboardPanel::ModWheel::paint(Graphics& graphics) {
+    const Rectangle<float> track = wheelTrack();
+    const float proportion = (float) currentValue / 127.f;
+    const float thumbY = jmap(proportion, track.getBottom(), track.getY());
+    const bool focused = hasKeyboardFocus(true);
+
+    graphics.setColour(CanvasChromePalette::raisedSurface.withAlpha(0.86f));
+    graphics.fillRoundedRectangle(track, track.getWidth() * 0.5f);
+    graphics.setColour(CanvasChromePalette::focus.withAlpha(0.45f));
+    graphics.fillRoundedRectangle(
+            track.withTop(thumbY),
+            track.getWidth() * 0.5f);
+
+    Rectangle<float> thumb(0.f, 0.f, jmin(18.f, getWidth() - 4.f), 16.f);
+    thumb.setCentre((float) getWidth() * 0.5f, thumbY);
+    const auto colours = CanvasChromePalette::control(
+            focused
+                    ? CanvasChromeControlState::Focused
+                    : CanvasChromeControlState::Resting);
+    graphics.setColour(colours.surface);
+    graphics.fillRoundedRectangle(thumb, CanvasChromeMetrics::controlCornerRadius);
+    graphics.setColour(colours.border);
+    graphics.drawRoundedRectangle(
+            thumb,
+            CanvasChromeMetrics::controlCornerRadius,
+            CanvasChromeMetrics::restingBorderWidth);
+    graphics.setColour(colours.text.withAlpha(0.82f));
+    graphics.drawHorizontalLine(
+            roundToInt(thumb.getCentreY()),
+            thumb.getX() + 4.f,
+            thumb.getRight() - 4.f);
+
+    graphics.setColour(CanvasChromePalette::mutedText);
+    graphics.setFont(FontOptions(9.f, Font::plain));
+    graphics.drawText(
+            "MOD",
+            getLocalBounds().removeFromBottom(13),
+            Justification::centred,
+            false);
+}
+
+Rectangle<float> PerformanceKeyboardPanel::ModWheel::wheelTrack() const {
+    Rectangle<float> track = getLocalBounds().toFloat();
+    track.removeFromTop(9.f);
+    track.removeFromBottom(18.f);
+    return track.withSizeKeepingCentre(6.f, track.getHeight());
+}
+
+void PerformanceKeyboardPanel::ModWheel::updateFromPointer(float y) {
+    const Rectangle<float> track = wheelTrack();
+    if (track.isEmpty()) {
+        return;
+    }
+    const float proportion = 1.f - jlimit(
+            0.f,
+            1.f,
+            (y - track.getY()) / track.getHeight());
+    setValue(roundToInt(proportion * 127.f), true);
 }
 
 PerformanceKeyboardPanel::PlayButton::PlayButton(
@@ -384,6 +573,12 @@ void PerformanceKeyboardPanel::PlayButton::paintButton(
 
 void PerformanceKeyboardPanel::timerCallback() {
     updatePlayback(Time::getMillisecondCounterHiRes());
+}
+
+void PerformanceKeyboardPanel::sendModWheelValue() {
+    eventSink.enqueueMidiMessage(
+            MidiMessage::controllerEvent(1, 1, modWheel.value()),
+            MidiEventSource::PerformanceKeyboard);
 }
 
 }

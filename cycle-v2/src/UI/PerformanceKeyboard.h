@@ -26,6 +26,7 @@ public:
         primaryGestureStarted = std::move(callback);
     }
     void shiftOctave(int octaveDelta);
+    void revealNote(int midiNote);
     void releaseAllNotes();
     bool mouseDownOnKey(int midiNoteNumber, const MouseEvent& event) override;
     void resized() override;
@@ -67,6 +68,7 @@ private:
             int midiChannel,
             int midiNoteNumber,
             float velocity);
+    void setRangeStart(int noteNumber);
 
     static constexpr int visibleSemitones = 24;
 
@@ -96,15 +98,21 @@ public:
     Rectangle<float> noteBounds(int noteNumber) const;
     Rectangle<float> octaveDownBounds() const;
     Rectangle<float> octaveUpBounds() const;
+    Rectangle<float> modWheelBounds() const;
     Rectangle<float> playButtonBounds() const;
     Rectangle<float> progressBounds() const;
 
+    int modWheelValue() const { return modWheel.value(); }
     int previewNote() const { return selectedPreviewNote; }
     float playbackProgress() const { return progress; }
     float playbackDurationSeconds() const { return playbackDuration; }
     bool isPlaying() const { return playing; }
     void setPreviewNote(int midiNote);
     void setPreviewNoteSelectedCallback(std::function<void(int)> callback);
+    void setModWheelValueChangedCallback(std::function<void(int)> callback);
+    void setModWheelGestureStartedCallback(std::function<void()> callback);
+    void setModWheelGestureEndedCallback(std::function<void()> callback);
+    void setModWheelValue(int value);
     void setPlaybackDurationSeconds(float seconds);
     bool startPlayback(double nowMilliseconds);
     void togglePlayback();
@@ -135,7 +143,36 @@ private:
         const PerformanceKeyboardPanel& owner;
     };
 
+    class ModWheel final :
+            public Component
+        ,   public SettableTooltipClient {
+    public:
+        ModWheel();
+
+        int value() const { return currentValue; }
+        void setValue(int value, bool sendNotification);
+
+        void focusGained(FocusChangeType cause) override;
+        void focusLost(FocusChangeType cause) override;
+        bool keyPressed(const KeyPress& key) override;
+        void mouseDown(const MouseEvent& event) override;
+        void mouseDrag(const MouseEvent& event) override;
+        void mouseUp(const MouseEvent& event) override;
+        void paint(Graphics& graphics) override;
+
+        std::function<void(int)> onValueChanged;
+        std::function<void()> onGestureStarted;
+        std::function<void()> onGestureEnded;
+
+    private:
+        Rectangle<float> wheelTrack() const;
+        void updateFromPointer(float y);
+
+        int currentValue {};
+    };
+
     void timerCallback() override;
+    void sendModWheelValue();
 
     bool playing {};
     int selectedPreviewNote { 48 };
@@ -144,10 +181,16 @@ private:
     float progress {};
     double playbackStartedAtMilliseconds {};
 
+    std::function<void(int)> modWheelValueChanged;
+    std::function<void()> modWheelGestureStarted;
+    std::function<void()> modWheelGestureEnded;
+
     MidiKeyboardState& keyboardState;
+    MidiEventSink& eventSink;
     PerformanceKeyboard keyboard;
     OctaveButton octaveDown { false };
     OctaveButton octaveUp { true };
+    ModWheel modWheel;
     PlayButton playButton { *this };
 };
 
