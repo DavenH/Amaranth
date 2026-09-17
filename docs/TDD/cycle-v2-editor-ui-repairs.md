@@ -18,9 +18,14 @@ Third slice implemented: Spy tethers now attach to the Spy rail's top edge,
 matching the Guide rail's dock-top attachment. The node-editor slider audit
 found Unison as the only plain JUCE slider remaining under `cycle-v2/src/Nodes`.
 
+Fourth slice implemented: the File menu opens a searchable local Cycle V2
+preset browser with a native file-browse fallback. Opening still delegates to
+the existing V2 document loader. This does not port Cycle 1 remote/community,
+ratings, or tags behavior; those remain out of scope for this local browser.
+The browser has a focused search/open test and a native menu-to-load check.
+
 Remaining: preview-driven editor morph position, native tether/overlap proof,
-preset browser,
-focused native automation, and the separate bimesh decision in
+focused native automation for other changed interactions, and the separate bimesh decision in
 `docs/TDD/envelope-bimesh.md`.
 
 ## Scope And Authority
@@ -37,6 +42,15 @@ current EnvelopeMesh, VertCube, graph model, serializer, rasterizers, and DSP
 consumers remain authoritative until a separate TDD establishes an extraction
 and migration plan. Hiding a misleading Time link is a presentation change,
 not authorization to replace the mesh representation in this train.
+
+Cycle 1 `PresetPage` is 1,485 lines and owns Cycle 1 `SingletonRepo`,
+`DocumentDetails`, `Document`, remote upload/download threads, and UI panel
+services. Reuse wholesale would bring those lifecycle and graph-format
+dependencies into Cycle V2. The stable boundary is a Cycle V2 local-file
+browser that passes a selected `File` to `MainWindow::openGraphFile`, leaving
+all graph decoding and dirty-state policy in the existing V2 document path.
+The browser may reuse JUCE table/search controls, but no Cycle 1 preset
+loading or remote state machine is copied.
 
 ## Interaction Contract
 

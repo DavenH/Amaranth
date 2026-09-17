@@ -2,11 +2,13 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "App/CycleV2Automation.h"
 #include "App/GraphFileHistory.h"
 #include "App/StandaloneAudioEngine.h"
 #include "UI/NodeWorkspace.h"
+#include "UI/PresetBrowserPage.h"
 #include "incl/JucePluginDefines.h"
 
 using namespace juce;
@@ -256,6 +258,44 @@ public:
         }
 
         void chooseOpenGraph() {
+            if (presetBrowserWindow != nullptr) {
+                presetBrowserWindow->toFront(true);
+                return;
+            }
+
+            auto* page = new CycleV2::PresetBrowserPage(
+                    std::vector<File> { repositoryPresetDirectory(), defaultGraphDirectory() },
+                    [safeThis = SafePointer<MainWindow>(this)](const File& file) {
+                        return safeThis != nullptr && safeThis->openGraphFile(file);
+                    },
+                    [safeThis = SafePointer<MainWindow>(this)] {
+                        if (safeThis != nullptr) {
+                            safeThis->chooseOpenGraphFile();
+                            safeThis->closePresetBrowser();
+                        }
+                    },
+                    [safeThis = SafePointer<MainWindow>(this)] {
+                        if (safeThis != nullptr) {
+                            safeThis->closePresetBrowser();
+                        }
+                    });
+            page->setSize(900, 660);
+            DialogWindow::LaunchOptions options;
+            options.dialogTitle = "Preset Browser";
+            options.dialogBackgroundColour = Colour(0xff111922);
+            options.content.setOwned(page);
+            options.componentToCentreAround = this;
+            presetBrowserWindow = options.launchAsync();
+        }
+
+        void closePresetBrowser() {
+            if (presetBrowserWindow != nullptr) {
+                presetBrowserWindow->exitModalState(0);
+                presetBrowserWindow = nullptr;
+            }
+        }
+
+        void chooseOpenGraphFile() {
             fileChooser = std::make_unique<FileChooser>(
                     "Open Cycle V2 preset",
                     defaultGraphDirectory(),
@@ -322,6 +362,7 @@ public:
         CycleV2::NodeWorkspace* workspace {};
         std::unique_ptr<CycleV2::CycleV2Automation> automation;
         std::unique_ptr<FileChooser> fileChooser;
+        SafePointer<DialogWindow> presetBrowserWindow;
         File currentGraphFile;
 
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainWindow)
