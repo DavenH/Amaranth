@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 520" role="img" aria-labelledby="title description">
+  <title id="title">How fixed-time spectral frames become continuous audio</title>
+  <desc id="description">At each fixed-time frontier, current controls and scratch produce a new periodic spectral frame. The previous and new frames are sampled at the same continuous lane phase, then blended with complementary raised-cosine weights. The lane phase is never restarted.</desc>
+  <defs>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #e7eef8; }
+      .title { font-size: 21px; font-weight: 700; }
+      .subtitle { font-size: 13px; fill: #a9b9cd; }
+      .box-title { font-size: 15px; font-weight: 650; }
+      .box-note { font-size: 12px; fill: #b8c8d9; }
+      .caption { font-size: 12px; fill: #9db2c8; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#9bb0ca"/>
+    </marker>
+    <marker id="phase-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#8ee1d3"/>
+    </marker>
+  </defs>
+
+  <rect width="1000" height="520" rx="18" fill="#101a2a"/>
+  <text x="28" y="35" class="title">A new frame changes timbre, not oscillator phase</text>
+  <text x="28" y="57" class="subtitle">At each voice-sample frontier tₘ = mH, the existing spectral recipe renders a complete periodic waveform.</text>
+
+  <rect x="28" y="88" width="200" height="82" rx="10" fill="#253548" stroke="#617994"/>
+  <text x="46" y="116" class="box-title">Controls at tₘ</text>
+  <text x="46" y="139" class="box-note">morph · scratch · envelopes</text>
+  <text x="46" y="156" class="box-note">advance by elapsed samples</text>
+
+  <rect x="285" y="88" width="240" height="82" rx="10" fill="#253548" stroke="#617994"/>
+  <text x="303" y="116" class="box-title">Spectral frame renderer</text>
+  <text x="303" y="139" class="box-note">mesh → layers → IFFT</text>
+  <text x="303" y="156" class="box-note">existing recipe, once per frontier</text>
+  <path d="M228 129H281" fill="none" stroke="#9bb0ca" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="285" y="210" width="240" height="80" rx="10" fill="#3c302e" stroke="#e9a878"/>
+  <text x="303" y="235" class="box-title">New frame fₘ</text>
+  <text x="303" y="254" class="box-note">periodic waveform, target timbre</text>
+  <path d="M304 276 C317 261 330 261 343 276 S369 291 382 276 S408 261 421 276 S447 291 460 276 S486 261 499 276" fill="none" stroke="#ffc48c" stroke-width="2"/>
+  <path d="M405 170V206" fill="none" stroke="#e9a878" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="285" y="322" width="240" height="80" rx="10" fill="#28364f" stroke="#88a9e8"/>
+  <text x="303" y="347" class="box-title">Previous frame fₘ₋₁</text>
+  <text x="303" y="366" class="box-note">retained from preceding frontier</text>
+  <path d="M304 387 C317 378 330 378 343 387 S369 396 382 387 S408 378 421 387 S447 396 460 387 S486 378 499 387" fill="none" stroke="#a7c3ff" stroke-width="2"/>
+
+  <rect x="28" y="425" width="270" height="66" rx="10" fill="#1d3b3c" stroke="#75ccbe"/>
+  <text x="46" y="450" class="box-title">One continuous lane phase φₗ[r]</text>
+  <text x="46" y="472" class="box-note">pitch and Unison advance it; no restart</text>
+
+  <rect x="590" y="210" width="178" height="80" rx="10" fill="#3c302e" stroke="#e9a878"/>
+  <text x="608" y="239" class="box-title">Sample new frame</text>
+  <text x="608" y="264" class="box-note">fₘ(Nφₗ[r] mod N)</text>
+  <rect x="590" y="322" width="178" height="80" rx="10" fill="#28364f" stroke="#88a9e8"/>
+  <text x="608" y="351" class="box-title">Sample old frame</text>
+  <text x="608" y="376" class="box-note">fₘ₋₁(Nφₗ[r] mod N)</text>
+  <path d="M525 250H586 M525 362H586" fill="none" stroke="#9bb0ca" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M298 458H557V250H586 M557 362H586" fill="none" stroke="#8ee1d3" stroke-width="2" marker-end="url(#phase-arrow)"/>
+  <text x="397" y="445" class="caption">the same φₗ[r] samples both frames</text>
+
+  <rect x="810" y="257" width="166" height="104" rx="10" fill="#243a41" stroke="#86d5c8"/>
+  <text x="825" y="282" class="box-title">Raised-cosine mix</text>
+  <text x="825" y="307" class="box-note">new × a(u)</text>
+  <text x="825" y="326" class="box-note">old × [1 − a(u)]</text>
+  <text x="825" y="346" class="box-note">u: time since frontier / H</text>
+  <path d="M768 250H790V285H806 M768 362H790V332H806" fill="none" stroke="#9bb0ca" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="810" y="424" width="166" height="66" rx="10" fill="#1d3b3c" stroke="#75ccbe"/>
+  <text x="825" y="452" class="box-title">Output samples</text>
+  <text x="825" y="474" class="box-note">changing timbre, steady phase</text>
+  <path d="M893 361V420" fill="none" stroke="#8ee1d3" stroke-width="2" marker-end="url(#phase-arrow)"/>
+</svg>

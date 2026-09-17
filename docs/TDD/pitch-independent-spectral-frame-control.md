@@ -112,6 +112,12 @@ cannot receive more than approximately 27.5 distinct spectral frames per
 second even when the configured control interval asks for a substantially
 higher rate.
 
+![Cycle-locked and fixed-time frame frontiers during one low-note cycle](figures/spectral-control-cadence.svg)
+
+The pluck-energy curve is schematic. The dots show frame-render frontiers, not
+output samples: the legacy path cannot render a second spectral state inside
+this cycle, while the fixed-time path can.
+
 The current renderer interpolates previous and current frames and performs a
 half-frame seam fade, but it composes a complete oscillator cycle before
 resampling it. The interpolation amount is selected for that cycle. It cannot
@@ -237,6 +243,8 @@ process-context rule. An event after the frontier must not be observed early.
 
 Each lane retains one continuous oscillator phase `phi_l[r]`. Adjacent frames
 are evaluated at that same phase and blended in output-sample time:
+
+![Fixed-time spectral frame generation and phase-locked two-frame composition](figures/phase-locked-frame-composition.svg)
 
 \[
 y_l[r] =
