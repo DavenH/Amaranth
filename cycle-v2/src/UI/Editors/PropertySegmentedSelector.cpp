@@ -71,7 +71,10 @@ public:
             owner.focus(index + 1);
             return true;
         }
-        if (key == KeyPress::returnKey || key == KeyPress(' ')) {
+        if (key.getKeyCode() == KeyPress::spaceKey) {
+            return false;
+        }
+        if (key == KeyPress::returnKey) {
             owner.select(index, sendNotificationSync);
             return true;
         }

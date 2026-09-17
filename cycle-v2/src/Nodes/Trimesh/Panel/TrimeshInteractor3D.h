@@ -17,6 +17,7 @@ public:
     void setMesh(Mesh* meshToEdit) { mesh = meshToEdit; }
     Mesh* getMesh() override { return mesh; }
     bool doesMeshChangeWarrantGlobalUpdate() override { return false; }
+    bool usesShiftLeftBoxSelection() const override { return true; }
     void reduceDetail() override {}
     void restoreDetail() override {}
     void doGlobalUIUpdate(bool) override { performUpdate(Update); }

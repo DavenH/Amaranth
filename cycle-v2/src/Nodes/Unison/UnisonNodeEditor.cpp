@@ -1,10 +1,11 @@
 #include "Nodes/Unison/UnisonNodeEditor.h"
 
+#include "Graph/NodeParameterMap.h"
 #include "Nodes/Unison/UnisonNode.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
-#include "Graph/NodeParameterMap.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EditorChromeLayout.h"
+#include "UI/Editors/PropertyControls.h"
 #include "UI/EffectEnableButton.h"
 #include "UI/Editors/PropertyControls.h"
 #include "UI/NodeEditorHost.h"
@@ -264,7 +265,7 @@ private:
         float defaultValue {};
         ControlKind kind { ControlKind::SharedParameter };
         Label label;
-        Slider slider;
+        PrecisionSlider slider;
         Label readout;
         bool editing {};
     };

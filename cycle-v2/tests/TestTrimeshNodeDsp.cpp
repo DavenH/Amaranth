@@ -1810,6 +1810,12 @@ TEST_CASE("Trimesh highlighted curve wins gesture routing over a nearby intercep
     auto move = panelMouseEvent(*host, position, {}, position, false);
     interactor.mouseMove(move);
     REQUIRE(interactor.state.mouseFlags[PanelState::WithinReshapeThresh]);
+    const Point<float> outsideCurve = position.translated(0.f, 12.f);
+    interactor.mouseMove(panelMouseEvent(
+            *host, outsideCurve, {}, outsideCurve, false));
+    REQUIRE_FALSE(interactor.state.mouseFlags[PanelState::WithinReshapeThresh]);
+    interactor.mouseMove(move);
+    REQUIRE(interactor.state.mouseFlags[PanelState::WithinReshapeThresh]);
     auto down = panelMouseEvent(
             *host,
             position,
@@ -1841,6 +1847,40 @@ TEST_CASE("Trimesh highlighted curve wins gesture routing over a nearby intercep
     REQUIRE(bridge.getModel().currentMesh().getVerts()[(size_t) selectedVertexIndex]
             == curveVertex);
     REQUIRE(curveVertex->values[Vertex::Curve] != Catch::Approx(initialCurve));
+}
+
+TEST_CASE("Trimesh shift-left drag remains a box selection in both editor views",
+        "[cycle-v2][nodes][trimesh][interaction][box-selection]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(node, 320, 96);
+
+    for (const bool view3D : { false, true }) {
+        Component* host = view3D
+                ? bridge.getPanel3DHostComponent()
+                : bridge.getPanel2DHostComponent();
+        host->setBounds(0, 0, 640, 280);
+        bridge.syncFromNode(node, 320, 96);
+        Interactor& interactor = view3D
+                ? static_cast<Interactor&>(bridge.getInteractor3D())
+                : static_cast<Interactor&>(bridge.getInteractor2D());
+        const Point<float> origin(80.f, 80.f);
+        const Point<float> destination(180.f, 160.f);
+        const ModifierKeys modifiers = ModifierKeys::leftButtonModifier
+                | ModifierKeys::shiftModifier;
+
+        interactor.mouseDown(panelMouseEvent(
+                *host, origin, modifiers, origin, false));
+        REQUIRE(interactor.state.actionState == PanelState::BoxSelecting);
+
+        interactor.mouseDrag(panelMouseEvent(
+                *host, destination, modifiers, origin, true));
+        REQUIRE(interactor.state.actionState == PanelState::BoxSelecting);
+
+        interactor.mouseUp(panelMouseEvent(
+                *host, destination, {}, origin, true));
+    }
 }
 
 TEST_CASE("Spectral Trimesh panels share pitch-dependent LogRegions coordinates",

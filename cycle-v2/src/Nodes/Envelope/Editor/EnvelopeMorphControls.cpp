@@ -278,7 +278,7 @@ void EnvelopeMorphControls::draw(
         bool blueLinked,
         bool loopSelected,
         bool sustainSelected) const {
-    const bool linked[] { true, redLinked, blueLinked };
+    const bool linked[] { redLinked, blueLinked };
     drawPlane(graphics, controls, red, blue);
     drawActionGroups(graphics, controls, loopSelected, sustainSelected);
     paintPropertyGroupLabel(
@@ -306,7 +306,6 @@ void EnvelopeMorphControls::draw(
 
     for (int axis = 0; axis < 3; ++axis) {
         const auto axisArea = axisBounds(controls, axis);
-        const auto linkArea = linkBounds(controls, axis);
         const auto colour = axisColour(axis);
         graphics.setColour(colour.withAlpha(axis == viewAxis ? 0.45f : 0.06f));
         graphics.fillRoundedRectangle(axisArea, CanvasChromeMetrics::controlCornerRadius);
@@ -317,7 +316,10 @@ void EnvelopeMorphControls::draw(
                 axis == viewAxis
                         ? CanvasChromeMetrics::activeBorderWidth
                         : CanvasChromeMetrics::restingBorderWidth);
-        paintPropertyLinkToggle(graphics, linkArea, colour, linked[axis]);
+        if (axis > 0) {
+            paintPropertyLinkToggle(
+                    graphics, linkBounds(controls, axis), colour, linked[axis - 1]);
+        }
     }
 }
 

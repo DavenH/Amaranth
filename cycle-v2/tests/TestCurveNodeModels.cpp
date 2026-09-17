@@ -312,6 +312,21 @@ TEST_CASE("Envelope model round trips envelope-only topology without editor inte
     REQUIRE(restored.selectedMeshCube() == nullptr);
 }
 
+TEST_CASE("Envelope snapshots without link fields keep both morph axes linked",
+        "[cycle-v2][curve-model][envelope]") {
+    EnvelopeNodeModel model;
+    var snapshot = model.writeJSON();
+    auto* object = snapshot.getDynamicObject();
+    REQUIRE(object != nullptr);
+    object->removeProperty("redLinked");
+    object->removeProperty("blueLinked");
+
+    EnvelopeNodeModel restored;
+    REQUIRE(restored.readJSON(snapshot));
+    REQUIRE(restored.redLinked);
+    REQUIRE(restored.blueLinked);
+}
+
 TEST_CASE("Envelope mesh adapter preserves cube identities across insertion deletion and reorder",
         "[cycle-v2][curve-model][envelope][identity]") {
     EnvelopeNodeModel model;

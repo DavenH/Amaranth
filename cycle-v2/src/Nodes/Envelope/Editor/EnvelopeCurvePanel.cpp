@@ -241,7 +241,7 @@ public:
         return Interactor2D::locateClosestElement();
     }
     float getCurveProximityThreshold() const override {
-        return 20.f;
+        return 5.f;
     }
 
     void setExtraElements(float x) override {

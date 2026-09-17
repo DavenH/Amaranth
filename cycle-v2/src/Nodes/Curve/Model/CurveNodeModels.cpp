@@ -401,8 +401,8 @@ bool EnvelopeNodeModel::readJSON(const var& root) {
     logarithmic = (bool) object->getProperty("logarithmic");
     red = jlimit(0.f, 1.f, (float) object->getProperty("red"));
     blue = jlimit(0.f, 1.f, (float) object->getProperty("blue"));
-    redLinked = (bool) object->getProperty("redLinked");
-    blueLinked = (bool) object->getProperty("blueLinked");
+    redLinked = !object->hasProperty("redLinked") || (bool) object->getProperty("redLinked");
+    blueLinked = !object->hasProperty("blueLinked") || (bool) object->getProperty("blueLinked");
     const int64 selected = object->getProperty("selection");
     selection = std::nullopt;
     if (selected >= 0) {

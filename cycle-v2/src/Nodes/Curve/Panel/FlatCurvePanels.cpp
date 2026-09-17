@@ -169,7 +169,7 @@ public:
     }
 
     float getCurveProximityThreshold() const override {
-        return 20.f;
+        return 5.f;
     }
     bool addNewCube(float startTime, float x, float y, float curve) override {
         ignoreUnused(startTime);

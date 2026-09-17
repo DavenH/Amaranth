@@ -345,13 +345,6 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
         resolvedHoverText = queries.hoverTextForEdge(
                 graph.getEdges()[(size_t) hoveredEdgeIndex]);
     }
-    guideShelfState.hoveredGuideId = GuideCurveShelf::guideAt(
-            position,
-            graph,
-            getLocalBounds().toFloat(),
-            probeRailState,
-            dockSplitRatio,
-            guideShelfState);
     String hovered = canvasPresentation.probeRail().probeAt(
             position,
             GuideCurveShelf::spyWorkspace(
@@ -365,6 +358,15 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
         hovered = canvasPresentation.probeRail().markerProbeAt(position, graph, scene);
     }
     probeRailState.hoveredProbeId = std::move(hovered);
+    guideShelfState.hoveredGuideId = probeRailState.hoveredProbeId.isNotEmpty()
+            ? String()
+            : GuideCurveShelf::guideAt(
+                    position,
+                    graph,
+                    getLocalBounds().toFloat(),
+                    probeRailState,
+                    dockSplitRatio,
+                    guideShelfState);
 
     const Node* inlinePan = findInlinePanAt(graph, viewport, position);
     const Node* outputFader = findOutputFaderAt(graph, viewport, position);
