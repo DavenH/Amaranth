@@ -102,10 +102,16 @@ struct TrimeshCubeComponentGuideTarget {
     }
 };
 
+enum class GuideCurveTargetKind {
+    TrimeshCubeComponent,
+    EnvelopeCubeComponent
+};
+
 struct GuideCurveAssignment {
     String guideId;
     String targetNodeId;
     TrimeshCubeComponentGuideTarget target;
+    GuideCurveTargetKind targetKind { GuideCurveTargetKind::TrimeshCubeComponent };
 
     bool targets(const String& nodeId, const TrimeshCubeComponentGuideTarget& candidate) const {
         return targetNodeId == nodeId && target == candidate;

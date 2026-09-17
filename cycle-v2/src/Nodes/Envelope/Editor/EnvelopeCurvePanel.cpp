@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <limits>
 
 namespace CycleV2 {
@@ -35,6 +36,8 @@ class EnvelopeCurvePanel final :
     ,   public Interactor2D
     ,   public EnvelopeCurvePanelContract {
 public:
+    bool usesShiftLeftBoxSelection() const override { return true; }
+
     Panel& hostedPanel() override {
         return *this;
     }
@@ -43,6 +46,21 @@ public:
         return false;
     }
 
+    bool shouldDrawSelectedVertex(const Vertex& vertex) const override {
+        for (VertCube* cube : vertex.owners) {
+            if (cube == nullptr) {
+                continue;
+            }
+            Vertex* timePair = cube->getOtherVertexAlong(
+                    Vertex::Time, const_cast<Vertex*>(&vertex));
+            if (timePair != nullptr) {
+                return vertex.values[Vertex::Time] < timePair->values[Vertex::Time]
+                        || (vertex.values[Vertex::Time] == timePair->values[Vertex::Time]
+                                && std::less<const Vertex*>()(&vertex, timePair));
+            }
+        }
+        return true;
+    }
 
     EnvelopeCurvePanel(
             SingletonRepo* repo,
@@ -62,7 +80,7 @@ public:
         backgroundTimeRelevant = false;
         curveIsBipolar = false;
         speedApplicable = false;
-        guideCurveApplicable = false;
+        guideCurveApplicable = true;
         alwaysDrawDepthLines = true;
         drawLinesAfterFill = false;
 
@@ -82,7 +100,7 @@ public:
         vertexProps.ampVsPhaseApplicable = false;
 
         for (auto& flag : vertexProps.guideCurveApplicable) {
-            flag = false;
+            flag = true;
         }
 
         vertexProps.dimensionNames.set(Vertex::Time, {});
@@ -128,6 +146,20 @@ public:
             return state.currentCube;
         }
         return closestEnvelopeCubeFor(selected.front());
+    }
+    int selectedEnvelopeCubeIndex() override {
+        VertCube* cube = selectedEnvelopeCubeForModel();
+        if (cube == nullptr) {
+            return -1;
+        }
+        const auto& cubes = envelopeMesh.getCubes();
+        const auto found = std::find(cubes.begin(), cubes.end(), cube);
+        return found != cubes.end() ? (int) std::distance(cubes.begin(), found) : -1;
+    }
+    void setEnvelopeGuideProvider(GuideCurveProvider* provider) override {
+        environment.getRepo().setGuideCurveProvider(provider);
+        envRasterizer.setGuideCurveProvider(provider);
+        refreshRasterizer();
     }
     void restoreEnvelopeSelection(VertCube* cube) override {
         clearInteractionState();
@@ -182,7 +214,6 @@ public:
         envelopeBlueLinked = blueLinked;
 
         if (positioner != nullptr) {
-            updateSelectionFrames();
             Panel2D::repaint();
         }
     }
@@ -397,7 +428,14 @@ public:
             root->setProperty("currentVertex", var(vertex));
         }
 
-        root->setProperty("movingVertexCount", (int) state.selectedFrame.size());
+        root->setProperty("movingVertexCount", (int) std::count_if(
+                state.selectedFrame.begin(),
+                state.selectedFrame.end(),
+                [this](const VertexFrame& frame) {
+                    return frame.vert != nullptr && shouldDrawSelectedVertex(*frame.vert);
+                }));
+        root->setProperty("physicalMovingVertexCount", (int) state.selectedFrame.size());
+        root->setProperty("boxSelecting", actionIs(PanelState::BoxSelecting));
         root->setProperty("hasCurrentCube", state.currentCube != nullptr);
         root->setProperty("bipolar", isCurveBipolar());
         root->setProperty("fillBaseline", envelopeFillBaseline());
@@ -417,6 +455,7 @@ public:
             auto* encoded = new DynamicObject();
             encoded->setProperty("id", parameter.id);
             encoded->setProperty("value", parameter.value);
+            encoded->setProperty("guideGain", parameter.guideGain);
             vertexParameters.add(encoded);
         }
         root->setProperty("selectedVertexParameters", vertexParameters);
@@ -495,12 +534,26 @@ public:
             return {};
         }
 
+        VertCube* cube = const_cast<EnvelopeCurvePanel*>(this)->selectedEnvelopeCubeForModel();
+        if (cube == nullptr) {
+            cube = const_cast<EnvelopeCurvePanel*>(this)->closestEnvelopeCubeFor(
+                    const_cast<Vertex*>(vertex));
+        }
+        const auto gain = [cube](int dimension) {
+            return cube != nullptr ? cube->guideCurveGainAt(dimension) : 0.5f;
+        };
         return {
-                { "vertex.red", "red", vertex->values[Vertex::Red], 0.f, 1.f },
-                { "vertex.blue", "blue", vertex->values[Vertex::Blue], 0.f, 1.f },
-                { "vertex.phase", "phase", vertex->values[Vertex::Phase], 0.f, 1.5f },
-                { "vertex.amp", "amp", vertex->values[Vertex::Amp], 0.f, 1.f },
-                { "vertex.curve", "curve", vertex->values[Vertex::Curve], 0.f, 1.f }
+                { "guide.time", "comp", 0.f, 0.f, 1.f, gain(Vertex::Time), true, true },
+                { "vertex.red", "red", vertex->values[Vertex::Red], 0.f, 1.f,
+                        gain(Vertex::Red) },
+                { "vertex.blue", "blue", vertex->values[Vertex::Blue], 0.f, 1.f,
+                        gain(Vertex::Blue) },
+                { "vertex.phase", "phase", vertex->values[Vertex::Phase], 0.f, 1.5f,
+                        gain(Vertex::Phase) },
+                { "vertex.amp", "amp", vertex->values[Vertex::Amp], 0.f, 1.f,
+                        gain(Vertex::Amp) },
+                { "vertex.curve", "curve", vertex->values[Vertex::Curve], 0.f, 1.f,
+                        gain(Vertex::Curve) }
         };
     }
 
@@ -512,6 +565,21 @@ public:
 
         if (vertex == nullptr) {
             return false;
+        }
+
+        if (parameterId.startsWith("guideGain.")) {
+            VertCube* cube = selectedEnvelopeCubeForModel();
+            if (cube == nullptr) {
+                return false;
+            }
+            const int dimension = vertexDimensionForParameter(
+                    "vertex." + parameterId.fromLastOccurrenceOf(".", false, false));
+            if (dimension < 0) {
+                return false;
+            }
+            cube->guideCurveGainAt(dimension) = jlimit(0.f, 1.f, normalizedValue);
+            refreshRasterizer();
+            return true;
         }
 
         const float value = parameterValueFromNormalized(parameterId, normalizedValue);

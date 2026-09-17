@@ -123,10 +123,14 @@ public:
     virtual ~NodeEditorResources() = default;
 
     virtual CurveEditorWidget* curveEditorWidget(const Node& node) = 0;
+    virtual void syncCurveGuideContext(CurveEditorWidget&, const Node&) {}
     virtual TrimeshWidget* trimeshWidget(const Node& node) = 0;
     virtual TrimeshWidget* findTrimeshWidget(const String& nodeId) = 0;
     virtual TrimeshRenderProfile trimeshRenderProfile(const Node& node) const = 0;
     virtual std::array<String, 6> trimeshGuideLabels(const Node& node) = 0;
+    virtual std::array<String, 6> envelopeGuideLabels(
+            const Node&,
+            int) { return {}; }
     virtual void paintNodePreview(
             Graphics& graphics,
             const Node& node,

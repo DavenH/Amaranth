@@ -28,4 +28,13 @@ public:
             const juce::String& field);
 };
 
+class MeshGuideAttachmentTarget {
+public:
+    static bool isValid(const Node& node, const TrimeshCubeComponentGuideTarget& target);
+    static std::vector<TrimeshCubeComponentGuideTarget> cubeTargetsForSelection(
+            const Node& node,
+            int selectionIndex,
+            const juce::String& field);
+};
+
 }

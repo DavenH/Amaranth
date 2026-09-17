@@ -5,6 +5,7 @@
 
 #include <JuceHeader.h>
 
+#include <array>
 #include <initializer_list>
 #include <utility>
 #include <vector>
@@ -34,6 +35,10 @@ public:
     virtual bool removeAudioResource() { return false; }
     virtual std::optional<NodeAudioResourceSummary> audioResourceSummary() const {
         return std::nullopt;
+    }
+    virtual std::array<String, 6> envelopeGuideLabels(int) const { return {}; }
+    virtual bool showEnvelopeGuideAttachmentMenu(const String&, Rectangle<int>) {
+        return false;
     }
 };
 
@@ -67,6 +72,7 @@ protected:
     virtual std::vector<NodeParameter> editorControls() const = 0;
     virtual void appendEditorAutomation(DynamicObject& state) const = 0;
     virtual bool editorMouseMove(Point<float> position);
+    virtual bool editorInteractionIsSessionOnly(Point<float> position) const;
     virtual bool editorMouseDown(Point<float> position);
     virtual bool editorMouseDrag(Point<float> position);
     virtual void editorMouseUp();

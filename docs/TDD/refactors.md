@@ -116,19 +116,21 @@ panel and avoid a node-kind switchboard.
 
 ## Cycle V2 guide attachment target semantics
 
-Status: open after the 2026-07-31 Stengah preset parity inspection.
+Status: cube-component identity implemented; generic ownership cleanup open
+after the 2026-09-17 Envelope guide parity work.
 
 The mature Cycle 1 mesh contract attaches a guide channel to a `VertCube`
 component through `guideCurveChans[field]`. Cycle 2 currently authors and draws
 `guide.vertex.<index>.<field>` graph targets. A vertex target cannot identify the
 same interpolation region and should not become a compatibility fiction.
 
-Replace the provisional target with a stable cube-component identity as part of
-the Guide Curve snapshot/provider work in `shared-cycle-dsp-core.md`. The graph
-editor, validator, canvas endpoint resolver, runtime input routing, and existing
-vertex-target tests should migrate together. Stengah should then expose its
-preserved phase-layer-1-cube-0 amplitude and phase-layer-2-cube-4 phase
-assignments as visible connections to guide channel 0.
+The graph now uses cube-component targets for Trimesh and Envelope, and both
+reuse one Guide preparation core. The remaining `TrimeshGuideAttachmentMenu`
+and `TrimeshGuideAttachmentTarget` filenames and command-service method names
+also serve Envelope. Move these shared UI boundary types into the Guide module
+and give them neutral names, without copying attachment behavior or adding a
+node-kind switchboard. Keep the node-family-specific selection lookup in each
+editor.
 
 ## Cycle V2 concrete editor registry decomposition
 

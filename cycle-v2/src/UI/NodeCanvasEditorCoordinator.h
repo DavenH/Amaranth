@@ -58,6 +58,9 @@ public:
     void close();
     void detach();
     std::array<String, 6> trimeshGuideLabelsFor(const Node& node);
+    std::array<String, 6> envelopeGuideLabelsFor(
+            const Node& node,
+            int cubeIndex) const;
 
 private:
     Component& owner;

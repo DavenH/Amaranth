@@ -376,3 +376,14 @@ the canonical preset set rather than weakening the assertions.
 
 Current status: open fixture/test synchronization issue; restore the intended
 Stengah probes or update the test fixture at its authoring boundary.
+
+## P3: Opening an Envelope editor marks the document dirty
+
+The 2026-09-17 `cycle-v2-agent-envelope-link-toggle.json` run opens the saved
+`old/vox-1.cyclegraph` clean, but `documentDirty` is already true immediately
+after opening the expanded pitch Envelope, before any link click. The focused
+link fixture therefore checks session state and reopen behavior, not dirty
+state. Report: `/private/tmp/cycle-v2-envelope-link-session2`.
+
+Current status: open; distinguish selection/editor-state publication from a
+durable document edit. Envelope link toggles themselves remain session-only.

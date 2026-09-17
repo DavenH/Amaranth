@@ -649,8 +649,6 @@ def envelope_model(layer, morph):
             "logarithmic": bool(layer["properties"].get("logarithmic", False)),
             "red": morph["position"]["red"],
             "blue": morph["position"]["blue"],
-            "redLinked": bool(morph["linking"]["red"]),
-            "blueLinked": bool(morph["linking"]["blue"]),
             "cubeIds": list(range(1, cube_count + 1)),
         },
     }
@@ -672,11 +670,14 @@ def envelope_layers(preset, purpose):
     return preset["envelopeProps"]["groups"][purpose]["layers"]
 
 
-def guide_assignments_for_layer(layer, destination):
+def guide_assignments_for_layer(layer, destination, target_kind="trimeshCubeComponent"):
     field_names = {"key": "red", "mod": "blue"}
     result = []
-    for cube_index, cube in enumerate(layer["mesh"]["cubes"]):
-        for field, guide_index in cube["guides"].items():
+    mesh = layer["mesh"]
+    if target_kind == "envelopeCubeComponent":
+        mesh = mesh["mainMesh"]
+    for cube_index, cube in enumerate(mesh["cubes"]):
+        for field, guide_index in cube.get("guides", {}).items():
             if guide_index < 0:
                 continue
             target_field = field_names.get(field, field)
@@ -684,7 +685,7 @@ def guide_assignments_for_layer(layer, destination):
                 "guideId": f"guide{guide_index + 1}",
                 "targetNodeId": destination,
                 "target": {
-                    "kind": "trimeshCubeComponent",
+                    "kind": target_kind,
                     "cubeIndex": cube_index,
                     "field": target_field,
                 },
@@ -1189,6 +1190,8 @@ def convert(source):
             nodes.append(envelope_node(
                 preset, layer, purpose, envelope_id,
                 2450 + 310 * (index - 1), envelope_y[purpose]))
+            guide_assignments.extend(guide_assignments_for_layer(
+                layer, envelope_id, "envelopeCubeComponent"))
             if layer["properties"]["active"]:
                 envelope_ids[purpose][index - 1] = envelope_id
                 output_base = {"volume": 400, "pitch": 450, "scratch": 500}[

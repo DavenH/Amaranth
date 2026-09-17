@@ -387,7 +387,7 @@ GraphEditResult GraphEditor::clearGuideHeatmap(NodeGraph& graph, const String& g
     return { GraphEditCode::Connected, guideId, {} };
 }
 
-GraphEditResult GraphEditor::assignGuideCurveToTrimeshVertexParameter(
+GraphEditResult GraphEditor::assignGuideCurveToMeshComponent(
         NodeGraph& graph,
         const String& guideId,
         const String& meshNodeId,
@@ -398,7 +398,8 @@ GraphEditResult GraphEditor::assignGuideCurveToTrimeshVertexParameter(
     if (guide == nullptr || meshNode == nullptr) {
         return { GraphEditCode::MissingNode, {}, {} };
     }
-    if (meshNode->kind != NodeKind::TrilinearMesh
+    if ((meshNode->kind != NodeKind::TrilinearMesh
+                    && meshNode->kind != NodeKind::Envelope)
             || std::find(
                     TrimeshGuideAttachmentTarget::fields().begin(),
                     TrimeshGuideAttachmentTarget::fields().end(),
@@ -406,7 +407,7 @@ GraphEditResult GraphEditor::assignGuideCurveToTrimeshVertexParameter(
         return { GraphEditCode::ValidationRejected, {}, {} };
     }
 
-    const auto targets = TrimeshGuideAttachmentTarget::cubeTargetsForVertex(
+    const auto targets = MeshGuideAttachmentTarget::cubeTargetsForSelection(
             *meshNode, vertexIndex, parameterField);
     if (targets.empty()) {
         return { GraphEditCode::ValidationRejected, {}, {} };
@@ -414,25 +415,29 @@ GraphEditResult GraphEditor::assignGuideCurveToTrimeshVertexParameter(
     for (const auto& componentTarget : targets) {
         const GuideCurveAssignment* existing = graph.guideAssignmentForTarget(
                 meshNodeId, componentTarget);
+        const GuideCurveTargetKind targetKind = meshNode->kind == NodeKind::Envelope
+                ? GuideCurveTargetKind::EnvelopeCubeComponent
+                : GuideCurveTargetKind::TrimeshCubeComponent;
         if ((existing == nullptr || existing->guideId != guideId)
-                && !graph.assignGuideCurve({ guideId, meshNodeId, componentTarget })) {
+                && !graph.assignGuideCurve({ guideId, meshNodeId, componentTarget, targetKind })) {
             return { GraphEditCode::ValidationRejected, {}, {} };
         }
     }
     return { GraphEditCode::Connected, guideId, {} };
 }
 
-GraphEditResult GraphEditor::detachGuideCurveFromTrimeshVertexParameter(
+GraphEditResult GraphEditor::detachGuideCurveFromMeshComponent(
         NodeGraph& graph,
         const String& meshNodeId,
         int vertexIndex,
         const String& parameterField) const {
     const Node* meshNode = findNode(graph, meshNodeId);
-    if (meshNode == nullptr || meshNode->kind != NodeKind::TrilinearMesh) {
+    if (meshNode == nullptr || (meshNode->kind != NodeKind::TrilinearMesh
+                    && meshNode->kind != NodeKind::Envelope)) {
         return { GraphEditCode::MissingNode, meshNodeId, {} };
     }
 
-    const auto targets = TrimeshGuideAttachmentTarget::cubeTargetsForVertex(
+    const auto targets = MeshGuideAttachmentTarget::cubeTargetsForSelection(
             *meshNode, vertexIndex, parameterField);
     if (targets.empty()) {
         return { GraphEditCode::ValidationRejected, meshNodeId, {} };
@@ -445,7 +450,7 @@ GraphEditResult GraphEditor::detachGuideCurveFromTrimeshVertexParameter(
     return { detached ? GraphEditCode::Connected : GraphEditCode::ValidationRejected, meshNodeId, {} };
 }
 
-GraphEditResult GraphEditor::createGuideCurveAndAssignToTrimeshVertexParameter(
+GraphEditResult GraphEditor::createGuideCurveAndAssignToMeshComponent(
         NodeGraph& graph,
         const String& meshNodeId,
         int vertexIndex,
@@ -454,7 +459,7 @@ GraphEditResult GraphEditor::createGuideCurveAndAssignToTrimeshVertexParameter(
     if (!created.succeeded()) {
         return created;
     }
-    return assignGuideCurveToTrimeshVertexParameter(
+    return assignGuideCurveToMeshComponent(
             graph, created.nodeId, meshNodeId, vertexIndex, parameterField);
 }
 

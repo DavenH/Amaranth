@@ -1075,6 +1075,11 @@
             "guideId": "guide1",
             "targetNodeId": "magnitudeLayer1",
             "target": { "kind": "trimeshCubeComponent", "cubeIndex": 4, "field": "amp" }
+        },
+        {
+            "guideId": "guide2",
+            "targetNodeId": "pitchEnvelope1",
+            "target": { "kind": "envelopeCubeComponent", "cubeIndex": 1, "field": "time" }
         }
     ],
     "edges": [

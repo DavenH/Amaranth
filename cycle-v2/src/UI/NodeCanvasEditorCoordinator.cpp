@@ -164,4 +164,27 @@ std::array<String, 6> NodeCanvasEditorCoordinator::trimeshGuideLabelsFor(const N
     return labels;
 }
 
+std::array<String, 6> NodeCanvasEditorCoordinator::envelopeGuideLabelsFor(
+        const Node& node,
+        int cubeIndex) const {
+    std::array<String, 6> labels;
+    if (node.kind != NodeKind::Envelope || cubeIndex < 0) {
+        return labels;
+    }
+    const auto& fields = TrimeshGuideAttachmentTarget::fields();
+    for (int index = 0; index < (int) fields.size(); ++index) {
+        const auto* assignment = document.graph().guideAssignmentForTarget(
+                node.id,
+                { cubeIndex, TrimeshGuideAttachmentTarget::guideField(fields[(size_t) index]) });
+        if (assignment == nullptr) {
+            continue;
+        }
+        const auto* guide = document.graph().findGuideCurve(assignment->guideId);
+        if (guide != nullptr) {
+            labels[(size_t) index] = guide->shortLabel;
+        }
+    }
+    return labels;
+}
+
 }

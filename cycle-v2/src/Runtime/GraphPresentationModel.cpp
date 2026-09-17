@@ -8,7 +8,7 @@
 
 #include "Nodes/Control/ModulationSource.h"
 #include "Nodes/Control/ModulationTriple.h"
-#include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
+#include "Nodes/Guide/GuideCurveMeshPreparation.h"
 
 namespace CycleV2 {
 
@@ -860,7 +860,7 @@ CausalUpdateRequest GraphPresentationModel::updateRequest(
         }
         if (change.guidesChanged) {
             nodeFingerprint.add(
-                    TrimeshGuidePreparation::configurationKey(graph, nodeId));
+                    GuideCurveMeshPreparation::configurationKey(graph, nodeId));
         }
         effectiveFingerprint = nodeFingerprint.value();
     }

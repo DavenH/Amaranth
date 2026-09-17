@@ -357,9 +357,11 @@ public:
             const Node& node,
             Rectangle<float> panel,
             const DynamicObject& curveEditorState) {
-        const std::array<std::pair<const char*, const char*>, 6> actions {{
+        const std::array<std::pair<const char*, const char*>, 8> actions {{
             { "loop", "loopBounds" },
             { "sustain", "sustainBounds" },
+            { "redLink", "redLinkBounds" },
+            { "blueLink", "blueLinkBounds" },
             { "linear", "linearAxisScaleBounds" },
             { "logarithmic", "logarithmicAxisScaleBounds" },
             { "fitVertical", "fitVerticalBounds" },
@@ -394,6 +396,33 @@ public:
         }
         addEnvelopeModeTargets(targets, node, panel, *curveEditorState);
         addEnvelopeActionTargets(targets, node, panel, *curveEditorState);
+        const auto* parameterRails = curveEditorState->getProperty(
+                "vertexParameterRails").getArray();
+        if (parameterRails == nullptr) {
+            return;
+        }
+        for (const auto& parameterValue : *parameterRails) {
+            const auto* parameter = parameterValue.getDynamicObject();
+            if (parameter == nullptr) {
+                continue;
+            }
+            const String field = parameter->getProperty("id").toString()
+                    .fromLastOccurrenceOf(".", false, false);
+            const std::array<std::pair<const char*, const char*>, 2> guideControls {{
+                    { "envelopeGuide", "guideBounds" },
+                    { "envelopeGuideGain", "guideGainBounds" }
+            }};
+            for (const auto& [suffix, property] : guideControls) {
+                const auto bounds = AutomationValueEncoder::rectangleFromVar(
+                        parameter->getProperty(property)).translated(
+                                panel.getX(), panel.getY());
+                targets.add(pointerTargetToVar(
+                        "expanded:" + node.id + "." + suffix + "." + field,
+                        "envelopeGuideControl",
+                        bounds,
+                        node.id));
+            }
+        }
     }
 
     static void addEffectParameterTargets(
@@ -890,6 +919,14 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                 "guideEditor:" + state.guideDock.expandedGuideId,
                 "guideEditor",
                 state.guideDock.guideEditorBounds));
+        const Rectangle<float> guidePanel = AutomationValueEncoder::rectangleFromVar(
+                state.guideDock.guideEditorState.getProperty("panelBounds", {}));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "guideEditor:" + state.guideDock.expandedGuideId + ".panel2D",
+                "guideEditorPanel",
+                guidePanel.translated(
+                        state.guideDock.guideEditorBounds.getX(),
+                        state.guideDock.guideEditorBounds.getY())));
         for (const auto& target : state.guideDock.guideEditorTargets) {
             targets.add(AutomationValueEncoder::pointerTargetToVar(
                     target.id,

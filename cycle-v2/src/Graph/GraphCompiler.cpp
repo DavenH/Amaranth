@@ -752,7 +752,9 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
                 context.pitchEnvelopeNodeId = source->id;
                 context.pitchEnvelope = EnvelopeSignalProcessor::buildConfiguration(
                         source->parameters,
-                        source->model);
+                        source->model,
+                        &graph,
+                        source->id);
                 const auto envelope = std::dynamic_pointer_cast<const EnvelopeConfiguration>(
                         context.pitchEnvelope);
                 if (envelope != nullptr) {

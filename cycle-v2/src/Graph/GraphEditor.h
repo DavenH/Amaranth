@@ -84,18 +84,18 @@ public:
             const String& guideId,
             GuideHeatmapAssetPtr asset) const;
     GraphEditResult clearGuideHeatmap(NodeGraph& graph, const String& guideId) const;
-    GraphEditResult assignGuideCurveToTrimeshVertexParameter(
+    GraphEditResult assignGuideCurveToMeshComponent(
             NodeGraph& graph,
             const String& guideId,
             const String& meshNodeId,
             int vertexIndex,
             const String& parameterField) const;
-    GraphEditResult detachGuideCurveFromTrimeshVertexParameter(
+    GraphEditResult detachGuideCurveFromMeshComponent(
             NodeGraph& graph,
             const String& meshNodeId,
             int vertexIndex,
             const String& parameterField) const;
-    GraphEditResult createGuideCurveAndAssignToTrimeshVertexParameter(
+    GraphEditResult createGuideCurveAndAssignToMeshComponent(
             NodeGraph& graph,
             const String& meshNodeId,
             int vertexIndex,

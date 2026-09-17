@@ -4,6 +4,13 @@
 
 Proposed; no implementation approved or begun (2026-09-16).
 
+Update 2026-09-17: Envelope selection presentation now collapses each
+Time-pole pair to one logical selected marker and reports four logical moving
+corners where the existing `VertCube` still moves eight physical vertices.
+This is not a genuine bimesh; old storage, rasterization, and DSP remain
+unchanged. The migration below is still required to eliminate Time-pole
+vertices from the model itself.
+
 ## Motivation
 
 The Envelope editor presents Time as a morph axis because its current model is

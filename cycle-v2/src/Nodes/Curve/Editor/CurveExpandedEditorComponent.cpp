@@ -188,8 +188,14 @@ void CurveExpandedEditorComponent::mouseMove(const MouseEvent& event) {
 }
 
 void CurveExpandedEditorComponent::mouseDown(const MouseEvent& event) {
-    beginTransaction();
+    if (!editorInteractionIsSessionOnly(event.position)) {
+        beginTransaction();
+    }
     editorMouseDown(event.position);
+}
+
+bool CurveExpandedEditorComponent::editorInteractionIsSessionOnly(Point<float>) const {
+    return false;
 }
 
 void CurveExpandedEditorComponent::mouseDrag(const MouseEvent& event) {

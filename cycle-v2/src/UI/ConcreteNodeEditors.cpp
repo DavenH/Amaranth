@@ -33,7 +33,11 @@ public:
 
     void bind(const Node& node) override {
         nodeId = node.id;
+        boundNode = node;
         editor->setNode(node);
+        if (auto* widget = resources.curveEditorWidget(node)) {
+            resources.syncCurveGuideContext(*widget, node);
+        }
     }
 
     void renderOpenGL(float scaleFactor) override { editor->renderOpenGL(scaleFactor); }
@@ -95,11 +99,22 @@ private:
         return resources.audioResourceSummary(nodeId);
     }
 
+    std::array<String, 6> envelopeGuideLabels(int cubeIndex) const override {
+        return resources.envelopeGuideLabels(boundNode, cubeIndex);
+    }
+
+    bool showEnvelopeGuideAttachmentMenu(
+            const String& field,
+            Rectangle<int> area) override {
+        return commands.showTrimeshGuideAttachmentMenu(nodeId, field, area);
+    }
+
     NodeEditorCommands& commands;
     NodeEditorPresentation& presentation;
     NodeEditorResources& resources;
     std::unique_ptr<CurveExpandedEditorComponent> editor;
     String nodeId;
+    Node boundNode;
 };
 
 class CurveNodeEditorFactory final : public NodeEditorFactory {

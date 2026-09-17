@@ -482,7 +482,7 @@ TEST_CASE("Graph editor marks scratch connections as attachments", "[cycle-v2][g
 TEST_CASE("Graph editor creates targeted Trimesh Guide assignments", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
 
-    const auto result = GraphEditor().createGuideCurveAndAssignToTrimeshVertexParameter(
+    const auto result = GraphEditor().createGuideCurveAndAssignToMeshComponent(
             graph,
             "waveMesh",
             2,
@@ -524,13 +524,13 @@ TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[
     NodeGraph graph = NodeGraph::createDemoGraph();
     REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
 
-    const auto waveResult = GraphEditor().assignGuideCurveToTrimeshVertexParameter(
+    const auto waveResult = GraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide1",
             "waveMesh",
             1,
             "phase");
-    const auto magResult = GraphEditor().assignGuideCurveToTrimeshVertexParameter(
+    const auto magResult = GraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide1",
             "magMesh",
@@ -677,14 +677,14 @@ TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cy
     NodeGraph graph = NodeGraph::createDemoGraph();
     REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
     REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
-    REQUIRE(GraphEditor().assignGuideCurveToTrimeshVertexParameter(
+    REQUIRE(GraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide1",
             "waveMesh",
             2,
             "amp").succeeded());
 
-    const auto result = GraphEditor().assignGuideCurveToTrimeshVertexParameter(
+    const auto result = GraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide2",
             "waveMesh",

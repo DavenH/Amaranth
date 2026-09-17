@@ -262,6 +262,7 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftGridwiseDsp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftSignalProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideCurveSnapshotProvider.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideCurveMeshPreparation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideCurvePreparation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideHeatmapAsset.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideHeatmapLoader.cpp"

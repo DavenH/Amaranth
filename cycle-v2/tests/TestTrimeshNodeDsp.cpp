@@ -586,7 +586,7 @@ TEST_CASE("Trimesh side panel renderer keeps vertex rails inside parameter rows"
     }
 }
 
-TEST_CASE("Trimesh vertex deformer controls apply only to the right parameter column",
+TEST_CASE("Trimesh vertex deformer controls cover every guide-capable dimension",
         "[cycle-v2][nodes][trimesh][geometry][guide]") {
     const Rectangle<float> parameterArea { 20.f, 40.f, 620.f, 150.f };
 
@@ -601,13 +601,13 @@ TEST_CASE("Trimesh vertex deformer controls apply only to the right parameter co
                         ? TrimeshSidePanelRenderer::GuideControls::Visible
                         : TrimeshSidePanelRenderer::GuideControls::Hidden);
 
-        REQUIRE(showsGuideControls == (i >= 3));
+        REQUIRE(showsGuideControls);
         if (i < 3) {
             const Rectangle<float> pairedRow =
                     TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i + 3);
             const Rectangle<float> pairedRail =
                     TrimeshSidePanelRenderer::vertexParameterRailBounds(pairedRow);
-            REQUIRE(rail.getWidth() > pairedRail.getWidth() + 50.f);
+            REQUIRE(rail.getWidth() == Catch::Approx(pairedRail.getWidth()));
         }
     }
 }
@@ -1334,7 +1334,7 @@ TEST_CASE("Trimesh guide attachment menu lists document Guide resources", "[cycl
     NodeGraph graph = NodeGraph::createDemoGraph();
     REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
     REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
-    REQUIRE(GraphEditor().assignGuideCurveToTrimeshVertexParameter(
+    REQUIRE(GraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide2",
             "waveMesh",
@@ -1358,7 +1358,7 @@ TEST_CASE("Trimesh guide attachment menu lists document Guide resources", "[cycl
     REQUIRE(items[3].label == "G2");
     REQUIRE(items[3].guideId == "guide2");
     REQUIRE(items[3].attached);
-    REQUIRE(GraphEditor().detachGuideCurveFromTrimeshVertexParameter(
+    REQUIRE(GraphEditor().detachGuideCurveFromMeshComponent(
             graph, "waveMesh", 2, "amp").succeeded());
     REQUIRE(graph.getGuideAssignments().empty());
 }

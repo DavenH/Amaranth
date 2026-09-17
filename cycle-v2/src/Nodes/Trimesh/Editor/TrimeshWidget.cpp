@@ -38,7 +38,7 @@ void TrimeshWidget::syncGuideContext(const NodeGraph& graph, const Node& node) {
         return;
     }
 
-    String nextKey = TrimeshGuidePreparation::configurationKey(graph, node.id);
+    String nextKey = GuideCurveMeshPreparation::configurationKey(graph, node.id);
     if (node.model != nullptr) {
         nextKey << ":mesh=" << String((int64) node.model->revision());
     }

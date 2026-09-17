@@ -5,6 +5,7 @@
 
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Guide/GuideCurveMeshPreparation.h"
 
 namespace CycleV2 {
 
@@ -21,7 +22,9 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
         float neutralValue,
         bool lowResolution,
         bool volumePurpose,
-        bool declick) {
+        bool declick,
+        const NodeGraph* graph,
+        const String& nodeId) {
     auto result = std::make_shared<EnvelopeConfiguration>();
     result->mesh = std::shared_ptr<EnvelopeMesh>(
             new EnvelopeMesh(name + "Mesh"),
@@ -31,8 +34,17 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
             });
 
     result->mesh->deepCopy(&meshState);
+    if (graph != nullptr) {
+        auto guides = GuideCurveMeshPreparation::apply(
+                *result->mesh,
+                *graph,
+                nodeId,
+                GuideCurveTargetKind::EnvelopeCubeComponent);
+        result->guideCurveProvider = std::move(guides.provider);
+    }
 
-    result->rasterizer = std::make_shared<EnvRasterizer>(nullptr, name + "Rasterizer");
+    result->rasterizer = std::make_shared<EnvRasterizer>(
+            result->guideCurveProvider.get(), name + "Rasterizer");
     result->rasterizer->setMesh(result->mesh.get());
     result->rasterizer->setMorphPosition({ 0.f, red, blue });
     result->rasterizer->setLowresCurves(lowResolution);
@@ -61,6 +73,7 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
     result->realtimePlan.request.xMaximum = 10.f;
     result->realtimePlan.request.lowResCurves = lowResolution;
     result->realtimePlan.request.calcDepthDimensions = false;
+    result->realtimePlan.guideCurveProvider = result->guideCurveProvider.get();
     result->realtimePlan.capacity = Rasterization::envelopeMaterializationCapacity(
             *result->mesh,
             result->realtimePlan.request,
@@ -79,7 +92,9 @@ EnvelopeSignalProcessor::EnvelopeSignalProcessor() {
 
 std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfiguration(
         const std::vector<NodeParameter>& parameters,
-        const NodeModelStatePtr& model) {
+        const NodeModelStatePtr& model,
+        const NodeGraph* graph,
+        const String& nodeId) {
     if (Curve::table == nullptr) {
         Curve::calcTable();
     }
@@ -107,7 +122,9 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
             volumePurpose ? 1.f : (purpose == "pitch" ? 0.5f : 0.f),
             purpose == "pitch" || purpose == "scratch",
             volumePurpose,
-            volumePurpose && parameterMap.boolValue("declick", false));
+            volumePurpose && parameterMap.boolValue("declick", false),
+            graph,
+            nodeId);
 }
 
 void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {

@@ -3,6 +3,7 @@
 
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
+#include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
@@ -16,6 +17,7 @@
 #include "Nodes/Effects/EffectSignalProcessors.h"
 #include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 #include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
+#include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 #include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 #include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/GraphPreviewExecutor.h"
@@ -23,6 +25,7 @@
 
 #include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/VertCube.h>
+#include <Curve/Mesh/Vertex.h>
 #include <Obj/MorphPosition.h>
 
 #include <cmath>
@@ -41,9 +44,7 @@ String modelSnapshotForNode(const Node& node) {
     if (typed == nullptr) {
         return {};
     }
-    const var state = typed->flatCurve() != nullptr
-            ? typed->flatCurve()->writeJSON()
-            : typed->envelope()->writeJSON();
+    const var state = typed->writeJSON().getProperty("state", {});
     return JSON::toString(state, false);
 }
 
@@ -297,8 +298,6 @@ TEST_CASE("Envelope model round trips envelope-only topology without editor inte
         "[cycle-v2][curve-model][envelope]") {
     EnvelopeNodeModel model;
     model.logarithmic = true;
-    model.redLinked = false;
-    model.blueLinked = true;
     const EnvelopeCubeId selectedId = model.getCubeIds()[2];
     REQUIRE(model.selectCube(selectedId));
     const int cubeCount = model.getMesh().getNumCubes();
@@ -309,25 +308,165 @@ TEST_CASE("Envelope model round trips envelope-only topology without editor inte
     REQUIRE(restored.getMesh().getNumCubes() == cubeCount);
     REQUIRE(restored.getMesh().sustainCubes.size() == sustainCount);
     REQUIRE(restored.logarithmic);
-    REQUIRE_FALSE(restored.redLinked);
-    REQUIRE(restored.blueLinked);
     REQUIRE_FALSE(restored.selectedCubeId().has_value());
     REQUIRE(restored.selectedMeshCube() == nullptr);
 }
 
-TEST_CASE("Envelope snapshots without link fields keep both morph axes linked",
+TEST_CASE("Envelope snapshots ignore legacy link fields on load and save",
         "[cycle-v2][curve-model][envelope]") {
-    EnvelopeNodeModel model;
-    var snapshot = model.writeJSON();
+    const CurveNodeDomainCodec codec(NodeKind::Envelope);
+    var snapshot = codec.createDefault()->writeJSON();
+    snapshot = snapshot.getProperty("state", {});
     auto* object = snapshot.getDynamicObject();
     REQUIRE(object != nullptr);
-    object->removeProperty("redLinked");
-    object->removeProperty("blueLinked");
+    object->setProperty("redLinked", false);
+    object->setProperty("blueLinked", false);
 
-    EnvelopeNodeModel restored;
-    REQUIRE(restored.readJSON(snapshot));
-    REQUIRE(restored.redLinked);
-    REQUIRE(restored.blueLinked);
+    auto* wrapper = new DynamicObject();
+    wrapper->setProperty("schema", "envelope");
+    wrapper->setProperty("version", EnvelopeNodeModel::currentVersion);
+    wrapper->setProperty("revision", 1);
+    wrapper->setProperty("state", snapshot);
+    String error;
+    const auto restored = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            codec.readJSON(var(wrapper), error));
+    REQUIRE(restored != nullptr);
+    const var savedState = restored->writeJSON().getProperty("state", {});
+    REQUIRE_FALSE(savedState.hasProperty("redLinked"));
+    REQUIRE_FALSE(savedState.hasProperty("blueLinked"));
+}
+
+TEST_CASE("Brass pitch Envelope uses its authored component Guide in prepared playback",
+        "[cycle-v2][curve-model][envelope][guide][preset]") {
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content/presets/brass-section.cyclegraph");
+    const auto loaded = GraphSerializer().readJSON(
+            JSON::parse(preset.loadFileAsString()));
+    REQUIRE(loaded.succeeded());
+    const Node* pitch = loaded.graph.findNode("pitchEnvelope1");
+    REQUIRE(pitch != nullptr);
+    const auto assignment = loaded.graph.guideAssignmentForTarget(
+            pitch->id,
+            { 1, GuideCurveField::Time });
+    REQUIRE(assignment != nullptr);
+    REQUIRE(assignment->guideId == "guide2");
+    REQUIRE(assignment->targetKind == GuideCurveTargetKind::EnvelopeCubeComponent);
+
+    const auto prepared = EnvelopeSignalProcessor::buildConfiguration(
+            pitch->parameters, pitch->model, &loaded.graph, pitch->id);
+    REQUIRE(prepared != nullptr);
+    REQUIRE(prepared->guideCurveProvider != nullptr);
+    REQUIRE(prepared->realtimePlan.guideCurveProvider == prepared->guideCurveProvider.get());
+    REQUIRE(prepared->realtimePlan.capacity.guideCurveRegions > 0);
+    const auto* cube = prepared->mesh->getCubes()[1];
+    REQUIRE(cube->guideCurveAt(Vertex::Time) == 1);
+    REQUIRE(cube->guideCurveGainAt(Vertex::Time) == Catch::Approx(0.4625f));
+
+    NodeGraph unguidedGraph = loaded.graph;
+    REQUIRE(unguidedGraph.removeGuideAssignment(pitch->id, { 1, GuideCurveField::Time }));
+    const auto unguided = EnvelopeSignalProcessor::buildConfiguration(
+            pitch->parameters, pitch->model, &unguidedGraph, pitch->id);
+    REQUIRE(unguided != nullptr);
+    REQUIRE(unguided->mesh->getCubes()[1]->guideCurveAt(Vertex::Time) == -1);
+
+    const auto render = [](const EnvelopeConfiguration& configuration) {
+        Rasterization::EnvelopePlaybackEngine playback;
+        playback.ensureVoiceCount(1);
+        playback.noteOn();
+        MeshLibrary::EnvProps props;
+        props.active = true;
+        std::vector<float> samples;
+        samples.reserve(512);
+        const auto view = configuration.rasterizer->preparedPlaybackView();
+        for (int index = 0; index < 512; ++index) {
+            if (!playback.renderToBuffer(view, 1, 0.01, 1, props, 1.f)) {
+                return std::vector<float> {};
+            }
+            samples.push_back(playback.output()[0]);
+        }
+        return samples;
+    };
+    const auto guidedSamples = render(*prepared);
+    const auto unguidedSamples = render(*unguided);
+    REQUIRE(guidedSamples.size() == 512);
+    REQUIRE(unguidedSamples.size() == 512);
+    REQUIRE(guidedSamples != unguidedSamples);
+}
+
+TEST_CASE("Organ and Vigil retain their authored spectral Guide assignments",
+        "[cycle-v2][curve-model][guide][preset]") {
+    const File directory = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content/presets");
+    const auto organ = GraphSerializer().readJSON(JSON::parse(
+            directory.getChildFile("organ.cyclegraph").loadFileAsString()));
+    REQUIRE(organ.succeeded());
+    const auto* red = organ.graph.guideAssignmentForTarget(
+            "magnitudeLayer1", { 3, GuideCurveField::Red });
+    REQUIRE(red != nullptr);
+    REQUIRE(red->guideId == "guide5");
+    const Node* organMagnitude = organ.graph.findNode("magnitudeLayer1");
+    REQUIRE(organMagnitude != nullptr);
+    const auto organModel = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            organMagnitude->model);
+    REQUIRE(organModel != nullptr);
+    const auto preparedOrgan = TrimeshGuidePreparation::prepare(
+            organ.graph, *organMagnitude, organModel->mesh());
+    REQUIRE(preparedOrgan.mesh->getCubes()[3]->guideCurveAt(Vertex::Red) >= 0);
+
+    const auto vigil = GraphSerializer().readJSON(JSON::parse(
+            directory.getChildFile("vigil.cyclegraph").loadFileAsString()));
+    REQUIRE(vigil.succeeded());
+    const auto* time = vigil.graph.guideAssignmentForTarget(
+            "magnitudeLayer1", { 0, GuideCurveField::Time });
+    const auto* curve = vigil.graph.guideAssignmentForTarget(
+            "magnitudeLayer1", { 0, GuideCurveField::Curve });
+    REQUIRE(time != nullptr);
+    REQUIRE(curve != nullptr);
+    REQUIRE(time->guideId == "guide1");
+    REQUIRE(curve->guideId == "guide2");
+    const Node* firstMagnitude = vigil.graph.findNode("magnitudeLayer1");
+    REQUIRE(firstMagnitude != nullptr);
+    const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            firstMagnitude->model);
+    REQUIRE(model != nullptr);
+    const auto prepared = TrimeshGuidePreparation::prepare(
+            vigil.graph, *firstMagnitude, model->mesh());
+    REQUIRE(prepared.assignmentCount >= 2);
+    REQUIRE(prepared.mesh->getCubes()[0]->guideCurveAt(Vertex::Time) >= 0);
+    REQUIRE(prepared.mesh->getCubes()[0]->guideCurveAt(Vertex::Curve) >= 0);
+}
+
+TEST_CASE("Envelope component Guide assignment is semantic and undoable",
+        "[cycle-v2][curve-model][envelope][guide][command]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
+    const auto guide = GraphEditor().createGuideCurve(graph);
+    REQUIRE(guide.succeeded());
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+
+    const auto assigned = commands.assignGuideCurve(guide.nodeId, "env", 0, "time");
+    REQUIRE(assigned.succeeded());
+    const auto* attachment = document.graph().guideAssignmentForTarget(
+            "env", { 0, GuideCurveField::Time });
+    REQUIRE(attachment != nullptr);
+    REQUIRE(attachment->targetKind == GuideCurveTargetKind::EnvelopeCubeComponent);
+    var encoded = GraphSerializer().writeJSON(document.graph());
+    const auto roundTrip = GraphSerializer().readJSON(encoded);
+    REQUIRE(roundTrip.succeeded());
+    REQUIRE(roundTrip.graph.guideAssignmentForTarget(
+            "env", { 0, GuideCurveField::Time })->targetKind
+            == GuideCurveTargetKind::EnvelopeCubeComponent);
+    auto* assignments = encoded.getProperty("guideAssignments", {}).getArray();
+    REQUIRE(assignments != nullptr);
+    auto* target = assignments->getReference(0).getProperty("target", {}).getDynamicObject();
+    REQUIRE(target != nullptr);
+    target->setProperty("kind", "trimeshCubeComponent");
+    REQUIRE_FALSE(GraphSerializer().readJSON(encoded).succeeded());
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().guideAssignmentForTarget(
+            "env", { 0, GuideCurveField::Time }) == nullptr);
 }
 
 TEST_CASE("Envelope mesh adapter preserves cube identities across insertion deletion and reorder",

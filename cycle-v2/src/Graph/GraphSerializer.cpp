@@ -362,7 +362,10 @@ var guideHeatmapToJSON(const GuideHeatmapAsset& asset) {
 
 var guideAssignmentToJSON(const GuideCurveAssignment& assignment) {
     auto target = std::make_unique<DynamicObject>();
-    target->setProperty("kind", "trimeshCubeComponent");
+    target->setProperty("kind", assignment.targetKind
+                    == GuideCurveTargetKind::EnvelopeCubeComponent
+            ? "envelopeCubeComponent"
+            : "trimeshCubeComponent");
     target->setProperty("cubeIndex", assignment.target.cubeIndex);
     target->setProperty("field", guideFieldToJSON(assignment.target.field));
 
@@ -1011,20 +1014,29 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
                 || target == nullptr
                 || !readRequiredString(*encoded, "guideId", assignment.guideId)
                 || !readRequiredString(*encoded, "targetNodeId", assignment.targetNodeId)
-                || target->getProperty("kind").toString() != "trimeshCubeComponent"
                 || !readRequiredString(*target, "field", field)
                 || !guideFieldFromJSON(field, assignment.target.field)) {
             result.issues.push_back({ GraphLoadCode::InvalidGraph,
-                    "Guide assignment must contain a typed Trimesh cube-component target" });
+                    "Guide assignment must contain a typed cube-component target" });
+            continue;
+        }
+        const String targetKind = target->getProperty("kind").toString();
+        if (targetKind == "envelopeCubeComponent") {
+            assignment.targetKind = GuideCurveTargetKind::EnvelopeCubeComponent;
+        } else if (targetKind != "trimeshCubeComponent") {
+            result.issues.push_back({ GraphLoadCode::InvalidGraph,
+                    "Guide assignment has an unknown target kind" });
             continue;
         }
         assignment.target.cubeIndex = (int) target->getProperty("cubeIndex");
         const Node* targetNode = result.graph.findNode(assignment.targetNodeId);
         if (assignment.target.cubeIndex < 0 || targetNode == nullptr
-                || targetNode->kind != NodeKind::TrilinearMesh
+                || (assignment.targetKind == GuideCurveTargetKind::TrimeshCubeComponent
+                        ? targetNode->kind != NodeKind::TrilinearMesh
+                        : targetNode->kind != NodeKind::Envelope)
                 || !result.graph.assignGuideCurve(std::move(assignment))) {
             result.issues.push_back({ GraphLoadCode::InvalidGraph,
-                    "Guide assignment references an invalid resource or Trimesh target" });
+                    "Guide assignment references an invalid resource or target" });
         }
     }
 

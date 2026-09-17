@@ -21,6 +21,7 @@ using std::vector;
 
 class Interactor;
 class Interactor3D;
+class Vertex;
 class CommonGfx;
 class Texture;
 
@@ -56,6 +57,7 @@ public:
     void drawSelectionRectangle();
     virtual void drawViewableVerts();
     virtual void highlightSelectedVerts();
+    virtual bool shouldDrawSelectedVertex(const Vertex&) const { return true; }
     void render();
     void render(const PanelHostContext& context);
     void setCursor();

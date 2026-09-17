@@ -40,6 +40,7 @@ struct TrimeshVertexParameter {
     float maximum { 1.f };
     float guideGain { 0.5f };
     bool enabled { true };
+    bool guideOnly {};
 };
 
 struct TrimeshVertexMarker {

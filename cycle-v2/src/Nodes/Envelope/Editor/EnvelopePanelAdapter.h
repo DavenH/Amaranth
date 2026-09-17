@@ -31,13 +31,15 @@ public:
     void setLogarithmic(bool logarithmic);
     void setAxisLinks(bool redLinked, bool blueLinked);
     bool logarithmic() const { return model.logarithmic; }
-    bool redLinked() const { return model.redLinked; }
-    bool blueLinked() const { return model.blueLinked; }
+    bool redLinked() const { return morphRedLinked; }
+    bool blueLinked() const { return morphBlueLinked; }
 
     const String& lastNodeId() const { return syncedNodeId; }
 private:
     float morphRed { 0.5f };
     float morphBlue { 0.5f };
+    bool morphRedLinked { true };
+    bool morphBlueLinked { true };
     String syncedNodeId;
     EnvelopeNodeModel model;
     NodeModelStatePtr syncedModel;

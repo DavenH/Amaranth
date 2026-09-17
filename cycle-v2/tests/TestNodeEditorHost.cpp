@@ -1384,7 +1384,9 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     REQUIRE(targetWithId("expanded:mesh.trimeshMorphRail.yellow") != nullptr);
     REQUIRE(targetWithId("expanded:mesh.trimeshVertexParameter.vertex.phase") != nullptr);
     REQUIRE(targetWithId("expanded:mesh.trimeshVertexGuideGain.guideGain.phase") != nullptr);
-    REQUIRE(targetWithId("expanded:mesh.trimeshVertexGuideGain.guideGain.time") == nullptr);
+    REQUIRE(targetWithId("expanded:mesh.trimeshVertexGuideGain.guideGain.time") != nullptr);
+    REQUIRE(targetWithId("expanded:mesh.trimeshVertexGuideGain.guideGain.red") != nullptr);
+    REQUIRE(targetWithId("expanded:mesh.trimeshVertexGuideGain.guideGain.blue") != nullptr);
     const DynamicObject* expandedTarget = targetWithId("expanded:mesh");
     REQUIRE(expandedTarget != nullptr);
     REQUIRE_FALSE((bool) expandedTarget->getProperty("nativeReady"));
@@ -2397,8 +2399,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(state.getProperty("purpose", {}).toString() == "Pitch");
     REQUIRE(state.getProperty("polarity", {}).toString() == "bipolar");
     const auto purposeBounds = rectangleProperty(state, "purposeBounds");
-    const auto purposeLabelBounds = rectangleProperty(
-            state, "purposeGroupLabelBounds");
+    const auto purposeLabelBounds = rectangleProperty(state, "purposeLabelBounds");
     const auto blueMorphBounds = rectangleProperty(state, "blueMorphBounds");
     const auto actionBarBounds = rectangleProperty(state, "actionBarBounds");
     const auto actionRowBounds = rectangleProperty(state, "actionRowBounds");
@@ -2407,9 +2408,10 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(purposeBounds.getWidth() > 0.f);
     REQUIRE(blueMorphBounds.getWidth() > 0.f);
     REQUIRE(actionRowBounds.getWidth() > 0.f);
-    REQUIRE(actionBarBounds.contains(purposeBounds));
+    REQUIRE(purposeBounds.getY() < controlBounds.getY());
+    REQUIRE(purposeLabelBounds.getRight() < purposeBounds.getX());
+    REQUIRE(purposeLabelBounds.getCentreY() == Catch::Approx(purposeBounds.getCentreY()));
     REQUIRE(blueMorphBounds.getBottom() < actionRowBounds.getY());
-    REQUIRE(purposeBounds.getY() == Catch::Approx(actionRowBounds.getY()));
     REQUIRE(actionBarBounds.getX() == Catch::Approx(actionRowBounds.getX()));
     REQUIRE(actionBarBounds.getRight() == Catch::Approx(actionRowBounds.getRight()));
     REQUIRE(controlBounds.getX() - actionBarBounds.getX()
@@ -2417,10 +2419,6 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(actionBarBounds.getRight() - controlBounds.getRight()
             == Catch::Approx(controlBounds.getX()));
     REQUIRE(actionBarBounds.getBottom() == Catch::Approx(panelBounds.getY()));
-    REQUIRE(purposeLabelBounds.getY() - actionBarBounds.getY()
-            == Catch::Approx(4.f));
-    REQUIRE(actionBarBounds.getBottom() - purposeBounds.getBottom()
-            == Catch::Approx(12.f));
     panelState = widget.automationState();
     REQUIRE((bool) panelState.getProperty("bipolar", {}));
     REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
@@ -2497,19 +2495,19 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(modeOptions.getArray()->size() == 4);
     for (const auto& option : *modeOptions.getArray()) {
         const auto optionBounds = rectangleProperty(option, "bounds");
-        const auto iconBounds = rectangleProperty(option, "iconBounds");
-        REQUIRE(optionBounds.getWidth() == Catch::Approx(34.f));
+        const auto labelBounds = rectangleProperty(option, "labelBounds");
+        REQUIRE(optionBounds.getWidth() == Catch::Approx(70.f));
         REQUIRE(optionBounds.getHeight() == Catch::Approx(30.f));
-        REQUIRE(iconBounds.getWidth() == Catch::Approx(24.f));
-        REQUIRE(iconBounds.getHeight() == Catch::Approx(24.f));
-        REQUIRE(iconBounds.getX() - optionBounds.getX() == Catch::Approx(5.f));
-        REQUIRE(iconBounds.getY() - optionBounds.getY() == Catch::Approx(3.f));
+        REQUIRE(labelBounds.getWidth() == Catch::Approx(62.f));
+        REQUIRE(labelBounds.getHeight() == Catch::Approx(26.f));
+        REQUIRE(labelBounds.getX() - optionBounds.getX() == Catch::Approx(4.f));
+        REQUIRE(labelBounds.getY() - optionBounds.getY() == Catch::Approx(2.f));
     }
     REQUIRE(fitBounds.getWidth() >= 28.f);
     REQUIRE(fullBounds.getWidth() == Catch::Approx(fitBounds.getWidth()));
     REQUIRE(fitBounds.getY() >= actionRowBounds.getY());
     REQUIRE(fullBounds.getBottom() <= actionRowBounds.getBottom());
-    REQUIRE(fitBounds.getY() == Catch::Approx(purposeBounds.getY()));
+    REQUIRE(fitBounds.getY() == Catch::Approx(actionRowBounds.getY()));
     const auto markerGroupBounds = rectangleProperty(state, "markerGroupBounds");
     const auto markerLabelBounds = rectangleProperty(
             state, "markerGroupLabelBounds");
@@ -2519,11 +2517,8 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     const auto rangeGroupBounds = rectangleProperty(state, "rangeGroupBounds");
     const auto rangeLabelBounds = rectangleProperty(
             state, "rangeGroupLabelBounds");
-    REQUIRE(purposeBounds.getRight() < markerGroupBounds.getX());
     REQUIRE(markerGroupBounds.getRight() < axisScaleBounds.getX());
     REQUIRE(axisScaleBounds.getRight() < rangeGroupBounds.getX());
-    REQUIRE(markerGroupBounds.getX() - purposeBounds.getRight()
-            == Catch::Approx(28.f));
     REQUIRE(axisScaleBounds.getX() - markerGroupBounds.getRight()
             == Catch::Approx(28.f));
     REQUIRE(rangeGroupBounds.getX() - axisScaleBounds.getRight()
@@ -2531,17 +2526,16 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(actionBarBounds.contains(markerGroupBounds));
     REQUIRE(actionBarBounds.contains(axisScaleBounds));
     REQUIRE(actionBarBounds.contains(rangeGroupBounds));
-    REQUIRE(purposeBounds.getX() - actionBarBounds.getX()
+    REQUIRE(markerGroupBounds.getX() - actionBarBounds.getX()
             == Catch::Approx(actionBarBounds.getRight() - rangeGroupBounds.getRight()));
-    REQUIRE(markerGroupBounds.getY() == Catch::Approx(purposeBounds.getY()));
-    REQUIRE(axisScaleBounds.getY() == Catch::Approx(purposeBounds.getY()));
-    REQUIRE(rangeGroupBounds.getY() == Catch::Approx(purposeBounds.getY()));
-    REQUIRE(markerLabelBounds.getY() == Catch::Approx(purposeLabelBounds.getY()));
-    REQUIRE(axisScaleLabelBounds.getY() == Catch::Approx(purposeLabelBounds.getY()));
-    REQUIRE(rangeLabelBounds.getY() == Catch::Approx(purposeLabelBounds.getY()));
-    REQUIRE(markerGroupBounds.getBottom() == Catch::Approx(purposeBounds.getBottom()));
-    REQUIRE(axisScaleBounds.getBottom() == Catch::Approx(purposeBounds.getBottom()));
-    REQUIRE(rangeGroupBounds.getBottom() == Catch::Approx(purposeBounds.getBottom()));
+    REQUIRE(markerGroupBounds.getY() == Catch::Approx(actionRowBounds.getY()));
+    REQUIRE(axisScaleBounds.getY() == Catch::Approx(actionRowBounds.getY()));
+    REQUIRE(rangeGroupBounds.getY() == Catch::Approx(actionRowBounds.getY()));
+    REQUIRE(markerLabelBounds.getY() == Catch::Approx(axisScaleLabelBounds.getY()));
+    REQUIRE(rangeLabelBounds.getY() == Catch::Approx(axisScaleLabelBounds.getY()));
+    REQUIRE(markerGroupBounds.getBottom() == Catch::Approx(actionRowBounds.getBottom()));
+    REQUIRE(axisScaleBounds.getBottom() == Catch::Approx(actionRowBounds.getBottom()));
+    REQUIRE(rangeGroupBounds.getBottom() == Catch::Approx(actionRowBounds.getBottom()));
     const auto requireActionIconMetrics = [&state](
             const char* controlProperty,
             const char* iconProperty) {
@@ -2573,8 +2567,9 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     }
     const auto parameterRails = state.getProperty("vertexParameterRails", {});
     REQUIRE(parameterRails.isArray());
-    REQUIRE(parameterRails.getArray()->size() >= 3);
-    REQUIRE_FALSE((bool) state.getProperty("guideControlsVisible", true));
+    REQUIRE(parameterRails.getArray()->size() == 6);
+    REQUIRE((bool) state.getProperty("guideControlsVisible", false));
+    REQUIRE(parameterRails.getArray()->getUnchecked(0).getProperty("id", {}) == "guide.time");
     const auto morphLabelBounds = rectangleProperty(state, "morphGroupLabelBounds");
     const auto axisGroupLabelBounds = rectangleProperty(state, "axisGroupLabelBounds");
     const auto linkGroupLabelBounds = rectangleProperty(state, "linkGroupLabelBounds");
@@ -2689,6 +2684,8 @@ TEST_CASE("Envelope view retains depth lines without storage-only point markers"
     REQUIRE(sourceCount > 0);
     REQUIRE(visibleLineCount == sourceCount);
     REQUIRE(visibleCount == 0);
+    REQUIRE((bool) state.getProperty("redLinked", false));
+    REQUIRE((bool) state.getProperty("blueLinked", false));
 }
 
 TEST_CASE("Envelope preview sync defers selection work until host initialization",
@@ -2719,7 +2716,8 @@ TEST_CASE("Envelope preview sync defers selection work until host initialization
             Rectangle<float>(0.f, 0.f, 640.f, 400.f)) != nullptr);
     const var initializedState = widget.automationState();
     REQUIRE((bool) initializedState.getProperty("hasCurrentCube", {}));
-    REQUIRE((int) initializedState.getProperty("movingVertexCount", 0) > 0);
+    REQUIRE((int) initializedState.getProperty("movingVertexCount", 0) == 4);
+    REQUIRE((int) initializedState.getProperty("physicalMovingVertexCount", 0) == 8);
 }
 
 TEST_CASE("Logarithmic Envelope grid distinguishes major divisions",
@@ -2987,7 +2985,7 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
     GraphEditor editor;
     const auto guide = editor.createGuideCurve(graph);
     REQUIRE(guide.succeeded());
-    REQUIRE(editor.assignGuideCurveToTrimeshVertexParameter(
+    REQUIRE(editor.assignGuideCurveToMeshComponent(
             graph,
             guide.nodeId,
             "mesh",

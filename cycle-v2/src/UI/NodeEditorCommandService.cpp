@@ -2,6 +2,7 @@
 
 #include "Graph/NodeParameterMap.h"
 #include "Runtime/FingerprintBuilder.h"
+#include "Nodes/Curve/Editor/CurveEditorWidget.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentMenu.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
@@ -708,11 +709,22 @@ bool NodeEditorCommandService::showTrimeshGuideAttachmentMenu(
     }
 
     const Node* node = findNode(nodeId);
-    TrimeshWidget* widget = node != nullptr ? resources.trimeshWidget(*node) : nullptr;
-    if (node == nullptr || widget == nullptr || owner == nullptr) {
+    if (node == nullptr || owner == nullptr) {
         return false;
     }
-    const int vertexIndex = widget->resolvedSelectedVertexIndexForNode(*node);
+    int vertexIndex = -1;
+    if (node->kind == NodeKind::TrilinearMesh) {
+        TrimeshWidget* widget = resources.trimeshWidget(*node);
+        vertexIndex = widget != nullptr
+                ? widget->resolvedSelectedVertexIndexForNode(*node)
+                : -1;
+    } else if (node->kind == NodeKind::Envelope) {
+        CurveEditorWidget* widget = resources.curveEditorWidget(*node);
+        vertexIndex = widget != nullptr ? widget->selectedEnvelopeGuideCubeIndex() : -1;
+    }
+    if (vertexIndex < 0) {
+        return false;
+    }
     const auto items = TrimeshGuideAttachmentMenu::itemsFor(
             document.graph(), nodeId, vertexIndex, parameterField);
     PopupMenu menu;

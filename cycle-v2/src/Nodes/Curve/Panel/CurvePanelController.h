@@ -26,6 +26,7 @@ public:
     virtual ~CurvePanelController() = default;
 
     virtual void syncFromNode(const Node& node) = 0;
+    virtual void syncGuideContext(const NodeGraph&, const Node&) {}
     virtual bool syncFromGuideResource(
             const GuideCurveResource&,
             const GuideHeatmapAssetPtr&) { return false; }
@@ -64,6 +65,7 @@ public:
 class EnvelopeCurvePanelController {
 public:
     virtual ~EnvelopeCurvePanelController() = default;
+    virtual int selectedGuideCubeIndex() = 0;
     virtual void setBipolar(bool bipolar) = 0;
     virtual void setLogarithmic(bool logarithmic) = 0;
     virtual void setAxisLinks(bool redLinked, bool blueLinked) = 0;

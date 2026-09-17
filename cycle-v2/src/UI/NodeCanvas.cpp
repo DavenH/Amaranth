@@ -2335,6 +2335,10 @@ CurveEditorWidget* NodeCanvas::curveEditorWidget(const Node& node) {
     return &editorCoordinator.previewResources().curveEditorWidget(node);
 }
 
+void NodeCanvas::syncCurveGuideContext(CurveEditorWidget& widget, const Node& node) {
+    widget.syncGuideContext(document.graph(), node);
+}
+
 TrimeshWidget* NodeCanvas::trimeshWidget(const Node& node) {
     return &editorCoordinator.previewResources().trimeshWidget(node);
 }
@@ -2349,6 +2353,12 @@ TrimeshRenderProfile NodeCanvas::trimeshRenderProfile(const Node& node) const {
 
 std::array<String, 6> NodeCanvas::trimeshGuideLabels(const Node& node) {
     return editorCoordinator.trimeshGuideLabelsFor(node);
+}
+
+std::array<String, 6> NodeCanvas::envelopeGuideLabels(
+        const Node& node,
+        int cubeIndex) {
+    return editorCoordinator.envelopeGuideLabelsFor(node, cubeIndex);
 }
 
 void NodeCanvas::paintNodePreview(

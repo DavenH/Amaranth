@@ -29,14 +29,22 @@ bool EnvelopePanelAdapter::syncFromNode(const Node& node) {
     if (node.kind != NodeKind::Envelope) {
         return false;
     }
-    if (!needsNodeSync(node) || !model.syncFromNode(node)) {
+    if (!needsNodeSync(node)) {
         return false;
     }
+    if (!model.syncFromNode(node)) {
+        return false;
+    }
+    const bool differentNode = syncedNodeId != node.id;
     syncedNodeId = node.id;
     syncedModel = node.model;
     const NodeParameterMap parameters(node);
     morphRed = parameters.floatValue("red", 0.5f);
     morphBlue = parameters.floatValue("blue", 0.5f);
+    if (differentNode) {
+        morphRedLinked = true;
+        morphBlueLinked = true;
+    }
     model.selectCube((EnvelopeCubeId) (int64) node.editorState.getProperty("selectedCubeId", 0));
     model.setPublicationRevision(node.model->revision());
     return true;
@@ -113,8 +121,8 @@ void EnvelopePanelAdapter::setLogarithmic(bool logarithmicToUse) {
 }
 
 void EnvelopePanelAdapter::setAxisLinks(bool redLinkedToUse, bool blueLinkedToUse) {
-    model.redLinked = redLinkedToUse;
-    model.blueLinked = blueLinkedToUse;
+    morphRedLinked = redLinkedToUse;
+    morphBlueLinked = blueLinkedToUse;
 }
 
 }

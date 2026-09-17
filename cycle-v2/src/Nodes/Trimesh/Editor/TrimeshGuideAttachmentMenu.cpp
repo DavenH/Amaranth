@@ -13,7 +13,7 @@ std::vector<TrimeshGuideAttachmentMenuItem> TrimeshGuideAttachmentMenu::itemsFor
     std::vector<TrimeshGuideAttachmentMenuItem> items;
     const Node* meshNode = graph.findNode(meshNodeId);
     const auto targets = meshNode != nullptr
-            ? TrimeshGuideAttachmentTarget::cubeTargetsForVertex(
+            ? MeshGuideAttachmentTarget::cubeTargetsForSelection(
                     *meshNode,
                     vertexIndex,
                     parameterField)

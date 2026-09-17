@@ -124,8 +124,6 @@ public:
     void setPublicationRevision(uint64_t revisionToUse) { modelRevision = juce::jmax<uint64_t>(1, revisionToUse); }
 
     bool logarithmic {};
-    bool redLinked { true };
-    bool blueLinked { true };
 
 private:
     EnvelopeCubeId nextIdentity() const;

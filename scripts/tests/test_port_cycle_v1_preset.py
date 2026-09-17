@@ -13,6 +13,28 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import port_cycle_v1_preset
 
 
+class EnvelopeGuideAssignmentTest(unittest.TestCase):
+    def test_envelope_cube_guide_and_gain_are_preserved(self):
+        layer = {"mesh": {"mainMesh": {"cubes": [{
+            "guides": {"time": 1, "key": 2, "mod": -1},
+            "gains": {"time": 0.462496251, "key": 0.73, "mod": 0.5},
+        }]}}}
+
+        assignments = port_cycle_v1_preset.guide_assignments_for_layer(
+            layer, "pitchEnvelope1", "envelopeCubeComponent")
+
+        self.assertEqual(assignments, [
+            {"guideId": "guide2", "targetNodeId": "pitchEnvelope1",
+             "target": {"kind": "envelopeCubeComponent", "cubeIndex": 0,
+                        "field": "time"}},
+            {"guideId": "guide3", "targetNodeId": "pitchEnvelope1",
+             "target": {"kind": "envelopeCubeComponent", "cubeIndex": 0,
+                        "field": "red"}},
+        ])
+        self.assertEqual(layer["mesh"]["mainMesh"]["cubes"][0]["gains"]["time"],
+                         0.462496251)
+
+
 def supported_source():
     layer = {
         "properties": {

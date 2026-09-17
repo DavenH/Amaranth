@@ -399,8 +399,6 @@ bool EnvelopeNodeModel::readJSON(const var& root) {
     rebuildIdentityMap();
     committedMesh.deepCopy(&mesh);
     logarithmic = (bool) object->getProperty("logarithmic");
-    redLinked = !object->hasProperty("redLinked") || (bool) object->getProperty("redLinked");
-    blueLinked = !object->hasProperty("blueLinked") || (bool) object->getProperty("blueLinked");
     const int64 selected = object->getProperty("selection");
     selection = std::nullopt;
     if (selected >= 0) {
@@ -434,8 +432,6 @@ var EnvelopeNodeModel::writeJSON() const {
     // CurveNodeModelState replaces these schema slots with the durable morph values.
     root->setProperty("red", 0.5f);
     root->setProperty("blue", 0.5f);
-    root->setProperty("redLinked", redLinked);
-    root->setProperty("blueLinked", blueLinked);
     Array<var> encodedIds;
     for (const auto cubeId : cubeIds) {
         encodedIds.add((int64) cubeId);
@@ -449,8 +445,6 @@ bool EnvelopeNodeModel::copyFrom(const EnvelopeNodeModel& other) {
     cubeIds = other.cubeIds;
     selection = other.selection;
     logarithmic = other.logarithmic;
-    redLinked = other.redLinked;
-    blueLinked = other.blueLinked;
     nextCubeIdentity = other.nextCubeIdentity;
     committedMesh.deepCopy(&other.committedMesh);
     modelRevision = other.modelRevision;
@@ -467,9 +461,7 @@ bool EnvelopeNodeModel::equalsGeometryAndTopology(const EnvelopeNodeModel& other
     return mesh.equals(other.mesh)
             && cubeIds == other.cubeIds
             && selection == other.selection
-            && logarithmic == other.logarithmic
-            && redLinked == other.redLinked
-            && blueLinked == other.blueLinked;
+            && logarithmic == other.logarithmic;
 }
 
 bool EnvelopeNodeModel::selectCube(std::optional<EnvelopeCubeId> cubeId) {
