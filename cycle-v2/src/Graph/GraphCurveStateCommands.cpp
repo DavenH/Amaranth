@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <unordered_set>
+#include <utility>
 
 #include "Graph/NodeParameterMap.h"
 
@@ -281,8 +282,8 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
                     if (!parameterMap.contains("red")
                             || !parameterMap.contains("blue")
                             || !parameterMap.contains("logarithmic")
-                            || parameterMap.floatValue("red") != envelope->red
-                            || parameterMap.floatValue("blue") != envelope->blue
+                            || parameterMap.floatValue("red") != typedModel->envelopeRed()
+                            || parameterMap.floatValue("blue") != typedModel->envelopeBlue()
                             || parameterMap.boolValue("logarithmic")
                                     != envelope->logarithmic) {
                         return GraphEditResult {
@@ -344,6 +345,80 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
                 }
                 return modelResult;
             });
+}
+
+GraphEditResult GraphCommandDispatcher::setPreviewMorph(float red, float blue) {
+    if (compoundActive || transientEdit.has_value()) {
+        return { GraphEditCode::ValidationRejected, {}, {} };
+    }
+    const String redValue(jlimit(0.f, 1.f, red), 9);
+    const String blueValue(jlimit(0.f, 1.f, blue), 9);
+    const std::vector<String> morphNodeIds = editingGraph().editorMorphNodeIds();
+
+    beginCompoundEdit();
+    for (const String& nodeId : morphNodeIds) {
+        const Node* node = editingGraph().findNode(nodeId);
+        const bool succeeded = node != nullptr
+                && (node->kind == NodeKind::TrilinearMesh
+                        ? setTrimeshPreviewMorph(nodeId, redValue, blueValue)
+                        : setEnvelopePreviewMorph(*node, redValue, blueValue));
+        if (!succeeded) {
+            cancelCompoundEdit();
+            return { GraphEditCode::ValidationRejected, {}, {} };
+        }
+    }
+
+    GraphEditResult result;
+    result.changed = commitCompoundEdit();
+    if (result.changed) {
+        result.changes = document.lastChange();
+    }
+    return result;
+}
+
+bool GraphCommandDispatcher::setTrimeshPreviewMorph(
+        const String& nodeId,
+        const String& red,
+        const String& blue) {
+    for (const auto& setting : {
+            std::pair<String, String> { "yellow", "0" },
+            std::pair<String, String> { "red", red },
+            std::pair<String, String> { "blue", blue } }) {
+        if (!setNodeParameter(
+                    nodeId, setting.first, setting.first, setting.second).succeeded()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool GraphCommandDispatcher::setEnvelopePreviewMorph(
+        const Node& node,
+        const String& red,
+        const String& blue) {
+    const auto model = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
+    if (model == nullptr || model->envelope() == nullptr) {
+        return false;
+    }
+    const float parsedRed = red.getFloatValue();
+    const float parsedBlue = blue.getFloatValue();
+    const NodeParameterMap parameters(node);
+    if (parameters.floatValue("red") == parsedRed
+            && parameters.floatValue("blue") == parsedBlue
+            && model->envelopeRed() == parsedRed
+            && model->envelopeBlue() == parsedBlue) {
+        return true;
+    }
+
+    if (!setNodeParameter(node.id, "red", "Red", red).succeeded()
+            || !setNodeParameter(node.id, "blue", "Blue", blue).succeeded()) {
+        return false;
+    }
+    return replaceNodeModel(
+            node.id,
+            model->revision(),
+            model->withEnvelopeMorph(
+                    parsedRed, parsedBlue, model->revision() + 1)).succeeded();
 }
 
 }

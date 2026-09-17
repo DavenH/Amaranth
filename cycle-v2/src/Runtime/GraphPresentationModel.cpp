@@ -613,7 +613,8 @@ std::function<void()> GraphPresentationModel::publishAsyncRefresh(
 }
 
 bool GraphPresentationModel::isCurrent(const AsyncRefresh& refresh) const {
-    if (!refresh.state->alive.load()) {
+    if (!refresh.state->alive.load()
+            || refresh.generation != refresh.state->generation.load()) {
         return false;
     }
     return std::all_of(

@@ -39,7 +39,7 @@ public:
         return *this;
     }
 
-    bool shouldDrawDepthDimension(int) const override {
+    bool shouldDrawDepthPoint(int) const override {
         return false;
     }
 
@@ -429,11 +429,17 @@ public:
             morph->setProperty("blue", controlB);
             root->setProperty("morph", var(morph));
             root->setProperty("colorPointCount", (int) snapshot.colorPoints().size());
+            root->setProperty("visibleColorLineCount", (int) std::count_if(
+                    snapshot.colorPoints().begin(),
+                    snapshot.colorPoints().end(),
+                    [this](const ColorPoint& point) {
+                        return shouldDrawDepthLine(point.num);
+                    }));
             root->setProperty("visibleColorPointCount", (int) std::count_if(
                     snapshot.colorPoints().begin(),
                     snapshot.colorPoints().end(),
                     [this](const ColorPoint& point) {
-                        return shouldDrawDepthDimension(point.num);
+                        return shouldDrawDepthPoint(point.num);
                     }));
             root->setProperty("redLinked", envelopeRedLinked);
             root->setProperty("blueLinked", envelopeBlueLinked);

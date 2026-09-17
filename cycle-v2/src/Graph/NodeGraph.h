@@ -293,6 +293,9 @@ public:
     static NodeGraph createEditingOverlay(const NodeGraph& base);
 
     const std::vector<Node>& getNodes() const;
+    const std::vector<String>& editorMorphNodeIds() const {
+        return overlayBase != nullptr ? overlayBase->editorMorphNodeIds() : morphNodeIds;
+    }
     const std::vector<Edge>& getEdges() const {
         return overlayBase != nullptr ? overlayBase->getEdges() : edges;
     }
@@ -431,6 +434,7 @@ private:
     std::vector<AudioSampleResource> audioResources;
     std::vector<NodeAudioResourceBinding> audioResourceBindings;
     std::unordered_map<String, size_t, StringHash> nodeIndex;
+    std::vector<String> morphNodeIds;
     std::unordered_map<
             String,
             std::unordered_map<String, size_t, StringHash>,

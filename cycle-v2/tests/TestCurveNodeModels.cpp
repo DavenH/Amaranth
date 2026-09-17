@@ -5,7 +5,9 @@
 #include "Graph/GraphDocument.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/NodeModelDecodeDiagnostics.h"
+#include "Graph/NodeParameterMap.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/Editor/EnvelopePanelAdapter.h"
 #include "Nodes/Curve/Panel/FlatCurvePanelAdapter.h"
@@ -437,6 +439,53 @@ TEST_CASE("Curve model publication is one undoable semantic command",
     REQUIRE(document.graph().findNode("shape")->model->revision() == model.revision());
     REQUIRE(document.undo());
     REQUIRE(document.graph().findNode("shape")->model->equals(*initialModel));
+}
+
+TEST_CASE("Preview morph overwrites every mesh editor in one undoable command",
+        "[cycle-v2][curve-model][preview-morph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+
+    InteractionComplexityDiagnostics::reset();
+    REQUIRE(commands.setPreviewMorph(0.25f, 0.75f).succeeded());
+    const auto counts = InteractionComplexityDiagnostics::counts();
+    REQUIRE(counts.graphCopies == 0);
+    REQUIRE(counts.meshCopies == 0);
+    REQUIRE(counts.modelSerializations == 0);
+    REQUIRE(counts.nodeLinearScans == 0);
+    REQUIRE(document.lastChange().nodeIds.size() == 2);
+    REQUIRE(document.lastChange().modelChanged);
+    const uint64_t editedRevision = document.revision();
+    const auto retry = commands.setPreviewMorph(0.25f, 0.75f);
+    REQUIRE(retry.succeeded());
+    REQUIRE_FALSE(retry.changed);
+    REQUIRE(document.revision() == editedRevision);
+    const Node* mesh = document.graph().findNode("mesh");
+    const Node* envelope = document.graph().findNode("env");
+    REQUIRE(NodeParameterMap(*mesh).floatValue("yellow") == 0.f);
+    REQUIRE(NodeParameterMap(*mesh).floatValue("red") == 0.25f);
+    REQUIRE(NodeParameterMap(*mesh).floatValue("blue") == 0.75f);
+    REQUIRE(NodeParameterMap(*envelope).floatValue("red") == 0.25f);
+    REQUIRE(NodeParameterMap(*envelope).floatValue("blue") == 0.75f);
+    const auto model = std::dynamic_pointer_cast<const CurveNodeModelState>(envelope->model);
+    REQUIRE(model != nullptr);
+    REQUIRE(model->envelopeRed() == 0.25f);
+    REQUIRE(model->envelopeBlue() == 0.75f);
+    REQUIRE((double) model->writeJSON().getProperty("state", {}).getProperty("red", {}) == 0.25);
+    String error;
+    const auto restoredModel = CurveNodeDomainCodec(NodeKind::Envelope)
+            .readJSON(model->writeJSON(), error);
+    REQUIRE(restoredModel != nullptr);
+    REQUIRE(restoredModel->equals(*model));
+
+    REQUIRE(document.undo());
+    REQUIRE(NodeParameterMap(*document.graph().findNode("env")).floatValue("red") == 0.5f);
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh")).floatValue("blue") == 0.f);
+    REQUIRE_FALSE(document.canUndo());
 }
 
 TEST_CASE("Curve drag publications coalesce into one document undo entry",

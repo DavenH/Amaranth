@@ -3,6 +3,11 @@
     { "command": "openNodeEditor", "nodeId": "env", "waitForIdle": true, "idleDelayMs": 200 },
     {
       "command": "assertState",
+      "path": "expandedNodeControls.effect2D.blueMorph",
+      "equals": 0
+    },
+    {
+      "command": "assertState",
       "path": "expandedNodeControls.effect2D.panelState.colorPointCount",
       "op": "greaterThan",
       "value": 0
@@ -11,6 +16,12 @@
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.panelState.visibleColorPointCount",
       "equals": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.visibleColorLineCount",
+      "op": "greaterThan",
+      "value": 0
     },
     {
       "command": "screenshot",

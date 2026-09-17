@@ -111,6 +111,7 @@ public:
     var writeJSON() const;
     bool copyFrom(const EnvelopeNodeModel& other);
     bool equals(const EnvelopeNodeModel& other) const;
+    bool equalsGeometryAndTopology(const EnvelopeNodeModel& other) const;
     bool selectCube(std::optional<EnvelopeCubeId> cubeId);
 
     EnvelopeMesh& getMesh() { return mesh; }
@@ -172,6 +173,10 @@ public:
             const EnvelopeNodeModel& model,
             uint64_t revision,
             var editorState = {});
+    std::shared_ptr<const CurveNodeModelState> withEnvelopeMorph(
+            float red,
+            float blue,
+            uint64_t revision) const;
 
     String schemaId() const override;
     int schemaVersion() const override;
@@ -181,6 +186,8 @@ public:
 
     const FlatCurveModel* flatCurve() const { return flatCurveState.get(); }
     const EnvelopeNodeModel* envelope() const { return envelopeState.get(); }
+    float envelopeRed() const { return envelopeRedValue; }
+    float envelopeBlue() const { return envelopeBlueValue; }
     const var& editorJSON() const { return editorState; }
 
 private:
@@ -204,6 +211,8 @@ private:
     uint64_t modelRevision {};
     std::shared_ptr<const FlatCurveModel> flatCurveState;
     std::shared_ptr<const EnvelopeNodeModel> envelopeState;
+    float envelopeRedValue {};
+    float envelopeBlueValue {};
     var editorState;
 };
 

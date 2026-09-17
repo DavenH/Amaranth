@@ -232,6 +232,8 @@ private:
     void openProbeDetail(const String& probeId);
     void refreshProbeDetail();
     void finishPreviewModWheelRefresh();
+    bool persistPreviewMorph(int midiNote, int modWheelValue);
+    void synchronizeOpenedEditorMorph();
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh(

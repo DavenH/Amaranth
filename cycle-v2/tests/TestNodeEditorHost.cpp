@@ -2657,7 +2657,7 @@ TEST_CASE("Envelope document reload frames the authored vertex bounds",
     REQUIRE((double) zoom.getProperty("h", {}) < 0.5);
 }
 
-TEST_CASE("Envelope view suppresses storage-only Time depth points",
+TEST_CASE("Envelope view retains depth lines without storage-only point markers",
         "[cycle-v2][node-editor-host][envelope][presentation]") {
     ScopedJuceInitialiser_GUI juce;
     CurveTableScope curveTable;
@@ -2669,8 +2669,10 @@ TEST_CASE("Envelope view suppresses storage-only Time depth points",
 
     const var state = widget.automationState();
     const int sourceCount = state.getProperty("colorPointCount", {});
+    const int visibleLineCount = state.getProperty("visibleColorLineCount", {});
     const int visibleCount = state.getProperty("visibleColorPointCount", {});
     REQUIRE(sourceCount > 0);
+    REQUIRE(visibleLineCount == sourceCount);
     REQUIRE(visibleCount == 0);
 }
 

@@ -215,3 +215,15 @@ provide the real minimal panel environment, or move the data-retriever contract
 below panel construction. Do not weaken `SingletonRepo` lookup or add nullable
 production behavior for this test. This failure is unrelated to the Voice
 Context/Envelope parity slice; its focused runtime Envelope tests pass.
+
+## Envelope Morph State Ownership
+
+Status: open after preview-driven durable morph mapping.
+
+`EnvelopeNodeModel` still caches Red/Blue alongside the authoritative node
+parameters. Morph-only `CurveNodeModelState` revisions share the immutable
+Envelope geometry and carry scalar overrides, so CC1 release does not copy a
+mesh. Migrate the Envelope editor adapter to read controls from the node
+parameter source of truth, then remove the duplicated scalar fields from
+`EnvelopeNodeModel` and the revision overlay. Preserve the existing serialized
+schema and one-command undo behavior during that refactor.

@@ -14,8 +14,8 @@ native automation are still needed.
 The Envelope panel rasterizer reports depth points under Red/Blue (14 for the
 default seven cubes), not under Time: they are projections through the
 storage-only Time-pole cube topology. They are presentation artifacts in the
-Envelope 2D view, so that view suppresses the entire depth-point pass while
-retaining its underlying rasterizer and editing topology.
+Envelope 2D view. Only the projected point markers are suppressed; the
+colour-coded depth lines remain visible.
 
 Second slice implemented: document-reload Envelope framing now uses the
 authored vertex bounding box with margin, without rewriting mesh coordinates.
@@ -35,27 +35,55 @@ Spy identity. The six-Guide/Spy overlap fixture confirms the Spy retains hover
 and suppresses the occluded Guide; focused keyboard tests confirm Space is not
 consumed by segmented properties or Trimesh link controls.
 
+Sixth slice implemented: preview-note selection and mod-wheel release commit
+Time=0, Red=normalized preview key, and Blue=CC1/127 across Trimesh and
+Envelope nodes in one undo step. Wheel movement does not publish graph edits.
+Envelope morph-only model revisions share the immutable mesh; operation-count
+tests show no graph or mesh copies, serialization, or unrelated-node/parameter
+scans. The reported regression to Envelope color lines was corrected by
+separating line visibility from storage-only point-marker visibility. Focused
+keyboard automation and a production-size expanded-Envelope capture pass.
+The honerism-3 Live Spy fixture exposed a delayed graph refresh overwriting a
+newer CC1 preview value: per-product currentness did not protect the shared
+presentation snapshot. Async publication now also checks the whole-snapshot
+generation so an older refresh cannot roll back preview controls.
+
 Native focus delivery was checked in an agent session: with the Voice Context
 editor open, a native click selected the `2x` oversampling segment, then a
 native Space key started preview playback (`previewPlaying=true`) at a long
 enough voice duration to observe it. A one-second preview can finish before a
 subsequent session snapshot and should not be used as a focus assertion.
 
-Remaining: preview-driven editor morph position and the separate bimesh decision in
+Remaining: remove the duplicate legacy Envelope Red/Blue cache fields from
+`EnvelopeNodeModel` after migrating its editor adapter to node-parameter
+authority. The optional true bimesh decision remains separate in
 `docs/TDD/envelope-bimesh.md`.
 
 ## Preview Morph Ownership Decision
 
-The existing Trimesh and Envelope morph controls author durable node values.
-Replacing their values on each preview-note or CC1 movement would issue graph
-edits and undo events, and would conflict with the user's release-only Spy
-refresh policy. The expected design is a transient editor preview position
-(Time=0, Red=normalized preview key, Blue=CC1/127) layered over authored
-defaults. It must not serialize or enter graph commands. The UI must define
-what happens when someone drags an authored morph slider while this preview
-layer is active (temporary manual override, edit the source, or display both
-positions) before implementing this cross-editor slice. A user choice was
-requested; do not silently make one slider's meaning change.
+The user chose durable ownership: preview-note and CC1 updates overwrite the
+saved morph values (Time=0, Red=normalized preview key, Blue=CC1/127). The
+node parameter and Envelope model representations must remain consistent.
+CC1 movement should present the current preview continuously but publish one
+durable graph edit at gesture completion, preserving the release-only Spy
+refresh policy and one undo step. A preview-note selection is one atomic edit.
+Do not deep-copy meshes or the graph on movement updates.
+
+Envelope geometry remains shared across morph-only model revisions. The
+revision carries Red/Blue overrides, and its serializer writes those overrides
+into the existing schema. `EnvelopeNodeModel` still carries legacy cached
+Red/Blue fields for its editor adapter; removing those duplicates is a future
+deletion target once all model/editor consumers read the node-parameter source
+of truth directly. The graph keeps a morph-node identity index so a preview
+gesture does not scan unrelated nodes. Loading a preset remains clean; opening
+a morph editor or changing the preview note/CC1 performs the durable overwrite.
+
+Diff review: `CurveNodeModels.cpp` reaches 825 lines because it already owns
+FlatCurve, Envelope, and their codec; the new immutable morph revision remains
+beside its existing snapshot constructors. Split the Envelope model/codec when
+removing its duplicated scalar cache. `NodeCanvas.cpp` remains an oversized
+orchestrator; the added code only routes preview events to the semantic command
+and does not move model or rendering algorithms into the canvas.
 
 ## Scope And Authority
 
@@ -102,9 +130,10 @@ loading or remote state machine is copied.
 - On preset load, Envelope view framing contains the authored visible vertex
   bounding box with deliberate margin, while leaving durable mesh coordinates
   unchanged.
-- Transient editor morph position follows preview controls: blue is normalized
+- Saved editor morph position follows preview controls: blue is normalized
   CC 1, red is normalized selected-note position across the playable range, and
-  time is zero. This must not persist to the graph or recalculate unrelated DSP.
+  time is zero. Gestures commit atomically and remain undoable; movement must
+  not trigger synchronous Spy refresh.
 - Unison uses the existing precision-slider visual language, and other legacy
   slider presentations are audited rather than converted indiscriminately.
 - Spy tether endpoints use the top of the Spy bar, and Guide tethers are not

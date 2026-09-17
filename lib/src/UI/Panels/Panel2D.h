@@ -27,7 +27,8 @@ public:
 
     OpenGLPanel* getOpenglPanel()                            { return openGL.get(); }
     virtual bool shouldDrawCurve()                           { return true; }
-    virtual bool shouldDrawDepthDimension(int dimension) const { return true; }
+    virtual bool shouldDrawDepthLine(int dimension) const { return true; }
+    virtual bool shouldDrawDepthPoint(int dimension) const { return true; }
 
     virtual bool isMeshEnabled();
     void drawCurvesAndSurfaces() override;
