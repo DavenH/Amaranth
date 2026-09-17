@@ -6,8 +6,16 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 475.20001, "y": 826.0 },
-            "parameters": { "octave": 0, "voiceLength": 0.404580153, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "position": { "x": 475.20001, "y": 818.0 },
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.404580153,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": true,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -433,16 +441,16 @@
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 761.20001, "y": 1424.0 },
-            "parameters": { "processingScope": "global", "enabled": true, "size": 0.0, "post": 0.532, "highPass": 0.0 },
+            "position": { "x": 755.20001, "y": 1424.0 },
+            "parameters": { "processingScope": "global", "enabled": true, "size": 0.0, "post": 0.56994, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 4,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 4,
                     "vertices": [
                         { "id": 1, "x": 0.03125, "y": 0.5, "curve": 0.0 },
                         { "id": 2, "x": 0.0635, "y": 0.5, "curve": 0.0 },
@@ -458,7 +466,8 @@
                         { "id": 12, "x": 0.55923, "y": 0.47923, "curve": 0.0 }
                     ]
                 }
-            }
+            },
+            "editor": { "selectedVertexId": 8 }
         },
         {
             "id": "delay",

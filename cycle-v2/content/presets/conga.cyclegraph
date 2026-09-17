@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 460.0, "y": 826.0 },
-            "parameters": { "octave": 0, "voiceLength": 0.362652361, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.362652361,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -457,20 +465,20 @@
             "dcOffset": 0.0,
             "phase": 0.0,
             "noiseSeed": 2704,
-            "revision": 1,
+            "revision": 5,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 5,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 5,
                     "vertices": [
-                        { "id": 1, "x": 0.0525, "y": 0.5, "curve": 0.0 },
-                        { "id": 2, "x": 0.0625, "y": 0.5, "curve": 1.0 },
+                        { "id": 1, "x": 0.04145, "y": 0.5, "curve": 0.0 },
+                        { "id": 2, "x": 0.05007, "y": 0.5, "curve": 1.0 },
                         { "id": 3, "x": 0.9375, "y": 0.02663, "curve": 1.0 },
-                        { "id": 4, "x": 0.10273, "y": 0.16568, "curve": 0.0 }
+                        { "id": 4, "x": 0.07649, "y": 0.16568, "curve": 0.0 }
                     ]
                 }
             }
@@ -486,19 +494,19 @@
             "dcOffset": 0.0,
             "phase": 0.0,
             "noiseSeed": 5481,
-            "revision": 1,
+            "revision": 3,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 3,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 3,
                     "vertices": [
-                        { "id": 1, "x": 0.0625, "y": 0.5, "curve": 1.0 },
+                        { "id": 1, "x": 0.04924, "y": 0.5, "curve": 1.0 },
                         { "id": 2, "x": 0.9375, "y": 0.15976, "curve": 1.0 },
-                        { "id": 3, "x": 0.17295, "y": 0.21893, "curve": 0.0 }
+                        { "id": 3, "x": 0.11245, "y": 0.21893, "curve": 0.0 }
                     ]
                 }
             }

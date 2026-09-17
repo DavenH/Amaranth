@@ -1,0 +1,25 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/acoustic.cyclegraph"
+    },
+    { "command": "waitForIdle", "delayMs": 300 },
+    { "command": "sendMidi", "type": "noteOn", "note": 21, "velocity": 0.8 },
+    { "command": "resetAudioPerformance" },
+    { "command": "waitForIdle", "delayMs": 500 },
+    { "command": "inspectAudioPerformance" },
+    { "command": "sendMidi", "type": "allNotesOff" },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/acoustic-high-control-rate.cyclegraph"
+    },
+    { "command": "waitForIdle", "delayMs": 300 },
+    { "command": "sendMidi", "type": "noteOn", "note": 21, "velocity": 0.8 },
+    { "command": "resetAudioPerformance" },
+    { "command": "waitForIdle", "delayMs": 500 },
+    { "command": "inspectAudioPerformance" },
+    { "command": "sendMidi", "type": "allNotesOff" }
+  ],
+  "quit": true
+}

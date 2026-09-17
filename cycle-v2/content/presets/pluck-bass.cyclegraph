@@ -6,14 +6,22 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 815.42493, "y": 344.0 },
-            "parameters": { "octave": 0, "voiceLength": 0.282827973, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "position": { "x": 941.53998, "y": 489.00003 },
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.282827973,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": true,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 449.42496, "y": 331.5 },
+            "position": { "x": 575.53998, "y": 489.00003 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -390,7 +398,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1675.33069, "y": 421.0 },
+            "position": { "x": 1586.40002, "y": 399.5 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -491,7 +499,7 @@
             "id": "scratchEnvelope2",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 925.38739, "y": 920.0 },
+            "position": { "x": 865.59991, "y": 1009.15979 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",

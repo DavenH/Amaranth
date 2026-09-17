@@ -45,7 +45,8 @@ public:
             double voiceSamplePosition,
             size_t elapsedSamples,
             Buffer<float> left,
-            Buffer<float> right);
+            Buffer<float> right,
+            bool refreshTimeSources = true);
     size_t frameRenderCount() const { return renderCount; }
     bool hasPitchEnvelope() const { return cycleEnvelopes.hasPitchEnvelope(); }
     float pitchEnvelopeValue(int laneIndex) const {
@@ -77,6 +78,8 @@ private:
         bool multiplicative {};
         std::unique_ptr<Rasterization::VoiceRasterizer> timeRasterizer;
         std::unique_ptr<Rasterization::VoiceCycleState> timeState;
+        std::array<Buffer<float>, 2> cachedTimeFrames;
+        int cachedTimeFrameSize {};
         std::unique_ptr<TrimeshBlockwiseDsp> spectralRasterizer;
         TrimeshMorphResolver morphResolver;
     };
@@ -89,7 +92,8 @@ private:
             double voiceSamplePosition,
             size_t elapsedSamples,
             Buffer<float> left,
-            Buffer<float> right);
+            Buffer<float> right,
+            bool refreshTimeSources);
     static int valueCount(PortDomain domain, int frameSize);
     Buffer<float> slot(int slotIndex, int channel, int valueCount);
     Transform* transformFor(int frameSize);
@@ -104,6 +108,7 @@ private:
     PreparedCycleEnvelopeBank cycleEnvelopes;
     std::vector<std::unique_ptr<Transform>> transforms;
     ScopedAlloc<float> slotMemory;
+    ScopedAlloc<float> timeSourceMemory;
     ScopedAlloc<float> magnitudeScratch;
     ScopedAlloc<float> phaseScratch;
     ScopedAlloc<float> phaseHarmonicScale;

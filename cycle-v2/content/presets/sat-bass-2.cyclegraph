@@ -6,14 +6,22 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 945.59998, "y": 826.0 },
-            "parameters": { "octave": -1, "voiceLength": 0.374045802, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "position": { "x": 549.95886, "y": 1445.80591 },
+            "parameters": {
+                "octave": -1,
+                "voiceLength": 0.374045802,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 570.40002, "y": 693.0 },
+            "position": { "x": 168.75891, "y": 1309.80591 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -178,7 +186,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2222.3999, "y": 1084.0 },
+            "position": { "x": 1729.91138, "y": 1022.0 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -369,7 +377,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 570.40002, "y": 863.0 },
+            "position": { "x": 168.75891, "y": 1479.80591 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -509,7 +517,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 898.5 },
+            "position": { "x": 912.84509, "y": 920.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -610,7 +618,7 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2597.6001, "y": 886.0 },
+            "position": { "x": 2105.11182, "y": 886.0 },
             "parameters": {}
         },
         {
@@ -669,7 +677,7 @@
             "id": "voiceOutput",
             "kind": "voiceOutput",
             "definitionVersion": 1,
-            "position": { "x": 2795.6001, "y": 886.0 },
+            "position": { "x": 2303.11182, "y": 886.0 },
             "parameters": {}
         }
     ],

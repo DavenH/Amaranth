@@ -6,14 +6,22 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 460.0, "y": 826.0 },
-            "parameters": { "octave": 1, "voiceLength": 0.485294118, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "256" }
+            "position": { "x": 307.96619, "y": 1094.0 },
+            "parameters": {
+                "octave": 1,
+                "voiceLength": 0.485294118,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": true,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 837.0 },
+            "position": { "x": -58.03381, "y": 1128.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -266,7 +274,7 @@
             "id": "magnitudeLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1942.0, "y": 387.0 },
+            "position": { "x": 1942.0, "y": 176.0 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -509,7 +517,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2252.80005, "y": 1084.0 },
+            "position": { "x": 2295.65674, "y": 523.0 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -649,7 +657,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 364.79999, "y": 565.83331 },
+            "position": { "x": 504.08405, "y": 244.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -738,6 +746,9 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 2628.0, "y": 886.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
@@ -912,7 +923,7 @@
             "kind": "reverb",
             "definitionVersion": 1,
             "position": { "x": 1050.0, "y": 1571.0 },
-            "parameters": { "enabled": true, "size": 0.428000003, "damp": 0.588, "width": 0.78, "wet": 0.164, "highPass": 0.0 }
+            "parameters": { "enabled": true, "size": 0.428000003, "damp": 0.588, "width": 0.78, "wet": 0.45242, "highPass": 0.0 }
         },
         {
             "id": "output",
@@ -948,23 +959,23 @@
             "dcOffset": 0.0,
             "phase": 0.0,
             "noiseSeed": 6486,
-            "revision": 1,
+            "revision": 5,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 5,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 5,
                     "vertices": [
-                        { "id": 1, "x": 0.0525, "y": 0.5, "curve": 0.0 },
-                        { "id": 2, "x": 0.06301, "y": 0.49645, "curve": 1.0 },
+                        { "id": 1, "x": 0.03896, "y": 0.5, "curve": 0.0 },
+                        { "id": 2, "x": 0.05141, "y": 0.49645, "curve": 1.0 },
                         { "id": 3, "x": 0.9375, "y": 0.5, "curve": 1.0 },
                         { "id": 4, "x": 0.9475, "y": 0.5, "curve": 0.0 },
                         { "id": 5, "x": 0.13661, "y": 0.15849, "curve": 0.0 },
-                        { "id": 6, "x": 0.06876, "y": 0.47163, "curve": 0.16163 },
-                        { "id": 7, "x": 0.06421, "y": 0.55319, "curve": 0.0 }
+                        { "id": 6, "x": 0.06075, "y": 0.47163, "curve": 0.16163 },
+                        { "id": 7, "x": 0.05454, "y": 0.55319, "curve": 0.0 }
                     ]
                 }
             }

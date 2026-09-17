@@ -2,7 +2,122 @@
 
 ## Status
 
-Proposed.
+In progress. The experimental Cycle V2 path is implemented behind the
+`pitchIndependentSpectralControl` Voice Context flag. The legacy path remains
+the default. Cycle 1 integration and the full shipping-quality interval and
+polyphony measurement matrix remain open, so this TDD is not complete.
+
+## Experimental Cycle V2 Implementation
+
+Implemented 2026-09-16:
+
+- `FixedTimeFrameClock` owns the pitch-independent absolute voice-sample
+  frontiers, and `FixedTimeCyclicFrameCompositor` owns periodic Hermite lookup,
+  phase-aligned two-frame composition, and complementary raised-cosine weights
+  in the shared Cycle DSP library.
+- `SpectralOscillatorRegionRuntime` selects the fixed-time path only when the
+  compiled Voice Context flag is true. It invokes the existing
+  `SpectralOscillatorFrameRenderer` once per spectral frontier, retaining its
+  mature FFT, layer, harmonic-cutoff, and IFFT order. Time-source morph and
+  rasterization refresh on the neutral chained-cycle clock.
+- Each prepared runtime retains two frames and a precomputed transition table.
+  Lane phase is continuous and lane-local; rendered frames remain shared across
+  Unison lanes. The realtime path allocates and locks zero times after prepare.
+- `acoustic-high-control-rate.cyclegraph` is a copy of Acoustic with the flag
+  enabled and a 64-sample interval. The original Acoustic preset remains on its
+  256-sample legacy whole-cycle cadence.
+- The expanded Voice Context properties expose the experimental flag beside
+  the control interval. Spectral scratch and morph inputs resolve at each
+  fixed-time frontier; time-source morph inputs resolve on cycle refresh. The
+  cycle-envelope bank advances by the elapsed samples at each spectral frontier.
+
+The application boundary translates compiled Voice Context configuration,
+process timing, and rendered frame buffers into the shared clock/compositor.
+It does not copy spectral or mesh-domain behavior. The stable end state is for
+Cycle 1 to consume this same shared core before the flag becomes a general
+shipping quality mode; no V2-only spectral renderer was introduced.
+
+### Parity findings (2026-09-17)
+
+- A static `filter-saw` spectral-frame ablation with eight Unison lanes exposed
+  a fixed-time phase mismatch. The legacy frame rotation uses the negative
+  authored phase offset, quantized to frame samples, and its Hermite resampler
+  reads three source samples behind the nominal position. The fixed-time lane
+  now derives its initial lookup phase from those authoritative rules. After
+  the resampler's startup padding, the left and right stereo sums agree within
+  `3e-7` L2 over 96 samples. The first few samples still differ because the
+  legacy resampler begins with zero-filled history while periodic lookup wraps.
+- A full first-cycle time-domain waveform and immediate fixed-time updating
+  compete for the same frame pair. The current contract renders at `H`, then
+  completes the transition away from the note-on frame by `2H`, even when the
+  first oscillator period is much longer. Bass 2 exposes this perceptually:
+  its authored first-cycle shape can be replaced before that cycle finishes.
+  The chosen policy is to render time-domain sources on the existing neutral
+  chained-cycle clock while spectral operations continue at every fixed-time
+  frontier. This keeps the first time-domain frame through its first cycle
+  without delaying spectral-layer changes.
+
+The renderer owns a prepared, per-time-source frame cache; a cycle frontier
+refreshes those source frames, and intervening spectral frontiers reuse them
+without rerunning their morph resolution or rasterization. The runtime only
+translates the shared neutral cycle clock into a refresh request. The existing
+Time Trimesh rasterizer remains authoritative. Cache storage is allocated at
+prepare, invalidated on note reset, and never shared across graph preparations.
+If a cycle boundary falls between fixed-time frontiers, the next frontier
+adopts the new time-domain frame; this adds less than one `H` of latency to
+time-source adoption while leaving the spectral cadence exact. The stable end
+state is separate time-source and spectral clocks under the same prepared
+recipe, with no duplicated rasterization algorithm or application-local DSP.
+At C1 and `H = 64`, a stage-capture test verifies that the FFT input at the
+first fixed-time frontier is identical to the note-on time-domain frame, while
+the reconstructed spectral frame still updates. The time source refreshes at
+the first control frontier after the neutral cycle boundary; output remains
+sample-identical across host blocks of 1, 64, 127, and 512 samples.
+
+Focused evidence:
+
+- MIDI 21 renders eight frames in the first 512 output samples at a 64-sample
+  interval, before the first oscillator cycle completes.
+- Output and frame counts are byte-identical for host blocks of 1, 16, 64,
+  127, 256, and 512 samples.
+- Events immediately before and on a frontier are visible to that frontier;
+  an event immediately after it waits for the following frontier.
+- Frame-render count remains eight when Unison order increases from one to
+  four, while lane phase and stereo pan remain lane-local.
+- Shared-DSP tests cover clock sequences, complementary weights, identical
+  frames, opposite frames, phase-locked lookup, and periodic wrap.
+
+One-voice Debug measurements at 44.1 kHz with 512-sample callbacks recorded no
+deadline overruns. Legacy Acoustic averaged 0.916 ms per callback and 7.85%
+deadline utilization over 44 callbacks. The 64-sample experimental copy
+averaged 2.091 ms and 17.97% over 46 callbacks, producing exactly eight recipe
+renders per active callback. These measurements justify keeping the mode
+opt-in; they do not select a shipping default. The reproducible automation
+fixture is `scripts/fixtures/cycle-v2-agent-acoustic-fixed-time-control.json`.
+
+### C1 control-interval comparison (2026-09-16)
+
+Two realtime passes used the same Acoustic graph with its Voice Context octave
+offset set to zero, MIDI C1 (note 24), one voice, velocity 0.8, and only the
+control interval and experimental flag varied. The macOS standalone Debug build
+ran at 44.1 kHz with 512-sample callbacks (11.61 ms deadline). Each measurement
+window covered about 0.38 seconds after note startup. Means below are weighted
+by measured callback count across the two passes; recipe renders are per callback.
+
+| Interval | Flag off: mean callback / recipes | Flag on: mean callback / recipes | Flag on: deadline use / worst callback |
+| --- | ---: | ---: | ---: |
+| 16 samples | 0.436 ms / 0.36 | 9.014 ms / 32.00 | 77.6% / 9.678 ms |
+| 64 samples | 0.389 ms / 0.38 | 2.463 ms / 8.00 | 21.2% / 2.692 ms |
+| 256 samples | 0.662 ms / 0.39 | 2.111 ms / 2.00 | 18.1% / 2.387 ms |
+| 1024 samples | 0.705 ms / 0.37 | 1.222 ms / 0.51 | 10.5% / 2.016 ms |
+
+There were no deadline overruns or telemetry drops in the 16 measurements.
+With the flag off, all four settings are clamped to at least one oscillator
+cycle between frames at C1, so their recipe counts are effectively identical;
+their small callback-time differences reflect short realtime windows and
+background load. The 16-sample fixed-time mode leaves little headroom for
+additional voices in this Debug run. These are one-voice measurements, not a
+shipping polyphony limit.
 
 This design extends Cycle's spectral oscillator with a control-frame cadence
 that may be shorter than one oscillator cycle. It does not replace the existing
@@ -12,9 +127,10 @@ or define dynamic-impulse behavior for the IR Modeller.
 ## Objective
 
 Give low notes the same responsive spectral modulation available to higher
-notes. Time, magnitude, and phase meshes should be sampled at a configurable
+notes. Magnitude and phase meshes should be sampled at a configurable
 time-domain cadence even when one oscillator period is longer than that control
-interval.
+interval. Time-domain source meshes retain the chained cycle clock so an
+authored first-cycle waveform remains in effect for that cycle.
 
 The output must retain Cycle's existing pitch-locked periodic waveform,
 spectral-layer ordering, cyclic IFFT semantics, unison phase behavior, and
@@ -35,6 +151,12 @@ reduces the update cadence to the note frequency. A 27.5 Hz note therefore
 cannot receive more than approximately 27.5 distinct spectral frames per
 second even when the configured control interval asks for a substantially
 higher rate.
+
+![Cycle-locked and fixed-time frame frontiers during one low-note cycle](figures/spectral-control-cadence.svg)
+
+The pluck-energy curve is schematic. The dots show frame-render frontiers, not
+output samples: the legacy path cannot render a second spectral state inside
+this cycle, while the fixed-time path can.
 
 The current renderer interpolates previous and current frames and performs a
 half-frame seam fade, but it composes a complete oscillator cycle before
@@ -148,7 +270,9 @@ At frontier `t_m`:
 
 1. advance live modulation, morph smoothing, and scratch by the exact elapsed
    sample count;
-2. rasterize the time-domain mesh and run the existing spectral-layer pipeline;
+2. refresh time-domain source meshes only when their chained-cycle frontier is
+   due, then run the existing spectral-layer pipeline using the current source
+   frames;
 3. inverse-transform the result into a complete periodic frame `f_m`;
 4. make `f_m` the target of a bounded transition from the preceding periodic
    frame.
@@ -161,6 +285,15 @@ process-context rule. An event after the frontier must not be observed early.
 
 Each lane retains one continuous oscillator phase `phi_l[r]`. Adjacent frames
 are evaluated at that same phase and blended in output-sample time:
+
+![Whole-cycle IFFT signal snippets sampled and blended at shorter control intervals](figures/phase-locked-frame-composition.svg)
+
+The signal snippets align one steady-pitch output cycle with the phase domain of
+each complete IFFT frame. A row shows a reusable periodic waveform, not a grain
+placed on the output timeline. The control interval `H` determines when a new
+whole-cycle frame is rendered and how long the blend to it lasts; the IFFT
+frame itself still spans the entire oscillator cycle. At `2.5H`, both `f_1` and
+`f_2` are sampled at the same lane phase and mixed equally.
 
 \[
 y_l[r] =

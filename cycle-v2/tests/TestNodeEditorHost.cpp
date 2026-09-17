@@ -954,7 +954,7 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     NodeEditorHost host(parent, commands, presentation, resources);
     Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
 
-    REQUIRE(host.bind(&voice, { 0, 0, 440, 318 }));
+    REQUIRE(host.bind(&voice, { 0, 0, 440, 360 }));
     DynamicObject automation;
     host.appendAutomationState(automation);
     const var state = automation.getProperty("voiceContext");
@@ -963,6 +963,7 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     REQUIRE(state.getProperty("voiceLength", {}).getProperty("display", {}).toString() == "1 s");
     REQUIRE(state.getProperty("pitch", {}).getProperty("display", {}).toString() == "0 semis");
     REQUIRE(state.getProperty("controlInterval", {}).toString() == "16");
+    REQUIRE(!(bool) state.getProperty("pitchIndependentSpectralControl", {}));
     REQUIRE((int) state.getProperty("octave", {}).getProperty("usableTrackWidth", {}) >= 140);
     REQUIRE((int) state.getProperty("voiceLength", {}).getProperty("usableTrackWidth", {}) >= 140);
     REQUIRE((int) state.getProperty("pitch", {}).getProperty("usableTrackWidth", {}) >= 140);
@@ -1021,12 +1022,23 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     REQUIRE(commands.immediateParameterId == "portamento");
     REQUIRE(commands.immediateValue == Catch::Approx(1.f));
 
+    auto* pitchIndependentSpectralControl = dynamic_cast<ToggleButton*>(
+            host.component()->findChildWithID(
+                    "voiceContextEditor.pitchIndependentSpectralControl"));
+    REQUIRE(pitchIndependentSpectralControl != nullptr);
+    REQUIRE(pitchIndependentSpectralControl->getBottom()
+            <= host.component()->getHeight() - 4);
+    pitchIndependentSpectralControl->setToggleState(true, dontSendNotification);
+    pitchIndependentSpectralControl->onClick();
+    REQUIRE(commands.immediateParameterId == "pitchIndependentSpectralControl");
+    REQUIRE(commands.immediateValue == Catch::Approx(1.f));
+
     auto* voiceLengthValue = dynamic_cast<Label*>(host.component()->findChildWithID(
             "voiceContextEditor.voiceLength.value"));
     REQUIRE(voiceLengthValue != nullptr);
     voiceLengthValue->setText("2 s", sendNotificationSync);
     REQUIRE(commands.activeParameterId.isEmpty());
-    REQUIRE(commands.immediateParameterId == "portamento");
+    REQUIRE(commands.immediateParameterId == "pitchIndependentSpectralControl");
     REQUIRE(commands.numericValues.back()
             == Catch::Approx(CycleDsp::voiceLengthUnitValue(2.0)).margin(0.0001));
     auto* voiceLength = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
@@ -1036,7 +1048,7 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
             KeyPress::rightKey,
             ModifierKeys::shiftModifier,
             0)));
-    REQUIRE(commands.immediateParameterId == "portamento");
+    REQUIRE(commands.immediateParameterId == "pitchIndependentSpectralControl");
     REQUIRE(commands.numericValues.back()
             == Catch::Approx(CycleDsp::voiceLengthUnitValue(2.01)).margin(0.0001));
 }

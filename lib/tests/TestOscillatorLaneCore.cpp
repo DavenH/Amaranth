@@ -3,7 +3,9 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include <Audio/CycleDsp/CyclicFrameLaneRenderer.h>
+#include <Audio/CycleDsp/FixedTimeCyclicFrameCompositor.h>
 #include <Audio/CycleDsp/OscillatorLaneCore.h>
+#include <Audio/CycleDsp/UnisonCore.h>
 #include <Util/NumberUtils.h>
 
 using Catch::Matchers::WithinAbs;
@@ -235,4 +237,114 @@ TEST_CASE("Cyclic frame composition interpolates and crossfades subsequent cycle
     for (int i = 0; i < 4; ++i) {
         REQUIRE(lastLerpHalfData[i] == expectedNextHalf[i]);
     }
+}
+
+TEST_CASE("Fixed-time frame clock emits absolute sample frontiers",
+        "[cycle-dsp][oscillator-lane][fixed-time-control]") {
+    CycleDsp::FixedTimeFrameClock clock;
+    REQUIRE(clock.prepare(16));
+
+    for (uint64_t sample = 0; sample < 65; ++sample) {
+        const bool expected = sample == 16 || sample == 32
+                || sample == 48 || sample == 64;
+        REQUIRE(clock.isFrontier(sample) == expected);
+        if (clock.isFrontier(sample)) {
+            clock.advance();
+        }
+    }
+    REQUIRE(clock.nextFrontier() == 80);
+}
+
+TEST_CASE("Fixed-time cyclic frame weights form a complementary transition",
+        "[cycle-dsp][oscillator-lane][fixed-time-control]") {
+    float weightData[17] {};
+    REQUIRE(CycleDsp::FixedTimeCyclicFrameCompositor::makeRaisedCosineWeights(
+            16,
+            Buffer<float>(weightData, 17)));
+
+    REQUIRE(weightData[0] == 0.f);
+    REQUIRE(weightData[8] == Catch::Approx(0.5f).margin(1.0e-6f));
+    REQUIRE(weightData[16] == 1.f);
+    for (const float weight : weightData) {
+        REQUIRE(weight + (1.f - weight)
+                == Catch::Approx(1.f).margin(1.0e-6f));
+    }
+}
+
+TEST_CASE("Fixed-time cyclic frame composition samples both frames at one phase",
+        "[cycle-dsp][oscillator-lane][fixed-time-control]") {
+    float frameData[] { 0.f, 1.f, 0.f, -1.f, 0.f, 1.f, 0.f, -1.f };
+    float oppositeData[] { 0.f, -1.f, 0.f, 1.f, 0.f, -1.f, 0.f, 1.f };
+    const Buffer<float> frame(frameData, 8);
+    const Buffer<float> opposite(oppositeData, 8);
+
+    const float sampled = CycleDsp::FixedTimeCyclicFrameCompositor::samplePeriodicFrame(
+            frame,
+            0.125);
+    REQUIRE(sampled == Catch::Approx(1.f));
+    REQUIRE(CycleDsp::FixedTimeCyclicFrameCompositor::compose({
+            frame,
+            frame,
+            0.125,
+            0.37f
+    }) == sampled);
+    REQUIRE(CycleDsp::FixedTimeCyclicFrameCompositor::compose({
+            frame,
+            opposite,
+            0.125,
+            0.5f
+    }) == Catch::Approx(0.f).margin(1.0e-6f));
+}
+
+TEST_CASE("Fixed-time Unison lookup matches the legacy rotated static frame",
+        "[cycle-dsp][oscillator-lane][fixed-time-control][unison][parity]") {
+    constexpr int frameSize = 32;
+    float frameData[frameSize] {};
+    float fadeData[frameSize / 2] {};
+    float biasedData[frameSize] {};
+    float shiftedCurrentData[frameSize] {};
+    float shiftedPreviousData[frameSize] {};
+    float previousHalfData[frameSize / 2] {};
+    float lastLerpHalfData[frameSize / 2] {};
+    for (int index = 0; index < frameSize; ++index) {
+        frameData[index] = (float) ((index * 7) % 13) / 13.f;
+    }
+
+    CycleDsp::UnisonGroupConfiguration configuration;
+    configuration.order = 8;
+    configuration.phaseSpread = 1.f;
+    const auto layout = CycleDsp::UnisonCore::makeGroupLayout(configuration);
+    REQUIRE(layout.order == 8);
+
+    for (int laneIndex = 0; laneIndex < layout.order; ++laneIndex) {
+        const auto rotated = CycleDsp::CyclicFrameLaneRenderer::compose(
+                { Buffer<float>(frameData, frameSize),
+                        Buffer<float>(frameData, frameSize),
+                        Buffer<float>(fadeData, frameSize / 2),
+                        Buffer<float>(fadeData, frameSize / 2),
+                        layout[laneIndex].phaseCycles,
+                        0.f,
+                        true,
+                        true },
+                { Buffer<float>(lastLerpHalfData, frameSize / 2) },
+                { Buffer<float>(biasedData, frameSize),
+                        Buffer<float>(shiftedCurrentData, frameSize),
+                        Buffer<float>(shiftedPreviousData, frameSize),
+                        Buffer<float>(previousHalfData, frameSize / 2) });
+        REQUIRE(!rotated.empty());
+        const double lookupPhase
+                = CycleDsp::CyclicFrameLaneRenderer::periodicLookupPhase(
+                        frameSize,
+                        layout[laneIndex].phaseCycles,
+                        true);
+        const float sampled = CycleDsp::FixedTimeCyclicFrameCompositor
+                ::samplePeriodicFrame(
+                        Buffer<float>(frameData, frameSize),
+                        lookupPhase);
+        REQUIRE(sampled == Catch::Approx(rotated[frameSize - 3]).margin(1.0e-6f));
+    }
+    REQUIRE(CycleDsp::CyclicFrameLaneRenderer::periodicLookupPhase(
+            frameSize,
+            0.25f,
+            false) == (double) (frameSize - 3) / frameSize);
 }
