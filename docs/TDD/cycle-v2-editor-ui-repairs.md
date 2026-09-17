@@ -11,6 +11,12 @@ through segmented controls, and Spy-over-Guide hover priority. Focused unit
 tests and a standalone screenshot pass; keyboard-focus and overlapping-dock
 native automation are still needed.
 
+The Envelope panel rasterizer reports depth points under Red/Blue (14 for the
+default seven cubes), not under Time: they are projections through the
+storage-only Time-pole cube topology. They are presentation artifacts in the
+Envelope 2D view, so that view suppresses the entire depth-point pass while
+retaining its underlying rasterizer and editing topology.
+
 Second slice implemented: document-reload Envelope framing now uses the
 authored vertex bounding box with margin, without rewriting mesh coordinates.
 

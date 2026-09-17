@@ -39,6 +39,10 @@ public:
         return *this;
     }
 
+    bool shouldDrawDepthDimension(int) const override {
+        return false;
+    }
+
 
     EnvelopeCurvePanel(
             SingletonRepo* repo,
@@ -425,6 +429,12 @@ public:
             morph->setProperty("blue", controlB);
             root->setProperty("morph", var(morph));
             root->setProperty("colorPointCount", (int) snapshot.colorPoints().size());
+            root->setProperty("visibleColorPointCount", (int) std::count_if(
+                    snapshot.colorPoints().begin(),
+                    snapshot.colorPoints().end(),
+                    [this](const ColorPoint& point) {
+                        return shouldDrawDepthDimension(point.num);
+                    }));
             root->setProperty("redLinked", envelopeRedLinked);
             root->setProperty("blueLinked", envelopeBlueLinked);
 

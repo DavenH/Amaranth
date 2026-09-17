@@ -2657,6 +2657,23 @@ TEST_CASE("Envelope document reload frames the authored vertex bounds",
     REQUIRE((double) zoom.getProperty("h", {}) < 0.5);
 }
 
+TEST_CASE("Envelope view suppresses storage-only Time depth points",
+        "[cycle-v2][node-editor-host][envelope][presentation]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Node node = GraphNodeFactory().createNode(NodeKind::Envelope, "env", {});
+    CurveEditorWidget widget(NodeKind::Envelope);
+    widget.syncFromNode(node);
+    REQUIRE(widget.prepareExpandedPanelComponent(
+            node, Rectangle<float>(0.f, 0.f, 840.f, 684.f)) != nullptr);
+
+    const var state = widget.automationState();
+    const int sourceCount = state.getProperty("colorPointCount", {});
+    const int visibleCount = state.getProperty("visibleColorPointCount", {});
+    REQUIRE(sourceCount > 0);
+    REQUIRE(visibleCount == 0);
+}
+
 TEST_CASE("Envelope preview sync defers selection work until host initialization",
         "[cycle-v2][node-editor-host][envelope][preview][preset]") {
     ScopedJuceInitialiser_GUI juce;
