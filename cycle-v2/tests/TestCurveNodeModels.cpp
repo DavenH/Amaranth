@@ -55,7 +55,12 @@ CurveNodeStatePublication publicationFor(
     if (node.kind == NodeKind::Envelope) {
         EnvelopeNodeModel domain;
         if (domain.loadSnapshot(snapshot)) {
-            model = CurveNodeModelState::copyOf(domain, revision);
+            const NodeParameterMap parameters(node);
+            model = CurveNodeModelState::copyOf(
+                    domain,
+                    parameters.floatValue("red", 0.5f),
+                    parameters.floatValue("blue", 0.5f),
+                    revision);
         }
     } else {
         FlatCurveModel domain;
@@ -292,8 +297,6 @@ TEST_CASE("Envelope model round trips envelope-only topology without editor inte
         "[cycle-v2][curve-model][envelope]") {
     EnvelopeNodeModel model;
     model.logarithmic = true;
-    model.red = 0.25f;
-    model.blue = 0.75f;
     model.redLinked = false;
     model.blueLinked = true;
     const EnvelopeCubeId selectedId = model.getCubeIds()[2];
@@ -306,8 +309,6 @@ TEST_CASE("Envelope model round trips envelope-only topology without editor inte
     REQUIRE(restored.getMesh().getNumCubes() == cubeCount);
     REQUIRE(restored.getMesh().sustainCubes.size() == sustainCount);
     REQUIRE(restored.logarithmic);
-    REQUIRE(restored.red == 0.25f);
-    REQUIRE(restored.blue == 0.75f);
     REQUIRE_FALSE(restored.redLinked);
     REQUIRE(restored.blueLinked);
     REQUIRE_FALSE(restored.selectedCubeId().has_value());
@@ -481,6 +482,17 @@ TEST_CASE("Preview morph overwrites every mesh editor in one undoable command",
             .readJSON(model->writeJSON(), error);
     REQUIRE(restoredModel != nullptr);
     REQUIRE(restoredModel->equals(*model));
+    const GraphSerializer serializer;
+    const String saved = serializer.toJsonString(document.graph());
+    const GraphLoadResult loaded = serializer.loadJsonString(saved);
+    REQUIRE(loaded.succeeded());
+    REQUIRE(serializer.toJsonString(loaded.graph) == saved);
+    REQUIRE(NodeParameterMap(*loaded.graph.findNode("env")).floatValue("red") == 0.25f);
+    const auto loadedEnvelope = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            loaded.graph.findNode("env")->model);
+    REQUIRE(loadedEnvelope != nullptr);
+    REQUIRE(loadedEnvelope->envelopeRed() == 0.25f);
+    REQUIRE(loadedEnvelope->envelopeBlue() == 0.75f);
 
     REQUIRE(document.undo());
     REQUIRE(NodeParameterMap(*document.graph().findNode("env")).floatValue("red") == 0.5f);
@@ -897,15 +909,14 @@ TEST_CASE("IR analysis removes DC from audio and display at any positive cutoff"
 TEST_CASE("Typed Envelope DSP configuration owns independent mesh and rasterizer state",
         "[cycle-v2][curve-model][dsp][envelope]") {
     EnvelopeNodeModel model;
-    model.red = 0.2f;
-    model.blue = 0.8f;
     const std::vector<CycleV2::NodeParameter> parameters {
             { "red", "Red", "0.2" },
             { "blue", "Blue", "0.8" },
             { "level", "Level", "1" }
     };
 
-    const auto typedModel = CurveNodeModelState::copyOf(model, model.revision());
+    const auto typedModel = CurveNodeModelState::copyOf(
+            model, 0.2f, 0.8f, model.revision());
     const auto first = EnvelopeSignalProcessor::buildConfiguration(parameters, typedModel);
     const auto second = EnvelopeSignalProcessor::buildConfiguration(parameters, typedModel);
     REQUIRE(first != nullptr);

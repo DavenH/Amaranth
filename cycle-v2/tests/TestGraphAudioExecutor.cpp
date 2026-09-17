@@ -1540,7 +1540,8 @@ TEST_CASE("Published curve edits change their node and downstream graph output",
             graph,
             "env",
             currentEnvelopeModel->revision(),
-            CurveNodeModelState::copyOf(envelopeModel, envelopeModel.revision())).succeeded());
+            CurveNodeModelState::copyOf(
+                    envelopeModel, 0.5f, 0.5f, envelopeModel.revision())).succeeded());
 
     const auto envelopePlan = GraphCompiler().compile(graph);
     REQUIRE(envelopePlan.succeeded());

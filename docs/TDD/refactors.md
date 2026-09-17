@@ -218,12 +218,9 @@ Context/Envelope parity slice; its focused runtime Envelope tests pass.
 
 ## Envelope Morph State Ownership
 
-Status: open after preview-driven durable morph mapping.
+Status: closed 2026-09-17.
 
-`EnvelopeNodeModel` still caches Red/Blue alongside the authoritative node
-parameters. Morph-only `CurveNodeModelState` revisions share the immutable
-Envelope geometry and carry scalar overrides, so CC1 release does not copy a
-mesh. Migrate the Envelope editor adapter to read controls from the node
-parameter source of truth, then remove the duplicated scalar fields from
-`EnvelopeNodeModel` and the revision overlay. Preserve the existing serialized
-schema and one-command undo behavior during that refactor.
+The Envelope editor adapter now reads Red/Blue from node parameters, and
+`EnvelopeNodeModel` no longer caches them. Morph-only `CurveNodeModelState`
+revisions share immutable Envelope geometry and carry the authored scalar
+values. The existing serialized schema and one-command undo behavior remain.

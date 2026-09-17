@@ -548,6 +548,8 @@ TEST_CASE("First compact Envelope paint synchronizes its durable curve model",
     REQUIRE(envelopeModel.synchronizeFromMesh(nullptr));
     envelope.model = CurveNodeModelState::copyOf(
             envelopeModel,
+            0.5f,
+            0.5f,
             envelopeModel.revision() + 7);
     graph.addNode(std::move(envelope));
     GraphDocument document(std::move(graph));
@@ -2360,7 +2362,8 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(envelopeModel.synchronizeFromMesh(nullptr));
     REQUIRE(graph.replaceNodeModel(
             "env",
-            CurveNodeModelState::copyOf(envelopeModel, envelopeModel.revision() + 1)));
+            CurveNodeModelState::copyOf(
+                    envelopeModel, 0.5f, 0.5f, envelopeModel.revision() + 1)));
 
     CurveEditorWidget widget(NodeKind::Envelope);
     widget.syncFromNode(*graph.findNode("env"));
@@ -2594,7 +2597,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(envelopeModel.selectedCubeId().has_value());
     Node selectedNode = *graph.findNode("env");
     selectedNode.model = CurveNodeModelState::copyOf(
-            envelopeModel, selectedNode.model->revision() + 1);
+            envelopeModel, 0.5f, 0.5f, selectedNode.model->revision() + 1);
     auto* selectedEditorState = new DynamicObject();
     selectedEditorState->setProperty(
             "selectedCubeId", (int64) *envelopeModel.selectedCubeId());
@@ -2647,7 +2650,7 @@ TEST_CASE("Envelope document reload frames the authored vertex bounds",
         }
     }
     REQUIRE(model.synchronizeFromMesh(nullptr));
-    node.model = CurveNodeModelState::copyOf(model, model.revision() + 1);
+    node.model = CurveNodeModelState::copyOf(model, 0.5f, 0.5f, model.revision() + 1);
 
     widget.resetDocumentPresentation();
     widget.syncFromNode(node);
@@ -2687,7 +2690,7 @@ TEST_CASE("Envelope preview sync defers selection work until host initialization
     REQUIRE(selectedCube != nullptr);
     REQUIRE(envelopeModel.synchronizeFromMesh(selectedCube));
     envelope.model = CurveNodeModelState::copyOf(
-            envelopeModel, envelopeModel.revision() + 1);
+            envelopeModel, 0.5f, 0.5f, envelopeModel.revision() + 1);
     auto* editorState = new DynamicObject();
     editorState->setProperty(
             "selectedCubeId", (int64) *envelopeModel.selectedCubeId());

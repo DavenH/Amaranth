@@ -36,8 +36,10 @@ public:
 
     const String& lastNodeId() const { return syncedNodeId; }
 private:
-    EnvelopeNodeModel model;
+    float morphRed { 0.5f };
+    float morphBlue { 0.5f };
     String syncedNodeId;
+    EnvelopeNodeModel model;
     NodeModelStatePtr syncedModel;
 };
 

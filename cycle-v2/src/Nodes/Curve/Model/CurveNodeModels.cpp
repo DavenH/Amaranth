@@ -399,8 +399,6 @@ bool EnvelopeNodeModel::readJSON(const var& root) {
     rebuildIdentityMap();
     committedMesh.deepCopy(&mesh);
     logarithmic = (bool) object->getProperty("logarithmic");
-    red = jlimit(0.f, 1.f, (float) object->getProperty("red"));
-    blue = jlimit(0.f, 1.f, (float) object->getProperty("blue"));
     redLinked = !object->hasProperty("redLinked") || (bool) object->getProperty("redLinked");
     blueLinked = !object->hasProperty("blueLinked") || (bool) object->getProperty("blueLinked");
     const int64 selected = object->getProperty("selection");
@@ -419,8 +417,6 @@ bool EnvelopeNodeModel::syncFromNode(const Node& node) {
             && copyFrom(*typed->envelope());
     const NodeParameterMap parameters(node);
     logarithmic = parameters.boolValue("logarithmic", false);
-    red = jlimit(0.f, 1.f, parameters.floatValue("red", 0.5f));
-    blue = jlimit(0.f, 1.f, parameters.floatValue("blue", 0.5f));
     return loaded;
 }
 
@@ -435,8 +431,9 @@ var EnvelopeNodeModel::writeJSON() const {
     root->setProperty("revision", (int64) modelRevision);
     root->setProperty("mesh", mesh.writeJSON());
     root->setProperty("logarithmic", logarithmic);
-    root->setProperty("red", red);
-    root->setProperty("blue", blue);
+    // CurveNodeModelState replaces these schema slots with the durable morph values.
+    root->setProperty("red", 0.5f);
+    root->setProperty("blue", 0.5f);
     root->setProperty("redLinked", redLinked);
     root->setProperty("blueLinked", blueLinked);
     Array<var> encodedIds;
@@ -452,8 +449,6 @@ bool EnvelopeNodeModel::copyFrom(const EnvelopeNodeModel& other) {
     cubeIds = other.cubeIds;
     selection = other.selection;
     logarithmic = other.logarithmic;
-    red = other.red;
-    blue = other.blue;
     redLinked = other.redLinked;
     blueLinked = other.blueLinked;
     nextCubeIdentity = other.nextCubeIdentity;
@@ -465,8 +460,6 @@ bool EnvelopeNodeModel::copyFrom(const EnvelopeNodeModel& other) {
 
 bool EnvelopeNodeModel::equals(const EnvelopeNodeModel& other) const {
     return equalsGeometryAndTopology(other)
-            && red == other.red
-            && blue == other.blue
             && modelRevision == other.modelRevision;
 }
 
@@ -633,13 +626,15 @@ CurveNodeModelState::CurveNodeModelState(
         int versionToUse,
         uint64_t revisionToUse,
         std::shared_ptr<const EnvelopeNodeModel> modelState,
+        float red,
+        float blue,
         var editorStateToUse) :
         schema(std::move(schemaToUse))
     ,   version(versionToUse)
     ,   modelRevision(revisionToUse)
+    ,   envelopeRedValue(red)
+    ,   envelopeBlueValue(blue)
     ,   envelopeState(std::move(modelState))
-    ,   envelopeRedValue(envelopeState != nullptr ? envelopeState->red : 0.f)
-    ,   envelopeBlueValue(envelopeState != nullptr ? envelopeState->blue : 0.f)
     ,   editorState(std::move(editorStateToUse)) {}
 
 std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::copyOf(
@@ -657,6 +652,8 @@ std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::copyOf(
 
 std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::copyOf(
         const EnvelopeNodeModel& model,
+        float red,
+        float blue,
         uint64_t revision,
         var editorState) {
     InteractionComplexityDiagnostics::recordMeshCopy(
@@ -667,7 +664,7 @@ std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::copyOf(
     copy->setPublicationRevision(revision);
     return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
             "envelope", EnvelopeNodeModel::currentVersion,
-            revision, std::move(copy), std::move(editorState)));
+            revision, std::move(copy), red, blue, std::move(editorState)));
 }
 
 std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::withEnvelopeMorph(
@@ -678,11 +675,8 @@ std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::withEnvelopeMorp
         return nullptr;
     }
 
-    auto result = std::shared_ptr<CurveNodeModelState>(new CurveNodeModelState(
-            schema, version, revision, envelopeState, editorState));
-    result->envelopeRedValue = red;
-    result->envelopeBlueValue = blue;
-    return result;
+    return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
+            schema, version, revision, envelopeState, red, blue, editorState));
 }
 
 String CurveNodeModelState::schemaId() const {
@@ -773,8 +767,11 @@ NodeModelStatePtr CurveNodeDomainCodec::readJSON(const var& value, String& error
     if (kind == NodeKind::Envelope) {
         auto model = std::make_shared<EnvelopeNodeModel>();
         if (model->readJSON(state) && model->revision() == (uint64_t) revision) {
+            const float red = jlimit(0.f, 1.f, (float) state.getProperty("red", 0.5f));
+            const float blue = jlimit(0.f, 1.f, (float) state.getProperty("blue", 0.5f));
             return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
-                    schemaId(), currentVersion(), (uint64_t) revision, std::move(model)));
+                    schemaId(), currentVersion(), (uint64_t) revision,
+                    std::move(model), red, blue));
         }
     } else {
         auto model = std::make_shared<FlatCurveModel>();

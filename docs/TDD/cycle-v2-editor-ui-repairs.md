@@ -2,14 +2,13 @@
 
 ## Status
 
-In progress (2026-09-16).
+Implemented (2026-09-17).
 
 First slice implemented: Trimesh Shift-box selection, five-pixel curve pickup,
 legacy Envelope link defaults, implicit Time link presentation, expanded IR
 and Voice Context geometry, shared Unison slider styling, spacebar propagation
-through segmented controls, and Spy-over-Guide hover priority. Focused unit
-tests and a standalone screenshot pass; keyboard-focus and overlapping-dock
-native automation are still needed.
+through segmented controls, and Spy-over-Guide hover priority. Focused unit,
+keyboard-focus, overlapping-dock, and standalone visual checks passed.
 
 The Envelope panel rasterizer reports depth points under Red/Blue (14 for the
 default seven cubes), not under Time: they are projections through the
@@ -54,10 +53,22 @@ native Space key started preview playback (`previewPlaying=true`) at a long
 enough voice duration to observe it. A one-second preview can finish before a
 subsequent session snapshot and should not be used as a focus assertion.
 
-Remaining: remove the duplicate legacy Envelope Red/Blue cache fields from
-`EnvelopeNodeModel` after migrating its editor adapter to node-parameter
-authority. The optional true bimesh decision remains separate in
-`docs/TDD/envelope-bimesh.md`.
+Seventh slice implemented: removed the duplicate Envelope Red/Blue scalar
+fields from `EnvelopeNodeModel`. The editor adapter and controls read node
+parameters; the immutable curve snapshot carries the authored morph values
+and writes them into the existing JSON schema. Non-default graph save/reload,
+curve-model, editor-host, and operation-count tests pass. The optional true
+bimesh decision remains separate in `docs/TDD/envelope-bimesh.md`.
+
+Deletion design: keep Red/Blue solely in node parameters and the immutable
+`CurveNodeModelState` revision metadata. `EnvelopeNodeModel` then owns only
+geometry, topology, logarithmic scale, links, and selection. The Envelope
+editor and panel adapter read Red/Blue from parameters, and publications pass
+those values explicitly into the model snapshot. Existing schema Red/Blue
+fields remain in the wrapper's JSON for compatibility; the geometry model no
+longer owns, parses, or compares their values. It emits schema placeholders
+in the legacy property order, which the wrapper replaces with authored values.
+This is a model/editor boundary translation, not a new mesh algorithm.
 
 ## Preview Morph Ownership Decision
 
@@ -70,20 +81,20 @@ refresh policy and one undo step. A preview-note selection is one atomic edit.
 Do not deep-copy meshes or the graph on movement updates.
 
 Envelope geometry remains shared across morph-only model revisions. The
-revision carries Red/Blue overrides, and its serializer writes those overrides
-into the existing schema. `EnvelopeNodeModel` still carries legacy cached
-Red/Blue fields for its editor adapter; removing those duplicates is a future
-deletion target once all model/editor consumers read the node-parameter source
-of truth directly. The graph keeps a morph-node identity index so a preview
-gesture does not scan unrelated nodes. Loading a preset remains clean; opening
-a morph editor or changing the preview note/CC1 performs the durable overwrite.
+revision carries Red/Blue values, and its serializer writes them into the
+existing schema. The Envelope geometry model no longer caches those values;
+its editor adapter reads node parameters. The graph keeps a morph-node identity
+index so a preview gesture does not scan unrelated nodes. Loading a preset
+remains clean; opening a morph editor or changing the preview note/CC1 performs
+the durable overwrite.
 
-Diff review: `CurveNodeModels.cpp` reaches 825 lines because it already owns
-FlatCurve, Envelope, and their codec; the new immutable morph revision remains
-beside its existing snapshot constructors. Split the Envelope model/codec when
-removing its duplicated scalar cache. `NodeCanvas.cpp` remains an oversized
-orchestrator; the added code only routes preview events to the semantic command
-and does not move model or rendering algorithms into the canvas.
+Diff review: `CurveNodeModels.cpp` remains over 800 lines because it already
+owns FlatCurve, Envelope, and their codec; the immutable morph revision remains
+beside its existing snapshot constructors. A future file split can separate
+those domain types without changing this contract. `NodeCanvas.cpp` remains an
+oversized orchestrator; the added code only routes preview events to the
+semantic command and does not move model or rendering algorithms into the
+canvas.
 
 ## Scope And Authority
 

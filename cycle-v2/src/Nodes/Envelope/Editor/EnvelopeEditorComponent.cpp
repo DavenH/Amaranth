@@ -266,12 +266,13 @@ void EnvelopeEditorComponent::syncEditorFromNode() {
     EnvelopeNodeModel model;
     model.syncFromNode(node);
     const EnvelopePurpose purpose = envelopePurposeFor(node);
+    const NodeParameterMap parameters(node);
     impl->enabled.setToggleState(
-            NodeParameterMap(node).boolValue("enabled", true),
+            parameters.boolValue("enabled", true),
             dontSendNotification);
     impl->mode.setPurpose(purpose);
-    impl->redMorph.slider.setValue(model.red, dontSendNotification);
-    impl->blueMorph.slider.setValue(model.blue, dontSendNotification);
+    impl->redMorph.slider.setValue(parameters.floatValue("red", 0.5f), dontSendNotification);
+    impl->blueMorph.slider.setValue(parameters.floatValue("blue", 0.5f), dontSendNotification);
     impl->redLinked = model.redLinked;
     impl->blueLinked = model.blueLinked;
     impl->axisScale.setLogarithmic(model.logarithmic, dontSendNotification);
