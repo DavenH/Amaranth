@@ -5,6 +5,22 @@
 There are no open deterministic P0 or P1 regressions as of 2026-09-09.
 Resolved and no-longer-reproducing entries have been removed from this ledger.
 
+## P2: Mod Wheel release appears to publish duplicate graph/Spy updates
+
+Reported 2026-09-17. While moving the MIDI keyboard Mod Wheel, the Spy appears
+to refresh twice after release, suggesting two graph updates for one movement
+or gesture commit. A graph update also appears to cancel a running audition
+note. These are observations, not yet an established shared cause; the preview
+audio failing to follow the wheel on `filter-saw-2` is tracked separately in
+`docs/TDD/audio-bugs.md`.
+
+Current status: open, not yet reproduced with automation. Add a focused
+hold-note/Mod-Wheel gesture fixture and count semantic commands, consolidated
+graph publications, Spy refreshes, and note lifecycle events across movement
+and release. Check whether a parameter update, gesture commit, or duplicate
+observer notification interrupts the note; preserve the intended On Release
+versus Live refresh policy.
+
 ## P2: Cycle 1 default factory preset key no longer resolves
 
 Context:
