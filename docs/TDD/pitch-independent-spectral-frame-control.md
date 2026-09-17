@@ -244,7 +244,14 @@ process-context rule. An event after the frontier must not be observed early.
 Each lane retains one continuous oscillator phase `phi_l[r]`. Adjacent frames
 are evaluated at that same phase and blended in output-sample time:
 
-![Fixed-time spectral frame generation and phase-locked two-frame composition](figures/phase-locked-frame-composition.svg)
+![Whole-cycle IFFT signal snippets sampled and blended at shorter control intervals](figures/phase-locked-frame-composition.svg)
+
+The signal snippets align one steady-pitch output cycle with the phase domain of
+each complete IFFT frame. A row shows a reusable periodic waveform, not a grain
+placed on the output timeline. The control interval `H` determines when a new
+whole-cycle frame is rendered and how long the blend to it lasts; the IFFT
+frame itself still spans the entire oscillator cycle. At `2.5H`, both `f_1` and
+`f_2` are sampled at the same lane phase and mixed equally.
 
 \[
 y_l[r] =
