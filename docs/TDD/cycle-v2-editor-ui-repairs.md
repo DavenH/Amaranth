@@ -14,8 +14,12 @@ native automation are still needed.
 Second slice implemented: document-reload Envelope framing now uses the
 authored vertex bounding box with margin, without rewriting mesh coordinates.
 
-Remaining: preview-driven editor morph position, Spy tether geometry/parity,
-broader legacy-slider audit, preset browser,
+Third slice implemented: Spy tethers now attach to the Spy rail's top edge,
+matching the Guide rail's dock-top attachment. The node-editor slider audit
+found Unison as the only plain JUCE slider remaining under `cycle-v2/src/Nodes`.
+
+Remaining: preview-driven editor morph position, native tether/overlap proof,
+preset browser,
 focused native automation, and the separate bimesh decision in
 `docs/TDD/envelope-bimesh.md`.
 
