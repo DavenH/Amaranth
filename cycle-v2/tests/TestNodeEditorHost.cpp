@@ -2621,6 +2621,37 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE((bool) widget.automationState().getProperty("bipolar", {}));
 }
 
+TEST_CASE("Envelope document reload frames the authored vertex bounds",
+        "[cycle-v2][node-editor-host][envelope][zoom]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    GraphNodeFactory factory;
+    Node node = factory.createNode(NodeKind::Envelope, "env", {});
+    CurveEditorWidget widget(NodeKind::Envelope);
+    widget.syncFromNode(node);
+    REQUIRE(widget.prepareExpandedPanelComponent(
+            node, Rectangle<float>(0.f, 0.f, 840.f, 684.f)) != nullptr);
+
+    EnvelopeNodeModel model;
+    const auto& cubes = model.getMesh().getCubes();
+    for (int cubeIndex = 0; cubeIndex < (int) cubes.size(); ++cubeIndex) {
+        for (int vertexIndex = 0; vertexIndex < (int) VertCube::numVerts; ++vertexIndex) {
+            Vertex* vertex = cubes[(size_t) cubeIndex]->getVertex(vertexIndex);
+            vertex->values[Vertex::Phase] = 4.f + 0.1f * cubeIndex;
+            vertex->values[Vertex::Amp] = 0.45f + 0.01f * cubeIndex;
+        }
+    }
+    REQUIRE(model.synchronizeFromMesh(nullptr));
+    node.model = CurveNodeModelState::copyOf(model, model.revision() + 1);
+
+    widget.resetDocumentPresentation();
+    widget.syncFromNode(node);
+    const var zoom = widget.automationState().getProperty("zoom", {});
+    REQUIRE((double) zoom.getProperty("x", {}) > 3.5);
+    REQUIRE((double) zoom.getProperty("w", {}) < 1.0);
+    REQUIRE((double) zoom.getProperty("h", {}) < 0.5);
+}
+
 TEST_CASE("Envelope preview sync defers selection work until host initialization",
         "[cycle-v2][node-editor-host][envelope][preview][preset]") {
     ScopedJuceInitialiser_GUI juce;

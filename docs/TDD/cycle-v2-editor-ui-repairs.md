@@ -11,8 +11,11 @@ through segmented controls, and Spy-over-Guide hover priority. Focused unit
 tests and a standalone screenshot pass; keyboard-focus and overlapping-dock
 native automation are still needed.
 
-Remaining: Envelope preset-load framing, preview-driven editor morph position,
-Spy tether geometry/parity, broader legacy-slider audit, preset browser,
+Second slice implemented: document-reload Envelope framing now uses the
+authored vertex bounding box with margin, without rewriting mesh coordinates.
+
+Remaining: preview-driven editor morph position, Spy tether geometry/parity,
+broader legacy-slider audit, preset browser,
 focused native automation, and the separate bimesh decision in
 `docs/TDD/envelope-bimesh.md`.
 

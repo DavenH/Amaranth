@@ -539,6 +539,11 @@ public:
         initialiseHost();
     }
 
+    void resetDocumentPresentation() override {
+        CurvePanelControllerBase::resetDocumentPresentation();
+        frameOnNextNodeSync = true;
+    }
+
     void syncFromNode(const Node& node) override {
         const EnvelopePurpose purpose = envelopePurposeFor(node);
         auto& typedPanel = envelopePanel();
@@ -551,7 +556,10 @@ public:
         if (adapter.syncFromNode(node)) {
             finishNodeSync(node);
             typedPanel.restoreEnvelopeSelection(adapter.selectedMeshCube());
-            if (purpose == EnvelopePurpose::Pitch) {
+            if (frameOnNextNodeSync) {
+                panel->updateZoomBounds(true);
+                frameOnNextNodeSync = false;
+            } else if (purpose == EnvelopePurpose::Pitch) {
                 typedPanel.fitEnvelopeVerticalRange();
             }
         } else {
@@ -619,6 +627,8 @@ public:
     }
 
 private:
+    bool frameOnNextNodeSync { true };
+
     void initialiseDefaultModel() override {
         adapter.initialiseDefaultMesh();
         panel->refreshRasterizer();

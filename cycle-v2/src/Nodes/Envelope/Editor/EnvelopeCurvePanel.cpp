@@ -747,26 +747,50 @@ protected:
             return;
         }
 
-        float maxX = 1.5f;
+        float minX = std::numeric_limits<float>::max();
+        float maxX = std::numeric_limits<float>::lowest();
+        float minY = std::numeric_limits<float>::max();
+        float maxY = std::numeric_limits<float>::lowest();
         MorphPosition position;
 
         for (VertCube* cube : mesh.getCubes()) {
             if (cube != nullptr) {
-                maxX = jmax(maxX, envelopeMesh.getPositionOfCubeAt(cube, position));
+                const float x = envelopeMesh.getPositionOfCubeAt(cube, position);
+                minX = jmin(minX, x);
+                maxX = jmax(maxX, x);
+                for (int index = 0; index < (int) VertCube::numVerts; ++index) {
+                    const float y = cube->getVertex(index)->values[Vertex::Amp];
+                    minY = jmin(minY, y);
+                    maxY = jmax(maxY, y);
+                }
             }
         }
 
+        if (mesh.getCubes().empty()) {
+            minX = 0.f;
+            maxX = 1.5f;
+            minY = 0.f;
+            maxY = 1.f;
+        }
+
+        const float xSpan = jmax(0.1f, maxX - minX);
+        const float xPadding = jmax(0.05f, xSpan * 0.08f);
+        const float ySpan = jmax(0.1f, maxY - minY);
+        const float yPadding = ySpan * 0.12f;
+
         zoomPanel->rect.xMinimum = 0.f;
-        zoomPanel->rect.xMaximum = maxX;
+        zoomPanel->rect.xMaximum = jmax(1.5f, maxX + xPadding);
         zoomPanel->rect.yMinimum = 0.f;
         zoomPanel->rect.yMaximum = 1.f;
-        vertexLimits[Vertex::Phase].setEnd(maxX);
+        vertexLimits[Vertex::Phase].setEnd(zoomPanel->rect.xMaximum);
 
         if (resetView) {
-            zoomPanel->rect.x = 0.f;
-            zoomPanel->rect.w = maxX;
-            zoomPanel->rect.y = 0.f;
-            zoomPanel->rect.h = 1.f;
+            zoomPanel->rect.x = jmax(0.f, minX - xPadding);
+            zoomPanel->rect.w = jmin(
+                    zoomPanel->rect.xMaximum - zoomPanel->rect.x,
+                    maxX + xPadding - zoomPanel->rect.x);
+            zoomPanel->rect.y = jmax(0.f, 1.f - maxY - yPadding);
+            zoomPanel->rect.h = jmin(1.f - zoomPanel->rect.y, ySpan + 2.f * yPadding);
         }
 
         panel->constrainZoom();
