@@ -2568,6 +2568,55 @@ TEST_CASE("Prepared graph audio processing performs no allocations or locks",
     REQUIRE(locks.count() == 0);
 }
 
+TEST_CASE("Pitch-independent spectral control performs no realtime allocations or locks",
+        "[cycle-v2][runtime][realtime][spectral][fixed-time-control]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("acoustic-high-control-rate.cyclegraph");
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            preset.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    const auto compiled = GraphCompiler().compile(loaded.graph);
+    REQUIRE(compiled.succeeded());
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 512;
+    spec.sampleRate = 48000.0;
+    GraphAudioExecutor executor;
+    executor.prepareExecution(compiled.plan, spec);
+    AudioVoiceContext voice;
+    voice.hasLifecycleSeed = true;
+    voice.lifecycleSeed = 0x46544331u;
+    voice.controls.noteNumber = 21;
+    voice.controls.velocity = 1.f;
+    voice.controls.normalizedVoiceTimeIncrement = 1.f / 48000.f;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    REQUIRE(executor.processRealtime(
+            compiled.plan,
+            512,
+            { 48000.0, 120.0, 4 },
+            voice).isValid());
+    voice.events.clear();
+    voice.controls.normalizedVoiceTime = 512.f / 48000.f;
+
+    ScopedRealtimeAllocationCount allocations;
+    ScopedRealtimeLockCount locks;
+    const auto output = executor.processRealtime(
+            compiled.plan,
+            512,
+            { 48000.0, 120.0, 4 },
+            voice);
+
+    REQUIRE(output.isValid());
+    REQUIRE(allocations.count() == 0);
+    REQUIRE(locks.count() == 0);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Prepared default modulation ignores unrelated graph buffers",
         "[cycle-v2][runtime][realtime][modulation][performance][complexity]") {
     NodeGraph graph = NodeGraph::createDemoGraph();

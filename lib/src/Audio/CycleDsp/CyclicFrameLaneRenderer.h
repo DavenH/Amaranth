@@ -28,6 +28,10 @@ struct CyclicFrameLaneStateView {
 
 class CyclicFrameLaneRenderer {
 public:
+    static double periodicLookupPhase(
+            int frameSize,
+            float authoredPhaseCycles,
+            bool phaseShiftEnabled);
     static bool makeHalfFrameFades(
             int frameSize,
             Buffer<float> fadeIn,

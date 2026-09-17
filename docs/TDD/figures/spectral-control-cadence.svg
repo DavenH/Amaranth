@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 408" role="img" aria-labelledby="title description">
+  <title id="title">Cycle-locked versus fixed-time spectral frame updates on a C1 note</title>
+  <desc id="description">An illustrative pluck changes rapidly within one C1 oscillator cycle. The legacy path renders at the start and next cycle, while fixed-time control renders at 256-sample frontiers inside that same cycle.</desc>
+  <defs>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #e7eef8; }
+      .title { font-size: 21px; font-weight: 700; }
+      .subtitle { font-size: 13px; fill: #a9b9cd; }
+      .label { font-size: 15px; font-weight: 650; }
+      .small { font-size: 12px; fill: #b7c5d7; }
+      .tick { font-size: 11px; fill: #91a4ba; }
+    </style>
+    <linearGradient id="energy" x1="0" x2="1" y1="0" y2="0">
+      <stop stop-color="#f7bc69" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#f7bc69" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="960" height="408" rx="18" fill="#101a2a"/>
+  <text x="28" y="35" class="title">One low-note cycle, two control clocks</text>
+  <text x="28" y="56" class="subtitle">Illustrative C1 at 44.1 kHz: one oscillator cycle ≈ 1,349 samples; requested control interval H = 256 samples</text>
+
+  <rect x="172" y="79" width="730" height="76" rx="8" fill="#172438"/>
+  <rect x="172" y="177" width="730" height="76" rx="8" fill="#172438"/>
+  <rect x="172" y="275" width="730" height="76" rx="8" fill="#172438"/>
+
+  <g stroke="#34465d" stroke-width="1" stroke-dasharray="3 6">
+    <path d="M172 79V351 M293 79V351 M414 79V351 M535 79V351 M656 79V351 M777 79V351 M898 79V351"/>
+  </g>
+  <path d="M810 75V355" stroke="#d5dfed" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text x="776" y="374" class="small">next cycle ≈ 1,349</text>
+
+  <text x="28" y="104" class="label">Pluck energy</text>
+  <text x="28" y="125" class="small">authored change</text>
+  <path d="M172 145 L172 96 C210 104 228 124 270 132 S370 142 475 144 S690 146 810 146 L810 149 L172 149Z" fill="url(#energy)"/>
+  <path d="M172 96 C210 104 228 124 270 132 S370 142 475 144 S690 146 810 146" fill="none" stroke="#f7bc69" stroke-width="3" stroke-linecap="round"/>
+  <text x="558" y="106" class="small">spectral controls keep evolving</text>
+
+  <text x="28" y="202" class="label">Cycle-locked</text>
+  <text x="28" y="223" class="small">flag off</text>
+  <path d="M172 215H810" stroke="#5c80bf" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="172" cy="215" r="8" fill="#89adf1"/>
+  <circle cx="810" cy="215" r="8" fill="#89adf1"/>
+  <text x="334" y="204" class="small">no new spectral frame during this cycle</text>
+  <text x="181" y="239" class="small">frame 0</text>
+  <text x="818" y="239" class="small">frame 1</text>
+
+  <text x="28" y="300" class="label">Fixed-time</text>
+  <text x="28" y="321" class="small">flag on</text>
+  <path d="M172 313H777" stroke="#e89b64" stroke-width="5" stroke-linecap="round"/>
+  <g fill="#ffc48c" stroke="#172438" stroke-width="2">
+    <circle cx="172" cy="313" r="8"/>
+    <circle cx="293" cy="313" r="8"/>
+    <circle cx="414" cy="313" r="8"/>
+    <circle cx="535" cy="313" r="8"/>
+    <circle cx="656" cy="313" r="8"/>
+    <circle cx="777" cy="313" r="8"/>
+  </g>
+  <text x="360" y="339" class="small">five new frames before the next oscillator cycle</text>
+
+  <path d="M172 366H898" stroke="#7389a5" stroke-width="1.5"/>
+  <g class="tick" text-anchor="middle">
+    <text x="172" y="389">0</text>
+    <text x="293" y="389">256</text>
+    <text x="414" y="389">512</text>
+    <text x="535" y="389">768</text>
+    <text x="656" y="389">1,024</text>
+    <text x="777" y="389">1,280</text>
+    <text x="898" y="389">1,536 samples</text>
+  </g>
+</svg>

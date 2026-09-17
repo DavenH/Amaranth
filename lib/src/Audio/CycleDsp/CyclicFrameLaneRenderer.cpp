@@ -17,6 +17,10 @@ void rotateFrame(
             destination.withSize(phaseSamples));
 }
 
+int phaseShiftSamples(int frameSize, float phaseCycles) {
+    return (int) (frameSize * phaseCycles) & (frameSize - 1);
+}
+
 bool validComposition(
         const CyclicFrameCompositionRequest& request,
         CyclicFrameLaneStateView state,
@@ -35,6 +39,21 @@ bool validComposition(
             && workspace.previousHalfFrame.size() >= halfSize;
 }
 
+}
+
+double CyclicFrameLaneRenderer::periodicLookupPhase(
+        int frameSize,
+        float authoredPhaseCycles,
+        bool phaseShiftEnabled) {
+    if (frameSize <= 2 || (frameSize & (frameSize - 1)) != 0) {
+        return 0.0;
+    }
+    const int shift = phaseShiftEnabled
+            ? phaseShiftSamples(frameSize, authoredPhaseCycles)
+            : 0;
+    // Resampling::resample's Hermite path centers output on source[trunc - 3].
+    const int lookupIndex = (frameSize - shift - 3) & (frameSize - 1);
+    return (double) lookupIndex / frameSize;
 }
 
 bool CyclicFrameLaneRenderer::makeHalfFrameFades(
@@ -67,8 +86,7 @@ Buffer<float> CyclicFrameLaneRenderer::compose(
 
     const int frameSize = request.currentFrame.size();
     const int halfSize = frameSize / 2;
-    const int phaseSamples = (int) (frameSize * request.phaseCycles)
-            & (frameSize - 1);
+    const int phaseSamples = phaseShiftSamples(frameSize, request.phaseCycles);
     auto biased = workspace.biasedFrame.withSize(frameSize);
     auto lastLerpHalf = state.lastLerpHalf.withSize(halfSize);
     if (request.firstCycle && !request.phaseShiftEnabled) {

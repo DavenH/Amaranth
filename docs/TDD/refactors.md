@@ -1,5 +1,28 @@
 # Refactor Notes
 
+## Migrated factory guide-curve attack boundaries
+
+The Cycle 1 factory-preset port in `scripts/port_cycle_v1_preset.py` copies
+guide vertex phase coordinates into `flatCurve` x coordinates unchanged. Both
+Cycle 1's `GuideCurvePadding` and Cycle V2's `GuideCurvePreparation` sample
+guide tables from x = 0.05, while many imported curves place their first sharp
+attack at x = 0.0625 (or later). The first table samples therefore precede the
+authored attack. The source geometry was already present in the initial Cycle V2
+factory import (`4ed3d21b`, graph format 4); graph format 7 did not introduce
+it. The 2026-09-16 master preset edits and the parallel spectral-control preset
+edits move more than 130 guide vertices left across 26 presets, always in the same
+direction, but by varying amounts. Those hand edits establish the boundary
+intent, not a single safe numeric offset for every vertex.
+
+If this becomes a preset-migrator pass, target the *factory-imported guide
+geometry* by provenance or an exact source signature, and only move the attack
+vertices needed to make the intended onset active at x = 0.05. Preserve manual
+edits, interior timing, curves, and right-boundary geometry. Inspect remaining
+drum presets such as Kicker, Brush Drum, and Stomper against their Cycle 1
+source and audio before changing them. A graph-format version or a blanket
+0.0125 subtraction would also alter later-authored curves and hand-corrected
+presets.
+
 ## Cycle V2 presentation gesture and refresh-policy ownership
 
 Status: active in

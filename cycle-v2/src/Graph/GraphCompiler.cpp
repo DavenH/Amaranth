@@ -681,6 +681,9 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
                         CycleDsp::voiceLengthUnitValue(1.0)));
         context.pitchSemitones = parameters.floatValue("pitch", 0.f);
         context.portamento = parameters.boolValue("portamento", false);
+        context.pitchIndependentSpectralControl = parameters.boolValue(
+                "pitchIndependentSpectralControl",
+                false);
         context.oversampling = jmax(
                 1,
                 parameters.stringValue("oversampling", "1x").getIntValue());

@@ -98,7 +98,8 @@ public:
                         maximumFixedFrameSize,
                         spec.sampleRate,
                         context.lanes,
-                        context.controlIntervalSamples);
+                        context.controlIntervalSamples,
+                        context.pitchIndependentSpectralControl);
     }
 
     void reset() override {

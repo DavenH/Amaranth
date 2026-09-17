@@ -6,8 +6,16 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 945.59998, "y": 826.0 },
-            "parameters": { "octave": 0, "voiceLength": 0.456896552, "pitch": 0.0, "portamento": false, "oversampling": "2x", "controlInterval": "16" }
+            "position": { "x": 951.59998, "y": 828.0 },
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.456896552,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": true,
+                "oversampling": "2x",
+                "controlInterval": "16"
+            }
         },
         {
             "id": "morph",
@@ -59,7 +67,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1325.59998, "y": 886.0 },
+            "position": { "x": 1360.77209, "y": 886.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -242,7 +250,7 @@
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 2291.6001, "y": 387.0 },
+            "position": { "x": 2291.6001, "y": 289.60016 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -653,7 +661,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 615.83331 },
+            "position": { "x": 1030.40002, "y": 223.52844 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -782,7 +790,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 1495.59998, "y": 1571.0 },
-            "parameters": { "gain": 0.152671756 }
+            "parameters": { "gain": 0.261005 }
         },
         {
             "id": "globalInput",

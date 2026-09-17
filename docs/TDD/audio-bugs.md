@@ -800,3 +800,43 @@ failed `Spectral frame refresh count is independent of Unison order` for the
 64-sample partition: maximum difference `0.023058094` exceeded the existing
 `0.02` tolerance. Focused realtime executor and prepared-context tests pass;
 retain this as an open oscillator-region partition/parity issue.
+
+## P2: Shared-library spectral capture tests cannot write temporary artifacts
+
+Context:
+
+- A 2026-09-16 full `AmaranthLib_tests` run failed all three
+  `SpectralStageCaptureRecorder::write` cases because the recorder returned
+  false for the JUCE temporary file. The failures reproduce in isolation and
+  occur before any payload assertion.
+- The same run also failed existing Settings and Multisample tests while
+  opening temporary files, indicating a common test-environment or temporary
+  file setup issue rather than the pitch-independent compositor.
+
+Current status: open; inspect the temporary-file paths and returned recorder
+error under the standalone-debug test environment. The focused shared-DSP
+fixed-time compositor suite passes 91 assertions.
+
+## P2: Offline Voice Context octave test references a missing preset
+
+Context: On 2026-09-16, `CycleV2_tests '[voice-context]'` passed 32 cases and
+failed `Compiled Voice Context octave reaches the oscillator region` at
+`TestOfflineGraphAudioRenderer.cpp:28` (`REQUIRE(loaded.succeeded())`). Its
+`spectralReferencePlan()` loads `content/presets/spectral-reference.cyclegraph`,
+which is absent from this checkout. The focused Voice Context editor test
+passes 61 assertions.
+
+Current status: open; restore the reference fixture or update that test to use
+the intended maintained preset.
+
+## P2: Broad Cycle V2 test run reaches a failed oscillator region render
+
+During the 2026-09-17 master merge, the full `CycleV2_tests` binary emitted
+`JUCE Assertion failure in GraphAudioExecutor.cpp:1069` (`jassert(rendered)`)
+immediately before `Scratch Envelope drives every attached Trimesh from one
+prepared trajectory` failed with `blockDifference == 0`. The complete log is
+`/tmp/cycle-merge-tests.log`; the run had 38 failing cases, including the
+previously documented stale fixture paths and offline spectral assertion.
+The focused fixed-time, keyboard, and preview-mod-wheel suites pass. Current
+status: open; isolate the region failure and distinguish it from the unrelated
+fixture failures before changing audio behavior or test expectations.

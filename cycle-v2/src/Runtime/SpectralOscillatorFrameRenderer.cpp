@@ -295,6 +295,19 @@ bool SpectralOscillatorFrameRenderer::prepare(
         return false;
     }
     slotMemory.resize(2 * slotCount * slotStride);
+    const auto timeSourceCount = std::count_if(
+            operations.begin(), operations.end(), [](const Operation& operation) {
+                return operation.type == OperationType::TimeTrimesh;
+            });
+    timeSourceMemory.resize(2 * timeSourceCount * maximumFrameSize);
+    timeSourceMemory.resetPlacement();
+    for (auto& operation : operations) {
+        if (operation.type == OperationType::TimeTrimesh) {
+            for (auto& frame : operation.cachedTimeFrames) {
+                frame = timeSourceMemory.place(maximumFrameSize);
+            }
+        }
+    }
     const int maximumBinCount = RealFftFullPolarSpectrum::binCountForBufferSize(
             maximumFrameSize);
     magnitudeScratch.resize(maximumFrameSize);
@@ -320,6 +333,7 @@ void SpectralOscillatorFrameRenderer::reset() {
     lifecycleSeedReady = false;
     cycleEnvelopes.reset();
     for (auto& operation : operations) {
+        operation.cachedTimeFrameSize = 0;
         if (operation.timeState != nullptr) {
             operation.timeState->reset();
         }
@@ -350,7 +364,8 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
             0,
             0,
             left,
-            right);
+            right,
+            true);
 }
 
 bool SpectralOscillatorFrameRenderer::renderFrame(
@@ -361,7 +376,8 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
         double voiceSamplePosition,
         size_t elapsedSamples,
         Buffer<float> left,
-        Buffer<float> right) {
+        Buffer<float> right,
+        bool refreshTimeSources) {
     return renderFrameInternal(
             frameSize,
             midiNote,
@@ -370,7 +386,8 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
             voiceSamplePosition,
             elapsedSamples,
             left,
-            right);
+            right,
+            refreshTimeSources);
 }
 
 bool SpectralOscillatorFrameRenderer::renderFrameInternal(
@@ -381,7 +398,8 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
         double voiceSamplePosition,
         size_t elapsedSamples,
         Buffer<float> left,
-        Buffer<float> right) {
+        Buffer<float> right,
+        bool refreshTimeSources) {
     Transform* transform = transformFor(frameSize);
     if (transform == nullptr
             || left.size() != frameSize
@@ -451,11 +469,14 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
         const int count = valueCount(operation.outputDomain, frameSize);
         auto leftOutput = slot(operation.outputs[0], 0, count);
         auto rightOutput = slot(operation.outputs[0], 1, count);
+        const bool reuseTimeSource = operation.type == OperationType::TimeTrimesh
+                && !refreshTimeSources
+                && operation.cachedTimeFrameSize == frameSize;
         MorphPosition morph;
         auto* sourcePerformance = performanceCounts == nullptr ? nullptr
                 : operation.type == OperationType::SpectralTrimesh
                         ? &performanceCounts->spectralSources : &performanceCounts->timeSources;
-        if (operation.configuration != nullptr) {
+        if (operation.configuration != nullptr && !reuseTimeSource) {
             CycleDsp::ScopedSourceRenderStage morphStage(
                     sourcePerformance, CycleDsp::SourceRenderStage::MorphResolution);
             const TrimeshMorphInputs inputs = context != nullptr
@@ -477,46 +498,54 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
         }
         switch (operation.type) {
             case OperationType::TimeTrimesh:
+                if (reuseTimeSource) {
+                    operation.cachedTimeFrames[0].withSize(frameSize).copyTo(leftOutput);
+                    operation.cachedTimeFrames[1].withSize(frameSize).copyTo(rightOutput);
+                    break;
+                }
                 if (!operation.configuration->enabled) {
                     leftOutput.zero();
                     rightOutput.zero();
-                    break;
-                }
-                CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
-                        *operation.timeRasterizer,
-                        {
-                                const_cast<Mesh*>(operation.configuration->mesh.get()),
-                                morph,
-                                0.f,
-                                frameRandom.nextInt(
-                                        GuideCurveProvider::tableSize)
-                        },
-                        leftOutput,
-                        sourcePerformance);
-                {
-                    std::array<float, 3> morphValues {
-                            morph.time.getCurrentValue(),
-                            morph.red.getCurrentValue(),
-                            morph.blue.getCurrentValue()
-                    };
-                    for (int channel = 0; channel < 2; ++channel) {
-                        frameCapture.capture(
-                                CycleDsp::SpectralStage::TimeRaster,
-                                channel,
-                                leftOutput,
-                                { morphValues.data(), (int) morphValues.size() });
+                } else {
+                    CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
+                            *operation.timeRasterizer,
+                            {
+                                    const_cast<Mesh*>(operation.configuration->mesh.get()),
+                                    morph,
+                                    0.f,
+                                    frameRandom.nextInt(
+                                            GuideCurveProvider::tableSize)
+                            },
+                            leftOutput,
+                            sourcePerformance);
+                    {
+                        std::array<float, 3> morphValues {
+                                morph.time.getCurrentValue(),
+                                morph.red.getCurrentValue(),
+                                morph.blue.getCurrentValue()
+                        };
+                        for (int channel = 0; channel < 2; ++channel) {
+                            frameCapture.capture(
+                                    CycleDsp::SpectralStage::TimeRaster,
+                                    channel,
+                                    leftOutput,
+                                    { morphValues.data(), (int) morphValues.size() });
+                        }
+                    }
+                    {
+                        CycleDsp::ScopedSourceRenderStage gainStage(
+                                sourcePerformance, CycleDsp::SourceRenderStage::Gain);
+                        leftOutput.mul(operation.configuration->gain);
+                    }
+                    {
+                        CycleDsp::ScopedSourceRenderStage copyStage(
+                                sourcePerformance, CycleDsp::SourceRenderStage::StereoCopy);
+                        leftOutput.copyTo(rightOutput);
                     }
                 }
-                {
-                    CycleDsp::ScopedSourceRenderStage gainStage(
-                            sourcePerformance, CycleDsp::SourceRenderStage::Gain);
-                    leftOutput.mul(operation.configuration->gain);
-                }
-                {
-                    CycleDsp::ScopedSourceRenderStage copyStage(
-                            sourcePerformance, CycleDsp::SourceRenderStage::StereoCopy);
-                    leftOutput.copyTo(rightOutput);
-                }
+                leftOutput.copyTo(operation.cachedTimeFrames[0].withSize(frameSize));
+                rightOutput.copyTo(operation.cachedTimeFrames[1].withSize(frameSize));
+                operation.cachedTimeFrameSize = frameSize;
                 break;
 
             case OperationType::SpectralTrimesh: {

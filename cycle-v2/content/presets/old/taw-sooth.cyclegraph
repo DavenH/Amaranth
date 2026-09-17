@@ -7,13 +7,21 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 400.0 },
-            "parameters": { "octave": 0, "voiceLength": 0.290076336, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "256" }
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.290076336,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "1x",
+                "controlInterval": "256"
+            }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 100.0 },
+            "position": { "x": -317.48175, "y": 249.74889 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -30,7 +38,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 628.0 },
+            "position": { "x": -340.17096, "y": 502.00003 },
             "parameters": { "enabled": true, "mode": "group", "order": 5, "width": 47.600000000000001, "panSpread": 0.744, "phase": 0.032, "jitter": 1.0 },
             "model": {
                 "schema": "unisonVoices",
@@ -210,7 +218,7 @@
             "id": "voiceOutput",
             "kind": "voiceOutput",
             "definitionVersion": 1,
-            "position": { "x": 48.0, "y": 0.0 },
+            "position": { "x": 858.0, "y": 420.0 },
             "parameters": {}
         }
     ],
@@ -222,7 +230,8 @@
         { "sourceNodeId": "unison", "sourcePortId": "unison", "destNodeId": "voice", "destPortId": "unison", "connectionKind": "configurationAttachment", "attachmentType": "unison" },
         { "sourceNodeId": "impulseResponse", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "delay", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "impulseResponse", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
+        { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "impulseResponse", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "timeLayer1", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": []
 }

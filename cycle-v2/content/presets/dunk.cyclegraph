@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 460.0, "y": 826.0 },
-            "parameters": { "octave": -1, "voiceLength": 0.290076336, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "256" }
+            "parameters": {
+                "octave": -1,
+                "voiceLength": 0.290076336,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "1x",
+                "controlInterval": "256"
+            }
         },
         {
             "id": "morph",
@@ -45,7 +53,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 840.0, "y": 886.0 },
+            "position": { "x": 1104.45728, "y": 894.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -429,7 +437,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1736.80005, "y": 1084.0 },
+            "position": { "x": 1180.04785, "y": 578.99255 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -517,7 +525,10 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2112.0, "y": 886.0 },
+            "position": { "x": 1569.16663, "y": 894.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
@@ -630,7 +641,7 @@
             "id": "voiceOutput",
             "kind": "voiceOutput",
             "definitionVersion": 1,
-            "position": { "x": 2310.0, "y": 886.0 },
+            "position": { "x": 1767.1665, "y": 894.0 },
             "parameters": {}
         }
     ],
