@@ -589,6 +589,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     guideDock->setProperty("spyHorizontalOffset", state.guideDock.spyHorizontalOffset);
     guideDock->setProperty("selectedGuideId", state.guideDock.selectedGuideId);
     guideDock->setProperty("hoveredGuideId", state.guideDock.hoveredGuideId);
+    guideDock->setProperty("hoveredProbeId", state.guideDock.hoveredProbeId);
     guideDock->setProperty("keyboardFocusTarget", state.guideDock.keyboardFocusTarget);
     guideDock->setProperty("keyboardFocusItemId", state.guideDock.keyboardFocusItemId);
     guideDock->setProperty("guideTileCount", (int) state.guideDock.guideTiles.size());
@@ -872,6 +873,14 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                 targets.add(AutomationValueEncoder::pointerTargetToVar(
                         "guide:" + tile.guideId,
                         "guide",
+                        tile.bounds));
+            }
+        }
+        if (!state.guideDock.spiesMinimized) {
+            for (const auto& tile : state.guideDock.spyTiles) {
+                targets.add(AutomationValueEncoder::pointerTargetToVar(
+                        "spy:" + tile.probeId,
+                        "spy",
                         tile.bounds));
             }
         }

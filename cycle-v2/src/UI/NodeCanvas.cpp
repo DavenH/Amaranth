@@ -1437,6 +1437,7 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     dock.spyHorizontalOffset = probeRailState.horizontalOffset;
     dock.selectedGuideId = guideShelfState.selectedGuideId;
     dock.hoveredGuideId = guideShelfState.hoveredGuideId;
+    dock.hoveredProbeId = probeRailState.hoveredProbeId;
     dock.keyboardFocusTarget = WorkspaceDockKeyboardNavigation::targetName(
             dockInteraction->focus().target);
     dock.keyboardFocusItemId = dockInteraction->focus().itemId;
@@ -1492,6 +1493,13 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
                         dockSplitRatio,
                         guideShelfState,
                         index)
+        });
+    }
+    const auto probeIds = SignalProbeRail::orderedProbeIds(graph);
+    for (int index = 0; index < (int) probeIds.size(); ++index) {
+        dock.spyTiles.push_back({
+                probeIds[(size_t) index],
+                SignalProbeRail::tileBoundsFor(spyWorkspace, probeRailState, index)
         });
     }
     return result;

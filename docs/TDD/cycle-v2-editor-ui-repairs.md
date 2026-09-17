@@ -24,8 +24,13 @@ the existing V2 document loader. This does not port Cycle 1 remote/community,
 ratings, or tags behavior; those remain out of scope for this local browser.
 The browser has a focused search/open test and a native menu-to-load check.
 
-Remaining: preview-driven editor morph position, native tether/overlap proof,
-focused native automation for other changed interactions, and the separate bimesh decision in
+Fifth slice implemented: automation now exposes Spy tile targets and hovered
+Spy identity. The six-Guide/Spy overlap fixture confirms the Spy retains hover
+and suppresses the occluded Guide; focused keyboard tests confirm Space is not
+consumed by segmented properties or Trimesh link controls.
+
+Remaining: preview-driven editor morph position, native focus delivery proof,
+and the separate bimesh decision in
 `docs/TDD/envelope-bimesh.md`.
 
 ## Scope And Authority

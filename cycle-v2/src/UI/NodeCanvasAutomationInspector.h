@@ -18,6 +18,11 @@ struct GuideTileAutomationPresentation {
     juce::Rectangle<float> bounds;
 };
 
+struct SpyTileAutomationPresentation {
+    juce::String probeId;
+    juce::Rectangle<float> bounds;
+};
+
 struct GuideEditorTargetAutomationPresentation {
     juce::String id;
     juce::Rectangle<float> bounds;
@@ -33,6 +38,7 @@ struct GuideDockAutomationPresentation {
     float spyHorizontalOffset {};
     juce::String selectedGuideId;
     juce::String hoveredGuideId;
+    juce::String hoveredProbeId;
     juce::String keyboardFocusTarget;
     juce::String keyboardFocusItemId;
     juce::String expandedGuideId;
@@ -52,6 +58,7 @@ struct GuideDockAutomationPresentation {
     juce::Rectangle<float> guideEditorBounds;
     juce::var guideEditorState;
     std::vector<GuideTileAutomationPresentation> guideTiles;
+    std::vector<SpyTileAutomationPresentation> spyTiles;
     std::vector<GuideEditorTargetAutomationPresentation> guideEditorTargets;
 };
 

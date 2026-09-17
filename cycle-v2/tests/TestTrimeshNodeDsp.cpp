@@ -2107,6 +2107,9 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     REQUIRE(controls.getVertexGuideGainKnobCount() == 3);
     REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 3);
     REQUIRE(controls.getNumChildComponents() == 22);
+    Component* link = controls.findChildWithID("trimesh.link.red");
+    REQUIRE(link != nullptr);
+    REQUIRE_FALSE(link->keyPressed(KeyPress(' ')));
     REQUIRE_FALSE(controls.findChildWithID("trimesh.vertex.time")->isEnabled());
     REQUIRE_FALSE(controls.findChildWithID("trimesh.vertex.amp")->isEnabled());
     REQUIRE_FALSE(controls.findChildWithID("trimesh.guide.amp")->isEnabled());
