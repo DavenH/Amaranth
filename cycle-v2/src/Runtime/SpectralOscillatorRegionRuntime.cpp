@@ -96,6 +96,7 @@ void SpectralOscillatorRegionRuntime::reset() {
     sharedFramePeriod = 0.0;
     lastSharedFramePosition = 0.0;
     nextSharedFramePosition = 0.0;
+    nextTimeSourceCycleStart = 0.0;
     lastSharedFrameFrontier = 0;
     transitionStart = 0;
     fixedTimeClock.reset();
@@ -257,6 +258,7 @@ bool SpectralOscillatorRegionRuntime::initializeSharedFrames(
     initialFramesReady = true;
     lastSharedFramePosition = 0.0;
     nextSharedFramePosition = sharedFramePeriod;
+    nextTimeSourceCycleStart = cyclePeriod;
     lastSharedFrameFrontier = 0;
     transitionStart = 0;
     if (pitchIndependentControl) {
@@ -397,6 +399,8 @@ bool SpectralOscillatorRegionRuntime::renderFixedTimeFrontier(
     const size_t elapsedSamples = std::max<uint64_t>(
             1,
             frontier - lastSharedFrameFrontier);
+    const double cyclePeriod = sharedFramePeriod / controlStride;
+    const bool refreshTimeSources = (double) frontier >= nextTimeSourceCycleStart;
     const uint64_t recipeStartedAt = context.performanceCounts == nullptr
             ? 0
             : AudioPerformanceMetrics::timestampMicroseconds();
@@ -408,7 +412,8 @@ bool SpectralOscillatorRegionRuntime::renderFixedTimeFrontier(
             (double) frontier,
             elapsedSamples,
             currentFrames[0].withSize(fixedFrameSize),
-            currentFrames[1].withSize(fixedFrameSize));
+            currentFrames[1].withSize(fixedFrameSize),
+            refreshTimeSources);
     if (context.performanceCounts != nullptr) {
         context.performanceCounts->recipeDurationMicroseconds
                 += AudioPerformanceMetrics::timestampMicroseconds() - recipeStartedAt;
@@ -416,6 +421,11 @@ bool SpectralOscillatorRegionRuntime::renderFixedTimeFrontier(
     }
     if (!rendered) {
         return false;
+    }
+    if (refreshTimeSources) {
+        do {
+            nextTimeSourceCycleStart += cyclePeriod;
+        } while ((double) frontier >= nextTimeSourceCycleStart);
     }
 
     lastSharedFrameFrontier = frontier;

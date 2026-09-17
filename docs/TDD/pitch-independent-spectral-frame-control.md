@@ -16,9 +16,10 @@ Implemented 2026-09-16:
   phase-aligned two-frame composition, and complementary raised-cosine weights
   in the shared Cycle DSP library.
 - `SpectralOscillatorRegionRuntime` selects the fixed-time path only when the
-  compiled Voice Context flag is true. It continues to invoke the existing
-  `SpectralOscillatorFrameRenderer` once per frontier, retaining its mature
-  morph, scratch, rasterization, FFT, layer, harmonic-cutoff, and IFFT order.
+  compiled Voice Context flag is true. It invokes the existing
+  `SpectralOscillatorFrameRenderer` once per spectral frontier, retaining its
+  mature FFT, layer, harmonic-cutoff, and IFFT order. Time-source morph and
+  rasterization refresh on the neutral chained-cycle clock.
 - Each prepared runtime retains two frames and a precomputed transition table.
   Lane phase is continuous and lane-local; rendered frames remain shared across
   Unison lanes. The realtime path allocates and locks zero times after prepare.
@@ -26,8 +27,9 @@ Implemented 2026-09-16:
   enabled and a 64-sample interval. The original Acoustic preset remains on its
   256-sample legacy whole-cycle cadence.
 - The expanded Voice Context properties expose the experimental flag beside
-  the control interval. Scratch and morph inputs resolve at each fixed-time
-  frontier; the cycle-envelope bank advances by the elapsed samples there.
+  the control interval. Spectral scratch and morph inputs resolve at each
+  fixed-time frontier; time-source morph inputs resolve on cycle refresh. The
+  cycle-envelope bank advances by the elapsed samples at each spectral frontier.
 
 The application boundary translates compiled Voice Context configuration,
 process timing, and rendered frame buffers into the shared clock/compositor.
@@ -50,9 +52,27 @@ shipping quality mode; no V2-only spectral renderer was introduced.
   completes the transition away from the note-on frame by `2H`, even when the
   first oscillator period is much longer. Bass 2 exposes this perceptually:
   its authored first-cycle shape can be replaced before that cycle finishes.
-  Preserving the entire first cycle would require an explicit onset exception
-  to the causality/transition policy below, or separating time-source onset
-  behavior from spectral-layer updates. The intended policy is unresolved.
+  The chosen policy is to render time-domain sources on the existing neutral
+  chained-cycle clock while spectral operations continue at every fixed-time
+  frontier. This keeps the first time-domain frame through its first cycle
+  without delaying spectral-layer changes.
+
+The renderer owns a prepared, per-time-source frame cache; a cycle frontier
+refreshes those source frames, and intervening spectral frontiers reuse them
+without rerunning their morph resolution or rasterization. The runtime only
+translates the shared neutral cycle clock into a refresh request. The existing
+Time Trimesh rasterizer remains authoritative. Cache storage is allocated at
+prepare, invalidated on note reset, and never shared across graph preparations.
+If a cycle boundary falls between fixed-time frontiers, the next frontier
+adopts the new time-domain frame; this adds less than one `H` of latency to
+time-source adoption while leaving the spectral cadence exact. The stable end
+state is separate time-source and spectral clocks under the same prepared
+recipe, with no duplicated rasterization algorithm or application-local DSP.
+At C1 and `H = 64`, a stage-capture test verifies that the FFT input at the
+first fixed-time frontier is identical to the note-on time-domain frame, while
+the reconstructed spectral frame still updates. The time source refreshes at
+the first control frontier after the neutral cycle boundary; output remains
+sample-identical across host blocks of 1, 64, 127, and 512 samples.
 
 Focused evidence:
 
@@ -107,9 +127,10 @@ or define dynamic-impulse behavior for the IR Modeller.
 ## Objective
 
 Give low notes the same responsive spectral modulation available to higher
-notes. Time, magnitude, and phase meshes should be sampled at a configurable
+notes. Magnitude and phase meshes should be sampled at a configurable
 time-domain cadence even when one oscillator period is longer than that control
-interval.
+interval. Time-domain source meshes retain the chained cycle clock so an
+authored first-cycle waveform remains in effect for that cycle.
 
 The output must retain Cycle's existing pitch-locked periodic waveform,
 spectral-layer ordering, cyclic IFFT semantics, unison phase behavior, and
@@ -249,7 +270,9 @@ At frontier `t_m`:
 
 1. advance live modulation, morph smoothing, and scratch by the exact elapsed
    sample count;
-2. rasterize the time-domain mesh and run the existing spectral-layer pipeline;
+2. refresh time-domain source meshes only when their chained-cycle frontier is
+   due, then run the existing spectral-layer pipeline using the current source
+   frames;
 3. inverse-transform the result into a complete periodic frame `f_m`;
 4. make `f_m` the target of a bounded transition from the preceding periodic
    frame.

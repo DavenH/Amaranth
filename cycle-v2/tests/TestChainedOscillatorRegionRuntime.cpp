@@ -946,6 +946,64 @@ TEST_CASE("Pitch-independent spectral control updates a bass note within one cyc
   #endif
 }
 
+TEST_CASE("Fixed-time spectral frames retain the time source until its cycle boundary",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][fixed-time-control][time-source]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    NodeGraph graph = loadFilterSawGraph();
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "voice",
+            "pitchIndependentSpectralControl",
+            "Pitch-independent spectral control",
+            "1").succeeded());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.voiceContexts.front().controlIntervalSamples == 64);
+
+    std::vector<float> initialTimeFrame;
+    for (const size_t frameIndex : { 0u, 1u, 23u }) {
+        CycleDsp::SpectralStageCaptureRecorder stages;
+        REQUIRE(stages.prepare(4096, frameIndex));
+        const PartitionedRender rendered = renderPreparedGraph(
+                compiled.plan, 512, 1600, -1, 24, 1.f, &stages);
+        REQUIRE(rendered.frameRenderCount == 25);
+        const auto* timeRaster = stages.record(CycleDsp::SpectralStage::TimeRaster, 0);
+        const auto* timeFrame = stages.record(CycleDsp::SpectralStage::TimeFrame, 0);
+        const auto* reconstructed = stages.record(
+                CycleDsp::SpectralStage::ReconstructedFrame, 0);
+        REQUIRE(timeFrame != nullptr);
+        REQUIRE(reconstructed != nullptr);
+        REQUIRE(reconstructed->frontier == frameIndex * 64);
+        if (frameIndex == 0) {
+            initialTimeFrame.assign(
+                    timeFrame->primary.get(),
+                    timeFrame->primary.get() + timeFrame->primary.size());
+        }
+        if (frameIndex == 1) {
+            REQUIRE(timeRaster == nullptr);
+            REQUIRE(std::equal(
+                    initialTimeFrame.begin(), initialTimeFrame.end(),
+                    timeFrame->primary.get()));
+        } else {
+            REQUIRE(timeRaster != nullptr);
+            REQUIRE(timeRaster->frontier == frameIndex * 64);
+        }
+    }
+
+    const PartitionedRender reference = renderPreparedGraph(
+            compiled.plan, 512, 1600, -1, 24);
+    for (const int blockSize : { 1, 64, 127 }) {
+        const PartitionedRender partitioned = renderPreparedGraph(
+                compiled.plan, blockSize, 1600, -1, 24);
+        REQUIRE(partitioned.frameRenderCount == reference.frameRenderCount);
+        REQUIRE(partitioned.left == reference.left);
+        REQUIRE(partitioned.right == reference.right);
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Pitch-independent spectral frontiers preserve timed control causality",
         "[cycle-v2][runtime][oscillator-region][spectral-frame][fixed-time-control][timed-control]") {
   #if defined(CYCLE_V2_SOURCE_DIR)

@@ -88,6 +88,7 @@ private:
     double sharedFramePeriod {};
     double lastSharedFramePosition {};
     double nextSharedFramePosition {};
+    double nextTimeSourceCycleStart {};
     uint64_t lastSharedFrameFrontier {};
     uint64_t transitionStart {};
     CycleDsp::FixedTimeFrameClock fixedTimeClock;
