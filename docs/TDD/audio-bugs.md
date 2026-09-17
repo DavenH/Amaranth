@@ -1,5 +1,21 @@
 # Audio Bug Notes
 
+## Open: preview Mod Wheel does not change Filter Saw 2 audio morph
+
+Reported 2026-09-17. Load `cycle-v2/content/presets/filter-saw-2.cyclegraph`,
+hold the MIDI keyboard's preview note, and move its Mod Wheel across the range.
+The spectral filter's audible cutoff stays the same, while the Spy output and
+Trimesh node presentation respond to the wheel. The preset's `morph`
+modulation triple explicitly uses `blueSource: modWheel` and attaches to the
+Voice Context, so the audio preview should follow that Blue morph value too.
+
+Current status: open, not yet reproduced by an audio capture. Add a focused
+preview-note automation/audio comparison at two wheel positions, then trace
+the preview Mod Wheel value through Voice Context configuration, spectral
+Trimesh preparation, and the realtime/offline audition path. Preserve the
+working Spy and editor behavior; do not treat their updates as proof that the
+audio configuration changed.
+
 ## Open: Full Cycle V2 suite retains broad preset and spectral failures
 
 The 2026-09-15 `ctest --test-dir build/tests -j10 --output-on-failure`
