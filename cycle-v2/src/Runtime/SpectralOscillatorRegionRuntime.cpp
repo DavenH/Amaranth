@@ -261,6 +261,13 @@ bool SpectralOscillatorRegionRuntime::initializeSharedFrames(
     transitionStart = 0;
     if (pitchIndependentControl) {
         fixedTimeClock.reset();
+        for (int laneIndex = 0; laneIndex < layout.order; ++laneIndex) {
+            lanes[(size_t) laneIndex].phaseCycles
+                    = CycleDsp::CyclicFrameLaneRenderer::periodicLookupPhase(
+                            fixedFrameSize,
+                            layout[laneIndex].phaseCycles,
+                            layout.order > 1);
+        }
         return true;
     }
     return refreshSharedFramesThrough(

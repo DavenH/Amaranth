@@ -35,6 +35,25 @@ It does not copy spectral or mesh-domain behavior. The stable end state is for
 Cycle 1 to consume this same shared core before the flag becomes a general
 shipping quality mode; no V2-only spectral renderer was introduced.
 
+### Parity findings (2026-09-17)
+
+- A static `filter-saw` spectral-frame ablation with eight Unison lanes exposed
+  a fixed-time phase mismatch. The legacy frame rotation uses the negative
+  authored phase offset, quantized to frame samples, and its Hermite resampler
+  reads three source samples behind the nominal position. The fixed-time lane
+  now derives its initial lookup phase from those authoritative rules. After
+  the resampler's startup padding, the left and right stereo sums agree within
+  `3e-7` L2 over 96 samples. The first few samples still differ because the
+  legacy resampler begins with zero-filled history while periodic lookup wraps.
+- A full first-cycle time-domain waveform and immediate fixed-time updating
+  compete for the same frame pair. The current contract renders at `H`, then
+  completes the transition away from the note-on frame by `2H`, even when the
+  first oscillator period is much longer. Bass 2 exposes this perceptually:
+  its authored first-cycle shape can be replaced before that cycle finishes.
+  Preserving the entire first cycle would require an explicit onset exception
+  to the causality/transition policy below, or separating time-source onset
+  behavior from spectral-layer updates. The intended policy is unresolved.
+
 Focused evidence:
 
 - MIDI 21 renders eight frames in the first 512 output samples at a 64-sample

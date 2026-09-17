@@ -1025,6 +1025,58 @@ TEST_CASE("Pitch-independent spectral frame generation is shared across Unison l
   #endif
 }
 
+TEST_CASE("Fixed-time Unison retains the stereo sum of a static filtered frame",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][fixed-time-control][unison][parity]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const auto compiled = GraphCompiler().compile(
+            loadOscillatorPresetGraph("filter-saw"));
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.oscillatorRegions.size() == 1);
+
+    CycleDsp::UnisonGroupConfiguration configuration;
+    configuration.order = 8;
+    configuration.detuneWidthCents = 0.f;
+    configuration.panSpread = 1.f;
+    configuration.phaseSpread = 1.f;
+    const auto layout = CycleDsp::UnisonCore::makeGroupLayout(configuration);
+    SpectralOscillatorFrameRenderer legacyRenderer;
+    SpectralOscillatorFrameRenderer fixedRenderer;
+    const auto& region = compiled.plan.oscillatorRegions.front();
+    REQUIRE(legacyRenderer.prepare(compiled.plan, region, 16384));
+    REQUIRE(fixedRenderer.prepare(compiled.plan, region, 16384));
+
+    SpectralOscillatorRegionRuntime legacy;
+    SpectralOscillatorRegionRuntime fixed;
+    REQUIRE(legacy.prepare(128, 4096, 16384, 44100.0, layout, 256, false));
+    REQUIRE(fixed.prepare(128, 4096, 16384, 44100.0, layout, 256, true));
+    float legacyLeft[128] {};
+    float legacyRight[128] {};
+    float fixedLeft[128] {};
+    float fixedRight[128] {};
+    REQUIRE(legacy.process(
+            60, 1.f, {},
+            Buffer<float>(legacyLeft, 128),
+            Buffer<float>(legacyRight, 128),
+            legacyRenderer));
+    REQUIRE(fixed.process(
+            60, 1.f, {},
+            Buffer<float>(fixedLeft, 128),
+            Buffer<float>(fixedRight, 128),
+            fixedRenderer));
+
+    const float middleLeftDifference = Buffer<float>(legacyLeft + 16, 96).normDiffL2(
+            Buffer<float>(fixedLeft + 16, 96));
+    const float middleRightDifference = Buffer<float>(legacyRight + 16, 96).normDiffL2(
+            Buffer<float>(fixedRight + 16, 96));
+    REQUIRE(Buffer<float>(fixedLeft, 128).normL2() > 0.1f);
+    REQUIRE(Buffer<float>(fixedRight, 128).normL2() > 0.1f);
+    REQUIRE(middleLeftDifference < 1.0e-4f);
+    REQUIRE(middleRightDifference < 1.0e-4f);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Prepared oscillator preset matrix is independent of host block partitions",
         "[cycle-v2][runtime][oscillator-region][live-modulation][partition-matrix]") {
   #if defined(CYCLE_V2_SOURCE_DIR)

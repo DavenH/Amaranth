@@ -5,6 +5,7 @@
 #include <Audio/CycleDsp/CyclicFrameLaneRenderer.h>
 #include <Audio/CycleDsp/FixedTimeCyclicFrameCompositor.h>
 #include <Audio/CycleDsp/OscillatorLaneCore.h>
+#include <Audio/CycleDsp/UnisonCore.h>
 #include <Util/NumberUtils.h>
 
 using Catch::Matchers::WithinAbs;
@@ -293,4 +294,57 @@ TEST_CASE("Fixed-time cyclic frame composition samples both frames at one phase"
             0.125,
             0.5f
     }) == Catch::Approx(0.f).margin(1.0e-6f));
+}
+
+TEST_CASE("Fixed-time Unison lookup matches the legacy rotated static frame",
+        "[cycle-dsp][oscillator-lane][fixed-time-control][unison][parity]") {
+    constexpr int frameSize = 32;
+    float frameData[frameSize] {};
+    float fadeData[frameSize / 2] {};
+    float biasedData[frameSize] {};
+    float shiftedCurrentData[frameSize] {};
+    float shiftedPreviousData[frameSize] {};
+    float previousHalfData[frameSize / 2] {};
+    float lastLerpHalfData[frameSize / 2] {};
+    for (int index = 0; index < frameSize; ++index) {
+        frameData[index] = (float) ((index * 7) % 13) / 13.f;
+    }
+
+    CycleDsp::UnisonGroupConfiguration configuration;
+    configuration.order = 8;
+    configuration.phaseSpread = 1.f;
+    const auto layout = CycleDsp::UnisonCore::makeGroupLayout(configuration);
+    REQUIRE(layout.order == 8);
+
+    for (int laneIndex = 0; laneIndex < layout.order; ++laneIndex) {
+        const auto rotated = CycleDsp::CyclicFrameLaneRenderer::compose(
+                { Buffer<float>(frameData, frameSize),
+                        Buffer<float>(frameData, frameSize),
+                        Buffer<float>(fadeData, frameSize / 2),
+                        Buffer<float>(fadeData, frameSize / 2),
+                        layout[laneIndex].phaseCycles,
+                        0.f,
+                        true,
+                        true },
+                { Buffer<float>(lastLerpHalfData, frameSize / 2) },
+                { Buffer<float>(biasedData, frameSize),
+                        Buffer<float>(shiftedCurrentData, frameSize),
+                        Buffer<float>(shiftedPreviousData, frameSize),
+                        Buffer<float>(previousHalfData, frameSize / 2) });
+        REQUIRE(!rotated.empty());
+        const double lookupPhase
+                = CycleDsp::CyclicFrameLaneRenderer::periodicLookupPhase(
+                        frameSize,
+                        layout[laneIndex].phaseCycles,
+                        true);
+        const float sampled = CycleDsp::FixedTimeCyclicFrameCompositor
+                ::samplePeriodicFrame(
+                        Buffer<float>(frameData, frameSize),
+                        lookupPhase);
+        REQUIRE(sampled == Catch::Approx(rotated[frameSize - 3]).margin(1.0e-6f));
+    }
+    REQUIRE(CycleDsp::CyclicFrameLaneRenderer::periodicLookupPhase(
+            frameSize,
+            0.25f,
+            false) == (double) (frameSize - 3) / frameSize);
 }
