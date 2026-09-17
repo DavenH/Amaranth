@@ -29,9 +29,27 @@ Spy identity. The six-Guide/Spy overlap fixture confirms the Spy retains hover
 and suppresses the occluded Guide; focused keyboard tests confirm Space is not
 consumed by segmented properties or Trimesh link controls.
 
-Remaining: preview-driven editor morph position, native focus delivery proof,
-and the separate bimesh decision in
+Native focus delivery was checked in an agent session: with the Voice Context
+editor open, a native click selected the `2x` oversampling segment, then a
+native Space key started preview playback (`previewPlaying=true`) at a long
+enough voice duration to observe it. A one-second preview can finish before a
+subsequent session snapshot and should not be used as a focus assertion.
+
+Remaining: preview-driven editor morph position and the separate bimesh decision in
 `docs/TDD/envelope-bimesh.md`.
+
+## Preview Morph Ownership Decision
+
+The existing Trimesh and Envelope morph controls author durable node values.
+Replacing their values on each preview-note or CC1 movement would issue graph
+edits and undo events, and would conflict with the user's release-only Spy
+refresh policy. The expected design is a transient editor preview position
+(Time=0, Red=normalized preview key, Blue=CC1/127) layered over authored
+defaults. It must not serialize or enter graph commands. The UI must define
+what happens when someone drags an authored morph slider while this preview
+layer is active (temporary manual override, edit the source, or display both
+positions) before implementing this cross-editor slice. A user choice was
+requested; do not silently make one slider's meaning change.
 
 ## Scope And Authority
 
