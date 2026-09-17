@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 205.17244, "y": 635.75861 },
-            "parameters": { "octave": 0, "voiceLength": 0.717557252, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.717557252,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -21,7 +29,7 @@
                 "redSource": "keyScale",
                 "redController": 1,
                 "redConstant": 0.5,
-                "blueSource": "velocity",
+                "blueSource": "inverseVelocity",
                 "blueController": 1,
                 "blueConstant": 0.5
             }
@@ -58,7 +66,7 @@
                 "gain": 0.5,
                 "range": 0.6,
                 "signalType": "spectralMagnitude",
-                "polarity": "bipolar",
+                "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -464,7 +472,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 328.17929, "y": 1202.37939 },
-            "parameters": { "gain": 0.49167 }
+            "parameters": { "gain": 0.175 }
         },
         {
             "id": "globalInput",

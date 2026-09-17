@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 475.20001, "y": 826.0 },
-            "parameters": { "octave": -1, "voiceLength": 0.697183099, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "parameters": {
+                "octave": -1,
+                "voiceLength": 0.697183099,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -426,7 +434,10 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1659.19995, "y": 1224.0 },
+            "position": { "x": 1591.19983, "y": 1276.5022 },
+            "portSides": {
+                "outputs": { "out": "top" }
+            },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -563,7 +574,10 @@
             "id": "phaseOp1",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 1810.0, "y": 820.0 },
+            "position": { "x": 1659.19995, "y": 987.99994 },
+            "portSides": {
+                "inputs": { "right": "bottom" }
+            },
             "parameters": {}
         },
         {
@@ -601,7 +615,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2268.0, "y": 1084.0 },
+            "position": { "x": 2268.0, "y": 1115.50134 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",

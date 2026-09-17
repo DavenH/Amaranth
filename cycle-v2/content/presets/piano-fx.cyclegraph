@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 460.0, "y": 826.0 },
-            "parameters": { "octave": -1, "voiceLength": 0.610687023, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "parameters": {
+                "octave": -1,
+                "voiceLength": 0.610687023,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -555,7 +563,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 746.0, "y": 1541.0 },
-            "parameters": { "gain": 0.389312977 }
+            "parameters": { "gain": 0.247646 }
         },
         {
             "id": "globalInput",

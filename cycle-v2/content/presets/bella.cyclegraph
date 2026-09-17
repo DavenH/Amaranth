@@ -6,8 +6,16 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 475.20001, "y": 826.0 },
-            "parameters": { "octave": 0, "voiceLength": 0.549618321, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "position": { "x": 481.20001, "y": 818.0 },
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.549618321,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": true,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -809,7 +817,7 @@
             "kind": "reverb",
             "definitionVersion": 1,
             "position": { "x": 1065.19995, "y": 1571.0 },
-            "parameters": { "enabled": true, "size": 0.852000003, "damp": 0.388000003, "width": 1.0, "wet": 0.140000012, "highPass": 0.0 }
+            "parameters": { "enabled": true, "size": 0.852000003, "damp": 0.388000003, "width": 1.0, "wet": 0.48437, "highPass": 0.0 }
         },
         {
             "id": "output",
@@ -893,18 +901,18 @@
             "dcOffset": 0.0,
             "phase": 0.0,
             "noiseSeed": 7596,
-            "revision": 1,
+            "revision": 3,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 3,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 3,
                     "vertices": [
-                        { "id": 1, "x": 0.0525, "y": 0.53349, "curve": 0.0 },
-                        { "id": 2, "x": 0.0625, "y": 0.50364, "curve": 1.0 },
+                        { "id": 1, "x": 0.03178, "y": 0.53349, "curve": 0.0 },
+                        { "id": 2, "x": 0.05173, "y": 0.50364, "curve": 1.0 },
                         { "id": 3, "x": 0.9375, "y": 0.50364, "curve": 1.0 },
                         { "id": 4, "x": 0.9475, "y": 0.50364, "curve": 0.0 },
                         { "id": 5, "x": 0.07095, "y": 0.71177, "curve": 0.0 },
@@ -1078,21 +1086,21 @@
             "dcOffset": 0.0,
             "phase": 0.0,
             "noiseSeed": 6793,
-            "revision": 1,
+            "revision": 5,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 5,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 5,
                     "vertices": [
-                        { "id": 1, "x": 0.0525, "y": 0.5, "curve": 0.0 },
-                        { "id": 2, "x": 0.06199, "y": 0.7765, "curve": 1.0 },
+                        { "id": 1, "x": 0.02267, "y": 0.5, "curve": 0.0 },
+                        { "id": 2, "x": 0.05039, "y": 0.7765, "curve": 0.99353 },
                         { "id": 3, "x": 0.9375, "y": 0.5, "curve": 1.0 },
                         { "id": 4, "x": 0.9475, "y": 0.5, "curve": 0.0 },
-                        { "id": 5, "x": 0.06356, "y": 0.50691, "curve": 0.76189 }
+                        { "id": 5, "x": 0.05168, "y": 0.50691, "curve": 0.76189 }
                     ]
                 }
             }

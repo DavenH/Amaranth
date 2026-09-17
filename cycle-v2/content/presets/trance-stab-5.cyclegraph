@@ -6,8 +6,16 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 960.0, "y": 826.0 },
-            "parameters": { "octave": 0, "voiceLength": 0.404580153, "pitch": 0.0, "portamento": false, "oversampling": "2x", "controlInterval": "64" }
+            "position": { "x": 966.0, "y": 770.0 },
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.404580153,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "2x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -294,7 +302,7 @@
             "id": "magnitudeLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 2442.0, "y": 387.0 },
+            "position": { "x": 2442.0, "y": 266.73032 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -565,7 +573,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 584.79999, "y": 726.0 },
+            "position": { "x": 545.59998, "y": 736.0 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -718,7 +726,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 688.5 },
+            "position": { "x": 1462.0, "y": 283.78748 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -834,7 +842,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 1510.0, "y": 1571.0 },
-            "parameters": { "gain": 0.251908397 }
+            "parameters": { "gain": 0.360242 }
         },
         {
             "id": "globalInput",

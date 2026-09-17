@@ -6,8 +6,16 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 460.0, "y": 826.0 },
-            "parameters": { "octave": 0, "voiceLength": 0.770992366, "pitch": 0.0, "portamento": false, "oversampling": "2x", "controlInterval": "256" }
+            "position": { "x": 466.0, "y": 818.0 },
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.770992366,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "2x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -1249,15 +1257,15 @@
             "dcOffset": 0.0,
             "phase": 0.0,
             "noiseSeed": 6764,
-            "revision": 1,
+            "revision": 6,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 6,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 6,
                     "vertices": [
                         { "id": 1, "x": 0.06518, "y": 0.45558, "curve": 0.0 },
                         { "id": 2, "x": 0.06913, "y": 0.53413, "curve": 0.17296 },
@@ -1313,7 +1321,7 @@
                         { "id": 52, "x": 0.08365, "y": 0.51351, "curve": 0.0 },
                         { "id": 53, "x": 0.0892, "y": 0.45015, "curve": 0.0 },
                         { "id": 54, "x": 0.07924, "y": 0.50718, "curve": 0.0 },
-                        { "id": 55, "x": 0.06275, "y": 0.4977, "curve": 0.0 },
+                        { "id": 55, "x": 0.06137, "y": 0.48822, "curve": 0.2865 },
                         { "id": 56, "x": 0.25674, "y": 0.50506, "curve": 0.0 },
                         { "id": 57, "x": 0.2614, "y": 0.48606, "curve": 0.1715 },
                         { "id": 58, "x": 0.26511, "y": 0.5041, "curve": 0.0 },

@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 945.59998, "y": 826.0 },
-            "parameters": { "octave": 0, "voiceLength": 0.466666667, "pitch": 0.0, "portamento": false, "oversampling": "2x", "controlInterval": "64" }
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.466666667,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": true,
+                "oversampling": "2x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -2845,7 +2853,7 @@
             "id": "modulationOverride3",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 2061.6001, "y": 1603.0 },
+            "position": { "x": 1611.17798, "y": 1356.0 },
             "parameters": {
                 "yellowSource": "constant",
                 "yellowController": 1,
@@ -2936,19 +2944,19 @@
             "dcOffset": 0.0,
             "phase": 0.0,
             "noiseSeed": 5716,
-            "revision": 1,
+            "revision": 3,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 3,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 3,
                     "vertices": [
-                        { "id": 1, "x": 0.06092, "y": 0.63372, "curve": 1.0 },
+                        { "id": 1, "x": 0.04987, "y": 0.63609, "curve": 1.0 },
                         { "id": 2, "x": 0.9375, "y": 0.5, "curve": 1.0 },
-                        { "id": 3, "x": 0.0664, "y": 0.49995, "curve": 0.67897 }
+                        { "id": 3, "x": 0.05618, "y": 0.49995, "curve": 0.67897 }
                     ]
                 }
             }
@@ -2964,19 +2972,19 @@
             "dcOffset": 0.0,
             "phase": 0.0,
             "noiseSeed": 6596,
-            "revision": 1,
+            "revision": 3,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 3,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 3,
                     "vertices": [
-                        { "id": 1, "x": 0.06105, "y": 0.44186, "curve": 1.0 },
+                        { "id": 1, "x": 0.05028, "y": 0.44186, "curve": 1.0 },
                         { "id": 2, "x": 0.9375, "y": 0.5, "curve": 1.0 },
-                        { "id": 3, "x": 0.06616, "y": 0.49976, "curve": 0.67774 }
+                        { "id": 3, "x": 0.05704, "y": 0.49976, "curve": 0.67774 }
                     ]
                 }
             }

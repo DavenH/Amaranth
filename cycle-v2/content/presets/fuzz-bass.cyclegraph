@@ -6,8 +6,16 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 475.20001, "y": 826.0 },
-            "parameters": { "octave": -1, "voiceLength": 0.366412214, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "position": { "x": 481.20001, "y": 818.0 },
+            "parameters": {
+                "octave": -1,
+                "voiceLength": 0.32229,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": true,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -305,7 +313,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1902.0, "y": 1084.0 },
+            "position": { "x": 1933.69543, "y": 535.42474 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -557,6 +565,9 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 2277.19995, "y": 886.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
@@ -638,5 +649,16 @@
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "waveshaper", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": []
+    "probes": [
+        {
+            "id": "probe",
+            "sourceNodeId": "volumeMultiply",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "voiceOutput",
+            "anchorDestPortId": "time",
+            "label": "Spy 1",
+            "tapPosition": 0.5,
+            "railOrder": 0
+        }
+    ]
 }

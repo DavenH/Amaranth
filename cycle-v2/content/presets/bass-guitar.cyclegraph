@@ -6,8 +6,16 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 945.59998, "y": 826.0 },
-            "parameters": { "octave": 0, "voiceLength": 0.5, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "position": { "x": 951.59998, "y": 818.0 },
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.5,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": true,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -812,7 +820,7 @@
             "id": "magnitudeLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 2427.6001, "y": 387.0 },
+            "position": { "x": 2427.6001, "y": 139.54431 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -1083,7 +1091,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 649.0 },
+            "position": { "x": 951.59991, "y": 421.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1171,7 +1179,7 @@
             "id": "scratchEnvelope2",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1577.19995, "y": 399.5 },
+            "position": { "x": 2009.59998, "y": 72.58564 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1421,19 +1429,19 @@
             "dcOffset": 0.0,
             "phase": 0.0,
             "noiseSeed": 7998,
-            "revision": 1,
+            "revision": 4,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 4,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 4,
                     "vertices": [
-                        { "id": 1, "x": 0.06471, "y": 0.66205, "curve": 1.0 },
+                        { "id": 1, "x": 0.05062, "y": 0.66205, "curve": 1.0 },
                         { "id": 2, "x": 0.9375, "y": 0.5, "curve": 1.0 },
-                        { "id": 3, "x": 0.06858, "y": 0.507, "curve": 0.78141 }
+                        { "id": 3, "x": 0.05477, "y": 0.507, "curve": 0.78141 }
                     ]
                 }
             }
@@ -1449,19 +1457,19 @@
             "dcOffset": 0.0,
             "phase": 0.0,
             "noiseSeed": 4095,
-            "revision": 1,
+            "revision": 5,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 5,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 5,
                     "vertices": [
-                        { "id": 1, "x": 0.0625, "y": 0.5, "curve": 1.0 },
+                        { "id": 1, "x": 0.05035, "y": 0.5, "curve": 1.0 },
                         { "id": 2, "x": 0.95741, "y": 0.0, "curve": 1.0 },
-                        { "id": 3, "x": 0.07522, "y": 0.0, "curve": 1.0 }
+                        { "id": 3, "x": 0.05063, "y": 0.00237, "curve": 0.58576 }
                     ]
                 }
             }

@@ -7,13 +7,21 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 633.0 },
-            "parameters": { "octave": 0, "voiceLength": 0.282442748, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "256" }
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.282442748,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": true,
+                "oversampling": "2x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 333.0 },
+            "position": { "x": -365.98041, "y": 551.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -21,7 +29,7 @@
                 "redSource": "keyScale",
                 "redController": 1,
                 "redConstant": 0.5,
-                "blueSource": "velocity",
+                "blueSource": "inverseVelocity",
                 "blueController": 1,
                 "blueConstant": 0.5
             }
@@ -44,7 +52,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 861.0 },
+            "position": { "x": -341.98041, "y": 721.0 },
             "parameters": { "enabled": true, "mode": "group", "order": 10, "width": 41.159999999999997, "panSpread": 1.0, "phase": 1.0, "jitter": 0.496 },
             "model": {
                 "schema": "unisonVoices",
@@ -565,7 +573,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 480.0, "y": 1336.0 },
+            "position": { "x": -381.18042, "y": 1004.64026 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -662,7 +670,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 866.0, "y": 1676.0 },
-            "parameters": { "gain": 0.5 }
+            "parameters": { "gain": 0.43431 }
         },
         {
             "id": "globalInput",

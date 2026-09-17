@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 945.59998, "y": 826.0 },
-            "parameters": { "octave": -1, "voiceLength": 0.465517241, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "16" }
+            "parameters": {
+                "octave": -1,
+                "voiceLength": 0.465517241,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": true,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -59,7 +67,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1325.59998, "y": 886.0 },
+            "position": { "x": 1365.05518, "y": 886.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -320,7 +328,7 @@
             "id": "magnitudeLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 2427.6001, "y": 387.0 },
+            "position": { "x": 2427.6001, "y": 213.01112 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -874,7 +882,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 565.83331 },
+            "position": { "x": 965.19568, "y": 247.01109 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1074,7 +1082,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 1535.59998, "y": 1571.0 },
-            "parameters": { "gain": 0.13740458 }
+            "parameters": { "gain": 0.195738 }
         },
         {
             "id": "globalInput",
