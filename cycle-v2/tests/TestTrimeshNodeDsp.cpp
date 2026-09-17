@@ -2160,7 +2160,9 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
             "trimesh.link." + linkToggle.axisValue);
     REQUIRE(keyboardLink != nullptr);
     delegate.linkedAxis = {};
-    REQUIRE(keyboardLink->keyPressed(KeyPress(KeyPress::spaceKey)));
+    REQUIRE_FALSE(keyboardLink->keyPressed(KeyPress(KeyPress::spaceKey)));
+    REQUIRE(delegate.linkedAxis.isEmpty());
+    REQUIRE(keyboardLink->keyPressed(KeyPress(KeyPress::returnKey)));
     REQUIRE(delegate.linkedAxis == linkToggle.axisValue);
 
     const auto& morph = findRegion(TrimeshExpandedHitRegionKind::MorphControl);

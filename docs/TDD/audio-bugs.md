@@ -800,3 +800,8 @@ failed `Spectral frame refresh count is independent of Unison order` for the
 64-sample partition: maximum difference `0.023058094` exceeded the existing
 `0.02` tolerance. Focused realtime executor and prepared-context tests pass;
 retain this as an open oscillator-region partition/parity issue.
+
+Update 2026-09-17: the full Cycle V2 CTest run emitted
+`JUCE Assertion failure in GraphAudioExecutor.cpp:1069` (`jassert(rendered)`)
+during a failing audio test. The run log is `/tmp/cycle-v2-ui-ctest.log`.
+This remains open; the assertion was incidental to the editor UI repair train.

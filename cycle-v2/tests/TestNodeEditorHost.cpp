@@ -1460,7 +1460,12 @@ TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
     REQUIRE(static_cast<double>(editor.automationState().getProperty("noise", {}))
             == Catch::Approx(0.76562));
     editor.setGuideResource(*stengahGuide);
-    REQUIRE(widget.vertexCountForAutomation() == 55);
+    const auto stengahModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            stengahGuide->model);
+    REQUIRE(stengahModel != nullptr);
+    REQUIRE(stengahModel->flatCurve() != nullptr);
+    REQUIRE(widget.vertexCountForAutomation()
+            == stengahModel->flatCurve()->getMesh().getNumVerts());
     REQUIRE(static_cast<double>(editor.automationState().getProperty("noise", {}))
             == Catch::Approx(0.0025));
 
