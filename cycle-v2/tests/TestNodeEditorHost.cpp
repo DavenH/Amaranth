@@ -959,6 +959,24 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     host.appendAutomationState(automation);
     const var state = automation.getProperty("voiceContext");
     REQUIRE(state.getProperty("kind", {}).toString() == "VOICE_CONTEXT");
+    const var pitchTimingGroup = state.getProperty("pitchTimingGroup", {});
+    const var synthesisGroup = state.getProperty("synthesisGroup", {});
+    REQUIRE(pitchTimingGroup.getProperty("label", {}).toString() == "Pitch & timing");
+    REQUIRE(synthesisGroup.getProperty("label", {}).toString() == "Synthesis");
+    const Rectangle<float> pitchTimingBounds = rectangleProperty(
+            pitchTimingGroup, "bounds");
+    const Rectangle<float> synthesisBounds = rectangleProperty(
+            synthesisGroup, "bounds");
+    REQUIRE(pitchTimingBounds.getCentreX()
+            == Catch::Approx(host.component()->getWidth() * 0.5f));
+    REQUIRE(synthesisBounds.getCentreX()
+            == Catch::Approx(pitchTimingBounds.getCentreX()));
+    REQUIRE(pitchTimingBounds.getX() == Catch::Approx(24.f));
+    REQUIRE(synthesisBounds.getX() == Catch::Approx(pitchTimingBounds.getX()));
+    REQUIRE(pitchTimingBounds.getWidth()
+            == Catch::Approx(host.component()->getWidth() - 48.f));
+    REQUIRE(synthesisBounds.getWidth() == Catch::Approx(pitchTimingBounds.getWidth()));
+    REQUIRE(synthesisBounds.getY() > pitchTimingBounds.getBottom());
     REQUIRE(state.getProperty("octave", {}).getProperty("display", {}).toString() == "0");
     REQUIRE(state.getProperty("voiceLength", {}).getProperty("display", {}).toString() == "1 s");
     REQUIRE(state.getProperty("pitch", {}).getProperty("display", {}).toString() == "0 semis");
@@ -980,6 +998,7 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     REQUIRE(octaveTrack.getX() == Catch::Approx(pitchTrack.getX()));
     REQUIRE(octaveTrack.getWidth() == Catch::Approx(voiceLengthTrack.getWidth()));
     REQUIRE(octaveTrack.getWidth() == Catch::Approx(pitchTrack.getWidth()));
+    REQUIRE(pitchTimingBounds.getBottom() <= octaveTrack.getY());
 
     auto* pitchValue = dynamic_cast<Label*>(host.component()->findChildWithID(
             "voiceContextEditor.pitch.value"));
@@ -995,6 +1014,7 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     auto* oversamplingSelector = host.component()->findChildWithID(
             "voiceContextEditor.oversampling");
     REQUIRE(oversamplingSelector != nullptr);
+    REQUIRE(synthesisBounds.getBottom() <= oversamplingSelector->getY());
     for (const String& factor : { String("1x"), String("2x"), String("4x"), String("8x") }) {
         auto* option = dynamic_cast<TextButton*>(oversamplingSelector->findChildWithID(
                 "voiceContextEditor.oversampling." + factor));
