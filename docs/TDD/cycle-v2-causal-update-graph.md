@@ -45,6 +45,12 @@ model serializations at both unrelated graph scales. This closes the Live
 wheel duplicate-preview symptom but not the shared session/scheduler deletion
 targets or the broader native editor proof.
 
+A final rerun after the parameter and morph migrations confirms the same Live
+wheel window: preview renders 3 before release and 3 after, audio-plan copies
+2 before release and 3 after, three async requests, two publications, one
+stale/cancelled result, and zero synchronous refreshes. Report:
+`/private/tmp/causal-wheel-final-audit.json`.
+
 The next extraction moves the wheel's active/mode/changed/base-revision and
 immutable snapshot lifecycle into `PresentationGestureSession`. The session
 calls the dispatcher to begin/commit/cancel a transient edit and the pure
@@ -116,6 +122,21 @@ immediately after loading the saved graph. This pre-gesture discrepancy is
 recorded in `ui-bugs.md`. A focused morph fixture uses the observed loaded
 value to check Live drag, durable parameter isolation during movement,
 commit, and undo without changing the older fixture's expectation.
+
+### Remaining mesh gesture extraction boundary
+
+`TrimeshWidget` and `TrimeshNodeModel` are authoritative for vertex editing
+and its local render. Vertex-parameter and mesh drags currently mutate the
+widget's `Mesh`; `NodeEditorCommandService` calls
+`TrimeshNodeModelState::copyOf(widget->currentMesh(), ...)` only at release.
+The graph's immutable model and DSP configuration therefore do not contain
+movement edits. Simply routing these callbacks through the Live graph worker
+would either render stale graph content or require a complete mesh copy per
+movement, which violates the interaction complexity contract. Before those
+families migrate, extract an immutable, affected-vertex semantic delta or
+shared mesh core that the existing Trimesh local renderer and downstream
+configuration path can consume. The session may own identity and lifecycle;
+it must not copy the widget's topology or duplicate its constraint logic.
 
 ### Request-construction extraction boundary
 
