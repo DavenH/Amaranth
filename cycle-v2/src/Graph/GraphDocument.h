@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "Graph/GraphDelta.h"
-#include "Graph/GraphEditor.h"
+#include "Graph/GraphEditTypes.h"
 #include "Graph/GraphSerializer.h"
 
 namespace CycleV2 {

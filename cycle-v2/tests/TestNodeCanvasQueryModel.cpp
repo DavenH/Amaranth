@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"

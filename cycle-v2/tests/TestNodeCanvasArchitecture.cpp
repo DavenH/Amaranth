@@ -8,6 +8,7 @@
 #include <App/AppConstants.h>
 #include <Util/Arithmetic.h>
 
+#include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"

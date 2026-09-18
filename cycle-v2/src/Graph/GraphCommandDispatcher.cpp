@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeStateEditor.h"
 #include "Nodes/Guide/GuideGraphEditor.h"
 

@@ -1,4 +1,5 @@
 #include "UI/NodeCanvasInteraction.h"
+#include "Graph/GraphEditor.h"
 #include "UI/ModulationCableBundle.h"
 
 #include <algorithm>

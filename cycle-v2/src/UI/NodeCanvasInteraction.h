@@ -8,7 +8,7 @@
 
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeCanvasViewport.h"
-#include "Graph/GraphEditor.h"
+#include "Graph/GraphEditTypes.h"
 
 namespace CycleV2 {
 

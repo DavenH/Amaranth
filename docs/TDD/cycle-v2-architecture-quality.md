@@ -130,6 +130,16 @@ audio resources while holding the proposed edge delta constant, then assert
 unchanged copy, lookup, and validation-work counters. Connection and splice
 commit must use the same rules with a durable graph mutation only at commit.
 
+Contract prerequisite: moved `PortAddress`, `GraphEditResult`,
+`GraphChangeSet`, and related edit data types from `GraphEditor.h` into
+`GraphEditTypes.h`. Fourteen production headers now import that contract
+without importing the mutating editor class; the four production `.cpp` files
+that still construct `GraphEditor` include it explicitly. `GraphEditor.h`
+fell from 88 to 31 lines. Connection and hit-routing tests plus dispatcher
+transaction tests pass (51 assertions across four cases). This removes a
+header dependency; the three UI preview calls and their graph copies remain
+and still require the shared read view above.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,

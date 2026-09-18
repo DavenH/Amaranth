@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphNodeFactory.h"
 
 using namespace CycleV2;
 
