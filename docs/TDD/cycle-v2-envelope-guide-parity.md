@@ -4,8 +4,9 @@
 
 In progress (2026-09-17). Typed graph targets, shared guide preparation,
 Envelope editor controls, runtime provider routing, focused preset repair, and
-conversion tests are implemented. Direct audible A/B parity against Cycle 1
-remains to be captured; provider wiring alone is not an audio-parity claim.
+conversion tests are implemented. A same-source full-output Cycle 1/Cycle V2
+A/B was captured and differs substantially; an isolated Envelope playback A/B
+remains open. Provider wiring alone is not an audio-parity claim.
 
 ## Evidence and authority
 
@@ -71,4 +72,40 @@ playback test renders a 512-sample guided/unguided pair and observes a real
 output difference. The fixture shows G2 with gain 0.4625 on pitch cube 1,
 edits the gain, and verifies undo.
 The editor screenshot at `/private/tmp/cycle-v2-envelope-guide-os.png` shows the
-guide-affected curve. A direct audio A/B comparison to Cycle 1 remains open.
+guide-affected curve. An isolated Envelope playback A/B against Cycle 1 remains
+open.
+
+### Direct Brass Section audio capture (2026-09-17)
+
+Cycle 1's checked-in `cycle/content/presets/BrassSection.cyc` was exported with
+`exportPresetFile` to `/private/tmp/envelope-guide-parity/BrassSection.json`.
+Pitch Envelope cube 1 contains Time guide index 1 and gain 0.462496251 in the
+export. The normal converter produced
+`/private/tmp/envelope-guide-parity/brass-from-v1.cyclegraph` from that exact
+source; it contains a typed Envelope Time assignment to `guide2`. The tests
+preset's graph migrator had to be rebuilt before the converter could accept
+the Envelope target. Conversion then passed without an override, and all 67
+converter tests passed.
+
+The standalone Debug Cycle 1 and Cycle V2 apps rendered a 1.3 s, 44.1 kHz,
+512-sample-block note with note-off at 0.8 s. Cycle 1 played MIDI 72 and Cycle
+V2 played MIDI 60, matching the converter's legacy 12-semitone reference
+translation. Separate-process Cycle V2 captures repeated bit-for-bit with the
+same seed.
+Removing only the pitch Envelope guide assignment from the converted graph
+changed the Cycle V2 output: in the 250–750 ms window, the guided-versus-plain
+mixdown difference RMS was 0.154534 while the guided RMS was 0.107258. This
+confirms a substantial downstream audio effect, in addition to the focused
+Envelope playback test. The 16-command Brass guide-gain UI fixture also passed.
+
+The direct Cycle 1/Cycle V2 full-output A/B did **not** meet parity. In the
+250–750 ms window, its best correlation within 512 samples of alignment was
+0.098, with a gain-matched normalized residual of 0.995. Full-output peak/RMS
+were 1.343/0.203 for Cycle 1 and 0.815/0.123 for the freshly converted Cycle
+V2 graph. These measurements do not isolate the Envelope: the existing strict
+audio-parity subset excludes active pitch envelopes, and the full presets also
+cross other synthesis and effect boundaries. Do not use this full-output
+failure to adjust the guide algorithm or claim guide-specific cross-engine
+parity. Capture a comparable Cycle 1 pitch Envelope playback buffer, then
+compare it to the prepared Cycle V2 Envelope under matched morph, note, and
+guide seed before closing this TDD.

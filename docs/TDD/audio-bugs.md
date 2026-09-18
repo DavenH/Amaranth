@@ -1,5 +1,15 @@
 # Audio Bug Notes
 
+## Open: repeated in-process Brass graph renders can differ with one seed
+
+During the 2026-09-17 Envelope guide parity audit, an experimental focused
+`OfflineGraphAudioRenderer` test rendered the same compiled Brass Section graph
+twice in one process with `randomSeed = 1129927500`. The assertion
+`guided.channels == repeated.channels` failed in three of eight runs, although
+separate-process app captures with that seed were byte-identical. The
+experimental assertion was removed. Current status: open.
+Check retained processor/global state before adding a same-process parity gate.
+
 ## Resolved: preview Mod Wheel did not change Filter Saw 2 audio morph
 
 Reported 2026-09-17. Load `cycle-v2/content/presets/filter-saw-2.cyclegraph`,
