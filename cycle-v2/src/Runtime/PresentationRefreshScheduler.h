@@ -22,6 +22,19 @@ public:
             bool compile,
             bool preview,
             PresentationRefreshScope scope);
+    void recordEditorMovement(
+            NodeUpdateGraph& updateGraph,
+            const GraphExecutionPlan& plan,
+            const String& nodeId,
+            const String& field,
+            uint64_t effectiveFingerprint,
+            bool deferredUntilCommit);
+    bool commitLocalEditorState(
+            NodeUpdateGraph& updateGraph,
+            const GraphExecutionPlan& plan,
+            const String& nodeId,
+            const String& field,
+            uint64_t effectiveFingerprint);
 
     PresentationGestureSession& editSession() { return gestureSession; }
 

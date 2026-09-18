@@ -170,6 +170,20 @@ stale/cancelled result, and zero synchronous refreshes. `NodeUpdateGraph`,
 the worker, coalescing, and publication are still in the model, so scheduler
 ownership is incomplete.
 
+The next scheduler slice moves editor movement identity, local-slice trace,
+deferred-probe trace, and local durable-publication trace out of
+`GraphPresentationModel`. `NodeUpdateGraph` remains the authoritative planner;
+the scheduler receives it as an execution dependency until planning and worker
+ownership move together. The model only advances the accepted graph revision
+after a valid local commit identity is published.
+
+Editor local trace construction now lives in the scheduler. Five focused
+tests passed (137 assertions). The native On Release Reverb spectrogram
+fixture also passes its during-drag and undo assertions after correcting its
+`waitForIdle` commands to use the supported `idleDelayMs` key; the old
+`delayMs` key let the first assertion race async publication. This keeps the
+assertion on visible local output rather than weakening it.
+
 The first extraction moves fingerprint and typed invalidation construction to
 `PresentationUpdateRequestBuilder`; `GraphPresentationModel` still owns the
 session identity call and the thin request wrapper. The focused preview and

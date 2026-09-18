@@ -1,7 +1,6 @@
 #include <algorithm>
 
 #include "Runtime/GraphPresentationModel.h"
-#include "Runtime/FingerprintBuilder.h"
 #include "Runtime/PreviewPitchResolver.h"
 
 #include "Nodes/Control/ModulationSource.h"
@@ -462,56 +461,13 @@ void GraphPresentationModel::recordEditorMovement(
         const String& field,
         uint64_t effectiveFingerprint,
         bool deferredUntilCommit) {
-    const String stream = "editor:" + nodeId;
-    const uint64_t streamFingerprint = FingerprintBuilder(effectiveFingerprint)
-            .add(nodeId)
-            .add(field)
-            .value();
-    auto& session = scheduler.editSession();
-    const auto identity = session.graphGestureIsActive(stream)
-            ? session.recordGraphMovement(stream, streamFingerprint)
-            : session.recordMovement(stream, streamFingerprint);
-    if (!identity.has_value()) {
-        return;
-    }
-    const std::vector<UpdateCause> causes { { nodeId, field } };
-    updateGraph.execute(
+    scheduler.recordEditorMovement(
+            updateGraph,
             current.compileResult.plan,
-            {
-                *identity,
-                {
-                    {
-                        nodeId,
-                        stream,
-                        UpdateProduct::LocalSlice,
-                        streamFingerprint,
-                        causes,
-                        false
-                    }
-                },
-                {}
-            },
-            [](const auto&) {
-                return true;
-            });
-    if (deferredUntilCommit) {
-        updateGraph.recordDecision(
-                {
-                    *identity,
-                    {
-                        {
-                            nodeId,
-                            stream,
-                            UpdateProduct::ProbePreview,
-                            streamFingerprint,
-                            causes,
-                            true
-                        }
-                    },
-                    {}
-                },
-                UpdateTracePhase::DeferredUntilCommit);
-    }
+            nodeId,
+            field,
+            effectiveFingerprint,
+            deferredUntilCommit);
 }
 
 void GraphPresentationModel::commitLocalEditorState(
@@ -519,32 +475,14 @@ void GraphPresentationModel::commitLocalEditorState(
         const String& field,
         uint64_t effectiveFingerprint,
         uint64_t documentRevision) {
-    auto& session = scheduler.editSession();
-    const String stream = session.activeStreamOr("editor:" + nodeId);
-    const EditIdentity identity = session.commit(stream);
-    if (!identity.isValid()) {
+    if (!scheduler.commitLocalEditorState(
+                updateGraph,
+                current.compileResult.plan,
+                nodeId,
+                field,
+                effectiveFingerprint)) {
         return;
     }
-    const std::vector<UpdateCause> causes { { nodeId, field } };
-    updateGraph.execute(
-            current.compileResult.plan,
-            {
-                identity,
-                {
-                    {
-                        nodeId,
-                        stream,
-                        UpdateProduct::DurablePublication,
-                        effectiveFingerprint,
-                        causes,
-                        false
-                    }
-                },
-                {}
-            },
-            [](const auto&) {
-                return true;
-            });
     requestedGraphRevision = documentRevision;
     GraphPresentationSnapshot next = current;
     next.graphRevision = documentRevision;
