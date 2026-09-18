@@ -5,6 +5,8 @@
 #include <array>
 #include <vector>
 
+#include "Nodes/Guide/GuideAttachmentTarget.h"
+
 namespace CycleV2 {
 struct Node;
 struct TrimeshCubeComponentGuideTarget;
@@ -16,12 +18,9 @@ enum class GuideCurveField;
 
 class TrimeshGuideAttachmentTarget {
 public:
-    static constexpr int fieldCount = 6;
+    static constexpr int fieldCount = GuideAttachmentTarget::fieldCount;
     static const std::array<juce::String, fieldCount>& fields();
     static GuideCurveField guideField(const juce::String& field);
-    static bool isValid(
-            const Node& trimeshNode,
-            const TrimeshCubeComponentGuideTarget& target);
     static std::vector<TrimeshCubeComponentGuideTarget> cubeTargetsForVertex(
             const Node& trimeshNode,
             int vertexIndex,
@@ -30,7 +29,6 @@ public:
 
 class MeshGuideAttachmentTarget {
 public:
-    static bool isValid(const Node& node, const TrimeshCubeComponentGuideTarget& target);
     static std::vector<TrimeshCubeComponentGuideTarget> cubeTargetsForSelection(
             const Node& node,
             int selectionIndex,

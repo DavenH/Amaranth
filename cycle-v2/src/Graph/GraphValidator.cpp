@@ -4,7 +4,7 @@
 #include <unordered_set>
 
 #include "Nodes/Envelope/EnvelopePurpose.h"
-#include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
+#include "Nodes/Guide/GuideAttachmentTarget.h"
 
 namespace CycleV2 {
 
@@ -173,7 +173,7 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
                 && (assignment.targetKind == GuideCurveTargetKind::EnvelopeCubeComponent
                         ? target->kind == NodeKind::Envelope
                         : target->kind == NodeKind::TrilinearMesh)
-                && MeshGuideAttachmentTarget::isValid(*target, assignment.target);
+                && GuideAttachmentTarget::isValid(*target, assignment.target);
         if (guide == nullptr || target == nullptr
                 || !validTarget) {
             addIssue(

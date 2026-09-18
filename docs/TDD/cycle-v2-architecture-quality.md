@@ -166,6 +166,15 @@ Completion evidence: model code has no presentation/DSP construction;
 graph validation has no editor include; Trimesh and Envelope guide attachment
 semantics and render products remain covered by focused tests.
 
+First boundary slice: moved shared Guide target validity, including the field
+limit, into `Nodes/Guide/GuideAttachmentTarget`. `GraphValidator` now depends
+on that domain contract instead of a Trimesh editor header. The Trimesh editor
+keeps vertex-to-cube selection lookup and calls the shared validity rule for
+Envelope selections; the duplicate validity method was deleted. Focused
+Trimesh assignment/selection/validation tests pass (40 assertions across five
+cases), as does the authored Envelope Guide playback test (17 assertions).
+The `TrimeshNodeModel::renderGrid` presentation/DSP dependency remains open.
+
 ## Measurement and exit criteria
 
 For each slice, record `wc -l` for touched production files, the number of
