@@ -2,13 +2,13 @@
 
 ## Status
 
-In progress (2026-09-17). Typed graph targets, shared guide preparation,
+In progress (2026-09-18). Typed graph targets, shared guide preparation,
 Envelope editor controls, runtime provider routing, focused preset repair, and
-conversion tests are implemented. A same-source full-output Cycle 1/Cycle V2
-A/B was captured and differs substantially; an isolated Envelope playback A/B
-remains open. Per-Unison guide phase sampling is now implemented in Cycle V2,
-but the full-output A/B still differs. Provider wiring alone is not an
-audio-parity claim.
+conversion tests are implemented. Per-Unison guide phase sampling and an
+isolated playback comparison against Cycle 1's mature `EnvRasterizer` now pass.
+A same-source full-output Cycle 1/Cycle V2 A/B still differs substantially;
+the exact legacy PRNG draw position and other full-preset synthesis boundaries
+remain open. Provider wiring alone is not an audio-parity claim.
 
 ## Evidence and authority
 
@@ -106,8 +106,8 @@ playback test renders a 512-sample guided/unguided pair and observes a real
 output difference. The fixture shows G2 with gain 0.4625 on pitch cube 1,
 edits the gain, and verifies undo.
 The editor screenshot at `/private/tmp/cycle-v2-envelope-guide-os.png` shows the
-guide-affected curve. An isolated Envelope playback A/B against Cycle 1 remains
-open.
+guide-affected curve. The isolated shared-mesh playback comparison is recorded
+below.
 
 ### Direct Brass Section audio capture (2026-09-17)
 
@@ -140,9 +140,8 @@ V2 graph. These measurements do not isolate the Envelope: the existing strict
 audio-parity subset excludes active pitch envelopes, and the full presets also
 cross other synthesis and effect boundaries. Do not use this full-output
 failure to adjust the guide algorithm or claim guide-specific cross-engine
-parity. Capture a comparable Cycle 1 pitch Envelope playback buffer, then
-compare it to the prepared Cycle V2 Envelope under matched morph, note, and
-guide seed before closing this TDD.
+parity. Compare the mature rasterizer and prepared Cycle V2 Envelope under
+matched morph, note, and guide seed before closing this TDD.
 
 ### Per-Unison guide phase repair (2026-09-18)
 
@@ -164,7 +163,14 @@ captures with the same seed have identical raw float SHA-256 hashes. In the
 250–750 ms window, the new guided-versus-unguided Cycle V2 output difference
 RMS is 0.153510 against guided RMS 0.102588.
 
+An isolated Brass pitch Envelope comparison now runs Cycle 1's mature
+`EnvRasterizer` and Cycle V2's prepared bank on the same mesh and guide provider,
+with the same explicit offset seed and three Unison lanes. Their 512-cycle
+`getSustainLevel`/`pitchValue` trajectories match exactly. This verifies the
+materialization and playback boundary under a matched seed; it does not verify
+that the two full apps choose the same seed at the same legacy PRNG draw.
+
 The fresh Cycle 1/Cycle V2 full-output comparison remains far from parity:
 best correlation in that window is 0.062 and gain-matched normalized residual
-is 0.998. The remaining isolated playback comparison and exact Cycle 1 PRNG
-draw translation must be resolved before marking this TDD complete.
+is 0.998. Exact Cycle 1 PRNG draw translation and the other full-preset
+boundaries must be resolved before marking this TDD complete.

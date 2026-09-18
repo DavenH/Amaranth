@@ -5,6 +5,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <Curve/GuideCurveProvider.h>
+
 #include "Graph/GraphSerializer.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "Runtime/NodeAudioProcessor.h"
@@ -108,6 +110,44 @@ TEST_CASE("Pitch Envelope Guide phase is distinct per Unison lane and stable per
         lanesDiffer |= cycle[0] != cycle[1] || cycle[1] != cycle[2];
     }
     REQUIRE(lanesDiffer);
+
+    EnvRasterizer legacy(
+            configuration->guideCurveProvider.get(), "BrassPitchComparison");
+    legacy.setMesh(configuration->mesh.get());
+    legacy.setMorphPosition({ 0.f, configuration->redMorph, configuration->blueMorph });
+    legacy.setLowresCurves(configuration->lowResolution);
+    legacy.setCalcDepthDimensions(false);
+    legacy.setWantOneSamplePerCycle(true);
+    legacy.renderWaveformOnly(configuration->mesh.get(), 0.f);
+    legacy.ensureParamSize(3);
+    Random lifecycleRandom(101);
+    legacy.updateOffsetSeeds(
+            1,
+            GuideCurveProvider::tableSize,
+            Rasterization::GuideCurveSeed::voiceLifecycle(
+                    (uint32_t) lifecycleRandom.nextInt()));
+    legacy.setNoteOn();
+    MeshLibrary::EnvProps props;
+    props.active = true;
+    bool legacyActive = true;
+    std::vector<std::array<float, 3>> legacyValues;
+    legacyValues.reserve(first.size());
+    for (size_t index = 0; index < first.size(); ++index) {
+        std::array<float, 3> laneValues {};
+        for (int lane = 0; lane < 3; ++lane) {
+            legacyActive &= legacy.renderToBuffer(
+                    1,
+                    0.01,
+                    EnvRasterizer::headUnisonIndex + lane,
+                    props,
+                    1.f);
+            laneValues[(size_t) lane] = legacy.getSustainLevel(
+                    EnvRasterizer::headUnisonIndex + lane);
+        }
+        legacyValues.push_back(laneValues);
+    }
+    REQUIRE(legacyActive);
+    REQUIRE(first == legacyValues);
 
     NodeGraph plainGraph = loaded.graph;
     REQUIRE(plainGraph.removeGuideAssignment(
