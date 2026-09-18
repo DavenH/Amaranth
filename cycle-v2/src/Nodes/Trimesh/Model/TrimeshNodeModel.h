@@ -118,7 +118,8 @@ public:
             int rows,
             int columns,
             const TrimeshRenderProfile& renderProfile,
-            int midiNote = 48);
+            int midiNote = 48,
+            int keyScaleAxis = -1);
     std::vector<TrimeshVertexParameter> getVertexParametersForIndex(int vertexIndex);
     std::vector<TrimeshVertexParameter> getSelectedVertexParameters();
     std::vector<TrimeshVertexMarker> getVertexMarkers();

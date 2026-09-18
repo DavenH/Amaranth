@@ -2241,6 +2241,49 @@ TEST_CASE("Spectral Trimesh columns span pitch only on the key-scale primary axi
     REQUIRE(bridge.getPanel3D().willAdjustSurfaceColumns());
     REQUIRE((int) redColumns.front().midiKey == Constants::LowestMidiNote);
     REQUIRE((int) redColumns.back().midiKey == Constants::HighestMidiNote);
+
+    const std::vector<float> redSurface = bridge.getRenderData().linearFrequencySurface;
+    REQUIRE(*std::max_element(redSurface.begin(), redSurface.end()) > 0.05f);
+    const int sampledColumn = 3;
+    const float columnPosition = (float) sampledColumn / 4.f;
+    const int columnNote = Arithmetic::getGraphicNoteForValue(
+            columnPosition,
+            Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote));
+    const int harmonicCount = LogRegionMapping(columnNote).regionSize();
+    std::vector<float> directHarmonics((size_t) harmonicCount);
+    TrimeshBlockwiseDsp directDsp;
+    directDsp.setMesh(&bridge.getModel().getMeshForPanel());
+    directDsp.setCyclic(false);
+    directDsp.setPrimaryViewAxis(Vertex::Red);
+    directDsp.setMorphPosition(TrimeshGridwiseDsp::morphForColumn(
+            bridge.getModel().getMorphPosition(),
+            Vertex::Red,
+            (size_t) sampledColumn,
+            5));
+    directDsp.setFrequencyMidiNote(columnNote);
+    directDsp.renderCycleInto(
+            { directHarmonics.data(), harmonicCount },
+            PortDomain::SpectralMagnitudeSignal);
+    const size_t columnOffset = (size_t) sampledColumn
+            * (size_t) bridge.getRenderData().rows;
+    for (int harmonic = 0; harmonic < harmonicCount; ++harmonic) {
+        REQUIRE(redSurface[columnOffset + (size_t) harmonic]
+                == Catch::Approx(directHarmonics[(size_t) harmonic]));
+    }
+
+    for (const float value : { 0.2f, 0.8f }) {
+        for (auto& parameter : node.parameters) {
+            if (parameter.id == "red") {
+                parameter.value = String(value, 6);
+            }
+        }
+        bridge.syncFromNode(node, 10, 5);
+        REQUIRE(bridge.getRenderData().linearFrequencySurface == redSurface);
+        REQUIRE((int) bridge.getDataSource().getColumns().front().midiKey
+                == Constants::LowestMidiNote);
+        REQUIRE((int) bridge.getDataSource().getColumns().back().midiKey
+                == Constants::HighestMidiNote);
+    }
 }
 
 TEST_CASE("Trimesh panel bridge hosts panel cores without legacy OpenGL leaves", "[cycle-v2][nodes][trimesh]") {

@@ -16,6 +16,12 @@ the red morph rail. The panel bridge was replacing the node's red value with
 the selected keyboard preview note on every refresh, which also fixed the
 harmonic grid at that note. The bridge now reads the mapped morph value for its
 panel pitch. A focused red-rail gesture fixture covers movement and undo.
+Further follow-up: with Red as the primary 3D axis, every column was sampled
+using the moving red slice's note while its grid position used the column's own
+note. The expanded editor also fell back to 96 columns during a local morph
+move. The column sampler now uses the column key and the expanded edit retains
+its pixel-width grid. Direct harmonic parity, invariant surface data, and a
+586-column native gesture fixture cover the repair.
 
 ## Remaining priority
 

@@ -28,6 +28,10 @@ void TrimeshWidget::syncFromNode(const Node& node) {
     bridge.syncFromNode(node, kPreviewRows, kPreviewColumns);
 }
 
+void TrimeshWidget::syncExpandedFromNode(const Node& node) {
+    bridge.syncFromNode(node, kExpandedRows, lastExpandedColumnCount);
+}
+
 void TrimeshWidget::setMorphEditGestureActive(bool active) {
     bridge.setMorphEditGestureActive(active);
 }

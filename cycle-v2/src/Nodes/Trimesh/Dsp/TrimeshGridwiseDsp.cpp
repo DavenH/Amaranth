@@ -1,6 +1,8 @@
 #include "Nodes/Trimesh/Dsp/TrimeshGridwiseDsp.h"
 
+#include <App/AppConstants.h>
 #include <Curve/Mesh/Vertex.h>
+#include <Util/Arithmetic.h>
 
 #include <utility>
 
@@ -126,6 +128,48 @@ bool TrimeshGridwiseDsp::renderColumnsInto(
                     size_t index,
                     const MorphPosition&) {
                 blockwiseDsp.renderCycleWithNoiseSeedOffsetInto(
+                        destination.section((int) index * rowCount, rowCount),
+                        domain,
+                        noiseSeedOffsetForColumn(index, domain));
+                ++renderCounters.sliceCount;
+                ++renderCounters.bakeCount;
+            });
+
+    return true;
+}
+
+bool TrimeshGridwiseDsp::renderPitchColumnsInto(
+        Mesh& mesh,
+        const MorphPosition& center,
+        int primaryViewAxis,
+        size_t columnCount,
+        Buffer<float> destination,
+        PortDomain domain) {
+    if ((domain != PortDomain::SpectralMagnitudeSignal
+            && domain != PortDomain::SpectralPhaseSignal)
+            || columnCount == 0 || destination.empty()
+            || destination.size() % (int) columnCount != 0) {
+        return false;
+    }
+
+    const int rowCount = destination.size() / (int) columnCount;
+    const Range<int> midiRange(
+            Constants::LowestMidiNote,
+            Constants::HighestMidiNote);
+    renderColumnRange(
+            mesh,
+            center,
+            primaryViewAxis,
+            columnCount,
+            [this, destination, rowCount, columnCount, domain, midiRange](
+                    size_t index,
+                    const MorphPosition&) {
+                const float x = columnCount == 1
+                        ? 0.f
+                        : (float) index / (float) (columnCount - 1);
+                blockwiseDsp.setFrequencyMidiNote(
+                        Arithmetic::getGraphicNoteForValue(x, midiRange));
+                blockwiseDsp.renderHarmonicsWithNoiseSeedOffsetInto(
                         destination.section((int) index * rowCount, rowCount),
                         domain,
                         noiseSeedOffsetForColumn(index, domain));

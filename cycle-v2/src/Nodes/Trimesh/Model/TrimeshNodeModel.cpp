@@ -160,11 +160,15 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(
         int rows,
         int columns,
         const TrimeshRenderProfile& renderProfile,
-        int midiNote) {
+        int midiNote,
+        int keyScaleAxis) {
     rows = jmax(2, rows);
     columns = jmax(2, columns);
     const PortDomain domain = renderProfile.getDomain();
     const bool cyclic = domain == PortDomain::TimeSignal;
+    const bool pitchSpansColumns = (domain == PortDomain::SpectralMagnitudeSignal
+            || domain == PortDomain::SpectralPhaseSignal)
+            && primaryViewAxis == keyScaleAxis;
 
     TrimeshRenderData result;
     result.domain = domain;
@@ -203,20 +207,32 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(
     gridwiseDsp.setGuideCurveProvider(guideCurveProvider.get());
     gridwiseDsp.setFrequencyMidiNote(midiNote);
     result.surface.resize((size_t) rows * (size_t) columns);
-    gridwiseDsp.renderColumnsInto(
-            mesh(),
-            morph,
-            primaryViewAxis,
-            (size_t) columns,
-            Buffer<float>(result.surface.data(), (int) result.surface.size()),
-            domain);
+    if (pitchSpansColumns) {
+        gridwiseDsp.renderPitchColumnsInto(
+                mesh(),
+                morph,
+                primaryViewAxis,
+                (size_t) columns,
+                Buffer<float>(result.surface.data(), (int) result.surface.size()),
+                domain);
+    } else {
+        gridwiseDsp.renderColumnsInto(
+                mesh(),
+                morph,
+                primaryViewAxis,
+                (size_t) columns,
+                Buffer<float>(result.surface.data(), (int) result.surface.size()),
+                domain);
+    }
     result.linearFrequencySurface = renderProfile.mapTrimeshValuesToDisplay(
             result.surface);
-    result.surface = renderProfile.mapGridToDisplay(
-            result.surface,
-            (size_t) columns,
-            (size_t) rows,
-            midiNote);
+    result.surface = pitchSpansColumns
+            ? result.linearFrequencySurface
+            : renderProfile.mapGridToDisplay(
+                    result.surface,
+                    (size_t) columns,
+                    (size_t) rows,
+                    midiNote);
 
     return result;
 }

@@ -55,7 +55,12 @@ void TrimeshPanelDataSource::rebuild(
         int keyScaleAxis) {
     const ScopedLock lock(gridLock);
 
-    renderData = model.renderGrid(rows, columns, renderProfile, midiNote);
+    renderData = model.renderGrid(
+            rows,
+            columns,
+            renderProfile,
+            midiNote,
+            keyScaleAxis);
     storage = renderData.linearFrequencySurface.empty()
             ? renderData.surface
             : renderData.linearFrequencySurface;
