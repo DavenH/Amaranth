@@ -1,14 +1,13 @@
-#include "Graph/GraphCommandDispatcher.h"
-
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <unordered_set>
 #include <utility>
 
+#include "Graph/GraphCommandDispatcher.h"
 #include "Graph/NodeParameterMap.h"
-
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Guide/GuideGraphEditor.h"
 
 namespace CycleV2 {
 
@@ -146,7 +145,7 @@ GraphEditResult GraphCommandDispatcher::publishGuideCurveState(
                     };
                 }
 
-                return GraphEditor().replaceGuideCurve(
+                return GuideGraphEditor().replaceGuideCurve(
                         graph,
                         publication.guideId,
                         publication.model,

@@ -83,11 +83,28 @@ Moved topology, probe, and Guide change facts from dispatcher wrappers into
 result rather than overwriting its change flags. `GraphCommandDispatcher.cpp`
 fell from 588 to 484 lines; `GraphEditor.cpp` rose from 968 to 1,035 lines.
 This is a policy ownership improvement, not completion of this slice: the
-editor still needs domain composition, UI speculative validation still calls
-it directly, and `NodeGraph` still owns all collections and indexes. Focused
+UI speculative validation still calls `GraphEditor` directly, and `NodeGraph`
+still owns all collections and indexes. Focused
 topology, Guide, probe, and compound transaction tests pass. The broad `[graph]`
 run has eight serializer/preset-fixture failures outside the changed command
 paths; output is in `/private/tmp/cycle-v2-graph-tests.log`.
+
+Second slice: moved the eleven Guide resource and attachment edit operations,
+including their result facts, unchanged into `Nodes/Guide/GuideGraphEditor`.
+Production callers and direct tests use that domain service; the old
+`GraphEditor` Guide surface and implementation were deleted. `GraphEditor.cpp`
+fell from 1,035 to 766 lines and its header from 153 to 119 lines; the new
+Guide implementation is 279 lines. Focused Guide assignment, resource, and
+heatmap tests pass (103 assertions across eight cases). The Guide service
+continues to use the graph's authoritative resource and assignment methods.
+
+UI connection/splice preview remains open. Today the UI copies `NodeGraph`
+and invokes `GraphEditor`, while `GraphEditor::connect` copies it again for
+whole-graph validation. A facade around that path would hide the dependency
+without removing the movement-time graph copies. Extract a read-only graph
+validation view for proposed edge deltas, shared by preview and commit, before
+replacing these callers; retain `GraphValidator`'s existing domain and scope
+rules rather than adding a second approximation.
 
 ### 2. Reduce UI coordination surfaces
 

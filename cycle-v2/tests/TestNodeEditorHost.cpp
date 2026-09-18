@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
@@ -1375,7 +1376,7 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
             NodeKind::TrilinearMesh,
             "mesh",
             { 240.f, 180.f }));
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
     REQUIRE(graph.assignGuideCurve({
             "guide1",
             "mesh",
@@ -3055,10 +3056,9 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
             "mesh",
             {}));
     addUnrelatedInteractionState(graph);
-    GraphEditor editor;
-    const auto guide = editor.createGuideCurve(graph);
+    const auto guide = GuideGraphEditor().createGuideCurve(graph);
     REQUIRE(guide.succeeded());
-    REQUIRE(editor.assignGuideCurveToMeshComponent(
+    REQUIRE(GuideGraphEditor().assignGuideCurveToMeshComponent(
             graph,
             guide.nodeId,
             "mesh",

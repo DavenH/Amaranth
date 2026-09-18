@@ -2,6 +2,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphCommandDispatcher.h"
@@ -484,7 +485,7 @@ TEST_CASE("Graph editor marks scratch connections as attachments", "[cycle-v2][g
 TEST_CASE("Graph editor creates targeted Trimesh Guide assignments", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
 
-    const auto result = GraphEditor().createGuideCurveAndAssignToMeshComponent(
+    const auto result = GuideGraphEditor().createGuideCurveAndAssignToMeshComponent(
             graph,
             "waveMesh",
             2,
@@ -508,7 +509,7 @@ TEST_CASE("Graph editor creates targeted Trimesh Guide assignments", "[cycle-v2]
 TEST_CASE("New Guide resources start flat with neutral modulation",
         "[cycle-v2][graph][guides]") {
     NodeGraph graph;
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
 
     const GuideCurveResource* guide = graph.findGuideCurve("guide1");
     REQUIRE(guide != nullptr);
@@ -527,15 +528,15 @@ TEST_CASE("New Guide resources start flat with neutral modulation",
 
 TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
 
-    const auto waveResult = GraphEditor().assignGuideCurveToMeshComponent(
+    const auto waveResult = GuideGraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide1",
             "waveMesh",
             1,
             "phase");
-    const auto magResult = GraphEditor().assignGuideCurveToMeshComponent(
+    const auto magResult = GuideGraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide1",
             "magMesh",
@@ -559,12 +560,11 @@ TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[
 
 TEST_CASE("Guide resource edits replace the resource model without creating a node", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    GraphEditor editor;
-    REQUIRE(editor.createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
 
     const GuideCurveResource* original = graph.findGuideCurve("guide1");
     REQUIRE(original != nullptr);
-    REQUIRE(editor.replaceGuideCurve(graph, "guide1", original->model, {
+    REQUIRE(GuideGraphEditor().replaceGuideCurve(graph, "guide1", original->model, {
             { "enabled", "Enabled", "0" },
             { "noise", "Noise", "0.2" },
             { "dcOffset", "DC Offset", "0.7" },
@@ -680,16 +680,16 @@ TEST_CASE("Guide resource reordering preserves its identity and assignments", "[
 
 TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
-    REQUIRE(GraphEditor().assignGuideCurveToMeshComponent(
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide1",
             "waveMesh",
             2,
             "amp").succeeded());
 
-    const auto result = GraphEditor().assignGuideCurveToMeshComponent(
+    const auto result = GuideGraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide2",
             "waveMesh",
@@ -709,7 +709,7 @@ TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cy
 TEST_CASE("Trimesh topology edits reconcile Guide assignments in one undoable command",
         "[cycle-v2][graph][guides]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
     REQUIRE(graph.findNode("waveMesh") != nullptr);
     REQUIRE(graph.assignGuideCurve({
             "guide1", "waveMesh", { 0, GuideCurveField::Amplitude }

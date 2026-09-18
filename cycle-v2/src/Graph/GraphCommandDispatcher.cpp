@@ -1,6 +1,7 @@
-#include "Graph/GraphCommandDispatcher.h"
-
 #include <algorithm>
+
+#include "Graph/GraphCommandDispatcher.h"
+#include "Nodes/Guide/GuideGraphEditor.h"
 
 namespace CycleV2 {
 
@@ -61,13 +62,13 @@ GraphEditResult GraphCommandDispatcher::spliceNodeIntoEdge(
 
 GraphEditResult GraphCommandDispatcher::createGuideCurve() {
     return apply([&](auto& graph) {
-        return GraphEditor().createGuideCurve(graph);
+        return GuideGraphEditor().createGuideCurve(graph);
     });
 }
 
 GraphEditResult GraphCommandDispatcher::duplicateGuideCurve(const juce::String& guideId) {
     return apply([&](auto& graph) {
-        return GraphEditor().duplicateGuideCurve(graph, guideId);
+        return GuideGraphEditor().duplicateGuideCurve(graph, guideId);
     });
 }
 
@@ -75,7 +76,7 @@ GraphEditResult GraphCommandDispatcher::reorderGuideCurve(
         const juce::String& guideId,
         int shelfOrder) {
     return apply([&](auto& graph) {
-        return GraphEditor().reorderGuideCurve(graph, guideId, shelfOrder);
+        return GuideGraphEditor().reorderGuideCurve(graph, guideId, shelfOrder);
     });
 }
 
@@ -85,7 +86,7 @@ GraphEditResult GraphCommandDispatcher::assignGuideCurve(
         int vertexIndex,
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
-        return GraphEditor().assignGuideCurveToMeshComponent(
+        return GuideGraphEditor().assignGuideCurveToMeshComponent(
                 graph,
                 guideId,
                 meshNodeId,
@@ -99,7 +100,7 @@ GraphEditResult GraphCommandDispatcher::detachGuideCurve(
         int vertexIndex,
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
-        return GraphEditor().detachGuideCurveFromMeshComponent(
+        return GuideGraphEditor().detachGuideCurveFromMeshComponent(
                 graph, meshNodeId, vertexIndex, parameterField);
     });
 }
@@ -109,7 +110,7 @@ GraphEditResult GraphCommandDispatcher::createAndAssignGuideCurve(
         int vertexIndex,
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
-        return GraphEditor().createGuideCurveAndAssignToMeshComponent(
+        return GuideGraphEditor().createGuideCurveAndAssignToMeshComponent(
                 graph,
                 meshNodeId,
                 vertexIndex,
@@ -119,7 +120,7 @@ GraphEditResult GraphCommandDispatcher::createAndAssignGuideCurve(
 
 GraphEditResult GraphCommandDispatcher::removeGuideCurve(const juce::String& guideId) {
     return apply([&](auto& graph) {
-        return GraphEditor().removeGuideCurve(graph, guideId);
+        return GuideGraphEditor().removeGuideCurve(graph, guideId);
     });
 }
 
@@ -127,7 +128,7 @@ GraphEditResult GraphCommandDispatcher::renameGuideCurve(
         const juce::String& guideId,
         const juce::String& name) {
     return apply([&](auto& graph) {
-        return GraphEditor().renameGuideCurve(graph, guideId, name);
+        return GuideGraphEditor().renameGuideCurve(graph, guideId, name);
     });
 }
 
@@ -143,7 +144,7 @@ GraphEditResult GraphCommandDispatcher::setGuideHeatmap(
         if (guide->revision != expectedRevision) {
             return GraphEditResult { GraphEditCode::StaleRevision, guideId, {} };
         }
-        return GraphEditor().setGuideHeatmap(graph, guideId, std::move(asset));
+        return GuideGraphEditor().setGuideHeatmap(graph, guideId, std::move(asset));
     });
 }
 
@@ -158,7 +159,7 @@ GraphEditResult GraphCommandDispatcher::clearGuideHeatmap(
         if (guide->revision != expectedRevision) {
             return GraphEditResult { GraphEditCode::StaleRevision, guideId, {} };
         }
-        return GraphEditor().clearGuideHeatmap(graph, guideId);
+        return GuideGraphEditor().clearGuideHeatmap(graph, guideId);
     });
 }
 

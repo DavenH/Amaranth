@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+#include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
@@ -615,7 +616,7 @@ TEST_CASE("Equivalent scratch topology recompiles produce identical previews",
 
 TEST_CASE("Runtime prepares targeted Guide assignments without graph attachments", "[cycle-v2][runtime]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().createGuideCurveAndAssignToMeshComponent(
+    REQUIRE(GuideGraphEditor().createGuideCurveAndAssignToMeshComponent(
             graph,
             "waveMesh",
             4,

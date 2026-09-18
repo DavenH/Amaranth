@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
@@ -1559,9 +1560,9 @@ TEST_CASE("Trimesh node model preserves live mesh pointers for equivalent public
 
 TEST_CASE("Trimesh guide attachment menu lists document Guide resources", "[cycle-v2][nodes][trimesh]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
-    REQUIRE(GraphEditor().assignGuideCurveToMeshComponent(
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide2",
             "waveMesh",
@@ -1585,7 +1586,7 @@ TEST_CASE("Trimesh guide attachment menu lists document Guide resources", "[cycl
     REQUIRE(items[3].label == "G2");
     REQUIRE(items[3].guideId == "guide2");
     REQUIRE(items[3].attached);
-    REQUIRE(GraphEditor().detachGuideCurveFromMeshComponent(
+    REQUIRE(GuideGraphEditor().detachGuideCurveFromMeshComponent(
             graph, "waveMesh", 2, "amp").succeeded());
     REQUIRE(graph.getGuideAssignments().empty());
 }

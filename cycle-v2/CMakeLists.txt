@@ -122,6 +122,7 @@ set(GRAPH_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphSerializer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/TrimeshSignalSemantics.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/TrimeshSemanticRepresentationMigration.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideGraphEditor.cpp"
 )
 
 set(RUNTIME_SOURCES
