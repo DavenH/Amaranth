@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <vector>
 
 #include "Runtime/PresentationRefreshScheduler.h"
@@ -124,6 +125,138 @@ bool PresentationRefreshScheduler::commitLocalEditorState(
                 return true;
             });
     return true;
+}
+
+PresentationRefreshScheduler::~PresentationRefreshScheduler() {
+    shutdown();
+}
+
+uint64_t PresentationRefreshScheduler::beginAsyncRequest() {
+    return currentGeneration.fetch_add(1) + 1;
+}
+
+void PresentationRefreshScheduler::enqueue(
+        uint64_t generation,
+        AsyncRefresh refresh,
+        NodeUpdateGraph& updateGraph,
+        GraphPresentationPerformanceMetrics& performance,
+        ExecuteProducts executeProducts,
+        AcceptPublication acceptPublication) {
+    refresh.generation = generation;
+    for (const auto& invalidation : refresh.request.invalidations) {
+        updateGraph.supersede(
+                invalidation.sourceStreamId,
+                invalidation.product,
+                generation);
+    }
+    auto job = std::make_shared<AsyncRefresh>(std::move(refresh));
+    asyncWorker.post(
+            [this, job, &updateGraph, &performance,
+                    executeProducts = std::move(executeProducts)] {
+                return executeAsyncRefresh(
+                        *job, updateGraph, performance, executeProducts);
+            },
+            [this, job, &updateGraph, &performance,
+                    acceptPublication = std::move(acceptPublication)] {
+                publishAsyncRefresh(
+                        *job, updateGraph, performance, acceptPublication);
+            });
+}
+
+bool PresentationRefreshScheduler::executeAsyncRefresh(
+        AsyncRefresh& refresh,
+        NodeUpdateGraph& updateGraph,
+        GraphPresentationPerformanceMetrics& performance,
+        const ExecuteProducts& executeProducts) {
+    using Performance = GraphPresentationPerformanceMetrics;
+    const uint64_t startedAt = performance.timestamp();
+    performance.record(
+            Performance::Stage::QueueDelay,
+            startedAt - refresh.requestedAtMicroseconds);
+    if (!isCurrent(refresh, updateGraph)) {
+        updateGraph.recordDecision(
+                refresh.request, UpdateTracePhase::SupersededBeforeStart);
+        performance.record(Performance::Outcome::SupersededBeforeStart);
+        return false;
+    }
+    refresh.updateResult = updateGraph.executeDeferredPublication(
+            refresh.snapshot.compileResult.plan,
+            refresh.request,
+            [&](const auto& products) {
+                return executeProducts(refresh, products);
+            });
+    refresh.workerFinishedAtMicroseconds = performance.timestamp();
+    performance.record(
+            Performance::Stage::Worker,
+            refresh.workerFinishedAtMicroseconds - startedAt);
+    const bool prepared = isCurrent(refresh, updateGraph);
+    if (!prepared) {
+        performance.record(Performance::Outcome::StaleOrCancelled);
+    }
+    return prepared;
+}
+
+void PresentationRefreshScheduler::publishAsyncRefresh(
+        AsyncRefresh& refresh,
+        NodeUpdateGraph& updateGraph,
+        GraphPresentationPerformanceMetrics& performance,
+        const AcceptPublication& acceptPublication) {
+    using Performance = GraphPresentationPerformanceMetrics;
+    const uint64_t startedAt = performance.timestamp();
+    if (refresh.workerFinishedAtMicroseconds != 0) {
+        performance.record(
+                Performance::Stage::PublicationDelay,
+                startedAt - refresh.workerFinishedAtMicroseconds);
+    }
+    if (!alive.load()) {
+        performance.record(Performance::Outcome::StaleOrCancelled);
+        return;
+    }
+    if (!isCurrent(refresh, updateGraph)
+            || refresh.generation < publishedGeneration
+            || !acceptPublication(refresh)) {
+        updateGraph.recordDecision(
+                refresh.request, UpdateTracePhase::StaleResultDiscarded);
+        performance.record(Performance::Outcome::StaleOrCancelled);
+        return;
+    }
+    publishedGeneration = refresh.generation;
+    updateGraph.publish(refresh.request, refresh.updateResult);
+    performance.record(
+            Performance::Stage::EndToEnd,
+            performance.timestamp() - refresh.requestedAtMicroseconds);
+    performance.record(Performance::Outcome::Published);
+    if (refresh.completion) {
+        refresh.completion();
+    }
+}
+
+bool PresentationRefreshScheduler::isCurrent(
+        const AsyncRefresh& refresh,
+        const NodeUpdateGraph& updateGraph) const {
+    if (!alive.load() || refresh.generation != currentGeneration.load()) {
+        return false;
+    }
+    return std::all_of(
+            refresh.request.invalidations.begin(),
+            refresh.request.invalidations.end(),
+            [&](const auto& invalidation) {
+                return updateGraph.isCurrent(
+                        invalidation.sourceStreamId,
+                        invalidation.product,
+                        refresh.generation);
+            });
+}
+
+void PresentationRefreshScheduler::cancelAndWait() {
+    currentGeneration.fetch_add(1);
+    asyncWorker.cancelAndWait();
+}
+
+void PresentationRefreshScheduler::shutdown() {
+    alive.store(false);
+    currentGeneration.fetch_add(1);
+    asyncWorker.shutdown();
 }
 
 }

@@ -57,14 +57,8 @@ std::vector<String> modWheelPreviewRoots(const GraphExecutionPlan& plan) {
 
 }
 
-GraphPresentationModel::GraphPresentationModel() :
-        asyncState(std::make_shared<AsyncState>()) {
-}
-
 GraphPresentationModel::~GraphPresentationModel() {
-    asyncState->alive.store(false);
-    asyncState->generation.fetch_add(1);
-    asyncWorker.shutdown();
+    scheduler.shutdown();
 }
 
 int GraphPresentationModel::auditionMidiNoteForProbe(
@@ -85,8 +79,7 @@ bool GraphPresentationModel::refresh(
     const bool compile = current.graphRevision == 0 || requiresCompilation(change);
     const bool preview = compile || requiresPreview(change);
     if (compile) {
-        asyncState->generation.fetch_add(1);
-        asyncWorker.cancelAndWait();
+        scheduler.cancelAndWait();
     }
 
     GraphPresentationSnapshot next = current;
@@ -183,8 +176,7 @@ bool GraphPresentationModel::refreshPreviewMidiNote(
         return true;
     }
 
-    asyncState->generation.fetch_add(1);
-    asyncWorker.cancelAndWait();
+    scheduler.cancelAndWait();
     current.previewMidiNote = selectedNote;
     hasExplicitPreviewMidiNote = true;
 
@@ -205,8 +197,7 @@ bool GraphPresentationModel::refreshPreviewModWheelValue(
         return true;
     }
 
-    asyncState->generation.fetch_add(1);
-    asyncWorker.cancelAndWait();
+    scheduler.cancelAndWait();
     current.previewModWheelValue = selectedValue;
 
     return refreshPreviewControls(
@@ -283,7 +274,7 @@ void GraphPresentationModel::refreshAsync(
     performance.record(Performance::Outcome::Requested);
 
     requestedGraphRevision = documentRevision;
-    const uint64_t generation = asyncState->generation.fetch_add(1) + 1;
+    const uint64_t generation = scheduler.beginAsyncRequest();
     const bool preview = requiresPreview(change);
     GraphPresentationSnapshot next = current;
     next.graphRevision = documentRevision;
@@ -308,59 +299,39 @@ void GraphPresentationModel::refreshAsync(
         }
         return;
     }
-    for (const auto& invalidation : request.invalidations) {
-        updateGraph.supersede(
-                invalidation.sourceStreamId,
-                invalidation.product,
-                generation);
-    }
-    auto refresh = std::make_shared<AsyncRefresh>();
-    refresh->state = asyncState;
-    refresh->generation = generation;
-    refresh->graph = std::move(graph);
-    refresh->change = std::move(change);
-    refresh->scope = scope;
-    refresh->request = request;
-    refresh->snapshot = std::move(next);
-    refresh->completion = std::move(completion);
-    refresh->requestedAtMicroseconds = requestedAt;
-    asyncWorker.post([this, refresh] {
-        using Performance = GraphPresentationPerformanceMetrics;
-        const uint64_t workerStartedAt = performance.timestamp();
-        performance.record(
-                Performance::Stage::QueueDelay,
-                workerStartedAt - refresh->requestedAtMicroseconds);
-        if (!isCurrent(*refresh)) {
-            updateGraph.recordDecision(
-                    refresh->request, UpdateTracePhase::SupersededBeforeStart);
-            performance.record(Performance::Outcome::SupersededBeforeStart);
-            return false;
-        }
-        const bool prepared = prepareAsyncRefresh(*refresh);
-        refresh->workerFinishedAtMicroseconds = performance.timestamp();
-        performance.record(
-                Performance::Stage::Worker,
-                refresh->workerFinishedAtMicroseconds - workerStartedAt);
-        if (!prepared) {
-            performance.record(Performance::Outcome::StaleOrCancelled);
-        }
-        return prepared;
-    }, [this, refresh] {
-        auto completion = publishAsyncRefresh(refresh);
-        if (completion) {
-            completion();
-        }
-    });
-}
 
-bool GraphPresentationModel::prepareAsyncRefresh(AsyncRefresh& refresh) {
-    refresh.updateResult = updateGraph.executeDeferredPublication(
-            refresh.snapshot.compileResult.plan,
-            refresh.request,
-            [&](const auto& products) {
-                return executeAsyncProducts(refresh, products);
+    AsyncRefresh refresh;
+    refresh.graph = std::move(graph);
+    refresh.change = std::move(change);
+    refresh.scope = scope;
+    refresh.request = request;
+    refresh.snapshot = std::move(next);
+    refresh.completion = std::move(completion);
+    refresh.requestedAtMicroseconds = requestedAt;
+    scheduler.enqueue(
+            generation,
+            std::move(refresh),
+            updateGraph,
+            performance,
+            [this](AsyncRefresh& job, const auto& products) {
+                return executeAsyncProducts(job, products);
+            },
+            [this](AsyncRefresh& job) {
+                if (!acceptSnapshot(std::move(job.snapshot))) {
+                    return false;
+                }
+                if (job.scope == PresentationRefreshScope::Downstream
+                        && (job.change.guidesChanged
+                                || hasImpact(job.change.parameterImpacts,
+                                        ParameterImpact::DspConfiguration))) {
+                    modWheelPreviewRootNodeIds = modWheelPreviewRoots(current.compileResult.plan);
+                    ++audioRevision;
+                }
+                if (job.previewRendered) {
+                    ++previewRenders;
+                }
+                return true;
             });
-    return isCurrent(refresh);
 }
 
 bool GraphPresentationModel::executeAsyncProducts(
@@ -381,9 +352,9 @@ bool GraphPresentationModel::executeAsyncProducts(
                 GraphPresentationPerformanceMetrics::Stage::Configuration,
                 performance.timestamp() - startedAt);
     }
-    if (!isCurrent(refresh) || !requiresPreview(refresh.change)
+    if (!scheduler.isCurrent(refresh, updateGraph) || !requiresPreview(refresh.change)
             || !next.compileResult.succeeded()) {
-        return isCurrent(refresh);
+        return scheduler.isCurrent(refresh, updateGraph);
     }
 
     return previewRenderer.render(
@@ -394,66 +365,7 @@ bool GraphPresentationModel::executeAsyncProducts(
             refresh.scope,
             refresh.previewRendered,
             performance,
-            [&] { return isCurrent(refresh); });
-}
-
-std::function<void()> GraphPresentationModel::publishAsyncRefresh(
-        std::shared_ptr<AsyncRefresh> refresh) {
-    using Performance = GraphPresentationPerformanceMetrics;
-    const uint64_t publicationStartedAt = performance.timestamp();
-    if (refresh->workerFinishedAtMicroseconds != 0) {
-        performance.record(
-                Performance::Stage::PublicationDelay,
-                publicationStartedAt - refresh->workerFinishedAtMicroseconds);
-    }
-    if (!refresh->state->alive.load()) {
-        performance.record(Performance::Outcome::StaleOrCancelled);
-        return {};
-    }
-    if (!isCurrent(*refresh)) {
-        updateGraph.recordDecision(refresh->request, UpdateTracePhase::StaleResultDiscarded);
-        performance.record(Performance::Outcome::StaleOrCancelled);
-        return {};
-    }
-    if (refresh->generation < publishedGeneration
-            || !acceptSnapshot(std::move(refresh->snapshot))) {
-        updateGraph.recordDecision(refresh->request, UpdateTracePhase::StaleResultDiscarded);
-        performance.record(Performance::Outcome::StaleOrCancelled);
-        return {};
-    }
-    publishedGeneration = refresh->generation;
-    updateGraph.publish(refresh->request, refresh->updateResult);
-    if (refresh->scope == PresentationRefreshScope::Downstream
-            && (refresh->change.guidesChanged
-                    || hasImpact(refresh->change.parameterImpacts,
-                            ParameterImpact::DspConfiguration))) {
-        modWheelPreviewRootNodeIds = modWheelPreviewRoots(current.compileResult.plan);
-        ++audioRevision;
-    }
-    if (refresh->previewRendered) {
-        ++previewRenders;
-    }
-    performance.record(
-            Performance::Stage::EndToEnd,
-            performance.timestamp() - refresh->requestedAtMicroseconds);
-    performance.record(Performance::Outcome::Published);
-    return std::move(refresh->completion);
-}
-
-bool GraphPresentationModel::isCurrent(const AsyncRefresh& refresh) const {
-    if (!refresh.state->alive.load()
-            || refresh.generation != refresh.state->generation.load()) {
-        return false;
-    }
-    return std::all_of(
-            refresh.request.invalidations.begin(),
-            refresh.request.invalidations.end(),
-            [&](const auto& invalidation) {
-                return updateGraph.isCurrent(
-                        invalidation.sourceStreamId,
-                        invalidation.product,
-                        refresh.generation);
-            });
+            [&] { return scheduler.isCurrent(refresh, updateGraph); });
 }
 
 void GraphPresentationModel::recordEditorMovement(

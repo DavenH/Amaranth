@@ -1,15 +1,12 @@
 #pragma once
 
-#include <atomic>
 #include <functional>
 #include <memory>
-#include <mutex>
 #include <optional>
 
 #include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/GraphPresentationPerformanceMetrics.h"
 #include "Runtime/GraphPresentationSnapshot.h"
-#include "Runtime/MessageThreadWorker.h"
 #include "Runtime/NodeUpdateGraph.h"
 #include "Runtime/PresentationPreviewRenderer.h"
 #include "Runtime/PresentationRefreshScheduler.h"
@@ -20,7 +17,7 @@ namespace CycleV2 {
 
 class GraphPresentationModel {
 public:
-    GraphPresentationModel();
+    GraphPresentationModel() = default;
     ~GraphPresentationModel();
 
     bool refresh(
@@ -91,25 +88,7 @@ public:
             int midiNote) const;
 
 private:
-    struct AsyncState {
-        std::atomic<bool> alive { true };
-        std::atomic<uint64_t> generation {};
-    };
-
-    struct AsyncRefresh {
-        std::shared_ptr<AsyncState> state;
-        uint64_t generation {};
-        std::shared_ptr<const NodeGraph> graph;
-        GraphChangeSet change;
-        PresentationRefreshScope scope { PresentationRefreshScope::Downstream };
-        CausalUpdateRequest request;
-        CausalUpdateResult updateResult;
-        GraphPresentationSnapshot snapshot;
-        std::function<void()> completion;
-        uint64_t requestedAtMicroseconds {};
-        uint64_t workerFinishedAtMicroseconds {};
-        bool previewRendered {};
-    };
+    using AsyncRefresh = PresentationRefreshScheduler::AsyncRefresh;
 
     bool requiresCompilation(const GraphChangeSet& change) const;
     bool requiresPreview(const GraphChangeSet& change) const;
@@ -121,12 +100,9 @@ private:
             const NodeGraph& graph,
             GraphExecutionPlan& plan,
             const std::vector<String>& nodeIds);
-    bool prepareAsyncRefresh(AsyncRefresh& refresh);
     bool executeAsyncProducts(
             AsyncRefresh& refresh,
             const std::vector<PlannedNodeProduct>& products);
-    std::function<void()> publishAsyncRefresh(std::shared_ptr<AsyncRefresh> refresh);
-    bool isCurrent(const AsyncRefresh& refresh) const;
 
     bool hasExplicitPreviewMidiNote {};
 
@@ -141,10 +117,7 @@ private:
     uint64_t audioRevision { 1 };
     size_t compilations {};
     size_t previewRenders {};
-    uint64_t publishedGeneration {};
     std::vector<String> modWheelPreviewRootNodeIds;
-    MessageThreadWorker asyncWorker;
-    std::shared_ptr<AsyncState> asyncState;
     GraphPresentationPerformanceMetrics performance;
 };
 

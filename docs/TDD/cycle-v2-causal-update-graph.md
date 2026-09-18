@@ -184,6 +184,25 @@ fixture also passes its during-drag and undo assertions after correcting its
 `delayMs` key let the first assertion race async publication. This keeps the
 assertion on visible local output rather than weakening it.
 
+The worker extraction must move generation, latest-only supersession,
+cancellation checks, worker queue, publication ordering, and audit outcomes
+together. `GraphPresentationModel` supplies product execution and accepted
+snapshot effects as callbacks; the scheduler owns immutable job input and
+calls those callbacks only while its generation is current. Synchronous
+topology and preview-control changes still cancel and wait at their existing
+boundaries. The model destructor must shut down the scheduler before its
+renderer and snapshot state are destroyed.
+
+The scheduler now owns the worker and async job, generation, cancellation,
+latest-only supersession, stale-result checks, publication ordering, and
+associated audit/latency outcomes. The model supplies only product execution
+and accepted-snapshot effects. Five focused tests passed before the refactor
+pass (79 assertions), and four passed after splitting worker execution and
+publication into separate scheduler methods (75 assertions). The native Live
+wheel and both Reverb policy fixtures passed after the move; the wheel window
+still has three renders before and after release, three requests, two
+publications, one stale/cancelled result, and zero synchronous refreshes.
+
 The first extraction moves fingerprint and typed invalidation construction to
 `PresentationUpdateRequestBuilder`; `GraphPresentationModel` still owns the
 session identity call and the thin request wrapper. The focused preview and
