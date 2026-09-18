@@ -144,11 +144,6 @@ bool WorkspaceDockInteractionController::handleChromeDown(
         setDockExpandedFromKeyboard(true);
         return true;
     }
-    if (layout.collapseHandle.contains(event.position)) {
-        keyboardFocus = { WorkspaceDockFocusTarget::Collapse, {} };
-        setDockExpandedFromKeyboard(false);
-        return true;
-    }
     if (layout.resizeHandle.contains(event.position)) {
         keyboardFocus = {};
         resizingHeight = true;
@@ -285,10 +280,6 @@ void WorkspaceDockInteractionController::setGuideShelfMinimizedFromKeyboard(bool
                     : WorkspaceDockFocusTarget::GuideMinimize,
             {}
     };
-    if (minimized && probeState.minimized) {
-        keyboardFocus = { WorkspaceDockFocusTarget::Collapse, {} };
-        setDockExpandedFromKeyboard(false);
-    }
     callbacks.repaint();
 }
 
@@ -322,10 +313,6 @@ void WorkspaceDockInteractionController::setSpyShelfMinimizedFromKeyboard(bool m
                     : WorkspaceDockFocusTarget::SpyMinimize,
             {}
     };
-    if (minimized && guideState.minimized) {
-        keyboardFocus = { WorkspaceDockFocusTarget::Collapse, {} };
-        setDockExpandedFromKeyboard(false);
-    }
     callbacks.repaint();
 }
 

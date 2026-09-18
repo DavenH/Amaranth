@@ -181,7 +181,7 @@ NodeCanvas::NodeCanvas() :
             AppSettings::GuideShelfMinimized) != 0;
     probeRailState.minimized = settings.getGlobalSettingValue(
             AppSettings::SpyShelfMinimized) != 0;
-    probeRailState.expanded = settings.getGlobalSettingValue(AppSettings::GuideSpyDockExpanded) != 0;
+    probeRailState.expanded = true;
     probeRailState.expandedHeight = jmax(
             WorkspaceDock::minimumExpandedHeight,
             (float) settings.getGlobalSettingValue(AppSettings::GuideSpyDockHeight));
@@ -421,6 +421,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     if (dockInteraction->mouseDown(event, workspace)) {
         return;
     }
+    guideShelfState.selectedGuideId = {};
+    guideShelfState.hoveredGuideId = {};
     if (probeDetailState.isOpen()) {
         const Rectangle<float> detail = SignalProbeDetailView::boundsFor(editorContentBounds());
         if (SignalProbeDetailView::closeBounds(detail).contains(event.position)) {

@@ -67,10 +67,6 @@ WorkspaceDockLayout WorkspaceDock::layout(
 
     result.resizeHandle = { result.dock.getX() + shelfPadding,
             result.dock.getY(), 100.f, 5.f };
-    result.collapseHandle = state.rightMinimized
-            ? juce::Rectangle<float>(result.dock.getX() + drawerWidth + tileGap,
-                    result.dock.getY() + 5.f, controlSize, controlSize)
-            : spyControls(result.dock).collapse;
     const float guideHeight = juce::jmax(0.f,
             workspace.getBottom() - CanvasUtilityDock::margin - guideTop);
     result.leftShelf = { guideRight - activeGuideWidth,
@@ -94,17 +90,16 @@ WorkspaceDockSpyControls WorkspaceDock::spyControls(juce::Rectangle<float> rail)
     WorkspaceDockSpyControls controls;
     const float usableWidth = juce::jmax(0.f, rail.getWidth() - shelfPadding * 2.f);
     const float gap = 6.f;
-    const float width = juce::jmin(258.f, usableWidth);
+    const float width = juce::jmin(226.f, usableWidth);
     const float labelWidth = juce::jmin(84.f,
-            juce::jmax(52.f, width - 104.f - controlSize * 2.f - gap * 3.f));
+            juce::jmax(52.f, width - 104.f - controlSize - gap * 2.f));
     const float refreshWidth = juce::jmax(0.f,
-            width - labelWidth - controlSize * 2.f - gap * 3.f);
+            width - labelWidth - controlSize - gap * 2.f);
     const float x = rail.getX() + shelfPadding;
     const float y = rail.getY() + 5.f;
     controls.label = { x, y, labelWidth, controlSize };
     controls.refresh = { controls.label.getRight() + gap, y, refreshWidth, controlSize };
     controls.minimize = { controls.refresh.getRight() + gap, y, controlSize, controlSize };
-    controls.collapse = { controls.minimize.getRight() + gap, y, controlSize, controlSize };
     return controls;
 }
 
@@ -331,10 +326,11 @@ void WorkspaceDock::paintChrome(
         const juce::String& rightSummary,
         bool expanded,
         bool focused) {
+    if (expanded) {
+        return;
+    }
     graphics.setColour(CanvasChromePalette::dockSurface);
-    const float handleCornerRadius = expanded
-            ? CanvasChromeMetrics::controlCornerRadius
-            : CanvasChromeMetrics::tileCornerRadius;
+    const float handleCornerRadius = CanvasChromeMetrics::tileCornerRadius;
     graphics.fillRoundedRectangle(layout.collapseHandle, handleCornerRadius);
     graphics.setColour(focused
             ? CanvasChromePalette::focus
@@ -347,19 +343,15 @@ void WorkspaceDock::paintChrome(
                     : CanvasChromeMetrics::restingBorderWidth);
     graphics.setColour(CanvasChromePalette::text);
 
-    if (!expanded) {
-        graphics.setFont(juce::FontOptions(CanvasChromeMetrics::captionFontSize));
-        graphics.drawText(
-                leftSummary + "  ·  " + rightSummary,
-                layout.collapseHandle.withTrimmedLeft(28.f).withTrimmedRight(8.f),
-                juce::Justification::centred);
-    }
+    graphics.setFont(juce::FontOptions(CanvasChromeMetrics::captionFontSize));
+    graphics.drawText(
+            leftSummary + "  ·  " + rightSummary,
+            layout.collapseHandle.withTrimmedLeft(28.f).withTrimmedRight(8.f),
+            juce::Justification::centred);
 
-    const float centreX = expanded
-            ? layout.collapseHandle.getCentreX()
-            : layout.collapseHandle.getX() + 14.f;
+    const float centreX = layout.collapseHandle.getX() + 14.f;
     const float centreY = layout.collapseHandle.getCentreY();
-    const float direction = expanded ? 1.f : -1.f;
+    const float direction = -1.f;
     juce::Path chevron;
     chevron.startNewSubPath(centreX - 5.f, centreY - 2.f * direction);
     chevron.lineTo(centreX, centreY + 3.f * direction);

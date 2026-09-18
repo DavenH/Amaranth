@@ -6,8 +6,9 @@ namespace CycleV2 {
 
 std::vector<WorkspaceDockFocus> WorkspaceDockKeyboardNavigation::focusOrder(
         const WorkspaceDockKeyboardModel& model) {
-    std::vector<WorkspaceDockFocus> order { { WorkspaceDockFocusTarget::Collapse, {} } };
+    std::vector<WorkspaceDockFocus> order;
     if (!model.expanded) {
+        order.push_back({ WorkspaceDockFocusTarget::Collapse, {} });
         return order;
     }
 

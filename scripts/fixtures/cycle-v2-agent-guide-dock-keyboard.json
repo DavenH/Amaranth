@@ -5,12 +5,6 @@
       "path": "../../cycle-v2/content/presets/old/baroque-flute.cyclegraph"
     },
     { "command": "key", "area": "canvas", "key": "tab" },
-    { "command": "assertState", "path": "guideDock.keyboardFocusTarget", "equals": "collapse" },
-    { "command": "key", "area": "canvas", "key": "return" },
-    { "command": "assertState", "path": "guideDock.expanded", "equals": false },
-    { "command": "key", "area": "canvas", "key": "return" },
-    { "command": "assertState", "path": "guideDock.expanded", "equals": true },
-    { "command": "key", "area": "canvas", "key": "tab" },
     {
       "command": "assertState",
       "path": "guideDock.keyboardFocusTarget",

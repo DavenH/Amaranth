@@ -80,15 +80,12 @@ TEST_CASE("Signal probe rail overlays the full canvas", "[cycle-v2][canvas][prob
     const Rectangle<float> collapse = dock.collapseHandle;
     const Rectangle<float> refreshMode = SignalProbeRail::refreshModeBoundsFor(spies, expanded);
     const Rectangle<float> rail = dock.rightShelf;
-    REQUIRE(rail.contains(collapse));
+    REQUIRE(collapse.isEmpty());
     REQUIRE(rail.contains(refreshMode));
-    REQUIRE_FALSE(collapse.intersects(refreshMode));
     const WorkspaceDockSpyControls controls = WorkspaceDock::spyControls(rail);
     REQUIRE(controls.label.getRight() < controls.refresh.getX());
     REQUIRE(controls.refresh.getRight() < controls.minimize.getX());
-    REQUIRE(controls.minimize.getRight() < controls.collapse.getX());
-    REQUIRE(controls.collapse == collapse);
-    REQUIRE(controls.collapse.getRight() - controls.label.getX() <= 258.f);
+    REQUIRE(controls.minimize.getRight() - controls.label.getX() <= 226.f);
     REQUIRE(SignalProbeRail::tileBoundsFor(spies, expanded, 0).getY()
             == Catch::Approx(rail.getY()
                     + WorkspaceDock::headerHeight));
@@ -122,7 +119,7 @@ TEST_CASE("Workspace dock places Guides beside utilities and Spies above canvas"
     REQUIRE(balanced.leftShelf.getX() > balanced.rightShelf.getRight());
     REQUIRE(balanced.leftShelf.getHeight() > WorkspaceDock::guideTileHeight);
     REQUIRE(balanced.rightShelf.getBottom() == workspace.getBottom());
-    REQUIRE(balanced.dock.contains(balanced.collapseHandle));
+    REQUIRE(balanced.collapseHandle.isEmpty());
     REQUIRE(balanced.resizeHandle.getY() == balanced.dock.getY());
 
     const auto first = WorkspaceDock::guideTileBounds(balanced.leftShelf, 0, 0.f);
@@ -150,7 +147,7 @@ TEST_CASE("Workspace dock places Guides beside utilities and Spies above canvas"
     REQUIRE(small.content == smallWorkspace);
     REQUIRE_FALSE(small.rightShelf.intersects(small.leftShelf));
     const WorkspaceDockSpyControls smallSpyControls = WorkspaceDock::spyControls(small.rightShelf);
-    REQUIRE(small.rightShelf.contains(smallSpyControls.collapse));
+    REQUIRE(small.rightShelf.contains(smallSpyControls.minimize));
     REQUIRE(smallSpyControls.refresh.getWidth() > 0.f);
 
     const Rectangle<float> narrowWorkspace { 0.f, 0.f, 800.f, 600.f };
@@ -161,8 +158,8 @@ TEST_CASE("Workspace dock places Guides beside utilities and Spies above canvas"
             >= WorkspaceDock::headerHeight + WorkspaceDock::guideTileHeight);
     REQUIRE_FALSE(narrow.leftShelf.intersects(narrow.rightShelf));
     const WorkspaceDockSpyControls narrowSpyControls = WorkspaceDock::spyControls(narrow.rightShelf);
-    REQUIRE(narrowSpyControls.collapse == narrow.collapseHandle);
-    REQUIRE(narrow.rightShelf.contains(narrowSpyControls.collapse));
+    REQUIRE(narrow.collapseHandle.isEmpty());
+    REQUIRE(narrow.rightShelf.contains(narrowSpyControls.minimize));
     REQUIRE(narrowSpyControls.refresh.getWidth() >= 80.f);
 
     GraphNodeFactory factory;
@@ -183,7 +180,7 @@ TEST_CASE("Workspace dock keyboard traversal exposes every visible action",
     model.spyIds = { "probe1" };
 
     const auto order = WorkspaceDockKeyboardNavigation::focusOrder(model);
-    REQUIRE(order.front().target == WorkspaceDockFocusTarget::Collapse);
+    REQUIRE(order.front().target == WorkspaceDockFocusTarget::GuideMinimize);
     REQUIRE(std::count(order.begin(), order.end(), WorkspaceDockFocus {
             WorkspaceDockFocusTarget::GuideTile, "guide1" }) == 1);
     REQUIRE(std::count(order.begin(), order.end(), WorkspaceDockFocus {
@@ -192,7 +189,7 @@ TEST_CASE("Workspace dock keyboard traversal exposes every visible action",
     WorkspaceDockFocus focus;
     REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
             KeyPress(KeyPress::tabKey), model, focus));
-    REQUIRE(focus.target == WorkspaceDockFocusTarget::Collapse);
+    REQUIRE(focus.target == WorkspaceDockFocusTarget::GuideMinimize);
     REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
             KeyPress(KeyPress::tabKey, ModifierKeys::shiftModifier, 0), model, focus));
     REQUIRE(focus == order.back());

@@ -853,10 +853,12 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
             "guideDock",
             "guideDock",
             state.guideDock.dockBounds));
-    targets.add(AutomationValueEncoder::pointerTargetToVar(
-            "guideDock.collapse",
-            "guideDockCollapse",
-            state.guideDock.collapseBounds));
+    if (!state.guideDock.collapseBounds.isEmpty()) {
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "guideDock.collapse",
+                "guideDockCollapse",
+                state.guideDock.collapseBounds));
+    }
     if (!state.guideDock.resizeBounds.isEmpty()) {
         targets.add(AutomationValueEncoder::pointerTargetToVar(
                 "guideDock.resize",
