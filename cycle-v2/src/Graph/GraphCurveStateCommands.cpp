@@ -384,6 +384,80 @@ GraphEditResult GraphCommandDispatcher::setPreviewMorph(float red, float blue) {
     return result;
 }
 
+GraphEditResult GraphCommandDispatcher::setMappedPreviewMorph(
+        const std::vector<PreviewMorphTarget>& targets,
+        float keyScale,
+        float modWheel) {
+    if (compoundActive) {
+        return { GraphEditCode::ValidationRejected, {}, {} };
+    }
+    const bool transient = transientEdit.has_value();
+    if (!transient) {
+        beginCompoundEdit();
+    }
+
+    bool changed = false;
+    bool succeeded = true;
+    for (size_t first = 0; first < targets.size() && succeeded;) {
+        const String nodeId = targets[first].nodeId;
+        const Node* node = editingGraph().findNode(nodeId);
+        if (node == nullptr) {
+            succeeded = false;
+            break;
+        }
+        String red;
+        String blue;
+        if (node->kind == NodeKind::Envelope) {
+            const NodeParameterMap parameters(*node);
+            red = parameters.stringValue("red", "0.5");
+            blue = parameters.stringValue("blue", "0.5");
+        }
+        size_t next = first;
+        while (next < targets.size() && targets[next].nodeId == nodeId) {
+            const auto& target = targets[next++];
+            const String value(jlimit(0.f, 1.f,
+                    target.control == PreviewMorphControl::KeyScale
+                            ? keyScale : modWheel), 9);
+            if (target.parameterId == "red") {
+                red = value;
+            } else if (target.parameterId == "blue") {
+                blue = value;
+            }
+            if (node->kind == NodeKind::TrilinearMesh) {
+                const auto result = setNodeParameter(
+                        nodeId, target.parameterId, target.parameterId, value);
+                succeeded = result.succeeded();
+                changed = changed || result.changed;
+                if (!succeeded) {
+                    break;
+                }
+            } else if (node->kind != NodeKind::Envelope) {
+                succeeded = false;
+                break;
+            }
+        }
+        if (succeeded && node->kind == NodeKind::Envelope) {
+            succeeded = setEnvelopePreviewMorph(*node, red, blue, changed);
+        }
+        first = next;
+    }
+    if (!succeeded) {
+        if (transient) {
+            cancelTransientEdit();
+        } else {
+            cancelCompoundEdit();
+        }
+        return { GraphEditCode::ValidationRejected, {}, {} };
+    }
+
+    GraphEditResult result;
+    result.changed = transient ? changed : commitCompoundEdit();
+    if (result.changed) {
+        result.changes = transient ? transientChanges() : document.lastChange();
+    }
+    return result;
+}
+
 bool GraphCommandDispatcher::setTrimeshPreviewMorph(
         const String& nodeId,
         const String& red,

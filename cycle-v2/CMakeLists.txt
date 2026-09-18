@@ -161,6 +161,7 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreparedOscillatorRegion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreparedTrimeshMorphBinding.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreviewPitchResolver.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreviewMorphBinding.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/MonitorPreviewProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SourcePreviewProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralOscillatorFrameRenderer.cpp"

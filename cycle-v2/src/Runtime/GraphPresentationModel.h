@@ -12,6 +12,7 @@
 #include "Runtime/PresentationRefreshScheduler.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/PreviewMorphTarget.h"
 
 namespace CycleV2 {
 
@@ -67,6 +68,16 @@ public:
     const GraphPreviewResult& previewResult() const { return current.previewResult; }
     int previewMidiNote() const { return current.previewMidiNote; }
     int previewModWheelValue() const { return current.previewModWheelValue; }
+    bool hasModWheelPreviewRoots() const { return !modWheelPreviewRootNodeIds.empty(); }
+    const std::vector<PreviewMorphTarget>& keyScaleMorphTargets() const {
+        return keyScaleTargets;
+    }
+    const std::vector<PreviewMorphTarget>& modWheelMorphTargets() const {
+        return modWheelTargets;
+    }
+    const std::vector<PreviewMorphTarget>& allPerformanceMorphTargets() const {
+        return allMorphTargets;
+    }
     uint64_t revision() const { return presentationRevision; }
     uint64_t audioPlanRevision() const { return audioRevision; }
     size_t compilationCount() const { return compilations; }
@@ -103,6 +114,7 @@ private:
             const NodeGraph& graph,
             GraphExecutionPlan& plan,
             const std::vector<String>& nodeIds);
+    void refreshPreviewMorphBindings();
     bool executeAsyncProducts(
             AsyncRefresh& refresh,
             const std::vector<PlannedNodeProduct>& products);
@@ -120,6 +132,9 @@ private:
     size_t compilations {};
     size_t previewRenders {};
     std::vector<String> modWheelPreviewRootNodeIds;
+    std::vector<PreviewMorphTarget> allMorphTargets;
+    std::vector<PreviewMorphTarget> keyScaleTargets;
+    std::vector<PreviewMorphTarget> modWheelTargets;
     GraphPresentationPerformanceMetrics performance;
 };
 

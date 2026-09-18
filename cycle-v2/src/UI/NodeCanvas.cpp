@@ -1819,7 +1819,8 @@ bool NodeCanvas::setPreviewMidiNote(int midiNote) {
     }
     if (!persistPreviewMorph(
                 selectedNote,
-                presentation.previewModWheelValue()).succeeded()) {
+                presentation.previewModWheelValue(),
+                PreviewMorphEditScope::KeyScale).succeeded()) {
         return false;
     }
     if (!presentation.refreshPreviewMidiNote(
@@ -1840,8 +1841,15 @@ bool NodeCanvas::setPreviewModWheelValue(int value) {
     if (selectedValue == presentation.previewModWheelValue()) {
         return true;
     }
+    if (!presentation.hasModWheelPreviewRoots()) {
+        presentation.stagePreviewModWheelValue(selectedValue);
+        requestCanvasRepaint();
+        return true;
+    }
     const GraphEditResult edit = persistPreviewMorph(
-            presentation.previewMidiNote(), selectedValue);
+            presentation.previewMidiNote(),
+            selectedValue,
+            PreviewMorphEditScope::ModWheel);
     if (!edit.succeeded()) {
         return false;
     }
@@ -1875,6 +1883,11 @@ bool NodeCanvas::updatePreviewModWheelGesture(int value) {
     if (!session.graphGestureIsActive(kPreviewModWheelStream)) {
         return setPreviewModWheelValue(selectedValue);
     }
+    if (!presentation.hasModWheelPreviewRoots()) {
+        presentation.stagePreviewModWheelValue(selectedValue);
+        requestCanvasRepaint();
+        return true;
+    }
     if (!session.recordGraphMovement(
                 kPreviewModWheelStream, static_cast<uint64_t>(selectedValue)).has_value()) {
         return true;
@@ -1884,7 +1897,10 @@ bool NodeCanvas::updatePreviewModWheelGesture(int value) {
         return true;
     }
 
-    const auto edit = editPreviewMorph(presentation.previewMidiNote(), selectedValue);
+    const auto edit = editPreviewMorph(
+            presentation.previewMidiNote(),
+            selectedValue,
+            PreviewMorphEditScope::ModWheel);
     if (!edit.succeeded()) {
         session.cancelGraphGesture(kPreviewModWheelStream, commands);
         return false;
@@ -1918,6 +1934,11 @@ void NodeCanvas::endPreviewModWheelGesture(int finalValue) {
 
     const auto finished = session.finishGraphGesture(
             kPreviewModWheelStream, commands, document);
+    if (!presentation.hasModWheelPreviewRoots()) {
+        presentation.stagePreviewModWheelValue(jlimit(0, 127, finalValue));
+        requestCanvasRepaint();
+        return;
+    }
     if (finished.live) {
         if (finished.durableChanged) {
             const GraphChangeSet change = presentation.modWheelPreviewChange(
@@ -1940,8 +1961,11 @@ void NodeCanvas::endPreviewModWheelGesture(int finalValue) {
     }
 }
 
-GraphEditResult NodeCanvas::persistPreviewMorph(int midiNote, int modWheelValue) {
-    const GraphEditResult edit = editPreviewMorph(midiNote, modWheelValue);
+GraphEditResult NodeCanvas::persistPreviewMorph(
+        int midiNote,
+        int modWheelValue,
+        PreviewMorphEditScope scope) {
+    const GraphEditResult edit = editPreviewMorph(midiNote, modWheelValue, scope);
     if (!edit.succeeded() || !edit.changed) {
         return edit;
     }
@@ -1953,13 +1977,24 @@ GraphEditResult NodeCanvas::persistPreviewMorph(int midiNote, int modWheelValue)
     return edit;
 }
 
-GraphEditResult NodeCanvas::editPreviewMorph(int midiNote, int modWheelValue) {
+GraphEditResult NodeCanvas::editPreviewMorph(
+        int midiNote,
+        int modWheelValue,
+        PreviewMorphEditScope scope) {
     const float red = ModulationSource::normalizeKey(
             midiNote,
             Constants::LowestMidiNote,
             Constants::HighestMidiNote);
     const float blue = (float) modWheelValue / 127.f;
-    return commands.setPreviewMorph(red, blue);
+    const auto& targets = scope == PreviewMorphEditScope::KeyScale
+            ? presentation.keyScaleMorphTargets()
+            : scope == PreviewMorphEditScope::ModWheel
+                    ? presentation.modWheelMorphTargets()
+                    : presentation.allPerformanceMorphTargets();
+    return commands.setMappedPreviewMorph(
+            targets,
+            red,
+            blue);
 }
 
 void NodeCanvas::synchronizeOpenedEditorMorph() {
@@ -1970,7 +2005,8 @@ void NodeCanvas::synchronizeOpenedEditorMorph() {
     }
     persistPreviewMorph(
             presentation.previewMidiNote(),
-            presentation.previewModWheelValue());
+            presentation.previewModWheelValue(),
+            PreviewMorphEditScope::Both);
 }
 
 void NodeCanvas::finishPreviewModWheelRefresh() {

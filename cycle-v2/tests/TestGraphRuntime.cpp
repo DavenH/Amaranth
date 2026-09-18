@@ -11,6 +11,8 @@
 #include "Graph/GraphDocument.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
+#include "Graph/NodeParameterMap.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Control/ModulationTriple.h"
 #include "Nodes/Control/ModulationSource.h"
@@ -222,6 +224,122 @@ TEST_CASE("Attached Mod Triple parameter edits refresh implicit voice modulation
             document.lastChange()));
 
     REQUIRE(blueConfiguration().mode == ModulationSourceMode::InverseVelocity);
+}
+
+TEST_CASE("Preview wheel morph follows its compiled source mapping",
+        "[cycle-v2][runtime][preview-wheel][mapping]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::ModulationTriple, "morph", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "unmappedMesh", {}));
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "inverse", {}));
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph, "morph", "blueSource", "Blue Source", "inverseVelocity").succeeded());
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph, "inverse", "source", "Source", "inverseVelocity").succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph, { "morph", "modulation", false },
+            { "voice", "modulation", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph, { "voice", "context", false },
+            { "mesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph, { "voice", "context", false },
+            { "unmappedMesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph, { "inverse", "value", false },
+            { "unmappedMesh", "blue", true }).succeeded());
+
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+    REQUIRE_FALSE(presentation.hasModWheelPreviewRoots());
+    REQUIRE(presentation.modWheelMorphTargets().empty());
+    REQUIRE(presentation.keyScaleMorphTargets().size() == 2);
+    REQUIRE(presentation.keyScaleMorphTargets().front().nodeId == "mesh");
+    REQUIRE(presentation.keyScaleMorphTargets().front().parameterId == "red");
+
+    const uint64_t unchangedRevision = document.revision();
+    const float initialBlue = NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("blue");
+    const float unmappedBlue = NodeParameterMap(*document.graph().findNode("unmappedMesh"))
+            .floatValue("blue");
+    const auto ignoredWheel = commands.setMappedPreviewMorph(
+            presentation.modWheelMorphTargets(), 0.25f, 0.8f);
+    REQUIRE(ignoredWheel.succeeded());
+    REQUIRE_FALSE(ignoredWheel.changed);
+    REQUIRE(document.revision() == unchangedRevision);
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh")).floatValue("blue")
+            == initialBlue);
+
+    REQUIRE(commands.setNodeParameter(
+            "morph", "blueSource", "Blue Source", "modWheel").succeeded());
+    REQUIRE(presentation.refresh(
+            document.graph(), document.revision(), document.lastChange()));
+    REQUIRE(presentation.hasModWheelPreviewRoots());
+    REQUIRE(presentation.modWheelMorphTargets().size() == 1);
+    REQUIRE(presentation.modWheelMorphTargets().front().nodeId == "mesh");
+    REQUIRE(presentation.modWheelMorphTargets().front().parameterId == "blue");
+
+    commands.beginTransientEdit();
+    REQUIRE(commands.setMappedPreviewMorph(
+            presentation.modWheelMorphTargets(), 0.25f, 0.3f).changed);
+    REQUIRE(commands.setMappedPreviewMorph(
+            presentation.modWheelMorphTargets(), 0.25f, 0.8f).changed);
+    REQUIRE(NodeParameterMap(*commands.editingGraph().findNode("mesh")).floatValue("blue")
+            == Catch::Approx(0.8f));
+    commands.commitTransientEdit();
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh")).floatValue("blue")
+            == Catch::Approx(0.8f));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("unmappedMesh")).floatValue("blue")
+            == unmappedBlue);
+    REQUIRE(document.undo());
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh")).floatValue("blue")
+            == initialBlue);
+}
+
+TEST_CASE("Mapped wheel movement cost ignores unrelated nodes",
+        "[cycle-v2][runtime][preview-wheel][mapping][complexity]") {
+    const auto verify = [](int unrelatedNodeCount) {
+        GraphNodeFactory factory;
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+        for (int index = 0; index < unrelatedNodeCount; ++index) {
+            graph.addNode(factory.createNode(
+                    NodeKind::Delay, "unrelated" + String(index), {}));
+        }
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher commands(document);
+        const std::vector<PreviewMorphTarget> targets {
+                { "mesh", "blue", PreviewMorphControl::ModWheel }
+        };
+        const float initialBlue = NodeParameterMap(*document.graph().findNode("mesh"))
+                .floatValue("blue");
+
+        commands.beginTransientEdit();
+        InteractionComplexityDiagnostics::reset();
+        REQUIRE(commands.setMappedPreviewMorph(targets, 0.f, 0.3f).changed);
+        REQUIRE(commands.setMappedPreviewMorph(targets, 0.f, 0.8f).changed);
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.meshCopies == 0);
+        REQUIRE(counts.modelSerializations == 0);
+        REQUIRE(counts.nodeLinearScans == 0);
+        commands.commitTransientEdit();
+        REQUIRE(document.undo());
+        REQUIRE(NodeParameterMap(*document.graph().findNode("mesh")).floatValue("blue")
+                == initialBlue);
+        return counts;
+    };
+
+    const auto small = verify(0);
+    const auto large = verify(128);
+    REQUIRE(small.parameterLinearScans == large.parameterLinearScans);
+    REQUIRE(small.assignmentLinearScans == large.assignmentLinearScans);
+    REQUIRE(small.editorStateComparisons == large.editorStateComparisons);
 }
 
 TEST_CASE("Preview MIDI note refreshes key-scale previews without publishing audio",

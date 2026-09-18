@@ -469,3 +469,23 @@ Cycle V2. The mismatched-run log was replaced by the successful rerun; use
 the wrapper defaults with `/tmp/causal-trimesh-guide-audit.json` to reproduce.
 
 Current status: open in Cycle 1; unrelated to the Cycle V2 gesture change.
+
+## Addressed: Unmapped saxophone mod wheel edited Trimesh blue morphs
+
+On 2026-09-18, the Live keyboard wheel on `saxophone.cyclegraph` changed
+`timeLayer1.blue` from `0` to `0.897637784` and marked the document dirty,
+although the attached Modulation Triple used `inverseVelocity` for blue.
+The preview command had applied red/blue values to every Trimesh and Envelope
+without checking each compiled input source. Baseline report:
+`/private/tmp/cycle-v2-sax-wheel-live-before.json`.
+
+Keyboard morph edits now target only axes sourced from key scale or the mod
+wheel. A wheel with no mapped source updates its keyboard position without a
+graph edit or preview job. The native fixture passes with blue still `0`, a
+clean document, two unchanged spy sums, and zero worker/configuration stages;
+the mapped-wheel fixture still passes. Reports:
+`/private/tmp/cycle-v2-sax-wheel-live-after.json` and
+`/private/tmp/cycle-v2-honerism-wheel-mapping-after.json`.
+
+Current status: addressed; `cycle-v2-agent-saxophone-unmapped-wheel.json`
+guards the regression.

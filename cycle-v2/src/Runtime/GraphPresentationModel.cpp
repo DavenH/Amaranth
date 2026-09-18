@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "Runtime/GraphPresentationModel.h"
+#include "Runtime/PreviewMorphBinding.h"
 #include "Runtime/PreviewPitchResolver.h"
 #include "Runtime/ReverbLocalPreview.h"
 
@@ -145,6 +146,7 @@ bool GraphPresentationModel::refresh(
             || change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration))) {
         modWheelPreviewRootNodeIds = modWheelPreviewRoots(current.compileResult.plan);
+        refreshPreviewMorphBindings();
         ++audioRevision;
     }
     performance.record(
@@ -324,6 +326,7 @@ void GraphPresentationModel::refreshAsync(
                                 || hasImpact(job.change.parameterImpacts,
                                         ParameterImpact::DspConfiguration))) {
                     modWheelPreviewRootNodeIds = modWheelPreviewRoots(current.compileResult.plan);
+                    refreshPreviewMorphBindings();
                     ++audioRevision;
                 }
                 if (job.previewRendered) {
@@ -473,6 +476,19 @@ bool GraphPresentationModel::requiresPreview(const GraphChangeSet& change) const
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)
             || hasImpact(change.parameterImpacts, ParameterImpact::Preview)
             || hasImpact(change.parameterImpacts, ParameterImpact::Presentation);
+}
+
+void GraphPresentationModel::refreshPreviewMorphBindings() {
+    allMorphTargets = PreviewMorphBinding::fromPlan(current.compileResult.plan);
+    keyScaleTargets.clear();
+    modWheelTargets.clear();
+    for (const auto& target : allMorphTargets) {
+        if (target.control == PreviewMorphControl::KeyScale) {
+            keyScaleTargets.push_back(target);
+        } else {
+            modWheelTargets.push_back(target);
+        }
+    }
 }
 
 void GraphPresentationModel::refreshConfigurations(

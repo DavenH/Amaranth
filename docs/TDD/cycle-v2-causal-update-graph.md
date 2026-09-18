@@ -34,6 +34,19 @@ fingerprint includes the transient morph fields and matches the committed
 configuration. Test a two-movement sequence, downstream effect, commit,
 and undo before deleting the old wheel path.
 
+The saxophone regression clarified the affected domain: keyboard controls
+update saved morph fields only on axes whose compiled modulation source maps
+to that control. A blue axis sourced from inverse velocity does not follow the
+mod wheel. The presentation model caches per-axis targets from the compiled
+plan; movement work scales with mapped targets and does not inspect unrelated
+nodes or topology. The native Live saxophone fixture changed the saved blue
+field from `0` to `0.897637784` and dirtied the document before this fix.
+Afterward it leaves the saved field, document, and two spy values unchanged,
+with zero worker/configuration stages; the positive mapped-wheel fixture
+still passes. The mapped command's two-movement test compares 0 versus 128
+unrelated nodes and records unchanged scan/copy/serialization counts, followed
+by commit and undo. See the UI bug entry and its before/after reports.
+
 The focused Live wheel fixture now measures 3 preview renders after the final
 movement and still 3 after release, versus 3 to 4 before this slice. Its
 audio-plan copy count still advances from 2 to 3 on commit; three requests,

@@ -228,8 +228,19 @@ private:
     void openProbeDetail(const String& probeId);
     void refreshProbeDetail();
     void finishPreviewModWheelRefresh();
-    GraphEditResult persistPreviewMorph(int midiNote, int modWheelValue);
-    GraphEditResult editPreviewMorph(int midiNote, int modWheelValue);
+    enum class PreviewMorphEditScope {
+        KeyScale,
+        ModWheel,
+        Both
+    };
+    GraphEditResult persistPreviewMorph(
+            int midiNote,
+            int modWheelValue,
+            PreviewMorphEditScope scope);
+    GraphEditResult editPreviewMorph(
+            int midiNote,
+            int modWheelValue,
+            PreviewMorphEditScope scope);
     void synchronizeOpenedEditorMorph();
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;
