@@ -72,6 +72,24 @@ The current policy distribution includes:
 - direct broad presentation refreshes from both `NodeCanvas` and
   `NodeCanvasAuthoring`.
 
+### Live wheel semantic decision still needed
+
+The Live wheel path currently renders CC1 against one immutable graph captured
+at gesture start, then commits saved Trimesh/Envelope morph parameters only on
+mouse-up. The commit can therefore change the effective graph independently
+of the final CC1 value. Its second preview render is not safely removable by a
+wheel-value equality check. Making the commit reuse decision truthful requires
+product-level fingerprints from the actual affected runtime configuration.
+
+There are two possible semantic contracts for the saved morph fields during a
+Live wheel gesture. They can be updated transiently on each movement (one undo
+transaction, with an immutable delta/overlay for worker jobs so movement never
+clones the full graph), or remain commit-only while CC1 previews live (in which
+case a second render at commit may be required whenever saved fields affect
+the product). This choice affects audio, Spy output, undo, and the shared
+session/scheduler design. Do not set `finalMovementAlreadyPublished` merely
+because the numeric wheel position matches; that would bless stale products.
+
 As of the reopening audit, `GraphPresentationModel.cpp` is 954 lines,
 `NodeEditorCommandService.cpp` is 805 lines, and `NodeCanvas.cpp` is 2,349
 lines. File size alone is not the defect; the defect is that all three own
