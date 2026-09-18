@@ -119,6 +119,12 @@ processor generate its output. The graph preview worker remains the release
 path. Other On Release editor families still use the old local graph refresh
 and remain an explicit deletion target.
 
+A separate fresh-graph damping fixture also passes movement, commit, and undo
+with zero configuration and preview-audio stages before release. Report:
+`/private/tmp/causal-reverb-damping.json`. A chained size-undo then damping
+diagnostic exposed a separate editor gesture/rebind issue, recorded in
+`ui-bugs.md`.
+
 The focused Reverb UI fixtures now pass under both policies. Live records four
 requests, two publications, one superseded-before-start job, one stale result,
 and zero synchronous refreshes for the measured drag/commit window; its
