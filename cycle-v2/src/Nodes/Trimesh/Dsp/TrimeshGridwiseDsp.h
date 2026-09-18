@@ -48,6 +48,13 @@ public:
             size_t columnCount,
             Buffer<float> destination,
             PortDomain domain);
+    bool renderPitchColumnsInto(
+            Mesh& mesh,
+            const MorphPosition& center,
+            int primaryViewAxis,
+            size_t columnCount,
+            Buffer<float> destination,
+            PortDomain domain);
     bool renderMorphColumnsInto(
             Mesh& mesh,
             const MorphPosition* morphs,

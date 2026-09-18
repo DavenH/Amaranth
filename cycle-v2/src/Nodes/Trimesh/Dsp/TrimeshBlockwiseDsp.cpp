@@ -222,6 +222,20 @@ void TrimeshBlockwiseDsp::renderCycleWithNoiseSeedOffsetInto(
     renderPreparedInto(output);
 }
 
+void TrimeshBlockwiseDsp::renderHarmonicsWithNoiseSeedOffsetInto(
+        Buffer<float> output,
+        PortDomain domain,
+        int noiseSeedOffset) {
+    prepareRasterization(
+            mesh,
+            morph,
+            primaryViewAxis,
+            cyclic,
+            domain,
+            noiseSeedOffset);
+    renderPreparedHarmonicsInto(output);
+}
+
 void TrimeshBlockwiseDsp::renderPreparedInto(Buffer<float> output) {
     output.zero();
     if (output.empty() || mesh == nullptr || !mesh->hasEnoughCubesForCrossSection()) {

@@ -204,7 +204,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::restoreGraphJson(
         return handledResult(false, "Restore failed", { true });
     }
 
-    clearDocumentSelection();
+    reconcileDocumentSelection();
     refreshPresentation();
     return restoredDocumentResult(statusMessage);
 }
@@ -926,6 +926,25 @@ void NodeCanvasAuthoring::clearDocumentSelection() {
     authoringSession.selectedNodeId = {};
     authoringSession.selectedNodeIds.clear();
     authoringSession.expandedNodeId = {};
+    authoringSession.selectedEdgeIndex = -1;
+    authoringSession.spliceTargetEdgeIndex = -1;
+}
+
+void NodeCanvasAuthoring::reconcileDocumentSelection() {
+    const NodeGraph& restored = document.graph();
+    auto& selected = authoringSession.selectedNodeIds;
+    selected.erase(std::remove_if(selected.begin(), selected.end(),
+            [&restored](const String& id) {
+                return restored.findNode(id) == nullptr;
+            }), selected.end());
+
+    if (restored.findNode(authoringSession.selectedNodeId) == nullptr) {
+        authoringSession.selectedNodeId = selected.empty() ? String() : selected.front();
+    }
+    const Node* expanded = restored.findNode(authoringSession.expandedNodeId);
+    if (expanded == nullptr || !hasEditor(expanded->kind)) {
+        authoringSession.expandedNodeId = {};
+    }
     authoringSession.selectedEdgeIndex = -1;
     authoringSession.spliceTargetEdgeIndex = -1;
 }

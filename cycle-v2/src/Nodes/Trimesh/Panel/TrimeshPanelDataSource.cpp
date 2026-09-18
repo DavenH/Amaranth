@@ -56,7 +56,12 @@ void TrimeshPanelDataSource::rebuild(
     const ScopedLock lock(gridLock);
 
     renderData = TrimeshGridRenderService::renderGrid(
-            model, rows, columns, renderProfile, midiNote);
+            model,
+            rows,
+            columns,
+            renderProfile,
+            midiNote,
+            keyScaleAxis);
     storage = renderData.linearFrequencySurface.empty()
             ? renderData.surface
             : renderData.linearFrequencySurface;

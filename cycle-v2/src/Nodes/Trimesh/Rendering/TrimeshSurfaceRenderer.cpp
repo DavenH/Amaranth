@@ -15,10 +15,19 @@ Image TrimeshSurfaceRenderer::createHeatmapImage(
     }
 
     Image image(opaque ? Image::RGB : Image::ARGB, renderData.columns, renderData.rows, true);
+    const std::vector<float> pitchSurface = renderData.pitchSpansColumns
+            ? profile.mapPitchColumnsToDisplay(
+                    renderData.surface,
+                    (size_t) renderData.columns,
+                    (size_t) renderData.rows)
+            : std::vector<float>();
+    const std::vector<float>& surface = pitchSurface.empty()
+            ? renderData.surface
+            : pitchSurface;
 
     for (int column = 0; column < renderData.columns; ++column) {
         for (int row = 0; row < renderData.rows; ++row) {
-            const float value = renderData.surface[(size_t) column * (size_t) renderData.rows + (size_t) row];
+            const float value = surface[(size_t) column * (size_t) renderData.rows + (size_t) row];
             Colour colour = colourForProfile(value, profile);
 
             if (opaque) {

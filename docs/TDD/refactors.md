@@ -1,5 +1,15 @@
 # Refactor Notes
 
+## Cache Trimesh preview pitch context at graph publication
+
+`NodePreviewResources::trimeshWidget` resolves pitch context on each widget
+access, including compact canvas painting. `PreviewPitchResolver` traverses
+authored edges and asks the compiler for implicit Voice Context edges, so a
+repaint may repeatedly scan unrelated graph content. Cache each node's pitch
+source and key-scale axis when the accepted graph configuration changes, then
+pass the selected MIDI note separately. Preserve the compiler's implicit
+context rule and invalidate on transient modulation-source edits.
+
 ## Cycle V2 spectral frame renderer ownership
 
 `cycle-v2/src/Runtime/SpectralOscillatorFrameRenderer.cpp` is about 820 lines

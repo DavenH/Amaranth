@@ -1,0 +1,12 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/organ.cyclegraph" },
+    { "command": "setPrimaryAxis", "nodeId": "magnitudeLayer1", "axis": "red" },
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    { "command": "assertNodeParameter", "nodeId": "magnitudeLayer1", "parameterId": "primaryAxis", "equals": "red" },
+    { "command": "pointer", "event": "click", "targetId": "expanded:magnitudeLayer1.close" },
+    { "command": "assertState", "path": "expandedNodeId", "equals": "" },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

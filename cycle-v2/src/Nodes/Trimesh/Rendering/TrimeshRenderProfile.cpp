@@ -89,6 +89,38 @@ Color negativeCurveColourFor(bool spectral, bool phase, bool bipolar) {
     return kWaveformGrey;
 }
 
+std::vector<float> logarithmicSourceRows(
+        size_t outputRows,
+        size_t sourceRowCount,
+        int midiNote,
+        bool excludeDc) {
+    std::vector<float> sourceRows(outputRows);
+    LogRegionMapping(midiNote).fillSourceUnits(Buffer<float>(
+            sourceRows.data(),
+            (int) sourceRows.size()));
+    const float firstSourceRow = excludeDc ? 1.f : 0.f;
+    Buffer<float>(sourceRows.data(), (int) sourceRows.size())
+            .mul((float) (sourceRowCount - 1) - firstSourceRow)
+            .add(firstSourceRow)
+            .clip(firstSourceRow, (float) (sourceRowCount - 1));
+    return sourceRows;
+}
+
+void resampleLogarithmicColumn(
+        const float* source,
+        float* destination,
+        size_t sourceRowCount,
+        const std::vector<float>& sourceRows) {
+    for (size_t row = 0; row < sourceRows.size(); ++row) {
+        const float position = sourceRows[row];
+        const size_t rowA = (size_t) position;
+        const size_t rowB = std::min(rowA + 1, sourceRowCount - 1);
+        const float amount = position - (float) rowA;
+        destination[row] = source[rowA]
+                + amount * (source[rowB] - source[rowA]);
+    }
+}
+
 std::vector<float> logarithmicRowsToDisplay(
         const std::vector<float>& source,
         size_t columns,
@@ -100,28 +132,50 @@ std::vector<float> logarithmicRowsToDisplay(
     }
 
     std::vector<float> surface(source.size());
-    std::vector<float> sourceRows(rows);
-    LogRegionMapping(midiNote).fillSourceUnits(Buffer<float>(
-            sourceRows.data(),
-            (int) sourceRows.size()));
-    const float firstSourceRow = excludeDc ? 1.f : 0.f;
-    Buffer<float>(sourceRows.data(), (int) sourceRows.size())
-            .mul((float) (rows - 1) - firstSourceRow)
-            .add(firstSourceRow)
-            .clip(firstSourceRow, (float) (rows - 1));
-
+    const std::vector<float> sourceRows = logarithmicSourceRows(
+            rows, rows, midiNote, excludeDc);
     for (size_t column = 0; column < columns; ++column) {
         const size_t columnOffset = column * rows;
-        for (size_t row = 0; row < rows; ++row) {
-            const float position = sourceRows[row];
-            const size_t rowA = (size_t) position;
-            const size_t rowB = std::min(rowA + 1, rows - 1);
-            const float amount = position - (float) rowA;
-            surface[columnOffset + row] = source[columnOffset + rowA]
-                    + amount * (source[columnOffset + rowB] - source[columnOffset + rowA]);
-        }
+        resampleLogarithmicColumn(
+                source.data() + columnOffset,
+                surface.data() + columnOffset,
+                rows,
+                sourceRows);
     }
 
+    return surface;
+}
+
+std::vector<float> pitchColumnsToDisplay(
+        const std::vector<float>& source,
+        size_t columns,
+        size_t rows) {
+    if (columns < 2 || rows < 2 || source.size() < columns * rows) {
+        return source;
+    }
+
+    std::vector<float> surface(source.size());
+    std::vector<float> sourceRows;
+    const Range<int> midiRange(
+            Constants::LowestMidiNote,
+            Constants::HighestMidiNote);
+    int previousNote = -1;
+    size_t harmonicCount = 0;
+    for (size_t column = 0; column < columns; ++column) {
+        const float x = (float) column / (float) (columns - 1);
+        const int note = Arithmetic::getGraphicNoteForValue(x, midiRange);
+        if (note != previousNote) {
+            harmonicCount = (size_t) LogRegionMapping(note).regionSize();
+            sourceRows = logarithmicSourceRows(rows, harmonicCount, note, false);
+            previousNote = note;
+        }
+        const size_t columnOffset = column * rows;
+        resampleLogarithmicColumn(
+                source.data() + columnOffset,
+                surface.data() + columnOffset,
+                harmonicCount,
+                sourceRows);
+    }
     return surface;
 }
 
@@ -292,6 +346,16 @@ std::vector<float> TrimeshRenderProfile::mapTrimeshValuesToDisplay(
         mapValuesToDisplay(values);
     }
     return surface;
+}
+
+std::vector<float> TrimeshRenderProfile::mapPitchColumnsToDisplay(
+        const std::vector<float>& source,
+        size_t columns,
+        size_t rows) const {
+    if (!sliceStyle.isSpectral()) {
+        return source;
+    }
+    return pitchColumnsToDisplay(source, columns, rows);
 }
 
 float TrimeshRenderProfile::displayFrequencyUnit(float sourceUnit, int midiNote) const {

@@ -1,9 +1,49 @@
 # Cycle V2 UI Bug Notes
 
+## Resolved P2: Trimesh spectral backgrounds and expanded surface resolution
+
+Reported 2026-09-18. Spectral Trimesh backgrounds used a fixed 128-position
+harmonic ramp, the 3D background ignored the key-scale pitch across columns,
+and expanded surfaces used 96 columns regardless of panel width. The preview
+pitch resolver also missed the Voice Context on factory graphs with implicit
+context routing. The panel now uses the full per-key `LogRegions` ramp and
+pitch-dependent 3D harmonic traces; expanded grid resolution follows the
+panel width. The Organ 4 native fixture reports 586 columns across a 586-pixel
+panel and pitch spanning MIDI 20–127, with no failed commands.
+
+Follow-up 2026-09-18: mapping Key Scale to Red exposed a snap-back when moving
+the red morph rail. The panel bridge was replacing the node's red value with
+the selected keyboard preview note on every refresh, which also fixed the
+harmonic grid at that note. The bridge now reads the mapped morph value for its
+panel pitch. A focused red-rail gesture fixture covers movement and undo.
+Further follow-up: with Red as the primary 3D axis, every column was sampled
+using the moving red slice's note while its grid position used the column's own
+note. The expanded editor also fell back to 96 columns during a local morph
+move. The column sampler now uses the column key and the expanded edit retains
+its pixel-width grid. Direct harmonic parity, invariant surface data, and a
+586-column native gesture fixture cover the repair.
+
 ## Remaining priority
 
 There are no open deterministic P0 or P1 regressions as of 2026-09-09.
 Resolved and no-longer-reproducing entries have been removed from this ledger.
+
+## Resolved P2: Undoing a Trimesh morph gesture closed the expanded editor
+
+The 2026-09-18 Organ 4 red-rail gesture fixture observed that undo restored
+the morph value but cleared the expanded editor. Undo and redo now reconcile
+selection with the restored graph and retain the editor for a surviving node.
+The native Trimesh vertex-drag fixture asserts that the editor stays open after
+undo; `TestNodeCanvasAuthoring.cpp` also covers undo and redo.
+
+## P2: Broader Trimesh tests retain a stale control-region expectation
+
+The 2026-09-18 `CycleV2_tests '[trimesh]'` run passed the mapped pitch tests but
+failed the control-region count (`28` versus `22`). The compact versus expanded
+column equality (`96` versus `450`) was also stale after expanded pixel-width
+sampling; its test now checks shared source data at their respective resolutions.
+The control-region expectation remains open; log:
+`/tmp/cycle-v2-trimesh-tests.txt`.
 
 ## Resolved P2: Mod Wheel release published duplicate graph/Spy updates
 
@@ -112,7 +152,7 @@ deserialize/serialize pass changes its JSON representation. This predates and
 is independent of the document-declick changes; regenerate that preset through
 the canonical serializer without expanding unrelated preset diffs.
 
-## P2: Trimesh preview key scale also changes the default red morph axis
+## Resolved P2: Trimesh preview key scale also changes the default red morph axis
 
 Context:
 
@@ -125,8 +165,9 @@ Context:
 - The test and the relevant Trimesh preview behavior arrived from `master`; no
   conflict hunk touched that implementation.
 
-Current status: open; reconcile key-scale preview ownership with the intended
-single-axis contract before changing the assertion.
+Current status: resolved 2026-09-18. The mapped axis now reads its authored
+morph parameter; selecting a preview key updates that parameter through the
+existing graph command path. Other axes retain their own values.
 
 ## P2: Envelope purpose rail-spacing assertion no longer matches layout
 

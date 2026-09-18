@@ -27,17 +27,23 @@ TrimeshRenderData TrimeshGridRenderService::renderGrid(
         int rows,
         int columns,
         const TrimeshRenderProfile& renderProfile,
-        int midiNote) {
+        int midiNote,
+        int keyScaleAxis) {
     rows = jmax(2, rows);
     columns = jmax(2, columns);
     const PortDomain domain = renderProfile.getDomain();
     const bool cyclic = domain == PortDomain::TimeSignal;
+    const bool pitchSpansColumns = (domain == PortDomain::SpectralMagnitudeSignal
+            || domain == PortDomain::SpectralPhaseSignal)
+            && model.primaryViewAxis == keyScaleAxis;
 
     TrimeshRenderData result;
     result.domain = domain;
     result.rows = rows;
     result.columns = columns;
+    result.midiNote = midiNote;
     result.cyclic = cyclic;
+    result.pitchSpansColumns = pitchSpansColumns;
 
     TrimeshBlockwiseDsp blockwiseDsp;
     SignalPayload slice;
@@ -69,30 +75,34 @@ TrimeshRenderData TrimeshGridRenderService::renderGrid(
     gridwiseDsp.setCyclic(cyclic);
     gridwiseDsp.setGuideCurveProvider(model.guideCurveProvider.get());
     gridwiseDsp.setFrequencyMidiNote(midiNote);
-    const auto gridColumns = gridwiseDsp.renderColumns(
-            model.mesh(),
-            model.morph,
-            model.primaryViewAxis,
-            (size_t) columns,
-            (size_t) rows,
-            domain,
-            ChannelLayout::LinkedStereo);
-
-    result.surface.reserve((size_t) rows * (size_t) columns);
-
-    for (auto column : gridColumns) {
-        result.surface.insert(
-                result.surface.end(),
-                column.signal.block.samples.begin(),
-                column.signal.block.samples.end());
+    result.surface.resize((size_t) rows * (size_t) columns);
+    Buffer<float> surface(result.surface.data(), (int) result.surface.size());
+    if (pitchSpansColumns) {
+        gridwiseDsp.renderPitchColumnsInto(
+                model.mesh(),
+                model.morph,
+                model.primaryViewAxis,
+                (size_t) columns,
+                surface,
+                domain);
+    } else {
+        gridwiseDsp.renderColumnsInto(
+                model.mesh(),
+                model.morph,
+                model.primaryViewAxis,
+                (size_t) columns,
+                surface,
+                domain);
     }
     result.linearFrequencySurface = renderProfile.mapTrimeshValuesToDisplay(
             result.surface);
-    result.surface = renderProfile.mapGridToDisplay(
-            result.surface,
-            (size_t) columns,
-            (size_t) rows,
-            midiNote);
+    result.surface = pitchSpansColumns
+            ? result.linearFrequencySurface
+            : renderProfile.mapGridToDisplay(
+                    result.surface,
+                    (size_t) columns,
+                    (size_t) rows,
+                    midiNote);
 
     return result;
 }

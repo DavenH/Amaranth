@@ -73,6 +73,10 @@ public:
             Buffer<float> output,
             PortDomain domain,
             int noiseSeedOffset);
+    void renderHarmonicsWithNoiseSeedOffsetInto(
+            Buffer<float> output,
+            PortDomain domain,
+            int noiseSeedOffset);
     void renderPreparedInto(Buffer<float> output);
     // Index zero is the first authored harmonic; DC is owned by the FFT boundary.
     void renderPreparedHarmonicsInto(Buffer<float> output);

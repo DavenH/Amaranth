@@ -328,7 +328,7 @@ void TrimeshExpandedEditorComponent::setLocalMorphValue(const String& id, float 
         if (parameter.id == parameterId) {
             parameter.value = String(jlimit(0.f, 1.f, value), 6);
             activeMorphParameterId = parameterId;
-            widget.syncFromNode(node);
+            widget.syncExpandedFromNode(node);
             repaint();
             return;
         }
