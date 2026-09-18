@@ -1,0 +1,40 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "AfricanHorn",
+      "waitForIdle": true,
+      "idleDelayMs": 700
+    },
+    {
+      "command": "openFactoryPreset",
+      "preset": "CalmingKeys",
+      "waitForIdle": true,
+      "idleDelayMs": 700
+    },
+    {
+      "command": "captureAudio",
+      "path": "/tmp/cycle-agent-preset-switch-audio.wav",
+      "durationMs": 900,
+      "sampleRate": 44100,
+      "blockSize": 512,
+      "channels": 2,
+      "events": [
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 60,
+          "velocity": 0.8
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 650,
+          "note": 60
+        }
+      ],
+      "peakGreaterThan": 0.1,
+      "rmsGreaterThan": 0.01
+    }
+  ],
+  "quit": true
+}

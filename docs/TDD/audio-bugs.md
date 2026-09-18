@@ -1,5 +1,30 @@
 # Audio Bug Notes
 
+## Resolved: Linux Cycle preset reload could rasterize a stale global mesh
+
+Loading an active preset after another active preset could leave the standalone
+audio path silent and could crash during teardown. The audio update queue ran
+global rasterization before globality rebuilt the scratch and mesh references,
+so the rasterizer could use objects destroyed by the preset load. The queue now
+rebuilds globality before rasterization.
+
+The regression fixture
+`scripts/fixtures/cycle-agent-preset-switch-audio.json` loads AfricanHorn,
+loads CalmingKeys, and captures a note with peak and RMS thresholds. The
+standalone debug run now completes the capture with peak `0.5975` and RMS
+`0.1884`; repeated runs through five preset changes also remained non-silent
+and produced no kernel SIGSEGV.
+
+Status: resolved 2026-09-18.
+
+## Open: Linux Cycle visual DSP logs a NaN assertion during preset startup
+
+The same debug automation still logs `VisualDsp.cpp:73` from
+`calcSpectrogram input postEnvCols` while the first preset is settling. The
+application continues and the audio capture succeeds, but the assertion is
+unrelated to the stale global mesh crash and remains open for a separate
+visual DSP investigation. Repro artifact: `/tmp/cycle-agent-preset-switch-audio.stderr`.
+
 ## Open: Full Cycle V2 suite retains broad preset and spectral failures
 
 The 2026-09-15 `ctest --test-dir build/tests -j10 --output-on-failure`
