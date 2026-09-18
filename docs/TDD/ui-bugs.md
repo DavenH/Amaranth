@@ -449,3 +449,12 @@ fresh-graph damping drag/commit/undo fixture passes. Report:
 `/private/tmp/causal-reverb-kernel-size-damp.json`.
 
 Current status: open; inspect gesture lifecycle and editor rebind after undo.
+
+## P3: Trimesh expanded control-region count test expects an old layout
+
+On 2026-09-18, the broad Trimesh node test filter passed 64 of 65 cases; one
+assertion in `TestTrimeshNodeDsp.cpp` expected 22 control regions and observed
+28. The focused vertex delta and guide-gain gesture tests passed. Log:
+`/private/tmp/causal-trimesh-delta-tests.log`.
+
+Current status: open; reconcile the control layout contract and its assertion.

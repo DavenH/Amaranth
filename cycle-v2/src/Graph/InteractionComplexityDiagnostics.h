@@ -17,6 +17,7 @@ struct InteractionComplexityCounts {
     uint64_t nodeLinearScans {};
     uint64_t parameterLinearScans {};
     uint64_t assignmentLinearScans {};
+    uint64_t meshEditOwnerVisits {};
 };
 
 class InteractionComplexityDiagnostics {
@@ -32,6 +33,7 @@ public:
         nodeLinearScans.store(0, std::memory_order_relaxed);
         parameterLinearScans.store(0, std::memory_order_relaxed);
         assignmentLinearScans.store(0, std::memory_order_relaxed);
+        meshEditOwnerVisits.store(0, std::memory_order_relaxed);
     }
 
     static InteractionComplexityCounts counts() {
@@ -45,7 +47,8 @@ public:
                 editorStateComparisons.load(std::memory_order_relaxed),
                 nodeLinearScans.load(std::memory_order_relaxed),
                 parameterLinearScans.load(std::memory_order_relaxed),
-                assignmentLinearScans.load(std::memory_order_relaxed)
+                assignmentLinearScans.load(std::memory_order_relaxed),
+                meshEditOwnerVisits.load(std::memory_order_relaxed)
         };
     }
 
@@ -61,6 +64,7 @@ public:
     static void recordNodeLinearScan() { ++nodeLinearScans; }
     static void recordParameterLinearScan() { ++parameterLinearScans; }
     static void recordAssignmentLinearScan() { ++assignmentLinearScans; }
+    static void recordMeshEditOwnerVisit() { ++meshEditOwnerVisits; }
 
 private:
     static inline std::atomic<uint64_t> graphCopies {};
@@ -73,6 +77,7 @@ private:
     static inline std::atomic<uint64_t> nodeLinearScans {};
     static inline std::atomic<uint64_t> parameterLinearScans {};
     static inline std::atomic<uint64_t> assignmentLinearScans {};
+    static inline std::atomic<uint64_t> meshEditOwnerVisits {};
 };
 
 }

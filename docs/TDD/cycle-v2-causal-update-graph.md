@@ -158,6 +158,49 @@ commit, and undo without changing the older fixture's expectation.
 
 ### Remaining mesh gesture extraction boundary
 
+The approved direction is a shared edit core with immutable movement deltas.
+For Trimesh vertex controls, `TrimeshNodeModel::setVertexParameter` and
+`setVertexGuideGain` are the authoritative value rules: clamp the requested
+value, change one vertex value or each owning cube's guide gain, and advance
+derived revisions only if effective state changed. Extract those rules into a
+domain core that prepares a small before/after delta and applies that same
+delta to the widget mesh. An inverse delta represents undo. Identifying an
+owner by its ordinal within the edited vertex's owner list keeps preparation
+and application proportional to that vertex's local topology; the delta is
+valid only for an unchanged topology and must be rejected otherwise. The
+existing mature rasterizer remains authoritative for preview output.
+
+This first extraction does not enable Live downstream vertex preview. The
+rasterizer and DSP currently require `Mesh*` and traverse `VertCube`/`Vertex`
+pointers directly. A worker-safe, immutable read surface that resolves base
+mesh plus delta without a full mesh copy is the next architectural boundary.
+Do not route the delta through the existing graph worker until that surface
+is shared by the local renderer and downstream product path. Curve edits need
+the equivalent domain delta and shared read surface before their migration.
+
+`TrimeshVertexEditCore` now prepares and applies before/after vertex-value
+and guide-gain deltas; `TrimeshNodeModel` delegates its mature clamping and
+owner-gain rules to that core. The core's inverse reapplies the prior values,
+and the cross-mesh test rejects a stale delta before any partial mutation.
+With 0 versus 128 unrelated cubes, its edited-owner visit count is unchanged;
+both scales record zero graph or mesh copies, model serializations, and node
+linear scans during delta preparation/application. The native On Release guide
+gain fixture passed before and after extraction. In both runs, the pre-release
+window had three vertex-update operations, zero preview requests, zero graph
+configuration stages, and zero preview-audio stages. Reports:
+`/private/tmp/causal-trimesh-guide-before.json` and
+`/private/tmp/causal-trimesh-guide-after.json`.
+
+Cycle 1's `VertexPropertiesPanel` changes selected vertex values on movement
+and adjusts guide gains through the local selected-vertex/owner set; pointer
+down starts the gesture and release restores normal update mode. The extracted
+Cycle V2 value core keeps movement proportional to the edited vertex and its
+owners plus the explicitly required local render. The existing Cycle V2
+`TrimeshNodeModelState::copyOf` still copies the entire mesh at commit; this
+does not satisfy Cycle 1 commit complexity parity and remains a deletion
+target. A persistent mesh representation or equivalent local delta commit
+path is needed before the vertex family can be called migrated.
+
 `TrimeshWidget` and `TrimeshNodeModel` are authoritative for vertex editing
 and its local render. Vertex-parameter and mesh drags currently mutate the
 widget's `Mesh`; `NodeEditorCommandService` calls

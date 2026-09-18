@@ -4,6 +4,7 @@
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Guide/GuideCurveSnapshotProvider.h"
 #include "Nodes/Control/ModulationSource.h"
@@ -16,6 +17,7 @@
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
+#include "Nodes/Trimesh/Model/TrimeshVertexEditCore.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelBridge.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanel3D.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
@@ -141,6 +143,59 @@ MouseEvent panelMouseEvent(
     };
 }
 
+}
+
+TEST_CASE("Trimesh vertex edit deltas apply and invert across matching meshes",
+        "[cycle-v2][nodes][trimesh][gesture][delta]") {
+    auto verify = [](int unrelatedCubeCount) {
+        auto edited = TrimeshMeshFactory::createDefaultMesh("vertex-delta");
+        for (int index = 0; index < unrelatedCubeCount; ++index) {
+            TrimeshMeshFactory::addVoiceCube(
+                    *edited, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f);
+        }
+        Mesh mirror;
+        mirror.deepCopy(edited.get());
+        InteractionComplexityDiagnostics::reset();
+
+        const auto vertex = TrimeshVertexEditCore::prepareVertexValue(
+                *edited, 0, "vertex.phase", 0.73f);
+        REQUIRE(vertex.has_value());
+        REQUIRE(vertex->changed());
+        REQUIRE(TrimeshVertexEditCore::apply(*edited, *vertex));
+        REQUIRE(TrimeshVertexEditCore::apply(mirror, *vertex));
+        REQUIRE(edited->equals(mirror));
+
+        const auto guide = TrimeshVertexEditCore::prepareGuideGain(
+                *edited, 0, "guideGain.amp", 0.8f);
+        REQUIRE(guide.has_value());
+        REQUIRE(guide->changed());
+        REQUIRE(TrimeshVertexEditCore::apply(*edited, *guide));
+        REQUIRE(TrimeshVertexEditCore::apply(mirror, *guide));
+        REQUIRE(edited->equals(mirror));
+
+        auto invalid = guide->inverse();
+        invalid.changes.front().before = -1.f;
+        REQUIRE_FALSE(TrimeshVertexEditCore::apply(mirror, invalid));
+        REQUIRE(edited->equals(mirror));
+
+        REQUIRE(TrimeshVertexEditCore::apply(*edited, guide->inverse()));
+        REQUIRE(TrimeshVertexEditCore::apply(mirror, guide->inverse()));
+        REQUIRE(TrimeshVertexEditCore::apply(*edited, vertex->inverse()));
+        REQUIRE(TrimeshVertexEditCore::apply(mirror, vertex->inverse()));
+        REQUIRE(edited->equals(mirror));
+
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.meshCopies == 0);
+        REQUIRE(counts.modelSerializations == 0);
+        REQUIRE(counts.nodeLinearScans == 0);
+        const auto ownerVisits = counts.meshEditOwnerVisits;
+        mirror.destroy();
+        edited->destroy();
+        return ownerVisits;
+    };
+
+    REQUIRE(verify(0) == verify(128));
 }
 
 TEST_CASE("Trimesh topology snapshots preserve the authoritative Mesh contract",
