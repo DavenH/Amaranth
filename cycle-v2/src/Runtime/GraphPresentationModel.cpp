@@ -94,7 +94,7 @@ bool GraphPresentationModel::refresh(
         if (next.compileResult.succeeded()) {
             next.runtimeTrace = GraphRuntime().process(graph, next.compileResult.plan);
         }
-        updateGraph.clearProductCache();
+        scheduler.clearProductCache();
         previewRenderer.resetExecutionState();
     } else if (change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
@@ -122,7 +122,7 @@ bool GraphPresentationModel::refresh(
         performance.record(Performance::Outcome::NoWork);
         return true;
     }
-    const auto updateResult = updateGraph.executeDeferredPublication(
+    scheduler.executeSynchronous(
             next.compileResult.plan,
             request,
             [&](const auto& products) {
@@ -135,7 +135,6 @@ bool GraphPresentationModel::refresh(
                         previewRendered,
                         performance);
             });
-    updateGraph.publish(request, updateResult);
     if (previewRendered) {
         ++previewRenders;
     }
@@ -311,7 +310,6 @@ void GraphPresentationModel::refreshAsync(
     scheduler.enqueue(
             generation,
             std::move(refresh),
-            updateGraph,
             performance,
             [this](AsyncRefresh& job, const auto& products) {
                 return executeAsyncProducts(job, products);
@@ -352,9 +350,9 @@ bool GraphPresentationModel::executeAsyncProducts(
                 GraphPresentationPerformanceMetrics::Stage::Configuration,
                 performance.timestamp() - startedAt);
     }
-    if (!scheduler.isCurrent(refresh, updateGraph) || !requiresPreview(refresh.change)
+    if (!scheduler.isCurrent(refresh) || !requiresPreview(refresh.change)
             || !next.compileResult.succeeded()) {
-        return scheduler.isCurrent(refresh, updateGraph);
+        return scheduler.isCurrent(refresh);
     }
 
     return previewRenderer.render(
@@ -365,7 +363,7 @@ bool GraphPresentationModel::executeAsyncProducts(
             refresh.scope,
             refresh.previewRendered,
             performance,
-            [&] { return scheduler.isCurrent(refresh, updateGraph); });
+            [&] { return scheduler.isCurrent(refresh); });
 }
 
 void GraphPresentationModel::recordEditorMovement(
@@ -374,7 +372,6 @@ void GraphPresentationModel::recordEditorMovement(
         uint64_t effectiveFingerprint,
         bool deferredUntilCommit) {
     scheduler.recordEditorMovement(
-            updateGraph,
             current.compileResult.plan,
             nodeId,
             field,
@@ -388,7 +385,6 @@ void GraphPresentationModel::commitLocalEditorState(
         uint64_t effectiveFingerprint,
         uint64_t documentRevision) {
     if (!scheduler.commitLocalEditorState(
-                updateGraph,
                 current.compileResult.plan,
                 nodeId,
                 field,

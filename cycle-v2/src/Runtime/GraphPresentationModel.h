@@ -71,7 +71,7 @@ public:
     size_t previewAudioProcessCount(const String& nodeId) const {
         return previewRenderer.diagnosticProcessCount(nodeId);
     }
-    const UpdateAuditTrace& updateTrace() const { return updateGraph.trace(); }
+    const UpdateAuditTrace& updateTrace() const { return scheduler.trace(); }
     PresentationGestureSession& editSession() { return scheduler.editSession(); }
     juce::var performanceMetrics() const { return performance.toVar(); }
     void resetPerformanceMetrics() { performance.reset(); }
@@ -109,7 +109,6 @@ private:
     GraphPresentationSnapshot current;
     GraphCompiler compiler;
     NodeDspConfigurationFactory configurationFactory;
-    NodeUpdateGraph updateGraph;
     PresentationRefreshScheduler scheduler;
     PresentationPreviewRenderer previewRenderer;
     uint64_t requestedGraphRevision {};

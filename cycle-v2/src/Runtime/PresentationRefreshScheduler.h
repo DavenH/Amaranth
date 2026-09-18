@@ -50,15 +50,19 @@ public:
             bool compile,
             bool preview,
             PresentationRefreshScope scope);
+    void executeSynchronous(
+            const GraphExecutionPlan& plan,
+            const CausalUpdateRequest& request,
+            const NodeUpdateGraph::ProductBatchExecutor& executor);
+    void clearProductCache() { updateGraph.clearProductCache(); }
+    const UpdateAuditTrace& trace() const { return updateGraph.trace(); }
     void recordEditorMovement(
-            NodeUpdateGraph& updateGraph,
             const GraphExecutionPlan& plan,
             const String& nodeId,
             const String& field,
             uint64_t effectiveFingerprint,
             bool deferredUntilCommit);
     bool commitLocalEditorState(
-            NodeUpdateGraph& updateGraph,
             const GraphExecutionPlan& plan,
             const String& nodeId,
             const String& field,
@@ -67,11 +71,10 @@ public:
     void enqueue(
             uint64_t generation,
             AsyncRefresh refresh,
-            NodeUpdateGraph& updateGraph,
             GraphPresentationPerformanceMetrics& performance,
             ExecuteProducts executeProducts,
             AcceptPublication acceptPublication);
-    bool isCurrent(const AsyncRefresh& refresh, const NodeUpdateGraph& updateGraph) const;
+    bool isCurrent(const AsyncRefresh& refresh) const;
     void cancelAndWait();
     void shutdown();
 
@@ -80,16 +83,15 @@ public:
 private:
     bool executeAsyncRefresh(
             AsyncRefresh& refresh,
-            NodeUpdateGraph& updateGraph,
             GraphPresentationPerformanceMetrics& performance,
             const ExecuteProducts& executeProducts);
     void publishAsyncRefresh(
             AsyncRefresh& refresh,
-            NodeUpdateGraph& updateGraph,
             GraphPresentationPerformanceMetrics& performance,
             const AcceptPublication& acceptPublication);
 
     PresentationGestureSession gestureSession;
+    NodeUpdateGraph updateGraph;
     MessageThreadWorker asyncWorker;
     std::atomic<bool> alive { true };
     std::atomic<uint64_t> currentGeneration {};

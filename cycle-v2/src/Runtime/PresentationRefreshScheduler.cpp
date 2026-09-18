@@ -35,8 +35,15 @@ CausalUpdateRequest PresentationRefreshScheduler::request(
             graph, plan, change, *identity, stream, fingerprint, compile, preview, scope);
 }
 
+void PresentationRefreshScheduler::executeSynchronous(
+        const GraphExecutionPlan& plan,
+        const CausalUpdateRequest& request,
+        const NodeUpdateGraph::ProductBatchExecutor& executor) {
+    const auto result = updateGraph.executeDeferredPublication(plan, request, executor);
+    updateGraph.publish(request, result);
+}
+
 void PresentationRefreshScheduler::recordEditorMovement(
-        NodeUpdateGraph& updateGraph,
         const GraphExecutionPlan& plan,
         const String& nodeId,
         const String& field,
@@ -94,7 +101,6 @@ void PresentationRefreshScheduler::recordEditorMovement(
 }
 
 bool PresentationRefreshScheduler::commitLocalEditorState(
-        NodeUpdateGraph& updateGraph,
         const GraphExecutionPlan& plan,
         const String& nodeId,
         const String& field,
@@ -138,7 +144,6 @@ uint64_t PresentationRefreshScheduler::beginAsyncRequest() {
 void PresentationRefreshScheduler::enqueue(
         uint64_t generation,
         AsyncRefresh refresh,
-        NodeUpdateGraph& updateGraph,
         GraphPresentationPerformanceMetrics& performance,
         ExecuteProducts executeProducts,
         AcceptPublication acceptPublication) {
@@ -151,21 +156,20 @@ void PresentationRefreshScheduler::enqueue(
     }
     auto job = std::make_shared<AsyncRefresh>(std::move(refresh));
     asyncWorker.post(
-            [this, job, &updateGraph, &performance,
+            [this, job, &performance,
                     executeProducts = std::move(executeProducts)] {
                 return executeAsyncRefresh(
-                        *job, updateGraph, performance, executeProducts);
+                        *job, performance, executeProducts);
             },
-            [this, job, &updateGraph, &performance,
+            [this, job, &performance,
                     acceptPublication = std::move(acceptPublication)] {
                 publishAsyncRefresh(
-                        *job, updateGraph, performance, acceptPublication);
+                        *job, performance, acceptPublication);
             });
 }
 
 bool PresentationRefreshScheduler::executeAsyncRefresh(
         AsyncRefresh& refresh,
-        NodeUpdateGraph& updateGraph,
         GraphPresentationPerformanceMetrics& performance,
         const ExecuteProducts& executeProducts) {
     using Performance = GraphPresentationPerformanceMetrics;
@@ -173,7 +177,7 @@ bool PresentationRefreshScheduler::executeAsyncRefresh(
     performance.record(
             Performance::Stage::QueueDelay,
             startedAt - refresh.requestedAtMicroseconds);
-    if (!isCurrent(refresh, updateGraph)) {
+    if (!isCurrent(refresh)) {
         updateGraph.recordDecision(
                 refresh.request, UpdateTracePhase::SupersededBeforeStart);
         performance.record(Performance::Outcome::SupersededBeforeStart);
@@ -189,7 +193,7 @@ bool PresentationRefreshScheduler::executeAsyncRefresh(
     performance.record(
             Performance::Stage::Worker,
             refresh.workerFinishedAtMicroseconds - startedAt);
-    const bool prepared = isCurrent(refresh, updateGraph);
+    const bool prepared = isCurrent(refresh);
     if (!prepared) {
         performance.record(Performance::Outcome::StaleOrCancelled);
     }
@@ -198,7 +202,6 @@ bool PresentationRefreshScheduler::executeAsyncRefresh(
 
 void PresentationRefreshScheduler::publishAsyncRefresh(
         AsyncRefresh& refresh,
-        NodeUpdateGraph& updateGraph,
         GraphPresentationPerformanceMetrics& performance,
         const AcceptPublication& acceptPublication) {
     using Performance = GraphPresentationPerformanceMetrics;
@@ -212,7 +215,7 @@ void PresentationRefreshScheduler::publishAsyncRefresh(
         performance.record(Performance::Outcome::StaleOrCancelled);
         return;
     }
-    if (!isCurrent(refresh, updateGraph)
+    if (!isCurrent(refresh)
             || refresh.generation < publishedGeneration
             || !acceptPublication(refresh)) {
         updateGraph.recordDecision(
@@ -232,8 +235,7 @@ void PresentationRefreshScheduler::publishAsyncRefresh(
 }
 
 bool PresentationRefreshScheduler::isCurrent(
-        const AsyncRefresh& refresh,
-        const NodeUpdateGraph& updateGraph) const {
+        const AsyncRefresh& refresh) const {
     if (!alive.load() || refresh.generation != currentGeneration.load()) {
         return false;
     }

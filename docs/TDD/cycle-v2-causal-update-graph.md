@@ -203,6 +203,18 @@ wheel and both Reverb policy fixtures passed after the move; the wheel window
 still has three renders before and after release, three requests, two
 publications, one stale/cancelled result, and zero synchronous refreshes.
 
+The next ownership slice moves `NodeUpdateGraph` into the scheduler. The
+scheduler will expose named synchronous execution, cache reset, trace access,
+and async submission; the model will no longer pass a planner reference into
+editor or worker methods. `NodeUpdateGraph` remains the unchanged planner and
+exactly-once ledger under this orchestration boundary.
+
+`NodeUpdateGraph` is now a scheduler member. The model calls named scheduler
+operations for synchronous refresh, cache reset, editor traces, and async
+submission, and reads the scheduler's audit trace. Six focused planner,
+publication, and preview tests passed (83 assertions). The renderer remains
+the product executor and the model remains the accepted-snapshot facade.
+
 The first extraction moves fingerprint and typed invalidation construction to
 `PresentationUpdateRequestBuilder`; `GraphPresentationModel` still owns the
 session identity call and the thin request wrapper. The focused preview and
