@@ -1,4 +1,5 @@
 #include "UI/NodeCanvasHitRouter.h"
+#include "Graph/GraphEditor.h"
 
 #include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"

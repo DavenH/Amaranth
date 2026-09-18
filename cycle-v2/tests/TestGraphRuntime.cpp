@@ -6,7 +6,9 @@
 
 #include <algorithm>
 
+#include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/GraphNodeFactory.h"
@@ -160,7 +162,7 @@ TEST_CASE("Queued presentation publication is inert after model destruction",
                     return node.kind == NodeKind::TrilinearMesh;
                 });
         REQUIRE(mesh != graph.getNodes().end());
-        const auto edit = GraphEditor().setNodeParameter(
+        const auto edit = GraphNodeStateEditor().setNodeParameter(
                 graph, mesh->id, "red", "Red", "0.7");
         REQUIRE(edit.succeeded());
         REQUIRE(edit.changed);
@@ -235,9 +237,9 @@ TEST_CASE("Preview wheel morph follows its compiled source mapping",
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "unmappedMesh", {}));
     graph.addNode(factory.createNode(NodeKind::ModulationSource, "inverse", {}));
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "morph", "blueSource", "Blue Source", "inverseVelocity").succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "inverse", "source", "Source", "inverseVelocity").succeeded());
     REQUIRE(GraphEditor().connect(
             graph, { "morph", "modulation", false },
@@ -615,7 +617,7 @@ TEST_CASE("Equivalent scratch topology recompiles produce identical previews",
 
 TEST_CASE("Runtime prepares targeted Guide assignments without graph attachments", "[cycle-v2][runtime]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().createGuideCurveAndAssignToMeshComponent(
+    REQUIRE(GuideGraphEditor().createGuideCurveAndAssignToMeshComponent(
             graph,
             "waveMesh",
             4,

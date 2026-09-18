@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Graph/GraphEditor.h"
+#include "Graph/GraphEditTypes.h"
 #include "Nodes/Curve/Editor/CurveEditorWidget.h"
 
 #include <JuceHeader.h>

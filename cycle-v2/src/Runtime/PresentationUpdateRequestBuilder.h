@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "Graph/GraphEditor.h"
+#include "Graph/GraphEditTypes.h"
 #include "Runtime/NodeUpdateGraph.h"
 
 namespace CycleV2 {

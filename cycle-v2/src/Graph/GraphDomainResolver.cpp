@@ -1,5 +1,7 @@
 #include "Graph/GraphDomainResolver.h"
 
+#include "Graph/GraphEdgeView.h"
+
 #include <algorithm>
 #include <deque>
 #include <unordered_map>
@@ -36,9 +38,9 @@ const Port* findPort(const Node& node, const String& id, bool input) {
 
 class ResolutionWorklist {
 public:
-    explicit ResolutionWorklist(const NodeGraph& graphToResolve) :
+    ResolutionWorklist(const NodeGraph& graphToResolve, const GraphEdgeView& edgesToResolve) :
             graph(graphToResolve)
-        ,   edges(graph.getEdges()) {
+        ,   edges(edgesToResolve) {
         resolution.domains.reserve(edges.size());
         resolution.channelLayouts.resize(edges.size(), ChannelLayout::Mono);
         incoming.resize(graph.getNodes().size());
@@ -248,7 +250,7 @@ private:
     }
 
     const NodeGraph& graph;
-    const std::vector<Edge>& edges;
+    const GraphEdgeView& edges;
     std::unordered_map<String, size_t, StringHash> nodeIndices;
     std::vector<std::vector<size_t>> incoming;
     std::vector<std::vector<size_t>> outgoing;
@@ -281,7 +283,13 @@ size_t edgeIndexInGraph(const NodeGraph& graph, const Edge& edge) {
 }
 
 GraphDomainResolution GraphDomainResolver::resolve(const NodeGraph& graph) const {
-    return ResolutionWorklist(graph).run();
+    return resolve(graph, GraphEdgeView(graph.getEdges()));
+}
+
+GraphDomainResolution GraphDomainResolver::resolve(
+        const NodeGraph& graph,
+        const GraphEdgeView& edges) const {
+    return ResolutionWorklist(graph, edges).run();
 }
 
 bool GraphDomainResolver::isConcreteOperationDomain(PortDomain domain) {

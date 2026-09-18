@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/GraphEditor.h"
@@ -440,7 +441,7 @@ TEST_CASE("Envelope component Guide assignment is semantic and undoable",
         "[cycle-v2][curve-model][envelope][guide][command]") {
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
-    const auto guide = GraphEditor().createGuideCurve(graph);
+    const auto guide = GuideGraphEditor().createGuideCurve(graph);
     REQUIRE(guide.succeeded());
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);

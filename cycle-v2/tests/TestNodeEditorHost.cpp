@@ -1,7 +1,9 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
@@ -1375,7 +1377,7 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
             NodeKind::TrilinearMesh,
             "mesh",
             { 240.f, 180.f }));
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
     REQUIRE(graph.assignGuideCurve({
             "guide1",
             "mesh",
@@ -2438,7 +2440,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     GraphEditor graphEditor;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
-    REQUIRE(graphEditor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "env", "purpose", "Purpose", "pitch").succeeded());
     EnvelopeNodeModel envelopeModel;
     for (VertCube* cube : envelopeModel.getMesh().getCubes()) {
@@ -3000,7 +3002,7 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
             {}));
     auto editorState = std::make_unique<DynamicObject>();
     editorState->setProperty("selectedVertexId", 2);
-    REQUIRE(GraphEditor().setNodeEditorState(
+    REQUIRE(GraphNodeStateEditor().setNodeEditorState(
             graph, "mesh", var(editorState.release())).succeeded());
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher dispatcher(document);
@@ -3055,10 +3057,9 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
             "mesh",
             {}));
     addUnrelatedInteractionState(graph);
-    GraphEditor editor;
-    const auto guide = editor.createGuideCurve(graph);
+    const auto guide = GuideGraphEditor().createGuideCurve(graph);
     REQUIRE(guide.succeeded());
-    REQUIRE(editor.assignGuideCurveToMeshComponent(
+    REQUIRE(GuideGraphEditor().assignGuideCurveToMeshComponent(
             graph,
             guide.nodeId,
             "mesh",
@@ -3649,7 +3650,7 @@ TEST_CASE("Trimesh drag keeps movement local and publishes one commit snapshot",
     graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
     auto editorState = std::make_unique<DynamicObject>();
     editorState->setProperty("selectedVertexId", 0);
-    REQUIRE(GraphEditor().setNodeEditorState(
+    REQUIRE(GraphNodeStateEditor().setNodeEditorState(
             graph, "mesh", var(editorState.release())).succeeded());
     addUnrelatedInteractionState(graph);
     GraphDocument document(std::move(graph));

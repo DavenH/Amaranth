@@ -392,14 +392,14 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::connectPorts(
             source,
             destination);
     if (!bundleRoutes.empty()) {
-        if (!ModulationCableBundle::canConnect(document.graph(), source, destination)) {
-            return {};
-        }
-
         commands.beginCompoundEdit();
         GraphEditResult edit;
         for (const auto& route : bundleRoutes) {
             edit = commands.connect(route.source, route.destination);
+            if (!edit.succeeded()) {
+                commands.cancelCompoundEdit();
+                return graphEditResult(edit, {}, {});
+            }
         }
         commands.commitCompoundEdit();
         return graphEditResult(

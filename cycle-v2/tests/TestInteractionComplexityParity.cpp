@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/NodeParameterMap.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
@@ -37,6 +38,54 @@ NodeGraph scaledGraph(int unrelatedNodeCount, size_t audioSampleCount) {
     return graph;
 }
 
+}
+
+TEST_CASE("Connection commit does not copy unrelated graph or audio resources",
+        "[cycle-v2][complexity][connection]") {
+    GraphNodeFactory factory;
+    for (const auto& scale : std::vector<std::pair<int, size_t>> {
+            { 0, 0 }, { 128, 16384 } }) {
+        CAPTURE(scale.first, scale.second);
+        NodeGraph graph = scaledGraph(scale.first, scale.second);
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+        InteractionComplexityDiagnostics::reset();
+
+        const auto result = GraphEditor().connect(
+                graph,
+                { "wave", "out", false },
+                { "output", "time", true });
+
+        REQUIRE(result.succeeded());
+        REQUIRE(graph.getEdges().size() == 1);
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
+    }
+}
+
+TEST_CASE("Splice commit does not copy unrelated graph or audio resources",
+        "[cycle-v2][complexity][connection]") {
+    GraphNodeFactory factory;
+    for (const auto& scale : std::vector<std::pair<int, size_t>> {
+            { 0, 0 }, { 128, 16384 } }) {
+        CAPTURE(scale.first, scale.second);
+        NodeGraph graph = scaledGraph(scale.first, scale.second);
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+        graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+        graph.addEdge({
+                "wave", "out", "output", "time",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        });
+        InteractionComplexityDiagnostics::reset();
+
+        const auto result = GraphEditor().spliceNodeIntoEdge(graph, 0, "shape");
+
+        REQUIRE(result.succeeded());
+        REQUIRE(graph.getEdges().size() == 2);
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
+    }
 }
 
 TEST_CASE("Scalar gesture cost is independent of unrelated graph and audio data",

@@ -3,6 +3,7 @@
 
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Nodes/Control/ModulationTriple.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
@@ -194,7 +195,7 @@ TEST_CASE("Compiler plans a time-only oscillator region per Unison lane",
     graph.addNode(factory.createNode(NodeKind::Unison, "unison", {}));
     Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
     graph.addNode(std::move(mesh));
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "unison", "order", "Voices", "4").succeeded());
     REQUIRE(GraphEditor().connect(
             graph,
@@ -391,7 +392,7 @@ TEST_CASE("Voice Context defaults resolve per axis with explicit override preced
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "voice", "octave", "Octave", "1").succeeded());
     Node triple = factory.createNode(NodeKind::ModulationTriple, "triple", {});
     for (auto& parameter : triple.parameters) {
@@ -442,7 +443,7 @@ TEST_CASE("Voice Context compiles its synthesis control interval",
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "voice",
             "controlInterval",
@@ -461,7 +462,7 @@ TEST_CASE("Voice Context compiles pitch-independent spectral control",
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "voice",
             "pitchIndependentSpectralControl",
@@ -625,7 +626,7 @@ TEST_CASE("Inactive extra Voice Context does not replace the active scratch defa
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voiceB", {}));
     graph.addNode(factory.createNode(NodeKind::Envelope, "scratchA", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "meshA", {}));
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "scratchA",
             "purpose",
@@ -808,7 +809,7 @@ TEST_CASE("Compiler publishes stable waveshaper DSP configurations", "[cycle-v2]
 
     const auto first = compiler.compile(graph);
     const auto unchanged = compiler.compile(graph);
-    REQUIRE(GraphEditor().setNodeParameter(graph, "shape", "pre", "Pre", "0.75").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "shape", "pre", "Pre", "0.75").succeeded());
     const auto changed = compiler.compile(graph);
 
     REQUIRE(first.succeeded());
@@ -1097,7 +1098,7 @@ TEST_CASE("Compiler derives runtime ownership from the authored global graph",
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
     graph.addEdge({ "voiceTerminal", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "shaper",
             "processingScope",

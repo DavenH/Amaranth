@@ -1,11 +1,15 @@
+#include <algorithm>
+
 #include <catch2/catch_test_macros.hpp>
 
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/GraphDomainResolver.h"
+#include "Graph/GraphEdgeView.h"
+#include "Graph/GraphAudioScope.h"
 #include "Graph/GraphValidator.h"
-
-#include <algorithm>
 
 using namespace CycleV2;
 
@@ -61,6 +65,26 @@ TEST_CASE("Demo graph validates", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
 
     REQUIRE(GraphValidator().isValid(graph));
+}
+
+TEST_CASE("Proposed graph issues must strictly repair existing issues",
+        "[cycle-v2][graph][validation]") {
+    const GraphValidationIssue first {
+            GraphValidationCode::DomainMismatch, "First issue", "wave", "out", "effect", "in"
+    };
+    const GraphValidationIssue second {
+            GraphValidationCode::ProcessingScopeMismatch,
+            "Second issue", "effect", "out", "output", "time"
+    };
+    GraphValidationIssue changedAddress = first;
+    changedAddress.destPortId = "other";
+
+    REQUIRE(GraphValidator::acceptsProposedIssues({ first, second }, {}));
+    REQUIRE(GraphValidator::acceptsProposedIssues({ first, second }, { first }));
+    REQUIRE_FALSE(GraphValidator::acceptsProposedIssues({}, { first }));
+    REQUIRE_FALSE(GraphValidator::acceptsProposedIssues({ first }, { first }));
+    REQUIRE_FALSE(GraphValidator::acceptsProposedIssues(
+            { first, second }, { changedAddress }));
 }
 
 TEST_CASE("Boundary-free graph fragments retain legacy validation semantics",
@@ -387,7 +411,7 @@ TEST_CASE("Operation domain inference excludes Envelope and Mesh products",
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::Envelope, "envelope", {}));
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "envelope",
             "purpose",
@@ -453,6 +477,45 @@ TEST_CASE("Domain resolution terminates deterministically for invalid cycles",
             PortDomain::ControlSignal,
             PortDomain::ControlSignal
     });
+}
+
+TEST_CASE("Proposed edge replacement resolves propagated domains without mutating the graph",
+        "[cycle-v2][graph][domains]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+    setParameter(mesh, "signalType", "spectralMagnitude");
+    graph.addNode(std::move(mesh));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::SpectralLayer, "layer", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+    graph.addEdge({
+            "mesh", "out", "layer", "in",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "layer", "out", "multiply", "right",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+
+    const Edge replacement {
+            "wave", "out", "layer", "in",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    };
+    NodeGraph committed = graph;
+    committed.removeEdgeAt(0);
+    committed.addEdge(replacement);
+
+    const GraphDomainResolver resolver;
+    const GraphEdgeView proposed(graph.getEdges(), { 0 }, { replacement });
+    const auto resolved = resolver.resolve(graph, proposed);
+    const auto committedResolution = resolver.resolve(committed);
+
+    REQUIRE(resolved.domains == committedResolution.domains);
+    REQUIRE(resolved.channelLayouts == committedResolution.channelLayouts);
+    REQUIRE(resolved.domains[0] == PortDomain::TimeSignal);
+    REQUIRE(resolved.domains[1] == PortDomain::TimeSignal);
+    REQUIRE(graph.getEdges()[0].sourceNodeId == "mesh");
 }
 
 TEST_CASE("Voice Context carries oscillator configuration without a signal domain", "[cycle-v2][graph]") {
@@ -752,6 +815,49 @@ TEST_CASE("Explicit global audio graph rejects cross-scope signal edges",
             }));
 }
 
+TEST_CASE("Proposed edge validation matches the committed graph without copying it",
+        "[cycle-v2][graph][audio-scope][domains]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addEdge({
+            "globalIn", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "wave", "out", "voiceOut", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    const Edge crossScope {
+            "wave", "out", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    };
+    NodeGraph committed = graph;
+    committed.addEdge(crossScope);
+
+    InteractionComplexityDiagnostics::reset();
+    const GraphEdgeView proposed(graph.getEdges(), {}, { crossScope });
+    const GraphValidator validator;
+    const auto proposedIssues = validator.validate(graph, proposed);
+    const auto committedIssues = validator.validate(committed);
+
+    REQUIRE(proposedIssues.size() == committedIssues.size());
+    for (size_t index = 0; index < proposedIssues.size(); ++index) {
+        REQUIRE(proposedIssues[index].code == committedIssues[index].code);
+        REQUIRE(proposedIssues[index].message == committedIssues[index].message);
+        REQUIRE(proposedIssues[index].sourceNodeId == committedIssues[index].sourceNodeId);
+        REQUIRE(proposedIssues[index].destNodeId == committedIssues[index].destNodeId);
+    }
+    REQUIRE(std::any_of(proposedIssues.begin(), proposedIssues.end(), [](const auto& issue) {
+        return issue.code == GraphValidationCode::ProcessingScopeMismatch;
+    }));
+    REQUIRE(graph.getEdges().size() == 2);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+}
+
 TEST_CASE("Neutral routing cannot participate in both audio partitions",
         "[cycle-v2][graph][audio-scope]") {
     GraphNodeFactory factory;
@@ -782,6 +888,36 @@ TEST_CASE("Neutral routing cannot participate in both audio partitions",
                 return issue.code == GraphValidationCode::ConflictingProcessingScope
                         && issue.message.contains("route");
             }));
+}
+
+TEST_CASE("Proposed edge removal updates neutral processing scope without mutating the graph",
+        "[cycle-v2][graph][audio-scope]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::GenericProcessor, "route", {}));
+    graph.addEdge({
+            "globalIn", "time", "route", "in",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "wave", "out", "route", "in",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+
+    NodeGraph committed = graph;
+    committed.removeEdgeAt(1);
+    const GraphAudioScopeAnalyzer analyzer;
+    const GraphEdgeView proposed(graph.getEdges(), { 1 }, {});
+    const auto resolved = analyzer.analyze(graph, proposed);
+    const auto committedAnalysis = analyzer.analyze(committed);
+
+    REQUIRE(resolved.nodes == committedAnalysis.nodes);
+    REQUIRE(resolved.conflictingNeutralNodeIds == committedAnalysis.conflictingNeutralNodeIds);
+    REQUIRE(resolved.scopeFor("route") == AuthoredAudioScope::Global);
+    REQUIRE_FALSE(resolved.hasConflict("route"));
+    REQUIRE(analyzer.analyze(graph).hasConflict("route"));
 }
 
 TEST_CASE("Every explicit global node belongs to the Global Input to Output path",

@@ -41,7 +41,7 @@ unless an exception is named explicitly.
 | `TestGraphNodeFactory.cpp` | Retain | DEF, GED | Factory materializes canonical definitions and editor insertion assigns unique identity. Some per-kind examples intentionally protect menu-visible defaults and node sizing. |
 | `TestGraphValidator.cpp` | Retain | GED, CMP | Graph grammar and contextual domain/channel resolution accept and reject concrete product cases with diagnostics. |
 | `TestGraphEditor.cpp` | Retain | GED | Connection orientation, attachments, splice rules, removal, parameter normalization, and error outcomes mutate the aggregate correctly. |
-| `TestGraphTransaction.cpp` | Retain | GED | Compound changes commit atomically and failed changes leave the graph untouched. |
+| `TestGraphTransaction.cpp` | Retain | GED | Dispatcher compound changes publish one undo step, and cancellation restores the document after a failed command. |
 | `TestGraphSerializer.cpp` | Retain | PER | XML round trips graph metadata, parameters, port sides, and attachments; unsupported input is rejected. Curve and Trimesh domain payloads require their own model tests. |
 | `TestGraphCompiler.cpp` | Retain | CMP | Validated graphs compile to deterministic scheduling, domains, slots, lifetimes, latency, and immutable configurations; failures retain prior publication. |
 | `TestGraphRuntime.cpp` | Retain | RUN | Runtime traces and attachment views preserve their compiled semantic roles. |

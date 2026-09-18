@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <set>
 
+#include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/NodeDefinition.h"
 #include "Graph/NodeParameterMap.h"

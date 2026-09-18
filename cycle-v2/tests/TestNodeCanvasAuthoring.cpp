@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include <catch2/catch_test_macros.hpp>
 
 #include "Graph/GraphNodeFactory.h"
@@ -416,6 +418,36 @@ TEST_CASE("Envelope modulation bundle authors red and blue as one gesture",
     REQUIRE(document.graph().getEdges().empty());
     REQUIRE(authoring.undo().succeeded);
     REQUIRE(document.graph().getEdges().size() == 2);
+}
+
+TEST_CASE("Rejected modulation bundle rolls back earlier routes",
+        "[cycle-v2][canvas][authoring][modulation]") {
+    NodeGraph graph;
+    Node source = GraphNodeFactory().createNode(NodeKind::ModulationTriple, "triple", {});
+    source.outputs.erase(std::remove_if(
+            source.outputs.begin(),
+            source.outputs.end(),
+            [](const Port& port) { return port.id == "blue"; }),
+            source.outputs.end());
+    graph.addNode(std::move(source));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "envelope", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+    const uint64_t revision = document.revision();
+
+    const auto result = authoring.connectPorts(
+            { "triple", ModulationCableBundle::portId(), false },
+            { "envelope", ModulationCableBundle::portId(), true });
+
+    REQUIRE(result.handled);
+    REQUIRE_FALSE(result.succeeded);
+    REQUIRE(result.graphEditCode == GraphEditCode::MissingPort);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(document.revision() == revision);
+    REQUIRE_FALSE(document.canUndo());
 }
 
 TEST_CASE("Effect parameter edits request an open-editor rebind",

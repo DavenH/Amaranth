@@ -1,4 +1,5 @@
 #include "UI/ModulationCableBundle.h"
+#include "Graph/GraphEditor.h"
 
 #include <algorithm>
 #include <array>

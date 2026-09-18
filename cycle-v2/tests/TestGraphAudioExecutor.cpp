@@ -3,6 +3,7 @@
 
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
@@ -1511,7 +1512,7 @@ TEST_CASE("Published curve edits change their node and downstream graph output",
         vertex.y = 0.25f;
     }
     REQUIRE(shapeModel.replaceVertices(std::move(flatVertices)));
-    REQUIRE(GraphEditor().replaceNodeModel(
+    REQUIRE(GraphNodeStateEditor().replaceNodeModel(
             graph,
             "shape",
             initialModel->revision(),
@@ -1536,7 +1537,7 @@ TEST_CASE("Published curve edits change their node and downstream graph output",
     }
     REQUIRE(envelopeModel.synchronizeFromMesh(envelopeModel.getMesh().getCubes().front()));
     const auto currentEnvelopeModel = graph.findNode("env")->model;
-    REQUIRE(GraphEditor().replaceNodeModel(
+    REQUIRE(GraphNodeStateEditor().replaceNodeModel(
             graph,
             "env",
             currentEnvelopeModel->revision(),
@@ -1667,7 +1668,7 @@ TEST_CASE("Graph audio execution preparation retains unchanged configuration rev
     executor.prepareExecution(first.plan, spec);
     REQUIRE(executor.preparationCount("shape") == 1);
 
-    REQUIRE(GraphEditor().setNodeParameter(graph, "shape", "pre", "Pre", "0.75").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "shape", "pre", "Pre", "0.75").succeeded());
     const auto changed = compiler.compile(graph);
     REQUIRE(changed.succeeded());
     executor.prepareExecution(changed.plan, spec);
@@ -1682,7 +1683,7 @@ TEST_CASE("Graph audio execution preparation distinguishes keys from restarted r
     REQUIRE(first.succeeded());
 
     NodeGraph changedGraph = firstGraph;
-    REQUIRE(GraphEditor().setNodeParameter(changedGraph, "shape", "pre", "Pre", "0.75").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(changedGraph, "shape", "pre", "Pre", "0.75").succeeded());
     const auto changed = GraphCompiler().compile(changedGraph);
     REQUIRE(changed.succeeded());
     REQUIRE(changed.plan.steps.front().configuration.revision
@@ -2007,9 +2008,9 @@ TEST_CASE("Scratch Envelope drives every attached Trimesh from one prepared traj
     graph.addNode(factory.createNode(NodeKind::GenericProcessor, "consumeB", {}));
     graph.addNode(factory.createNode(NodeKind::GenericProcessor, "consumePeer", {}));
     setEnvelopePurpose(graph, "scratch", EnvelopePurpose::Scratch);
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "fixedYellow", "source", "Source", "constant").succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "fixedYellow", "constant", "Constant", "0.9").succeeded());
 
     auto mesh = TrimeshMeshFactory::createDefaultMesh("ScratchTraversalMesh");
@@ -2020,7 +2021,7 @@ TEST_CASE("Scratch Envelope drives every attached Trimesh from one prepared traj
     mesh->destroy();
 
     for (const String& target : { "attachedA", "attachedB", "unattached" }) {
-        REQUIRE(GraphEditor().setNodeParameter(
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
                 graph, target, "yellow", "Yellow", "0.9").succeeded());
         graph.addEdge({
                 "voice",
@@ -2447,9 +2448,9 @@ TEST_CASE("Stengah Waveshaper post gain changes stereo traversal and downstream 
     REQUIRE(preset.existsAsFile());
     NodeGraph lowGraph = GraphSerializer().fromJsonString(preset.loadFileAsString());
     NodeGraph highGraph = lowGraph;
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             lowGraph, "waveshaper", "post", "Post", "0").succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             highGraph, "waveshaper", "post", "Post", "1").succeeded());
     const auto lowPlan = GraphCompiler().compile(lowGraph);
     const auto highPlan = GraphCompiler().compile(highGraph);

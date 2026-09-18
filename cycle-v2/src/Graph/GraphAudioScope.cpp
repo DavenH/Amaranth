@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "Graph/GraphEdgeView.h"
 #include "Graph/NodeParameterMap.h"
 
 namespace CycleV2 {
@@ -24,9 +25,11 @@ NodeIndex buildNodeIndex(const NodeGraph& graph) {
 
 std::vector<std::vector<size_t>> buildSignalAdjacency(
         const NodeGraph& graph,
+        const GraphEdgeView& edges,
         const NodeIndex& nodeIndex) {
     std::vector<std::vector<size_t>> result(graph.getNodes().size());
-    for (const auto& edge : graph.getEdges()) {
+    for (size_t edgeIndex = 0; edgeIndex < edges.size(); ++edgeIndex) {
+        const Edge& edge = edges[edgeIndex];
         if (edge.isAttachment()) {
             continue;
         }
@@ -91,6 +94,12 @@ bool GraphAudioScopeAnalysis::hasConflict(const String& nodeId) const {
 }
 
 GraphAudioScopeAnalysis GraphAudioScopeAnalyzer::analyze(const NodeGraph& graph) const {
+    return analyze(graph, GraphEdgeView(graph.getEdges()));
+}
+
+GraphAudioScopeAnalysis GraphAudioScopeAnalyzer::analyze(
+        const NodeGraph& graph,
+        const GraphEdgeView& edges) const {
     GraphAudioScopeAnalysis result;
     result.nodes.reserve(graph.getNodes().size());
     std::vector<AudioProcessingCapability> capabilities;
@@ -103,7 +112,7 @@ GraphAudioScopeAnalysis GraphAudioScopeAnalyzer::analyze(const NodeGraph& graph)
         }
     }
 
-    const auto adjacency = buildSignalAdjacency(graph, buildNodeIndex(graph));
+    const auto adjacency = buildSignalAdjacency(graph, edges, buildNodeIndex(graph));
     std::vector<bool> visited(graph.getNodes().size());
     for (size_t index = 0; index < graph.getNodes().size(); ++index) {
         if (visited[index]

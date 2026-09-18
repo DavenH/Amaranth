@@ -8,6 +8,8 @@
 #include <App/AppConstants.h>
 #include <Util/Arithmetic.h>
 
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/GraphNodeFactory.h"
@@ -440,7 +442,7 @@ TEST_CASE("Signal probe detail resolves the attached Voice Context key value",
                     Constants::LowestMidiNote,
                     Constants::HighestMidiNote
             }), 9);
-    const GraphEditResult pitchEdit = GraphEditor().setNodeParameter(
+    const GraphEditResult pitchEdit = GraphNodeStateEditor().setNodeParameter(
             graph,
             "triple",
             "redConstant",
@@ -504,13 +506,13 @@ TEST_CASE("Preview pitch context follows the Modulation Triple key-scale axis",
     REQUIRE(context.midiNote == 72);
     REQUIRE(context.keyScaleAxis == "red");
 
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "triple",
             "redSource",
             "Red Source",
             "modWheel").succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "triple",
             "yellowSource",

@@ -13,6 +13,7 @@
 #include "Runtime/SpectralOscillatorRegionRuntime.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
@@ -756,9 +757,9 @@ TEST_CASE("Stengah phase layer pans survive spectral materialization",
                     (int) authored.second.size()
             }) > 0.01f);
 
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "phaseLayer1Process", "pan", "Layer Pan", "0.0").succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "phaseLayer2Process", "pan", "Layer Pan", "1.0").succeeded());
     auto swapped = render(graph);
 
@@ -950,7 +951,7 @@ TEST_CASE("Fixed-time spectral frames retain the time source until its cycle bou
         "[cycle-v2][runtime][oscillator-region][spectral-frame][fixed-time-control][time-source]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     NodeGraph graph = loadFilterSawGraph();
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "voice",
             "pitchIndependentSpectralControl",
@@ -1008,25 +1009,25 @@ TEST_CASE("Pitch-independent spectral frontiers preserve timed control causality
         "[cycle-v2][runtime][oscillator-region][spectral-frame][fixed-time-control][timed-control]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     NodeGraph graph = loadFilterSawGraph();
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "voice",
             "pitchIndependentSpectralControl",
             "Pitch-independent spectral control",
             "1").succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "morph",
             "yellowSource",
             "Yellow Source",
             "midiCC").succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "morph",
             "yellowController",
             "Yellow Controller",
             "74").succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "scratchEnvelope1",
             "enabled",
@@ -1215,19 +1216,19 @@ TEST_CASE("Timed controls enter prepared frames at the synthesis-cycle frontier"
         "[cycle-v2][runtime][oscillator-region][spectral-frame][timed-control]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     NodeGraph graph = loadFilterSawGraph();
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "morph",
             "yellowSource",
             "Yellow Source",
             "midiCC").succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "morph",
             "yellowController",
             "Yellow Controller",
             "74").succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "scratchEnvelope1",
             "enabled",
@@ -1256,7 +1257,7 @@ TEST_CASE("Prepared spectral scratch follows the authored envelope attachment",
     REQUIRE(enabled.succeeded());
 
     NodeGraph disabledGraph = enabledGraph;
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             disabledGraph,
             "scratchEnvelope1",
             "enabled",
@@ -1280,7 +1281,7 @@ TEST_CASE("Spectral frame refresh count is independent of Unison order",
         "[cycle-v2][runtime][oscillator-region][spectral-frame][unison][live-modulation]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     NodeGraph graph = loadFilterSawGraph();
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "scratchEnvelope1",
             "enabled",

@@ -11,7 +11,7 @@
 #include "Runtime/PresentationPreviewRenderer.h"
 #include "Runtime/PresentationRefreshScheduler.h"
 #include "Graph/GraphCompiler.h"
-#include "Graph/GraphEditor.h"
+#include "Graph/GraphEditTypes.h"
 #include "Graph/PreviewMorphTarget.h"
 
 namespace CycleV2 {

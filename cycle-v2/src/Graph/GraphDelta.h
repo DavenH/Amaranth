@@ -2,7 +2,7 @@
 
 #include <optional>
 
-#include "Graph/GraphEditor.h"
+#include "Graph/GraphEditTypes.h"
 
 namespace CycleV2 {
 

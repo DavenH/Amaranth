@@ -3,22 +3,13 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "Graph/GraphEdgeView.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
-#include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
+#include "Nodes/Guide/GuideAttachmentTarget.h"
 
 namespace CycleV2 {
 
 namespace {
-
-const Node* findNode(const NodeGraph& graph, const String& id) {
-    for (const auto& node : graph.getNodes()) {
-        if (node.id == id) {
-            return &node;
-        }
-    }
-
-    return nullptr;
-}
 
 const Port* findPort(const Node& node, const String& id, bool input) {
     const auto& ports = input ? node.inputs : node.outputs;
@@ -63,12 +54,12 @@ using NodeAdjacency = std::unordered_map<
         GraphAudioScopeAnalysis::StringHash>;
 
 NodeIdSet reachableGlobalNodes(
-        const NodeGraph& graph,
+        const GraphEdgeView& edges,
         const GraphAudioScopeAnalysis& analysis,
         const String& root,
         bool reverse) {
     NodeAdjacency adjacency;
-    for (const auto& edge : graph.getEdges()) {
+    for (const auto& edge : edges) {
         if (!edge.isAttachment()) {
             const String& from = reverse ? edge.destNodeId : edge.sourceNodeId;
             const String& to = reverse ? edge.sourceNodeId : edge.destNodeId;
@@ -124,6 +115,16 @@ void addIssue(
     issues.push_back(std::move(issue));
 }
 
+bool sameValidationIssue(
+        const GraphValidationIssue& first,
+        const GraphValidationIssue& second) {
+    return first.code == second.code
+            && first.sourceNodeId == second.sourceNodeId
+            && first.sourcePortId == second.sourcePortId
+            && first.destNodeId == second.destNodeId
+            && first.destPortId == second.destPortId;
+}
+
 }
 
 class GraphValidator::EdgeIssueReporter {
@@ -151,16 +152,22 @@ private:
 };
 
 std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& graph) const {
+    return validate(graph, GraphEdgeView(graph.getEdges()));
+}
+
+std::vector<GraphValidationIssue> GraphValidator::validate(
+        const NodeGraph& graph,
+        const GraphEdgeView& edges) const {
     std::vector<GraphValidationIssue> issues;
     EdgeIssueReporter reporter(issues);
-    const GraphDomainResolution resolution = domainResolver.resolve(graph);
-    const auto scopeAnalysis = GraphAudioScopeAnalyzer().analyze(graph);
+    const GraphDomainResolution resolution = domainResolver.resolve(graph, edges);
+    const auto scopeAnalysis = GraphAudioScopeAnalyzer().analyze(graph, edges);
     const bool explicitAudioGraph = usesExplicitAudioGraph(graph);
 
-    for (size_t edgeIndex = 0; edgeIndex < graph.getEdges().size(); ++edgeIndex) {
+    for (size_t edgeIndex = 0; edgeIndex < edges.size(); ++edgeIndex) {
         validateEdge(
                 graph,
-                graph.getEdges()[edgeIndex],
+                edges[edgeIndex],
                 resolution.domains[edgeIndex],
                 explicitAudioGraph ? &scopeAnalysis : nullptr,
                 reporter);
@@ -173,7 +180,7 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
                 && (assignment.targetKind == GuideCurveTargetKind::EnvelopeCubeComponent
                         ? target->kind == NodeKind::Envelope
                         : target->kind == NodeKind::TrilinearMesh)
-                && MeshGuideAttachmentTarget::isValid(*target, assignment.target);
+                && GuideAttachmentTarget::isValid(*target, assignment.target);
         if (guide == nullptr || target == nullptr
                 || !validTarget) {
             addIssue(
@@ -194,11 +201,27 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
         }
     }
 
-    validateOperationInputs(graph, resolution, issues);
-    validateAudioScopes(graph, scopeAnalysis, issues);
-    validateVoiceContextAssignments(graph, issues);
+    validateOperationInputs(graph, edges, resolution, issues);
+    validateAudioScopes(graph, edges, scopeAnalysis, issues);
+    validateVoiceContextAssignments(graph, edges, issues);
 
     return issues;
+}
+
+bool GraphValidator::acceptsProposedIssues(
+        const std::vector<GraphValidationIssue>& before,
+        const std::vector<GraphValidationIssue>& after) {
+    if (after.empty()) {
+        return true;
+    }
+    if (before.empty() || after.size() >= before.size()) {
+        return false;
+    }
+    return std::all_of(after.begin(), after.end(), [&](const auto& issue) {
+        return std::any_of(before.begin(), before.end(), [&](const auto& prior) {
+            return sameValidationIssue(issue, prior);
+        });
+    });
 }
 
 bool GraphValidator::isValid(const NodeGraph& graph) const {
@@ -239,8 +262,8 @@ void GraphValidator::validateEdge(
         });
     };
 
-    const Node* sourceNode = findNode(graph, edge.sourceNodeId);
-    const Node* destNode = findNode(graph, edge.destNodeId);
+    const Node* sourceNode = graph.findNode(edge.sourceNodeId);
+    const Node* destNode = graph.findNode(edge.destNodeId);
 
     if (sourceNode == nullptr) {
         report(GraphValidationCode::MissingSourceNode, "Missing source node: " + edge.sourceNodeId);
@@ -397,19 +420,20 @@ bool GraphValidator::isVoiceAwareDestination(const Port& port) const {
 
 void GraphValidator::validateOperationInputs(
         const NodeGraph& graph,
+        const GraphEdgeView& edges,
         const GraphDomainResolution& resolution,
         std::vector<GraphValidationIssue>& issues) const {
     for (const auto& node : graph.getNodes()) {
         if (node.kind == NodeKind::SpectralLayer) {
             const auto found = std::find_if(
-                    graph.getEdges().begin(),
-                    graph.getEdges().end(),
+                    edges.begin(),
+                    edges.end(),
                     [&](const Edge& edge) {
                         return !edge.isAttachment() && edge.destNodeId == node.id;
                     });
-            if (found != graph.getEdges().end()) {
+            if (found != edges.end()) {
                 const size_t edgeIndex = (size_t) std::distance(
-                        graph.getEdges().begin(),
+                        edges.begin(),
                         found);
                 const PortDomain domain = resolution.domains[edgeIndex];
                 if (domain != PortDomain::TimeSignal
@@ -428,8 +452,8 @@ void GraphValidator::validateOperationInputs(
         PortDomain firstConcreteDomain {};
         bool hasConcreteDomain = false;
 
-        for (size_t edgeIndex = 0; edgeIndex < graph.getEdges().size(); ++edgeIndex) {
-            const Edge& edge = graph.getEdges()[edgeIndex];
+        for (size_t edgeIndex = 0; edgeIndex < edges.size(); ++edgeIndex) {
+            const Edge& edge = edges[edgeIndex];
             if (edge.isAttachment() || edge.destNodeId != node.id) {
                 continue;
             }
@@ -463,6 +487,7 @@ void GraphValidator::validateOperationInputs(
 
 void GraphValidator::validateVoiceContextAssignments(
         const NodeGraph& graph,
+        const GraphEdgeView& edges,
         std::vector<GraphValidationIssue>& issues) const {
     const int voiceContextCount = static_cast<int>(std::count_if(
             graph.getNodes().begin(),
@@ -476,7 +501,7 @@ void GraphValidator::validateVoiceContextAssignments(
 
     std::unordered_map<String, String, GraphAudioScopeAnalysis::StringHash>
             explicitAssignments;
-    for (const auto& edge : graph.getEdges()) {
+    for (const auto& edge : edges) {
         if (!edge.isAttachment() && edge.destPortId == "context") {
             explicitAssignments.emplace(edge.destNodeId, edge.sourceNodeId);
         }
@@ -518,6 +543,7 @@ void GraphValidator::validateVoiceContextAssignments(
 
 void GraphValidator::validateAudioScopes(
         const NodeGraph& graph,
+        const GraphEdgeView& edges,
         const GraphAudioScopeAnalysis& analysis,
         std::vector<GraphValidationIssue>& issues) const {
     std::vector<String> globalInputIds;
@@ -577,12 +603,12 @@ void GraphValidator::validateAudioScopes(
     }
 
     const auto fromInput = reachableGlobalNodes(
-            graph,
+            edges,
             analysis,
             globalInputIds.front(),
             false);
     const auto toOutput = reachableGlobalNodes(
-            graph,
+            edges,
             analysis,
             outputIds.front(),
             true);
@@ -614,8 +640,8 @@ void GraphValidator::validateAudioScopes(
                 continue;
             }
             const bool consumedInVoiceGraph = std::any_of(
-                    graph.getEdges().begin(),
-                    graph.getEdges().end(),
+                    edges.begin(),
+                    edges.end(),
                     [&](const Edge& edge) {
                         return !edge.isAttachment()
                                 && edge.sourceNodeId == node.id
@@ -624,8 +650,8 @@ void GraphValidator::validateAudioScopes(
                                         == AuthoredAudioScope::Voice;
                     });
             const bool feedsVoiceOutput = std::any_of(
-                    graph.getEdges().begin(),
-                    graph.getEdges().end(),
+                    edges.begin(),
+                    edges.end(),
                     [&](const Edge& edge) {
                         return !edge.isAttachment()
                                 && edge.sourceNodeId == node.id

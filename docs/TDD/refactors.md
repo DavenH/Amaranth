@@ -49,13 +49,14 @@ Status: active in
 [`cycle-v2-causal-update-graph.md`](cycle-v2-causal-update-graph.md), reopened
 2026-09-15.
 
-The causal planner is in production, but gesture lifecycle and the
-`On Release` / `Live` choice are duplicated across editor commands, the canvas,
-and `GraphPresentationModel`. Extract one pure refresh policy, one shared
-presentation-gesture session, and one scheduler over the existing
-`NodeUpdateGraph`; then delete caller-side mode branches, broad editor refresh
-escape hatches, and control-specific async paths. Do not add another adapter or
-copy domain rendering behavior into the shared session.
+The causal planner, pure refresh policy, shared gesture session, scheduler,
+request builder, and preview renderer are in production. `GraphPresentationModel`
+is smaller, but some editor families and canvas paths still choose refresh
+behavior, the broad editor refresh host API remains, and the mod-wheel-specific
+model entry point remains. Finish the caller migration and deletion targets in
+the active TDD. Do not add another adapter or copy domain rendering behavior
+into the shared session. Other architecture concerns from the 2026-09-18
+review are tracked in [`cycle-v2-architecture-quality.md`](cycle-v2-architecture-quality.md).
 
 ## Share immutable guide products across prepared providers
 

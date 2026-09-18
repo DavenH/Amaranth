@@ -55,7 +55,8 @@ void TrimeshPanelDataSource::rebuild(
         int keyScaleAxis) {
     const ScopedLock lock(gridLock);
 
-    renderData = model.renderGrid(
+    renderData = TrimeshGridRenderService::renderGrid(
+            model,
             rows,
             columns,
             renderProfile,

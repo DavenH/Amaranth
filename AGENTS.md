@@ -52,6 +52,12 @@
 - When a test creates pressure to add low-quality production code, change the design or test boundary rather than weakening the architecture.
 - Do not mark a TDD implemented while its principal architecture, deletion targets, negative boundaries, or completion criteria remain unfinished. Use a partial/in-progress status and state the remaining work explicitly.
 
+## Architecture Review Triggers
+- For every nontrivial Cycle V2 production change, run `python3 scripts/cycle_v2_architecture_audit.py`, measure the touched C++ files with `wc -l`, and inspect `git diff --stat`. A `.cpp` file at 800 lines or a header at 300 lines triggers a responsibility and composition review. A file at 1,200/450 lines respectively, or growth of 200 lines in one change, requires a recorded extraction plan or a specific reason the file is cohesive before adding more behavior. These are review triggers, not automatic split targets.
+- During that review, name the file's responsibilities, its stable collaborators, and the owner of each policy it applies. Search for the same policy in other UI, graph, runtime, and node layers. If two callers decide the same lifecycle, invalidation, transaction, preparation, or eligibility rule, place the decision behind one authoritative boundary and make callers supply only domain facts.
+- Measure improvement by removed responsibilities and duplicate decision sites, narrower public interfaces and dependencies, and reduced size of the original high-level file. Moving identical code into another large switchboard or adding a facade without deleting the old path does not count as completion.
+- For cross-subsystem refactors, record baseline and after sizes, policy decision sites, dependency direction, deletion targets, and semantic/operation-count proof in the active TDD. Do not use a line-count decrease alone as proof of better design.
+
 ## Cycle V2 Graph Mutation Rules
 - UI and editor code must express semantic edits through `GraphCommandDispatcher` or a domain command service. It must not mutate `NodeGraph`, call `GraphEditor`, publish document changes, or manage undo directly.
 - `GraphDocument::graph()` is the durable committed graph. `GraphCommandDispatcher::editingGraph()` is the current read view during a gesture and may be transient. Do not use a revision read from `editingGraph()` as a durable concurrency token.

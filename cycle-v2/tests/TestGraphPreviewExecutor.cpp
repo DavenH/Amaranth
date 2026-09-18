@@ -3,6 +3,7 @@
 
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Runtime/GraphAudioExecutor.h"
@@ -654,7 +655,7 @@ TEST_CASE("Pwm Lead Spy preserves looping scratch and composed Unison lanes",
             withUnison.first,
             "volumeMultiply").output.traversalGrid) < 1.0e-5f);
 
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "unison",
             "enabled",

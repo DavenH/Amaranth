@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
 #include "UI/NodeCanvasQueryModel.h"
@@ -86,7 +88,7 @@ TEST_CASE("Scratch attachment help distinguishes defaults inheritance and exclus
     graph.addNode(factory.createNode(NodeKind::ScratchDefaultOverride, "voiceTime", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "inherited", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "excluded", {}));
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "scratch", "purpose", "Purpose", "scratch").succeeded());
     REQUIRE(editor.connect(
             graph,

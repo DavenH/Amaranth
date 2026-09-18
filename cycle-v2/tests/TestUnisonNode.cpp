@@ -6,6 +6,7 @@
 
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
@@ -205,7 +206,7 @@ TEST_CASE("Voice Context prepares attached pitch playback for Unison phase previ
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::Unison, "unison", {}));
     graph.addNode(factory.createNode(NodeKind::Envelope, "pitch", {}));
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "pitch", "purpose", "Purpose", "pitch").succeeded());
     REQUIRE(GraphEditor().connect(
             graph, { "pitch", "env", false }, { "voice", "pitch", true }).succeeded());

@@ -3,7 +3,7 @@
 #include <JuceHeader.h>
 
 #include "Graph/GraphCompiler.h"
-#include "Graph/GraphEditor.h"
+#include "Graph/GraphEditTypes.h"
 #include "Graph/GraphValidator.h"
 #include "Graph/NodeGraph.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"

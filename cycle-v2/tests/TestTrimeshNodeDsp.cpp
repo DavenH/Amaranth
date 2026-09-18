@@ -1,7 +1,9 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/NodeParameterMap.h"
@@ -23,6 +25,7 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanelBridge.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanel3D.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
+#include "Nodes/Trimesh/Rendering/TrimeshGridRenderService.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
 #include "Nodes/Trimesh/Rendering/OutputScaleControlRenderer.h"
@@ -1241,7 +1244,7 @@ TEST_CASE("Prepared spectral raster reuses Cycle 1 logarithmic regions",
     mesh->destroy();
 }
 
-TEST_CASE("Trimesh node model renders compact grid data from node parameters", "[cycle-v2][nodes][trimesh]") {
+TEST_CASE("Trimesh grid renderer uses current node parameters", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
@@ -1259,8 +1262,9 @@ TEST_CASE("Trimesh node model renders compact grid data from node parameters", "
     TrimeshNodeModel model;
 
     model.syncFromNode(node);
-    const auto renderData = model.renderGrid(12, 6);
-    const auto spectralRenderData = model.renderGrid(
+    const auto renderData = TrimeshGridRenderService::renderGrid(model, 12, 6);
+    const auto spectralRenderData = TrimeshGridRenderService::renderGrid(
+            model,
             12,
             6,
             PortDomain::SpectralMagnitudeSignal);
@@ -1366,7 +1370,7 @@ TEST_CASE("Trimesh selection remains empty or explicit while morph position chan
     REQUIRE(model.getSelectedVertexParameters().size() == 6);
     REQUIRE_FALSE(model.getSelectedVertexParameters().front().enabled);
 
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "yellow", "Yellow", "0.8").succeeded());
     model.syncFromNode(*graph.findNode("mesh"));
     REQUIRE(model.getSelectedVertexIndex() == -1);
@@ -1379,10 +1383,10 @@ TEST_CASE("Trimesh selection remains empty or explicit while morph position chan
     REQUIRE(selectedIndex >= 0);
     auto selectedState = std::make_unique<DynamicObject>();
     selectedState->setProperty("selectedVertexId", selectedIndex);
-    REQUIRE(editor.setNodeEditorState(
+    REQUIRE(GraphNodeStateEditor().setNodeEditorState(
             graph, "mesh", var(selectedState.release())).succeeded());
 
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "red", "Red", "0.2").succeeded());
     model.syncFromNode(*graph.findNode("mesh"));
     REQUIRE(model.getSelectedVertexIndex() == selectedIndex);
@@ -1583,9 +1587,9 @@ TEST_CASE("Trimesh node model preserves live mesh pointers for equivalent public
 
 TEST_CASE("Trimesh guide attachment menu lists document Guide resources", "[cycle-v2][nodes][trimesh]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
-    REQUIRE(GraphEditor().assignGuideCurveToMeshComponent(
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide2",
             "waveMesh",
@@ -1609,7 +1613,7 @@ TEST_CASE("Trimesh guide attachment menu lists document Guide resources", "[cycl
     REQUIRE(items[3].label == "G2");
     REQUIRE(items[3].guideId == "guide2");
     REQUIRE(items[3].attached);
-    REQUIRE(GraphEditor().detachGuideCurveFromMeshComponent(
+    REQUIRE(GuideGraphEditor().detachGuideCurveFromMeshComponent(
             graph, "waveMesh", 2, "amp").succeeded());
     REQUIRE(graph.getGuideAssignments().empty());
 }
@@ -2330,9 +2334,9 @@ TEST_CASE("Trimesh link parameters drive mature linked-vertex interaction",
     TrimeshPanelBridge bridge;
     GraphEditor editor;
 
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "link.red", "Link Red", "0").succeeded());
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "link.blue", "Link Blue", "0").succeeded());
     bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
     VertCube* cube = bridge.getModel().getMeshForPanel().getCubes().front();
@@ -2342,13 +2346,13 @@ TEST_CASE("Trimesh link parameters drive mature linked-vertex interaction",
     bridge.getInteractor2D().setMovingVertsFromSelected();
     REQUIRE(bridge.getInteractor2D().getSelectedMovingVerts().size() == 2);
 
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "link.red", "Link Red", "1").succeeded());
     bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
     REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 4);
     REQUIRE(bridge.getInteractor2D().getSelectedMovingVerts().size() == 4);
 
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "link.blue", "Link Blue", "1").succeeded());
     bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
     REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 8);

@@ -1,14 +1,14 @@
-#include "Graph/GraphCommandDispatcher.h"
-
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <unordered_set>
 #include <utility>
 
+#include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/NodeParameterMap.h"
-
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Guide/GuideGraphEditor.h"
 
 namespace CycleV2 {
 
@@ -146,22 +146,11 @@ GraphEditResult GraphCommandDispatcher::publishGuideCurveState(
                     };
                 }
 
-                const bool modelChanged = guide->model == nullptr
-                        || !guide->model->equals(*publication.model);
-                const std::vector<String> consumers = graph.guideTargetNodeIds(
-                        publication.guideId);
-                GraphEditResult result = GraphEditor().replaceGuideCurve(
+                return GuideGraphEditor().replaceGuideCurve(
                         graph,
                         publication.guideId,
                         publication.model,
                         publication.controls);
-                if (result.succeeded()) {
-                    result.changes.nodeIds = consumers;
-                }
-                result.changes.guidesChanged = result.succeeded() && !consumers.empty();
-                result.changes.guidePresentationChanged = result.succeeded();
-                result.changes.modelChanged = result.succeeded() && modelChanged;
-                return result;
             });
 }
 
@@ -310,20 +299,20 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
                     };
                 }
 
-                auto parameterResult = GraphEditor().setNodeParametersAtomic(
+                auto parameterResult = GraphNodeStateEditor().setNodeParametersAtomic(
                         graph, publication.nodeId, parameters);
                 if (!parameterResult.succeeded()) {
                     return parameterResult;
                 }
                 GraphEditResult modelResult;
                 if (replacesTransientSnapshot) {
-                    modelResult = GraphEditor().replaceTransientNodeModel(
+                    modelResult = GraphNodeStateEditor().replaceTransientNodeModel(
                             graph,
                             publication.nodeId,
                             currentRevision,
                             publication.model);
                 } else {
-                    modelResult = GraphEditor().replaceNodeModel(
+                    modelResult = GraphNodeStateEditor().replaceNodeModel(
                             graph,
                             publication.nodeId,
                             currentRevision,
@@ -332,7 +321,7 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
                 modelResult.changed = modelResult.changed || parameterResult.changed;
                 accumulateChange(modelResult.changes, parameterResult.changes);
                 if (typedModel->editorJSON().getDynamicObject() != nullptr) {
-                    auto editorResult = GraphEditor().setNodeEditorState(
+                    auto editorResult = GraphNodeStateEditor().setNodeEditorState(
                             graph, publication.nodeId, typedModel->editorJSON());
                     if (!editorResult.succeeded()) {
                         return editorResult;

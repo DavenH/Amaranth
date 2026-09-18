@@ -6,6 +6,8 @@
 
 namespace CycleV2 {
 
+class GraphEdgeView;
+
 struct GraphDomainResolution {
     std::vector<PortDomain> domains;
     std::vector<ChannelLayout> channelLayouts;
@@ -14,6 +16,7 @@ struct GraphDomainResolution {
 class GraphDomainResolver {
 public:
     GraphDomainResolution resolve(const NodeGraph& graph) const;
+    GraphDomainResolution resolve(const NodeGraph& graph, const GraphEdgeView& edges) const;
     PortDomain resolvedDomainForEdge(const NodeGraph& graph, const Edge& edge) const;
     PortDomain resolvedDomainForEdge(
             const NodeGraph& graph,
