@@ -78,13 +78,13 @@
       "equals": 114
     },
     {
+      "command": "waitForIdle",
+      "idleDelayMs": 800
+    },
+    {
       "command": "assertState",
       "path": "previewRenderCount",
       "equals": 3
-    },
-    {
-      "command": "waitForIdle",
-      "idleDelayMs": 300
     },
     {
       "command": "screenshot",
@@ -131,7 +131,7 @@
     },
     {
       "command": "waitForIdle",
-      "idleDelayMs": 300
+      "idleDelayMs": 800
     },
     {
       "command": "assertState",

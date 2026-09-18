@@ -300,6 +300,7 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("blockSize", status.blockSize);
     object->setProperty("callbackCount", (int64) status.renderer.callbackCount);
     object->setProperty("graphRevision", (int64) status.renderer.graphRevision);
+    object->setProperty("audioPlanCopyCount", (int64) audioPlanCopyCount);
     object->setProperty(
             "executionStepCount",
             (int) status.renderer.executionStepCount);
@@ -461,27 +462,45 @@ void NodeWorkspace::timerCallback() {
 bool NodeWorkspace::publishAudioPlan(
         const StandaloneAudioEngine::Status& status,
         bool forcePublication) {
+    const uint64_t revision = canvas.audioPlanRevision();
+    const bool sameDevicePreparation = status.preparationRevision
+            == publishedDevicePreparationRevision;
+    if (!forcePublication
+            && publishedPlanRevision != 0
+            && revision == publishedPlanRevision
+            && sameDevicePreparation) {
+        return true;
+    }
+    const bool activeAudition = keyboard.isPlaying()
+            || keyboard.heldNote() >= 0
+            || status.renderer.activeVoiceCount > 0;
+    if (!forcePublication
+            && publishedPlanRevision != 0
+            && revision != publishedPlanRevision
+            && sameDevicePreparation
+            && status.deviceReady
+            && activeAudition) {
+        return true;
+    }
+
     GraphExecutionPlan plan;
-    uint64_t revision {};
-    if (!canvas.copyAudioPlan(plan, revision)) {
+    uint64_t copiedRevision {};
+    if (!canvas.copyAudioPlan(plan, copiedRevision)) {
         return false;
     }
+    ++audioPlanCopyCount;
     keyboard.setPlaybackDurationSeconds(
             RealtimeGraphRenderer::maximumVoiceDurationSeconds(plan));
     if (!forcePublication
-            && revision == publishedPlanRevision
-            && status.preparationRevision == publishedDevicePreparationRevision) {
-        return true;
-    }
-    if (!forcePublication
             && publishedPlanRevision != 0
-            && revision != publishedPlanRevision) {
+            && copiedRevision != publishedPlanRevision
+            && activeAudition) {
         keyboard.releaseAllNotes();
     }
-    if (!audioEngine.publishGraph(std::move(plan), revision)) {
+    if (!audioEngine.publishGraph(std::move(plan), copiedRevision)) {
         return false;
     }
-    publishedPlanRevision = revision;
+    publishedPlanRevision = copiedRevision;
     publishedDevicePreparationRevision = status.preparationRevision;
     return true;
 }

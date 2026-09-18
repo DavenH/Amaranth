@@ -246,6 +246,10 @@ bool GraphPresentationModel::refreshPreviewModWheelValue(
             modWheelPreviewRootNodeIds);
 }
 
+void GraphPresentationModel::stagePreviewModWheelValue(int value) {
+    current.previewModWheelValue = jlimit(0, 127, value);
+}
+
 bool GraphPresentationModel::refreshPreviewModWheelValueAsync(
         std::shared_ptr<const NodeGraph> graph,
         uint64_t documentRevision,
@@ -589,13 +593,9 @@ std::function<void()> GraphPresentationModel::publishAsyncRefresh(
     }
     publishedGeneration = refresh->generation;
     updateGraph.publish(refresh->request, refresh->updateResult);
-    const bool audioConfigurationPublished = std::any_of(
-            refresh->updateResult.executed.begin(),
-            refresh->updateResult.executed.end(),
-            [](const PlannedNodeProduct& product) {
-                return product.product == UpdateProduct::AudioConfiguration;
-            });
-    if (audioConfigurationPublished) {
+    if (refresh->change.guidesChanged
+            || hasImpact(refresh->change.parameterImpacts,
+                    ParameterImpact::DspConfiguration)) {
         modWheelPreviewRootNodeIds = modWheelPreviewRoots(current.compileResult.plan);
         ++audioRevision;
     }
@@ -638,12 +638,10 @@ void GraphPresentationModel::recordEditorMovement(
             .add(nodeId)
             .add(field)
             .value();
-    const auto identity = editGate.accept(stream, streamFingerprint, EditPhase::Movement);
+    const auto identity = gestureSession.recordMovement(stream, streamFingerprint);
     if (!identity.has_value()) {
         return;
     }
-    latestMovementIdentity = identity;
-    latestMovementStream = stream;
     const std::vector<UpdateCause> causes { { nodeId, field } };
     updateGraph.execute(
             current.compileResult.plan,
@@ -689,12 +687,8 @@ void GraphPresentationModel::commitLocalEditorState(
         const String& field,
         uint64_t effectiveFingerprint,
         uint64_t documentRevision) {
-    const String stream = latestMovementStream.isNotEmpty()
-            ? latestMovementStream
-            : "editor:" + nodeId;
-    const EditIdentity identity = editGate.commit(stream);
-    latestMovementIdentity.reset();
-    latestMovementStream = {};
+    const String stream = gestureSession.activeStreamOr("editor:" + nodeId);
+    const EditIdentity identity = gestureSession.commit(stream);
     if (!identity.isValid()) {
         return;
     }
@@ -839,9 +833,8 @@ CausalUpdateRequest GraphPresentationModel::updateRequest(
         bool compile,
         bool preview,
         PresentationRefreshScope scope) {
-    const String stream = latestMovementStream.isNotEmpty()
-            ? latestMovementStream
-            : "graph:" + (change.nodeIds.empty() ? String("document") : change.nodeIds.front());
+    const String stream = gestureSession.activeStreamOr(
+            "graph:" + (change.nodeIds.empty() ? String("document") : change.nodeIds.front()));
     uint64_t effectiveFingerprint = change.nodeIds.empty()
             ? documentRevision
             : 1469598103934665603ULL;
@@ -871,22 +864,10 @@ CausalUpdateRequest GraphPresentationModel::updateRequest(
     const EditPhase phase = documentRevision > current.graphRevision
             ? EditPhase::Commit
             : EditPhase::Movement;
-    std::optional<EditIdentity> identity;
-    if (phase == EditPhase::Commit) {
-        const EditIdentity committed = editGate.commit(stream);
-        latestMovementIdentity.reset();
-        latestMovementStream = {};
-        if (committed.isValid()) {
-            identity = committed;
-        } else {
-            identity = editGate.accept(stream, effectiveFingerprint, EditPhase::Commit);
-        }
-    } else if (latestMovementIdentity.has_value()) {
-        identity = latestMovementIdentity;
-        latestMovementIdentity.reset();
-    } else {
-        identity = editGate.accept(stream, effectiveFingerprint, EditPhase::Movement);
-    }
+    const auto identity = gestureSession.identityForRequest(
+            stream,
+            effectiveFingerprint,
+            phase);
     if (!identity.has_value()) {
         return {};
     }

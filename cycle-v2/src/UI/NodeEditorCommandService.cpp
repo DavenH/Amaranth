@@ -188,7 +188,8 @@ void NodeEditorCommandService::endNodeParameterEdit() {
     }
     commands.commitTransientEdit();
     if (activeParameterChanged) {
-        if (presentation.probeRefreshMode() == ProbeRefreshMode::LiveLatest) {
+        if (PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
+                    presentation.probeRefreshMode())) {
             presentation.commitNodeEditorLocalState(
                     activeParameterNodeId,
                     activeParameterField,
@@ -373,7 +374,8 @@ void NodeEditorCommandService::commitCurveTransaction() {
         return;
     }
     curvePublicationPending = false;
-    if (presentation.probeRefreshMode() == ProbeRefreshMode::LiveLatest) {
+    if (PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
+                presentation.probeRefreshMode())) {
         presentation.commitNodeEditorLocalState(
                 curvePublicationNodeId,
                 "curve",
@@ -485,7 +487,8 @@ void NodeEditorCommandService::endTrimeshMorphEdit() {
     commands.commitTransientEdit();
     if (activeMorphChanged
             && (activeMorphIsPrimary
-                    || presentation.probeRefreshMode() == ProbeRefreshMode::LiveLatest)) {
+                    || PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
+                            presentation.probeRefreshMode()))) {
         presentation.commitNodeEditorLocalState(
                 activeMorphNodeId,
                 activeMorphParameterId,
@@ -605,7 +608,8 @@ void NodeEditorCommandService::endTrimeshVertexParameterEdit() {
     } else {
         commands.cancelTransientEdit();
     }
-    if (changed && presentation.probeRefreshMode() == ProbeRefreshMode::LiveLatest) {
+    if (changed && PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
+            presentation.probeRefreshMode())) {
         presentation.flushNodeEditorRefresh();
     } else if (changed) {
         presentation.refreshNodeEditorPresentation();
@@ -685,7 +689,8 @@ void NodeEditorCommandService::persistTrimeshMeshEdits(
 
     commands.commitTransientEdit();
     if (activeMeshChanged) {
-        if (presentation.probeRefreshMode() == ProbeRefreshMode::LiveLatest) {
+        if (PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
+                    presentation.probeRefreshMode())) {
             presentation.flushNodeEditorRefresh();
         } else {
             presentation.refreshNodeEditorPresentation();

@@ -12,6 +12,7 @@
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Runtime/NodeUpdateGraph.h"
+#include "Runtime/PresentationRefreshPolicy.h"
 #include "UI/NodeEditorPerformanceObserver.h"
 
 namespace CycleV2 {

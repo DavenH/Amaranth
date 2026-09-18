@@ -1,0 +1,17 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/honerism-3.cyclegraph" },
+    { "command": "pointer", "targetId": "probeRefreshMode", "event": "click" },
+    { "command": "assertState", "path": "probeRefreshMode", "equals": "Live" },
+    { "command": "resetCanvasPerformance" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "down", "targetY": 0.75 },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "drag", "targetY": 0.1 },
+    { "command": "waitForIdle", "idleDelayMs": 800 },
+    { "command": "snapshotState" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "up", "targetY": 0.1 },
+    { "command": "waitForIdle", "idleDelayMs": 800 },
+    { "command": "snapshotState" },
+    { "command": "inspectCanvasPerformance" }
+  ],
+  "quit": true
+}

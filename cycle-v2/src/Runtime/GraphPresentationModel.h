@@ -12,6 +12,7 @@
 #include "Runtime/GraphRuntime.h"
 #include "Runtime/MessageThreadWorker.h"
 #include "Runtime/NodeUpdateGraph.h"
+#include "Runtime/PresentationGestureSession.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
 
@@ -49,6 +50,7 @@ public:
             const NodeGraph& graph,
             uint64_t documentRevision,
             int value);
+    void stagePreviewModWheelValue(int value);
     bool refreshPreviewModWheelValueAsync(
             std::shared_ptr<const NodeGraph> graph,
             uint64_t documentRevision,
@@ -166,7 +168,7 @@ private:
     GraphCompiler compiler;
     NodeDspConfigurationFactory configurationFactory;
     NodeUpdateGraph updateGraph;
-    SemanticEditGate editGate;
+    PresentationGestureSession gestureSession;
     mutable GraphAudioExecutor previewAudioExecutor;
     uint64_t requestedGraphRevision {};
     uint64_t presentationRevision { 1 };
@@ -175,8 +177,6 @@ private:
     size_t previewRenders {};
     uint64_t publishedEditFingerprint {};
     uint64_t publishedGeneration {};
-    std::optional<EditIdentity> latestMovementIdentity;
-    String latestMovementStream;
     std::vector<String> modWheelPreviewRootNodeIds;
     MessageThreadWorker asyncWorker;
     std::shared_ptr<AsyncState> asyncState;

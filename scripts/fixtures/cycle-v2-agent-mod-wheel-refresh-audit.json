@@ -1,0 +1,28 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/honerism-3.cyclegraph" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.Play", "event": "click" },
+    { "command": "assertState", "path": "performance.previewPlaying", "equals": true },
+    { "command": "resetCanvasPerformance" },
+    { "command": "resetAudioPerformance" },
+    { "command": "snapshotState" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "down", "targetY": 0.75 },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "drag", "targetY": 0.1 },
+    { "command": "snapshotState" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "up", "targetY": 0.1 },
+    { "command": "snapshotState" },
+    { "command": "waitForIdle", "delayMs": 300 },
+    { "command": "snapshotState" },
+    { "command": "waitForIdle", "delayMs": 800 },
+    { "command": "snapshotState" },
+    { "command": "assertState", "path": "previewRenderCount", "equals": 3 },
+    { "command": "assertState", "path": "performance.previewPlaying", "equals": true },
+    { "command": "inspectCanvasPerformance" },
+    { "command": "inspectAudioPerformance" },
+    { "command": "waitForIdle", "delayMs": 3500 },
+    { "command": "assertState", "path": "performance.previewPlaying", "equals": false },
+    { "command": "waitForIdle", "delayMs": 500 },
+    { "command": "assertState", "path": "performance.audioPlanCopyCount", "equals": 3 }
+  ],
+  "quit": true
+}

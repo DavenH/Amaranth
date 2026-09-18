@@ -211,7 +211,7 @@ void StandaloneAudioEngine::audioDeviceAboutToStart(AudioIODevice* device) {
 
 void StandaloneAudioEngine::audioDeviceStopped() {
     ready.store(false, std::memory_order_release);
-    renderer.resetVoices();
+    renderer.resetVoices(true);
 }
 
 void StandaloneAudioEngine::handleIncomingMidiMessage(

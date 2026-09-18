@@ -54,11 +54,6 @@ enum class UpdateTracePhase {
     InvariantViolation
 };
 
-enum class ProbeRefreshMode {
-    OnGestureCommit,
-    LiveLatest
-};
-
 struct UpdateCause {
     String sourceNodeId;
     String field;
@@ -141,9 +136,11 @@ public:
 private:
     struct SourceState {
         uint64_t effectiveFingerprint {};
+        uint64_t gestureStartFingerprint {};
         uint64_t gestureId {};
         uint64_t lastMovementEditId {};
         bool initialized {};
+        bool gestureStartInitialized {};
     };
 
     uint64_t nextEditId { 1 };

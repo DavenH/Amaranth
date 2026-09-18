@@ -31,6 +31,34 @@ presentation model, and automation layers. It introduced wheel-specific
 gesture state and a wheel-specific asynchronous presentation entry point.
 The verification work was appropriate, but the production plumbing was not.
 
+The 2026-09-17 Live wheel fixture makes the remaining commit failure
+deterministic: after a movement preview has published, mouse-up raises the
+preview render count from 3 to 4. The trace reports three requests, two
+publications, and one stale/cancelled request for a down/drag/up sequence.
+The On Release wheel path has a separate focused repair, but the Live commit
+still needs the shared session to distinguish a current preview product from
+the durable audio-configuration update. `PresentationRefreshPolicy` has begun
+as a pure decision boundary; movement routing is a partial migration, not
+completion of the session or scheduler deletion targets.
+
+The next extraction moves the semantic edit gate, active stream, and pending
+movement identity out of `GraphPresentationModel` into
+`PresentationGestureSession`. This is deliberately an identity/lifecycle core,
+not yet the complete session contract: dispatcher-owned durable base revision,
+semantic delta, graph snapshot, scheduling, and commit reuse still need to
+move below the UI callers. Tests cover two movements in one gesture and
+independent source streams; the remaining completion criteria remain open.
+The extraction also exposed that `SemanticEditGate::cancelGesture` discarded
+the gesture marker without restoring its prior effective fingerprint. The
+session's cancel path now restores that fingerprint so retrying an aborted
+movement is accepted instead of misclassified as a no-op.
+
+All explicit Live-versus-On-Release checks in `NodeCanvas` and
+`NodeEditorCommandService` now consult `PresentationRefreshPolicy`; the canvas
+preference toggle still chooses the enum value, but does not implement update
+behavior. This centralizes the boolean policy choice without yet unifying the
+family-specific commit callbacks or eliminating their separate schedulers.
+
 The current policy distribution includes:
 
 - ten explicit `ProbeRefreshMode` branches across `NodeEditorCommandService`
@@ -43,6 +71,24 @@ The current policy distribution includes:
   points exposed through `NodeCanvas` and `GraphPresentationModel`; and
 - direct broad presentation refreshes from both `NodeCanvas` and
   `NodeCanvasAuthoring`.
+
+### Live wheel semantic decision still needed
+
+The Live wheel path currently renders CC1 against one immutable graph captured
+at gesture start, then commits saved Trimesh/Envelope morph parameters only on
+mouse-up. The commit can therefore change the effective graph independently
+of the final CC1 value. Its second preview render is not safely removable by a
+wheel-value equality check. Making the commit reuse decision truthful requires
+product-level fingerprints from the actual affected runtime configuration.
+
+There are two possible semantic contracts for the saved morph fields during a
+Live wheel gesture. They can be updated transiently on each movement (one undo
+transaction, with an immutable delta/overlay for worker jobs so movement never
+clones the full graph), or remain commit-only while CC1 previews live (in which
+case a second render at commit may be required whenever saved fields affect
+the product). This choice affects audio, Spy output, undo, and the shared
+session/scheduler design. Do not set `finalMovementAlreadyPublished` merely
+because the numeric wheel position matches; that would bless stale products.
 
 As of the reopening audit, `GraphPresentationModel.cpp` is 954 lines,
 `NodeEditorCommandService.cpp` is 805 lines, and `NodeCanvas.cpp` is 2,349

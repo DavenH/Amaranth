@@ -18,6 +18,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "Runtime/GraphPresentationModel.h"
+#include "Runtime/PresentationRefreshPolicy.h"
 #include "UI/CanvasPerformanceMetrics.h"
 #include "UI/NodeCanvasAutomationController.h"
 #include "UI/NodeCanvasAuthoring.h"
@@ -97,6 +98,7 @@ public:
     void requestOpenGLFrameForAutomation();
     var captureAudioForAutomation(size_t frameCount) const;
     bool copyAudioPlan(GraphExecutionPlan& plan, uint64_t& revision) const;
+    uint64_t audioPlanRevision() const { return presentation.audioPlanRevision(); }
     float graphOutputGain() const;
     int previewMidiNote() const { return presentation.previewMidiNote(); }
     bool setPreviewMidiNote(int midiNote);
@@ -231,7 +233,7 @@ private:
     void openProbeDetail(const String& probeId);
     void refreshProbeDetail();
     void finishPreviewModWheelRefresh();
-    bool persistPreviewMorph(int midiNote, int modWheelValue);
+    GraphEditResult persistPreviewMorph(int midiNote, int modWheelValue);
     void synchronizeOpenedEditorMorph();
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;
