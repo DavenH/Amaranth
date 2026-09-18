@@ -157,9 +157,19 @@ applies its edge replacement only after acceptance, removing its whole-graph
 candidate copy. Proposed-vs-committed domain, scope, and validation parity
 tests plus a scaled connection copy-count test pass; the focused domain,
 audio-scope, connection, splice, and canvas tests pass (209 assertions across
-25 cases). The validator still scans complete graph vectors, and splice and
-the three UI preview callers still copy `NodeGraph`; no movement path may use
-this view until those costs are removed or cached.
+25 cases). A following slice moved splice's two candidate connections through
+the same edge-construction method and proposed-edge validation order, then
+applies the two accepted edges in place. Splice no longer clones the graph;
+focused splice and hit-routing tests pass (46 assertions across five cases),
+including a scaled unrelated-graph/audio copy-count test. The validator still
+scans complete graph vectors, and the three UI preview callers still copy
+`NodeGraph`; no movement path may use this view until those costs are removed
+or cached.
+
+The architecture audit reports 21 size triggers among 438 Cycle V2 C++ files
+after these graph-view slices. `GraphEditor.cpp` is 410 lines after the splice
+change, below the review threshold; size reduction is secondary to the
+removed candidate copies and shared validation rules.
 
 ### 2. Reduce UI coordination surfaces
 
