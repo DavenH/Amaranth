@@ -22,29 +22,6 @@ bool isProbeDomain(PortDomain domain) {
             || domain == PortDomain::SpectralPhaseSignal;
 }
 
-bool sameValidationIssue(
-        const GraphValidationIssue& first,
-        const GraphValidationIssue& second) {
-    return first.code == second.code
-            && first.sourceNodeId == second.sourceNodeId
-            && first.sourcePortId == second.sourcePortId
-            && first.destNodeId == second.destNodeId
-            && first.destPortId == second.destPortId;
-}
-
-bool strictlyRepairsValidationIssues(
-        const std::vector<GraphValidationIssue>& before,
-        const std::vector<GraphValidationIssue>& after) {
-    if (before.empty() || after.size() >= before.size()) {
-        return false;
-    }
-    return std::all_of(after.begin(), after.end(), [&](const auto& issue) {
-        return std::any_of(before.begin(), before.end(), [&](const auto& prior) {
-            return sameValidationIssue(issue, prior);
-        });
-    });
-}
-
 std::vector<size_t> edgesToInput(
         const NodeGraph& graph,
         const String& nodeId,
@@ -102,7 +79,7 @@ GraphEditResult GraphEditor::connect(
     auto issues = validator.validate(graph, proposedEdges);
 
     if (!issues.empty()
-            && !strictlyRepairsValidationIssues(validator.validate(graph), issues)) {
+            && !GraphValidator::acceptsProposedIssues(validator.validate(graph), issues)) {
         return { GraphEditCode::ValidationRejected, {}, std::move(issues) };
     }
 
@@ -241,7 +218,7 @@ GraphEditResult GraphEditor::spliceNodeIntoEdge(NodeGraph& graph, size_t edgeInd
                 graph.getEdges(), firstRemoved, { incomingEdge });
         const auto firstIssues = validator.validate(graph, firstProposal);
         if (!firstIssues.empty()
-                && !strictlyRepairsValidationIssues(removedEdgeIssues, firstIssues)) {
+                && !GraphValidator::acceptsProposedIssues(removedEdgeIssues, firstIssues)) {
             continue;
         }
 
@@ -270,7 +247,7 @@ GraphEditResult GraphEditor::spliceNodeIntoEdge(NodeGraph& graph, size_t edgeInd
                     { incomingEdge, outgoingEdge });
             const auto finalIssues = validator.validate(graph, finalProposal);
             if (!finalIssues.empty()
-                    && !strictlyRepairsValidationIssues(firstIssues, finalIssues)) {
+                    && !GraphValidator::acceptsProposedIssues(firstIssues, finalIssues)) {
                 continue;
             }
 

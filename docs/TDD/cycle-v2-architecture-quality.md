@@ -200,6 +200,14 @@ edge-grammar, proposed-edge, and neutral-scope tests pass (20 assertions in
 three cases). This removes one repeated lookup policy but does not bound the
 remaining graph-wide validation passes.
 
+The commit path's strict-repair comparison now belongs to `GraphValidator` as
+`acceptsProposedIssues`; connection and both splice proposal steps call it.
+Preview can reuse this exact issue-identity policy once its incremental facts
+are ready. A focused contract test covers empty proposals, strict issue
+reduction, unchanged issue counts, and a changed edge address; four connection
+and splice tests retain 24 assertions. This centralizes acceptance policy but
+does not remove movement-time graph copies or validation scans.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,

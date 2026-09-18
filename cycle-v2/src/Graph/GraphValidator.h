@@ -1,10 +1,10 @@
 #pragma once
 
+#include <vector>
+
 #include "Graph/GraphAudioScope.h"
 #include "Graph/GraphDomainResolver.h"
 #include "Graph/NodeGraph.h"
-
-#include <vector>
 
 namespace CycleV2 {
 
@@ -48,6 +48,9 @@ public:
     std::vector<GraphValidationIssue> validate(
             const NodeGraph& graph,
             const GraphEdgeView& edges) const;
+    static bool acceptsProposedIssues(
+            const std::vector<GraphValidationIssue>& before,
+            const std::vector<GraphValidationIssue>& after);
     bool isValid(const NodeGraph& graph) const;
     bool edgeHasValidationIssue(const NodeGraph& graph, const Edge& edge) const;
     GraphValidationIssue validationIssueForEdge(const NodeGraph& graph, const Edge& edge) const;

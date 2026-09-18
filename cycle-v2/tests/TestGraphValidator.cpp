@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include <catch2/catch_test_macros.hpp>
 
 #include "Graph/GraphEditor.h"
@@ -8,8 +10,6 @@
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphAudioScope.h"
 #include "Graph/GraphValidator.h"
-
-#include <algorithm>
 
 using namespace CycleV2;
 
@@ -65,6 +65,26 @@ TEST_CASE("Demo graph validates", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
 
     REQUIRE(GraphValidator().isValid(graph));
+}
+
+TEST_CASE("Proposed graph issues must strictly repair existing issues",
+        "[cycle-v2][graph][validation]") {
+    const GraphValidationIssue first {
+            GraphValidationCode::DomainMismatch, "First issue", "wave", "out", "effect", "in"
+    };
+    const GraphValidationIssue second {
+            GraphValidationCode::ProcessingScopeMismatch,
+            "Second issue", "effect", "out", "output", "time"
+    };
+    GraphValidationIssue changedAddress = first;
+    changedAddress.destPortId = "other";
+
+    REQUIRE(GraphValidator::acceptsProposedIssues({ first, second }, {}));
+    REQUIRE(GraphValidator::acceptsProposedIssues({ first, second }, { first }));
+    REQUIRE_FALSE(GraphValidator::acceptsProposedIssues({}, { first }));
+    REQUIRE_FALSE(GraphValidator::acceptsProposedIssues({ first }, { first }));
+    REQUIRE_FALSE(GraphValidator::acceptsProposedIssues(
+            { first, second }, { changedAddress }));
 }
 
 TEST_CASE("Boundary-free graph fragments retain legacy validation semantics",
