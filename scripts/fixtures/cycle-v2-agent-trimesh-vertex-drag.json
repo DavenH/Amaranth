@@ -52,7 +52,9 @@
       "command": "assertState",
       "path": "expandedNodeControls.trimesh.selectedVertexParameters.4.value",
       "lessThan": 0.36
-    }
+    },
+    { "command": "undo", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "assertState", "path": "expandedNodeId", "equals": "waveMesh" }
   ],
   "quit": true
 }

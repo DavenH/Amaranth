@@ -174,7 +174,9 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(
     result.domain = domain;
     result.rows = rows;
     result.columns = columns;
+    result.midiNote = midiNote;
     result.cyclic = cyclic;
+    result.pitchSpansColumns = pitchSpansColumns;
 
     TrimeshBlockwiseDsp blockwiseDsp;
     SignalPayload slice;

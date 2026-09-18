@@ -184,6 +184,7 @@ private:
         PortDomain domain { PortDomain::ControlSignal };
         RenderScalePolicy scalePolicy { RenderScalePolicy::Unipolar };
         int midiNote { 48 };
+        bool pitchSpansColumns {};
     };
 
     static juce::Rectangle<float> meshPreviewContentArea(juce::Rectangle<float> area);

@@ -28,21 +28,22 @@ its pixel-width grid. Direct harmonic parity, invariant surface data, and a
 There are no open deterministic P0 or P1 regressions as of 2026-09-09.
 Resolved and no-longer-reproducing entries have been removed from this ledger.
 
-## P2: Undoing a Trimesh morph gesture closes the expanded editor
+## Resolved P2: Undoing a Trimesh morph gesture closed the expanded editor
 
-The 2026-09-18 Organ 4 red-rail gesture fixture observed that undo restores
-the morph value but clears the expanded editor. Reopening the same node shows
-the restored harmonic pitch. The editor closure is still open as a separate
-selection and editor-lifecycle issue; the fixture reopens it before asserting
-the restored panel state.
+The 2026-09-18 Organ 4 red-rail gesture fixture observed that undo restored
+the morph value but cleared the expanded editor. Undo and redo now reconcile
+selection with the restored graph and retain the editor for a surviving node.
+The native Trimesh vertex-drag fixture asserts that the editor stays open after
+undo; `TestNodeCanvasAuthoring.cpp` also covers undo and redo.
 
-## P2: Broader Trimesh tests retain stale control and compact grid expectations
+## P2: Broader Trimesh tests retain a stale control-region expectation
 
 The 2026-09-18 `CycleV2_tests '[trimesh]'` run passed the mapped pitch tests but
-failed the control-region count (`28` versus `22`) and compact versus expanded
-column equality (`96` versus `450`). The latter conflicts with the deliberate
-expanded pixel-width sampling. Both remain open for their respective UI
-contracts; log: `/tmp/cycle-v2-trimesh-tests.txt`.
+failed the control-region count (`28` versus `22`). The compact versus expanded
+column equality (`96` versus `450`) was also stale after expanded pixel-width
+sampling; its test now checks shared source data at their respective resolutions.
+The control-region expectation remains open; log:
+`/tmp/cycle-v2-trimesh-tests.txt`.
 
 ## Resolved P2: Mod Wheel release published duplicate graph/Spy updates
 

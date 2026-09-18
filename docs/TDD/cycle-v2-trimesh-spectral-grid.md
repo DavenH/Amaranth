@@ -63,6 +63,9 @@ same width scaling and keeps single-node invalidation.
       row count, and display placement.
 - [x] Expanded local morph movement keeps the expanded pixel-width column
       count instead of restoring the 96-column compact preview.
+- [x] Compact pitch-spanning previews resample each column's valid harmonic
+      rows into the full display height; the expanded panel retains its
+      per-column harmonic samples and placement.
 
 Evidence: `scripts/fixtures/cycle-v2-agent-organ-harmonic-grid.json`,
 `/private/tmp/cycle-v2-organ-harmonic-grid-report.json`, and
@@ -74,3 +77,7 @@ report and capture are `/private/tmp/cycle-v2-red-axis-pitch-report.json` and
 `/private/tmp/cycle-v2-red-axis-pitch.png`. The Organ preset baseline capture
 at `/private/tmp/cycle-v2-red-axis-before.png` shows the same 3D surface and
 harmonic guides before the red slice moves; the 2D slice changes as expected.
+The compact pitch preview has a focused high-note row assertion in
+`TestTrimeshNodeDsp.cpp` and a native Organ screenshot at
+`/private/tmp/cycle-v2-compact-pitch.png` from
+`scripts/fixtures/cycle-v2-agent-trimesh-compact-pitch-preview.json`.

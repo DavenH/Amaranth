@@ -155,6 +155,7 @@ private:
             const String& statusMessage);
     void refreshPresentation();
     void clearDocumentSelection();
+    void reconcileDocumentSelection();
     void spaceNodesAfterSplice(
             const String& upstreamNodeId,
             const String& insertedNodeId,

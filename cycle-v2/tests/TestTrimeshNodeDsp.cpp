@@ -805,6 +805,24 @@ TEST_CASE("Trimesh surface renderer creates vertically oriented heatmap images",
     requirePixelNear(1, 0, 0.90f);
 }
 
+TEST_CASE("Compact pitch columns use each key's harmonic range across the preview height",
+        "[cycle-v2][nodes][trimesh][spectral][key-scale][compact]") {
+    TrimeshRenderData renderData;
+    renderData.rows = LogRegionMapping(Constants::LowestMidiNote).regionSize();
+    renderData.columns = 3;
+    renderData.pitchSpansColumns = true;
+    renderData.surface.resize((size_t) renderData.rows * 3);
+    const size_t highColumnOffset = (size_t) renderData.rows * 2;
+    renderData.surface[highColumnOffset] = 1.f;
+
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+    const Image image = TrimeshSurfaceRenderer::createHeatmapImage(renderData, profile);
+    REQUIRE(image.isValid());
+    REQUIRE(image.getPixelAt(2, renderData.rows / 2)
+            != TrimeshSurfaceRenderer::colourForProfile(0.f, profile));
+}
+
 TEST_CASE("Trimesh side panel renderer keeps vertex rails inside parameter rows", "[cycle-v2][nodes][trimesh]") {
     const Rectangle<float> parameterArea { 20.f, 40.f, 180.f, 140.f };
 
@@ -2574,7 +2592,7 @@ TEST_CASE("Trimesh panel bridge maps spectral grids by signal domain",
     REQUIRE(*std::max_element(phase.surface.begin(), phase.surface.end()) <= 1.f);
 }
 
-TEST_CASE("Compact and expanded Trimesh views share mapped spectral data",
+TEST_CASE("Compact and expanded Trimesh views sample the same spectral source",
         "[cycle-v2][nodes][trimesh][compact][expanded][spectral]") {
     ScopedJuceInitialiser_GUI juce;
     Node node {
@@ -2610,9 +2628,16 @@ TEST_CASE("Compact and expanded Trimesh views share mapped spectral data",
         widget.paintExpanded(expandedGraphics, node, expandedImage.getBounds().toFloat());
         const TrimeshRenderData expanded = widget.renderDataForAutomation();
 
+        REQUIRE(compact.domain == expanded.domain);
         REQUIRE(compact.rows == expanded.rows);
-        REQUIRE(compact.columns == expanded.columns);
-        REQUIRE(compact.slice == expanded.slice);
-        REQUIRE(compact.surface == expanded.surface);
+        REQUIRE(compact.columns < expanded.columns);
+        REQUIRE(std::equal(
+                compact.slice.begin(),
+                compact.slice.end(),
+                expanded.slice.begin()));
+        REQUIRE(std::equal(
+                compact.surface.begin(),
+                compact.surface.begin() + compact.rows,
+                expanded.surface.begin()));
     }
 }

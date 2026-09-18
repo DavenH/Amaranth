@@ -124,7 +124,8 @@ void TrimeshWidget::paintCompact(
             || compactHeatmap.revision != compactRevision
             || compactHeatmap.domain != profile.getDomain()
             || compactHeatmap.scalePolicy != profile.getScalePolicy()
-            || compactHeatmap.midiNote != previewMidiNote) {
+            || compactHeatmap.midiNote != renderData.midiNote
+            || compactHeatmap.pitchSpansColumns != renderData.pitchSpansColumns) {
         compactHeatmap.image = TrimeshSurfaceRenderer::createHeatmapImage(renderData, profile);
         compactHeatmap.valueCount = renderData.surface.size();
         compactHeatmap.rows = renderData.rows;
@@ -132,7 +133,8 @@ void TrimeshWidget::paintCompact(
         compactHeatmap.revision = compactRevision;
         compactHeatmap.domain = profile.getDomain();
         compactHeatmap.scalePolicy = profile.getScalePolicy();
-        compactHeatmap.midiNote = previewMidiNote;
+        compactHeatmap.midiNote = renderData.midiNote;
+        compactHeatmap.pitchSpansColumns = renderData.pitchSpansColumns;
     }
 
     if (compactHeatmap.image.isValid()) {
