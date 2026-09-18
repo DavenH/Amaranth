@@ -81,7 +81,7 @@ void RealtimeGraphRenderer::setPreparedGraph(PreparedGraph* graph) {
     if (preparedGraph == graph) {
         return;
     }
-    resetVoices();
+    resetVoices(graph == nullptr);
     preparedGraph = graph;
     const float nextGain = graph == nullptr ? 1.f : graph->plan.outputGain;
     requestedGraphOutputGain.store(nextGain, std::memory_order_release);
@@ -195,7 +195,7 @@ uint64_t RealtimeGraphRenderer::process(
     return callback;
 }
 
-void RealtimeGraphRenderer::resetVoices() {
+void RealtimeGraphRenderer::resetVoices(bool resetControls) {
     for (auto& voice : voices) {
         voice.context.events.clear();
         voice.context.controlEvents.clear();
@@ -204,7 +204,9 @@ void RealtimeGraphRenderer::resetVoices() {
         voice.normalizedTime = 0.f;
     }
     scheduledEventCount = 0;
-    midiControls.reset();
+    if (resetControls) {
+        midiControls.reset();
+    }
     activeVoices.store(0, std::memory_order_relaxed);
 }
 

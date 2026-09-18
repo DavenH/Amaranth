@@ -2,8 +2,8 @@
 
 ## Status
 
-In progress (2026-09-17). The focused On Release repair is implemented and
-verified; Live commit deduplication and the Filter Saw 2 audio A/B remain open.
+In progress (2026-09-17). The focused On Release repair and Filter Saw 2 live
+audio path are verified; Live commit deduplication remains open.
 
 ## Evidence
 
@@ -43,6 +43,24 @@ revision 4. One measured worker refresh took 192 ms, with no audio deadline
 overruns or telemetry drops during the gesture. These timings are evidence, not
 fixed pass/fail limits. The existing Honerism Spy fixture also passes with an
 asynchronous settle before its post-release assertion.
+
+An offline Filter Saw 2 capture with otherwise identical note events and CC1
+values 0 versus 127 produced RMS 0.0403 versus 0.0631. This confirms the DSP
+path responds to CC1, but is not sufficient to close the older widget-to-live
+audition report without a direct live capture.
+
+The direct live fixture then reproduced the older report: wheel positions near
+0 and 124 yielded byte-identical audio. `PerformanceKeyboard` does enqueue
+CC1, but the durable morph edit prepares a replacement graph after the CC
+event. `RealtimeGraphRenderer::setPreparedGraph` resets voices and the entire
+`MidiControlState`, so the subsequent note sees CC1=0. Graph adoption should
+reset voice execution state but retain channel-controller state; explicit graph
+removal/device teardown may reset both. The live fixture is the acceptance
+test for this boundary.
+
+After preserving controller state across non-null graph adoption, the direct
+live capture measured RMS 0.0320 at low wheel and 0.0670 at high wheel. The
+fixture now has thresholds that fail the original identical-output behavior.
 
 ## Authority and design constraints
 

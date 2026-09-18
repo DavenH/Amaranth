@@ -1,0 +1,32 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/filter-saw-2.cyclegraph" },
+    {
+      "command": "captureAudio",
+      "sampleRate": 48000,
+      "blockSize": 256,
+      "channels": 2,
+      "durationMs": 1000,
+      "path": "/private/tmp/cycle-v2-filter-saw-mod-low.wav",
+      "events": [
+        { "type": "controller", "sample": 0, "channel": 1, "number": 1, "value": 0 },
+        { "type": "noteOn", "sample": 1, "channel": 1, "note": 60, "velocity": 0.8 }
+      ],
+      "rmsGreaterThan": 0.00001
+    },
+    {
+      "command": "captureAudio",
+      "sampleRate": 48000,
+      "blockSize": 256,
+      "channels": 2,
+      "durationMs": 1000,
+      "path": "/private/tmp/cycle-v2-filter-saw-mod-high.wav",
+      "events": [
+        { "type": "controller", "sample": 0, "channel": 1, "number": 1, "value": 127 },
+        { "type": "noteOn", "sample": 1, "channel": 1, "note": 60, "velocity": 0.8 }
+      ],
+      "rmsGreaterThan": 0.00001
+    }
+  ],
+  "quit": true
+}

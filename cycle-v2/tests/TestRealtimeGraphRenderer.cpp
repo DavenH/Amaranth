@@ -575,6 +575,58 @@ TEST_CASE("Realtime voice length updates the active voice-time clock",
     REQUIRE(fastDelta == Catch::Approx(10.f * slowDelta).margin(1.0e-6f));
 }
 
+TEST_CASE("Realtime graph replacement preserves channel controllers for the next note",
+        "[cycle-v2][audio-device][realtime][modulation][graph-adoption]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "mod", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "mod", "value", "out", "time",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    const auto renderAfterReplacement = [&](int controllerValue) {
+        constexpr int frameCount = 64;
+        constexpr double sampleRate = 44'100.0;
+        constexpr double blockDuration = frameCount / sampleRate;
+        AudioExecutionSpec spec;
+        spec.maximumFrameCount = frameCount;
+        spec.sampleRate = sampleRate;
+        auto initial = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+        auto replacement = RealtimeGraphRenderer::prepareGraph(compiled.plan, 2, spec);
+        RealtimeGraphRenderer renderer;
+        RealtimeMidiEventQueue queue;
+        renderer.setPreparedGraph(initial.get());
+        REQUIRE(queue.enqueue(
+                MidiMessage::controllerEvent(1, 1, controllerValue),
+                MidiEventSource::PerformanceKeyboard,
+                1.0));
+
+        AudioBuffer<float> output(2, frameCount);
+        float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+        renderer.process(queue, channels, 2, frameCount, sampleRate, 1.0);
+        renderer.setPreparedGraph(replacement.get());
+        REQUIRE(queue.enqueue(
+                MidiMessage::noteOn(1, 60, (uint8) 100),
+                MidiEventSource::PerformanceKeyboard,
+                1.0 + blockDuration));
+        renderer.process(
+                queue,
+                channels,
+                2,
+                frameCount,
+                sampleRate,
+                1.0 + blockDuration);
+        REQUIRE(renderer.diagnostics(queue).graphRevision == 2);
+        return output.getSample(0, frameCount - 1);
+    };
+
+    REQUIRE(renderAfterReplacement(127) > renderAfterReplacement(0) + 0.1f);
+}
+
 TEST_CASE("Realtime voice-time clock uses the compiled Voice Context length",
         "[cycle-v2][audio-device][realtime][voice-context][voice-length]") {
     const auto renderDelta = [](float voiceLength) {

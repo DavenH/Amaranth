@@ -78,7 +78,7 @@ public:
             double sampleRate,
             double callbackStartSeconds,
             AudioPerformanceMetrics::RealtimeSample* performanceSample = nullptr);
-    void resetVoices();
+    void resetVoices(bool resetControls);
     Diagnostics diagnostics(const RealtimeMidiEventQueue& events) const {
         return {
                 callbackCounter.load(std::memory_order_acquire),
