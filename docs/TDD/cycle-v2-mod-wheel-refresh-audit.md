@@ -44,6 +44,13 @@ overruns or telemetry drops during the gesture. These timings are evidence, not
 fixed pass/fail limits. The existing Honerism Spy fixture also passes with an
 asynchronous settle before its post-release assertion.
 
+The general canvas smoke fixture completed with four synchronous refresh
+requests, including a 169 ms maximum during topology/authoring work; that is
+separate from the wheel's zero synchronous refreshes and remains a useful
+baseline for the larger scheduler extraction. The existing Delay slider
+performance fixture could not resolve its older `expanded:delay.parameter.time`
+target, so it currently provides no valid slider telemetry.
+
 An offline Filter Saw 2 capture with otherwise identical note events and CC1
 values 0 versus 127 produced RMS 0.0403 versus 0.0631. This confirms the DSP
 path responds to CC1, but is not sufficient to close the older widget-to-live

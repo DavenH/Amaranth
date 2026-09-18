@@ -53,6 +53,12 @@ the gesture marker without restoring its prior effective fingerprint. The
 session's cancel path now restores that fingerprint so retrying an aborted
 movement is accepted instead of misclassified as a no-op.
 
+All explicit Live-versus-On-Release checks in `NodeCanvas` and
+`NodeEditorCommandService` now consult `PresentationRefreshPolicy`; the canvas
+preference toggle still chooses the enum value, but does not implement update
+behavior. This centralizes the boolean policy choice without yet unifying the
+family-specific commit callbacks or eliminating their separate schedulers.
+
 The current policy distribution includes:
 
 - ten explicit `ProbeRefreshMode` branches across `NodeEditorCommandService`

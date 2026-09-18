@@ -6,6 +6,8 @@ using namespace CycleV2;
 
 TEST_CASE("Presentation refresh policy keeps local movement and defers On Release probes",
         "[cycle-v2][runtime][presentation-policy]") {
+    REQUIRE_FALSE(PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
+            ProbeRefreshMode::OnGestureCommit));
     const PresentationRefreshDecision movement = PresentationRefreshPolicy::decide({
             EditPhase::Movement,
             ProbeRefreshMode::OnGestureCommit,
@@ -29,6 +31,8 @@ TEST_CASE("Presentation refresh policy keeps local movement and defers On Releas
 
 TEST_CASE("Presentation refresh policy reuses a published Live result on commit",
         "[cycle-v2][runtime][presentation-policy]") {
+    REQUIRE(PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
+            ProbeRefreshMode::LiveLatest));
     const PresentationRefreshDecision movement = PresentationRefreshPolicy::decide({
             EditPhase::Movement,
             ProbeRefreshMode::LiveLatest,

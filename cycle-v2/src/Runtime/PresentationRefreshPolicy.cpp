@@ -26,4 +26,15 @@ PresentationRefreshDecision PresentationRefreshPolicy::decide(
     return decision;
 }
 
+bool PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
+        ProbeRefreshMode mode) {
+    return decide({
+            EditPhase::Movement,
+            mode,
+            std::nullopt,
+            true,
+            false
+    }).downstream == DownstreamRefresh::LatestAsync;
+}
+
 }

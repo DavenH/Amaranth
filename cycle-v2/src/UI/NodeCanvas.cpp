@@ -1869,14 +1869,8 @@ void NodeCanvas::beginPreviewModWheelGesture() {
     previewModWheelGestureChanged = false;
     previewModWheelGestureValue = presentation.previewModWheelValue();
     previewModWheelGestureRefreshMode = probeRailState.refreshMode;
-    const auto decision = PresentationRefreshPolicy::decide({
-            EditPhase::Movement,
-            previewModWheelGestureRefreshMode,
-            std::nullopt,
-            true,
-            false
-    });
-    if (decision.downstream == DownstreamRefresh::LatestAsync) {
+    if (PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
+                previewModWheelGestureRefreshMode)) {
         previewModWheelGestureGraph = std::make_shared<const NodeGraph>(
                 commands.editingGraph());
     }
@@ -1893,14 +1887,8 @@ bool NodeCanvas::updatePreviewModWheelGesture(int value) {
 
     previewModWheelGestureValue = selectedValue;
     previewModWheelGestureChanged = true;
-    const auto decision = PresentationRefreshPolicy::decide({
-            EditPhase::Movement,
-            previewModWheelGestureRefreshMode,
-            std::nullopt,
-            true,
-            false
-    });
-    if (decision.downstream == DownstreamRefresh::None) {
+    if (!PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
+                previewModWheelGestureRefreshMode)) {
         return true;
     }
 
@@ -1921,7 +1909,8 @@ void NodeCanvas::endPreviewModWheelGesture() {
     }
 
     const bool shouldPublish = previewModWheelGestureChanged
-            && previewModWheelGestureRefreshMode == ProbeRefreshMode::OnGestureCommit;
+            && !PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
+                    previewModWheelGestureRefreshMode);
     const bool changed = previewModWheelGestureChanged;
     const int finalValue = previewModWheelGestureValue;
     previewModWheelGestureActive = false;
@@ -2237,7 +2226,8 @@ bool NodeCanvas::publishCurveState(
     if (!result.succeeded()) {
         return false;
     }
-    if (probeRailState.refreshMode == ProbeRefreshMode::LiveLatest) {
+    if (PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
+                probeRailState.refreshMode)) {
         scheduleCompiledStateRefresh();
     }
     requestCanvasRepaint();

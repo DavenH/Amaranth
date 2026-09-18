@@ -34,6 +34,7 @@ struct PresentationRefreshDecision {
 class PresentationRefreshPolicy final {
 public:
     static PresentationRefreshDecision decide(const PresentationEditContext& context);
+    static bool schedulesDownstreamDuringMovement(ProbeRefreshMode mode);
 };
 
 }

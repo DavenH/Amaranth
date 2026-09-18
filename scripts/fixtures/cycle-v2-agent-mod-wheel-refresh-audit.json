@@ -21,6 +21,7 @@
     { "command": "inspectAudioPerformance" },
     { "command": "waitForIdle", "delayMs": 3500 },
     { "command": "assertState", "path": "performance.previewPlaying", "equals": false },
+    { "command": "waitForIdle", "delayMs": 500 },
     { "command": "assertState", "path": "performance.audioPlanCopyCount", "equals": 3 }
   ],
   "quit": true
