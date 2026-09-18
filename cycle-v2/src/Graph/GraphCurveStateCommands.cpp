@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Guide/GuideGraphEditor.h"
@@ -298,20 +299,20 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
                     };
                 }
 
-                auto parameterResult = GraphEditor().setNodeParametersAtomic(
+                auto parameterResult = GraphNodeStateEditor().setNodeParametersAtomic(
                         graph, publication.nodeId, parameters);
                 if (!parameterResult.succeeded()) {
                     return parameterResult;
                 }
                 GraphEditResult modelResult;
                 if (replacesTransientSnapshot) {
-                    modelResult = GraphEditor().replaceTransientNodeModel(
+                    modelResult = GraphNodeStateEditor().replaceTransientNodeModel(
                             graph,
                             publication.nodeId,
                             currentRevision,
                             publication.model);
                 } else {
-                    modelResult = GraphEditor().replaceNodeModel(
+                    modelResult = GraphNodeStateEditor().replaceNodeModel(
                             graph,
                             publication.nodeId,
                             currentRevision,
@@ -320,7 +321,7 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
                 modelResult.changed = modelResult.changed || parameterResult.changed;
                 accumulateChange(modelResult.changes, parameterResult.changes);
                 if (typedModel->editorJSON().getDynamicObject() != nullptr) {
-                    auto editorResult = GraphEditor().setNodeEditorState(
+                    auto editorResult = GraphNodeStateEditor().setNodeEditorState(
                             graph, publication.nodeId, typedModel->editorJSON());
                     if (!editorResult.succeeded()) {
                         return editorResult;

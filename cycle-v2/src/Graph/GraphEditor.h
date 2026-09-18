@@ -76,40 +76,9 @@ public:
     GraphEditResult spliceNodeIntoEdge(NodeGraph& graph, size_t edgeIndex, const String& nodeId) const;
     GraphEditResult removeEdgeAt(NodeGraph& graph, size_t index) const;
     GraphEditResult removeNode(NodeGraph& graph, const String& nodeId) const;
-    GraphEditResult setNodeParameter(
-            NodeGraph& graph,
-            const String& nodeId,
-            const String& parameterId,
-            const String& label,
-            const String& value) const;
-    GraphEditResult setNodeParametersAtomic(
-            NodeGraph& graph,
-            const String& nodeId,
-            const std::vector<NodeParameter>& parameters) const;
-    GraphEditResult replaceNodeModel(
-            NodeGraph& graph,
-            const String& nodeId,
-            uint64_t expectedRevision,
-            NodeModelStatePtr model) const;
-    GraphEditResult replaceTransientNodeModel(
-            NodeGraph& graph,
-            const String& nodeId,
-            uint64_t expectedRevision,
-            NodeModelStatePtr model) const;
-    GraphEditResult setNodeEditorState(
-            NodeGraph& graph,
-            const String& nodeId,
-            var editorState) const;
-    GraphEditResult setNodeAudioResource(
-            NodeGraph& graph,
-            NodeAudioResourceEdit edit) const;
-    GraphEditResult removeNodeAudioResource(
-            NodeGraph& graph,
-            const String& nodeId) const;
 
 private:
     const Node* findNode(const NodeGraph& graph, const String& nodeId) const;
-    Node* findMutableNode(NodeGraph& graph, const String& nodeId) const;
     const Port* findPort(const Node& node, const String& portId, bool input) const;
     String createUniqueNodeId(const NodeGraph& graph, NodeKind kind) const;
     String createUniqueProbeId(const NodeGraph& graph) const;

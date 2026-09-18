@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Nodes/Guide/GuideGraphEditor.h"
 
 namespace CycleV2 {
@@ -173,7 +174,7 @@ GraphEditResult GraphCommandDispatcher::setNodeParameter(
                 delta.captureNodeParameter(graph, nodeId, parameterId);
             },
             [&](auto& graph) {
-                return GraphEditor().setNodeParameter(
+                return GraphNodeStateEditor().setNodeParameter(
                         graph, nodeId, parameterId, label, value);
             });
 }
@@ -187,7 +188,7 @@ GraphEditResult GraphCommandDispatcher::replaceNodeModel(
                 delta.captureNodeModel(graph, nodeId);
             },
             [&](auto& graph) {
-                return GraphEditor().replaceNodeModel(
+                return GraphNodeStateEditor().replaceNodeModel(
                         graph, nodeId, expectedRevision, std::move(model));
             });
 }
@@ -200,7 +201,7 @@ GraphEditResult GraphCommandDispatcher::setNodeEditorState(
                 delta.captureNodeEditorState(graph, nodeId);
             },
             [&](auto& graph) {
-                return GraphEditor().setNodeEditorState(
+                return GraphNodeStateEditor().setNodeEditorState(
                         graph, nodeId, std::move(editorState));
             });
 }
@@ -208,14 +209,14 @@ GraphEditResult GraphCommandDispatcher::setNodeEditorState(
 GraphEditResult GraphCommandDispatcher::setNodeAudioResource(
         NodeAudioResourceEdit edit) {
     return apply([&](auto& graph) {
-        return GraphEditor().setNodeAudioResource(graph, std::move(edit));
+        return GraphNodeStateEditor().setNodeAudioResource(graph, std::move(edit));
     });
 }
 
 GraphEditResult GraphCommandDispatcher::removeNodeAudioResource(
         const juce::String& nodeId) {
     return apply([&](auto& graph) {
-        return GraphEditor().removeNodeAudioResource(graph, nodeId);
+        return GraphNodeStateEditor().removeNodeAudioResource(graph, nodeId);
     });
 }
 

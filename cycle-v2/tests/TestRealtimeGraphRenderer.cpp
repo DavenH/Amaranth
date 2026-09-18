@@ -9,6 +9,7 @@
 
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/NodeParameterMap.h"
 #include "Graph/GraphSerializer.h"
@@ -22,7 +23,7 @@ namespace {
 
 std::vector<float> renderOutputGain(float gainUnitValue, float& compiledGain) {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "out",
             "gain",
@@ -120,13 +121,13 @@ std::vector<float> renderAttachedVelocityMapping(
             .getChildFile("bright-lead-3.cyclegraph");
     GraphLoadResult loaded = GraphSerializer().loadJsonString(preset.loadFileAsString());
     REQUIRE(loaded.succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             loaded.graph,
             "morph",
             "blueSource",
             "Blue Source",
             source).succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             loaded.graph,
             "morph",
             "blueConstant",
@@ -642,7 +643,7 @@ TEST_CASE("Realtime voice-time clock uses the compiled Voice Context length",
                 { "constant", "Constant", "0.5" }
         });
         graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
-        REQUIRE(editor.setNodeParameter(
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
                 graph,
                 "voice",
                 "voiceLength",

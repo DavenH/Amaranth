@@ -3,6 +3,7 @@
 
 #include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
@@ -1343,7 +1344,7 @@ TEST_CASE("Trimesh selection remains empty or explicit while morph position chan
     REQUIRE(model.getSelectedVertexParameters().size() == 6);
     REQUIRE_FALSE(model.getSelectedVertexParameters().front().enabled);
 
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "yellow", "Yellow", "0.8").succeeded());
     model.syncFromNode(*graph.findNode("mesh"));
     REQUIRE(model.getSelectedVertexIndex() == -1);
@@ -1356,10 +1357,10 @@ TEST_CASE("Trimesh selection remains empty or explicit while morph position chan
     REQUIRE(selectedIndex >= 0);
     auto selectedState = std::make_unique<DynamicObject>();
     selectedState->setProperty("selectedVertexId", selectedIndex);
-    REQUIRE(editor.setNodeEditorState(
+    REQUIRE(GraphNodeStateEditor().setNodeEditorState(
             graph, "mesh", var(selectedState.release())).succeeded());
 
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "red", "Red", "0.2").succeeded());
     model.syncFromNode(*graph.findNode("mesh"));
     REQUIRE(model.getSelectedVertexIndex() == selectedIndex);
@@ -2249,9 +2250,9 @@ TEST_CASE("Trimesh link parameters drive mature linked-vertex interaction",
     TrimeshPanelBridge bridge;
     GraphEditor editor;
 
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "link.red", "Link Red", "0").succeeded());
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "link.blue", "Link Blue", "0").succeeded());
     bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
     VertCube* cube = bridge.getModel().getMeshForPanel().getCubes().front();
@@ -2261,13 +2262,13 @@ TEST_CASE("Trimesh link parameters drive mature linked-vertex interaction",
     bridge.getInteractor2D().setMovingVertsFromSelected();
     REQUIRE(bridge.getInteractor2D().getSelectedMovingVerts().size() == 2);
 
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "link.red", "Link Red", "1").succeeded());
     bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
     REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 4);
     REQUIRE(bridge.getInteractor2D().getSelectedMovingVerts().size() == 4);
 
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "link.blue", "Link Blue", "1").succeeded());
     bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
     REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 8);

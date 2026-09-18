@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "UI/NodeCanvasPresentation.h"
 
@@ -75,7 +76,7 @@ TEST_CASE("Node canvas marks only authored global processing",
     REQUIRE_FALSE(NodeCanvasPresentation::hasGlobalProcessingIndicator(graph, "missing"));
 
     graph.addNode(factory.createNode(NodeKind::Equalizer, "invalidGlobalEq", {}));
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "invalidGlobalEq",
             "processingScope",

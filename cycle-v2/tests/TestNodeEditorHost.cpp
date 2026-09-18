@@ -3,6 +3,7 @@
 
 #include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
@@ -2439,7 +2440,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     GraphEditor graphEditor;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
-    REQUIRE(graphEditor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "env", "purpose", "Purpose", "pitch").succeeded());
     EnvelopeNodeModel envelopeModel;
     for (VertCube* cube : envelopeModel.getMesh().getCubes()) {
@@ -3001,7 +3002,7 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
             {}));
     auto editorState = std::make_unique<DynamicObject>();
     editorState->setProperty("selectedVertexId", 2);
-    REQUIRE(GraphEditor().setNodeEditorState(
+    REQUIRE(GraphNodeStateEditor().setNodeEditorState(
             graph, "mesh", var(editorState.release())).succeeded());
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher dispatcher(document);
@@ -3649,7 +3650,7 @@ TEST_CASE("Trimesh drag keeps movement local and publishes one commit snapshot",
     graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
     auto editorState = std::make_unique<DynamicObject>();
     editorState->setProperty("selectedVertexId", 0);
-    REQUIRE(GraphEditor().setNodeEditorState(
+    REQUIRE(GraphNodeStateEditor().setNodeEditorState(
             graph, "mesh", var(editorState.release())).succeeded());
     addUnrelatedInteractionState(graph);
     GraphDocument document(std::move(graph));

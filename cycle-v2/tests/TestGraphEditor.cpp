@@ -5,6 +5,7 @@
 #include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
@@ -25,14 +26,14 @@ TEST_CASE("Envelope purpose changes output grammar and removes stale edges atomi
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
 
-    REQUIRE(editor.setNodeParameter(graph, "env", "purpose", "Purpose", "volume").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "env", "purpose", "Purpose", "volume").succeeded());
     REQUIRE(editor.connect(
             graph,
             { "env", "env", false },
             { "multiply", "right", true }).succeeded());
     REQUIRE(graph.getEdges().size() == 1);
 
-    const auto changed = editor.setNodeParametersAtomic(graph, "env", {
+    const auto changed = GraphNodeStateEditor().setNodeParametersAtomic(graph, "env", {
             { "purpose", "Purpose", "scratch" },
             { "logarithmic", "Logarithmic", "1" }
     });
@@ -74,7 +75,7 @@ TEST_CASE("Envelope purpose exposes control volume and pitch domains",
     };
 
     for (const auto& item : expected) {
-        REQUIRE(editor.setNodeParameter(
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
                 graph,
                 "env",
                 "purpose",
@@ -95,7 +96,7 @@ TEST_CASE("Pitch Envelope routes only to the typed Voice Context pitch port",
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "env", "purpose", "Purpose", "pitch").succeeded());
 
     const auto voicePitch = editor.connect(
@@ -201,7 +202,7 @@ TEST_CASE("Global effect scope can be repaired into the voice graph and undone",
     graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "global", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "shape",
             "processingScope",
@@ -258,7 +259,7 @@ TEST_CASE("Envelope purpose edit restores its removed routing through document u
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
-    REQUIRE(editor.setNodeParameter(graph, "env", "purpose", "Purpose", "volume").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "env", "purpose", "Purpose", "volume").succeeded());
     REQUIRE(editor.connect(
             graph,
             { "env", "env", false },
@@ -339,7 +340,7 @@ TEST_CASE("Graph editor rejects normalized no-op parameter attempts", "[cycle-v2
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Delay, "delay", {}));
     const uint64_t graphRevision = graph.getRevision();
 
-    const auto result = GraphEditor().setNodeParameter(
+    const auto result = GraphNodeStateEditor().setNodeParameter(
             graph, "delay", "time", "Time", "0.500000");
 
     REQUIRE(result.succeeded());
@@ -352,9 +353,9 @@ TEST_CASE("IR length uses one effective normalizer for graph and DSP edits",
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {}));
 
-    const auto first = GraphEditor().setNodeParameter(graph, "ir", "size", "Size", "0.51");
-    const auto sameLength = GraphEditor().setNodeParameter(graph, "ir", "size", "Size", "0.56");
-    const auto nextLength = GraphEditor().setNodeParameter(graph, "ir", "size", "Size", "0.58");
+    const auto first = GraphNodeStateEditor().setNodeParameter(graph, "ir", "size", "Size", "0.51");
+    const auto sameLength = GraphNodeStateEditor().setNodeParameter(graph, "ir", "size", "Size", "0.56");
+    const auto nextLength = GraphNodeStateEditor().setNodeParameter(graph, "ir", "size", "Size", "0.58");
 
     REQUIRE(first.succeeded());
     REQUIRE_FALSE(first.changed);
@@ -870,7 +871,7 @@ TEST_CASE("Voice-time scratch exclusion publishes, restores inheritance, and und
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::Envelope, "scratch", {}));
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "scratch", "purpose", "Purpose", "scratch").succeeded());
     graph.addNode(factory.createNode(NodeKind::ScratchDefaultOverride, "voiceTime", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
@@ -979,7 +980,7 @@ TEST_CASE("Graph editor updates node parameters", "[cycle-v2][graph]") {
     REQUIRE(initialMesh != nullptr);
     const size_t initialParameterCount = initialMesh->parameters.size();
 
-    const auto updateResult = editor.setNodeParameter(
+    const auto updateResult = GraphNodeStateEditor().setNodeParameter(
             graph,
             "waveMesh",
             "polarity",
@@ -990,7 +991,7 @@ TEST_CASE("Graph editor updates node parameters", "[cycle-v2][graph]") {
     REQUIRE(updateResult.nodeId == "waveMesh");
     REQUIRE(parameterValueForNode(*graph.findNode("waveMesh"), "polarity") == "unipolar");
 
-    const auto addResult = editor.setNodeParameter(
+    const auto addResult = GraphNodeStateEditor().setNodeParameter(
             graph,
             "waveMesh",
             "tempoSync",
@@ -1007,9 +1008,9 @@ TEST_CASE("Graph editor validates and normalizes declared parameters", "[cycle-v
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
 
-    const auto normalized = GraphEditor().setNodeParameter(
+    const auto normalized = GraphNodeStateEditor().setNodeParameter(
             graph, "voice", "portamento", "Ignored Label", "true");
-    const auto invalid = GraphEditor().setNodeParameter(
+    const auto invalid = GraphNodeStateEditor().setNodeParameter(
             graph, "voice", "octave", "Octave", "99");
 
     REQUIRE(normalized.succeeded());
@@ -1022,7 +1023,7 @@ TEST_CASE("Graph editor validates and normalizes declared parameters", "[cycle-v
 TEST_CASE("Graph editor reports missing node parameter updates", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
 
-    const auto result = GraphEditor().setNodeParameter(
+    const auto result = GraphNodeStateEditor().setNodeParameter(
             graph,
             "missing",
             "gain",

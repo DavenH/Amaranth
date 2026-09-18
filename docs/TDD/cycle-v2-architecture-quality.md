@@ -98,6 +98,16 @@ Guide implementation is 279 lines. Focused Guide assignment, resource, and
 heatmap tests pass (103 assertions across eight cases). The Guide service
 continues to use the graph's authoritative resource and assignment methods.
 
+Third slice: moved seven node parameter, model, editor-state, and audio-resource
+edit operations into `GraphNodeStateEditor`, preserving their existing
+validation and `GraphEditResult` behavior. The dispatcher and direct tests use
+the new service; the old methods were deleted. `GraphEditor.cpp` fell from 766
+to 345 lines, its header from 119 to 88 lines, and the new implementation is
+430 lines. Focused parameter, resource, Trimesh reconciliation, and transaction
+tests pass (73 assertions across seven cases). The architecture audit reports
+21 size triggers among 432 Cycle V2 C++ files. This is composition of the
+editors, not a change to the graph aggregate or UI preview path.
+
 UI connection/splice preview remains open. Today the UI copies `NodeGraph`
 and invokes `GraphEditor`, while `GraphEditor::connect` copies it again for
 whole-graph validation. A facade around that path would hide the dependency

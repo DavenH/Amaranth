@@ -5,6 +5,7 @@
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Graph/NodeParameterMap.h"
@@ -145,7 +146,7 @@ TEST_CASE("Graph documents save canonical JSON with stable line endings",
 TEST_CASE("Graph JSON preserves parameter precision needed for Cycle parity",
         "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "voice",
             "voiceLength",
@@ -485,7 +486,7 @@ TEST_CASE("Graph JSON migrates legacy Pan range to its spectral Trimesh",
     graph.addNode(factory.createNode(NodeKind::SpectralLayer, "pan", {}));
     graph.addNode(factory.createNode(NodeKind::Add, "operation", {}));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "base",
             "signalType",
@@ -494,7 +495,7 @@ TEST_CASE("Graph JSON migrates legacy Pan range to its spectral Trimesh",
     graph.addEdge({
             "base", "out", "operation", "left", PortDomain::SpectralMagnitudeSignal
     });
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "mesh",
             "signalType",
