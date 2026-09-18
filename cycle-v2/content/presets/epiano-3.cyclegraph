@@ -6,14 +6,22 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 945.59998, "y": 826.0 },
-            "parameters": { "octave": 0, "voiceLength": 0.522686362, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "position": { "x": 370.42462, "y": 473.00006 },
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.522686362,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": true,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 585.59998, "y": 837.0 },
+            "position": { "x": 10.42461, "y": 473.00006 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -30,7 +38,7 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "position": { "x": 1731.59998, "y": 886.0 },
+            "position": { "x": 1755.04626, "y": 886.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
         {
@@ -44,16 +52,16 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1325.59998, "y": 886.0 },
+            "position": { "x": 1374.83716, "y": 886.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
                 "polarity": "bipolar",
-                "yellow": 0.5,
-                "red": 0.5,
-                "blue": 0.5,
+                "yellow": 0.0,
+                "red": 0.261682242,
+                "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -181,7 +189,7 @@
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 2061.6001, "y": 387.0 },
+            "position": { "x": 2061.6001, "y": 537.0 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -191,9 +199,9 @@
                 "range": 0.625,
                 "signalType": "spectralMagnitude",
                 "polarity": "bipolar",
-                "yellow": 0.5,
-                "red": 0.5,
-                "blue": 0.5,
+                "yellow": 0.0,
+                "red": 0.261682242,
+                "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -282,7 +290,7 @@
             "id": "magnitudeOp1",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2129.6001, "y": 736.0 },
+            "position": { "x": 2129.6001, "y": 886.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -302,9 +310,9 @@
                 "range": 0.2,
                 "signalType": "spectralPhase",
                 "polarity": "unipolar",
-                "yellow": 0.5,
-                "red": 0.5,
-                "blue": 0.5,
+                "yellow": 0.0,
+                "red": 0.261682242,
+                "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -387,9 +395,9 @@
                 "range": 0.2,
                 "signalType": "spectralPhase",
                 "polarity": "unipolar",
-                "yellow": 0.5,
-                "red": 0.5,
-                "blue": 0.5,
+                "yellow": 0.0,
+                "red": 0.261682242,
+                "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -462,16 +470,16 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2738.3999, "y": 1084.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "position": { "x": 2738.40015, "y": 541.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.261682242, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 2,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 2,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
@@ -577,10 +585,8 @@
                         "sustainIndices": [ 3 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
-                    "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
+                    "red": 0.26168,
+                    "blue": 0.0,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7 ]
                 }
             }
@@ -589,16 +595,16 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1586.40002, "y": 1266.5 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "position": { "x": 1646.76941, "y": 1288.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.261682242, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 2,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 2,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
@@ -782,10 +788,8 @@
                         "sustainIndices": [ 9 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
-                    "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
+                    "red": 0.26168,
+                    "blue": 0.0,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ]
                 }
             }
@@ -794,16 +798,16 @@
             "id": "scratchEnvelope2",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 898.5 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "position": { "x": 962.12183, "y": 920.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.261682242, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 2,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 2,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
@@ -896,10 +900,8 @@
                         "sustainIndices": [ 2 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
-                    "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
+                    "red": 0.26168,
+                    "blue": 0.0,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6 ]
                 }
             }
@@ -909,27 +911,30 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 3113.6001, "y": 886.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
             "id": "reverb",
             "kind": "reverb",
             "definitionVersion": 1,
-            "position": { "x": 1231.59998, "y": 1571.0 },
+            "position": { "x": 235.59099, "y": 920.0 },
             "parameters": { "enabled": true, "size": 0.348000003, "damp": 0.200000003, "width": 1.0, "wet": 0.128000012, "highPass": 0.05 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 1495.59998, "y": 1571.0 },
+            "position": { "x": 499.591, "y": 920.0 },
             "parameters": { "gain": 0.4375 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 993.59998, "y": 1571.0 },
+            "position": { "x": -2.40901, "y": 920.0 },
             "parameters": {}
         },
         {
@@ -952,22 +957,22 @@
             "dcOffset": 0.0,
             "phase": 0.0,
             "noiseSeed": 5897,
-            "revision": 1,
+            "revision": 2,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 2,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 2,
                     "vertices": [
-                        { "id": 1, "x": 0.05789, "y": 0.49531, "curve": 0.0 },
-                        { "id": 2, "x": 0.06269, "y": 0.01643, "curve": 1.0 },
+                        { "id": 1, "x": 0.04583, "y": 0.49531, "curve": 0.0 },
+                        { "id": 2, "x": 0.05063, "y": 0.01643, "curve": 1.0 },
                         { "id": 3, "x": 0.9375, "y": 0.5, "curve": 1.0 },
                         { "id": 4, "x": 0.9475, "y": 0.5, "curve": 0.0 },
-                        { "id": 5, "x": 0.06576, "y": 0.48826, "curve": 0.82806 },
-                        { "id": 6, "x": 0.06353, "y": 0.83568, "curve": 0.0 }
+                        { "id": 5, "x": 0.0537, "y": 0.48826, "curve": 0.82806 },
+                        { "id": 6, "x": 0.05147, "y": 0.83568, "curve": 0.0 }
                     ]
                 }
             }
@@ -983,21 +988,21 @@
             "dcOffset": 0.0,
             "phase": 0.0,
             "noiseSeed": 1562,
-            "revision": 1,
+            "revision": 4,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 4,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 4,
                     "vertices": [
-                        { "id": 1, "x": 0.05789, "y": 0.49531, "curve": 0.0 },
-                        { "id": 2, "x": 0.0623, "y": 0.96948, "curve": 1.0 },
+                        { "id": 1, "x": 0.03596, "y": 0.49768, "curve": 0.0 },
+                        { "id": 2, "x": 0.05024, "y": 0.97185, "curve": 1.0 },
                         { "id": 3, "x": 0.9375, "y": 0.5, "curve": 1.0 },
                         { "id": 4, "x": 0.9475, "y": 0.5, "curve": 0.0 },
-                        { "id": 5, "x": 0.06396, "y": 0.50235, "curve": 0.72697 }
+                        { "id": 5, "x": 0.0519, "y": 0.50472, "curve": 0.64361 }
                     ]
                 }
             }

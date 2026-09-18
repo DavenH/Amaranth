@@ -6,14 +6,22 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 945.59998, "y": 826.0 },
-            "parameters": { "octave": 0, "voiceLength": 0.725925926, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "position": { "x": 722.75922, "y": 644.0 },
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.725925926,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 570.40002, "y": 556.0 },
+            "position": { "x": 362.03186, "y": 508.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -44,7 +52,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 570.40002, "y": 1014.0 },
+            "position": { "x": 362.03186, "y": 966.0 },
             "parameters": { "enabled": true, "mode": "group", "order": 9, "width": 19.32, "panSpread": 1.0, "phase": 0.916, "jitter": 0.768 },
             "model": {
                 "schema": "unisonVoices",
@@ -320,7 +328,7 @@
             "id": "magnitudeLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 2427.6001, "y": 387.0 },
+            "position": { "x": 2427.6001, "y": 222.50002 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -405,7 +413,7 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 2129.6001, "y": 1224.0 },
+            "position": { "x": 1729.59998, "y": 1181.23792 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -490,7 +498,7 @@
             "id": "phaseOp1",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 2280.3999, "y": 820.0 },
+            "position": { "x": 2129.6001, "y": 920.0 },
             "parameters": {}
         },
         {
@@ -618,7 +626,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 570.40002, "y": 726.0 },
+            "position": { "x": 362.03186, "y": 678.0 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -940,7 +948,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 649.0 },
+            "position": { "x": 873.93884, "y": 256.5 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1080,7 +1088,7 @@
             "id": "scratchEnvelope2",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1654.40002, "y": 1236.5 },
+            "position": { "x": 1211.12744, "y": 1215.23792 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1168,7 +1176,7 @@
             "id": "scratchEnvelope3",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1586.40002, "y": 399.5 },
+            "position": { "x": 1584.2738, "y": 421.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
