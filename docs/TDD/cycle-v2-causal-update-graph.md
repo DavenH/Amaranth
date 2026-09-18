@@ -22,6 +22,29 @@ renders, 2 to 3 audio-plan copies, three requests, two publications, one
 cancelled result, and zero synchronous refreshes. The correction preserves
 independent source identities; it does not migrate wheel scheduling.
 
+### 2026-09-18 Live morph semantic decision
+
+The user chose transient saved Trimesh/Envelope morph updates on each Live
+mod-wheel movement. `GraphCommandDispatcher` remains the authoritative owner
+of those edits and of the single durable commit/undo transaction. The gesture
+must retain one durable base revision and present a worker-safe immutable
+overlay/delta without copying the complete graph on movement. The final
+published movement can be reused at commit only when its effective product
+fingerprint includes the transient morph fields and matches the committed
+configuration. Test a two-movement sequence, downstream effect, commit,
+and undo before deleting the old wheel path.
+
+The focused Live wheel fixture now measures 3 preview renders after the final
+movement and still 3 after release, versus 3 to 4 before this slice. Its
+audio-plan copy count still advances from 2 to 3 on commit; three requests,
+two publications, one cancelled result, and zero synchronous refreshes are
+unchanged. The fixture now asserts these counts and durable dirty-state
+transition. The dispatcher test covers two transient movements, no-op repeat,
+commit, undo, immutable movement snapshots, and zero full graph/mesh copies or
+model serializations at both unrelated graph scales. This closes the Live
+wheel duplicate-preview symptom but not the shared session/scheduler deletion
+targets or the broader native editor proof.
+
 ### Request-construction extraction boundary
 
 `NodeUpdateGraph` and `GraphExecutionPlan` remain authoritative for product

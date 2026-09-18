@@ -72,8 +72,10 @@ CausalUpdateRequest PresentationUpdateRequestBuilder::build(
             && !hasImpact(change.parameterImpacts, ParameterImpact::Presentation);
     for (const auto& root : roots) {
         const std::vector<UpdateCause> causes { { root, compile ? "topology" : "state" } };
-        if (change.guidesChanged
-                || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
+        if (scope != PresentationRefreshScope::PreviewOnly
+                && (change.guidesChanged
+                        || hasImpact(change.parameterImpacts,
+                                ParameterImpact::DspConfiguration))) {
             invalidations.push_back({
                     root, sourceStreamId, UpdateProduct::AudioConfiguration,
                     effectiveFingerprint, causes, true });
@@ -87,9 +89,9 @@ CausalUpdateRequest PresentationUpdateRequestBuilder::build(
                             : UpdateProduct::PreviewTraversal,
                     effectiveFingerprint,
                     causes,
-                    scope == PresentationRefreshScope::Downstream });
+                    scope != PresentationRefreshScope::LocalEditor });
         }
-        if (preview && scope == PresentationRefreshScope::Downstream) {
+        if (preview && scope != PresentationRefreshScope::LocalEditor) {
             invalidations.push_back({
                     root, sourceStreamId, UpdateProduct::ProbePreview,
                     effectiveFingerprint, causes, true });
@@ -103,7 +105,7 @@ CausalUpdateRequest PresentationUpdateRequestBuilder::build(
             observedNodeIds.push_back(probe.sourceNodeId);
         }
     }
-    const bool filterToActiveProbes = scope == PresentationRefreshScope::Downstream
+    const bool filterToActiveProbes = scope != PresentationRefreshScope::LocalEditor
             && !observedNodeIds.empty();
     return {
             identity,

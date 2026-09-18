@@ -9,7 +9,8 @@ namespace CycleV2 {
 
 enum class PresentationRefreshScope {
     Downstream,
-    LocalEditor
+    LocalEditor,
+    PreviewOnly
 };
 
 class PresentationUpdateRequestBuilder final {

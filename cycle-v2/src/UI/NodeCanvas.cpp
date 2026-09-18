@@ -1241,42 +1241,49 @@ void NodeCanvas::refreshCompiledState() {
     refreshProbeDetail();
 }
 
-void NodeCanvas::refreshCompiledStateAsync(PresentationRefreshScope scope) {
+void NodeCanvas::refreshCompiledStateAsync(
+        PresentationRefreshScope scope,
+        const GraphChangeSet* changeOverride,
+        std::shared_ptr<const NodeGraph> snapshot) {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PreviewRuntime);
     compiledStateRefreshPending = false;
     compiledStateRefreshScope = PresentationRefreshScope::Downstream;
     editorCoordinator.clearPreviewCache();
     const NodeGraph& refreshGraph = commands.editingGraph();
-    const GraphChangeSet& refreshChange = commands.hasTransientEdit()
+    const GraphChangeSet& refreshChange = changeOverride != nullptr
+            ? *changeOverride
+            : commands.hasTransientEdit()
             ? commands.transientChanges()
             : document.lastChange();
-    presentation.refreshAsync(
-            refreshGraph,
-            document.revision(),
-            refreshChange,
-            scope,
-            [safeThis = SafePointer<NodeCanvas>(this)] {
-                if (safeThis == nullptr) {
-                    return;
-                }
-                auto callbackMeasurement = safeThis->performanceMetrics.measure(
-                        CanvasPerformanceMetrics::Trigger::PreviewRuntime);
-                if (!safeThis->commands.hasTransientEdit()) {
-                    safeThis->editorCoordinator.updateHost(
-                            safeThis->commands.editingGraph().findNode(safeThis->expandedNodeId),
-                            safeThis->editorContentBounds());
-                }
-                if (Component* editor = safeThis->editorCoordinator.host().component()) {
-                    editor->repaint();
-                }
-                const int midiNote = safeThis->presentation.previewMidiNote();
-                safeThis->editorCoordinator.previewResources().setPreviewMidiNote(midiNote);
-                safeThis->globalUnisonPreviewContext.midiNote = midiNote;
-                safeThis->openGLContext.triggerRepaint();
-                safeThis->refreshProbeDetail();
-                safeThis->requestCanvasRepaint();
-            });
+    auto completion = [safeThis = SafePointer<NodeCanvas>(this)] {
+        if (safeThis == nullptr) {
+            return;
+        }
+        auto callbackMeasurement = safeThis->performanceMetrics.measure(
+                CanvasPerformanceMetrics::Trigger::PreviewRuntime);
+        if (!safeThis->commands.hasTransientEdit()) {
+            safeThis->editorCoordinator.updateHost(
+                    safeThis->commands.editingGraph().findNode(safeThis->expandedNodeId),
+                    safeThis->editorContentBounds());
+        }
+        if (Component* editor = safeThis->editorCoordinator.host().component()) {
+            editor->repaint();
+        }
+        const int midiNote = safeThis->presentation.previewMidiNote();
+        safeThis->editorCoordinator.previewResources().setPreviewMidiNote(midiNote);
+        safeThis->globalUnisonPreviewContext.midiNote = midiNote;
+        safeThis->openGLContext.triggerRepaint();
+        safeThis->refreshProbeDetail();
+        safeThis->requestCanvasRepaint();
+    };
+    if (snapshot != nullptr) {
+        presentation.refreshAsync(
+                std::move(snapshot), document.revision(), refreshChange, scope, completion);
+    } else {
+        presentation.refreshAsync(
+                refreshGraph, document.revision(), refreshChange, scope, completion);
+    }
 }
 
 void NodeCanvas::openProbeDetail(const String& probeId) {
@@ -1859,12 +1866,15 @@ void NodeCanvas::beginPreviewModWheelGesture() {
 
     previewModWheelGestureActive = true;
     previewModWheelGestureChanged = false;
+    previewModWheelGestureLatestSnapshot.reset();
     previewModWheelGestureValue = presentation.previewModWheelValue();
+    previewModWheelGestureBaseRevision = document.revision();
     previewModWheelGestureRefreshMode = probeRailState.refreshMode;
     if (PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
                 previewModWheelGestureRefreshMode)) {
         previewModWheelGestureGraph = std::make_shared<const NodeGraph>(
                 commands.editingGraph());
+        commands.beginTransientEdit();
     }
 }
 
@@ -1877,22 +1887,43 @@ bool NodeCanvas::updatePreviewModWheelGesture(int value) {
         return true;
     }
 
-    previewModWheelGestureValue = selectedValue;
-    previewModWheelGestureChanged = true;
     if (!PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
                 previewModWheelGestureRefreshMode)) {
+        previewModWheelGestureValue = selectedValue;
+        previewModWheelGestureChanged = true;
         return true;
     }
 
-    return presentation.refreshPreviewModWheelValueAsync(
-            previewModWheelGestureGraph,
+    const auto edit = editPreviewMorph(presentation.previewMidiNote(), selectedValue);
+    if (!edit.succeeded()) {
+        previewModWheelGestureActive = false;
+        previewModWheelGestureGraph.reset();
+        previewModWheelGestureLatestSnapshot.reset();
+        return false;
+    }
+    previewModWheelGestureValue = selectedValue;
+    previewModWheelGestureChanged = true;
+    presentation.stagePreviewModWheelValue(selectedValue);
+    editorCoordinator.clearPreviewCache();
+    rebindNodeEditorTransient();
+    requestCanvasRepaint();
+
+    auto snapshot = std::make_shared<const NodeGraph>(
+            commands.editingGraph().snapshotNodeEdits(previewModWheelGestureGraph));
+    previewModWheelGestureLatestSnapshot = snapshot;
+    const GraphChangeSet change = presentation.modWheelPreviewChange(
+            commands.transientChanges());
+    presentation.refreshAsync(
+            std::move(snapshot),
             document.revision(),
-            selectedValue,
+            change,
+            PresentationRefreshScope::PreviewOnly,
             [safeThis = SafePointer<NodeCanvas>(this)] {
                 if (safeThis != nullptr) {
                     safeThis->finishPreviewModWheelRefresh();
                 }
             });
+    return true;
 }
 
 void NodeCanvas::endPreviewModWheelGesture() {
@@ -1900,32 +1931,36 @@ void NodeCanvas::endPreviewModWheelGesture() {
         return;
     }
 
-    const bool shouldPublish = previewModWheelGestureChanged
-            && !PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
-                    previewModWheelGestureRefreshMode);
+    const bool live = PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
+            previewModWheelGestureRefreshMode);
     const bool changed = previewModWheelGestureChanged;
     const int finalValue = previewModWheelGestureValue;
     previewModWheelGestureActive = false;
     previewModWheelGestureChanged = false;
-    previewModWheelGestureGraph.reset();
-    if (shouldPublish) {
-        setPreviewModWheelValue(finalValue);
+    if (live) {
+        commands.commitTransientEdit();
+        previewModWheelGestureGraph.reset();
+        if (document.revision() != previewModWheelGestureBaseRevision) {
+            const GraphChangeSet change = presentation.modWheelPreviewChange(
+                    document.lastChange());
+            editorCoordinator.clearPreviewCache();
+            if (graphDocumentStateChangedCallback) {
+                graphDocumentStateChangedCallback();
+            }
+            refreshCompiledStateAsync(
+                    PresentationRefreshScope::Downstream,
+                    &change,
+                    previewModWheelGestureLatestSnapshot);
+        }
+        previewModWheelGestureLatestSnapshot.reset();
     } else if (changed) {
-        persistPreviewMorph(presentation.previewMidiNote(), finalValue);
+        setPreviewModWheelValue(finalValue);
     }
 }
 
 GraphEditResult NodeCanvas::persistPreviewMorph(int midiNote, int modWheelValue) {
-    const float red = ModulationSource::normalizeKey(
-            midiNote,
-            Constants::LowestMidiNote,
-            Constants::HighestMidiNote);
-    const float blue = (float) modWheelValue / 127.f;
-    const GraphEditResult edit = commands.setPreviewMorph(red, blue);
-    if (!edit.succeeded()) {
-        return edit;
-    }
-    if (!edit.changed) {
+    const GraphEditResult edit = editPreviewMorph(midiNote, modWheelValue);
+    if (!edit.succeeded() || !edit.changed) {
         return edit;
     }
     editorCoordinator.clearPreviewCache();
@@ -1934,6 +1969,15 @@ GraphEditResult NodeCanvas::persistPreviewMorph(int midiNote, int modWheelValue)
     }
     scheduleCompiledStateRefresh();
     return edit;
+}
+
+GraphEditResult NodeCanvas::editPreviewMorph(int midiNote, int modWheelValue) {
+    const float red = ModulationSource::normalizeKey(
+            midiNote,
+            Constants::LowestMidiNote,
+            Constants::HighestMidiNote);
+    const float blue = (float) modWheelValue / 127.f;
+    return commands.setPreviewMorph(red, blue);
 }
 
 void NodeCanvas::synchronizeOpenedEditorMorph() {

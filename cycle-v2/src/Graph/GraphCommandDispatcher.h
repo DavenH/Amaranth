@@ -116,11 +116,13 @@ private:
     bool setTrimeshPreviewMorph(
             const juce::String& nodeId,
             const juce::String& red,
-            const juce::String& blue);
+            const juce::String& blue,
+            bool& changed);
     bool setEnvelopePreviewMorph(
             const Node& node,
             const juce::String& red,
-            const juce::String& blue);
+            const juce::String& blue,
+            bool& changed);
     void accumulateCompoundChange(const GraphChangeSet& change);
     static void accumulateChange(GraphChangeSet& destination, const GraphChangeSet& change);
 

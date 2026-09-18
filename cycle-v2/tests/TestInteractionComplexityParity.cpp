@@ -1,11 +1,13 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <memory>
 #include <utility>
 #include <vector>
 
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/NodeParameterMap.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Panel/FlatCurvePanelAdapter.h"
@@ -102,6 +104,54 @@ TEST_CASE("Preview morph publication is independent of unrelated graph content",
         REQUIRE(counts.modelSerializations == 0);
         REQUIRE(counts.nodeLinearScans == 0);
         REQUIRE(counts.parameterLinearScans == 0);
+    }
+}
+
+TEST_CASE("Two transient preview morph movements commit once and undo together",
+        "[cycle-v2][complexity][preview-morph][gesture]") {
+    GraphNodeFactory factory;
+    for (const int unrelatedNodes : { 0, 128 }) {
+        NodeGraph graph = scaledGraph(unrelatedNodes, 16384);
+        graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+        graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher commands(document);
+        const uint64_t baseRevision = document.revision();
+        const float initialBlue = NodeParameterMap(
+                *document.graph().findNode("mesh")).floatValue("blue");
+        auto stableBase = std::make_shared<const NodeGraph>(document.graph());
+        InteractionComplexityDiagnostics::reset();
+
+        commands.beginTransientEdit();
+        REQUIRE(commands.setPreviewMorph(0.2f, 0.3f).changed);
+        const NodeGraph firstSnapshot = commands.editingGraph().snapshotNodeEdits(stableBase);
+        REQUIRE(commands.setPreviewMorph(0.2f, 0.8f).changed);
+        const NodeGraph finalSnapshot = commands.editingGraph().snapshotNodeEdits(stableBase);
+        REQUIRE_FALSE(commands.setPreviewMorph(0.2f, 0.8f).changed);
+        REQUIRE(document.revision() == baseRevision);
+        REQUIRE(NodeParameterMap(*commands.editingGraph().findNode("mesh"))
+                .floatValue("blue") == 0.8f);
+        REQUIRE(NodeParameterMap(*firstSnapshot.findNode("mesh")).floatValue("blue") == 0.3f);
+        REQUIRE(NodeParameterMap(*finalSnapshot.findNode("mesh")).floatValue("blue") == 0.8f);
+        REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+                .floatValue("blue") == initialBlue);
+
+        commands.commitTransientEdit();
+        REQUIRE(document.revision() > baseRevision);
+        REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+                .floatValue("blue") == 0.8f);
+        REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
+                .floatValue("blue") == 0.8f);
+        REQUIRE(document.undo());
+        stableBase.reset();
+        REQUIRE(NodeParameterMap(*finalSnapshot.findNode("mesh")).floatValue("blue") == 0.8f);
+        REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+                .floatValue("blue") == initialBlue);
+
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.meshCopies == 0);
+        REQUIRE(counts.modelSerializations == 0);
     }
 }
 

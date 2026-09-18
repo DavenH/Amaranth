@@ -297,6 +297,7 @@ public:
     NodeGraph& operator=(NodeGraph&& other) noexcept = default;
 
     static NodeGraph createEditingOverlay(const NodeGraph& base);
+    NodeGraph snapshotNodeEdits(std::shared_ptr<const NodeGraph> stableBase) const;
 
     const std::vector<Node>& getNodes() const;
     const std::vector<String>& editorMorphNodeIds() const {
@@ -458,6 +459,7 @@ private:
     mutable std::vector<GuideCurveResource> overlayGuideView;
     mutable uint64_t overlayNodeViewRevision { std::numeric_limits<uint64_t>::max() };
     mutable uint64_t overlayGuideViewRevision { std::numeric_limits<uint64_t>::max() };
+    std::shared_ptr<const NodeGraph> overlayBaseOwner;
     const NodeGraph* overlayBase {};
     uint64_t revision {};
 };

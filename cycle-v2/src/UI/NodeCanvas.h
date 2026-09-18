@@ -204,9 +204,11 @@ private:
     bool previewModWheelGestureActive {};
     bool previewModWheelGestureChanged {};
     int previewModWheelGestureValue {};
+    uint64_t previewModWheelGestureBaseRevision {};
     ProbeRefreshMode previewModWheelGestureRefreshMode {
             ProbeRefreshMode::OnGestureCommit };
     std::shared_ptr<const NodeGraph> previewModWheelGestureGraph;
+    std::shared_ptr<const NodeGraph> previewModWheelGestureLatestSnapshot;
 
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
@@ -229,11 +231,14 @@ private:
     Point<float> viewportCentreWorld() const;
     void refreshCompiledState();
     void refreshCompiledStateAsync(
-            PresentationRefreshScope scope = PresentationRefreshScope::Downstream);
+            PresentationRefreshScope scope = PresentationRefreshScope::Downstream,
+            const GraphChangeSet* changeOverride = nullptr,
+            std::shared_ptr<const NodeGraph> snapshot = {});
     void openProbeDetail(const String& probeId);
     void refreshProbeDetail();
     void finishPreviewModWheelRefresh();
     GraphEditResult persistPreviewMorph(int midiNote, int modWheelValue);
+    GraphEditResult editPreviewMorph(int midiNote, int modWheelValue);
     void synchronizeOpenedEditorMorph();
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;

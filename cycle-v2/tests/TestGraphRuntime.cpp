@@ -326,13 +326,19 @@ TEST_CASE("Preview mod wheel refreshes modulation previews and spies without pub
 
     const auto sharedGraph = std::make_shared<const NodeGraph>(graph);
     bool latestCompleted {};
-    REQUIRE(presentation.refreshPreviewModWheelValueAsync(
-            sharedGraph, 1, 24));
-    REQUIRE(presentation.refreshPreviewModWheelValueAsync(
+    presentation.stagePreviewModWheelValue(24);
+    presentation.refreshAsync(
             sharedGraph,
             1,
-            112,
-            [&latestCompleted] { latestCompleted = true; }));
+            presentation.modWheelPreviewChange({}),
+            PresentationRefreshScope::PreviewOnly);
+    presentation.stagePreviewModWheelValue(112);
+    presentation.refreshAsync(
+            sharedGraph,
+            1,
+            presentation.modWheelPreviewChange({}),
+            PresentationRefreshScope::PreviewOnly,
+            [&latestCompleted] { latestCompleted = true; });
     REQUIRE(waitForAsyncRefresh(latestCompleted));
     REQUIRE(presentation.previewModWheelValue() == 112);
     REQUIRE(findNodePreview(presentation.previewResult(), "mod").primary.front()

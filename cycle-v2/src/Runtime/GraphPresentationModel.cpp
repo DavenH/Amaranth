@@ -249,27 +249,16 @@ void GraphPresentationModel::stagePreviewModWheelValue(int value) {
     current.previewModWheelValue = jlimit(0, 127, value);
 }
 
-bool GraphPresentationModel::refreshPreviewModWheelValueAsync(
-        std::shared_ptr<const NodeGraph> graph,
-        uint64_t documentRevision,
-        int value,
-        std::function<void()> completion) {
-    const int selectedValue = jlimit(0, 127, value);
-    if (graph == nullptr || current.previewModWheelValue == selectedValue) {
-        return graph != nullptr;
+GraphChangeSet GraphPresentationModel::modWheelPreviewChange(
+        GraphChangeSet change) const {
+    change.parameterImpacts = change.parameterImpacts | ParameterImpact::Preview;
+    for (const auto& nodeId : modWheelPreviewRootNodeIds) {
+        if (std::find(change.nodeIds.begin(), change.nodeIds.end(), nodeId)
+                == change.nodeIds.end()) {
+            change.nodeIds.push_back(nodeId);
+        }
     }
-
-    current.previewModWheelValue = selectedValue;
-    GraphChangeSet change;
-    change.parameterImpacts = ParameterImpact::Preview;
-    change.nodeIds = modWheelPreviewRootNodeIds;
-    refreshAsync(
-            std::move(graph),
-            documentRevision,
-            std::move(change),
-            PresentationRefreshScope::Downstream,
-            std::move(completion));
-    return true;
+    return change;
 }
 
 bool GraphPresentationModel::refreshPreviewControls(
@@ -353,25 +342,6 @@ void GraphPresentationModel::refreshAsync(
                 invalidation.product,
                 generation);
     }
-    const uint64_t requestFingerprint = request.invalidations.empty()
-            ? 0
-            : request.invalidations.front().inputFingerprint;
-    if (request.edit.phase == EditPhase::Commit
-            && requestFingerprint != 0
-            && requestFingerprint == publishedEditFingerprint) {
-        updateGraph.execute(next.compileResult.plan, request, [](const auto&) {
-            return true;
-        });
-        acceptSnapshot(std::move(next));
-        performance.record(
-                Performance::Stage::EndToEnd,
-                performance.timestamp() - requestedAt);
-        performance.record(Performance::Outcome::NoWork);
-        if (completion) {
-            completion();
-        }
-        return;
-    }
     auto refresh = std::make_shared<AsyncRefresh>();
     refresh->state = asyncState;
     refresh->generation = generation;
@@ -379,7 +349,6 @@ void GraphPresentationModel::refreshAsync(
     refresh->change = std::move(change);
     refresh->scope = scope;
     refresh->request = request;
-    refresh->requestFingerprint = requestFingerprint;
     refresh->snapshot = std::move(next);
     refresh->completion = std::move(completion);
     refresh->requestedAtMicroseconds = requestedAt;
@@ -430,7 +399,10 @@ bool GraphPresentationModel::executeAsyncProducts(
             products.begin(), products.end(), [](const auto& product) {
                 return product.product == UpdateProduct::AudioConfiguration;
             });
-    if (preparesConfiguration) {
+    if (preparesConfiguration
+            || (refresh.scope == PresentationRefreshScope::PreviewOnly
+                    && hasImpact(refresh.change.parameterImpacts,
+                            ParameterImpact::DspConfiguration))) {
         const uint64_t startedAt = performance.timestamp();
         refreshConfigurations(*refresh.graph, next.compileResult.plan, refresh.change.nodeIds);
         performance.record(
@@ -592,17 +564,15 @@ std::function<void()> GraphPresentationModel::publishAsyncRefresh(
     }
     publishedGeneration = refresh->generation;
     updateGraph.publish(refresh->request, refresh->updateResult);
-    if (refresh->change.guidesChanged
-            || hasImpact(refresh->change.parameterImpacts,
-                    ParameterImpact::DspConfiguration)) {
+    if (refresh->scope != PresentationRefreshScope::PreviewOnly
+            && (refresh->change.guidesChanged
+                    || hasImpact(refresh->change.parameterImpacts,
+                            ParameterImpact::DspConfiguration))) {
         modWheelPreviewRootNodeIds = modWheelPreviewRoots(current.compileResult.plan);
         ++audioRevision;
     }
     if (refresh->previewRendered) {
         ++previewRenders;
-    }
-    if (refresh->scope == PresentationRefreshScope::Downstream) {
-        publishedEditFingerprint = refresh->requestFingerprint;
     }
     performance.record(
             Performance::Stage::EndToEnd,

@@ -47,13 +47,15 @@ public:
             uint64_t documentRevision,
             int value);
     void stagePreviewModWheelValue(int value);
-    bool refreshPreviewModWheelValueAsync(
-            std::shared_ptr<const NodeGraph> graph,
-            uint64_t documentRevision,
-            int value,
-            std::function<void()> completion = {});
+    GraphChangeSet modWheelPreviewChange(GraphChangeSet change) const;
     void refreshAsync(
             NodeGraph graph,
+            uint64_t documentRevision,
+            GraphChangeSet change,
+            PresentationRefreshScope scope,
+            std::function<void()> completion = {});
+    void refreshAsync(
+            std::shared_ptr<const NodeGraph> graph,
             uint64_t documentRevision,
             GraphChangeSet change,
             PresentationRefreshScope scope,
@@ -111,7 +113,6 @@ private:
         PresentationRefreshScope scope { PresentationRefreshScope::Downstream };
         CausalUpdateRequest request;
         CausalUpdateResult updateResult;
-        uint64_t requestFingerprint {};
         GraphPresentationSnapshot snapshot;
         std::function<void()> completion;
         uint64_t requestedAtMicroseconds {};
@@ -125,12 +126,6 @@ private:
             const NodeGraph& graph,
             uint64_t documentRevision,
             std::vector<String> rootNodeIds);
-    void refreshAsync(
-            std::shared_ptr<const NodeGraph> graph,
-            uint64_t documentRevision,
-            GraphChangeSet change,
-            PresentationRefreshScope scope,
-            std::function<void()> completion);
     void refreshConfigurations(
             const NodeGraph& graph,
             GraphExecutionPlan& plan,
@@ -171,7 +166,6 @@ private:
     uint64_t audioRevision { 1 };
     size_t compilations {};
     size_t previewRenders {};
-    uint64_t publishedEditFingerprint {};
     uint64_t publishedGeneration {};
     std::vector<String> modWheelPreviewRootNodeIds;
     MessageThreadWorker asyncWorker;

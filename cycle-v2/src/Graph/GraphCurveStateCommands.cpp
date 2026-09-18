@@ -348,30 +348,38 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
 }
 
 GraphEditResult GraphCommandDispatcher::setPreviewMorph(float red, float blue) {
-    if (compoundActive || transientEdit.has_value()) {
+    if (compoundActive) {
         return { GraphEditCode::ValidationRejected, {}, {} };
     }
     const String redValue(jlimit(0.f, 1.f, red), 9);
     const String blueValue(jlimit(0.f, 1.f, blue), 9);
     const std::vector<String> morphNodeIds = editingGraph().editorMorphNodeIds();
 
-    beginCompoundEdit();
+    const bool transient = transientEdit.has_value();
+    if (!transient) {
+        beginCompoundEdit();
+    }
+    bool changed = false;
     for (const String& nodeId : morphNodeIds) {
         const Node* node = editingGraph().findNode(nodeId);
         const bool succeeded = node != nullptr
                 && (node->kind == NodeKind::TrilinearMesh
-                        ? setTrimeshPreviewMorph(nodeId, redValue, blueValue)
-                        : setEnvelopePreviewMorph(*node, redValue, blueValue));
+                        ? setTrimeshPreviewMorph(nodeId, redValue, blueValue, changed)
+                        : setEnvelopePreviewMorph(*node, redValue, blueValue, changed));
         if (!succeeded) {
-            cancelCompoundEdit();
+            if (transient) {
+                cancelTransientEdit();
+            } else {
+                cancelCompoundEdit();
+            }
             return { GraphEditCode::ValidationRejected, {}, {} };
         }
     }
 
     GraphEditResult result;
-    result.changed = commitCompoundEdit();
+    result.changed = transient ? changed : commitCompoundEdit();
     if (result.changed) {
-        result.changes = document.lastChange();
+        result.changes = transient ? transientChanges() : document.lastChange();
     }
     return result;
 }
@@ -379,15 +387,18 @@ GraphEditResult GraphCommandDispatcher::setPreviewMorph(float red, float blue) {
 bool GraphCommandDispatcher::setTrimeshPreviewMorph(
         const String& nodeId,
         const String& red,
-        const String& blue) {
+        const String& blue,
+        bool& changed) {
     for (const auto& setting : {
             std::pair<String, String> { "yellow", "0" },
             std::pair<String, String> { "red", red },
             std::pair<String, String> { "blue", blue } }) {
-        if (!setNodeParameter(
-                    nodeId, setting.first, setting.first, setting.second).succeeded()) {
+        const auto result = setNodeParameter(
+                nodeId, setting.first, setting.first, setting.second);
+        if (!result.succeeded()) {
             return false;
         }
+        changed = changed || result.changed;
     }
     return true;
 }
@@ -395,7 +406,9 @@ bool GraphCommandDispatcher::setTrimeshPreviewMorph(
 bool GraphCommandDispatcher::setEnvelopePreviewMorph(
         const Node& node,
         const String& red,
-        const String& blue) {
+        const String& blue,
+        bool& changed) {
+    const String nodeId = node.id;
     const auto model = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
     if (model == nullptr || model->envelope() == nullptr) {
         return false;
@@ -410,15 +423,21 @@ bool GraphCommandDispatcher::setEnvelopePreviewMorph(
         return true;
     }
 
-    if (!setNodeParameter(node.id, "red", "Red", red).succeeded()
-            || !setNodeParameter(node.id, "blue", "Blue", blue).succeeded()) {
+    const auto redResult = setNodeParameter(nodeId, "red", "Red", red);
+    if (!redResult.succeeded()) {
         return false;
     }
-    return replaceNodeModel(
-            node.id,
+    const auto blueResult = setNodeParameter(nodeId, "blue", "Blue", blue);
+    if (!blueResult.succeeded()) {
+        return false;
+    }
+    const auto modelResult = replaceNodeModel(
+            nodeId,
             model->revision(),
             model->withEnvelopeMorph(
-                    parsedRed, parsedBlue, model->revision() + 1)).succeeded();
+                    parsedRed, parsedBlue, model->revision() + 1));
+    changed = changed || redResult.changed || blueResult.changed || modelResult.changed;
+    return modelResult.succeeded();
 }
 
 }
