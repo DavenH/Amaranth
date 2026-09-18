@@ -4,6 +4,397 @@
 
 In progress (reopened 2026-09-15).
 
+### 2026-09-17 impact-domain baseline
+
+The native Cycle V2 Live mod-wheel fixture on `honerism-3.cyclegraph`
+measured the remaining preview-publication domain. After the final drag
+settled, `previewRenderCount` was 3; after release it was 4. The window
+contained three preview requests, two publications, one cancelled result,
+and zero synchronous refreshes. The release advanced the audio-plan copy
+count from 2 to 3. These are baseline observations, not a target to suppress:
+release also commits saved morph fields, so product reuse needs an effective
+configuration comparison or transient morph updates. Re-run the same fixture
+after the session and scheduler migration and compare these counters.
+
+The pending-identity correction in `PresentationGestureSession` leaves this
+wheel-domain telemetry unchanged: the same fixture still reports 3 to 4
+renders, 2 to 3 audio-plan copies, three requests, two publications, one
+cancelled result, and zero synchronous refreshes. The correction preserves
+independent source identities; it does not migrate wheel scheduling.
+
+### 2026-09-18 Live morph semantic decision
+
+The user chose transient saved Trimesh/Envelope morph updates on each Live
+mod-wheel movement. `GraphCommandDispatcher` remains the authoritative owner
+of those edits and of the single durable commit/undo transaction. The gesture
+must retain one durable base revision and present a worker-safe immutable
+overlay/delta without copying the complete graph on movement. The final
+published movement can be reused at commit only when its effective product
+fingerprint includes the transient morph fields and matches the committed
+configuration. Test a two-movement sequence, downstream effect, commit,
+and undo before deleting the old wheel path.
+
+The saxophone regression clarified the affected domain: keyboard controls
+update saved morph fields only on axes whose compiled modulation source maps
+to that control. A blue axis sourced from inverse velocity does not follow the
+mod wheel. The presentation model caches per-axis targets from the compiled
+plan; movement work scales with mapped targets and does not inspect unrelated
+nodes or topology. The native Live saxophone fixture changed the saved blue
+field from `0` to `0.897637784` and dirtied the document before this fix.
+Afterward it leaves the saved field, document, and two spy values unchanged,
+with zero worker/configuration stages; the positive mapped-wheel fixture
+still passes. The mapped command's two-movement test compares 0 versus 128
+unrelated nodes and records unchanged scan/copy/serialization counts, followed
+by commit and undo. See the UI bug entry and its before/after reports.
+
+The focused Live wheel fixture now measures 3 preview renders after the final
+movement and still 3 after release, versus 3 to 4 before this slice. Its
+audio-plan copy count still advances from 2 to 3 on commit; three requests,
+two publications, one cancelled result, and zero synchronous refreshes are
+unchanged. The fixture now asserts these counts and durable dirty-state
+transition. The dispatcher test covers two transient movements, no-op repeat,
+commit, undo, immutable movement snapshots, and zero full graph/mesh copies or
+model serializations at both unrelated graph scales. This closes the Live
+wheel duplicate-preview symptom but not the shared session/scheduler deletion
+targets or the broader native editor proof.
+
+A final rerun after the parameter and morph migrations confirms the same Live
+wheel window: preview renders 3 before release and 3 after, audio-plan copies
+2 before release and 3 after, three async requests, two publications, one
+stale/cancelled result, and zero synchronous refreshes. Report:
+`/private/tmp/causal-wheel-final-audit.json`.
+
+The next extraction moves the wheel's active/mode/changed/base-revision and
+immutable snapshot lifecycle into `PresentationGestureSession`. The session
+calls the dispatcher to begin/commit/cancel a transient edit and the pure
+refresh policy to determine whether a graph snapshot is needed. The wheel
+control supplies only its normalized value and domain morph command; the
+session does not implement morph normalization, product rendering, or worker
+publication. The end state deletes the wheel gesture fields from `NodeCanvas`
+and allows another continuous domain edit to use the same lifecycle methods.
+
+The session extraction is in production for the wheel. `NodeCanvas` no longer
+stores its active/mode/changed/base-revision or graph-snapshot fields; it
+submits normalized wheel values and the existing morph command. Live and On
+Release fixtures pass with 3/2/1 and 1/1/0 requested/published/cancelled
+preview jobs respectively. The Live render count stays 3 across release and
+the durable audio-plan copy still advances once. Other editor families still
+own separate scheduling, so the shared-session completion criterion remains
+open.
+
+### Ordinary and paired parameter gesture migration
+
+`GraphCommandDispatcher::setNodeParameter` remains the authoritative
+normalizer and transient delta publisher. The shared session now owns the
+transaction for ordinary and paired parameters, with one durable commit and
+undo. On Release movement performs only the editor's local product; Live
+movement snapshots only the affected overlay nodes and queues preview work
+through the existing latest-only worker. `NodeCanvas` applies the pure policy
+decision and submits the final committed change; `NodeEditorCommandService`
+no longer selects Live/On Release refresh behavior for these gestures. The
+old schedule/flush/immediate host API remains for other editor families and
+must still be deleted as those families migrate.
+
+The On Release Reverb spectrogram fixture demonstrates that some current
+"local" editor products still depend on the graph preview runtime. Movement
+retains the existing deferred local refresh path while suppressing probe and
+durable audio publication. The shared session does not copy the graph at
+pointer-down in this mode. The old local path still does graph work during
+movement and does not satisfy the strict no-traversal/no-configuration-
+preparation contract. Extract the mature Reverb local renderer/product input
+from graph traversal before claiming that completion criterion; do not weaken
+the fixture to hide it.
+
+The user confirmed that accurate local Reverb spectrogram feedback must
+continue during On Release movement, including controls that change the
+kernel. Kernel generation solely for that local spectrogram counts as local
+render work. It must reuse `ReverbSignalProcessor::buildConfiguration` and
+`ReverbSpectrogramPreviewProcessor`; the graph compiler, downstream DSP
+configuration preparation, traversal, and probes remain deferred until
+release. The local worker input may contain only the edited node's parameters
+and a shared pointer to the prior kernel, never a graph or audio-resource
+snapshot.
+
+The focused On Release Reverb wet fixture provided a local movement baseline:
+two configuration stages and two preview-audio stages before release, with
+two requests and two publications. After the isolated local path, the same
+fixture reports zero configuration and preview-audio stages in that window,
+with five local requests, two publications, and three stale results. A second
+native fixture changes size twice, verifies an accurate 1,025-row spectrogram
+before release, then commits and undoes. Its measured first movement has zero
+configuration and preview-audio stages, two local requests, one publication,
+and one stale result. Reports: `/private/tmp/causal-reverb-local-baseline.json`,
+`/private/tmp/causal-reverb-local-after.json`, and
+`/private/tmp/causal-reverb-kernel-after.json`. The input to the local worker
+contains one node's parameters and a shared prior Reverb kernel;
+`ReverbSignalProcessor::buildConfiguration` and the existing spectrogram
+processor generate its output. The graph preview worker remains the release
+path. Other On Release editor families still use the old local graph refresh
+and remain an explicit deletion target.
+
+A separate fresh-graph damping fixture also passes movement, commit, and undo
+with zero configuration and preview-audio stages before release. Report:
+`/private/tmp/causal-reverb-damping.json`. A chained size-undo then damping
+diagnostic exposed a separate editor gesture/rebind issue, recorded in
+`ui-bugs.md`.
+
+The focused Reverb UI fixtures now pass under both policies. Live records four
+requests, two publications, one superseded-before-start job, one stale result,
+and zero synchronous refreshes for the measured drag/commit window; its
+preview render count remains 3 across release while the audio-plan copy
+advances from 2 to 3. On Release records five requests for local editor work
+and commit/undo in its wider window, with one publication and zero synchronous
+refreshes. Its pre-release snapshots add CompactPreview publications while
+ProbePreview and PreviewTraversal publication counts remain unchanged; those
+products advance only after release. The pre-migration Reverb fixture failed
+its during-drag spectrogram assertion when local work was briefly omitted,
+which is why this local product remains an explicit extraction target.
+
+### Trimesh morph gesture migration
+
+Trimesh morph now uses the shared session for its transient edit, movement
+identities, durable commit, and undo. The domain service supplies whether the
+edited axis is the primary local slice axis. That local gesture does not
+capture a full graph even under Live policy; it publishes durable local state
+once on release. A non-primary axis retains Live preview feedback through the
+session's one stable graph snapshot. The scale test covers a primary gesture
+across 0 and 128 unrelated nodes and 16,384 unrelated audio samples, asserting
+zero graph, mesh, and audio-resource copies, serialization, or linear scans
+through commit and undo.
+
+The native `trimesh-morph-selection` fixture cannot currently prove its undo
+assertion: it expects `waveMesh.yellow = 0.317`, while the app reports `0`
+immediately after loading the saved graph. This pre-gesture discrepancy is
+recorded in `ui-bugs.md`. A focused morph fixture uses the observed loaded
+value to check Live drag, durable parameter isolation during movement,
+commit, and undo without changing the older fixture's expectation.
+
+### Remaining mesh gesture extraction boundary
+
+The approved direction is a shared edit core with immutable movement deltas.
+For Trimesh vertex controls, `TrimeshNodeModel::setVertexParameter` and
+`setVertexGuideGain` are the authoritative value rules: clamp the requested
+value, change one vertex value or each owning cube's guide gain, and advance
+derived revisions only if effective state changed. Extract those rules into a
+domain core that prepares a small before/after delta and applies that same
+delta to the widget mesh. An inverse delta represents undo. Identifying an
+owner by its ordinal within the edited vertex's owner list keeps preparation
+and application proportional to that vertex's local topology; the delta is
+valid only for an unchanged topology and must be rejected otherwise. The
+existing mature rasterizer remains authoritative for preview output.
+
+This first extraction does not enable Live downstream vertex preview. The
+rasterizer and DSP currently require `Mesh*` and traverse `VertCube`/`Vertex`
+pointers directly. A worker-safe, immutable read surface that resolves base
+mesh plus delta without a full mesh copy was the next architectural boundary.
+Do not route the delta through the existing graph worker until that surface
+is shared by every applicable local and downstream product path. Curve edits need
+the equivalent domain delta and shared read surface before their migration.
+
+`TrimeshMeshDeltaOverlay` now supplies that read surface for the blockwise and
+gridwise Trimesh render paths. It owns an immutable base mesh and locally cloned
+cubes for the edited vertex's owners. The existing trilinear slicer accepts a
+cube resolver and retains its interpolation, guide, sorting, and sampling
+behavior. A parity test compares overlay output with an independently edited
+full mesh for intercepts, a rendered slice, and a traversal grid; it also
+checks guide-gain substitution. The normal Trimesh audio and spectral
+blockwise paths accept the overlay. `VoiceRasterizer` now resolves cubes through
+the same overlay for ordinary and chained time oscillator rendering; its
+nonowning resolver is set during preparation and does not allocate on the
+audio thread. A parity test compares ordinary frames and chained intercepts
+with an edited mesh. No production configuration creates an overlay yet. The
+widget/editor delta producer, two-update gesture sequence, durable local
+commit, and curve counterpart remain open.
+
+The vertex-control command service now prepares each effective movement from
+the widget's current mesh through the shared edit core and composes it against
+the gesture's initial values. Composition walks affected owners in order and
+rejects a discontinuity. A repeated value produces no movement publication;
+returning to the initial value commits only any editor selection change and
+skips the mesh copy and downstream refresh. The two-movement guide-gain editor
+test covers the resulting commit, prepared guide effect, undo, and return to
+base. This delta is not yet routed into a production preview configuration,
+and a net changed release still copies the complete mesh.
+The native guide-gain fixture after this change passes. Its pre-release window
+still records three vertex-update operations and zero preview requests,
+configuration stages, preview-audio stages, or synchronous refreshes, matching
+the baseline counts above. Report:
+`/private/tmp/causal-trimesh-guide-accumulator.json`.
+
+`TrimeshVertexEditCore` now prepares and applies before/after vertex-value
+and guide-gain deltas; `TrimeshNodeModel` delegates its mature clamping and
+owner-gain rules to that core. The core's inverse reapplies the prior values,
+and the cross-mesh test rejects a stale delta before any partial mutation.
+With 0 versus 128 unrelated cubes, its edited-owner visit count is unchanged;
+both scales record zero graph or mesh copies, model serializations, and node
+linear scans during delta preparation/application. The native On Release guide
+gain fixture passed before and after extraction. In both runs, the pre-release
+window had three vertex-update operations, zero preview requests, zero graph
+configuration stages, and zero preview-audio stages. Reports:
+`/private/tmp/causal-trimesh-guide-before.json` and
+`/private/tmp/causal-trimesh-guide-after.json`.
+
+Cycle 1's `VertexPropertiesPanel` changes selected vertex values on movement
+and adjusts guide gains through the local selected-vertex/owner set; pointer
+down starts the gesture and release restores normal update mode. The extracted
+Cycle V2 value core keeps movement proportional to the edited vertex and its
+owners plus the explicitly required local render. The existing Cycle V2
+`TrimeshNodeModelState::copyOf` still copies the entire mesh at commit; this
+does not satisfy Cycle 1 commit complexity parity and remains a deletion
+target. A persistent mesh representation or equivalent local delta commit
+path is needed before the vertex family can be called migrated.
+
+The next implementation boundary is durable storage. `TrimeshNodeModelState`
+exposes an owned `Mesh` of raw cube/vertex pointers; `NodeGraph::replaceNodeModel`
+and graph/editor callers require that concrete mesh. A sparse delta state
+layered over that API would force full materialization at commit or during
+immediate widget resynchronization. `TrimeshGuidePreparation::prepare` also
+deep-copies the whole mesh, and `GuideCurveMeshPreparation::apply` clears every
+cube before applying guide assignments. A Live worker cannot call either on
+movement. Extract persistent per-cube ownership/read access for model state
+and a guide-assignment view reused from the gesture's prepared configuration.
+Keep the existing guide semantics and rasterizers authoritative; avoid a
+movement-time full-mesh materialization or a second guide algorithm.
+
+`TrimeshWidget` and `TrimeshNodeModel` are authoritative for vertex editing
+and its local render. Vertex-parameter and mesh drags currently mutate the
+widget's `Mesh`; `NodeEditorCommandService` calls
+`TrimeshNodeModelState::copyOf(widget->currentMesh(), ...)` only at release.
+The graph's immutable model and DSP configuration therefore do not contain
+movement edits. Simply routing these callbacks through the Live graph worker
+would either render stale graph content or require a complete mesh copy per
+movement, which violates the interaction complexity contract. Before those
+families migrate, extract an immutable, affected-vertex semantic delta or
+shared mesh core that the existing Trimesh local renderer and downstream
+configuration path can consume. The session may own identity and lifecycle;
+it must not copy the widget's topology or duplicate its constraint logic.
+
+Curve transactions have the same missing model boundary: the mature
+`CurveExpandedEditorComponent` changes `CurveEditorWidget` state and reports a
+content fingerprint during movement, but calls `prepareModelPublication()`
+only at commit. Thus the graph worker cannot see a current Live curve model
+from the existing callback alone. Extract an immutable semantic curve delta
+from the widget/controller used by both local rendering and graph product
+inputs before moving this family into the shared session. Do not prepare a
+complete model or serialize it on every pointer movement.
+
+The flat-curve model already has identity-addressed `moveVertex` and
+`setCurve` operations, but the mature panel interaction edits its `Mesh`
+directly. `FlatCurvePanelAdapter::modelPublication` later synchronizes the
+entire mesh into that model and copies the model for publication. Curve
+extraction must route the panel through the existing identity-addressed edit
+rules or share a lower edit core with them, then carry a persistent affected
+vertex delta to the product path. A parallel curve evaluator or mesh-to-model
+scan on movement would violate the boundary.
+
+### Request-construction extraction boundary
+
+`NodeUpdateGraph` and `GraphExecutionPlan` remain authoritative for product
+freshness and dependency topology. A pure request builder may reuse the
+existing `GraphPresentationModel::updateRequest` translation unchanged:
+compute the effective authoring fingerprint, collect changed and probed roots,
+and name typed product invalidations. It must receive edit identity from the
+gesture session and hand its request to `NodeUpdateGraph`; it must not plan
+dependency closure, execute products, or choose refresh policy. The end state
+deletes `GraphPresentationModel::updateRequest` and keeps request translation
+in the scheduler below the presentation facade.
+
+The next scheduler slice moves ownership of `PresentationGestureSession` and
+the existing `updateRequest` method together into
+`PresentationRefreshScheduler`. The scheduler receives the current published
+revision and preview-control values as a small read-only context, retains the
+effective fingerprint and phase rules, and calls the pure request builder
+unchanged.
+`GraphPresentationModel` will keep the planner, worker, and publication until
+their own extraction slices; it will no longer own the edit gate or construct
+requests. This scheduler is an orchestration owner, not an adapter for domain
+logic.
+
+The scheduler now owns `PresentationGestureSession` and the former
+`GraphPresentationModel::updateRequest` code; the model passes a small context
+with published revision and preview controls. Focused causal/gesture tests
+passed (119 assertions), and the native Live wheel fixture retained three
+renders before and after release, three requests, two publications, one
+stale/cancelled result, and zero synchronous refreshes. `NodeUpdateGraph`,
+the worker, coalescing, and publication are still in the model, so scheduler
+ownership is incomplete.
+
+The next scheduler slice moves editor movement identity, local-slice trace,
+deferred-probe trace, and local durable-publication trace out of
+`GraphPresentationModel`. `NodeUpdateGraph` remains the authoritative planner;
+the scheduler receives it as an execution dependency until planning and worker
+ownership move together. The model only advances the accepted graph revision
+after a valid local commit identity is published.
+
+Editor local trace construction now lives in the scheduler. Five focused
+tests passed (137 assertions). The native On Release Reverb spectrogram
+fixture also passes its during-drag and undo assertions after correcting its
+`waitForIdle` commands to use the supported `idleDelayMs` key; the old
+`delayMs` key let the first assertion race async publication. This keeps the
+assertion on visible local output rather than weakening it.
+
+The worker extraction must move generation, latest-only supersession,
+cancellation checks, worker queue, publication ordering, and audit outcomes
+together. `GraphPresentationModel` supplies product execution and accepted
+snapshot effects as callbacks; the scheduler owns immutable job input and
+calls those callbacks only while its generation is current. Synchronous
+topology and preview-control changes still cancel and wait at their existing
+boundaries. The model destructor must shut down the scheduler before its
+renderer and snapshot state are destroyed.
+
+The scheduler now owns the worker and async job, generation, cancellation,
+latest-only supersession, stale-result checks, publication ordering, and
+associated audit/latency outcomes. The model supplies only product execution
+and accepted-snapshot effects. Five focused tests passed before the refactor
+pass (79 assertions), and four passed after splitting worker execution and
+publication into separate scheduler methods (75 assertions). The native Live
+wheel and both Reverb policy fixtures passed after the move; the wheel window
+still has three renders before and after release, three requests, two
+publications, one stale/cancelled result, and zero synchronous refreshes.
+
+The next ownership slice moves `NodeUpdateGraph` into the scheduler. The
+scheduler will expose named synchronous execution, cache reset, trace access,
+and async submission; the model will no longer pass a planner reference into
+editor or worker methods. `NodeUpdateGraph` remains the unchanged planner and
+exactly-once ledger under this orchestration boundary.
+
+`NodeUpdateGraph` is now a scheduler member. The model calls named scheduler
+operations for synchronous refresh, cache reset, editor traces, and async
+submission, and reads the scheduler's audit trace. Six focused planner,
+publication, and preview tests passed (83 assertions). The renderer remains
+the product executor and the model remains the accepted-snapshot facade.
+
+The first extraction moves fingerprint and typed invalidation construction to
+`PresentationUpdateRequestBuilder`; `GraphPresentationModel` still owns the
+session identity call and the thin request wrapper. The focused preview and
+Guide tests pass, and the native wheel fixture retains the baseline counts
+above. The scheduler and wrapper deletion remain open.
+
+### Preview execution extraction boundary
+
+`GraphPresentationModel::renderPreviewProducts` contains the mature preview
+execution path: `GraphAudioExecutor` prepares and processes the graph, then
+`GraphPreviewExecutor` extracts full or incremental node and probe products.
+Move this function and its execution cache into a dedicated renderer without
+changing processors, dirty-node selection, cancellation, or metrics.
+`GraphPresentationModel` will call the renderer with planned products and
+retain ownership of accepted snapshots. This is a direct extraction with no
+duplicate preview implementation; delete the old method and executor member.
+Worker lifecycle and scheduling move in a later slice.
+
+The renderer extraction is in production. The old model method and audio
+executor member are gone, and a mechanical body comparison confirmed the
+render algorithm is unchanged. Four focused preview tests passed (53
+assertions). The native Live wheel fixture still reports three renders before
+and after release, three requests, two publications, one stale/cancelled
+result, and zero synchronous refreshes after the extraction. The expanded
+probe capture helper then moved to the same renderer; the model now delegates
+that explicit capture after validating its current compiled plan.
+Three focused capture/preview tests passed (36 assertions) after the move.
+The archived Stengah native spy-detail fixture opened its detail but failed
+its existing 129-row expectation with 256 rows; that discrepancy is recorded
+in `ui-bugs.md`, and the assertion was not changed.
+
 The production causal planner, product identities, audit trace, incremental
 preview execution, and latest-only worker publication landed in July 2026.
 The prior `Complete` status was premature: probe-refresh policy and gesture
@@ -72,23 +463,18 @@ The current policy distribution includes:
 - direct broad presentation refreshes from both `NodeCanvas` and
   `NodeCanvasAuthoring`.
 
-### Live wheel semantic decision still needed
+### Live wheel semantic decision and implemented path
 
-The Live wheel path currently renders CC1 against one immutable graph captured
-at gesture start, then commits saved Trimesh/Envelope morph parameters only on
-mouse-up. The commit can therefore change the effective graph independently
-of the final CC1 value. Its second preview render is not safely removable by a
-wheel-value equality check. Making the commit reuse decision truthful requires
-product-level fingerprints from the actual affected runtime configuration.
-
-There are two possible semantic contracts for the saved morph fields during a
-Live wheel gesture. They can be updated transiently on each movement (one undo
-transaction, with an immutable delta/overlay for worker jobs so movement never
-clones the full graph), or remain commit-only while CC1 previews live (in which
-case a second render at commit may be required whenever saved fields affect
-the product). This choice affects audio, Spy output, undo, and the shared
-session/scheduler design. Do not set `finalMovementAlreadyPublished` merely
-because the numeric wheel position matches; that would bless stale products.
+The original Live wheel path rendered CC1 against one immutable graph captured
+at gesture start, then committed saved Trimesh/Envelope morph parameters only
+on mouse-up. That made the final movement preview different from the committed
+graph and required another render. The user chose transient saved morph updates
+on every Live movement. The dispatcher now publishes one affected-node overlay
+per movement, retains one durable base revision, and commits one undoable
+transaction. The final preview is reused only when its effective product
+fingerprint matches the committed configuration. The native fixture measures
+three preview renders before and after release, versus three to four before
+the change.
 
 As of the reopening audit, `GraphPresentationModel.cpp` is 954 lines,
 `NodeEditorCommandService.cpp` is 805 lines, and `NodeCanvas.cpp` is 2,349

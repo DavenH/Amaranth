@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 519.85901, "y": 387.03418 },
+            "position": { "x": 828.97168, "y": 453.77441 },
             "parameters": {
                 "octave": 0,
                 "voiceLength": 0.580152672,
@@ -21,7 +21,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 159.85898, "y": 261.03418 },
+            "position": { "x": 468.97171, "y": 327.77441 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -38,7 +38,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 159.85898, "y": 431.03418 },
+            "position": { "x": 468.97171, "y": 497.77441 },
             "parameters": { "enabled": true, "mode": "group", "order": 9, "width": 23.520000000000003, "panSpread": 0.0, "phase": 0.0, "jitter": 1.0 },
             "model": {
                 "schema": "unisonVoices",
@@ -53,7 +53,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1736.80005, "y": 704.0705 },
+            "position": { "x": 1640.20227, "y": 540.0705 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -151,7 +151,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1736.80005, "y": 1084.0 },
+            "position": { "x": 1640.20227, "y": 920.0 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.037383176, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -250,14 +250,14 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2112.0, "y": 886.0 },
+            "position": { "x": 2015.40222, "y": 722.0 },
             "parameters": {}
         },
         {
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 344.44601, "y": 920.0 },
+            "position": { "x": 653.55872, "y": 986.74023 },
             "parameters": { "processingScope": "global", "enabled": true, "size": 0.285714286, "post": 0.412, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
@@ -339,21 +339,21 @@
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 648.44604, "y": 920.0 },
+            "position": { "x": 957.55872, "y": 986.74023 },
             "parameters": { "gain": 0.598982 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 106.44601, "y": 920.0 },
+            "position": { "x": 415.55875, "y": 986.74023 },
             "parameters": {}
         },
         {
             "id": "voiceOutput",
             "kind": "voiceOutput",
             "definitionVersion": 1,
-            "position": { "x": 2310.0, "y": 886.0 },
+            "position": { "x": 2213.40234, "y": 722.0 },
             "parameters": {}
         }
     ],

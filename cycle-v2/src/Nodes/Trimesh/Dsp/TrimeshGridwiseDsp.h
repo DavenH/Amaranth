@@ -21,6 +21,7 @@ public:
     void setCyclic(bool shouldWrap);
     void setBipolar(bool shouldUseBipolarScaling);
     void setGuideCurveProvider(GuideCurveProvider* provider);
+    void setDeltaOverlay(std::shared_ptr<const TrimeshMeshDeltaOverlay> overlay);
     void setVoiceLifecycleSeed(uint32_t seed);
     void setFrequencyMidiNote(int midiNote);
     void prepareSampling(size_t maximumRowCount);

@@ -311,6 +311,16 @@ Context:
 Current status: open; reconcile the Delay fixture topology with its preview
 count expectation rather than weakening the runtime product boundary.
 
+## P3: Causal-tag runtime suite misses expected probe previews
+
+On 2026-09-17, `CycleV2_tests '[cycle-v2][runtime][causal]'` reported two
+`TestGraphRuntime.cpp:48` failures because `findProbePreview` could not find
+the requested probe. One was the Stengah asynchronous Waveshaper test at line
+839 (`probe2`); the other occurred earlier in the same tag run. The focused
+presentation-session and policy tests pass. Log: `/tmp/causal-all-tests.log`.
+Current status: open; identify the second case and determine whether preset
+topology or preview planning caused the missing probes.
+
 ## P3: Parallel macOS automation launches contend for CoreMIDI
 
 Context:
@@ -393,6 +403,19 @@ the canonical preset set rather than weakening the assertions.
 Current status: open fixture/test synchronization issue; restore the intended
 Stengah probes or update the test fixture at its authoring boundary.
 
+- On 2026-09-18, a grouped causal/presentation/Reverb test run again failed
+  the Stengah async Waveshaper probe case at `findProbePreview(..., "probe2")`
+  immediately after loading the preset; 48 of 50 cases passed. The local
+  Reverb preview path is not invoked by this test. Log:
+  `/private/tmp/causal-reverb-tests.log`.
+
+- On 2026-09-18, `cycle-v2-agent-spy-detail.json` opened the probe detail on
+  archived `old/stengah.cyclegraph`, but its `probeDetailRows` assertion
+  expected 129 and observed 256. The capture-path extraction's focused tests
+  passed. Report: `/private/tmp/causal-probe-extract-native.json`. Keep the
+  fixture assertion until the intended archived graph and resolution contract
+  are reconciled.
+
 ## P3: Opening an Envelope editor marks the document dirty
 
 The 2026-09-17 `cycle-v2-agent-envelope-link-toggle.json` run opens the saved
@@ -403,3 +426,66 @@ state. Report: `/private/tmp/cycle-v2-envelope-link-session2`.
 
 Current status: open; distinguish selection/editor-state publication from a
 durable document edit. Envelope link toggles themselves remain session-only.
+
+## P3: With-spies Trimesh morph fixture expects a value absent after load
+
+On 2026-09-18, `cycle-v2-agent-trimesh-morph-selection.json` failed its undo
+assertion: it expected `waveMesh.yellow` to return to `0.317`, but the loaded
+node reports `0` immediately after `openGraph`, before any editor action. The
+source `with-spies.cyclegraph` contains `yellow: 0.317`. Diagnostic reports:
+`/private/tmp/causal-morph-initial-report.json` and
+`/private/tmp/causal-morph-diagnostic-report.json`.
+
+Current status: open; inspect graph load or parameter normalization. The
+fixture's undo value should not be changed until that discrepancy is resolved.
+
+## P3: Reverb preview can remain changed after a second no-op gesture
+
+On 2026-09-18, a diagnostic native sequence dragged Reverb size, committed,
+undid, reopened the editor, then dragged damping. The second drag changed the
+local spectrogram, but the durable Reverb parameters stayed at their initial
+values and a subsequent undo left the changed preview visible. A separate
+fresh-graph damping drag/commit/undo fixture passes. Report:
+`/private/tmp/causal-reverb-kernel-size-damp.json`.
+
+Current status: open; inspect gesture lifecycle and editor rebind after undo.
+
+## P3: Trimesh expanded control-region count test expects an old layout
+
+On 2026-09-18, the broad Trimesh node test filter passed 64 of 65 cases; one
+assertion in `TestTrimeshNodeDsp.cpp` expected 22 control regions and observed
+28. The focused vertex delta and guide-gain gesture tests passed. Log:
+`/private/tmp/causal-trimesh-delta-tests.log`.
+
+Current status: open; reconcile the control layout contract and its assertion.
+
+## P3: Cycle 1 FileManager assertion during a mismatched automation launch
+
+On 2026-09-18, the Cycle V2 guide-gain audit fixture was accidentally run
+through the wrapper's default Cycle 1 app. The commands were unsupported and
+the filtered log emitted `JUCE Assertion failure in FileManager.cpp:174`.
+The same fixture passed when `CYCLE_APP_PATH` and `CYCLE_PROCESS_NAME` targeted
+Cycle V2. The mismatched-run log was replaced by the successful rerun; use
+the wrapper defaults with `/tmp/causal-trimesh-guide-audit.json` to reproduce.
+
+Current status: open in Cycle 1; unrelated to the Cycle V2 gesture change.
+
+## Addressed: Unmapped saxophone mod wheel edited Trimesh blue morphs
+
+On 2026-09-18, the Live keyboard wheel on `saxophone.cyclegraph` changed
+`timeLayer1.blue` from `0` to `0.897637784` and marked the document dirty,
+although the attached Modulation Triple used `inverseVelocity` for blue.
+The preview command had applied red/blue values to every Trimesh and Envelope
+without checking each compiled input source. Baseline report:
+`/private/tmp/cycle-v2-sax-wheel-live-before.json`.
+
+Keyboard morph edits now target only axes sourced from key scale or the mod
+wheel. A wheel with no mapped source updates its keyboard position without a
+graph edit or preview job. The native fixture passes with blue still `0`, a
+clean document, two unchanged spy sums, and zero worker/configuration stages;
+the mapped-wheel fixture still passes. Reports:
+`/private/tmp/cycle-v2-sax-wheel-live-after.json` and
+`/private/tmp/cycle-v2-honerism-wheel-mapping-after.json`.
+
+Current status: addressed; `cycle-v2-agent-saxophone-unmapped-wheel.json`
+guards the regression.

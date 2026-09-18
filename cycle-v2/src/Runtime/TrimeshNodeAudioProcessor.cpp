@@ -101,6 +101,8 @@ public:
         morphResolver.reset(configuration->morph);
         trimeshDsp.setGuideCurveProvider(configuration->guideCurveProvider.get());
         trimeshGridDsp.setGuideCurveProvider(configuration->guideCurveProvider.get());
+        trimeshDsp.setDeltaOverlay(configuration->deltaOverlay);
+        trimeshGridDsp.setDeltaOverlay(configuration->deltaOverlay);
         trimeshDsp.prepare(
                 const_cast<Mesh*>(configuration->mesh.get()),
                 configuration->morph,

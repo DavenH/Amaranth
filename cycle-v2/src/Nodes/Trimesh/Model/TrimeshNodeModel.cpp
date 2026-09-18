@@ -3,6 +3,7 @@
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGridwiseDsp.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/Model/TrimeshVertexEditCore.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 
 #include "Graph/NodeParameterMap.h"
@@ -495,17 +496,14 @@ bool TrimeshNodeModel::setVertexParameter(
         int vertexIndex,
         const String& parameterId,
         float value) {
-    Vertex* vertex = vertexAtIndex(vertexIndex);
-    const int valueIndex = vertexValueIndex(parameterId);
-    if (vertex == nullptr || valueIndex < 0) {
+    const auto delta = TrimeshVertexEditCore::prepareVertexValue(
+            mesh(), vertexIndex, parameterId, value);
+    if (!delta.has_value() || !TrimeshVertexEditCore::apply(mesh(), *delta)) {
         return false;
     }
-    const float clampedValue = jlimit(0.f, 1.f, value);
-    if (vertex->values[valueIndex] == clampedValue) {
-        return true;
+    if (delta->changed()) {
+        bumpMeshContentRevision();
     }
-    vertex->values[valueIndex] = clampedValue;
-    bumpMeshContentRevision();
     return true;
 }
 
@@ -513,29 +511,12 @@ bool TrimeshNodeModel::setVertexGuideGain(
         int vertexIndex,
         const String& parameterId,
         float value) {
-    Vertex* vertex = vertexAtIndex(vertexIndex);
-    const int valueIndex = vertexValueIndex(parameterId);
-    if (vertex == nullptr || valueIndex < 0 || vertex->owners.isEmpty()) {
+    const auto delta = TrimeshVertexEditCore::prepareGuideGain(
+            mesh(), vertexIndex, parameterId, value);
+    if (!delta.has_value() || !TrimeshVertexEditCore::apply(mesh(), *delta)) {
         return false;
     }
-
-    const float targetValue = jlimit(0.f, 1.f, value);
-    const float delta = targetValue - vertexGuideGain(vertexIndex, parameterId);
-    bool changed {};
-    for (auto* owner : vertex->owners) {
-        if (owner != nullptr) {
-            const float nextValue = jlimit(
-                    0.f,
-                    1.f,
-                    owner->guideCurveGainAt(valueIndex) + delta);
-            if (owner->guideCurveGainAt(valueIndex) == nextValue) {
-                continue;
-            }
-            owner->guideCurveGainAt(valueIndex) = nextValue;
-            changed = true;
-        }
-    }
-    if (changed) {
+    if (delta->changed()) {
         bumpMeshContentRevision();
     }
     return true;
@@ -544,44 +525,7 @@ bool TrimeshNodeModel::setVertexGuideGain(
 float TrimeshNodeModel::vertexGuideGain(
         int vertexIndex,
         const String& parameterId) {
-    Vertex* vertex = vertexAtIndex(vertexIndex);
-    const int valueIndex = vertexValueIndex(parameterId);
-    if (vertex == nullptr || valueIndex < 0 || vertex->owners.isEmpty()) {
-        return 0.5f;
-    }
-
-    float sum {};
-    int count {};
-    for (const auto* owner : vertex->owners) {
-        if (owner != nullptr) {
-            sum += owner->guideCurveGainAt(valueIndex);
-            ++count;
-        }
-    }
-    return count > 0 ? sum / (float) count : 0.5f;
-}
-
-int TrimeshNodeModel::vertexValueIndex(const String& parameterId) {
-    const String field = parameterId.fromLastOccurrenceOf(".", false, false);
-    if (field == "time") {
-        return Vertex::Time;
-    }
-    if (field == "red") {
-        return Vertex::Red;
-    }
-    if (field == "blue") {
-        return Vertex::Blue;
-    }
-    if (field == "phase") {
-        return Vertex::Phase;
-    }
-    if (field == "amp") {
-        return Vertex::Amp;
-    }
-    if (field == "curve") {
-        return Vertex::Curve;
-    }
-    return -1;
+    return TrimeshVertexEditCore::guideGain(mesh(), vertexIndex, parameterId);
 }
 
 Vertex* TrimeshNodeModel::vertexAtIndex(int vertexIndex) {

@@ -1,40 +1,24 @@
 #pragma once
 
-#include <atomic>
 #include <functional>
 #include <memory>
-#include <mutex>
 #include <optional>
 
 #include "Runtime/GraphAudioExecutor.h"
-#include "Runtime/GraphPreviewExecutor.h"
 #include "Runtime/GraphPresentationPerformanceMetrics.h"
-#include "Runtime/GraphRuntime.h"
-#include "Runtime/MessageThreadWorker.h"
+#include "Runtime/GraphPresentationSnapshot.h"
 #include "Runtime/NodeUpdateGraph.h"
-#include "Runtime/PresentationGestureSession.h"
+#include "Runtime/PresentationPreviewRenderer.h"
+#include "Runtime/PresentationRefreshScheduler.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/PreviewMorphTarget.h"
 
 namespace CycleV2 {
 
-struct GraphPresentationSnapshot {
-    uint64_t graphRevision {};
-    int previewMidiNote { 48 };
-    int previewModWheelValue {};
-    GraphCompileResult compileResult;
-    RuntimeProcessTrace runtimeTrace;
-    GraphPreviewResult previewResult;
-};
-
-enum class PresentationRefreshScope {
-    Downstream,
-    LocalEditor
-};
-
 class GraphPresentationModel {
 public:
-    GraphPresentationModel();
+    GraphPresentationModel() = default;
     ~GraphPresentationModel();
 
     bool refresh(
@@ -51,13 +35,15 @@ public:
             uint64_t documentRevision,
             int value);
     void stagePreviewModWheelValue(int value);
-    bool refreshPreviewModWheelValueAsync(
-            std::shared_ptr<const NodeGraph> graph,
-            uint64_t documentRevision,
-            int value,
-            std::function<void()> completion = {});
+    GraphChangeSet modWheelPreviewChange(GraphChangeSet change) const;
     void refreshAsync(
             NodeGraph graph,
+            uint64_t documentRevision,
+            GraphChangeSet change,
+            PresentationRefreshScope scope,
+            std::function<void()> completion = {});
+    void refreshAsync(
+            std::shared_ptr<const NodeGraph> graph,
             uint64_t documentRevision,
             GraphChangeSet change,
             PresentationRefreshScope scope,
@@ -67,6 +53,9 @@ public:
             const String& field,
             uint64_t effectiveFingerprint,
             bool deferredUntilCommit);
+    bool refreshLocalNodePreview(
+            const Node& node,
+            std::function<void()> completion);
     void commitLocalEditorState(
             const String& nodeId,
             const String& field,
@@ -79,14 +68,25 @@ public:
     const GraphPreviewResult& previewResult() const { return current.previewResult; }
     int previewMidiNote() const { return current.previewMidiNote; }
     int previewModWheelValue() const { return current.previewModWheelValue; }
+    bool hasModWheelPreviewRoots() const { return !modWheelPreviewRootNodeIds.empty(); }
+    const std::vector<PreviewMorphTarget>& keyScaleMorphTargets() const {
+        return keyScaleTargets;
+    }
+    const std::vector<PreviewMorphTarget>& modWheelMorphTargets() const {
+        return modWheelTargets;
+    }
+    const std::vector<PreviewMorphTarget>& allPerformanceMorphTargets() const {
+        return allMorphTargets;
+    }
     uint64_t revision() const { return presentationRevision; }
     uint64_t audioPlanRevision() const { return audioRevision; }
     size_t compilationCount() const { return compilations; }
     size_t previewRenderCount() const { return previewRenders; }
     size_t previewAudioProcessCount(const String& nodeId) const {
-        return previewAudioExecutor.diagnosticProcessCount(nodeId);
+        return previewRenderer.diagnosticProcessCount(nodeId);
     }
-    const UpdateAuditTrace& updateTrace() const { return updateGraph.trace(); }
+    const UpdateAuditTrace& updateTrace() const { return scheduler.trace(); }
+    PresentationGestureSession& editSession() { return scheduler.editSession(); }
     juce::var performanceMetrics() const { return performance.toVar(); }
     void resetPerformanceMetrics() { performance.reset(); }
 
@@ -102,26 +102,7 @@ public:
             int midiNote) const;
 
 private:
-    struct AsyncState {
-        std::atomic<bool> alive { true };
-        std::atomic<uint64_t> generation {};
-    };
-
-    struct AsyncRefresh {
-        std::shared_ptr<AsyncState> state;
-        uint64_t generation {};
-        std::shared_ptr<const NodeGraph> graph;
-        GraphChangeSet change;
-        PresentationRefreshScope scope { PresentationRefreshScope::Downstream };
-        CausalUpdateRequest request;
-        CausalUpdateResult updateResult;
-        uint64_t requestFingerprint {};
-        GraphPresentationSnapshot snapshot;
-        std::function<void()> completion;
-        uint64_t requestedAtMicroseconds {};
-        uint64_t workerFinishedAtMicroseconds {};
-        bool previewRendered {};
-    };
+    using AsyncRefresh = PresentationRefreshScheduler::AsyncRefresh;
 
     bool requiresCompilation(const GraphChangeSet& change) const;
     bool requiresPreview(const GraphChangeSet& change) const;
@@ -129,57 +110,31 @@ private:
             const NodeGraph& graph,
             uint64_t documentRevision,
             std::vector<String> rootNodeIds);
-    void refreshAsync(
-            std::shared_ptr<const NodeGraph> graph,
-            uint64_t documentRevision,
-            GraphChangeSet change,
-            PresentationRefreshScope scope,
-            std::function<void()> completion);
     void refreshConfigurations(
             const NodeGraph& graph,
             GraphExecutionPlan& plan,
             const std::vector<String>& nodeIds);
-    bool prepareAsyncRefresh(AsyncRefresh& refresh);
+    void refreshPreviewMorphBindings();
     bool executeAsyncProducts(
             AsyncRefresh& refresh,
             const std::vector<PlannedNodeProduct>& products);
-    bool renderPreviewProducts(
-            const NodeGraph& graph,
-            GraphPresentationSnapshot& snapshot,
-            const std::vector<PlannedNodeProduct>& products,
-            bool renderFullGraph,
-            PresentationRefreshScope scope,
-            bool& previewRendered,
-            GraphAudioExecutor::CancellationCheck cancellationCheck = {});
-    std::function<void()> publishAsyncRefresh(std::shared_ptr<AsyncRefresh> refresh);
-    bool isCurrent(const AsyncRefresh& refresh) const;
-    CausalUpdateRequest updateRequest(
-            const NodeGraph& graph,
-            const GraphExecutionPlan& plan,
-            uint64_t documentRevision,
-            const GraphChangeSet& change,
-            bool compile,
-            bool preview,
-            PresentationRefreshScope scope);
 
     bool hasExplicitPreviewMidiNote {};
 
     GraphPresentationSnapshot current;
     GraphCompiler compiler;
     NodeDspConfigurationFactory configurationFactory;
-    NodeUpdateGraph updateGraph;
-    PresentationGestureSession gestureSession;
-    mutable GraphAudioExecutor previewAudioExecutor;
+    PresentationRefreshScheduler scheduler;
+    PresentationPreviewRenderer previewRenderer;
     uint64_t requestedGraphRevision {};
     uint64_t presentationRevision { 1 };
     uint64_t audioRevision { 1 };
     size_t compilations {};
     size_t previewRenders {};
-    uint64_t publishedEditFingerprint {};
-    uint64_t publishedGeneration {};
     std::vector<String> modWheelPreviewRootNodeIds;
-    MessageThreadWorker asyncWorker;
-    std::shared_ptr<AsyncState> asyncState;
+    std::vector<PreviewMorphTarget> allMorphTargets;
+    std::vector<PreviewMorphTarget> keyScaleTargets;
+    std::vector<PreviewMorphTarget> modWheelTargets;
     GraphPresentationPerformanceMetrics performance;
 };
 

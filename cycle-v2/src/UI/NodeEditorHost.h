@@ -9,6 +9,7 @@
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/NodeGraph.h"
+#include "Nodes/Trimesh/Model/TrimeshVertexEditCore.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Runtime/NodeUpdateGraph.h"
@@ -95,6 +96,16 @@ public:
     virtual void repaintNodeEditor(bool openGl) = 0;
     virtual void selectEditedNode(const String& nodeId) = 0;
     virtual void setNodeEditorStatus(const String& message) = 0;
+    virtual bool beginNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document,
+            bool downstreamFeedback = true) = 0;
+    virtual void finishNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document,
+            const String& localField = {}) = 0;
     virtual void scheduleNodeEditorRefresh() = 0;
     virtual void flushNodeEditorRefresh() = 0;
     virtual void refreshNodeEditorPresentation() = 0;
@@ -267,14 +278,12 @@ private:
     NodeEditorPerformanceObserver* performanceObserver {};
     String activeMorphNodeId;
     String activeMorphParameterId;
-    uint64_t activeMorphFingerprint {};
-    bool activeMorphChanged {};
     bool activeMorphIsPrimary {};
     String activeVertexNodeId;
     String activeVertexParameterId;
     TrimeshWidget* activeVertexWidget {};
     int activeVertexIndex { -1 };
-    bool activeVertexChanged {};
+    std::optional<TrimeshVertexEditDelta> activeVertexDelta;
     String activeGuideMenuNodeId;
     String activeGuideMenuParameterField;
     uint64_t activeGuideMenuGeneration {};
@@ -293,8 +302,6 @@ private:
     String secondaryParameterId;
     String secondaryParameterLabel;
     String activeParameterField;
-    uint64_t activeParameterFingerprint {};
-    bool activeParameterChanged {};
 };
 
 struct NodeEditorAutomationTarget {

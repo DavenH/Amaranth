@@ -145,7 +145,6 @@ private:
     int resolvedSelectedVertexIndex();
     Vertex* vertexAtIndex(int vertexIndex);
     Vertex* selectedVertex();
-    static int vertexValueIndex(const String& parameterId);
     void bumpMeshContentRevision();
     void bumpMorphRevision();
     void bumpPrimaryAxisRevision();

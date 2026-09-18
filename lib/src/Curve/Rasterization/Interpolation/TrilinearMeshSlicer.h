@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <utility>
 #include <vector>
 
 #include "../Policies/Core/InterceptPolicies.h"
@@ -49,14 +50,15 @@ namespace Rasterization {
             return data.pointOverlaps;
         }
 
-        template<typename GuideApplier>
+        template<typename GuideApplier, typename ResolveCube>
         const RenderResult& sliceMesh(
                 Mesh* mesh,
                 const RasterizationRequest& request,
                 float oscPhase,
                 GuideApplier&& applyGuide,
                 RenderResult& output,
-                VertCube::ReductionData& reductionData) const {
+                VertCube::ReductionData& reductionData,
+                ResolveCube&& resolveCube) const {
             output.clear();
 
             if (mesh == nullptr || mesh->getNumCubes() == 0) {
@@ -72,7 +74,7 @@ namespace Rasterization {
             auto& cubes = mesh->getCubes();
             for (int i = 0; i < (int) cubes.size(); ++i) {
                 appendCubeIntercept(
-                        cubes[i],
+                        resolveCube(cubes[i]),
                         sliceDimension,
                         independent,
                         oscPhase,
@@ -90,6 +92,24 @@ namespace Rasterization {
             output.sampleable = output.intercepts.size() >= 2;
 
             return output;
+        }
+
+        template<typename GuideApplier>
+        const RenderResult& sliceMesh(
+                Mesh* mesh,
+                const RasterizationRequest& request,
+                float oscPhase,
+                GuideApplier&& applyGuide,
+                RenderResult& output,
+                VertCube::ReductionData& reductionData) const {
+            return sliceMesh(
+                    mesh,
+                    request,
+                    oscPhase,
+                    std::forward<GuideApplier>(applyGuide),
+                    output,
+                    reductionData,
+                    [](VertCube* cube) { return cube; });
         }
 
     private:

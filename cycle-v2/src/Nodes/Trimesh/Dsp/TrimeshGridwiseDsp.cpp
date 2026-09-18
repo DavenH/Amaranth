@@ -2,6 +2,8 @@
 
 #include <Curve/Mesh/Vertex.h>
 
+#include <utility>
+
 namespace CycleV2 {
 
 int TrimeshGridwiseDsp::noiseSeedOffsetForColumn(
@@ -25,6 +27,11 @@ void TrimeshGridwiseDsp::setBipolar(bool shouldUseBipolarScaling) {
 
 void TrimeshGridwiseDsp::setGuideCurveProvider(GuideCurveProvider* provider) {
     blockwiseDsp.setGuideCurveProvider(provider);
+}
+
+void TrimeshGridwiseDsp::setDeltaOverlay(
+        std::shared_ptr<const TrimeshMeshDeltaOverlay> overlay) {
+    blockwiseDsp.setDeltaOverlay(std::move(overlay));
 }
 
 void TrimeshGridwiseDsp::setVoiceLifecycleSeed(uint32_t seed) {

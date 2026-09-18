@@ -1,22 +1,16 @@
 #include <algorithm>
 
-#include <App/AppConstants.h>
-
 #include "Runtime/GraphPresentationModel.h"
-#include "Runtime/FingerprintBuilder.h"
+#include "Runtime/PreviewMorphBinding.h"
 #include "Runtime/PreviewPitchResolver.h"
+#include "Runtime/ReverbLocalPreview.h"
 
 #include "Nodes/Control/ModulationSource.h"
 #include "Nodes/Control/ModulationTriple.h"
-#include "Nodes/Guide/GuideCurveMeshPreparation.h"
 
 namespace CycleV2 {
 
 namespace {
-
-constexpr size_t kCompactPreviewFrameCount = 512;
-constexpr size_t kExpandedProbeColumnCount = 512;
-constexpr size_t kMaximumExpandedProbeRows = 512;
 
 bool usesModWheel(const ModulationSourceConfiguration& configuration) {
     return configuration.mode == ModulationSourceMode::ModWheel
@@ -63,42 +57,10 @@ std::vector<String> modWheelPreviewRoots(const GraphExecutionPlan& plan) {
     return roots;
 }
 
-GraphPreviewResult captureProbePreviews(
-        const NodeGraph& graph,
-        const GraphExecutionPlan& plan,
-        size_t frameCount,
-        int midiNote,
-        int modWheelValue) {
-    GraphAudioExecutor captureExecutor;
-
-    AudioVoiceContext voice;
-    voice.controls.noteNumber = jlimit(0, 127, midiNote);
-    voice.controls.controllers[1] = (float) jlimit(0, 127, modWheelValue) / 127.f;
-    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
-    const GraphAudioResult audio = captureExecutor.process(
-            graph,
-            plan,
-            frameCount,
-            {},
-            voice,
-            kExpandedProbeColumnCount);
-    return GraphPreviewExecutor().render(
-            plan,
-            audio,
-            graph.getSignalProbes(),
-            frameCount);
-}
-
-}
-
-GraphPresentationModel::GraphPresentationModel() :
-        asyncState(std::make_shared<AsyncState>()) {
 }
 
 GraphPresentationModel::~GraphPresentationModel() {
-    asyncState->alive.store(false);
-    asyncState->generation.fetch_add(1);
-    asyncWorker.shutdown();
+    scheduler.shutdown();
 }
 
 int GraphPresentationModel::auditionMidiNoteForProbe(
@@ -119,8 +81,7 @@ bool GraphPresentationModel::refresh(
     const bool compile = current.graphRevision == 0 || requiresCompilation(change);
     const bool preview = compile || requiresPreview(change);
     if (compile) {
-        asyncState->generation.fetch_add(1);
-        asyncWorker.cancelAndWait();
+        scheduler.cancelAndWait();
     }
 
     GraphPresentationSnapshot next = current;
@@ -135,8 +96,8 @@ bool GraphPresentationModel::refresh(
         if (next.compileResult.succeeded()) {
             next.runtimeTrace = GraphRuntime().process(graph, next.compileResult.plan);
         }
-        updateGraph.clearProductCache();
-        previewAudioExecutor.resetExecutionState();
+        scheduler.clearProductCache();
+        previewRenderer.resetExecutionState();
     } else if (change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
         refreshConfigurations(graph, next.compileResult.plan, change.nodeIds);
@@ -146,11 +107,13 @@ bool GraphPresentationModel::refresh(
     }
 
     bool previewRendered {};
-    const auto request = updateRequest(
+    const auto request = scheduler.request(
             graph,
             next.compileResult.plan,
             documentRevision,
             change,
+            { current.graphRevision, current.previewMidiNote,
+                    current.previewModWheelValue },
             compile,
             preview,
             PresentationRefreshScope::Downstream);
@@ -161,19 +124,19 @@ bool GraphPresentationModel::refresh(
         performance.record(Performance::Outcome::NoWork);
         return true;
     }
-    const auto updateResult = updateGraph.executeDeferredPublication(
+    scheduler.executeSynchronous(
             next.compileResult.plan,
             request,
             [&](const auto& products) {
-                return renderPreviewProducts(
+                return previewRenderer.render(
                         graph,
                         next,
                         products,
                         compile,
                         PresentationRefreshScope::Downstream,
-                        previewRendered);
+                        previewRendered,
+                        performance);
             });
-    updateGraph.publish(request, updateResult);
     if (previewRendered) {
         ++previewRenders;
     }
@@ -183,6 +146,7 @@ bool GraphPresentationModel::refresh(
             || change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration))) {
         modWheelPreviewRootNodeIds = modWheelPreviewRoots(current.compileResult.plan);
+        refreshPreviewMorphBindings();
         ++audioRevision;
     }
     performance.record(
@@ -214,8 +178,7 @@ bool GraphPresentationModel::refreshPreviewMidiNote(
         return true;
     }
 
-    asyncState->generation.fetch_add(1);
-    asyncWorker.cancelAndWait();
+    scheduler.cancelAndWait();
     current.previewMidiNote = selectedNote;
     hasExplicitPreviewMidiNote = true;
 
@@ -236,8 +199,7 @@ bool GraphPresentationModel::refreshPreviewModWheelValue(
         return true;
     }
 
-    asyncState->generation.fetch_add(1);
-    asyncWorker.cancelAndWait();
+    scheduler.cancelAndWait();
     current.previewModWheelValue = selectedValue;
 
     return refreshPreviewControls(
@@ -250,27 +212,16 @@ void GraphPresentationModel::stagePreviewModWheelValue(int value) {
     current.previewModWheelValue = jlimit(0, 127, value);
 }
 
-bool GraphPresentationModel::refreshPreviewModWheelValueAsync(
-        std::shared_ptr<const NodeGraph> graph,
-        uint64_t documentRevision,
-        int value,
-        std::function<void()> completion) {
-    const int selectedValue = jlimit(0, 127, value);
-    if (graph == nullptr || current.previewModWheelValue == selectedValue) {
-        return graph != nullptr;
+GraphChangeSet GraphPresentationModel::modWheelPreviewChange(
+        GraphChangeSet change) const {
+    change.parameterImpacts = change.parameterImpacts | ParameterImpact::Preview;
+    for (const auto& nodeId : modWheelPreviewRootNodeIds) {
+        if (std::find(change.nodeIds.begin(), change.nodeIds.end(), nodeId)
+                == change.nodeIds.end()) {
+            change.nodeIds.push_back(nodeId);
+        }
     }
-
-    current.previewModWheelValue = selectedValue;
-    GraphChangeSet change;
-    change.parameterImpacts = ParameterImpact::Preview;
-    change.nodeIds = modWheelPreviewRootNodeIds;
-    refreshAsync(
-            std::move(graph),
-            documentRevision,
-            std::move(change),
-            PresentationRefreshScope::Downstream,
-            std::move(completion));
-    return true;
+    return change;
 }
 
 bool GraphPresentationModel::refreshPreviewControls(
@@ -325,15 +276,17 @@ void GraphPresentationModel::refreshAsync(
     performance.record(Performance::Outcome::Requested);
 
     requestedGraphRevision = documentRevision;
-    const uint64_t generation = asyncState->generation.fetch_add(1) + 1;
+    const uint64_t generation = scheduler.beginAsyncRequest();
     const bool preview = requiresPreview(change);
     GraphPresentationSnapshot next = current;
     next.graphRevision = documentRevision;
-    const auto request = updateRequest(
+    const auto request = scheduler.request(
             *graph,
             next.compileResult.plan,
             documentRevision,
             change,
+            { current.graphRevision, current.previewMidiNote,
+                    current.previewModWheelValue },
             false,
             preview,
             scope);
@@ -348,79 +301,39 @@ void GraphPresentationModel::refreshAsync(
         }
         return;
     }
-    for (const auto& invalidation : request.invalidations) {
-        updateGraph.supersede(
-                invalidation.sourceStreamId,
-                invalidation.product,
-                generation);
-    }
-    const uint64_t requestFingerprint = request.invalidations.empty()
-            ? 0
-            : request.invalidations.front().inputFingerprint;
-    if (request.edit.phase == EditPhase::Commit
-            && requestFingerprint != 0
-            && requestFingerprint == publishedEditFingerprint) {
-        updateGraph.execute(next.compileResult.plan, request, [](const auto&) {
-            return true;
-        });
-        acceptSnapshot(std::move(next));
-        performance.record(
-                Performance::Stage::EndToEnd,
-                performance.timestamp() - requestedAt);
-        performance.record(Performance::Outcome::NoWork);
-        if (completion) {
-            completion();
-        }
-        return;
-    }
-    auto refresh = std::make_shared<AsyncRefresh>();
-    refresh->state = asyncState;
-    refresh->generation = generation;
-    refresh->graph = std::move(graph);
-    refresh->change = std::move(change);
-    refresh->scope = scope;
-    refresh->request = request;
-    refresh->requestFingerprint = requestFingerprint;
-    refresh->snapshot = std::move(next);
-    refresh->completion = std::move(completion);
-    refresh->requestedAtMicroseconds = requestedAt;
-    asyncWorker.post([this, refresh] {
-        using Performance = GraphPresentationPerformanceMetrics;
-        const uint64_t workerStartedAt = performance.timestamp();
-        performance.record(
-                Performance::Stage::QueueDelay,
-                workerStartedAt - refresh->requestedAtMicroseconds);
-        if (!isCurrent(*refresh)) {
-            updateGraph.recordDecision(
-                    refresh->request, UpdateTracePhase::SupersededBeforeStart);
-            performance.record(Performance::Outcome::SupersededBeforeStart);
-            return false;
-        }
-        const bool prepared = prepareAsyncRefresh(*refresh);
-        refresh->workerFinishedAtMicroseconds = performance.timestamp();
-        performance.record(
-                Performance::Stage::Worker,
-                refresh->workerFinishedAtMicroseconds - workerStartedAt);
-        if (!prepared) {
-            performance.record(Performance::Outcome::StaleOrCancelled);
-        }
-        return prepared;
-    }, [this, refresh] {
-        auto completion = publishAsyncRefresh(refresh);
-        if (completion) {
-            completion();
-        }
-    });
-}
 
-bool GraphPresentationModel::prepareAsyncRefresh(AsyncRefresh& refresh) {
-    refresh.updateResult = updateGraph.executeDeferredPublication(
-            refresh.snapshot.compileResult.plan,
-            refresh.request,
-            [&](const auto& products) {
-                return executeAsyncProducts(refresh, products);
+    AsyncRefresh refresh;
+    refresh.graph = std::move(graph);
+    refresh.change = std::move(change);
+    refresh.scope = scope;
+    refresh.request = request;
+    refresh.snapshot = std::move(next);
+    refresh.completion = std::move(completion);
+    refresh.requestedAtMicroseconds = requestedAt;
+    scheduler.enqueue(
+            generation,
+            std::move(refresh),
+            performance,
+            [this](AsyncRefresh& job, const auto& products) {
+                return executeAsyncProducts(job, products);
+            },
+            [this](AsyncRefresh& job) {
+                if (!acceptSnapshot(std::move(job.snapshot))) {
+                    return false;
+                }
+                if (job.scope == PresentationRefreshScope::Downstream
+                        && (job.change.guidesChanged
+                                || hasImpact(job.change.parameterImpacts,
+                                        ParameterImpact::DspConfiguration))) {
+                    modWheelPreviewRootNodeIds = modWheelPreviewRoots(current.compileResult.plan);
+                    refreshPreviewMorphBindings();
+                    ++audioRevision;
+                }
+                if (job.previewRendered) {
+                    ++previewRenders;
+                }
+                return true;
             });
-    return isCurrent(refresh);
 }
 
 bool GraphPresentationModel::executeAsyncProducts(
@@ -431,201 +344,62 @@ bool GraphPresentationModel::executeAsyncProducts(
             products.begin(), products.end(), [](const auto& product) {
                 return product.product == UpdateProduct::AudioConfiguration;
             });
-    if (preparesConfiguration) {
+    if (preparesConfiguration
+            || (refresh.scope != PresentationRefreshScope::Downstream
+                    && hasImpact(refresh.change.parameterImpacts,
+                            ParameterImpact::DspConfiguration))) {
         const uint64_t startedAt = performance.timestamp();
         refreshConfigurations(*refresh.graph, next.compileResult.plan, refresh.change.nodeIds);
         performance.record(
                 GraphPresentationPerformanceMetrics::Stage::Configuration,
                 performance.timestamp() - startedAt);
     }
-    if (!isCurrent(refresh) || !requiresPreview(refresh.change)
+    if (!scheduler.isCurrent(refresh) || !requiresPreview(refresh.change)
             || !next.compileResult.succeeded()) {
-        return isCurrent(refresh);
+        return scheduler.isCurrent(refresh);
     }
 
-    return renderPreviewProducts(
+    return previewRenderer.render(
             *refresh.graph,
             next,
             products,
             false,
             refresh.scope,
             refresh.previewRendered,
-            [&] { return isCurrent(refresh); });
+            performance,
+            [&] { return scheduler.isCurrent(refresh); });
 }
 
-bool GraphPresentationModel::renderPreviewProducts(
-        const NodeGraph& graph,
-        GraphPresentationSnapshot& snapshot,
-        const std::vector<PlannedNodeProduct>& products,
-        bool renderFullGraph,
-        PresentationRefreshScope scope,
-        bool& previewRendered,
-        GraphAudioExecutor::CancellationCheck cancellationCheck) {
-    previewRendered = false;
-    const bool hasPreviewWork = std::any_of(
-            products.begin(), products.end(), [](const auto& product) {
-                return product.product == UpdateProduct::PreviewTraversal
-                        || product.product == UpdateProduct::CompactPreview
-                        || product.product == UpdateProduct::ProbePreview;
-            });
-    if (!hasPreviewWork || !snapshot.compileResult.succeeded()) {
-        return true;
-    }
-
-    const AudioExecutionSpec spec {
-            kCompactPreviewFrameCount,
-            44100.0,
-            ChannelLayout::LinkedStereo
-    };
-    previewAudioExecutor.prepareExecution(snapshot.compileResult.plan, spec);
-    AudioVoiceContext previewVoice;
-    previewVoice.controls.noteNumber = snapshot.previewMidiNote;
-    previewVoice.controls.controllers[1]
-            = (float) snapshot.previewModWheelValue / 127.f;
-    previewVoice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
-    PreviewControlContext previewControls;
-    previewControls.noteNumber = snapshot.previewMidiNote;
-    previewControls.controllers[1]
-            = (float) snapshot.previewModWheelValue / 127.f;
-    previewControls.lowestNote = Constants::LowestMidiNote;
-    previewControls.highestNote = Constants::HighestMidiNote;
-    previewControls.traverseVoiceTime = true;
-    if (renderFullGraph) {
-        const uint64_t audioStartedAt = performance.timestamp();
-        const GraphAudioResult audio = previewAudioExecutor.process(
-                graph,
-                snapshot.compileResult.plan,
-                kCompactPreviewFrameCount,
-                {},
-                previewVoice);
-        performance.record(
-                GraphPresentationPerformanceMetrics::Stage::PreviewAudio,
-                performance.timestamp() - audioStartedAt);
-        const uint64_t extractionStartedAt = performance.timestamp();
-        snapshot.previewResult = GraphPreviewExecutor().render(
-                snapshot.compileResult.plan,
-                audio,
-                graph.getSignalProbes(),
-                40,
-                &previewControls);
-        performance.record(
-                GraphPresentationPerformanceMetrics::Stage::PreviewExtraction,
-                performance.timestamp() - extractionStartedAt);
-        previewRendered = true;
-        return true;
-    }
-
-    std::vector<uint8_t> dirtyNodes(snapshot.compileResult.plan.steps.size());
-    for (const auto& product : products) {
-        if (product.product != UpdateProduct::PreviewTraversal
-                && product.product != UpdateProduct::CompactPreview) {
-            continue;
-        }
-        const auto step = snapshot.compileResult.plan.dependencyIndex.stepIndexById.find(
-                product.nodeId);
-        if (step != snapshot.compileResult.plan.dependencyIndex.stepIndexById.end()) {
-            dirtyNodes[static_cast<size_t>(step->second)] = 1;
-        }
-    }
-    const uint64_t audioStartedAt = performance.timestamp();
-    const GraphAudioResultView audio = previewAudioExecutor.processIncrementalIndexed(
-            graph,
-            snapshot.compileResult.plan,
-            kCompactPreviewFrameCount,
-            dirtyNodes,
-            previewVoice,
-            cancellationCheck);
-    performance.record(
-            GraphPresentationPerformanceMetrics::Stage::PreviewAudio,
-            performance.timestamp() - audioStartedAt);
-    if (audio.cancelled || (cancellationCheck && !cancellationCheck())) {
+bool GraphPresentationModel::refreshLocalNodePreview(
+        const Node& node,
+        std::function<void()> completion) {
+    const auto& plan = current.compileResult.plan;
+    const auto found = plan.dependencyIndex.stepIndexById.find(node.id);
+    if (found == plan.dependencyIndex.stepIndexById.end()) {
         return false;
     }
-    const uint64_t extractionStartedAt = performance.timestamp();
-    if (scope == PresentationRefreshScope::LocalEditor) {
-        GraphPreviewExecutor().renderNodePreviewsIncremental(
-                snapshot.compileResult.plan,
-                audio,
-                dirtyNodes,
-                40,
-                snapshot.previewResult,
-                &previewControls);
-    } else {
-        GraphPreviewExecutor().renderIncremental(
-                snapshot.compileResult.plan,
-                audio,
-                graph.getSignalProbes(),
-                dirtyNodes,
-                40,
-                snapshot.previewResult,
-                &previewControls);
+    const size_t stepIndex = static_cast<size_t>(found->second);
+    auto input = ReverbLocalPreview::prepare(node, plan.steps[stepIndex]);
+    if (!input.has_value()) {
+        return false;
     }
-    performance.record(
-            GraphPresentationPerformanceMetrics::Stage::PreviewExtraction,
-            performance.timestamp() - extractionStartedAt);
-    previewRendered = true;
+
+    auto preview = std::make_shared<NodePreviewResult>();
+    scheduler.enqueueLocalProduct(
+            performance,
+            [input = std::move(input), preview] {
+                *preview = ReverbLocalPreview::render(*input);
+            },
+            [this, stepIndex, preview, completion = std::move(completion)] {
+                GraphPreviewExecutor::publishLocalNodePreview(
+                        current.previewResult, stepIndex, std::move(*preview));
+                ++previewRenders;
+                ++presentationRevision;
+                if (completion) {
+                    completion();
+                }
+            });
     return true;
-}
-
-std::function<void()> GraphPresentationModel::publishAsyncRefresh(
-        std::shared_ptr<AsyncRefresh> refresh) {
-    using Performance = GraphPresentationPerformanceMetrics;
-    const uint64_t publicationStartedAt = performance.timestamp();
-    if (refresh->workerFinishedAtMicroseconds != 0) {
-        performance.record(
-                Performance::Stage::PublicationDelay,
-                publicationStartedAt - refresh->workerFinishedAtMicroseconds);
-    }
-    if (!refresh->state->alive.load()) {
-        performance.record(Performance::Outcome::StaleOrCancelled);
-        return {};
-    }
-    if (!isCurrent(*refresh)) {
-        updateGraph.recordDecision(refresh->request, UpdateTracePhase::StaleResultDiscarded);
-        performance.record(Performance::Outcome::StaleOrCancelled);
-        return {};
-    }
-    if (refresh->generation < publishedGeneration
-            || !acceptSnapshot(std::move(refresh->snapshot))) {
-        updateGraph.recordDecision(refresh->request, UpdateTracePhase::StaleResultDiscarded);
-        performance.record(Performance::Outcome::StaleOrCancelled);
-        return {};
-    }
-    publishedGeneration = refresh->generation;
-    updateGraph.publish(refresh->request, refresh->updateResult);
-    if (refresh->change.guidesChanged
-            || hasImpact(refresh->change.parameterImpacts,
-                    ParameterImpact::DspConfiguration)) {
-        modWheelPreviewRootNodeIds = modWheelPreviewRoots(current.compileResult.plan);
-        ++audioRevision;
-    }
-    if (refresh->previewRendered) {
-        ++previewRenders;
-    }
-    if (refresh->scope == PresentationRefreshScope::Downstream) {
-        publishedEditFingerprint = refresh->requestFingerprint;
-    }
-    performance.record(
-            Performance::Stage::EndToEnd,
-            performance.timestamp() - refresh->requestedAtMicroseconds);
-    performance.record(Performance::Outcome::Published);
-    return std::move(refresh->completion);
-}
-
-bool GraphPresentationModel::isCurrent(const AsyncRefresh& refresh) const {
-    if (!refresh.state->alive.load()
-            || refresh.generation != refresh.state->generation.load()) {
-        return false;
-    }
-    return std::all_of(
-            refresh.request.invalidations.begin(),
-            refresh.request.invalidations.end(),
-            [&](const auto& invalidation) {
-                return updateGraph.isCurrent(
-                        invalidation.sourceStreamId,
-                        invalidation.product,
-                        refresh.generation);
-            });
 }
 
 void GraphPresentationModel::recordEditorMovement(
@@ -633,53 +407,12 @@ void GraphPresentationModel::recordEditorMovement(
         const String& field,
         uint64_t effectiveFingerprint,
         bool deferredUntilCommit) {
-    const String stream = "editor:" + nodeId;
-    const uint64_t streamFingerprint = FingerprintBuilder(effectiveFingerprint)
-            .add(nodeId)
-            .add(field)
-            .value();
-    const auto identity = gestureSession.recordMovement(stream, streamFingerprint);
-    if (!identity.has_value()) {
-        return;
-    }
-    const std::vector<UpdateCause> causes { { nodeId, field } };
-    updateGraph.execute(
+    scheduler.recordEditorMovement(
             current.compileResult.plan,
-            {
-                *identity,
-                {
-                    {
-                        nodeId,
-                        stream,
-                        UpdateProduct::LocalSlice,
-                        streamFingerprint,
-                        causes,
-                        false
-                    }
-                },
-                {}
-            },
-            [](const auto&) {
-                return true;
-            });
-    if (deferredUntilCommit) {
-        updateGraph.recordDecision(
-                {
-                    *identity,
-                    {
-                        {
-                            nodeId,
-                            stream,
-                            UpdateProduct::ProbePreview,
-                            streamFingerprint,
-                            causes,
-                            true
-                        }
-                    },
-                    {}
-                },
-                UpdateTracePhase::DeferredUntilCommit);
-    }
+            nodeId,
+            field,
+            effectiveFingerprint,
+            deferredUntilCommit);
 }
 
 void GraphPresentationModel::commitLocalEditorState(
@@ -687,31 +420,13 @@ void GraphPresentationModel::commitLocalEditorState(
         const String& field,
         uint64_t effectiveFingerprint,
         uint64_t documentRevision) {
-    const String stream = gestureSession.activeStreamOr("editor:" + nodeId);
-    const EditIdentity identity = gestureSession.commit(stream);
-    if (!identity.isValid()) {
+    if (!scheduler.commitLocalEditorState(
+                current.compileResult.plan,
+                nodeId,
+                field,
+                effectiveFingerprint)) {
         return;
     }
-    const std::vector<UpdateCause> causes { { nodeId, field } };
-    updateGraph.execute(
-            current.compileResult.plan,
-            {
-                identity,
-                {
-                    {
-                        nodeId,
-                        stream,
-                        UpdateProduct::DurablePublication,
-                        effectiveFingerprint,
-                        causes,
-                        false
-                    }
-                },
-                {}
-            },
-            [](const auto&) {
-                return true;
-            });
     requestedGraphRevision = documentRevision;
     GraphPresentationSnapshot next = current;
     next.graphRevision = documentRevision;
@@ -741,27 +456,13 @@ GraphPresentationModel::captureProbePreview(
     if (!current.compileResult.succeeded() || rasterRowCount == 0) {
         return std::nullopt;
     }
-
-    GraphPreviewResult previews = captureProbePreviews(
+    return previewRenderer.captureProbePreview(
             graph,
             current.compileResult.plan,
+            probeId,
             rasterRowCount,
             midiNote,
             current.previewModWheelValue);
-    auto found = std::find_if(
-            previews.probes.begin(),
-            previews.probes.end(),
-            [&](const auto& preview) {
-                return preview.probeId == probeId;
-            });
-    if (found == previews.probes.end() || !found->connected) {
-        return std::nullopt;
-    }
-
-    GraphPreviewExecutor::reduceProbeRows(
-            *found,
-            std::min(rasterRowCount, kMaximumExpandedProbeRows));
-    return *found;
 }
 
 bool GraphPresentationModel::requiresCompilation(const GraphChangeSet& change) const {
@@ -775,6 +476,19 @@ bool GraphPresentationModel::requiresPreview(const GraphChangeSet& change) const
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)
             || hasImpact(change.parameterImpacts, ParameterImpact::Preview)
             || hasImpact(change.parameterImpacts, ParameterImpact::Presentation);
+}
+
+void GraphPresentationModel::refreshPreviewMorphBindings() {
+    allMorphTargets = PreviewMorphBinding::fromPlan(current.compileResult.plan);
+    keyScaleTargets.clear();
+    modWheelTargets.clear();
+    for (const auto& target : allMorphTargets) {
+        if (target.control == PreviewMorphControl::KeyScale) {
+            keyScaleTargets.push_back(target);
+        } else {
+            modWheelTargets.push_back(target);
+        }
+    }
 }
 
 void GraphPresentationModel::refreshConfigurations(
@@ -823,114 +537,6 @@ void GraphPresentationModel::refreshConfigurations(
             };
         }
     }
-}
-
-CausalUpdateRequest GraphPresentationModel::updateRequest(
-        const NodeGraph& graph,
-        const GraphExecutionPlan& plan,
-        uint64_t documentRevision,
-        const GraphChangeSet& change,
-        bool compile,
-        bool preview,
-        PresentationRefreshScope scope) {
-    const String stream = gestureSession.activeStreamOr(
-            "graph:" + (change.nodeIds.empty() ? String("document") : change.nodeIds.front()));
-    uint64_t effectiveFingerprint = change.nodeIds.empty()
-            ? documentRevision
-            : 1469598103934665603ULL;
-    for (const auto& nodeId : change.nodeIds) {
-        const Node* node = graph.findNode(nodeId);
-        if (node == nullptr) {
-            continue;
-        }
-        FingerprintBuilder nodeFingerprint(effectiveFingerprint);
-        nodeFingerprint.add(nodeId);
-        for (const auto& parameter : node->parameters) {
-            nodeFingerprint.add(parameter.id).add(parameter.value);
-        }
-        if (node->model != nullptr) {
-            nodeFingerprint.add(node->model->schemaId()).add(node->model->revision());
-        }
-        if (change.guidesChanged) {
-            nodeFingerprint.add(
-                    GuideCurveMeshPreparation::configurationKey(graph, nodeId));
-        }
-        effectiveFingerprint = nodeFingerprint.value();
-    }
-    effectiveFingerprint = FingerprintBuilder(effectiveFingerprint)
-            .add(current.previewMidiNote)
-            .add(current.previewModWheelValue)
-            .value();
-    const EditPhase phase = documentRevision > current.graphRevision
-            ? EditPhase::Commit
-            : EditPhase::Movement;
-    const auto identity = gestureSession.identityForRequest(
-            stream,
-            effectiveFingerprint,
-            phase);
-    if (!identity.has_value()) {
-        return {};
-    }
-
-    std::vector<String> roots = change.nodeIds;
-    if (compile || change.probesChanged) {
-        for (const auto& probe : graph.getSignalProbes()) {
-            if (std::find(roots.begin(), roots.end(), probe.sourceNodeId) == roots.end()) {
-                roots.push_back(probe.sourceNodeId);
-            }
-        }
-    }
-    if (roots.empty() && !plan.nodeOrder.empty()) {
-        roots.push_back(plan.nodeOrder.front());
-    }
-    std::vector<ProductInvalidation> invalidations;
-    const bool probeAddressOnly = change.probesChanged
-            && !compile
-            && !change.guidesChanged
-            && !hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)
-            && !hasImpact(change.parameterImpacts, ParameterImpact::Preview)
-            && !hasImpact(change.parameterImpacts, ParameterImpact::Presentation);
-    for (const auto& root : roots) {
-        const std::vector<UpdateCause> causes { { root, compile ? "topology" : "state" } };
-        if (change.guidesChanged
-                || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
-            invalidations.push_back({
-                    root, stream, UpdateProduct::AudioConfiguration,
-                    effectiveFingerprint, causes, true });
-        }
-        if (preview && !probeAddressOnly) {
-            invalidations.push_back({
-                    root,
-                    stream,
-                    scope == PresentationRefreshScope::LocalEditor
-                            ? UpdateProduct::CompactPreview
-                            : UpdateProduct::PreviewTraversal,
-                    effectiveFingerprint,
-                    causes,
-                    scope == PresentationRefreshScope::Downstream });
-        }
-        if (preview && scope == PresentationRefreshScope::Downstream) {
-            invalidations.push_back({
-                    root, stream, UpdateProduct::ProbePreview,
-                    effectiveFingerprint, causes, true });
-        }
-    }
-    std::vector<String> observedNodeIds;
-    observedNodeIds.reserve(graph.getSignalProbes().size());
-    for (const auto& probe : graph.getSignalProbes()) {
-        if (std::find(observedNodeIds.begin(), observedNodeIds.end(), probe.sourceNodeId)
-                == observedNodeIds.end()) {
-            observedNodeIds.push_back(probe.sourceNodeId);
-        }
-    }
-    const bool filterToActiveProbes = scope == PresentationRefreshScope::Downstream
-            && !observedNodeIds.empty();
-    return {
-            *identity,
-            std::move(invalidations),
-            std::move(observedNodeIds),
-            filterToActiveProbes
-    };
 }
 
 }

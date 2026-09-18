@@ -1,5 +1,7 @@
 #include "Graph/NodeGraph.h"
 
+#include <utility>
+
 #include "Graph/InteractionComplexityDiagnostics.h"
 
 namespace CycleV2 {
@@ -81,6 +83,7 @@ NodeGraph& NodeGraph::operator=(const NodeGraph& other) {
     overlayGuideView = other.overlayGuideView;
     overlayNodeViewRevision = other.overlayNodeViewRevision;
     overlayGuideViewRevision = other.overlayGuideViewRevision;
+    overlayBaseOwner = other.overlayBaseOwner;
     overlayBase = other.overlayBase;
     revision = other.revision;
     return *this;
@@ -91,6 +94,19 @@ NodeGraph NodeGraph::createEditingOverlay(const NodeGraph& base) {
     result.overlayBase = &base;
     result.revision = base.revision;
     return result;
+}
+
+NodeGraph NodeGraph::snapshotNodeEdits(
+        std::shared_ptr<const NodeGraph> stableBase) const {
+    jassert(overlayBase != nullptr);
+    jassert(stableBase != nullptr);
+    NodeGraph snapshot = createEditingOverlay(*stableBase);
+    snapshot.overlayBaseOwner = std::move(stableBase);
+    snapshot.nodes = nodes;
+    snapshot.nodeIndex = nodeIndex;
+    snapshot.parameterIndices = parameterIndices;
+    snapshot.revision = revision;
+    return snapshot;
 }
 
 const std::vector<Node>& NodeGraph::getNodes() const {

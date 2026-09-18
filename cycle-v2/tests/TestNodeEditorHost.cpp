@@ -24,6 +24,7 @@
 #include "Nodes/Unison/UnisonNode.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Waveshaper/Editor/WaveshaperEditorComponent.h"
+#include "Runtime/PresentationGestureSession.h"
 #include "UI/EffectEnableButton.h"
 #include "UI/EditorChromeLayout.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
@@ -284,11 +285,35 @@ public:
     void repaintNodeEditor(bool) override {}
     void selectEditedNode(const String&) override {}
     void setNodeEditorStatus(const String&) override {}
+    bool beginNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document,
+            bool downstreamFeedback = true) override {
+        return session.beginGraphGesture(
+                "editor:" + nodeId,
+                commands,
+                document,
+                ProbeRefreshMode::OnGestureCommit,
+                0,
+                true,
+                downstreamFeedback);
+    }
+    void finishNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document,
+            const String& = {}) override {
+        session.finishGraphGesture("editor:" + nodeId, commands, document);
+    }
     void scheduleNodeEditorRefresh() override {}
     void flushNodeEditorRefresh() override {}
     void refreshNodeEditorPresentation() override {}
     Point<float> nodeEditorCreationPosition() const override { return {}; }
     void rebindNodeEditor() override {}
+
+private:
+    PresentationGestureSession session;
 };
 
 class RecordingPresentation final : public NodeEditorPresentation {
@@ -297,13 +322,40 @@ public:
     void repaintNodeEditor(bool) override { ++repaints; }
     void selectEditedNode(const String&) override {}
     void setNodeEditorStatus(const String&) override {}
+    bool beginNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document,
+            bool downstreamFeedback = true) override {
+        return session.beginGraphGesture(
+                "editor:" + nodeId, commands, document, refreshMode, 0, true,
+                downstreamFeedback);
+    }
+    void finishNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document,
+            const String& localField = {}) override {
+        const auto finished = session.finishGraphGesture(
+                "editor:" + nodeId, commands, document);
+        if (finished.changed && finished.durableChanged) {
+            ++gestureCommits;
+            if (localField.isNotEmpty()) {
+                ++localCommits;
+            }
+        }
+    }
     void scheduleNodeEditorRefresh() override { ++scheduledRefreshes; }
     void flushNodeEditorRefresh() override {}
     void refreshNodeEditorPresentation() override { ++immediateRefreshes; }
     Point<float> nodeEditorCreationPosition() const override { return {}; }
     void rebindNodeEditor() override { ++rebinds; }
     void rebindNodeEditorTransient() override { ++transientRebinds; }
-    void recordNodeEditorMovement(const String&, const String&, uint64_t) override {
+    void recordNodeEditorMovement(
+            const String& nodeId,
+            const String&,
+            uint64_t fingerprint) override {
+        session.recordGraphMovement("editor:" + nodeId, fingerprint);
         ++recordedMovements;
     }
     void commitNodeEditorLocalState(
@@ -323,6 +375,10 @@ public:
     int rebinds {};
     int transientRebinds {};
     int recordedMovements {};
+    int gestureCommits {};
+
+private:
+    PresentationGestureSession session;
 };
 
 class NullResources : public NodeEditorResources {
@@ -3048,7 +3104,7 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
     REQUIRE(prepared.assignmentCount > 0);
     REQUIRE(prepared.mesh->getCubes().front()->guideCurveGainAt(Vertex::Amp)
             == Catch::Approx(0.8f));
-    REQUIRE(presentation.recordedMovements == 3);
+    REQUIRE(presentation.recordedMovements == 2);
     REQUIRE(presentation.immediateRefreshes == 1);
     REQUIRE(document.canUndo());
 
@@ -3062,6 +3118,16 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
     REQUIRE(widget.vertexParametersForIndex(0)[4].guideGain
             == Catch::Approx(0.5f));
     REQUIRE_FALSE(document.canUndo());
+
+    REQUIRE(commands.beginTrimeshVertexParameterEdit(
+            "mesh", "guideGain.amp", 0.5f));
+    InteractionComplexityDiagnostics::reset();
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.7f));
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.5f));
+    commands.endTrimeshVertexParameterEdit();
+    REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
+    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(document.graph().findNode("mesh")->model == restored);
 }
 
 TEST_CASE("Clicking an open Trimesh Guide selector dismisses its popup",
@@ -3206,7 +3272,7 @@ TEST_CASE("Spectral Trimesh range is visible and edits as one undo transaction",
     REQUIRE(commands.updateNodeParameterEditValue(0.7f));
     commands.endNodeParameterEdit();
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "range") == "0.700000");
-    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(presentation.gestureCommits == 1);
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "range") == "0.5");
 }
@@ -3249,7 +3315,7 @@ TEST_CASE("Time Trimesh gain is visible and edits as one undo transaction",
     REQUIRE(commands.updateNodeParameterEditValue(0.7f));
     commands.endNodeParameterEdit();
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "gain") == "0.700000");
-    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(presentation.gestureCommits == 1);
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "gain") == "0.5");
 }
@@ -3368,6 +3434,37 @@ TEST_CASE("Live Trimesh morph commits reuse movement refresh",
     REQUIRE(presentation.localCommits == 1);
 }
 
+TEST_CASE("Live non-primary Trimesh morph commits one undoable gesture",
+        "[cycle-v2][editor][trimesh][causal]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh, "mesh", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    presentation.refreshMode = ProbeRefreshMode::LiveLatest;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner, document, dispatcher, presentation, resources);
+    const String initialRed = parameterValueForNode(
+            *document.graph().findNode("mesh"), "red");
+
+    REQUIRE(commands.beginTrimeshMorphEdit("mesh", "red", 0.3f));
+    REQUIRE(commands.updateTrimeshMorphEditValue(0.6f));
+    REQUIRE(commands.updateTrimeshMorphEditValue(0.8f));
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "red") == initialRed);
+    commands.endTrimeshMorphEdit();
+
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "red") == "0.800");
+    REQUIRE(presentation.recordedMovements == 3);
+    REQUIRE(presentation.gestureCommits == 1);
+    REQUIRE(presentation.localCommits == 0);
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "red") == initialRed);
+}
+
 TEST_CASE("Effect parameter drag publishes continuously as one undo transaction",
         "[cycle-v2][editor][effects]") {
     ScopedJuceInitialiser_GUI juce;
@@ -3394,7 +3491,7 @@ TEST_CASE("Effect parameter drag publishes continuously as one undo transaction"
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("reverb"), "wet") == "0.4");
     REQUIRE_FALSE(document.canUndo());
-    REQUIRE(presentation.scheduledRefreshes == 0);
+    REQUIRE(presentation.gestureCommits == 1);
     REQUIRE(presentation.recordedMovements == 2);
     REQUIRE(presentation.rebinds == 0);
     REQUIRE(presentation.transientRebinds == 0);
@@ -3435,7 +3532,7 @@ TEST_CASE("Voice Context hosted pitch gesture commits two updates and one undo",
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("voice"), "pitch") == "0");
     REQUIRE(presentation.recordedMovements == 2);
-    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(presentation.gestureCommits == 1);
 }
 
 TEST_CASE("Voice Context hosted length gesture commits two updates and one undo",
@@ -3482,9 +3579,7 @@ TEST_CASE("Voice Context hosted length gesture commits two updates and one undo"
             *document.graph().findNode("voice"),
             "voiceLength") == String(CycleDsp::voiceLengthUnitValue(1.0f)));
     REQUIRE(presentation.recordedMovements == 2);
-    REQUIRE(presentation.localCommits == 1);
-    REQUIRE(presentation.scheduledRefreshes == 1);
-    REQUIRE(presentation.immediateRefreshes == 0);
+    REQUIRE(presentation.gestureCommits == 1);
 }
 
 TEST_CASE("Unison drag exposes every transient preview before one undoable commit",

@@ -105,7 +105,7 @@ public:
     bool setPreviewModWheelValue(int value);
     void beginPreviewModWheelGesture();
     bool updatePreviewModWheelGesture(int value);
-    void endPreviewModWheelGesture();
+    void endPreviewModWheelGesture(int finalValue);
     Rectangle<int> performanceKeyboardDockBounds() const;
     Rectangle<float> expandedEditorBoundsForOverlay() const;
     void setOverlayOcclusionChangedCallback(std::function<void()> callback);
@@ -201,13 +201,6 @@ private:
     uint32 compiledStateRefreshDueMs {};
     std::function<void()> overlayOcclusionChanged;
     std::function<void()> previewPlaybackToggle;
-    bool previewModWheelGestureActive {};
-    bool previewModWheelGestureChanged {};
-    int previewModWheelGestureValue {};
-    ProbeRefreshMode previewModWheelGestureRefreshMode {
-            ProbeRefreshMode::OnGestureCommit };
-    std::shared_ptr<const NodeGraph> previewModWheelGestureGraph;
-
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
     void openGLContextClosing() override;
@@ -229,11 +222,25 @@ private:
     Point<float> viewportCentreWorld() const;
     void refreshCompiledState();
     void refreshCompiledStateAsync(
-            PresentationRefreshScope scope = PresentationRefreshScope::Downstream);
+            PresentationRefreshScope scope = PresentationRefreshScope::Downstream,
+            const GraphChangeSet* changeOverride = nullptr,
+            std::shared_ptr<const NodeGraph> snapshot = {});
     void openProbeDetail(const String& probeId);
     void refreshProbeDetail();
     void finishPreviewModWheelRefresh();
-    GraphEditResult persistPreviewMorph(int midiNote, int modWheelValue);
+    enum class PreviewMorphEditScope {
+        KeyScale,
+        ModWheel,
+        Both
+    };
+    GraphEditResult persistPreviewMorph(
+            int midiNote,
+            int modWheelValue,
+            PreviewMorphEditScope scope);
+    GraphEditResult editPreviewMorph(
+            int midiNote,
+            int modWheelValue,
+            PreviewMorphEditScope scope);
     void synchronizeOpenedEditorMorph();
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;
@@ -271,6 +278,16 @@ private:
     void repaintNodeEditor(bool openGl) override;
     void selectEditedNode(const String& nodeId) override;
     void setNodeEditorStatus(const String& message) override;
+    bool beginNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document,
+            bool downstreamFeedback = true) override;
+    void finishNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document,
+            const String& localField = {}) override;
     void scheduleNodeEditorRefresh() override;
     void flushNodeEditorRefresh() override;
     void refreshNodeEditorPresentation() override;

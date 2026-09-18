@@ -4,6 +4,7 @@
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Guide/GuideCurveSnapshotProvider.h"
 #include "Nodes/Control/ModulationSource.h"
@@ -14,8 +15,10 @@
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentMenu.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshDeltaOverlay.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
+#include "Nodes/Trimesh/Model/TrimeshVertexEditCore.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelBridge.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanel3D.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
@@ -26,8 +29,10 @@
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
 #include <App/SingletonRepo.h>
+#include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <Curve/Mesh/Intercept.h>
+#include <Curve/Curve.h>
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
 #include <Util/LogRegionMapping.h>
 #include <Util/LogRegions.h>
@@ -141,6 +146,228 @@ MouseEvent panelMouseEvent(
     };
 }
 
+}
+
+TEST_CASE("Trimesh vertex edit deltas apply and invert across matching meshes",
+        "[cycle-v2][nodes][trimesh][gesture][delta]") {
+    auto verify = [](int unrelatedCubeCount) {
+        auto edited = TrimeshMeshFactory::createDefaultMesh("vertex-delta");
+        for (int index = 0; index < unrelatedCubeCount; ++index) {
+            TrimeshMeshFactory::addVoiceCube(
+                    *edited, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f);
+        }
+        Mesh mirror;
+        mirror.deepCopy(edited.get());
+        InteractionComplexityDiagnostics::reset();
+
+        const auto vertex = TrimeshVertexEditCore::prepareVertexValue(
+                *edited, 0, "vertex.phase", 0.73f);
+        REQUIRE(vertex.has_value());
+        REQUIRE(vertex->changed());
+        REQUIRE(TrimeshVertexEditCore::apply(*edited, *vertex));
+        REQUIRE(TrimeshVertexEditCore::apply(mirror, *vertex));
+        REQUIRE(edited->equals(mirror));
+
+        const auto guide = TrimeshVertexEditCore::prepareGuideGain(
+                *edited, 0, "guideGain.amp", 0.8f);
+        REQUIRE(guide.has_value());
+        REQUIRE(guide->changed());
+        REQUIRE(TrimeshVertexEditCore::apply(*edited, *guide));
+        REQUIRE(TrimeshVertexEditCore::apply(mirror, *guide));
+        REQUIRE(edited->equals(mirror));
+
+        auto invalid = guide->inverse();
+        invalid.changes.front().before = -1.f;
+        REQUIRE_FALSE(TrimeshVertexEditCore::apply(mirror, invalid));
+        REQUIRE(edited->equals(mirror));
+
+        REQUIRE(TrimeshVertexEditCore::apply(*edited, guide->inverse()));
+        REQUIRE(TrimeshVertexEditCore::apply(mirror, guide->inverse()));
+        REQUIRE(TrimeshVertexEditCore::apply(*edited, vertex->inverse()));
+        REQUIRE(TrimeshVertexEditCore::apply(mirror, vertex->inverse()));
+        REQUIRE(edited->equals(mirror));
+
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.meshCopies == 0);
+        REQUIRE(counts.modelSerializations == 0);
+        REQUIRE(counts.nodeLinearScans == 0);
+        const auto ownerVisits = counts.meshEditOwnerVisits;
+        mirror.destroy();
+        edited->destroy();
+        return ownerVisits;
+    };
+
+    REQUIRE(verify(0) == verify(128));
+}
+
+TEST_CASE("Trimesh delta overlay reuses mature waveform slicing",
+        "[cycle-v2][nodes][trimesh][gesture][delta]") {
+    struct CurveTableLease {
+        bool ownsTable { Curve::table == nullptr };
+
+        CurveTableLease() { Curve::calcTable(); }
+        ~CurveTableLease() {
+            if (ownsTable) {
+                Curve::deleteTable();
+            }
+        }
+    } curveTables;
+    auto created = TrimeshMeshFactory::createDefaultMesh("overlay-preview");
+    std::shared_ptr<const Mesh> base(created.release(), [](const Mesh* value) {
+        auto* mesh = const_cast<Mesh*>(value);
+        mesh->destroy();
+        delete mesh;
+    });
+    const auto delta = TrimeshVertexEditCore::prepareVertexValue(
+            *base, 0, "vertex.phase", 0.73f);
+    REQUIRE(delta.has_value());
+    auto overlay = TrimeshMeshDeltaOverlay::create(base, *delta);
+    REQUIRE(overlay != nullptr);
+
+    Mesh reference;
+    reference.deepCopy(base.get());
+    REQUIRE(TrimeshVertexEditCore::apply(reference, *delta));
+
+    Rasterization::RasterizationRequest request;
+    request.morph = MorphPosition(0.f, 0.f, 0.f);
+    request.primaryViewDimension = Vertex::Time;
+    Rasterization::TrilinearMeshRasterizer referenceRasterizer;
+    const auto& expected = referenceRasterizer.renderWaveform({ reference, request, 0.f });
+    Rasterization::TrilinearMeshRasterizer overlayRasterizer;
+    const auto& actual = overlayRasterizer.renderWaveform(
+            { overlay->rasterizerMesh(), request, 0.f },
+            [&](VertCube* cube) { return overlay->resolve(cube); });
+    REQUIRE_FALSE(expected.intercepts.empty());
+    REQUIRE(actual.intercepts.size() == expected.intercepts.size());
+    for (size_t index = 0; index < actual.intercepts.size(); ++index) {
+        REQUIRE(actual.intercepts[index].x
+                == Catch::Approx(expected.intercepts[index].x));
+        REQUIRE(actual.intercepts[index].y
+                == Catch::Approx(expected.intercepts[index].y));
+        REQUIRE(actual.intercepts[index].shp
+                == Catch::Approx(expected.intercepts[index].shp));
+    }
+
+    TrimeshBlockwiseDsp referenceSlice;
+    referenceSlice.prepare(&reference, request.morph, Vertex::Time, true,
+            PortDomain::TimeSignal);
+    SignalPayload expectedSlice;
+    referenceSlice.renderPrepared(
+            128, PortDomain::TimeSignal, ChannelLayout::Mono, expectedSlice);
+    TrimeshBlockwiseDsp overlaySlice;
+    overlaySlice.setDeltaOverlay(overlay);
+    overlaySlice.prepare(&overlay->rasterizerMesh(), request.morph, Vertex::Time,
+            true, PortDomain::TimeSignal);
+    SignalPayload actualSlice;
+    overlaySlice.renderPrepared(
+            128, PortDomain::TimeSignal, ChannelLayout::Mono, actualSlice);
+    REQUIRE(actualSlice.block.samples == expectedSlice.block.samples);
+
+    std::vector<float> expectedGrid(8 * 64);
+    std::vector<float> actualGrid(8 * 64);
+    TrimeshGridwiseDsp referenceGrid;
+    TrimeshGridwiseDsp overlayGrid;
+    overlayGrid.setDeltaOverlay(overlay);
+    REQUIRE(referenceGrid.renderColumnsInto(
+            reference, request.morph, Vertex::Time, 8,
+            Buffer<float>(expectedGrid.data(), (int) expectedGrid.size()),
+            PortDomain::TimeSignal));
+    REQUIRE(overlayGrid.renderColumnsInto(
+            overlay->rasterizerMesh(), request.morph, Vertex::Time, 8,
+            Buffer<float>(actualGrid.data(), (int) actualGrid.size()),
+            PortDomain::TimeSignal));
+    REQUIRE(actualGrid == expectedGrid);
+
+    Rasterization::VoiceCycleState referenceVoiceState;
+    Rasterization::VoiceCycleState overlayVoiceState;
+    Rasterization::VoiceRasterizer referenceVoice;
+    Rasterization::VoiceRasterizer overlayVoice;
+    const auto voicePreparation = Rasterization::VoiceRasterizerPreparation::forMesh(*base);
+    referenceVoice.prepare(voicePreparation, { &referenceVoiceState });
+    overlayVoice.prepare(voicePreparation, { &overlayVoiceState });
+    overlayVoice.setCubeResolver(
+            overlay.get(), &TrimeshMeshDeltaOverlay::resolveFromContext);
+    std::array<float, 128> referenceFrame {};
+    std::array<float, 128> overlayFrame {};
+    REQUIRE(CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
+            referenceVoice,
+            { &reference, request.morph, 0.f, 0 },
+            Buffer<float>(referenceFrame.data(), (int) referenceFrame.size())));
+    REQUIRE(CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
+            overlayVoice,
+            { &overlay->rasterizerMesh(), request.morph, 0.f, 0 },
+            Buffer<float>(overlayFrame.data(), (int) overlayFrame.size())));
+    REQUIRE(overlayFrame == referenceFrame);
+
+    referenceVoice.setState(&referenceVoiceState);
+    overlayVoice.setState(&overlayVoiceState);
+    referenceVoice.setMesh(&reference);
+    overlayVoice.setMesh(&overlay->rasterizerMesh());
+    referenceVoice.setMorphPosition(request.morph);
+    overlayVoice.setMorphPosition(request.morph);
+    for (int update = 0; update < 2; ++update) {
+        const auto& expectedVoice = referenceVoice.renderChained(0.f);
+        const auto& actualVoice = overlayVoice.renderChained(0.f);
+        REQUIRE(actualVoice.intercepts.size() == expectedVoice.intercepts.size());
+        for (size_t index = 0; index < actualVoice.intercepts.size(); ++index) {
+            REQUIRE(actualVoice.intercepts[index].x
+                    == Catch::Approx(expectedVoice.intercepts[index].x));
+            REQUIRE(actualVoice.intercepts[index].y
+                    == Catch::Approx(expectedVoice.intercepts[index].y));
+        }
+    }
+
+    const auto gainDelta = TrimeshVertexEditCore::prepareGuideGain(
+            *base, 0, "vertex.guideGain.time", 0.82f);
+    REQUIRE(gainDelta.has_value());
+    auto gainOverlay = TrimeshMeshDeltaOverlay::create(base, *gainDelta);
+    REQUIRE(gainOverlay != nullptr);
+    const Vertex* editedVertex = base->getVerts()[0];
+    for (int ordinal = 0; ordinal < editedVertex->owners.size(); ++ordinal) {
+        VertCube* source = editedVertex->owners[ordinal];
+        VertCube* resolved = gainOverlay->resolve(source);
+        const auto change = std::find_if(
+                gainDelta->changes.begin(),
+                gainDelta->changes.end(),
+                [ordinal](const auto& item) { return item.ownerOrdinal == ordinal; });
+        if (change == gainDelta->changes.end()) {
+            REQUIRE(resolved == source);
+        } else {
+            REQUIRE(resolved != source);
+            REQUIRE(resolved->guideCurveGainAt(Vertex::Time) == change->after);
+        }
+    }
+    reference.destroy();
+}
+
+TEST_CASE("Trimesh gesture deltas retain their initial value across movements",
+        "[cycle-v2][nodes][trimesh][gesture][delta]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("gesture-delta");
+    const float initial = mesh->getVerts()[0]->values[Vertex::Phase];
+    const auto first = TrimeshVertexEditCore::prepareVertexValue(
+            *mesh, 0, "vertex.phase", 0.73f);
+    REQUIRE(first.has_value());
+    REQUIRE(TrimeshVertexEditCore::apply(*mesh, *first));
+    const auto second = TrimeshVertexEditCore::prepareVertexValue(
+            *mesh, 0, "vertex.phase", 0.41f);
+    REQUIRE(second.has_value());
+    const auto combined = TrimeshVertexEditCore::compose(*first, *second);
+    REQUIRE(combined.has_value());
+    REQUIRE(combined->changes.front().before == initial);
+    REQUIRE(combined->changes.front().after == 0.41f);
+    REQUIRE(TrimeshVertexEditCore::apply(*mesh, *second));
+
+    const auto returnToBase = TrimeshVertexEditCore::prepareVertexValue(
+            *mesh, 0, "vertex.phase", initial);
+    REQUIRE(returnToBase.has_value());
+    const auto cancelled = TrimeshVertexEditCore::compose(*combined, *returnToBase);
+    REQUIRE(cancelled.has_value());
+    REQUIRE_FALSE(cancelled->changed());
+    auto stale = *second;
+    stale.changes.front().before = -1.f;
+    REQUIRE_FALSE(TrimeshVertexEditCore::compose(*first, stale).has_value());
+    mesh->destroy();
 }
 
 TEST_CASE("Trimesh topology snapshots preserve the authoritative Mesh contract",

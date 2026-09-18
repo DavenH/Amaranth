@@ -1,6 +1,7 @@
 #include "Runtime/SpectralOscillatorFrameRenderer.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshDeltaOverlay.h"
 #include "Runtime/AudioPerformanceMetrics.h"
 
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
@@ -241,6 +242,11 @@ bool SpectralOscillatorFrameRenderer::prepare(
                     operation.timeRasterizer->setPrepareIntegrals(false);
                     operation.timeRasterizer->setGuideCurveProvider(
                             operation.configuration->guideCurveProvider.get());
+                    operation.timeRasterizer->setCubeResolver(
+                            operation.configuration->deltaOverlay.get(),
+                            operation.configuration->deltaOverlay != nullptr
+                                    ? &TrimeshMeshDeltaOverlay::resolveFromContext
+                                    : nullptr);
                     operation.timeRasterizer->setScalingMode(
                             Rasterization::PointScalingMode::Bipolar);
                     operation.timeRasterizer->prepare(
@@ -257,6 +263,8 @@ bool SpectralOscillatorFrameRenderer::prepare(
                     operation.spectralRasterizer = std::make_unique<TrimeshBlockwiseDsp>();
                     operation.spectralRasterizer->setGuideCurveProvider(
                             operation.configuration->guideCurveProvider.get());
+                    operation.spectralRasterizer->setDeltaOverlay(
+                            operation.configuration->deltaOverlay);
                     operation.spectralRasterizer->prepare(
                             spectralMesh,
                             operation.configuration->morph,

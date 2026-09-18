@@ -1,0 +1,18 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/resources/with-spies.cyclegraph" },
+    { "command": "pointer", "targetId": "probeRefreshMode", "event": "click" },
+    { "command": "assertState", "path": "probeRefreshMode", "equals": "Live" },
+    { "command": "openNodeEditor", "nodeId": "waveMesh", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "assertNodeParameter", "nodeId": "waveMesh", "parameterId": "yellow", "equals": "0" },
+    { "command": "pointer", "event": "down", "targetId": "expanded:waveMesh.trimeshMorphRail.yellow", "targetX": 0.2, "targetY": 0.5 },
+    { "command": "pointer", "event": "drag", "targetId": "expanded:waveMesh.trimeshMorphRail.yellow", "downTargetId": "expanded:waveMesh.trimeshMorphRail.yellow", "targetX": 0.55, "targetY": 0.5, "downTargetX": 0.2, "downTargetY": 0.5 },
+    { "command": "pointer", "event": "drag", "targetId": "expanded:waveMesh.trimeshMorphRail.yellow", "downTargetId": "expanded:waveMesh.trimeshMorphRail.yellow", "targetX": 0.82, "targetY": 0.5, "downTargetX": 0.2, "downTargetY": 0.5 },
+    { "command": "assertNodeParameter", "nodeId": "waveMesh", "parameterId": "yellow", "equals": "0" },
+    { "command": "pointer", "event": "up", "targetId": "expanded:waveMesh.trimeshMorphRail.yellow", "downTargetId": "expanded:waveMesh.trimeshMorphRail.yellow", "targetX": 0.82, "targetY": 0.5, "downTargetX": 0.2, "downTargetY": 0.5, "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "assertNodeParameter", "nodeId": "waveMesh", "parameterId": "yellow", "op": "notEquals", "value": "0" },
+    { "command": "undo", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "assertNodeParameter", "nodeId": "waveMesh", "parameterId": "yellow", "equals": "0" }
+  ],
+  "quit": true
+}

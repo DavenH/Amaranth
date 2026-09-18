@@ -1,5 +1,7 @@
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 
+#include "Nodes/Trimesh/Model/TrimeshMeshDeltaOverlay.h"
+
 #include <Curve/Curve.h>
 #include <Curve/Mesh/Vertex.h>
 #include <Util/LogRegions.h>
@@ -64,6 +66,11 @@ void TrimeshBlockwiseDsp::setMesh(Mesh* meshToRender) {
     mesh = meshToRender;
 }
 
+void TrimeshBlockwiseDsp::setDeltaOverlay(
+        std::shared_ptr<const TrimeshMeshDeltaOverlay> overlay) {
+    deltaOverlay = std::move(overlay);
+}
+
 void TrimeshBlockwiseDsp::setMorphPosition(const MorphPosition& morphPosition) {
     morph = morphPosition;
 }
@@ -99,7 +106,13 @@ void TrimeshBlockwiseDsp::rasterizePrepared(int noiseSeed, Rasterization::Wavefo
     if (mesh != nullptr && mesh->hasEnoughCubesForCrossSection()) {
         auto request = createRequest(preparedDomain);
         request.waveformWork = work;
-        rasterizer.renderWaveform({ *mesh, request, 0.f });
+        if (deltaOverlay != nullptr) {
+            rasterizer.renderWaveform(
+                    { *mesh, request, 0.f },
+                    [this](VertCube* cube) { return deltaOverlay->resolve(cube); });
+        } else {
+            rasterizer.renderWaveform({ *mesh, request, 0.f });
+        }
     }
 }
 

@@ -1,9 +1,10 @@
 #pragma once
 
-#include "Graph/GraphDocument.h"
-
 #include <functional>
 #include <optional>
+
+#include "Graph/GraphDocument.h"
+#include "Graph/PreviewMorphTarget.h"
 
 namespace CycleV2 {
 
@@ -73,6 +74,10 @@ public:
             const juce::String& value);
     GraphEditResult publishCurveState(const CurveNodeStatePublication& publication);
     GraphEditResult setPreviewMorph(float red, float blue);
+    GraphEditResult setMappedPreviewMorph(
+            const std::vector<PreviewMorphTarget>& targets,
+            float keyScale,
+            float modWheel);
     GraphEditResult replaceNodeModel(
             const juce::String& nodeId,
             uint64_t expectedRevision,
@@ -116,11 +121,13 @@ private:
     bool setTrimeshPreviewMorph(
             const juce::String& nodeId,
             const juce::String& red,
-            const juce::String& blue);
+            const juce::String& blue,
+            bool& changed);
     bool setEnvelopePreviewMorph(
             const Node& node,
             const juce::String& red,
-            const juce::String& blue);
+            const juce::String& blue,
+            bool& changed);
     void accumulateCompoundChange(const GraphChangeSet& change);
     static void accumulateChange(GraphChangeSet& destination, const GraphChangeSet& change);
 
