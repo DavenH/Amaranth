@@ -41,6 +41,18 @@ the durable audio-configuration update. `PresentationRefreshPolicy` has begun
 as a pure decision boundary; movement routing is a partial migration, not
 completion of the session or scheduler deletion targets.
 
+The next extraction moves the semantic edit gate, active stream, and pending
+movement identity out of `GraphPresentationModel` into
+`PresentationGestureSession`. This is deliberately an identity/lifecycle core,
+not yet the complete session contract: dispatcher-owned durable base revision,
+semantic delta, graph snapshot, scheduling, and commit reuse still need to
+move below the UI callers. Tests cover two movements in one gesture and
+independent source streams; the remaining completion criteria remain open.
+The extraction also exposed that `SemanticEditGate::cancelGesture` discarded
+the gesture marker without restoring its prior effective fingerprint. The
+session's cancel path now restores that fingerprint so retrying an aborted
+movement is accepted instead of misclassified as a no-op.
+
 The current policy distribution includes:
 
 - ten explicit `ProbeRefreshMode` branches across `NodeEditorCommandService`

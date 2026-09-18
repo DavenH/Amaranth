@@ -92,6 +92,10 @@ std::optional<EditIdentity> SemanticEditGate::accept(
     if (activeGestureId == 0) {
         beginGesture();
     }
+    if (source.gestureId != activeGestureId) {
+        source.gestureStartFingerprint = source.effectiveFingerprint;
+        source.gestureStartInitialized = source.initialized;
+    }
     source.effectiveFingerprint = effectiveFingerprint;
     source.initialized = true;
     source.gestureId = activeGestureId;
@@ -120,7 +124,9 @@ EditIdentity SemanticEditGate::commit(const String& sourceStreamId) {
 
 void SemanticEditGate::cancelGesture(const String& sourceStreamId) {
     auto found = sources.find(sourceStreamId);
-    if (found != sources.end()) {
+    if (found != sources.end() && found->second.gestureId != 0) {
+        found->second.effectiveFingerprint = found->second.gestureStartFingerprint;
+        found->second.initialized = found->second.gestureStartInitialized;
         found->second.gestureId = 0;
     }
     activeGestureId = 0;
