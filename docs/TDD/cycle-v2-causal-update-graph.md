@@ -63,6 +63,41 @@ the durable audio-plan copy still advances once. Other editor families still
 own separate scheduling, so the shared-session completion criterion remains
 open.
 
+### Ordinary and paired parameter gesture migration
+
+`GraphCommandDispatcher::setNodeParameter` remains the authoritative
+normalizer and transient delta publisher. The shared session now owns the
+transaction for ordinary and paired parameters, with one durable commit and
+undo. On Release movement performs only the editor's local product; Live
+movement snapshots only the affected overlay nodes and queues preview work
+through the existing latest-only worker. `NodeCanvas` applies the pure policy
+decision and submits the final committed change; `NodeEditorCommandService`
+no longer selects Live/On Release refresh behavior for these gestures. The
+old schedule/flush/immediate host API remains for other editor families and
+must still be deleted as those families migrate.
+
+The On Release Reverb spectrogram fixture demonstrates that some current
+"local" editor products still depend on the graph preview runtime. Movement
+retains the existing deferred local refresh path while suppressing probe and
+durable audio publication. The shared session does not copy the graph at
+pointer-down in this mode. The old local path still does graph work during
+movement and does not satisfy the strict no-traversal/no-configuration-
+preparation contract. Extract the mature Reverb local renderer/product input
+from graph traversal before claiming that completion criterion; do not weaken
+the fixture to hide it.
+
+The focused Reverb UI fixtures now pass under both policies. Live records four
+requests, two publications, one superseded-before-start job, one stale result,
+and zero synchronous refreshes for the measured drag/commit window; its
+preview render count remains 3 across release while the audio-plan copy
+advances from 2 to 3. On Release records five requests for local editor work
+and commit/undo in its wider window, with one publication and zero synchronous
+refreshes. Its pre-release snapshots add CompactPreview publications while
+ProbePreview and PreviewTraversal publication counts remain unchanged; those
+products advance only after release. The pre-migration Reverb fixture failed
+its during-drag spectrogram assertion when local work was briefly omitted,
+which is why this local product remains an explicit extraction target.
+
 ### Request-construction extraction boundary
 
 `NodeUpdateGraph` and `GraphExecutionPlan` remain authoritative for product

@@ -24,7 +24,8 @@ public:
             GraphCommandDispatcher& commands,
             const GraphDocument& document,
             ProbeRefreshMode mode,
-            uint64_t initialFingerprint);
+            uint64_t initialFingerprint,
+            bool transientEdits = false);
     bool graphGestureIsActive(const String& sourceStreamId) const;
     bool graphGestureIsLive(const String& sourceStreamId) const;
     std::optional<EditIdentity> recordGraphMovement(
@@ -65,6 +66,7 @@ private:
         uint64_t baseRevision {};
         uint64_t effectiveFingerprint {};
         bool live {};
+        bool ownsTransientEdit {};
         bool changed {};
     };
 

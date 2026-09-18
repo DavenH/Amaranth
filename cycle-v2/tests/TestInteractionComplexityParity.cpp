@@ -9,6 +9,7 @@
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/NodeParameterMap.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
+#include "Runtime/PresentationGestureSession.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Panel/FlatCurvePanelAdapter.h"
 #include "Nodes/Envelope/Editor/EnvelopePanelAdapter.h"
@@ -152,6 +153,78 @@ TEST_CASE("Two transient preview morph movements commit once and undo together",
         REQUIRE(counts.graphCopies == 0);
         REQUIRE(counts.meshCopies == 0);
         REQUIRE(counts.modelSerializations == 0);
+    }
+}
+
+TEST_CASE("Shared parameter gesture snapshots scale with its edited node",
+        "[cycle-v2][complexity][gesture][presentation-session]") {
+    for (const int unrelatedNodes : { 0, 128 }) {
+        GraphDocument document(scaledGraph(unrelatedNodes, 16384));
+        GraphCommandDispatcher commands(document);
+        PresentationGestureSession session;
+        REQUIRE(session.beginGraphGesture(
+                "editor:output",
+                commands,
+                document,
+                ProbeRefreshMode::LiveLatest,
+                0,
+                true));
+        InteractionComplexityDiagnostics::reset();
+
+        REQUIRE(commands.setNodeParameter("output", "gain", "Gain", "0.6").changed);
+        REQUIRE(session.recordGraphMovement("editor:output", 6).has_value());
+        const auto first = session.snapshotGraphGesture("editor:output", commands);
+        REQUIRE(commands.setNodeParameter("output", "gain", "Gain", "0.7").changed);
+        REQUIRE(session.recordGraphMovement("editor:output", 7).has_value());
+        const auto last = session.snapshotGraphGesture("editor:output", commands);
+        REQUIRE(first != nullptr);
+        REQUIRE(last != nullptr);
+        REQUIRE(parameterValueForNode(*first->findNode("output"), "gain") == "0.6");
+        REQUIRE(parameterValueForNode(*last->findNode("output"), "gain") == "0.7");
+
+        const auto finished = session.finishGraphGesture("editor:output", commands, document);
+        REQUIRE(finished.durableChanged);
+        REQUIRE(document.undo());
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
+        REQUIRE(counts.meshCopies == 0);
+        REQUIRE(counts.modelSerializations == 0);
+        REQUIRE(counts.nodeLinearScans == 0);
+        REQUIRE(counts.parameterLinearScans == 0);
+    }
+}
+
+TEST_CASE("On release parameter gesture starts without copying the graph",
+        "[cycle-v2][complexity][gesture][presentation-session]") {
+    for (const int unrelatedNodes : { 0, 128 }) {
+        GraphDocument document(scaledGraph(unrelatedNodes, 16384));
+        GraphCommandDispatcher commands(document);
+        PresentationGestureSession session;
+        InteractionComplexityDiagnostics::reset();
+
+        REQUIRE(session.beginGraphGesture(
+                "editor:output",
+                commands,
+                document,
+                ProbeRefreshMode::OnGestureCommit,
+                0,
+                true));
+        REQUIRE(commands.setNodeParameter("output", "gain", "Gain", "0.6").changed);
+        REQUIRE(session.recordGraphMovement("editor:output", 6).has_value());
+        REQUIRE(commands.setNodeParameter("output", "gain", "Gain", "0.7").changed);
+        REQUIRE(session.recordGraphMovement("editor:output", 7).has_value());
+        REQUIRE_FALSE(session.snapshotGraphGesture("editor:output", commands));
+        REQUIRE(session.finishGraphGesture("editor:output", commands, document).durableChanged);
+        REQUIRE(document.undo());
+
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
+        REQUIRE(counts.meshCopies == 0);
+        REQUIRE(counts.modelSerializations == 0);
+        REQUIRE(counts.nodeLinearScans == 0);
+        REQUIRE(counts.parameterLinearScans == 0);
     }
 }
 

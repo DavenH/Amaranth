@@ -72,7 +72,12 @@ CausalUpdateRequest PresentationUpdateRequestBuilder::build(
             && !hasImpact(change.parameterImpacts, ParameterImpact::Presentation);
     for (const auto& root : roots) {
         const std::vector<UpdateCause> causes { { root, compile ? "topology" : "state" } };
-        if (scope != PresentationRefreshScope::PreviewOnly
+        if (identity.phase == EditPhase::Commit) {
+            invalidations.push_back({
+                    root, sourceStreamId, UpdateProduct::DurablePublication,
+                    effectiveFingerprint, causes, false });
+        }
+        if (scope == PresentationRefreshScope::Downstream
                 && (change.guidesChanged
                         || hasImpact(change.parameterImpacts,
                                 ParameterImpact::DspConfiguration))) {

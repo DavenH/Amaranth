@@ -76,14 +76,14 @@ bool NodeEditorCommandService::beginNodeParameterEdit(
     if (findNode(nodeId) == nullptr) {
         return false;
     }
+    if (!presentation.beginNodeEditorGesture(nodeId, commands, document)) {
+        return false;
+    }
     activeParameterNodeId = nodeId;
     activeParameterId = parameterId;
     activeParameterLabel = label;
     activeParameterField = parameterId;
-    activeParameterFingerprint = 0;
-    activeParameterChanged = false;
     presentation.selectEditedNode(nodeId);
-    commands.beginTransientEdit();
     return updateNodeParameterEditValue(value);
 }
 
@@ -105,12 +105,10 @@ bool NodeEditorCommandService::updateNodeParameterEditValue(float value) {
     if (!result.changed) {
         return true;
     }
-    activeParameterFingerprint = static_cast<uint64_t>(String(value, 9).hashCode64());
-    activeParameterChanged = true;
     presentation.recordNodeEditorMovement(
             activeParameterNodeId,
             activeParameterId,
-            activeParameterFingerprint);
+            static_cast<uint64_t>(String(value, 9).hashCode64()));
     presentation.repaintNodeEditor(false);
     return true;
 }
@@ -126,16 +124,16 @@ bool NodeEditorCommandService::beginNodeParameterPairEdit(
     if (findNode(nodeId) == nullptr) {
         return false;
     }
+    if (!presentation.beginNodeEditorGesture(nodeId, commands, document)) {
+        return false;
+    }
     activeParameterNodeId = nodeId;
     activeParameterId = firstParameterId;
     activeParameterLabel = firstLabel;
     secondaryParameterId = secondParameterId;
     secondaryParameterLabel = secondLabel;
     activeParameterField = firstParameterId + "+" + secondParameterId;
-    activeParameterFingerprint = 0;
-    activeParameterChanged = false;
     presentation.selectEditedNode(nodeId);
-    commands.beginTransientEdit();
     return updateNodeParameterPairEditValues(firstValue, secondValue);
 }
 
@@ -169,8 +167,6 @@ bool NodeEditorCommandService::updateNodeParameterPairEditValues(
             static_cast<uint64_t>(String(firstValue, 9).hashCode64()))
             .add(String(secondValue, 9))
             .value();
-    activeParameterFingerprint = fingerprint;
-    activeParameterChanged = true;
     presentation.recordNodeEditorMovement(
             activeParameterNodeId,
             activeParameterField,
@@ -186,28 +182,16 @@ void NodeEditorCommandService::endNodeParameterEdit() {
     if (activeParameterNodeId.isEmpty()) {
         return;
     }
-    commands.commitTransientEdit();
-    if (activeParameterChanged) {
-        if (PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
-                    presentation.probeRefreshMode())) {
-            presentation.commitNodeEditorLocalState(
-                    activeParameterNodeId,
-                    activeParameterField,
-                    activeParameterFingerprint,
-                    document.revision());
-            presentation.scheduleNodeEditorRefresh();
-        } else {
-            presentation.refreshNodeEditorPresentation();
-        }
-    }
+    presentation.finishNodeEditorGesture(
+            activeParameterNodeId,
+            commands,
+            document);
     activeParameterNodeId = {};
     activeParameterId = {};
     activeParameterLabel = {};
     secondaryParameterId = {};
     secondaryParameterLabel = {};
     activeParameterField = {};
-    activeParameterFingerprint = 0;
-    activeParameterChanged = false;
 }
 
 bool NodeEditorCommandService::setNodeParameterValue(

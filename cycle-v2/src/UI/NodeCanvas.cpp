@@ -2301,6 +2301,44 @@ void NodeCanvas::setNodeEditorStatus(const String& message) {
     editStatusMessage = message;
 }
 
+bool NodeCanvas::beginNodeEditorGesture(
+        const String& nodeId,
+        GraphCommandDispatcher& dispatcher,
+        const GraphDocument& graphDocument) {
+    return presentation.editSession().beginGraphGesture(
+            "editor:" + nodeId,
+            dispatcher,
+            graphDocument,
+            probeRailState.refreshMode,
+            0,
+            true);
+}
+
+void NodeCanvas::finishNodeEditorGesture(
+        const String& nodeId,
+        GraphCommandDispatcher& dispatcher,
+        const GraphDocument& graphDocument) {
+    const auto finished = presentation.editSession().finishGraphGesture(
+            "editor:" + nodeId, dispatcher, graphDocument);
+    if (!finished.changed || !finished.durableChanged) {
+        return;
+    }
+
+    const auto decision = PresentationRefreshPolicy::decide({
+            EditPhase::Commit,
+            probeRailState.refreshMode,
+            std::nullopt,
+            true,
+            false
+    });
+    if (decision.downstream == DownstreamRefresh::CommitAsync) {
+        refreshCompiledStateAsync(
+                PresentationRefreshScope::Downstream,
+                nullptr,
+                finished.finalSnapshot);
+    }
+}
+
 void NodeCanvas::scheduleNodeEditorRefresh() {
     scheduleCompiledStateRefresh();
 }
@@ -2347,6 +2385,21 @@ void NodeCanvas::recordNodeEditorMovement(
     });
     const bool probesDeferred = decision.downstream != DownstreamRefresh::LatestAsync;
     presentation.recordEditorMovement(nodeId, field, effectiveFingerprint, probesDeferred);
+    const String stream = "editor:" + nodeId;
+    if (presentation.editSession().graphGestureIsActive(stream)) {
+        if (!primaryTrimeshMorph) {
+            if (decision.downstream == DownstreamRefresh::LatestAsync) {
+                auto snapshot = presentation.editSession().snapshotGraphGesture(stream, commands);
+                refreshCompiledStateAsync(
+                        PresentationRefreshScope::PreviewOnly,
+                        &commands.transientChanges(),
+                        std::move(snapshot));
+            } else {
+                scheduleCompiledStateRefresh(PresentationRefreshScope::LocalEditor);
+            }
+        }
+        return;
+    }
     if (!primaryTrimeshMorph) {
         scheduleCompiledStateRefresh(
                 probesDeferred

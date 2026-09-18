@@ -7,7 +7,8 @@ bool PresentationGestureSession::beginGraphGesture(
         GraphCommandDispatcher& commands,
         const GraphDocument& document,
         ProbeRefreshMode mode,
-        uint64_t initialFingerprint) {
+        uint64_t initialFingerprint,
+        bool transientEdits) {
     if (graphGestureIsActive(sourceStreamId)) {
         return false;
     }
@@ -16,11 +17,14 @@ bool PresentationGestureSession::beginGraphGesture(
     state.baseRevision = document.revision();
     state.effectiveFingerprint = initialFingerprint;
     state.live = PresentationRefreshPolicy::schedulesDownstreamDuringMovement(mode);
-    if (state.live) {
+    state.ownsTransientEdit = state.live || transientEdits;
+    if (state.ownsTransientEdit) {
         if (commands.hasTransientEdit()) {
             return false;
         }
-        state.stableGraph = std::make_shared<const NodeGraph>(commands.editingGraph());
+        if (state.live) {
+            state.stableGraph = std::make_shared<const NodeGraph>(commands.editingGraph());
+        }
         commands.beginTransientEdit();
     }
     graphGestures.emplace(sourceStreamId, std::move(state));
@@ -58,7 +62,7 @@ std::shared_ptr<const NodeGraph> PresentationGestureSession::snapshotGraphGestur
         const String& sourceStreamId,
         const GraphCommandDispatcher& commands) {
     const auto found = graphGestures.find(sourceStreamId);
-    if (found == graphGestures.end() || !found->second.live) {
+    if (found == graphGestures.end() || found->second.stableGraph == nullptr) {
         return {};
     }
     auto snapshot = std::make_shared<const NodeGraph>(
@@ -78,7 +82,7 @@ PresentationGestureSession::finishGraphGesture(
     }
     GraphGestureState state = std::move(found->second);
     graphGestures.erase(found);
-    if (state.live) {
+    if (state.ownsTransientEdit) {
         commands.commitTransientEdit();
     }
     const bool durableChanged = document.revision() != state.baseRevision;
@@ -97,7 +101,7 @@ void PresentationGestureSession::cancelGraphGesture(
         const String& sourceStreamId,
         GraphCommandDispatcher& commands) {
     const auto found = graphGestures.find(sourceStreamId);
-    if (found != graphGestures.end() && found->second.live) {
+    if (found != graphGestures.end() && found->second.ownsTransientEdit) {
         commands.cancelTransientEdit();
     }
     graphGestures.erase(sourceStreamId);

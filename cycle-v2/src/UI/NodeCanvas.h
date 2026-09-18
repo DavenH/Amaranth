@@ -267,6 +267,14 @@ private:
     void repaintNodeEditor(bool openGl) override;
     void selectEditedNode(const String& nodeId) override;
     void setNodeEditorStatus(const String& message) override;
+    bool beginNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document) override;
+    void finishNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document) override;
     void scheduleNodeEditorRefresh() override;
     void flushNodeEditorRefresh() override;
     void refreshNodeEditorPresentation() override;

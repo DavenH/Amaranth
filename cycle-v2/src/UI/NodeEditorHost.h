@@ -95,6 +95,14 @@ public:
     virtual void repaintNodeEditor(bool openGl) = 0;
     virtual void selectEditedNode(const String& nodeId) = 0;
     virtual void setNodeEditorStatus(const String& message) = 0;
+    virtual bool beginNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document) = 0;
+    virtual void finishNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document) = 0;
     virtual void scheduleNodeEditorRefresh() = 0;
     virtual void flushNodeEditorRefresh() = 0;
     virtual void refreshNodeEditorPresentation() = 0;
@@ -293,8 +301,6 @@ private:
     String secondaryParameterId;
     String secondaryParameterLabel;
     String activeParameterField;
-    uint64_t activeParameterFingerprint {};
-    bool activeParameterChanged {};
 };
 
 struct NodeEditorAutomationTarget {

@@ -400,7 +400,7 @@ bool GraphPresentationModel::executeAsyncProducts(
                 return product.product == UpdateProduct::AudioConfiguration;
             });
     if (preparesConfiguration
-            || (refresh.scope == PresentationRefreshScope::PreviewOnly
+            || (refresh.scope != PresentationRefreshScope::Downstream
                     && hasImpact(refresh.change.parameterImpacts,
                             ParameterImpact::DspConfiguration))) {
         const uint64_t startedAt = performance.timestamp();
@@ -564,7 +564,7 @@ std::function<void()> GraphPresentationModel::publishAsyncRefresh(
     }
     publishedGeneration = refresh->generation;
     updateGraph.publish(refresh->request, refresh->updateResult);
-    if (refresh->scope != PresentationRefreshScope::PreviewOnly
+    if (refresh->scope == PresentationRefreshScope::Downstream
             && (refresh->change.guidesChanged
                     || hasImpact(refresh->change.parameterImpacts,
                             ParameterImpact::DspConfiguration))) {
@@ -607,7 +607,9 @@ void GraphPresentationModel::recordEditorMovement(
             .add(nodeId)
             .add(field)
             .value();
-    const auto identity = gestureSession.recordMovement(stream, streamFingerprint);
+    const auto identity = gestureSession.graphGestureIsActive(stream)
+            ? gestureSession.recordGraphMovement(stream, streamFingerprint)
+            : gestureSession.recordMovement(stream, streamFingerprint);
     if (!identity.has_value()) {
         return;
     }
