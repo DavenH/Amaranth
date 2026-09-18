@@ -251,9 +251,9 @@ void NodeCanvas::resized() {
     }
     if (guideEditor != nullptr && guideEditor->isVisible()) {
         guideEditor->setBounds(
-                GuideCurveEditorComponent::preferredHostBounds(canvasContentBounds()).toNearestInt());
+                GuideCurveEditorComponent::preferredHostBounds(editorContentBounds()).toNearestInt());
     }
-    editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
+    editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
     requestCanvasRepaint();
 }
 
@@ -422,7 +422,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         return;
     }
     if (probeDetailState.isOpen()) {
-        const Rectangle<float> detail = SignalProbeDetailView::boundsFor(canvasContentBounds());
+        const Rectangle<float> detail = SignalProbeDetailView::boundsFor(editorContentBounds());
         if (SignalProbeDetailView::closeBounds(detail).contains(event.position)) {
             probeDetailState.close();
             notifyOverlayOcclusionChanged();
@@ -439,7 +439,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         const Node* expandedNode = queries.findNode(expandedNodeId);
         const ExpandedEditorClick click = editorCoordinator.routeClick(
                 expandedNode,
-                canvasContentBounds(),
+                editorContentBounds(),
                 event.position);
         if (click.kind == ExpandedEditorClickKind::Close) {
             editorCoordinator.close();
@@ -605,7 +605,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         if (event.getNumberOfClicks() >= 2 && hasExpandedEditor(hitNode->kind)) {
             expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
             synchronizeOpenedEditorMorph();
-            editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
+            editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
             notifyOverlayOcclusionChanged();
         }
 
@@ -851,7 +851,7 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
 
     const Node* expandedNode = queries.findNode(expandedNodeId);
     if (expandedNode != nullptr
-            && editorCoordinator.boundsFor(expandedNode, canvasContentBounds())
+            && editorCoordinator.boundsFor(expandedNode, editorContentBounds())
                     .contains(event.position)) {
         requestCanvasRepaint();
         return;
@@ -1001,7 +1001,7 @@ void NodeCanvas::timerCallback() {
         flushScheduledCompiledStateRefresh();
     }
 
-    editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
+    editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
 
     const auto mouse = getMouseXYRelative().toFloat();
     const int previousPaletteSectionIndex = palette.activeSection();
@@ -1040,7 +1040,7 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
     const Rectangle<float> content = canvasContentBounds();
     const Node* expandedNode = queries.findNode(expandedNodeId);
     const Rectangle<float> occlusion = editorCoordinator.blocksCanvas(expandedNode)
-            ? editorCoordinator.boundsFor(expandedNode, content)
+            ? editorCoordinator.boundsFor(expandedNode, editorContentBounds())
             : Rectangle<float> {};
     const bool pointerOccluded = expandedEditorBoundsForOverlay().contains(lastMousePosition);
     std::optional<PendingConnectionPresentation> pending;
@@ -1126,6 +1126,10 @@ Point<float> NodeCanvas::viewportCentreWorld() const {
 
 Rectangle<float> NodeCanvas::canvasContentBounds() const {
     return workspaceDockLayout().content;
+}
+
+Rectangle<float> NodeCanvas::editorContentBounds() const {
+    return WorkspaceDock::editorAvailableBounds(workspaceDockLayout());
 }
 
 WorkspaceDockLayout NodeCanvas::workspaceDockLayout() const {
@@ -1259,7 +1263,7 @@ void NodeCanvas::refreshCompiledStateAsync(PresentationRefreshScope scope) {
                 if (!safeThis->commands.hasTransientEdit()) {
                     safeThis->editorCoordinator.updateHost(
                             safeThis->commands.editingGraph().findNode(safeThis->expandedNodeId),
-                            safeThis->canvasContentBounds());
+                            safeThis->editorContentBounds());
                 }
                 if (Component* editor = safeThis->editorCoordinator.host().component()) {
                     editor->repaint();
@@ -1370,7 +1374,7 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     }
     if (result.effects.editorBindingChanged) {
         synchronizeOpenedEditorMorph();
-        editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
+        editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
         notifyOverlayOcclusionChanged();
     }
     if (result.effects.repaintRequested) {
@@ -1405,9 +1409,10 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     result.probeDetailColumns = probeDetailState.renderResult.gridColumns;
     result.probeDetailRows = probeDetailState.renderResult.gridRows;
     result.probeDetailBounds = probeDetailState.isOpen()
-            ? SignalProbeDetailView::boundsFor(canvasContentBounds())
+            ? SignalProbeDetailView::boundsFor(editorContentBounds())
             : Rectangle<float> {};
     result.canvasContentBounds = canvasContentBounds();
+    result.editorContentBounds = editorContentBounds();
 
     const Rectangle<float> workspace = getLocalBounds().toFloat();
     const WorkspaceDockLayout workspaceDock = workspaceDockLayout();
@@ -1756,7 +1761,8 @@ var NodeCanvas::inspectPointerTargetsForAutomation() const {
 }
 
 var NodeCanvas::inspectOpenGLDiagnosticsForAutomation() const {
-    return automation.inspectOpenGLDiagnostics({ canvasOpenGlAttached, expandedNodeId });
+    return automation.inspectOpenGLDiagnostics({
+            canvasOpenGlAttached, expandedNodeId, expandedEditorBoundsForOverlay() });
 }
 
 var NodeCanvas::inspectPerformanceMetricsForAutomation() const {
@@ -1942,12 +1948,12 @@ Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
         return guideEditor->getBounds().toFloat();
     }
     if (probeDetailState.isOpen()) {
-        return SignalProbeDetailView::boundsFor(canvasContentBounds());
+        return SignalProbeDetailView::boundsFor(editorContentBounds());
     }
 
     const Node* expandedNode = queries.findNode(expandedNodeId);
     return expandedNode != nullptr
-            ? editorCoordinator.boundsFor(expandedNode, canvasContentBounds())
+            ? editorCoordinator.boundsFor(expandedNode, editorContentBounds())
             : Rectangle<float> {};
 }
 
@@ -2040,7 +2046,7 @@ bool NodeCanvas::spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition) {
 bool NodeCanvas::clearSelection() {
     const bool cleared = authoring.clearSelection();
     if (cleared) {
-        editorCoordinator.updateHost(nullptr, canvasContentBounds());
+        editorCoordinator.updateHost(nullptr, editorContentBounds());
         requestCanvasRepaint();
     }
     return cleared;
@@ -2099,7 +2105,7 @@ void NodeCanvas::openGuideEditor(const String& guideId) {
             *guide,
             graph.guideHeatmapAsset(guide->heatmapAssetId));
     guideEditor->setBounds(
-            GuideCurveEditorComponent::preferredHostBounds(canvasContentBounds()).toNearestInt());
+            GuideCurveEditorComponent::preferredHostBounds(editorContentBounds()).toNearestInt());
     guideEditor->setVisible(true);
     guideEditor->toFront(false);
     notifyOverlayOcclusionChanged();
@@ -2274,7 +2280,7 @@ Point<float> NodeCanvas::nodeEditorCreationPosition() const {
 }
 
 void NodeCanvas::rebindNodeEditor() {
-    editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
+    editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
 }
 
 void NodeCanvas::rebindNodeEditorTransient() {

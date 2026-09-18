@@ -80,6 +80,14 @@ WorkspaceDockLayout WorkspaceDock::layout(
     return result;
 }
 
+juce::Rectangle<float> WorkspaceDock::editorAvailableBounds(const WorkspaceDockLayout& layout) {
+    if (layout.leftShelf.isEmpty()) {
+        return layout.content;
+    }
+    return layout.content.withRight(juce::jmax(
+            layout.content.getX(), layout.leftShelf.getX() - CanvasUtilityDock::gap));
+}
+
 juce::Rectangle<float> WorkspaceDock::spyRowBounds(
         juce::Rectangle<float> workspace,
         bool expanded,

@@ -71,6 +71,7 @@ public:
     static WorkspaceDockLayout layout(
             juce::Rectangle<float> workspace,
             const WorkspaceDockState& state);
+    static juce::Rectangle<float> editorAvailableBounds(const WorkspaceDockLayout& layout);
     static juce::Rectangle<float> spyRowBounds(
             juce::Rectangle<float> workspace,
             bool expanded,

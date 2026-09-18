@@ -1005,7 +1005,7 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
         AutomationValueEncoder::addExpandedEditorTargets(
                 targets,
                 *expandedNode,
-                state.canvasContentBounds,
+                state.editorContentBounds,
                 context.editorHost);
     }
 

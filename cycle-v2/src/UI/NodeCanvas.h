@@ -253,6 +253,7 @@ private:
     bool cycleSinglePortLayout(const String& nodeId);
     bool cycleOutputSide(const String& nodeId);
     Rectangle<float> canvasContentBounds() const;
+    Rectangle<float> editorContentBounds() const;
     WorkspaceDockLayout workspaceDockLayout() const;
     void showEdgeMenu(int edgeIndex, Point<float> screenPosition);
     void openGuideEditor(const String& guideId);

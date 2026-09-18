@@ -74,6 +74,7 @@ struct NodeCanvasAutomationPresentation {
     size_t probeDetailRows {};
     juce::Rectangle<float> probeDetailBounds;
     juce::Rectangle<float> canvasContentBounds;
+    juce::Rectangle<float> editorContentBounds;
     GuideDockAutomationPresentation guideDock;
     uint64_t hoverRepaintRequestCount {};
     uint64_t canvasRepaintRequestCount {};

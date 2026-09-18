@@ -151,6 +151,16 @@ TEST_CASE("Workspace dock places Guides beside utilities and Spies above canvas"
     REQUIRE(narrow.leftShelf.getHeight()
             >= WorkspaceDock::headerHeight + WorkspaceDock::guideTileHeight);
     REQUIRE_FALSE(narrow.leftShelf.intersects(narrow.rightShelf));
+
+    GraphNodeFactory factory;
+    const Node trimesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+    for (const WorkspaceDockLayout& layout : { balanced, narrow }) {
+        const Rectangle<float> available = WorkspaceDock::editorAvailableBounds(layout);
+        const Rectangle<float> editor = NodeCanvasEditorCoordinator::boundsFor(&trimesh, available);
+        REQUIRE(available.contains(editor));
+        REQUIRE_FALSE(editor.intersects(layout.leftShelf));
+    }
+    REQUIRE(WorkspaceDock::editorAvailableBounds(collapsed) == collapsed.content);
 }
 
 TEST_CASE("Workspace dock keyboard traversal exposes every visible action",
