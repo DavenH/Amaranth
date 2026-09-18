@@ -14,6 +14,7 @@ public:
         DBG("AppClass::initialise commandLine=\"" + commandLine + "\"");
         mainWindow = std::make_unique<MainAppWindow>(commandLine);
         mainWindow->setVisible(true);
+        mainWindow->centreWithSize(mainWindow->getWidth(), mainWindow->getHeight());
         Component::SafePointer<MainAppWindow> safeWindow(mainWindow.get());
 
         MessageManager::callAsync([safeWindow, commandLine]() {
@@ -23,9 +24,6 @@ public:
             }
         });
 
-      #if ! JUCE_DEBUG
-        mainWindow->maximiseButtonPressed();
-      #endif
     }
 
     void shutdown() override {
