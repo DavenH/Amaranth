@@ -16,6 +16,7 @@ struct EnvelopeConfiguration final : public INodeDspConfiguration {
     std::shared_ptr<GuideCurveSnapshotProvider> guideCurveProvider;
     std::shared_ptr<EnvRasterizer> rasterizer;
     Rasterization::RealtimeEnvelopePlan realtimePlan;
+    Rasterization::RealtimeEnvelopePlan cycleRealtimePlan;
     float level { 1.f };
     float redMorph { 0.5f };
     float blueMorph { 0.5f };
@@ -23,6 +24,7 @@ struct EnvelopeConfiguration final : public INodeDspConfiguration {
     bool logarithmic {};
     bool enabled { true };
     bool lowResolution {};
+    bool cycleGuideRequired {};
     bool volumePurpose {};
     bool declick {};
 };

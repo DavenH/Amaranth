@@ -205,13 +205,18 @@ void ChainedOscillatorRecipeRenderer::reset() {
 
 void ChainedOscillatorRecipeRenderer::applyLifecycleEvent(
         const NoteLifecycleEvent& event) {
+    if (event.type == NoteLifecycleType::NoteOn) {
+        lifecycleSeedReady = false;
+    }
     cycleEnvelopes.applyLifecycleEvent(event);
 }
 
 void ChainedOscillatorRecipeRenderer::advanceCycleEnvelopes(
         int laneIndex,
         int sampleCount,
-        double normalizedTimeIncrement) {
+        double normalizedTimeIncrement,
+        const PreparedOscillatorProcessContext* context) {
+    prepareFrameRandom(context);
     cycleEnvelopes.advanceLane(
             laneIndex,
             sampleCount,
@@ -352,6 +357,9 @@ void ChainedOscillatorRecipeRenderer::prepareFrameRandom(
     }
     frameRandomSeed = seed;
     lifecycleSeedReady = true;
+    cycleEnvelopes.setVoiceLifecycleSeed(hasDeterministicRandomSeed
+            ? context->voice->deterministicRandomSeed
+            : seed);
     frameRandom.setSeed(seed);
     const uint32_t offsetSeed = hasDeterministicRandomSeed
             ? (uint32_t) frameRandom.nextInt()

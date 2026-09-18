@@ -1,5 +1,15 @@
 # Refactor Notes
 
+## Cycle V2 spectral frame renderer ownership
+
+`cycle-v2/src/Runtime/SpectralOscillatorFrameRenderer.cpp` is about 820 lines
+after the 2026-09-18 Envelope guide seed change. Its lifecycle methods are the
+right narrow place to forward the voice seed to the prepared Envelope bank, but
+the file also owns region validation, source rendering, transforms, graph
+combining, and output. Extract cohesive source-operation and frame-combining
+ownership in a later behavior-preserving slice; keep the current shared
+`PreparedCycleEnvelopeBank` and graph plan contract intact.
+
 ## Migrated factory guide-curve attack boundaries
 
 The Cycle 1 factory-preset port in `scripts/port_cycle_v1_preset.py` copies
