@@ -4,6 +4,7 @@
 
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
+#include "UI/CanvasUtilityDock.h"
 
 namespace CycleV2 {
 
@@ -35,68 +36,59 @@ void paintIconGlyph(
 
 }
 
-float WorkspaceDock::clampedSplitRatio(
-        juce::Rectangle<float> workspace,
-        float splitRatio) {
-    if (workspace.getWidth() <= 0.f) {
-        return 0.5f;
-    }
-
-    const float minimumWidth = juce::jmin(minimumShelfWidth, workspace.getWidth() * 0.5f);
-    const float minimumRatio = minimumWidth / workspace.getWidth();
-    return juce::jlimit(minimumRatio, 1.f - minimumRatio, splitRatio);
-}
-
 WorkspaceDockLayout WorkspaceDock::layout(
         juce::Rectangle<float> workspace,
         const WorkspaceDockState& state) {
     WorkspaceDockLayout result;
     result.workspace = workspace;
-
-    const float maximumHeight = juce::jmax(
-            minimumExpandedHeight,
-            workspace.getHeight() * 0.4f);
-    const float height = state.expanded
-            ? juce::jlimit(minimumExpandedHeight, maximumHeight, state.expandedHeight)
-            : collapsedHeight;
-    result.dock = workspace.removeFromBottom(height);
     result.content = workspace;
+    if (workspace.isEmpty()) {
+        return result;
+    }
+
+    const CanvasUtilityDockLayout utilities = CanvasUtilityDock::layout(workspace);
+    const float guideWidth = juce::jmin(tileWidth + shelfPadding * 2.f,
+            juce::jmax(drawerWidth, workspace.getWidth() * 0.32f));
+    const float activeGuideWidth = state.leftMinimized ? drawerWidth : guideWidth;
+    const float guideRight = workspace.getRight() - CanvasUtilityDock::margin;
+    const float guideTop = utilities.legend.getBottom() + CanvasUtilityDock::gap;
+    const float spyRight = juce::jmax(workspace.getX(),
+            guideRight - activeGuideWidth - CanvasUtilityDock::gap);
+    result.dock = spyRowBounds(
+            workspace.withRight(spyRight), state.expanded, state.expandedHeight);
 
     if (!state.expanded) {
-        result.rightShelf = result.dock;
         result.collapseHandle = juce::Rectangle<float>(
-                juce::jmin(280.f, juce::jmax(40.f, result.dock.getWidth() - 24.f)),
+                juce::jmin(220.f, juce::jmax(40.f, result.dock.getWidth() - 24.f)),
                 28.f)
-                .withCentre(result.dock.getCentre());
+                .withCentre({ result.dock.getCentreX(), workspace.getBottom() - 17.f });
         return result;
     }
 
-    result.resizeHandle = result.dock.withHeight(7.f);
+    result.resizeHandle = juce::Rectangle<float>(100.f, 5.f)
+            .withCentre({ result.dock.getCentreX(), result.dock.getY() + 2.5f });
     result.collapseHandle = juce::Rectangle<float>(40.f, 24.f)
             .withCentre({ result.dock.getCentreX(), result.dock.getY() + 12.f });
-
-    juce::Rectangle<float> shelves = result.dock;
-    if (state.leftMinimized && !state.rightMinimized) {
-        result.leftShelf = shelves.removeFromLeft(drawerWidth);
-        result.rightShelf = shelves;
-        return result;
+    const float guideHeight = juce::jmax(0.f,
+            workspace.getBottom() - CanvasUtilityDock::margin - guideTop);
+    result.leftShelf = { guideRight - activeGuideWidth,
+            guideTop, activeGuideWidth, guideHeight };
+    result.rightShelf = result.dock;
+    if (state.rightMinimized) {
+        result.rightShelf = result.dock.withWidth(drawerWidth);
     }
-    if (state.rightMinimized && !state.leftMinimized) {
-        result.rightShelf = shelves.removeFromRight(drawerWidth);
-        result.leftShelf = shelves;
-        return result;
-    }
-
-    const float ratio = clampedSplitRatio(shelves, state.splitRatio);
-    result.leftShelf = shelves.removeFromLeft(shelves.getWidth() * ratio);
-    result.rightShelf = shelves;
-    result.divider = {
-            result.leftShelf.getRight() - 4.f,
-            result.dock.getY(),
-            8.f,
-            result.dock.getHeight()
-    };
     return result;
+}
+
+juce::Rectangle<float> WorkspaceDock::spyRowBounds(
+        juce::Rectangle<float> workspace,
+        bool expanded,
+        float expandedHeight) {
+    const float maximumHeight = juce::jmax(minimumExpandedHeight, workspace.getHeight() * 0.4f);
+    const float height = expanded
+            ? juce::jlimit(minimumExpandedHeight, maximumHeight, expandedHeight)
+            : collapsedHeight;
+    return workspace.removeFromBottom(height);
 }
 
 juce::Rectangle<float> WorkspaceDock::headerBounds(juce::Rectangle<float> shelf) {
@@ -120,6 +112,34 @@ juce::Rectangle<float> WorkspaceDock::tileBounds(
             tileWidth,
             juce::jmax(0.f, shelf.getHeight() - headerHeight - tileBottomPadding)
     };
+}
+
+juce::Rectangle<float> WorkspaceDock::guideTileBounds(
+        juce::Rectangle<float> shelf,
+        int tileIndex,
+        float verticalOffset) {
+    return {
+            shelf.getX() + shelfPadding,
+            shelf.getY() + headerHeight
+                    + (float) tileIndex * (guideTileHeight + tileGap) - verticalOffset,
+            juce::jmax(0.f, shelf.getWidth() - shelfPadding * 2.f),
+            guideTileHeight
+    };
+}
+
+float WorkspaceDock::offsetToRevealGuideTile(
+        float currentOffset,
+        float maximumOffset,
+        float shelfHeight,
+        int tileIndex) {
+    const float tileTop = headerHeight + (float) tileIndex * (guideTileHeight + tileGap);
+    const float visibleBottom = currentOffset + shelfHeight - tileBottomPadding;
+    if (tileTop < currentOffset + headerHeight) {
+        currentOffset = tileTop - headerHeight;
+    } else if (tileTop + guideTileHeight > visibleBottom) {
+        currentOffset = tileTop + guideTileHeight - shelfHeight + tileBottomPadding;
+    }
+    return juce::jlimit(0.f, maximumOffset, currentOffset);
 }
 
 juce::Rectangle<float> WorkspaceDock::vacancyBounds(juce::Rectangle<float> shelf) {
@@ -254,6 +274,28 @@ void WorkspaceDock::paintOverflowFeedback(
     }
 }
 
+void WorkspaceDock::paintVerticalOverflowFeedback(
+        juce::Graphics& graphics,
+        juce::Rectangle<float> shelf,
+        float verticalOffset,
+        float maximumOffset) {
+    if (maximumOffset <= 0.f) {
+        return;
+    }
+    const auto track = shelf.removeFromRight(3.f).withTrimmedTop(headerHeight)
+            .withTrimmedBottom(tileBottomPadding);
+    const float visibleHeight = shelf.getHeight() - headerHeight - tileBottomPadding;
+    const float thumbHeight = juce::jmax(22.f,
+            track.getHeight() * visibleHeight / (visibleHeight + maximumOffset));
+    const float travel = juce::jmax(0.f, track.getHeight() - thumbHeight);
+    graphics.setColour(CanvasChromePalette::border.withAlpha(0.5f));
+    graphics.fillRoundedRectangle(track, 1.5f);
+    graphics.setColour(CanvasChromePalette::text.withAlpha(0.7f));
+    graphics.fillRoundedRectangle({ track.getX(),
+            track.getY() + travel * verticalOffset / maximumOffset,
+            track.getWidth(), thumbHeight }, 1.5f);
+}
+
 void WorkspaceDock::paintChrome(
         juce::Graphics& graphics,
         const WorkspaceDockLayout& layout,
@@ -261,11 +303,6 @@ void WorkspaceDock::paintChrome(
         const juce::String& rightSummary,
         bool expanded,
         bool focused) {
-    graphics.setColour(CanvasChromePalette::border);
-    graphics.drawHorizontalLine(
-            juce::roundToInt(layout.dock.getY()),
-            layout.dock.getX(),
-            layout.dock.getRight());
     graphics.setColour(CanvasChromePalette::dockSurface);
     const float handleCornerRadius = expanded
             ? CanvasChromeMetrics::controlCornerRadius

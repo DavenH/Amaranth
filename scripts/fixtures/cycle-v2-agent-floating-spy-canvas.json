@@ -1,0 +1,22 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/old/baroque-flute.cyclegraph"
+    },
+    { "command": "assertState", "path": "guideDock.expanded", "equals": true },
+    { "command": "assertState", "path": "probeCount", "equals": 4 },
+    {
+      "command": "pointer",
+      "event": "wheel",
+      "targetId": "spyShelf",
+      "targetX": 0.85,
+      "targetY": 0.65,
+      "deltaY": 0.1
+    },
+    { "command": "assertState", "path": "panY", "op": "greaterThan", "value": 200 },
+    { "command": "assertState", "path": "guideDock.spyHorizontalOffset", "equals": 0 },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": true
+}

@@ -33,8 +33,7 @@ struct GuideDockAutomationPresentation {
     bool guidesMinimized {};
     bool spiesMinimized {};
     float expandedHeight { 190.f };
-    float splitRatio { 0.5f };
-    float guideHorizontalOffset {};
+    float guideVerticalOffset {};
     float spyHorizontalOffset {};
     juce::String selectedGuideId;
     juce::String hoveredGuideId;
@@ -49,7 +48,6 @@ struct GuideDockAutomationPresentation {
     juce::Rectangle<float> dockBounds;
     juce::Rectangle<float> guideShelfBounds;
     juce::Rectangle<float> spyShelfBounds;
-    juce::Rectangle<float> dividerBounds;
     juce::Rectangle<float> collapseBounds;
     juce::Rectangle<float> resizeBounds;
     juce::Rectangle<float> guideMinimizeBounds;

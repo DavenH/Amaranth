@@ -16,6 +16,12 @@ namespace {
 
 constexpr float kCableAnnotationBaseDiameter = 23.04f;
 
+float probeRowWidth(int probeCount) {
+    return WorkspaceDock::shelfPadding * 2.f
+            + (float) probeCount * WorkspaceDock::tileWidth
+            + (float) jmax(0, probeCount - 1) * WorkspaceDock::tileGap;
+}
+
 void paintProbeOrdinal(Graphics& graphics, Rectangle<float> previewBounds, int ordinal) {
     graphics.setColour(CanvasChromePalette::text.withAlpha(0.86f));
     graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
@@ -51,33 +57,7 @@ const Edge* graphEdgeForProbe(
 Rectangle<float> SignalProbeRail::boundsFor(
         Rectangle<float> workspace,
         const SignalProbeRailState& state) {
-    return WorkspaceDock::layout(
-            workspace,
-            { state.expanded, false, false, state.expandedHeight, 0.5f }).dock;
-}
-
-Rectangle<float> SignalProbeRail::contentBoundsFor(
-        Rectangle<float> workspace,
-        const SignalProbeRailState& state) {
-    return WorkspaceDock::layout(
-            workspace,
-            { state.expanded, false, false, state.expandedHeight, 0.5f }).content;
-}
-
-Rectangle<float> SignalProbeRail::resizeHandleFor(
-        Rectangle<float> workspace,
-        const SignalProbeRailState& state) {
-    return WorkspaceDock::layout(
-            workspace,
-            { state.expanded, false, false, state.expandedHeight, 0.5f }).resizeHandle;
-}
-
-Rectangle<float> SignalProbeRail::collapseHandleFor(
-        Rectangle<float> workspace,
-        const SignalProbeRailState& state) {
-    return WorkspaceDock::layout(
-            workspace,
-            { state.expanded, false, false, state.expandedHeight, 0.5f }).collapseHandle;
+    return WorkspaceDock::spyRowBounds(workspace, state.expanded, state.expandedHeight);
 }
 
 Rectangle<float> SignalProbeRail::refreshModeBoundsFor(
@@ -112,13 +92,22 @@ Rectangle<float> SignalProbeRail::tileBoundsFor(
             state.horizontalOffset);
 }
 
+Rectangle<float> SignalProbeRail::scrollAreaFor(
+        Rectangle<float> workspace,
+        const SignalProbeRailState& state,
+        int probeCount) {
+    if (!state.expanded || state.minimized || probeCount < 1) {
+        return {};
+    }
+    const Rectangle<float> rail = boundsFor(workspace, state);
+    return rail.withTrimmedTop(WorkspaceDock::headerHeight)
+            .withWidth(jmin(rail.getWidth(), probeRowWidth(probeCount)));
+}
+
 float SignalProbeRail::maximumHorizontalOffset(
         Rectangle<float> workspace,
         int probeCount) {
-    const float gaps = (float) jmax(0, probeCount - 1) * WorkspaceDock::tileGap;
-    const float contentWidth = WorkspaceDock::shelfPadding * 2.f
-            + (float) probeCount * WorkspaceDock::tileWidth + gaps;
-    return jmax(0.f, contentWidth - workspace.getWidth());
+    return jmax(0.f, probeRowWidth(probeCount) - workspace.getWidth());
 }
 
 int SignalProbeRail::ordinalForProbe(const NodeGraph& graph, const String& probeId) {
@@ -294,6 +283,11 @@ String SignalProbeRail::probeAt(
     if (!state.expanded || state.minimized) {
         return {};
     }
+    const Rectangle<float> visibleTiles = boundsFor(workspace, state)
+            .withTrimmedTop(WorkspaceDock::headerHeight);
+    if (!visibleTiles.contains(position)) {
+        return {};
+    }
     const auto probes = orderedProbes(graph);
     for (int index = 0; index < (int) probes.size(); ++index) {
         if (tileBoundsFor(workspace, state, index).contains(position)) {
@@ -437,16 +431,16 @@ void SignalProbeRail::paintRail(
         const NodeGraph& graph,
         const GraphPreviewResult& previews,
         Rectangle<float> workspace,
-        const SignalProbeRailState& state,
-        const WorkspaceDockFocus& focus) {
+    const SignalProbeRailState& state,
+    const WorkspaceDockFocus& focus) {
     const Rectangle<float> rail = boundsFor(workspace, state);
-    graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.96f));
-    graphics.fillRect(rail);
-    graphics.setColour(CanvasChromePalette::border);
-    graphics.drawHorizontalLine(roundToInt(rail.getY()), rail.getX(), rail.getRight());
-
+    if (!state.expanded) {
+        return;
+    }
     const auto probes = orderedProbes(graph);
     if (state.minimized) {
+        graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.92f));
+        graphics.fillRoundedRectangle(rail, CanvasChromeMetrics::panelCornerRadius);
         Rectangle<float> labelArea = rail;
         Rectangle<float> drawerButton = labelArea.removeFromTop(WorkspaceDock::drawerWidth).reduced(4.f);
         WorkspaceDock::paintIconButton(
@@ -466,10 +460,6 @@ void SignalProbeRail::paintRail(
                 Justification::centred);
         return;
     }
-    if (!state.expanded) {
-        return;
-    }
-
     const Rectangle<float> minimize = minimizeButtonBoundsFor(workspace, state);
     WorkspaceDock::paintIconButton(
             graphics,
@@ -478,6 +468,10 @@ void SignalProbeRail::paintRail(
             focus.target == WorkspaceDockFocusTarget::SpyMinimize);
 
     const Rectangle<float> header = WorkspaceDock::headerBounds(rail);
+    graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.94f));
+    graphics.fillRoundedRectangle(
+            header.withTrimmedLeft(WorkspaceDock::controlSize + 4.f).withWidth(84.f),
+            CanvasChromeMetrics::controlCornerRadius);
     graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
     graphics.drawText(

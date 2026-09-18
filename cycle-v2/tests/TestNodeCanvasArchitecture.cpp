@@ -15,11 +15,13 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Graph/NodeDefinition.h"
 #include "UI/CanvasChromeMetrics.h"
+#include "UI/CanvasUtilityDock.h"
 #include "UI/EnvelopePurposeIconRenderer.h"
 #include "UI/EnvelopePurposeSelector.h"
 #include "UI/EffectEnableButton.h"
 #include "UI/EditorChromeLayout.h"
 #include "UI/GuideRelationshipPresentation.h"
+#include "UI/GuideCurveShelf.h"
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
 #include "UI/NodeCanvasPresentation.h"
@@ -64,23 +66,29 @@ uint64_t imageChecksum(const Image& image) {
     return checksum;
 }
 
-TEST_CASE("Signal probe rail reserves editor-safe workspace bounds", "[cycle-v2][canvas][probe]") {
+TEST_CASE("Signal probe rail overlays the full canvas", "[cycle-v2][canvas][probe]") {
     const Rectangle<float> workspace { 0.f, 0.f, 1200.f, 800.f };
     SignalProbeRailState expanded;
     expanded.expandedHeight = 190.f;
 
-    const Rectangle<float> content = SignalProbeRail::contentBoundsFor(workspace, expanded);
-    REQUIRE(content == Rectangle<float>(0.f, 0.f, 1200.f, 610.f));
-    REQUIRE(SignalProbeRail::boundsFor(workspace, expanded).getY() == content.getBottom());
-    const Rectangle<float> collapse = SignalProbeRail::collapseHandleFor(workspace, expanded);
-    const Rectangle<float> refreshMode = SignalProbeRail::refreshModeBoundsFor(workspace, expanded);
-    const Rectangle<float> rail = SignalProbeRail::boundsFor(workspace, expanded);
+    const WorkspaceDockLayout dock = WorkspaceDock::layout(
+            workspace, { true, false, false, expanded.expandedHeight });
+    const Rectangle<float> content = dock.content;
+    REQUIRE(content == workspace);
+    const Rectangle<float> spies = GuideCurveShelf::spyWorkspace(workspace);
+    REQUIRE(SignalProbeRail::boundsFor(spies, expanded) == dock.rightShelf);
+    const Rectangle<float> collapse = dock.collapseHandle;
+    const Rectangle<float> refreshMode = SignalProbeRail::refreshModeBoundsFor(spies, expanded);
+    const Rectangle<float> rail = dock.rightShelf;
     REQUIRE(rail.contains(collapse));
     REQUIRE(rail.contains(refreshMode));
     REQUIRE_FALSE(collapse.intersects(refreshMode));
-    REQUIRE(SignalProbeRail::tileBoundsFor(workspace, expanded, 0).getY()
-            == Catch::Approx(SignalProbeRail::boundsFor(workspace, expanded).getY()
+    REQUIRE(SignalProbeRail::tileBoundsFor(spies, expanded, 0).getY()
+            == Catch::Approx(rail.getY()
                     + WorkspaceDock::headerHeight));
+    const Rectangle<float> spyScrollArea = SignalProbeRail::scrollAreaFor(spies, expanded, 4);
+    REQUIRE(spyScrollArea.contains(SignalProbeRail::tileBoundsFor(spies, expanded, 0).getCentre()));
+    REQUIRE(spyScrollArea.getRight() < rail.getRight());
 
     GraphNodeFactory factory;
     const Node trimesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
@@ -91,33 +99,37 @@ TEST_CASE("Signal probe rail reserves editor-safe workspace bounds", "[cycle-v2]
     REQUIRE(editor.getHeight() == Catch::Approx(content.getHeight() - 36.f));
 
     expanded.expanded = false;
-    REQUIRE(SignalProbeRail::contentBoundsFor(workspace, expanded).getHeight()
-            == 800.f - WorkspaceDock::collapsedHeight);
+    REQUIRE(WorkspaceDock::layout(workspace,
+            { false, false, false, expanded.expandedHeight }).content == workspace);
 }
 
-TEST_CASE("Workspace dock is the single clamped Guide and Spy layout authority",
+TEST_CASE("Workspace dock places Guides beside utilities and Spies above canvas",
         "[cycle-v2][canvas][guide-dock]") {
     const Rectangle<float> workspace { 0.f, 0.f, 1000.f, 700.f };
     WorkspaceDockState state;
     const WorkspaceDockLayout balanced = WorkspaceDock::layout(workspace, state);
 
-    REQUIRE(balanced.content.getBottom() == balanced.dock.getY());
-    REQUIRE(balanced.leftShelf.getWidth() == Catch::Approx(500.f));
-    REQUIRE(balanced.rightShelf.getWidth() == Catch::Approx(500.f));
-    REQUIRE(balanced.leftShelf.getRight() == Catch::Approx(balanced.rightShelf.getX()));
+    const CanvasUtilityDockLayout utilities = CanvasUtilityDock::layout(workspace);
+    REQUIRE(balanced.content == workspace);
+    REQUIRE(balanced.leftShelf.getY() == utilities.legend.getBottom() + CanvasUtilityDock::gap);
+    REQUIRE(balanced.leftShelf.getRight() == utilities.minimap.getRight());
+    REQUIRE(balanced.leftShelf.getX() > balanced.rightShelf.getRight());
+    REQUIRE(balanced.leftShelf.getHeight() > WorkspaceDock::guideTileHeight);
+    REQUIRE(balanced.rightShelf.getBottom() == workspace.getBottom());
     REQUIRE(balanced.dock.contains(balanced.collapseHandle));
     REQUIRE(balanced.resizeHandle.getY() == balanced.dock.getY());
 
-    state.splitRatio = 0.05f;
-    const WorkspaceDockLayout clamped = WorkspaceDock::layout(workspace, state);
-    REQUIRE(clamped.leftShelf.getWidth() == Catch::Approx(WorkspaceDock::minimumShelfWidth));
+    const auto first = WorkspaceDock::guideTileBounds(balanced.leftShelf, 0, 0.f);
+    const auto second = WorkspaceDock::guideTileBounds(balanced.leftShelf, 1, 0.f);
+    REQUIRE(first.getY() < second.getY());
+    REQUIRE(first.getWidth() > first.getHeight());
+    REQUIRE(first.getRight() == second.getRight());
+    REQUIRE(first.getBottom() + WorkspaceDock::tileGap == second.getY());
 
     state.leftMinimized = true;
     const WorkspaceDockLayout leftDrawer = WorkspaceDock::layout(workspace, state);
     REQUIRE(leftDrawer.leftShelf.getWidth() == Catch::Approx(WorkspaceDock::drawerWidth));
-    REQUIRE(leftDrawer.rightShelf.getWidth()
-            == Catch::Approx(workspace.getWidth() - WorkspaceDock::drawerWidth));
-    REQUIRE(leftDrawer.divider.isEmpty());
+    REQUIRE(leftDrawer.rightShelf.getWidth() > balanced.rightShelf.getWidth());
 
     state.leftMinimized = false;
     state.expanded = false;
@@ -128,10 +140,17 @@ TEST_CASE("Workspace dock is the single clamped Guide and Spy layout authority",
 
     const Rectangle<float> smallWorkspace { 0.f, 0.f, 360.f, 400.f };
     state.expanded = true;
-    state.splitRatio = 0.8f;
     const WorkspaceDockLayout small = WorkspaceDock::layout(smallWorkspace, state);
-    REQUIRE(small.leftShelf.getWidth() == Catch::Approx(180.f));
-    REQUIRE(small.rightShelf.getWidth() == Catch::Approx(180.f));
+    REQUIRE(small.content == smallWorkspace);
+    REQUIRE_FALSE(small.rightShelf.intersects(small.leftShelf));
+
+    const Rectangle<float> narrowWorkspace { 0.f, 0.f, 800.f, 600.f };
+    const WorkspaceDockLayout narrow = WorkspaceDock::layout(narrowWorkspace, state);
+    const CanvasUtilityDockLayout narrowUtilities = CanvasUtilityDock::layout(narrowWorkspace);
+    REQUIRE(narrow.leftShelf.getY() >= narrowUtilities.legend.getBottom());
+    REQUIRE(narrow.leftShelf.getHeight()
+            >= WorkspaceDock::headerHeight + WorkspaceDock::guideTileHeight);
+    REQUIRE_FALSE(narrow.leftShelf.intersects(narrow.rightShelf));
 }
 
 TEST_CASE("Workspace dock keyboard traversal exposes every visible action",
@@ -157,15 +176,11 @@ TEST_CASE("Workspace dock keyboard traversal exposes every visible action",
 
     focus = { WorkspaceDockFocusTarget::GuideTile, "guide1" };
     REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
-            KeyPress(KeyPress::rightKey), model, focus));
+            KeyPress(KeyPress::downKey), model, focus));
     REQUIRE(focus.itemId == "guide2");
     REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
-            KeyPress(KeyPress::downKey), model, focus));
-    const WorkspaceDockFocus expectedSpy {
-            WorkspaceDockFocusTarget::SpyTile,
-            "probe1"
-    };
-    REQUIRE(focus == expectedSpy);
+            KeyPress(KeyPress::tabKey), model, focus));
+    REQUIRE(focus.target == WorkspaceDockFocusTarget::SpyRefresh);
 
     model.expanded = false;
     const auto collapsedOrder = WorkspaceDockKeyboardNavigation::focusOrder(model);
@@ -182,6 +197,7 @@ TEST_CASE("Workspace dock reveals keyboard-focused overflow tiles",
     REQUIRE(first == Catch::Approx(0.f));
     REQUIRE(last > 0.f);
     REQUIRE(last <= maximumOffset);
+    REQUIRE(WorkspaceDock::offsetToRevealGuideTile(0.f, maximumOffset, 300.f, 5) > 0.f);
 }
 
 TEST_CASE("Guide relationship selection highlights without drawing a persistent tether",
@@ -241,7 +257,7 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
     GraphCompileResult compileResult;
     GraphPreviewResult previewResult;
     NodeCanvasViewport viewport;
-    viewport.setBounds({ 0.f, 0.f, 400.f, 200.f });
+    viewport.setBounds({ 0.f, 0.f, 1000.f, 700.f });
     viewport.setTransform({}, 1.f);
     NodePalette palette;
     GuideCurveShelfState guideState;
@@ -256,7 +272,7 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
             previewResult,
             viewport,
             palette,
-            { 0.f, 0.f, 400.f, 200.f },
+            { 0.f, 0.f, 1000.f, 700.f },
             editorOcclusion,
             {},
             {},
@@ -270,16 +286,15 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
             -1,
             true,
             false,
-            { 0.f, 0.f, 400.f, 300.f },
+            { 0.f, 0.f, 1000.f, 700.f },
             guideState,
-            0.5f,
             dockState,
             {},
             {},
             {}
     };
 
-    Image image(Image::ARGB, 400, 300, true);
+    Image image(Image::ARGB, 1000, 700, true);
     Graphics graphics(image);
     GuideRelationshipPresentation::paintTether(graphics, frame);
 
@@ -311,28 +326,26 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
         }
         return count;
     };
-    REQUIRE(alphaCount({ 339, 74, 12, 12 }) > 0);
-    REQUIRE(alphaCount({ 39, 74, 12, 12 }) > 0);
+    REQUIRE(alphaCount({ 374, 44, 12, 12 }) > 0);
+    REQUIRE(alphaCount({ 74, 44, 12, 12 }) > 0);
     const auto dock = WorkspaceDock::layout(
             frame.workspaceBounds,
             {
                     dockState.expanded,
                     guideState.minimized,
                     dockState.minimized,
-                    dockState.expandedHeight,
-                    frame.dockSplitRatio
+                    dockState.expandedHeight
             });
     const auto guideTile = GuideCurveShelf::tileBoundsFor(
             frame.workspaceBounds,
             dockState,
-            frame.dockSplitRatio,
             guideState,
             0);
     WorkspaceDock::paintChrome(graphics, dock, "Curve Guides", "Spies", true, false);
     GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
     const Point<int> terminal {
-            roundToInt(guideTile.getCentreX()),
-            roundToInt(dock.dock.getY())
+            roundToInt(dock.leftShelf.getX()),
+            roundToInt(guideTile.getCentreY())
     };
     REQUIRE(alphaCount(Rectangle<int>(12, 12).withCentre(terminal)) > 0);
 

@@ -8,6 +8,7 @@
     { "command": "pointer", "event": "click", "targetId": "guideShelf.add" },
     { "command": "pointer", "event": "click", "targetId": "guideShelf.add" },
     { "command": "pointer", "event": "click", "targetId": "guideShelf.add" },
+    { "command": "pointer", "event": "click", "targetId": "guideShelf.add" },
     {
       "command": "pointer",
       "event": "wheel",
@@ -22,7 +23,7 @@
     },
     {
       "command": "assertState",
-      "path": "guideDock.guideHorizontalOffset",
+      "path": "guideDock.guideVerticalOffset",
       "op": "greaterThan",
       "value": 0
     },
@@ -33,7 +34,7 @@
     { "command": "assertState", "path": "guideDock.selectedGuideId", "equals": "" },
     { "command": "assertState", "path": "guideDock.hoveredGuideId", "equals": "" },
     { "command": "assertState", "path": "guideDock.keyboardFocusTarget", "equals": "none" },
-    { "command": "assertState", "path": "guideDock.guideHorizontalOffset", "equals": 0 },
+    { "command": "assertState", "path": "guideDock.guideVerticalOffset", "equals": 0 },
     { "command": "assertState", "path": "guideDock.spyHorizontalOffset", "equals": 0 },
     { "command": "inspectTargets", "area": "canvas" }
   ],

@@ -187,7 +187,6 @@ private:
     float outputGainDragStartValue { 0.5f };
     SignalProbeRailState probeRailState;
     GuideCurveShelfState guideShelfState;
-    float dockSplitRatio { 0.5f };
     SignalProbeDetailState probeDetailState;
     OutputMeterBallistics outputMeterBallistics;
     std::optional<OutputMeterLevels> liveOutputMeterLevels;

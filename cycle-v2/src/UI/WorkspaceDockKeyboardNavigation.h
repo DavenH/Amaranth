@@ -17,7 +17,7 @@ struct WorkspaceDockKeyboardModel {
 };
 
 struct WorkspaceDockKeyboardLayout {
-    float guideShelfWidth {};
+    float guideShelfHeight {};
     float spyShelfWidth {};
     float maximumGuideOffset {};
     float maximumSpyOffset {};
@@ -61,9 +61,6 @@ private:
             const std::vector<juce::String>& ids,
             int direction,
             WorkspaceDockFocusTarget target,
-            WorkspaceDockFocus& focus);
-    static bool moveBetweenShelves(
-            const WorkspaceDockKeyboardModel& model,
             WorkspaceDockFocus& focus);
     static void revealFocus(
             const WorkspaceDockKeyboardModel& model,
