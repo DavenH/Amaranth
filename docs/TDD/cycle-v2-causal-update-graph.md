@@ -92,6 +92,33 @@ preparation contract. Extract the mature Reverb local renderer/product input
 from graph traversal before claiming that completion criterion; do not weaken
 the fixture to hide it.
 
+The user confirmed that accurate local Reverb spectrogram feedback must
+continue during On Release movement, including controls that change the
+kernel. Kernel generation solely for that local spectrogram counts as local
+render work. It must reuse `ReverbSignalProcessor::buildConfiguration` and
+`ReverbSpectrogramPreviewProcessor`; the graph compiler, downstream DSP
+configuration preparation, traversal, and probes remain deferred until
+release. The local worker input may contain only the edited node's parameters
+and a shared pointer to the prior kernel, never a graph or audio-resource
+snapshot.
+
+The focused On Release Reverb wet fixture provided a local movement baseline:
+two configuration stages and two preview-audio stages before release, with
+two requests and two publications. After the isolated local path, the same
+fixture reports zero configuration and preview-audio stages in that window,
+with five local requests, two publications, and three stale results. A second
+native fixture changes size twice, verifies an accurate 1,025-row spectrogram
+before release, then commits and undoes. Its measured first movement has zero
+configuration and preview-audio stages, two local requests, one publication,
+and one stale result. Reports: `/private/tmp/causal-reverb-local-baseline.json`,
+`/private/tmp/causal-reverb-local-after.json`, and
+`/private/tmp/causal-reverb-kernel-after.json`. The input to the local worker
+contains one node's parameters and a shared prior Reverb kernel;
+`ReverbSignalProcessor::buildConfiguration` and the existing spectrogram
+processor generate its output. The graph preview worker remains the release
+path. Other On Release editor families still use the old local graph refresh
+and remain an explicit deletion target.
+
 The focused Reverb UI fixtures now pass under both policies. Live records four
 requests, two publications, one superseded-before-start job, one stale result,
 and zero synchronous refreshes for the measured drag/commit window; its
@@ -137,6 +164,15 @@ families migrate, extract an immutable, affected-vertex semantic delta or
 shared mesh core that the existing Trimesh local renderer and downstream
 configuration path can consume. The session may own identity and lifecycle;
 it must not copy the widget's topology or duplicate its constraint logic.
+
+Curve transactions have the same missing model boundary: the mature
+`CurveExpandedEditorComponent` changes `CurveEditorWidget` state and reports a
+content fingerprint during movement, but calls `prepareModelPublication()`
+only at commit. Thus the graph worker cannot see a current Live curve model
+from the existing callback alone. Extract an immutable semantic curve delta
+from the widget/controller used by both local rendering and graph product
+inputs before moving this family into the shared session. Do not prepare a
+complete model or serialize it on every pointer movement.
 
 ### Request-construction extraction boundary
 

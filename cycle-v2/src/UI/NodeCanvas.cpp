@@ -2406,7 +2406,22 @@ void NodeCanvas::recordNodeEditorMovement(
                         &commands.transientChanges(),
                         std::move(snapshot));
             } else {
-                scheduleCompiledStateRefresh(PresentationRefreshScope::LocalEditor);
+                const bool localPreviewQueued = node != nullptr
+                        && presentation.refreshLocalNodePreview(
+                                *node,
+                                [safeThis = SafePointer<NodeCanvas>(this)] {
+                                    if (safeThis == nullptr) {
+                                        return;
+                                    }
+                                    if (Component* editor = safeThis->editorCoordinator.host().component()) {
+                                        editor->repaint();
+                                    }
+                                    safeThis->openGLContext.triggerRepaint();
+                                    safeThis->requestCanvasRepaint();
+                                });
+                if (!localPreviewQueued) {
+                    scheduleCompiledStateRefresh(PresentationRefreshScope::LocalEditor);
+                }
             }
         }
         return;

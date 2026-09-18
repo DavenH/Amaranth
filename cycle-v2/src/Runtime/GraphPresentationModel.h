@@ -52,6 +52,9 @@ public:
             const String& field,
             uint64_t effectiveFingerprint,
             bool deferredUntilCommit);
+    bool refreshLocalNodePreview(
+            const Node& node,
+            std::function<void()> completion);
     void commitLocalEditorState(
             const String& nodeId,
             const String& field,

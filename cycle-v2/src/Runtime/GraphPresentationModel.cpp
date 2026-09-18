@@ -2,6 +2,7 @@
 
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/PreviewPitchResolver.h"
+#include "Runtime/ReverbLocalPreview.h"
 
 #include "Nodes/Control/ModulationSource.h"
 #include "Nodes/Control/ModulationTriple.h"
@@ -364,6 +365,38 @@ bool GraphPresentationModel::executeAsyncProducts(
             refresh.previewRendered,
             performance,
             [&] { return scheduler.isCurrent(refresh); });
+}
+
+bool GraphPresentationModel::refreshLocalNodePreview(
+        const Node& node,
+        std::function<void()> completion) {
+    const auto& plan = current.compileResult.plan;
+    const auto found = plan.dependencyIndex.stepIndexById.find(node.id);
+    if (found == plan.dependencyIndex.stepIndexById.end()) {
+        return false;
+    }
+    const size_t stepIndex = static_cast<size_t>(found->second);
+    auto input = ReverbLocalPreview::prepare(node, plan.steps[stepIndex]);
+    if (!input.has_value()) {
+        return false;
+    }
+
+    auto preview = std::make_shared<NodePreviewResult>();
+    scheduler.enqueueLocalProduct(
+            performance,
+            [input = std::move(input), preview] {
+                *preview = ReverbLocalPreview::render(*input);
+            },
+            [this, stepIndex, preview, completion = std::move(completion)] {
+                GraphPreviewExecutor::publishLocalNodePreview(
+                        current.previewResult, stepIndex, std::move(*preview));
+                ++previewRenders;
+                ++presentationRevision;
+                if (completion) {
+                    completion();
+                }
+            });
+    return true;
 }
 
 void GraphPresentationModel::recordEditorMovement(

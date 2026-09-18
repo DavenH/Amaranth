@@ -141,6 +141,43 @@ uint64_t PresentationRefreshScheduler::beginAsyncRequest() {
     return currentGeneration.fetch_add(1) + 1;
 }
 
+void PresentationRefreshScheduler::enqueueLocalProduct(
+        GraphPresentationPerformanceMetrics& performance,
+        std::function<void()> render,
+        std::function<void()> publish) {
+    using Performance = GraphPresentationPerformanceMetrics;
+    const uint64_t generation = beginAsyncRequest();
+    const uint64_t requestedAt = performance.timestamp();
+    performance.record(Performance::Outcome::Requested);
+    asyncWorker.post(
+            [this, generation, requestedAt, &performance,
+                    render = std::move(render)] {
+                if (!alive.load() || generation != currentGeneration.load()) {
+                    performance.record(Performance::Outcome::SupersededBeforeStart);
+                    return false;
+                }
+                const uint64_t startedAt = performance.timestamp();
+                performance.record(Performance::Stage::QueueDelay, startedAt - requestedAt);
+                render();
+                performance.record(
+                        Performance::Stage::Worker,
+                        performance.timestamp() - startedAt);
+                return true;
+            },
+            [this, generation, requestedAt, &performance,
+                    publish = std::move(publish)] {
+                if (!alive.load() || generation != currentGeneration.load()) {
+                    performance.record(Performance::Outcome::StaleOrCancelled);
+                    return;
+                }
+                publish();
+                performance.record(
+                        Performance::Stage::EndToEnd,
+                        performance.timestamp() - requestedAt);
+                performance.record(Performance::Outcome::Published);
+            });
+}
+
 void PresentationRefreshScheduler::enqueue(
         uint64_t generation,
         AsyncRefresh refresh,

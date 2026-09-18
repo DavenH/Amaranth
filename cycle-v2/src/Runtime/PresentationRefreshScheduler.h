@@ -68,6 +68,10 @@ public:
             const String& field,
             uint64_t effectiveFingerprint);
     uint64_t beginAsyncRequest();
+    void enqueueLocalProduct(
+            GraphPresentationPerformanceMetrics& performance,
+            std::function<void()> render,
+            std::function<void()> publish);
     void enqueue(
             uint64_t generation,
             AsyncRefresh refresh,

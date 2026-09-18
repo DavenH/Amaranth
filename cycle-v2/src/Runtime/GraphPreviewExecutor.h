@@ -54,6 +54,10 @@ struct GraphPreviewResult {
 
 class GraphPreviewExecutor {
 public:
+    static void publishLocalNodePreview(
+            GraphPreviewResult& result,
+            size_t stepIndex,
+            NodePreviewResult preview);
     static void reduceProbeRows(
             GraphPreviewResult::SignalProbePreview& preview,
             size_t timeRows);

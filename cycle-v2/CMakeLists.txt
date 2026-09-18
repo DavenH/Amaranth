@@ -137,6 +137,7 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/MidiControlState.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/RealtimeMidiEventQueue.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/RealtimeGraphRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ReverbLocalPreview.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPreviewExecutor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPresentationModel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPresentationPerformanceMetrics.cpp"

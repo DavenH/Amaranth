@@ -521,6 +521,29 @@ void GraphPreviewExecutor::renderIncremental(
     appendProbePreviews(result, plan, audioResult.nodes, probes);
 }
 
+void GraphPreviewExecutor::publishLocalNodePreview(
+        GraphPreviewResult& result,
+        size_t stepIndex,
+        NodePreviewResult preview) {
+    if (stepIndex >= result.previewResultIndexByStep.size()) {
+        return;
+    }
+
+    const int cachedIndex = result.previewResultIndexByStep[stepIndex];
+    if (cachedIndex >= 0 && static_cast<size_t>(cachedIndex) < result.nodes.size()) {
+        const NodePreviewResult& cached = result.nodes[static_cast<size_t>(cachedIndex)];
+        preview.contentRevision = nodePreviewResultsHaveEqualContent(preview, cached)
+                ? cached.contentRevision
+                : nextPreviewContentRevision();
+        result.nodes[static_cast<size_t>(cachedIndex)] = std::move(preview);
+        return;
+    }
+
+    preview.contentRevision = nextPreviewContentRevision();
+    result.nodes.push_back(std::move(preview));
+    result.previewResultIndexByStep[stepIndex] = static_cast<int>(result.nodes.size() - 1);
+}
+
 void GraphPreviewExecutor::renderNodePreviewsIncremental(
         const GraphExecutionPlan& plan,
         const GraphAudioResultView& audioResult,

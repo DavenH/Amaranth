@@ -403,6 +403,12 @@ the canonical preset set rather than weakening the assertions.
 Current status: open fixture/test synchronization issue; restore the intended
 Stengah probes or update the test fixture at its authoring boundary.
 
+- On 2026-09-18, a grouped causal/presentation/Reverb test run again failed
+  the Stengah async Waveshaper probe case at `findProbePreview(..., "probe2")`
+  immediately after loading the preset; 48 of 50 cases passed. The local
+  Reverb preview path is not invoked by this test. Log:
+  `/private/tmp/causal-reverb-tests.log`.
+
 - On 2026-09-18, `cycle-v2-agent-spy-detail.json` opened the probe detail on
   archived `old/stengah.cyclegraph`, but its `probeDetailRows` assertion
   expected 129 and observed 256. The capture-path extraction's focused tests
