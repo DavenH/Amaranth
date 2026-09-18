@@ -185,11 +185,13 @@ cube resolver and retains its interpolation, guide, sorting, and sampling
 behavior. A parity test compares overlay output with an independently edited
 full mesh for intercepts, a rendered slice, and a traversal grid; it also
 checks guide-gain substitution. The normal Trimesh audio and spectral
-blockwise paths accept the overlay. The advanced chained time oscillator uses
-`OscillatorLaneRasterizer` and still needs a corresponding read boundary before
-an overlay can be published for that role. No production configuration creates
-an overlay yet. The widget/editor delta producer, two-update gesture sequence,
-durable local commit, and curve counterpart remain open.
+blockwise paths accept the overlay. `VoiceRasterizer` now resolves cubes through
+the same overlay for ordinary and chained time oscillator rendering; its
+nonowning resolver is set during preparation and does not allocate on the
+audio thread. A parity test compares ordinary frames and chained intercepts
+with an edited mesh. No production configuration creates an overlay yet. The
+widget/editor delta producer, two-update gesture sequence, durable local
+commit, and curve counterpart remain open.
 
 `TrimeshVertexEditCore` now prepares and applies before/after vertex-value
 and guide-gain deltas; `TrimeshNodeModel` delegates its mature clamping and

@@ -88,4 +88,10 @@ VertCube* TrimeshMeshDeltaOverlay::resolve(VertCube* cube) const {
     return found != replacements.end() ? found->second : cube;
 }
 
+VertCube* TrimeshMeshDeltaOverlay::resolveFromContext(
+        const void* context,
+        VertCube* cube) {
+    return static_cast<const TrimeshMeshDeltaOverlay*>(context)->resolve(cube);
+}
+
 }

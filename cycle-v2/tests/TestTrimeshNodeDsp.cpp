@@ -29,6 +29,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
 #include <App/SingletonRepo.h>
+#include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <Curve/Mesh/Intercept.h>
 #include <Curve/Curve.h>
@@ -277,6 +278,45 @@ TEST_CASE("Trimesh delta overlay reuses mature waveform slicing",
             Buffer<float>(actualGrid.data(), (int) actualGrid.size()),
             PortDomain::TimeSignal));
     REQUIRE(actualGrid == expectedGrid);
+
+    Rasterization::VoiceCycleState referenceVoiceState;
+    Rasterization::VoiceCycleState overlayVoiceState;
+    Rasterization::VoiceRasterizer referenceVoice;
+    Rasterization::VoiceRasterizer overlayVoice;
+    const auto voicePreparation = Rasterization::VoiceRasterizerPreparation::forMesh(*base);
+    referenceVoice.prepare(voicePreparation, { &referenceVoiceState });
+    overlayVoice.prepare(voicePreparation, { &overlayVoiceState });
+    overlayVoice.setCubeResolver(
+            overlay.get(), &TrimeshMeshDeltaOverlay::resolveFromContext);
+    std::array<float, 128> referenceFrame {};
+    std::array<float, 128> overlayFrame {};
+    REQUIRE(CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
+            referenceVoice,
+            { &reference, request.morph, 0.f, 0 },
+            Buffer<float>(referenceFrame.data(), (int) referenceFrame.size())));
+    REQUIRE(CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
+            overlayVoice,
+            { &overlay->rasterizerMesh(), request.morph, 0.f, 0 },
+            Buffer<float>(overlayFrame.data(), (int) overlayFrame.size())));
+    REQUIRE(overlayFrame == referenceFrame);
+
+    referenceVoice.setState(&referenceVoiceState);
+    overlayVoice.setState(&overlayVoiceState);
+    referenceVoice.setMesh(&reference);
+    overlayVoice.setMesh(&overlay->rasterizerMesh());
+    referenceVoice.setMorphPosition(request.morph);
+    overlayVoice.setMorphPosition(request.morph);
+    for (int update = 0; update < 2; ++update) {
+        const auto& expectedVoice = referenceVoice.renderChained(0.f);
+        const auto& actualVoice = overlayVoice.renderChained(0.f);
+        REQUIRE(actualVoice.intercepts.size() == expectedVoice.intercepts.size());
+        for (size_t index = 0; index < actualVoice.intercepts.size(); ++index) {
+            REQUIRE(actualVoice.intercepts[index].x
+                    == Catch::Approx(expectedVoice.intercepts[index].x));
+            REQUIRE(actualVoice.intercepts[index].y
+                    == Catch::Approx(expectedVoice.intercepts[index].y));
+        }
+    }
 
     const auto gainDelta = TrimeshVertexEditCore::prepareGuideGain(
             *base, 0, "vertex.guideGain.time", 0.82f);

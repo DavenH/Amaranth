@@ -22,6 +22,7 @@ public:
 
     Mesh& rasterizerMesh() const;
     VertCube* resolve(VertCube* cube) const;
+    static VertCube* resolveFromContext(const void* context, VertCube* cube);
 
 private:
     struct CubeOverride {
