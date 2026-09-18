@@ -95,7 +95,8 @@ namespace Rasterization {
                 int endCurve,
                 GuideCurveProvider* guideCurveProvider = nullptr,
                 GuideCurveOffsetSeeds* offsetSeeds = nullptr) {
-            if (request.prepareIntegrals && output.waveform.area.empty()) {
+            if ((request.prepareIntegrals && output.waveform.area.empty())
+                    || !output.waveform.isSampleable()) {
                 renderResult(output, request, guideCurveProvider, offsetSeeds);
                 return;
             }
