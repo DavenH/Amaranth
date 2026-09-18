@@ -174,8 +174,12 @@ render algorithm is unchanged. Four focused preview tests passed (53
 assertions). The native Live wheel fixture still reports three renders before
 and after release, three requests, two publications, one stale/cancelled
 result, and zero synchronous refreshes after the extraction. The expanded
-probe capture helper is still in the model and must move with the remaining
-preview execution boundary.
+probe capture helper then moved to the same renderer; the model now delegates
+that explicit capture after validating its current compiled plan.
+Three focused capture/preview tests passed (36 assertions) after the move.
+The archived Stengah native spy-detail fixture opened its detail but failed
+its existing 129-row expectation with 256 rows; that discrepancy is recorded
+in `ui-bugs.md`, and the assertion was not changed.
 
 The production causal planner, product identities, audit trace, incremental
 preview execution, and latest-only worker publication landed in July 2026.

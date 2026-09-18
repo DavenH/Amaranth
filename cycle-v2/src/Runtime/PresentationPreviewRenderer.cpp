@@ -12,6 +12,34 @@ namespace CycleV2 {
 namespace {
 
 constexpr size_t kCompactPreviewFrameCount = 512;
+constexpr size_t kExpandedProbeColumnCount = 512;
+constexpr size_t kMaximumExpandedProbeRows = 512;
+
+GraphPreviewResult captureProbePreviews(
+        const NodeGraph& graph,
+        const GraphExecutionPlan& plan,
+        size_t frameCount,
+        int midiNote,
+        int modWheelValue) {
+    GraphAudioExecutor captureExecutor;
+
+    AudioVoiceContext voice;
+    voice.controls.noteNumber = jlimit(0, 127, midiNote);
+    voice.controls.controllers[1] = (float) jlimit(0, 127, modWheelValue) / 127.f;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    const GraphAudioResult audio = captureExecutor.process(
+            graph,
+            plan,
+            frameCount,
+            {},
+            voice,
+            kExpandedProbeColumnCount);
+    return GraphPreviewExecutor().render(
+            plan,
+            audio,
+            graph.getSignalProbes(),
+            frameCount);
+}
 
 }
 
@@ -128,6 +156,36 @@ bool PresentationPreviewRenderer::render(
             performance.timestamp() - extractionStartedAt);
     previewRendered = true;
     return true;
+}
+
+std::optional<GraphPreviewResult::SignalProbePreview>
+PresentationPreviewRenderer::captureProbePreview(
+        const NodeGraph& graph,
+        const GraphExecutionPlan& plan,
+        const String& probeId,
+        size_t rasterRowCount,
+        int midiNote,
+        int modWheelValue) const {
+    GraphPreviewResult previews = captureProbePreviews(
+            graph,
+            plan,
+            rasterRowCount,
+            midiNote,
+            modWheelValue);
+    auto found = std::find_if(
+            previews.probes.begin(),
+            previews.probes.end(),
+            [&](const auto& preview) {
+                return preview.probeId == probeId;
+            });
+    if (found == previews.probes.end() || !found->connected) {
+        return std::nullopt;
+    }
+
+    GraphPreviewExecutor::reduceProbeRows(
+            *found,
+            std::min(rasterRowCount, kMaximumExpandedProbeRows));
+    return *found;
 }
 
 }

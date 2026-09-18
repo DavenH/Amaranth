@@ -403,6 +403,13 @@ the canonical preset set rather than weakening the assertions.
 Current status: open fixture/test synchronization issue; restore the intended
 Stengah probes or update the test fixture at its authoring boundary.
 
+- On 2026-09-18, `cycle-v2-agent-spy-detail.json` opened the probe detail on
+  archived `old/stengah.cyclegraph`, but its `probeDetailRows` assertion
+  expected 129 and observed 256. The capture-path extraction's focused tests
+  passed. Report: `/private/tmp/causal-probe-extract-native.json`. Keep the
+  fixture assertion until the intended archived graph and resolution contract
+  are reconciled.
+
 ## P3: Opening an Envelope editor marks the document dirty
 
 The 2026-09-17 `cycle-v2-agent-envelope-link-toggle.json` run opens the saved

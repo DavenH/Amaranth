@@ -11,9 +11,6 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr size_t kExpandedProbeColumnCount = 512;
-constexpr size_t kMaximumExpandedProbeRows = 512;
-
 bool usesModWheel(const ModulationSourceConfiguration& configuration) {
     return configuration.mode == ModulationSourceMode::ModWheel
             || (configuration.mode == ModulationSourceMode::MidiController
@@ -57,32 +54,6 @@ std::vector<String> modWheelPreviewRoots(const GraphExecutionPlan& plan) {
         }
     }
     return roots;
-}
-
-GraphPreviewResult captureProbePreviews(
-        const NodeGraph& graph,
-        const GraphExecutionPlan& plan,
-        size_t frameCount,
-        int midiNote,
-        int modWheelValue) {
-    GraphAudioExecutor captureExecutor;
-
-    AudioVoiceContext voice;
-    voice.controls.noteNumber = jlimit(0, 127, midiNote);
-    voice.controls.controllers[1] = (float) jlimit(0, 127, modWheelValue) / 127.f;
-    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
-    const GraphAudioResult audio = captureExecutor.process(
-            graph,
-            plan,
-            frameCount,
-            {},
-            voice,
-            kExpandedProbeColumnCount);
-    return GraphPreviewExecutor().render(
-            plan,
-            audio,
-            graph.getSignalProbes(),
-            frameCount);
 }
 
 }
@@ -597,27 +568,13 @@ GraphPresentationModel::captureProbePreview(
     if (!current.compileResult.succeeded() || rasterRowCount == 0) {
         return std::nullopt;
     }
-
-    GraphPreviewResult previews = captureProbePreviews(
+    return previewRenderer.captureProbePreview(
             graph,
             current.compileResult.plan,
+            probeId,
             rasterRowCount,
             midiNote,
             current.previewModWheelValue);
-    auto found = std::find_if(
-            previews.probes.begin(),
-            previews.probes.end(),
-            [&](const auto& preview) {
-                return preview.probeId == probeId;
-            });
-    if (found == previews.probes.end() || !found->connected) {
-        return std::nullopt;
-    }
-
-    GraphPreviewExecutor::reduceProbeRows(
-            *found,
-            std::min(rasterRowCount, kMaximumExpandedProbeRows));
-    return *found;
 }
 
 bool GraphPresentationModel::requiresCompilation(const GraphChangeSet& change) const {

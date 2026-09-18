@@ -1,15 +1,15 @@
 #pragma once
 
+#include <optional>
 #include <vector>
 
 #include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/GraphPresentationPerformanceMetrics.h"
+#include "Runtime/GraphPresentationSnapshot.h"
 #include "Runtime/NodeUpdateGraph.h"
 #include "Runtime/PresentationUpdateRequestBuilder.h"
 
 namespace CycleV2 {
-
-struct GraphPresentationSnapshot;
 
 class PresentationPreviewRenderer final {
 public:
@@ -22,6 +22,13 @@ public:
             bool& previewRendered,
             GraphPresentationPerformanceMetrics& performance,
             GraphAudioExecutor::CancellationCheck cancellationCheck = {});
+    std::optional<GraphPreviewResult::SignalProbePreview> captureProbePreview(
+            const NodeGraph& graph,
+            const GraphExecutionPlan& plan,
+            const String& probeId,
+            size_t rasterRowCount,
+            int midiNote,
+            int modWheelValue) const;
 
     void resetExecutionState() { audioExecutor.resetExecutionState(); }
     size_t diagnosticProcessCount(const String& nodeId) const {
