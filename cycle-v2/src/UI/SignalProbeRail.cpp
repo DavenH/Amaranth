@@ -66,10 +66,7 @@ Rectangle<float> SignalProbeRail::refreshModeBoundsFor(
     if (!state.expanded) {
         return {};
     }
-    const Rectangle<float> rail = boundsFor(workspace, state);
-    Rectangle<float> header = WorkspaceDock::headerBounds(rail);
-    header.removeFromRight(WorkspaceDock::controlSize + 8.f);
-    return header.removeFromRight(104.f);
+    return WorkspaceDock::spyControls(boundsFor(workspace, state)).refresh;
 }
 
 Rectangle<float> SignalProbeRail::minimizeButtonBoundsFor(
@@ -78,8 +75,7 @@ Rectangle<float> SignalProbeRail::minimizeButtonBoundsFor(
     if (!state.expanded || state.minimized) {
         return {};
     }
-    Rectangle<float> header = WorkspaceDock::headerBounds(boundsFor(workspace, state));
-    return header.removeFromRight(WorkspaceDock::controlSize);
+    return WorkspaceDock::spyControls(boundsFor(workspace, state)).minimize;
 }
 
 Rectangle<float> SignalProbeRail::tileBoundsFor(
@@ -467,17 +463,15 @@ void SignalProbeRail::paintRail(
             WorkspaceDockIcon::ChevronRight,
             focus.target == WorkspaceDockFocusTarget::SpyMinimize);
 
-    const Rectangle<float> header = WorkspaceDock::headerBounds(rail);
+    const Rectangle<float> label = WorkspaceDock::spyControls(rail).label;
     graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.94f));
-    graphics.fillRoundedRectangle(
-            header.withTrimmedLeft(WorkspaceDock::controlSize + 4.f).withWidth(84.f),
-            CanvasChromeMetrics::controlCornerRadius);
+    graphics.fillRoundedRectangle(label, CanvasChromeMetrics::controlCornerRadius);
     graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
     graphics.drawText(
             "Spies",
-            header.withTrimmedLeft(22.f).withWidth(110.f),
-            Justification::centredLeft);
+            label,
+            Justification::centred);
 
     const Rectangle<float> refreshMode = refreshModeBoundsFor(workspace, state);
     const bool refreshFocused = focus.target == WorkspaceDockFocusTarget::SpyRefresh;
@@ -501,17 +495,6 @@ void SignalProbeRail::paintRail(
             Justification::centred);
 
     if (probes.empty()) {
-        const Rectangle<float> vacancy = WorkspaceDock::vacancyBounds(rail);
-        graphics.setColour(CanvasChromePalette::insetBackground);
-        graphics.fillRoundedRectangle(vacancy, CanvasChromeMetrics::tileCornerRadius);
-        graphics.setColour(CanvasChromePalette::border.withAlpha(0.75f));
-        graphics.drawRoundedRectangle(
-                vacancy,
-                CanvasChromeMetrics::tileCornerRadius,
-                CanvasChromeMetrics::restingBorderWidth);
-        graphics.setColour(CanvasChromePalette::mutedText);
-        graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
-        graphics.drawText("No spies", vacancy.reduced(14.f), Justification::centredLeft);
         return;
     }
 

@@ -65,10 +65,12 @@ WorkspaceDockLayout WorkspaceDock::layout(
         return result;
     }
 
-    result.resizeHandle = juce::Rectangle<float>(100.f, 5.f)
-            .withCentre({ result.dock.getCentreX(), result.dock.getY() + 2.5f });
-    result.collapseHandle = juce::Rectangle<float>(40.f, 24.f)
-            .withCentre({ result.dock.getCentreX(), result.dock.getY() + 12.f });
+    result.resizeHandle = { result.dock.getX() + shelfPadding,
+            result.dock.getY(), 100.f, 5.f };
+    result.collapseHandle = state.rightMinimized
+            ? juce::Rectangle<float>(result.dock.getX() + drawerWidth + tileGap,
+                    result.dock.getY() + 5.f, controlSize, controlSize)
+            : spyControls(result.dock).collapse;
     const float guideHeight = juce::jmax(0.f,
             workspace.getBottom() - CanvasUtilityDock::margin - guideTop);
     result.leftShelf = { guideRight - activeGuideWidth,
@@ -86,6 +88,24 @@ juce::Rectangle<float> WorkspaceDock::editorAvailableBounds(const WorkspaceDockL
     }
     return layout.content.withRight(juce::jmax(
             layout.content.getX(), layout.leftShelf.getX() - CanvasUtilityDock::gap));
+}
+
+WorkspaceDockSpyControls WorkspaceDock::spyControls(juce::Rectangle<float> rail) {
+    WorkspaceDockSpyControls controls;
+    const float usableWidth = juce::jmax(0.f, rail.getWidth() - shelfPadding * 2.f);
+    const float gap = 6.f;
+    const float width = juce::jmin(258.f, usableWidth);
+    const float labelWidth = juce::jmin(84.f,
+            juce::jmax(52.f, width - 104.f - controlSize * 2.f - gap * 3.f));
+    const float refreshWidth = juce::jmax(0.f,
+            width - labelWidth - controlSize * 2.f - gap * 3.f);
+    const float x = rail.getX() + shelfPadding;
+    const float y = rail.getY() + 5.f;
+    controls.label = { x, y, labelWidth, controlSize };
+    controls.refresh = { controls.label.getRight() + gap, y, refreshWidth, controlSize };
+    controls.minimize = { controls.refresh.getRight() + gap, y, controlSize, controlSize };
+    controls.collapse = { controls.minimize.getRight() + gap, y, controlSize, controlSize };
+    return controls;
 }
 
 juce::Rectangle<float> WorkspaceDock::spyRowBounds(

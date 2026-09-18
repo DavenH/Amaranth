@@ -23,6 +23,13 @@ struct WorkspaceDockLayout {
     juce::Rectangle<float> collapseHandle;
 };
 
+struct WorkspaceDockSpyControls {
+    juce::Rectangle<float> label;
+    juce::Rectangle<float> refresh;
+    juce::Rectangle<float> minimize;
+    juce::Rectangle<float> collapse;
+};
+
 enum class WorkspaceDockIcon {
     Add,
     ChevronLeft,
@@ -72,6 +79,7 @@ public:
             juce::Rectangle<float> workspace,
             const WorkspaceDockState& state);
     static juce::Rectangle<float> editorAvailableBounds(const WorkspaceDockLayout& layout);
+    static WorkspaceDockSpyControls spyControls(juce::Rectangle<float> rail);
     static juce::Rectangle<float> spyRowBounds(
             juce::Rectangle<float> workspace,
             bool expanded,

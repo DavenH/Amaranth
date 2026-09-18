@@ -83,6 +83,12 @@ TEST_CASE("Signal probe rail overlays the full canvas", "[cycle-v2][canvas][prob
     REQUIRE(rail.contains(collapse));
     REQUIRE(rail.contains(refreshMode));
     REQUIRE_FALSE(collapse.intersects(refreshMode));
+    const WorkspaceDockSpyControls controls = WorkspaceDock::spyControls(rail);
+    REQUIRE(controls.label.getRight() < controls.refresh.getX());
+    REQUIRE(controls.refresh.getRight() < controls.minimize.getX());
+    REQUIRE(controls.minimize.getRight() < controls.collapse.getX());
+    REQUIRE(controls.collapse == collapse);
+    REQUIRE(controls.collapse.getRight() - controls.label.getX() <= 258.f);
     REQUIRE(SignalProbeRail::tileBoundsFor(spies, expanded, 0).getY()
             == Catch::Approx(rail.getY()
                     + WorkspaceDock::headerHeight));
@@ -143,6 +149,9 @@ TEST_CASE("Workspace dock places Guides beside utilities and Spies above canvas"
     const WorkspaceDockLayout small = WorkspaceDock::layout(smallWorkspace, state);
     REQUIRE(small.content == smallWorkspace);
     REQUIRE_FALSE(small.rightShelf.intersects(small.leftShelf));
+    const WorkspaceDockSpyControls smallSpyControls = WorkspaceDock::spyControls(small.rightShelf);
+    REQUIRE(small.rightShelf.contains(smallSpyControls.collapse));
+    REQUIRE(smallSpyControls.refresh.getWidth() > 0.f);
 
     const Rectangle<float> narrowWorkspace { 0.f, 0.f, 800.f, 600.f };
     const WorkspaceDockLayout narrow = WorkspaceDock::layout(narrowWorkspace, state);
@@ -151,6 +160,10 @@ TEST_CASE("Workspace dock places Guides beside utilities and Spies above canvas"
     REQUIRE(narrow.leftShelf.getHeight()
             >= WorkspaceDock::headerHeight + WorkspaceDock::guideTileHeight);
     REQUIRE_FALSE(narrow.leftShelf.intersects(narrow.rightShelf));
+    const WorkspaceDockSpyControls narrowSpyControls = WorkspaceDock::spyControls(narrow.rightShelf);
+    REQUIRE(narrowSpyControls.collapse == narrow.collapseHandle);
+    REQUIRE(narrow.rightShelf.contains(narrowSpyControls.collapse));
+    REQUIRE(narrowSpyControls.refresh.getWidth() >= 80.f);
 
     GraphNodeFactory factory;
     const Node trimesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
