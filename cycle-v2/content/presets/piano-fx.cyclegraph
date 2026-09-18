@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 460.0, "y": 826.0 },
+            "position": { "x": 556.65674, "y": 618.5 },
             "parameters": {
                 "octave": -1,
                 "voiceLength": 0.610687023,
@@ -15,23 +15,6 @@
                 "pitchIndependentSpectralControl": false,
                 "oversampling": "1x",
                 "controlInterval": "64"
-            }
-        },
-        {
-            "id": "morph",
-            "kind": "modulationTriple",
-            "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 837.0 },
-            "parameters": {
-                "yellowSource": "voiceTime",
-                "yellowController": 1,
-                "yellowConstant": 0.5,
-                "redSource": "keyScale",
-                "redController": 1,
-                "redConstant": 0.5,
-                "blueSource": "modWheel",
-                "blueController": 1,
-                "blueConstant": 0.5
             }
         },
         {
@@ -457,8 +440,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7 ]
                 }
             }
@@ -545,8 +526,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4 ]
                 }
             }
@@ -562,14 +541,14 @@
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 746.0, "y": 1541.0 },
+            "position": { "x": 630.43213, "y": 1077.94067 },
             "parameters": { "gain": 0.247646 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 508.0, "y": 1541.0 },
+            "position": { "x": 392.43213, "y": 1077.94067 },
             "parameters": {}
         },
         {
@@ -993,7 +972,6 @@
         }
     ],
     "edges": [
-        { "sourceNodeId": "morph", "sourcePortId": "modulation", "destNodeId": "voice", "destPortId": "modulation", "connectionKind": "configurationAttachment", "attachmentType": "modulationTriple" },
         { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "magnitudeOp2", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeLayer2", "sourcePortId": "out", "destNodeId": "magnitudeOp2", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeOp2", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "mag", "connectionKind": "signal", "attachmentType": "none" },
