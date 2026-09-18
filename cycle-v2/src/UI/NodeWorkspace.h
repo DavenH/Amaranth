@@ -98,6 +98,7 @@ private:
     bool performanceOccludedByExpandedEditor {};
     uint64_t publishedPlanRevision {};
     uint64_t publishedDevicePreparationRevision {};
+    uint64_t audioPlanCopyCount {};
     bool previousDeviceReady {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeWorkspace)

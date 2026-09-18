@@ -1817,7 +1817,9 @@ bool NodeCanvas::setPreviewMidiNote(int midiNote) {
     if (selectedNote == presentation.previewMidiNote()) {
         return true;
     }
-    if (!persistPreviewMorph(selectedNote, presentation.previewModWheelValue())) {
+    if (!persistPreviewMorph(
+                selectedNote,
+                presentation.previewModWheelValue()).succeeded()) {
         return false;
     }
     if (!presentation.refreshPreviewMidiNote(
@@ -1838,16 +1840,22 @@ bool NodeCanvas::setPreviewModWheelValue(int value) {
     if (selectedValue == presentation.previewModWheelValue()) {
         return true;
     }
-    if (!persistPreviewMorph(presentation.previewMidiNote(), selectedValue)) {
+    const GraphEditResult edit = persistPreviewMorph(
+            presentation.previewMidiNote(), selectedValue);
+    if (!edit.succeeded()) {
         return false;
     }
-    if (!presentation.refreshPreviewModWheelValue(
-                commands.editingGraph(),
-                document.revision(),
-                selectedValue)) {
-        return false;
+    if (edit.changed) {
+        presentation.stagePreviewModWheelValue(selectedValue);
+    } else {
+        if (!presentation.refreshPreviewModWheelValue(
+                    commands.editingGraph(),
+                    document.revision(),
+                    selectedValue)) {
+            return false;
+        }
+        refreshProbeDetail();
     }
-    refreshProbeDetail();
     requestCanvasRepaint();
     return true;
 }
@@ -1912,7 +1920,7 @@ void NodeCanvas::endPreviewModWheelGesture() {
     }
 }
 
-bool NodeCanvas::persistPreviewMorph(int midiNote, int modWheelValue) {
+GraphEditResult NodeCanvas::persistPreviewMorph(int midiNote, int modWheelValue) {
     const float red = ModulationSource::normalizeKey(
             midiNote,
             Constants::LowestMidiNote,
@@ -1920,17 +1928,17 @@ bool NodeCanvas::persistPreviewMorph(int midiNote, int modWheelValue) {
     const float blue = (float) modWheelValue / 127.f;
     const GraphEditResult edit = commands.setPreviewMorph(red, blue);
     if (!edit.succeeded()) {
-        return false;
+        return edit;
     }
     if (!edit.changed) {
-        return true;
+        return edit;
     }
     editorCoordinator.clearPreviewCache();
     if (graphDocumentStateChangedCallback) {
         graphDocumentStateChangedCallback();
     }
     scheduleCompiledStateRefresh();
-    return true;
+    return edit;
 }
 
 void NodeCanvas::synchronizeOpenedEditorMorph() {

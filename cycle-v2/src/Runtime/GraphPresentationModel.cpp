@@ -246,6 +246,10 @@ bool GraphPresentationModel::refreshPreviewModWheelValue(
             modWheelPreviewRootNodeIds);
 }
 
+void GraphPresentationModel::stagePreviewModWheelValue(int value) {
+    current.previewModWheelValue = jlimit(0, 127, value);
+}
+
 bool GraphPresentationModel::refreshPreviewModWheelValueAsync(
         std::shared_ptr<const NodeGraph> graph,
         uint64_t documentRevision,
@@ -589,13 +593,9 @@ std::function<void()> GraphPresentationModel::publishAsyncRefresh(
     }
     publishedGeneration = refresh->generation;
     updateGraph.publish(refresh->request, refresh->updateResult);
-    const bool audioConfigurationPublished = std::any_of(
-            refresh->updateResult.executed.begin(),
-            refresh->updateResult.executed.end(),
-            [](const PlannedNodeProduct& product) {
-                return product.product == UpdateProduct::AudioConfiguration;
-            });
-    if (audioConfigurationPublished) {
+    if (refresh->change.guidesChanged
+            || hasImpact(refresh->change.parameterImpacts,
+                    ParameterImpact::DspConfiguration)) {
         modWheelPreviewRootNodeIds = modWheelPreviewRoots(current.compileResult.plan);
         ++audioRevision;
     }

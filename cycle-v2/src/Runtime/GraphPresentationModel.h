@@ -49,6 +49,7 @@ public:
             const NodeGraph& graph,
             uint64_t documentRevision,
             int value);
+    void stagePreviewModWheelValue(int value);
     bool refreshPreviewModWheelValueAsync(
             std::shared_ptr<const NodeGraph> graph,
             uint64_t documentRevision,
