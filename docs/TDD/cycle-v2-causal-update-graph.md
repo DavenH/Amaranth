@@ -173,10 +173,23 @@ existing mature rasterizer remains authoritative for preview output.
 This first extraction does not enable Live downstream vertex preview. The
 rasterizer and DSP currently require `Mesh*` and traverse `VertCube`/`Vertex`
 pointers directly. A worker-safe, immutable read surface that resolves base
-mesh plus delta without a full mesh copy is the next architectural boundary.
+mesh plus delta without a full mesh copy was the next architectural boundary.
 Do not route the delta through the existing graph worker until that surface
-is shared by the local renderer and downstream product path. Curve edits need
+is shared by every applicable local and downstream product path. Curve edits need
 the equivalent domain delta and shared read surface before their migration.
+
+`TrimeshMeshDeltaOverlay` now supplies that read surface for the blockwise and
+gridwise Trimesh render paths. It owns an immutable base mesh and locally cloned
+cubes for the edited vertex's owners. The existing trilinear slicer accepts a
+cube resolver and retains its interpolation, guide, sorting, and sampling
+behavior. A parity test compares overlay output with an independently edited
+full mesh for intercepts, a rendered slice, and a traversal grid; it also
+checks guide-gain substitution. The normal Trimesh audio and spectral
+blockwise paths accept the overlay. The advanced chained time oscillator uses
+`OscillatorLaneRasterizer` and still needs a corresponding read boundary before
+an overlay can be published for that role. No production configuration creates
+an overlay yet. The widget/editor delta producer, two-update gesture sequence,
+durable local commit, and curve counterpart remain open.
 
 `TrimeshVertexEditCore` now prepares and applies before/after vertex-value
 and guide-gain deltas; `TrimeshNodeModel` delegates its mature clamping and

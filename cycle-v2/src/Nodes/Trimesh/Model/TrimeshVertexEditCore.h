@@ -43,6 +43,7 @@ public:
             const juce::String& parameterId,
             float value);
     static bool apply(Mesh& mesh, const TrimeshVertexEditDelta& delta);
+    static bool canApply(const Mesh& mesh, const TrimeshVertexEditDelta& delta);
     static float guideGain(
             const Mesh& mesh,
             int vertexIndex,

@@ -102,7 +102,26 @@ std::optional<TrimeshVertexEditDelta> TrimeshVertexEditCore::prepareGuideGain(
 bool TrimeshVertexEditCore::apply(
         Mesh& mesh,
         const TrimeshVertexEditDelta& delta) {
+    if (!canApply(mesh, delta)) {
+        return false;
+    }
     Vertex* vertex = vertexAt(mesh, delta.vertexIndex);
+    for (const auto& change : delta.changes) {
+        if (delta.target == TrimeshVertexEditTarget::VertexValue) {
+            vertex->values[delta.valueIndex] = change.after;
+        } else {
+            InteractionComplexityDiagnostics::recordMeshEditOwnerVisit();
+            vertex->owners[change.ownerOrdinal]
+                    ->guideCurveGainAt(delta.valueIndex) = change.after;
+        }
+    }
+    return true;
+}
+
+bool TrimeshVertexEditCore::canApply(
+        const Mesh& mesh,
+        const TrimeshVertexEditDelta& delta) {
+    const Vertex* vertex = vertexAt(mesh, delta.vertexIndex);
     if (vertex == nullptr || !isPositiveAndBelow(delta.valueIndex, Vertex::numElements)) {
         return false;
     }
@@ -135,15 +154,6 @@ bool TrimeshVertexEditCore::apply(
         }
     }
 
-    for (const auto& change : delta.changes) {
-        if (delta.target == TrimeshVertexEditTarget::VertexValue) {
-            vertex->values[delta.valueIndex] = change.after;
-        } else {
-            InteractionComplexityDiagnostics::recordMeshEditOwnerVisit();
-            vertex->owners[change.ownerOrdinal]
-                    ->guideCurveGainAt(delta.valueIndex) = change.after;
-        }
-    }
     return true;
 }
 

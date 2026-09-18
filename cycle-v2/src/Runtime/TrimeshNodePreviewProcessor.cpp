@@ -100,6 +100,8 @@ public:
         GuideCurveProvider* guideProvider = configuration != nullptr
                 ? configuration->guideCurveProvider.get()
                 : nullptr;
+        const std::shared_ptr<const TrimeshMeshDeltaOverlay> deltaOverlay =
+                configuration != nullptr ? configuration->deltaOverlay : nullptr;
         context.domain = outputDomain;
         renderSlice(
                 context,
@@ -109,7 +111,8 @@ public:
                 cyclic,
                 outputDomain,
                 bipolar,
-                guideProvider);
+                guideProvider,
+                deltaOverlay);
         renderGrid(
                 context,
                 *mesh,
@@ -119,7 +122,8 @@ public:
                 outputDomain,
                 columnCount,
                 bipolar,
-                guideProvider);
+                guideProvider,
+                deltaOverlay);
     }
 
 private:
@@ -154,10 +158,12 @@ private:
             bool cyclic,
             PortDomain outputDomain,
             bool bipolar,
-            GuideCurveProvider* guideProvider) {
+            GuideCurveProvider* guideProvider,
+            const std::shared_ptr<const TrimeshMeshDeltaOverlay>& deltaOverlay) {
         TrimeshBlockwiseDsp blockwiseDsp;
         SignalPayload slice;
         blockwiseDsp.setGuideCurveProvider(guideProvider);
+        blockwiseDsp.setDeltaOverlay(deltaOverlay);
         blockwiseDsp.setBipolar(bipolar);
         blockwiseDsp.setFrequencyMidiNote(context.frequencyMidiNote);
         blockwiseDsp.prepare(&mesh, morph, primaryAxis, cyclic, outputDomain);
@@ -181,10 +187,12 @@ private:
             PortDomain outputDomain,
             size_t columnCount,
             bool bipolar,
-            GuideCurveProvider* guideProvider) {
+            GuideCurveProvider* guideProvider,
+            const std::shared_ptr<const TrimeshMeshDeltaOverlay>& deltaOverlay) {
         TrimeshGridwiseDsp gridwiseDsp;
         gridwiseDsp.setCyclic(cyclic);
         gridwiseDsp.setGuideCurveProvider(guideProvider);
+        gridwiseDsp.setDeltaOverlay(deltaOverlay);
         gridwiseDsp.setBipolar(bipolar);
         gridwiseDsp.setFrequencyMidiNote(context.frequencyMidiNote);
         const auto columns = gridwiseDsp.renderColumns(

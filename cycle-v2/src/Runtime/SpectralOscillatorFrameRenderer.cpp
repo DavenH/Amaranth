@@ -257,6 +257,8 @@ bool SpectralOscillatorFrameRenderer::prepare(
                     operation.spectralRasterizer = std::make_unique<TrimeshBlockwiseDsp>();
                     operation.spectralRasterizer->setGuideCurveProvider(
                             operation.configuration->guideCurveProvider.get());
+                    operation.spectralRasterizer->setDeltaOverlay(
+                            operation.configuration->deltaOverlay);
                     operation.spectralRasterizer->prepare(
                             spectralMesh,
                             operation.configuration->morph,
