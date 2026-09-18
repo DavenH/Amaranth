@@ -98,11 +98,13 @@ public:
     virtual bool beginNodeEditorGesture(
             const String& nodeId,
             GraphCommandDispatcher& commands,
-            const GraphDocument& document) = 0;
+            const GraphDocument& document,
+            bool downstreamFeedback = true) = 0;
     virtual void finishNodeEditorGesture(
             const String& nodeId,
             GraphCommandDispatcher& commands,
-            const GraphDocument& document) = 0;
+            const GraphDocument& document,
+            const String& localField = {}) = 0;
     virtual void scheduleNodeEditorRefresh() = 0;
     virtual void flushNodeEditorRefresh() = 0;
     virtual void refreshNodeEditorPresentation() = 0;
@@ -275,8 +277,6 @@ private:
     NodeEditorPerformanceObserver* performanceObserver {};
     String activeMorphNodeId;
     String activeMorphParameterId;
-    uint64_t activeMorphFingerprint {};
-    bool activeMorphChanged {};
     bool activeMorphIsPrimary {};
     String activeVertexNodeId;
     String activeVertexParameterId;

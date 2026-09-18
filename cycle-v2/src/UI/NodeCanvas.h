@@ -270,11 +270,13 @@ private:
     bool beginNodeEditorGesture(
             const String& nodeId,
             GraphCommandDispatcher& commands,
-            const GraphDocument& document) override;
+            const GraphDocument& document,
+            bool downstreamFeedback = true) override;
     void finishNodeEditorGesture(
             const String& nodeId,
             GraphCommandDispatcher& commands,
-            const GraphDocument& document) override;
+            const GraphDocument& document,
+            const String& localField = {}) override;
     void scheduleNodeEditorRefresh() override;
     void flushNodeEditorRefresh() override;
     void refreshNodeEditorPresentation() override;

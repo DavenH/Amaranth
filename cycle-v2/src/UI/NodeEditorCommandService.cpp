@@ -426,15 +426,16 @@ bool NodeEditorCommandService::beginTrimeshMorphEdit(
     if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
         return false;
     }
+    const bool primaryMorph = NodeParameterMap(*node).stringValue(
+            "primaryAxis", "yellow") == parameterId;
+    if (!presentation.beginNodeEditorGesture(
+                nodeId, commands, document, !primaryMorph)) {
+        return false;
+    }
     activeMorphNodeId = nodeId;
     activeMorphParameterId = parameterId;
-    activeMorphFingerprint = 0;
-    activeMorphChanged = false;
-    activeMorphIsPrimary = NodeParameterMap(*node).stringValue(
-            "primaryAxis",
-            "yellow") == parameterId;
+    activeMorphIsPrimary = primaryMorph;
     presentation.selectEditedNode(nodeId);
-    commands.beginTransientEdit();
     return updateTrimeshMorphEditValue(value);
 }
 
@@ -453,12 +454,10 @@ bool NodeEditorCommandService::updateTrimeshMorphEditValue(float value) {
     if (!result.changed) {
         return true;
     }
-    activeMorphFingerprint = static_cast<uint64_t>(String(value, 9).hashCode64());
-    activeMorphChanged = true;
     presentation.recordNodeEditorMovement(
             activeMorphNodeId,
             activeMorphParameterId,
-            activeMorphFingerprint);
+            static_cast<uint64_t>(String(value, 9).hashCode64()));
     presentation.setNodeEditorStatus("Morph " + label + " = " + String(value, 2));
     presentation.repaintNodeEditor(false);
     return true;
@@ -468,23 +467,13 @@ void NodeEditorCommandService::endTrimeshMorphEdit() {
     if (activeMorphNodeId.isEmpty()) {
         return;
     }
-    commands.commitTransientEdit();
-    if (activeMorphChanged
-            && (activeMorphIsPrimary
-                    || PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
-                            presentation.probeRefreshMode()))) {
-        presentation.commitNodeEditorLocalState(
-                activeMorphNodeId,
-                activeMorphParameterId,
-                activeMorphFingerprint,
-                document.revision());
-    } else if (activeMorphChanged) {
-        presentation.refreshNodeEditorPresentation();
-    }
+    presentation.finishNodeEditorGesture(
+            activeMorphNodeId,
+            commands,
+            document,
+            activeMorphIsPrimary ? activeMorphParameterId : String());
     activeMorphNodeId = {};
     activeMorphParameterId = {};
-    activeMorphFingerprint = 0;
-    activeMorphChanged = false;
     activeMorphIsPrimary = false;
 }
 

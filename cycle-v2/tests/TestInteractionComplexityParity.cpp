@@ -228,6 +228,38 @@ TEST_CASE("On release parameter gesture starts without copying the graph",
     }
 }
 
+TEST_CASE("Local primary morph gesture avoids a live graph snapshot",
+        "[cycle-v2][complexity][gesture][presentation-session]") {
+    GraphNodeFactory factory;
+    for (const int unrelatedNodes : { 0, 128 }) {
+        NodeGraph graph = scaledGraph(unrelatedNodes, 16384);
+        graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher commands(document);
+        PresentationGestureSession session;
+        InteractionComplexityDiagnostics::reset();
+
+        REQUIRE(session.beginGraphGesture(
+                "editor:mesh", commands, document,
+                ProbeRefreshMode::LiveLatest, 0, true, false));
+        REQUIRE(commands.setNodeParameter("mesh", "yellow", "Yellow", "0.2").changed);
+        REQUIRE(session.recordGraphMovement("editor:mesh", 2).has_value());
+        REQUIRE(commands.setNodeParameter("mesh", "yellow", "Yellow", "0.8").changed);
+        REQUIRE(session.recordGraphMovement("editor:mesh", 8).has_value());
+        REQUIRE_FALSE(session.snapshotGraphGesture("editor:mesh", commands));
+        REQUIRE(session.finishGraphGesture("editor:mesh", commands, document).durableChanged);
+        REQUIRE(document.undo());
+
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
+        REQUIRE(counts.meshCopies == 0);
+        REQUIRE(counts.modelSerializations == 0);
+        REQUIRE(counts.nodeLinearScans == 0);
+        REQUIRE(counts.parameterLinearScans == 0);
+    }
+}
+
 TEST_CASE("Canvas translation iterates changed identities without graph snapshots",
         "[cycle-v2][complexity][gesture][canvas]") {
     for (const auto& scale : std::vector<std::pair<int, size_t>> {

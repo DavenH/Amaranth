@@ -2304,23 +2304,34 @@ void NodeCanvas::setNodeEditorStatus(const String& message) {
 bool NodeCanvas::beginNodeEditorGesture(
         const String& nodeId,
         GraphCommandDispatcher& dispatcher,
-        const GraphDocument& graphDocument) {
+        const GraphDocument& graphDocument,
+        bool downstreamFeedback) {
     return presentation.editSession().beginGraphGesture(
             "editor:" + nodeId,
             dispatcher,
             graphDocument,
             probeRailState.refreshMode,
             0,
-            true);
+            true,
+            downstreamFeedback);
 }
 
 void NodeCanvas::finishNodeEditorGesture(
         const String& nodeId,
         GraphCommandDispatcher& dispatcher,
-        const GraphDocument& graphDocument) {
+        const GraphDocument& graphDocument,
+        const String& localField) {
     const auto finished = presentation.editSession().finishGraphGesture(
             "editor:" + nodeId, dispatcher, graphDocument);
     if (!finished.changed || !finished.durableChanged) {
+        return;
+    }
+    if (localField.isNotEmpty()) {
+        presentation.commitLocalEditorState(
+                nodeId,
+                localField,
+                finished.effectiveFingerprint,
+                graphDocument.revision());
         return;
     }
 

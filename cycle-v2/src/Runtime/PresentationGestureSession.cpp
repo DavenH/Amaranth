@@ -8,7 +8,8 @@ bool PresentationGestureSession::beginGraphGesture(
         const GraphDocument& document,
         ProbeRefreshMode mode,
         uint64_t initialFingerprint,
-        bool transientEdits) {
+        bool transientEdits,
+        bool downstreamFeedback) {
     if (graphGestureIsActive(sourceStreamId)) {
         return false;
     }
@@ -16,7 +17,8 @@ bool PresentationGestureSession::beginGraphGesture(
     GraphGestureState state;
     state.baseRevision = document.revision();
     state.effectiveFingerprint = initialFingerprint;
-    state.live = PresentationRefreshPolicy::schedulesDownstreamDuringMovement(mode);
+    state.live = downstreamFeedback
+            && PresentationRefreshPolicy::schedulesDownstreamDuringMovement(mode);
     state.ownsTransientEdit = state.live || transientEdits;
     if (state.ownsTransientEdit) {
         if (commands.hasTransientEdit()) {
@@ -91,6 +93,7 @@ PresentationGestureSession::finishGraphGesture(
     }
     return {
             std::move(state.latestSnapshot),
+            state.effectiveFingerprint,
             state.live,
             state.changed,
             durableChanged

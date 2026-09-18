@@ -14,6 +14,7 @@ class PresentationGestureSession final {
 public:
     struct GraphGestureFinish {
         std::shared_ptr<const NodeGraph> finalSnapshot;
+        uint64_t effectiveFingerprint {};
         bool live {};
         bool changed {};
         bool durableChanged {};
@@ -25,7 +26,8 @@ public:
             const GraphDocument& document,
             ProbeRefreshMode mode,
             uint64_t initialFingerprint,
-            bool transientEdits = false);
+            bool transientEdits = false,
+            bool downstreamFeedback = true);
     bool graphGestureIsActive(const String& sourceStreamId) const;
     bool graphGestureIsLive(const String& sourceStreamId) const;
     std::optional<EditIdentity> recordGraphMovement(

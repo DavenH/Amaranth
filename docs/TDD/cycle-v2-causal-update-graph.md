@@ -98,6 +98,25 @@ products advance only after release. The pre-migration Reverb fixture failed
 its during-drag spectrogram assertion when local work was briefly omitted,
 which is why this local product remains an explicit extraction target.
 
+### Trimesh morph gesture migration
+
+Trimesh morph now uses the shared session for its transient edit, movement
+identities, durable commit, and undo. The domain service supplies whether the
+edited axis is the primary local slice axis. That local gesture does not
+capture a full graph even under Live policy; it publishes durable local state
+once on release. A non-primary axis retains Live preview feedback through the
+session's one stable graph snapshot. The scale test covers a primary gesture
+across 0 and 128 unrelated nodes and 16,384 unrelated audio samples, asserting
+zero graph, mesh, and audio-resource copies, serialization, or linear scans
+through commit and undo.
+
+The native `trimesh-morph-selection` fixture cannot currently prove its undo
+assertion: it expects `waveMesh.yellow = 0.317`, while the app reports `0`
+immediately after loading the saved graph. This pre-gesture discrepancy is
+recorded in `ui-bugs.md`. A focused morph fixture uses the observed loaded
+value to check Live drag, durable parameter isolation during movement,
+commit, and undo without changing the older fixture's expectation.
+
 ### Request-construction extraction boundary
 
 `NodeUpdateGraph` and `GraphExecutionPlan` remain authoritative for product

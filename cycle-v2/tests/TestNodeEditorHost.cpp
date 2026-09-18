@@ -288,19 +288,22 @@ public:
     bool beginNodeEditorGesture(
             const String& nodeId,
             GraphCommandDispatcher& commands,
-            const GraphDocument& document) override {
+            const GraphDocument& document,
+            bool downstreamFeedback = true) override {
         return session.beginGraphGesture(
                 "editor:" + nodeId,
                 commands,
                 document,
                 ProbeRefreshMode::OnGestureCommit,
                 0,
-                true);
+                true,
+                downstreamFeedback);
     }
     void finishNodeEditorGesture(
             const String& nodeId,
             GraphCommandDispatcher& commands,
-            const GraphDocument& document) override {
+            const GraphDocument& document,
+            const String& = {}) override {
         session.finishGraphGesture("editor:" + nodeId, commands, document);
     }
     void scheduleNodeEditorRefresh() override {}
@@ -322,18 +325,24 @@ public:
     bool beginNodeEditorGesture(
             const String& nodeId,
             GraphCommandDispatcher& commands,
-            const GraphDocument& document) override {
+            const GraphDocument& document,
+            bool downstreamFeedback = true) override {
         return session.beginGraphGesture(
-                "editor:" + nodeId, commands, document, refreshMode, 0, true);
+                "editor:" + nodeId, commands, document, refreshMode, 0, true,
+                downstreamFeedback);
     }
     void finishNodeEditorGesture(
             const String& nodeId,
             GraphCommandDispatcher& commands,
-            const GraphDocument& document) override {
+            const GraphDocument& document,
+            const String& localField = {}) override {
         const auto finished = session.finishGraphGesture(
                 "editor:" + nodeId, commands, document);
         if (finished.changed && finished.durableChanged) {
             ++gestureCommits;
+            if (localField.isNotEmpty()) {
+                ++localCommits;
+            }
         }
     }
     void scheduleNodeEditorRefresh() override { ++scheduledRefreshes; }
@@ -3413,6 +3422,37 @@ TEST_CASE("Live Trimesh morph commits reuse movement refresh",
     REQUIRE(presentation.recordedMovements == 1);
     REQUIRE(presentation.immediateRefreshes == 0);
     REQUIRE(presentation.localCommits == 1);
+}
+
+TEST_CASE("Live non-primary Trimesh morph commits one undoable gesture",
+        "[cycle-v2][editor][trimesh][causal]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh, "mesh", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    presentation.refreshMode = ProbeRefreshMode::LiveLatest;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner, document, dispatcher, presentation, resources);
+    const String initialRed = parameterValueForNode(
+            *document.graph().findNode("mesh"), "red");
+
+    REQUIRE(commands.beginTrimeshMorphEdit("mesh", "red", 0.3f));
+    REQUIRE(commands.updateTrimeshMorphEditValue(0.6f));
+    REQUIRE(commands.updateTrimeshMorphEditValue(0.8f));
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "red") == initialRed);
+    commands.endTrimeshMorphEdit();
+
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "red") == "0.800");
+    REQUIRE(presentation.recordedMovements == 3);
+    REQUIRE(presentation.gestureCommits == 1);
+    REQUIRE(presentation.localCommits == 0);
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "red") == initialRed);
 }
 
 TEST_CASE("Effect parameter drag publishes continuously as one undo transaction",
