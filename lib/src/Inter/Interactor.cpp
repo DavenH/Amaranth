@@ -383,10 +383,14 @@ void Interactor::mouseDrag(const MouseEvent& e) {
 
     bool selectWithRight = getSetting(SelectWithRight) == 1;
 
-    bool isSelecting =
-            ! actionIs(DraggingCorner) && getSetting(Tool) == Tools::Selector &&
-            (selectWithRight && e.mods.isRightButtonDown() || (! selectWithRight && e.mods.isLeftButtonDown()) &&
-                    state.actionState != PanelState::ReshapingCurve);
+    const bool selectionButtonDown = selectWithRight
+            ? e.mods.isRightButtonDown()
+            : e.mods.isLeftButtonDown();
+    const bool isSelecting = !actionIs(BoxSelecting)
+            && !actionIs(DraggingCorner)
+            && !actionIs(ReshapingCurve)
+            && getSetting(Tool) == Tools::Selector
+            && selectionButtonDown;
 
     if(actionIs(CreatingVertex) || isSelecting) {
         state.actionState = PanelState::DraggingVertex;
@@ -1202,7 +1206,8 @@ void Interactor::setMouseDownStateSelectorTool(const MouseEvent& e) {
     bool selectWithRight = getSetting(SelectWithRight) == 1;
 
     if (e.mods.isLeftButtonDown()) {
-        if (e.mods.isShiftDown() && selectWithRight) {
+        if (e.mods.isShiftDown()
+                && (selectWithRight || usesShiftLeftBoxSelection())) {
             action = PanelState::BoxSelecting;
         } else if (getStateValue(HighlitCorner) >= 0) {
             action = PanelState::DraggingCorner;

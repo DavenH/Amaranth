@@ -116,19 +116,21 @@ panel and avoid a node-kind switchboard.
 
 ## Cycle V2 guide attachment target semantics
 
-Status: open after the 2026-07-31 Stengah preset parity inspection.
+Status: cube-component identity implemented; generic ownership cleanup open
+after the 2026-09-17 Envelope guide parity work.
 
 The mature Cycle 1 mesh contract attaches a guide channel to a `VertCube`
 component through `guideCurveChans[field]`. Cycle 2 currently authors and draws
 `guide.vertex.<index>.<field>` graph targets. A vertex target cannot identify the
 same interpolation region and should not become a compatibility fiction.
 
-Replace the provisional target with a stable cube-component identity as part of
-the Guide Curve snapshot/provider work in `shared-cycle-dsp-core.md`. The graph
-editor, validator, canvas endpoint resolver, runtime input routing, and existing
-vertex-target tests should migrate together. Stengah should then expose its
-preserved phase-layer-1-cube-0 amplitude and phase-layer-2-cube-4 phase
-assignments as visible connections to guide channel 0.
+The graph now uses cube-component targets for Trimesh and Envelope, and both
+reuse one Guide preparation core. The remaining `TrimeshGuideAttachmentMenu`
+and `TrimeshGuideAttachmentTarget` filenames and command-service method names
+also serve Envelope. Move these shared UI boundary types into the Guide module
+and give them neutral names, without copying attachment behavior or adding a
+node-kind switchboard. Keep the node-family-specific selection lookup in each
+editor.
 
 ## Cycle V2 concrete editor registry decomposition
 
@@ -238,3 +240,12 @@ provide the real minimal panel environment, or move the data-retriever contract
 below panel construction. Do not weaken `SingletonRepo` lookup or add nullable
 production behavior for this test. This failure is unrelated to the Voice
 Context/Envelope parity slice; its focused runtime Envelope tests pass.
+
+## Envelope Morph State Ownership
+
+Status: closed 2026-09-17.
+
+The Envelope editor adapter now reads Red/Blue from node parameters, and
+`EnvelopeNodeModel` no longer caches them. Morph-only `CurveNodeModelState`
+revisions share immutable Envelope geometry and carry the authored scalar
+values. The existing serialized schema and one-command undo behavior remain.

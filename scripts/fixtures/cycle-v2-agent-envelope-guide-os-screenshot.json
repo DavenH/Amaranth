@@ -1,0 +1,10 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/brass-section.cyclegraph" },
+    { "command": "openNodeEditor", "nodeId": "pitchEnvelope1", "waitForIdle": true, "idleDelayMs": 200 },
+    { "command": "pointer", "event": "click", "targetId": "expanded:pitchEnvelope1.panel2D", "targetX": 0.02, "targetY": 0.5, "waitForIdle": true, "idleDelayMs": 200 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.guideLabels.0", "equals": "G2" },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

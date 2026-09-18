@@ -172,7 +172,7 @@ String NodeDspConfigurationFactory::keyFor(
                         (int64) reinterpret_cast<uintptr_t>(model.get()));
     }
     if (graph != nullptr) {
-        key << TrimeshGuidePreparation::configurationKey(*graph, nodeId);
+        key << GuideCurveMeshPreparation::configurationKey(*graph, nodeId);
     }
     if (role == AudioModuleRole::MeshSource) {
         key << ":scratchSourceEnabled="
@@ -218,6 +218,10 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
                 ? static_cast<const ReverbConfiguration*>(previous)
                 : nullptr;
         return ReverbSignalProcessor::buildConfiguration(parameters, previousReverb);
+    }
+    if (role == AudioModuleRole::Envelope) {
+        return EnvelopeSignalProcessor::buildConfiguration(
+                parameters, model, graph, nodeId);
     }
 
     using Factory = std::shared_ptr<const INodeDspConfiguration> (*)(
@@ -294,10 +298,6 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
             return std::shared_ptr<const INodeDspConfiguration>(
                     buildUnisonNodeConfiguration(values, modelState));
         } },
-        { AudioModuleRole::Envelope, [](AudioModuleRole, const auto& values, const auto& modelState) {
-            return std::shared_ptr<const INodeDspConfiguration>(
-                    EnvelopeSignalProcessor::buildConfiguration(values, modelState));
-        } }
     };
 
     if (role == AudioModuleRole::SpectralLayer) {

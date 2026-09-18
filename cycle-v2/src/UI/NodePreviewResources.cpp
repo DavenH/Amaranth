@@ -79,6 +79,9 @@ void NodePreviewResources::syncCurveEditorWidget(const Node& node) {
                 IrSignalProcessor::directResource(graph, node.id));
     }
     widget.syncFromNode(node);
+    if (graph != nullptr && node.kind == NodeKind::Envelope) {
+        widget.syncGuideContext(*graph, node);
+    }
 }
 
 CachedNodePreviewSprite& NodePreviewResources::cachedSprite(const String& nodeId) {

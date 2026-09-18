@@ -109,6 +109,7 @@ public:
     void setHighlitCorner(const MouseEvent& e, bool& wroteMessage);
     void setMouseDownStateSelectorTool(const MouseEvent& e);
     virtual bool isCurrentVertexHit(Point<int> mousePosition);
+    virtual bool usesShiftLeftBoxSelection() const { return false; }
     void updateCurrentMouseFromLocalPosition(Point<int> localPos);
     void updateCurrentMouseFromPointerEvent(const PanelPointerEvent& event);
     void setRasterizer(Rasterization::Rasterizer* rasterizer);

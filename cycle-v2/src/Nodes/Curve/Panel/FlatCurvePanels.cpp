@@ -38,6 +38,8 @@ class FlatCurvePanelBase :
     ,   public Interactor2D
     ,   public FlatCurvePanelContract {
 public:
+    bool usesShiftLeftBoxSelection() const override { return true; }
+
     FlatCurvePanelBase(
             SingletonRepo* repo,
             const String& name,
@@ -169,7 +171,7 @@ public:
     }
 
     float getCurveProximityThreshold() const override {
-        return 20.f;
+        return 5.f;
     }
     bool addNewCube(float startTime, float x, float y, float curve) override {
         ignoreUnused(startTime);
@@ -227,6 +229,7 @@ public:
         }
         root->setProperty("waveformPoints", waveformPoints);
         root->setProperty("curveHover", mouseFlag(WithinReshapeThresh));
+        root->setProperty("boxSelecting", actionIs(PanelState::BoxSelecting));
         return var(root);
     }
     std::vector<CurvePanelGridLine> verticalMajorGridLines() const override {

@@ -7,6 +7,7 @@
 #include <limits>
 #include <utility>
 
+#include <App/AppConstants.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
 #include "UI/NodeCanvas.h"
@@ -15,6 +16,7 @@
 #include "UI/Editors/PropertyControls.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "Nodes/Control/ModulationSource.h"
 #include "UI/NodeViewModule.h"
 #include "UI/TransformCompactEditor.h"
 #include "UI/WorkspaceDockKeyboardNavigation.h"
@@ -345,13 +347,6 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
         resolvedHoverText = queries.hoverTextForEdge(
                 graph.getEdges()[(size_t) hoveredEdgeIndex]);
     }
-    guideShelfState.hoveredGuideId = GuideCurveShelf::guideAt(
-            position,
-            graph,
-            getLocalBounds().toFloat(),
-            probeRailState,
-            dockSplitRatio,
-            guideShelfState);
     String hovered = canvasPresentation.probeRail().probeAt(
             position,
             GuideCurveShelf::spyWorkspace(
@@ -365,6 +360,15 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
         hovered = canvasPresentation.probeRail().markerProbeAt(position, graph, scene);
     }
     probeRailState.hoveredProbeId = std::move(hovered);
+    guideShelfState.hoveredGuideId = probeRailState.hoveredProbeId.isNotEmpty()
+            ? String()
+            : GuideCurveShelf::guideAt(
+                    position,
+                    graph,
+                    getLocalBounds().toFloat(),
+                    probeRailState,
+                    dockSplitRatio,
+                    guideShelfState);
 
     const Node* inlinePan = findInlinePanAt(graph, viewport, position);
     const Node* outputFader = findOutputFaderAt(graph, viewport, position);
@@ -607,6 +611,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
         if (event.getNumberOfClicks() >= 2 && hasExpandedEditor(hitNode->kind)) {
             expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
+            synchronizeOpenedEditorMorph();
             editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
             notifyOverlayOcclusionChanged();
         }
@@ -1375,6 +1380,7 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
         spliceTargetEdgeIndex = -1;
     }
     if (result.effects.editorBindingChanged) {
+        synchronizeOpenedEditorMorph();
         editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
         notifyOverlayOcclusionChanged();
     }
@@ -1435,6 +1441,7 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     dock.spyHorizontalOffset = probeRailState.horizontalOffset;
     dock.selectedGuideId = guideShelfState.selectedGuideId;
     dock.hoveredGuideId = guideShelfState.hoveredGuideId;
+    dock.hoveredProbeId = probeRailState.hoveredProbeId;
     dock.keyboardFocusTarget = WorkspaceDockKeyboardNavigation::targetName(
             dockInteraction->focus().target);
     dock.keyboardFocusItemId = dockInteraction->focus().itemId;
@@ -1490,6 +1497,13 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
                         dockSplitRatio,
                         guideShelfState,
                         index)
+        });
+    }
+    const auto probeIds = SignalProbeRail::orderedProbeIds(graph);
+    for (int index = 0; index < (int) probeIds.size(); ++index) {
+        dock.spyTiles.push_back({
+                probeIds[(size_t) index],
+                SignalProbeRail::tileBoundsFor(spyWorkspace, probeRailState, index)
         });
     }
     return result;
@@ -1800,6 +1814,12 @@ float NodeCanvas::graphOutputGain() const {
 
 bool NodeCanvas::setPreviewMidiNote(int midiNote) {
     const int selectedNote = jlimit(0, 127, midiNote);
+    if (selectedNote == presentation.previewMidiNote()) {
+        return true;
+    }
+    if (!persistPreviewMorph(selectedNote, presentation.previewModWheelValue())) {
+        return false;
+    }
     if (!presentation.refreshPreviewMidiNote(
                 commands.editingGraph(),
                 document.revision(),
@@ -1814,10 +1834,17 @@ bool NodeCanvas::setPreviewMidiNote(int midiNote) {
 }
 
 bool NodeCanvas::setPreviewModWheelValue(int value) {
+    const int selectedValue = jlimit(0, 127, value);
+    if (selectedValue == presentation.previewModWheelValue()) {
+        return true;
+    }
+    if (!persistPreviewMorph(presentation.previewMidiNote(), selectedValue)) {
+        return false;
+    }
     if (!presentation.refreshPreviewModWheelValue(
                 commands.editingGraph(),
                 document.revision(),
-                value)) {
+                selectedValue)) {
         return false;
     }
     refreshProbeDetail();
@@ -1873,13 +1900,48 @@ void NodeCanvas::endPreviewModWheelGesture() {
 
     const bool shouldPublish = previewModWheelGestureChanged
             && previewModWheelGestureRefreshMode == ProbeRefreshMode::OnGestureCommit;
+    const bool changed = previewModWheelGestureChanged;
     const int finalValue = previewModWheelGestureValue;
     previewModWheelGestureActive = false;
     previewModWheelGestureChanged = false;
     previewModWheelGestureGraph.reset();
     if (shouldPublish) {
         setPreviewModWheelValue(finalValue);
+    } else if (changed) {
+        persistPreviewMorph(presentation.previewMidiNote(), finalValue);
     }
+}
+
+bool NodeCanvas::persistPreviewMorph(int midiNote, int modWheelValue) {
+    const float red = ModulationSource::normalizeKey(
+            midiNote,
+            Constants::LowestMidiNote,
+            Constants::HighestMidiNote);
+    const float blue = (float) modWheelValue / 127.f;
+    const GraphEditResult edit = commands.setPreviewMorph(red, blue);
+    if (!edit.succeeded()) {
+        return false;
+    }
+    if (!edit.changed) {
+        return true;
+    }
+    editorCoordinator.clearPreviewCache();
+    if (graphDocumentStateChangedCallback) {
+        graphDocumentStateChangedCallback();
+    }
+    scheduleCompiledStateRefresh();
+    return true;
+}
+
+void NodeCanvas::synchronizeOpenedEditorMorph() {
+    const Node* node = queries.findNode(expandedNodeId);
+    if (node == nullptr || (node->kind != NodeKind::Envelope
+            && node->kind != NodeKind::TrilinearMesh)) {
+        return;
+    }
+    persistPreviewMorph(
+            presentation.previewMidiNote(),
+            presentation.previewModWheelValue());
 }
 
 void NodeCanvas::finishPreviewModWheelRefresh() {
@@ -2273,6 +2335,10 @@ CurveEditorWidget* NodeCanvas::curveEditorWidget(const Node& node) {
     return &editorCoordinator.previewResources().curveEditorWidget(node);
 }
 
+void NodeCanvas::syncCurveGuideContext(CurveEditorWidget& widget, const Node& node) {
+    widget.syncGuideContext(document.graph(), node);
+}
+
 TrimeshWidget* NodeCanvas::trimeshWidget(const Node& node) {
     return &editorCoordinator.previewResources().trimeshWidget(node);
 }
@@ -2287,6 +2353,12 @@ TrimeshRenderProfile NodeCanvas::trimeshRenderProfile(const Node& node) const {
 
 std::array<String, 6> NodeCanvas::trimeshGuideLabels(const Node& node) {
     return editorCoordinator.trimeshGuideLabelsFor(node);
+}
+
+std::array<String, 6> NodeCanvas::envelopeGuideLabels(
+        const Node& node,
+        int cubeIndex) {
+    return editorCoordinator.envelopeGuideLabelsFor(node, cubeIndex);
 }
 
 void NodeCanvas::paintNodePreview(

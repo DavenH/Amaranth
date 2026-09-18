@@ -560,13 +560,26 @@ void Panel::highlightSelectedVerts() {
 
         const bool wrapsVerts = interactor->rasterizerWrapsVertices();
 
-        size = moving.empty() ? selected.size() : moving.size();
+        const int selectedCount = moving.empty() ? (int) selected.size() : (int) moving.size();
+        for (int i = 0; i < selectedCount; ++i) {
+            const Vertex& vertex = moving.empty()
+                    ? *selected[(size_t) i]
+                    : *moving[(size_t) i].vert;
+            size += shouldDrawSelectedVertex(vertex) ? 1 : 0;
+        }
+        if (size == 0) {
+            return;
+        }
         prepareBuffers(size);
 
-        for (int i = 0; i < size; ++i) {
+        int visibleIndex = 0;
+        for (int i = 0; i < selectedCount; ++i) {
             Vertex& vert = moving.empty()
                     ? *selected[(size_t) i]
                     : *moving[(size_t) i].vert;
+            if (!shouldDrawSelectedVertex(vert)) {
+                continue;
+            }
             float vals[] = {vert.values[interactor->dims.x], vert.values[interactor->dims.y]};
             int dimArr[] = {interactor->dims.x, interactor->dims.y};
 
@@ -578,8 +591,9 @@ void Panel::highlightSelectedVerts() {
                 }
             }
 
-            xBuffer[i] = vals[0];
-            yBuffer[i] = vals[1];
+            xBuffer[visibleIndex] = vals[0];
+            yBuffer[visibleIndex] = vals[1];
+            ++visibleIndex;
         }
     }
 

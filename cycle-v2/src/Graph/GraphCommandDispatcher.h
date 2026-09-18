@@ -72,6 +72,7 @@ public:
             const juce::String& label,
             const juce::String& value);
     GraphEditResult publishCurveState(const CurveNodeStatePublication& publication);
+    GraphEditResult setPreviewMorph(float red, float blue);
     GraphEditResult replaceNodeModel(
             const juce::String& nodeId,
             uint64_t expectedRevision,
@@ -112,6 +113,14 @@ private:
             const std::function<void(GraphDeltaBuilder&, const NodeGraph&)>& capture,
             const std::function<GraphEditResult(NodeGraph&)>& command);
     GraphEditResult setNodeBounds(const juce::String& nodeId, juce::Rectangle<float> bounds);
+    bool setTrimeshPreviewMorph(
+            const juce::String& nodeId,
+            const juce::String& red,
+            const juce::String& blue);
+    bool setEnvelopePreviewMorph(
+            const Node& node,
+            const juce::String& red,
+            const juce::String& blue);
     void accumulateCompoundChange(const GraphChangeSet& change);
     static void accumulateChange(GraphChangeSet& destination, const GraphChangeSet& change);
 

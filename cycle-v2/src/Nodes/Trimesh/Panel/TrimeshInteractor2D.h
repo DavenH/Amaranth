@@ -21,7 +21,8 @@ public:
     void reduceDetail() override {}
     void restoreDetail() override {}
     void doGlobalUIUpdate(bool) override { performUpdate(Update); }
-    float getCurveProximityThreshold() const override { return 20.f; }
+    float getCurveProximityThreshold() const override { return 5.f; }
+    bool usesShiftLeftBoxSelection() const override { return true; }
     void doExtraMouseMoveAt(Point<int> localPosition) override;
     void setExtraElements(float x) override;
     bool isCurrentVertexHit(Point<int> mousePosition) override;

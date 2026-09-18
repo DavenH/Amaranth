@@ -364,7 +364,9 @@ void Panel2D::drawDepthLinesAndVerts() {
 
     for (auto& point : points) {
         dim = point.num;
-
+        if (!shouldDrawDepthLine(dim)) {
+            continue;
+        }
         clr = pointColours[dim];
 
         if(createLinePath(point.before, point.after, point.cube, dim, haveSpeed)) {
@@ -394,6 +396,9 @@ void Panel2D::drawDepthLinesAndVerts() {
     }
 
     for (auto& p : points) {
+        if (!shouldDrawDepthPoint(p.num)) {
+            continue;
+        }
         renderer->setCurrentColour(pointColours[p.num]);
         renderer->drawPoint(vertexWhiteRadius, p.before, true);
         renderer->drawPoint(vertexWhiteRadius, p.after, true);

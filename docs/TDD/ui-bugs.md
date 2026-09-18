@@ -5,6 +5,22 @@
 There are no open deterministic P0 or P1 regressions as of 2026-09-09.
 Resolved and no-longer-reproducing entries have been removed from this ledger.
 
+## P2: Mod Wheel release appears to publish duplicate graph/Spy updates
+
+Reported 2026-09-17. While moving the MIDI keyboard Mod Wheel, the Spy appears
+to refresh twice after release, suggesting two graph updates for one movement
+or gesture commit. A graph update also appears to cancel a running audition
+note. These are observations, not yet an established shared cause; the preview
+audio failing to follow the wheel on `filter-saw-2` is tracked separately in
+`docs/TDD/audio-bugs.md`.
+
+Current status: open, not yet reproduced with automation. Add a focused
+hold-note/Mod-Wheel gesture fixture and count semantic commands, consolidated
+graph publications, Spy refreshes, and note lifecycle events across movement
+and release. Check whether a parameter update, gesture commit, or duplicate
+observer notification interrupts the note; preserve the intended On Release
+versus Live refresh policy.
+
 ## P2: Cycle 1 default factory preset key no longer resolves
 
 Context:
@@ -358,6 +374,17 @@ publication across equal-revision configuration transitions.
 
 Context:
 
+- On 2026-09-17, a full Cycle V2 CTest run passed 1040/1076 tests and failed
+  36, predominantly tests still naming root preset files or old Baroque and
+  Stengah fixture contents after legacy presets were archived. Examples:
+  `Prepared oscillator preset matrix...` cannot load its preset, and
+  `Curve panel adapters resynchronize equal-revision models...` expects 55
+  Stengah Guide vertices while the current fixture has 73. This is distinct
+  from the editor UI repairs, whose focused tests pass.
+
+Current status: open; reconcile test paths and semantic expectations against
+the canonical preset set rather than weakening the assertions.
+
 - The grouped `[cycle-v2][runtime][probe][presets]` run on 2026-09-14 fails
   `Stengah spies render the exact output selected by each probe` because the
   freshly migrated `stengah.cyclegraph` contains an empty `probes` array.
@@ -365,3 +392,14 @@ Context:
 
 Current status: open fixture/test synchronization issue; restore the intended
 Stengah probes or update the test fixture at its authoring boundary.
+
+## P3: Opening an Envelope editor marks the document dirty
+
+The 2026-09-17 `cycle-v2-agent-envelope-link-toggle.json` run opens the saved
+`old/vox-1.cyclegraph` clean, but `documentDirty` is already true immediately
+after opening the expanded pitch Envelope, before any link click. The focused
+link fixture therefore checks session state and reopen behavior, not dirty
+state. Report: `/private/tmp/cycle-v2-envelope-link-session2`.
+
+Current status: open; distinguish selection/editor-state publication from a
+durable document edit. Envelope link toggles themselves remain session-only.

@@ -28,6 +28,7 @@ public:
     void zoomImpulseResponseToAttack();
     void resetImpulseResponseZoom();
     void syncFromNode(const Node& node);
+    void syncGuideContext(const NodeGraph& graph, const Node& node);
     void syncFromGuideResource(
             const GuideCurveResource& guide,
             const GuideHeatmapAssetPtr& heatmap = nullptr);
@@ -63,6 +64,7 @@ public:
     uint64_t previewSnapshotRevision() const;
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
     bool setSelectedVertexParameter(const String& parameterId, float normalizedValue);
+    int selectedEnvelopeGuideCubeIndex();
     bool hasSingleSelectedEnvelopeVertex();
     bool selectedEnvelopeMarkerState(bool loopMarker) const;
     void toggleSelectedEnvelopeMarker(bool loopMarker);

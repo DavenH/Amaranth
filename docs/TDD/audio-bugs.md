@@ -1,5 +1,21 @@
 # Audio Bug Notes
 
+## Open: preview Mod Wheel does not change Filter Saw 2 audio morph
+
+Reported 2026-09-17. Load `cycle-v2/content/presets/filter-saw-2.cyclegraph`,
+hold the MIDI keyboard's preview note, and move its Mod Wheel across the range.
+The spectral filter's audible cutoff stays the same, while the Spy output and
+Trimesh node presentation respond to the wheel. The preset's `morph`
+modulation triple explicitly uses `blueSource: modWheel` and attaches to the
+Voice Context, so the audio preview should follow that Blue morph value too.
+
+Current status: open, not yet reproduced by an audio capture. Add a focused
+preview-note automation/audio comparison at two wheel positions, then trace
+the preview Mod Wheel value through Voice Context configuration, spectral
+Trimesh preparation, and the realtime/offline audition path. Preserve the
+working Spy and editor behavior; do not treat their updates as proof that the
+audio configuration changed.
+
 ## Open: Full Cycle V2 suite retains broad preset and spectral failures
 
 The 2026-09-15 `ctest --test-dir build/tests -j10 --output-on-failure`
@@ -835,8 +851,10 @@ During the 2026-09-17 master merge, the full `CycleV2_tests` binary emitted
 `JUCE Assertion failure in GraphAudioExecutor.cpp:1069` (`jassert(rendered)`)
 immediately before `Scratch Envelope drives every attached Trimesh from one
 prepared trajectory` failed with `blockDifference == 0`. The complete log is
-`/tmp/cycle-merge-tests.log`; the run had 38 failing cases, including the
-previously documented stale fixture paths and offline spectral assertion.
+`/tmp/cycle-merge-tests.log`; an independent editor UI repair CTest run also
+emitted the assertion (`/tmp/cycle-v2-ui-ctest.log`). The merge run had 38
+failing cases, including the previously documented stale fixture paths and
+offline spectral assertion.
 The focused fixed-time, keyboard, and preview-mod-wheel suites pass. Current
 status: open; isolate the region failure and distinguish it from the unrelated
 fixture failures before changing audio behavior or test expectations.

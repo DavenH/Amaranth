@@ -8,7 +8,7 @@
 
 #include "Nodes/Control/ModulationSource.h"
 #include "Nodes/Control/ModulationTriple.h"
-#include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
+#include "Nodes/Guide/GuideCurveMeshPreparation.h"
 
 namespace CycleV2 {
 
@@ -613,7 +613,8 @@ std::function<void()> GraphPresentationModel::publishAsyncRefresh(
 }
 
 bool GraphPresentationModel::isCurrent(const AsyncRefresh& refresh) const {
-    if (!refresh.state->alive.load()) {
+    if (!refresh.state->alive.load()
+            || refresh.generation != refresh.state->generation.load()) {
         return false;
     }
     return std::all_of(
@@ -859,7 +860,7 @@ CausalUpdateRequest GraphPresentationModel::updateRequest(
         }
         if (change.guidesChanged) {
             nodeFingerprint.add(
-                    TrimeshGuidePreparation::configurationKey(graph, nodeId));
+                    GuideCurveMeshPreparation::configurationKey(graph, nodeId));
         }
         effectiveFingerprint = nodeFingerprint.value();
     }

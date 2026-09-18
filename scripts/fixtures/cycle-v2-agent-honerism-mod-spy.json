@@ -125,8 +125,18 @@
       "targetY": 0.75
     },
     {
+      "command": "assertState",
+      "path": "previewModWheelValue",
+      "equals": 32
+    },
+    {
       "command": "waitForIdle",
       "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "performance.modWheelValue",
+      "equals": 32
     },
     {
       "command": "assertState",

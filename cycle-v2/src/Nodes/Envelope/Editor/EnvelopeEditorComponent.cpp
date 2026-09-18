@@ -11,6 +11,7 @@
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EnvelopePurposeSelector.h"
 #include "UI/EnvelopeToolbarMetrics.h"
+#include "UI/EditorChromeLayout.h"
 #include "UI/EffectEnableButton.h"
 #include "UiIconData.h"
 
@@ -87,9 +88,12 @@ struct EnvelopeEditorComponent::Impl {
         ,   blueMorph   (owner, "Blue")
         ,   tooltipHost (&owner, 500) {
         stylePropertyLabel(timeLabel, "Time");
+        stylePropertyLabel(purposeLabel, "Purpose");
+        purposeLabel.setJustificationType(Justification::centredRight);
         redMorph.slider.setMorphPresentation(Colour(0xffd65a5a));
         blueMorph.slider.setMorphPresentation(Colour(0xff5f91e8));
         owner.addAndMakeVisible(timeLabel);
+        owner.addAndMakeVisible(purposeLabel);
         owner.addAndMakeVisible(mode);
         owner.addAndMakeVisible(axisScale);
         owner.addAndMakeVisible(loop);
@@ -103,6 +107,7 @@ struct EnvelopeEditorComponent::Impl {
     LabeledParameterSlider blueMorph;
     TooltipWindow tooltipHost;
     Label timeLabel;
+    Label purposeLabel;
     EnvelopePurposeSelector mode;
     EnvelopeAxisScaleSelector axisScale;
     EnvelopeActionButton loop {
@@ -132,8 +137,11 @@ struct EnvelopeEditorComponent::Impl {
     bool hasAppliedPurpose {};
     bool redLinked { true };
     bool blueLinked { true };
+    String linkNodeId;
     bool draggingMorph {};
     bool draggingParameter {};
+    float guideGainDragStartY {};
+    float guideGainDragStartValue {};
     String parameterId;
 };
 
@@ -209,14 +217,16 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
             impl->loop.getToggleState(),
             impl->sustain.getToggleState());
 
-    std::array<String, 6> guides {};
+    const std::array<String, 6> guides = delegate != nullptr
+            ? delegate->envelopeGuideLabels(widget.selectedEnvelopeGuideCubeIndex())
+            : std::array<String, 6> {};
     TrimeshSidePanelRenderer::drawVertexParameters(
             graphics,
             impl->presentation.vertexBounds(controls),
             widget.selectedVertexParameters(),
             guides,
             EnvelopeMorphControls::vertexParameterHeightScale,
-            TrimeshSidePanelRenderer::GuideControls::Hidden);
+            TrimeshSidePanelRenderer::GuideControls::Visible);
 
     if (impl->mode.purpose() == EnvelopePurpose::Pitch) {
         auto pitchLabels = editorPanelBounds().removeFromRight(48.f);
@@ -231,8 +241,21 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
 
 void EnvelopeEditorComponent::layoutEditor() {
     const auto controls = editorControlBounds();
-    impl->mode.setBounds(
-            impl->presentation.purposeSelectorBounds(controls).toNearestInt());
+    const auto header = embeddedEditorHeaderLayout(getLocalBounds().toFloat(), true);
+    impl->mode.setBounds(Rectangle<float>(
+            EnvelopeToolbarMetrics::purposeSelectorWidth,
+            EnvelopeToolbarMetrics::controlHeight)
+            .withCentre({
+                    header.enabled.getX()
+                            - CanvasChromeMetrics::embeddedEditorActionGap
+                            - EnvelopeToolbarMetrics::purposeSelectorWidth * 0.5f,
+                    header.header.getCentreY()
+            }).toNearestInt());
+    impl->purposeLabel.setBounds(
+            impl->mode.getX() - 68,
+            impl->mode.getY(),
+            60,
+            impl->mode.getHeight());
 
     auto timeRow = impl->presentation.morphRow(controls, 0).toNearestInt();
     impl->timeLabel.setBounds(timeRow.removeFromLeft(42));
@@ -263,21 +286,24 @@ void EnvelopeEditorComponent::layoutEditor() {
 }
 
 void EnvelopeEditorComponent::syncEditorFromNode() {
-    EnvelopeNodeModel model;
-    model.syncFromNode(node);
     const EnvelopePurpose purpose = envelopePurposeFor(node);
+    const NodeParameterMap parameters(node);
     impl->enabled.setToggleState(
-            NodeParameterMap(node).boolValue("enabled", true),
+            parameters.boolValue("enabled", true),
             dontSendNotification);
     impl->mode.setPurpose(purpose);
-    impl->redMorph.slider.setValue(model.red, dontSendNotification);
-    impl->blueMorph.slider.setValue(model.blue, dontSendNotification);
-    impl->redLinked = model.redLinked;
-    impl->blueLinked = model.blueLinked;
-    impl->axisScale.setLogarithmic(model.logarithmic, dontSendNotification);
+    impl->redMorph.slider.setValue(parameters.floatValue("red", 0.5f), dontSendNotification);
+    impl->blueMorph.slider.setValue(parameters.floatValue("blue", 0.5f), dontSendNotification);
+    if (impl->linkNodeId != node.id) {
+        impl->linkNodeId = node.id;
+        impl->redLinked = true;
+        impl->blueLinked = true;
+    }
+    const bool logarithmic = parameters.boolValue("logarithmic", false);
+    impl->axisScale.setLogarithmic(logarithmic, dontSendNotification);
     impl->axisScale.setEnabled(envelopePurposeAllowsLogarithmic(purpose));
     widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
-    widget.setEnvelopeLogarithmic(model.logarithmic);
+    widget.setEnvelopeLogarithmic(logarithmic);
     syncInteractionControls();
 }
 
@@ -302,6 +328,25 @@ void EnvelopeEditorComponent::applyEditorStateToWidget() {
     }
     impl->appliedPurpose = purpose;
     impl->hasAppliedPurpose = true;
+}
+
+bool EnvelopeEditorComponent::editorInteractionIsSessionOnly(Point<float> position) const {
+    const auto controls = editorControlBounds();
+    for (int axis = 0; axis < 3; ++axis) {
+        if (impl->presentation.axisBounds(controls, axis).contains(position)
+                || (axis > 0
+                        && impl->presentation.linkBounds(controls, axis).contains(position))) {
+            return true;
+        }
+    }
+    const auto parameters = widget.selectedVertexParameters();
+    for (int index = 0; index < (int) parameters.size(); ++index) {
+        const auto row = impl->presentation.vertexParameterRowBounds(controls, index);
+        if (TrimeshSidePanelRenderer::vertexParameterGuideBounds(row).contains(position)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 std::vector<NodeParameter> EnvelopeEditorComponent::editorControls() const {
@@ -354,9 +399,6 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
                     : "unipolar");
     state.setProperty("logarithmic", impl->axisScale.isLogarithmic());
     state.setProperty(
-            "purposeGroupLabelBounds",
-            editorBoundsToVar(impl->presentation.purposeGroupLabelBounds(controls)));
-    state.setProperty(
             "morphGroupLabelBounds",
             editorBoundsToVar(impl->presentation.morphGroupLabelBounds(controls)));
     state.setProperty(
@@ -372,11 +414,20 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
             "linkGroupLabelBounds",
             editorBoundsToVar(impl->presentation.linkGroupLabelBounds(controls)));
     state.setProperty(
+            "redLinkBounds",
+            editorBoundsToVar(impl->presentation.linkBounds(controls, 1)));
+    state.setProperty(
+            "blueLinkBounds",
+            editorBoundsToVar(impl->presentation.linkBounds(controls, 2)));
+    state.setProperty(
             "modeBounds",
             editorBoundsToVar(impl->mode.getBounds().toFloat()));
     state.setProperty(
             "purposeBounds",
             editorBoundsToVar(impl->mode.getBounds().toFloat()));
+    state.setProperty(
+            "purposeLabelBounds",
+            editorBoundsToVar(impl->purposeLabel.getBounds().toFloat()));
     Array<var> modeOptions;
     for (const EnvelopePurpose purpose : kEnvelopePurposes) {
         auto* option = new DynamicObject();
@@ -391,8 +442,8 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
                                 static_cast<float>(impl->mode.getX()),
                                 static_cast<float>(impl->mode.getY()))));
         option->setProperty(
-                "iconBounds",
-                editorBoundsToVar(impl->mode.optionIconBounds(purpose)
+                "labelBounds",
+                editorBoundsToVar(impl->mode.optionLabelBounds(purpose)
                         .translated(
                                 static_cast<float>(impl->mode.getX()),
                                 static_cast<float>(impl->mode.getY()))));
@@ -499,7 +550,16 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty(
             "vertexParameterBounds",
             editorBoundsToVar(impl->presentation.vertexBounds(controls)));
-    state.setProperty("guideControlsVisible", false);
+    state.setProperty("guideControlsVisible", true);
+    state.setProperty("selectedGuideCubeIndex", widget.selectedEnvelopeGuideCubeIndex());
+    const auto guideLabels = delegate != nullptr
+            ? delegate->envelopeGuideLabels(widget.selectedEnvelopeGuideCubeIndex())
+            : std::array<String, 6> {};
+    Array<var> encodedGuideLabels;
+    for (const auto& label : guideLabels) {
+        encodedGuideLabels.add(label);
+    }
+    state.setProperty("guideLabels", encodedGuideLabels);
     Array<var> parameterRails;
     const auto parameters = widget.selectedVertexParameters();
     for (int index = 0; index < static_cast<int>(parameters.size()); ++index) {
@@ -507,11 +567,12 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
                 controls, index);
         auto* rail = new DynamicObject();
         rail->setProperty("id", parameters[static_cast<size_t>(index)].id);
-        rail->setProperty(
-                "bounds",
-                editorBoundsToVar(TrimeshSidePanelRenderer::vertexParameterRailBounds(
-                        row,
-                        TrimeshSidePanelRenderer::GuideControls::Hidden)));
+        rail->setProperty("bounds", editorBoundsToVar(
+                TrimeshSidePanelRenderer::vertexParameterRailBounds(row)));
+        rail->setProperty("guideBounds", editorBoundsToVar(
+                TrimeshSidePanelRenderer::vertexParameterGuideBounds(row)));
+        rail->setProperty("guideGainBounds", editorBoundsToVar(
+                TrimeshSidePanelRenderer::vertexParameterGuideGainBounds(row)));
         parameterRails.add(rail);
     }
     state.setProperty("vertexParameterRails", parameterRails);
@@ -530,9 +591,12 @@ bool EnvelopeEditorComponent::editorMouseMove(Point<float> position) {
     for (int index = 0; index < static_cast<int>(parameters.size()); ++index) {
         const auto row = impl->presentation.vertexParameterRowBounds(controls, index);
         const auto rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(
-                row,
-                TrimeshSidePanelRenderer::GuideControls::Hidden);
-        interactive = interactive || rail.expanded(5.f, 8.f).contains(position);
+                row);
+        interactive = interactive
+                || (!parameters[(size_t) index].guideOnly
+                        && rail.expanded(5.f, 8.f).contains(position))
+                || TrimeshSidePanelRenderer::vertexParameterGuideBounds(row).contains(position)
+                || TrimeshSidePanelRenderer::vertexParameterGuideGainBounds(row).contains(position);
     }
     setMouseCursor(interactive ? MouseCursor::PointingHandCursor : MouseCursor::NormalCursor);
     return interactive;
@@ -570,7 +634,8 @@ bool EnvelopeEditorComponent::handleAxisMouseDown(
         if (axis > 0 && impl->presentation.linkBounds(controls, axis).contains(position)) {
             bool& linked = axis == 1 ? impl->redLinked : impl->blueLinked;
             linked = !linked;
-            publishCurrentState();
+            widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
+            requestRepaint();
             return true;
         }
     }
@@ -583,11 +648,28 @@ bool EnvelopeEditorComponent::handleVertexParameterMouseDown(
     const auto parameters = widget.selectedVertexParameters();
     for (int index = 0; index < static_cast<int>(parameters.size()); ++index) {
         const auto row = impl->presentation.vertexParameterRowBounds(controls, index);
+        const auto& parameter = parameters[(size_t) index];
+        const String field = parameter.id.fromLastOccurrenceOf(".", false, false);
+        const auto guideBox = TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
+        if (guideBox.contains(position)) {
+            if (delegate != nullptr && widget.selectedEnvelopeGuideCubeIndex() >= 0) {
+                delegate->showEnvelopeGuideAttachmentMenu(
+                        field,
+                        Rectangle<int>(localPointToGlobal(position.roundToInt()), { 1, 1 }));
+            }
+            return true;
+        }
+        const auto gainBox = TrimeshSidePanelRenderer::vertexParameterGuideGainBounds(row);
+        if (gainBox.contains(position) && widget.selectedEnvelopeGuideCubeIndex() >= 0) {
+            impl->parameterId = "guideGain." + field;
+            impl->draggingParameter = true;
+            impl->guideGainDragStartY = position.y;
+            impl->guideGainDragStartValue = parameter.guideGain;
+            return true;
+        }
         const auto rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(
-                row,
-                TrimeshSidePanelRenderer::GuideControls::Hidden);
-        if (rail.expanded(5.f, 8.f).contains(position)) {
-            const auto& parameter = parameters[static_cast<size_t>(index)];
+                row);
+        if (!parameter.guideOnly && rail.expanded(5.f, 8.f).contains(position)) {
             impl->parameterId = parameter.id;
             impl->draggingParameter = true;
             const float value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
@@ -631,14 +713,28 @@ bool EnvelopeEditorComponent::dragVertexParameter(Point<float> position) {
     const auto parameters = widget.selectedVertexParameters();
     const auto controls = editorControlBounds();
     for (int index = 0; index < static_cast<int>(parameters.size()); ++index) {
-        if (parameters[static_cast<size_t>(index)].id != impl->parameterId) {
+        const auto& parameter = parameters[(size_t) index];
+        const String guideGainId = "guideGain."
+                + parameter.id.fromLastOccurrenceOf(".", false, false);
+        if (parameter.id != impl->parameterId && guideGainId != impl->parameterId) {
             continue;
         }
         const auto row = impl->presentation.vertexParameterRowBounds(
                 controls, index);
+        if (impl->parameterId == guideGainId) {
+            const float value = jlimit(
+                    0.f,
+                    1.f,
+                    impl->guideGainDragStartValue
+                            + (impl->guideGainDragStartY - position.y) / 120.f);
+            if (parameter.guideGain != value
+                    && widget.setSelectedVertexParameter(impl->parameterId, value)) {
+                publishCurrentState();
+            }
+            return true;
+        }
         const auto rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(
-                row,
-                TrimeshSidePanelRenderer::GuideControls::Hidden);
+                row);
         const float value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
         if (parameters[static_cast<size_t>(index)].value != value
                 && widget.setSelectedVertexParameter(impl->parameterId, value)) {

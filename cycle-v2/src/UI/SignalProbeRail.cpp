@@ -327,6 +327,7 @@ void SignalProbeRail::paintCableAnnotations(
         const SignalProbeRailState& state,
         float zoom) const {
     const auto probes = orderedProbes(graph);
+    const float railTop = boundsFor(workspace, state).getY();
     for (int index = 0; index < (int) probes.size(); ++index) {
         const SignalProbe& probe = *probes[(size_t) index];
         const Point<float> marker = markerCentre(probe, graph, scene);
@@ -337,8 +338,10 @@ void SignalProbeRail::paintCableAnnotations(
         const Colour colour = colourForProbe(probe, graph, scene);
         const bool active = probe.id == state.hoveredProbeId || probe.id == state.selectedProbeId;
         if (probe.id == state.hoveredProbeId && state.expanded) {
-            const Point<float> tileTarget = tileBoundsFor(workspace, state, index).getCentre().withY(
-                    tileBoundsFor(workspace, state, index).getY());
+            const Point<float> tileTarget {
+                    tileBoundsFor(workspace, state, index).getCentreX(),
+                    railTop
+            };
             Path tether;
             tether.startNewSubPath(marker);
             tether.cubicTo(

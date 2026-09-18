@@ -20,7 +20,7 @@
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/GraphValidator.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
-#include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
+#include "Nodes/Guide/GuideCurveMeshPreparation.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
 namespace CycleV2 {
@@ -1424,7 +1424,7 @@ uint64_t NodeCanvasPresentation::renderContextFingerprintFor(
             .add((uint64_t) semantic.scalePolicy)
             .add((uint64_t) semantic.role);
     if (node.kind == NodeKind::TrilinearMesh) {
-        fingerprint.add(TrimeshGuidePreparation::configurationKey(frame.graph, node.id));
+        fingerprint.add(GuideCurveMeshPreparation::configurationKey(frame.graph, node.id));
     }
     if (node.kind == NodeKind::Output && frame.liveOutputMeterLevels.has_value()) {
         uint32_t leftBits {};

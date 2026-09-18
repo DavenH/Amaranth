@@ -111,6 +111,7 @@ public:
     var writeJSON() const;
     bool copyFrom(const EnvelopeNodeModel& other);
     bool equals(const EnvelopeNodeModel& other) const;
+    bool equalsGeometryAndTopology(const EnvelopeNodeModel& other) const;
     bool selectCube(std::optional<EnvelopeCubeId> cubeId);
 
     EnvelopeMesh& getMesh() { return mesh; }
@@ -123,10 +124,6 @@ public:
     void setPublicationRevision(uint64_t revisionToUse) { modelRevision = juce::jmax<uint64_t>(1, revisionToUse); }
 
     bool logarithmic {};
-    float red { 0.5f };
-    float blue { 0.5f };
-    bool redLinked { true };
-    bool blueLinked { true };
 
 private:
     EnvelopeCubeId nextIdentity() const;
@@ -170,8 +167,14 @@ public:
             var editorState = {});
     static std::shared_ptr<const CurveNodeModelState> copyOf(
             const EnvelopeNodeModel& model,
+            float red,
+            float blue,
             uint64_t revision,
             var editorState = {});
+    std::shared_ptr<const CurveNodeModelState> withEnvelopeMorph(
+            float red,
+            float blue,
+            uint64_t revision) const;
 
     String schemaId() const override;
     int schemaVersion() const override;
@@ -181,6 +184,8 @@ public:
 
     const FlatCurveModel* flatCurve() const { return flatCurveState.get(); }
     const EnvelopeNodeModel* envelope() const { return envelopeState.get(); }
+    float envelopeRed() const { return envelopeRedValue; }
+    float envelopeBlue() const { return envelopeBlueValue; }
     const var& editorJSON() const { return editorState; }
 
 private:
@@ -197,11 +202,15 @@ private:
             int version,
             uint64_t revision,
             std::shared_ptr<const EnvelopeNodeModel> modelState,
+            float red,
+            float blue,
             var editorState = {});
 
     String schema;
     int version {};
     uint64_t modelRevision {};
+    float envelopeRedValue {};
+    float envelopeBlueValue {};
     std::shared_ptr<const FlatCurveModel> flatCurveState;
     std::shared_ptr<const EnvelopeNodeModel> envelopeState;
     var editorState;

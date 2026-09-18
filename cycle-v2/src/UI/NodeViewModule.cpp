@@ -85,7 +85,7 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     NodeViewCapabilities voice = preview;
     voice.hostedEditor = true;
     voice.expandedEditorBlocksCanvas = false;
-    voice.expandedEditorSize = Point<float>(440.f, 360.f);
+    voice.expandedEditorSize = Point<float>(520.f, 380.f);
     add(NodeKind::VoiceContext, voice);
 
     NodeViewCapabilities transform = preview;
@@ -119,7 +119,7 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
         add(kind, curve);
     };
     addCurve(NodeKind::Envelope, { 840.f, 684.f }, true);
-    addCurve(NodeKind::ImpulseResponse, { 1080.f, 430.f });
+    addCurve(NodeKind::ImpulseResponse, { 1296.f, 430.f });
     addCurve(NodeKind::Waveshaper, { 766.f, 464.f });
 
     NodeViewCapabilities effect;

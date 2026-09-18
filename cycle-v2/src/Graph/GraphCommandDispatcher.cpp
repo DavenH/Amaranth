@@ -151,7 +151,7 @@ GraphEditResult GraphCommandDispatcher::assignGuideCurve(
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
         auto result = annotateSuccessful(
-                GraphEditor().assignGuideCurveToTrimeshVertexParameter(
+                GraphEditor().assignGuideCurveToMeshComponent(
                         graph,
                         guideId,
                         meshNodeId,
@@ -170,7 +170,7 @@ GraphEditResult GraphCommandDispatcher::detachGuideCurve(
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
         auto result = annotateSuccessful(
-                GraphEditor().detachGuideCurveFromTrimeshVertexParameter(
+                GraphEditor().detachGuideCurveFromMeshComponent(
                         graph, meshNodeId, vertexIndex, parameterField),
                 { { meshNodeId }, false, false });
         result.changes.guidesChanged = result.succeeded();
@@ -185,7 +185,7 @@ GraphEditResult GraphCommandDispatcher::createAndAssignGuideCurve(
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
         auto result = annotateSuccessful(
-                GraphEditor().createGuideCurveAndAssignToTrimeshVertexParameter(
+                GraphEditor().createGuideCurveAndAssignToMeshComponent(
                         graph,
                         meshNodeId,
                         vertexIndex,

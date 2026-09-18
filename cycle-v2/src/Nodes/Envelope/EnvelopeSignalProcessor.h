@@ -21,7 +21,9 @@ public:
 
     static std::shared_ptr<const EnvelopeConfiguration> buildConfiguration(
             const std::vector<NodeParameter>& parameters,
-            const NodeModelStatePtr& model = {});
+            const NodeModelStatePtr& model = {},
+            const NodeGraph* graph = nullptr,
+            const String& nodeId = {});
 
     void prepareExecution(const AudioExecutionSpec& spec);
     void adoptConfiguration(const PublishedNodeConfiguration& published);

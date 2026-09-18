@@ -6,14 +6,22 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 460.0, "y": 826.0 },
-            "parameters": { "octave": 0, "voiceLength": 0.580152672, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "position": { "x": 519.85901, "y": 387.03418 },
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.580152672,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 700.0 },
+            "position": { "x": 159.85898, "y": 261.03418 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -30,7 +38,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 870.0 },
+            "position": { "x": 159.85898, "y": 431.03418 },
             "parameters": { "enabled": true, "mode": "group", "order": 9, "width": 23.520000000000003, "panSpread": 0.0, "phase": 0.0, "jitter": 1.0 },
             "model": {
                 "schema": "unisonVoices",
@@ -45,16 +53,16 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 840.0, "y": 886.0 },
+            "position": { "x": 1736.80005, "y": 704.0705 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
                 "polarity": "bipolar",
-                "yellow": 0.5,
-                "red": 0.5,
-                "blue": 0.5,
+                "yellow": 0.0,
+                "red": 0.037383176,
+                "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -144,15 +152,15 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 1736.80005, "y": 1084.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.037383176, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 2,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 2,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
@@ -232,10 +240,8 @@
                         "sustainIndices": [ 3 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
-                    "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
+                    "red": 0.03738,
+                    "blue": 0.0,
                     "cubeIds": [ 1, 2, 3, 4, 5 ]
                 }
             }
@@ -251,7 +257,7 @@
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 746.0, "y": 1424.0 },
+            "position": { "x": 344.44601, "y": 920.0 },
             "parameters": { "processingScope": "global", "enabled": true, "size": 0.285714286, "post": 0.412, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
@@ -333,14 +339,14 @@
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 1050.0, "y": 1424.0 },
-            "parameters": { "gain": 0.465648855 }
+            "position": { "x": 648.44604, "y": 920.0 },
+            "parameters": { "gain": 0.598982 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 508.0, "y": 1424.0 },
+            "position": { "x": 106.44601, "y": 920.0 },
             "parameters": {}
         },
         {

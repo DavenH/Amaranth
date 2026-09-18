@@ -262,6 +262,7 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftGridwiseDsp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftSignalProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideCurveSnapshotProvider.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideCurveMeshPreparation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideCurvePreparation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideHeatmapAsset.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideHeatmapLoader.cpp"
@@ -396,6 +397,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             ${CANVAS_ARCHITECTURE_SOURCES}
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/GraphFileHistory.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/OfflineAudioCaptureAutomation.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserPage.cpp"
             ${TEST_SOURCES}
         )
         add_dependencies(${PROJECT_NAME}_tests CycleV2GraphMigrator)

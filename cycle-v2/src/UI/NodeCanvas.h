@@ -232,6 +232,8 @@ private:
     void openProbeDetail(const String& probeId);
     void refreshProbeDetail();
     void finishPreviewModWheelRefresh();
+    bool persistPreviewMorph(int midiNote, int modWheelValue);
+    void synchronizeOpenedEditorMorph();
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh(
@@ -285,10 +287,14 @@ private:
             uint64_t documentRevision) override;
 
     CurveEditorWidget* curveEditorWidget(const Node& node) override;
+    void syncCurveGuideContext(CurveEditorWidget& widget, const Node& node) override;
     TrimeshWidget* trimeshWidget(const Node& node) override;
     TrimeshWidget* findTrimeshWidget(const String& nodeId) override;
     TrimeshRenderProfile trimeshRenderProfile(const Node& node) const override;
     std::array<String, 6> trimeshGuideLabels(const Node& node) override;
+    std::array<String, 6> envelopeGuideLabels(
+            const Node& node,
+            int cubeIndex) override;
     void paintNodePreview(
             Graphics& graphics,
             const Node& node,

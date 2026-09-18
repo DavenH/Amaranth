@@ -491,7 +491,7 @@ TEST_CASE("Equivalent scratch topology recompiles produce identical previews",
 
 TEST_CASE("Runtime prepares targeted Guide assignments without graph attachments", "[cycle-v2][runtime]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().createGuideCurveAndAssignToTrimeshVertexParameter(
+    REQUIRE(GraphEditor().createGuideCurveAndAssignToMeshComponent(
             graph,
             "waveMesh",
             4,

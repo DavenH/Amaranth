@@ -32,6 +32,10 @@ void NodeGraph::addNode(Node nodeToAdd) {
     }
     nodes.push_back(std::move(nodeToAdd));
     nodeIndex[nodes.back().id] = nodes.size() - 1;
+    if (nodes.back().kind == NodeKind::Envelope
+            || nodes.back().kind == NodeKind::TrilinearMesh) {
+        morphNodeIds.push_back(nodes.back().id);
+    }
     rebuildParameterIndex(nodes.back().id);
     ++revision;
 }

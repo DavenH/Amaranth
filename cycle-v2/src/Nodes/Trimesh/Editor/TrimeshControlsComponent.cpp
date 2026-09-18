@@ -69,9 +69,11 @@ public:
     }
 
     bool keyPressed(const KeyPress& key) override {
+        if (key.getKeyCode() == KeyPress::spaceKey) {
+            return false;
+        }
         if (region.kind == TrimeshExpandedHitRegionKind::LinkToggle
-                && (key.getKeyCode() == KeyPress::returnKey
-                        || key.getKeyCode() == KeyPress::spaceKey)) {
+                && key.getKeyCode() == KeyPress::returnKey) {
             owner.beginControlDrag(region, region.bounds.getCentre(), getScreenBounds());
             return true;
         }

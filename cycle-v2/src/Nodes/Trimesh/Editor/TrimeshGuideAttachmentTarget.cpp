@@ -8,6 +8,7 @@
 #include <algorithm>
 
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
 
 namespace CycleV2 {
 
@@ -77,6 +78,43 @@ std::vector<TrimeshCubeComponentGuideTarget> TrimeshGuideAttachmentTarget::cubeT
         }
     }
     return targets;
+}
+
+bool MeshGuideAttachmentTarget::isValid(
+        const Node& node,
+        const TrimeshCubeComponentGuideTarget& target) {
+    if (node.kind == NodeKind::TrilinearMesh) {
+        return TrimeshGuideAttachmentTarget::isValid(node, target);
+    }
+    const auto model = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
+    return node.kind == NodeKind::Envelope
+            && model != nullptr
+            && model->envelope() != nullptr
+            && isPositiveAndBelow(target.cubeIndex, model->envelope()->getMesh().getNumCubes())
+            && isPositiveAndBelow((int) target.field, TrimeshGuideAttachmentTarget::fieldCount);
+}
+
+std::vector<TrimeshCubeComponentGuideTarget> MeshGuideAttachmentTarget::cubeTargetsForSelection(
+        const Node& node,
+        int selectionIndex,
+        const String& field) {
+    if (node.kind == NodeKind::TrilinearMesh) {
+        return TrimeshGuideAttachmentTarget::cubeTargetsForVertex(
+                node, selectionIndex, field);
+    }
+    if (std::find(
+                TrimeshGuideAttachmentTarget::fields().begin(),
+                TrimeshGuideAttachmentTarget::fields().end(),
+                field) == TrimeshGuideAttachmentTarget::fields().end()) {
+        return {};
+    }
+    const TrimeshCubeComponentGuideTarget target {
+            selectionIndex,
+            TrimeshGuideAttachmentTarget::guideField(field)
+    };
+    return isValid(node, target)
+            ? std::vector<TrimeshCubeComponentGuideTarget> { target }
+            : std::vector<TrimeshCubeComponentGuideTarget> {};
 }
 
 }

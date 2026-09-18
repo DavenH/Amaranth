@@ -1,0 +1,15 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/old/vox-1.cyclegraph" },
+    { "command": "openNodeEditor", "nodeId": "pitchEnvelope1", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.panelState.redLinked", "equals": true },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.panelState.blueLinked", "equals": true },
+    { "command": "pointer", "event": "click", "targetId": "expanded:pitchEnvelope1.envelopeAction.redLink", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.panelState.redLinked", "equals": false },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.panelState.blueLinked", "equals": true },
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/old/vox-1.cyclegraph" },
+    { "command": "openNodeEditor", "nodeId": "pitchEnvelope1", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.panelState.redLinked", "equals": true }
+  ],
+  "quit": true
+}

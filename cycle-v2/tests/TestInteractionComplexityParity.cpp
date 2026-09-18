@@ -81,6 +81,30 @@ TEST_CASE("Scalar gesture cost is independent of unrelated graph and audio data"
     }
 }
 
+TEST_CASE("Preview morph publication is independent of unrelated graph content",
+        "[cycle-v2][complexity][preview-morph]") {
+    GraphNodeFactory factory;
+    for (const auto& scale : std::vector<std::pair<int, size_t>> {
+            { 0, 0 }, { 128, 16384 } }) {
+        CAPTURE(scale.first, scale.second);
+        NodeGraph graph = scaledGraph(scale.first, scale.second);
+        graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+        graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher commands(document);
+        InteractionComplexityDiagnostics::reset();
+
+        REQUIRE(commands.setPreviewMorph(0.2f, 0.8f).succeeded());
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
+        REQUIRE(counts.meshCopies == 0);
+        REQUIRE(counts.modelSerializations == 0);
+        REQUIRE(counts.nodeLinearScans == 0);
+        REQUIRE(counts.parameterLinearScans == 0);
+    }
+}
+
 TEST_CASE("Canvas translation iterates changed identities without graph snapshots",
         "[cycle-v2][complexity][gesture][canvas]") {
     for (const auto& scale : std::vector<std::pair<int, size_t>> {

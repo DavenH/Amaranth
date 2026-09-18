@@ -586,7 +586,7 @@ TEST_CASE("Trimesh side panel renderer keeps vertex rails inside parameter rows"
     }
 }
 
-TEST_CASE("Trimesh vertex deformer controls apply only to the right parameter column",
+TEST_CASE("Trimesh vertex deformer controls cover every guide-capable dimension",
         "[cycle-v2][nodes][trimesh][geometry][guide]") {
     const Rectangle<float> parameterArea { 20.f, 40.f, 620.f, 150.f };
 
@@ -601,13 +601,13 @@ TEST_CASE("Trimesh vertex deformer controls apply only to the right parameter co
                         ? TrimeshSidePanelRenderer::GuideControls::Visible
                         : TrimeshSidePanelRenderer::GuideControls::Hidden);
 
-        REQUIRE(showsGuideControls == (i >= 3));
+        REQUIRE(showsGuideControls);
         if (i < 3) {
             const Rectangle<float> pairedRow =
                     TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i + 3);
             const Rectangle<float> pairedRail =
                     TrimeshSidePanelRenderer::vertexParameterRailBounds(pairedRow);
-            REQUIRE(rail.getWidth() > pairedRail.getWidth() + 50.f);
+            REQUIRE(rail.getWidth() == Catch::Approx(pairedRail.getWidth()));
         }
     }
 }
@@ -1334,7 +1334,7 @@ TEST_CASE("Trimesh guide attachment menu lists document Guide resources", "[cycl
     NodeGraph graph = NodeGraph::createDemoGraph();
     REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
     REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
-    REQUIRE(GraphEditor().assignGuideCurveToTrimeshVertexParameter(
+    REQUIRE(GraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide2",
             "waveMesh",
@@ -1358,7 +1358,7 @@ TEST_CASE("Trimesh guide attachment menu lists document Guide resources", "[cycl
     REQUIRE(items[3].label == "G2");
     REQUIRE(items[3].guideId == "guide2");
     REQUIRE(items[3].attached);
-    REQUIRE(GraphEditor().detachGuideCurveFromTrimeshVertexParameter(
+    REQUIRE(GraphEditor().detachGuideCurveFromMeshComponent(
             graph, "waveMesh", 2, "amp").succeeded());
     REQUIRE(graph.getGuideAssignments().empty());
 }
@@ -1810,6 +1810,12 @@ TEST_CASE("Trimesh highlighted curve wins gesture routing over a nearby intercep
     auto move = panelMouseEvent(*host, position, {}, position, false);
     interactor.mouseMove(move);
     REQUIRE(interactor.state.mouseFlags[PanelState::WithinReshapeThresh]);
+    const Point<float> outsideCurve = position.translated(0.f, 12.f);
+    interactor.mouseMove(panelMouseEvent(
+            *host, outsideCurve, {}, outsideCurve, false));
+    REQUIRE_FALSE(interactor.state.mouseFlags[PanelState::WithinReshapeThresh]);
+    interactor.mouseMove(move);
+    REQUIRE(interactor.state.mouseFlags[PanelState::WithinReshapeThresh]);
     auto down = panelMouseEvent(
             *host,
             position,
@@ -1841,6 +1847,40 @@ TEST_CASE("Trimesh highlighted curve wins gesture routing over a nearby intercep
     REQUIRE(bridge.getModel().currentMesh().getVerts()[(size_t) selectedVertexIndex]
             == curveVertex);
     REQUIRE(curveVertex->values[Vertex::Curve] != Catch::Approx(initialCurve));
+}
+
+TEST_CASE("Trimesh shift-left drag remains a box selection in both editor views",
+        "[cycle-v2][nodes][trimesh][interaction][box-selection]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(node, 320, 96);
+
+    for (const bool view3D : { false, true }) {
+        Component* host = view3D
+                ? bridge.getPanel3DHostComponent()
+                : bridge.getPanel2DHostComponent();
+        host->setBounds(0, 0, 640, 280);
+        bridge.syncFromNode(node, 320, 96);
+        Interactor& interactor = view3D
+                ? static_cast<Interactor&>(bridge.getInteractor3D())
+                : static_cast<Interactor&>(bridge.getInteractor2D());
+        const Point<float> origin(80.f, 80.f);
+        const Point<float> destination(180.f, 160.f);
+        const ModifierKeys modifiers = ModifierKeys::leftButtonModifier
+                | ModifierKeys::shiftModifier;
+
+        interactor.mouseDown(panelMouseEvent(
+                *host, origin, modifiers, origin, false));
+        REQUIRE(interactor.state.actionState == PanelState::BoxSelecting);
+
+        interactor.mouseDrag(panelMouseEvent(
+                *host, destination, modifiers, origin, true));
+        REQUIRE(interactor.state.actionState == PanelState::BoxSelecting);
+
+        interactor.mouseUp(panelMouseEvent(
+                *host, destination, {}, origin, true));
+    }
 }
 
 TEST_CASE("Spectral Trimesh panels share pitch-dependent LogRegions coordinates",
@@ -2067,6 +2107,9 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     REQUIRE(controls.getVertexGuideGainKnobCount() == 3);
     REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 3);
     REQUIRE(controls.getNumChildComponents() == 22);
+    Component* link = controls.findChildWithID("trimesh.link.red");
+    REQUIRE(link != nullptr);
+    REQUIRE_FALSE(link->keyPressed(KeyPress(' ')));
     REQUIRE_FALSE(controls.findChildWithID("trimesh.vertex.time")->isEnabled());
     REQUIRE_FALSE(controls.findChildWithID("trimesh.vertex.amp")->isEnabled());
     REQUIRE_FALSE(controls.findChildWithID("trimesh.guide.amp")->isEnabled());
@@ -2117,7 +2160,9 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
             "trimesh.link." + linkToggle.axisValue);
     REQUIRE(keyboardLink != nullptr);
     delegate.linkedAxis = {};
-    REQUIRE(keyboardLink->keyPressed(KeyPress(KeyPress::spaceKey)));
+    REQUIRE_FALSE(keyboardLink->keyPressed(KeyPress(KeyPress::spaceKey)));
+    REQUIRE(delegate.linkedAxis.isEmpty());
+    REQUIRE(keyboardLink->keyPressed(KeyPress(KeyPress::returnKey)));
     REQUIRE(delegate.linkedAxis == linkToggle.axisValue);
 
     const auto& morph = findRegion(TrimeshExpandedHitRegionKind::MorphControl);

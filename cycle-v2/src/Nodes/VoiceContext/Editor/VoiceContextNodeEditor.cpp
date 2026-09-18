@@ -8,6 +8,7 @@
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EditorChromeLayout.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
+#include "UI/Editors/PropertyControls.h"
 #include "UI/Editors/PropertySegmentedSelector.h"
 
 namespace CycleV2 {
@@ -16,8 +17,16 @@ namespace {
 
 constexpr int kContentInset = 24;
 constexpr int kValueWidth = 72;
-constexpr int kRowGap = 10;
 constexpr float kLandmarkEndInset = 15.f;
+constexpr int kPitchTimingRowCount = 4;
+constexpr int kSynthesisRowCount = 3;
+constexpr int kGroupHeaderContentGap = 5;
+constexpr int kGroupContentHeight = 2 * PropertyControlMetrics::groupLabelHeight
+        + 2 * kGroupHeaderContentGap
+        + (kPitchTimingRowCount + kSynthesisRowCount) * PropertyControlMetrics::rowHeight
+        + (kPitchTimingRowCount + kSynthesisRowCount - 2)
+                * PropertyControlMetrics::rowGap
+        + PropertyControlMetrics::sectionGap;
 
 std::vector<PropertySegmentOption> oversamplingOptions() {
     return {
@@ -140,18 +149,35 @@ public:
         Rectangle<int> rows = getLocalBounds();
         rows.removeFromTop(header.header.getHeight());
         rows.reduce(kContentInset, 4);
-        layoutSliderRow(octave, nextRow(rows));
-        layoutVoiceLengthRow(nextRow(rows));
-        layoutSliderRow(pitch, nextRow(rows));
-        layoutOversamplingRow(nextRow(rows));
-        layoutControlIntervalRow(nextRow(rows));
-        layoutToggleRow(nextRow(rows), portamento);
-        layoutToggleRow(nextRow(rows), pitchIndependentSpectralControl);
+        rows.setY(rows.getY() + jmax(0, (rows.getHeight() - kGroupContentHeight) / 2));
+        rows.setHeight(kGroupContentHeight);
+
+        pitchTimingGroup.setBounds(
+                rows.removeFromTop(PropertyControlMetrics::groupLabelHeight));
+        rows.removeFromTop(kGroupHeaderContentGap);
+        layoutSliderRow(octave, nextRow(rows, true));
+        layoutSliderRow(pitch, nextRow(rows, true));
+        layoutVoiceLengthRow(nextRow(rows, true));
+        layoutToggleRow(nextRow(rows, false), portamento);
+
+        rows.removeFromTop(PropertyControlMetrics::sectionGap);
+        synthesisGroup.setBounds(
+                rows.removeFromTop(PropertyControlMetrics::groupLabelHeight));
+        rows.removeFromTop(kGroupHeaderContentGap);
+        layoutOversamplingRow(nextRow(rows, true));
+        layoutControlIntervalRow(nextRow(rows, true));
+        layoutToggleRow(nextRow(rows, false), pitchIndependentSpectralControl);
     }
 
     var automationState() const {
         auto* state = new DynamicObject();
         state->setProperty("kind", "VOICE_CONTEXT");
+        state->setProperty(
+                "pitchTimingGroup",
+                propertyGroupLabelAutomationState(pitchTimingGroup));
+        state->setProperty(
+                "synthesisGroup",
+                propertyGroupLabelAutomationState(synthesisGroup));
         state->setProperty("octave", propertySliderRowAutomationState(octave));
         state->setProperty("voiceLength", propertySliderRowAutomationState(voiceLength));
         state->setProperty("pitch", propertySliderRowAutomationState(pitch));
@@ -179,6 +205,8 @@ private:
             presentation.closeNodeEditor();
         };
         addAndMakeVisible(close);
+        addAndMakeVisible(pitchTimingGroup);
+        addAndMakeVisible(synthesisGroup);
     }
 
     void configureSelectors() {
@@ -312,9 +340,11 @@ private:
                     NodeParameterMap(node).stringValue("controlInterval", "16"));
         }
     }
-    static Rectangle<int> nextRow(Rectangle<int>& rows) {
+    static Rectangle<int> nextRow(Rectangle<int>& rows, bool hasFollowingRow) {
         Rectangle<int> row = rows.removeFromTop(PropertyControlMetrics::rowHeight);
-        rows.removeFromTop(kRowGap);
+        if (hasFollowingRow) {
+            rows.removeFromTop(PropertyControlMetrics::rowGap);
+        }
         return row;
     }
 
@@ -361,6 +391,8 @@ private:
     NodeEditorPresentation& presentation;
     Node node;
     TextButton close;
+    PropertyGroupLabel pitchTimingGroup { "Pitch & timing" };
+    PropertyGroupLabel synthesisGroup { "Synthesis" };
     NodePropertySliderRow octave;
     NodePropertySliderRow voiceLength;
     NodePropertySliderRow pitch;

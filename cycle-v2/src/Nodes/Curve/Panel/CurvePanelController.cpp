@@ -12,6 +12,7 @@
 #include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 #include "Nodes/Guide/GuideCurvePreparation.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
+#include "Nodes/Guide/GuideCurveMeshPreparation.h"
 
 namespace CycleV2 {
 
@@ -539,6 +540,15 @@ public:
         initialiseHost();
     }
 
+    int selectedGuideCubeIndex() override {
+        return envelopePanel().selectedEnvelopeCubeIndex();
+    }
+
+    void resetDocumentPresentation() override {
+        CurvePanelControllerBase::resetDocumentPresentation();
+        frameOnNextNodeSync = true;
+    }
+
     void syncFromNode(const Node& node) override {
         const EnvelopePurpose purpose = envelopePurposeFor(node);
         auto& typedPanel = envelopePanel();
@@ -549,14 +559,39 @@ public:
 
         panel->clearInteractionState();
         if (adapter.syncFromNode(node)) {
+            if (guideNodeId != node.id) {
+                guideNodeId = node.id;
+                guideConfigurationKey.clear();
+                guideNeedsSync = true;
+            }
             finishNodeSync(node);
             typedPanel.restoreEnvelopeSelection(adapter.selectedMeshCube());
-            if (purpose == EnvelopePurpose::Pitch) {
+            if (frameOnNextNodeSync) {
+                panel->updateZoomBounds(true);
+                frameOnNextNodeSync = false;
+            } else if (purpose == EnvelopePurpose::Pitch) {
                 typedPanel.fitEnvelopeVerticalRange();
             }
         } else {
             typedPanel.restoreEnvelopeSelection(adapter.selectedMeshCube());
         }
+    }
+
+    void syncGuideContext(const NodeGraph& graph, const Node& node) override {
+        const String key = GuideCurveMeshPreparation::configurationKey(graph, node.id);
+        if (!guideNeedsSync && guideConfigurationKey == key
+                && guideCurveProvider != nullptr) {
+            return;
+        }
+        auto prepared = GuideCurveMeshPreparation::apply(
+                adapter.mesh(),
+                graph,
+                node.id,
+                GuideCurveTargetKind::EnvelopeCubeComponent);
+        guideCurveProvider = std::move(prepared.provider);
+        envelopePanel().setEnvelopeGuideProvider(guideCurveProvider.get());
+        guideConfigurationKey = key;
+        guideNeedsSync = false;
     }
 
     void setBipolar(bool bipolar) override {
@@ -572,9 +607,6 @@ public:
     }
 
     void setAxisLinks(bool redLinked, bool blueLinked) override {
-        if (adapter.redLinked() != redLinked || adapter.blueLinked() != blueLinked) {
-            ++publicationRevision;
-        }
         adapter.setAxisLinks(redLinked, blueLinked);
         envelopePanel().setEnvelopeAxisLinks(redLinked, blueLinked);
     }
@@ -619,6 +651,12 @@ public:
     }
 
 private:
+    bool frameOnNextNodeSync { true };
+    String guideNodeId;
+    String guideConfigurationKey;
+    bool guideNeedsSync { true };
+    std::shared_ptr<GuideCurveSnapshotProvider> guideCurveProvider;
+
     void initialiseDefaultModel() override {
         adapter.initialiseDefaultMesh();
         panel->refreshRasterizer();

@@ -69,6 +69,7 @@ NodeGraph& NodeGraph::operator=(const NodeGraph& other) {
     audioResources = other.audioResources;
     audioResourceBindings = other.audioResourceBindings;
     nodeIndex = other.nodeIndex;
+    morphNodeIds = other.morphNodeIds;
     parameterIndices = other.parameterIndices;
     guideResourceIndex = other.guideResourceIndex;
     guideHeatmapIndex = other.guideHeatmapIndex;
@@ -271,11 +272,16 @@ void NodeGraph::translateNodes(
 
 void NodeGraph::rebuildNodeIndex() {
     nodeIndex.clear();
+    morphNodeIds.clear();
     parameterIndices.clear();
     nodeIndex.reserve(nodes.size());
     parameterIndices.reserve(nodes.size());
     for (size_t index = 0; index < nodes.size(); ++index) {
         nodeIndex[nodes[index].id] = index;
+        if (nodes[index].kind == NodeKind::Envelope
+                || nodes[index].kind == NodeKind::TrilinearMesh) {
+            morphNodeIds.push_back(nodes[index].id);
+        }
         rebuildParameterIndex(nodes[index].id);
     }
 }
