@@ -20,7 +20,9 @@ constexpr int kValueWidth = 72;
 constexpr float kLandmarkEndInset = 15.f;
 constexpr int kPitchTimingRowCount = 4;
 constexpr int kSynthesisRowCount = 3;
+constexpr int kGroupHeaderContentGap = 5;
 constexpr int kGroupContentHeight = 2 * PropertyControlMetrics::groupLabelHeight
+        + 2 * kGroupHeaderContentGap
         + (kPitchTimingRowCount + kSynthesisRowCount) * PropertyControlMetrics::rowHeight
         + (kPitchTimingRowCount + kSynthesisRowCount - 2)
                 * PropertyControlMetrics::rowGap
@@ -152,6 +154,7 @@ public:
 
         pitchTimingGroup.setBounds(
                 rows.removeFromTop(PropertyControlMetrics::groupLabelHeight));
+        rows.removeFromTop(kGroupHeaderContentGap);
         layoutSliderRow(octave, nextRow(rows, true));
         layoutSliderRow(pitch, nextRow(rows, true));
         layoutVoiceLengthRow(nextRow(rows, true));
@@ -160,6 +163,7 @@ public:
         rows.removeFromTop(PropertyControlMetrics::sectionGap);
         synthesisGroup.setBounds(
                 rows.removeFromTop(PropertyControlMetrics::groupLabelHeight));
+        rows.removeFromTop(kGroupHeaderContentGap);
         layoutOversamplingRow(nextRow(rows, true));
         layoutControlIntervalRow(nextRow(rows, true));
         layoutToggleRow(nextRow(rows, false), pitchIndependentSpectralControl);
