@@ -2,7 +2,8 @@
 
 ## Status
 
-Design backlog, 2026-09-18. This review does not authorize behavior changes or mark the listed refactors implemented.
+In progress, 2026-09-18. Graph mutation ownership has one completed extraction
+slice; the UI validation and `NodeGraph` ownership criteria remain open.
 
 ## Context and baseline
 
@@ -74,6 +75,19 @@ Completion evidence: one production transaction owner; no UI `GraphEditor`
 calls; no second change-flag accumulator; operation-count tests show unrelated
 resources are not copied for local gestures; the graph's public mutation
 surface and index ownership are materially narrower.
+
+First slice: removed the test-only `GraphTransaction` implementation and
+retargeted its two semantic tests to the production dispatcher compound edit.
+Moved topology, probe, and Guide change facts from dispatcher wrappers into
+`GraphEditor` results. `GraphCurveStateCommands` now retains the Guide model
+result rather than overwriting its change flags. `GraphCommandDispatcher.cpp`
+fell from 588 to 484 lines; `GraphEditor.cpp` rose from 968 to 1,035 lines.
+This is a policy ownership improvement, not completion of this slice: the
+editor still needs domain composition, UI speculative validation still calls
+it directly, and `NodeGraph` still owns all collections and indexes. Focused
+topology, Guide, probe, and compound transaction tests pass. The broad `[graph]`
+run has eight serializer/preset-fixture failures outside the changed command
+paths; output is in `/private/tmp/cycle-v2-graph-tests.log`.
 
 ### 2. Reduce UI coordination surfaces
 

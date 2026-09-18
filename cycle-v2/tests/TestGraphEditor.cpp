@@ -442,6 +442,8 @@ TEST_CASE("Graph editor connects compatible ports", "[cycle-v2][graph]") {
             { "multiply", "right", true });
 
     REQUIRE(result.succeeded());
+    REQUIRE(result.changes.topologyChanged);
+    REQUIRE(result.changes.nodeIds == std::vector<String> { "env", "multiply" });
     REQUIRE(GraphValidator().isValid(graph));
 
     const auto& edge = graph.getEdges().back();
@@ -490,6 +492,9 @@ TEST_CASE("Graph editor creates targeted Trimesh Guide assignments", "[cycle-v2]
 
     REQUIRE(result.succeeded());
     REQUIRE(result.nodeId == "guide1");
+    REQUIRE(result.changes.guidesChanged);
+    REQUIRE(result.changes.guidePresentationChanged);
+    REQUIRE(result.changes.nodeIds == std::vector<String> { "waveMesh" });
     REQUIRE(GraphValidator().isValid(graph));
 
     REQUIRE(graph.getGuideAssignments().size() == 1);

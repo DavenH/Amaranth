@@ -183,7 +183,11 @@ GraphEditResult GraphEditor::addNode(NodeGraph& graph, NodeKind kind, Point<floa
 
     const String nodeId = createUniqueNodeId(graph, kind);
     graph.addNode(GraphNodeFactory().createNode(kind, nodeId, position));
-    return { GraphEditCode::Connected, nodeId, {} };
+    GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
+    result.changes.nodeIds.push_back(nodeId);
+    result.changes.topologyChanged = true;
+    result.changes.layoutChanged = true;
+    return result;
 }
 
 GraphEditResult GraphEditor::connect(
@@ -236,7 +240,10 @@ GraphEditResult GraphEditor::connect(
     }
 
     graph = std::move(candidate);
-    return {};
+    GraphEditResult result;
+    result.changes.nodeIds = { sourceAddress.nodeId, destAddress.nodeId };
+    result.changes.topologyChanged = true;
+    return result;
 }
 
 GraphEditResult GraphEditor::createGuideCurve(NodeGraph& graph) const {
@@ -254,7 +261,9 @@ GraphEditResult GraphEditor::createGuideCurve(NodeGraph& graph) const {
     if (!graph.addGuideCurve(std::move(guide))) {
         return { GraphEditCode::ValidationRejected, {}, {} };
     }
-    return { GraphEditCode::Connected, "guide" + String(nextNumber), {} };
+    GraphEditResult result { GraphEditCode::Connected, "guide" + String(nextNumber), {} };
+    result.changes.guidePresentationChanged = true;
+    return result;
 }
 
 GraphEditResult GraphEditor::duplicateGuideCurve(NodeGraph& graph, const String& guideId) const {
@@ -296,14 +305,21 @@ GraphEditResult GraphEditor::reorderGuideCurve(
     if (!graph.moveGuideCurve(guideId, shelfOrder)) {
         return { GraphEditCode::Connected, guideId, {}, {}, false };
     }
-    return { GraphEditCode::Connected, guideId, {} };
+    GraphEditResult result { GraphEditCode::Connected, guideId, {} };
+    result.changes.guidePresentationChanged = true;
+    return result;
 }
 
 GraphEditResult GraphEditor::removeGuideCurve(NodeGraph& graph, const String& guideId) const {
+    const std::vector<String> consumers = graph.guideTargetNodeIds(guideId);
     if (!graph.removeGuideCurve(guideId)) {
         return { GraphEditCode::MissingNode, guideId, {} };
     }
-    return { GraphEditCode::Connected, guideId, {} };
+    GraphEditResult result { GraphEditCode::Connected, guideId, {} };
+    result.changes.nodeIds = consumers;
+    result.changes.guidesChanged = !consumers.empty();
+    result.changes.guidePresentationChanged = true;
+    return result;
 }
 
 GraphEditResult GraphEditor::renameGuideCurve(
@@ -321,7 +337,9 @@ GraphEditResult GraphEditor::renameGuideCurve(
     guide->name = trimmedName;
     ++guide->revision;
     graph.markChanged();
-    return { GraphEditCode::Connected, guideId, {} };
+    GraphEditResult result { GraphEditCode::Connected, guideId, {} };
+    result.changes.guidePresentationChanged = true;
+    return result;
 }
 
 GraphEditResult GraphEditor::replaceGuideCurve(
@@ -333,6 +351,8 @@ GraphEditResult GraphEditor::replaceGuideCurve(
     if (guide == nullptr || model == nullptr) {
         return { GraphEditCode::MissingNode, guideId, {} };
     }
+    const bool modelChanged = guide->model == nullptr
+            || !guide->model->equals(*model);
 
     for (const auto& control : controls) {
         if (control.id == "enabled") {
@@ -348,7 +368,12 @@ GraphEditResult GraphEditor::replaceGuideCurve(
     guide->model = std::move(model);
     ++guide->revision;
     graph.markChanged();
-    return { GraphEditCode::Connected, guideId, {} };
+    GraphEditResult result { GraphEditCode::Connected, guideId, {} };
+    result.changes.nodeIds = graph.guideTargetNodeIds(guideId);
+    result.changes.guidesChanged = !result.changes.nodeIds.empty();
+    result.changes.guidePresentationChanged = true;
+    result.changes.modelChanged = modelChanged;
+    return result;
 }
 
 GraphEditResult GraphEditor::setGuideHeatmap(
@@ -369,7 +394,12 @@ GraphEditResult GraphEditor::setGuideHeatmap(
     ++guide->revision;
     graph.removeUnreferencedGuideHeatmaps();
     graph.markChanged();
-    return { GraphEditCode::Connected, guideId, {} };
+    GraphEditResult result { GraphEditCode::Connected, guideId, {} };
+    result.changes.nodeIds = graph.guideTargetNodeIds(guideId);
+    result.changes.guidesChanged = !result.changes.nodeIds.empty();
+    result.changes.guidePresentationChanged = true;
+    result.changes.modelChanged = true;
+    return result;
 }
 
 GraphEditResult GraphEditor::clearGuideHeatmap(NodeGraph& graph, const String& guideId) const {
@@ -384,7 +414,12 @@ GraphEditResult GraphEditor::clearGuideHeatmap(NodeGraph& graph, const String& g
     ++guide->revision;
     graph.removeUnreferencedGuideHeatmaps();
     graph.markChanged();
-    return { GraphEditCode::Connected, guideId, {} };
+    GraphEditResult result { GraphEditCode::Connected, guideId, {} };
+    result.changes.nodeIds = graph.guideTargetNodeIds(guideId);
+    result.changes.guidesChanged = !result.changes.nodeIds.empty();
+    result.changes.guidePresentationChanged = true;
+    result.changes.modelChanged = true;
+    return result;
 }
 
 GraphEditResult GraphEditor::assignGuideCurveToMeshComponent(
@@ -423,7 +458,11 @@ GraphEditResult GraphEditor::assignGuideCurveToMeshComponent(
             return { GraphEditCode::ValidationRejected, {}, {} };
         }
     }
-    return { GraphEditCode::Connected, guideId, {} };
+    GraphEditResult result { GraphEditCode::Connected, guideId, {} };
+    result.changes.nodeIds.push_back(meshNodeId);
+    result.changes.guidesChanged = true;
+    result.changes.guidePresentationChanged = true;
+    return result;
 }
 
 GraphEditResult GraphEditor::detachGuideCurveFromMeshComponent(
@@ -447,7 +486,17 @@ GraphEditResult GraphEditor::detachGuideCurveFromMeshComponent(
     for (const auto& target : targets) {
         detached = graph.removeGuideAssignment(meshNodeId, target) || detached;
     }
-    return { detached ? GraphEditCode::Connected : GraphEditCode::ValidationRejected, meshNodeId, {} };
+    GraphEditResult result {
+            detached ? GraphEditCode::Connected : GraphEditCode::ValidationRejected,
+            meshNodeId,
+            {}
+    };
+    if (detached) {
+        result.changes.nodeIds.push_back(meshNodeId);
+        result.changes.guidesChanged = true;
+        result.changes.guidePresentationChanged = true;
+    }
+    return result;
 }
 
 GraphEditResult GraphEditor::createGuideCurveAndAssignToMeshComponent(
@@ -459,8 +508,10 @@ GraphEditResult GraphEditor::createGuideCurveAndAssignToMeshComponent(
     if (!created.succeeded()) {
         return created;
     }
-    return assignGuideCurveToMeshComponent(
+    GraphEditResult result = assignGuideCurveToMeshComponent(
             graph, created.nodeId, meshNodeId, vertexIndex, parameterField);
+    result.changes.guidePresentationChanged = result.succeeded();
+    return result;
 }
 
 GraphEditResult GraphEditor::toggleSignalProbe(
@@ -481,7 +532,9 @@ GraphEditResult GraphEditor::toggleSignalProbe(
                 edge.sourceNodeId, edge.sourcePortId)) {
         const String probeId = existing->id;
         graph.removeSignalProbe(probeId);
-        return { GraphEditCode::Connected, probeId, {} };
+        GraphEditResult result { GraphEditCode::Connected, probeId, {} };
+        result.changes.probesChanged = true;
+        return result;
     }
 
     const String probeId = createUniqueProbeId(graph);
@@ -499,14 +552,18 @@ GraphEditResult GraphEditor::toggleSignalProbe(
             jlimit(0.f, 1.f, tapPosition),
             nextRailOrder
     });
-    return { GraphEditCode::Connected, probeId, {} };
+    GraphEditResult result { GraphEditCode::Connected, probeId, {} };
+    result.changes.probesChanged = true;
+    return result;
 }
 
 GraphEditResult GraphEditor::removeSignalProbe(NodeGraph& graph, const String& probeId) const {
     if (!graph.removeSignalProbe(probeId)) {
         return { GraphEditCode::MissingNode, probeId, {} };
     }
-    return { GraphEditCode::Connected, probeId, {} };
+    GraphEditResult result { GraphEditCode::Connected, probeId, {} };
+    result.changes.probesChanged = true;
+    return result;
 }
 
 GraphEditResult GraphEditor::reattachSignalProbe(
@@ -539,7 +596,9 @@ GraphEditResult GraphEditor::reattachSignalProbe(
     probe->anchorDestPortId = edge.destPortId;
     probe->tapPosition = jlimit(0.f, 1.f, tapPosition);
     graph.markChanged();
-    return { GraphEditCode::Connected, probeId, {} };
+    GraphEditResult result { GraphEditCode::Connected, probeId, {} };
+    result.changes.probesChanged = true;
+    return result;
 }
 
 GraphEditResult GraphEditor::spliceNodeIntoEdge(NodeGraph& graph, size_t edgeIndex, const String& nodeId) const {
@@ -588,7 +647,10 @@ GraphEditResult GraphEditor::spliceNodeIntoEdge(NodeGraph& graph, size_t edgeInd
             }
 
             graph = std::move(candidate);
-            return { GraphEditCode::Connected, nodeId, {} };
+            GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
+            result.changes.nodeIds.push_back(nodeId);
+            result.changes.topologyChanged = true;
+            return result;
         }
     }
 
@@ -611,7 +673,10 @@ GraphEditResult GraphEditor::removeNode(NodeGraph& graph, const String& nodeId) 
     if (resourceId.isNotEmpty() && graph.audioResourceUsageCount(resourceId) == 0) {
         graph.removeAudioResource(resourceId);
     }
-    return {};
+    GraphEditResult result;
+    result.changes.nodeIds.push_back(nodeId);
+    result.changes.topologyChanged = true;
+    return result;
 }
 
 GraphEditResult GraphEditor::removeEdgeAt(NodeGraph& graph, size_t index) const {
@@ -620,7 +685,9 @@ GraphEditResult GraphEditor::removeEdgeAt(NodeGraph& graph, size_t index) const 
     }
 
     graph.removeEdgeAt(index);
-    return {};
+    GraphEditResult result;
+    result.changes.topologyChanged = true;
+    return result;
 }
 
 GraphEditResult GraphEditor::setNodeParameter(

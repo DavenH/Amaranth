@@ -4,66 +4,27 @@
 
 namespace CycleV2 {
 
-namespace {
-
-struct EditAnnotation {
-    std::vector<juce::String> nodeIds;
-    bool topologyChanged {};
-    bool layoutChanged {};
-};
-
-std::vector<String> guideConsumerNodeIds(
-        const NodeGraph& graph,
-        const String& guideId) {
-    return graph.guideTargetNodeIds(guideId);
-}
-
-GraphEditResult annotateSuccessful(
-        GraphEditResult result,
-        EditAnnotation annotation) {
-    if (!result.succeeded()) {
-        return result;
-    }
-
-    result.changes.nodeIds = std::move(annotation.nodeIds);
-    result.changes.topologyChanged = annotation.topologyChanged;
-    result.changes.layoutChanged = annotation.layoutChanged;
-    return result;
-}
-
-}
-
 GraphEditResult GraphCommandDispatcher::addNode(NodeKind kind, juce::Point<float> position) {
     return apply([&](auto& graph) {
-        auto result = GraphEditor().addNode(graph, kind, position);
-        const juce::String addedNodeId = result.nodeId;
-        return annotateSuccessful(
-                std::move(result),
-                { { addedNodeId }, true, true });
+        return GraphEditor().addNode(graph, kind, position);
     });
 }
 
 GraphEditResult GraphCommandDispatcher::removeNode(const juce::String& nodeId) {
     return apply([&](auto& graph) {
-        return annotateSuccessful(
-                GraphEditor().removeNode(graph, nodeId),
-                { { nodeId }, true, false });
+        return GraphEditor().removeNode(graph, nodeId);
     });
 }
 
 GraphEditResult GraphCommandDispatcher::removeEdgeAt(size_t edgeIndex) {
     return apply([&](auto& graph) {
-        return annotateSuccessful(
-                GraphEditor().removeEdgeAt(graph, edgeIndex),
-                { {}, true, false });
+        return GraphEditor().removeEdgeAt(graph, edgeIndex);
     });
 }
 
 GraphEditResult GraphCommandDispatcher::connect(const PortAddress& first, const PortAddress& second) {
     return apply([&](auto& graph) {
-        return annotateSuccessful(
-                GraphEditor().connect(graph, first, second),
-                { { first.nodeId, second.nodeId }, true, false });
+        return GraphEditor().connect(graph, first, second);
     });
 }
 
@@ -71,21 +32,13 @@ GraphEditResult GraphCommandDispatcher::toggleSignalProbe(
         size_t edgeIndex,
         float tapPosition) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().toggleSignalProbe(graph, edgeIndex, tapPosition),
-                { {}, false, false });
-        result.changes.probesChanged = result.succeeded();
-        return result;
+        return GraphEditor().toggleSignalProbe(graph, edgeIndex, tapPosition);
     });
 }
 
 GraphEditResult GraphCommandDispatcher::removeSignalProbe(const juce::String& probeId) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().removeSignalProbe(graph, probeId),
-                { {}, false, false });
-        result.changes.probesChanged = result.succeeded();
-        return result;
+        return GraphEditor().removeSignalProbe(graph, probeId);
     });
 }
 
@@ -94,11 +47,7 @@ GraphEditResult GraphCommandDispatcher::reattachSignalProbe(
         size_t edgeIndex,
         float tapPosition) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().reattachSignalProbe(graph, probeId, edgeIndex, tapPosition),
-                { {}, false, false });
-        result.changes.probesChanged = result.succeeded();
-        return result;
+        return GraphEditor().reattachSignalProbe(graph, probeId, edgeIndex, tapPosition);
     });
 }
 
@@ -106,29 +55,19 @@ GraphEditResult GraphCommandDispatcher::spliceNodeIntoEdge(
         size_t edgeIndex,
         const juce::String& nodeId) {
     return apply([&](auto& graph) {
-        return annotateSuccessful(
-                GraphEditor().spliceNodeIntoEdge(graph, edgeIndex, nodeId),
-                { { nodeId }, true, false });
+        return GraphEditor().spliceNodeIntoEdge(graph, edgeIndex, nodeId);
     });
 }
 
 GraphEditResult GraphCommandDispatcher::createGuideCurve() {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().createGuideCurve(graph),
-                { {}, false, false });
-        result.changes.guidePresentationChanged = result.succeeded();
-        return result;
+        return GraphEditor().createGuideCurve(graph);
     });
 }
 
 GraphEditResult GraphCommandDispatcher::duplicateGuideCurve(const juce::String& guideId) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().duplicateGuideCurve(graph, guideId),
-                { {}, false, false });
-        result.changes.guidePresentationChanged = result.succeeded();
-        return result;
+        return GraphEditor().duplicateGuideCurve(graph, guideId);
     });
 }
 
@@ -136,11 +75,7 @@ GraphEditResult GraphCommandDispatcher::reorderGuideCurve(
         const juce::String& guideId,
         int shelfOrder) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().reorderGuideCurve(graph, guideId, shelfOrder),
-                { {}, false, false });
-        result.changes.guidePresentationChanged = result.succeeded() && result.changed;
-        return result;
+        return GraphEditor().reorderGuideCurve(graph, guideId, shelfOrder);
     });
 }
 
@@ -150,17 +85,12 @@ GraphEditResult GraphCommandDispatcher::assignGuideCurve(
         int vertexIndex,
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().assignGuideCurveToMeshComponent(
-                        graph,
-                        guideId,
-                        meshNodeId,
-                        vertexIndex,
-                        parameterField),
-                { { meshNodeId }, false, false });
-        result.changes.guidesChanged = result.succeeded();
-        result.changes.guidePresentationChanged = result.succeeded();
-        return result;
+        return GraphEditor().assignGuideCurveToMeshComponent(
+                graph,
+                guideId,
+                meshNodeId,
+                vertexIndex,
+                parameterField);
     });
 }
 
@@ -169,13 +99,8 @@ GraphEditResult GraphCommandDispatcher::detachGuideCurve(
         int vertexIndex,
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().detachGuideCurveFromMeshComponent(
-                        graph, meshNodeId, vertexIndex, parameterField),
-                { { meshNodeId }, false, false });
-        result.changes.guidesChanged = result.succeeded();
-        result.changes.guidePresentationChanged = result.succeeded();
-        return result;
+        return GraphEditor().detachGuideCurveFromMeshComponent(
+                graph, meshNodeId, vertexIndex, parameterField);
     });
 }
 
@@ -184,28 +109,17 @@ GraphEditResult GraphCommandDispatcher::createAndAssignGuideCurve(
         int vertexIndex,
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().createGuideCurveAndAssignToMeshComponent(
-                        graph,
-                        meshNodeId,
-                        vertexIndex,
-                        parameterField),
-                { { meshNodeId }, false, false });
-        result.changes.guidesChanged = result.succeeded();
-        result.changes.guidePresentationChanged = result.succeeded();
-        return result;
+        return GraphEditor().createGuideCurveAndAssignToMeshComponent(
+                graph,
+                meshNodeId,
+                vertexIndex,
+                parameterField);
     });
 }
 
 GraphEditResult GraphCommandDispatcher::removeGuideCurve(const juce::String& guideId) {
     return apply([&](auto& graph) {
-        const std::vector<String> consumers = guideConsumerNodeIds(graph, guideId);
-        auto result = annotateSuccessful(
-                GraphEditor().removeGuideCurve(graph, guideId),
-                { consumers, false, false });
-        result.changes.guidesChanged = result.succeeded() && !consumers.empty();
-        result.changes.guidePresentationChanged = result.succeeded();
-        return result;
+        return GraphEditor().removeGuideCurve(graph, guideId);
     });
 }
 
@@ -213,11 +127,7 @@ GraphEditResult GraphCommandDispatcher::renameGuideCurve(
         const juce::String& guideId,
         const juce::String& name) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().renameGuideCurve(graph, guideId, name),
-                { {}, false, false });
-        result.changes.guidePresentationChanged = result.succeeded() && result.changed;
-        return result;
+        return GraphEditor().renameGuideCurve(graph, guideId, name);
     });
 }
 
@@ -233,14 +143,7 @@ GraphEditResult GraphCommandDispatcher::setGuideHeatmap(
         if (guide->revision != expectedRevision) {
             return GraphEditResult { GraphEditCode::StaleRevision, guideId, {} };
         }
-        const std::vector<String> consumers = guideConsumerNodeIds(graph, guideId);
-        auto result = annotateSuccessful(
-                GraphEditor().setGuideHeatmap(graph, guideId, std::move(asset)),
-                { consumers, false, false });
-        result.changes.guidesChanged = result.succeeded() && result.changed && !consumers.empty();
-        result.changes.guidePresentationChanged = result.succeeded() && result.changed;
-        result.changes.modelChanged = result.succeeded() && result.changed;
-        return result;
+        return GraphEditor().setGuideHeatmap(graph, guideId, std::move(asset));
     });
 }
 
@@ -255,14 +158,7 @@ GraphEditResult GraphCommandDispatcher::clearGuideHeatmap(
         if (guide->revision != expectedRevision) {
             return GraphEditResult { GraphEditCode::StaleRevision, guideId, {} };
         }
-        const std::vector<String> consumers = guideConsumerNodeIds(graph, guideId);
-        auto result = annotateSuccessful(
-                GraphEditor().clearGuideHeatmap(graph, guideId),
-                { consumers, false, false });
-        result.changes.guidesChanged = result.succeeded() && result.changed && !consumers.empty();
-        result.changes.guidePresentationChanged = result.succeeded() && result.changed;
-        result.changes.modelChanged = result.succeeded() && result.changed;
-        return result;
+        return GraphEditor().clearGuideHeatmap(graph, guideId);
     });
 }
 

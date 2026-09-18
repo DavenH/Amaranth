@@ -41,6 +41,7 @@ TEST_CASE("Signal probes toggle once per source output without changing executio
     REQUIRE(before.succeeded());
 
     const auto added = GraphEditor().toggleSignalProbe(graph, 0, 0.25f);
+    REQUIRE(added.changes.probesChanged);
     REQUIRE(added.succeeded());
     REQUIRE(graph.getSignalProbes().size() == 1);
     REQUIRE(graph.getSignalProbes().front().sourceNodeId == "wave");

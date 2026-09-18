@@ -146,22 +146,11 @@ GraphEditResult GraphCommandDispatcher::publishGuideCurveState(
                     };
                 }
 
-                const bool modelChanged = guide->model == nullptr
-                        || !guide->model->equals(*publication.model);
-                const std::vector<String> consumers = graph.guideTargetNodeIds(
-                        publication.guideId);
-                GraphEditResult result = GraphEditor().replaceGuideCurve(
+                return GraphEditor().replaceGuideCurve(
                         graph,
                         publication.guideId,
                         publication.model,
                         publication.controls);
-                if (result.succeeded()) {
-                    result.changes.nodeIds = consumers;
-                }
-                result.changes.guidesChanged = result.succeeded() && !consumers.empty();
-                result.changes.guidePresentationChanged = result.succeeded();
-                result.changes.modelChanged = result.succeeded() && modelChanged;
-                return result;
             });
 }
 
