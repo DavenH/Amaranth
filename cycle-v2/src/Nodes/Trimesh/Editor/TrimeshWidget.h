@@ -35,6 +35,8 @@ struct TrimeshExpandedHitRegion {
 
 struct TrimeshPanelRenderStats {
     int sampleCount {};
+    int surfaceColumnCount {};
+    int surfaceRowCount {};
     int interceptCount {};
     int guideRailSegmentCount {};
     int componentGuideSegmentCount {};
@@ -118,6 +120,7 @@ public:
         return displayProfile.getSliceStyle().isSpectral() ? "range" : "gain";
     }
     static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content);
+    static int expandedColumnCount(juce::Rectangle<float> content);
     static juce::Rectangle<float> expandedWavePanelContentBounds(juce::Rectangle<float> content);
     static juce::Colour surfaceColourForDomain(float value, PortDomain domain);
     static juce::Colour surfaceColourForProfile(float value, const TrimeshRenderProfile& profile);
@@ -169,6 +172,8 @@ public:
             const juce::String& outputScaleParameter = "range");
 
 private:
+    void syncExpandedNode(const Node& node, juce::Rectangle<float> content);
+
     struct CachedHeatmap {
         juce::Image image;
         size_t valueCount {};
@@ -207,6 +212,7 @@ private:
     CachedHeatmap compactHeatmap;
     TrimeshRenderProfile displayProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     int previewMidiNote { 48 };
+    int lastExpandedColumnCount { 96 };
     std::array<juce::String, 6> guideAttachmentLabels;
     juce::String guideConfigurationKey { "unprepared" };
 };

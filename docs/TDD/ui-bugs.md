@@ -1,5 +1,16 @@
 # Cycle V2 UI Bug Notes
 
+## Resolved P2: Trimesh spectral backgrounds and expanded surface resolution
+
+Reported 2026-09-18. Spectral Trimesh backgrounds used a fixed 128-position
+harmonic ramp, the 3D background ignored the key-scale pitch across columns,
+and expanded surfaces used 96 columns regardless of panel width. The preview
+pitch resolver also missed the Voice Context on factory graphs with implicit
+context routing. The panel now uses the full per-key `LogRegions` ramp and
+pitch-dependent 3D harmonic traces; expanded grid resolution follows the
+panel width. The Organ 4 native fixture reports 586 columns across a 586-pixel
+panel and pitch spanning MIDI 20–127, with no failed commands.
+
 ## Remaining priority
 
 There are no open deterministic P0 or P1 regressions as of 2026-09-09.

@@ -1,5 +1,6 @@
 #include "Runtime/PreviewPitchResolver.h"
 
+#include "Graph/GraphCompiler.h"
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Control/ModulationTriple.h"
 
@@ -93,6 +94,7 @@ PreviewPitchContext PreviewPitchResolver::contextForNode(
         const NodeGraph& graph,
         const String& nodeId,
         int fallbackMidiNote) {
+    const Node* target = graph.findNode(nodeId);
     std::vector<String> pending { nodeId };
     std::set<String> visited;
 
@@ -111,6 +113,14 @@ PreviewPitchContext PreviewPitchResolver::contextForNode(
         for (const auto& edge : graph.getEdges()) {
             if (edge.destNodeId == currentId && !edge.isAttachment()) {
                 pending.push_back(edge.sourceNodeId);
+            }
+        }
+    }
+
+    if (target != nullptr && target->kind == NodeKind::TrilinearMesh) {
+        for (const auto& edge : GraphCompiler::implicitVoiceContextEdges(graph)) {
+            if (edge.destNodeId == nodeId) {
+                return attachedPitchContext(graph, edge.sourceNodeId, fallbackMidiNote);
             }
         }
     }

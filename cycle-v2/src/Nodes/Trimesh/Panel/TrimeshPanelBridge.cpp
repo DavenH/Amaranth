@@ -398,6 +398,7 @@ void TrimeshPanelBridge::setPreviewMidiNote(int midiNote) {
             (int) Constants::HighestMidiNote,
             midiNote);
     panel2D.setPreviewMidiNote(previewMidiNote);
+    panel3D.setPreviewMidiNote(previewMidiNote);
 }
 
 void TrimeshPanelBridge::setPreviewKeyScaleAxis(int axis) {

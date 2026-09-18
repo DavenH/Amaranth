@@ -3,6 +3,7 @@
 #include <UI/Panels/CommonGfx.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
+#include <Util/LogRegions.h>
 
 #include "UI/MeshEditorPresentation.h"
 
@@ -119,9 +120,10 @@ void TrimeshPanel2D::drawSpectrumMagnitudeBackground(bool fillBackground) {
     gfx->disableSmoothing();
     gfx->setCurrentLineWidth(1.f);
 
-    xBuffer.ensureSize(128);
-    Buffer<float> scaledRamp = xBuffer.withSize(128);
-    LogRegionMapping(previewMidiNote).fillDisplayUnits(scaledRamp);
+    const Buffer<float> ramp = LogRegions::getDefaultRegion(previewMidiNote);
+    xBuffer.ensureSize(ramp.size());
+    Buffer<float> scaledRamp = xBuffer.withSize(ramp.size());
+    ramp.copyTo(scaledRamp);
     applyScaleX(scaledRamp);
 
     for (int i = 0; i < scaledRamp.size() - 7; i += 4) {
@@ -180,9 +182,10 @@ void TrimeshPanel2D::drawSpectrumPhaseBackground(bool fillBackground) {
     gfx->disableSmoothing();
     gfx->setCurrentLineWidth(1.f);
 
-    xBuffer.ensureSize(128);
-    Buffer<float> scaledRamp = xBuffer.withSize(128);
-    LogRegionMapping(previewMidiNote).fillDisplayUnits(scaledRamp);
+    const Buffer<float> ramp = LogRegions::getDefaultRegion(previewMidiNote);
+    xBuffer.ensureSize(ramp.size());
+    Buffer<float> scaledRamp = xBuffer.withSize(ramp.size());
+    ramp.copyTo(scaledRamp);
     applyScaleX(scaledRamp);
 
     const int quarterSize = scaledRamp.size() / 4;

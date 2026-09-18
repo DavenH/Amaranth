@@ -763,6 +763,10 @@ TEST_CASE("Expanded Trimesh surfaces use their complete layout rows", "[cycle-v2
     REQUIRE(grid.getY() == Catch::Approx(content.getY()));
     REQUIRE(grid.getHeight() == Catch::Approx(content.getHeight() * 0.54f));
     REQUIRE(grid.getWidth() == Catch::Approx(content.getWidth() * 0.50f));
+    REQUIRE(TrimeshWidget::expandedColumnCount(content) >= roundToInt(grid.getWidth()));
+    REQUIRE(TrimeshWidget::expandedColumnCount(
+            content.withWidth(content.getWidth() * 1.5f))
+            > TrimeshWidget::expandedColumnCount(content));
     REQUIRE(wave.getY() - grid.getBottom() == Catch::Approx(8.f));
     REQUIRE(wave.getBottom() == Catch::Approx(content.getBottom()));
 }

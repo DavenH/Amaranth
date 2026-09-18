@@ -202,23 +202,14 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(
     gridwiseDsp.setCyclic(cyclic);
     gridwiseDsp.setGuideCurveProvider(guideCurveProvider.get());
     gridwiseDsp.setFrequencyMidiNote(midiNote);
-    const auto gridColumns = gridwiseDsp.renderColumns(
+    result.surface.resize((size_t) rows * (size_t) columns);
+    gridwiseDsp.renderColumnsInto(
             mesh(),
             morph,
             primaryViewAxis,
             (size_t) columns,
-            (size_t) rows,
-            domain,
-            ChannelLayout::LinkedStereo);
-
-    result.surface.reserve((size_t) rows * (size_t) columns);
-
-    for (auto column : gridColumns) {
-        result.surface.insert(
-                result.surface.end(),
-                column.signal.block.samples.begin(),
-                column.signal.block.samples.end());
-    }
+            Buffer<float>(result.surface.data(), (int) result.surface.size()),
+            domain);
     result.linearFrequencySurface = renderProfile.mapTrimeshValuesToDisplay(
             result.surface);
     result.surface = renderProfile.mapGridToDisplay(

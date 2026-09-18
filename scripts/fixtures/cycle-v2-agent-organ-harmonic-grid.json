@@ -1,0 +1,46 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/organ-4.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "magnitudeLayer1"
+    },
+    {
+      "command": "setPrimaryAxis",
+      "nodeId": "magnitudeLayer1",
+      "axis": "red"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 700
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.pitchSpansColumns",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.surfaceColumnCount",
+      "op": "greaterThan",
+      "value": 500
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.surfaceRowCount",
+      "op": "greaterThan",
+      "value": 1000
+    },
+    {
+      "command": "inspectOpenGLDiagnostics"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}
