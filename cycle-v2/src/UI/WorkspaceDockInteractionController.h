@@ -36,7 +36,6 @@ public:
             SignalProbeRailState& probeState,
             GuideCurveShelfState& guideState,
             SignalProbeDetailState& probeDetailState,
-            float& splitRatio,
             String& statusMessage,
             WorkspaceDockInteractionCallbacks callbacks);
 
@@ -82,13 +81,11 @@ private:
     SignalProbeRailState& probeState;
     GuideCurveShelfState& guideState;
     SignalProbeDetailState& probeDetailState;
-    float& splitRatio;
     String& statusMessage;
     WorkspaceDockInteractionCallbacks callbacks;
     WorkspaceDockFocus keyboardFocus;
     Rectangle<float> workspaceBounds;
     bool resizingHeight {};
-    bool resizingSplit {};
     float resizeStartHeight {};
     float resizeStartY {};
 };

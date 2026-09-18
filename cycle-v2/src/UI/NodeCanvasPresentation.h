@@ -54,7 +54,6 @@ struct NodeCanvasPresentationFrame {
     bool nodeDragActive {};
     Rectangle<float> workspaceBounds;
     GuideCurveShelfState guideShelfState;
-    float dockSplitRatio { 0.5f };
     SignalProbeRailState probeRailState;
     WorkspaceDockFocus dockFocus;
     SignalProbeDetailState probeDetailState;

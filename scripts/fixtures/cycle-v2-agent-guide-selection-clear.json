@@ -1,0 +1,19 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/old/baroque-flute.cyclegraph" },
+    { "command": "pointer", "event": "click", "targetId": "guide:guide1" },
+    { "command": "assertState", "path": "guideDock.selectedGuideId", "equals": "guide1" },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "spyShelf",
+      "targetX": 0.85,
+      "targetY": 0.65,
+      "dispatchToArea": true
+    },
+    { "command": "assertState", "path": "guideDock.selectedGuideId", "equals": "" },
+    { "command": "assertState", "path": "guideDock.hoveredGuideId", "equals": "" },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-guide-selection-cleared.png" }
+  ],
+  "quit": true
+}

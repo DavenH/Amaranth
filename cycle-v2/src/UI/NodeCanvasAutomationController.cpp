@@ -1,7 +1,5 @@
 #include "UI/NodeCanvasAutomationController.h"
 
-#include "UI/NodeViewModule.h"
-
 namespace CycleV2 {
 
 namespace {
@@ -189,10 +187,7 @@ var NodeCanvasAutomationController::inspectOpenGLDiagnostics(
     const Node* expandedNode = findNode(context.document.graph(), state.expandedNodeId);
     if (expandedNode != nullptr) {
         root->setProperty("expandedNodeKind", labelForNodeKind(expandedNode->kind));
-        root->setProperty("expandedEditorBounds", rectangleToVar(
-                NodeViewModuleRegistry::instance().moduleFor(expandedNode->kind).expandedEditorBounds(
-                        context.canvas.getLocalBounds().toFloat(),
-                        18.f)));
+        root->setProperty("expandedEditorBounds", rectangleToVar(state.expandedEditorBounds));
     }
 
     Array<var> panels;

@@ -21,8 +21,6 @@ public:
     static constexpr float preferredKeyboardHeight = 140.5f;
     static constexpr float preferredLegendHeight =
             98.f * CanvasChromeMetrics::legendScale;
-    static constexpr float minimumCompactLegendHeight =
-            30.f * CanvasChromeMetrics::legendScale;
 
     static CanvasUtilityDockLayout layout(juce::Rectangle<float> contentBounds);
     static void paintSurface(

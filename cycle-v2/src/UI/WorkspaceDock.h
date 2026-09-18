@@ -11,7 +11,6 @@ struct WorkspaceDockState {
     bool leftMinimized {};
     bool rightMinimized {};
     float expandedHeight { 190.f };
-    float splitRatio { 0.5f };
 };
 
 struct WorkspaceDockLayout {
@@ -20,9 +19,14 @@ struct WorkspaceDockLayout {
     juce::Rectangle<float> dock;
     juce::Rectangle<float> leftShelf;
     juce::Rectangle<float> rightShelf;
-    juce::Rectangle<float> divider;
     juce::Rectangle<float> resizeHandle;
     juce::Rectangle<float> collapseHandle;
+};
+
+struct WorkspaceDockSpyControls {
+    juce::Rectangle<float> label;
+    juce::Rectangle<float> refresh;
+    juce::Rectangle<float> minimize;
 };
 
 enum class WorkspaceDockIcon {
@@ -61,11 +65,11 @@ class WorkspaceDock {
 public:
     static constexpr float collapsedHeight = 34.f;
     static constexpr float minimumExpandedHeight = 120.f;
-    static constexpr float minimumShelfWidth = 240.f;
     static constexpr float drawerWidth = 36.f;
     static constexpr float shelfPadding = 10.f;
     static constexpr float headerHeight = 36.f;
     static constexpr float tileWidth = 210.f;
+    static constexpr float guideTileHeight = 92.f;
     static constexpr float tileGap = 8.f;
     static constexpr float tileBottomPadding = 8.f;
     static constexpr float controlSize = 26.f;
@@ -73,14 +77,31 @@ public:
     static WorkspaceDockLayout layout(
             juce::Rectangle<float> workspace,
             const WorkspaceDockState& state);
-    static float clampedSplitRatio(
+    static juce::Rectangle<float> editorAvailableBounds(const WorkspaceDockLayout& layout);
+    static WorkspaceDockSpyControls spyControls(juce::Rectangle<float> rail);
+    static juce::Rectangle<float> spyRowBounds(
             juce::Rectangle<float> workspace,
-            float splitRatio);
+            bool expanded,
+            float expandedHeight);
     static juce::Rectangle<float> headerBounds(juce::Rectangle<float> shelf);
     static juce::Rectangle<float> tileBounds(
             juce::Rectangle<float> shelf,
             int tileIndex,
             float horizontalOffset);
+    static juce::Rectangle<float> guideTileBounds(
+            juce::Rectangle<float> shelf,
+            int tileIndex,
+            float verticalOffset);
+    static float offsetToRevealGuideTile(
+            float currentOffset,
+            float maximumOffset,
+            float shelfHeight,
+            int tileIndex);
+    static void paintVerticalOverflowFeedback(
+            juce::Graphics& graphics,
+            juce::Rectangle<float> shelf,
+            float verticalOffset,
+            float maximumOffset);
     static juce::Rectangle<float> vacancyBounds(juce::Rectangle<float> shelf);
     static WorkspaceDockFocus advanceFocus(
             const std::vector<WorkspaceDockFocus>& order,

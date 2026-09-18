@@ -648,8 +648,7 @@ void NodeCanvasPresentation::paint(
                     frame.probeRailState.expanded,
                     frame.guideShelfState.minimized,
                     frame.probeRailState.minimized,
-                    frame.probeRailState.expandedHeight,
-                    frame.dockSplitRatio
+                    frame.probeRailState.expandedHeight
             });
     {
         ScopedNodeCanvasPresentationStage measurement(
@@ -661,7 +660,6 @@ void NodeCanvasPresentation::paint(
                     frame.graph,
                     frame.workspaceBounds,
                     frame.probeRailState,
-                    frame.dockSplitRatio,
                     frame.guideShelfState,
                     frame.dockFocus);
         }
@@ -677,7 +675,6 @@ void NodeCanvasPresentation::paint(
                 frame.probeRailState.expanded
                         ? GuideCurveShelf::spyWorkspace(
                                 frame.workspaceBounds,
-                                frame.dockSplitRatio,
                                 frame.guideShelfState.minimized,
                                 frame.probeRailState.minimized)
                         : frame.workspaceBounds,
@@ -732,7 +729,6 @@ void NodeCanvasPresentation::paintContent(
                     scene.snapshot(),
                     GuideCurveShelf::spyWorkspace(
                             frame.workspaceBounds,
-                            frame.dockSplitRatio,
                             frame.guideShelfState.minimized,
                             frame.probeRailState.minimized),
                     frame.probeRailState,
@@ -805,7 +801,6 @@ bool NodeCanvasPresentation::renderOpenGL(
             frame.workspaceBounds,
             frame.canvasBounds,
             frame.probeRailState,
-            frame.dockSplitRatio,
             frame.guideShelfState,
             scaleFactor);
     if (guideSnapshotUpdated) {

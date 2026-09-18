@@ -13,7 +13,6 @@ WorkspaceDockInteractionController::WorkspaceDockInteractionController(
         SignalProbeRailState& probeStateToUse,
         GuideCurveShelfState& guideStateToUse,
         SignalProbeDetailState& probeDetailStateToUse,
-        float& splitRatioToUse,
         String& statusMessageToUse,
         WorkspaceDockInteractionCallbacks callbacksToUse) :
         commands(commandsToUse)
@@ -24,7 +23,6 @@ WorkspaceDockInteractionController::WorkspaceDockInteractionController(
     ,   probeState(probeStateToUse)
     ,   guideState(guideStateToUse)
     ,   probeDetailState(probeDetailStateToUse)
-    ,   splitRatio(splitRatioToUse)
     ,   statusMessage(statusMessageToUse)
     ,   callbacks(std::move(callbacksToUse)) {
 }
@@ -39,8 +37,7 @@ bool WorkspaceDockInteractionController::mouseDown(
                     probeState.expanded,
                     guideState.minimized,
                     probeState.minimized,
-                    probeState.expandedHeight,
-                    splitRatio
+                    probeState.expandedHeight
             });
     if (handleChromeDown(event, layout)) {
         return true;
@@ -63,15 +60,7 @@ bool WorkspaceDockInteractionController::mouseDrag(
         callbacks.resized();
         return true;
     }
-    if (!resizingSplit) {
-        return false;
-    }
-
-    splitRatio = WorkspaceDock::clampedSplitRatio(
-            workspace,
-            (event.position.x - workspace.getX()) / workspace.getWidth());
-    callbacks.repaint();
-    return true;
+    return false;
 }
 
 bool WorkspaceDockInteractionController::mouseUp() {
@@ -81,13 +70,7 @@ bool WorkspaceDockInteractionController::mouseUp() {
                 roundToInt(probeState.expandedHeight);
         return true;
     }
-    if (!resizingSplit) {
-        return false;
-    }
-
-    resizingSplit = false;
-    settings.getGlobalSetting(AppSettings::GuideDockSplitPercent) = roundToInt(splitRatio * 100.f);
-    return true;
+    return false;
 }
 
 bool WorkspaceDockInteractionController::keyPressed(
@@ -99,13 +82,13 @@ bool WorkspaceDockInteractionController::keyPressed(
             keyboardModel(),
             keyboardLayout(workspace),
             keyboardFocus,
-            guideState.horizontalOffset,
+            guideState.verticalOffset,
             probeState.horizontalOffset,
             *this);
 }
 
 void WorkspaceDockInteractionController::clearEphemeralState() {
-    guideState.horizontalOffset = 0.f;
+    guideState.verticalOffset = 0.f;
     guideState.selectedGuideId = {};
     guideState.hoveredGuideId = {};
     probeState.horizontalOffset = 0.f;
@@ -129,15 +112,14 @@ WorkspaceDockKeyboardModel WorkspaceDockInteractionController::keyboardModel() c
 WorkspaceDockKeyboardLayout WorkspaceDockInteractionController::keyboardLayout(
         Rectangle<float> workspace) const {
     const Rectangle<float> guides = GuideCurveShelf::boundsFor(
-            workspace, probeState, splitRatio, guideState);
+            workspace, probeState, guideState);
     const Rectangle<float> spies = spyWorkspace(workspace);
     return {
-            guides.getWidth(),
+            guides.getHeight(),
             SignalProbeRail::boundsFor(spies, probeState).getWidth(),
-            GuideCurveShelf::maximumHorizontalOffset(
+            GuideCurveShelf::maximumVerticalOffset(
                     workspace,
                     probeState,
-                    splitRatio,
                     guideState,
                     (int) graph.getGuideCurves().size()),
             SignalProbeRail::maximumHorizontalOffset(
@@ -150,7 +132,6 @@ Rectangle<float> WorkspaceDockInteractionController::spyWorkspace(
         Rectangle<float> workspace) const {
     return GuideCurveShelf::spyWorkspace(
             workspace,
-            splitRatio,
             guideState.minimized,
             probeState.minimized);
 }
@@ -158,14 +139,9 @@ Rectangle<float> WorkspaceDockInteractionController::spyWorkspace(
 bool WorkspaceDockInteractionController::handleChromeDown(
         const MouseEvent& event,
         const WorkspaceDockLayout& layout) {
-    if (!probeState.expanded && layout.dock.contains(event.position)) {
+    if (!probeState.expanded && layout.collapseHandle.contains(event.position)) {
         keyboardFocus = { WorkspaceDockFocusTarget::Collapse, {} };
         setDockExpandedFromKeyboard(true);
-        return true;
-    }
-    if (layout.collapseHandle.contains(event.position)) {
-        keyboardFocus = { WorkspaceDockFocusTarget::Collapse, {} };
-        setDockExpandedFromKeyboard(false);
         return true;
     }
     if (layout.resizeHandle.contains(event.position)) {
@@ -175,13 +151,7 @@ bool WorkspaceDockInteractionController::handleChromeDown(
         resizeStartY = event.position.y;
         return true;
     }
-    if (!layout.divider.contains(event.position)) {
-        return false;
-    }
-
-    keyboardFocus = {};
-    resizingSplit = true;
-    return true;
+    return false;
 }
 
 bool WorkspaceDockInteractionController::handleGuideDown(
@@ -197,14 +167,14 @@ bool WorkspaceDockInteractionController::handleGuideControlsDown(
         const MouseEvent& event,
         Rectangle<float> workspace) {
     const Rectangle<float> shelf = GuideCurveShelf::boundsFor(
-            workspace, probeState, splitRatio, guideState);
+            workspace, probeState, guideState);
     if (guideState.minimized && shelf.contains(event.position)) {
         keyboardFocus = { WorkspaceDockFocusTarget::GuideDrawer, {} };
         setGuideShelfMinimizedFromKeyboard(false);
         return true;
     }
     if (GuideCurveShelf::addButtonBounds(
-                workspace, probeState, splitRatio, guideState).contains(event.position)) {
+                workspace, probeState, guideState).contains(event.position)) {
         keyboardFocus = { WorkspaceDockFocusTarget::GuideAdd, {} };
         const String guideId = createGuideFromKeyboard();
         if (guideId.isNotEmpty()) {
@@ -214,7 +184,7 @@ bool WorkspaceDockInteractionController::handleGuideControlsDown(
         return true;
     }
     if (GuideCurveShelf::minimizeButtonBounds(
-                workspace, probeState, splitRatio, guideState).contains(event.position)) {
+                workspace, probeState, guideState).contains(event.position)) {
         keyboardFocus = { WorkspaceDockFocusTarget::GuideMinimize, {} };
         setGuideShelfMinimizedFromKeyboard(true);
         return true;
@@ -225,10 +195,8 @@ bool WorkspaceDockInteractionController::handleGuideControlsDown(
 bool WorkspaceDockInteractionController::handleGuideTileDown(
         const MouseEvent& event,
         Rectangle<float> workspace) {
-    const Rectangle<float> shelf = GuideCurveShelf::boundsFor(
-            workspace, probeState, splitRatio, guideState);
     const String guideId = GuideCurveShelf::guideAt(
-            event.position, graph, workspace, probeState, splitRatio, guideState);
+            event.position, graph, workspace, probeState, guideState);
     if (guideId.isNotEmpty()) {
         keyboardFocus = { WorkspaceDockFocusTarget::GuideTile, guideId };
         guideState.selectedGuideId = guideId;
@@ -238,13 +206,7 @@ bool WorkspaceDockInteractionController::handleGuideTileDown(
         callbacks.repaint();
         return true;
     }
-    if (!shelf.contains(event.position)) {
-        return false;
-    }
-
-    keyboardFocus = {};
-    callbacks.repaint();
-    return true;
+    return false;
 }
 
 bool WorkspaceDockInteractionController::handleSpyDown(
@@ -284,7 +246,6 @@ bool WorkspaceDockInteractionController::handleSpyTileDown(
         const MouseEvent& event,
         Rectangle<float> workspace) {
     const Rectangle<float> spies = spyWorkspace(workspace);
-    const Rectangle<float> shelf = SignalProbeRail::boundsFor(spies, probeState);
     const String probeId = probeRail.probeAt(event.position, spies, graph, probeState);
     if (probeId.isNotEmpty()) {
         keyboardFocus = { WorkspaceDockFocusTarget::SpyTile, probeId };
@@ -295,14 +256,7 @@ bool WorkspaceDockInteractionController::handleSpyTileDown(
         callbacks.repaint();
         return true;
     }
-    if (!shelf.contains(event.position)) {
-        return false;
-    }
-
-    keyboardFocus = {};
-    probeState.selectedProbeId = {};
-    callbacks.repaint();
-    return true;
+    return false;
 }
 
 void WorkspaceDockInteractionController::setDockExpandedFromKeyboard(bool expanded) {
@@ -326,10 +280,6 @@ void WorkspaceDockInteractionController::setGuideShelfMinimizedFromKeyboard(bool
                     : WorkspaceDockFocusTarget::GuideMinimize,
             {}
     };
-    if (minimized && probeState.minimized) {
-        keyboardFocus = { WorkspaceDockFocusTarget::Collapse, {} };
-        setDockExpandedFromKeyboard(false);
-    }
     callbacks.repaint();
 }
 
@@ -340,7 +290,7 @@ String WorkspaceDockInteractionController::createGuideFromKeyboard() {
     }
 
     guideState.selectedGuideId = result.nodeId;
-    guideState.horizontalOffset = keyboardLayout(workspaceBounds).maximumGuideOffset;
+    guideState.verticalOffset = keyboardLayout(workspaceBounds).maximumGuideOffset;
     statusMessage = "Guide Curve created";
     return result.nodeId;
 }
@@ -363,10 +313,6 @@ void WorkspaceDockInteractionController::setSpyShelfMinimizedFromKeyboard(bool m
                     : WorkspaceDockFocusTarget::SpyMinimize,
             {}
     };
-    if (minimized && guideState.minimized) {
-        keyboardFocus = { WorkspaceDockFocusTarget::Collapse, {} };
-        setDockExpandedFromKeyboard(false);
-    }
     callbacks.repaint();
 }
 
