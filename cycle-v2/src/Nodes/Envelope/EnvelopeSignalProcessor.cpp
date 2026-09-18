@@ -34,12 +34,14 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
             });
 
     result->mesh->deepCopy(&meshState);
+    size_t guideAssignmentCount = 0;
     if (graph != nullptr) {
         auto guides = GuideCurveMeshPreparation::apply(
                 *result->mesh,
                 *graph,
                 nodeId,
                 GuideCurveTargetKind::EnvelopeCubeComponent);
+        guideAssignmentCount = guides.assignmentCount;
         result->guideCurveProvider = std::move(guides.provider);
     }
 
@@ -62,6 +64,7 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
     result->logarithmic = logarithmic;
     result->enabled = enabled;
     result->lowResolution = lowResolution;
+    result->cycleGuideRequired = lowResolution && guideAssignmentCount > 0;
     result->neutralValue = neutralValue;
     result->volumePurpose = volumePurpose;
     result->declick = declick;
@@ -80,6 +83,17 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
             result->realtimePlan.guideCurveProvider);
     if (!result->realtimePlan.capacity.isSupported()) {
         return {};
+    }
+    if (result->cycleGuideRequired) {
+        result->cycleRealtimePlan = result->realtimePlan;
+        result->cycleRealtimePlan.request.decoupleComponentDeforms = true;
+        result->cycleRealtimePlan.capacity = Rasterization::envelopeMaterializationCapacity(
+                *result->mesh,
+                result->cycleRealtimePlan.request,
+                result->cycleRealtimePlan.guideCurveProvider);
+        if (!result->cycleRealtimePlan.capacity.isSupported()) {
+            return {};
+        }
     }
     return result;
 }
@@ -143,7 +157,9 @@ void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
     }
 
     activeConfiguration = configuration;
-    if (!materializer.prepare(configuration->realtimePlan)) {
+    if (!materializer.prepare(configuration->realtimePlan)
+            || (configuration->cycleGuideRequired
+                    && !cycleMaterializer.prepare(configuration->cycleRealtimePlan))) {
         activeConfiguration.reset();
         active = false;
         return;
@@ -175,6 +191,14 @@ Rasterization::PreparedEnvelopePlaybackView EnvelopeSignalProcessor::preparedPla
     return activeConfiguration->rasterizer->preparedPlaybackView();
 }
 
+Rasterization::PreparedEnvelopePlaybackView EnvelopeSignalProcessor::cycleEnvelopePlaybackView() const {
+    if (activeConfiguration->cycleGuideRequired
+            && cycleMaterializer.hasPreparedEnvelope()) {
+        return cycleMaterializer.preparedPlaybackView();
+    }
+    return preparedPlaybackView();
+}
+
 bool EnvelopeSignalProcessor::prepareNoteEnvelope(
         const AudioProcessContext& context,
         size_t sampleOffset) {
@@ -196,7 +220,11 @@ bool EnvelopeSignalProcessor::prepareNoteEnvelope(
     const SignalPayload* blueInput = inputAt(context, 1);
     const float red = valueAt(redInput, activeConfiguration->redMorph);
     const float blue = valueAt(blueInput, activeConfiguration->blueMorph);
-    return materializer.materialize(red, blue);
+    if (!materializer.materialize(red, blue)) {
+        return false;
+    }
+    return !activeConfiguration->cycleGuideRequired
+            || cycleMaterializer.materialize(red, blue);
 }
 
 void EnvelopeSignalProcessor::process(AudioProcessContext& context) {

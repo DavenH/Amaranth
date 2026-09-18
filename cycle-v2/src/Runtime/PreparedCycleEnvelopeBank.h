@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -23,6 +24,7 @@ public:
             int laneCount,
             const String& pitchEnvelopeNodeId = {});
     void reset();
+    void setVoiceLifecycleSeed(int64_t seed);
     void applyLifecycleEvent(const NoteLifecycleEvent& event);
     void advanceLane(int laneIndex, int sampleCount, double normalizedTimeIncrement);
     void advanceAll(int sampleCount, double normalizedTimeIncrement);

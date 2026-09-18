@@ -348,6 +348,9 @@ void SpectralOscillatorFrameRenderer::reset() {
 
 void SpectralOscillatorFrameRenderer::applyLifecycleEvent(
         const NoteLifecycleEvent& event) {
+    if (event.type == NoteLifecycleType::NoteOn) {
+        lifecycleSeedReady = false;
+    }
     cycleEnvelopes.applyLifecycleEvent(event);
 }
 
@@ -779,6 +782,9 @@ void SpectralOscillatorFrameRenderer::prepareFrameRandom(
 
     frameRandomSeed = seed;
     lifecycleSeedReady = true;
+    cycleEnvelopes.setVoiceLifecycleSeed(hasDeterministicRandomSeed
+            ? context->voice->deterministicRandomSeed
+            : seed);
     frameRandom.setSeed(seed);
     uint32_t timeOffsetSeed = (uint32_t) seed;
     uint32_t magnitudeOffsetSeed = (uint32_t) seed;

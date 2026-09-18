@@ -1,9 +1,9 @@
-#include "Runtime/PreparedCycleEnvelopeBank.h"
+#include <algorithm>
+#include <Curve/GuideCurveProvider.h>
 
+#include "Runtime/PreparedCycleEnvelopeBank.h"
 #include "Nodes/Envelope/CycleEnvelopePlaybackSource.h"
 #include "Runtime/NodeAudioProcessor.h"
-
-#include <algorithm>
 
 namespace CycleV2 {
 
@@ -92,6 +92,16 @@ void PreparedCycleEnvelopeBank::reset() {
                 entry.values.end(),
                 entry.pitch ? 0.5f : 0.f);
         std::fill(entry.active.begin(), entry.active.end(), false);
+    }
+}
+
+void PreparedCycleEnvelopeBank::setVoiceLifecycleSeed(int64_t seed) {
+    juce::Random random(seed);
+    for (auto& entry : entries) {
+        entry->playback.deriveVoiceOffsets(
+                GuideCurveProvider::tableSize,
+                Rasterization::GuideCurveSeed::voiceLifecycle(
+                        (uint32_t) random.nextInt()));
     }
 }
 

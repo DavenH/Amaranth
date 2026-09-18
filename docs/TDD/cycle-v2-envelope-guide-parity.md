@@ -6,7 +6,9 @@ In progress (2026-09-17). Typed graph targets, shared guide preparation,
 Envelope editor controls, runtime provider routing, focused preset repair, and
 conversion tests are implemented. A same-source full-output Cycle 1/Cycle V2
 A/B was captured and differs substantially; an isolated Envelope playback A/B
-remains open. Provider wiring alone is not an audio-parity claim.
+remains open. Per-Unison guide phase sampling is now implemented in Cycle V2,
+but the full-output A/B still differs. Provider wiring alone is not an
+audio-parity claim.
 
 ## Evidence and authority
 
@@ -37,6 +39,38 @@ should reuse the existing `GuideCurveSnapshotProvider` and cube assignment
 logic; it must not copy curve evaluation or envelope rasterization algorithms.
 Envelope configurations own the prepared provider for their lifetime and pass
 it to both the existing `EnvRasterizer` and realtime materialization plan.
+
+### Unison guide phase ownership (2026-09-18)
+
+Cycle 1 calls `EnvRasterizer::ensureParamSize` at note start, then
+`EnvRasterizer::updateOffsetSeeds` in `SynthesizerVoice::initialiseEnvMeshes`.
+For pitch and scratch Envelopes in one-sample-per-cycle mode, that delegates to
+the shared `EnvelopePlaybackEngine::deriveVoiceOffsets`, which gives every
+Unison voice a distinct phase and vertical guide offset. The Cycle V2
+`PreparedCycleEnvelopeBank` already created the same per-lane playback voices
+but did not seed them before this slice. Its guide sampling used zero offsets
+for every lane. Cycle V2 also passed the ordinary baked Envelope view to the
+per-cycle bank. That view had no guide regions to sample at voice-specific
+phases, so adding offset seeds alone could not change the sound.
+
+The bank owns the Envelope playback engines, so it should derive offsets once
+per note lifecycle from the owning audio voice's seed. Both chained and
+spectral region renderers must seed the bank before the first Envelope advance;
+chained mode currently advances before its oscillator random setup. Reuse the
+shared offset derivation, with no new guide sampler. Prepare a second,
+decoupled Envelope materialization view for the per-cycle bank while retaining
+the ordinary baked view for blockwise output. Both use the same mesh and guide
+provider, and both track live Red/Blue morph on note preparation. This reuses
+the authoritative materializer. Seed work is O(Envelope entries × Unison
+lanes) once per lifecycle; movement through a cycle remains
+O(1) per lane and does not copy graph or mesh state. The stable end state is
+the same bank and shared playback engine, with no compatibility adapter to
+delete. Validate distinct lane offsets, stable reseeding with the same seed,
+new offsets on a new note seed, and the effect on a guided pitch Envelope.
+The bank currently derives one stable seed per attached Envelope from the
+audio voice's lifecycle seed; it does not reproduce Cycle 1's exact PRNG draw
+position across all volume, pitch, and scratch layers. Exact seed-sequence
+parity remains part of the isolated Cycle 1/Cycle V2 comparison.
 
 The Envelope editor exposes meaningful component guide attachments and gains
 for the selected logical cube. It must not expose the hidden Time-pole storage
@@ -109,3 +143,28 @@ failure to adjust the guide algorithm or claim guide-specific cross-engine
 parity. Capture a comparable Cycle 1 pitch Envelope playback buffer, then
 compare it to the prepared Cycle V2 Envelope under matched morph, note, and
 guide seed before closing this TDD.
+
+### Per-Unison guide phase repair (2026-09-18)
+
+`PreparedCycleEnvelopeBank` now derives distinct guide phase and vertical
+offsets for its Unison lanes once per note seed through the shared
+`EnvelopePlaybackEngine`. Both chained and spectral renderers seed it before
+the first per-cycle Envelope advance. For guided pitch/scratch Envelopes, the
+processor prepares a decoupled cycle playback view with the same mature
+materializer and guide provider; its ordinary blockwise output keeps the
+baked view. Unguided Envelopes incur no second materialization.
+
+The focused Brass test verifies that the cycle view contains guide regions,
+the ordinary view is baked, three guided lanes differ, repeating a seed repeats
+their trajectories, changing the seed changes them, and removing the guide
+makes the lanes agree. It passes 13 assertions. The existing Brass prepared
+playback test passes 17 assertions, and the allocation-free ordinary Envelope
+note-preparation test passes 9 assertions. Two fresh-process guided Cycle V2
+captures with the same seed have identical raw float SHA-256 hashes. In the
+250–750 ms window, the new guided-versus-unguided Cycle V2 output difference
+RMS is 0.153510 against guided RMS 0.102588.
+
+The fresh Cycle 1/Cycle V2 full-output comparison remains far from parity:
+best correlation in that window is 0.062 and gain-matched normalized residual
+is 0.998. The remaining isolated playback comparison and exact Cycle 1 PRNG
+draw translation must be resolved before marking this TDD complete.
