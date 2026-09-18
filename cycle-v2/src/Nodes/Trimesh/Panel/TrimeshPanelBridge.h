@@ -88,7 +88,8 @@ private:
     int lastRows {};
     int lastColumns {};
     int previewMidiNote { 48 };
-    int lastPreviewMidiNote { -1 };
+    int panelMidiNote { 48 };
+    int lastPanelMidiNote { -1 };
     int previewKeyScaleAxis { -1 };
     int lastPreviewKeyScaleAxis { -2 };
     int lastYellowLink { -1 };

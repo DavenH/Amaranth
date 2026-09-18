@@ -4,6 +4,7 @@
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/NodeParameterMap.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Guide/GuideCurveSnapshotProvider.h"
@@ -34,6 +35,7 @@
 #include <Curve/Mesh/Intercept.h>
 #include <Curve/Curve.h>
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
+#include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 #include <Util/LogRegions.h>
 
@@ -2149,40 +2151,50 @@ TEST_CASE("Spectral Trimesh panels share pitch-dependent LogRegions coordinates"
     }
 }
 
-TEST_CASE("Trimesh preview pitch positions whichever morph axis owns key scale",
+TEST_CASE("Trimesh mapped morph edits move the slider and spectral preview pitch",
         "[cycle-v2][nodes][trimesh][spectral][key-scale]") {
     ScopedJuceInitialiser_GUI juce;
     Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
     TrimeshPanelBridge bridge;
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal));
+    bridge.setPreviewKeyScaleAxis(Vertex::Red);
+    bridge.setPreviewMidiNote(72);
 
-    bridge.setPreviewKeyScaleAxis(Vertex::Time);
-    bridge.setPreviewMidiNote(48);
-    bridge.syncFromNode(node, 10, 3);
-    const float c3Position = ModulationSource::normalizeKey(
-            48,
-            Constants::LowestMidiNote,
-            Constants::HighestMidiNote);
-    REQUIRE(bridge.getModel().getMorphPosition().time.getCurrentValue()
-            == Catch::Approx(c3Position));
-    REQUIRE(bridge.getModel().getMorphPosition().red.getCurrentValue()
-            == Catch::Approx(c3Position));
+    for (const float value : { 0.2f, 0.8f }) {
+        for (auto& parameter : node.parameters) {
+            if (parameter.id == "red") {
+                parameter.value = String(value, 6);
+            }
+        }
+        bridge.syncFromNode(node, 10, 3);
+
+        REQUIRE(bridge.getModel().getMorphPosition().red.getCurrentValue()
+                == Catch::Approx(value));
+        const int expectedNote = Arithmetic::getGraphicNoteForValue(
+                value,
+                Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote));
+        REQUIRE((int) bridge.getDataSource().getColumns().front().midiKey
+                == expectedNote);
+        REQUIRE(bridge.getDataSource().getColumns().front().size()
+                == LogRegionMapping(expectedNote).regionSize());
+    }
 
     bridge.setPreviewKeyScaleAxis(Vertex::Blue);
-    bridge.setPreviewMidiNote(72);
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == "blue") {
+            parameter.value = "0.1";
+        }
+    }
     bridge.syncFromNode(node, 10, 3);
-    const float c5Position = ModulationSource::normalizeKey(
-            72,
-            Constants::LowestMidiNote,
-            Constants::HighestMidiNote);
-    REQUIRE(bridge.getModel().getMorphPosition().time.getCurrentValue()
-            == Catch::Approx(0.f));
+    REQUIRE(bridge.getModel().getMorphPosition().red.getCurrentValue()
+            == Catch::Approx(0.8f));
     REQUIRE(bridge.getModel().getMorphPosition().blue.getCurrentValue()
-            == Catch::Approx(c5Position));
-
-    bridge.setPreviewMidiNote(Constants::HighestMidiNote);
-    bridge.syncFromNode(node, 10, 3);
-    REQUIRE(bridge.getModel().getMorphPosition().blue.getCurrentValue()
-            == Catch::Approx(1.f));
+            == Catch::Approx(0.1f));
+    REQUIRE((int) bridge.getDataSource().getColumns().front().midiKey
+            == Arithmetic::getGraphicNoteForValue(
+                    0.1f,
+                    Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote)));
 }
 
 TEST_CASE("Spectral Trimesh columns span pitch only on the key-scale primary axis",
@@ -2208,11 +2220,16 @@ TEST_CASE("Spectral Trimesh columns span pitch only on the key-scale primary axi
     bridge.setPreviewKeyScaleAxis(Vertex::Red);
     bridge.syncFromNode(node, 10, 5);
     const auto& nonKeyColumns = bridge.getDataSource().getColumns();
+    const int redMorphNote = Arithmetic::getGraphicNoteForValue(
+            NodeParameterMap(node).floatValue("red", 0.5f),
+            Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote));
     REQUIRE_FALSE(bridge.getPanel3D().willAdjustSurfaceColumns());
     REQUIRE(std::all_of(
             nonKeyColumns.begin(),
             nonKeyColumns.end(),
-            [](const Column& column) { return (int) column.midiKey == 72; }));
+            [redMorphNote](const Column& column) {
+                return (int) column.midiKey == redMorphNote;
+            }));
 
     for (auto& parameter : node.parameters) {
         if (parameter.id == "primaryAxis") {

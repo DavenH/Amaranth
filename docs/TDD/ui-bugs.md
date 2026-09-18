@@ -11,10 +11,32 @@ pitch-dependent 3D harmonic traces; expanded grid resolution follows the
 panel width. The Organ 4 native fixture reports 586 columns across a 586-pixel
 panel and pitch spanning MIDI 20–127, with no failed commands.
 
+Follow-up 2026-09-18: mapping Key Scale to Red exposed a snap-back when moving
+the red morph rail. The panel bridge was replacing the node's red value with
+the selected keyboard preview note on every refresh, which also fixed the
+harmonic grid at that note. The bridge now reads the mapped morph value for its
+panel pitch. A focused red-rail gesture fixture covers movement and undo.
+
 ## Remaining priority
 
 There are no open deterministic P0 or P1 regressions as of 2026-09-09.
 Resolved and no-longer-reproducing entries have been removed from this ledger.
+
+## P2: Undoing a Trimesh morph gesture closes the expanded editor
+
+The 2026-09-18 Organ 4 red-rail gesture fixture observed that undo restores
+the morph value but clears the expanded editor. Reopening the same node shows
+the restored harmonic pitch. The editor closure is still open as a separate
+selection and editor-lifecycle issue; the fixture reopens it before asserting
+the restored panel state.
+
+## P2: Broader Trimesh tests retain stale control and compact grid expectations
+
+The 2026-09-18 `CycleV2_tests '[trimesh]'` run passed the mapped pitch tests but
+failed the control-region count (`28` versus `22`) and compact versus expanded
+column equality (`96` versus `450`). The latter conflicts with the deliberate
+expanded pixel-width sampling. Both remain open for their respective UI
+contracts; log: `/tmp/cycle-v2-trimesh-tests.txt`.
 
 ## Resolved P2: Mod Wheel release published duplicate graph/Spy updates
 
@@ -123,7 +145,7 @@ deserialize/serialize pass changes its JSON representation. This predates and
 is independent of the document-declick changes; regenerate that preset through
 the canonical serializer without expanding unrelated preset diffs.
 
-## P2: Trimesh preview key scale also changes the default red morph axis
+## Resolved P2: Trimesh preview key scale also changes the default red morph axis
 
 Context:
 
@@ -136,8 +158,9 @@ Context:
 - The test and the relevant Trimesh preview behavior arrived from `master`; no
   conflict hunk touched that implementation.
 
-Current status: open; reconcile key-scale preview ownership with the intended
-single-axis contract before changing the assertion.
+Current status: resolved 2026-09-18. The mapped axis now reads its authored
+morph parameter; selecting a preview key updates that parameter through the
+existing graph command path. Other axes retain their own values.
 
 ## P2: Envelope purpose rail-spacing assertion no longer matches layout
 

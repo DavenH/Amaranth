@@ -12,8 +12,12 @@ for spectral column length and `TrimeshGridwiseDsp` for mature mesh
 rasterization. These are the authoritative implementations; the panel layer
 only translates the resulting harmonic positions to background geometry.
 
-The selected note comes from preview state. The key-scale axis comes from the
-compiled modulation mapping and controls whether pitch spans the 3D x axis.
+The selected note comes from preview state when no key-scale axis is mapped.
+For a mapped axis, the node's current morph parameter supplies the panel note.
+Keyboard preview changes publish that morph parameter; direct morph edits must
+retain the edited value and move the panel's harmonic grid with it. The
+key-scale axis comes from the compiled modulation mapping and controls whether
+pitch spans the 3D x axis.
 Authored presets can omit explicit Voice Context signal edges; the preview
 pitch resolver uses the sole Voice Context in that case and declines to guess
 when multiple contexts exist.
@@ -46,6 +50,9 @@ same width scaling and keeps single-node invalidation.
       sampler and avoids a payload allocation for each column.
 - [x] Focused Trimesh and pitch-resolver tests, native UI capture, and style
       review passed.
+- [x] A mapped morph rail keeps its edited position through repeated movement,
+      updates fixed-pitch spectral columns and harmonic backgrounds, and returns
+      to its original position and pitch on undo.
 
 Evidence: `scripts/fixtures/cycle-v2-agent-organ-harmonic-grid.json`,
 `/private/tmp/cycle-v2-organ-harmonic-grid-report.json`, and
