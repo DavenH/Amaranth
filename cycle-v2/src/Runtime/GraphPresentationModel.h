@@ -85,6 +85,7 @@ public:
         return previewAudioExecutor.diagnosticProcessCount(nodeId);
     }
     const UpdateAuditTrace& updateTrace() const { return updateGraph.trace(); }
+    PresentationGestureSession& editSession() { return gestureSession; }
     juce::var performanceMetrics() const { return performance.toVar(); }
     void resetPerformanceMetrics() { performance.reset(); }
 

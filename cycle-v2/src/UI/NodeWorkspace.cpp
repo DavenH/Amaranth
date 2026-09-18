@@ -48,7 +48,7 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
         canvas.beginPreviewModWheelGesture();
     });
     keyboard.setModWheelGestureEndedCallback([this] {
-        canvas.endPreviewModWheelGesture();
+        canvas.endPreviewModWheelGesture(keyboard.modWheelValue());
     });
     startTimerHz(30);
     timerCallback();
@@ -418,7 +418,7 @@ bool NodeWorkspace::performanceUpdateModWheelGestureForAutomation(int value) {
 }
 
 bool NodeWorkspace::performanceEndModWheelGestureForAutomation() {
-    canvas.endPreviewModWheelGesture();
+    canvas.endPreviewModWheelGesture(keyboard.modWheelValue());
     return true;
 }
 

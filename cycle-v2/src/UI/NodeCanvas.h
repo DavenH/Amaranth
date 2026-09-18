@@ -105,7 +105,7 @@ public:
     bool setPreviewModWheelValue(int value);
     void beginPreviewModWheelGesture();
     bool updatePreviewModWheelGesture(int value);
-    void endPreviewModWheelGesture();
+    void endPreviewModWheelGesture(int finalValue);
     Rectangle<int> performanceKeyboardDockBounds() const;
     Rectangle<float> expandedEditorBoundsForOverlay() const;
     void setOverlayOcclusionChangedCallback(std::function<void()> callback);
@@ -201,15 +201,6 @@ private:
     uint32 compiledStateRefreshDueMs {};
     std::function<void()> overlayOcclusionChanged;
     std::function<void()> previewPlaybackToggle;
-    bool previewModWheelGestureActive {};
-    bool previewModWheelGestureChanged {};
-    int previewModWheelGestureValue {};
-    uint64_t previewModWheelGestureBaseRevision {};
-    ProbeRefreshMode previewModWheelGestureRefreshMode {
-            ProbeRefreshMode::OnGestureCommit };
-    std::shared_ptr<const NodeGraph> previewModWheelGestureGraph;
-    std::shared_ptr<const NodeGraph> previewModWheelGestureLatestSnapshot;
-
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
     void openGLContextClosing() override;

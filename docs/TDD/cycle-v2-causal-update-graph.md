@@ -45,6 +45,24 @@ model serializations at both unrelated graph scales. This closes the Live
 wheel duplicate-preview symptom but not the shared session/scheduler deletion
 targets or the broader native editor proof.
 
+The next extraction moves the wheel's active/mode/changed/base-revision and
+immutable snapshot lifecycle into `PresentationGestureSession`. The session
+calls the dispatcher to begin/commit/cancel a transient edit and the pure
+refresh policy to determine whether a graph snapshot is needed. The wheel
+control supplies only its normalized value and domain morph command; the
+session does not implement morph normalization, product rendering, or worker
+publication. The end state deletes the wheel gesture fields from `NodeCanvas`
+and allows another continuous domain edit to use the same lifecycle methods.
+
+The session extraction is in production for the wheel. `NodeCanvas` no longer
+stores its active/mode/changed/base-revision or graph-snapshot fields; it
+submits normalized wheel values and the existing morph command. Live and On
+Release fixtures pass with 3/2/1 and 1/1/0 requested/published/cancelled
+preview jobs respectively. The Live render count stays 3 across release and
+the durable audio-plan copy still advances once. Other editor families still
+own separate scheduling, so the shared-session completion criterion remains
+open.
+
 ### Request-construction extraction boundary
 
 `NodeUpdateGraph` and `GraphExecutionPlan` remain authoritative for product

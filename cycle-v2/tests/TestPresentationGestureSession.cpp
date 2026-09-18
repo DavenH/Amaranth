@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/NodeParameterMap.h"
 #include "Runtime/PresentationGestureSession.h"
 
 using namespace CycleV2;
@@ -91,4 +93,73 @@ TEST_CASE("Presentation gesture cancellation restores the prior effective state"
     REQUIRE(retriedMovement.has_value());
     REQUIRE(retriedMovement->editId != movement->editId);
     REQUIRE(session.commit("editor:mesh").isValid());
+}
+
+TEST_CASE("Presentation gesture session owns transient graph lifecycle",
+        "[cycle-v2][runtime][presentation-session][gesture]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    PresentationGestureSession session;
+    const uint64_t baseRevision = document.revision();
+
+    REQUIRE(session.beginGraphGesture(
+            "preview:wheel", commands, document, ProbeRefreshMode::LiveLatest, 0));
+    REQUIRE(commands.hasTransientEdit());
+    const auto first = session.recordGraphMovement("preview:wheel", 32);
+    REQUIRE(first.has_value());
+    REQUIRE(commands.setPreviewMorph(0.25f, 32.f / 127.f).changed);
+    const auto firstSnapshot = session.snapshotGraphGesture("preview:wheel", commands);
+    REQUIRE(firstSnapshot != nullptr);
+
+    const auto second = session.recordGraphMovement("preview:wheel", 96);
+    REQUIRE(second.has_value());
+    REQUIRE(second->gestureId == first->gestureId);
+    REQUIRE(commands.setPreviewMorph(0.25f, 96.f / 127.f).changed);
+    const auto finalSnapshot = session.snapshotGraphGesture("preview:wheel", commands);
+    REQUIRE(finalSnapshot != nullptr);
+    REQUIRE(document.revision() == baseRevision);
+    REQUIRE(NodeParameterMap(*firstSnapshot->findNode("mesh")).floatValue("blue")
+            == 32.f / 127.f);
+
+    const auto finished = session.finishGraphGesture("preview:wheel", commands, document);
+    REQUIRE(finished.live);
+    REQUIRE(finished.changed);
+    REQUIRE(finished.durableChanged);
+    REQUIRE(finished.finalSnapshot == finalSnapshot);
+    REQUIRE_FALSE(commands.hasTransientEdit());
+    REQUIRE(document.revision() > baseRevision);
+    REQUIRE(document.undo());
+    REQUIRE(NodeParameterMap(*finalSnapshot->findNode("mesh")).floatValue("blue")
+            == 96.f / 127.f);
+}
+
+TEST_CASE("On Release presentation gesture defers durable morph state",
+        "[cycle-v2][runtime][presentation-session][gesture]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    PresentationGestureSession session;
+    const uint64_t baseRevision = document.revision();
+
+    REQUIRE(session.beginGraphGesture(
+            "preview:wheel", commands, document, ProbeRefreshMode::OnGestureCommit, 0));
+    REQUIRE_FALSE(commands.hasTransientEdit());
+    REQUIRE(session.recordGraphMovement("preview:wheel", 32).has_value());
+    REQUIRE(session.recordGraphMovement("preview:wheel", 96).has_value());
+    REQUIRE(session.snapshotGraphGesture("preview:wheel", commands) == nullptr);
+    REQUIRE(document.revision() == baseRevision);
+
+    const auto finished = session.finishGraphGesture("preview:wheel", commands, document);
+    REQUIRE_FALSE(finished.live);
+    REQUIRE(finished.changed);
+    REQUIRE_FALSE(finished.durableChanged);
+    REQUIRE(commands.setPreviewMorph(0.25f, 96.f / 127.f).changed);
+    REQUIRE(document.revision() > baseRevision);
+    REQUIRE(document.undo());
 }
