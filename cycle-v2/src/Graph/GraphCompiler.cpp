@@ -219,7 +219,7 @@ std::vector<String> buildNodeOrder(
     return buildNodeOrder(graph.getNodes(), graph.getEdges(), issues);
 }
 
-std::vector<Edge> implicitVoiceContextEdges(const NodeGraph& graph) {
+std::vector<Edge> buildImplicitVoiceContextEdges(const NodeGraph& graph) {
     const Node* context = nullptr;
     for (const auto& node : graph.getNodes()) {
         if (node.kind != NodeKind::VoiceContext) {
@@ -1374,6 +1374,10 @@ void GraphCompiler::refreshVoiceContexts(
         buffer.defaultModulation = context->defaultModulation;
         buffer.defaultModulationNoteOffset = context->octave * 12;
     }
+}
+
+std::vector<Edge> GraphCompiler::implicitVoiceContextEdges(const NodeGraph& graph) {
+    return buildImplicitVoiceContextEdges(graph);
 }
 
 GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {

@@ -204,6 +204,7 @@ struct GraphCompileResult {
 
 class GraphCompiler {
 public:
+    static std::vector<Edge> implicitVoiceContextEdges(const NodeGraph& graph);
     GraphCompileResult compile(const NodeGraph& graph) const;
     static float outputGainFor(const NodeGraph& graph);
     void refreshSignalProbes(const NodeGraph& graph, GraphExecutionPlan& plan) const;

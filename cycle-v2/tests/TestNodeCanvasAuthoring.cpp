@@ -296,6 +296,24 @@ TEST_CASE("Hosted effect editors open without requiring a compact preview",
     REQUIRE(authoring.session().expandedNodeId == "delay");
 }
 
+TEST_CASE("Undo and redo retain an editor for a surviving Trimesh node",
+        "[cycle-v2][canvas][authoring][trimesh][undo]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    REQUIRE(authoring.openEditor("mesh").succeeded);
+    REQUIRE(authoring.setNodeParameter("mesh", "range", "Range", "0.7").succeeded);
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(authoring.session().expandedNodeId == "mesh");
+    REQUIRE(authoring.redo().succeeded);
+    REQUIRE(authoring.session().expandedNodeId == "mesh");
+}
+
 TEST_CASE("Bundled modulation connection and deletion are single undoable gestures",
         "[cycle-v2][canvas][authoring][modulation]") {
     NodeGraph graph;

@@ -25,7 +25,9 @@ struct TrimeshRenderData {
     PortDomain domain { PortDomain::TimeSignal };
     int rows {};
     int columns {};
+    int midiNote { 48 };
     bool cyclic { true };
+    bool pitchSpansColumns {};
 
     bool canDrawSurface() const {
         return rows >= 2 && columns >= 2 && surface.size() >= (size_t) rows * (size_t) columns;
@@ -118,7 +120,8 @@ public:
             int rows,
             int columns,
             const TrimeshRenderProfile& renderProfile,
-            int midiNote = 48);
+            int midiNote = 48,
+            int keyScaleAxis = -1);
     std::vector<TrimeshVertexParameter> getVertexParametersForIndex(int vertexIndex);
     std::vector<TrimeshVertexParameter> getSelectedVertexParameters();
     std::vector<TrimeshVertexMarker> getVertexMarkers();

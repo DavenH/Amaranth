@@ -525,6 +525,28 @@ TEST_CASE("Preview pitch context follows the Modulation Triple key-scale axis",
     REQUIRE(context.keyScaleAxis == "yellow");
 }
 
+TEST_CASE("Trimesh preview uses the sole implicit Voice Context's key scale",
+        "[cycle-v2][canvas][preview][key-scale]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationTriple, "triple", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addEdge({
+            "triple", "modulation", "voice", "modulation",
+            PortDomain::VoiceControlSignal, ConnectionKind::ConfigurationAttachment,
+            AttachmentType::ModulationTriple
+    });
+
+    const PreviewPitchContext context =
+            PreviewPitchResolver::contextForNodeAtPreviewNote(graph, "mesh", 72);
+    REQUIRE(context.midiNote == 72);
+    REQUIRE(context.keyScaleAxis == "red");
+
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "otherVoice", {}));
+    REQUIRE(PreviewPitchResolver::contextForNode(graph, "mesh").keyScaleAxis.isEmpty());
+}
+
 TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at full resolution",
         "[cycle-v2][canvas][probe][detail]") {
     GraphNodeFactory factory;

@@ -1,0 +1,18 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/organ-4.cyclegraph" },
+    { "command": "openNodeEditor", "nodeId": "magnitudeLayer1", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "assertState", "path": "expandedNodeControls.trimesh.firstPanelMidiNote", "op": "lessThan", "value": 90 },
+    { "command": "pointer", "event": "down", "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.red", "targetX": 0.2, "targetY": 0.5 },
+    { "command": "pointer", "event": "drag", "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.red", "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.red", "targetX": 0.55, "targetY": 0.5, "downTargetX": 0.2, "downTargetY": 0.5 },
+    { "command": "pointer", "event": "drag", "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.red", "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.red", "targetX": 0.82, "targetY": 0.5, "downTargetX": 0.2, "downTargetY": 0.5 },
+    { "command": "pointer", "event": "up", "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.red", "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.red", "targetX": 0.82, "targetY": 0.5, "downTargetX": 0.2, "downTargetY": 0.5, "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "assertNodeParameter", "nodeId": "magnitudeLayer1", "parameterId": "red", "op": "greaterThan", "value": 0.7 },
+    { "command": "assertState", "path": "expandedNodeControls.trimesh.firstPanelMidiNote", "op": "greaterThan", "value": 90 },
+    { "command": "undo", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "openNodeEditor", "nodeId": "magnitudeLayer1", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "assertState", "path": "expandedNodeControls.trimesh.firstPanelMidiNote", "op": "lessThan", "value": 90 },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

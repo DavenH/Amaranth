@@ -1,0 +1,23 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/organ.cyclegraph" },
+    { "command": "openMeshPopup", "nodeId": "magnitudeLayer1" },
+    { "command": "setPrimaryAxis", "nodeId": "magnitudeLayer1", "axis": "red" },
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    { "command": "assertState", "path": "expandedNodeControls.trimesh.pitchSpansColumns", "equals": true },
+    { "command": "assertState", "path": "expandedNodeControls.trimesh.surfaceColumnCount", "op": "greaterThan", "value": 500 },
+    { "command": "assertState", "path": "expandedNodeControls.trimesh.firstPanelMidiNote", "equals": 20 },
+    { "command": "assertState", "path": "expandedNodeControls.trimesh.lastPanelMidiNote", "equals": 127 },
+    { "command": "pointer", "event": "down", "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.red", "targetX": 0.2, "targetY": 0.5 },
+    { "command": "pointer", "event": "drag", "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.red", "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.red", "targetX": 0.55, "targetY": 0.5, "downTargetX": 0.2, "downTargetY": 0.5 },
+    { "command": "pointer", "event": "drag", "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.red", "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.red", "targetX": 0.82, "targetY": 0.5, "downTargetX": 0.2, "downTargetY": 0.5 },
+    { "command": "pointer", "event": "up", "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.red", "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.red", "targetX": 0.82, "targetY": 0.5, "downTargetX": 0.2, "downTargetY": 0.5, "waitForIdle": true, "idleDelayMs": 500 },
+    { "command": "assertNodeParameter", "nodeId": "magnitudeLayer1", "parameterId": "red", "op": "greaterThan", "value": 0.7 },
+    { "command": "assertState", "path": "expandedNodeControls.trimesh.surfaceColumnCount", "op": "greaterThan", "value": 500 },
+    { "command": "assertState", "path": "expandedNodeControls.trimesh.firstPanelMidiNote", "equals": 20 },
+    { "command": "assertState", "path": "expandedNodeControls.trimesh.lastPanelMidiNote", "equals": 127 },
+    { "command": "inspectOpenGLDiagnostics" },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

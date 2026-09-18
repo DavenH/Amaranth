@@ -246,6 +246,8 @@ public:
         meshState->setProperty("sliceAbsoluteSum", sliceAbsoluteSum);
         const auto panelStats = boundWidget->panelRenderStatsForAutomation();
         meshState->setProperty("panelSampleCount", panelStats.sampleCount);
+        meshState->setProperty("surfaceColumnCount", panelStats.surfaceColumnCount);
+        meshState->setProperty("surfaceRowCount", panelStats.surfaceRowCount);
         meshState->setProperty("panelInterceptCount", panelStats.interceptCount);
         meshState->setProperty(
                 "panelHoveredInterceptIndex",

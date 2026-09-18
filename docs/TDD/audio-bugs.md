@@ -870,3 +870,6 @@ offline spectral assertion.
 The focused fixed-time, keyboard, and preview-mod-wheel suites pass. Current
 status: open; isolate the region failure and distinguish it from the unrelated
 fixture failures before changing audio behavior or test expectations.
+The 2026-09-18 `CycleV2_tests '[trimesh]'` run reproduced the scratch-envelope
+failure and also found zero traversal difference for `magnitudeLayer1` in the
+Stengah scratch-topology case. Log: `/tmp/cycle-v2-trimesh-tests.txt`.

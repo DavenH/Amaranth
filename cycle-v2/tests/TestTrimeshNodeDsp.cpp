@@ -4,6 +4,7 @@
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/NodeParameterMap.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Guide/GuideCurveSnapshotProvider.h"
@@ -34,6 +35,7 @@
 #include <Curve/Mesh/Intercept.h>
 #include <Curve/Curve.h>
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
+#include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 #include <Util/LogRegions.h>
 
@@ -763,6 +765,10 @@ TEST_CASE("Expanded Trimesh surfaces use their complete layout rows", "[cycle-v2
     REQUIRE(grid.getY() == Catch::Approx(content.getY()));
     REQUIRE(grid.getHeight() == Catch::Approx(content.getHeight() * 0.54f));
     REQUIRE(grid.getWidth() == Catch::Approx(content.getWidth() * 0.50f));
+    REQUIRE(TrimeshWidget::expandedColumnCount(content) >= roundToInt(grid.getWidth()));
+    REQUIRE(TrimeshWidget::expandedColumnCount(
+            content.withWidth(content.getWidth() * 1.5f))
+            > TrimeshWidget::expandedColumnCount(content));
     REQUIRE(wave.getY() - grid.getBottom() == Catch::Approx(8.f));
     REQUIRE(wave.getBottom() == Catch::Approx(content.getBottom()));
 }
@@ -797,6 +803,24 @@ TEST_CASE("Trimesh surface renderer creates vertically oriented heatmap images",
     requirePixelNear(0, 0, 0.30f);
     requirePixelNear(1, 1, 0.60f);
     requirePixelNear(1, 0, 0.90f);
+}
+
+TEST_CASE("Compact pitch columns use each key's harmonic range across the preview height",
+        "[cycle-v2][nodes][trimesh][spectral][key-scale][compact]") {
+    TrimeshRenderData renderData;
+    renderData.rows = LogRegionMapping(Constants::LowestMidiNote).regionSize();
+    renderData.columns = 3;
+    renderData.pitchSpansColumns = true;
+    renderData.surface.resize((size_t) renderData.rows * 3);
+    const size_t highColumnOffset = (size_t) renderData.rows * 2;
+    renderData.surface[highColumnOffset] = 1.f;
+
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+    const Image image = TrimeshSurfaceRenderer::createHeatmapImage(renderData, profile);
+    REQUIRE(image.isValid());
+    REQUIRE(image.getPixelAt(2, renderData.rows / 2)
+            != TrimeshSurfaceRenderer::colourForProfile(0.f, profile));
 }
 
 TEST_CASE("Trimesh side panel renderer keeps vertex rails inside parameter rows", "[cycle-v2][nodes][trimesh]") {
@@ -2145,40 +2169,50 @@ TEST_CASE("Spectral Trimesh panels share pitch-dependent LogRegions coordinates"
     }
 }
 
-TEST_CASE("Trimesh preview pitch positions whichever morph axis owns key scale",
+TEST_CASE("Trimesh mapped morph edits move the slider and spectral preview pitch",
         "[cycle-v2][nodes][trimesh][spectral][key-scale]") {
     ScopedJuceInitialiser_GUI juce;
     Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
     TrimeshPanelBridge bridge;
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal));
+    bridge.setPreviewKeyScaleAxis(Vertex::Red);
+    bridge.setPreviewMidiNote(72);
 
-    bridge.setPreviewKeyScaleAxis(Vertex::Time);
-    bridge.setPreviewMidiNote(48);
-    bridge.syncFromNode(node, 10, 3);
-    const float c3Position = ModulationSource::normalizeKey(
-            48,
-            Constants::LowestMidiNote,
-            Constants::HighestMidiNote);
-    REQUIRE(bridge.getModel().getMorphPosition().time.getCurrentValue()
-            == Catch::Approx(c3Position));
-    REQUIRE(bridge.getModel().getMorphPosition().red.getCurrentValue()
-            == Catch::Approx(c3Position));
+    for (const float value : { 0.2f, 0.8f }) {
+        for (auto& parameter : node.parameters) {
+            if (parameter.id == "red") {
+                parameter.value = String(value, 6);
+            }
+        }
+        bridge.syncFromNode(node, 10, 3);
+
+        REQUIRE(bridge.getModel().getMorphPosition().red.getCurrentValue()
+                == Catch::Approx(value));
+        const int expectedNote = Arithmetic::getGraphicNoteForValue(
+                value,
+                Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote));
+        REQUIRE((int) bridge.getDataSource().getColumns().front().midiKey
+                == expectedNote);
+        REQUIRE(bridge.getDataSource().getColumns().front().size()
+                == LogRegionMapping(expectedNote).regionSize());
+    }
 
     bridge.setPreviewKeyScaleAxis(Vertex::Blue);
-    bridge.setPreviewMidiNote(72);
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == "blue") {
+            parameter.value = "0.1";
+        }
+    }
     bridge.syncFromNode(node, 10, 3);
-    const float c5Position = ModulationSource::normalizeKey(
-            72,
-            Constants::LowestMidiNote,
-            Constants::HighestMidiNote);
-    REQUIRE(bridge.getModel().getMorphPosition().time.getCurrentValue()
-            == Catch::Approx(0.f));
+    REQUIRE(bridge.getModel().getMorphPosition().red.getCurrentValue()
+            == Catch::Approx(0.8f));
     REQUIRE(bridge.getModel().getMorphPosition().blue.getCurrentValue()
-            == Catch::Approx(c5Position));
-
-    bridge.setPreviewMidiNote(Constants::HighestMidiNote);
-    bridge.syncFromNode(node, 10, 3);
-    REQUIRE(bridge.getModel().getMorphPosition().blue.getCurrentValue()
-            == Catch::Approx(1.f));
+            == Catch::Approx(0.1f));
+    REQUIRE((int) bridge.getDataSource().getColumns().front().midiKey
+            == Arithmetic::getGraphicNoteForValue(
+                    0.1f,
+                    Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote)));
 }
 
 TEST_CASE("Spectral Trimesh columns span pitch only on the key-scale primary axis",
@@ -2204,11 +2238,16 @@ TEST_CASE("Spectral Trimesh columns span pitch only on the key-scale primary axi
     bridge.setPreviewKeyScaleAxis(Vertex::Red);
     bridge.syncFromNode(node, 10, 5);
     const auto& nonKeyColumns = bridge.getDataSource().getColumns();
+    const int redMorphNote = Arithmetic::getGraphicNoteForValue(
+            NodeParameterMap(node).floatValue("red", 0.5f),
+            Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote));
     REQUIRE_FALSE(bridge.getPanel3D().willAdjustSurfaceColumns());
     REQUIRE(std::all_of(
             nonKeyColumns.begin(),
             nonKeyColumns.end(),
-            [](const Column& column) { return (int) column.midiKey == 72; }));
+            [redMorphNote](const Column& column) {
+                return (int) column.midiKey == redMorphNote;
+            }));
 
     for (auto& parameter : node.parameters) {
         if (parameter.id == "primaryAxis") {
@@ -2220,6 +2259,49 @@ TEST_CASE("Spectral Trimesh columns span pitch only on the key-scale primary axi
     REQUIRE(bridge.getPanel3D().willAdjustSurfaceColumns());
     REQUIRE((int) redColumns.front().midiKey == Constants::LowestMidiNote);
     REQUIRE((int) redColumns.back().midiKey == Constants::HighestMidiNote);
+
+    const std::vector<float> redSurface = bridge.getRenderData().linearFrequencySurface;
+    REQUIRE(*std::max_element(redSurface.begin(), redSurface.end()) > 0.05f);
+    const int sampledColumn = 3;
+    const float columnPosition = (float) sampledColumn / 4.f;
+    const int columnNote = Arithmetic::getGraphicNoteForValue(
+            columnPosition,
+            Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote));
+    const int harmonicCount = LogRegionMapping(columnNote).regionSize();
+    std::vector<float> directHarmonics((size_t) harmonicCount);
+    TrimeshBlockwiseDsp directDsp;
+    directDsp.setMesh(&bridge.getModel().getMeshForPanel());
+    directDsp.setCyclic(false);
+    directDsp.setPrimaryViewAxis(Vertex::Red);
+    directDsp.setMorphPosition(TrimeshGridwiseDsp::morphForColumn(
+            bridge.getModel().getMorphPosition(),
+            Vertex::Red,
+            (size_t) sampledColumn,
+            5));
+    directDsp.setFrequencyMidiNote(columnNote);
+    directDsp.renderCycleInto(
+            { directHarmonics.data(), harmonicCount },
+            PortDomain::SpectralMagnitudeSignal);
+    const size_t columnOffset = (size_t) sampledColumn
+            * (size_t) bridge.getRenderData().rows;
+    for (int harmonic = 0; harmonic < harmonicCount; ++harmonic) {
+        REQUIRE(redSurface[columnOffset + (size_t) harmonic]
+                == Catch::Approx(directHarmonics[(size_t) harmonic]));
+    }
+
+    for (const float value : { 0.2f, 0.8f }) {
+        for (auto& parameter : node.parameters) {
+            if (parameter.id == "red") {
+                parameter.value = String(value, 6);
+            }
+        }
+        bridge.syncFromNode(node, 10, 5);
+        REQUIRE(bridge.getRenderData().linearFrequencySurface == redSurface);
+        REQUIRE((int) bridge.getDataSource().getColumns().front().midiKey
+                == Constants::LowestMidiNote);
+        REQUIRE((int) bridge.getDataSource().getColumns().back().midiKey
+                == Constants::HighestMidiNote);
+    }
 }
 
 TEST_CASE("Trimesh panel bridge hosts panel cores without legacy OpenGL leaves", "[cycle-v2][nodes][trimesh]") {
@@ -2510,7 +2592,7 @@ TEST_CASE("Trimesh panel bridge maps spectral grids by signal domain",
     REQUIRE(*std::max_element(phase.surface.begin(), phase.surface.end()) <= 1.f);
 }
 
-TEST_CASE("Compact and expanded Trimesh views share mapped spectral data",
+TEST_CASE("Compact and expanded Trimesh views sample the same spectral source",
         "[cycle-v2][nodes][trimesh][compact][expanded][spectral]") {
     ScopedJuceInitialiser_GUI juce;
     Node node {
@@ -2546,9 +2628,16 @@ TEST_CASE("Compact and expanded Trimesh views share mapped spectral data",
         widget.paintExpanded(expandedGraphics, node, expandedImage.getBounds().toFloat());
         const TrimeshRenderData expanded = widget.renderDataForAutomation();
 
+        REQUIRE(compact.domain == expanded.domain);
         REQUIRE(compact.rows == expanded.rows);
-        REQUIRE(compact.columns == expanded.columns);
-        REQUIRE(compact.slice == expanded.slice);
-        REQUIRE(compact.surface == expanded.surface);
+        REQUIRE(compact.columns < expanded.columns);
+        REQUIRE(std::equal(
+                compact.slice.begin(),
+                compact.slice.end(),
+                expanded.slice.begin()));
+        REQUIRE(std::equal(
+                compact.surface.begin(),
+                compact.surface.begin() + compact.rows,
+                expanded.surface.begin()));
     }
 }
