@@ -79,7 +79,7 @@ FileManager::FileManager(SingletonRepo* repo) :
   #if PLUGIN_MODE
     defaultPresetName = "empty";
   #else
-    defaultPresetName = "ooh-aah";
+    defaultPresetName = "OohAah";
   #endif
 
   #ifdef _DEBUG

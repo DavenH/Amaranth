@@ -99,9 +99,9 @@ public:
 protected:
     void ensureIconsLoaded();
 
-    Font* silkscreen;
-    Font* verdana12;
-    Font* verdana16;
+    Font* silkscreen{};
+    Font* verdana12{};
+    Font* verdana16{};
 
     Extension* extension{};
 
