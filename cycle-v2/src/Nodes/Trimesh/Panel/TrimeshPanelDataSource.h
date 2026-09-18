@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
+#include "Nodes/Trimesh/Rendering/TrimeshGridRenderService.h"
 
 #include <UI/Panels/Panel3D.h>
 

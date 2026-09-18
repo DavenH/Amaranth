@@ -173,7 +173,14 @@ keeps vertex-to-cube selection lookup and calls the shared validity rule for
 Envelope selections; the duplicate validity method was deleted. Focused
 Trimesh assignment/selection/validation tests pass (40 assertions across five
 cases), as does the authored Envelope Guide playback test (17 assertions).
-The `TrimeshNodeModel::renderGrid` presentation/DSP dependency remains open.
+Second boundary slice: moved `TrimeshNodeModel::renderGrid` and its presentation
+result type into `TrimeshGridRenderService`, with the panel data source calling
+that service. It uses the same blockwise/gridwise DSP and render profile logic
+without copying the algorithm. `TrimeshNodeModel.cpp` fell from 549 to 459
+lines; the new service is 100 lines. The model no longer imports rendering or
+DSP headers. Seven focused Trimesh grid, panel, and spectral presentation
+tests pass (1,463 assertions). This completes the two dependency boundaries
+named in this slice; the broader architecture TDD remains in progress.
 
 ## Measurement and exit criteria
 

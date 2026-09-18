@@ -15,22 +15,8 @@ class Vertex;
 
 namespace CycleV2 {
 
-class TrimeshRenderProfile;
 class GuideCurveSnapshotProvider;
-
-struct TrimeshRenderData {
-    std::vector<float> surface;
-    std::vector<float> linearFrequencySurface;
-    std::vector<float> slice;
-    PortDomain domain { PortDomain::TimeSignal };
-    int rows {};
-    int columns {};
-    bool cyclic { true };
-
-    bool canDrawSurface() const {
-        return rows >= 2 && columns >= 2 && surface.size() >= (size_t) rows * (size_t) columns;
-    }
-};
+class TrimeshGridRenderService;
 
 struct TrimeshVertexParameter {
     String id;
@@ -109,16 +95,6 @@ public:
             const Mesh& preparedMesh,
             std::shared_ptr<GuideCurveSnapshotProvider> provider);
 
-    TrimeshRenderData renderGrid(
-            int rows,
-            int columns,
-            PortDomain domain = PortDomain::TimeSignal,
-            int midiNote = 48);
-    TrimeshRenderData renderGrid(
-            int rows,
-            int columns,
-            const TrimeshRenderProfile& renderProfile,
-            int midiNote = 48);
     std::vector<TrimeshVertexParameter> getVertexParametersForIndex(int vertexIndex);
     std::vector<TrimeshVertexParameter> getSelectedVertexParameters();
     std::vector<TrimeshVertexMarker> getVertexMarkers();
@@ -141,6 +117,8 @@ public:
     const Mesh& currentMesh() const { return *ownedMesh; }
 
 private:
+    friend class TrimeshGridRenderService;
+
     Mesh& mesh();
     int resolvedSelectedVertexIndex();
     Vertex* vertexAtIndex(int vertexIndex);

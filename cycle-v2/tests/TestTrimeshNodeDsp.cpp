@@ -24,6 +24,7 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanelBridge.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanel3D.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
+#include "Nodes/Trimesh/Rendering/TrimeshGridRenderService.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
 #include "Nodes/Trimesh/Rendering/OutputScaleControlRenderer.h"
@@ -1219,7 +1220,7 @@ TEST_CASE("Prepared spectral raster reuses Cycle 1 logarithmic regions",
     mesh->destroy();
 }
 
-TEST_CASE("Trimesh node model renders compact grid data from node parameters", "[cycle-v2][nodes][trimesh]") {
+TEST_CASE("Trimesh grid renderer uses current node parameters", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
@@ -1237,8 +1238,9 @@ TEST_CASE("Trimesh node model renders compact grid data from node parameters", "
     TrimeshNodeModel model;
 
     model.syncFromNode(node);
-    const auto renderData = model.renderGrid(12, 6);
-    const auto spectralRenderData = model.renderGrid(
+    const auto renderData = TrimeshGridRenderService::renderGrid(model, 12, 6);
+    const auto spectralRenderData = TrimeshGridRenderService::renderGrid(
+            model,
             12,
             6,
             PortDomain::SpectralMagnitudeSignal);
