@@ -180,6 +180,26 @@ does not complete the affected-state undo requirement or the movement preview
 work. Give edge topology an invertible delta before claiming that boundary is
 resolved.
 
+The preview index must retain the authoritative rule owners. Cache the durable
+graph's node/port addresses, input/output adjacency, resolved edge domains and
+layouts, neutral audio-scope components, singleton/context facts, reachable
+global regions, and baseline validation issues. Apply each proposed edge delta
+to those indexes and recompute only its dependency closure. Connection and
+splice acceptance must use `GraphValidator::validateEdge` and the same domain,
+scope, operation-input, and reachability rules as commit, including the current
+strict-repair allowance for pre-existing issues. Edge removal may split a
+neutral component or global path, so the affected closure is wider than the
+new edges alone. Invalidate the context on durable graph changes and on node
+parameter changes that alter ports, domains, or processing scope. Compare the
+indexed proposal with committed full validation on both valid and invalid
+graphs; scale disconnected graph data and assert unchanged validation visits.
+
+As a prerequisite, `GraphValidator::validateEdge` now uses the indexed
+`NodeGraph::findNode` instead of its own per-edge linear node search. Focused
+edge-grammar, proposed-edge, and neutral-scope tests pass (20 assertions in
+three cases). This removes one repeated lookup policy but does not bound the
+remaining graph-wide validation passes.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,

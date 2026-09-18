@@ -11,16 +11,6 @@ namespace CycleV2 {
 
 namespace {
 
-const Node* findNode(const NodeGraph& graph, const String& id) {
-    for (const auto& node : graph.getNodes()) {
-        if (node.id == id) {
-            return &node;
-        }
-    }
-
-    return nullptr;
-}
-
 const Port* findPort(const Node& node, const String& id, bool input) {
     const auto& ports = input ? node.inputs : node.outputs;
 
@@ -246,8 +236,8 @@ void GraphValidator::validateEdge(
         });
     };
 
-    const Node* sourceNode = findNode(graph, edge.sourceNodeId);
-    const Node* destNode = findNode(graph, edge.destNodeId);
+    const Node* sourceNode = graph.findNode(edge.sourceNodeId);
+    const Node* destNode = graph.findNode(edge.destNodeId);
 
     if (sourceNode == nullptr) {
         report(GraphValidationCode::MissingSourceNode, "Missing source node: " + edge.sourceNodeId);
