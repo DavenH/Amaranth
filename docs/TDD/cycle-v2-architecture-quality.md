@@ -171,6 +171,15 @@ after these graph-view slices. `GraphEditor.cpp` is 410 lines after the splice
 change, below the review threshold; size reduction is secondary to the
 removed candidate copies and shared validation rules.
 
+Bundle commit no longer performs a separate clone-based preflight. It now
+attempts routes through `GraphCommandDispatcher` inside one compound edit and
+cancels on the first rejection. A test rejects the second route after the first
+succeeds and verifies that edges, revision, and undo history remain unchanged.
+The dispatcher still captures a full `NodeGraph` for the compound edit, so this
+does not complete the affected-state undo requirement or the movement preview
+work. Give edge topology an invertible delta before claiming that boundary is
+resolved.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,
