@@ -2,8 +2,9 @@
 
 ## Status
 
-In progress, 2026-09-18. Graph mutation ownership has one completed extraction
-slice; the UI validation and `NodeGraph` ownership criteria remain open.
+In progress, 2026-09-18. Graph edit ownership and the Trimesh dependency
+boundaries have completed extraction slices. The UI validation, `NodeGraph`
+ownership, UI coordination, and runtime execution criteria remain open.
 
 ## Context and baseline
 
@@ -115,6 +116,19 @@ without removing the movement-time graph copies. Extract a read-only graph
 validation view for proposed edge deltas, shared by preview and commit, before
 replacing these callers; retain `GraphValidator`'s existing domain and scope
 rules rather than adding a second approximation.
+
+The read view must cover more than `GraphValidator::validateEdge`:
+`GraphDomainResolver` propagates domains and channel layouts across edges,
+`GraphAudioScopeAnalyzer` derives processing scope, and `GraphValidator`
+checks global reachability, operation inputs, and voice assignments. These
+currently consume `NodeGraph`'s complete node/edge vectors. A preview adapter
+that merely presents a modified vector still scans unrelated graph data on
+each movement. Cache the unchanged baseline at gesture start and make the
+shared rule units query the affected edge neighborhood and its downstream
+dependencies. The completion test must scale unrelated nodes, edges, and
+audio resources while holding the proposed edge delta constant, then assert
+unchanged copy, lookup, and validation-work counters. Connection and splice
+commit must use the same rules with a durable graph mutation only at commit.
 
 ### 2. Reduce UI coordination surfaces
 
