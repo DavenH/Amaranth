@@ -54,11 +54,6 @@ enum class UpdateTracePhase {
     InvariantViolation
 };
 
-enum class ProbeRefreshMode {
-    OnGestureCommit,
-    LiveLatest
-};
-
 struct UpdateCause {
     String sourceNodeId;
     String field;

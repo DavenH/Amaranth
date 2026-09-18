@@ -8,7 +8,7 @@
 #include "UI/SignalProbePreviewTileCache.h"
 #include "UI/WorkspaceDock.h"
 #include "Graph/GraphRenderSemanticResolver.h"
-#include "Runtime/NodeUpdateGraph.h"
+#include "Runtime/PresentationRefreshPolicy.h"
 
 namespace CycleV2 {
 

@@ -31,6 +31,16 @@ presentation model, and automation layers. It introduced wheel-specific
 gesture state and a wheel-specific asynchronous presentation entry point.
 The verification work was appropriate, but the production plumbing was not.
 
+The 2026-09-17 Live wheel fixture makes the remaining commit failure
+deterministic: after a movement preview has published, mouse-up raises the
+preview render count from 3 to 4. The trace reports three requests, two
+publications, and one stale/cancelled request for a down/drag/up sequence.
+The On Release wheel path has a separate focused repair, but the Live commit
+still needs the shared session to distinguish a current preview product from
+the durable audio-configuration update. `PresentationRefreshPolicy` has begun
+as a pure decision boundary; movement routing is a partial migration, not
+completion of the session or scheduler deletion targets.
+
 The current policy distribution includes:
 
 - ten explicit `ProbeRefreshMode` branches across `NodeEditorCommandService`

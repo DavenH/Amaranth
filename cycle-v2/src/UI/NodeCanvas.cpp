@@ -1869,7 +1869,14 @@ void NodeCanvas::beginPreviewModWheelGesture() {
     previewModWheelGestureChanged = false;
     previewModWheelGestureValue = presentation.previewModWheelValue();
     previewModWheelGestureRefreshMode = probeRailState.refreshMode;
-    if (previewModWheelGestureRefreshMode == ProbeRefreshMode::LiveLatest) {
+    const auto decision = PresentationRefreshPolicy::decide({
+            EditPhase::Movement,
+            previewModWheelGestureRefreshMode,
+            std::nullopt,
+            true,
+            false
+    });
+    if (decision.downstream == DownstreamRefresh::LatestAsync) {
         previewModWheelGestureGraph = std::make_shared<const NodeGraph>(
                 commands.editingGraph());
     }
@@ -1886,7 +1893,14 @@ bool NodeCanvas::updatePreviewModWheelGesture(int value) {
 
     previewModWheelGestureValue = selectedValue;
     previewModWheelGestureChanged = true;
-    if (previewModWheelGestureRefreshMode == ProbeRefreshMode::OnGestureCommit) {
+    const auto decision = PresentationRefreshPolicy::decide({
+            EditPhase::Movement,
+            previewModWheelGestureRefreshMode,
+            std::nullopt,
+            true,
+            false
+    });
+    if (decision.downstream == DownstreamRefresh::None) {
         return true;
     }
 
@@ -2316,8 +2330,14 @@ void NodeCanvas::recordNodeEditorMovement(
     const bool primaryTrimeshMorph = node != nullptr
             && node->kind == NodeKind::TrilinearMesh
             && NodeParameterMap(*node).stringValue("primaryAxis", "yellow") == field;
-    const bool probesDeferred = primaryTrimeshMorph
-            || probeRailState.refreshMode == ProbeRefreshMode::OnGestureCommit;
+    const auto decision = PresentationRefreshPolicy::decide({
+            EditPhase::Movement,
+            probeRailState.refreshMode,
+            UpdateProduct::LocalSlice,
+            !primaryTrimeshMorph,
+            false
+    });
+    const bool probesDeferred = decision.downstream != DownstreamRefresh::LatestAsync;
     presentation.recordEditorMovement(nodeId, field, effectiveFingerprint, probesDeferred);
     if (!primaryTrimeshMorph) {
         scheduleCompiledStateRefresh(

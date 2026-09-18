@@ -62,6 +62,12 @@ After preserving controller state across non-null graph adoption, the direct
 live capture measured RMS 0.0320 at low wheel and 0.0670 at high wheel. The
 fixture now has thresholds that fail the original identical-output behavior.
 
+A separate Live-mode audit captures the remaining duplicate commit work. With
+the final movement already published, mouse-up increases preview renders from
+3 to 4. Telemetry reports three requests (down, drag, commit), two publications,
+and one stale request. Commit reuse must be handled by the shared presentation
+gesture/session and policy path rather than another wheel-specific skip flag.
+
 ## Authority and design constraints
 
 `PerformanceKeyboard` and `MidiControlState` own live CC1 delivery. The graph
