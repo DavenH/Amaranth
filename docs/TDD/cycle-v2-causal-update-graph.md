@@ -231,6 +231,18 @@ does not satisfy Cycle 1 commit complexity parity and remains a deletion
 target. A persistent mesh representation or equivalent local delta commit
 path is needed before the vertex family can be called migrated.
 
+The next implementation boundary is durable storage. `TrimeshNodeModelState`
+exposes an owned `Mesh` of raw cube/vertex pointers; `NodeGraph::replaceNodeModel`
+and graph/editor callers require that concrete mesh. A sparse delta state
+layered over that API would force full materialization at commit or during
+immediate widget resynchronization. `TrimeshGuidePreparation::prepare` also
+deep-copies the whole mesh, and `GuideCurveMeshPreparation::apply` clears every
+cube before applying guide assignments. A Live worker cannot call either on
+movement. Extract persistent per-cube ownership/read access for model state
+and a guide-assignment view reused from the gesture's prepared configuration.
+Keep the existing guide semantics and rasterizers authoritative; avoid a
+movement-time full-mesh materialization or a second guide algorithm.
+
 `TrimeshWidget` and `TrimeshNodeModel` are authoritative for vertex editing
 and its local render. Vertex-parameter and mesh drags currently mutate the
 widget's `Mesh`; `NodeEditorCommandService` calls
@@ -252,6 +264,15 @@ from the existing callback alone. Extract an immutable semantic curve delta
 from the widget/controller used by both local rendering and graph product
 inputs before moving this family into the shared session. Do not prepare a
 complete model or serialize it on every pointer movement.
+
+The flat-curve model already has identity-addressed `moveVertex` and
+`setCurve` operations, but the mature panel interaction edits its `Mesh`
+directly. `FlatCurvePanelAdapter::modelPublication` later synchronizes the
+entire mesh into that model and copies the model for publication. Curve
+extraction must route the panel through the existing identity-addressed edit
+rules or share a lower edit core with them, then carry a persistent affected
+vertex delta to the product path. A parallel curve evaluator or mesh-to-model
+scan on movement would violate the boundary.
 
 ### Request-construction extraction boundary
 
