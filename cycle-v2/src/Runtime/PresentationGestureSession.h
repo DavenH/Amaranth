@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <unordered_map>
 
 #include "Runtime/NodeUpdateGraph.h"
 
@@ -20,9 +21,15 @@ public:
     String activeStreamOr(const String& fallback) const;
 
 private:
+    struct StreamHash {
+        size_t operator()(const String& stream) const {
+            return static_cast<size_t>(stream.hashCode64());
+        }
+    };
+
     SemanticEditGate editGate;
-    std::optional<EditIdentity> pendingMovement;
-    String pendingStream;
+    std::unordered_map<String, EditIdentity, StreamHash> pendingMovements;
+    String latestPendingStream;
 };
 
 }

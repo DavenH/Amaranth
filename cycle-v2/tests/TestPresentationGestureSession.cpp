@@ -48,6 +48,34 @@ TEST_CASE("Presentation gesture session keeps source streams independent",
     REQUIRE(requestedMovement->editId == movement->editId);
 }
 
+TEST_CASE("Presentation gesture session preserves pending identities for concurrent streams",
+        "[cycle-v2][runtime][presentation-session]") {
+    PresentationGestureSession session;
+    const auto first = session.recordMovement("editor:first", 10);
+    const auto second = session.recordMovement("editor:second", 20);
+    REQUIRE(first.has_value());
+    REQUIRE(second.has_value());
+
+    const auto requestedFirst = session.identityForRequest(
+            "editor:first", 10, EditPhase::Movement);
+    const auto requestedSecond = session.identityForRequest(
+            "editor:second", 20, EditPhase::Movement);
+    REQUIRE(requestedFirst.has_value());
+    REQUIRE(requestedSecond.has_value());
+    REQUIRE(requestedFirst->editId == first->editId);
+    REQUIRE(requestedSecond->editId == second->editId);
+
+    session.commit("editor:first");
+    REQUIRE(session.activeStreamOr("graph") == "editor:second");
+    session.cancel("editor:second");
+    REQUIRE(session.activeStreamOr("graph") == "graph");
+
+    REQUIRE(session.recordMovement("editor:first", 11).has_value());
+    REQUIRE(session.recordMovement("editor:second", 21).has_value());
+    session.cancel("editor:second");
+    REQUIRE(session.activeStreamOr("graph") == "editor:first");
+}
+
 TEST_CASE("Presentation gesture cancellation restores the prior effective state",
         "[cycle-v2][runtime][presentation-session]") {
     PresentationGestureSession session;

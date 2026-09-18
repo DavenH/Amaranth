@@ -4,6 +4,24 @@
 
 In progress (reopened 2026-09-15).
 
+### 2026-09-17 impact-domain baseline
+
+The native Cycle V2 Live mod-wheel fixture on `honerism-3.cyclegraph`
+measured the remaining preview-publication domain. After the final drag
+settled, `previewRenderCount` was 3; after release it was 4. The window
+contained three preview requests, two publications, one cancelled result,
+and zero synchronous refreshes. The release advanced the audio-plan copy
+count from 2 to 3. These are baseline observations, not a target to suppress:
+release also commits saved morph fields, so product reuse needs an effective
+configuration comparison or transient morph updates. Re-run the same fixture
+after the session and scheduler migration and compare these counters.
+
+The pending-identity correction in `PresentationGestureSession` leaves this
+wheel-domain telemetry unchanged: the same fixture still reports 3 to 4
+renders, 2 to 3 audio-plan copies, three requests, two publications, one
+cancelled result, and zero synchronous refreshes. The correction preserves
+independent source identities; it does not migrate wheel scheduling.
+
 The production causal planner, product identities, audit trace, incremental
 preview execution, and latest-only worker publication landed in July 2026.
 The prior `Complete` status was premature: probe-refresh policy and gesture

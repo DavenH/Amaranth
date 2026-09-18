@@ -10,8 +10,8 @@ std::optional<EditIdentity> PresentationGestureSession::recordMovement(
             effectiveFingerprint,
             EditPhase::Movement);
     if (identity.has_value()) {
-        pendingMovement = identity;
-        pendingStream = sourceStreamId;
+        pendingMovements.insert_or_assign(sourceStreamId, *identity);
+        latestPendingStream = sourceStreamId;
     }
     return identity;
 }
@@ -30,9 +30,10 @@ std::optional<EditIdentity> PresentationGestureSession::identityForRequest(
                 effectiveFingerprint,
                 EditPhase::Commit);
     }
-    if (pendingMovement.has_value() && pendingStream == sourceStreamId) {
-        const auto identity = pendingMovement;
-        pendingMovement.reset();
+    const auto pending = pendingMovements.find(sourceStreamId);
+    if (pending != pendingMovements.end()) {
+        const auto identity = pending->second;
+        pendingMovements.erase(pending);
         return identity;
     }
     return editGate.accept(
@@ -43,19 +44,27 @@ std::optional<EditIdentity> PresentationGestureSession::identityForRequest(
 
 EditIdentity PresentationGestureSession::commit(const String& sourceStreamId) {
     const EditIdentity identity = editGate.commit(sourceStreamId);
-    pendingMovement.reset();
-    pendingStream = {};
+    pendingMovements.erase(sourceStreamId);
+    if (latestPendingStream == sourceStreamId) {
+        latestPendingStream = pendingMovements.empty()
+                ? String()
+                : pendingMovements.begin()->first;
+    }
     return identity;
 }
 
 void PresentationGestureSession::cancel(const String& sourceStreamId) {
     editGate.cancelGesture(sourceStreamId);
-    pendingMovement.reset();
-    pendingStream = {};
+    pendingMovements.erase(sourceStreamId);
+    if (latestPendingStream == sourceStreamId) {
+        latestPendingStream = pendingMovements.empty()
+                ? String()
+                : pendingMovements.begin()->first;
+    }
 }
 
 String PresentationGestureSession::activeStreamOr(const String& fallback) const {
-    return pendingStream.isNotEmpty() ? pendingStream : fallback;
+    return latestPendingStream.isNotEmpty() ? latestPendingStream : fallback;
 }
 
 }
