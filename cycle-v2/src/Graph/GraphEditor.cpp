@@ -1,5 +1,7 @@
 #include "Graph/GraphEditor.h"
 
+#include "Graph/GraphEdgeView.h"
+
 namespace CycleV2 {
 
 namespace {
@@ -89,9 +91,7 @@ GraphEditResult GraphEditor::connect(
         return { GraphEditCode::MissingPort, {}, {} };
     }
 
-    NodeGraph candidate = graph;
-    candidate.removeEdgesToInput(destAddress.nodeId, destAddress.portId);
-    candidate.addEdge({
+    Edge proposedEdge {
             sourceAddress.nodeId,
             sourceAddress.portId,
             destAddress.nodeId,
@@ -103,17 +103,31 @@ GraphEditResult GraphEditor::connect(
             dest->purpose == PortPurpose::ScratchAttachment
                     ? AttachmentType::ScratchEnvelope
                     : dest->attachmentType
-    });
+    };
+
+    std::vector<size_t> replacedEdgeIndices;
+    for (size_t index = 0; index < graph.getEdges().size(); ++index) {
+        const Edge& edge = graph.getEdges()[index];
+        if (edge.destNodeId == destAddress.nodeId
+                && edge.destPortId == destAddress.portId) {
+            replacedEdgeIndices.push_back(index);
+        }
+    }
+    const GraphEdgeView proposedEdges(
+            graph.getEdges(),
+            std::move(replacedEdgeIndices),
+            { proposedEdge });
 
     GraphValidator validator;
-    auto issues = validator.validate(candidate);
+    auto issues = validator.validate(graph, proposedEdges);
 
     if (!issues.empty()
             && !strictlyRepairsValidationIssues(validator.validate(graph), issues)) {
         return { GraphEditCode::ValidationRejected, {}, std::move(issues) };
     }
 
-    graph = std::move(candidate);
+    graph.removeEdgesToInput(destAddress.nodeId, destAddress.portId);
+    graph.addEdge(std::move(proposedEdge));
     GraphEditResult result;
     result.changes.nodeIds = { sourceAddress.nodeId, destAddress.nodeId };
     result.changes.topologyChanged = true;

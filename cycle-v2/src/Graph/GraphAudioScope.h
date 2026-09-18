@@ -7,6 +7,8 @@
 
 namespace CycleV2 {
 
+class GraphEdgeView;
+
 enum class AuthoredAudioScope {
     Voice,
     Global
@@ -29,6 +31,7 @@ struct GraphAudioScopeAnalysis {
 class GraphAudioScopeAnalyzer {
 public:
     GraphAudioScopeAnalysis analyze(const NodeGraph& graph) const;
+    GraphAudioScopeAnalysis analyze(const NodeGraph& graph, const GraphEdgeView& edges) const;
     static AudioProcessingCapability capabilityFor(const Node& node);
     static AuthoredAudioScope explicitScopeFor(const Node& node);
 };

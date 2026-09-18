@@ -8,6 +8,8 @@
 
 namespace CycleV2 {
 
+class GraphEdgeView;
+
 enum class GraphValidationCode {
     MissingSourceNode,
     MissingDestinationNode,
@@ -43,6 +45,9 @@ struct GraphValidationIssue {
 class GraphValidator {
 public:
     std::vector<GraphValidationIssue> validate(const NodeGraph& graph) const;
+    std::vector<GraphValidationIssue> validate(
+            const NodeGraph& graph,
+            const GraphEdgeView& edges) const;
     bool isValid(const NodeGraph& graph) const;
     bool edgeHasValidationIssue(const NodeGraph& graph, const Edge& edge) const;
     GraphValidationIssue validationIssueForEdge(const NodeGraph& graph, const Edge& edge) const;
@@ -60,14 +65,17 @@ private:
     bool isVoiceAwareDestination(const Port& port) const;
     void validateOperationInputs(
             const NodeGraph& graph,
+            const GraphEdgeView& edges,
             const GraphDomainResolution& resolution,
             std::vector<GraphValidationIssue>& issues) const;
     void validateAudioScopes(
             const NodeGraph& graph,
+            const GraphEdgeView& edges,
             const GraphAudioScopeAnalysis& analysis,
             std::vector<GraphValidationIssue>& issues) const;
     void validateVoiceContextAssignments(
             const NodeGraph& graph,
+            const GraphEdgeView& edges,
             std::vector<GraphValidationIssue>& issues) const;
     bool domainsCompatible(const Port& source, const Port& dest) const;
     bool channelLayoutsCompatible(const Port& source, const Port& dest) const;

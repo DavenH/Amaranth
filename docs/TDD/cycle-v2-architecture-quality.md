@@ -140,6 +140,27 @@ transaction tests pass (51 assertions across four cases). This removes a
 header dependency; the three UI preview calls and their graph copies remain
 and still require the shared read view above.
 
+Read-view extraction, first internal slice: `GraphEdgeView` borrows the graph's
+existing edge vector and overlays only removed indices and added edges. It
+translates `edge count/index` reads; it owns no graph nodes, resources, or
+validation decisions. `GraphDomainResolver` remains authoritative for domain
+and channel propagation and now accepts this view alongside its existing
+`NodeGraph` entry point. The stable end state is for preview and commit to
+pass the same proposed-edge view into domain, scope, and validation rules,
+then retire clone-based candidate validation. The overlay must never become
+a second domain resolver. A parity test compares a proposed replacement with
+the equivalent committed graph while checking that the source graph is intact.
+`GraphAudioScopeAnalyzer` and `GraphValidator` now consume the same view,
+including graph-level scope, reachability, operation, and voice-assignment
+checks. `GraphEditor::connect` validates the proposal through that view and
+applies its edge replacement only after acceptance, removing its whole-graph
+candidate copy. Proposed-vs-committed domain, scope, and validation parity
+tests plus a scaled connection copy-count test pass; the focused domain,
+audio-scope, connection, splice, and canvas tests pass (209 assertions across
+25 cases). The validator still scans complete graph vectors, and splice and
+the three UI preview callers still copy `NodeGraph`; no movement path may use
+this view until those costs are removed or cached.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,
