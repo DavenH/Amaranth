@@ -7,26 +7,17 @@
 #include <optional>
 
 #include "Runtime/GraphAudioExecutor.h"
-#include "Runtime/GraphPreviewExecutor.h"
 #include "Runtime/GraphPresentationPerformanceMetrics.h"
-#include "Runtime/GraphRuntime.h"
+#include "Runtime/GraphPresentationSnapshot.h"
 #include "Runtime/MessageThreadWorker.h"
 #include "Runtime/NodeUpdateGraph.h"
 #include "Runtime/PresentationGestureSession.h"
+#include "Runtime/PresentationPreviewRenderer.h"
 #include "Runtime/PresentationUpdateRequestBuilder.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
 
 namespace CycleV2 {
-
-struct GraphPresentationSnapshot {
-    uint64_t graphRevision {};
-    int previewMidiNote { 48 };
-    int previewModWheelValue {};
-    GraphCompileResult compileResult;
-    RuntimeProcessTrace runtimeTrace;
-    GraphPreviewResult previewResult;
-};
 
 class GraphPresentationModel {
 public:
@@ -82,7 +73,7 @@ public:
     size_t compilationCount() const { return compilations; }
     size_t previewRenderCount() const { return previewRenders; }
     size_t previewAudioProcessCount(const String& nodeId) const {
-        return previewAudioExecutor.diagnosticProcessCount(nodeId);
+        return previewRenderer.diagnosticProcessCount(nodeId);
     }
     const UpdateAuditTrace& updateTrace() const { return updateGraph.trace(); }
     PresentationGestureSession& editSession() { return gestureSession; }
@@ -135,14 +126,6 @@ private:
     bool executeAsyncProducts(
             AsyncRefresh& refresh,
             const std::vector<PlannedNodeProduct>& products);
-    bool renderPreviewProducts(
-            const NodeGraph& graph,
-            GraphPresentationSnapshot& snapshot,
-            const std::vector<PlannedNodeProduct>& products,
-            bool renderFullGraph,
-            PresentationRefreshScope scope,
-            bool& previewRendered,
-            GraphAudioExecutor::CancellationCheck cancellationCheck = {});
     std::function<void()> publishAsyncRefresh(std::shared_ptr<AsyncRefresh> refresh);
     bool isCurrent(const AsyncRefresh& refresh) const;
     CausalUpdateRequest updateRequest(
@@ -161,7 +144,7 @@ private:
     NodeDspConfigurationFactory configurationFactory;
     NodeUpdateGraph updateGraph;
     PresentationGestureSession gestureSession;
-    mutable GraphAudioExecutor previewAudioExecutor;
+    PresentationPreviewRenderer previewRenderer;
     uint64_t requestedGraphRevision {};
     uint64_t presentationRevision { 1 };
     uint64_t audioRevision { 1 };

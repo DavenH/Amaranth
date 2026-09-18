@@ -146,6 +146,7 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeUpdateGraph.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PresentationRefreshPolicy.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PresentationGestureSession.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PresentationPreviewRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PresentationUpdateRequestBuilder.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeAudioProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeAudioProcessorSupport.cpp"

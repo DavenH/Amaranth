@@ -156,6 +156,27 @@ session identity call and the thin request wrapper. The focused preview and
 Guide tests pass, and the native wheel fixture retains the baseline counts
 above. The scheduler and wrapper deletion remain open.
 
+### Preview execution extraction boundary
+
+`GraphPresentationModel::renderPreviewProducts` contains the mature preview
+execution path: `GraphAudioExecutor` prepares and processes the graph, then
+`GraphPreviewExecutor` extracts full or incremental node and probe products.
+Move this function and its execution cache into a dedicated renderer without
+changing processors, dirty-node selection, cancellation, or metrics.
+`GraphPresentationModel` will call the renderer with planned products and
+retain ownership of accepted snapshots. This is a direct extraction with no
+duplicate preview implementation; delete the old method and executor member.
+Worker lifecycle and scheduling move in a later slice.
+
+The renderer extraction is in production. The old model method and audio
+executor member are gone, and a mechanical body comparison confirmed the
+render algorithm is unchanged. Four focused preview tests passed (53
+assertions). The native Live wheel fixture still reports three renders before
+and after release, three requests, two publications, one stale/cancelled
+result, and zero synchronous refreshes after the extraction. The expanded
+probe capture helper is still in the model and must move with the remaining
+preview execution boundary.
+
 The production causal planner, product identities, audit trace, incremental
 preview execution, and latest-only worker publication landed in July 2026.
 The prior `Complete` status was premature: probe-refresh policy and gesture

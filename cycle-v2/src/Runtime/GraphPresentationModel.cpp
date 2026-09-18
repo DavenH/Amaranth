@@ -1,7 +1,5 @@
 #include <algorithm>
 
-#include <App/AppConstants.h>
-
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/FingerprintBuilder.h"
 #include "Runtime/PreviewPitchResolver.h"
@@ -13,7 +11,6 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr size_t kCompactPreviewFrameCount = 512;
 constexpr size_t kExpandedProbeColumnCount = 512;
 constexpr size_t kMaximumExpandedProbeRows = 512;
 
@@ -135,7 +132,7 @@ bool GraphPresentationModel::refresh(
             next.runtimeTrace = GraphRuntime().process(graph, next.compileResult.plan);
         }
         updateGraph.clearProductCache();
-        previewAudioExecutor.resetExecutionState();
+        previewRenderer.resetExecutionState();
     } else if (change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
         refreshConfigurations(graph, next.compileResult.plan, change.nodeIds);
@@ -164,13 +161,14 @@ bool GraphPresentationModel::refresh(
             next.compileResult.plan,
             request,
             [&](const auto& products) {
-                return renderPreviewProducts(
+                return previewRenderer.render(
                         graph,
                         next,
                         products,
                         compile,
                         PresentationRefreshScope::Downstream,
-                        previewRendered);
+                        previewRendered,
+                        performance);
             });
     updateGraph.publish(request, updateResult);
     if (previewRendered) {
@@ -414,128 +412,15 @@ bool GraphPresentationModel::executeAsyncProducts(
         return isCurrent(refresh);
     }
 
-    return renderPreviewProducts(
+    return previewRenderer.render(
             *refresh.graph,
             next,
             products,
             false,
             refresh.scope,
             refresh.previewRendered,
+            performance,
             [&] { return isCurrent(refresh); });
-}
-
-bool GraphPresentationModel::renderPreviewProducts(
-        const NodeGraph& graph,
-        GraphPresentationSnapshot& snapshot,
-        const std::vector<PlannedNodeProduct>& products,
-        bool renderFullGraph,
-        PresentationRefreshScope scope,
-        bool& previewRendered,
-        GraphAudioExecutor::CancellationCheck cancellationCheck) {
-    previewRendered = false;
-    const bool hasPreviewWork = std::any_of(
-            products.begin(), products.end(), [](const auto& product) {
-                return product.product == UpdateProduct::PreviewTraversal
-                        || product.product == UpdateProduct::CompactPreview
-                        || product.product == UpdateProduct::ProbePreview;
-            });
-    if (!hasPreviewWork || !snapshot.compileResult.succeeded()) {
-        return true;
-    }
-
-    const AudioExecutionSpec spec {
-            kCompactPreviewFrameCount,
-            44100.0,
-            ChannelLayout::LinkedStereo
-    };
-    previewAudioExecutor.prepareExecution(snapshot.compileResult.plan, spec);
-    AudioVoiceContext previewVoice;
-    previewVoice.controls.noteNumber = snapshot.previewMidiNote;
-    previewVoice.controls.controllers[1]
-            = (float) snapshot.previewModWheelValue / 127.f;
-    previewVoice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
-    PreviewControlContext previewControls;
-    previewControls.noteNumber = snapshot.previewMidiNote;
-    previewControls.controllers[1]
-            = (float) snapshot.previewModWheelValue / 127.f;
-    previewControls.lowestNote = Constants::LowestMidiNote;
-    previewControls.highestNote = Constants::HighestMidiNote;
-    previewControls.traverseVoiceTime = true;
-    if (renderFullGraph) {
-        const uint64_t audioStartedAt = performance.timestamp();
-        const GraphAudioResult audio = previewAudioExecutor.process(
-                graph,
-                snapshot.compileResult.plan,
-                kCompactPreviewFrameCount,
-                {},
-                previewVoice);
-        performance.record(
-                GraphPresentationPerformanceMetrics::Stage::PreviewAudio,
-                performance.timestamp() - audioStartedAt);
-        const uint64_t extractionStartedAt = performance.timestamp();
-        snapshot.previewResult = GraphPreviewExecutor().render(
-                snapshot.compileResult.plan,
-                audio,
-                graph.getSignalProbes(),
-                40,
-                &previewControls);
-        performance.record(
-                GraphPresentationPerformanceMetrics::Stage::PreviewExtraction,
-                performance.timestamp() - extractionStartedAt);
-        previewRendered = true;
-        return true;
-    }
-
-    std::vector<uint8_t> dirtyNodes(snapshot.compileResult.plan.steps.size());
-    for (const auto& product : products) {
-        if (product.product != UpdateProduct::PreviewTraversal
-                && product.product != UpdateProduct::CompactPreview) {
-            continue;
-        }
-        const auto step = snapshot.compileResult.plan.dependencyIndex.stepIndexById.find(
-                product.nodeId);
-        if (step != snapshot.compileResult.plan.dependencyIndex.stepIndexById.end()) {
-            dirtyNodes[static_cast<size_t>(step->second)] = 1;
-        }
-    }
-    const uint64_t audioStartedAt = performance.timestamp();
-    const GraphAudioResultView audio = previewAudioExecutor.processIncrementalIndexed(
-            graph,
-            snapshot.compileResult.plan,
-            kCompactPreviewFrameCount,
-            dirtyNodes,
-            previewVoice,
-            cancellationCheck);
-    performance.record(
-            GraphPresentationPerformanceMetrics::Stage::PreviewAudio,
-            performance.timestamp() - audioStartedAt);
-    if (audio.cancelled || (cancellationCheck && !cancellationCheck())) {
-        return false;
-    }
-    const uint64_t extractionStartedAt = performance.timestamp();
-    if (scope == PresentationRefreshScope::LocalEditor) {
-        GraphPreviewExecutor().renderNodePreviewsIncremental(
-                snapshot.compileResult.plan,
-                audio,
-                dirtyNodes,
-                40,
-                snapshot.previewResult,
-                &previewControls);
-    } else {
-        GraphPreviewExecutor().renderIncremental(
-                snapshot.compileResult.plan,
-                audio,
-                graph.getSignalProbes(),
-                dirtyNodes,
-                40,
-                snapshot.previewResult,
-                &previewControls);
-    }
-    performance.record(
-            GraphPresentationPerformanceMetrics::Stage::PreviewExtraction,
-            performance.timestamp() - extractionStartedAt);
-    previewRendered = true;
-    return true;
 }
 
 std::function<void()> GraphPresentationModel::publishAsyncRefresh(
