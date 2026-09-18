@@ -11,9 +11,8 @@
 #include "Runtime/GraphPresentationSnapshot.h"
 #include "Runtime/MessageThreadWorker.h"
 #include "Runtime/NodeUpdateGraph.h"
-#include "Runtime/PresentationGestureSession.h"
 #include "Runtime/PresentationPreviewRenderer.h"
-#include "Runtime/PresentationUpdateRequestBuilder.h"
+#include "Runtime/PresentationRefreshScheduler.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
 
@@ -76,7 +75,7 @@ public:
         return previewRenderer.diagnosticProcessCount(nodeId);
     }
     const UpdateAuditTrace& updateTrace() const { return updateGraph.trace(); }
-    PresentationGestureSession& editSession() { return gestureSession; }
+    PresentationGestureSession& editSession() { return scheduler.editSession(); }
     juce::var performanceMetrics() const { return performance.toVar(); }
     void resetPerformanceMetrics() { performance.reset(); }
 
@@ -128,14 +127,6 @@ private:
             const std::vector<PlannedNodeProduct>& products);
     std::function<void()> publishAsyncRefresh(std::shared_ptr<AsyncRefresh> refresh);
     bool isCurrent(const AsyncRefresh& refresh) const;
-    CausalUpdateRequest updateRequest(
-            const NodeGraph& graph,
-            const GraphExecutionPlan& plan,
-            uint64_t documentRevision,
-            const GraphChangeSet& change,
-            bool compile,
-            bool preview,
-            PresentationRefreshScope scope);
 
     bool hasExplicitPreviewMidiNote {};
 
@@ -143,7 +134,7 @@ private:
     GraphCompiler compiler;
     NodeDspConfigurationFactory configurationFactory;
     NodeUpdateGraph updateGraph;
-    PresentationGestureSession gestureSession;
+    PresentationRefreshScheduler scheduler;
     PresentationPreviewRenderer previewRenderer;
     uint64_t requestedGraphRevision {};
     uint64_t presentationRevision { 1 };

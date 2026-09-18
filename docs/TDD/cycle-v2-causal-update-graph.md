@@ -150,6 +150,26 @@ dependency closure, execute products, or choose refresh policy. The end state
 deletes `GraphPresentationModel::updateRequest` and keeps request translation
 in the scheduler below the presentation facade.
 
+The next scheduler slice moves ownership of `PresentationGestureSession` and
+the existing `updateRequest` method together into
+`PresentationRefreshScheduler`. The scheduler receives the current published
+revision and preview-control values as a small read-only context, retains the
+effective fingerprint and phase rules, and calls the pure request builder
+unchanged.
+`GraphPresentationModel` will keep the planner, worker, and publication until
+their own extraction slices; it will no longer own the edit gate or construct
+requests. This scheduler is an orchestration owner, not an adapter for domain
+logic.
+
+The scheduler now owns `PresentationGestureSession` and the former
+`GraphPresentationModel::updateRequest` code; the model passes a small context
+with published revision and preview controls. Focused causal/gesture tests
+passed (119 assertions), and the native Live wheel fixture retained three
+renders before and after release, three requests, two publications, one
+stale/cancelled result, and zero synchronous refreshes. `NodeUpdateGraph`,
+the worker, coalescing, and publication are still in the model, so scheduler
+ownership is incomplete.
+
 The first extraction moves fingerprint and typed invalidation construction to
 `PresentationUpdateRequestBuilder`; `GraphPresentationModel` still owns the
 session identity call and the thin request wrapper. The focused preview and

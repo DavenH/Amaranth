@@ -113,11 +113,13 @@ bool GraphPresentationModel::refresh(
     }
 
     bool previewRendered {};
-    const auto request = updateRequest(
+    const auto request = scheduler.request(
             graph,
             next.compileResult.plan,
             documentRevision,
             change,
+            { current.graphRevision, current.previewMidiNote,
+                    current.previewModWheelValue },
             compile,
             preview,
             PresentationRefreshScope::Downstream);
@@ -286,11 +288,13 @@ void GraphPresentationModel::refreshAsync(
     const bool preview = requiresPreview(change);
     GraphPresentationSnapshot next = current;
     next.graphRevision = documentRevision;
-    const auto request = updateRequest(
+    const auto request = scheduler.request(
             *graph,
             next.compileResult.plan,
             documentRevision,
             change,
+            { current.graphRevision, current.previewMidiNote,
+                    current.previewModWheelValue },
             false,
             preview,
             scope);
@@ -463,9 +467,10 @@ void GraphPresentationModel::recordEditorMovement(
             .add(nodeId)
             .add(field)
             .value();
-    const auto identity = gestureSession.graphGestureIsActive(stream)
-            ? gestureSession.recordGraphMovement(stream, streamFingerprint)
-            : gestureSession.recordMovement(stream, streamFingerprint);
+    auto& session = scheduler.editSession();
+    const auto identity = session.graphGestureIsActive(stream)
+            ? session.recordGraphMovement(stream, streamFingerprint)
+            : session.recordMovement(stream, streamFingerprint);
     if (!identity.has_value()) {
         return;
     }
@@ -514,8 +519,9 @@ void GraphPresentationModel::commitLocalEditorState(
         const String& field,
         uint64_t effectiveFingerprint,
         uint64_t documentRevision) {
-    const String stream = gestureSession.activeStreamOr("editor:" + nodeId);
-    const EditIdentity identity = gestureSession.commit(stream);
+    auto& session = scheduler.editSession();
+    const String stream = session.activeStreamOr("editor:" + nodeId);
+    const EditIdentity identity = session.commit(stream);
     if (!identity.isValid()) {
         return;
     }
@@ -636,33 +642,6 @@ void GraphPresentationModel::refreshConfigurations(
             };
         }
     }
-}
-
-CausalUpdateRequest GraphPresentationModel::updateRequest(
-        const NodeGraph& graph,
-        const GraphExecutionPlan& plan,
-        uint64_t documentRevision,
-        const GraphChangeSet& change,
-        bool compile,
-        bool preview,
-        PresentationRefreshScope scope) {
-    const String stream = gestureSession.activeStreamOr(
-            "graph:" + (change.nodeIds.empty() ? String("document") : change.nodeIds.front()));
-    const uint64_t fingerprint = PresentationUpdateRequestBuilder::effectiveFingerprint(
-            graph,
-            documentRevision,
-            change,
-            current.previewMidiNote,
-            current.previewModWheelValue);
-    const EditPhase phase = documentRevision > current.graphRevision
-            ? EditPhase::Commit
-            : EditPhase::Movement;
-    const auto identity = gestureSession.identityForRequest(stream, fingerprint, phase);
-    if (!identity.has_value()) {
-        return {};
-    }
-    return PresentationUpdateRequestBuilder::build(
-            graph, plan, change, *identity, stream, fingerprint, compile, preview, scope);
 }
 
 }
