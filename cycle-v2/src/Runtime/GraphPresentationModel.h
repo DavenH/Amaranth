@@ -13,6 +13,7 @@
 #include "Runtime/MessageThreadWorker.h"
 #include "Runtime/NodeUpdateGraph.h"
 #include "Runtime/PresentationGestureSession.h"
+#include "Runtime/PresentationUpdateRequestBuilder.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
 
@@ -25,11 +26,6 @@ struct GraphPresentationSnapshot {
     GraphCompileResult compileResult;
     RuntimeProcessTrace runtimeTrace;
     GraphPreviewResult previewResult;
-};
-
-enum class PresentationRefreshScope {
-    Downstream,
-    LocalEditor
 };
 
 class GraphPresentationModel {

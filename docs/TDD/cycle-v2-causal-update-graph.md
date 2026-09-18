@@ -22,6 +22,24 @@ renders, 2 to 3 audio-plan copies, three requests, two publications, one
 cancelled result, and zero synchronous refreshes. The correction preserves
 independent source identities; it does not migrate wheel scheduling.
 
+### Request-construction extraction boundary
+
+`NodeUpdateGraph` and `GraphExecutionPlan` remain authoritative for product
+freshness and dependency topology. A pure request builder may reuse the
+existing `GraphPresentationModel::updateRequest` translation unchanged:
+compute the effective authoring fingerprint, collect changed and probed roots,
+and name typed product invalidations. It must receive edit identity from the
+gesture session and hand its request to `NodeUpdateGraph`; it must not plan
+dependency closure, execute products, or choose refresh policy. The end state
+deletes `GraphPresentationModel::updateRequest` and keeps request translation
+in the scheduler below the presentation facade.
+
+The first extraction moves fingerprint and typed invalidation construction to
+`PresentationUpdateRequestBuilder`; `GraphPresentationModel` still owns the
+session identity call and the thin request wrapper. The focused preview and
+Guide tests pass, and the native wheel fixture retains the baseline counts
+above. The scheduler and wrapper deletion remain open.
+
 The production causal planner, product identities, audit trace, incremental
 preview execution, and latest-only worker publication landed in July 2026.
 The prior `Complete` status was premature: probe-refresh policy and gesture
