@@ -157,6 +157,49 @@ bool TrimeshVertexEditCore::canApply(
     return true;
 }
 
+std::optional<TrimeshVertexEditDelta> TrimeshVertexEditCore::compose(
+        const TrimeshVertexEditDelta& accumulated,
+        const TrimeshVertexEditDelta& movement) {
+    if (accumulated.target != movement.target
+            || accumulated.vertexIndex != movement.vertexIndex
+            || accumulated.valueIndex != movement.valueIndex) {
+        return std::nullopt;
+    }
+
+    TrimeshVertexEditDelta result;
+    result.target = accumulated.target;
+    result.vertexIndex = accumulated.vertexIndex;
+    result.valueIndex = accumulated.valueIndex;
+    result.changes.reserve(accumulated.changes.size() + movement.changes.size());
+    size_t accumulatedIndex {};
+    size_t movementIndex {};
+    while (accumulatedIndex < accumulated.changes.size()
+            || movementIndex < movement.changes.size()) {
+        if (movementIndex == movement.changes.size()
+                || (accumulatedIndex < accumulated.changes.size()
+                        && accumulated.changes[accumulatedIndex].ownerOrdinal
+                                < movement.changes[movementIndex].ownerOrdinal)) {
+            result.changes.push_back(accumulated.changes[accumulatedIndex++]);
+            continue;
+        }
+        if (accumulatedIndex == accumulated.changes.size()
+                || movement.changes[movementIndex].ownerOrdinal
+                        < accumulated.changes[accumulatedIndex].ownerOrdinal) {
+            result.changes.push_back(movement.changes[movementIndex++]);
+            continue;
+        }
+        const auto& previous = accumulated.changes[accumulatedIndex++];
+        const auto& next = movement.changes[movementIndex++];
+        if (previous.after != next.before) {
+            return std::nullopt;
+        }
+        if (previous.before != next.after) {
+            result.changes.push_back({ previous.ownerOrdinal, previous.before, next.after });
+        }
+    }
+    return result;
+}
+
 float TrimeshVertexEditCore::guideGain(
         const Mesh& mesh,
         int vertexIndex,

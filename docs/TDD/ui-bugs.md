@@ -458,3 +458,14 @@ assertion in `TestTrimeshNodeDsp.cpp` expected 22 control regions and observed
 `/private/tmp/causal-trimesh-delta-tests.log`.
 
 Current status: open; reconcile the control layout contract and its assertion.
+
+## P3: Cycle 1 FileManager assertion during a mismatched automation launch
+
+On 2026-09-18, the Cycle V2 guide-gain audit fixture was accidentally run
+through the wrapper's default Cycle 1 app. The commands were unsupported and
+the filtered log emitted `JUCE Assertion failure in FileManager.cpp:174`.
+The same fixture passed when `CYCLE_APP_PATH` and `CYCLE_PROCESS_NAME` targeted
+Cycle V2. The mismatched-run log was replaced by the successful rerun; use
+the wrapper defaults with `/tmp/causal-trimesh-guide-audit.json` to reproduce.
+
+Current status: open in Cycle 1; unrelated to the Cycle V2 gesture change.

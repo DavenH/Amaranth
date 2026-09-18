@@ -9,6 +9,7 @@
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/NodeGraph.h"
+#include "Nodes/Trimesh/Model/TrimeshVertexEditCore.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Runtime/NodeUpdateGraph.h"
@@ -282,7 +283,7 @@ private:
     String activeVertexParameterId;
     TrimeshWidget* activeVertexWidget {};
     int activeVertexIndex { -1 };
-    bool activeVertexChanged {};
+    std::optional<TrimeshVertexEditDelta> activeVertexDelta;
     String activeGuideMenuNodeId;
     String activeGuideMenuParameterField;
     uint64_t activeGuideMenuGeneration {};

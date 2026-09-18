@@ -3104,7 +3104,7 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
     REQUIRE(prepared.assignmentCount > 0);
     REQUIRE(prepared.mesh->getCubes().front()->guideCurveGainAt(Vertex::Amp)
             == Catch::Approx(0.8f));
-    REQUIRE(presentation.recordedMovements == 3);
+    REQUIRE(presentation.recordedMovements == 2);
     REQUIRE(presentation.immediateRefreshes == 1);
     REQUIRE(document.canUndo());
 
@@ -3118,6 +3118,16 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
     REQUIRE(widget.vertexParametersForIndex(0)[4].guideGain
             == Catch::Approx(0.5f));
     REQUIRE_FALSE(document.canUndo());
+
+    REQUIRE(commands.beginTrimeshVertexParameterEdit(
+            "mesh", "guideGain.amp", 0.5f));
+    InteractionComplexityDiagnostics::reset();
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.7f));
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.5f));
+    commands.endTrimeshVertexParameterEdit();
+    REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
+    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(document.graph().findNode("mesh")->model == restored);
 }
 
 TEST_CASE("Clicking an open Trimesh Guide selector dismisses its popup",

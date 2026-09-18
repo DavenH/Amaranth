@@ -44,6 +44,9 @@ public:
             float value);
     static bool apply(Mesh& mesh, const TrimeshVertexEditDelta& delta);
     static bool canApply(const Mesh& mesh, const TrimeshVertexEditDelta& delta);
+    static std::optional<TrimeshVertexEditDelta> compose(
+            const TrimeshVertexEditDelta& accumulated,
+            const TrimeshVertexEditDelta& movement);
     static float guideGain(
             const Mesh& mesh,
             int vertexIndex,

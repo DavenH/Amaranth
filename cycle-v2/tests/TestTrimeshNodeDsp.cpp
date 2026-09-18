@@ -341,6 +341,35 @@ TEST_CASE("Trimesh delta overlay reuses mature waveform slicing",
     reference.destroy();
 }
 
+TEST_CASE("Trimesh gesture deltas retain their initial value across movements",
+        "[cycle-v2][nodes][trimesh][gesture][delta]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("gesture-delta");
+    const float initial = mesh->getVerts()[0]->values[Vertex::Phase];
+    const auto first = TrimeshVertexEditCore::prepareVertexValue(
+            *mesh, 0, "vertex.phase", 0.73f);
+    REQUIRE(first.has_value());
+    REQUIRE(TrimeshVertexEditCore::apply(*mesh, *first));
+    const auto second = TrimeshVertexEditCore::prepareVertexValue(
+            *mesh, 0, "vertex.phase", 0.41f);
+    REQUIRE(second.has_value());
+    const auto combined = TrimeshVertexEditCore::compose(*first, *second);
+    REQUIRE(combined.has_value());
+    REQUIRE(combined->changes.front().before == initial);
+    REQUIRE(combined->changes.front().after == 0.41f);
+    REQUIRE(TrimeshVertexEditCore::apply(*mesh, *second));
+
+    const auto returnToBase = TrimeshVertexEditCore::prepareVertexValue(
+            *mesh, 0, "vertex.phase", initial);
+    REQUIRE(returnToBase.has_value());
+    const auto cancelled = TrimeshVertexEditCore::compose(*combined, *returnToBase);
+    REQUIRE(cancelled.has_value());
+    REQUIRE_FALSE(cancelled->changed());
+    auto stale = *second;
+    stale.changes.front().before = -1.f;
+    REQUIRE_FALSE(TrimeshVertexEditCore::compose(*first, stale).has_value());
+    mesh->destroy();
+}
+
 TEST_CASE("Trimesh topology snapshots preserve the authoritative Mesh contract",
         "[cycle-v2][nodes][trimesh][topology]") {
     auto source = TrimeshMeshFactory::createDefaultMesh("AuthoredTrimesh");

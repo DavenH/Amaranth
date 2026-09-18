@@ -193,6 +193,21 @@ with an edited mesh. No production configuration creates an overlay yet. The
 widget/editor delta producer, two-update gesture sequence, durable local
 commit, and curve counterpart remain open.
 
+The vertex-control command service now prepares each effective movement from
+the widget's current mesh through the shared edit core and composes it against
+the gesture's initial values. Composition walks affected owners in order and
+rejects a discontinuity. A repeated value produces no movement publication;
+returning to the initial value commits only any editor selection change and
+skips the mesh copy and downstream refresh. The two-movement guide-gain editor
+test covers the resulting commit, prepared guide effect, undo, and return to
+base. This delta is not yet routed into a production preview configuration,
+and a net changed release still copies the complete mesh.
+The native guide-gain fixture after this change passes. Its pre-release window
+still records three vertex-update operations and zero preview requests,
+configuration stages, preview-audio stages, or synchronous refreshes, matching
+the baseline counts above. Report:
+`/private/tmp/causal-trimesh-guide-accumulator.json`.
+
 `TrimeshVertexEditCore` now prepares and applies before/after vertex-value
 and guide-gain deltas; `TrimeshNodeModel` delegates its mature clamping and
 owner-gain rules to that core. The core's inverse reapplies the prior values,
