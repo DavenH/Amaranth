@@ -13,6 +13,7 @@ namespace CycleV2 {
 struct NodeCanvasOpenGLDiagnosticsState {
     bool canvasAttached {};
     juce::String expandedNodeId;
+    juce::Rectangle<float> expandedEditorBounds;
 };
 
 struct NodeCanvasAutomationControllerContext {

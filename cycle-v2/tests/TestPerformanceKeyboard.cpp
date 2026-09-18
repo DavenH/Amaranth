@@ -332,7 +332,7 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
     REQUIRE(layout.minimap.getRight() == content.getRight() - CanvasUtilityDock::margin);
     REQUIRE(layout.legend.getRight() == layout.minimap.getRight());
     REQUIRE(layout.keyboard.getCentreX() == content.getCentreX());
-    REQUIRE(layout.keyboard.getY() == content.getY() + CanvasUtilityDock::margin);
+    REQUIRE(layout.keyboard.getY() == content.getY());
     REQUIRE(layout.keyboard.getWidth() == 489.f);
     REQUIRE(layout.keyboard.getHeight() == 140.5f);
     REQUIRE(layout.status.getX() == content.getX() + CanvasUtilityDock::margin);
@@ -353,10 +353,11 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
     const Rectangle<float> compactContent { 0.f, 0.f, 500.f, 300.f };
     const CanvasUtilityDockLayout compact = CanvasUtilityDock::layout(compactContent);
     REQUIRE(compact.keyboard.getWidth() == 464.f);
-    REQUIRE(compact.keyboard.getHeight() == 117.f);
+    REQUIRE(compact.keyboard.getHeight() == CanvasUtilityDock::preferredKeyboardHeight);
+    REQUIRE(compact.keyboard.getY() == compactContent.getY());
     REQUIRE(compact.keyboard.getCentreX() == compactContent.getCentreX());
-    REQUIRE(compact.legend.getHeight() >= CanvasUtilityDock::minimumCompactLegendHeight);
-    REQUIRE(compact.minimap.getHeight() == 92.f);
+    REQUIRE(compact.legend.isEmpty());
+    REQUIRE(compact.minimap.getHeight() == 50.f);
     REQUIRE_FALSE(compact.status.intersects(compact.minimap));
     REQUIRE_FALSE(compact.legend.intersects(compact.keyboard));
     REQUIRE(compactContent.contains(compact.keyboard));

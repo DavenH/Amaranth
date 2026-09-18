@@ -1,0 +1,8 @@
+{
+  "commands": [
+    { "command": "assertState", "path": "probeCount", "equals": 0 },
+    { "command": "inspectTargets", "area": "canvas" },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-compact-empty-spy-dock.png" }
+  ],
+  "quit": true
+}

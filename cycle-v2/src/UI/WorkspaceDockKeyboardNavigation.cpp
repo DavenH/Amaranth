@@ -6,8 +6,9 @@ namespace CycleV2 {
 
 std::vector<WorkspaceDockFocus> WorkspaceDockKeyboardNavigation::focusOrder(
         const WorkspaceDockKeyboardModel& model) {
-    std::vector<WorkspaceDockFocus> order { { WorkspaceDockFocusTarget::Collapse, {} } };
+    std::vector<WorkspaceDockFocus> order;
     if (!model.expanded) {
+        order.push_back({ WorkspaceDockFocusTarget::Collapse, {} });
         return order;
     }
 
@@ -44,24 +45,22 @@ bool WorkspaceDockKeyboardNavigation::moveFocus(
     }
 
     if (key.getKeyCode() == juce::KeyPress::leftKey) {
-        if (focus.target == WorkspaceDockFocusTarget::GuideTile) {
-            return moveWithinTiles(model.guideIds, -1, focus.target, focus);
-        }
         if (focus.target == WorkspaceDockFocusTarget::SpyTile) {
             return moveWithinTiles(model.spyIds, -1, focus.target, focus);
         }
     }
     if (key.getKeyCode() == juce::KeyPress::rightKey) {
-        if (focus.target == WorkspaceDockFocusTarget::GuideTile) {
-            return moveWithinTiles(model.guideIds, 1, focus.target, focus);
-        }
         if (focus.target == WorkspaceDockFocusTarget::SpyTile) {
             return moveWithinTiles(model.spyIds, 1, focus.target, focus);
         }
     }
-    if (key.getKeyCode() == juce::KeyPress::upKey
-            || key.getKeyCode() == juce::KeyPress::downKey) {
-        return moveBetweenShelves(model, focus);
+    if (focus.target == WorkspaceDockFocusTarget::GuideTile) {
+        if (key.getKeyCode() == juce::KeyPress::upKey) {
+            return moveWithinTiles(model.guideIds, -1, focus.target, focus);
+        }
+        if (key.getKeyCode() == juce::KeyPress::downKey) {
+            return moveWithinTiles(model.guideIds, 1, focus.target, focus);
+        }
     }
     return false;
 }
@@ -125,31 +124,6 @@ bool WorkspaceDockKeyboardNavigation::moveWithinTiles(
     return true;
 }
 
-bool WorkspaceDockKeyboardNavigation::moveBetweenShelves(
-        const WorkspaceDockKeyboardModel& model,
-        WorkspaceDockFocus& focus) {
-    const std::vector<juce::String>* source = nullptr;
-    const std::vector<juce::String>* destination = nullptr;
-    WorkspaceDockFocusTarget destinationTarget { WorkspaceDockFocusTarget::None };
-    if (focus.target == WorkspaceDockFocusTarget::GuideTile && !model.spyIds.empty()) {
-        source = &model.guideIds;
-        destination = &model.spyIds;
-        destinationTarget = WorkspaceDockFocusTarget::SpyTile;
-    } else if (focus.target == WorkspaceDockFocusTarget::SpyTile && !model.guideIds.empty()) {
-        source = &model.spyIds;
-        destination = &model.guideIds;
-        destinationTarget = WorkspaceDockFocusTarget::GuideTile;
-    } else {
-        return false;
-    }
-
-    const auto found = std::find(source->begin(), source->end(), focus.itemId);
-    const int index = found == source->end() ? 0 : (int) std::distance(source->begin(), found);
-    const int destinationIndex = juce::jmin(index, (int) destination->size() - 1);
-    focus = { destinationTarget, (*destination)[(size_t) destinationIndex] };
-    return true;
-}
-
 void WorkspaceDockKeyboardNavigation::revealFocus(
         const WorkspaceDockKeyboardModel& model,
         const WorkspaceDockKeyboardLayout& layout,
@@ -166,11 +140,11 @@ void WorkspaceDockKeyboardNavigation::revealFocus(
 
     const int index = (int) std::distance(ids.begin(), found);
     float& offset = guide ? guideOffset : spyOffset;
-    offset = WorkspaceDock::offsetToRevealTile(
-            offset,
-            guide ? layout.maximumGuideOffset : layout.maximumSpyOffset,
-            guide ? layout.guideShelfWidth : layout.spyShelfWidth,
-            index);
+    offset = guide
+            ? WorkspaceDock::offsetToRevealGuideTile(
+                    offset, layout.maximumGuideOffset, layout.guideShelfHeight, index)
+            : WorkspaceDock::offsetToRevealTile(
+                    offset, layout.maximumSpyOffset, layout.spyShelfWidth, index);
 }
 
 bool WorkspaceDockKeyboardNavigation::activate(

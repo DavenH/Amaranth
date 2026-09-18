@@ -61,7 +61,6 @@ Point<float> tetherStart(
     const Rectangle<float> tile = GuideCurveShelf::tileBoundsFor(
             frame.workspaceBounds,
             frame.probeRailState,
-            frame.dockSplitRatio,
             frame.guideShelfState,
             tileIndex);
     const WorkspaceDockLayout dock = WorkspaceDock::layout(
@@ -70,10 +69,9 @@ Point<float> tetherStart(
                     frame.probeRailState.expanded,
                     frame.guideShelfState.minimized,
                     frame.probeRailState.minimized,
-                    frame.probeRailState.expandedHeight,
-                    frame.dockSplitRatio
+                    frame.probeRailState.expandedHeight
             });
-    return { tile.getCentreX(), dock.dock.getY() };
+    return { dock.leftShelf.getX(), tile.getCentreY() };
 }
 
 bool hasVisibleTarget(
@@ -146,12 +144,12 @@ void GuideRelationshipPresentation::paintTether(
         }
 
         const Rectangle<float> destination = frame.viewport.toScreen(target->bounds);
-        const Point<float> end { destination.getCentreX(), destination.getBottom() };
-        const float controlDistance = jmax(48.f, (start.y - end.y) * 0.35f);
+        const Point<float> end { destination.getRight(), destination.getCentreY() };
+        const float controlDistance = jmax(48.f, (start.x - end.x) * 0.35f);
         tethers.startNewSubPath(start);
         tethers.cubicTo(
-                start.x, start.y - controlDistance,
-                end.x, end.y + controlDistance,
+                start.x - controlDistance, start.y,
+                end.x + controlDistance, end.y,
                 end.x, end.y);
         ++visibleTargetCount;
     }

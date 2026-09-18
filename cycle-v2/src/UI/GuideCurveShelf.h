@@ -14,7 +14,7 @@ namespace CycleV2 {
 
 struct GuideCurveShelfState {
     bool minimized {};
-    float horizontalOffset {};
+    float verticalOffset {};
     String selectedGuideId;
     String hoveredGuideId;
 };
@@ -27,33 +27,27 @@ public:
 
     static Rectangle<float> guideWorkspace(
             Rectangle<float> workspace,
-            float splitRatio,
             bool guidesMinimized = false,
             bool spiesMinimized = false);
     static Rectangle<float> spyWorkspace(
             Rectangle<float> workspace,
-            float splitRatio,
             bool guidesMinimized = false,
             bool spiesMinimized = false);
     static Rectangle<float> boundsFor(
             Rectangle<float> workspace,
             const SignalProbeRailState& dockState,
-            float splitRatio,
             const GuideCurveShelfState& state);
     static Rectangle<float> addButtonBounds(
             Rectangle<float> workspace,
             const SignalProbeRailState& dockState,
-            float splitRatio,
             const GuideCurveShelfState& state);
     static Rectangle<float> minimizeButtonBounds(
             Rectangle<float> workspace,
             const SignalProbeRailState& dockState,
-            float splitRatio,
             const GuideCurveShelfState& state);
     static Rectangle<float> tileBoundsFor(
             Rectangle<float> workspace,
             const SignalProbeRailState& dockState,
-            float splitRatio,
             const GuideCurveShelfState& state,
             int tileIndex);
     static String guideAt(
@@ -61,12 +55,10 @@ public:
             const NodeGraph& graph,
             Rectangle<float> workspace,
             const SignalProbeRailState& dockState,
-            float splitRatio,
             const GuideCurveShelfState& state);
-    static float maximumHorizontalOffset(
+    static float maximumVerticalOffset(
             Rectangle<float> workspace,
             const SignalProbeRailState& dockState,
-            float splitRatio,
             const GuideCurveShelfState& state,
             int guideCount);
 
@@ -75,7 +67,6 @@ public:
             const NodeGraph& graph,
             Rectangle<float> workspace,
             const SignalProbeRailState& dockState,
-            float splitRatio,
             const GuideCurveShelfState& state,
             const WorkspaceDockFocus& focus) const;
     bool needsOpenGLPreviewRender() const;
@@ -85,7 +76,6 @@ public:
             Rectangle<float> workspace,
             Rectangle<float> captureWorkspace,
             const SignalProbeRailState& dockState,
-            float splitRatio,
             const GuideCurveShelfState& state,
             float scaleFactor);
     void resetDocumentPreviews();

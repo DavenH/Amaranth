@@ -187,7 +187,6 @@ private:
     float outputGainDragStartValue { 0.5f };
     SignalProbeRailState probeRailState;
     GuideCurveShelfState guideShelfState;
-    float dockSplitRatio { 0.5f };
     SignalProbeDetailState probeDetailState;
     OutputMeterBallistics outputMeterBallistics;
     std::optional<OutputMeterLevels> liveOutputMeterLevels;
@@ -254,6 +253,7 @@ private:
     bool cycleSinglePortLayout(const String& nodeId);
     bool cycleOutputSide(const String& nodeId);
     Rectangle<float> canvasContentBounds() const;
+    Rectangle<float> editorContentBounds() const;
     WorkspaceDockLayout workspaceDockLayout() const;
     void showEdgeMenu(int edgeIndex, Point<float> screenPosition);
     void openGuideEditor(const String& guideId);

@@ -37,15 +37,6 @@ public:
     static Rectangle<float> boundsFor(
             Rectangle<float> workspace,
             const SignalProbeRailState& state);
-    static Rectangle<float> contentBoundsFor(
-            Rectangle<float> workspace,
-            const SignalProbeRailState& state);
-    static Rectangle<float> resizeHandleFor(
-            Rectangle<float> workspace,
-            const SignalProbeRailState& state);
-    static Rectangle<float> collapseHandleFor(
-            Rectangle<float> workspace,
-            const SignalProbeRailState& state);
     static Rectangle<float> refreshModeBoundsFor(
             Rectangle<float> workspace,
             const SignalProbeRailState& state);
@@ -56,6 +47,10 @@ public:
             Rectangle<float> workspace,
             const SignalProbeRailState& state,
             int tileIndex);
+    static Rectangle<float> scrollAreaFor(
+            Rectangle<float> workspace,
+            const SignalProbeRailState& state,
+            int probeCount);
     static float maximumHorizontalOffset(Rectangle<float> workspace, int probeCount);
     static int ordinalForProbe(const NodeGraph& graph, const String& probeId);
     static std::vector<String> orderedProbeIds(const NodeGraph& graph);

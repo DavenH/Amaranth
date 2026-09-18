@@ -177,15 +177,11 @@ NodeCanvas::NodeCanvas() :
             AppSettings::ProbeEditRefreshPolicy) == 1
             ? ProbeRefreshMode::LiveLatest
             : ProbeRefreshMode::OnGestureCommit;
-    dockSplitRatio = jlimit(
-            0.2f,
-            0.8f,
-            settings.getGlobalSettingValue(AppSettings::GuideDockSplitPercent) / 100.f);
     guideShelfState.minimized = settings.getGlobalSettingValue(
             AppSettings::GuideShelfMinimized) != 0;
     probeRailState.minimized = settings.getGlobalSettingValue(
             AppSettings::SpyShelfMinimized) != 0;
-    probeRailState.expanded = settings.getGlobalSettingValue(AppSettings::GuideSpyDockExpanded) != 0;
+    probeRailState.expanded = true;
     probeRailState.expandedHeight = jmax(
             WorkspaceDock::minimumExpandedHeight,
             (float) settings.getGlobalSettingValue(AppSettings::GuideSpyDockHeight));
@@ -198,7 +194,6 @@ NodeCanvas::NodeCanvas() :
             probeRailState,
             guideShelfState,
             probeDetailState,
-            dockSplitRatio,
             editStatusMessage,
             WorkspaceDockInteractionCallbacks {
                     [this](const String& guideId) { openGuideEditor(guideId); },
@@ -256,9 +251,9 @@ void NodeCanvas::resized() {
     }
     if (guideEditor != nullptr && guideEditor->isVisible()) {
         guideEditor->setBounds(
-                GuideCurveEditorComponent::preferredHostBounds(canvasContentBounds()).toNearestInt());
+                GuideCurveEditorComponent::preferredHostBounds(editorContentBounds()).toNearestInt());
     }
-    editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
+    editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
     requestCanvasRepaint();
 }
 
@@ -351,7 +346,6 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
             position,
             GuideCurveShelf::spyWorkspace(
                     getLocalBounds().toFloat(),
-                    dockSplitRatio,
                     guideShelfState.minimized,
                     probeRailState.minimized),
             graph,
@@ -367,7 +361,6 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
                     graph,
                     getLocalBounds().toFloat(),
                     probeRailState,
-                    dockSplitRatio,
                     guideShelfState);
 
     const Node* inlinePan = findInlinePanAt(graph, viewport, position);
@@ -428,8 +421,10 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     if (dockInteraction->mouseDown(event, workspace)) {
         return;
     }
+    guideShelfState.selectedGuideId = {};
+    guideShelfState.hoveredGuideId = {};
     if (probeDetailState.isOpen()) {
-        const Rectangle<float> detail = SignalProbeDetailView::boundsFor(canvasContentBounds());
+        const Rectangle<float> detail = SignalProbeDetailView::boundsFor(editorContentBounds());
         if (SignalProbeDetailView::closeBounds(detail).contains(event.position)) {
             probeDetailState.close();
             notifyOverlayOcclusionChanged();
@@ -446,7 +441,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         const Node* expandedNode = queries.findNode(expandedNodeId);
         const ExpandedEditorClick click = editorCoordinator.routeClick(
                 expandedNode,
-                canvasContentBounds(),
+                editorContentBounds(),
                 event.position);
         if (click.kind == ExpandedEditorClickKind::Close) {
             editorCoordinator.close();
@@ -612,7 +607,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         if (event.getNumberOfClicks() >= 2 && hasExpandedEditor(hitNode->kind)) {
             expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
             synchronizeOpenedEditorMorph();
-            editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
+            editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
             notifyOverlayOcclusionChanged();
         }
 
@@ -819,31 +814,30 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
     const Rectangle<float> guideShelf = GuideCurveShelf::boundsFor(
             workspace,
             probeRailState,
-            dockSplitRatio,
             guideShelfState);
-    if (!guideShelfState.minimized && guideShelf.contains(event.position)) {
-        const float wheelDelta = std::abs(wheel.deltaX) > std::abs(wheel.deltaY)
-                ? wheel.deltaX
-                : wheel.deltaY;
-        guideShelfState.horizontalOffset = jlimit(
+    const float maximumGuideOffset = GuideCurveShelf::maximumVerticalOffset(
+            workspace,
+            probeRailState,
+            guideShelfState,
+            (int) graph.getGuideCurves().size());
+    if (!guideShelfState.minimized && maximumGuideOffset > 0.f
+            && guideShelf.withTrimmedTop(WorkspaceDock::headerHeight)
+                    .contains(event.position)) {
+        const float wheelDelta = wheel.deltaY;
+        guideShelfState.verticalOffset = jlimit(
                 0.f,
-                GuideCurveShelf::maximumHorizontalOffset(
-                        workspace,
-                        probeRailState,
-                        dockSplitRatio,
-                        guideShelfState,
-                        (int) graph.getGuideCurves().size()),
-                guideShelfState.horizontalOffset - wheelDelta * 420.f);
+                maximumGuideOffset,
+                guideShelfState.verticalOffset - wheelDelta * 420.f);
         requestCanvasRepaint();
         return;
     }
     const Rectangle<float> spyWorkspace = GuideCurveShelf::spyWorkspace(
             workspace,
-            dockSplitRatio,
             guideShelfState.minimized,
             probeRailState.minimized);
-    if (probeRailState.expanded && !probeRailState.minimized
-            && SignalProbeRail::boundsFor(spyWorkspace, probeRailState).contains(event.position)) {
+    const Rectangle<float> spyScrollArea = SignalProbeRail::scrollAreaFor(
+            spyWorkspace, probeRailState, (int) graph.getSignalProbes().size());
+    if (spyScrollArea.contains(event.position)) {
         const float wheelDelta = std::abs(wheel.deltaX) > std::abs(wheel.deltaY)
                 ? wheel.deltaX
                 : wheel.deltaY;
@@ -859,7 +853,7 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
 
     const Node* expandedNode = queries.findNode(expandedNodeId);
     if (expandedNode != nullptr
-            && editorCoordinator.boundsFor(expandedNode, canvasContentBounds())
+            && editorCoordinator.boundsFor(expandedNode, editorContentBounds())
                     .contains(event.position)) {
         requestCanvasRepaint();
         return;
@@ -1009,7 +1003,7 @@ void NodeCanvas::timerCallback() {
         flushScheduledCompiledStateRefresh();
     }
 
-    editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
+    editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
 
     const auto mouse = getMouseXYRelative().toFloat();
     const int previousPaletteSectionIndex = palette.activeSection();
@@ -1048,7 +1042,7 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
     const Rectangle<float> content = canvasContentBounds();
     const Node* expandedNode = queries.findNode(expandedNodeId);
     const Rectangle<float> occlusion = editorCoordinator.blocksCanvas(expandedNode)
-            ? editorCoordinator.boundsFor(expandedNode, content)
+            ? editorCoordinator.boundsFor(expandedNode, editorContentBounds())
             : Rectangle<float> {};
     const bool pointerOccluded = expandedEditorBoundsForOverlay().contains(lastMousePosition);
     std::optional<PendingConnectionPresentation> pending;
@@ -1095,7 +1089,6 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             nodeDrag != nullptr,
             workspace,
             guideShelfState,
-            dockSplitRatio,
             probeRailState,
             dockInteraction->focus(),
             probeDetailState,
@@ -1137,6 +1130,10 @@ Rectangle<float> NodeCanvas::canvasContentBounds() const {
     return workspaceDockLayout().content;
 }
 
+Rectangle<float> NodeCanvas::editorContentBounds() const {
+    return WorkspaceDock::editorAvailableBounds(workspaceDockLayout());
+}
+
 WorkspaceDockLayout NodeCanvas::workspaceDockLayout() const {
     return WorkspaceDock::layout(
             getLocalBounds().toFloat(),
@@ -1144,8 +1141,7 @@ WorkspaceDockLayout NodeCanvas::workspaceDockLayout() const {
                     probeRailState.expanded,
                     guideShelfState.minimized,
                     probeRailState.minimized,
-                    probeRailState.expandedHeight,
-                    dockSplitRatio
+                    probeRailState.expandedHeight
             });
 }
 
@@ -1269,7 +1265,7 @@ void NodeCanvas::refreshCompiledStateAsync(PresentationRefreshScope scope) {
                 if (!safeThis->commands.hasTransientEdit()) {
                     safeThis->editorCoordinator.updateHost(
                             safeThis->commands.editingGraph().findNode(safeThis->expandedNodeId),
-                            safeThis->canvasContentBounds());
+                            safeThis->editorContentBounds());
                 }
                 if (Component* editor = safeThis->editorCoordinator.host().component()) {
                     editor->repaint();
@@ -1365,7 +1361,6 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
                     SignalProbeRail::maximumHorizontalOffset(
                             GuideCurveShelf::spyWorkspace(
                                     getLocalBounds().toFloat(),
-                                    dockSplitRatio,
                                     guideShelfState.minimized,
                                     probeRailState.minimized),
                             (int) graph.getSignalProbes().size()));
@@ -1381,7 +1376,7 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     }
     if (result.effects.editorBindingChanged) {
         synchronizeOpenedEditorMorph();
-        editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
+        editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
         notifyOverlayOcclusionChanged();
     }
     if (result.effects.repaintRequested) {
@@ -1416,15 +1411,15 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     result.probeDetailColumns = probeDetailState.renderResult.gridColumns;
     result.probeDetailRows = probeDetailState.renderResult.gridRows;
     result.probeDetailBounds = probeDetailState.isOpen()
-            ? SignalProbeDetailView::boundsFor(canvasContentBounds())
+            ? SignalProbeDetailView::boundsFor(editorContentBounds())
             : Rectangle<float> {};
     result.canvasContentBounds = canvasContentBounds();
+    result.editorContentBounds = editorContentBounds();
 
     const Rectangle<float> workspace = getLocalBounds().toFloat();
     const WorkspaceDockLayout workspaceDock = workspaceDockLayout();
     const Rectangle<float> spyWorkspace = GuideCurveShelf::spyWorkspace(
             workspace,
-            dockSplitRatio,
             guideShelfState.minimized,
             probeRailState.minimized);
     result.probeRefreshModeBounds = SignalProbeRail::refreshModeBoundsFor(
@@ -1436,8 +1431,7 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     dock.guidesMinimized = guideShelfState.minimized;
     dock.spiesMinimized = probeRailState.minimized;
     dock.expandedHeight = probeRailState.expandedHeight;
-    dock.splitRatio = dockSplitRatio;
-    dock.guideHorizontalOffset = guideShelfState.horizontalOffset;
+    dock.guideVerticalOffset = guideShelfState.verticalOffset;
     dock.spyHorizontalOffset = probeRailState.horizontalOffset;
     dock.selectedGuideId = guideShelfState.selectedGuideId;
     dock.hoveredGuideId = guideShelfState.hoveredGuideId;
@@ -1458,19 +1452,16 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     dock.dockBounds = workspaceDock.dock;
     dock.guideShelfBounds = workspaceDock.leftShelf;
     dock.spyShelfBounds = workspaceDock.rightShelf;
-    dock.dividerBounds = workspaceDock.divider;
     dock.collapseBounds = workspaceDock.collapseHandle;
     dock.resizeBounds = workspaceDock.resizeHandle;
     dock.guideMinimizeBounds = GuideCurveShelf::minimizeButtonBounds(
             workspace,
             probeRailState,
-            dockSplitRatio,
             guideShelfState);
     dock.spyMinimizeBounds = SignalProbeRail::minimizeButtonBoundsFor(spyWorkspace, probeRailState);
     dock.addGuideBounds = GuideCurveShelf::addButtonBounds(
             workspace,
             probeRailState,
-            dockSplitRatio,
             guideShelfState);
     dock.guideEditorBounds = guideEditor != nullptr && guideEditor->isVisible()
             ? guideEditor->getBounds().toFloat()
@@ -1494,7 +1485,6 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
                 GuideCurveShelf::tileBoundsFor(
                         workspace,
                         probeRailState,
-                        dockSplitRatio,
                         guideShelfState,
                         index)
         });
@@ -1557,13 +1547,14 @@ void NodeCanvas::fitDocumentInViewport() {
     const Rectangle<float> content = canvasContentBounds();
     const auto utilities = CanvasUtilityDock::layout(content);
     Rectangle<float> available = content.reduced(visibleMargin);
-    available.setRight(jmin(
-            available.getRight(),
-            jmin(utilities.minimap.getX(), utilities.keyboard.getX())
-                    - dockClearance));
+    const WorkspaceDockLayout dock = workspaceDockLayout();
+    if (!dock.leftShelf.isEmpty()) {
+        available.setRight(jmin(available.getRight(), dock.leftShelf.getX() - dockClearance));
+    }
+    available.setTop(jmax(available.getY(), utilities.keyboard.getBottom() + dockClearance));
     available.setBottom(jmin(
             available.getBottom(),
-            utilities.keyboard.getY() - dockClearance));
+            dock.dock.getY() - dockClearance));
     viewport.setBounds(content);
     viewport.fit(graphBounds, available);
 }
@@ -1772,7 +1763,8 @@ var NodeCanvas::inspectPointerTargetsForAutomation() const {
 }
 
 var NodeCanvas::inspectOpenGLDiagnosticsForAutomation() const {
-    return automation.inspectOpenGLDiagnostics({ canvasOpenGlAttached, expandedNodeId });
+    return automation.inspectOpenGLDiagnostics({
+            canvasOpenGlAttached, expandedNodeId, expandedEditorBoundsForOverlay() });
 }
 
 var NodeCanvas::inspectPerformanceMetricsForAutomation() const {
@@ -1958,12 +1950,12 @@ Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
         return guideEditor->getBounds().toFloat();
     }
     if (probeDetailState.isOpen()) {
-        return SignalProbeDetailView::boundsFor(canvasContentBounds());
+        return SignalProbeDetailView::boundsFor(editorContentBounds());
     }
 
     const Node* expandedNode = queries.findNode(expandedNodeId);
     return expandedNode != nullptr
-            ? editorCoordinator.boundsFor(expandedNode, canvasContentBounds())
+            ? editorCoordinator.boundsFor(expandedNode, editorContentBounds())
             : Rectangle<float> {};
 }
 
@@ -2056,7 +2048,7 @@ bool NodeCanvas::spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition) {
 bool NodeCanvas::clearSelection() {
     const bool cleared = authoring.clearSelection();
     if (cleared) {
-        editorCoordinator.updateHost(nullptr, canvasContentBounds());
+        editorCoordinator.updateHost(nullptr, editorContentBounds());
         requestCanvasRepaint();
     }
     return cleared;
@@ -2115,7 +2107,7 @@ void NodeCanvas::openGuideEditor(const String& guideId) {
             *guide,
             graph.guideHeatmapAsset(guide->heatmapAssetId));
     guideEditor->setBounds(
-            GuideCurveEditorComponent::preferredHostBounds(canvasContentBounds()).toNearestInt());
+            GuideCurveEditorComponent::preferredHostBounds(editorContentBounds()).toNearestInt());
     guideEditor->setVisible(true);
     guideEditor->toFront(false);
     notifyOverlayOcclusionChanged();
@@ -2290,7 +2282,7 @@ Point<float> NodeCanvas::nodeEditorCreationPosition() const {
 }
 
 void NodeCanvas::rebindNodeEditor() {
-    editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
+    editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
 }
 
 void NodeCanvas::rebindNodeEditorTransient() {

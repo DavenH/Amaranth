@@ -613,8 +613,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     guideDock->setProperty("guidesMinimized", state.guideDock.guidesMinimized);
     guideDock->setProperty("spiesMinimized", state.guideDock.spiesMinimized);
     guideDock->setProperty("expandedHeight", state.guideDock.expandedHeight);
-    guideDock->setProperty("splitRatio", state.guideDock.splitRatio);
-    guideDock->setProperty("guideHorizontalOffset", state.guideDock.guideHorizontalOffset);
+    guideDock->setProperty("guideVerticalOffset", state.guideDock.guideVerticalOffset);
     guideDock->setProperty("spyHorizontalOffset", state.guideDock.spyHorizontalOffset);
     guideDock->setProperty("selectedGuideId", state.guideDock.selectedGuideId);
     guideDock->setProperty("hoveredGuideId", state.guideDock.hoveredGuideId);
@@ -854,21 +853,17 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
             "guideDock",
             "guideDock",
             state.guideDock.dockBounds));
-    targets.add(AutomationValueEncoder::pointerTargetToVar(
-            "guideDock.collapse",
-            "guideDockCollapse",
-            state.guideDock.collapseBounds));
+    if (!state.guideDock.collapseBounds.isEmpty()) {
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "guideDock.collapse",
+                "guideDockCollapse",
+                state.guideDock.collapseBounds));
+    }
     if (!state.guideDock.resizeBounds.isEmpty()) {
         targets.add(AutomationValueEncoder::pointerTargetToVar(
                 "guideDock.resize",
                 "guideDockResize",
                 state.guideDock.resizeBounds));
-    }
-    if (!state.guideDock.dividerBounds.isEmpty()) {
-        targets.add(AutomationValueEncoder::pointerTargetToVar(
-                "guideDock.divider",
-                "guideDockDivider",
-                state.guideDock.dividerBounds));
     }
     if (state.guideDock.expanded) {
         targets.add(AutomationValueEncoder::pointerTargetToVar(
@@ -1012,7 +1007,7 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
         AutomationValueEncoder::addExpandedEditorTargets(
                 targets,
                 *expandedNode,
-                state.canvasContentBounds,
+                state.editorContentBounds,
                 context.editorHost);
     }
 
