@@ -175,10 +175,21 @@ Bundle commit no longer performs a separate clone-based preflight. It now
 attempts routes through `GraphCommandDispatcher` inside one compound edit and
 cancels on the first rejection. A test rejects the second route after the first
 succeeds and verifies that edges, revision, and undo history remain unchanged.
-The dispatcher still captures a full `NodeGraph` for the compound edit, so this
-does not complete the affected-state undo requirement or the movement preview
-work. Give edge topology an invertible delta before claiming that boundary is
-resolved.
+At this stage the dispatcher still captured a full `NodeGraph` for the compound
+edit, so bundle rollback alone did not complete the affected-state undo
+requirement or the movement preview work.
+
+Edge topology now has an invertible affected-input delta. Connection, edge
+deletion, and splice commands capture indexed before/after edge state only for
+the destination inputs they can change. Compound modulation bundle connect and
+delete therefore avoid the dispatcher's full-graph fallback while preserving
+exact edge order through undo and redo. Tests scale the graph with 64 unrelated
+nodes and assert zero `NodeGraph` copies for bundle connect/delete; direct
+connection replacement and splice tests also assert zero copies and exact
+undo/redo topology (91 assertions across nine focused cases). This completes
+the affected-state undo requirement for edge commands. Node add/remove and
+other aggregate edits may still use the explicit snapshot fallback. The three
+UI movement-preview copies and graph-wide validation scans remain open.
 
 The preview index must retain the authoritative rule owners. Cache the durable
 graph's node/port addresses, input/output adjacency, resolved edge domains and

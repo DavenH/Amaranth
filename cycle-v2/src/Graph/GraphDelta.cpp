@@ -31,6 +31,20 @@ const NodeParameter* parameter(
     return graph.findNodeParameter(nodeId, parameterId);
 }
 
+std::vector<IndexedEdgeState> edgesToInput(
+        const NodeGraph& graph,
+        const String& nodeId,
+        const String& portId) {
+    std::vector<IndexedEdgeState> result;
+    for (size_t index = 0; index < graph.getEdges().size(); ++index) {
+        const Edge& edge = graph.getEdges()[index];
+        if (edge.destNodeId == nodeId && edge.destPortId == portId) {
+            result.push_back({ index, edge });
+        }
+    }
+    return result;
+}
+
 }
 
 void GraphDelta::applyForward(NodeGraph& graph) const {
@@ -46,7 +60,8 @@ bool GraphDelta::empty() const {
         && models.empty()
         && editorStates.empty()
         && bounds.empty()
-        && guides.empty();
+        && guides.empty()
+        && edgeInputs.empty();
 }
 
 void GraphDelta::apply(NodeGraph& graph, bool forward) const {
@@ -68,6 +83,7 @@ void GraphDelta::apply(NodeGraph& graph, bool forward) const {
     for (const auto& delta : guides) {
         graph.applyGuideCurveState(forward ? delta.after : delta.before);
     }
+    applyEdgeInputs(graph, forward);
     if (forward) {
         for (const auto& edge : changes.removedEdges) {
             graph.removeEdge(edge);
@@ -83,6 +99,38 @@ void GraphDelta::apply(NodeGraph& graph, bool forward) const {
             graph.assignGuideCurve(assignment);
         }
     }
+}
+
+void GraphDelta::applyEdgeInputs(NodeGraph& graph, bool forward) const {
+    if (edgeInputs.empty()) {
+        return;
+    }
+
+    std::vector<IndexedEdgeState> sourceEdges;
+    std::vector<IndexedEdgeState> targetEdges;
+    for (const auto& delta : edgeInputs) {
+        const auto& source = forward ? delta.before : delta.after;
+        const auto& target = forward ? delta.after : delta.before;
+        sourceEdges.insert(sourceEdges.end(), source.begin(), source.end());
+        targetEdges.insert(targetEdges.end(), target.begin(), target.end());
+    }
+    std::sort(sourceEdges.begin(), sourceEdges.end(), [](const auto& left, const auto& right) {
+        return left.index > right.index;
+    });
+    for (const auto& state : sourceEdges) {
+        jassert(state.index < graph.edges.size());
+        if (state.index < graph.edges.size()) {
+            graph.edges.erase(graph.edges.begin() + (int) state.index);
+        }
+    }
+    std::sort(targetEdges.begin(), targetEdges.end(), [](const auto& left, const auto& right) {
+        return left.index < right.index;
+    });
+    for (const auto& state : targetEdges) {
+        const size_t index = std::min(state.index, graph.edges.size());
+        graph.edges.insert(graph.edges.begin() + (int) index, state.edge);
+    }
+    ++graph.revision;
 }
 
 void GraphDeltaBuilder::captureNodeParameter(
@@ -144,6 +192,19 @@ void GraphDeltaBuilder::captureGuideCurve(const NodeGraph& graph, const String& 
     }
 }
 
+void GraphDeltaBuilder::captureEdgesToInput(
+        const NodeGraph& graph,
+        const String& nodeId,
+        const String& portId) {
+    const bool alreadyCaptured = std::any_of(
+            edgeInputs.begin(), edgeInputs.end(), [&](const auto& delta) {
+                return delta.nodeId == nodeId && delta.portId == portId;
+            });
+    if (!alreadyCaptured) {
+        edgeInputs.push_back({ nodeId, portId, edgesToInput(graph, nodeId, portId), {} });
+    }
+}
+
 GraphDelta GraphDeltaBuilder::finish(
         const NodeGraph& graph,
         GraphChangeSet changes) const {
@@ -153,6 +214,7 @@ GraphDelta GraphDeltaBuilder::finish(
     result.editorStates = editorStates;
     result.bounds = bounds;
     result.guides = guides;
+    result.edgeInputs = edgeInputs;
     result.changes = std::move(changes);
 
     for (auto& delta : result.parameters) {
@@ -179,6 +241,9 @@ GraphDelta GraphDeltaBuilder::finish(
             delta.after = *guide;
         }
     }
+    for (auto& delta : result.edgeInputs) {
+        delta.after = edgesToInput(graph, delta.nodeId, delta.portId);
+    }
     return result;
 }
 
@@ -192,7 +257,8 @@ bool GraphDeltaBuilder::empty() const {
         && models.empty()
         && editorStates.empty()
         && bounds.empty()
-        && guides.empty();
+        && guides.empty()
+        && edgeInputs.empty();
 }
 
 NodeModelStatePtr GraphDeltaBuilder::originalNodeModel(const String& nodeId) const {

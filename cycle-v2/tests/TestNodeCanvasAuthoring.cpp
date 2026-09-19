@@ -3,6 +3,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "UI/ModulationCableBundle.h"
@@ -346,6 +347,52 @@ TEST_CASE("Bundled modulation connection and deletion are single undoable gestur
 
     const auto removed = authoring.deleteEdge(0);
     REQUIRE(removed.succeeded);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().getEdges().size() == 3);
+}
+
+TEST_CASE("Bundled modulation connection captures only affected edge state",
+        "[cycle-v2][canvas][authoring][modulation][complexity]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::ModulationTriple,
+            "triple",
+            {}));
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    for (int index = 0; index < 64; ++index) {
+        graph.addNode(GraphNodeFactory().createNode(
+                NodeKind::Delay,
+                "unrelated-" + String(index),
+                {}));
+    }
+    AudioSampleResource audio { "unrelated-audio", "Unrelated.wav", 48000.0, {} };
+    audio.samples.resize(16384);
+    graph.addAudioResource(std::move(audio));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+    InteractionComplexityDiagnostics::reset();
+
+    REQUIRE(authoring.connectPorts(
+            { "triple", ModulationCableBundle::portId(), false },
+            { "mesh", ModulationCableBundle::portId(), true }).succeeded);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().audioSamplesCopied == 0);
+    REQUIRE(document.graph().getEdges().size() == 3);
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(authoring.redo().succeeded);
+    REQUIRE(document.graph().getEdges().size() == 3);
+    InteractionComplexityDiagnostics::reset();
+    REQUIRE(authoring.deleteEdge(0).succeeded);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().audioSamplesCopied == 0);
     REQUIRE(document.graph().getEdges().empty());
     REQUIRE(authoring.undo().succeeded);
     REQUIRE(document.graph().getEdges().size() == 3);
