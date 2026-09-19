@@ -274,6 +274,15 @@ assertions). The three UI preview callers remain on their existing clone-based
 path until an indexed gesture context can call this boundary without graph-wide
 movement work.
 
+Splice search and its two-stage proposal validation now live in the read-only
+`GraphSpliceValidator`. It composes `GraphConnectionValidator` and the shared
+graph validators, then returns the two accepted edges for `GraphEditor` to
+apply. `GraphEditor.cpp` fell again from 306 to 239 lines; the splice validator
+is 97 lines. Five focused connection, splice, and copy-count cases pass (36
+assertions). Commit mutation and validation policy are now separate for both
+connection forms; indexed preview evaluation remains the next prerequisite
+before replacing the UI clone paths.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,
