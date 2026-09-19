@@ -648,6 +648,9 @@ void NodeCanvasPresentation::paint(
     }
 
     if (!frame.canvasOcclusion.isEmpty()) {
+        Graphics::ScopedSaveState scrimClip(graphics);
+        graphics.reduceClipRegion(frame.workspaceBounds.toNearestInt());
+        graphics.excludeClipRegion(frame.canvasOcclusion.toNearestInt());
         graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.70f));
         graphics.fillRect(frame.workspaceBounds);
         return;
@@ -696,13 +699,15 @@ void NodeCanvasPresentation::paint(
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::DockAndDetail);
-        WorkspaceDock::paintChrome(
-                graphics,
-                dock,
-                "Curve Guides",
-                "Spies",
-                frame.probeRailState.expanded,
-                frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
+        if (!frame.graph.getSignalProbes().empty()) {
+            WorkspaceDock::paintChrome(
+                    graphics,
+                    dock,
+                    "Curve Guides",
+                    "Spies",
+                    frame.probeRailState.expanded,
+                    frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
+        }
         GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
         signalProbeDetailView.paint(
                 graphics,

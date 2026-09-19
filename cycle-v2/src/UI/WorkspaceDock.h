@@ -25,7 +25,6 @@ struct WorkspaceDockLayout {
 
 struct WorkspaceDockSpyControls {
     juce::Rectangle<float> label;
-    juce::Rectangle<float> refresh;
     juce::Rectangle<float> minimize;
 };
 
@@ -44,7 +43,6 @@ enum class WorkspaceDockFocusTarget {
     GuideTile,
     SpyDrawer,
     SpyMinimize,
-    SpyRefresh,
     SpyTile
 };
 

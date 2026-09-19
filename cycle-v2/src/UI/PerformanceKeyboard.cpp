@@ -270,13 +270,12 @@ Rectangle<float> PerformanceKeyboardPanel::playButtonBounds() const {
 }
 
 Rectangle<float> PerformanceKeyboardPanel::progressBounds() const {
-    const Rectangle<float> button = playButtonBounds();
-    const float bottom = modWheelBounds().getBottom();
+    const Rectangle<float> keys = keyboard.getBounds().toFloat();
     return {
-            button.getCentreX() - 4.f,
-            button.getBottom() + 6.f,
-            8.f,
-            jmax(0.f, bottom - button.getBottom() - 12.f)
+            keys.getX(),
+            (float) getHeight() - 4.f,
+            keys.getWidth(),
+            3.f
     };
 }
 
@@ -377,16 +376,18 @@ void PerformanceKeyboardPanel::releaseAllNotes() {
 
 void PerformanceKeyboardPanel::paint(Graphics& graphics) {
     const Rectangle<float> bounds = getLocalBounds().toFloat().reduced(0.75f);
-    CanvasUtilityDock::paintSurface(graphics, bounds);
+    graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.96f));
+    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::panelCornerRadius);
 
     const Rectangle<float> track = progressBounds();
-    graphics.setColour(CanvasChromePalette::raisedSurface.withAlpha(0.34f));
-    graphics.fillRoundedRectangle(track, track.getWidth() * 0.5f);
+    const float trackCornerRadius = track.getHeight() * 0.5f;
+    graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.22f));
+    graphics.fillRoundedRectangle(track, trackCornerRadius);
     if (progress > 0.f) {
-        graphics.setColour(CanvasChromePalette::focus.withAlpha(0.13f));
+        graphics.setColour(CanvasChromePalette::focus.withAlpha(0.58f));
         graphics.fillRoundedRectangle(
-                track.withTop(track.getBottom() - track.getHeight() * progress),
-                track.getWidth() * 0.5f);
+                track.withWidth(track.getWidth() * progress),
+                trackCornerRadius);
     }
 }
 

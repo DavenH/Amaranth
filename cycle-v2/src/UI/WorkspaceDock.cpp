@@ -51,7 +51,7 @@ WorkspaceDockLayout WorkspaceDock::layout(
             juce::jmax(drawerWidth, workspace.getWidth() * 0.32f));
     const float activeGuideWidth = state.leftMinimized ? drawerWidth : guideWidth;
     const float guideRight = workspace.getRight() - CanvasUtilityDock::margin;
-    const float guideTop = utilities.legend.getBottom() + CanvasUtilityDock::gap;
+    const float guideTop = utilities.minimap.getBottom() + CanvasUtilityDock::gap;
     const float spyRight = juce::jmax(workspace.getX(),
             guideRight - activeGuideWidth - CanvasUtilityDock::gap);
     result.dock = spyRowBounds(
@@ -90,16 +90,12 @@ WorkspaceDockSpyControls WorkspaceDock::spyControls(juce::Rectangle<float> rail)
     WorkspaceDockSpyControls controls;
     const float usableWidth = juce::jmax(0.f, rail.getWidth() - shelfPadding * 2.f);
     const float gap = 6.f;
-    const float width = juce::jmin(226.f, usableWidth);
-    const float labelWidth = juce::jmin(84.f,
-            juce::jmax(52.f, width - 104.f - controlSize - gap * 2.f));
-    const float refreshWidth = juce::jmax(0.f,
-            width - labelWidth - controlSize - gap * 2.f);
+    const float width = juce::jmin(116.f, usableWidth);
+    const float labelWidth = juce::jmax(0.f, width - controlSize - gap);
     const float x = rail.getX() + shelfPadding;
     const float y = rail.getY() + 5.f;
     controls.label = { x, y, labelWidth, controlSize };
-    controls.refresh = { controls.label.getRight() + gap, y, refreshWidth, controlSize };
-    controls.minimize = { controls.refresh.getRight() + gap, y, controlSize, controlSize };
+    controls.minimize = { controls.label.getRight() + gap, y, controlSize, controlSize };
     return controls;
 }
 

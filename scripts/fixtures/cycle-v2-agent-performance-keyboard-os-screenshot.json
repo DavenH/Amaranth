@@ -31,6 +31,11 @@
       "equals": 100
     },
     {
+      "command": "assertState",
+      "path": "guideDock.spyShelfBounds.width",
+      "equals": 0
+    },
+    {
       "command": "inspectPointerTargets"
     },
     {

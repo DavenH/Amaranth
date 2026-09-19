@@ -48,6 +48,7 @@ public:
     void clearFocus() { keyboardFocus = {}; }
     void setFocus(WorkspaceDockFocus focusToUse) { keyboardFocus = std::move(focusToUse); }
     void clearEphemeralState();
+    void setProbeRefreshMode(ProbeRefreshMode mode);
 
 private:
     WorkspaceDockKeyboardModel keyboardModel() const;
@@ -68,7 +69,6 @@ private:
     String createGuideFromKeyboard() override;
     void selectGuideFromKeyboard(const String& guideId, bool openEditor) override;
     void setSpyShelfMinimizedFromKeyboard(bool minimized) override;
-    void toggleSpyRefreshFromKeyboard() override;
     void selectSpyFromKeyboard(const String& probeId, bool openDetail) override;
     void removeSpyFromKeyboard(const String& probeId) override;
     void repaintDockFromKeyboard() override;

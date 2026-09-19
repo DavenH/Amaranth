@@ -1,6 +1,6 @@
 # Cycle V2 Workspace Visual Hierarchy
 
-Status: Implemented first hierarchy slice; graph-probe relocation remains a
+Status: Second hierarchy slice implemented; graph-probe relocation remains a
 separate design decision
 
 ## Objective
@@ -64,6 +64,48 @@ changed.
 - Whether a second Voice Context justifies showing the Trimesh context port.
 - Optional close/hide controls for utilities beyond the existing dock states.
 - A dedicated output-node emphasis treatment.
+
+## Follow-up Design Contract
+
+The second slice corrects the production-size composition without changing the
+graph model or the three domain-colour systems:
+
+- the modal focus scrim dims only the canvas outside the expanded editor;
+- opening and dismissing an overlay immediately invalidates both component and
+  OpenGL presentation;
+- the signal-probe rail, its label, and its collapse affordance do not exist
+  visually or interactively until the graph contains a probe;
+- probe refresh policy moves to a two-choice `File > Spy Refresh` menu;
+- the minimap and Curve Guide shelf share a 210-pixel width;
+- the compact legend sits at the lower-right edge of the primary graph area,
+  immediately left of the guide shelf, rather than determining shelf height;
+- keyboard playback progress is horizontal and centred beneath the keys. The
+  keyboard group receives a perceptible surface contrast without a heavy
+  outline.
+
+`NodeCanvasPresentation` remains the authoritative layer-order owner,
+`CanvasUtilityDock` owns utility geometry, `WorkspaceDock` owns guide/probe
+geometry, `WorkspaceDockInteractionController` owns probe refresh settings,
+and `MainWindow` only routes the menu choice through `NodeWorkspace`. No graph
+mutation, DSP, serialization, or domain rendering is duplicated.
+
+Follow-up size review:
+
+| File | Baseline | After | Change |
+| --- | ---: | ---: | ---: |
+| `Main.cpp` | 380 | 437 | +57 |
+| `CycleV2Automation.cpp` | 2,012 | 2,030 | +18 |
+| `NodeCanvas.cpp` | 2,582 | 2,594 | +12 |
+| `NodeCanvasAutomationInspector.cpp` | 1,109 | 1,109 | 0 |
+| `NodeCanvasPresentation.cpp` | 1,481 | 1,486 | +5 |
+
+The large-file additions stay within existing ownership: automation exposes
+the two new menu choices without adding product policy, `NodeCanvas` reports
+probe visibility and invalidates overlay transitions, and presentation applies
+the established layer-order rule. `MainWindow` remains below the review
+threshold and owns the actual File menu. No new kind switch, graph policy, or
+cross-subsystem adapter was introduced, so an extraction would add indirection
+without removing a responsibility from these owners.
 
 ## Architecture Review
 
@@ -138,3 +180,12 @@ top-mounted keyboard transport layout; both old paths were removed in place.
   user-modified preset files.
 - `git diff --check` and the Cycle V2 architecture audit pass. `clang-tidy`
   could not be run because it is not installed in this environment.
+- Follow-up captures at `/private/tmp/cycle-v2-hierarchy-followup-canvas.png`
+  and `/private/tmp/cycle-v2-hierarchy-followup-trimesh.png` show the lower-right
+  legend, matched minimap/sidebar widths, horizontal keyboard progress, hidden
+  empty spy rail, and original Trimesh colour intensity inside the modal.
+- The expanded-editor dismissal fixture verifies that the editor closes and
+  the keyboard becomes visible after one 100 ms idle interval. The File-menu
+  fixture verifies both persisted spy-refresh choices through automation.
+- The follow-up focused suite passes 199 assertions in 18 cases, and both the
+  test target and standalone application build successfully.

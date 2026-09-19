@@ -12,7 +12,7 @@ CanvasUtilityDockLayout CanvasUtilityDock::layout(juce::Rectangle<float> content
     }
 
     const float availableWidth = juce::jmax(0.f, contentBounds.getWidth() - margin * 2.f);
-    const float utilityWidth = juce::jmin(154.f, availableWidth);
+    const float utilityWidth = juce::jmin(preferredMinimapWidth, availableWidth);
     const float right = contentBounds.getRight() - margin;
     const float keyboardWidth = juce::jmin(preferredKeyboardWidth, availableWidth);
     const float centredKeyboardX = contentBounds.getCentreX() - keyboardWidth * 0.5f;
@@ -37,14 +37,16 @@ CanvasUtilityDockLayout CanvasUtilityDock::layout(juce::Rectangle<float> content
             juce::jmin(minimapHeight,
                     juce::jmax(0.f, contentBounds.getBottom() - margin - minimapTop))
     };
-    const float legendWidth = juce::jmin(preferredLegendWidth, availableWidth);
+    const float legendRight = right - utilityWidth - gap;
+    const float legendWidth = juce::jmin(
+            preferredLegendWidth,
+            juce::jmax(0.f, legendRight - contentBounds.getX() - margin));
     result.legend = {
-            right - legendWidth,
-            result.minimap.getBottom() + gap,
-            legendWidth,
+            legendRight - legendWidth,
+            contentBounds.getBottom() - margin - preferredLegendHeight,
+            sharedTopRow ? 0.f : legendWidth,
             juce::jmin(sharedTopRow ? 0.f : preferredLegendHeight,
-                    juce::jmax(0.f, contentBounds.getBottom() - margin
-                            - result.minimap.getBottom() - gap))
+                    juce::jmax(0.f, contentBounds.getHeight() - margin * 2.f))
     };
 
     const float statusLeft = contentBounds.getX() + margin;

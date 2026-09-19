@@ -60,15 +60,6 @@ Rectangle<float> SignalProbeRail::boundsFor(
     return WorkspaceDock::spyRowBounds(workspace, state.expanded, state.expandedHeight);
 }
 
-Rectangle<float> SignalProbeRail::refreshModeBoundsFor(
-        Rectangle<float> workspace,
-        const SignalProbeRailState& state) {
-    if (!state.expanded) {
-        return {};
-    }
-    return WorkspaceDock::spyControls(boundsFor(workspace, state)).refresh;
-}
-
 Rectangle<float> SignalProbeRail::minimizeButtonBoundsFor(
         Rectangle<float> workspace,
         const SignalProbeRailState& state) {
@@ -430,10 +421,10 @@ void SignalProbeRail::paintRail(
     const SignalProbeRailState& state,
     const WorkspaceDockFocus& focus) {
     const Rectangle<float> rail = boundsFor(workspace, state);
-    if (!state.expanded) {
+    const auto probes = orderedProbes(graph);
+    if (!state.expanded || probes.empty()) {
         return;
     }
-    const auto probes = orderedProbes(graph);
     if (state.minimized) {
         graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.92f));
         graphics.fillRoundedRectangle(rail, CanvasChromeMetrics::panelCornerRadius);
@@ -472,31 +463,6 @@ void SignalProbeRail::paintRail(
             "Spies",
             label,
             Justification::centred);
-
-    const Rectangle<float> refreshMode = refreshModeBoundsFor(workspace, state);
-    const bool refreshFocused = focus.target == WorkspaceDockFocusTarget::SpyRefresh;
-    const auto refreshColours = CanvasChromePalette::control(refreshFocused
-            ? CanvasChromeControlState::Focused
-            : CanvasChromeControlState::Resting);
-    graphics.setColour(refreshColours.surface);
-    graphics.fillRoundedRectangle(refreshMode, CanvasChromeMetrics::controlCornerRadius);
-    graphics.setColour(refreshColours.border);
-    graphics.drawRoundedRectangle(
-            refreshMode,
-            CanvasChromeMetrics::controlCornerRadius,
-            refreshFocused
-                    ? CanvasChromeMetrics::focusRingWidth
-                    : CanvasChromeMetrics::restingBorderWidth);
-    graphics.setColour(refreshColours.text);
-    graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
-    graphics.drawText(
-            state.refreshMode == ProbeRefreshMode::LiveLatest ? "Live" : "On Release",
-            refreshMode,
-            Justification::centred);
-
-    if (probes.empty()) {
-        return;
-    }
 
     Graphics::ScopedSaveState tileClip(graphics);
     graphics.reduceClipRegion(rail.toNearestInt());

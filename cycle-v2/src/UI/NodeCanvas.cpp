@@ -1374,6 +1374,11 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
         editorCoordinator.clearPreviewCache();
 
         if (document.lastChange().probesChanged) {
+            if (graph.getSignalProbes().empty()) {
+                probeRailState.expanded = true;
+                settings.getGlobalSetting(AppSettings::GuideSpyDockExpanded) = 1;
+                dockInteraction->clearFocus();
+            }
             probeRailState.horizontalOffset = jmin(
                     probeRailState.horizontalOffset,
                     SignalProbeRail::maximumHorizontalOffset(
@@ -1440,10 +1445,6 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
             workspace,
             guideShelfState.minimized,
             probeRailState.minimized);
-    result.probeRefreshModeBounds = SignalProbeRail::refreshModeBoundsFor(
-            spyWorkspace,
-            probeRailState);
-
     auto& dock = result.guideDock;
     dock.expanded = probeRailState.expanded;
     dock.guidesMinimized = guideShelfState.minimized;
@@ -1467,16 +1468,19 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
         dock.expandedGuideHeatmapActive = heatmap != nullptr;
         dock.expandedGuideHeatmapFilename = heatmap != nullptr ? heatmap->filename() : String {};
     }
-    dock.dockBounds = workspaceDock.dock;
+    const bool hasSpies = !graph.getSignalProbes().empty();
+    dock.dockBounds = hasSpies ? workspaceDock.dock : Rectangle<float> {};
     dock.guideShelfBounds = workspaceDock.leftShelf;
-    dock.spyShelfBounds = workspaceDock.rightShelf;
-    dock.collapseBounds = workspaceDock.collapseHandle;
-    dock.resizeBounds = workspaceDock.resizeHandle;
+    dock.spyShelfBounds = hasSpies ? workspaceDock.rightShelf : Rectangle<float> {};
+    dock.collapseBounds = hasSpies ? workspaceDock.collapseHandle : Rectangle<float> {};
+    dock.resizeBounds = hasSpies ? workspaceDock.resizeHandle : Rectangle<float> {};
     dock.guideMinimizeBounds = GuideCurveShelf::minimizeButtonBounds(
             workspace,
             probeRailState,
             guideShelfState);
-    dock.spyMinimizeBounds = SignalProbeRail::minimizeButtonBoundsFor(spyWorkspace, probeRailState);
+    dock.spyMinimizeBounds = hasSpies
+            ? SignalProbeRail::minimizeButtonBoundsFor(spyWorkspace, probeRailState)
+            : Rectangle<float> {};
     dock.addGuideBounds = GuideCurveShelf::addButtonBounds(
             workspace,
             probeRailState,
@@ -1822,6 +1826,10 @@ float NodeCanvas::graphOutputGain() const {
     return GraphCompiler::outputGainFor(commands.editingGraph());
 }
 
+void NodeCanvas::setProbeRefreshMode(ProbeRefreshMode mode) {
+    dockInteraction->setProbeRefreshMode(mode);
+}
+
 bool NodeCanvas::setPreviewMidiNote(int midiNote) {
     const int selectedNote = jlimit(0, 127, midiNote);
     if (selectedNote == presentation.previewMidiNote()) {
@@ -2054,6 +2062,10 @@ void NodeCanvas::setGraphDocumentStateChangedCallback(
 void NodeCanvas::notifyOverlayOcclusionChanged() {
     if (overlayOcclusionChanged) {
         overlayOcclusionChanged();
+    }
+    repaint();
+    if (canvasOpenGlAttached) {
+        openGLContext.triggerRepaint();
     }
 }
 

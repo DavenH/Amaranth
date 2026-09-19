@@ -177,10 +177,13 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     REQUIRE(octaveDown.getRight() < whiteKey.getX());
     REQUIRE(octaveUp.getX() > panel.noteBounds(72).getRight());
     REQUIRE(play.getRight() < modWheel.getX());
-    REQUIRE(progress.getCentreX() == Catch::Approx(play.getCentreX()));
-    REQUIRE(progress.getY() > play.getBottom());
-    REQUIRE(progress.getWidth() < play.getWidth());
-    REQUIRE(progress.getHeight() > play.getHeight());
+    REQUIRE(progress.getCentreX() == Catch::Approx(
+            (panel.noteBounds(48).getX() + panel.noteBounds(72).getRight()) * 0.5f).margin(1.f));
+    REQUIRE(progress.getY() > whiteKey.getBottom());
+    REQUIRE(progress.getWidth() > play.getWidth());
+    REQUIRE(progress.getWidth() == Catch::Approx(
+            panel.noteBounds(72).getRight() - panel.noteBounds(48).getX()).margin(1.f));
+    REQUIRE(progress.getHeight() == 3.f);
     REQUIRE(whiteKey.getWidth() >= 25.f);
     REQUIRE(whiteAspect == Catch::Approx(4.f).margin(0.03f));
     REQUIRE(blackAspect == Catch::Approx(4.f).margin(0.03f));
@@ -328,15 +331,17 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
     const CanvasUtilityDockLayout layout = CanvasUtilityDock::layout(content);
 
     REQUIRE(layout.minimap.getRight() == content.getRight() - CanvasUtilityDock::margin);
-    REQUIRE(layout.legend.getRight() == layout.minimap.getRight());
+    REQUIRE(layout.minimap.getWidth() == CanvasUtilityDock::preferredMinimapWidth);
+    REQUIRE(layout.legend.getRight()
+            == layout.minimap.getX() - CanvasUtilityDock::gap);
     REQUIRE(layout.keyboard.getCentreX() == content.getCentreX());
     REQUIRE(layout.keyboard.getY() == content.getY());
     REQUIRE(layout.keyboard.getWidth() == CanvasUtilityDock::preferredKeyboardWidth);
     REQUIRE(layout.keyboard.getHeight() == CanvasUtilityDock::preferredKeyboardHeight);
     REQUIRE(layout.status.getX() == content.getX() + CanvasUtilityDock::margin);
     REQUIRE(layout.status.getY() == content.getY() + CanvasUtilityDock::margin);
-    REQUIRE(layout.legend.getY()
-            == layout.minimap.getBottom() + CanvasUtilityDock::gap);
+    REQUIRE(layout.legend.getBottom()
+            == content.getBottom() - CanvasUtilityDock::margin);
     REQUIRE(layout.legend.getHeight()
             == Catch::Approx(CanvasUtilityDock::preferredLegendHeight));
     REQUIRE(layout.legend.getWidth()

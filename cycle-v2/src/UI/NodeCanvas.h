@@ -101,6 +101,8 @@ public:
     uint64_t audioPlanRevision() const { return presentation.audioPlanRevision(); }
     float graphOutputGain() const;
     int previewMidiNote() const { return presentation.previewMidiNote(); }
+    ProbeRefreshMode probeRefreshMode() const override { return probeRailState.refreshMode; }
+    void setProbeRefreshMode(ProbeRefreshMode mode);
     bool setPreviewMidiNote(int midiNote);
     bool setPreviewModWheelValue(int value);
     void beginPreviewModWheelGesture();
@@ -294,7 +296,6 @@ private:
     Point<float> nodeEditorCreationPosition() const override;
     void rebindNodeEditor() override;
     void rebindNodeEditorTransient() override;
-    ProbeRefreshMode probeRefreshMode() const override { return probeRailState.refreshMode; }
     void recordNodeEditorMovement(
             const String& nodeId,
             const String& field,

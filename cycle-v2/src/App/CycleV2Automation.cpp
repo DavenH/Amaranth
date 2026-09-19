@@ -1007,6 +1007,16 @@ var CycleV2Automation::listMenuItems() const {
             "Save Preset",
             workspace.isGraphDirty()));
     items.add(menuItemToVar("file.saveGraphAs", "File", "Save Preset As...", true));
+    items.add(menuItemToVar(
+            "file.spyRefreshOnRelease",
+            "File > Spy Refresh",
+            "On Release",
+            true));
+    items.add(menuItemToVar(
+            "file.spyRefreshLive",
+            "File > Spy Refresh",
+            "Live",
+            true));
 
     var data = makeObject();
     objectFor(data)->setProperty("items", items);
@@ -1021,6 +1031,14 @@ var CycleV2Automation::invokeMenuItem(const var& commandValue) {
     }
     if (id == "file.saveGraph" || id == "file.saveGraphAs") {
         return saveGraph(commandValue);
+    }
+    if (id == "file.spyRefreshOnRelease") {
+        workspace.setProbeRefreshMode(ProbeRefreshMode::OnGestureCommit);
+        return okResult("invokeMenuItem", snapshotState());
+    }
+    if (id == "file.spyRefreshLive") {
+        workspace.setProbeRefreshMode(ProbeRefreshMode::LiveLatest);
+        return okResult("invokeMenuItem", snapshotState());
     }
 
     return failedResult("invokeMenuItem", "Unknown menu item: " + id);
