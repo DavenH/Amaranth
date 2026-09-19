@@ -6,6 +6,7 @@
 
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphValidationTypes.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 
 namespace CycleV2 {
 
@@ -78,6 +79,9 @@ void GraphAudioScopeValidator::validate(
         const GraphEdgeView& edges,
         const GraphAudioScopeAnalysis& analysis,
         std::vector<GraphValidationIssue>& issues) const {
+    InteractionComplexityDiagnostics::recordValidationNodeVisits(
+            graph.getNodes().size());
+    InteractionComplexityDiagnostics::recordValidationEdgeVisits(edges.size());
     std::vector<String> globalInputIds;
     std::vector<String> voiceOutputIds;
     std::vector<String> outputIds;

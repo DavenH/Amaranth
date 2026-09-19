@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "Graph/GraphEdgeView.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/NodeParameterMap.h"
 
 namespace CycleV2 {
@@ -100,6 +101,9 @@ GraphAudioScopeAnalysis GraphAudioScopeAnalyzer::analyze(const NodeGraph& graph)
 GraphAudioScopeAnalysis GraphAudioScopeAnalyzer::analyze(
         const NodeGraph& graph,
         const GraphEdgeView& edges) const {
+    InteractionComplexityDiagnostics::recordValidationNodeVisits(
+            graph.getNodes().size());
+    InteractionComplexityDiagnostics::recordValidationEdgeVisits(edges.size());
     GraphAudioScopeAnalysis result;
     result.nodes.reserve(graph.getNodes().size());
     std::vector<AudioProcessingCapability> capabilities;

@@ -283,6 +283,15 @@ assertions). Commit mutation and validation policy are now separate for both
 connection forms; indexed preview evaluation remains the next prerequisite
 before replacing the UI clone paths.
 
+`InteractionComplexityDiagnostics` now measures validation node visits,
+validation edge visits, and domain-transfer work. The domain resolver, audio
+scope analyzer, edge validator, topology validator, and audio-scope validator
+record work at their authoritative traversal boundaries. These counters do
+not change validation behavior; they provide the scale assertions required for
+the indexed context and prevent a graph-copy removal from concealing complete
+graph scans. Six focused proposal, connection, splice, and copy-count cases
+pass (46 assertions).
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,

@@ -1,6 +1,7 @@
 #include "Graph/GraphEdgeValidator.h"
 
 #include "Graph/GraphValidationTypes.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 
 namespace CycleV2 {
@@ -93,6 +94,7 @@ void GraphEdgeValidator::validate(
         PortDomain resolvedDomain,
         const GraphAudioScopeAnalysis* scopeAnalysis,
         EdgeIssueReporter& reporter) const {
+    InteractionComplexityDiagnostics::recordValidationEdgeVisits(1);
     auto report = [&edge, &reporter](GraphValidationCode code, String message) {
         return reporter.report({
                 code,

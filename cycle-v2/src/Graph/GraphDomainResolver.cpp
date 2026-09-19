@@ -6,6 +6,7 @@
 #include <deque>
 #include <unordered_map>
 
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/TrimeshSignalSemantics.h"
 
 namespace CycleV2 {
@@ -41,6 +42,9 @@ public:
     ResolutionWorklist(const NodeGraph& graphToResolve, const GraphEdgeView& edgesToResolve) :
             graph(graphToResolve)
         ,   edges(edgesToResolve) {
+        InteractionComplexityDiagnostics::recordValidationNodeVisits(
+                graph.getNodes().size());
+        InteractionComplexityDiagnostics::recordValidationEdgeVisits(edges.size());
         resolution.domains.reserve(edges.size());
         resolution.channelLayouts.resize(edges.size(), ChannelLayout::Mono);
         incoming.resize(graph.getNodes().size());
@@ -201,6 +205,7 @@ private:
                 edges.size() * edges.size() * 8);
         size_t transfers = 0;
         while (!worklist.empty() && transfers++ < maximumTransfers) {
+            InteractionComplexityDiagnostics::recordDomainTransfer();
             const size_t edgeIndex = worklist.front();
             worklist.pop_front();
             queued[edgeIndex] = false;
