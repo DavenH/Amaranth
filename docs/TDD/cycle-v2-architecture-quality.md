@@ -219,6 +219,16 @@ reduction, unchanged issue counts, and a changed edge address; four connection
 and splice tests retain 24 assertions. This centralizes acceptance policy but
 does not remove movement-time graph copies or validation scans.
 
+Global audio boundary, reachability, neutral-scope conflict, and voice-terminal
+rules now live in `GraphAudioScopeValidator`. `GraphValidator` delegates to
+that cohesive rule unit for bulk and proposed-edge validation, while retaining
+edge grammar, operation-input, Guide, and voice-context policy. The original
+implementation fell from 700 to 524 lines; the extracted implementation is
+204 lines. All 17 focused audio-scope cases pass (183 assertions), including
+proposed removal, neutral partition conflicts, and global reachability. This
+separates the policy that will need affected-region caching; its current
+implementation still scans the complete graph.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,

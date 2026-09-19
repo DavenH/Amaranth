@@ -71,11 +71,6 @@ private:
             const GraphEdgeView& edges,
             const GraphDomainResolution& resolution,
             std::vector<GraphValidationIssue>& issues) const;
-    void validateAudioScopes(
-            const NodeGraph& graph,
-            const GraphEdgeView& edges,
-            const GraphAudioScopeAnalysis& analysis,
-            std::vector<GraphValidationIssue>& issues) const;
     void validateVoiceContextAssignments(
             const NodeGraph& graph,
             const GraphEdgeView& edges,
