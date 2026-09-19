@@ -29,10 +29,6 @@ public:
             const NodeGraph& graph,
             const PortAddress& first,
             const PortAddress& second) const;
-    std::vector<size_t> edgeIndicesToInput(
-            const NodeGraph& graph,
-            const PortAddress& destination) const;
-
 private:
     const Port* findPort(const Node& node, const String& portId, bool input) const;
 };

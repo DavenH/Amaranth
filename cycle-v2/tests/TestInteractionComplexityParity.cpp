@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/NodeParameterMap.h"
@@ -38,6 +39,39 @@ NodeGraph scaledGraph(int unrelatedNodeCount, size_t audioSampleCount) {
     return graph;
 }
 
+}
+
+TEST_CASE("Edge index lookups ignore unrelated graph scale",
+        "[cycle-v2][complexity][connection][index]") {
+    GraphNodeFactory factory;
+    for (const int unrelatedNodes : { 0, 128 }) {
+        NodeGraph graph = scaledGraph(unrelatedNodes, 16384);
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+        graph.addEdge({
+                "wave", "out", "output", "time",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        });
+        for (int index = 0; index < unrelatedNodes; ++index) {
+            graph.addEdge({
+                    "wave", "out", "unrelated" + String(index), "left",
+                    PortDomain::TimeSignal, ConnectionKind::Signal
+            });
+        }
+
+        const GraphEdgeIndex edgeIndex(graph.getEdges());
+        InteractionComplexityDiagnostics::reset();
+
+        REQUIRE(edgeIndex.edgesToInput("output", "time")
+                == std::vector<size_t> { 0 });
+        REQUIRE(edgeIndex.incomingEdges("output")
+                == std::vector<size_t> { 0 });
+        REQUIRE(edgeIndex.outgoingEdges("wave").size()
+                == (size_t) unrelatedNodes + 1);
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(counts.validationEdgeVisits == 0);
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
+    }
 }
 
 TEST_CASE("Connection commit does not copy unrelated graph or audio resources",

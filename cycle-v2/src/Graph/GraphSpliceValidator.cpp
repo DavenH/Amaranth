@@ -1,6 +1,7 @@
 #include "Graph/GraphSpliceValidator.h"
 
 #include "Graph/GraphConnectionValidator.h"
+#include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphValidator.h"
 
@@ -27,6 +28,7 @@ GraphSpliceValidation GraphSpliceValidator::validate(
     const PortAddress source { edge.sourceNodeId, edge.sourcePortId, false };
     const PortAddress destination { edge.destNodeId, edge.destPortId, true };
     const GraphConnectionValidator connectionValidator;
+    const GraphEdgeIndex indexedEdges(graph.getEdges());
     const GraphValidator validator;
     const GraphEdgeView withoutOriginal(graph.getEdges(), { edgeIndex }, {});
     const auto removedEdgeIssues = validator.validate(graph, withoutOriginal);
@@ -42,8 +44,9 @@ GraphSpliceValidation GraphSpliceValidator::validate(
             continue;
         }
 
-        auto firstRemoved = connectionValidator.edgeIndicesToInput(
-                graph, incoming.destination);
+        auto firstRemoved = indexedEdges.edgesToInput(
+                incoming.destination.nodeId,
+                incoming.destination.portId);
         firstRemoved.push_back(edgeIndex);
         const GraphEdgeView firstProposal(
                 graph.getEdges(), firstRemoved, { incoming.edge });
@@ -66,8 +69,9 @@ GraphSpliceValidation GraphSpliceValidator::validate(
             }
 
             auto finalRemoved = firstRemoved;
-            const auto replacedDestination = connectionValidator.edgeIndicesToInput(
-                    graph, outgoing.destination);
+            const auto& replacedDestination = indexedEdges.edgesToInput(
+                    outgoing.destination.nodeId,
+                    outgoing.destination.portId);
             finalRemoved.insert(
                     finalRemoved.end(),
                     replacedDestination.begin(),

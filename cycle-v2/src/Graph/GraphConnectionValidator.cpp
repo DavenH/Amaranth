@@ -1,5 +1,6 @@
 #include "Graph/GraphConnectionValidator.h"
 
+#include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphValidator.h"
 
@@ -71,9 +72,12 @@ GraphConnectionValidation GraphConnectionValidator::validate(
         return result;
     }
 
+    const GraphEdgeIndex edgeIndex(graph.getEdges());
     const GraphEdgeView proposedEdges(
             graph.getEdges(),
-            edgeIndicesToInput(graph, result.destination),
+            edgeIndex.edgesToInput(
+                    result.destination.nodeId,
+                    result.destination.portId),
             { result.edge });
     GraphValidator validator;
     result.issues = validator.validate(graph, proposedEdges);
@@ -81,20 +85,6 @@ GraphConnectionValidation GraphConnectionValidator::validate(
             && !GraphValidator::acceptsProposedIssues(
                     validator.validate(graph), result.issues)) {
         result.code = GraphEditCode::ValidationRejected;
-    }
-    return result;
-}
-
-std::vector<size_t> GraphConnectionValidator::edgeIndicesToInput(
-        const NodeGraph& graph,
-        const PortAddress& destination) const {
-    std::vector<size_t> result;
-    for (size_t index = 0; index < graph.getEdges().size(); ++index) {
-        const Edge& edge = graph.getEdges()[index];
-        if (edge.destNodeId == destination.nodeId
-                && edge.destPortId == destination.portId) {
-            result.push_back(index);
-        }
     }
     return result;
 }

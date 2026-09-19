@@ -113,6 +113,7 @@ set(GRAPH_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeParameterMap.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphConnectionValidator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDomainResolver.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphEdgeIndex.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphEdgeValidator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphGuideValidator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphRenderSemanticResolver.cpp"

@@ -292,6 +292,16 @@ the indexed context and prevent a graph-copy removal from concealing complete
 graph scans. Six focused proposal, connection, splice, and copy-count cases
 pass (46 assertions).
 
+`GraphEdgeIndex` now owns destination-input and per-node incoming/outgoing edge
+indexes for a stable edge view. Connection validation uses it for replacement
+lookup, and splice validation builds one index for both proposal stages instead
+of rescanning the complete edge vector for each input and output candidate. A
+scaled test grows unrelated nodes, edges, and audio data while asserting that
+indexed input and adjacency queries perform zero validation edge visits, graph
+copies, or audio-sample copies (12 assertions across two scales). The index is
+the first retained component of the gesture validation context; resolved
+domains, audio scope, and affected-closure invalidation remain open.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,
