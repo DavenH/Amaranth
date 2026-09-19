@@ -66,15 +66,6 @@ private:
             const GraphAudioScopeAnalysis* scopeAnalysis,
             EdgeIssueReporter& reporter) const;
     bool isVoiceAwareDestination(const Port& port) const;
-    void validateOperationInputs(
-            const NodeGraph& graph,
-            const GraphEdgeView& edges,
-            const GraphDomainResolution& resolution,
-            std::vector<GraphValidationIssue>& issues) const;
-    void validateVoiceContextAssignments(
-            const NodeGraph& graph,
-            const GraphEdgeView& edges,
-            std::vector<GraphValidationIssue>& issues) const;
     bool domainsCompatible(const Port& source, const Port& dest) const;
     bool channelLayoutsCompatible(const Port& source, const Port& dest) const;
 

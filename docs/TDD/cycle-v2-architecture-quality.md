@@ -229,6 +229,15 @@ proposed removal, neutral partition conflicts, and global reachability. This
 separates the policy that will need affected-region caching; its current
 implementation still scans the complete graph.
 
+Operation-input consistency and multi-Voice-Context assignment now live in
+`GraphTopologyValidator`. It consumes the authoritative proposed-edge view and
+resolved domains, so bulk validation and commit proposals retain one policy.
+`GraphValidator.cpp` fell again from 524 to 394 lines; the extracted topology
+validator is 160 lines. Eight operation/domain cases and the active-context
+compiler rejection pass (21 assertions across nine cases). This isolates the
+second graph-wide policy needed by the preview context; it still scans all
+nodes and edges until affected-node indexes are introduced.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,
