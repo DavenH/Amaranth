@@ -263,6 +263,17 @@ implementation. Seven focused edge, proposal, connection, and splice cases
 pass (82 assertions). This leaves the rule units composable for the indexed
 preview context without reversing their dependency toward its coordinator.
 
+Connection proposal and validation now live in the read-only
+`GraphConnectionValidator`. It owns port orientation and lookup, edge metadata,
+destination replacement, full rule evaluation, and strict-repair acceptance.
+`GraphEditor` applies the accepted edge, while splice reuses the same proposal
+construction and destination lookup. `GraphEditor.cpp` fell from 410 to 306
+lines and its header from 31 to 30 lines; the new service is 115 lines. Eight
+focused connection, splice, proposal, and copy-count cases pass (50
+assertions). The three UI preview callers remain on their existing clone-based
+path until an indexed gesture context can call this boundary without graph-wide
+movement work.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,

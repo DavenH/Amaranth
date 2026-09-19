@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <utility>
 
+#include "Graph/GraphConnectionValidator.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphValidator.h"
@@ -9,32 +10,10 @@ namespace CycleV2 {
 
 namespace {
 
-PortDomain edgeDomainForConnection(const Port& source, const Port& dest) {
-    if (source.domain == PortDomain::ControlSignal && dest.domain != PortDomain::ControlSignal) {
-        return dest.domain;
-    }
-
-    return source.domain;
-}
-
 bool isProbeDomain(PortDomain domain) {
     return domain == PortDomain::TimeSignal
             || domain == PortDomain::SpectralMagnitudeSignal
             || domain == PortDomain::SpectralPhaseSignal;
-}
-
-std::vector<size_t> edgesToInput(
-        const NodeGraph& graph,
-        const String& nodeId,
-        const String& portId) {
-    std::vector<size_t> result;
-    for (size_t index = 0; index < graph.getEdges().size(); ++index) {
-        const Edge& edge = graph.getEdges()[index];
-        if (edge.destNodeId == nodeId && edge.destPortId == portId) {
-            result.push_back(index);
-        }
-    }
-    return result;
 }
 
 }
@@ -64,30 +43,20 @@ GraphEditResult GraphEditor::connect(
         NodeGraph& graph,
         const PortAddress& first,
         const PortAddress& second) const {
-    const PortAddress& sourceAddress = first.input ? second : first;
-    const PortAddress& destAddress = first.input ? first : second;
-    Edge proposedEdge;
-    const GraphEditCode proposalCode = proposeConnectionEdge(graph, first, second, proposedEdge);
-    if (proposalCode != GraphEditCode::Connected) {
-        return { proposalCode, {}, {} };
-    }
-    const GraphEdgeView proposedEdges(
-            graph.getEdges(),
-            edgesToInput(graph, destAddress.nodeId, destAddress.portId),
-            { proposedEdge });
-
-    GraphValidator validator;
-    auto issues = validator.validate(graph, proposedEdges);
-
-    if (!issues.empty()
-            && !GraphValidator::acceptsProposedIssues(validator.validate(graph), issues)) {
-        return { GraphEditCode::ValidationRejected, {}, std::move(issues) };
+    auto validation = GraphConnectionValidator().validate(graph, first, second);
+    if (!validation.succeeded()) {
+        return { validation.code, {}, std::move(validation.issues) };
     }
 
-    graph.removeEdgesToInput(destAddress.nodeId, destAddress.portId);
-    graph.addEdge(std::move(proposedEdge));
+    graph.removeEdgesToInput(
+            validation.destination.nodeId,
+            validation.destination.portId);
+    graph.addEdge(std::move(validation.edge));
     GraphEditResult result;
-    result.changes.nodeIds = { sourceAddress.nodeId, destAddress.nodeId };
+    result.changes.nodeIds = {
+            validation.source.nodeId,
+            validation.destination.nodeId
+    };
     result.changes.topologyChanged = true;
     return result;
 }
@@ -198,6 +167,7 @@ GraphEditResult GraphEditor::spliceNodeIntoEdge(NodeGraph& graph, size_t edgeInd
 
     const PortAddress source { edge.sourceNodeId, edge.sourcePortId, false };
     const PortAddress dest { edge.destNodeId, edge.destPortId, true };
+    const GraphConnectionValidator connectionValidator;
     const GraphValidator validator;
     const GraphEdgeView withoutOriginal(graph.getEdges(), { edgeIndex }, {});
     const auto removedEdgeIssues = validator.validate(graph, withoutOriginal);
@@ -207,16 +177,16 @@ GraphEditResult GraphEditor::spliceNodeIntoEdge(NodeGraph& graph, size_t edgeInd
             continue;
         }
 
-        Edge incomingEdge;
-        if (proposeConnectionEdge(
-                    graph, source, { nodeId, input.id, true }, incomingEdge)
-                != GraphEditCode::Connected) {
+        auto incoming = connectionValidator.propose(
+                graph, source, { nodeId, input.id, true });
+        if (!incoming.succeeded()) {
             continue;
         }
-        auto firstRemoved = edgesToInput(graph, nodeId, input.id);
+        auto firstRemoved = connectionValidator.edgeIndicesToInput(
+                graph, incoming.destination);
         firstRemoved.push_back(edgeIndex);
         const GraphEdgeView firstProposal(
-                graph.getEdges(), firstRemoved, { incomingEdge });
+                graph.getEdges(), firstRemoved, { incoming.edge });
         const auto firstIssues = validator.validate(graph, firstProposal);
         if (!firstIssues.empty()
                 && !GraphValidator::acceptsProposedIssues(removedEdgeIssues, firstIssues)) {
@@ -228,16 +198,15 @@ GraphEditResult GraphEditor::spliceNodeIntoEdge(NodeGraph& graph, size_t edgeInd
                 continue;
             }
 
-            Edge outgoingEdge;
-            if (proposeConnectionEdge(
-                        graph, { nodeId, output.id, false }, dest, outgoingEdge)
-                    != GraphEditCode::Connected) {
+            auto outgoing = connectionValidator.propose(
+                    graph, { nodeId, output.id, false }, dest);
+            if (!outgoing.succeeded()) {
                 continue;
             }
 
             auto finalRemoved = firstRemoved;
-            const auto replacedDestination = edgesToInput(
-                    graph, dest.nodeId, dest.portId);
+            const auto replacedDestination = connectionValidator.edgeIndicesToInput(
+                    graph, outgoing.destination);
             finalRemoved.insert(
                     finalRemoved.end(),
                     replacedDestination.begin(),
@@ -245,7 +214,7 @@ GraphEditResult GraphEditor::spliceNodeIntoEdge(NodeGraph& graph, size_t edgeInd
             const GraphEdgeView finalProposal(
                     graph.getEdges(),
                     std::move(finalRemoved),
-                    { incomingEdge, outgoingEdge });
+                    { incoming.edge, outgoing.edge });
             const auto finalIssues = validator.validate(graph, finalProposal);
             if (!finalIssues.empty()
                     && !GraphValidator::acceptsProposedIssues(firstIssues, finalIssues)) {
@@ -254,9 +223,9 @@ GraphEditResult GraphEditor::spliceNodeIntoEdge(NodeGraph& graph, size_t edgeInd
 
             graph.removeEdgeAt(edgeIndex);
             graph.removeEdgesToInput(nodeId, input.id);
-            graph.addEdge(std::move(incomingEdge));
+            graph.addEdge(std::move(incoming.edge));
             graph.removeEdgesToInput(dest.nodeId, dest.portId);
-            graph.addEdge(std::move(outgoingEdge));
+            graph.addEdge(std::move(outgoing.edge));
             GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
             result.changes.nodeIds.push_back(nodeId);
             result.changes.topologyChanged = true;
@@ -302,57 +271,6 @@ GraphEditResult GraphEditor::removeEdgeAt(NodeGraph& graph, size_t index) const 
 
 const Node* GraphEditor::findNode(const NodeGraph& graph, const String& nodeId) const {
     return graph.findNode(nodeId);
-}
-
-GraphEditCode GraphEditor::proposeConnectionEdge(
-        const NodeGraph& graph,
-        const PortAddress& first,
-        const PortAddress& second,
-        Edge& edge) const {
-    if (first.input == second.input) {
-        return GraphEditCode::DirectionMismatch;
-    }
-
-    const PortAddress& sourceAddress = first.input ? second : first;
-    const PortAddress& destAddress = first.input ? first : second;
-    const Node* sourceNode = findNode(graph, sourceAddress.nodeId);
-    const Node* destNode = findNode(graph, destAddress.nodeId);
-    if (sourceNode == nullptr || destNode == nullptr) {
-        return GraphEditCode::MissingNode;
-    }
-
-    const Port* source = findPort(*sourceNode, sourceAddress.portId, false);
-    const Port* dest = findPort(*destNode, destAddress.portId, true);
-    if (source == nullptr || dest == nullptr) {
-        return GraphEditCode::MissingPort;
-    }
-
-    edge = {
-            sourceAddress.nodeId,
-            sourceAddress.portId,
-            destAddress.nodeId,
-            destAddress.portId,
-            edgeDomainForConnection(*source, *dest),
-            dest->purpose == PortPurpose::ScratchAttachment
-                    ? ConnectionKind::ProcessingAttachment
-                    : dest->connectionKind,
-            dest->purpose == PortPurpose::ScratchAttachment
-                    ? AttachmentType::ScratchEnvelope
-                    : dest->attachmentType
-    };
-    return GraphEditCode::Connected;
-}
-
-const Port* GraphEditor::findPort(const Node& node, const String& portId, bool input) const {
-    const auto& ports = input ? node.inputs : node.outputs;
-
-    for (const auto& port : ports) {
-        if (port.id == portId) {
-            return &port;
-        }
-    }
-
-    return nullptr;
 }
 
 String GraphEditor::createUniqueNodeId(const NodeGraph& graph, NodeKind kind) const {

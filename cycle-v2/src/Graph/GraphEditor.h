@@ -21,13 +21,7 @@ public:
     GraphEditResult removeNode(NodeGraph& graph, const String& nodeId) const;
 
 private:
-    GraphEditCode proposeConnectionEdge(
-            const NodeGraph& graph,
-            const PortAddress& first,
-            const PortAddress& second,
-            Edge& edge) const;
     const Node* findNode(const NodeGraph& graph, const String& nodeId) const;
-    const Port* findPort(const Node& node, const String& portId, bool input) const;
     String createUniqueNodeId(const NodeGraph& graph, NodeKind kind) const;
     String createUniqueProbeId(const NodeGraph& graph) const;
     String baseIdForKind(NodeKind kind) const;
