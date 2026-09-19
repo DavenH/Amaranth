@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PanelRenderer.h"
+#include "PanelRenderContext.h"
 #include "RenderResourceCache.h"
 
 #include "../../Obj/Ref.h"
@@ -56,6 +57,7 @@ public:
 private:
     Ref<CommonGfx> gfx;
     GLSurfaceCache* surfaceCache;
-    const PanelRenderContext* currentContext = nullptr;
+    PanelRenderContext currentContext;
+    bool hasCurrentContext = false;
     RenderResourceCache resourceCache;
 };

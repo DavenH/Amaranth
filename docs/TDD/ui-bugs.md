@@ -5,6 +5,37 @@
 There are no open deterministic P0 or P1 regressions as of 2026-09-09.
 Resolved and no-longer-reproducing entries have been removed from this ledger.
 
+## Resolved: Linux Acidic preset load could corrupt UI and envelope state
+
+Loading the legacy `Acidic1.cyc` preset in the standalone Release app could
+crash while the preset browser or post-load UI was settling. AddressSanitizer
+found three independent lifetime errors on the load path: `GLPanelRenderer`
+stored a pointer to a temporary render context, `SynthesizerVoice` retained
+pointers into an envelope vector while that vector grew, and legacy document
+loading left the shared envelope rasterizers bound to meshes destroyed by
+`MeshLibrary` replacement.
+
+The renderer now owns its active context value, envelope voice contexts reserve
+their final capacity before pointers are retained, and `EnvelopeInter2D`
+rebinding runs after every document load. The focused fixture
+`scripts/fixtures/cycle-agent-acidic-preset-load.json` opens Acidic1, waits for
+idle, and verifies the loaded document.
+
+Status: resolved 2026-09-18. ASan direct load and fixture runs completed with no
+sanitizer report; Release validation is recorded with the implementation
+change.
+
+## Open: Linux automation startup logs a JUCE absolute path assertion
+
+The Acidic ASan fixture completed successfully but also logged
+`JUCE Assertion failure in juce_File.cpp:219` during the initial automation
+startup load. That assertion is JUCE's guard against constructing `File` from a
+non-absolute path. It did not recur on the Acidic load itself and did not
+produce a crash. Repro artifact: `/tmp/cycle-acidic-agent.log`.
+
+Current status: open; identify the startup caller that passes the relative path
+and use the existing context-aware JUCE path construction.
+
 ## P1: Opening a graph can discard unsaved edits without confirmation
 
 Context:

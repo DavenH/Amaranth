@@ -224,6 +224,7 @@ void FileManager::openCurrentPreset() {
     DBG("FileManager::openCurrentPreset calling Document::open");
     getObj(Document).open(currentPresetName);
     DBG("FileManager::openCurrentPreset Document::open returned");
+    getObj(EnvelopeInter2D).rebindRasterizersToCurrentMeshes();
     doPostPresetLoad();
     DBG("FileManager::openCurrentPreset finish post-preset updates");
 }
