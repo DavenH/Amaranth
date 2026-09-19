@@ -25,7 +25,8 @@ void NodeCanvasPresentation::paintMiniMap(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
     const Rectangle<float> map = CanvasUtilityDock::layout(frame.canvasBounds).minimap;
-    CanvasUtilityDock::paintSurface(graphics, map);
+    graphics.setColour(CanvasChromePalette::minimapBackground);
+    graphics.fillRoundedRectangle(map, CanvasChromeMetrics::panelCornerRadius);
 
     if (frame.graph.getNodes().empty()) {
         return;
@@ -49,7 +50,7 @@ void NodeCanvasPresentation::paintMiniMap(
     };
 
     for (const auto& node : frame.graph.getNodes()) {
-        graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.62f));
+        graphics.setColour(CanvasChromePalette::minimapContent.withAlpha(0.40f));
         graphics.fillRoundedRectangle(
                 project(node.bounds),
                 CanvasChromeMetrics::microCornerRadius);
@@ -63,9 +64,9 @@ void NodeCanvasPresentation::paintMiniMap(
             frame.canvasBounds.getWidth() / zoom,
             frame.canvasBounds.getHeight() / zoom);
     const Rectangle<float> viewportInMap = project(viewportWorld).getIntersection(projectedBounds);
-    graphics.setColour(CanvasChromePalette::navigationAccent.withAlpha(0.24f));
+    graphics.setColour(CanvasChromePalette::minimapViewport.withAlpha(0.10f));
     graphics.fillRoundedRectangle(viewportInMap, CanvasChromeMetrics::insetCornerRadius);
-    graphics.setColour(CanvasChromePalette::navigationAccent.withAlpha(0.85f));
+    graphics.setColour(CanvasChromePalette::minimapViewport.withAlpha(0.50f));
     graphics.drawRoundedRectangle(
             viewportInMap,
             CanvasChromeMetrics::insetCornerRadius,

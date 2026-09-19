@@ -36,6 +36,9 @@ inline const juce::Colour mutedText { 0xff8793a1 };
 inline const juce::Colour focus { 0xff79b8ff };
 inline const juce::Colour navigationAccent { 0xff35d6d2 };
 inline const juce::Colour areaSelection { 0xff426b96 };
+inline const juce::Colour minimapBackground { 0xff141414 };
+inline const juce::Colour minimapContent { 0xff8a8a8a };
+inline const juce::Colour minimapViewport { 0xffb0b0b0 };
 
 inline CanvasChromeControlColours control(CanvasChromeControlState state) {
     switch (state) {
