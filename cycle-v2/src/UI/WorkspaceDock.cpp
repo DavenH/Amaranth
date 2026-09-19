@@ -236,7 +236,6 @@ void WorkspaceDock::paintIconButton(
 void WorkspaceDock::paintTileChrome(
         juce::Graphics& graphics,
         juce::Rectangle<float> tile,
-        juce::Colour token,
         bool selected,
         bool hovered,
         bool focused) {
@@ -244,7 +243,9 @@ void WorkspaceDock::paintTileChrome(
     graphics.fillRoundedRectangle(tile, CanvasChromeMetrics::tileCornerRadius);
 
     const bool active = selected || hovered || focused;
-    const juce::Colour border = active ? token.brighter(0.15f) : token;
+    const juce::Colour border = active
+            ? CanvasChromePalette::selectionOutline
+            : CanvasChromePalette::border.withAlpha(0.56f);
     graphics.setColour(border);
     graphics.drawRoundedRectangle(
             tile,
@@ -258,6 +259,14 @@ void WorkspaceDock::paintTileChrome(
                 tile.reduced(3.f),
                 CanvasChromeMetrics::controlCornerRadius,
                 CanvasChromeMetrics::focusRingWidth);
+    }
+
+    if (selected) {
+        graphics.setColour(CanvasChromePalette::selectionOutline.withAlpha(0.16f));
+        graphics.drawRoundedRectangle(
+                tile.expanded(2.f),
+                CanvasChromeMetrics::tileCornerRadius + 2.f,
+                2.f);
     }
 }
 
@@ -305,7 +314,8 @@ void WorkspaceDock::paintVerticalOverflowFeedback(
     if (maximumOffset <= 0.f) {
         return;
     }
-    const auto track = shelf.removeFromRight(3.f).withTrimmedTop(headerHeight)
+    const auto track = shelf.withTrimmedRight(5.f).removeFromRight(3.f)
+            .withTrimmedTop(headerHeight)
             .withTrimmedBottom(tileBottomPadding);
     const float visibleHeight = shelf.getHeight() - headerHeight - tileBottomPadding;
     const float thumbHeight = juce::jmax(22.f,

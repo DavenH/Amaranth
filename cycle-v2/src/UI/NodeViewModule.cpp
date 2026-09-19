@@ -98,7 +98,7 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     NodeViewCapabilities mesh = preview;
     mesh.hostedEditor = true;
     mesh.outputSideControl = true;
-    mesh.expandedEditorScale = Point<float>(0.81f, 1.f);
+    mesh.expandedEditorScale = Point<float>(0.86f, 0.82f);
     add(NodeKind::TrilinearMesh, mesh);
     add(NodeKind::SpectralLayer, preview);
 

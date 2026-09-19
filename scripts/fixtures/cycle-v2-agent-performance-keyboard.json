@@ -18,12 +18,12 @@
     {
       "command": "assertState",
       "path": "performance.screenWidth",
-      "equals": 489
+      "equals": 521
     },
     {
       "command": "assertState",
       "path": "performance.screenHeight",
-      "equals": 140
+      "equals": 112
     },
     {
       "command": "assertState",
@@ -33,7 +33,7 @@
     {
       "command": "assertState",
       "path": "performance.whiteKeyAspect",
-      "equals": 3.72
+      "equals": 4.0
     },
     {
       "command": "assertState",
@@ -43,7 +43,7 @@
     {
       "command": "assertState",
       "path": "performance.octaveButtonHeight",
-      "equals": 93
+      "equals": 100
     },
     {
       "command": "assertState",

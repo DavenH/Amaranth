@@ -237,7 +237,8 @@ void NodeCanvas::paint(Graphics& g) {
             performanceMetrics.timestamp() - framePreparationStartedAt);
 
     canvasPresentation.paint(g, frame);
-    if (canvasPresentation.guideShelfNeedsOpenGLPreviewRender()) {
+    if (frame.canvasOcclusion.isEmpty()
+            && canvasPresentation.guideShelfNeedsOpenGLPreviewRender()) {
         openGLContext.triggerRepaint();
     }
 }
@@ -419,6 +420,30 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     activeTrimeshVertexIndex = -1;
 
     const Rectangle<float> workspace = getLocalBounds().toFloat();
+    if (expandedNodeId.isNotEmpty()) {
+        const Node* expandedNode = queries.findNode(expandedNodeId);
+        const ExpandedEditorClick click = editorCoordinator.routeClick(
+                expandedNode,
+                editorContentBounds(),
+                event.position);
+        if (click.kind == ExpandedEditorClickKind::Close) {
+            editorCoordinator.close();
+            notifyOverlayOcclusionChanged();
+        } else if (click.kind == ExpandedEditorClickKind::TransformMode) {
+            applyAuthoringResult(authoring.setTransformMode(
+                    expandedNode->id,
+                    *click.transformMode));
+        } else if (click.kind == ExpandedEditorClickKind::Captured) {
+            interaction.captureExpandedEditor();
+        }
+
+        if (click.kind != ExpandedEditorClickKind::Unclaimed
+                || editorCoordinator.blocksCanvas(expandedNode)) {
+            requestCanvasRepaint();
+            return;
+        }
+    }
+
     if (dockInteraction->mouseDown(event, workspace)) {
         return;
     }
@@ -437,29 +462,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         }
     }
     dockInteraction->clearFocus();
-
-    if (expandedNodeId.isNotEmpty()) {
-        const Node* expandedNode = queries.findNode(expandedNodeId);
-        const ExpandedEditorClick click = editorCoordinator.routeClick(
-                expandedNode,
-                editorContentBounds(),
-                event.position);
-        if (click.kind == ExpandedEditorClickKind::Close) {
-            editorCoordinator.close();
-            notifyOverlayOcclusionChanged();
-        } else if (click.kind == ExpandedEditorClickKind::TransformMode) {
-            applyAuthoringResult(authoring.setTransformMode(
-                    expandedNode->id,
-                    *click.transformMode));
-        } else if (click.kind == ExpandedEditorClickKind::Captured) {
-            interaction.captureExpandedEditor();
-        }
-
-        if (click.kind != ExpandedEditorClickKind::Unclaimed) {
-            requestCanvasRepaint();
-            return;
-        }
-    }
 
     NodeKind paletteKind;
     if (palette.findKindAt(event.position, paletteKind)) {
@@ -800,6 +802,10 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Viewport);
+    const Node* blockingEditorNode = queries.findNode(expandedNodeId);
+    if (editorCoordinator.blocksCanvas(blockingEditorNode)) {
+        return;
+    }
     if (const Node* output = findOutputFaderAt(graph, viewport, event.position)) {
         const float current = NodeParameterMap(*output).floatValue("gain", 0.5f);
         const float delta = wheel.deltaY * (event.mods.isShiftDown() ? 0.025f : 0.1f);
@@ -1132,6 +1138,10 @@ Rectangle<float> NodeCanvas::canvasContentBounds() const {
 }
 
 Rectangle<float> NodeCanvas::editorContentBounds() const {
+    const Node* expandedNode = queries.findNode(expandedNodeId);
+    if (editorCoordinator.blocksCanvas(expandedNode)) {
+        return canvasContentBounds();
+    }
     return WorkspaceDock::editorAvailableBounds(workspaceDockLayout());
 }
 

@@ -442,7 +442,7 @@ void SignalProbeRail::paintRail(
         WorkspaceDock::paintIconButton(
                 graphics,
                 drawerButton,
-                WorkspaceDockIcon::ChevronLeft,
+                WorkspaceDockIcon::ChevronRight,
                 focus.target == WorkspaceDockFocusTarget::SpyDrawer);
         Graphics::ScopedSaveState labelTransform(graphics);
         graphics.addTransform(AffineTransform::rotation(
@@ -460,7 +460,7 @@ void SignalProbeRail::paintRail(
     WorkspaceDock::paintIconButton(
             graphics,
             minimize,
-            WorkspaceDockIcon::ChevronRight,
+            WorkspaceDockIcon::ChevronLeft,
             focus.target == WorkspaceDockFocusTarget::SpyMinimize);
 
     const Rectangle<float> label = WorkspaceDock::spyControls(rail).label;
@@ -507,9 +507,6 @@ void SignalProbeRail::paintRail(
         const SignalProbe& probe = *probes[(size_t) index];
         const Rectangle<float> tile = tileBoundsFor(workspace, state, index);
         const auto* preview = previewFor(previews, probe.id);
-        const Colour colour = preview != nullptr && preview->connected
-                ? colourForDomain(preview->domain)
-                : CanvasChromePalette::mutedText;
         const bool selected = probe.id == state.selectedProbeId;
         const bool hovered = probe.id == state.hoveredProbeId;
         const bool focused = focus.target == WorkspaceDockFocusTarget::SpyTile
@@ -517,7 +514,6 @@ void SignalProbeRail::paintRail(
         WorkspaceDock::paintTileChrome(
                 graphics,
                 tile,
-                colour,
                 selected,
                 hovered,
                 focused);

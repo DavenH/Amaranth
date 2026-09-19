@@ -30,6 +30,7 @@ inline const juce::Colour restingControlSurface { 0xff151b24 };
 inline const juce::Colour hoveredControlSurface { 0xff1d2631 };
 inline const juce::Colour border { 0xff3d4a58 };
 inline const juce::Colour strongBorder { 0xff8290a2 };
+inline const juce::Colour selectionOutline { 0xff9aabba };
 inline const juce::Colour text { 0xffe2e8ef };
 inline const juce::Colour mutedText { 0xff8793a1 };
 inline const juce::Colour focus { 0xff79b8ff };

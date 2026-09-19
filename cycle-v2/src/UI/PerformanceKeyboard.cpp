@@ -271,11 +271,12 @@ Rectangle<float> PerformanceKeyboardPanel::playButtonBounds() const {
 
 Rectangle<float> PerformanceKeyboardPanel::progressBounds() const {
     const Rectangle<float> button = playButtonBounds();
+    const float bottom = modWheelBounds().getBottom();
     return {
-            0.f,
-            button.getY(),
-            (float) getWidth(),
-            button.getHeight()
+            button.getCentreX() - 4.f,
+            button.getBottom() + 6.f,
+            8.f,
+            jmax(0.f, bottom - button.getBottom() - 12.f)
     };
 }
 
@@ -380,15 +381,16 @@ void PerformanceKeyboardPanel::paint(Graphics& graphics) {
 
     const Rectangle<float> track = progressBounds();
     graphics.setColour(CanvasChromePalette::raisedSurface.withAlpha(0.34f));
-    graphics.fillRect(track);
+    graphics.fillRoundedRectangle(track, track.getWidth() * 0.5f);
     if (progress > 0.f) {
         graphics.setColour(CanvasChromePalette::focus.withAlpha(0.13f));
-        graphics.fillRect(track.withWidth(track.getWidth() * progress));
+        graphics.fillRoundedRectangle(
+                track.withTop(track.getBottom() - track.getHeight() * progress),
+                track.getWidth() * 0.5f);
     }
 }
 
 void PerformanceKeyboardPanel::resized() {
-    constexpr int transportHeight = 31;
     const bool compact = getWidth() < roundToInt(CanvasUtilityDock::preferredKeyboardWidth);
     const int panelInset = compact ? 4 : 6;
     const int buttonWidth = compact ? 25 : 28;
@@ -396,9 +398,9 @@ void PerformanceKeyboardPanel::resized() {
     const int wheelGap = compact ? 3 : 6;
     const int wheelWidth = compact ? 24 : 32;
     Rectangle<int> content = getLocalBounds().reduced(panelInset);
-    Rectangle<int> transport = content.removeFromTop(transportHeight);
-    playButton.setBounds(transport.withSizeKeepingCentre(buttonWidth, transportHeight));
-    content.removeFromTop(controlGap);
+    Rectangle<int> transport = content.removeFromLeft(buttonWidth);
+    playButton.setBounds(transport.removeFromTop(buttonWidth));
+    content.removeFromLeft(controlGap);
     modWheel.setBounds(content.removeFromLeft(wheelWidth));
     content.removeFromLeft(wheelGap);
     octaveDown.setBounds(content.removeFromLeft(buttonWidth));

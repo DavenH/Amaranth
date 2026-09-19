@@ -100,8 +100,9 @@ TEST_CASE("Signal probe rail overlays the full canvas", "[cycle-v2][canvas][prob
     const Rectangle<float> editor = NodeCanvasEditorCoordinator::boundsFor(&trimesh, content);
     REQUIRE(content.contains(editor));
     REQUIRE(editor.getBottom() <= content.getBottom());
-    REQUIRE(editor.getWidth() == Catch::Approx(content.getWidth() * 0.81f));
-    REQUIRE(editor.getHeight() == Catch::Approx(content.getHeight() - 36.f));
+    REQUIRE(editor.getCentre() == content.getCentre());
+    REQUIRE(editor.getWidth() == Catch::Approx(content.getWidth() * 0.86f));
+    REQUIRE(editor.getHeight() == Catch::Approx(content.getHeight() * 0.82f));
 
     expanded.expanded = false;
     REQUIRE(WorkspaceDock::layout(workspace,
@@ -1408,11 +1409,10 @@ TEST_CASE("Cable renderer uses one solid grammar with edit-state semantics",
 
 TEST_CASE("Canvas legend collapses non-signal domains into Control",
         "[cycle-v2][canvas][legend]") {
-    REQUIRE(CanvasChromeMetrics::legendFontSize
-            == Catch::Approx(CanvasChromeMetrics::microFontSize * 1.3f));
-    REQUIRE(CanvasChromeMetrics::legendLineLength == Catch::Approx(17.f * 1.3f));
-    REQUIRE(CanvasChromeMetrics::legendLineWidth == Catch::Approx(2.f * 1.3f));
-    REQUIRE(CanvasChromeMetrics::legendRowStride == Catch::Approx(20.f * 1.3f));
+    REQUIRE(CanvasChromeMetrics::legendFontSize == 11.f);
+    REQUIRE(CanvasChromeMetrics::legendLineLength == 14.f);
+    REQUIRE(CanvasChromeMetrics::legendLineWidth == 2.f);
+    REQUIRE(CanvasUtilityDock::preferredLegendHeight == 30.f);
 
     const Colour control = colourForDomain(PortDomain::ControlSignal);
     REQUIRE(colourForDomain(PortDomain::DomainContext) == control);

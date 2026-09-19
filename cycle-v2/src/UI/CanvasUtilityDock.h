@@ -17,10 +17,10 @@ class CanvasUtilityDock {
 public:
     static constexpr float margin = 18.f;
     static constexpr float gap = 8.f;
-    static constexpr float preferredKeyboardWidth = 489.f;
-    static constexpr float preferredKeyboardHeight = 140.5f;
-    static constexpr float preferredLegendHeight =
-            98.f * CanvasChromeMetrics::legendScale;
+    static constexpr float preferredKeyboardWidth = 521.f;
+    static constexpr float preferredKeyboardHeight = 112.f;
+    static constexpr float preferredLegendWidth = 390.f;
+    static constexpr float preferredLegendHeight = 30.f;
 
     static CanvasUtilityDockLayout layout(juce::Rectangle<float> contentBounds);
     static void paintSurface(

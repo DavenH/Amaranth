@@ -86,15 +86,22 @@ void NodeCanvasPresentation::paintLegend(
             { PortDomain::SpectralPhaseSignal, "Phase" },
             { PortDomain::ControlSignal, "Control" }
     };
+    constexpr int entryCount = 4;
     const Rectangle<float> legend = CanvasUtilityDock::layout(frame.canvasBounds).legend;
+    if (legend.isEmpty()) {
+        return;
+    }
     Graphics::ScopedSaveState scopedState(graphics);
     graphics.reduceClipRegion(legend.toNearestInt());
-    CanvasUtilityDock::paintSurface(graphics, legend);
     graphics.setFont(FontOptions(CanvasChromeMetrics::legendFontSize));
 
-    float y = legend.getY() + CanvasChromeMetrics::legendTopInset;
-    for (const auto& entry : entries) {
-        const float x = legend.getX() + CanvasChromeMetrics::legendHorizontalInset;
+    const Rectangle<float> content = legend.reduced(
+            CanvasChromeMetrics::legendHorizontalInset, 0.f);
+    const float cellWidth = content.getWidth() / (float) entryCount;
+    const float y = legend.getCentreY();
+    for (int index = 0; index < entryCount; ++index) {
+        const auto& entry = entries[index];
+        const float x = content.getX() + cellWidth * (float) index;
         Path line;
         line.startNewSubPath(x, y);
         line.lineTo(x + CanvasChromeMetrics::legendLineLength, y);
@@ -109,10 +116,10 @@ void NodeCanvasPresentation::paintLegend(
                         x + CanvasChromeMetrics::legendLineLength
                                 + CanvasChromeMetrics::legendTextGap,
                         y - CanvasChromeMetrics::legendTextHeight * 0.5f,
-                        CanvasChromeMetrics::legendTextWidth,
+                        cellWidth - CanvasChromeMetrics::legendLineLength
+                                - CanvasChromeMetrics::legendTextGap,
                         CanvasChromeMetrics::legendTextHeight),
                 Justification::centredLeft);
-        y += CanvasChromeMetrics::legendRowStride;
     }
 }
 

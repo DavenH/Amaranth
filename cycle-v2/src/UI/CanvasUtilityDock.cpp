@@ -37,10 +37,11 @@ CanvasUtilityDockLayout CanvasUtilityDock::layout(juce::Rectangle<float> content
             juce::jmin(minimapHeight,
                     juce::jmax(0.f, contentBounds.getBottom() - margin - minimapTop))
     };
+    const float legendWidth = juce::jmin(preferredLegendWidth, availableWidth);
     result.legend = {
-            result.minimap.getX(),
+            right - legendWidth,
             result.minimap.getBottom() + gap,
-            utilityWidth,
+            legendWidth,
             juce::jmin(sharedTopRow ? 0.f : preferredLegendHeight,
                     juce::jmax(0.f, contentBounds.getBottom() - margin
                             - result.minimap.getBottom() - gap))
@@ -71,11 +72,6 @@ void CanvasUtilityDock::paintSurface(
     }
     graphics.setColour(CanvasChromePalette::insetBackground.withAlpha(0.87f));
     graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::panelCornerRadius);
-    graphics.setColour(CanvasChromePalette::border);
-    graphics.drawRoundedRectangle(
-            bounds,
-            CanvasChromeMetrics::panelCornerRadius,
-            CanvasChromeMetrics::restingBorderWidth);
 }
 
 }
