@@ -21,6 +21,8 @@ public:
     bool loadGraphFromFile(const File& file);
     bool isGraphDirty() const { return canvas.isGraphDirty(); }
     const File& graphFile() const { return canvas.graphFile(); }
+    ProbeRefreshMode probeRefreshMode() const { return canvas.probeRefreshMode(); }
+    void setProbeRefreshMode(ProbeRefreshMode mode) { canvas.setProbeRefreshMode(mode); }
     void setGraphDocumentStateChangedCallback(std::function<void()> callback) {
         canvas.setGraphDocumentStateChangedCallback(std::move(callback));
     }

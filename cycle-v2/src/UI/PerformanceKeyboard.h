@@ -99,7 +99,6 @@ public:
     Rectangle<float> octaveDownBounds() const;
     Rectangle<float> octaveUpBounds() const;
     Rectangle<float> modWheelBounds() const;
-    Rectangle<float> playButtonBounds() const;
     Rectangle<float> progressBounds() const;
 
     int modWheelValue() const { return modWheel.value(); }
@@ -131,16 +130,6 @@ private:
 
     private:
         bool advances;
-    };
-
-    class PlayButton final : public Button {
-    public:
-        explicit PlayButton(const PerformanceKeyboardPanel& owner);
-
-        void paintButton(Graphics& graphics, bool highlighted, bool down) override;
-
-    private:
-        const PerformanceKeyboardPanel& owner;
     };
 
     class ModWheel final :
@@ -191,7 +180,6 @@ private:
     OctaveButton octaveDown { false };
     OctaveButton octaveUp { true };
     ModWheel modWheel;
-    PlayButton playButton { *this };
 };
 
 }

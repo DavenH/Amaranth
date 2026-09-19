@@ -48,7 +48,9 @@ public:
         enum Command : CommandID {
             CommandOpenGraph = 0x3000,
             CommandSaveGraph,
-            CommandSaveGraphAs
+            CommandSaveGraphAs,
+            CommandSpyRefreshOnRelease,
+            CommandSpyRefreshLive
         };
 
         MainWindow(
@@ -128,6 +130,16 @@ public:
                 menu.addSeparator();
                 menu.addCommandItem(&commandManager, CommandSaveGraph);
                 menu.addCommandItem(&commandManager, CommandSaveGraphAs);
+
+                PopupMenu spyRefreshMenu;
+                spyRefreshMenu.addCommandItem(
+                        &commandManager,
+                        CommandSpyRefreshOnRelease);
+                spyRefreshMenu.addCommandItem(
+                        &commandManager,
+                        CommandSpyRefreshLive);
+                menu.addSeparator();
+                menu.addSubMenu("Spy Refresh", spyRefreshMenu);
             }
 
             return menu;
@@ -144,7 +156,13 @@ public:
         }
 
         void getAllCommands(Array<CommandID>& commands) override {
-            commands.addArray({ CommandOpenGraph, CommandSaveGraph, CommandSaveGraphAs });
+            commands.addArray({
+                    CommandOpenGraph,
+                    CommandSaveGraph,
+                    CommandSaveGraphAs,
+                    CommandSpyRefreshOnRelease,
+                    CommandSpyRefreshLive
+            });
         }
 
         void getCommandInfo(CommandID commandID, ApplicationCommandInfo& result) override {
@@ -165,6 +183,28 @@ public:
                     result.addDefaultKeypress('s', ModifierKeys::commandModifier | ModifierKeys::shiftModifier);
                     break;
 
+                case CommandSpyRefreshOnRelease:
+                    result.setInfo(
+                            "On Release",
+                            "Refresh signal spies when an editing gesture finishes",
+                            "File",
+                            0);
+                    result.setTicked(workspace != nullptr
+                            && workspace->probeRefreshMode()
+                                    == CycleV2::ProbeRefreshMode::OnGestureCommit);
+                    break;
+
+                case CommandSpyRefreshLive:
+                    result.setInfo(
+                            "Live",
+                            "Refresh signal spies during editing gestures",
+                            "File",
+                            0);
+                    result.setTicked(workspace != nullptr
+                            && workspace->probeRefreshMode()
+                                    == CycleV2::ProbeRefreshMode::LiveLatest);
+                    break;
+
                 default:
                     break;
             }
@@ -182,6 +222,14 @@ public:
 
                 case CommandSaveGraphAs:
                     chooseSaveGraphAs();
+                    return true;
+
+                case CommandSpyRefreshOnRelease:
+                    setSpyRefreshMode(CycleV2::ProbeRefreshMode::OnGestureCommit);
+                    return true;
+
+                case CommandSpyRefreshLive:
+                    setSpyRefreshMode(CycleV2::ProbeRefreshMode::LiveLatest);
                     return true;
 
                 default:
@@ -253,6 +301,15 @@ public:
                     : file.getFileNameWithoutExtension();
             setName(applicationName + " - " + presetName
                     + (workspace->isGraphDirty() ? "*" : ""));
+            commandManager.commandStatusChanged();
+            menuItemsChanged();
+        }
+
+        void setSpyRefreshMode(CycleV2::ProbeRefreshMode mode) {
+            if (workspace == nullptr) {
+                return;
+            }
+            workspace->setProbeRefreshMode(mode);
             commandManager.commandStatusChanged();
             menuItemsChanged();
         }

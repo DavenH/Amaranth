@@ -6,14 +6,22 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 1082.18823, "y": 1308.10254 },
-            "parameters": { "octave": 0, "voiceLength": 0.648854962, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "position": { "x": 1677.84509, "y": -120.89095 },
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.648854962,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 713.97192, "y": 1274.10254 },
+            "position": { "x": 1309.62878, "y": -188.89095 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -30,7 +38,7 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "position": { "x": 1746.0, "y": 886.0 },
+            "position": { "x": 1859.10291, "y": 885.21564 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
         {
@@ -44,7 +52,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 713.97192, "y": 1444.10254 },
+            "position": { "x": 1333.62878, "y": -18.89094 },
             "parameters": {
                 "enabled": true,
                 "mode": "group",
@@ -67,7 +75,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1361.91089, "y": 890.00006 },
+            "position": { "x": 1521.52429, "y": 885.21564 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -178,7 +186,7 @@
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 2076.0, "y": 377.33679 },
+            "position": { "x": 2137.10278, "y": 377.33679 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -292,7 +300,7 @@
             "id": "magnitudeOp1",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 2144.0, "y": 736.0 },
+            "position": { "x": 2205.10278, "y": 736.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -302,7 +310,7 @@
             "id": "magnitudeLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 2502.25488, "y": 377.33679 },
+            "position": { "x": 2526.69604, "y": 377.33679 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -416,7 +424,7 @@
             "id": "magnitudeOp2",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 2570.25488, "y": 735.21558 },
+            "position": { "x": 2594.69604, "y": 735.21558 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -668,7 +676,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 3668.30371, "y": 445.33676 },
+            "position": { "x": 3690.7876, "y": 513.33679 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -759,8 +767,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5 ]
                 }
             }
@@ -769,7 +775,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 969.97192, "y": -145.76093 },
+            "position": { "x": 1135.69897, "y": 411.33679 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -873,8 +879,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6 ]
                 }
             }
@@ -883,7 +887,7 @@
             "id": "scratchEnvelope2",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2058.3689, "y": -145.76093 },
+            "position": { "x": 2119.47168, "y": -5.22459 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -987,8 +991,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6 ]
                 }
             }
@@ -997,7 +999,7 @@
             "id": "scratchEnvelope3",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2534.6499, "y": -145.76093 },
+            "position": { "x": 2559.09106, "y": -5.22459 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1101,8 +1103,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6 ]
                 }
             }
@@ -1121,21 +1121,21 @@
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 2089.56885, "y": 1390.23523 },
+            "position": { "x": 3754.31348, "y": 1270.98926 },
             "parameters": { "enabled": true, "time": 0.48, "feedback": 0.632, "wet": 0.88, "spin": 1.0, "spinIters": 0.7 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 2353.56885, "y": 1390.23523 },
+            "position": { "x": 4018.31323, "y": 1270.98926 },
             "parameters": { "gain": 0.290076336 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 1851.56885, "y": 1390.23523 },
+            "position": { "x": 3516.31348, "y": 1270.98926 },
             "parameters": {}
         },
         {
@@ -1408,5 +1408,26 @@
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeLayer2", "sourcePortId": "out", "destNodeId": "magnitudeOp2", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": []
+    "probes": [
+        {
+            "id": "probe",
+            "sourceNodeId": "volumeMultiply",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "voiceOutput",
+            "anchorDestPortId": "time",
+            "label": "Spy 1",
+            "tapPosition": 0.5,
+            "railOrder": 0
+        },
+        {
+            "id": "probe2",
+            "sourceNodeId": "magnitudeOp4",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "ifft",
+            "anchorDestPortId": "mag",
+            "label": "Spy 2",
+            "tapPosition": 0.5,
+            "railOrder": 1
+        }
+    ]
 }

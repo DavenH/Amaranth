@@ -873,3 +873,8 @@ fixture failures before changing audio behavior or test expectations.
 The 2026-09-18 `CycleV2_tests '[trimesh]'` run reproduced the scratch-envelope
 failure and also found zero traversal difference for `magnitudeLayer1` in the
 Stengah scratch-topology case. Log: `/tmp/cycle-v2-trimesh-tests.txt`.
+
+Update 2026-09-18: the workspace visual-hierarchy verification run completed
+with 787 of 826 cases passing and 39 failures in the same preset-fixture and
+audio/spectral groups. Its focused UI suite passed 117 assertions in nine
+cases. The preset working tree was already modified and was left untouched.

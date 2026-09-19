@@ -546,11 +546,11 @@
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 2,
+                "revision": 4,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 2,
+                    "revision": 4,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
@@ -632,8 +632,6 @@
                     "logarithmic": false,
                     "red": 0.26168,
                     "blue": 0.0,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5 ]
                 }
             }
@@ -647,11 +645,11 @@
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 11,
+                "revision": 13,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 11,
+                    "revision": 13,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
@@ -707,8 +705,6 @@
                     "logarithmic": false,
                     "red": 0.26168,
                     "blue": 0.0,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3 ]
                 }
             },
@@ -723,11 +719,11 @@
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 2,
+                "revision": 4,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 2,
+                    "revision": 4,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
@@ -835,8 +831,6 @@
                     "logarithmic": false,
                     "red": 0.26168,
                     "blue": 0.0,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7 ]
                 }
             }

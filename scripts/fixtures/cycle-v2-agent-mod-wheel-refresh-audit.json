@@ -1,7 +1,7 @@
 {
   "commands": [
     { "command": "openGraph", "path": "../../cycle-v2/content/presets/honerism-3.cyclegraph" },
-    { "command": "pointer", "targetId": "PerformanceKeyboard.Play", "event": "click" },
+    { "command": "key", "area": "canvas", "key": "space" },
     { "command": "assertState", "path": "performance.previewPlaying", "equals": true },
     { "command": "resetCanvasPerformance" },
     { "command": "resetAudioPerformance" },

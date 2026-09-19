@@ -25,7 +25,6 @@ struct WorkspaceDockLayout {
 
 struct WorkspaceDockSpyControls {
     juce::Rectangle<float> label;
-    juce::Rectangle<float> refresh;
     juce::Rectangle<float> minimize;
 };
 
@@ -44,7 +43,6 @@ enum class WorkspaceDockFocusTarget {
     GuideTile,
     SpyDrawer,
     SpyMinimize,
-    SpyRefresh,
     SpyTile
 };
 
@@ -68,11 +66,12 @@ public:
     static constexpr float drawerWidth = 36.f;
     static constexpr float shelfPadding = 10.f;
     static constexpr float headerHeight = 36.f;
-    static constexpr float tileWidth = 210.f;
+    static constexpr float tileWidth = 190.f;
     static constexpr float guideTileHeight = 92.f;
     static constexpr float tileGap = 8.f;
     static constexpr float tileBottomPadding = 8.f;
     static constexpr float controlSize = 26.f;
+    static constexpr float addButtonWidth = 48.f;
 
     static WorkspaceDockLayout layout(
             juce::Rectangle<float> workspace,
@@ -120,7 +119,6 @@ public:
     static void paintTileChrome(
             juce::Graphics& graphics,
             juce::Rectangle<float> tile,
-            juce::Colour token,
             bool selected,
             bool hovered,
             bool focused);

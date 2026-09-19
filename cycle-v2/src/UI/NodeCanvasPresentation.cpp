@@ -249,11 +249,16 @@ void paintModulationShell(
             corner,
             CanvasChromeMetrics::restingBorderWidth);
     if (selected) {
-        graphics.setColour(Colours::white.withAlpha(0.86f));
+        graphics.setColour(CanvasChromePalette::selectionOutline.withAlpha(0.16f));
+        graphics.drawRoundedRectangle(
+                bounds.expanded(4.f),
+                corner + 4.f,
+                3.f);
+        graphics.setColour(CanvasChromePalette::selectionOutline.withAlpha(0.92f));
         graphics.drawRoundedRectangle(
                 bounds.expanded(2.f),
                 corner + CanvasChromeMetrics::microCornerRadius,
-                CanvasChromeMetrics::focusRingWidth);
+                CanvasChromeMetrics::activeBorderWidth);
     }
 }
 
@@ -642,6 +647,15 @@ void NodeCanvasPresentation::paint(
         paintContent(graphics, frame);
     }
 
+    if (!frame.canvasOcclusion.isEmpty()) {
+        Graphics::ScopedSaveState scrimClip(graphics);
+        graphics.reduceClipRegion(frame.workspaceBounds.toNearestInt());
+        graphics.excludeClipRegion(frame.canvasOcclusion.toNearestInt());
+        graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.70f));
+        graphics.fillRect(frame.workspaceBounds);
+        return;
+    }
+
     const WorkspaceDockLayout dock = WorkspaceDock::layout(
             frame.workspaceBounds,
             {
@@ -685,13 +699,15 @@ void NodeCanvasPresentation::paint(
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::DockAndDetail);
-        WorkspaceDock::paintChrome(
-                graphics,
-                dock,
-                "Curve Guides",
-                "Spies",
-                frame.probeRailState.expanded,
-                frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
+        if (!frame.graph.getSignalProbes().empty()) {
+            WorkspaceDock::paintChrome(
+                    graphics,
+                    dock,
+                    "Curve Guides",
+                    "Spies",
+                    frame.probeRailState.expanded,
+                    frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
+        }
         GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
         signalProbeDetailView.paint(
                 graphics,
@@ -754,7 +770,7 @@ void NodeCanvasPresentation::paintContent(
         GuideRelationshipPresentation::paintHighlights(graphics, frame);
     }
     paintAreaSelection(graphics, frame);
-    {
+    if (frame.canvasOcclusion.isEmpty()) {
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::Utilities);
@@ -796,6 +812,9 @@ bool NodeCanvasPresentation::renderOpenGL(
             frame.viewport.getZoom(),
             frame.viewport.getPan());
     renderOpenGLEffectPreviews(frame, scaleFactor);
+    if (!frame.canvasOcclusion.isEmpty()) {
+        return false;
+    }
     const bool guideSnapshotUpdated = guideCurveShelf.renderOpenGL(
             frame.graph,
             frame.workspaceBounds,
@@ -1231,11 +1250,16 @@ void NodeCanvasPresentation::paintNode(
                 CanvasChromeMetrics::restingBorderWidth);
 
         if (isNodeSelected(frame, node.id)) {
-            graphics.setColour(Colours::white.withAlpha(0.86f));
+            graphics.setColour(CanvasChromePalette::selectionOutline.withAlpha(0.16f));
+            graphics.drawRoundedRectangle(
+                    nodeBounds.expanded(4.f),
+                    corner + 4.f,
+                    3.f);
+            graphics.setColour(CanvasChromePalette::selectionOutline.withAlpha(0.92f));
             graphics.drawRoundedRectangle(
                     nodeBounds.expanded(2.f),
                     corner + CanvasChromeMetrics::microCornerRadius,
-                    CanvasChromeMetrics::focusRingWidth);
+                    CanvasChromeMetrics::activeBorderWidth);
         }
 
         const auto& capabilities = NodeViewModuleRegistry::instance()

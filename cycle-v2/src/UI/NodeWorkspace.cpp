@@ -222,12 +222,6 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
             keyboard.octaveUpBounds().translated(
                     keyboardBounds.getX(),
                     keyboardBounds.getY())));
-    targets->add(pointerTarget(
-            "PerformanceKeyboard.Play",
-            "performanceTransport",
-            keyboard.playButtonBounds().translated(
-                    keyboardBounds.getX(),
-                    keyboardBounds.getY())));
     for (int note = keyboard.baseNote(); note <= keyboard.baseNote() + 24; ++note) {
         targets->add(pointerTarget(
                 "PerformanceKeyboard.Note" + String(note),

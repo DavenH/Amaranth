@@ -237,7 +237,8 @@ void NodeCanvas::paint(Graphics& g) {
             performanceMetrics.timestamp() - framePreparationStartedAt);
 
     canvasPresentation.paint(g, frame);
-    if (canvasPresentation.guideShelfNeedsOpenGLPreviewRender()) {
+    if (frame.canvasOcclusion.isEmpty()
+            && canvasPresentation.guideShelfNeedsOpenGLPreviewRender()) {
         openGLContext.triggerRepaint();
     }
 }
@@ -419,6 +420,30 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     activeTrimeshVertexIndex = -1;
 
     const Rectangle<float> workspace = getLocalBounds().toFloat();
+    if (expandedNodeId.isNotEmpty()) {
+        const Node* expandedNode = queries.findNode(expandedNodeId);
+        const ExpandedEditorClick click = editorCoordinator.routeClick(
+                expandedNode,
+                editorContentBounds(),
+                event.position);
+        if (click.kind == ExpandedEditorClickKind::Close) {
+            editorCoordinator.close();
+            notifyOverlayOcclusionChanged();
+        } else if (click.kind == ExpandedEditorClickKind::TransformMode) {
+            applyAuthoringResult(authoring.setTransformMode(
+                    expandedNode->id,
+                    *click.transformMode));
+        } else if (click.kind == ExpandedEditorClickKind::Captured) {
+            interaction.captureExpandedEditor();
+        }
+
+        if (click.kind != ExpandedEditorClickKind::Unclaimed
+                || editorCoordinator.blocksCanvas(expandedNode)) {
+            requestCanvasRepaint();
+            return;
+        }
+    }
+
     if (dockInteraction->mouseDown(event, workspace)) {
         return;
     }
@@ -437,29 +462,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         }
     }
     dockInteraction->clearFocus();
-
-    if (expandedNodeId.isNotEmpty()) {
-        const Node* expandedNode = queries.findNode(expandedNodeId);
-        const ExpandedEditorClick click = editorCoordinator.routeClick(
-                expandedNode,
-                editorContentBounds(),
-                event.position);
-        if (click.kind == ExpandedEditorClickKind::Close) {
-            editorCoordinator.close();
-            notifyOverlayOcclusionChanged();
-        } else if (click.kind == ExpandedEditorClickKind::TransformMode) {
-            applyAuthoringResult(authoring.setTransformMode(
-                    expandedNode->id,
-                    *click.transformMode));
-        } else if (click.kind == ExpandedEditorClickKind::Captured) {
-            interaction.captureExpandedEditor();
-        }
-
-        if (click.kind != ExpandedEditorClickKind::Unclaimed) {
-            requestCanvasRepaint();
-            return;
-        }
-    }
 
     NodeKind paletteKind;
     if (palette.findKindAt(event.position, paletteKind)) {
@@ -800,6 +802,10 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Viewport);
+    const Node* blockingEditorNode = queries.findNode(expandedNodeId);
+    if (editorCoordinator.blocksCanvas(blockingEditorNode)) {
+        return;
+    }
     if (const Node* output = findOutputFaderAt(graph, viewport, event.position)) {
         const float current = NodeParameterMap(*output).floatValue("gain", 0.5f);
         const float delta = wheel.deltaY * (event.mods.isShiftDown() ? 0.025f : 0.1f);
@@ -1132,6 +1138,10 @@ Rectangle<float> NodeCanvas::canvasContentBounds() const {
 }
 
 Rectangle<float> NodeCanvas::editorContentBounds() const {
+    const Node* expandedNode = queries.findNode(expandedNodeId);
+    if (editorCoordinator.blocksCanvas(expandedNode)) {
+        return canvasContentBounds();
+    }
     return WorkspaceDock::editorAvailableBounds(workspaceDockLayout());
 }
 
@@ -1364,6 +1374,11 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
         editorCoordinator.clearPreviewCache();
 
         if (document.lastChange().probesChanged) {
+            if (graph.getSignalProbes().empty()) {
+                probeRailState.expanded = true;
+                settings.getGlobalSetting(AppSettings::GuideSpyDockExpanded) = 1;
+                dockInteraction->clearFocus();
+            }
             probeRailState.horizontalOffset = jmin(
                     probeRailState.horizontalOffset,
                     SignalProbeRail::maximumHorizontalOffset(
@@ -1430,10 +1445,6 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
             workspace,
             guideShelfState.minimized,
             probeRailState.minimized);
-    result.probeRefreshModeBounds = SignalProbeRail::refreshModeBoundsFor(
-            spyWorkspace,
-            probeRailState);
-
     auto& dock = result.guideDock;
     dock.expanded = probeRailState.expanded;
     dock.guidesMinimized = guideShelfState.minimized;
@@ -1457,16 +1468,19 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
         dock.expandedGuideHeatmapActive = heatmap != nullptr;
         dock.expandedGuideHeatmapFilename = heatmap != nullptr ? heatmap->filename() : String {};
     }
-    dock.dockBounds = workspaceDock.dock;
+    const bool hasSpies = !graph.getSignalProbes().empty();
+    dock.dockBounds = hasSpies ? workspaceDock.dock : Rectangle<float> {};
     dock.guideShelfBounds = workspaceDock.leftShelf;
-    dock.spyShelfBounds = workspaceDock.rightShelf;
-    dock.collapseBounds = workspaceDock.collapseHandle;
-    dock.resizeBounds = workspaceDock.resizeHandle;
+    dock.spyShelfBounds = hasSpies ? workspaceDock.rightShelf : Rectangle<float> {};
+    dock.collapseBounds = hasSpies ? workspaceDock.collapseHandle : Rectangle<float> {};
+    dock.resizeBounds = hasSpies ? workspaceDock.resizeHandle : Rectangle<float> {};
     dock.guideMinimizeBounds = GuideCurveShelf::minimizeButtonBounds(
             workspace,
             probeRailState,
             guideShelfState);
-    dock.spyMinimizeBounds = SignalProbeRail::minimizeButtonBoundsFor(spyWorkspace, probeRailState);
+    dock.spyMinimizeBounds = hasSpies
+            ? SignalProbeRail::minimizeButtonBoundsFor(spyWorkspace, probeRailState)
+            : Rectangle<float> {};
     dock.addGuideBounds = GuideCurveShelf::addButtonBounds(
             workspace,
             probeRailState,
@@ -1812,6 +1826,10 @@ float NodeCanvas::graphOutputGain() const {
     return GraphCompiler::outputGainFor(commands.editingGraph());
 }
 
+void NodeCanvas::setProbeRefreshMode(ProbeRefreshMode mode) {
+    dockInteraction->setProbeRefreshMode(mode);
+}
+
 bool NodeCanvas::setPreviewMidiNote(int midiNote) {
     const int selectedNote = jlimit(0, 127, midiNote);
     if (selectedNote == presentation.previewMidiNote()) {
@@ -2044,6 +2062,10 @@ void NodeCanvas::setGraphDocumentStateChangedCallback(
 void NodeCanvas::notifyOverlayOcclusionChanged() {
     if (overlayOcclusionChanged) {
         overlayOcclusionChanged();
+    }
+    repaint();
+    if (canvasOpenGlAttached) {
+        openGLContext.triggerRepaint();
     }
 }
 

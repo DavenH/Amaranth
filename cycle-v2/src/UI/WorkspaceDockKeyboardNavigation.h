@@ -32,7 +32,6 @@ public:
     virtual juce::String createGuideFromKeyboard() = 0;
     virtual void selectGuideFromKeyboard(const juce::String& guideId, bool openEditor) = 0;
     virtual void setSpyShelfMinimizedFromKeyboard(bool minimized) = 0;
-    virtual void toggleSpyRefreshFromKeyboard() = 0;
     virtual void selectSpyFromKeyboard(const juce::String& probeId, bool openDetail) = 0;
     virtual void removeSpyFromKeyboard(const juce::String& probeId) = 0;
     virtual void repaintDockFromKeyboard() = 0;

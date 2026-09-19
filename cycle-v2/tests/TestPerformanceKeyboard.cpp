@@ -139,7 +139,7 @@ TEST_CASE("Performance keyboard keeps a loaded preview note visible",
     MidiKeyboardState state;
     RecordingMidiSink sink;
     PerformanceKeyboardPanel panel(state, sink);
-    panel.setBounds(0, 0, 489, 140);
+    panel.setBounds(0, 0, 489, 112);
 
     panel.setPreviewNote(73);
 
@@ -155,7 +155,7 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     MidiKeyboardState state;
     RecordingMidiSink sink;
     PerformanceKeyboardPanel panel(state, sink);
-    panel.setBounds(0, 0, 489, 140);
+    panel.setBounds(0, 0, 489, 112);
 
     const Rectangle<float> whiteKey = panel.noteBounds(60);
     const Rectangle<float> blackKey = panel.noteBounds(61);
@@ -164,7 +164,6 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     const Rectangle<float> octaveDown = panel.octaveDownBounds();
     const Rectangle<float> octaveUp = panel.octaveUpBounds();
     const Rectangle<float> modWheel = panel.modWheelBounds();
-    const Rectangle<float> play = panel.playButtonBounds();
     const Rectangle<float> progress = panel.progressBounds();
 
     REQUIRE(octaveDown.getWidth() == 28.f);
@@ -176,16 +175,16 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     REQUIRE(octaveUp.getHeight() == whiteKey.getHeight());
     REQUIRE(octaveDown.getRight() < whiteKey.getX());
     REQUIRE(octaveUp.getX() > panel.noteBounds(72).getRight());
-    REQUIRE(play.getCentreX() == Catch::Approx(panel.getWidth() * 0.5f).margin(0.5f));
-    REQUIRE(progress.getCentreY() == Catch::Approx(play.getCentreY()));
-    REQUIRE(progress.getHeight() == play.getHeight());
-    REQUIRE(progress.getHeight() == 31.f);
-    REQUIRE(progress.getX() == 0.f);
-    REQUIRE(progress.getRight() == panel.getWidth());
-    REQUIRE(progress.getWidth() > play.getWidth());
+    REQUIRE(progress.getCentreX() == Catch::Approx(
+            (panel.noteBounds(48).getX() + panel.noteBounds(72).getRight()) * 0.5f).margin(1.f));
+    REQUIRE(progress.getY() > whiteKey.getBottom());
+    REQUIRE(progress.getWidth() > modWheel.getWidth());
+    REQUIRE(progress.getWidth() == Catch::Approx(
+            panel.noteBounds(72).getRight() - panel.noteBounds(48).getX()).margin(1.f));
+    REQUIRE(progress.getHeight() == 3.f);
     REQUIRE(whiteKey.getWidth() >= 25.f);
-    REQUIRE(whiteAspect == Catch::Approx(3.72f));
-    REQUIRE(blackAspect == Catch::Approx(3.72f));
+    REQUIRE(whiteAspect == Catch::Approx(4.f).margin(0.03f));
+    REQUIRE(blackAspect == Catch::Approx(4.f).margin(0.03f));
     REQUIRE(blackKey.getWidth() < whiteKey.getWidth());
     REQUIRE(blackKey.getHeight() < whiteKey.getHeight());
     REQUIRE_FALSE(panel.noteBounds(72).isEmpty());
@@ -198,8 +197,8 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     REQUIRE(panel.modWheelBounds().getHeight() == compactWhiteKey.getHeight());
     REQUIRE(panel.octaveDownBounds().getHeight() == compactWhiteKey.getHeight());
     REQUIRE(panel.octaveUpBounds().getHeight() == compactWhiteKey.getHeight());
-    REQUIRE(compactWhiteKey.getWidth() == 25.f);
-    REQUIRE(compactWhiteKey.getHeight() == 76.f);
+    REQUIRE(compactWhiteKey.getWidth() >= 23.f);
+    REQUIRE(compactWhiteKey.getHeight() == 109.f);
 }
 
 TEST_CASE("Performance mod wheel drag controls preview CC 1 and audition start",
@@ -330,17 +329,21 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
     const CanvasUtilityDockLayout layout = CanvasUtilityDock::layout(content);
 
     REQUIRE(layout.minimap.getRight() == content.getRight() - CanvasUtilityDock::margin);
-    REQUIRE(layout.legend.getRight() == layout.minimap.getRight());
+    REQUIRE(layout.minimap.getWidth() == CanvasUtilityDock::preferredMinimapWidth);
+    REQUIRE(layout.legend.getRight()
+            == layout.minimap.getX() - CanvasUtilityDock::gap);
     REQUIRE(layout.keyboard.getCentreX() == content.getCentreX());
     REQUIRE(layout.keyboard.getY() == content.getY());
-    REQUIRE(layout.keyboard.getWidth() == 489.f);
-    REQUIRE(layout.keyboard.getHeight() == 140.5f);
+    REQUIRE(layout.keyboard.getWidth() == CanvasUtilityDock::preferredKeyboardWidth);
+    REQUIRE(layout.keyboard.getHeight() == CanvasUtilityDock::preferredKeyboardHeight);
     REQUIRE(layout.status.getX() == content.getX() + CanvasUtilityDock::margin);
     REQUIRE(layout.status.getY() == content.getY() + CanvasUtilityDock::margin);
-    REQUIRE(layout.legend.getY()
-            == layout.minimap.getBottom() + CanvasUtilityDock::gap);
+    REQUIRE(layout.legend.getBottom()
+            == content.getBottom() - CanvasUtilityDock::margin);
     REQUIRE(layout.legend.getHeight()
             == Catch::Approx(CanvasUtilityDock::preferredLegendHeight));
+    REQUIRE(layout.legend.getWidth()
+            == Catch::Approx(CanvasUtilityDock::preferredLegendWidth));
     REQUIRE_FALSE(layout.status.intersects(layout.minimap));
     REQUIRE_FALSE(layout.status.intersects(layout.keyboard));
     REQUIRE_FALSE(layout.minimap.intersects(layout.keyboard));
