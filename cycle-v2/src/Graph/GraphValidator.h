@@ -4,43 +4,12 @@
 
 #include "Graph/GraphAudioScope.h"
 #include "Graph/GraphDomainResolver.h"
+#include "Graph/GraphValidationTypes.h"
 #include "Graph/NodeGraph.h"
 
 namespace CycleV2 {
 
 class GraphEdgeView;
-
-enum class GraphValidationCode {
-    MissingSourceNode,
-    MissingDestinationNode,
-    MissingSourcePort,
-    MissingDestinationPort,
-    DomainMismatch,
-    ChannelLayoutMismatch,
-    InvalidAttachmentSource,
-    InvalidAttachmentDestination,
-    ScratchPortRequiresAttachment,
-    PitchRequiresVoiceAwareDestination,
-    MixedOperationDomains,
-    MissingRequiredNode,
-    DuplicateSingletonNode,
-    ProcessingScopeMismatch,
-    ConflictingProcessingScope,
-    GlobalNodeUnreachable,
-    GlobalNodeCannotReachOutput,
-    AmbiguousVoiceOutput,
-    MissingVoiceContextAssignment,
-    MultipleActiveVoiceContexts
-};
-
-struct GraphValidationIssue {
-    GraphValidationCode code {};
-    String message;
-    String sourceNodeId;
-    String sourcePortId;
-    String destNodeId;
-    String destPortId;
-};
 
 class GraphValidator {
 public:

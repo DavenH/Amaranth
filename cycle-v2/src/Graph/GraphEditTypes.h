@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "Graph/GraphValidator.h"
+#include "Graph/GraphValidationTypes.h"
 #include "Graph/NodeDefinition.h"
 
 namespace CycleV2 {

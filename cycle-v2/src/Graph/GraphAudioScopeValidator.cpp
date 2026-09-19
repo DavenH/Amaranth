@@ -5,7 +5,7 @@
 #include <unordered_set>
 
 #include "Graph/GraphEdgeView.h"
-#include "Graph/GraphValidator.h"
+#include "Graph/GraphValidationTypes.h"
 
 namespace CycleV2 {
 

@@ -1,6 +1,6 @@
 #include "Graph/GraphEdgeValidator.h"
 
-#include "Graph/GraphValidator.h"
+#include "Graph/GraphValidationTypes.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 
 namespace CycleV2 {

@@ -255,6 +255,14 @@ and splice tests pass (91 assertions across 11 cases). This is the reusable
 rule unit needed by an incremental preview context; movement-time graph copies
 and graph-wide domain, scope, and topology analysis remain open.
 
+Validation codes and issue values now live in `GraphValidationTypes.h`.
+`GraphEditTypes` and the four extracted validator implementations no longer
+import the `GraphValidator` orchestration facade merely to exchange results.
+The mutating `GraphEditor` now declares its actual facade dependency in its
+implementation. Seven focused edge, proposal, connection, and splice cases
+pass (82 assertions). This leaves the rule units composable for the indexed
+preview context without reversing their dependency toward its coordinator.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,

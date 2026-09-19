@@ -3,6 +3,7 @@
 
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphEdgeView.h"
+#include "Graph/GraphValidator.h"
 
 namespace CycleV2 {
 

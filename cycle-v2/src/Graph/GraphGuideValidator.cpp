@@ -1,6 +1,6 @@
 #include "Graph/GraphGuideValidator.h"
 
-#include "Graph/GraphValidator.h"
+#include "Graph/GraphValidationTypes.h"
 #include "Nodes/Guide/GuideAttachmentTarget.h"
 
 namespace CycleV2 {
