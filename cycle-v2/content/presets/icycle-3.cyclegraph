@@ -6,12 +6,13 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 945.59998, "y": 826.0 },
+            "position": { "x": 736.73206, "y": 1022.0 },
             "parameters": {
                 "octave": 0,
                 "voiceLength": 0.592307692307692,
                 "pitch": 0.0,
                 "portamento": false,
+                "pitchIndependentSpectralControl": false,
                 "oversampling": "1x",
                 "controlInterval": "64"
             }
@@ -20,7 +21,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 570.40002, "y": 556.0 },
+            "position": { "x": 361.5321, "y": 752.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -51,7 +52,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 570.40002, "y": 1014.0 },
+            "position": { "x": 361.5321, "y": 1210.0 },
             "parameters": {
                 "enabled": true,
                 "mode": "group",
@@ -513,7 +514,7 @@
             "id": "waveshaper",
             "kind": "waveshaper",
             "definitionVersion": 1,
-            "position": { "x": 1231.59998, "y": 1571.0 },
+            "position": { "x": 1234.17859, "y": 1710.24524 },
             "parameters": { "processingScope": "global", "enabled": true, "pre": 0.468, "post": 0.48, "aaFactor": "1" },
             "model": {
                 "schema": "flatCurve",
@@ -629,8 +630,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5 ]
                 }
             }
@@ -639,7 +638,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 570.40002, "y": 726.0 },
+            "position": { "x": 361.5321, "y": 922.0 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -691,8 +690,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2 ]
                 }
             }
@@ -770,8 +767,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3 ]
                 }
             }
@@ -787,7 +782,7 @@
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 1520.59998, "y": 1571.0 },
+            "position": { "x": 1523.17859, "y": 1710.24524 },
             "parameters": { "processingScope": "global", "enabled": true, "size": 0.142857143, "post": 0.475, "highPass": 0.15 },
             "model": {
                 "schema": "flatCurve",
@@ -914,7 +909,7 @@
             "id": "equalizer",
             "kind": "equalizer",
             "definitionVersion": 1,
-            "position": { "x": 1824.59998, "y": 1571.0 },
+            "position": { "x": 1827.17859, "y": 1710.24524 },
             "parameters": {
                 "processingScope": "global",
                 "enabled": true,
@@ -934,21 +929,21 @@
             "id": "reverb",
             "kind": "reverb",
             "definitionVersion": 1,
-            "position": { "x": 2128.6001, "y": 1571.0 },
+            "position": { "x": 2131.17871, "y": 1710.24524 },
             "parameters": { "enabled": true, "size": 0.852000003, "damp": 0.388000003, "width": 1.0, "wet": 0.176000012, "highPass": 0.0 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 2392.6001, "y": 1571.0 },
+            "position": { "x": 2395.17871, "y": 1710.24524 },
             "parameters": { "gain": 0.726471 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 993.59998, "y": 1571.0 },
+            "position": { "x": 996.17859, "y": 1710.24524 },
             "parameters": {}
         },
         {
@@ -1391,5 +1386,16 @@
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "waveshaper", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": []
+    "probes": [
+        {
+            "id": "probe",
+            "sourceNodeId": "volumeMultiply",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "voiceOutput",
+            "anchorDestPortId": "time",
+            "label": "Spy 1",
+            "tapPosition": 0.5,
+            "railOrder": 0
+        }
+    ]
 }
