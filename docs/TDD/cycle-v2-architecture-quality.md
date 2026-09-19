@@ -321,6 +321,15 @@ after overlay construction (20 assertions across two scales). This supplies
 the local adjacency needed by incremental domain and scope worklists without
 copying or rescanning the base graph.
 
+`GraphDomainResolver` now consumes `GraphEdgeIndex` for input and node
+adjacency and uses `NodeGraph::findNode` for node lookup. Its private node map
+and incoming/outgoing edge tables were deleted, leaving one indexing policy
+for full and future incremental resolution. The resolver fell from 377 to 339
+lines. Nine focused propagation, invalid-cycle, proposed-edge, operation, and
+channel-layout cases pass (31 assertions). The next domain slice can seed the
+existing worklist from `GraphEdgeIndexOverlay` without reproducing transfer
+rules or adjacency construction.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,

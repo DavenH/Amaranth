@@ -327,6 +327,7 @@ if(BUILD_TESTING)
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScope.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScopeValidator.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDomainResolver.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphEdgeIndex.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphEdgeValidator.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphGuideValidator.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphNodeFactory.cpp"
