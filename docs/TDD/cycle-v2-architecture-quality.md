@@ -245,6 +245,16 @@ checks. `GraphValidator.cpp` fell from 394 to 367 lines; the extracted rule
 unit is 47 lines. Focused Guide assignment, topology reconciliation, and
 heatmap history tests pass (115 assertions across nine cases).
 
+Per-edge attachment, Envelope, domain, channel-layout, pitch, and processing-
+scope grammar now lives in `GraphEdgeValidator`. Bulk validation, committed
+edge queries, and proposed-edge validation call this same rule unit, leaving
+`GraphValidator` to resolve graph-wide facts and coordinate the cohesive
+validators. `GraphValidator.cpp` fell from 367 to 92 lines; the extracted edge
+validator is 287 lines. Focused edge grammar, edge-query, proposal, connection,
+and splice tests pass (91 assertions across 11 cases). This is the reusable
+rule unit needed by an incremental preview context; movement-time graph copies
+and graph-wide domain, scope, and topology analysis remain open.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,

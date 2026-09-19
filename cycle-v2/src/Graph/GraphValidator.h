@@ -57,18 +57,6 @@ public:
     PortDomain resolvedDomainForEdge(const NodeGraph& graph, const Edge& edge) const;
 
 private:
-    class EdgeIssueReporter;
-
-    void validateEdge(
-            const NodeGraph& graph,
-            const Edge& edge,
-            PortDomain resolvedDomain,
-            const GraphAudioScopeAnalysis* scopeAnalysis,
-            EdgeIssueReporter& reporter) const;
-    bool isVoiceAwareDestination(const Port& port) const;
-    bool domainsCompatible(const Port& source, const Port& dest) const;
-    bool channelLayoutsCompatible(const Port& source, const Port& dest) const;
-
     GraphDomainResolver domainResolver;
 };
 
