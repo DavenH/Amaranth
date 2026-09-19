@@ -7,6 +7,7 @@
 
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphEdgeIndex.h"
+#include "Graph/GraphEdgeView.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/NodeParameterMap.h"
@@ -71,6 +72,25 @@ TEST_CASE("Edge index lookups ignore unrelated graph scale",
         REQUIRE(counts.validationEdgeVisits == 0);
         REQUIRE(counts.graphCopies == 0);
         REQUIRE(counts.audioSamplesCopied == 0);
+
+        const GraphEdgeView proposedEdges(
+                graph.getEdges(),
+                { 0 },
+                {{
+                        "wave", "out", "output", "time",
+                        PortDomain::TimeSignal, ConnectionKind::Signal
+                }});
+        const GraphEdgeIndex rebuiltIndex(proposedEdges);
+        const GraphEdgeIndexOverlay overlayIndex(edgeIndex, proposedEdges);
+        InteractionComplexityDiagnostics::reset();
+
+        REQUIRE(overlayIndex.edgesToInput("output", "time")
+                == rebuiltIndex.edgesToInput("output", "time"));
+        REQUIRE(overlayIndex.incomingEdges("output")
+                == rebuiltIndex.incomingEdges("output"));
+        REQUIRE(overlayIndex.outgoingEdges("wave")
+                == rebuiltIndex.outgoingEdges("wave"));
+        REQUIRE(InteractionComplexityDiagnostics::counts().validationEdgeVisits == 0);
     }
 }
 

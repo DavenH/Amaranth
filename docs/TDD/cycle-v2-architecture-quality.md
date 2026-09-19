@@ -312,6 +312,15 @@ transfers. Context parity, invalidation, proposed-edge parity, and scaled index
 tests pass (31 assertions across three cases). Proposal evaluation still needs
 affected-closure updates before this context can enter live UI movement paths.
 
+`GraphEdgeIndexOverlay` now projects a proposed `GraphEdgeView` over the stable
+baseline index. It translates retained edge indices, filters the small removed
+set, and indexes only added edges while borrowing all unchanged adjacency.
+Input, incoming, and outgoing queries match a fully rebuilt proposed-edge
+index at both zero and 128 unrelated edges, with zero validation edge visits
+after overlay construction (20 assertions across two scales). This supplies
+the local adjacency needed by incremental domain and scope worklists without
+copying or rescanning the base graph.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,

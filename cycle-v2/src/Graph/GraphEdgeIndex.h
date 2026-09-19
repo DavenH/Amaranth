@@ -39,4 +39,32 @@ private:
     std::unordered_map<String, NodeEdges, StringHash> nodes;
 };
 
+class GraphEdgeIndexOverlay {
+public:
+    GraphEdgeIndexOverlay(
+            const GraphEdgeIndex& baseIndex,
+            const GraphEdgeView& proposedEdges);
+
+    std::vector<size_t> edgesToInput(
+            const String& nodeId,
+            const String& portId) const;
+    std::vector<size_t> incomingEdges(const String& nodeId) const;
+    std::vector<size_t> outgoingEdges(const String& nodeId) const;
+
+private:
+    enum class Direction {
+        Incoming,
+        Outgoing
+    };
+
+    std::vector<size_t> translatedBaseEdges(
+            const std::vector<size_t>& baseEdges) const;
+    std::vector<size_t> nodeEdges(
+            const String& nodeId,
+            Direction direction) const;
+
+    const GraphEdgeIndex& base;
+    const GraphEdgeView& proposed;
+};
+
 }
