@@ -139,7 +139,7 @@ TEST_CASE("Performance keyboard keeps a loaded preview note visible",
     MidiKeyboardState state;
     RecordingMidiSink sink;
     PerformanceKeyboardPanel panel(state, sink);
-    panel.setBounds(0, 0, 521, 112);
+    panel.setBounds(0, 0, 489, 112);
 
     panel.setPreviewNote(73);
 
@@ -155,7 +155,7 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     MidiKeyboardState state;
     RecordingMidiSink sink;
     PerformanceKeyboardPanel panel(state, sink);
-    panel.setBounds(0, 0, 521, 112);
+    panel.setBounds(0, 0, 489, 112);
 
     const Rectangle<float> whiteKey = panel.noteBounds(60);
     const Rectangle<float> blackKey = panel.noteBounds(61);
@@ -164,7 +164,6 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     const Rectangle<float> octaveDown = panel.octaveDownBounds();
     const Rectangle<float> octaveUp = panel.octaveUpBounds();
     const Rectangle<float> modWheel = panel.modWheelBounds();
-    const Rectangle<float> play = panel.playButtonBounds();
     const Rectangle<float> progress = panel.progressBounds();
 
     REQUIRE(octaveDown.getWidth() == 28.f);
@@ -176,11 +175,10 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     REQUIRE(octaveUp.getHeight() == whiteKey.getHeight());
     REQUIRE(octaveDown.getRight() < whiteKey.getX());
     REQUIRE(octaveUp.getX() > panel.noteBounds(72).getRight());
-    REQUIRE(play.getRight() < modWheel.getX());
     REQUIRE(progress.getCentreX() == Catch::Approx(
             (panel.noteBounds(48).getX() + panel.noteBounds(72).getRight()) * 0.5f).margin(1.f));
     REQUIRE(progress.getY() > whiteKey.getBottom());
-    REQUIRE(progress.getWidth() > play.getWidth());
+    REQUIRE(progress.getWidth() > modWheel.getWidth());
     REQUIRE(progress.getWidth() == Catch::Approx(
             panel.noteBounds(72).getRight() - panel.noteBounds(48).getX()).margin(1.f));
     REQUIRE(progress.getHeight() == 3.f);

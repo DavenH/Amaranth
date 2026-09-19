@@ -17,7 +17,7 @@ class CanvasUtilityDock {
 public:
     static constexpr float margin = 18.f;
     static constexpr float gap = 8.f;
-    static constexpr float preferredKeyboardWidth = 521.f;
+    static constexpr float preferredKeyboardWidth = 489.f;
     static constexpr float preferredKeyboardHeight = 112.f;
     static constexpr float preferredMinimapWidth = 210.f;
     static constexpr float preferredLegendWidth = 390.f;

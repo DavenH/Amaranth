@@ -34,8 +34,8 @@ This slice establishes these geometry rules at production size:
   enclosing outline;
 - selection uses one neutral outline and restrained halo. Morph, signal, and
   envelope colours remain semantic content rather than selection decoration;
-- preview transport moves beside the keyboard keys without increasing their
-  vertical budget.
+- preview playback remains on Space, with a horizontal progress strip beneath
+  the keys and no dedicated transport button.
 
 ## Ownership And Reuse
 
@@ -47,7 +47,7 @@ This slice establishes these geometry rules at production size:
 - `WorkspaceDock`, `GuideCurveShelf`, and `CanvasUtilityDock` remain the layout
   owners for their respective utilities.
 - `PerformanceKeyboardPanel` continues to reuse `AmaranthMidiKeyboard` for key
-  geometry and complete MIDI gestures. Only its containing controls move.
+  geometry and complete MIDI gestures; `NodeCanvas` retains the Space shortcut.
 
 No graph, DSP, serialization, undo, or domain-colour behavior is copied or
 changed.
@@ -79,7 +79,8 @@ graph model or the three domain-colour systems:
 - the minimap and Curve Guide shelf share a 210-pixel width;
 - the compact legend sits at the lower-right edge of the primary graph area,
   immediately left of the guide shelf, rather than determining shelf height;
-- keyboard playback progress is horizontal and centred beneath the keys. The
+- keyboard playback progress is horizontal and centred beneath the keys, with
+  Space as the sole persistent playback control. The
   keyboard group receives a perceptible surface contrast without a heavy
   outline.
 
@@ -143,8 +144,8 @@ top-mounted keyboard transport layout; both old paths were removed in place.
 
 - Geometry tests assert centred Trimesh proportions and non-overlap contracts.
 - Presentation tests assert that blocking-editor chrome is suppressed.
-- Keyboard tests assert that key proportions and all existing interaction
-  targets survive the side-by-side transport layout.
+- Keyboard tests assert that key proportions and the remaining interaction
+  targets survive after removing the redundant play button.
 - Capture the ordinary graph and expanded Trimesh editor at the same production
   size as the baseline screenshots.
 - Run the focused UI tests, `git diff --check`, the Cycle V2 architecture audit,
@@ -189,3 +190,8 @@ top-mounted keyboard transport layout; both old paths were removed in place.
   fixture verifies both persisted spy-refresh choices through automation.
 - The follow-up focused suite passes 199 assertions in 18 cases, and both the
   test target and standalone application build successfully.
+- The follow-up keyboard capture at
+  `/private/tmp/cycle-v2-keyboard-without-play.png` shows the 489-by-112 dock
+  without a play button while preserving key geometry and the bottom progress
+  strip. The transport fixture verifies three handled Space presses across
+  start, stop, and restart.
