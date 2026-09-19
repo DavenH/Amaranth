@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <iterator>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -61,13 +62,15 @@ public:
     }
 
     size_t size() const { return existing.size() - removed.size() + added.size(); }
+    size_t retainedSize() const { return existing.size() - removed.size(); }
+    const std::vector<size_t>& removedIndices() const { return removed; }
+    const std::vector<Edge>& addedEdges() const { return added; }
     ConstIterator begin() const { return { *this, 0 }; }
     ConstIterator end() const { return { *this, size() }; }
 
     const Edge& operator[](size_t index) const {
-        const size_t retainedCount = existing.size() - removed.size();
-        if (index >= retainedCount) {
-            return added[index - retainedCount];
+        if (index >= retainedSize()) {
+            return added[index - retainedSize()];
         }
 
         size_t existingIndex = index;
@@ -78,6 +81,15 @@ public:
             ++existingIndex;
         }
         return existing[existingIndex];
+    }
+
+    std::optional<size_t> viewIndexForExisting(size_t existingIndex) const {
+        const auto removedPosition = std::lower_bound(
+                removed.begin(), removed.end(), existingIndex);
+        if (removedPosition != removed.end() && *removedPosition == existingIndex) {
+            return std::nullopt;
+        }
+        return existingIndex - (size_t) std::distance(removed.begin(), removedPosition);
     }
 
 private:

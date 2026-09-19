@@ -20,15 +20,27 @@ GraphEditResult GraphCommandDispatcher::removeNode(const juce::String& nodeId) {
 }
 
 GraphEditResult GraphCommandDispatcher::removeEdgeAt(size_t edgeIndex) {
-    return apply([&](auto& graph) {
-        return GraphEditor().removeEdgeAt(graph, edgeIndex);
-    });
+    return applyIncremental(
+            [&](auto& delta, const auto& graph) {
+                if (edgeIndex < graph.getEdges().size()) {
+                    const Edge& edge = graph.getEdges()[edgeIndex];
+                    delta.captureEdgesToInput(graph, edge.destNodeId, edge.destPortId);
+                }
+            },
+            [&](auto& graph) {
+                return GraphEditor().removeEdgeAt(graph, edgeIndex);
+            });
 }
 
 GraphEditResult GraphCommandDispatcher::connect(const PortAddress& first, const PortAddress& second) {
-    return apply([&](auto& graph) {
-        return GraphEditor().connect(graph, first, second);
-    });
+    const PortAddress& destination = first.input ? first : second;
+    return applyIncremental(
+            [&](auto& delta, const auto& graph) {
+                delta.captureEdgesToInput(graph, destination.nodeId, destination.portId);
+            },
+            [&](auto& graph) {
+                return GraphEditor().connect(graph, first, second);
+            });
 }
 
 GraphEditResult GraphCommandDispatcher::toggleSignalProbe(
@@ -57,9 +69,22 @@ GraphEditResult GraphCommandDispatcher::reattachSignalProbe(
 GraphEditResult GraphCommandDispatcher::spliceNodeIntoEdge(
         size_t edgeIndex,
         const juce::String& nodeId) {
-    return apply([&](auto& graph) {
-        return GraphEditor().spliceNodeIntoEdge(graph, edgeIndex, nodeId);
-    });
+    return applyIncremental(
+            [&](auto& delta, const auto& graph) {
+                if (edgeIndex < graph.getEdges().size()) {
+                    const Edge& edge = graph.getEdges()[edgeIndex];
+                    delta.captureEdgesToInput(graph, edge.destNodeId, edge.destPortId);
+                }
+                const Node* node = graph.findNode(nodeId);
+                if (node != nullptr) {
+                    for (const auto& input : node->inputs) {
+                        delta.captureEdgesToInput(graph, nodeId, input.id);
+                    }
+                }
+            },
+            [&](auto& graph) {
+                return GraphEditor().spliceNodeIntoEdge(graph, edgeIndex, nodeId);
+            });
 }
 
 GraphEditResult GraphCommandDispatcher::createGuideCurve() {

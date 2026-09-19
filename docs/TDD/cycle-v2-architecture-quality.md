@@ -175,10 +175,21 @@ Bundle commit no longer performs a separate clone-based preflight. It now
 attempts routes through `GraphCommandDispatcher` inside one compound edit and
 cancels on the first rejection. A test rejects the second route after the first
 succeeds and verifies that edges, revision, and undo history remain unchanged.
-The dispatcher still captures a full `NodeGraph` for the compound edit, so this
-does not complete the affected-state undo requirement or the movement preview
-work. Give edge topology an invertible delta before claiming that boundary is
-resolved.
+At this stage the dispatcher still captured a full `NodeGraph` for the compound
+edit, so bundle rollback alone did not complete the affected-state undo
+requirement or the movement preview work.
+
+Edge topology now has an invertible affected-input delta. Connection, edge
+deletion, and splice commands capture indexed before/after edge state only for
+the destination inputs they can change. Compound modulation bundle connect and
+delete therefore avoid the dispatcher's full-graph fallback while preserving
+exact edge order through undo and redo. Tests scale the graph with 64 unrelated
+nodes and assert zero `NodeGraph` copies for bundle connect/delete; direct
+connection replacement and splice tests also assert zero copies and exact
+undo/redo topology (91 assertions across nine focused cases). This completes
+the affected-state undo requirement for edge commands. Node add/remove and
+other aggregate edits may still use the explicit snapshot fallback. The three
+UI movement-preview copies and graph-wide validation scans remain open.
 
 The preview index must retain the authoritative rule owners. Cache the durable
 graph's node/port addresses, input/output adjacency, resolved edge domains and
@@ -207,6 +218,117 @@ are ready. A focused contract test covers empty proposals, strict issue
 reduction, unchanged issue counts, and a changed edge address; four connection
 and splice tests retain 24 assertions. This centralizes acceptance policy but
 does not remove movement-time graph copies or validation scans.
+
+Global audio boundary, reachability, neutral-scope conflict, and voice-terminal
+rules now live in `GraphAudioScopeValidator`. `GraphValidator` delegates to
+that cohesive rule unit for bulk and proposed-edge validation, while retaining
+edge grammar, operation-input, Guide, and voice-context policy. The original
+implementation fell from 700 to 524 lines; the extracted implementation is
+204 lines. All 17 focused audio-scope cases pass (183 assertions), including
+proposed removal, neutral partition conflicts, and global reachability. This
+separates the policy that will need affected-region caching; its current
+implementation still scans the complete graph.
+
+Operation-input consistency and multi-Voice-Context assignment now live in
+`GraphTopologyValidator`. It consumes the authoritative proposed-edge view and
+resolved domains, so bulk validation and commit proposals retain one policy.
+`GraphValidator.cpp` fell again from 524 to 394 lines; the extracted topology
+validator is 160 lines. Eight operation/domain cases and the active-context
+compiler rejection pass (21 assertions across nine cases). This isolates the
+second graph-wide policy needed by the preview context; it still scans all
+nodes and edges until affected-node indexes are introduced.
+
+Guide assignment and heatmap-resource integrity now live in
+`GraphGuideValidator`. Edge proposals cannot change these facts, so the future
+preview context can retain their baseline issues without invoking Guide-domain
+checks. `GraphValidator.cpp` fell from 394 to 367 lines; the extracted rule
+unit is 47 lines. Focused Guide assignment, topology reconciliation, and
+heatmap history tests pass (115 assertions across nine cases).
+
+Per-edge attachment, Envelope, domain, channel-layout, pitch, and processing-
+scope grammar now lives in `GraphEdgeValidator`. Bulk validation, committed
+edge queries, and proposed-edge validation call this same rule unit, leaving
+`GraphValidator` to resolve graph-wide facts and coordinate the cohesive
+validators. `GraphValidator.cpp` fell from 367 to 92 lines; the extracted edge
+validator is 287 lines. Focused edge grammar, edge-query, proposal, connection,
+and splice tests pass (91 assertions across 11 cases). This is the reusable
+rule unit needed by an incremental preview context; movement-time graph copies
+and graph-wide domain, scope, and topology analysis remain open.
+
+Validation codes and issue values now live in `GraphValidationTypes.h`.
+`GraphEditTypes` and the four extracted validator implementations no longer
+import the `GraphValidator` orchestration facade merely to exchange results.
+The mutating `GraphEditor` now declares its actual facade dependency in its
+implementation. Seven focused edge, proposal, connection, and splice cases
+pass (82 assertions). This leaves the rule units composable for the indexed
+preview context without reversing their dependency toward its coordinator.
+
+Connection proposal and validation now live in the read-only
+`GraphConnectionValidator`. It owns port orientation and lookup, edge metadata,
+destination replacement, full rule evaluation, and strict-repair acceptance.
+`GraphEditor` applies the accepted edge, while splice reuses the same proposal
+construction and destination lookup. `GraphEditor.cpp` fell from 410 to 306
+lines and its header from 31 to 30 lines; the new service is 115 lines. Eight
+focused connection, splice, proposal, and copy-count cases pass (50
+assertions). The three UI preview callers remain on their existing clone-based
+path until an indexed gesture context can call this boundary without graph-wide
+movement work.
+
+Splice search and its two-stage proposal validation now live in the read-only
+`GraphSpliceValidator`. It composes `GraphConnectionValidator` and the shared
+graph validators, then returns the two accepted edges for `GraphEditor` to
+apply. `GraphEditor.cpp` fell again from 306 to 239 lines; the splice validator
+is 97 lines. Five focused connection, splice, and copy-count cases pass (36
+assertions). Commit mutation and validation policy are now separate for both
+connection forms; indexed preview evaluation remains the next prerequisite
+before replacing the UI clone paths.
+
+`InteractionComplexityDiagnostics` now measures validation node visits,
+validation edge visits, and domain-transfer work. The domain resolver, audio
+scope analyzer, edge validator, topology validator, and audio-scope validator
+record work at their authoritative traversal boundaries. These counters do
+not change validation behavior; they provide the scale assertions required for
+the indexed context and prevent a graph-copy removal from concealing complete
+graph scans. Six focused proposal, connection, splice, and copy-count cases
+pass (46 assertions).
+
+`GraphEdgeIndex` now owns destination-input and per-node incoming/outgoing edge
+indexes for a stable edge view. Connection validation uses it for replacement
+lookup, and splice validation builds one index for both proposal stages instead
+of rescanning the complete edge vector for each input and output candidate. A
+scaled test grows unrelated nodes, edges, and audio data while asserting that
+indexed input and adjacency queries perform zero validation edge visits, graph
+copies, or audio-sample copies (12 assertions across two scales). The index is
+the first retained component of the gesture validation context; resolved
+domains, audio scope, and affected-closure invalidation remain open.
+
+`GraphValidationContext` now binds one durable graph revision to its borrowed
+edge view, edge index, resolved domains and channel layouts, audio-scope
+analysis, and baseline validation issues. `GraphValidator` accepts those
+precomputed facts, so the context uses the authoritative orchestration without
+repeating domain or scope analysis. The context rejects a changed graph
+revision, and cached fact/index reads record zero validation visits or domain
+transfers. Context parity, invalidation, proposed-edge parity, and scaled index
+tests pass (31 assertions across three cases). Proposal evaluation still needs
+affected-closure updates before this context can enter live UI movement paths.
+
+`GraphEdgeIndexOverlay` now projects a proposed `GraphEdgeView` over the stable
+baseline index. It translates retained edge indices, filters the small removed
+set, and indexes only added edges while borrowing all unchanged adjacency.
+Input, incoming, and outgoing queries match a fully rebuilt proposed-edge
+index at both zero and 128 unrelated edges, with zero validation edge visits
+after overlay construction (20 assertions across two scales). This supplies
+the local adjacency needed by incremental domain and scope worklists without
+copying or rescanning the base graph.
+
+`GraphDomainResolver` now consumes `GraphEdgeIndex` for input and node
+adjacency and uses `NodeGraph::findNode` for node lookup. Its private node map
+and incoming/outgoing edge tables were deleted, leaving one indexing policy
+for full and future incremental resolution. The resolver fell from 377 to 339
+lines. Nine focused propagation, invalid-cycle, proposed-edge, operation, and
+channel-layout cases pass (31 assertions). The next domain slice can seed the
+existing worklist from `GraphEdgeIndexOverlay` without reproducing transfer
+rules or adjacency construction.
 
 ### 2. Reduce UI coordination surfaces
 

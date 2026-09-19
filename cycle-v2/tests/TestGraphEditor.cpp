@@ -4,6 +4,7 @@
 
 #include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphCompiler.h"
+#include "Graph/GraphConnectionValidator.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCommandDispatcher.h"
@@ -453,6 +454,26 @@ TEST_CASE("Graph editor connects compatible ports", "[cycle-v2][graph]") {
     REQUIRE(edge.destNodeId == "multiply");
     REQUIRE(edge.destPortId == "right");
     REQUIRE_FALSE(edge.isAttachment());
+}
+
+TEST_CASE("Connection validation returns an applicable edge without mutation",
+        "[cycle-v2][graph][connection-validation]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    graph.removeEdgesToInput("multiply", "right");
+    const size_t edgeCount = graph.getEdges().size();
+
+    const auto validation = GraphConnectionValidator().validate(
+            graph,
+            { "multiply", "right", true },
+            { "env", "env", false });
+
+    REQUIRE(validation.succeeded());
+    REQUIRE(validation.issues.empty());
+    REQUIRE(validation.source.nodeId == "env");
+    REQUIRE(validation.destination.nodeId == "multiply");
+    REQUIRE(validation.edge.sourceNodeId == "env");
+    REQUIRE(validation.edge.destPortId == "right");
+    REQUIRE(graph.getEdges().size() == edgeCount);
 }
 
 TEST_CASE("Graph editor orients input to output connections", "[cycle-v2][graph]") {

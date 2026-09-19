@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <optional>
 
 #include "Graph/GraphEditTypes.h"
@@ -37,6 +38,18 @@ struct GuideCurveDelta {
     GuideCurveResource after;
 };
 
+struct IndexedEdgeState {
+    size_t index {};
+    Edge edge;
+};
+
+struct EdgeInputDelta {
+    juce::String nodeId;
+    juce::String portId;
+    std::vector<IndexedEdgeState> before;
+    std::vector<IndexedEdgeState> after;
+};
+
 class GraphDelta {
 public:
     void applyForward(NodeGraph& graph) const;
@@ -49,12 +62,14 @@ private:
     friend class GraphDeltaBuilder;
 
     void apply(NodeGraph& graph, bool forward) const;
+    void applyEdgeInputs(NodeGraph& graph, bool forward) const;
 
     std::vector<NodeParameterDelta> parameters;
     std::vector<NodeModelDelta> models;
     std::vector<NodeEditorStateDelta> editorStates;
     std::vector<NodeBoundsDelta> bounds;
     std::vector<GuideCurveDelta> guides;
+    std::vector<EdgeInputDelta> edgeInputs;
     GraphChangeSet changes;
 };
 
@@ -68,6 +83,10 @@ public:
     void captureNodeEditorState(const NodeGraph& graph, const juce::String& nodeId);
     void captureNodeBounds(const NodeGraph& graph, const juce::String& nodeId);
     void captureGuideCurve(const NodeGraph& graph, const juce::String& guideId);
+    void captureEdgesToInput(
+            const NodeGraph& graph,
+            const juce::String& nodeId,
+            const juce::String& portId);
 
     GraphDelta finish(const NodeGraph& graph, GraphChangeSet changes) const;
     void restore(NodeGraph& graph) const;
@@ -81,6 +100,7 @@ private:
     std::vector<NodeEditorStateDelta> editorStates;
     std::vector<NodeBoundsDelta> bounds;
     std::vector<GuideCurveDelta> guides;
+    std::vector<EdgeInputDelta> edgeInputs;
 };
 
 }
