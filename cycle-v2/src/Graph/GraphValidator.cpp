@@ -2,9 +2,9 @@
 
 #include "Graph/GraphAudioScopeValidator.h"
 #include "Graph/GraphEdgeView.h"
+#include "Graph/GraphGuideValidator.h"
 #include "Graph/GraphTopologyValidator.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
-#include "Nodes/Guide/GuideAttachmentTarget.h"
 
 namespace CycleV2 {
 
@@ -119,34 +119,7 @@ std::vector<GraphValidationIssue> GraphValidator::validate(
                 reporter);
     }
 
-    for (const auto& assignment : graph.getGuideAssignments()) {
-        const GuideCurveResource* guide = graph.findGuideCurve(assignment.guideId);
-        const Node* target = graph.findNode(assignment.targetNodeId);
-        const bool validTarget = target != nullptr
-                && (assignment.targetKind == GuideCurveTargetKind::EnvelopeCubeComponent
-                        ? target->kind == NodeKind::Envelope
-                        : target->kind == NodeKind::TrilinearMesh)
-                && GuideAttachmentTarget::isValid(*target, assignment.target);
-        if (guide == nullptr || target == nullptr
-                || !validTarget) {
-            addIssue(
-                    issues,
-                    GraphValidationCode::InvalidAttachmentDestination,
-                    "Guide assignment references an invalid resource or cube component");
-        }
-    }
-
-    for (const auto& guide : graph.getGuideCurves()) {
-        if (guide.revision < 1
-                || (guide.heatmapAssetId.isNotEmpty()
-                        && graph.findGuideHeatmap(guide.heatmapAssetId) == nullptr)) {
-            addIssue(
-                    issues,
-                    GraphValidationCode::InvalidAttachmentDestination,
-                    "Guide resource references an invalid heatmap asset");
-        }
-    }
-
+    GraphGuideValidator().validate(graph, issues);
     GraphTopologyValidator().validate(graph, edges, resolution, issues);
     GraphAudioScopeValidator().validate(graph, edges, scopeAnalysis, issues);
 

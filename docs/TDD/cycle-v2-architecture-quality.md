@@ -238,6 +238,13 @@ compiler rejection pass (21 assertions across nine cases). This isolates the
 second graph-wide policy needed by the preview context; it still scans all
 nodes and edges until affected-node indexes are introduced.
 
+Guide assignment and heatmap-resource integrity now live in
+`GraphGuideValidator`. Edge proposals cannot change these facts, so the future
+preview context can retain their baseline issues without invoking Guide-domain
+checks. `GraphValidator.cpp` fell from 394 to 367 lines; the extracted rule
+unit is 47 lines. Focused Guide assignment, topology reconciliation, and
+heatmap history tests pass (115 assertions across nine cases).
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,
