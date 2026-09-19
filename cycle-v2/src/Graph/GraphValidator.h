@@ -17,6 +17,11 @@ public:
     std::vector<GraphValidationIssue> validate(
             const NodeGraph& graph,
             const GraphEdgeView& edges) const;
+    std::vector<GraphValidationIssue> validate(
+            const NodeGraph& graph,
+            const GraphEdgeView& edges,
+            const GraphDomainResolution& resolution,
+            const GraphAudioScopeAnalysis& scopeAnalysis) const;
     static bool acceptsProposedIssues(
             const std::vector<GraphValidationIssue>& before,
             const std::vector<GraphValidationIssue>& after);

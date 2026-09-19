@@ -118,6 +118,7 @@ set(GRAPH_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphGuideValidator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphRenderSemanticResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphSpliceValidator.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphValidationContext.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphValidator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCompiler.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCommandDispatcher.cpp"

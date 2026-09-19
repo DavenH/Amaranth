@@ -9,6 +9,7 @@
 #include "Graph/GraphDomainResolver.h"
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphAudioScope.h"
+#include "Graph/GraphValidationContext.h"
 #include "Graph/GraphValidator.h"
 
 using namespace CycleV2;
@@ -856,6 +857,33 @@ TEST_CASE("Proposed edge validation matches the committed graph without copying 
     }));
     REQUIRE(graph.getEdges().size() == 2);
     REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+}
+
+TEST_CASE("Validation context retains one exact durable graph baseline",
+        "[cycle-v2][graph][validation-context]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    const auto expectedIssues = GraphValidator().validate(graph);
+    const auto expectedDomains = GraphDomainResolver().resolve(graph);
+    const GraphValidationContext context(graph);
+
+    REQUIRE(context.matches(graph));
+    REQUIRE(context.validationIssues().size() == expectedIssues.size());
+    REQUIRE(context.domainResolution().domains == expectedDomains.domains);
+    REQUIRE(context.domainResolution().channelLayouts
+            == expectedDomains.channelLayouts);
+    REQUIRE(context.edgeView().size() == graph.getEdges().size());
+
+    InteractionComplexityDiagnostics::reset();
+    REQUIRE(context.edgeIndex().incomingEdges("out").size() == 1);
+    REQUIRE(context.audioScopeAnalysis().scopeFor("out")
+            == AuthoredAudioScope::Global);
+    const auto counts = InteractionComplexityDiagnostics::counts();
+    REQUIRE(counts.validationNodeVisits == 0);
+    REQUIRE(counts.validationEdgeVisits == 0);
+    REQUIRE(counts.domainTransfers == 0);
+
+    graph.markChanged();
+    REQUIRE_FALSE(context.matches(graph));
 }
 
 TEST_CASE("Neutral routing cannot participate in both audio partitions",

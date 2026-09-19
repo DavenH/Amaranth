@@ -30,9 +30,18 @@ std::vector<GraphValidationIssue> GraphValidator::validate(
         const NodeGraph& graph,
         const GraphEdgeView& edges) const {
     std::vector<GraphValidationIssue> issues;
-    GraphEdgeValidator edgeValidator;
     const GraphDomainResolution resolution = domainResolver.resolve(graph, edges);
     const auto scopeAnalysis = GraphAudioScopeAnalyzer().analyze(graph, edges);
+    return validate(graph, edges, resolution, scopeAnalysis);
+}
+
+std::vector<GraphValidationIssue> GraphValidator::validate(
+        const NodeGraph& graph,
+        const GraphEdgeView& edges,
+        const GraphDomainResolution& resolution,
+        const GraphAudioScopeAnalysis& scopeAnalysis) const {
+    std::vector<GraphValidationIssue> issues;
+    GraphEdgeValidator edgeValidator;
     const bool explicitAudioGraph = GraphAudioScopeValidator::usesExplicitAudioGraph(graph);
 
     for (size_t edgeIndex = 0; edgeIndex < edges.size(); ++edgeIndex) {

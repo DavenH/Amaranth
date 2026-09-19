@@ -302,6 +302,16 @@ copies, or audio-sample copies (12 assertions across two scales). The index is
 the first retained component of the gesture validation context; resolved
 domains, audio scope, and affected-closure invalidation remain open.
 
+`GraphValidationContext` now binds one durable graph revision to its borrowed
+edge view, edge index, resolved domains and channel layouts, audio-scope
+analysis, and baseline validation issues. `GraphValidator` accepts those
+precomputed facts, so the context uses the authoritative orchestration without
+repeating domain or scope analysis. The context rejects a changed graph
+revision, and cached fact/index reads record zero validation visits or domain
+transfers. Context parity, invalidation, proposed-edge parity, and scaled index
+tests pass (31 assertions across three cases). Proposal evaluation still needs
+affected-closure updates before this context can enter live UI movement paths.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,
