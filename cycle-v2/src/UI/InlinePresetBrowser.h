@@ -25,13 +25,19 @@ public:
     using OpenCallback = std::function<bool(const juce::File&)>;
     using ActionCallback = std::function<void()>;
     using TabCallback = std::function<void(WorkspaceSidebarTab)>;
+    using DeleteCallback = std::function<bool(const juce::File&)>;
+    using ConfirmDeleteCallback = std::function<void(
+            const juce::String&,
+            std::function<void(bool)>)>;
 
     InlinePresetBrowser(
             std::vector<juce::File> directories,
             OpenCallback openCallback,
             ActionCallback browseCallback,
             ActionCallback newGuideCallback,
-            TabCallback tabCallback);
+            TabCallback tabCallback,
+            DeleteCallback deleteCallback = {},
+            ConfirmDeleteCallback confirmDeleteCallback = {});
     ~InlinePresetBrowser() override;
 
     void setActiveTab(WorkspaceSidebarTab tab);
@@ -63,6 +69,8 @@ private:
     void applyPackFilter();
     void setPackFilter(PackFilter filter);
     void openSelected();
+    void requestDeleteSelected();
+    void deletePreset(const juce::File& file);
     void updateVisibility();
     void styleTabButton(juce::TextButton& button);
     void styleFilterButton(juce::TextButton& button);
@@ -71,6 +79,8 @@ private:
     ActionCallback onBrowse;
     ActionCallback onNewGuide;
     TabCallback onTabChanged;
+    DeleteCallback onDelete;
+    ConfirmDeleteCallback onConfirmDelete;
     PresetBrowserLookAndFeel lookAndFeel;
     PresetThumbnailCache thumbnails;
     juce::TextButton curves { "CURVES" };

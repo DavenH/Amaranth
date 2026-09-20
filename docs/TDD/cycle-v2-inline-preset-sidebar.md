@@ -10,6 +10,11 @@ preview imagery, search semantics, cyan focus language, and keyboard loading.
 It presents those elements as a compact selected preview plus a scan-friendly
 vertical list. `Browse Files...` opens the full preset-browser editor.
 
+The unified Curves/Presets rail uses 80% of its original expanded width. Preset
+rows use a compact 76 px rhythm. Inert overflow glyphs are absent; the selected
+hero instead exposes one real destructive action that confirms before moving
+the source file to the operating-system Trash.
+
 The Presets view temporarily occupies the minimap region. The minimap
 implementation remains present and is painted again when the view no longer
 occludes it; this slice does not delete or relocate minimap behavior.
@@ -28,6 +33,9 @@ occludes it; this slice does not delete or relocate minimap behavior.
   `NodeCanvas` hosts the overlay and owns only its visibility state.
 - Graph loading continues through `NodeWorkspace::loadGraphFromFile`, preserving
   audio-plan publication and document-presentation updates.
+- `InlinePresetBrowser` owns delete confirmation and refresh orchestration. The
+  filesystem boundary is an injected callback for semantic testing; production
+  uses JUCE's recoverable `File::moveToTrash` unchanged.
 
 Directory scanning and JPEG decoding never occur on the message thread. A
 search edit remains O(number of presets), independent of graph size and image
@@ -47,6 +55,8 @@ load.
 5. **Complete.** Centre compact search text optically, use dark text on cyan
    controls, overlay hero metadata on the preview, and remove the asymmetric
    outer bottom radius.
+6. **Complete.** Reduce unified rail width by 20%, tighten compact row height
+   and gaps, remove inert overflow glyphs, and add confirmed hero-card Trash.
 
 ## Architecture Baseline
 
@@ -78,6 +88,10 @@ compact presentation over the existing index/cache services.
   preview JPEG data.
 - The minimap source remains intact and is not painted beneath the active
   Presets view.
+- The unified expanded guide/preset rail is 25.6% of the workspace up to 272 px;
+  compact rows are 76 px high with 2 px between them.
+- Canceling Trash leaves the preset untouched. Confirming invokes exactly one
+  recoverable deletion and refreshes the asynchronous index.
 - Focused tests, standalone build, screenshot review, architecture audit,
   modified-file line counts, scalar-math self-check, and `git diff --check`
   pass.
@@ -100,29 +114,40 @@ policy application: the minimap and guide renderer consume the same visibility
 fact. `NodeWorkspace` remains the owner of document load/audio publication and
 only supplies callbacks. There is one tab/minimap eligibility decision site.
 
-Final relevant sizes: `InlinePresetBrowser.cpp` 583 lines and header 94,
-`PresetBrowserComponents.cpp` 400, `NodeCanvas.cpp` 2,678 and header 355,
+Final relevant sizes: `InlinePresetBrowser.cpp` 681 lines and header 104,
+`PresetBrowserComponents.cpp` 386, `NodeCanvas.cpp` 2,678 and header 355,
 `NodeWorkspace.cpp` 548, `NodeCanvasPresentation.cpp` 1,490, and
 `WorkspaceDock.cpp` 370. No existing file grew by 200 lines, and the new
 component remains below the architecture review threshold.
 
+Slice 6 grows `InlinePresetBrowser.cpp` by 98 lines to keep the compact action,
+its confirmation lifecycle, and index refresh with the presentation that owns
+the selection. It remains below the 800-line review trigger. `WorkspaceDock`
+continues to be the single owner of unified rail width; callers consume its
+layout without a second preset-specific width policy. The injected delete and
+confirmation callbacks translate side effects for tests and do not duplicate
+filesystem or index behavior.
+
 ## Verification Evidence
 
-- `[cycle-v2][preset][browser][inline]`: 20 assertions / 1 case.
-- `[cycle-v2][preset][browser]`: 64 assertions / 4 cases.
+- `[cycle-v2][preset][browser][inline]`: 29 assertions / 1 case, including
+  cancel and confirm branches through the real trash-button event.
+- `[cycle-v2][preset][browser]`: 73 assertions / 4 cases.
 - `[cycle-v2][preset][browser][async]`: 10 assertions / 1 case.
 - `[cycle-v2][canvas][guide-dock]`: 77 assertions / 6 cases.
 - The focused automation fixture switches Curves -> Presets through real button
   events; all four commands pass. It remains at
   `scripts/fixtures/cycle-v2-agent-inline-preset-sidebar.json`.
 - Production screenshot:
-  `/private/tmp/cycle-v2-inline-sidebar-polish.png`. It shows immediate
+  `/private/tmp/cycle-v2-inline-sidebar-density.png`. It shows immediate
   filename-backed content, visible thumbnails, no minimap beneath Presets, the
-  metadata scrim, corrected search alignment, dark-on-cyan filter text, and the
-  flush inline rail aligned to the workspace edge.
+  metadata scrim, 20% narrower rail, compact rows, hero-card Trash action,
+  dark-on-cyan filter text, and the flush rail aligned to the workspace edge.
 - Standalone Debug and test targets build with `--parallel 10`.
 - `scripts/cycle_v2_architecture_audit.py` reports only the documented existing
   PLAN/REVIEW files. `git diff --check` passes.
+- `clang-tidy` is not installed in the local environment; both affected build
+  targets compile cleanly with the configured toolchain.
 - The modified visualization code adds no scalar math in a per-bin, per-sample,
   or per-pixel loop. The two reported `std::abs` calls are existing scalar UI
   decisions outside hot loops.

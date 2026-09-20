@@ -64,6 +64,8 @@ public:
     static constexpr float collapsedHeight = 34.f;
     static constexpr float minimumExpandedHeight = 120.f;
     static constexpr float drawerWidth = 36.f;
+    static constexpr float guideShelfWidthFraction = 0.256f;
+    static constexpr float maximumGuideShelfWidth = 272.f;
     static constexpr float shelfPadding = 10.f;
     static constexpr float headerHeight = 36.f;
     static constexpr float tileWidth = 190.f;

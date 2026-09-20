@@ -116,7 +116,7 @@ TEST_CASE("Workspace dock gives the unified sidebar the former minimap region",
     REQUIRE(balanced.content == workspace);
     REQUIRE(balanced.leftShelf.getY() == workspace.getY() + CanvasUtilityDock::margin);
     REQUIRE(balanced.leftShelf.getRight() == utilities.minimap.getRight());
-    REQUIRE(balanced.leftShelf.getWidth() == Catch::Approx(320.f));
+    REQUIRE(balanced.leftShelf.getWidth() == Catch::Approx(256.f));
     REQUIRE(balanced.leftShelf.intersects(utilities.minimap));
     REQUIRE(balanced.leftShelf.getX() > balanced.rightShelf.getRight());
     REQUIRE(balanced.leftShelf.getHeight() > WorkspaceDock::guideTileHeight);

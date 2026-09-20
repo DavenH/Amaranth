@@ -9,8 +9,8 @@ namespace CycleV2 {
 namespace {
 
 constexpr int heroHeight = 204;
-constexpr int rowHeight = 92;
-constexpr int rowGap = 4;
+constexpr int rowHeight = 76;
+constexpr int rowGap = 2;
 constexpr int contentInset = 10;
 
 void drawTag(
@@ -30,6 +30,44 @@ void drawTag(
             1);
 }
 
+class TrashButton final : public juce::Button {
+public:
+    TrashButton() : juce::Button("Delete preset") {
+        setComponentID("workspace.sidebar.delete");
+        setTooltip("Move preset to Trash");
+    }
+
+    void paintButton(
+            juce::Graphics& graphics,
+            bool isMouseOverButton,
+            bool isButtonDown) override {
+        auto bounds = getLocalBounds().toFloat().reduced(4.f);
+        if (isMouseOverButton || isButtonDown) {
+            graphics.setColour(CanvasChromePalette::raisedSurface.withAlpha(
+                    isButtonDown ? 0.96f : 0.78f));
+            graphics.fillEllipse(bounds);
+        }
+
+        graphics.setColour(isMouseOverButton
+                ? CanvasChromePalette::destructive
+                : CanvasChromePalette::text.withAlpha(0.78f));
+        const auto bin = bounds.reduced(5.f, 4.f);
+        juce::Path body;
+        body.startNewSubPath(bin.getX() + 2.f, bin.getY() + 5.f);
+        body.lineTo(bin.getX() + 3.f, bin.getBottom());
+        body.lineTo(bin.getRight() - 3.f, bin.getBottom());
+        body.lineTo(bin.getRight() - 2.f, bin.getY() + 5.f);
+        graphics.strokePath(body, juce::PathStrokeType(
+                1.5f,
+                juce::PathStrokeType::curved,
+                juce::PathStrokeType::rounded));
+        graphics.drawLine(bin.getX(), bin.getY() + 3.f,
+                bin.getRight(), bin.getY() + 3.f, 1.5f);
+        graphics.drawLine(bin.getCentreX() - 2.f, bin.getY(),
+                bin.getCentreX() + 2.f, bin.getY(), 1.5f);
+    }
+};
+
 }
 
 class InlinePresetBrowser::CompactList final : public juce::Component {
@@ -38,6 +76,8 @@ public:
 
     explicit CompactList(PresetThumbnailCache& thumbnailsToUse) :
             thumbnails(thumbnailsToUse) {
+        setComponentID("workspace.sidebar.list");
+        addAndMakeVisible(trash);
     }
 
     void setResults(
@@ -56,13 +96,18 @@ public:
                 break;
             }
         }
+        trash.setVisible(selected >= 0);
         updateHeight();
         repaint();
     }
 
-    void setCallbacks(Callback selectionCallback, Callback openCallback) {
+    void setCallbacks(
+            Callback selectionCallback,
+            Callback openCallback,
+            Callback deleteCallback) {
         onSelection = std::move(selectionCallback);
         onOpen = std::move(openCallback);
+        trash.onClick = std::move(deleteCallback);
     }
 
     const PresetLibraryRecord* selectedRecord() const {
@@ -118,6 +163,12 @@ public:
         if (onOpen) {
             onOpen();
         }
+    }
+
+    void resized() override {
+        const auto hero = heroBounds().reduced(7);
+        const auto metadata = hero.withTop(hero.getBottom() - 68);
+        trash.setBounds(metadata.getRight() - 39, metadata.getY() + 3, 34, 34);
     }
 
 private:
@@ -187,11 +238,9 @@ private:
         graphics.setFont(juce::FontOptions(15.f).withStyle("Bold"));
         graphics.drawFittedText(
                 record.name,
-                name.toNearestInt(),
+                name.withTrimmedRight(32.f).toNearestInt(),
                 juce::Justification::centredLeft,
                 1);
-        PresetBrowserPainting::drawOverflowMenu(
-                graphics, name.removeFromRight(26.f));
 
         auto tags = overlay.removeFromTop(24.f);
         for (int tag = 0; tag < juce::jmin(3, record.presentation.tags.size()); ++tag) {
@@ -222,11 +271,11 @@ private:
             graphics.drawRoundedRectangle(bounds.reduced(1.f), 5.f, 2.f);
         }
 
-        auto content = bounds.reduced(7.f);
-        auto preview = content.removeFromLeft(126.f);
+        auto content = bounds.reduced(6.f);
+        auto preview = content.removeFromLeft(124.f);
         PresetBrowserPainting::drawPreview(graphics, record, thumbnails, preview);
-        content.removeFromLeft(10.f);
-        auto name = content.removeFromTop(27.f);
+        content.removeFromLeft(9.f);
+        auto name = content.removeFromTop(23.f);
         graphics.setColour(CanvasChromePalette::text);
         graphics.setFont(juce::FontOptions(13.f).withStyle("Bold"));
         graphics.drawFittedText(
@@ -234,10 +283,8 @@ private:
                 name.toNearestInt(),
                 juce::Justification::centredLeft,
                 1);
-        PresetBrowserPainting::drawOverflowMenu(
-                graphics, name.removeFromRight(22.f));
 
-        auto tags = content.removeFromTop(23.f);
+        auto tags = content.removeFromTop(21.f);
         for (int tag = 0; tag < juce::jmin(2, record.presentation.tags.size()); ++tag) {
             const float width = juce::jlimit(
                     40.f, 70.f, 16.f + (float) record.presentation.tags[tag].length() * 5.5f);
@@ -251,6 +298,7 @@ private:
     std::vector<int> indices;
     Callback onSelection;
     Callback onOpen;
+    TrashButton trash;
     int selected { -1 };
 };
 
@@ -259,11 +307,15 @@ InlinePresetBrowser::InlinePresetBrowser(
         OpenCallback openCallback,
         ActionCallback browseCallback,
         ActionCallback newGuideCallback,
-        TabCallback tabCallback) :
+        TabCallback tabCallback,
+        DeleteCallback deleteCallback,
+        ConfirmDeleteCallback confirmDeleteCallback) :
         onOpen(std::move(openCallback))
     ,   onBrowse(std::move(browseCallback))
     ,   onNewGuide(std::move(newGuideCallback))
     ,   onTabChanged(std::move(tabCallback))
+    ,   onDelete(std::move(deleteCallback))
+    ,   onConfirmDelete(std::move(confirmDeleteCallback))
     ,   list(std::make_unique<CompactList>(thumbnails)) {
     setComponentID("workspace.presetSidebar");
     setLookAndFeel(&lookAndFeel);
@@ -315,7 +367,10 @@ InlinePresetBrowser::InlinePresetBrowser(
     addAndMakeVisible(factory);
     addAndMakeVisible(user);
 
-    list->setCallbacks([this] { repaint(); }, [this] { openSelected(); });
+    list->setCallbacks(
+            [this] { repaint(); },
+            [this] { openSelected(); },
+            [this] { requestDeleteSelected(); });
     viewport.setViewedComponent(list.get(), false);
     viewport.setScrollBarsShown(true, false);
     viewport.setColour(juce::ScrollBar::thumbColourId,
@@ -537,6 +592,49 @@ void InlinePresetBrowser::openSelected() {
     if (!onOpen(record->file)) {
         status.setText("UNABLE TO LOAD PRESET", juce::dontSendNotification);
     }
+}
+
+void InlinePresetBrowser::requestDeleteSelected() {
+    const PresetLibraryRecord* record = list->selectedRecord();
+    if (record == nullptr) {
+        return;
+    }
+
+    const juce::File file = record->file;
+    const juce::String name = record->name;
+    auto completion = [
+            safeThis = juce::Component::SafePointer<InlinePresetBrowser>(this),
+            file](bool confirmed) {
+        if (confirmed && safeThis != nullptr) {
+            safeThis->deletePreset(file);
+        }
+    };
+    if (onConfirmDelete) {
+        onConfirmDelete(name, std::move(completion));
+        return;
+    }
+
+    juce::AlertWindow::showOkCancelBox(
+            juce::MessageBoxIconType::WarningIcon,
+            "Move preset to Trash?",
+            "“" + name + "” will be removed from the preset library and moved to Trash.",
+            "Move to Trash",
+            "Cancel",
+            this,
+            juce::ModalCallbackFunction::create([
+                    completion = std::move(completion)](int result) mutable {
+                completion(result != 0);
+            }));
+}
+
+void InlinePresetBrowser::deletePreset(const juce::File& file) {
+    const bool deleted = onDelete ? onDelete(file) : file.moveToTrash();
+    if (!deleted) {
+        status.setText("UNABLE TO DELETE PRESET", juce::dontSendNotification);
+        return;
+    }
+    status.setText("PRESET MOVED TO TRASH", juce::dontSendNotification);
+    index->start();
 }
 
 void InlinePresetBrowser::updateVisibility() {

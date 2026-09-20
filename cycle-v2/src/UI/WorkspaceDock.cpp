@@ -46,8 +46,8 @@ WorkspaceDockLayout WorkspaceDock::layout(
         return result;
     }
 
-    const float guideWidth = juce::jmin(340.f,
-            juce::jmax(drawerWidth, workspace.getWidth() * 0.32f));
+    const float guideWidth = juce::jmin(maximumGuideShelfWidth,
+            juce::jmax(drawerWidth, workspace.getWidth() * guideShelfWidthFraction));
     const float activeGuideWidth = state.leftMinimized ? drawerWidth : guideWidth;
     const float guideRight = workspace.getRight() - CanvasUtilityDock::margin;
     const float guideTop = workspace.getY() + CanvasUtilityDock::margin;

@@ -39,18 +39,6 @@ void drawStars(juce::Graphics& graphics, int rating, juce::Rectangle<float> boun
 
 namespace PresetBrowserPainting {
 
-void drawOverflowMenu(juce::Graphics& graphics, juce::Rectangle<float> bounds) {
-    graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.72f));
-    const auto centre = bounds.getCentre();
-    for (int dot = -1; dot <= 1; ++dot) {
-        graphics.fillEllipse(
-                centre.x + (float) dot * 5.f - 1.f,
-                centre.y - 1.f,
-                2.f,
-                2.f);
-    }
-}
-
 static void drawPreviewPlaceholder(
         juce::Graphics& graphics,
         juce::Rectangle<float> bounds) {
@@ -209,8 +197,6 @@ void PresetCardGrid::paint(juce::Graphics& graphics) {
                 juce::Justification::centredLeft, 1);
         auto ratingRow = inner.removeFromTop(14.f);
         drawStars(graphics, record.presentation.rating, ratingRow.removeFromLeft(72.f));
-        PresetBrowserPainting::drawOverflowMenu(
-                graphics, ratingRow.removeFromRight(18.f));
     }
 }
 
