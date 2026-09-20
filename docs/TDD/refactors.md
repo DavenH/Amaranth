@@ -37,6 +37,32 @@ preview/probe loops, and per-query full domain resolution. Scale disconnected
 graph content and assert unchanged lookup/domain work in addition to semantic
 and pixel parity.
 
+Status: in progress. The first slice adds `GraphPresentationFacts` beside each
+accepted snapshot. It owns one structural edge index, domain resolution, and
+audio-scope analysis, plus indexed node previews, probe previews, runtime
+traces, and execution order. Preview-only publications rebuild the small
+result indexes while sharing the structural facts. A topology compilation
+rebuilds the structure. `NodeCanvasQueryModel` now uses these facts and the
+snapshot directly; its separate compile/runtime/preview references, preview
+loop, runtime loop, execution-order loop, attachment loop, per-edge full
+domain resolution, and per-output full domain resolution are deleted.
+
+The authoritative policy owners are now `GraphDomainResolver` for edge
+domains, `GraphRenderSemanticResolver` for render meaning, and
+`GraphPresentationFacts` for publication-time indexing. Query callers supply
+only a node, port, or edge identity. With 0 and 128 disconnected nodes, 16
+repeated domain, preview, and render-semantic queries record zero domain
+transfers, validation-edge visits, and node linear scans after publication.
+
+Baseline to after sizes for the first slice are `NodeCanvas.cpp` 2,532 to
+2,530 lines, `NodeCanvas.h` 328 to 325, `NodeCanvasQueryModel.cpp` 295 to 263,
+and `NodeCanvasQueryModel.h` 48 to 49. `GraphPresentationModel.cpp` grows from
+542 to 565 lines to attach and reuse the facts at acceptance;
+`GraphPresentationFacts` adds 184 focused lines. The remaining deletion
+targets are the duplicate preview and semantic lookups in
+`NodeCanvasPresentation` and `SignalProbeRail`, the scene's signal-edge scans,
+and the presentation frame's repackaged snapshot members.
+
 ### P1: Centralize operation-port layout
 
 `NodeCanvasPresentation.cpp` and `NodeCanvasAuthoring.cpp` contain separate

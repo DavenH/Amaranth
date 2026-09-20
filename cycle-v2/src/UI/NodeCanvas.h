@@ -148,9 +148,6 @@ private:
     GraphCommandDispatcher commands;
     const NodeGraph& graph;
     GraphPresentationModel presentation;
-    const GraphCompileResult& compileResult;
-    const RuntimeProcessTrace& runtimeTrace;
-    const GraphPreviewResult& previewResult;
     NodeCanvasQueryModel queries;
     CanvasPerformanceMetrics performanceMetrics;
     NodeEditorCommandService editorCommands;

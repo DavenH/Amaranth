@@ -142,10 +142,7 @@ NodeCanvas::NodeCanvas() :
     ,   document(createStartupDocument())
     ,   commands(document)
     ,   graph(document.graph())
-    ,   compileResult(presentation.compileResult())
-    ,   runtimeTrace(presentation.runtimeTrace())
-    ,   previewResult(presentation.previewResult())
-    ,   queries(graph, compileResult, runtimeTrace, previewResult)
+    ,   queries(graph, presentation.snapshot())
     ,   editorCommands(*this, document, commands, *this, *this, &performanceMetrics)
     ,   authoring(document, commands, presentation, editorCommands)
     ,   selectedNodeId(authoring.interactionSession().selectedNodeId)
@@ -1083,11 +1080,12 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
         };
     }
     const NodeGraph& displayedGraph = commands.editingGraph();
+    const GraphPresentationSnapshot& snapshot = presentation.snapshot();
 
     return {
             displayedGraph,
-            compileResult,
-            previewResult,
+            snapshot.compileResult,
+            snapshot.previewResult,
             viewport,
             palette,
             content,

@@ -32,13 +32,9 @@ String signalDescription(PortDomain domain) {
 
 NodeCanvasQueryModel::NodeCanvasQueryModel(
         const NodeGraph& targetGraph,
-        const GraphCompileResult& targetCompileResult,
-        const RuntimeProcessTrace& targetRuntimeTrace,
-        const GraphPreviewResult& targetPreviewResult)
+        const GraphPresentationSnapshot& targetSnapshot)
     :   graph(targetGraph)
-    ,   compileResult(targetCompileResult)
-    ,   runtimeTrace(targetRuntimeTrace)
-    ,   previewResult(targetPreviewResult) {
+    ,   snapshot(&targetSnapshot) {
 }
 
 const Node* NodeCanvasQueryModel::findNode(const String& id) const {
@@ -81,38 +77,22 @@ const Port* NodeCanvasQueryModel::findPort(
 }
 
 const RuntimeNodeTrace* NodeCanvasQueryModel::findRuntimeTrace(const String& nodeId) const {
-    for (const auto& node : runtimeTrace.nodes) {
-        if (node.nodeId == nodeId) {
-            return &node;
-        }
-    }
-
-    return nullptr;
+    return presentationFacts().runtimeTraceFor(*snapshot, nodeId);
 }
 
 const NodePreviewResult* NodeCanvasQueryModel::findPreviewResult(const String& nodeId) const {
-    for (const auto& node : previewResult.nodes) {
-        if (node.nodeId == nodeId) {
-            return &node;
-        }
-    }
-
-    return nullptr;
+    return presentationFacts().previewFor(*snapshot, nodeId);
 }
 
 PortDomain NodeCanvasQueryModel::displayDomainForEdge(const Edge& edge) const {
-    if (edge.isAttachment()) {
-        return edge.domain;
-    }
-
-    return GraphValidator().resolvedDomainForEdge(graph, edge);
+    return presentationFacts().domainForEdge(graph, edge);
 }
 
 PortDomain NodeCanvasQueryModel::displayDomainForNodeOutput(
         const Node& node,
         const String& portId) const {
-    if (compileResult.succeeded()) {
-        for (const auto& step : compileResult.plan.steps) {
+    if (snapshot->compileResult.succeeded()) {
+        for (const auto& step : snapshot->compileResult.plan.steps) {
             if (step.nodeId != node.id) {
                 continue;
             }
@@ -125,8 +105,9 @@ PortDomain NodeCanvasQueryModel::displayDomainForNodeOutput(
         }
     }
 
-    for (const auto& edge : graph.getEdges()) {
-        if (!edge.isAttachment() && edge.sourceNodeId == node.id && edge.sourcePortId == portId) {
+    for (const size_t edgeIndex : presentationFacts().edgeIndex().outgoingEdges(node.id)) {
+        const Edge& edge = graph.getEdges()[edgeIndex];
+        if (!edge.isAttachment() && edge.sourcePortId == portId) {
             return displayDomainForEdge(edge);
         }
     }
@@ -141,10 +122,8 @@ PortDomain NodeCanvasQueryModel::displayDomainForNodeOutput(
 TrimeshRenderProfile NodeCanvasQueryModel::renderProfileForNodeOutput(
         const Node& node,
         const String& portId) const {
-    NodeRenderSemantic semantic = GraphRenderSemanticResolver().semanticForNodeOutput(
-            graph,
-            node.id,
-            portId);
+    NodeRenderSemantic semantic = presentationFacts().renderSemanticForNodeOutput(
+            graph, node.id, portId);
 
     if (semantic.domain == PortDomain::ControlSignal) {
         semantic.domain = displayDomainForNodeOutput(node, portId);
@@ -162,31 +141,14 @@ GraphValidationIssue NodeCanvasQueryModel::validationIssueForEdge(const Edge& ed
 }
 
 int NodeCanvasQueryModel::executionIndexForNode(const String& nodeId) const {
-    if (!compileResult.succeeded()) {
+    if (!snapshot->compileResult.succeeded()) {
         return -1;
     }
-
-    const auto& nodeOrder = compileResult.plan.nodeOrder;
-
-    for (int i = 0; i < (int) nodeOrder.size(); ++i) {
-        if (nodeOrder[(size_t) i] == nodeId) {
-            return i;
-        }
-    }
-
-    return -1;
+    return presentationFacts().executionIndexFor(nodeId);
 }
 
 int NodeCanvasQueryModel::attachmentCount() const {
-    int count = 0;
-
-    for (const auto& edge : graph.getEdges()) {
-        if (edge.isAttachment()) {
-            ++count;
-        }
-    }
-
-    return count;
+    return presentationFacts().attachmentCount();
 }
 
 String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const {
@@ -207,28 +169,24 @@ String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const 
             return "Attach the default scratch envelope for this Voice Context.";
         }
 
-        const auto local = std::find_if(
-                graph.getEdges().begin(),
-                graph.getEdges().end(),
-                [&](const Edge& edge) {
-                    return edge.destNodeId == node->id
-                            && edge.destPortId == port->id;
-                });
-        if (local != graph.getEdges().end()) {
-            const Node* source = findNode(local->sourceNodeId);
+        const auto& localEdges = presentationFacts().edgeIndex().edgesToInput(
+                node->id, port->id);
+        if (!localEdges.empty()) {
+            const Edge& local = graph.getEdges()[localEdges.front()];
+            const Node* source = findNode(local.sourceNodeId);
             return source != nullptr && source->kind == NodeKind::ScratchDefaultOverride
                     ? "Uses voice time instead of the inherited scratch envelope."
                     : "Overrides the Voice Context scratch envelope for this Trimesh.";
         }
 
-        if (compileResult.succeeded()) {
+        if (snapshot->compileResult.succeeded()) {
             const auto step = std::find_if(
-                    compileResult.plan.steps.begin(),
-                    compileResult.plan.steps.end(),
+                    snapshot->compileResult.plan.steps.begin(),
+                    snapshot->compileResult.plan.steps.end(),
                     [&](const GraphExecutionStep& candidate) {
                         return candidate.nodeId == node->id;
                     });
-            if (step != compileResult.plan.steps.end()
+            if (step != snapshot->compileResult.plan.steps.end()
                     && effectiveScratchSourceNodeId(*step).isNotEmpty()) {
                 return "Inherits the Voice Context scratch envelope. Attach here to override it.";
             }
@@ -290,6 +248,16 @@ String NodeCanvasQueryModel::hoverTextForEdge(const Edge& edge) const {
     }
 
     return signalDescription(displayDomainForEdge(edge)) + " flows from " + route + ".";
+}
+
+const GraphPresentationFacts& NodeCanvasQueryModel::presentationFacts() const {
+    if (snapshot->facts != nullptr) {
+        return *snapshot->facts;
+    }
+    if (fallbackFacts == nullptr) {
+        fallbackFacts = std::make_shared<const GraphPresentationFacts>(graph, *snapshot);
+    }
+    return *fallbackFacts;
 }
 
 }

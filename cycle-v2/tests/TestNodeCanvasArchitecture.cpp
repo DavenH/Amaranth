@@ -1087,6 +1087,7 @@ TEST_CASE("Graph presentation rejects stale revision results", "[cycle-v2][canva
     GraphChangeSet topology;
     topology.topologyChanged = true;
     REQUIRE(presentation.refresh(NodeGraph::createDemoGraph(), 7, topology));
+    REQUIRE(presentation.snapshot().facts != nullptr);
 
     GraphPresentationSnapshot stale;
     stale.graphRevision = 6;
