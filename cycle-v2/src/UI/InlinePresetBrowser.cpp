@@ -9,6 +9,7 @@ namespace CycleV2 {
 namespace {
 
 constexpr int heroHeight = 204;
+constexpr int heroMetadataHeight = 52;
 constexpr int rowHeight = 76;
 constexpr int rowGap = 2;
 constexpr int contentInset = 10;
@@ -102,7 +103,7 @@ public:
         auto content = bounds.reduced(7.f);
         PresetBrowserPainting::drawPreview(graphics, record, thumbnails, content);
 
-        const auto metadata = content.removeFromBottom(68.f);
+        const auto metadata = content.removeFromBottom((float) heroMetadataHeight);
         juce::ColourGradient scrim(
                 CanvasChromePalette::canvasBackground.withAlpha(0.30f),
                 metadata.getX(),
@@ -114,8 +115,8 @@ public:
         graphics.setGradientFill(scrim);
         graphics.fillRect(metadata);
 
-        auto overlay = metadata.reduced(10.f, 5.f);
-        auto name = overlay.removeFromTop(25.f);
+        auto overlay = metadata.reduced(10.f, 4.f);
+        auto name = overlay.removeFromTop(22.f);
         graphics.setColour(CanvasChromePalette::text);
         graphics.setFont(juce::FontOptions(15.f).withStyle("Bold"));
         graphics.drawFittedText(
@@ -124,7 +125,7 @@ public:
                 juce::Justification::centredLeft,
                 1);
 
-        auto tags = overlay.removeFromTop(24.f);
+        auto tags = overlay.removeFromTop(22.f);
         for (int tag = 0; tag < juce::jmin(3, record.presentation.tags.size()); ++tag) {
             const float width = juce::jlimit(
                     42.f, 78.f, 18.f + (float) record.presentation.tags[tag].length() * 6.f);
@@ -140,7 +141,7 @@ public:
 
     void resized() override {
         const auto bounds = cardBounds().toNearestInt().reduced(7);
-        const auto metadata = bounds.withTop(bounds.getBottom() - 68);
+        const auto metadata = bounds.withTop(bounds.getBottom() - heroMetadataHeight);
         trash.setBounds(metadata.getRight() - 39, metadata.getY() + 3, 34, 34);
     }
 
