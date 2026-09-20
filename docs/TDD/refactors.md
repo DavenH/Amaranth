@@ -245,7 +245,7 @@ from 187 to 232 lines across header and source, the composed index is 107
 lines, preview resources grow from 261 to 278 lines, and the 2,570-line canvas
 adds six orchestration lines without a new responsibility or policy branch.
 
-## Cycle V2 spectral frame renderer ownership
+## In progress: Cycle V2 spectral frame renderer ownership
 
 `cycle-v2/src/Runtime/SpectralOscillatorFrameRenderer.cpp` is about 820 lines
 after the 2026-09-18 Envelope guide seed change. Its lifecycle methods are the
@@ -254,6 +254,25 @@ the file also owns region validation, source rendering, transforms, graph
 combining, and output. Extract cohesive source-operation and frame-combining
 ownership in a later behavior-preserving slice; keep the current shared
 `PreparedCycleEnvelopeBank` and graph plan contract intact.
+
+The first extraction moves transform allocation, frame-size lookup, forward
+FFT capture, inactive-bin clearing, inverse FFT, and reconstruction capture to
+`SpectralFrameTransformStage`. The stage depends only on FFT buffers and the
+spectral capture/core primitives. Graph roles, slot routing, source rendering,
+cycle envelopes, and performance scopes remain in the renderer. This deletes
+the renderer's transform vector, allocation loop, lookup method, and inline
+FFT/IFFT bodies. The renderer falls from 799 to 767 lines and its header from
+120 to 119; the new cohesive stage is 137 lines across header and source.
+
+The focused stage reconstruction/capture test passes 27 assertions. The
+existing fixed Trimesh-through-FFT case passes 16 assertions and now proves
+one forward and one inverse telemetry operation per prepared frame. The split
+block spectral-frame case passes 19 assertions. The existing final-active-
+harmonic regression still fails identically against the pre-extraction commit,
+so it is not evidence against this move. Remaining deletion targets are the
+inline time/spectral source bodies and the SpectralLayer/Add/Multiply combining
+bodies; those need source-operation and shared binary-combining owners before
+this item can be marked addressed.
 
 ## Migrated factory guide-curve attack boundaries
 

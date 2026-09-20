@@ -181,6 +181,7 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreviewMorphBinding.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/MonitorPreviewProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SourcePreviewProcessors.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralFrameTransformStage.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralOscillatorFrameRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralMagnitudeTransfer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralLayerNodeAudioProcessor.cpp"

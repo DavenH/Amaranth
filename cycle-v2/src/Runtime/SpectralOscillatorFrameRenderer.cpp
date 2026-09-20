@@ -18,10 +18,6 @@ namespace CycleV2 {
 
 namespace {
 
-bool isPowerOfTwo(int value) {
-    return value > 1 && (value & (value - 1)) == 0;
-}
-
 bool supportedRole(AudioModuleRole role) {
     return role == AudioModuleRole::MeshSource
             || role == AudioModuleRole::WaveSource
@@ -111,7 +107,9 @@ bool SpectralOscillatorFrameRenderer::prepare(
         const std::vector<NodeAudioProcessor*>& processors,
         int laneCount,
         const String& pitchEnvelopeNodeId) {
-    if (!supports(plan, region) || !isPowerOfTwo(maximumFrameSizeToUse)) {
+    if (!supports(plan, region)
+            || !SpectralFrameTransformStage::supportsFrameSize(
+                    maximumFrameSizeToUse)) {
         return false;
     }
 
@@ -295,13 +293,8 @@ bool SpectralOscillatorFrameRenderer::prepare(
     CycleDsp::SpectralLayerCore::preparePhaseHarmonicScale(
             phaseHarmonicScale.withSize(maximumBinCount - 1));
 
-    transforms.clear();
-    for (int frameSize = 2; frameSize <= maximumFrameSize; frameSize *= 2) {
-        auto transform = std::make_unique<Transform>();
-        transform->allocate(frameSize, Transform::DivFwdByN, true);
-        transform->setRemovesOffset(true);
-        transform->setExclusiveRealtimeAccess(true);
-        transforms.push_back(std::move(transform));
+    if (!transformStage.prepare(maximumFrameSize)) {
+        return false;
     }
     reset();
     return true;
@@ -382,7 +375,7 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
         Buffer<float> left,
         Buffer<float> right,
         bool refreshTimeSources) {
-    Transform* transform = transformFor(frameSize);
+    Transform* transform = transformStage.transformFor(frameSize);
     if (transform == nullptr
             || left.size() != frameSize
             || right.size() != frameSize
@@ -608,19 +601,16 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                         frameSize);
                 for (int channel = 0; channel < 2; ++channel) {
                     auto timeFrame = slot(operation.leftInput, channel, frameSize);
-                    frameCapture.capture(
-                            CycleDsp::SpectralStage::TimeFrame,
-                            channel,
-                            timeFrame);
                     auto magnitude = slot(operation.outputs[0], channel, binCount);
                     auto phase = slot(operation.outputs[1], channel, binCount);
-                    transform->forward(timeFrame);
-                    transform->copyFullPolarSpectrumTo(magnitude, phase);
-                    frameCapture.capture(
-                            CycleDsp::SpectralStage::ForwardFft,
-                            channel,
-                            magnitude.section(1, activeHarmonicCount),
-                            phase.section(1, activeHarmonicCount));
+                    transformStage.forward(
+                            *transform,
+                            timeFrame,
+                            magnitude,
+                            phase,
+                            activeHarmonicCount,
+                            frameCapture,
+                            channel);
                 }
                 break;
             }
@@ -633,26 +623,15 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                     slot(operation.leftInput, channel, binCount).copyTo(magnitude);
                     applyMagnitudeOperand(magnitude, operation.leftTransfer, channel);
                     slot(operation.rightInput, channel, binCount).copyTo(phase);
-                    frameCapture.capture(
-                            CycleDsp::SpectralStage::PostLayerSpectrum,
-                            channel,
-                            magnitude.section(1, activeHarmonicCount),
-                            phase.section(1, activeHarmonicCount));
-                    if (hasSpectralMesh) {
-                        const int activeFullPolarBinCount = activeHarmonicCount + 1;
-                        CycleDsp::SpectralLayerCore::clearBinsAbove(
-                                magnitude,
-                                phase,
-                                activeFullPolarBinCount);
-                    }
-                    transform->setFullPolarSpectrum(
+                    transformStage.inverse(
+                            *transform,
                             magnitude,
-                            phase);
-                    transform->inverse(slot(operation.outputs[0], channel, frameSize));
-                    frameCapture.capture(
-                            CycleDsp::SpectralStage::ReconstructedFrame,
-                            channel,
-                            slot(operation.outputs[0], channel, frameSize));
+                            phase,
+                            slot(operation.outputs[0], channel, frameSize),
+                            activeHarmonicCount,
+                            hasSpectralMesh,
+                            frameCapture,
+                            channel);
                 }
                 break;
             }
@@ -728,17 +707,6 @@ Buffer<float> SpectralOscillatorFrameRenderer::slot(
             slotMemory.get() + (2 * slotIndex + channel) * slotStride,
             valueCount
     };
-}
-
-Transform* SpectralOscillatorFrameRenderer::transformFor(int frameSize) {
-    if (!isPowerOfTwo(frameSize) || frameSize > maximumFrameSize) {
-        return nullptr;
-    }
-    int index = 0;
-    for (int size = 2; size < frameSize; size *= 2) {
-        ++index;
-    }
-    return index < (int) transforms.size() ? transforms[(size_t) index].get() : nullptr;
 }
 
 void SpectralOscillatorFrameRenderer::prepareFrameRandom(

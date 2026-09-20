@@ -5,9 +5,9 @@
 #include "Runtime/PreparedOscillatorRegion.h"
 #include "Runtime/PreparedCycleEnvelopeBank.h"
 #include "Runtime/PreparedTrimeshMorphBinding.h"
+#include "Runtime/SpectralFrameTransformStage.h"
 #include "Runtime/TrimeshMorphResolver.h"
 
-#include <Algo/FFT.h>
 #include <Array/ScopedAlloc.h>
 #include <Curve/Rasterization/Rasterizer/VoiceRasterizer.h>
 
@@ -96,7 +96,6 @@ private:
             bool refreshTimeSources);
     static int valueCount(PortDomain domain, int frameSize);
     Buffer<float> slot(int slotIndex, int channel, int valueCount);
-    Transform* transformFor(int frameSize);
     void prepareFrameRandom(const PreparedOscillatorProcessContext* context);
 
     int maximumFrameSize {};
@@ -106,7 +105,7 @@ private:
     size_t renderCount {};
     std::vector<Operation> operations;
     PreparedCycleEnvelopeBank cycleEnvelopes;
-    std::vector<std::unique_ptr<Transform>> transforms;
+    SpectralFrameTransformStage transformStage;
     ScopedAlloc<float> slotMemory;
     ScopedAlloc<float> timeSourceMemory;
     ScopedAlloc<float> magnitudeScratch;

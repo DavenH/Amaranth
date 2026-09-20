@@ -682,6 +682,24 @@ TEST_CASE("Spectral oscillator recipes preserve a fixed Trimesh frame through FF
             Buffer<float>(left.data(), frameSize),
             Buffer<float>(right.data(), frameSize)));
     REQUIRE(left == right);
+    OscillatorRegionPerformanceCounts performance;
+    PreparedOscillatorProcessContext processContext;
+    processContext.performanceCounts = &performance;
+    processContext.timing.sampleRate = 44'100.0;
+    renderer.reset();
+    REQUIRE(renderer.renderFrame(
+            frameSize,
+            60,
+            processContext,
+            0,
+            0.0,
+            0,
+            Buffer<float>(left.data(), frameSize),
+            Buffer<float>(right.data(), frameSize)));
+    REQUIRE(performance.recipeStageOperationCounts[(size_t)
+            OscillatorRecipeStage::ForwardTransform] == 1);
+    REQUIRE(performance.recipeStageOperationCounts[(size_t)
+            OscillatorRecipeStage::InverseTransform] == 1);
 
     const auto& meshStep = *std::find_if(
             compiled.plan.steps.begin(),
