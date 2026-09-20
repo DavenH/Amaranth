@@ -184,7 +184,7 @@ it replaces the Guide reader with the composed Guide codec and one reusable
 flat-curve decode entry point. Domain payload policy stays below the shared
 metadata layer.
 
-### P2: Compose expanded-editor chrome
+### Addressed: Compose expanded-editor chrome
 
 Delay, Reverb, Equalizer, Unison, and Modulation expanded editors contain the
 same background, border, title font, header layout, and close-button placement
@@ -198,6 +198,22 @@ and domain controls in each editor. Extend `NodePropertySliderRow` only with
 the minimum local-preview callback needed to remove the remaining normalized
 parameter mirror loops. Delete the repeated chrome blocks and retain the
 existing editor automation states and screenshots.
+
+Implemented in `ExpandedEditorChrome`, a composed collaborator that owns the
+shared background, border, title, header layout, close button, and optional
+enabled button. Delay, Reverb, Equalizer, Unison, and Modulation editors now
+supply only their title and close/enabled actions. Their previews, property
+groups, and domain controls remain local. `NodePropertySliderRow` now mirrors
+preview values into the bound local node with the registered parameter
+normalizer, deleting the three editor-local normalization and mutation loops.
+
+Focused chrome, Delay/Reverb property, Equalizer property and gesture, Unison,
+and property-regression suites pass 135 assertions in eight cases. Production
+sizes fall from 323 to 277 lines for Delay, 301 to 255 for Reverb, 482 to 439
+for Equalizer, 568 to 544 for Unison, and 298 to 288 for Modulation. The shared
+chrome is 103 lines; the binding grows from 86 to 114 lines across header and
+source. The five editor owners lose 169 lines overall, with chrome policy and
+preview-mirroring mechanics each having one owner.
 
 ## Cache Trimesh preview pitch context at graph publication
 

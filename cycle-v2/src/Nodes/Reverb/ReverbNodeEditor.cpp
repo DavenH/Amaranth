@@ -6,9 +6,8 @@
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Reverb/ReverbNodeEditor.h"
 #include "UI/CanvasChromeMetrics.h"
-#include "UI/EditorChromeLayout.h"
-#include "UI/EffectEnableButton.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
+#include "UI/ExpandedEditorChrome.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
 namespace CycleV2 {
@@ -69,19 +68,26 @@ public:
             commands     (commandsToUse)
         ,   presentation (presentationToUse)
         ,   resources    (resourcesToUse)
+        ,   chrome       (*this, "REVERB", "reverbEditor",
+                    [this] { presentation.closeNodeEditor(); },
+                    [this](bool enabled) {
+                        commands.setNodeParameterValue(
+                                node.id, "enabled", "Enabled", enabled ? 1.f : 0.f);
+                    })
         ,   size         (*this, commands, "size", "Size")
         ,   damping      (*this, commands, "damp", "Damping")
         ,   width        (*this, commands, "width", "Width")
         ,   highPass     (*this, commands, "highPass", "High Pass")
         ,   wet          (*this, commands, "wet", "Wet") {
-        configureHeader();
+        addAndMakeVisible(spaceGroup);
+        addAndMakeVisible(toneOutputGroup);
         configureControls();
     }
 
     void setNode(const Node& nextNode) {
         node = nextNode;
         const NodeParameterMap parameters(node);
-        enabled.setToggleState(parameters.boolValue("enabled", true), dontSendNotification);
+        chrome.setEnabled(parameters.boolValue("enabled", true));
         size.bind(node.id, parameters.floatValue("size", 0.5f));
         damping.bind(node.id, parameters.floatValue("damp", 0.2f));
         width.bind(node.id, parameters.floatValue("width", 1.f));
@@ -91,16 +97,7 @@ public:
     }
 
     void paint(Graphics& graphics) override {
-        graphics.fillAll(Colour(0xff11151b));
-        graphics.setColour(Colour(0xff2b3340));
-        graphics.drawRoundedRectangle(
-                getLocalBounds().toFloat().reduced(0.5f),
-                CanvasChromeMetrics::panelCornerRadius,
-                CanvasChromeMetrics::restingBorderWidth);
-        graphics.setColour(Colour(0xffeef2f6));
-        graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize));
-        const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
-        graphics.drawText("REVERB", header.title, Justification::centredLeft);
+        chrome.paint(graphics);
         if (node.id.isNotEmpty()) {
             const Rectangle<float> response = previewBounds();
             graphics.setColour(EffectPlotPalette::insetBackground);
@@ -110,9 +107,7 @@ public:
     }
 
     void resized() override {
-        const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
-        close.setBounds(header.close);
-        enabled.setBounds(header.enabled);
+        chrome.resized();
         Rectangle<int> rows(18, kPropertyStart, getWidth() - 36, getHeight() - kPropertyStart);
         spaceGroup.setBounds(rows.removeFromTop(PropertyControlMetrics::groupLabelHeight));
         layoutCompactRow(size, rows);
@@ -127,7 +122,7 @@ public:
     var automationState() const {
         auto* state = new DynamicObject();
         state->setProperty("kind", "REVERB");
-        state->setProperty("enabled", enabled.getToggleState());
+        state->setProperty("enabled", chrome.isEnabled());
         state->setProperty("spaceGroup", propertyGroupLabelAutomationState(spaceGroup));
         state->setProperty(
                 "toneOutputGroup",
@@ -145,28 +140,6 @@ public:
     }
 
 private:
-    void configureHeader() {
-        close.setButtonText(String::fromUTF8("×"));
-        close.setComponentID("reverbEditor.close");
-        close.setTooltip("Close Reverb editor");
-        close.setWantsKeyboardFocus(true);
-        close.onClick = [this] {
-            presentation.closeNodeEditor();
-        };
-        enabled.setComponentID("reverbEditor.enabled");
-        enabled.onClick = [this] {
-            commands.setNodeParameterValue(
-                    node.id,
-                    "enabled",
-                    "Enabled",
-                    enabled.getToggleState() ? 1.f : 0.f);
-        };
-        addAndMakeVisible(close);
-        addAndMakeVisible(enabled);
-        addAndMakeVisible(spaceGroup);
-        addAndMakeVisible(toneOutputGroup);
-    }
-
     void configureControls() {
         configureRows();
         configureSize();
@@ -188,9 +161,7 @@ private:
             row->setCompactLayout(true);
             row->slider.setComponentID("reverbEditor." + row->parameterId());
             row->value.setComponentID("reverbEditor." + row->parameterId() + ".value");
-            row->onPreviewValue = [this, row](float value) {
-                updateLocalParameter(row->parameterId(), value);
-            };
+            row->mirrorPreviewInto(node, NodeKind::Reverb);
         }
     }
 
@@ -220,22 +191,6 @@ private:
         size.slider.setLandmarks(std::move(sizeLandmarks));
     }
 
-    void updateLocalParameter(const String& id, float value) {
-        const auto* definition = NodeDefinitionRegistry::instance().findParameter(
-                NodeKind::Reverb,
-                id);
-        const String normalized = definition != nullptr
-                ? definition->normalized(String(value, 6))
-                : String(value, 6);
-        for (auto& parameter : node.parameters) {
-            if (parameter.id == id) {
-                parameter.value = normalized;
-                break;
-            }
-        }
-        repaint();
-    }
-
     std::array<NodePropertySliderRow*, 5> propertyRows() {
         return { &size, &damping, &width, &highPass, &wet };
     }
@@ -252,8 +207,7 @@ private:
     NodeEditorPresentation& presentation;
     NodeEditorResources& resources;
     Node node;
-    TextButton close;
-    EffectEnableButton enabled;
+    ExpandedEditorChrome chrome;
     PropertyGroupLabel spaceGroup { "Space" };
     PropertyGroupLabel toneOutputGroup { "Tone / output" };
     NodePropertySliderRow size;

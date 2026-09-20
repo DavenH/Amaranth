@@ -4,10 +4,8 @@
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Delay/DelayNodeEditor.h"
 #include "Nodes/Delay/DelayPreviewPainter.h"
-#include "UI/CanvasChromeMetrics.h"
-#include "UI/EditorChromeLayout.h"
-#include "UI/EffectEnableButton.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
+#include "UI/ExpandedEditorChrome.h"
 
 namespace CycleV2 {
 
@@ -61,19 +59,26 @@ public:
             NodeEditorPresentation& presentationToUse) :
             commands     (commandsToUse)
         ,   presentation (presentationToUse)
+        ,   chrome       (*this, "DELAY", "delayEditor",
+                    [this] { presentation.closeNodeEditor(); },
+                    [this](bool enabled) {
+                        commands.setNodeParameterValue(
+                                node.id, "enabled", "Enabled", enabled ? 1.f : 0.f);
+                    })
         ,   time         (*this, commands, "time", "Time")
         ,   feedback     (*this, commands, "feedback", "Feedback")
         ,   panAmount    (*this, commands, "spin", "Pan Amount")
         ,   panCycle     (*this, commands, "spinIters", "Pan Cycle")
         ,   wet          (*this, commands, "wet", "Wet") {
-        configureHeader();
+        addAndMakeVisible(echoGroup);
+        addAndMakeVisible(stereoOutputGroup);
         configureControls();
     }
 
     void setNode(const Node& nextNode) {
         node = nextNode;
         const NodeParameterMap parameters(node);
-        enabled.setToggleState(parameters.boolValue("enabled", true), dontSendNotification);
+        chrome.setEnabled(parameters.boolValue("enabled", true));
         time.bind(node.id, parameters.floatValue("time", 0.5f));
         feedback.bind(node.id, parameters.floatValue("feedback", 0.5f));
         panAmount.bind(node.id, parameters.floatValue("spin", 0.5f));
@@ -83,25 +88,14 @@ public:
     }
 
     void paint(Graphics& graphics) override {
-        graphics.fillAll(Colour(0xff11151b));
-        graphics.setColour(Colour(0xff2b3340));
-        graphics.drawRoundedRectangle(
-                getLocalBounds().toFloat().reduced(0.5f),
-                CanvasChromeMetrics::panelCornerRadius,
-                CanvasChromeMetrics::restingBorderWidth);
-        graphics.setColour(Colour(0xffeef2f6));
-        graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize));
-        const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
-        graphics.drawText("DELAY", header.title, Justification::centredLeft);
+        chrome.paint(graphics);
         if (node.id.isNotEmpty()) {
             DelayPreviewPainter().paint(graphics, previewBounds(), node, 1.f);
         }
     }
 
     void resized() override {
-        const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
-        close.setBounds(header.close);
-        enabled.setBounds(header.enabled);
+        chrome.resized();
         Rectangle<int> rows(18, kPropertyStart, getWidth() - 36, getHeight() - kPropertyStart);
         echoGroup.setBounds(rows.removeFromTop(PropertyControlMetrics::groupLabelHeight));
         layoutCompactRow(time, rows);
@@ -116,7 +110,7 @@ public:
     var automationState() const {
         auto* state = new DynamicObject();
         state->setProperty("kind", "DELAY");
-        state->setProperty("enabled", enabled.getToggleState());
+        state->setProperty("enabled", chrome.isEnabled());
         state->setProperty("echoGroup", propertyGroupLabelAutomationState(echoGroup));
         state->setProperty(
                 "stereoOutputGroup",
@@ -134,28 +128,6 @@ public:
     }
 
 private:
-    void configureHeader() {
-        close.setButtonText(String::fromUTF8("×"));
-        close.setComponentID("delayEditor.close");
-        close.setTooltip("Close Delay editor");
-        close.setWantsKeyboardFocus(true);
-        close.onClick = [this] {
-            presentation.closeNodeEditor();
-        };
-        enabled.setComponentID("delayEditor.enabled");
-        enabled.onClick = [this] {
-            commands.setNodeParameterValue(
-                    node.id,
-                    "enabled",
-                    "Enabled",
-                    enabled.getToggleState() ? 1.f : 0.f);
-        };
-        addAndMakeVisible(close);
-        addAndMakeVisible(enabled);
-        addAndMakeVisible(echoGroup);
-        addAndMakeVisible(stereoOutputGroup);
-    }
-
     void configureControls() {
         configureRows();
         configureTime();
@@ -177,9 +149,7 @@ private:
             row->setCompactLayout(true);
             row->slider.setComponentID("delayEditor." + row->parameterId());
             row->value.setComponentID("delayEditor." + row->parameterId() + ".value");
-            row->onPreviewValue = [this, row](float value) {
-                updateLocalParameter(row->parameterId(), value);
-            };
+            row->mirrorPreviewInto(node, NodeKind::Delay);
         }
     }
 
@@ -243,22 +213,6 @@ private:
         panCycle.slider.setLandmarks(std::move(panCycleLandmarks));
     }
 
-    void updateLocalParameter(const String& id, float value) {
-        const auto* definition = NodeDefinitionRegistry::instance().findParameter(
-                NodeKind::Delay,
-                id);
-        const String normalized = definition != nullptr
-                ? definition->normalized(String(value, 6))
-                : String(value, 6);
-        for (auto& parameter : node.parameters) {
-            if (parameter.id == id) {
-                parameter.value = normalized;
-                break;
-            }
-        }
-        repaint();
-    }
-
     std::array<NodePropertySliderRow*, 5> propertyRows() {
         return { &time, &feedback, &panAmount, &panCycle, &wet };
     }
@@ -274,8 +228,7 @@ private:
     NodeEditorCommands& commands;
     NodeEditorPresentation& presentation;
     Node node;
-    TextButton close;
-    EffectEnableButton enabled;
+    ExpandedEditorChrome chrome;
     PropertyGroupLabel echoGroup { "Echo" };
     PropertyGroupLabel stereoOutputGroup { "Stereo / output" };
     NodePropertySliderRow time;
