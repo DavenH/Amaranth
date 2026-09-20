@@ -6,8 +6,16 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 502.51733, "y": 863.0 },
-            "parameters": { "octave": -1, "voiceLength": 0.66511, "pitch": 0.0, "portamento": false, "oversampling": "2x", "controlInterval": "256" }
+            "position": { "x": 499.68719, "y": 829.0 },
+            "parameters": {
+                "octave": -1,
+                "voiceLength": 0.66511,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "2x",
+                "controlInterval": "256"
+            }
         },
         {
             "id": "morph",
@@ -567,7 +575,7 @@
             "id": "waveshaper",
             "kind": "waveshaper",
             "definitionVersion": 1,
-            "position": { "x": 763.99994, "y": 1835.97815 },
+            "position": { "x": 1151.73108, "y": 1835.97815 },
             "parameters": { "processingScope": "global", "enabled": true, "pre": 0.916, "post": 0.392, "aaFactor": "2" },
             "model": {
                 "schema": "flatCurve",
@@ -684,8 +692,6 @@
                     "logarithmic": true,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5 ]
                 }
             }
@@ -993,8 +999,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 ]
                 }
             }
@@ -1094,8 +1098,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5 ]
                 }
             }
@@ -1195,8 +1197,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5 ]
                 }
             }
@@ -1215,7 +1215,7 @@
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 1044.19995, "y": 1835.97803 },
+            "position": { "x": 1448.91211, "y": 1835.97815 },
             "parameters": { "processingScope": "global", "enabled": true, "size": 0.714285714, "post": 0.316, "highPass": 0.08 },
             "model": {
                 "schema": "flatCurve",
@@ -1348,7 +1348,7 @@
             "id": "equalizer",
             "kind": "equalizer",
             "definitionVersion": 1,
-            "position": { "x": 1348.19995, "y": 1835.97815 },
+            "position": { "x": 1775.55322, "y": 1835.97815 },
             "parameters": {
                 "processingScope": "global",
                 "enabled": true,
@@ -1368,21 +1368,21 @@
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 1652.19995, "y": 1835.97803 },
+            "position": { "x": 2099.36377, "y": 1835.97815 },
             "parameters": { "enabled": true, "time": 0.584, "feedback": 0.5, "wet": 0.232, "spin": 0.976, "spinIters": 0.644 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 1916.19995, "y": 1835.97803 },
+            "position": { "x": 2388.83545, "y": 1835.97803 },
             "parameters": { "gain": 0.729517 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 517.20001, "y": 1835.97803 },
+            "position": { "x": 904.93115, "y": 1835.97803 },
             "parameters": {}
         },
         {

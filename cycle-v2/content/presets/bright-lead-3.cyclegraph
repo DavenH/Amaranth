@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 951.59998, "y": 818.0 },
+            "position": { "x": 577.96478, "y": 818.0 },
             "parameters": {
                 "octave": 0,
                 "voiceLength": 0.496183206,
@@ -21,7 +21,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 585.59998, "y": 700.0 },
+            "position": { "x": 207.23517, "y": 818.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -45,14 +45,14 @@
             "id": "ifft",
             "kind": "ifft",
             "definitionVersion": 1,
-            "position": { "x": 2389.6001, "y": 886.0 },
+            "position": { "x": 2420.34229, "y": 886.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
         },
         {
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 585.59998, "y": 870.0 },
+            "position": { "x": 231.23517, "y": 1004.0 },
             "parameters": { "enabled": true, "mode": "individual", "order": 8, "width": 9.24, "panSpread": 1.0, "phase": 0.798377931, "jitter": 0.964 },
             "model": {
                 "schema": "unisonVoices",
@@ -83,7 +83,7 @@
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
-                "blue": 0.5,
+                "blue": 0.330708653,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -171,7 +171,7 @@
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
-                "blue": 0.5,
+                "blue": 0.330708653,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -269,7 +269,7 @@
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
-                "blue": 0.5,
+                "blue": 0.330708653,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -329,16 +329,16 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2372.3999, "y": 1084.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "position": { "x": 2483.14233, "y": 523.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.330708653, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 3,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 3,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
@@ -406,9 +406,7 @@
                     },
                     "logarithmic": false,
                     "red": 0.5,
-                    "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
+                    "blue": 0.33071,
                     "cubeIds": [ 1, 2, 3, 4 ]
                 }
             }
@@ -418,15 +416,15 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 951.59991, "y": 421.0 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.330708653, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 3,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 3,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
@@ -598,9 +596,7 @@
                     },
                     "logarithmic": false,
                     "red": 0.5,
-                    "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
+                    "blue": 0.33071,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ]
                 }
             }
@@ -609,35 +605,38 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2747.6001, "y": 886.0 },
+            "position": { "x": 2778.34229, "y": 886.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 1231.59998, "y": 1571.0 },
+            "position": { "x": 487.2352, "y": 1488.23279 },
             "parameters": { "enabled": true, "time": 0.5, "feedback": 0.5, "wet": 0.564, "spin": 1.0, "spinIters": 0.588 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 1495.59998, "y": 1571.0 },
+            "position": { "x": 751.23523, "y": 1488.23279 },
             "parameters": { "gain": 0.196438 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 993.59998, "y": 1571.0 },
+            "position": { "x": 249.23526, "y": 1488.23279 },
             "parameters": {}
         },
         {
             "id": "voiceOutput",
             "kind": "voiceOutput",
             "definitionVersion": 1,
-            "position": { "x": 2945.6001, "y": 886.0 },
+            "position": { "x": 2976.34229, "y": 886.0 },
             "parameters": {}
         }
     ],
