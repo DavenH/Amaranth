@@ -15,6 +15,10 @@ rows use a compact 76 px rhythm. Inert overflow glyphs are absent; the selected
 hero instead exposes one real destructive action that confirms before moving
 the source file to the operating-system Trash.
 
+The selected hero is pinned beneath the filters. Scrolling moves only the
+compact result rows; keyboard, pointer, and filter selection update the fixed
+hero in place.
+
 The Presets view temporarily occupies the minimap region. The minimap
 implementation remains present and is painted again when the view no longer
 occludes it; this slice does not delete or relocate minimap behavior.
@@ -29,6 +33,9 @@ occludes it; this slice does not delete or relocate minimap behavior.
   browser card implementation and used unchanged by both presentations.
 - `InlinePresetBrowser` owns compact geometry, selection, scrolling, search,
   tabs, and Browse/Open callbacks. It does not load documents directly.
+- `SelectedPresetCard` is a fixed sibling of the rows viewport and presents the
+  authoritative selection owned by `CompactList`; it does not own selection or
+  filtering policy.
 - `NodeWorkspace` supplies preset directories and application callbacks.
   `NodeCanvas` hosts the overlay and owns only its visibility state.
 - Graph loading continues through `NodeWorkspace::loadGraphFromFile`, preserving
@@ -57,6 +64,8 @@ load.
    outer bottom radius.
 6. **Complete.** Reduce unified rail width by 20%, tighten compact row height
    and gaps, remove inert overflow glyphs, and add confirmed hero-card Trash.
+7. **Complete.** Extract the selected hero from the scrolling content and pin it
+   above the rows viewport while retaining live selection updates.
 
 ## Architecture Baseline
 
@@ -92,6 +101,8 @@ compact presentation over the existing index/cache services.
   compact rows are 76 px high with 2 px between them.
 - Canceling Trash leaves the preset untouched. Confirming invokes exactly one
   recoverable deletion and refreshes the asynchronous index.
+- Scrolling the rows does not move the selected hero; changing selection updates
+  the pinned hero without resetting the rows viewport.
 - Focused tests, standalone build, screenshot review, architecture audit,
   modified-file line counts, scalar-math self-check, and `git diff --check`
   pass.
@@ -114,7 +125,7 @@ policy application: the minimap and guide renderer consume the same visibility
 fact. `NodeWorkspace` remains the owner of document load/audio publication and
 only supplies callbacks. There is one tab/minimap eligibility decision site.
 
-Final relevant sizes: `InlinePresetBrowser.cpp` 681 lines and header 104,
+Final relevant sizes: `InlinePresetBrowser.cpp` 714 lines and header 107,
 `PresetBrowserComponents.cpp` 386, `NodeCanvas.cpp` 2,678 and header 355,
 `NodeWorkspace.cpp` 548, `NodeCanvasPresentation.cpp` 1,490, and
 `WorkspaceDock.cpp` 370. No existing file grew by 200 lines, and the new
@@ -128,21 +139,29 @@ layout without a second preset-specific width policy. The injected delete and
 confirmation callbacks translate side effects for tests and do not duplicate
 filesystem or index behavior.
 
+Slice 7 replaces the mixed scrolling component with two single-purpose
+presentations: `SelectedPresetCard` paints the fixed hero and `CompactList`
+paints scrollable rows. `CompactList` remains the sole selection owner, and a
+single callback updates the hero. This removes scroll-offset coupling rather
+than adding a sticky-position compatibility path.
+
 ## Verification Evidence
 
-- `[cycle-v2][preset][browser][inline]`: 29 assertions / 1 case, including
-  cancel and confirm branches through the real trash-button event.
-- `[cycle-v2][preset][browser]`: 73 assertions / 4 cases.
+- `[cycle-v2][preset][browser][inline]`: 37 assertions / 1 case, including
+  fixed hero bounds after a 100 px row scroll, live keyboard-selection updates,
+  and cancel/confirm branches through the real trash-button event.
+- `[cycle-v2][preset][browser]`: 81 assertions / 4 cases.
 - `[cycle-v2][preset][browser][async]`: 10 assertions / 1 case.
 - `[cycle-v2][canvas][guide-dock]`: 77 assertions / 6 cases.
 - The focused automation fixture switches Curves -> Presets through real button
   events; all four commands pass. It remains at
   `scripts/fixtures/cycle-v2-agent-inline-preset-sidebar.json`.
 - Production screenshot:
-  `/private/tmp/cycle-v2-inline-sidebar-density.png`. It shows immediate
+  `/private/tmp/cycle-v2-inline-sidebar-pinned.png`. It shows immediate
   filename-backed content, visible thumbnails, no minimap beneath Presets, the
-  metadata scrim, 20% narrower rail, compact rows, hero-card Trash action,
-  dark-on-cyan filter text, and the flush rail aligned to the workspace edge.
+  metadata scrim, 20% narrower rail, compact scrolling rows beneath the pinned
+  hero, hero-card Trash action, dark-on-cyan filter text, and the flush rail
+  aligned to the workspace edge.
 - Standalone Debug and test targets build with `--parallel 10`.
 - `scripts/cycle_v2_architecture_audit.py` reports only the documented existing
   PLAN/REVIEW files. `git diff --check` passes.

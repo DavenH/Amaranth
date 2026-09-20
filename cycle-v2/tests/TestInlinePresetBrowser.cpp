@@ -67,6 +67,9 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     auto* all = dynamic_cast<Button*>(
             browser.findChildWithID("workspace.sidebar.all"));
     auto* list = findDescendantWithID(browser, "workspace.sidebar.list");
+    auto* hero = findDescendantWithID(browser, "workspace.sidebar.hero");
+    auto* viewport = dynamic_cast<Viewport*>(
+            findDescendantWithID(browser, "workspace.sidebar.viewport"));
     auto* remove = dynamic_cast<Button*>(
             findDescendantWithID(browser, "workspace.sidebar.delete"));
     REQUIRE(curves != nullptr);
@@ -75,6 +78,8 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(browse != nullptr);
     REQUIRE(all != nullptr);
     REQUIRE(list != nullptr);
+    REQUIRE(hero != nullptr);
+    REQUIRE(viewport != nullptr);
     REQUIRE(remove != nullptr);
     REQUIRE(search->getFont().getHeight() >= 14.f);
     REQUIRE(all->getToggleState());
@@ -100,7 +105,18 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
         MessageManager::getInstance()->runDispatchLoopUntil(100);
     }
     REQUIRE(browser.visiblePresetCount() > 1);
-    REQUIRE(list->getHeight() == 234 + browser.visiblePresetCount() * 78);
+    REQUIRE(list->getHeight() == 20 + browser.visiblePresetCount() * 78);
+
+    const Rectangle<int> pinnedHeroBounds = hero->getBounds();
+    viewport->setViewPosition(0, 100);
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(viewport->getViewPositionY() == 100);
+    REQUIRE(hero->getBounds() == pinnedHeroBounds);
+    REQUIRE(hero->isVisible());
+    const String firstHeroName = hero->getName();
+    REQUIRE(browser.keyPressed(KeyPress(KeyPress::downKey)));
+    REQUIRE(hero->getName() != firstHeroName);
+    REQUIRE(hero->getBounds() == pinnedHeroBounds);
 
     search->setText("kicker", true);
     for (int attempt = 0; attempt < 12 && browser.visiblePresetCount() != 1; ++attempt) {

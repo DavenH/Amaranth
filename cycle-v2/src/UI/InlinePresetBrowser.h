@@ -53,6 +53,7 @@ public:
 
 private:
     class CompactList;
+    class SelectedPresetCard;
 
     enum class PackFilter {
         All,
@@ -68,6 +69,7 @@ private:
             const std::vector<int>& visibleIndices);
     void applyPackFilter();
     void setPackFilter(PackFilter filter);
+    void updateSelectedPreview();
     void openSelected();
     void requestDeleteSelected();
     void deletePreset(const juce::File& file);
@@ -91,6 +93,7 @@ private:
     juce::TextButton factory { "FACTORY" };
     juce::TextButton user { "USER" };
     juce::Viewport viewport;
+    std::unique_ptr<SelectedPresetCard> selectedPreview;
     std::unique_ptr<CompactList> list;
     juce::Label status;
     juce::TextButton browse { "BROWSE FILES..." };

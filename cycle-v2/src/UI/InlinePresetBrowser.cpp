@@ -70,151 +70,33 @@ public:
 
 }
 
-class InlinePresetBrowser::CompactList final : public juce::Component {
+class InlinePresetBrowser::SelectedPresetCard final : public juce::Component {
 public:
-    using Callback = std::function<void()>;
-
-    explicit CompactList(PresetThumbnailCache& thumbnailsToUse) :
+    SelectedPresetCard(
+            PresetThumbnailCache& thumbnailsToUse,
+            std::function<void()> deleteCallback) :
             thumbnails(thumbnailsToUse) {
-        setComponentID("workspace.sidebar.list");
+        setComponentID("workspace.sidebar.hero");
+        trash.onClick = std::move(deleteCallback);
         addAndMakeVisible(trash);
     }
 
-    void setResults(
-            const std::vector<PresetLibraryRecord>& records,
-            const std::vector<int>& visibleIndices) {
-        juce::File selectedFile;
-        if (const auto* current = selectedRecord()) {
-            selectedFile = current->file;
+    void setRecord(const PresetLibraryRecord* nextRecord) {
+        hasRecord = nextRecord != nullptr;
+        if (hasRecord) {
+            record = *nextRecord;
         }
-        library = records;
-        indices = visibleIndices;
-        selected = indices.empty() ? -1 : 0;
-        for (int index = 0; index < (int) indices.size(); ++index) {
-            if (library[(size_t) indices[(size_t) index]].file == selectedFile) {
-                selected = index;
-                break;
-            }
-        }
-        trash.setVisible(selected >= 0);
-        updateHeight();
+        setName(hasRecord ? "Selected preset: " + record.name : juce::String());
+        trash.setVisible(hasRecord);
         repaint();
-    }
-
-    void setCallbacks(
-            Callback selectionCallback,
-            Callback openCallback,
-            Callback deleteCallback) {
-        onSelection = std::move(selectionCallback);
-        onOpen = std::move(openCallback);
-        trash.onClick = std::move(deleteCallback);
-    }
-
-    const PresetLibraryRecord* selectedRecord() const {
-        if (!juce::isPositiveAndBelow(selected, (int) indices.size())) {
-            return nullptr;
-        }
-        const int recordIndex = indices[(size_t) selected];
-        return juce::isPositiveAndBelow(recordIndex, (int) library.size())
-                ? &library[(size_t) recordIndex]
-                : nullptr;
-    }
-
-    int count() const { return (int) indices.size(); }
-
-    void moveSelection(int delta) {
-        if (indices.empty()) {
-            return;
-        }
-        select(juce::jlimit(0, (int) indices.size() - 1, selected + delta));
     }
 
     void paint(juce::Graphics& graphics) override {
-        const auto clip = graphics.getClipBounds();
-        const PresetLibraryRecord* current = selectedRecord();
-        if (current != nullptr) {
-            const auto hero = heroBounds().toFloat();
-            if (clip.intersects(hero.toNearestInt())) {
-                paintHero(graphics, *current, hero);
-            }
-        }
-
-        for (int visibleIndex = 0; visibleIndex < (int) indices.size(); ++visibleIndex) {
-            const auto bounds = rowBounds(visibleIndex).toFloat();
-            if (clip.intersects(bounds.toNearestInt())) {
-                paintRow(graphics, visibleIndex, bounds);
-            }
-        }
-    }
-
-    void mouseDown(const juce::MouseEvent& event) override {
-        const int hit = indexAt(event.getPosition());
-        if (hit >= 0) {
-            select(hit);
-        }
-    }
-
-    void mouseDoubleClick(const juce::MouseEvent& event) override {
-        const int hit = indexAt(event.getPosition());
-        if (hit < 0) {
+        if (!hasRecord) {
             return;
         }
-        select(hit);
-        if (onOpen) {
-            onOpen();
-        }
-    }
 
-    void resized() override {
-        const auto hero = heroBounds().reduced(7);
-        const auto metadata = hero.withTop(hero.getBottom() - 68);
-        trash.setBounds(metadata.getRight() - 39, metadata.getY() + 3, 34, 34);
-    }
-
-private:
-    juce::Rectangle<int> heroBounds() const {
-        return { contentInset, contentInset, getWidth() - contentInset * 2, heroHeight };
-    }
-
-    juce::Rectangle<int> rowBounds(int index) const {
-        return {
-                contentInset,
-                contentInset + heroHeight + 10 + index * (rowHeight + rowGap),
-                getWidth() - contentInset * 2,
-                rowHeight
-        };
-    }
-
-    int indexAt(juce::Point<int> position) const {
-        for (int index = 0; index < (int) indices.size(); ++index) {
-            if (rowBounds(index).contains(position)) {
-                return index;
-            }
-        }
-        return -1;
-    }
-
-    void select(int index) {
-        if (!juce::isPositiveAndBelow(index, (int) indices.size()) || selected == index) {
-            return;
-        }
-        selected = index;
-        repaint();
-        if (onSelection) {
-            onSelection();
-        }
-    }
-
-    void updateHeight() {
-        const int height = contentInset * 2 + heroHeight + 10
-                + (int) indices.size() * (rowHeight + rowGap);
-        setSize(juce::jmax(1, getWidth()), juce::jmax(1, height));
-    }
-
-    void paintHero(
-            juce::Graphics& graphics,
-            const PresetLibraryRecord& record,
-            juce::Rectangle<float> bounds) {
+        const auto bounds = cardBounds();
         graphics.setColour(CanvasChromePalette::surface);
         graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::panelCornerRadius);
         auto content = bounds.reduced(7.f);
@@ -254,6 +136,146 @@ private:
                 bounds,
                 CanvasChromeMetrics::panelCornerRadius,
                 CanvasChromeMetrics::restingBorderWidth);
+    }
+
+    void resized() override {
+        const auto bounds = cardBounds().toNearestInt().reduced(7);
+        const auto metadata = bounds.withTop(bounds.getBottom() - 68);
+        trash.setBounds(metadata.getRight() - 39, metadata.getY() + 3, 34, 34);
+    }
+
+private:
+    juce::Rectangle<float> cardBounds() const {
+        return getLocalBounds().toFloat()
+                .withTrimmedLeft((float) contentInset)
+                .withTrimmedRight((float) contentInset)
+                .withTrimmedTop((float) contentInset)
+                .withHeight((float) heroHeight);
+    }
+
+    PresetThumbnailCache& thumbnails;
+    PresetLibraryRecord record;
+    TrashButton trash;
+    bool hasRecord {};
+};
+
+class InlinePresetBrowser::CompactList final : public juce::Component {
+public:
+    using Callback = std::function<void()>;
+
+    explicit CompactList(PresetThumbnailCache& thumbnailsToUse) :
+            thumbnails(thumbnailsToUse) {
+        setComponentID("workspace.sidebar.list");
+    }
+
+    void setResults(
+            const std::vector<PresetLibraryRecord>& records,
+            const std::vector<int>& visibleIndices) {
+        juce::File selectedFile;
+        if (const auto* current = selectedRecord()) {
+            selectedFile = current->file;
+        }
+        library = records;
+        indices = visibleIndices;
+        selected = indices.empty() ? -1 : 0;
+        for (int index = 0; index < (int) indices.size(); ++index) {
+            if (library[(size_t) indices[(size_t) index]].file == selectedFile) {
+                selected = index;
+                break;
+            }
+        }
+        updateHeight();
+        repaint();
+    }
+
+    void setCallbacks(
+            Callback selectionCallback,
+            Callback openCallback) {
+        onSelection = std::move(selectionCallback);
+        onOpen = std::move(openCallback);
+    }
+
+    const PresetLibraryRecord* selectedRecord() const {
+        if (!juce::isPositiveAndBelow(selected, (int) indices.size())) {
+            return nullptr;
+        }
+        const int recordIndex = indices[(size_t) selected];
+        return juce::isPositiveAndBelow(recordIndex, (int) library.size())
+                ? &library[(size_t) recordIndex]
+                : nullptr;
+    }
+
+    int count() const { return (int) indices.size(); }
+
+    void moveSelection(int delta) {
+        if (indices.empty()) {
+            return;
+        }
+        select(juce::jlimit(0, (int) indices.size() - 1, selected + delta));
+    }
+
+    void paint(juce::Graphics& graphics) override {
+        const auto clip = graphics.getClipBounds();
+        for (int visibleIndex = 0; visibleIndex < (int) indices.size(); ++visibleIndex) {
+            const auto bounds = rowBounds(visibleIndex).toFloat();
+            if (clip.intersects(bounds.toNearestInt())) {
+                paintRow(graphics, visibleIndex, bounds);
+            }
+        }
+    }
+
+    void mouseDown(const juce::MouseEvent& event) override {
+        const int hit = indexAt(event.getPosition());
+        if (hit >= 0) {
+            select(hit);
+        }
+    }
+
+    void mouseDoubleClick(const juce::MouseEvent& event) override {
+        const int hit = indexAt(event.getPosition());
+        if (hit < 0) {
+            return;
+        }
+        select(hit);
+        if (onOpen) {
+            onOpen();
+        }
+    }
+
+private:
+    juce::Rectangle<int> rowBounds(int index) const {
+        return {
+                contentInset,
+                contentInset + index * (rowHeight + rowGap),
+                getWidth() - contentInset * 2,
+                rowHeight
+        };
+    }
+
+    int indexAt(juce::Point<int> position) const {
+        for (int index = 0; index < (int) indices.size(); ++index) {
+            if (rowBounds(index).contains(position)) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    void select(int index) {
+        if (!juce::isPositiveAndBelow(index, (int) indices.size()) || selected == index) {
+            return;
+        }
+        selected = index;
+        repaint();
+        if (onSelection) {
+            onSelection();
+        }
+    }
+
+    void updateHeight() {
+        const int height = contentInset * 2
+                + (int) indices.size() * (rowHeight + rowGap);
+        setSize(juce::jmax(1, getWidth()), juce::jmax(1, height));
     }
 
     void paintRow(
@@ -298,7 +320,6 @@ private:
     std::vector<int> indices;
     Callback onSelection;
     Callback onOpen;
-    TrashButton trash;
     int selected { -1 };
 };
 
@@ -316,6 +337,9 @@ InlinePresetBrowser::InlinePresetBrowser(
     ,   onTabChanged(std::move(tabCallback))
     ,   onDelete(std::move(deleteCallback))
     ,   onConfirmDelete(std::move(confirmDeleteCallback))
+    ,   selectedPreview(std::make_unique<SelectedPresetCard>(
+                thumbnails,
+                [this] { requestDeleteSelected(); }))
     ,   list(std::make_unique<CompactList>(thumbnails)) {
     setComponentID("workspace.presetSidebar");
     setLookAndFeel(&lookAndFeel);
@@ -368,13 +392,14 @@ InlinePresetBrowser::InlinePresetBrowser(
     addAndMakeVisible(user);
 
     list->setCallbacks(
-            [this] { repaint(); },
-            [this] { openSelected(); },
-            [this] { requestDeleteSelected(); });
+            [this] { updateSelectedPreview(); },
+            [this] { openSelected(); });
+    viewport.setComponentID("workspace.sidebar.viewport");
     viewport.setViewedComponent(list.get(), false);
     viewport.setScrollBarsShown(true, false);
     viewport.setColour(juce::ScrollBar::thumbColourId,
             CanvasChromePalette::strongBorder.withAlpha(0.72f));
+    addAndMakeVisible(*selectedPreview);
     addAndMakeVisible(viewport);
 
     status.setFont(juce::FontOptions(11.f).withStyle("Bold"));
@@ -392,6 +417,7 @@ InlinePresetBrowser::InlinePresetBrowser(
 
     thumbnails.setReadyCallback([safeThis = juce::Component::SafePointer<InlinePresetBrowser>(this)] {
         if (safeThis != nullptr) {
+            safeThis->selectedPreview->repaint();
             safeThis->list->repaint();
         }
     });
@@ -500,6 +526,7 @@ void InlinePresetBrowser::resized() {
     filters.removeFromLeft(7);
     user.setBounds(filters.removeFromLeft(70));
     bounds.removeFromTop(9);
+    selectedPreview->setBounds(bounds.removeFromTop(heroHeight + contentInset));
     viewport.setBounds(bounds);
     list->setSize(
             juce::jmax(1, viewport.getMaximumVisibleWidth()),
@@ -565,6 +592,7 @@ void InlinePresetBrowser::applyPackFilter() {
         }
     }
     list->setResults(library, filtered);
+    updateSelectedPreview();
     const int width = juce::jmax(1, viewport.getMaximumVisibleWidth());
     list->setSize(width, list->getHeight());
     status.setText(
@@ -574,6 +602,10 @@ void InlinePresetBrowser::applyPackFilter() {
         status.setText("LOADING " + juce::String(library.size()) + " PRESETS...",
                 juce::dontSendNotification);
     }
+}
+
+void InlinePresetBrowser::updateSelectedPreview() {
+    selectedPreview->setRecord(list->selectedRecord());
 }
 
 void InlinePresetBrowser::setPackFilter(PackFilter nextFilter) {
@@ -654,6 +686,7 @@ void InlinePresetBrowser::updateVisibility() {
     all.setVisible(showingPresets);
     factory.setVisible(showingPresets);
     user.setVisible(showingPresets);
+    selectedPreview->setVisible(showingPresets);
     viewport.setVisible(showingPresets);
     status.setVisible(showingPresets);
     browse.setVisible(showingPresets);
