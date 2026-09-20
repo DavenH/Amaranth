@@ -8,6 +8,8 @@
 
 namespace CycleV2 {
 
+class GraphEdgeIndex;
+
 enum class NodeSceneTargetKind {
     Empty,
     Edge,
@@ -71,14 +73,19 @@ public:
             const NodeGraph& graph,
             const NodeCanvasViewport& viewport,
             uint64_t presentationRevision = 0,
-            uint64_t documentRevision = 0);
+            uint64_t documentRevision = 0,
+            const GraphEdgeIndex* edgeIndex = nullptr);
     const NodeCanvasSceneSnapshot& snapshot() const { return current; }
 
     static juce::Point<float> portWorldCentre(const Node& node, const Port& port);
     static juce::Rectangle<float> presentationWorldBounds(
             const NodeGraph& graph,
-            const Node& node);
-    static int cableExtraEdgeIndex(const NodeGraph& graph, int edgeIndex);
+            const Node& node,
+            const GraphEdgeIndex& edgeIndex);
+    static int cableExtraEdgeIndex(
+            const NodeGraph& graph,
+            int edgeIndex,
+            const GraphEdgeIndex& graphEdgeIndex);
     static juce::Path cablePath(
             juce::Point<float> source,
             juce::Point<float> destination,

@@ -487,17 +487,19 @@ bool NodeEditorCommandService::beginTrimeshVertexParameterEdit(
         return false;
     }
     int vertexIndex = (int) node->editorState.getProperty("selectedVertexId", -1);
-    commands.beginTransientEdit();
     if (vertexIndex < 0) {
         vertexIndex = widget->resolvedSelectedVertexIndexForNode(*node);
-        if (vertexIndex >= 0) {
-            commands.setNodeEditorState(
-                    nodeId, editorStateWithSelectedVertex(*node, vertexIndex));
-        }
     }
     if (vertexIndex < 0) {
-        commands.cancelTransientEdit();
         return false;
+    }
+    if (!presentation.beginNodeEditorGesture(
+                nodeId, commands, document, false)) {
+        return false;
+    }
+    if ((int) node->editorState.getProperty("selectedVertexId", -1) < 0) {
+        commands.setNodeEditorState(
+                nodeId, editorStateWithSelectedVertex(*node, vertexIndex));
     }
     activeVertexNodeId = nodeId;
     activeVertexParameterId = parameterId;
@@ -565,7 +567,8 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
     presentation.recordNodeEditorMovement(
             activeVertexNodeId,
             activeVertexParameterId,
-            fingerprint);
+            fingerprint,
+            std::nullopt);
     const String valueText = editingGuideGain
             ? String((value * 2.f - 1.f) * 30.f, 1) + " dB"
             : String(value, 2);
@@ -584,11 +587,10 @@ void NodeEditorCommandService::endTrimeshVertexParameterEdit() {
     }
     const bool changed = activeVertexDelta.has_value()
             && activeVertexDelta->changed();
+    bool published = !changed;
     if (findNode(activeVertexNodeId) != nullptr && activeVertexWidget != nullptr) {
         const Node* node = findNode(activeVertexNodeId);
-        if (!changed) {
-            commands.commitTransientEdit();
-        } else {
+        if (changed) {
             const uint64_t modelRevision = node != nullptr && node->model != nullptr
                     ? node->model->revision()
                     : 0;
@@ -597,23 +599,23 @@ void NodeEditorCommandService::endTrimeshVertexParameterEdit() {
                     modelRevision,
                     TrimeshNodeModelState::copyOf(
                             activeVertexWidget->currentMesh(), modelRevision + 1));
-            if (result.succeeded()) {
-                commands.commitTransientEdit();
-            } else {
-                commands.cancelTransientEdit();
-            }
+            published = result.succeeded();
         }
+    } else {
+        published = false;
+    }
+    if (published) {
+        presentation.finishNodeEditorGesture(
+                activeVertexNodeId,
+                commands,
+                document);
+    } else {
+        presentation.cancelNodeEditorGesture(activeVertexNodeId, commands);
+    }
+    if (activeVertexWidget != nullptr) {
         if (const Node* committedNode = findNode(activeVertexNodeId)) {
             activeVertexWidget->syncFromNode(*committedNode);
         }
-    } else {
-        commands.cancelTransientEdit();
-    }
-    if (changed && PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
-            presentation.probeRefreshMode())) {
-        presentation.flushNodeEditorRefresh();
-    } else if (changed) {
-        presentation.refreshNodeEditorPresentation();
     }
     activeVertexNodeId = {};
     activeVertexParameterId = {};

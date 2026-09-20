@@ -5,24 +5,15 @@
 
 namespace CycleV2 {
 
-const Node* GraphRenderSemanticResolver::findNode(const NodeGraph& graph, const String& id) const {
-    for (const auto& node : graph.getNodes()) {
-        if (node.id == id) {
-            return &node;
-        }
-    }
-
-    return nullptr;
-}
-
 bool GraphRenderSemanticResolver::isBipolarMagnitudeSource(
         const NodeGraph& graph,
-        const String& nodeId) const {
+        const String& nodeId,
+        const GraphEdgeIndex* edgeIndex) const {
     String currentId = nodeId;
     StringArray visited;
     while (currentId.isNotEmpty() && !visited.contains(currentId)) {
         visited.add(currentId);
-        const Node* node = findNode(graph, currentId);
+        const Node* node = graph.findNode(currentId);
         if (node == nullptr) {
             return false;
         }
@@ -33,15 +24,29 @@ bool GraphRenderSemanticResolver::isBipolarMagnitudeSource(
             return false;
         }
 
-        const auto input = std::find_if(
-                graph.getEdges().begin(),
-                graph.getEdges().end(),
-                [&](const Edge& edge) {
-                    return !edge.isAttachment()
-                            && edge.destNodeId == currentId
-                            && edge.destPortId == "in";
-                });
-        if (input == graph.getEdges().end()) {
+        const Edge* input = nullptr;
+        if (edgeIndex != nullptr) {
+            for (const size_t candidate : edgeIndex->edgesToInput(currentId, "in")) {
+                const Edge& edge = graph.getEdges()[candidate];
+                if (!edge.isAttachment()) {
+                    input = &edge;
+                    break;
+                }
+            }
+        } else {
+            const auto found = std::find_if(
+                    graph.getEdges().begin(),
+                    graph.getEdges().end(),
+                    [&](const Edge& edge) {
+                        return !edge.isAttachment()
+                                && edge.destNodeId == currentId
+                                && edge.destPortId == "in";
+                    });
+            if (found != graph.getEdges().end()) {
+                input = &*found;
+            }
+        }
+        if (input == nullptr) {
             return false;
         }
         currentId = input->sourceNodeId;
@@ -54,18 +59,29 @@ NodeRenderSemantic GraphRenderSemanticResolver::semanticForNodeOutput(
         const NodeGraph& graph,
         const String& nodeId,
         const String& portId) const {
+    const GraphDomainResolution resolution = domainResolver.resolve(graph);
+    const GraphEdgeIndex edgeIndex(graph.getEdges());
+    return semanticForNodeOutput(graph, nodeId, portId, edgeIndex, resolution);
+}
+
+NodeRenderSemantic GraphRenderSemanticResolver::semanticForNodeOutput(
+        const NodeGraph& graph,
+        const String& nodeId,
+        const String& portId,
+        const GraphEdgeIndex& edgeIndex,
+        const GraphDomainResolution& resolution) const {
     NodeRenderSemantic semantic;
     bool foundSignalEdge {};
-    const GraphDomainResolution resolution = domainResolver.resolve(graph);
 
-    for (size_t edgeIndex = 0; edgeIndex < graph.getEdges().size(); ++edgeIndex) {
-        const Edge& edge = graph.getEdges()[edgeIndex];
-        if (edge.isAttachment() || edge.sourceNodeId != nodeId || edge.sourcePortId != portId) {
+    for (const size_t edgeIndexToVisit : edgeIndex.outgoingEdges(nodeId)) {
+        const Edge& edge = graph.getEdges()[edgeIndexToVisit];
+        if (edge.isAttachment() || edge.sourcePortId != portId) {
             continue;
         }
 
-        const PortDomain domain = resolution.domains[edgeIndex];
-        const NodeRenderSemantic edgeSemantic = semanticForEdge(graph, edge, domain);
+        const PortDomain domain = resolution.domains[edgeIndexToVisit];
+        const NodeRenderSemantic edgeSemantic = semanticForEdge(
+                graph, edge, domain, &edgeIndex);
 
         if (!foundSignalEdge || edgeSemantic.role != RenderSemanticRole::Generic) {
             semantic = edgeSemantic;
@@ -82,7 +98,7 @@ NodeRenderSemantic GraphRenderSemanticResolver::semanticForNodeOutput(
         return semantic;
     }
 
-    if (const Node* node = findNode(graph, nodeId)) {
+    if (const Node* node = graph.findNode(nodeId)) {
         if (node->kind == NodeKind::TrilinearMesh && portId == "out") {
             NodeRenderSemantic semantic = defaultSemanticForDomain(
                     TrimeshSignalSemantics::domain(*node));
@@ -107,12 +123,13 @@ NodeRenderSemantic GraphRenderSemanticResolver::semanticForNodeOutput(
 NodeRenderSemantic GraphRenderSemanticResolver::semanticForEdge(
         const NodeGraph& graph,
         const Edge& edge,
-        PortDomain domain) const {
+        PortDomain domain,
+        const GraphEdgeIndex* edgeIndex) const {
     NodeRenderSemantic semantic = defaultSemanticForDomain(domain);
-    const Node* destNode = findNode(graph, edge.destNodeId);
+    const Node* destNode = graph.findNode(edge.destNodeId);
 
     if (domain == PortDomain::SpectralMagnitudeSignal) {
-        if (isBipolarMagnitudeSource(graph, edge.sourceNodeId)) {
+        if (isBipolarMagnitudeSource(graph, edge.sourceNodeId, edgeIndex)) {
             semantic.scalePolicy = RenderScalePolicy::Bipolar;
             semantic.role = RenderSemanticRole::SpectralMagnitudeBipolar;
         }

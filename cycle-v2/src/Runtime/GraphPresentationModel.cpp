@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "Runtime/GraphPresentationModel.h"
+#include "Runtime/GraphPresentationFacts.h"
 #include "Runtime/PreviewMorphBinding.h"
 #include "Runtime/PreviewPitchResolver.h"
 #include "Runtime/ReverbLocalPreview.h"
@@ -141,7 +142,7 @@ bool GraphPresentationModel::refresh(
         ++previewRenders;
     }
 
-    const bool accepted = acceptSnapshot(std::move(next));
+    const bool accepted = acceptSnapshot(std::move(next), graph, !compile);
     if (accepted && (compile
             || change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration))) {
@@ -159,11 +160,33 @@ bool GraphPresentationModel::refresh(
 }
 
 bool GraphPresentationModel::acceptSnapshot(GraphPresentationSnapshot snapshotToAccept) {
-    if (snapshotToAccept.graphRevision != requestedGraphRevision
-            || snapshotToAccept.graphRevision < current.graphRevision) {
+    if (!canAcceptSnapshot(snapshotToAccept)) {
         return false;
     }
 
+    current = std::move(snapshotToAccept);
+    ++presentationRevision;
+    return true;
+}
+
+bool GraphPresentationModel::canAcceptSnapshot(
+        const GraphPresentationSnapshot& snapshotToAccept) const {
+    return snapshotToAccept.graphRevision == requestedGraphRevision
+            && snapshotToAccept.graphRevision >= current.graphRevision;
+}
+
+bool GraphPresentationModel::acceptSnapshot(
+        GraphPresentationSnapshot snapshotToAccept,
+        const NodeGraph& graph,
+        bool reuseStructure) {
+    if (!canAcceptSnapshot(snapshotToAccept)) {
+        return false;
+    }
+    const GraphPresentationFacts* previous = reuseStructure
+            ? snapshotToAccept.facts.get()
+            : nullptr;
+    snapshotToAccept.facts = std::make_shared<const GraphPresentationFacts>(
+            graph, snapshotToAccept, previous);
     current = std::move(snapshotToAccept);
     ++presentationRevision;
     return true;
@@ -291,7 +314,7 @@ void GraphPresentationModel::refreshAsync(
             preview,
             scope);
     if (!request.edit.isValid() || request.invalidations.empty()) {
-        acceptSnapshot(std::move(next));
+        acceptSnapshot(std::move(next), *graph, true);
         performance.record(
                 Performance::Stage::EndToEnd,
                 performance.timestamp() - requestedAt);
@@ -318,7 +341,7 @@ void GraphPresentationModel::refreshAsync(
                 return executeAsyncProducts(job, products);
             },
             [this](AsyncRefresh& job) {
-                if (!acceptSnapshot(std::move(job.snapshot))) {
+                if (!acceptSnapshot(std::move(job.snapshot), *job.graph, true)) {
                     return false;
                 }
                 if (job.scope == PresentationRefreshScope::Downstream

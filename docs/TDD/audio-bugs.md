@@ -878,3 +878,16 @@ Update 2026-09-18: the workspace visual-hierarchy verification run completed
 with 787 of 826 cases passing and 39 failures in the same preset-fixture and
 audio/spectral groups. Its focused UI suite passed 117 assertions in nine
 cases. The preset working tree was already modified and was left untouched.
+
+## P2: Stengah probe test expects absent probe identifiers
+
+Context: On 2026-09-20, the broad `[cycle-v2][probe]` run failed
+`Stengah probes reflect an asynchronous Waveshaper curve edit at the correct
+taps` because `findProbePreview(..., "probe2")` found no result. The focused
+test reproduces the failure, and the current
+`cycle-v2/content/presets/stengah.cyclegraph` contains no `probe2` identifier.
+The indexed presentation-facts query, presentation, and ordinary probe tests
+pass; no probe behavior or preset was changed in that refactor.
+
+Current status: open; reconcile the test's `probe2`/`probe5` expectations with
+the maintained Stengah preset before changing runtime behavior.

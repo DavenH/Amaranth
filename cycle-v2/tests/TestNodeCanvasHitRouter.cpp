@@ -23,9 +23,9 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
             PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);
-    RuntimeProcessTrace runtimeTrace;
-    GraphPreviewResult previewResult;
-    NodeCanvasQueryModel queries(graph, compileResult, runtimeTrace, previewResult);
+    GraphPresentationSnapshot snapshot;
+    snapshot.compileResult = compileResult;
+    NodeCanvasQueryModel queries(graph, snapshot);
     NodePalette palette;
     NodeCanvasHitRouter router(graph, palette, queries);
     NodeCanvasViewport viewport;
@@ -104,9 +104,9 @@ TEST_CASE("Cable hit routing remains available near overlapping node bounds",
         "[cycle-v2][canvas][hit-router][cable]") {
     NodeGraph graph;
     const auto compileResult = GraphCompiler().compile(graph);
-    RuntimeProcessTrace runtimeTrace;
-    GraphPreviewResult previewResult;
-    NodeCanvasQueryModel queries(graph, compileResult, runtimeTrace, previewResult);
+    GraphPresentationSnapshot snapshot;
+    snapshot.compileResult = compileResult;
+    NodeCanvasQueryModel queries(graph, snapshot);
     NodePalette palette;
     NodeCanvasHitRouter router(graph, palette, queries);
     NodeCanvasSceneSnapshot scene;
@@ -139,9 +139,9 @@ TEST_CASE("Single input and output nodes expose a port layout action",
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Delay, "delay", { 40.f, 80.f }));
     const auto compileResult = GraphCompiler().compile(graph);
-    RuntimeProcessTrace runtimeTrace;
-    GraphPreviewResult previewResult;
-    NodeCanvasQueryModel queries(graph, compileResult, runtimeTrace, previewResult);
+    GraphPresentationSnapshot snapshot;
+    snapshot.compileResult = compileResult;
+    NodeCanvasQueryModel queries(graph, snapshot);
     NodePalette palette;
     NodeCanvasHitRouter router(graph, palette, queries);
     NodeCanvasViewport viewport;

@@ -3,11 +3,8 @@
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Unison/UnisonNode.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
-#include "UI/CanvasChromeMetrics.h"
-#include "UI/EditorChromeLayout.h"
 #include "UI/Editors/PropertyControls.h"
-#include "UI/EffectEnableButton.h"
-#include "UI/Editors/PropertyControls.h"
+#include "UI/ExpandedEditorChrome.h"
 #include "UI/NodeEditorHost.h"
 
 namespace CycleV2 {
@@ -93,20 +90,13 @@ public:
             NodeEditorResources& resourcesToUse) :
             commands     (commandsToUse)
         ,   presentation (presentationToUse)
-        ,   resources    (resourcesToUse) {
-        closeButton.setButtonText(String::fromUTF8("\xc3\x97"));
-        closeButton.onClick = [this] { presentation.closeNodeEditor(); };
-        addAndMakeVisible(closeButton);
-
-        enabledButton.onClick = [this] {
-            commands.setNodeParameterValue(
-                    node.id,
-                    "enabled",
-                    "Enabled",
-                    enabledButton.getToggleState() ? 1.f : 0.f);
-        };
-        enabledButton.setComponentID("unisonEditor.enabled");
-        addAndMakeVisible(enabledButton);
+        ,   resources    (resourcesToUse)
+        ,   chrome       (*this, "UNISON", "unisonEditor",
+                    [this] { presentation.closeNodeEditor(); },
+                    [this](bool enabled) {
+                        commands.setNodeParameterValue(
+                                node.id, "enabled", "Enabled", enabled ? 1.f : 0.f);
+                    }) {
 
         modeSelector.onChange = [this](bool individual) { modeChanged(individual); };
         addAndMakeVisible(modeSelector);
@@ -151,9 +141,7 @@ public:
         bindingNode = true;
         node = nodeToUse;
         const NodeParameterMap parameters(node);
-        enabledButton.setToggleState(
-                parameters.boolValue("enabled", true),
-                dontSendNotification);
+        chrome.setEnabled(parameters.boolValue("enabled", true));
         modeSelector.setIndividual(individualMode(), dontSendNotification);
         for (auto& control : controls) {
             if (control->kind != ControlKind::IndividualVoice) {
@@ -172,16 +160,7 @@ public:
     }
 
     void paint(Graphics& graphics) override {
-        graphics.fillAll(Colour(0xff11151b));
-        graphics.setColour(Colour(0xff2b3340));
-        graphics.drawRoundedRectangle(
-                getLocalBounds().toFloat().reduced(0.5f),
-                CanvasChromeMetrics::panelCornerRadius,
-                CanvasChromeMetrics::restingBorderWidth);
-        graphics.setColour(Colour(0xffeef2f6));
-        graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize));
-        const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
-        graphics.drawText("UNISON", header.title, Justification::centredLeft);
+        chrome.paint(graphics);
         if (node.id.isNotEmpty()) {
             UnisonPreviewPainter().paint(
                     graphics,
@@ -193,9 +172,7 @@ public:
     }
 
     void resized() override {
-        const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
-        closeButton.setBounds(header.close);
-        enabledButton.setBounds(header.enabled);
+        chrome.resized();
         modeGroup.setBounds(18, 204, 118, PropertyControlMetrics::groupLabelHeight);
         modeSelector.setBounds(18, 222, 118, 26);
         voiceSelectionGroup.setBounds(
@@ -227,7 +204,7 @@ public:
     var automationState() const {
         auto state = std::make_unique<DynamicObject>();
         state->setProperty("kind", "Unison");
-        state->setProperty("enabled", enabledButton.getToggleState());
+        state->setProperty("enabled", chrome.isEnabled());
         state->setProperty("mode", individualMode() ? "individual" : "group");
         state->setProperty("selectedVoice", selectedVoice);
         state->setProperty("voiceCount", individualVoiceCount());
@@ -516,8 +493,7 @@ private:
     NodeEditorPresentation& presentation;
     NodeEditorResources& resources;
     Node node;
-    TextButton closeButton;
-    EffectEnableButton enabledButton;
+    ExpandedEditorChrome chrome;
     PropertyGroupLabel modeGroup { "Voice mode" };
     PropertyGroupLabel voiceSelectionGroup { "Voice selection" };
     PropertyGroupLabel parameterGroup { "Group parameters" };

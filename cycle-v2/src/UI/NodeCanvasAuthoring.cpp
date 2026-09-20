@@ -595,31 +595,13 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::spliceSelectedNodeIntoEdge(int ed
 NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleOperationPortLayout(const String& nodeId) {
     const Node* node = findNode(nodeId);
     if (node == nullptr || !operationLayoutSupported(node->kind)
-            || node->inputs.size() < 2 || node->outputs.empty()) {
+            || !supportsOperationPortLayout(*node)) {
         return {};
     }
 
-    const OperationPortLayout layout = operationPortLayout(*node);
+    const OperationPortLayout layout = nextOperationPortLayout(operationPortLayout(*node));
     const auto edit = commands.editNodePresentation(nodeId, [layout](Node& edited) {
-        switch (layout) {
-            case OperationPortLayout::Side:
-                edited.inputs[0].side = PortSide::Left;
-                edited.inputs[1].side = PortSide::Top;
-                break;
-            case OperationPortLayout::Uptack:
-                edited.inputs[0].side = PortSide::Top;
-                edited.inputs[1].side = PortSide::Bottom;
-                break;
-            case OperationPortLayout::Vertical:
-                edited.inputs[0].side = PortSide::Left;
-                edited.inputs[1].side = PortSide::Bottom;
-                break;
-            case OperationPortLayout::Tee:
-                edited.inputs[0].side = PortSide::Left;
-                edited.inputs[1].side = PortSide::Left;
-                break;
-        }
-        edited.outputs[0].side = PortSide::Right;
+        applyOperationPortLayout(edited, layout);
     });
 
     return graphEditResult(edit, {}, nodeId, { true });
@@ -644,7 +626,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleOutputSide(const String& nod
         return {};
     }
 
-    const PortSide side = nextOutputSide(*node);
+    const PortSide side = nextOutputPortSide(*node);
     const auto edit = commands.editNodePresentation(nodeId, [side](Node& edited) {
         edited.outputs[0].side = side;
     });
@@ -783,50 +765,6 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::setTransformMode(
     refreshPresentation();
     authoringSession.statusMessage = TransformCompactEditor::status(kind, mode);
     return { true, true, true, GraphEditCode::Connected, nodeId, { true, false, true } };
-}
-
-NodeCanvasAuthoring::OperationPortLayout NodeCanvasAuthoring::operationPortLayout(const Node& node) {
-    if (node.inputs.size() < 2) {
-        return OperationPortLayout::Side;
-    }
-
-    const PortSide first = node.inputs[0].side;
-    const PortSide second = node.inputs[1].side;
-    if (first == PortSide::Left && second == PortSide::Bottom) {
-        return OperationPortLayout::Tee;
-    }
-    if (first == PortSide::Top && second == PortSide::Bottom) {
-        return OperationPortLayout::Vertical;
-    }
-    if (first == PortSide::Left && second == PortSide::Top) {
-        return OperationPortLayout::Uptack;
-    }
-
-    return OperationPortLayout::Side;
-}
-
-NodeCanvasAuthoring::OperationPortLayout NodeCanvasAuthoring::nextOperationPortLayout(
-        OperationPortLayout layout) {
-    switch (layout) {
-        case OperationPortLayout::Side:     return OperationPortLayout::Uptack;
-        case OperationPortLayout::Uptack:   return OperationPortLayout::Vertical;
-        case OperationPortLayout::Vertical: return OperationPortLayout::Tee;
-        case OperationPortLayout::Tee:      return OperationPortLayout::Side;
-    }
-
-    return OperationPortLayout::Side;
-}
-
-PortSide NodeCanvasAuthoring::nextOutputSide(const Node& node) {
-    const PortSide side = node.outputs.empty() ? PortSide::Right : node.outputs.front().side;
-    switch (side) {
-        case PortSide::Right:  return PortSide::Bottom;
-        case PortSide::Bottom: return PortSide::Top;
-        case PortSide::Top:    return PortSide::Right;
-        case PortSide::Left:   return PortSide::Right;
-    }
-
-    return PortSide::Right;
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::graphEditResult(

@@ -148,9 +148,6 @@ private:
     GraphCommandDispatcher commands;
     const NodeGraph& graph;
     GraphPresentationModel presentation;
-    const GraphCompileResult& compileResult;
-    const RuntimeProcessTrace& runtimeTrace;
-    const GraphPreviewResult& previewResult;
     NodeCanvasQueryModel queries;
     CanvasPerformanceMetrics performanceMetrics;
     NodeEditorCommandService editorCommands;
@@ -275,6 +272,9 @@ private:
             GraphCommandDispatcher& commands,
             const GraphDocument& document,
             const String& localField = {}) override;
+    void cancelNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands) override;
     void scheduleNodeEditorRefresh() override;
     void flushNodeEditorRefresh() override;
     void refreshNodeEditorPresentation() override;
@@ -284,7 +284,8 @@ private:
     void recordNodeEditorMovement(
             const String& nodeId,
             const String& field,
-            uint64_t effectiveFingerprint) override;
+            uint64_t effectiveFingerprint,
+            std::optional<UpdateProduct> localProduct = UpdateProduct::LocalSlice) override;
     void commitNodeEditorLocalState(
             const String& nodeId,
             const String& field,

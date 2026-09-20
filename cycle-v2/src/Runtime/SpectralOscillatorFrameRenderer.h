@@ -1,15 +1,12 @@
 #pragma once
 
 #include "Graph/GraphCompiler.h"
-#include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 #include "Runtime/PreparedOscillatorRegion.h"
 #include "Runtime/PreparedCycleEnvelopeBank.h"
-#include "Runtime/PreparedTrimeshMorphBinding.h"
-#include "Runtime/TrimeshMorphResolver.h"
+#include "Runtime/SpectralFrameSourceRenderer.h"
+#include "Runtime/SpectralFrameTransformStage.h"
 
-#include <Algo/FFT.h>
 #include <Array/ScopedAlloc.h>
-#include <Curve/Rasterization/Rasterizer/VoiceRasterizer.h>
 
 #include <array>
 #include <memory>
@@ -72,16 +69,9 @@ private:
         SpectralMagnitudeTransfer leftTransfer;
         SpectralMagnitudeTransfer rightTransfer;
         std::array<int, 2> outputs { -1, -1 };
-        PreparedTrimeshMorphBinding morphBinding;
-        std::shared_ptr<const TrimeshConfiguration> configuration;
+        std::unique_ptr<SpectralFrameSourceRenderer> source;
         float pan { 0.5f };
         bool multiplicative {};
-        std::unique_ptr<Rasterization::VoiceRasterizer> timeRasterizer;
-        std::unique_ptr<Rasterization::VoiceCycleState> timeState;
-        std::array<Buffer<float>, 2> cachedTimeFrames;
-        int cachedTimeFrameSize {};
-        std::unique_ptr<TrimeshBlockwiseDsp> spectralRasterizer;
-        TrimeshMorphResolver morphResolver;
     };
 
     bool renderFrameInternal(
@@ -96,7 +86,6 @@ private:
             bool refreshTimeSources);
     static int valueCount(PortDomain domain, int frameSize);
     Buffer<float> slot(int slotIndex, int channel, int valueCount);
-    Transform* transformFor(int frameSize);
     void prepareFrameRandom(const PreparedOscillatorProcessContext* context);
 
     int maximumFrameSize {};
@@ -106,9 +95,8 @@ private:
     size_t renderCount {};
     std::vector<Operation> operations;
     PreparedCycleEnvelopeBank cycleEnvelopes;
-    std::vector<std::unique_ptr<Transform>> transforms;
+    SpectralFrameTransformStage transformStage;
     ScopedAlloc<float> slotMemory;
-    ScopedAlloc<float> timeSourceMemory;
     ScopedAlloc<float> magnitudeScratch;
     ScopedAlloc<float> phaseScratch;
     ScopedAlloc<float> phaseHarmonicScale;

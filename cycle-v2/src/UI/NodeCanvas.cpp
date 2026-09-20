@@ -44,9 +44,10 @@ bool hasExpandedEditor(NodeKind kind) {
 Rectangle<float> inlinePanHitBounds(
         const NodeCanvasViewport& viewport,
         const NodeGraph& graph,
-        const Node& node) {
+        const Node& node,
+        const GraphEdgeIndex& edgeIndex) {
     return viewport.toScreen(
-            NodeCanvasScene::presentationWorldBounds(graph, node))
+            NodeCanvasScene::presentationWorldBounds(graph, node, edgeIndex))
             .reduced(3.f * viewport.getZoom());
 }
 
@@ -54,8 +55,10 @@ bool inlinePanContains(
         const NodeCanvasViewport& viewport,
         const NodeGraph& graph,
         const Node& node,
+        const GraphEdgeIndex& edgeIndex,
         Point<float> position) {
-    const Rectangle<float> hitBounds = inlinePanHitBounds(viewport, graph, node);
+    const Rectangle<float> hitBounds = inlinePanHitBounds(
+            viewport, graph, node, edgeIndex);
     const float radius = jmin(hitBounds.getWidth(), hitBounds.getHeight()) * 0.5f;
     return hitBounds.getCentre().getDistanceSquaredFrom(position) <= radius * radius;
 }
@@ -63,11 +66,12 @@ bool inlinePanContains(
 const Node* findInlinePanAt(
         const NodeGraph& graph,
         const NodeCanvasViewport& viewport,
+        const GraphEdgeIndex& edgeIndex,
         Point<float> position) {
     const auto& nodes = graph.getNodes();
     for (auto node = nodes.rbegin(); node != nodes.rend(); ++node) {
         if (node->kind == NodeKind::SpectralLayer
-                && inlinePanContains(viewport, graph, *node, position)) {
+                && inlinePanContains(viewport, graph, *node, edgeIndex, position)) {
             return &*node;
         }
     }
@@ -78,10 +82,11 @@ const Node* findInlinePanAt(
 Rectangle<float> outputFaderBounds(
         const NodeCanvasViewport& viewport,
         const NodeGraph& graph,
-        const Node& node) {
+        const Node& node,
+        const GraphEdgeIndex& edgeIndex) {
     const float zoom = viewport.getZoom();
     const Rectangle<float> nodeBounds = viewport.toScreen(
-            NodeCanvasScene::presentationWorldBounds(graph, node));
+            NodeCanvasScene::presentationWorldBounds(graph, node, edgeIndex));
     const Rectangle<float> preview = NodePreviewRenderer::boundsFor(node, nodeBounds, zoom);
     return OutputMeterPresentation::layout(preview, zoom).faderHitTarget;
 }
@@ -89,11 +94,12 @@ Rectangle<float> outputFaderBounds(
 const Node* findOutputFaderAt(
         const NodeGraph& graph,
         const NodeCanvasViewport& viewport,
+        const GraphEdgeIndex& edgeIndex,
         Point<float> position) {
     const auto& nodes = graph.getNodes();
     for (auto node = nodes.rbegin(); node != nodes.rend(); ++node) {
         if (node->kind == NodeKind::Output
-                && outputFaderBounds(viewport, graph, *node).contains(position)) {
+                && outputFaderBounds(viewport, graph, *node, edgeIndex).contains(position)) {
             return &*node;
         }
     }
@@ -101,8 +107,12 @@ const Node* findOutputFaderAt(
     return nullptr;
 }
 
-const SignalProbe* cableExtraProbe(const NodeGraph& graph, int edgeIndex) {
-    const int extraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(graph, edgeIndex);
+const SignalProbe* cableExtraProbe(
+        const NodeGraph& graph,
+        int edgeIndex,
+        const GraphEdgeIndex& graphEdgeIndex) {
+    const int extraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(
+            graph, edgeIndex, graphEdgeIndex);
     if (!isPositiveAndBelow(extraEdgeIndex, (int) graph.getEdges().size())) {
         return nullptr;
     }
@@ -142,10 +152,7 @@ NodeCanvas::NodeCanvas() :
     ,   document(createStartupDocument())
     ,   commands(document)
     ,   graph(document.graph())
-    ,   compileResult(presentation.compileResult())
-    ,   runtimeTrace(presentation.runtimeTrace())
-    ,   previewResult(presentation.previewResult())
-    ,   queries(graph, compileResult, runtimeTrace, previewResult)
+    ,   queries(graph, presentation.snapshot())
     ,   editorCommands(*this, document, commands, *this, *this, &performanceMetrics)
     ,   authoring(document, commands, presentation, editorCommands)
     ,   selectedNodeId(authoring.interactionSession().selectedNodeId)
@@ -350,7 +357,8 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
             graph,
             viewport,
             presentation.revision(),
-            document.revision());
+            document.revision(),
+            &queries.presentationFacts().edgeIndex());
     resolvedHoverText = hitRouter.hoverTextFor(viewport, scene, position);
     hoveredEdgeIndex = hitRouter.edgeAt(scene, position);
     if (hoveredEdgeIndex >= 0
@@ -379,8 +387,9 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
                     probeRailState,
                     guideShelfState);
 
-    const Node* inlinePan = findInlinePanAt(graph, viewport, position);
-    const Node* outputFader = findOutputFaderAt(graph, viewport, position);
+    const GraphEdgeIndex& edgeIndex = queries.presentationFacts().edgeIndex();
+    const Node* inlinePan = findInlinePanAt(graph, viewport, edgeIndex, position);
+    const Node* outputFader = findOutputFaderAt(graph, viewport, edgeIndex, position);
     MouseCursor cursor = MouseCursor::NormalCursor;
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
         cursor = MouseCursor::UpDownResizeCursor;
@@ -533,7 +542,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             graph,
             viewport,
             presentation.revision(),
-            document.revision());
+            document.revision(),
+            &queries.presentationFacts().edgeIndex());
     const String markerProbe = canvasPresentation.probeRail().markerProbeAt(
             event.position, graph, scene);
     if (markerProbe.isNotEmpty()) {
@@ -557,7 +567,9 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             return;
         }
     }
-    const Node* inlinePan = findInlinePanAt(graph, viewport, event.position);
+    const GraphEdgeIndex& graphEdgeIndex = queries.presentationFacts().edgeIndex();
+    const Node* inlinePan = findInlinePanAt(
+            graph, viewport, graphEdgeIndex, event.position);
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
         if (authoring.beginSpectralPanGesture(inlinePan->id)) {
             interaction.beginSpectralPan(
@@ -568,7 +580,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             return;
         }
     }
-    const Node* outputFader = findOutputFaderAt(graph, viewport, event.position);
+    const Node* outputFader = findOutputFaderAt(
+            graph, viewport, graphEdgeIndex, event.position);
     if (outputFader != nullptr) {
         if (event.getNumberOfClicks() >= 2) {
             applyAuthoringResult(authoring.setNodeParameter(
@@ -637,8 +650,12 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         if (event.mods.isAltDown()) {
             const int extraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(
                     graph,
-                    selectedEdgeIndex);
-            if (const SignalProbe* probe = cableExtraProbe(graph, selectedEdgeIndex)) {
+                    selectedEdgeIndex,
+                    graphEdgeIndex);
+            if (const SignalProbe* probe = cableExtraProbe(
+                    graph,
+                    selectedEdgeIndex,
+                    graphEdgeIndex)) {
                 applyAuthoringResult(authoring.removeSignalProbe(probe->id));
             } else {
                 applyAuthoringResult(authoring.toggleSignalProbe(extraEdgeIndex, 0.5f));
@@ -706,7 +723,8 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
             graph,
             viewport,
             presentation.revision(),
-            document.revision());
+            document.revision(),
+            &queries.presentationFacts().edgeIndex());
     const auto update = interaction.drag(
             graph,
             viewport,
@@ -761,13 +779,17 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
             graph,
             viewport,
             presentation.revision(),
-            document.revision());
+            document.revision(),
+            &queries.presentationFacts().edgeIndex());
     if (const ProbeDragGesture* gesture = interaction.probeDrag()) {
         const String probeId = gesture->probeId;
         interaction.reset();
         const int edgeIndex = hitRouter.edgeAt(scene, event.position);
         if (edgeIndex >= 0) {
-            const int extraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(graph, edgeIndex);
+            const int extraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(
+                    graph,
+                    edgeIndex,
+                    queries.presentationFacts().edgeIndex());
             applyAuthoringResult(authoring.reattachSignalProbe(
                     probeId,
                     extraEdgeIndex,
@@ -787,7 +809,8 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
             authoring.addNodesToSelection(interaction.nodeIdsIntersecting(
                     graph,
                     viewport,
-                    selection->bounds));
+                    selection->bounds,
+                    queries.presentationFacts().edgeIndex()));
         }
     } else if (const auto* nodeDrag = std::get_if<NodeDragCompletion>(&completion)) {
         if (nodeDrag->moved
@@ -820,7 +843,11 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
     if (editorCoordinator.blocksCanvas(blockingEditorNode)) {
         return;
     }
-    if (const Node* output = findOutputFaderAt(graph, viewport, event.position)) {
+    if (const Node* output = findOutputFaderAt(
+            graph,
+            viewport,
+            queries.presentationFacts().edgeIndex(),
+            event.position)) {
         const float current = NodeParameterMap(*output).floatValue("gain", 0.5f);
         const float delta = wheel.deltaY * (event.mods.isShiftDown() ? 0.025f : 0.1f);
         applyAuthoringResult(authoring.setNodeParameter(
@@ -1083,11 +1110,12 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
         };
     }
     const NodeGraph& displayedGraph = commands.editingGraph();
+    const GraphPresentationSnapshot& snapshot = presentation.snapshot();
 
     return {
             displayedGraph,
-            compileResult,
-            previewResult,
+            snapshot,
+            queries.presentationFacts(),
             viewport,
             palette,
             content,
@@ -1173,7 +1201,8 @@ void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
         return;
     }
     const Edge edge = graph.getEdges()[(size_t) edgeIndex];
-    const SignalProbe* cableProbe = cableExtraProbe(graph, edgeIndex);
+    const SignalProbe* cableProbe = cableExtraProbe(
+            graph, edgeIndex, queries.presentationFacts().edgeIndex());
     const bool spying = cableProbe != nullptr;
     const String probeId = cableProbe != nullptr ? cableProbe->id : String {};
     const Node* edgeSource = graph.findNode(edge.sourceNodeId);
@@ -1189,7 +1218,8 @@ void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
             graph,
             viewport,
             presentation.revision(),
-            document.revision());
+            document.revision(),
+            &queries.presentationFacts().edgeIndex());
     Point<float> panPosition = viewport.toWorld(screenPosition) - Point<float>(40.f, 40.f);
     for (const auto& sceneEdge : scene.edges) {
         if (sceneEdge.edgeIndex == edgeIndex) {
@@ -1233,7 +1263,8 @@ void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
                     } else {
                         const int currentExtraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(
                                 safeThis->graph,
-                                currentEdgeIndex);
+                                currentEdgeIndex,
+                                safeThis->queries.presentationFacts().edgeIndex());
                         safeThis->applyAuthoringResult(
                                 safeThis->authoring.toggleSignalProbe(currentExtraEdgeIndex, 0.5f));
                     }
@@ -1257,6 +1288,7 @@ void NodeCanvas::refreshCompiledState() {
     compiledStateRefreshPending = false;
     compiledStateRefreshScope = PresentationRefreshScope::Downstream;
     editorCoordinator.clearPreviewCache();
+    editorCoordinator.previewResources().refreshGraph(graph, document.lastChange());
     presentation.refresh(graph, document.revision(), document.lastChange());
     const int midiNote = presentation.previewMidiNote();
     editorCoordinator.previewResources().setPreviewMidiNote(midiNote);
@@ -1279,6 +1311,7 @@ void NodeCanvas::refreshCompiledStateAsync(
             : commands.hasTransientEdit()
             ? commands.transientChanges()
             : document.lastChange();
+    editorCoordinator.previewResources().refreshGraph(refreshGraph, refreshChange);
     auto completion = [safeThis = SafePointer<NodeCanvas>(this)] {
         if (safeThis == nullptr) {
             return;
@@ -1324,11 +1357,17 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
         return;
     }
 
+    const SignalProbe* probe = graph.findSignalProbe(probeId);
+    const NodeRenderSemantic semantic = probe != nullptr
+            ? queries.presentationFacts().renderSemanticForNodeOutput(
+                    graph,
+                    probe->sourceNodeId,
+                    probe->sourcePortId)
+            : NodeRenderSemantic {};
     editorCoordinator.close();
     probeDetailState.open(
             std::move(*preview),
-            SignalProbeRail::renderSemanticForProbe(
-                    commands.editingGraph(), probeId).scalePolicy,
+            semantic.scalePolicy,
             SignalProbeRail::ordinalForProbe(graph, probeId),
             midiNote,
             resolution);
@@ -1384,6 +1423,8 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     if (result.graphChanged) {
         compiledStateRefreshPending = false;
         editorCoordinator.clearPreviewCache();
+        editorCoordinator.previewResources().refreshGraph(
+                commands.editingGraph(), document.lastChange());
 
         if (document.lastChange().probesChanged) {
             if (graph.getSignalProbes().empty()) {
@@ -2144,7 +2185,8 @@ bool NodeCanvas::spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition) {
             graph,
             viewport,
             presentation.revision(),
-            document.revision());
+            document.revision(),
+            &queries.presentationFacts().edgeIndex());
     const GraphValidationContext validationContext(graph);
     const int edgeIndex = hitRouter.spliceTargetEdgeAt(
             scene, screenPosition, selectedNodeId, validationContext);
@@ -2339,6 +2381,12 @@ void NodeCanvas::finishNodeEditorGesture(
     }
 }
 
+void NodeCanvas::cancelNodeEditorGesture(
+        const String& nodeId,
+        GraphCommandDispatcher& dispatcher) {
+    presentation.editSession().cancelGraphGesture("editor:" + nodeId, dispatcher);
+}
+
 void NodeCanvas::scheduleNodeEditorRefresh() {
     scheduleCompiledStateRefresh();
 }
@@ -2371,7 +2419,10 @@ void NodeCanvas::rebindNodeEditorTransient() {
 void NodeCanvas::recordNodeEditorMovement(
         const String& nodeId,
         const String& field,
-        uint64_t effectiveFingerprint) {
+        uint64_t effectiveFingerprint,
+        std::optional<UpdateProduct> localProduct) {
+    editorCoordinator.previewResources().refreshGraph(
+            commands.editingGraph(), commands.transientChanges());
     const Node* node = commands.editingGraph().findNode(nodeId);
     const bool primaryTrimeshMorph = node != nullptr
             && node->kind == NodeKind::TrilinearMesh
@@ -2379,7 +2430,7 @@ void NodeCanvas::recordNodeEditorMovement(
     const auto decision = PresentationRefreshPolicy::decide({
             EditPhase::Movement,
             probeRailState.refreshMode,
-            UpdateProduct::LocalSlice,
+            localProduct,
             !primaryTrimeshMorph,
             false
     });
@@ -2394,7 +2445,7 @@ void NodeCanvas::recordNodeEditorMovement(
                         PresentationRefreshScope::PreviewOnly,
                         &commands.transientChanges(),
                         std::move(snapshot));
-            } else {
+            } else if (decision.localProduct.has_value()) {
                 const bool localPreviewQueued = node != nullptr
                         && presentation.refreshLocalNodePreview(
                                 *node,

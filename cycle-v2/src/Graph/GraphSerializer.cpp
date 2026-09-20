@@ -996,7 +996,8 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         }
         guide.revision = (uint64_t) guideRevision;
         String error;
-        guide.model = readGuideCurveModelJSON(encoded->getProperty("model"), error);
+        guide.model = GuideCurveModelCodec().readJSON(
+                encoded->getProperty("model"), error);
         if (guide.model == nullptr || !result.graph.addGuideCurve(std::move(guide))) {
             result.issues.push_back({ GraphLoadCode::InvalidModel,
                     "Invalid model for Guide Curve resource: " + error });

@@ -4,7 +4,6 @@
 
 #include "UI/SignalProbeRail.h"
 
-#include "Graph/GraphValidator.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/NodeCableRenderer.h"
@@ -115,25 +114,6 @@ std::vector<String> SignalProbeRail::orderedProbeIds(const NodeGraph& graph) {
     return ids;
 }
 
-NodeRenderSemantic SignalProbeRail::renderSemanticForProbe(
-        const NodeGraph& graph,
-        const String& probeId) {
-    const auto found = std::find_if(
-            graph.getSignalProbes().begin(),
-            graph.getSignalProbes().end(),
-            [&](const auto& probe) {
-                return probe.id == probeId;
-            });
-    if (found == graph.getSignalProbes().end()) {
-        return {};
-    }
-
-    return GraphRenderSemanticResolver().semanticForNodeOutput(
-            graph,
-            found->sourceNodeId,
-            found->sourcePortId);
-}
-
 std::vector<const SignalProbe*> SignalProbeRail::orderedProbes(const NodeGraph& graph) {
     std::vector<const SignalProbe*> probes;
     probes.reserve(graph.getSignalProbes().size());
@@ -225,16 +205,15 @@ const NodeSceneEdge* SignalProbeRail::anchorFor(
 Colour SignalProbeRail::colourForProbe(
         const SignalProbe& probe,
         const NodeGraph& graph,
-        const NodeCanvasSceneSnapshot& scene) {
+        const NodeCanvasSceneSnapshot& scene,
+        const GraphPresentationFacts& facts) {
     const NodeSceneEdge* anchor = SignalProbeRail::anchorFor(probe, graph, scene);
     const Edge* edge = anchor == nullptr ? nullptr : graphEdgeForProbe(probe, graph, *anchor);
     if (edge == nullptr) {
         return CanvasChromePalette::mutedText;
     }
 
-    const PortDomain domain = edge->isAttachment()
-            ? edge->domain
-            : GraphValidator().resolvedDomainForEdge(graph, *edge);
+    const PortDomain domain = facts.domainForEdge(graph, *edge);
     return colourForDomain(domain);
 }
 
@@ -304,6 +283,7 @@ void SignalProbeRail::paintCableAnnotations(
         Graphics& graphics,
         const NodeGraph& graph,
         const NodeCanvasSceneSnapshot& scene,
+        const GraphPresentationFacts& facts,
         Rectangle<float> workspace,
         const SignalProbeRailState& state,
         float zoom) const {
@@ -316,7 +296,7 @@ void SignalProbeRail::paintCableAnnotations(
             continue;
         }
 
-        const Colour colour = colourForProbe(probe, graph, scene);
+        const Colour colour = colourForProbe(probe, graph, scene, facts);
         const bool active = probe.id == state.hoveredProbeId || probe.id == state.selectedProbeId;
         if (probe.id == state.hoveredProbeId && state.expanded) {
             const Point<float> tileTarget {
@@ -349,25 +329,16 @@ float SignalProbeRail::cableAnnotationDiameter(float zoom) {
     return kCableAnnotationBaseDiameter * NodeCableRenderer::scaleForZoom(zoom);
 }
 
-const GraphPreviewResult::SignalProbePreview* SignalProbeRail::previewFor(
-        const GraphPreviewResult& previews,
-        const String& probeId) const {
-    for (const auto& preview : previews.probes) {
-        if (preview.probeId == probeId) {
-            return &preview;
-        }
-    }
-    return nullptr;
-}
-
 void SignalProbeRail::paintCachedPreview(
         Graphics& graphics,
         const NodeGraph& graph,
         const SignalProbe& probe,
         const GraphPreviewResult::SignalProbePreview& preview,
+        const GraphPresentationFacts& facts,
         Rectangle<float> previewBounds,
         float physicalScale) {
-    NodeRenderSemantic semantic = renderSemanticForProbe(graph, probe.id);
+    NodeRenderSemantic semantic = facts.renderSemanticForNodeOutput(
+            graph, probe.sourceNodeId, probe.sourcePortId);
     if (semantic.domain == PortDomain::ControlSignal) {
         semantic.domain = preview.domain;
     }
@@ -416,7 +387,8 @@ void SignalProbeRail::paintCachedPreview(
 void SignalProbeRail::paintRail(
         Graphics& graphics,
         const NodeGraph& graph,
-        const GraphPreviewResult& previews,
+        const GraphPresentationSnapshot& snapshot,
+        const GraphPresentationFacts& facts,
         Rectangle<float> workspace,
     const SignalProbeRailState& state,
     const WorkspaceDockFocus& focus) {
@@ -472,7 +444,7 @@ void SignalProbeRail::paintRail(
     for (int index = 0; index < (int) probes.size(); ++index) {
         const SignalProbe& probe = *probes[(size_t) index];
         const Rectangle<float> tile = tileBoundsFor(workspace, state, index);
-        const auto* preview = previewFor(previews, probe.id);
+        const auto* preview = facts.probePreviewFor(snapshot, probe.id);
         const bool selected = probe.id == state.selectedProbeId;
         const bool hovered = probe.id == state.hoveredProbeId;
         const bool focused = focus.target == WorkspaceDockFocusTarget::SpyTile
@@ -500,6 +472,7 @@ void SignalProbeRail::paintRail(
                 graph,
                 probe,
                 *preview,
+                facts,
                 previewBounds,
                 physicalScale);
         if (performanceObserver != nullptr) {

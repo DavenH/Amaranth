@@ -1,4 +1,6 @@
 #include "UI/NodeCanvasInteraction.h"
+
+#include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphConnectionValidator.h"
 #include "UI/ModulationCableBundle.h"
 
@@ -248,11 +250,12 @@ std::optional<PortAddress> NodeCanvasInteraction::connectionTargetAt(
 std::vector<String> NodeCanvasInteraction::nodeIdsIntersecting(
         const NodeGraph& graph,
         const NodeCanvasViewport& viewport,
-        Rectangle<float> screenBounds) const {
+        Rectangle<float> screenBounds,
+        const GraphEdgeIndex& edgeIndex) const {
     std::vector<String> result;
     for (const auto& node : graph.getNodes()) {
         const Rectangle<float> nodeBounds = viewport.toScreen(
-                NodeCanvasScene::presentationWorldBounds(graph, node));
+                NodeCanvasScene::presentationWorldBounds(graph, node, edgeIndex));
         if (screenBounds.intersects(nodeBounds)) {
             result.push_back(node.id);
         }

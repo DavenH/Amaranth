@@ -8,7 +8,7 @@ ordered by expected architectural value. Each extraction must delete the
 listed duplicate decisions; introducing another facade around them is not
 completion.
 
-### P1: Publish one indexed presentation-facts view
+### Addressed: Publish one indexed presentation-facts view
 
 `GraphPresentationSnapshot` owns the compiled plan, runtime trace, preview
 result, graph revision, and preview controls. `NodeCanvas` then retains
@@ -37,7 +37,68 @@ preview/probe loops, and per-query full domain resolution. Scale disconnected
 graph content and assert unchanged lookup/domain work in addition to semantic
 and pixel parity.
 
-### P1: Centralize operation-port layout
+Status: addressed. The first slice adds `GraphPresentationFacts` beside each
+accepted snapshot. It owns one structural edge index, domain resolution, and
+audio-scope analysis, plus indexed node previews, probe previews, runtime
+traces, and execution order. Preview-only publications rebuild the small
+result indexes while sharing the structural facts. A topology compilation
+rebuilds the structure. `NodeCanvasQueryModel` now uses these facts and the
+snapshot directly; its separate compile/runtime/preview references, preview
+loop, runtime loop, execution-order loop, attachment loop, per-edge full
+domain resolution, and per-output full domain resolution are deleted.
+
+The authoritative policy owners are now `GraphDomainResolver` for edge
+domains, `GraphRenderSemanticResolver` for render meaning, and
+`GraphPresentationFacts` for publication-time indexing. Query callers supply
+only a node, port, or edge identity. With 0 and 128 disconnected nodes, 16
+repeated domain, preview, and render-semantic queries record zero domain
+transfers, validation-edge visits, and node linear scans after publication.
+
+Baseline to after sizes for the first slice are `NodeCanvas.cpp` 2,532 to
+2,530 lines, `NodeCanvas.h` 328 to 325, `NodeCanvasQueryModel.cpp` 295 to 263,
+and `NodeCanvasQueryModel.h` 48 to 49. `GraphPresentationModel.cpp` grows from
+542 to 565 lines to attach and reuse the facts at acceptance;
+`GraphPresentationFacts` adds 184 focused lines. The remaining deletion
+targets are the scene's signal-edge scans and the automation inspector's
+parallel presentation construction.
+
+The second slice passes the snapshot and facts through
+`NodeCanvasPresentationFrame`. `NodeCanvasPresentation` now uses the shared
+node-preview, render-semantic, edge-domain, and audio-scope facts, while
+`SignalProbeRail` uses the shared probe-preview, render-semantic, and
+edge-domain facts. Their duplicate preview loops, per-paint audio-scope
+analysis, and on-demand full domain resolution are deleted. The frame also
+holds one snapshot reference instead of repackaging its compile and preview
+members. Focused canvas presentation tests pass 101 assertions in 10 cases;
+probe tests excluding the stale Stengah preset fixture pass 308 assertions in
+32 cases. `NodeCanvasPresentation.cpp` falls from 1,486 to 1,470 lines and
+`SignalProbeRail.cpp` from 527 to 519; their policy responsibilities move to
+the existing facts owner rather than another presentation helper. The preset
+mismatch is recorded in `audio-bugs.md`.
+
+The final slice makes scene construction, inline-pan placement, cable probe
+resolution, node painting, hover resolution, and area selection consume the
+same published `GraphEdgeIndex`. `NodeCanvasScene` no longer scans the complete
+edge list once or twice per spectral-layer query, and its public placement and
+cable helpers now require an index so a caller cannot silently reintroduce
+per-query topology construction. The automation inspector supplies the facts
+index when it builds its scene. Its remaining preview loops serialize the full
+automation result and do not answer individual presentation queries.
+
+The final deletion audit also removes `SignalProbeRail::renderSemanticForProbe`
+and `NodeCanvasPresentation::hasGlobalProcessingIndicator`, the last UI entry
+points that could independently run render-semantic or audio-scope analysis.
+Production UI code now constructs those structural facts only at snapshot
+publication. The focused scene, hit-router, automation, presentation, and probe
+suites pass 521 assertions in 49 cases, plus the spectral-probe semantic case.
+For this slice, `NodeCanvasPresentation.cpp` falls from 1,470 to 1,466 lines and
+`SignalProbeRail.cpp` from 519 to 500. `NodeCanvasScene.cpp` grows from 489 to
+524 lines to own indexed route lookup; `NodeCanvas.cpp` grows from 2,530 to
+2,570 lines from explicit dependency forwarding without taking on a new
+policy. The resulting dependency direction is snapshot publication to facts,
+then facts to query, scene, and presentation consumers.
+
+### Addressed: Centralize operation-port layout
 
 `NodeCanvasPresentation.cpp` and `NodeCanvasAuthoring.cpp` contain separate
 copies of `OperationPortLayout`, the input-side-to-layout mapping, the layout
@@ -49,6 +110,23 @@ Move operation layout classification, cycling, and application into
 `NodePortLayout`. Make presentation and authoring consume that contract and
 delete both private copies. Cover every layout with one test that checks the
 authored port sides, painted port centres, and hit targets together.
+
+Implemented in `NodePortLayout`. It now owns operation-layout support,
+classification, cycling, and application, together with the output-side cycle.
+`NodeCanvasAuthoring` requests and applies the next layout through that API;
+`NodeCanvasPresentation` uses the same next-layout result for its action icon.
+Both private enums, classifiers, cycles, and the authoring-side assignment
+switch are deleted. The cross-layer layout test covers all four states and
+compares the applied input/output sides with `portPresentation` centres and
+the scene hit targets. Focused authoring, presentation, and hit-router layout
+suites pass 101 assertions in four cases.
+
+The original policy owners shrink as a result: `NodeCanvasAuthoring.cpp` from
+1,009 to 947 lines, its header from 176 to 165, and
+`NodeCanvasPresentation.cpp` from 1,466 to 1,416. `NodePortLayout.cpp` grows
+from 57 to 130 lines as the single focused owner; its header grows from 18 to
+32. Presentation and authoring now depend on layout policy, while layout policy
+depends only on the graph's `Node` and port-side types.
 
 ### Addressed: Centralize Voice Context assignment facts
 
@@ -73,7 +151,7 @@ facts. `GraphValidationContext` retains the same analysis, and proposed context
 edges update its assignment map without rescanning graph nodes or unrelated
 edges.
 
-### P2: Share the typed node-model envelope codec
+### Addressed: Share the typed node-model envelope codec
 
 `CurveNodeDomainCodec`, `TrimeshNodeModelCodec`, and
 `UnisonNodeModelCodec` each encode and validate the same `schema`, `version`,
@@ -88,7 +166,25 @@ the flat-curve codec with a Guide-specific default factory, then delete the
 special duplicate reader. Malformed-schema/version/revision tests should be
 table driven across every registered codec.
 
-### P2: Compose expanded-editor chrome
+Implemented in `NodeModelEnvelopeCodec`, which is the sole writer and reader
+for typed model schema, version, positive revision, and named payload fields.
+Curve and Envelope, Trimesh, and Unison codecs retain their payload validation
+and now consume the validated envelope. `GuideCurveModelCodec` supplies its own
+default model and delegates decoding to the flat-curve codec; the duplicated
+Guide reader is deleted. `GraphSerializer` depends on that codec rather than a
+special deserialization function.
+
+A table-driven contract passes valid defaults and malformed schema, version,
+and revision envelopes through the flat curve, Envelope, Guide Curve, Trimesh,
+and Unison codecs: 55 assertions in one case. Canonical graph serialization
+and Guide noise-seed round trips add 13 passing assertions. The shared codec is
+80 focused lines. `TrimeshMeshState.cpp` falls from 125 to 117 lines and
+`UnisonNode.cpp` from 185 to 177. `CurveNodeModels.cpp` remains 814 lines because
+it replaces the Guide reader with the composed Guide codec and one reusable
+flat-curve decode entry point. Domain payload policy stays below the shared
+metadata layer.
+
+### Addressed: Compose expanded-editor chrome
 
 Delay, Reverb, Equalizer, Unison, and Modulation expanded editors contain the
 same background, border, title font, header layout, and close-button placement
@@ -103,7 +199,23 @@ the minimum local-preview callback needed to remove the remaining normalized
 parameter mirror loops. Delete the repeated chrome blocks and retain the
 existing editor automation states and screenshots.
 
-## Cache Trimesh preview pitch context at graph publication
+Implemented in `ExpandedEditorChrome`, a composed collaborator that owns the
+shared background, border, title, header layout, close button, and optional
+enabled button. Delay, Reverb, Equalizer, Unison, and Modulation editors now
+supply only their title and close/enabled actions. Their previews, property
+groups, and domain controls remain local. `NodePropertySliderRow` now mirrors
+preview values into the bound local node with the registered parameter
+normalizer, deleting the three editor-local normalization and mutation loops.
+
+Focused chrome, Delay/Reverb property, Equalizer property and gesture, Unison,
+and property-regression suites pass 135 assertions in eight cases. Production
+sizes fall from 323 to 277 lines for Delay, 301 to 255 for Reverb, 482 to 439
+for Equalizer, 568 to 544 for Unison, and 298 to 288 for Modulation. The shared
+chrome is 103 lines; the binding grows from 86 to 114 lines across header and
+source. The five editor owners lose 169 lines overall, with chrome policy and
+preview-mirroring mechanics each having one owner.
+
+## Addressed: Cache Trimesh preview pitch context at graph publication
 
 `NodePreviewResources::trimeshWidget` resolves pitch context on each widget
 access, including compact canvas painting. `PreviewPitchResolver` traverses
@@ -113,7 +225,27 @@ source and key-scale axis when the accepted graph configuration changes, then
 pass the selected MIDI note separately. Preserve the compiler's implicit
 context rule and invalidate on transient modulation-source edits.
 
-## Cycle V2 spectral frame renderer ownership
+Implemented with `PreviewPitchContextIndex`. `PreviewPitchResolver` remains the
+authoritative owner of explicit traversal and the compiler's implicit Voice
+Context rule. The index owns the published node-to-pitch binding and the
+Modulation Triple dependency map. `NodePreviewResources` owns its lifetime and
+now gives `TrimeshWidget` a cached binding plus the independently selected MIDI
+note. `NodeCanvas` only announces accepted or transient graph changes at its
+existing publication boundaries; it does not perform pitch resolution.
+
+The former `trimeshWidget(Node)` traversal was deleted. Topology publication
+rebuilds the bindings, while parameter-only Modulation Triple changes refresh
+only the recorded dependents. A counter-based test adds 64 unrelated nodes,
+performs 100 widget-equivalent lookups, and observes one graph resolution from
+publication and none from lookup. Two transient source changes coalesce into
+one parameter refresh without another graph resolution. The key-scale and
+canvas-preview suites pass 58 assertions in five cases and 36 assertions in
+seven cases; the focused cache case passes ten assertions. The resolver grows
+from 187 to 232 lines across header and source, the composed index is 107
+lines, preview resources grow from 261 to 278 lines, and the 2,570-line canvas
+adds six orchestration lines without a new responsibility or policy branch.
+
+## Addressed: Cycle V2 spectral frame renderer ownership
 
 `cycle-v2/src/Runtime/SpectralOscillatorFrameRenderer.cpp` is about 820 lines
 after the 2026-09-18 Envelope guide seed change. Its lifecycle methods are the
@@ -122,6 +254,78 @@ the file also owns region validation, source rendering, transforms, graph
 combining, and output. Extract cohesive source-operation and frame-combining
 ownership in a later behavior-preserving slice; keep the current shared
 `PreparedCycleEnvelopeBank` and graph plan contract intact.
+
+The first extraction moves transform allocation, frame-size lookup, forward
+FFT capture, inactive-bin clearing, inverse FFT, and reconstruction capture to
+`SpectralFrameTransformStage`. The stage depends only on FFT buffers and the
+spectral capture/core primitives. Graph roles, slot routing, source rendering,
+cycle envelopes, and performance scopes remain in the renderer. This deletes
+the renderer's transform vector, allocation loop, lookup method, and inline
+FFT/IFFT bodies. The renderer falls from 799 to 767 lines and its header from
+120 to 119; the new cohesive stage is 137 lines across header and source.
+
+The focused stage reconstruction/capture test passes 27 assertions. The
+existing fixed Trimesh-through-FFT case passes 16 assertions and now proves
+one forward and one inverse telemetry operation per prepared frame. The split
+block spectral-frame case passes 19 assertions. The existing final-active-
+harmonic regression still fails identically against the pre-extraction commit,
+so it is not evidence against this move. Remaining deletion targets are the
+inline time/spectral source bodies and the SpectralLayer/Add/Multiply combining
+bodies; those need source-operation and shared binary-combining owners before
+this item can be marked addressed.
+
+The second extraction adds `BinarySignalMath` as the shared owner of magnitude
+transfer, Add/Multiply, and output-domain clamping policy. Both
+`BinarySignalProcessor` and the spectral frame path now use it.
+`SpectralFrameGraphCombiner` composes that core with frame-slot operands,
+one-sided Add, spectral pan, and stage capture. This deletes the renderer's
+local pan helper, magnitude-transfer lambda, and inline Add/Multiply bodies.
+The renderer falls again from 767 to 739 lines, while
+`BinarySignalProcessor.h` falls from 500 to 470 lines. It remains above the
+450-line architecture-plan trigger, with its block/grid operand preparation as
+the remaining extraction target. The shared math core is 66 lines and the
+frame adapter is 148 lines across their headers and sources.
+
+The focused combiner case passes five assertions, the two block/grid binary
+processor cases pass ten assertions, and the fixed FFT and split-block cases
+continue to pass 16 and 19 assertions. Transfer and combining remain within
+the existing graph-combining performance scope and allocate no render-time
+storage. Only the inline time and spectral source rendering bodies remain as
+the completion target for this renderer item.
+
+The final extraction adds `SpectralFrameSourceRenderer` as the narrow prepared
+source interface, with separate private time-frame and spectral-mesh owners.
+They compose a shared morph/capture core while each owns its rasterizer,
+cache, seed policy, and render contract. Together they own time or spectral
+rasterization, source capture, gain and phase shaping, stereo copy, and
+source-stage telemetry. They compose
+the existing `OscillatorLaneRasterizer::renderFixedFrame` and
+`TrimeshBlockwiseDsp` implementations; graph slot routing, recipe telemetry,
+transforms, and graph combining remain in `SpectralOscillatorFrameRenderer`.
+The old source fields and bodies, shared cache arena, reset branches, and seed
+branches are deleted from the parent. The renderer falls from 739 to 555 lines
+and its header from 119 to 108 lines. The extracted owner is 403 lines across
+header and source and stays below both architecture review thresholds.
+
+The fixed-frame FFT case passes 22 assertions, including a second cached
+render that proves the recipe operation still occurs while morph resolution
+and rasterization counts do not increase. Scratch binding passes 22
+assertions, live morph rerasterization passes 12, fixed-time cache boundaries
+pass 1,688, and split-block shared frames pass 19. The existing final-active-
+harmonic failure and offline capture expectation reproduce at the preceding
+commit and remain tracked in `audio-bugs.md`. All renderer deletion targets in
+this item are complete.
+
+## Trimesh voice-rasterizer preparation policy
+
+`SpectralFrameSourceRenderer` and `TrimeshOscillatorCycleRenderer` configure a
+`VoiceRasterizer` with the same guide provider, delta resolver, depth and
+integral settings, bipolar scaling, mesh preparation, reset, and lifecycle
+seed translation. Their render contracts must remain separate: one caches a
+fixed frame and the other advances a chained lane. Extract the common
+preparation and seed mechanics into a narrow Trimesh rasterizer primitive used
+by both owners. Completion reduces the preparation and lifecycle-seed decision
+sites from two to one without adding a mode branch to either renderer.
 
 ## Migrated factory guide-curve attack boundaries
 

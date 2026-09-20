@@ -9,6 +9,7 @@
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/Trimesh/Editor/TrimeshExpandedEditorComponent.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "Runtime/GraphPresentationFacts.h"
 #include "UI/NodeViewModule.h"
 #include "UI/NodePreviewRenderer.h"
 #include "UI/OutputMeterPresentation.h"
@@ -946,8 +947,16 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                 SignalProbeDetailView::closeBounds(state.probeDetailBounds)));
     }
 
-    const auto& sceneSnapshot = scene.build(context.document.graph(), context.viewport, context.presentation.revision(),
-                                            context.document.revision());
+    const GraphPresentationSnapshot& presentationSnapshot = context.presentation.snapshot();
+    const GraphEdgeIndex* edgeIndex = presentationSnapshot.facts != nullptr
+            ? &presentationSnapshot.facts->edgeIndex()
+            : nullptr;
+    const auto& sceneSnapshot = scene.build(
+            context.document.graph(),
+            context.viewport,
+            context.presentation.revision(),
+            context.document.revision(),
+            edgeIndex);
 
     for (const auto& sceneTarget : sceneSnapshot.targets) {
         if (sceneTarget.kind != NodeSceneTargetKind::Node && !sceneTarget.isPort()) {

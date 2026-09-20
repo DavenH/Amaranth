@@ -682,6 +682,48 @@ TEST_CASE("Spectral oscillator recipes preserve a fixed Trimesh frame through FF
             Buffer<float>(left.data(), frameSize),
             Buffer<float>(right.data(), frameSize)));
     REQUIRE(left == right);
+    OscillatorRegionPerformanceCounts performance;
+    PreparedOscillatorProcessContext processContext;
+    processContext.performanceCounts = &performance;
+    processContext.timing.sampleRate = 44'100.0;
+    renderer.reset();
+    REQUIRE(renderer.renderFrame(
+            frameSize,
+            60,
+            processContext,
+            0,
+            0.0,
+            0,
+            Buffer<float>(left.data(), frameSize),
+            Buffer<float>(right.data(), frameSize)));
+    REQUIRE(performance.recipeStageOperationCounts[(size_t)
+            OscillatorRecipeStage::ForwardTransform] == 1);
+    REQUIRE(performance.recipeStageOperationCounts[(size_t)
+            OscillatorRecipeStage::InverseTransform] == 1);
+    REQUIRE(performance.recipeStageOperationCounts[(size_t)
+            OscillatorRecipeStage::TimeSourceRendering] == 1);
+    const auto firstFrame = left;
+    const auto morphResolutionCount = performance.timeSources.operations[(size_t)
+            CycleDsp::SourceRenderStage::MorphResolution];
+    const auto rasterizationCount = performance.timeSources.operations[(size_t)
+            CycleDsp::SourceRenderStage::Rasterization];
+    REQUIRE(renderer.renderFrame(
+            frameSize,
+            60,
+            processContext,
+            0,
+            0.0,
+            0,
+            Buffer<float>(left.data(), frameSize),
+            Buffer<float>(right.data(), frameSize),
+            false));
+    REQUIRE(left == firstFrame);
+    REQUIRE(performance.recipeStageOperationCounts[(size_t)
+            OscillatorRecipeStage::TimeSourceRendering] == 2);
+    REQUIRE(performance.timeSources.operations[(size_t)
+            CycleDsp::SourceRenderStage::MorphResolution] == morphResolutionCount);
+    REQUIRE(performance.timeSources.operations[(size_t)
+            CycleDsp::SourceRenderStage::Rasterization] == rasterizationCount);
 
     const auto& meshStep = *std::find_if(
             compiled.plan.steps.begin(),
