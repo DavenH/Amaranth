@@ -1,6 +1,133 @@
 # Cycle V2 Scalar-Surface Shader
 
-Status: Proposed
+Status: In Progress — Cycle 1 and Cycle V2 integration complete; automated GPU
+readback parity and in-process context recreation proof remain
+
+## Implementation Record
+
+### Baseline (2026-09-20)
+
+| File | Lines before work | Existing responsibility relevant to this change |
+| --- | ---: | --- |
+| `lib/src/UI/Panels/Panel3D.cpp` | 1,031 | Panel orchestration plus per-column value-to-colour conversion and quad-strip geometry |
+| `lib/src/UI/Panels/GLPanelRenderer.cpp` | 209 | Shared fixed-function GL submission for Cycle 1 and Cycle V2 panels |
+| `cycle-v2/src/Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.cpp` | 106 | Deterministic CPU heatmap and compact/headless path |
+| `cycle-v2/src/Nodes/Trimesh/Editor/TrimeshWidget.cpp` | 830 | Trimesh editor composition and routing |
+| `cycle-v2/src/UI/NodeCanvas.cpp` | 2,702 | Canvas lifecycle and high-level orchestration |
+| `cycle-v2/src/Nodes/Trimesh/Panel/TrimeshPanelHosts.cpp` | 270 | Shared-canvas panel GL setup and rendering |
+| `cycle-v2/src/Nodes/Trimesh/Panel/TrimeshPanel3D.cpp` | 163 | Cycle V2 domain/profile adaptation to the mature panel |
+
+The pre-change architecture audit reported the existing Cycle V2 size triggers,
+including plan-level triggers for `NodeCanvas.cpp` and review-level triggers for
+`TrimeshWidget.cpp`. Neither file is an implementation target for the shared
+renderer slice.
+
+### Technical Design
+
+- The mature `Panel3D` grid and interaction path remains authoritative. This
+  change reuses its prepared columns, zoom mapping, clipping, surface-cache
+  bake lifecycle, and overlay ordering unchanged; it does not evaluate a curve
+  or rasterize a mesh.
+- A shared scalar-surface material/evaluator below both products owns palette,
+  relief, and derivative classification. `TrimeshRenderProfile` translates
+  domain semantics into that material; Cycle 1 panels select the equivalent
+  material directly at their existing domain boundary.
+- A dedicated GL scalar-surface collaborator owned by `GLPanelRenderer` owns
+  shader, texture, upload cache, capability detection, and GL-thread cleanup.
+  `GLPanelRenderer` remains routing glue rather than absorbing shader policy.
+- `Panel3D` submits an immutable column-major scalar-grid view and the exact
+  scaled rectangle. A successful shader draw replaces only the old per-column
+  colour conversion and quad-strip submission. Failure returns to the existing
+  CPU/fixed-function path with the same prepared values and interaction.
+- Grid upload identity consists of the source identity/revision, dimensions,
+  and value transform. Material-only updates are uniforms. Context recreation
+  clears GL handles and forces the next successful draw to upload once.
+- The steady-state cost is one cached surface texture draw. A changed product
+  performs one `O(columns * rows)` upload. Neither draw path scans the graph,
+  mesh, audio resources, or unrelated panel state.
+
+### Ownership And Deletion Targets
+
+- Material policy: shared scalar-surface material plus the profile/domain
+  adapter that constructs it.
+- GL resource lifetime and upload invalidation: the GL scalar-surface
+  collaborator owned by `GLPanelRenderer`.
+- CPU fallback: the shared CPU material evaluator, called by
+  `TrimeshSurfaceRenderer` and by the retained capability fallback.
+- Delete the live `Panel3D` colour-array path once every panel domain is backed
+  by the typed material and forced-capability fallback. Until then it is the
+  documented fallback and remains isolated behind a failed scalar draw.
+- Stable end state: one material contract and evaluator, one shared GL
+  renderer, no widget-owned shaders, and no duplicated curve/grid evaluation.
+
+### Implemented Slice (2026-09-20)
+
+- Cycle 1 was migrated first. `Waveform3D` now selects the shared signed
+  material, and `Panel3D` submits its authoritative prepared scalar columns to
+  the shared renderer. Its retained fixed-function fallback uses a gradient
+  generated from the same material contract.
+- `GLScalarSurfaceRenderer`, owned by `GLPanelRenderer`, uploads one
+  single-channel floating-point texture and shades one rectangle. It owns
+  program/texture creation and destruction, stable-product upload
+  invalidation, uniforms, and the forced-capability fallback boundary.
+- Cycle V2 adapts `TrimeshRenderProfile` to the shared typed material and gives
+  expanded panels a stable scalar-product revision. Spectral pitch-column
+  mapping remains profile-owned and is performed before the renderer
+  boundary.
+- Compact and headless rendering use a revision-keyed CPU image made by the
+  shared evaluator. The former live per-cell `Graphics` fill loop and the
+  profile-local gradient formula were deleted.
+- Expanded products use a fixed 768 by 320 grid. Resizing changes presentation
+  bounds without changing the product resolution or scalar texture cache key.
+- Shader capability can be disabled with
+  `CYCLE_DISABLE_SCALAR_SURFACE_SHADER`; the existing panel fallback then
+  renders the same domain palette instead of producing an empty surface.
+
+### Post-Implementation Architecture Review
+
+| File | Lines after work | Review result |
+| --- | ---: | --- |
+| `lib/src/UI/Panels/Panel3D.cpp` | 1,069 | Remains panel orchestration; 38 lines adapt the locked authoritative grid to an immutable render view. Material and GL policy stay outside. |
+| `lib/src/UI/Panels/GLPanelRenderer.cpp` | 218 | Nine routing/lifecycle lines; shader policy is delegated to the dedicated collaborator. |
+| `lib/src/UI/Panels/GLScalarSurfaceRenderer.cpp` | 336 | Cohesive GL resource, upload-cache, uniform, and draw owner. |
+| `lib/src/UI/Panels/ScalarSurfaceMaterial.cpp` | 198 | Single palette, derivative, and CPU-reference policy owner. |
+| `cycle-v2/src/Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.cpp` | 90 | Reduced by 16 lines and now delegates colour/relief policy. |
+| `cycle-v2/src/Nodes/Trimesh/Editor/TrimeshWidget.cpp` | 830 | No growth; its existing composition role only selects the fixed expanded product resolution. |
+| `cycle-v2/src/UI/NodeCanvas.cpp` | 2,702 | Unchanged; it remains the shared-context lifecycle owner. |
+| `cycle-v2/src/Nodes/Trimesh/Panel/TrimeshPanelHosts.cpp` | 276 | Six lifecycle lines release renderer resources while the shared context is current. |
+| `cycle-v2/src/Nodes/Trimesh/Panel/TrimeshPanel3D.cpp` | 168 | Five adapter lines translate profile semantics to the shared material. |
+
+The after-change architecture audit reports the same 20 pre-existing size
+triggers and no new trigger. `TrimeshWidget.cpp` remains a review-level file,
+but this slice adds no lines or policy to it. `NodeCanvas.cpp` is unchanged.
+Material selection has one profile/domain decision site, GL resource and cache
+policy has one renderer owner, and callers provide only scalar data, bounds,
+revision, and material facts. No graph, mesh, curve, or DSP behavior was copied.
+
+### Verification Record
+
+- `AmaranthLib_tests '[surface-material]'`: 87 assertions in four cases cover
+  exact anchors, signed monotonicity, flat/plane/ridge/valley derivatives,
+  sub-threshold ripple rejection, and upload-cache invalidation.
+- Focused Cycle V2 surface, spectral RGBA parity, orientation, resize,
+  magnitude-scale, and phase-mapping tests: 101 assertions across six cases.
+- Standalone Debug `Cycle` and `CycleV2` builds completed with
+  `--parallel 10`.
+- Production fixtures passed for Cycle 1, Cycle V2 compact, Cycle V2 expanded,
+  and forced shader disable. The expanded report records a 768 by 320 product;
+  the Cycle 1 diagnostics report `GL_NO_ERROR` at a 2.0 rendering scale.
+- Visual artifacts: `/tmp/cycle-scalar-v1.png`,
+  `/tmp/cycle-scalar-v2-compact.png`, and
+  `/tmp/cycle-scalar-v2-expanded.png`. The expanded capture is 1728 by 962 and
+  includes the production 733 by 399 shared-GL panel.
+- `git diff --check` and the scalar-math hot-loop self-check pass. The local
+  environment does not provide `clang-tidy`, so that optional check could not
+  run.
+
+The dedicated numeric GPU-readback harness and an automated destroy/recreate
+sequence in one process remain open verification work. The production shader,
+CPU fallback, and clean first-frame lifecycle are exercised, but those two TDD
+proofs must land before changing this document to `Implemented`.
 
 ## Objective
 

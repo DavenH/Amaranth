@@ -14,7 +14,6 @@ Image TrimeshSurfaceRenderer::createHeatmapImage(
         return {};
     }
 
-    Image image(opaque ? Image::RGB : Image::ARGB, renderData.columns, renderData.rows, true);
     const std::vector<float> pitchSurface = renderData.pitchSpansColumns
             ? profile.mapPitchColumnsToDisplay(
                     renderData.surface,
@@ -25,20 +24,13 @@ Image TrimeshSurfaceRenderer::createHeatmapImage(
             ? renderData.surface
             : pitchSurface;
 
-    for (int column = 0; column < renderData.columns; ++column) {
-        for (int row = 0; row < renderData.rows; ++row) {
-            const float value = surface[(size_t) column * (size_t) renderData.rows + (size_t) row];
-            Colour colour = colourForProfile(value, profile);
-
-            if (opaque) {
-                colour = colour.withAlpha(1.f);
-            }
-
-            image.setPixelAt(column, renderData.rows - 1 - row, colour);
-        }
-    }
-
-    return image;
+    return ScalarSurfaceMaterialEvaluator::createImage(
+            surface.data(),
+            (int) surface.size(),
+            renderData.columns,
+            renderData.rows,
+            profile.getSurfaceStyle().surfaceMaterial(),
+            opaque);
 }
 
 void TrimeshSurfaceRenderer::drawHeatmap(
@@ -52,27 +44,19 @@ void TrimeshSurfaceRenderer::drawHeatmap(
     }
 
     const Rectangle<float> surface = area.reduced(area.getWidth() * 0.025f, area.getHeight() * 0.06f);
-    const float cellWidth = surface.getWidth() / (float) renderData.columns;
-    const float cellHeight = surface.getHeight() / (float) renderData.rows;
-
-    for (int column = 0; column < renderData.columns; ++column) {
-        for (int row = 0; row < renderData.rows; ++row) {
-            const float value = renderData.surface[(size_t) column * (size_t) renderData.rows + (size_t) row];
-            const int displayRow = renderData.rows - 1 - row;
-            const Rectangle<float> cell(
-                    surface.getX() + (float) column * cellWidth,
-                    surface.getY() + (float) displayRow * cellHeight,
-                    cellWidth + 0.75f,
-                    cellHeight + 0.75f);
-
-            g.setColour(colourForProfile(value, profile));
-            g.fillRect(cell);
-        }
+    const Image heatmap = createHeatmapImage(renderData, profile);
+    if (!heatmap.isValid()) {
+        return;
     }
+    g.setImageResamplingQuality(Graphics::highResamplingQuality);
+    g.drawImage(heatmap, surface);
 
     if (!drawGrid) {
         return;
     }
+
+    const float cellWidth = surface.getWidth() / (float) renderData.columns;
+    const float cellHeight = surface.getHeight() / (float) renderData.rows;
 
     const auto& surfaceStyle = profile.getSurfaceStyle();
 

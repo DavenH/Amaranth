@@ -65,6 +65,13 @@ void TrimeshPanelDataSource::rebuild(
     storage = renderData.linearFrequencySurface.empty()
             ? renderData.surface
             : renderData.linearFrequencySurface;
+    scalarSurfaceStorage = renderData.pitchSpansColumns
+            ? renderProfile.mapPitchColumnsToDisplay(
+                    renderData.surface,
+                    (size_t) renderData.columns,
+                    (size_t) renderData.rows)
+            : renderData.surface;
+    ++scalarSurfaceRevision;
     panelColumns.clear();
     panelColumns.reserve((size_t) renderData.columns);
 
@@ -107,6 +114,16 @@ Buffer<float> TrimeshPanelDataSource::getColumnArray() {
     }
 
     return { storage.data(), (int) storage.size() };
+}
+
+Buffer<float> TrimeshPanelDataSource::getScalarSurfaceArray() {
+    const ScopedLock lock(gridLock);
+
+    if (scalarSurfaceStorage.empty()) {
+        return {};
+    }
+
+    return { scalarSurfaceStorage.data(), (int) scalarSurfaceStorage.size() };
 }
 
 const std::vector<Column>& TrimeshPanelDataSource::getColumns() {

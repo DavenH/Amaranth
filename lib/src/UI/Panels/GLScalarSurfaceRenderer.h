@@ -1,0 +1,59 @@
+#pragma once
+
+#include <cstdint>
+
+#include "JuceHeader.h"
+
+#include "ScalarSurfaceMaterial.h"
+
+struct ScalarSurfaceRendererDiagnostics {
+    uint64_t drawCount {};
+    uint64_t uploadCount {};
+    uint64_t allocationCount {};
+    bool capabilityAvailable {};
+};
+
+class ScalarSurfaceUploadState {
+public:
+    bool needsUpload(const ScalarSurfaceRenderData& data) const;
+    void markUploaded(const ScalarSurfaceRenderData& data);
+    void clear();
+
+private:
+    const float* source {};
+    uint64_t revision {};
+    int columns {};
+    int rows {};
+    float valueScale {};
+    float valueOffset {};
+};
+
+class GLScalarSurfaceRenderer {
+public:
+    GLScalarSurfaceRenderer() = default;
+
+    bool draw(const ScalarSurfaceRenderData& data);
+    void clearResources();
+
+    const ScalarSurfaceRendererDiagnostics& getDiagnostics() const { return diagnostics; }
+
+private:
+    bool compileProgram();
+    bool ensureTexture(const ScalarSurfaceRenderData& data);
+    bool uploadTexture(const ScalarSurfaceRenderData& data);
+    bool textureMatches(const ScalarSurfaceRenderData& data) const;
+    void setMaterialUniforms(const ScalarSurfaceRenderData& data) const;
+
+    static unsigned int compileShader(unsigned int type, const char* source);
+
+    ScalarSurfaceUploadState uploadState;
+    unsigned int program {};
+    unsigned int texture {};
+    bool compileAttempted {};
+    bool usingFloatTexture {};
+    bool textureCapabilityFailed {};
+
+    ScalarSurfaceRendererDiagnostics diagnostics;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GLScalarSurfaceRenderer)
+};

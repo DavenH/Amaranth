@@ -42,6 +42,21 @@ Colour storedArgbPixel(Colour colour) {
     return image.getPixelAt(0, 0);
 }
 
+Colour expectedSurfacePixel(
+        const std::vector<float>& values,
+        int columns,
+        int rows,
+        int column,
+        int row,
+        const TrimeshRenderProfile& profile) {
+    const auto derivatives = ScalarSurfaceMaterialEvaluator::derivativesAt(
+            values.data(), columns, rows, column, row);
+    return storedArgbPixel(ScalarSurfaceMaterialEvaluator::colourFor(
+            values[(size_t) column * (size_t) rows + (size_t) row],
+            derivatives,
+            profile.getSurfaceStyle().surfaceMaterial()));
+}
+
 bool imagesMatch(const Image& first, const Image& second) {
     if (first.getBounds() != second.getBounds()) {
         return false;
@@ -359,8 +374,13 @@ TEST_CASE("Magnitude mesh heatmaps consume the full unipolar colour scale",
         if (column == 0) {
             CHECK(actual.getAlpha() == 0);
         } else {
-            CHECK(actual == profile.getSurfaceStyle().colourForValue(
-                    expected[(size_t) column * result.gridRows]));
+            CHECK(actual == expectedSurfacePixel(
+                    expected,
+                    result.gridColumns,
+                    result.gridRows,
+                    column,
+                    result.gridRows - 1,
+                    profile));
         }
     }
 }
@@ -414,13 +434,18 @@ TEST_CASE("Phase mesh heatmaps convert bipolar values exactly once",
 
     const Image image = NodePreviewRenderer::createRuntimeHeatmapImage(result);
     const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(result.domain);
-    const float expected[] { 0.f, 0.5f, 1.f };
+    const std::vector<float> expected { 0.f, 0.f, 0.5f, 0.5f, 1.f, 1.f };
 
     REQUIRE(image.isValid());
     for (int column = 0; column < image.getWidth(); ++column) {
         CAPTURE(column);
-        CHECK(image.getPixelAt(column, 0) == storedArgbPixel(
-                profile.getSurfaceStyle().colourForValue(expected[column])));
+        CHECK(image.getPixelAt(column, 0) == expectedSurfacePixel(
+                expected,
+                result.gridColumns,
+                result.gridRows,
+                column,
+                result.gridRows - 1,
+                profile));
     }
 }
 

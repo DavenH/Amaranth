@@ -20,6 +20,7 @@ constexpr float kExpandedGridRatio     = 0.50f;
 constexpr int kPreviewRows             = 320;
 constexpr int kPreviewColumns          = 96;
 constexpr int kExpandedRows            = 320;
+constexpr int kExpandedColumns         = 768;
 constexpr int kVertexParameterCount    = 6;
 
 }
@@ -811,9 +812,8 @@ Rectangle<float> TrimeshWidget::expandedGridPanelContentBounds(Rectangle<float> 
     return topRow.removeFromLeft(topRow.getWidth() * kExpandedGridRatio);
 }
 
-int TrimeshWidget::expandedColumnCount(Rectangle<float> content) {
-    return jmax(kPreviewColumns, roundToInt(
-            expandedGridPanelContentBounds(content).getWidth()));
+int TrimeshWidget::expandedColumnCount(Rectangle<float>) {
+    return kExpandedColumns;
 }
 
 void TrimeshWidget::syncExpandedNode(const Node& node, Rectangle<float> content) {

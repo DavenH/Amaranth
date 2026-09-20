@@ -1,0 +1,29 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/organ.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "timeLayer1"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 700
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeId",
+      "equals": "timeLayer1"
+    },
+    {
+      "command": "inspectOpenGLDiagnostics"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

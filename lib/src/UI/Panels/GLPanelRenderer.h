@@ -7,11 +7,13 @@
 
 class CommonGfx;
 class GLSurfaceCache;
+class GLScalarSurfaceRenderer;
 
 class GLPanelRenderer :
         public PanelRenderer {
 public:
     explicit GLPanelRenderer(CommonGfx* gfx, GLSurfaceCache* surfaceCache = nullptr);
+    ~GLPanelRenderer() override;
 
     void beginPanelRender(const PanelRenderContext& context) override;
     void checkErrors() override;
@@ -21,6 +23,7 @@ public:
 
     void drawBackground(const juce::Rectangle<int>& bounds, bool fillBackground) override;
     void drawCachedTexture(Texture* texture, const juce::Rectangle<float>& bounds) override;
+    bool drawScalarSurface(const ScalarSurfaceRenderData& data) override;
     void drawSurfaceColumn(Buffer<Int8u> colours, Buffer<float> vertices, int stride, int sizeY) override;
     void drawSurfaceCache() override;
     void drawFinalSelection() override;
@@ -58,4 +61,5 @@ private:
     GLSurfaceCache* surfaceCache;
     const PanelRenderContext* currentContext = nullptr;
     RenderResourceCache resourceCache;
+    std::unique_ptr<GLScalarSurfaceRenderer> scalarSurfaceRenderer;
 };

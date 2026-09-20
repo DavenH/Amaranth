@@ -8,6 +8,7 @@
 #include "../../Curve/Mesh/Vertex2.h"
 #include "../../Obj/Color.h"
 #include "../../Obj/ColorPos.h"
+#include "ScalarSurfaceMaterial.h"
 
 class PanelRenderContext;
 class Texture;
@@ -23,6 +24,7 @@ public:
 
     virtual void drawBackground(const juce::Rectangle<int>& bounds, bool fillBackground) = 0;
     virtual void drawCachedTexture(Texture* texture, const juce::Rectangle<float>& bounds) = 0;
+    virtual bool drawScalarSurface(const ScalarSurfaceRenderData&) { return false; }
     virtual void drawSurfaceColumn(Buffer<Int8u> colours, Buffer<float> vertices, int stride, int sizeY) = 0;
     virtual void drawSurfaceCache() = 0;
     virtual void drawFinalSelection() = 0;

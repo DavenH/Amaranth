@@ -3,7 +3,6 @@
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Binary/Gradients.h>
 #include <Curve/Mesh/Mesh.h>
 #include <UI/Widgets/CalloutUtils.h>
 #include <UI/Layout/DynamicSizeContainer.h>
@@ -94,7 +93,8 @@ Waveform3D::~Waveform3D() {
 void Waveform3D::init() {
     Panel3D::init();
 
-    Image blue 		= PNGImageFormat::loadFrom(Gradients::blue_png, Gradients::blue_pngSize);
+    Image blue = ScalarSurfaceMaterialEvaluator::createGradientImage(
+            ScalarSurfaceMaterial::signedAmplitude());
     surfInteractor 	= &getObj(WaveformInter3D);
     interactor3D  	= surfInteractor;
     setInteractor(interactor3D);
@@ -469,6 +469,11 @@ CriticalSection& Waveform3D::getGridLock() {
 
 bool Waveform3D::isSurfaceDetailReduced() {
     return getObj(TimeRasterizer).isDetailReduced();
+}
+
+bool Waveform3D::getScalarSurfaceMaterial(ScalarSurfaceMaterial& material) const {
+    material = ScalarSurfaceMaterial::signedAmplitude();
+    return true;
 }
 
 var Waveform3D::exportAutomationState() const {

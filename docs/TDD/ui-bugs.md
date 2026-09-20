@@ -510,6 +510,10 @@ Cycle V2. The mismatched-run log was replaced by the successful rerun; use
 the wrapper defaults with `/tmp/causal-trimesh-guide-audit.json` to reproduce.
 
 Current status: open in Cycle 1; unrelated to the Cycle V2 gesture change.
+It recurred during the 2026-09-20 scalar-surface visual audit because the saved
+default preset name `ooh-aah` did not resolve before the fixture opened
+`CalmingKeys`; the fixture itself completed and the OpenGL panel reported no
+error. Log: `/private/tmp/cycle-scalar-v1-logs.txt`.
 
 ## Addressed: Unmapped saxophone mod wheel edited Trimesh blue morphs
 
@@ -540,3 +544,14 @@ glyph. Log: `/private/tmp/cycle-v2-browser-new.log`.
 
 Current status: addressed; ratings use native ellipse geometry and no longer
 depend on font glyph coverage.
+
+## P3: Organ graph load emits legacy Curve endpoint assertions
+
+On 2026-09-20, opening `organ.cyclegraph` and the `timeLayer1` expanded
+Trimesh editor emitted repeated `JUCE Assertion failure in Curve.cpp:56` and
+`:57` messages. The automation commands completed, the shared OpenGL canvas
+remained attached, and the expanded surface rendered. Log:
+`/private/tmp/cycle-scalar-v2-expanded-logs.txt`.
+
+Current status: open; unrelated to scalar-surface shader compilation or GL
+resource lifetime.

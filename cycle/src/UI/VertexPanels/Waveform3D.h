@@ -85,6 +85,7 @@ public:
     const vector<Column>& getColumns() override;
     CriticalSection& getGridLock() override;
     bool isSurfaceDetailReduced() override;
+    bool getScalarSurfaceMaterial(ScalarSurfaceMaterial& material) const override;
     var exportAutomationState() const override;
 
     /* Accessors */

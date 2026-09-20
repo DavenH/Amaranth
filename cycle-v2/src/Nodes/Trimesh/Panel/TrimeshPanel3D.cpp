@@ -114,6 +114,11 @@ void TrimeshPanel3D::setDisplayDomain(PortDomain domain) {
     setRenderProfile(TrimeshRenderProfile::fromDomain(domain));
 }
 
+bool TrimeshPanel3D::getScalarSurfaceMaterial(ScalarSurfaceMaterial& material) const {
+    material = renderProfile.getSurfaceStyle().surfaceMaterial();
+    return true;
+}
+
 void TrimeshPanel3D::setRenderProfile(TrimeshRenderProfile profile) {
     if (profile.getDomain() == renderProfile.getDomain()
             && profile.getScalePolicy() == renderProfile.getScalePolicy()) {

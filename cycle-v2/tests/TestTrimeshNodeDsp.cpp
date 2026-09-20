@@ -771,7 +771,7 @@ TEST_CASE("Expanded Trimesh surfaces use their complete layout rows", "[cycle-v2
     REQUIRE(TrimeshWidget::expandedColumnCount(content) >= roundToInt(grid.getWidth()));
     REQUIRE(TrimeshWidget::expandedColumnCount(
             content.withWidth(content.getWidth() * 1.5f))
-            > TrimeshWidget::expandedColumnCount(content));
+            == TrimeshWidget::expandedColumnCount(content));
     REQUIRE(wave.getY() - grid.getBottom() == Catch::Approx(8.f));
     REQUIRE(wave.getBottom() == Catch::Approx(content.getBottom()));
 }
@@ -789,9 +789,20 @@ TEST_CASE("Trimesh surface renderer creates vertically oriented heatmap images",
 
     const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal);
     const Image image = TrimeshSurfaceRenderer::createHeatmapImage(renderData, profile);
-    const auto requirePixelNear = [&image, &profile](int x, int y, float value) {
+    const auto requirePixelNear = [&image, &profile, &renderData](int x, int y, float value) {
         const Colour actual = image.getPixelAt(x, y);
-        const Colour expected = TrimeshSurfaceRenderer::colourForProfile(value, profile);
+        const int row = renderData.rows - 1 - y;
+        const ScalarSurfaceDerivatives derivatives =
+                ScalarSurfaceMaterialEvaluator::derivativesAt(
+                        renderData.surface.data(),
+                        renderData.columns,
+                        renderData.rows,
+                        x,
+                        row);
+        const Colour expected = ScalarSurfaceMaterialEvaluator::colourFor(
+                value,
+                derivatives,
+                profile.getSurfaceStyle().surfaceMaterial());
 
         REQUIRE(actual.getFloatRed() == Catch::Approx(expected.getFloatRed()).margin(0.01f));
         REQUIRE(actual.getFloatGreen() == Catch::Approx(expected.getFloatGreen()).margin(0.01f));
