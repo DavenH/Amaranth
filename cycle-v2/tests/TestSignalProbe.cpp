@@ -35,6 +35,29 @@ NodeGraph probeGraph() {
 
 }
 
+TEST_CASE("Default output spy leads the rail without becoming graph state",
+        "[cycle-v2][ui][probe][default-output]") {
+    NodeGraph graph = probeGraph();
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+
+    const auto ids = SignalProbeRail::orderedProbeIds(graph);
+    REQUIRE(ids.size() == 2);
+    REQUIRE(ids.front() == DefaultOutputProbeResolver::probeId);
+    REQUIRE(ids.back() == graph.getSignalProbes().front().id);
+    REQUIRE(SignalProbeRail::ordinalForProbe(
+            graph, DefaultOutputProbeResolver::probeId) == 1);
+    REQUIRE(SignalProbeRail::ordinalForProbe(graph, ids.back()) == 2);
+
+    SignalProbeRailState state;
+    const Rectangle<float> workspace(0.f, 0.f, 600.f, 400.f);
+    REQUIRE(SignalProbeRail::probeAt(
+            SignalProbeRail::tileBoundsFor(workspace, state, 0).getCentre(),
+            workspace,
+            graph,
+            state) == DefaultOutputProbeResolver::probeId);
+    REQUIRE(graph.getSignalProbes().size() == 1);
+}
+
 TEST_CASE("Signal probes toggle once per source output without changing execution", "[cycle-v2][probe]") {
     NodeGraph graph = probeGraph();
     const auto before = GraphCompiler().compile(graph);

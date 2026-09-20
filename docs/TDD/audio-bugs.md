@@ -878,3 +878,14 @@ Update 2026-09-18: the workspace visual-hierarchy verification run completed
 with 787 of 826 cases passing and 39 failures in the same preset-fixture and
 audio/spectral groups. Its focused UI suite passed 117 assertions in nine
 cases. The preset working tree was already modified and was left untouched.
+## P3: Broad preset-tag suite includes seven legacy parity failures
+
+On 2026-09-20, the broad Cycle V2 Catch2 filter `[cycle-v2][preset]` passed 20
+of 27 cases and exposed seven failures outside the preset-browser work: missing
+archived preset fixtures, two preset deserialization failures, a Stengah phase
+pan edit rejection, a one-sample frontier mismatch, and an unchanged magnitude
+layer where the test expected a difference. Log:
+`/private/tmp/cycle-v2-preset-broad-tests.log`.
+
+Current status: open; the exact presentation, preview, async-browser, and probe
+suites pass and none of these broad-suite cases were changed.

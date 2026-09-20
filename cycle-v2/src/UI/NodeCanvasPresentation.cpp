@@ -699,15 +699,13 @@ void NodeCanvasPresentation::paint(
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::DockAndDetail);
-        if (!frame.graph.getSignalProbes().empty()) {
-            WorkspaceDock::paintChrome(
-                    graphics,
-                    dock,
-                    "Curve Guides",
-                    "Spies",
-                    frame.probeRailState.expanded,
-                    frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
-        }
+        WorkspaceDock::paintChrome(
+                graphics,
+                dock,
+                "Curve Guides",
+                "Spies",
+                frame.probeRailState.expanded,
+                frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
         GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
         signalProbeDetailView.paint(
                 graphics,

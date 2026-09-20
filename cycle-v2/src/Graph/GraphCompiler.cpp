@@ -1,5 +1,7 @@
 #include "Graph/GraphCompiler.h"
 
+#include "Graph/DefaultOutputProbeResolver.h"
+
 #include "Graph/GraphAudioScopeCompiler.h"
 #include "Graph/NodeParameterMap.h"
 #include "Graph/TrimeshSignalSemantics.h"
@@ -1521,6 +1523,28 @@ void GraphCompiler::refreshSignalProbes(
         }
         plan.signalProbes.push_back(std::move(compiled));
     }
+
+    plan.defaultOutputProbe.reset();
+    const auto address = DefaultOutputProbeResolver().resolve(graph);
+    if (!address.has_value()) {
+        return;
+    }
+    CompiledSignalProbe compiled;
+    compiled.probeId = DefaultOutputProbeResolver::probeId;
+    const auto source = plan.dependencyIndex.stepIndexById.find(address->sourceNodeId);
+    if (source == plan.dependencyIndex.stepIndexById.end()) {
+        return;
+    }
+    compiled.sourceStepIndex = source->second;
+    const auto& outputs = plan.steps[(size_t) source->second].outputs;
+    const auto output = std::find_if(outputs.begin(), outputs.end(), [&](const auto& candidate) {
+        return candidate.portId == address->sourcePortId;
+    });
+    if (output == outputs.end()) {
+        return;
+    }
+    compiled.sourceOutputIndex = (int) std::distance(outputs.begin(), output);
+    plan.defaultOutputProbe = std::move(compiled);
 }
 
 void GraphCompiler::publishConfigurations(

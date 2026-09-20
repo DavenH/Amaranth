@@ -1,6 +1,6 @@
 # Cycle V2 Preset Browser and Output Previews
 
-Status: In progress
+Status: Complete
 
 ## Product Contract
 
@@ -140,18 +140,68 @@ runtime -> NodePreviewRenderer -> PresetPresentation codec`
    round-trip tests without placing presentation data in graph revisions or
    undo snapshots. The focused persistence suite passes 15 assertions across
    valid round-trip, malformed optional data, and document-history cases.
-2. Add default output-address selection, offline grid capture, Time/Spectrum
-   conversion, normalized rendering, JPEG encoding, and semantic tests proving
-   Reverb/Delay/EQ exclusion and Waveshaper/IR inclusion.
-3. Add the implicit default output spy to the workspace rail and single-click
-   mode toggle without serializing a graph probe.
-4. Add asynchronous preset indexing/filtering and the card/inspector browser,
-   including keyboard sequence and geometry tests.
-5. Add automation plus a bulk generation script, run it only against clean or
-   explicitly selected Cycle V2 preset files, and verify Base64/JPEG round trips.
-6. Capture the production UI, compare it with the approved concept, refactor,
-   style-check, run the architecture audit, and complete the TDD only when all
-   completion criteria and deletion targets are satisfied.
+2. **Complete.** Added default output-address selection, offline grid capture,
+   Time/Spectrum conversion, normalized rendering, JPEG encoding, and semantic
+   tests proving Reverb/Delay/EQ exclusion and Waveshaper/IR inclusion.
+3. **Complete.** Added the implicit default output spy to the workspace rail
+   and single-click mode toggle without serializing a graph probe.
+4. **Complete.** Added asynchronous preset indexing/filtering and the
+   card/inspector browser, including the rapid typing, arrow-selection, and
+   Return-load component sequence.
+5. **Complete.** Added automation plus a bulk generation script. The production
+   run embedded 244 valid 320 x 180 spectral JPEGs, skipped the four pre-existing
+   dirty presets, and skipped `empty.cyclegraph` because it has no renderable
+   source. Every generated preset has an 11-addition/1-replacement metadata-only
+   diff; its graph body is unchanged.
+6. **Complete.** Captured the production browser with real embedded previews at
+   `/private/tmp/cycle-v2-preset-browser-previews-final.png`, completed the
+   refactor/style pass, and ran the architecture audit.
+
+## Final Architecture Review
+
+The production diff adds no new domain switchboard and no C++ file grows by
+200 lines. New responsibilities remain in focused collaborators:
+
+- `DefaultOutputProbeResolver` owns the one output-boundary policy;
+  `GraphCompiler` only translates its address into compiled step/output indices.
+- `DefaultOutputPreview` owns Time/Spectrum conversion and normalized contrast;
+  `GraphPreviewExecutor` only captures the authoritative runtime grid.
+- `PresetPreviewGenerator` owns the fixed raster/JPEG product;
+  `NodeCanvas` only coordinates current presentation state and document save.
+- `PresetLibraryIndex` owns filesystem/JSON/filter worker activity;
+  browser components own layout, lazy image decode, and interaction.
+- `CycleV2Automation` remains command routing/transport. The bulk script asks it
+  for JPEG bytes with `embed: false` and surgically replaces only the root
+  presentation member, avoiding a graph reserialization.
+
+The pre-existing PLAN files remain cohesive for this slice: `GraphCompiler.cpp`
+still owns compiled-plan construction, `NodeCanvas.cpp` still owns canvas-level
+document/presentation orchestration, `NodeCanvasPresentation.cpp` still owns
+canvas painting, and `CycleV2Automation.cpp` still owns automation routing.
+No lifecycle, eligibility, normalization, or output-boundary policy is duplicated
+between those callers.
+
+Final relevant sizes: `PresetBrowserPage.cpp` 187 lines,
+`PresetBrowserComponents.cpp` 367, `PresetLibraryIndex.cpp` 203,
+`DefaultOutputPreview.cpp` 75, and `PresetPreviewGenerator.cpp` 80. The old
+synchronous `ListBox` implementation and filename-filter loop are deleted.
+
+## Verification Evidence
+
+- `[cycle-v2][preset][preview]`: 39 assertions / 7 cases, including direct
+  output plus individual EQ, Reverb, and Delay boundaries.
+- `[cycle-v2][preset][browser]`: 25 assertions / 2 cases.
+- `[cycle-v2][preset][presentation]`: 15 assertions / 3 cases.
+- `[cycle-v2][preset][browser][async]`: 6 assertions / 1 case.
+- `[cycle-v2][ui][probe]`: 89 assertions / 10 cases.
+- Standalone Debug and test targets build successfully with `--parallel 10`.
+- `scripts/cycle_v2_architecture_audit.py` completed; all reported PLAN/REVIEW
+  files pre-date this work and the rationale for the touched ones is above.
+- Modified visualization files contain no scalar `std::<math>` calls in hot
+  loops; `git diff --check` passes.
+- A broader existing `[cycle-v2][preset]` selector still contains seven
+  unrelated legacy parity failures, recorded in `docs/TDD/audio-bugs.md` with
+  log `/private/tmp/cycle-v2-preset-broad-tests.log`.
 
 ## Tests and Completion Criteria
 

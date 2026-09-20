@@ -19,6 +19,14 @@ public:
 
     bool saveGraphToFile(const File& file);
     bool loadGraphFromFile(const File& file);
+    bool capturePresetPreviewForAutomation(
+            PresetPreviewView view,
+            PresetPreviewImage& image,
+            String& errorMessage) const;
+    bool savePresetPreviewForAutomation(
+            PresetPreviewImage image,
+            const File& destination,
+            String& errorMessage);
     bool isGraphDirty() const { return canvas.isGraphDirty(); }
     const File& graphFile() const { return canvas.graphFile(); }
     ProbeRefreshMode probeRefreshMode() const { return canvas.probeRefreshMode(); }

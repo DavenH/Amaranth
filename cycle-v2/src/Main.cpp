@@ -336,7 +336,7 @@ public:
                             safeThis->closePresetBrowser();
                         }
                     });
-            page->setSize(900, 660);
+            page->setSize(1180, 760);
             DialogWindow::LaunchOptions options;
             options.dialogTitle = "Preset Browser";
             options.dialogBackgroundColour = Colour(0xff111922);

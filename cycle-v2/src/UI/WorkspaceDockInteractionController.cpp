@@ -39,7 +39,7 @@ bool WorkspaceDockInteractionController::mouseDown(
                     probeState.minimized,
                     probeState.expandedHeight
             });
-    const bool hasSpies = !graph.getSignalProbes().empty();
+    const bool hasSpies = true;
     if (hasSpies && handleChromeDown(event, layout)) {
         return true;
     }
@@ -125,7 +125,7 @@ WorkspaceDockKeyboardLayout WorkspaceDockInteractionController::keyboardLayout(
                     (int) graph.getGuideCurves().size()),
             SignalProbeRail::maximumHorizontalOffset(
                     spies,
-                    (int) graph.getSignalProbes().size())
+                    (int) graph.getSignalProbes().size() + 1)
     };
 }
 
@@ -245,7 +245,11 @@ bool WorkspaceDockInteractionController::handleSpyTileDown(
     if (probeId.isNotEmpty()) {
         keyboardFocus = { WorkspaceDockFocusTarget::SpyTile, probeId };
         probeState.selectedProbeId = probeId;
-        if (event.getNumberOfClicks() >= 2) {
+        if (probeId == DefaultOutputProbeResolver::probeId) {
+            probeState.defaultOutputView = probeState.defaultOutputView == PresetPreviewView::Time
+                    ? PresetPreviewView::Spectrum
+                    : PresetPreviewView::Time;
+        } else if (event.getNumberOfClicks() >= 2) {
             callbacks.openProbeDetail(probeId);
         }
         callbacks.repaint();
@@ -322,12 +326,19 @@ void WorkspaceDockInteractionController::selectSpyFromKeyboard(
         const String& probeId,
         bool openDetail) {
     probeState.selectedProbeId = probeId;
-    if (openDetail) {
+    if (openDetail && probeId == DefaultOutputProbeResolver::probeId) {
+        probeState.defaultOutputView = probeState.defaultOutputView == PresetPreviewView::Time
+                ? PresetPreviewView::Spectrum
+                : PresetPreviewView::Time;
+    } else if (openDetail) {
         callbacks.openProbeDetail(probeId);
     }
 }
 
 void WorkspaceDockInteractionController::removeSpyFromKeyboard(const String& probeId) {
+    if (probeId == DefaultOutputProbeResolver::probeId) {
+        return;
+    }
     callbacks.applyAuthoringResult(authoring.removeSignalProbe(probeId));
     if (probeDetailState.probeId == probeId) {
         probeDetailState.close();

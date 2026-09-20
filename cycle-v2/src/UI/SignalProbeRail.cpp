@@ -31,6 +31,18 @@ void paintProbeOrdinal(Graphics& graphics, Rectangle<float> previewBounds, int o
             Justification::centredLeft);
 }
 
+void paintDefaultOutputLabel(
+        Graphics& graphics,
+        Rectangle<float> previewBounds,
+        PresetPreviewView view) {
+    graphics.setColour(CanvasChromePalette::text.withAlpha(0.90f));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
+    graphics.drawText(
+            view == PresetPreviewView::Time ? "OUT  TIME" : "OUT  SPECTRUM",
+            previewBounds.reduced(7.f).removeFromTop(20.f),
+            Justification::centredLeft);
+}
+
 const Edge* graphEdgeFor(const NodeGraph& graph, int edgeIndex) {
     return isPositiveAndBelow(edgeIndex, (int) graph.getEdges().size())
             ? &graph.getEdges()[(size_t) edgeIndex]
@@ -98,17 +110,20 @@ float SignalProbeRail::maximumHorizontalOffset(
 }
 
 int SignalProbeRail::ordinalForProbe(const NodeGraph& graph, const String& probeId) {
+    if (probeId == DefaultOutputProbeResolver::probeId) {
+        return 1;
+    }
     const auto probes = orderedProbes(graph);
     const auto found = std::find_if(probes.begin(), probes.end(), [&](const auto* probe) {
         return probe->id == probeId;
     });
     return found == probes.end()
             ? 0
-            : (int) std::distance(probes.begin(), found) + 1;
+            : (int) std::distance(probes.begin(), found) + 2;
 }
 
 std::vector<String> SignalProbeRail::orderedProbeIds(const NodeGraph& graph) {
-    std::vector<String> ids;
+    std::vector<String> ids { DefaultOutputProbeResolver::probeId };
     for (const auto* probe : orderedProbes(graph)) {
         ids.push_back(probe->id);
     }
@@ -266,7 +281,7 @@ String SignalProbeRail::probeAt(
         Point<float> position,
         Rectangle<float> workspace,
         const NodeGraph& graph,
-        const SignalProbeRailState& state) const {
+        const SignalProbeRailState& state) {
     if (!state.expanded || state.minimized) {
         return {};
     }
@@ -275,10 +290,10 @@ String SignalProbeRail::probeAt(
     if (!visibleTiles.contains(position)) {
         return {};
     }
-    const auto probes = orderedProbes(graph);
-    for (int index = 0; index < (int) probes.size(); ++index) {
+    const auto probeIds = orderedProbeIds(graph);
+    for (int index = 0; index < (int) probeIds.size(); ++index) {
         if (tileBoundsFor(workspace, state, index).contains(position)) {
-            return probes[(size_t) index]->id;
+            return probeIds[(size_t) index];
         }
     }
     return {};
@@ -418,11 +433,11 @@ void SignalProbeRail::paintRail(
         const NodeGraph& graph,
         const GraphPreviewResult& previews,
         Rectangle<float> workspace,
-    const SignalProbeRailState& state,
-    const WorkspaceDockFocus& focus) {
+        const SignalProbeRailState& state,
+        const WorkspaceDockFocus& focus) {
     const Rectangle<float> rail = boundsFor(workspace, state);
     const auto probes = orderedProbes(graph);
-    if (!state.expanded || probes.empty()) {
+    if (!state.expanded) {
         return;
     }
     if (state.minimized) {
@@ -469,14 +484,28 @@ void SignalProbeRail::paintRail(
     uint64_t previewElapsed {};
     const float physicalScale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
     previewTileCache.beginFrame();
-    for (int index = 0; index < (int) probes.size(); ++index) {
-        const SignalProbe& probe = *probes[(size_t) index];
+    const int tileCount = (int) probes.size() + 1;
+    for (int index = 0; index < tileCount; ++index) {
+        const bool defaultOutput = index == 0;
+        const String probeId = defaultOutput
+                ? String(DefaultOutputProbeResolver::probeId)
+                : probes[(size_t) index - 1]->id;
+        const SignalProbe fallback { probeId };
+        const SignalProbe& probe = defaultOutput ? fallback : *probes[(size_t) index - 1];
         const Rectangle<float> tile = tileBoundsFor(workspace, state, index);
-        const auto* preview = previewFor(previews, probe.id);
-        const bool selected = probe.id == state.selectedProbeId;
-        const bool hovered = probe.id == state.hoveredProbeId;
+        const GraphPreviewResult::SignalProbePreview* preview {};
+        if (defaultOutput) {
+            const auto& selectedPreview = state.defaultOutputView == PresetPreviewView::Time
+                    ? previews.defaultOutput
+                    : previews.defaultOutputSpectrum;
+            preview = selectedPreview.has_value() ? &*selectedPreview : nullptr;
+        } else {
+            preview = previewFor(previews, probe.id);
+        }
+        const bool selected = probeId == state.selectedProbeId;
+        const bool hovered = probeId == state.hoveredProbeId;
         const bool focused = focus.target == WorkspaceDockFocusTarget::SpyTile
-                && focus.itemId == probe.id;
+                && focus.itemId == probeId;
         WorkspaceDock::paintTileChrome(
                 graphics,
                 tile,
@@ -488,7 +517,11 @@ void SignalProbeRail::paintRail(
         if (preview == nullptr || !preview->connected) {
             graphics.setColour(CanvasChromePalette::mutedText);
             graphics.drawText("Disconnected", previewBounds, Justification::centred);
-            paintProbeOrdinal(graphics, previewBounds, index + 1);
+            if (defaultOutput) {
+                paintDefaultOutputLabel(graphics, previewBounds, state.defaultOutputView);
+            } else {
+                paintProbeOrdinal(graphics, previewBounds, index + 1);
+            }
             continue;
         }
 
@@ -505,7 +538,11 @@ void SignalProbeRail::paintRail(
         if (performanceObserver != nullptr) {
             previewElapsed += performanceObserver->presentationTimestamp() - previewStartedAt;
         }
-        paintProbeOrdinal(graphics, previewBounds, index + 1);
+        if (defaultOutput) {
+            paintDefaultOutputLabel(graphics, previewBounds, state.defaultOutputView);
+        } else {
+            paintProbeOrdinal(graphics, previewBounds, index + 1);
+        }
     }
     const SignalProbePreviewTileCacheStats stats = previewTileCache.endFrame();
     if (performanceObserver != nullptr) {
@@ -521,7 +558,7 @@ void SignalProbeRail::paintRail(
             graphics,
             rail,
             state.horizontalOffset,
-            maximumHorizontalOffset(workspace, (int) probes.size()));
+            maximumHorizontalOffset(workspace, tileCount));
 }
 
 }

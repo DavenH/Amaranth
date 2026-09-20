@@ -56,6 +56,14 @@ public:
 
     bool saveGraphToFile(const File& file);
     bool loadGraphFromFile(const File& file);
+    bool capturePresetPreviewForAutomation(
+            PresetPreviewView view,
+            PresetPreviewImage& image,
+            String& errorMessage) const;
+    bool savePresetPreviewForAutomation(
+            PresetPreviewImage image,
+            const File& destination,
+            String& errorMessage);
     bool isGraphDirty() const { return document.isDirty(); }
     const File& graphFile() const { return document.file(); }
     void setGraphDocumentStateChangedCallback(std::function<void()> callback);

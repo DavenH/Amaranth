@@ -18,6 +18,7 @@
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Control/ModulationSource.h"
 #include "UI/NodeViewModule.h"
+#include "UI/PresetPreviewGenerator.h"
 #include "UI/TransformCompactEditor.h"
 #include "UI/WorkspaceDockKeyboardNavigation.h"
 
@@ -1386,7 +1387,7 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
                                     getLocalBounds().toFloat(),
                                     guideShelfState.minimized,
                                     probeRailState.minimized),
-                            (int) graph.getSignalProbes().size()));
+                            (int) graph.getSignalProbes().size() + 1));
             if (SignalProbeRail::ordinalForProbe(graph, probeDetailState.probeId) == 0) {
                 probeDetailState.close();
             }
@@ -1468,7 +1469,7 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
         dock.expandedGuideHeatmapActive = heatmap != nullptr;
         dock.expandedGuideHeatmapFilename = heatmap != nullptr ? heatmap->filename() : String {};
     }
-    const bool hasSpies = !graph.getSignalProbes().empty();
+    const bool hasSpies = true;
     dock.dockBounds = hasSpies ? workspaceDock.dock : Rectangle<float> {};
     dock.guideShelfBounds = workspaceDock.leftShelf;
     dock.spyShelfBounds = hasSpies ? workspaceDock.rightShelf : Rectangle<float> {};
@@ -2090,6 +2091,47 @@ bool NodeCanvas::loadGraphFromFile(const File& file) {
         resized();
     }
     return loaded;
+}
+
+bool NodeCanvas::capturePresetPreviewForAutomation(
+        PresetPreviewView view,
+        PresetPreviewImage& image,
+        String& errorMessage) const {
+    if (!previewResult.defaultOutput.has_value()) {
+        errorMessage = "The default output spy is not ready";
+        return false;
+    }
+
+    image = PresetPreviewGenerator::encodeJpeg(
+            *previewResult.defaultOutput,
+            view);
+    if (!image.isValid()) {
+        errorMessage = "The default output spy did not produce an image";
+        return false;
+    }
+    return true;
+}
+
+bool NodeCanvas::savePresetPreviewForAutomation(
+        PresetPreviewImage image,
+        const File& destination,
+        String& errorMessage) {
+    const File target = destination == File() ? document.file() : destination;
+    if (target == File()) {
+        errorMessage = "No preset destination was provided";
+        return false;
+    }
+
+    PresetPresentation original = document.presentation();
+    PresetPresentation updated = original;
+    updated.preview = std::move(image);
+    document.setPresentation(std::move(updated));
+    if (!saveGraphToFile(target)) {
+        document.setPresentation(std::move(original));
+        errorMessage = "Could not save the preset preview";
+        return false;
+    }
+    return true;
 }
 
 bool NodeCanvas::saveSnapshot() {

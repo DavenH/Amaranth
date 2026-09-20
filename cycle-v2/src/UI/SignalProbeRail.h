@@ -8,6 +8,8 @@
 #include "UI/SignalProbePreviewTileCache.h"
 #include "UI/WorkspaceDock.h"
 #include "Graph/GraphRenderSemanticResolver.h"
+#include "Graph/DefaultOutputProbeResolver.h"
+#include "Graph/PresetPresentation.h"
 #include "Runtime/PresentationRefreshPolicy.h"
 
 namespace CycleV2 {
@@ -20,6 +22,7 @@ struct SignalProbeRailState {
     String selectedProbeId;
     String hoveredProbeId;
     ProbeRefreshMode refreshMode { ProbeRefreshMode::OnGestureCommit };
+    PresetPreviewView defaultOutputView { PresetPreviewView::Spectrum };
 };
 
 class SignalProbeRail {
@@ -60,11 +63,11 @@ public:
             const NodeCanvasSceneSnapshot& scene);
     static float cableAnnotationDiameter(float zoom);
 
-    String probeAt(
+    static String probeAt(
             Point<float> position,
             Rectangle<float> workspace,
             const NodeGraph& graph,
-            const SignalProbeRailState& state) const;
+            const SignalProbeRailState& state);
     String markerProbeAt(
             Point<float> position,
             const NodeGraph& graph,

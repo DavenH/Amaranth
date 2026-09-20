@@ -81,6 +81,21 @@ bool NodeWorkspace::loadGraphFromFile(const File& file) {
     return true;
 }
 
+bool NodeWorkspace::capturePresetPreviewForAutomation(
+        PresetPreviewView view,
+        PresetPreviewImage& image,
+        String& errorMessage) const {
+    return canvas.capturePresetPreviewForAutomation(view, image, errorMessage);
+}
+
+bool NodeWorkspace::savePresetPreviewForAutomation(
+        PresetPreviewImage image,
+        const File& destination,
+        String& errorMessage) {
+    return canvas.savePresetPreviewForAutomation(
+            std::move(image), destination, errorMessage);
+}
+
 var NodeWorkspace::exportAutomationState() const {
     var state = canvas.exportAutomationState();
     if (auto* object = state.getDynamicObject()) {

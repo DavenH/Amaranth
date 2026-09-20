@@ -99,6 +99,7 @@ list(APPEND APP_SOURCES
 list(REMOVE_DUPLICATES APP_SOURCES)
 
 set(GRAPH_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/DefaultOutputProbeResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphMigration.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphRepresentationMigration.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScope.cpp"
@@ -137,6 +138,7 @@ set(GRAPH_SOURCES
 
 set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/AudioPerformanceMetrics.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/DefaultOutputPreview.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/BasicNodeAudioProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ChainedOscillatorRecipeRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ChainedOscillatorRegionRuntime.cpp"
@@ -219,6 +221,9 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteEntryIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PerformanceKeyboard.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserComponents.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetLibraryIndex.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetPreviewGenerator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewResources.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewRenderer.cpp"
