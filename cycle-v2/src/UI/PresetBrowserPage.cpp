@@ -89,6 +89,8 @@ PresetBrowserPage::PresetBrowserPage(
             CanvasChromePalette::navigationAccent.brighter(0.16f));
     open.setColour(TextButton::textColourOffId,
             CanvasChromePalette::canvasBackground);
+    open.setColour(TextButton::textColourOnId,
+            CanvasChromePalette::canvasBackground);
 
     thumbnails.setReadyCallback([safeThis = SafePointer<PresetBrowserPage>(this)] {
         if (safeThis != nullptr) {

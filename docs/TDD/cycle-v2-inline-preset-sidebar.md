@@ -44,6 +44,9 @@ load.
    active, and retain semantic document loading through the workspace.
 4. **Complete.** Add focused component/geometry tests, capture the production UI,
    complete architecture/style review, and commit.
+5. **Complete.** Centre compact search text optically, use dark text on cyan
+   controls, overlay hero metadata on the preview, and remove the asymmetric
+   outer bottom radius.
 
 ## Architecture Baseline
 
@@ -97,7 +100,7 @@ policy application: the minimap and guide renderer consume the same visibility
 fact. `NodeWorkspace` remains the owner of document load/audio publication and
 only supplies callbacks. There is one tab/minimap eligibility decision site.
 
-Final relevant sizes: `InlinePresetBrowser.cpp` 570 lines and header 94,
+Final relevant sizes: `InlinePresetBrowser.cpp` 583 lines and header 94,
 `PresetBrowserComponents.cpp` 400, `NodeCanvas.cpp` 2,678 and header 355,
 `NodeWorkspace.cpp` 548, `NodeCanvasPresentation.cpp` 1,490, and
 `WorkspaceDock.cpp` 370. No existing file grew by 200 lines, and the new
@@ -105,17 +108,18 @@ component remains below the architecture review threshold.
 
 ## Verification Evidence
 
-- `[cycle-v2][preset][browser][inline]`: 17 assertions / 1 case.
-- `[cycle-v2][preset][browser]`: 61 assertions / 4 cases.
+- `[cycle-v2][preset][browser][inline]`: 20 assertions / 1 case.
+- `[cycle-v2][preset][browser]`: 64 assertions / 4 cases.
 - `[cycle-v2][preset][browser][async]`: 10 assertions / 1 case.
 - `[cycle-v2][canvas][guide-dock]`: 77 assertions / 6 cases.
 - The focused automation fixture switches Curves -> Presets through real button
   events; all four commands pass. It remains at
   `scripts/fixtures/cycle-v2-agent-inline-preset-sidebar.json`.
 - Production screenshot:
-  `/private/tmp/cycle-v2-inline-preset-sidebar-2.png`. It shows immediate
-  filename-backed content, visible thumbnails, no minimap beneath Presets, and
-  the inline rail aligned to the workspace edge.
+  `/private/tmp/cycle-v2-inline-sidebar-polish.png`. It shows immediate
+  filename-backed content, visible thumbnails, no minimap beneath Presets, the
+  metadata scrim, corrected search alignment, dark-on-cyan filter text, and the
+  flush inline rail aligned to the workspace edge.
 - Standalone Debug and test targets build with `--parallel 10`.
 - `scripts/cycle_v2_architecture_audit.py` reports only the documented existing
   PLAN/REVIEW files. `git diff --check` passes.

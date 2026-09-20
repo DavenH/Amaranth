@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "UI/CanvasChromePalette.h"
 #include "UI/InlinePresetBrowser.h"
 
 using namespace CycleV2;
@@ -35,11 +36,17 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
             browser.findChildWithID("workspace.sidebar.search"));
     auto* browse = dynamic_cast<Button*>(
             browser.findChildWithID("workspace.sidebar.browse"));
+    auto* all = dynamic_cast<Button*>(
+            browser.findChildWithID("workspace.sidebar.all"));
     REQUIRE(curves != nullptr);
     REQUIRE(presets != nullptr);
     REQUIRE(search != nullptr);
     REQUIRE(browse != nullptr);
+    REQUIRE(all != nullptr);
     REQUIRE(search->getFont().getHeight() >= 14.f);
+    REQUIRE(all->getToggleState());
+    REQUIRE(all->findColour(TextButton::textColourOnId)
+            == CanvasChromePalette::canvasBackground);
     REQUIRE(browser.activeTab() == WorkspaceSidebarTab::Presets);
     REQUIRE(browser.hitTest(20, 300));
 

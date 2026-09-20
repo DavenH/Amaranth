@@ -166,19 +166,23 @@ private:
             juce::Rectangle<float> bounds) {
         graphics.setColour(CanvasChromePalette::surface);
         graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::panelCornerRadius);
-        graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.88f));
-        graphics.drawRoundedRectangle(
-                bounds,
-                CanvasChromeMetrics::panelCornerRadius,
-                CanvasChromeMetrics::restingBorderWidth);
-
         auto content = bounds.reduced(7.f);
-        const float previewHeight = juce::jmin(
-                132.f, content.getWidth() * 9.f / 16.f);
-        auto preview = content.removeFromTop(previewHeight);
-        PresetBrowserPainting::drawPreview(graphics, record, thumbnails, preview);
-        content.removeFromTop(7.f);
-        auto name = content.removeFromTop(25.f);
+        PresetBrowserPainting::drawPreview(graphics, record, thumbnails, content);
+
+        const auto metadata = content.removeFromBottom(68.f);
+        juce::ColourGradient scrim(
+                CanvasChromePalette::canvasBackground.withAlpha(0.30f),
+                metadata.getX(),
+                metadata.getY(),
+                CanvasChromePalette::canvasBackground.withAlpha(0.94f),
+                metadata.getX(),
+                metadata.getBottom(),
+                false);
+        graphics.setGradientFill(scrim);
+        graphics.fillRect(metadata);
+
+        auto overlay = metadata.reduced(10.f, 5.f);
+        auto name = overlay.removeFromTop(25.f);
         graphics.setColour(CanvasChromePalette::text);
         graphics.setFont(juce::FontOptions(15.f).withStyle("Bold"));
         graphics.drawFittedText(
@@ -189,13 +193,18 @@ private:
         PresetBrowserPainting::drawOverflowMenu(
                 graphics, name.removeFromRight(26.f));
 
-        auto tags = content.removeFromTop(24.f);
+        auto tags = overlay.removeFromTop(24.f);
         for (int tag = 0; tag < juce::jmin(3, record.presentation.tags.size()); ++tag) {
             const float width = juce::jlimit(
                     42.f, 78.f, 18.f + (float) record.presentation.tags[tag].length() * 6.f);
             drawTag(graphics, record.presentation.tags[tag], tags.removeFromLeft(width));
             tags.removeFromLeft(6.f);
         }
+        graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.88f));
+        graphics.drawRoundedRectangle(
+                bounds,
+                CanvasChromeMetrics::panelCornerRadius,
+                CanvasChromeMetrics::restingBorderWidth);
     }
 
     void paintRow(
@@ -288,7 +297,7 @@ InlinePresetBrowser::InlinePresetBrowser(
             CanvasChromePalette::navigationAccent);
     search.setColour(juce::TextEditor::textColourId, CanvasChromePalette::text);
     search.setFont(juce::FontOptions(15.f));
-    search.setIndents(36, 8);
+    search.setIndents(36, 11);
     search.addListener(this);
     search.addKeyListener(this);
     addAndMakeVisible(search);
@@ -296,6 +305,9 @@ InlinePresetBrowser::InlinePresetBrowser(
     styleFilterButton(all);
     styleFilterButton(factory);
     styleFilterButton(user);
+    all.setComponentID("workspace.sidebar.all");
+    factory.setComponentID("workspace.sidebar.factory");
+    user.setComponentID("workspace.sidebar.user");
     all.onClick = [this] { setPackFilter(PackFilter::All); };
     factory.onClick = [this] { setPackFilter(PackFilter::Factory); };
     user.onClick = [this] { setPackFilter(PackFilter::User); };
@@ -394,12 +406,9 @@ void InlinePresetBrowser::paint(juce::Graphics& graphics) {
     const auto bounds = getLocalBounds().toFloat();
     if (tab == WorkspaceSidebarTab::Presets) {
         graphics.setColour(CanvasChromePalette::dockSurface);
-        graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::panelCornerRadius);
+        graphics.fillRect(bounds);
         graphics.setColour(CanvasChromePalette::border.withAlpha(0.78f));
-        graphics.drawRoundedRectangle(
-                bounds.reduced(0.5f),
-                CanvasChromeMetrics::panelCornerRadius,
-                CanvasChromeMetrics::restingBorderWidth);
+        graphics.drawVerticalLine(0, bounds.getY(), bounds.getBottom());
     }
     graphics.setColour(CanvasChromePalette::dockSurface);
     graphics.fillRect(bounds.withHeight(46.f));
@@ -537,9 +546,11 @@ void InlinePresetBrowser::updateVisibility() {
     curves.setColour(
             juce::TextButton::textColourOffId,
             showingPresets ? CanvasChromePalette::mutedText : CanvasChromePalette::text);
+    curves.setColour(juce::TextButton::textColourOnId, CanvasChromePalette::text);
     presets.setColour(
             juce::TextButton::textColourOffId,
             showingPresets ? CanvasChromePalette::text : CanvasChromePalette::mutedText);
+    presets.setColour(juce::TextButton::textColourOnId, CanvasChromePalette::text);
     addGuide.setVisible(!showingPresets);
     search.setVisible(showingPresets);
     all.setVisible(showingPresets);
@@ -565,6 +576,8 @@ void InlinePresetBrowser::styleFilterButton(juce::TextButton& button) {
     button.setColour(juce::TextButton::buttonOnColourId,
             CanvasChromePalette::navigationAccent);
     button.setColour(juce::TextButton::textColourOffId, CanvasChromePalette::text);
+    button.setColour(juce::TextButton::textColourOnId,
+            CanvasChromePalette::canvasBackground);
 }
 
 }

@@ -42,7 +42,9 @@ void PresetBrowserLookAndFeel::drawButtonText(
         juce::TextButton& button,
         bool,
         bool) {
-    juce::Colour text = button.findColour(juce::TextButton::textColourOffId);
+    juce::Colour text = button.findColour(button.getToggleState()
+            ? juce::TextButton::textColourOnId
+            : juce::TextButton::textColourOffId);
     if (!button.isEnabled()) {
         text = text.withMultipliedAlpha(0.45f);
     }
