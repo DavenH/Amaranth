@@ -80,6 +80,8 @@ TEST_CASE("Proposed graph issues must strictly repair existing issues",
     };
     GraphValidationIssue changedAddress = first;
     changedAddress.destPortId = "other";
+    GraphValidationIssue changedSubject = first;
+    changedSubject.subjectId = "other";
 
     REQUIRE(GraphValidator::acceptsProposedIssues({ first, second }, {}));
     REQUIRE(GraphValidator::acceptsProposedIssues({ first, second }, { first }));
@@ -87,6 +89,8 @@ TEST_CASE("Proposed graph issues must strictly repair existing issues",
     REQUIRE_FALSE(GraphValidator::acceptsProposedIssues({ first }, { first }));
     REQUIRE_FALSE(GraphValidator::acceptsProposedIssues(
             { first, second }, { changedAddress }));
+    REQUIRE_FALSE(GraphValidator::acceptsProposedIssues(
+            { first, second }, { changedSubject }));
 }
 
 TEST_CASE("Boundary-free graph fragments retain legacy validation semantics",
@@ -932,6 +936,42 @@ TEST_CASE("Validation context retains one exact durable graph baseline",
 
     graph.markChanged();
     REQUIRE_FALSE(context.matches(graph));
+}
+
+TEST_CASE("Validation context recomputes affected operation policy",
+        "[cycle-v2][graph][validation-context][domains]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
+    graph.addEdge({
+            "wave", "out", "add", "left",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "fft", "mag", "add", "right",
+            PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal
+    });
+    const GraphValidationContext context(graph);
+    REQUIRE(std::any_of(
+            context.validationIssues().begin(),
+            context.validationIssues().end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::MixedOperationDomains
+                        && issue.subjectId == "add";
+            }));
+
+    const Edge replacement {
+            "wave", "out", "add", "right",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    };
+    const auto proposedIssues = context.validateProposal(graph, { 1 }, { replacement });
+    const GraphEdgeView proposedEdges(graph.getEdges(), { 1 }, { replacement });
+    const auto fullIssues = GraphValidator().validate(graph, proposedEdges);
+
+    REQUIRE(proposedIssues.empty());
+    REQUIRE(proposedIssues.size() == fullIssues.size());
 }
 
 TEST_CASE("Neutral routing cannot participate in both audio partitions",

@@ -18,6 +18,11 @@ public:
     const GraphDomainResolution& domainResolution() const { return domains; }
     const GraphAudioScopeAnalysis& audioScopeAnalysis() const { return audioScope; }
     const std::vector<GraphValidationIssue>& validationIssues() const { return issues; }
+    bool usesExplicitAudioGraph() const { return explicitAudioGraph; }
+    std::vector<GraphValidationIssue> validateProposal(
+            const NodeGraph& graph,
+            std::vector<size_t> removedEdges,
+            std::vector<Edge> addedEdges) const;
 
 private:
     const NodeGraph* source {};
@@ -27,6 +32,7 @@ private:
     GraphDomainResolution domains;
     GraphAudioScopeAnalysis audioScope;
     std::vector<GraphValidationIssue> issues;
+    bool explicitAudioGraph {};
 };
 
 }

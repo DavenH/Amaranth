@@ -280,6 +280,8 @@ GraphAudioScopeAnalysis GraphAudioScopeAnalyzer::analyze(
             result.conflictingNeutralNodeIds.end(),
             affectedConflicts.begin(),
             affectedConflicts.end());
+    result.affectedNodeIds.assign(affected.begin(), affected.end());
+    std::sort(result.affectedNodeIds.begin(), result.affectedNodeIds.end());
     sortConflicts(result);
     return result;
 }

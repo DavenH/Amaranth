@@ -8,6 +8,7 @@
 namespace CycleV2 {
 
 class GraphEdgeView;
+class GraphEdgeIndexOverlay;
 struct GraphValidationIssue;
 
 class GraphTopologyValidator {
@@ -15,6 +16,12 @@ public:
     void validate(
             const NodeGraph& graph,
             const GraphEdgeView& edges,
+            const GraphDomainResolution& resolution,
+            std::vector<GraphValidationIssue>& issues) const;
+    void validateOperationNode(
+            const Node& node,
+            const GraphEdgeView& edges,
+            const GraphEdgeIndexOverlay& edgeIndex,
             const GraphDomainResolution& resolution,
             std::vector<GraphValidationIssue>& issues) const;
 

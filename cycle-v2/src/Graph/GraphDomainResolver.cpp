@@ -82,6 +82,7 @@ public:
 
         initialEdges = dependencyClosure(
                 indexedEdges.edgesAtChangedDestinations());
+        resolution.affectedEdgeIndices = initialEdges;
         for (const size_t edgeIndex : initialEdges) {
             resolution.domains[edgeIndex] = edges[edgeIndex].domain;
             resolution.channelLayouts[edgeIndex] = ChannelLayout::Mono;

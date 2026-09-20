@@ -1,10 +1,14 @@
+#include <unordered_set>
+
 #include "Graph/GraphValidator.h"
 
 #include "Graph/GraphAudioScopeValidator.h"
+#include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphEdgeValidator.h"
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphGuideValidator.h"
 #include "Graph/GraphTopologyValidator.h"
+#include "Graph/GraphValidationContext.h"
 
 namespace CycleV2 {
 
@@ -17,7 +21,32 @@ bool sameValidationIssue(
             && first.sourceNodeId == second.sourceNodeId
             && first.sourcePortId == second.sourcePortId
             && first.destNodeId == second.destNodeId
-            && first.destPortId == second.destPortId;
+            && first.destPortId == second.destPortId
+            && first.subjectId == second.subjectId;
+}
+
+using StringSet = std::unordered_set<String, GraphAudioScopeAnalysis::StringHash>;
+
+String edgeKey(const Edge& edge) {
+    return edge.sourceNodeId + "\n" + edge.sourcePortId + "\n"
+            + edge.destNodeId + "\n" + edge.destPortId;
+}
+
+String edgeKey(const GraphValidationIssue& issue) {
+    return issue.sourceNodeId + "\n" + issue.sourcePortId + "\n"
+            + issue.destNodeId + "\n" + issue.destPortId;
+}
+
+bool changesVoiceContextAssignment(const GraphEdgeView& edges) {
+    for (const size_t removedIndex : edges.removedIndices()) {
+        if (edges.existingEdge(removedIndex).destPortId == "context") {
+            return true;
+        }
+    }
+    return std::any_of(
+            edges.addedEdges().begin(),
+            edges.addedEdges().end(),
+            [](const Edge& edge) { return edge.destPortId == "context"; });
 }
 
 }
@@ -57,6 +86,102 @@ std::vector<GraphValidationIssue> GraphValidator::validate(
     GraphTopologyValidator().validate(graph, edges, resolution, issues);
     GraphAudioScopeValidator().validate(graph, edges, scopeAnalysis, issues);
 
+    return issues;
+}
+
+std::vector<GraphValidationIssue> GraphValidator::validateProposal(
+        const NodeGraph& graph,
+        const GraphEdgeView& edges,
+        const GraphEdgeIndexOverlay& edgeIndex,
+        const GraphValidationContext& baseline) const {
+    const auto resolution = domainResolver.resolve(
+            graph,
+            edges,
+            edgeIndex,
+            baseline.domainResolution());
+    const auto scopeAnalysis = GraphAudioScopeAnalyzer().analyze(
+            graph,
+            edges,
+            edgeIndex,
+            baseline.audioScopeAnalysis());
+    if (baseline.usesExplicitAudioGraph()
+            || changesVoiceContextAssignment(edges)) {
+        return validate(graph, edges, resolution, scopeAnalysis);
+    }
+
+    std::vector<size_t> edgesToValidate;
+    std::unordered_set<size_t> includedEdges;
+    StringSet invalidatedEdgeKeys;
+    StringSet affectedOperationNodes;
+    const auto invalidateEdge = [&](size_t proposedIndex) {
+        if (proposedIndex >= edges.size()
+                || !includedEdges.insert(proposedIndex).second) {
+            return;
+        }
+        const Edge& edge = edges[proposedIndex];
+        edgesToValidate.push_back(proposedIndex);
+        invalidatedEdgeKeys.emplace(edgeKey(edge));
+        affectedOperationNodes.emplace(edge.destNodeId);
+    };
+    for (const size_t removedIndex : edges.removedIndices()) {
+        const Edge& removed = edges.existingEdge(removedIndex);
+        invalidatedEdgeKeys.emplace(edgeKey(removed));
+        affectedOperationNodes.emplace(removed.destNodeId);
+    }
+    for (const size_t affectedEdge : resolution.affectedEdgeIndices) {
+        invalidateEdge(affectedEdge);
+    }
+    for (size_t proposedIndex = edges.retainedSize();
+            proposedIndex < edges.size();
+            ++proposedIndex) {
+        invalidateEdge(proposedIndex);
+    }
+    for (const String& nodeId : scopeAnalysis.affectedNodeIds) {
+        for (const size_t incoming : edgeIndex.incomingEdges(nodeId)) {
+            invalidateEdge(incoming);
+        }
+        for (const size_t outgoing : edgeIndex.outgoingEdges(nodeId)) {
+            invalidateEdge(outgoing);
+        }
+    }
+
+    std::vector<GraphValidationIssue> issues;
+    for (const auto& issue : baseline.validationIssues()) {
+        const bool invalidatedEdge = issue.sourceNodeId.isNotEmpty()
+                && invalidatedEdgeKeys.count(edgeKey(issue)) > 0;
+        const bool operationIssue = issue.sourceNodeId.isEmpty()
+                && (issue.code == GraphValidationCode::DomainMismatch
+                        || issue.code == GraphValidationCode::MixedOperationDomains);
+        const bool invalidatedOperation = operationIssue
+                && issue.subjectId.isNotEmpty()
+                && affectedOperationNodes.count(issue.subjectId) > 0;
+        if (!invalidatedEdge && !invalidatedOperation) {
+            issues.push_back(issue);
+        }
+    }
+
+    GraphEdgeValidator edgeValidator;
+    for (const size_t edgeIndexToValidate : edgesToValidate) {
+        edgeValidator.validate(
+                graph,
+                edges[edgeIndexToValidate],
+                resolution.domains[edgeIndexToValidate],
+                nullptr,
+                issues);
+    }
+
+    GraphTopologyValidator topologyValidator;
+    for (const String& nodeId : affectedOperationNodes) {
+        const Node* node = graph.findNode(nodeId);
+        if (node != nullptr) {
+            topologyValidator.validateOperationNode(
+                    *node,
+                    edges,
+                    edgeIndex,
+                    resolution,
+                    issues);
+        }
+    }
     return issues;
 }
 

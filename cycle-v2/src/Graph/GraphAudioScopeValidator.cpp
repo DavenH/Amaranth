@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphValidationTypes.h"
@@ -58,8 +59,11 @@ bool isLinkedStereoTimeOutput(const Port& port) {
 void addIssue(
         std::vector<GraphValidationIssue>& issues,
         GraphValidationCode code,
-        const String& message) {
-    issues.push_back({ code, message });
+        const String& message,
+        const String& subjectId) {
+    GraphValidationIssue issue { code, message };
+    issue.subjectId = subjectId;
+    issues.push_back(std::move(issue));
 }
 
 }
@@ -107,7 +111,8 @@ void GraphAudioScopeValidator::validate(
                 voiceOutputIds.empty()
                         ? GraphValidationCode::MissingRequiredNode
                         : GraphValidationCode::DuplicateSingletonNode,
-                "Audio graph requires exactly one Voice Output");
+                "Audio graph requires exactly one Voice Output",
+                "voiceOutput");
     }
     if (globalInputIds.size() != 1) {
         addIssue(
@@ -115,7 +120,8 @@ void GraphAudioScopeValidator::validate(
                 globalInputIds.empty()
                         ? GraphValidationCode::MissingRequiredNode
                         : GraphValidationCode::DuplicateSingletonNode,
-                "Audio graph requires exactly one Global Input");
+                "Audio graph requires exactly one Global Input",
+                "globalInput");
     }
     if (outputIds.size() != 1) {
         addIssue(
@@ -123,14 +129,16 @@ void GraphAudioScopeValidator::validate(
                 outputIds.empty()
                         ? GraphValidationCode::MissingRequiredNode
                         : GraphValidationCode::DuplicateSingletonNode,
-                "Audio graph requires exactly one Output");
+                "Audio graph requires exactly one Output",
+                "output");
     }
 
     for (const auto& nodeId : analysis.conflictingNeutralNodeIds) {
         addIssue(
                 issues,
                 GraphValidationCode::ConflictingProcessingScope,
-                "Routing node participates in both voice and global graphs: " + nodeId);
+                "Routing node participates in both voice and global graphs: " + nodeId,
+                nodeId);
     }
     if (voiceOutputIds.size() != 1
             || globalInputIds.size() != 1
@@ -156,13 +164,15 @@ void GraphAudioScopeValidator::validate(
             addIssue(
                     issues,
                     GraphValidationCode::GlobalNodeUnreachable,
-                    "Global node is not reachable from Global Input: " + node.id);
+                    "Global node is not reachable from Global Input: " + node.id,
+                    node.id);
         }
         if (toOutput.count(node.id) == 0) {
             addIssue(
                     issues,
                     GraphValidationCode::GlobalNodeCannotReachOutput,
-                    "Global node does not reach Output: " + node.id);
+                    "Global node does not reach Output: " + node.id,
+                    node.id);
         }
     }
 
@@ -201,7 +211,8 @@ void GraphAudioScopeValidator::validate(
         addIssue(
                 issues,
                 GraphValidationCode::AmbiguousVoiceOutput,
-                "Voice audio path does not terminate at Voice Output");
+                "Voice audio path does not terminate at Voice Output",
+                "voiceOutput");
     }
 }
 

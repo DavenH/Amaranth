@@ -12,6 +12,7 @@ class GraphEdgeIndexOverlay;
 struct GraphDomainResolution {
     std::vector<PortDomain> domains;
     std::vector<ChannelLayout> channelLayouts;
+    std::vector<size_t> affectedEdgeIndices;
 };
 
 class GraphDomainResolver {

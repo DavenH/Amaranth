@@ -24,6 +24,7 @@ struct GraphAudioScopeAnalysis {
 
     std::unordered_map<String, AuthoredAudioScope, StringHash> nodes;
     std::vector<String> conflictingNeutralNodeIds;
+    std::vector<String> affectedNodeIds;
 
     AuthoredAudioScope scopeFor(const String& nodeId) const;
     bool hasConflict(const String& nodeId) const;

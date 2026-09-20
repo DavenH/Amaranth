@@ -367,6 +367,30 @@ list, so a persistent or layered fact representation remains a prerequisite
 before claiming total proposal cost independent of graph size. Incremental
 affected-closure validation is the next indexed fact slice.
 
+Affected-closure proposal validation now reuses the durable issues in
+`GraphValidationContext`, consumes the affected edge and node sets produced by
+the seeded domain and audio-scope analyses, and revalidates only changed or
+fact-dependent edges and affected operation nodes. Validation issues now carry
+a stable `subjectId` for node-owned policies, so an operation issue can be
+invalidated without parsing its message or discarding unrelated baseline
+issues. Full and proposal topology validation share one indexed operation-node
+rule. `GraphValidator.cpp` grew from 96 to 226 lines,
+`GraphTopologyValidator.cpp` from 113 to 201 lines, and
+`GraphValidationContext.cpp` from 23 to 47 lines; each remains below the size
+review thresholds and retains one policy level. A replacement test proves that
+a repaired mixed-domain operation removes its baseline issue with full-validator
+parity. A scale test adds 128 disconnected nodes while validation node visits,
+edge visits, and domain transfers remain constant. The complete complexity set
+passes 643 assertions across 33 cases. The broader `[graph]` run passes 183 of
+189 cases and retains the same six serializer/preset fixture failures; output
+is in `/private/tmp/cycle-v2-graph-affected-validation.log`. Explicit audio
+graphs and Voice Context
+assignment edits deliberately retain the full validation fallback until the
+context owns indexed reachability, terminal-output, and assignment facts.
+Baseline scope-map and issue-vector materialization also remain graph-sized.
+Those retained global policy facts are the next validation slice before live UI
+callers adopt the context.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,

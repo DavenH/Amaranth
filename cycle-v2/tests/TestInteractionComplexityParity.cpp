@@ -11,6 +11,7 @@
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphValidationContext.h"
 #include "Graph/NodeParameterMap.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Runtime/PresentationGestureSession.h"
@@ -239,6 +240,59 @@ TEST_CASE("Proposed audio scope analysis ignores disconnected graph scale",
         REQUIRE(counts.validationEdgeVisits == expectedEdgeVisits);
         REQUIRE(counts.domainTransfers == 0);
         REQUIRE(counts.graphCopies == 0);
+    }
+}
+
+TEST_CASE("Proposed validation ignores disconnected graph scale",
+        "[cycle-v2][complexity][validation][index]") {
+    GraphNodeFactory factory;
+    uint64_t expectedNodeVisits {};
+    uint64_t expectedEdgeVisits {};
+    uint64_t expectedDomainTransfers {};
+    for (const int unrelatedNodes : { 0, 128 }) {
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+        Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+        const auto signalType = std::find_if(
+                mesh.parameters.begin(),
+                mesh.parameters.end(),
+                [](const NodeParameter& parameter) {
+                    return parameter.id == "signalType";
+                });
+        REQUIRE(signalType != mesh.parameters.end());
+        signalType->value = "spectralMagnitude";
+        graph.addNode(std::move(mesh));
+        for (int index = 0; index < unrelatedNodes; ++index) {
+            graph.addNode(factory.createNode(
+                    NodeKind::Add,
+                    "unrelated" + String(index),
+                    {}));
+        }
+
+        const GraphValidationContext context(graph);
+        const Edge proposedEdge {
+                "mesh", "out", "output", "time",
+                PortDomain::ControlSignal, ConnectionKind::Signal
+        };
+        InteractionComplexityDiagnostics::reset();
+
+        const auto issues = context.validateProposal(graph, {}, { proposedEdge });
+
+        REQUIRE(issues.size() == 1);
+        REQUIRE(issues.front().code == GraphValidationCode::DomainMismatch);
+        REQUIRE(issues.front().sourceNodeId == "mesh");
+        REQUIRE(issues.front().destNodeId == "output");
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        if (unrelatedNodes == 0) {
+            expectedNodeVisits = counts.validationNodeVisits;
+            expectedEdgeVisits = counts.validationEdgeVisits;
+            expectedDomainTransfers = counts.domainTransfers;
+        }
+        REQUIRE(counts.validationNodeVisits == expectedNodeVisits);
+        REQUIRE(counts.validationEdgeVisits == expectedEdgeVisits);
+        REQUIRE(counts.domainTransfers == expectedDomainTransfers);
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
     }
 }
 
