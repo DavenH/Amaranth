@@ -641,6 +641,19 @@ oscillator set still contains the existing missing preset fixture failures.
 Preparation and processor-cache ownership remain the final runtime extraction
 target.
 
+Processor preparation slice: `GraphAudioProcessorCache` now owns processor
+identity by node and voice, role replacement, preparation signatures,
+configuration adoption, preparation counts, non-realtime service, and stale
+entry eviction. `GraphAudioExecutor` supplies the prepared execution facts and
+retains arena and pass orchestration; it no longer exposes or mutates cache
+entries. Its implementation fell from 1,215 to 1,150 lines and its header from
+308 to 255; the cache is 117 lines with a 72-line interface. Configuration-key
+and revision reuse tests pass with 11 assertions, stale-plan eviction passes
+seven, prepared multi-voice dispatch passes six, ownership-scope operation
+counts pass three, and the prepared realtime no-allocation contract passes ten.
+Together with explicit execution modes and the shared oscillator region plan,
+this completes the runtime policy separation slice.
+
 ### 4. Correct node-domain dependency direction
 
 `TrimeshNodeModel::renderGrid` constructs blockwise/gridwise DSP processors and
