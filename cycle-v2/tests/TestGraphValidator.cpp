@@ -509,7 +509,14 @@ TEST_CASE("Proposed edge replacement resolves propagated domains without mutatin
 
     const GraphDomainResolver resolver;
     const GraphEdgeView proposed(graph.getEdges(), { 0 }, { replacement });
-    const auto resolved = resolver.resolve(graph, proposed);
+    const GraphEdgeIndex baseIndex(graph.getEdges());
+    const GraphEdgeIndexOverlay proposedIndex(baseIndex, proposed);
+    const auto baselineResolution = resolver.resolve(graph);
+    const auto resolved = resolver.resolve(
+            graph,
+            proposed,
+            proposedIndex,
+            baselineResolution);
     const auto committedResolution = resolver.resolve(committed);
 
     REQUIRE(resolved.domains == committedResolution.domains);
@@ -517,6 +524,46 @@ TEST_CASE("Proposed edge replacement resolves propagated domains without mutatin
     REQUIRE(resolved.domains[0] == PortDomain::TimeSignal);
     REQUIRE(resolved.domains[1] == PortDomain::TimeSignal);
     REQUIRE(graph.getEdges()[0].sourceNodeId == "mesh");
+}
+
+TEST_CASE("Proposed edge removal clears propagated domains from the affected branch",
+        "[cycle-v2][graph][domains]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+    setParameter(mesh, "signalType", "spectralMagnitude");
+    graph.addNode(std::move(mesh));
+    graph.addNode(factory.createNode(NodeKind::SpectralLayer, "layer", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+    graph.addNode(factory.createNode(NodeKind::Add, "final", {}));
+    graph.addEdge({
+            "mesh", "out", "layer", "in",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "layer", "out", "multiply", "right",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "multiply", "out", "final", "left",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+
+    const GraphDomainResolver resolver;
+    const auto baseline = resolver.resolve(graph);
+    const GraphEdgeIndex baseIndex(graph.getEdges());
+    const GraphEdgeView proposed(graph.getEdges(), { 0 }, {});
+    const GraphEdgeIndexOverlay proposedIndex(baseIndex, proposed);
+    const auto resolved = resolver.resolve(graph, proposed, proposedIndex, baseline);
+    const auto expected = resolver.resolve(graph, proposed);
+
+    REQUIRE(resolved.domains == expected.domains);
+    REQUIRE(resolved.channelLayouts == expected.channelLayouts);
+    REQUIRE(resolved.domains == std::vector<PortDomain> {
+            PortDomain::ControlSignal,
+            PortDomain::ControlSignal
+    });
+    REQUIRE(graph.getEdges().size() == 3);
 }
 
 TEST_CASE("Voice Context carries oscillator configuration without a signal domain", "[cycle-v2][graph]") {

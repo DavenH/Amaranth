@@ -330,6 +330,26 @@ channel-layout cases pass (31 assertions). The next domain slice can seed the
 existing worklist from `GraphEdgeIndexOverlay` without reproducing transfer
 rules or adjacency construction.
 
+Seeded domain recomputation now initializes retained proposed edges from the
+durable `GraphValidationContext` resolution, expands the local downstream
+dependency closure from destinations changed by `GraphEdgeIndexOverlay`, and
+runs the existing domain and channel-layout transfer functions only over that
+closure. Removed and added edges share one structural seed calculation;
+propagation retains the authoritative resolver rules and overlay adjacency.
+`GraphDomainResolver.cpp` grew from 339 to 426 lines,
+`GraphEdgeIndex.cpp` from 131 to 165 lines, and `GraphEdgeView.h` from 101 to
+104 lines. The new code removes no caller yet because incremental audio-scope
+and validation facts remain prerequisites for the live preview path. Full and
+seeded replacement/removal parity tests pass, and a scale test holds the
+affected branch constant while adding 128 disconnected branches: domain
+transfers remain unchanged with zero validation node visits, validation edge
+visits, or graph copies. The focused domain set passes 29 assertions across
+six cases and the complete complexity set passes 605 assertions across 31
+cases. The broader `[graph]` run retains six pre-existing serializer/preset
+fixture failures; its output is in
+`/private/tmp/cycle-v2-graph-seeded-domain.log`. Incremental audio-scope
+analysis is the next indexed fact slice.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,

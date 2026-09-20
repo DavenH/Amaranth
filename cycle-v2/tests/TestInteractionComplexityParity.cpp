@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphDomainResolver.h"
 #include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphEditor.h"
@@ -91,6 +92,83 @@ TEST_CASE("Edge index lookups ignore unrelated graph scale",
         REQUIRE(overlayIndex.outgoingEdges("wave")
                 == rebuiltIndex.outgoingEdges("wave"));
         REQUIRE(InteractionComplexityDiagnostics::counts().validationEdgeVisits == 0);
+    }
+}
+
+TEST_CASE("Proposed domain resolution ignores disconnected graph scale",
+        "[cycle-v2][complexity][domains][index]") {
+    GraphNodeFactory factory;
+    uint64_t expectedTransfers {};
+    for (const int unrelatedBranches : { 0, 128 }) {
+        NodeGraph graph;
+        Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+        const auto signalType = std::find_if(
+                mesh.parameters.begin(),
+                mesh.parameters.end(),
+                [](const NodeParameter& parameter) {
+                    return parameter.id == "signalType";
+                });
+        REQUIRE(signalType != mesh.parameters.end());
+        signalType->value = "spectralMagnitude";
+        graph.addNode(std::move(mesh));
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+        graph.addNode(factory.createNode(NodeKind::SpectralLayer, "layer", {}));
+        graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+        graph.addNode(factory.createNode(NodeKind::Add, "final", {}));
+        graph.addEdge({
+                "mesh", "out", "layer", "in",
+                PortDomain::ControlSignal, ConnectionKind::Signal
+        });
+        graph.addEdge({
+                "layer", "out", "multiply", "right",
+                PortDomain::ControlSignal, ConnectionKind::Signal
+        });
+        graph.addEdge({
+                "multiply", "out", "final", "left",
+                PortDomain::ControlSignal, ConnectionKind::Signal
+        });
+
+        for (int index = 0; index < unrelatedBranches; ++index) {
+            const String sourceId = "source" + String(index);
+            const String destinationId = "destination" + String(index);
+            graph.addNode(factory.createNode(NodeKind::Add, sourceId, {}));
+            graph.addNode(factory.createNode(NodeKind::Multiply, destinationId, {}));
+            graph.addEdge({
+                    sourceId, "out", destinationId, "left",
+                    PortDomain::ControlSignal, ConnectionKind::Signal
+            });
+        }
+
+        const GraphDomainResolver resolver;
+        const auto baseline = resolver.resolve(graph);
+        const GraphEdgeIndex baseIndex(graph.getEdges());
+        const Edge replacement {
+                "wave", "out", "layer", "in",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        };
+        const GraphEdgeView proposed(graph.getEdges(), { 0 }, { replacement });
+        const GraphEdgeIndexOverlay proposedIndex(baseIndex, proposed);
+        const auto expected = resolver.resolve(graph, proposed);
+        InteractionComplexityDiagnostics::reset();
+
+        const auto resolved = resolver.resolve(
+                graph,
+                proposed,
+                proposedIndex,
+                baseline);
+
+        REQUIRE(resolved.domains == expected.domains);
+        REQUIRE(resolved.channelLayouts == expected.channelLayouts);
+        REQUIRE(graph.getEdges()[0].sourceNodeId == "mesh");
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        if (unrelatedBranches == 0) {
+            expectedTransfers = counts.domainTransfers;
+        }
+        REQUIRE(counts.domainTransfers > 0);
+        REQUIRE(counts.domainTransfers == expectedTransfers);
+        REQUIRE(counts.validationNodeVisits == 0);
+        REQUIRE(counts.validationEdgeVisits == 0);
+        REQUIRE(counts.graphCopies == 0);
     }
 }
 
