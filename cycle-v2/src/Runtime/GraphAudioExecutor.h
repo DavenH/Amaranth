@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <unordered_map>
+#include <variant>
 
 #include "Runtime/GraphRuntime.h"
 #include "Runtime/NodeAudioProcessor.h"
@@ -138,6 +139,27 @@ private:
         Global
     };
 
+    struct CompleteDiagnosticExecution {
+        size_t traversalColumnCount {};
+    };
+
+    struct IncrementalDiagnosticExecution {
+        const std::vector<uint8_t>& dirtyNodes;
+        const CancellationCheck& cancellationCheck;
+        GraphAudioResultView& result;
+    };
+
+    struct RealtimeExecution {
+        ProcessingPass pass { ProcessingPass::Complete };
+        GraphProcessObserver* observer {};
+        GraphExecutionOperationCounts* operationCounts {};
+    };
+
+    using ProcessingMode = std::variant<
+            CompleteDiagnosticExecution,
+            IncrementalDiagnosticExecution,
+            RealtimeExecution>;
+
     struct ProcessorKey {
         String nodeId;
         int voiceIndex {};
@@ -249,14 +271,7 @@ private:
             size_t frameCount,
             AudioProcessTiming timing,
             const AudioVoiceContext& voice,
-            bool captureDiagnostics,
-            GraphProcessObserver* observer,
-            const std::vector<uint8_t>* dirtyNodes = nullptr,
-            const CancellationCheck& cancellationCheck = {},
-            GraphAudioResultView* incrementalResult = nullptr,
-            ProcessingPass pass = ProcessingPass::Complete,
-            GraphExecutionOperationCounts* operationCounts = nullptr,
-            size_t traversalColumnCount = 0) const;
+            const ProcessingMode& mode) const;
     void mixVoiceBoundary(
             const GraphExecutionPlan& plan,
             size_t frameCount) const;

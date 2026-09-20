@@ -117,14 +117,7 @@ GraphAudioResult GraphAudioExecutor::process(
             frameCount,
             timing,
             std::move(voice),
-            true,
-            nullptr,
-            nullptr,
-            {},
-            nullptr,
-            ProcessingPass::Complete,
-            nullptr,
-            traversalColumnCount);
+            CompleteDiagnosticExecution { traversalColumnCount });
 }
 
 GraphAudioResultView GraphAudioExecutor::processIncremental(
@@ -172,8 +165,11 @@ GraphAudioResultView GraphAudioExecutor::processIncrementalIndexed(
         CancellationCheck cancellationCheck) const {
     GraphAudioResultView result;
     processInternal(
-            plan, frameCount, {}, voice, true, nullptr,
-            &dirtyNodes, cancellationCheck, &result);
+            plan,
+            frameCount,
+            {},
+            voice,
+            IncrementalDiagnosticExecution { dirtyNodes, cancellationCheck, result });
     return result;
 }
 
@@ -213,13 +209,11 @@ GraphAudioOutputView GraphAudioExecutor::processRealtime(
             frameCount,
             timing,
             voice,
-            false,
-            observer,
-            nullptr,
-            {},
-            nullptr,
-            ProcessingPass::Complete,
-            operationCounts);
+            RealtimeExecution {
+                    ProcessingPass::Complete,
+                    observer,
+                    operationCounts
+            });
     return { realtimeOutput };
 }
 
@@ -262,13 +256,11 @@ void GraphAudioExecutor::processRealtimeVoiceToMix(
             frameCount,
             timing,
             voice,
-            false,
-            nullptr,
-            nullptr,
-            {},
-            nullptr,
-            ProcessingPass::Voice,
-            operationCounts);
+            RealtimeExecution {
+                    ProcessingPass::Voice,
+                    nullptr,
+                    operationCounts
+            });
     mixVoiceBoundary(plan, frameCount);
 }
 
@@ -285,13 +277,11 @@ GraphAudioOutputView GraphAudioExecutor::processRealtimeGlobal(
             frameCount,
             timing,
             context,
-            false,
-            nullptr,
-            nullptr,
-            {},
-            nullptr,
-            ProcessingPass::Global,
-            operationCounts);
+            RealtimeExecution {
+                    ProcessingPass::Global,
+                    nullptr,
+                    operationCounts
+            });
     return { realtimeOutput };
 }
 
@@ -300,21 +290,36 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         size_t frameCount,
         AudioProcessTiming timing,
         const AudioVoiceContext& voice,
-        bool captureDiagnostics,
-        GraphProcessObserver* observer,
-        const std::vector<uint8_t>* dirtyNodes,
-        const CancellationCheck& cancellationCheck,
-        GraphAudioResultView* incrementalResult,
-        ProcessingPass pass,
-        GraphExecutionOperationCounts* operationCounts,
-        size_t traversalColumnCount) const {
+        const ProcessingMode& mode) const {
+    const auto* completeDiagnostics = std::get_if<CompleteDiagnosticExecution>(&mode);
+    const auto* incrementalDiagnostics = std::get_if<IncrementalDiagnosticExecution>(&mode);
+    const auto* realtime = std::get_if<RealtimeExecution>(&mode);
+    const bool captureDiagnostics = realtime == nullptr;
+    const auto* dirtyNodes = incrementalDiagnostics != nullptr
+            ? &incrementalDiagnostics->dirtyNodes
+            : nullptr;
+    const CancellationCheck* cancellationCheck = incrementalDiagnostics != nullptr
+            ? &incrementalDiagnostics->cancellationCheck
+            : nullptr;
+    GraphAudioResultView* incrementalResult = incrementalDiagnostics != nullptr
+            ? &incrementalDiagnostics->result
+            : nullptr;
+    const ProcessingPass pass = realtime != nullptr
+            ? realtime->pass
+            : ProcessingPass::Complete;
+    GraphProcessObserver* observer = realtime != nullptr ? realtime->observer : nullptr;
+    GraphExecutionOperationCounts* operationCounts = realtime != nullptr
+            ? realtime->operationCounts
+            : nullptr;
     if (captureDiagnostics) {
         AudioExecutionSpec executionSpec;
         executionSpec.maximumFrameCount = frameCount;
         executionSpec.sampleRate = timing.sampleRate;
         executionSpec.bpm = timing.bpm;
         executionSpec.beatsPerMeasure = timing.beatsPerMeasure;
-        executionSpec.traversalColumnCount = traversalColumnCount;
+        executionSpec.traversalColumnCount = completeDiagnostics != nullptr
+                ? completeDiagnostics->traversalColumnCount
+                : 0;
         prepareExecution(plan, executionSpec, voice.voiceIndex);
     }
 
@@ -379,7 +384,10 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         operationCounts->stepVisits += (uint32_t) preparedVoice->second.stepIndices.size();
     }
     for (const size_t stepIndex : preparedVoice->second.stepIndices) {
-        if (dirtyNodes != nullptr && cancellationCheck && !cancellationCheck()) {
+        if (dirtyNodes != nullptr
+                && cancellationCheck != nullptr
+                && *cancellationCheck
+                && !(*cancellationCheck)()) {
             if (incrementalResult != nullptr) {
                 incrementalResult->cancelled = true;
             }

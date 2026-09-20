@@ -530,6 +530,20 @@ operation-count and audio-parity tests preserve preparation, rendering,
 capture, and realtime allocation contracts. Original orchestration files
 shrink as behavior moves to cohesive owners.
 
+Execution-mode contract slice: `GraphAudioExecutor::processInternal` now takes
+one explicit variant selecting complete diagnostics, incremental diagnostics,
+or realtime execution. Incremental dirty state, cancellation, and result
+capture travel together; realtime pass, observer, and operation counters travel
+together. The former twelve-argument mixture of nullable policy controls was
+deleted. The implementation remains allocation-free for realtime calls: mode
+inspection uses the caller's stack value and the cancellation callback remains
+borrowed. Complete rendering passes 18 assertions, incremental rendering passes
+25 assertions across three cases, realtime ownership-pass coverage passes three
+assertions, and the realtime-tagged set passes 144 assertions across 14 cases.
+`GraphAudioExecutor.cpp` is 1,215 lines and its header is 308 lines after the
+contract change; preparation/cache extraction and the shared oscillator region
+planner remain open.
+
 ### 4. Correct node-domain dependency direction
 
 `TrimeshNodeModel::renderGrid` constructs blockwise/gridwise DSP processors and
