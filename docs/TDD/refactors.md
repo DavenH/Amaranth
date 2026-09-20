@@ -274,6 +274,25 @@ inline time/spectral source bodies and the SpectralLayer/Add/Multiply combining
 bodies; those need source-operation and shared binary-combining owners before
 this item can be marked addressed.
 
+The second extraction adds `BinarySignalMath` as the shared owner of magnitude
+transfer, Add/Multiply, and output-domain clamping policy. Both
+`BinarySignalProcessor` and the spectral frame path now use it.
+`SpectralFrameGraphCombiner` composes that core with frame-slot operands,
+one-sided Add, spectral pan, and stage capture. This deletes the renderer's
+local pan helper, magnitude-transfer lambda, and inline Add/Multiply bodies.
+The renderer falls again from 767 to 739 lines, while
+`BinarySignalProcessor.h` falls from 500 to 470 lines. It remains above the
+450-line architecture-plan trigger, with its block/grid operand preparation as
+the remaining extraction target. The shared math core is 66 lines and the
+frame adapter is 148 lines across their headers and sources.
+
+The focused combiner case passes five assertions, the two block/grid binary
+processor cases pass ten assertions, and the fixed FFT and split-block cases
+continue to pass 16 and 19 assertions. Transfer and combining remain within
+the existing graph-combining performance scope and allocate no render-time
+storage. Only the inline time and spectral source rendering bodies remain as
+the completion target for this renderer item.
+
 ## Migrated factory guide-curve attack boundaries
 
 The Cycle 1 factory-preset port in `scripts/port_cycle_v1_preset.py` copies

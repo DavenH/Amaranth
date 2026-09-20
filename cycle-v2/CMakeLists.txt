@@ -141,6 +141,7 @@ set(GRAPH_SOURCES
 set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/AudioPerformanceMetrics.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/BasicNodeAudioProcessors.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/BinarySignalMath.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ChainedOscillatorRecipeRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ChainedOscillatorRegionRuntime.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/CurvePreviewProcessors.cpp"
@@ -181,6 +182,7 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreviewMorphBinding.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/MonitorPreviewProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SourcePreviewProcessors.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralFrameGraphCombiner.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralFrameTransformStage.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralOscillatorFrameRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralMagnitudeTransfer.cpp"

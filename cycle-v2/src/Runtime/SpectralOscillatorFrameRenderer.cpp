@@ -4,12 +4,12 @@
 #include "Nodes/Trimesh/Model/TrimeshMeshDeltaOverlay.h"
 #include "Runtime/AudioPerformanceMetrics.h"
 #include "Runtime/OscillatorRegionPlanView.h"
+#include "Runtime/SpectralFrameGraphCombiner.h"
 
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <Audio/CycleDsp/SpectralStageCapture.h>
 #include <Curve/Curve.h>
-#include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 
 #include <algorithm>
@@ -31,28 +31,6 @@ bool supportedRole(AudioModuleRole role) {
 bool sourceRole(AudioModuleRole role) {
     return role == AudioModuleRole::MeshSource
             || role == AudioModuleRole::WaveSource;
-}
-
-void applyPan(
-        PortDomain domain,
-        Buffer<float> source,
-        Buffer<float> secondarySource,
-        Buffer<float> left,
-        Buffer<float> right,
-        float pan,
-        bool multiplicative) {
-    float leftPan {};
-    float rightPan {};
-    Arithmetic::getPans(pan, leftPan, rightPan);
-    source.copyTo(left);
-    secondarySource.copyTo(right);
-    if (domain == PortDomain::SpectralMagnitudeSignal && multiplicative) {
-        CycleDsp::SpectralLayerCore::applyMultiplicativePan(left, leftPan);
-        CycleDsp::SpectralLayerCore::applyMultiplicativePan(right, rightPan);
-    } else {
-        left.mul(leftPan);
-        right.mul(rightPan);
-    }
 }
 
 }
@@ -400,23 +378,8 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
     const int activeHarmonicCount = jmin(
             RealFftFullPolarSpectrum::binCountForBufferSize(frameSize) - 1,
             LogRegionMapping(midiNote + LogRegionMapping::legacyMidiNoteBias).regionSize());
-    const auto applyMagnitudeOperand = [&](
-            Buffer<float> values,
-            const SpectralMagnitudeTransfer& transfer,
-            int channel) {
-        applySpectralMagnitudeTransfer(
-                values,
-                transfer,
-                (size_t) channel,
-                activeHarmonicCount);
-        if (!transfer.isActive()) {
-            return;
-        }
-        frameCapture.capture(
-                CycleDsp::SpectralStage::MagnitudeOperand,
-                channel,
-                values.section(1, activeHarmonicCount));
-    };
+    const SpectralFrameGraphCombiner graphCombiner(
+            frameCapture, activeHarmonicCount);
     for (auto& operation : operations) {
         const auto performanceStage = [&] {
             switch (operation.type) {
@@ -586,7 +549,7 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
             }
 
             case OperationType::SpectralLayer:
-                applyPan(
+                SpectralFrameGraphCombiner::applyPan(
                         operation.outputDomain,
                         slot(operation.leftInput, 0, count),
                         slot(operation.leftInput, 1, count),
@@ -621,7 +584,16 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                     auto magnitude = magnitudeScratch.withSize(binCount);
                     auto phase = phaseScratch.withSize(binCount);
                     slot(operation.leftInput, channel, binCount).copyTo(magnitude);
-                    applyMagnitudeOperand(magnitude, operation.leftTransfer, channel);
+                    if (BinarySignalMath::applyTransfer(
+                            magnitude,
+                            &operation.leftTransfer,
+                            (size_t) channel,
+                            activeHarmonicCount)) {
+                        frameCapture.capture(
+                                CycleDsp::SpectralStage::MagnitudeOperand,
+                                channel,
+                                magnitude.section(1, activeHarmonicCount));
+                    }
                     slot(operation.rightInput, channel, binCount).copyTo(phase);
                     transformStage.inverse(
                             *transform,
@@ -639,46 +611,46 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
             case OperationType::Add:
                 for (int channel = 0; channel < 2; ++channel) {
                     auto output = slot(operation.outputs[0], channel, count);
-                    output.zero();
-                    if (operation.leftInput >= 0) {
-                        slot(operation.leftInput, channel, count).copyTo(output);
-                        applyMagnitudeOperand(output, operation.leftTransfer, channel);
-                    }
-                    if (operation.rightInput >= 0) {
-                        if (operation.rightTransfer.isActive()) {
-                            auto operand = magnitudeScratch.withSize(count);
-                            slot(operation.rightInput, channel, count).copyTo(operand);
-                            applyMagnitudeOperand(
-                                    operand,
-                                    operation.rightTransfer,
-                                    channel);
-                            output.add(operand);
-                        } else {
-                            output.add(slot(operation.rightInput, channel, count));
-                        }
-                    }
-                    if (operation.outputDomain == PortDomain::SpectralMagnitudeSignal) {
-                        output.threshLT(0.f);
-                    }
+                    graphCombiner.add(
+                            {
+                                    operation.leftInput >= 0
+                                            ? slot(operation.leftInput, channel, count)
+                                            : Buffer<float> {},
+                                    &operation.leftTransfer,
+                                    operation.leftInput >= 0
+                            },
+                            {
+                                    operation.rightInput >= 0
+                                            ? slot(operation.rightInput, channel, count)
+                                            : Buffer<float> {},
+                                    &operation.rightTransfer,
+                                    operation.rightInput >= 0
+                            },
+                            output,
+                            magnitudeScratch.withSize(count),
+                            operation.outputDomain,
+                            channel);
                 }
                 break;
 
             case OperationType::Multiply:
                 for (int channel = 0; channel < 2; ++channel) {
                     auto output = slot(operation.outputs[0], channel, count);
-                    slot(operation.leftInput, channel, count).copyTo(output);
-                    applyMagnitudeOperand(output, operation.leftTransfer, channel);
-                    if (operation.rightTransfer.isActive()) {
-                        auto operand = magnitudeScratch.withSize(count);
-                        slot(operation.rightInput, channel, count).copyTo(operand);
-                        applyMagnitudeOperand(operand, operation.rightTransfer, channel);
-                        output.mul(operand);
-                    } else {
-                        output.mul(slot(operation.rightInput, channel, count));
-                    }
-                    if (operation.outputDomain == PortDomain::SpectralMagnitudeSignal) {
-                        output.threshLT(0.f);
-                    }
+                    graphCombiner.multiply(
+                            {
+                                    slot(operation.leftInput, channel, count),
+                                    &operation.leftTransfer,
+                                    true
+                            },
+                            {
+                                    slot(operation.rightInput, channel, count),
+                                    &operation.rightTransfer,
+                                    true
+                            },
+                            output,
+                            magnitudeScratch.withSize(count),
+                            operation.outputDomain,
+                            channel);
                 }
                 break;
         }
