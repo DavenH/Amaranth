@@ -210,7 +210,7 @@ Replace the mutating contract with either renderer-owned transformed scratch or
 an explicit preparation step returning panel coordinates, then make repeated
 stroke draws non-mutating by default.
 
-## Cycle V2 Trimesh model presentation extraction
+## Addressed: Cycle V2 Trimesh model presentation extraction
 
 `cycle-v2/src/Nodes/Trimesh/Model/TrimeshNodeModel.cpp` owns durable/live mesh
 state, but its `renderGrid` path also constructs Trimesh DSP processors and
@@ -223,6 +223,11 @@ accepts the model's prepared mesh/state and delegates to the existing
 blockwise/gridwise DSP and render profile. Keep mesh identity, publication,
 selection, and revision behavior in `TrimeshNodeModel`. Do not move rendering
 policy into the model or introduce a second curve-evaluation implementation.
+
+Implemented in `TrimeshGridRenderService`. The panel data source now owns the
+presentation call, and `TrimeshNodeModel` no longer imports or constructs DSP
+or rendering policy. The service delegates to the existing blockwise,
+gridwise, and render-profile implementations.
 
 ## Cycle V2 Envelope curve panel decomposition
 
