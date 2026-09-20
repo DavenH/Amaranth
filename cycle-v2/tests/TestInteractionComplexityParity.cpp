@@ -296,6 +296,66 @@ TEST_CASE("Proposed validation ignores disconnected graph scale",
     }
 }
 
+TEST_CASE("Explicit audio proposal validation ignores disconnected graph scale",
+        "[cycle-v2][complexity][validation][audio-scope][index]") {
+    GraphNodeFactory factory;
+    uint64_t expectedNodeVisits {};
+    uint64_t expectedEdgeVisits {};
+    uint64_t expectedDomainTransfers {};
+    for (const int unrelatedBranches : { 0, 128 }) {
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
+        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+        graph.addNode(factory.createNode(NodeKind::GenericProcessor, "route", {}));
+        graph.addEdge({
+                "globalIn", "time", "route", "in",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        });
+        graph.addEdge({
+                "route", "out", "out", "time",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        });
+        graph.addEdge({
+                "wave", "out", "voiceOut", "time",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        });
+        for (int index = 0; index < unrelatedBranches; ++index) {
+            const String sourceId = "unrelatedSource" + String(index);
+            const String routeId = "unrelatedRoute" + String(index);
+            graph.addNode(factory.createNode(NodeKind::WaveSource, sourceId, {}));
+            graph.addNode(factory.createNode(NodeKind::GenericProcessor, routeId, {}));
+            graph.addEdge({
+                    sourceId, "out", routeId, "in",
+                    PortDomain::TimeSignal, ConnectionKind::Signal
+            });
+        }
+
+        const GraphValidationContext context(graph);
+        const Edge replacement {
+                "wave", "out", "route", "in",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        };
+        InteractionComplexityDiagnostics::reset();
+
+        const auto issues = context.validateProposal(graph, { 0 }, { replacement });
+
+        REQUIRE_FALSE(issues.empty());
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        if (unrelatedBranches == 0) {
+            expectedNodeVisits = counts.validationNodeVisits;
+            expectedEdgeVisits = counts.validationEdgeVisits;
+            expectedDomainTransfers = counts.domainTransfers;
+        }
+        REQUIRE(counts.validationNodeVisits == expectedNodeVisits);
+        REQUIRE(counts.validationEdgeVisits == expectedEdgeVisits);
+        REQUIRE(counts.domainTransfers == expectedDomainTransfers);
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
+    }
+}
+
 TEST_CASE("Connection commit does not copy unrelated graph or audio resources",
         "[cycle-v2][complexity][connection]") {
     GraphNodeFactory factory;

@@ -452,6 +452,28 @@ the complete complexity set passes 643 assertions across 33 cases. The next
 slice will add the proposed-view constructor described above and retain these
 facts in `GraphValidationContext`.
 
+Incremental explicit-audio facts now copy the retained boundary, membership,
+reachability, and terminal-count facts, then replace only the forward and
+reverse affected closures and changed terminal sources through
+`GraphEdgeIndexOverlay`. `GraphValidationContext` retains the baseline facts,
+and proposal validation rematerializes audio-policy issues from the proposed
+facts; the former full-validation fallback and its duplicate explicit-audio
+predicate were deleted. Full-validator parity covers removal with and without
+an alternate path, a directed cycle, neutral-node scope migration, and voice
+terminal consumption. A scale test adds 128 disconnected branches while
+validation visits and graph/audio copies remain unchanged. The focused
+validation-context set passes 22 assertions across four cases, and the complete
+complexity set passes 655 assertions across 34 cases. During that proof, the
+larger affected worklist exposed a borrowed vector element that could be
+invalidated by worklist growth; `GraphAudioScope` now copies the current node
+ID before appending successors. `GraphAudioValidationFacts.cpp` grew from 197
+to 400 lines and its interface from 46 to 53 lines. This is one cohesive fact
+owner for full construction, proposed closure replacement, and issue
+materialization; it remains below the source review threshold. The explicit
+audio graph now has no graph-wide proposal fallback. Live connection and
+splice callers can adopt the retained context and delete their UI candidate
+copies next.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,

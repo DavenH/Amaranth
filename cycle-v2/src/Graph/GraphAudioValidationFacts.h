@@ -18,7 +18,15 @@ public:
             const NodeGraph& graph,
             const GraphEdgeView& edges,
             const GraphAudioScopeAnalysis& scopes);
+    GraphAudioValidationFacts(
+            const NodeGraph& graph,
+            const GraphEdgeView& edges,
+            const GraphEdgeIndexOverlay& edgeIndex,
+            const GraphAudioScopeAnalysis& baselineScopes,
+            const GraphAudioScopeAnalysis& scopes,
+            const GraphAudioValidationFacts& baseline);
     bool usesExplicitAudioGraph() const;
+    static bool usesExplicitAudioGraph(const NodeGraph& graph);
     void appendIssues(
             const GraphAudioScopeAnalysis& scopes,
             std::vector<GraphValidationIssue>& issues) const;

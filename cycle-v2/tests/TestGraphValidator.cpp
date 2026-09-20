@@ -61,6 +61,33 @@ void requireEdgeQueriesMatchBulkValidation(const NodeGraph& graph) {
     }
 }
 
+String issueIdentity(const GraphValidationIssue& issue) {
+    return String(static_cast<int>(issue.code)) + "|" + issue.sourceNodeId + "|"
+            + issue.sourcePortId + "|" + issue.destNodeId + "|"
+            + issue.destPortId + "|" + issue.subjectId;
+}
+
+void requireProposalMatchesFull(
+        const NodeGraph& graph,
+        std::vector<size_t> removed,
+        std::vector<Edge> added) {
+    const GraphValidationContext context(graph);
+    auto incremental = context.validateProposal(graph, removed, added);
+    const GraphEdgeView proposed(graph.getEdges(), std::move(removed), std::move(added));
+    auto full = GraphValidator().validate(graph, proposed);
+    std::vector<String> incrementalIdentities;
+    std::vector<String> fullIdentities;
+    for (const auto& issue : incremental) {
+        incrementalIdentities.push_back(issueIdentity(issue));
+    }
+    for (const auto& issue : full) {
+        fullIdentities.push_back(issueIdentity(issue));
+    }
+    std::sort(incrementalIdentities.begin(), incrementalIdentities.end());
+    std::sort(fullIdentities.begin(), fullIdentities.end());
+    REQUIRE(incrementalIdentities == fullIdentities);
+}
+
 }
 
 TEST_CASE("Demo graph validates", "[cycle-v2][graph]") {
@@ -1000,6 +1027,58 @@ TEST_CASE("Validation context updates Voice Context assignment policy",
 
     REQUIRE(proposedIssues.empty());
     REQUIRE(proposedIssues.size() == fullIssues.size());
+}
+
+TEST_CASE("Validation context incrementally preserves explicit audio policy",
+        "[cycle-v2][graph][validation-context][audio-scope]") {
+    GraphNodeFactory factory;
+
+    SECTION("removal and alternate path") {
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
+        graph.addNode(factory.createNode(NodeKind::GenericProcessor, "a", {}));
+        graph.addNode(factory.createNode(NodeKind::GenericProcessor, "b", {}));
+        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addEdge({ "globalIn", "time", "a", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
+        graph.addEdge({ "globalIn", "time", "b", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
+        graph.addEdge({ "b", "out", "a", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
+        graph.addEdge({ "a", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+
+        requireProposalMatchesFull(graph, { 0 }, {});
+        requireProposalMatchesFull(graph, { 0, 2 }, {});
+    }
+
+    SECTION("directed cycle") {
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
+        graph.addNode(factory.createNode(NodeKind::GenericProcessor, "a", {}));
+        graph.addNode(factory.createNode(NodeKind::GenericProcessor, "b", {}));
+        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addEdge({ "globalIn", "time", "a", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
+        graph.addEdge({ "a", "out", "b", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
+        graph.addEdge({ "b", "out", "a", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
+        graph.addEdge({ "b", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+
+        requireProposalMatchesFull(graph, { 0 }, {});
+    }
+
+    SECTION("scope change and voice terminal") {
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+        graph.addNode(factory.createNode(NodeKind::GenericProcessor, "route", {}));
+        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addEdge({ "globalIn", "time", "route", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
+        graph.addEdge({ "route", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+        const Edge voiceRoute { "wave", "out", "route", "in", PortDomain::TimeSignal, ConnectionKind::Signal };
+        requireProposalMatchesFull(graph, { 0 }, { voiceRoute });
+
+        const Edge voiceTerminal { "wave", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal };
+        requireProposalMatchesFull(graph, {}, { voiceTerminal });
+    }
 }
 
 TEST_CASE("Neutral routing cannot participate in both audio partitions",

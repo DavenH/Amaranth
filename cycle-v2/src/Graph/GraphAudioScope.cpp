@@ -101,7 +101,7 @@ IndexedNeutralComponent visitNeutralComponent(
     visited.insert(root);
     for (size_t cursor = 0; cursor < result.nodeIds.size(); ++cursor) {
         InteractionComplexityDiagnostics::recordValidationNodeVisits(1);
-        const String& nodeId = result.nodeIds[cursor];
+        const String nodeId = result.nodeIds[cursor];
         const auto visitEdges = [&](const std::vector<size_t>& edgeIndices) {
             InteractionComplexityDiagnostics::recordValidationEdgeVisits(
                     edgeIndices.size());

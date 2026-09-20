@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graph/GraphAudioScope.h"
+#include "Graph/GraphAudioValidationFacts.h"
 #include "Graph/GraphDomainResolver.h"
 #include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphEdgeView.h"
@@ -18,11 +19,11 @@ public:
     const GraphEdgeIndex& edgeIndex() const { return indexedEdges; }
     const GraphDomainResolution& domainResolution() const { return domains; }
     const GraphAudioScopeAnalysis& audioScopeAnalysis() const { return audioScope; }
+    const GraphAudioValidationFacts& audioValidationFacts() const { return audioFacts; }
     const std::vector<GraphValidationIssue>& validationIssues() const { return issues; }
     const GraphVoiceContextAssignments& voiceContextAssignments() const {
         return voiceContexts;
     }
-    bool usesExplicitAudioGraph() const { return explicitAudioGraph; }
     std::vector<GraphValidationIssue> validateProposal(
             const NodeGraph& graph,
             std::vector<size_t> removedEdges,
@@ -35,9 +36,9 @@ private:
     GraphEdgeIndex indexedEdges;
     GraphDomainResolution domains;
     GraphAudioScopeAnalysis audioScope;
+    GraphAudioValidationFacts audioFacts;
     GraphVoiceContextAssignments voiceContexts;
     std::vector<GraphValidationIssue> issues;
-    bool explicitAudioGraph {};
 };
 
 }

@@ -1,6 +1,5 @@
 #include "Graph/GraphValidationContext.h"
 
-#include "Graph/GraphAudioScopeValidator.h"
 #include "Graph/GraphValidator.h"
 
 namespace CycleV2 {
@@ -12,13 +11,14 @@ GraphValidationContext::GraphValidationContext(const NodeGraph& graph) :
     ,   indexedEdges(edges)
     ,   domains(GraphDomainResolver().resolve(graph, edges))
     ,   audioScope(GraphAudioScopeAnalyzer().analyze(graph, edges))
+    ,   audioFacts(graph, edges, audioScope)
     ,   voiceContexts(graph, edges)
     ,   issues(GraphValidator().validate(
                 graph,
                 edges,
                 domains,
-                audioScope))
-    ,   explicitAudioGraph(GraphAudioScopeValidator::usesExplicitAudioGraph(graph)) {}
+                audioScope,
+                audioFacts)) {}
 
 bool GraphValidationContext::matches(const NodeGraph& graph) const {
     return source == &graph && revision == graph.getRevision();

@@ -2,6 +2,7 @@
 
 #include "Graph/GraphValidator.h"
 
+#include "Graph/GraphAudioValidationFacts.h"
 #include "Graph/GraphAudioScopeValidator.h"
 #include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphEdgeValidator.h"
@@ -49,6 +50,15 @@ bool changesVoiceContextAssignment(const GraphEdgeView& edges) {
             [](const Edge& edge) { return edge.destPortId == "context"; });
 }
 
+bool isAudioGraphIssue(GraphValidationCode code) {
+    return code == GraphValidationCode::MissingRequiredNode
+            || code == GraphValidationCode::DuplicateSingletonNode
+            || code == GraphValidationCode::ConflictingProcessingScope
+            || code == GraphValidationCode::GlobalNodeUnreachable
+            || code == GraphValidationCode::GlobalNodeCannotReachOutput
+            || code == GraphValidationCode::AmbiguousVoiceOutput;
+}
+
 }
 
 std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& graph) const {
@@ -69,9 +79,19 @@ std::vector<GraphValidationIssue> GraphValidator::validate(
         const GraphEdgeView& edges,
         const GraphDomainResolution& resolution,
         const GraphAudioScopeAnalysis& scopeAnalysis) const {
+    const GraphAudioValidationFacts audioFacts(graph, edges, scopeAnalysis);
+    return validate(graph, edges, resolution, scopeAnalysis, audioFacts);
+}
+
+std::vector<GraphValidationIssue> GraphValidator::validate(
+        const NodeGraph& graph,
+        const GraphEdgeView& edges,
+        const GraphDomainResolution& resolution,
+        const GraphAudioScopeAnalysis& scopeAnalysis,
+        const GraphAudioValidationFacts& audioFacts) const {
     std::vector<GraphValidationIssue> issues;
     GraphEdgeValidator edgeValidator;
-    const bool explicitAudioGraph = GraphAudioScopeValidator::usesExplicitAudioGraph(graph);
+    const bool explicitAudioGraph = audioFacts.usesExplicitAudioGraph();
 
     for (size_t edgeIndex = 0; edgeIndex < edges.size(); ++edgeIndex) {
         edgeValidator.validate(
@@ -84,7 +104,7 @@ std::vector<GraphValidationIssue> GraphValidator::validate(
 
     GraphGuideValidator().validate(graph, issues);
     GraphTopologyValidator().validate(graph, edges, resolution, issues);
-    GraphAudioScopeValidator().validate(graph, edges, scopeAnalysis, issues);
+    GraphAudioScopeValidator().validate(scopeAnalysis, audioFacts, issues);
 
     return issues;
 }
@@ -104,9 +124,13 @@ std::vector<GraphValidationIssue> GraphValidator::validateProposal(
             edges,
             edgeIndex,
             baseline.audioScopeAnalysis());
-    if (baseline.usesExplicitAudioGraph()) {
-        return validate(graph, edges, resolution, scopeAnalysis);
-    }
+    const GraphAudioValidationFacts audioFacts(
+            graph,
+            edges,
+            edgeIndex,
+            baseline.audioScopeAnalysis(),
+            scopeAnalysis,
+            baseline.audioValidationFacts());
     const bool voiceContextChanged = changesVoiceContextAssignment(edges);
 
     std::vector<size_t> edgesToValidate;
@@ -158,18 +182,24 @@ std::vector<GraphValidationIssue> GraphValidator::validateProposal(
         const bool voiceContextIssue = voiceContextChanged
                 && (issue.code == GraphValidationCode::MissingVoiceContextAssignment
                         || issue.code == GraphValidationCode::MultipleActiveVoiceContexts);
-        if (!invalidatedEdge && !invalidatedOperation && !voiceContextIssue) {
+        if (!invalidatedEdge
+                && !invalidatedOperation
+                && !voiceContextIssue
+                && !isAudioGraphIssue(issue.code)) {
             issues.push_back(issue);
         }
     }
 
     GraphEdgeValidator edgeValidator;
+    const GraphAudioScopeAnalysis* edgeScopes = audioFacts.usesExplicitAudioGraph()
+            ? &scopeAnalysis
+            : nullptr;
     for (const size_t edgeIndexToValidate : edgesToValidate) {
         edgeValidator.validate(
                 graph,
                 edges[edgeIndexToValidate],
                 resolution.domains[edgeIndexToValidate],
-                nullptr,
+                edgeScopes,
                 issues);
     }
 
@@ -194,6 +224,7 @@ std::vector<GraphValidationIssue> GraphValidator::validateProposal(
                 assignments,
                 issues);
     }
+    GraphAudioScopeValidator().validate(scopeAnalysis, audioFacts, issues);
     return issues;
 }
 
@@ -223,7 +254,7 @@ bool GraphValidator::edgeHasValidationIssue(const NodeGraph& graph, const Edge& 
 
 GraphValidationIssue GraphValidator::validationIssueForEdge(const NodeGraph& graph, const Edge& edge) const {
     const auto analysis = GraphAudioScopeAnalyzer().analyze(graph);
-    const bool explicitAudioGraph = GraphAudioScopeValidator::usesExplicitAudioGraph(graph);
+    const bool explicitAudioGraph = GraphAudioValidationFacts::usesExplicitAudioGraph(graph);
     return GraphEdgeValidator().firstIssue(
             graph,
             edge,
