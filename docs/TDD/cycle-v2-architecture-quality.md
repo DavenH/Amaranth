@@ -530,6 +530,21 @@ parameter, and assertion-path handlers were deleted from the transport class.
 input, protocol transport, and UI-facing domain handler extraction remain
 open.
 
+Input slice: keyboard translation, pointer targeting, JUCE event construction,
+cursor reporting, and performance-keyboard automation now live in
+`CycleV2AutomationInput`. The input service receives four semantic expanded
+editor actions as callbacks, so it translates protocol input without owning
+the corresponding graph edits. Shared rectangle and cursor encoding moved to
+`CycleV2AutomationProtocol`; the duplicate helpers were deleted from the
+orchestrator. `CycleV2Automation.cpp` fell from 1,742 to 1,293 lines; the input
+implementation is 443 lines and its interface is 37 lines. The Cycle V2 app
+and test targets build, and a live pointer fixture successfully dispatched its
+double-click and wheel commands. Its two state assertions remain stale because
+their fixed canvas coordinate no longer expands `waveMesh`; the command results
+and final snapshot show that input dispatch completed. Protocol transport,
+UI-facing domain handlers, and `NodeCanvas` gesture/editor ownership remain
+open.
+
 ### 3. Separate runtime execution policies
 
 `GraphAudioExecutor::processInternal` takes diagnostics, observer, dirty-node,

@@ -25,6 +25,9 @@ float floatProperty(
         float fallback = 0.f);
 juce::var okResult(const juce::String& type, juce::var data = {});
 juce::var failedResult(const juce::String& type, const juce::String& message);
+juce::var rectangleToVar(juce::Rectangle<int> bounds);
+juce::Rectangle<float> rectangleFromVar(const juce::var& value);
+juce::String cursorName(const juce::MouseCursor& cursor);
 bool getPathValue(
         const juce::var& root,
         const juce::String& path,

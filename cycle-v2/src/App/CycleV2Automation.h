@@ -8,6 +8,7 @@ using namespace juce;
 
 class NodeWorkspace;
 class CycleV2AutomationAssertions;
+class CycleV2AutomationInput;
 
 class CycleV2Automation {
 public:
@@ -34,6 +35,7 @@ private:
     Options options;
     std::unique_ptr<SessionServer> sessionServer;
     std::unique_ptr<CycleV2AutomationAssertions> assertions;
+    std::unique_ptr<CycleV2AutomationInput> input;
 
     var runCommand(const var& commandValue);
     var handleSessionRequest(const var& request);
@@ -77,8 +79,6 @@ private:
     var toggleLink(const var& commandValue);
     var selectVertex(const var& commandValue);
     var setVertexParameter(const var& commandValue);
-    var pointer(const var& commandValue);
-    var key(const var& commandValue);
     var screenshot(const var& commandValue) const;
     var waitForIdle(const var& commandValue) const;
 

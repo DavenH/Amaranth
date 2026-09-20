@@ -73,6 +73,48 @@ var failedResult(const String& type, const String& message) {
     return result;
 }
 
+var rectangleToVar(Rectangle<int> bounds) {
+    var result = makeObject();
+    auto* object = objectFor(result);
+    object->setProperty("x", bounds.getX());
+    object->setProperty("y", bounds.getY());
+    object->setProperty("width", bounds.getWidth());
+    object->setProperty("height", bounds.getHeight());
+    return result;
+}
+
+Rectangle<float> rectangleFromVar(const var& value) {
+    const auto* object = objectFor(value);
+    if (object == nullptr) {
+        return {};
+    }
+    return {
+            (float) (double) object->getProperty("x"),
+            (float) (double) object->getProperty("y"),
+            (float) (double) object->getProperty("width"),
+            (float) (double) object->getProperty("height")
+    };
+}
+
+String cursorName(const MouseCursor& cursor) {
+    if (cursor == MouseCursor::PointingHandCursor) {
+        return "pointingHand";
+    }
+    if (cursor == MouseCursor::LeftRightResizeCursor) {
+        return "leftRightResize";
+    }
+    if (cursor == MouseCursor::UpDownResizeCursor) {
+        return "upDownResize";
+    }
+    if (cursor == MouseCursor::UpDownLeftRightResizeCursor) {
+        return "move";
+    }
+    if (cursor == MouseCursor::CrosshairCursor) {
+        return "crosshair";
+    }
+    return cursor == MouseCursor::NormalCursor ? "normal" : "custom";
+}
+
 bool getPathValue(const var& root, const String& path, var& result) {
     if (path.isEmpty()) {
         result = root;
