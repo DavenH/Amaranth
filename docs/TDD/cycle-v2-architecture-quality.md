@@ -406,6 +406,41 @@ validation-context cases pass 17 assertions. Incremental explicit-audio
 reachability and terminal-output facts remain the final global validation
 fallback before caller adoption.
 
+#### Explicit-audio proposal validation design
+
+The authoritative behavior remains `GraphAudioScopeValidator`: singleton audio
+boundaries, neutral-scope conflicts, directed reachability from Global Input,
+reverse reachability to Output, and ambiguous linked-stereo voice terminals.
+The retained validation context will add one audio-validation fact set with the
+boundary IDs, forward- and reverse-reachable node sets, and each voice node's
+count of linked-stereo outputs that bypass Voice Output.
+
+For a proposed edge view, forward reachability can change only at each changed
+edge destination, at nodes whose resolved scope changed, and downstream from
+those seeds. Reverse reachability can change only at each changed edge source,
+at scope-changed nodes, and upstream from those seeds. Recompute each affected
+directed closure over `GraphEdgeIndexOverlay`; initialize it from the retained
+reachability of unchanged boundary predecessors or successors, then propagate
+inside the closure. This preserves alternate paths after removal and handles a
+cycle by recomputing every affected member reachable within the proposed view.
+Do not restart either traversal from Global Input or Output.
+
+Voice-terminal status can change for changed-edge sources, scope-changed nodes,
+and sources of edges entering a scope-changed node. Recompute linked-stereo
+terminal counts only for those nodes through overlay outgoing adjacency, update
+the retained total, and emit the single ambiguity issue from that total.
+Neutral-scope conflict issues use the affected node IDs already returned by
+`GraphAudioScopeAnalysis`. Singleton boundary issues are unchanged because an
+edge proposal cannot add or remove nodes.
+
+Proof requires full-validator parity for edge addition, replacement, removal,
+alternate-path retention, a directed cycle, a neutral node changing scope, and
+voice-terminal consumption. Operation counters must remain unchanged when 128
+disconnected global and voice branches are added while the edited closure stays
+fixed. Once these facts replace the explicit-audio fallback, connection and
+splice gesture contexts may adopt proposal validation and delete the two UI
+`NodeGraph` candidate copies.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,
