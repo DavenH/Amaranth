@@ -106,6 +106,9 @@ public:
             GraphCommandDispatcher& commands,
             const GraphDocument& document,
             const String& localField = {}) = 0;
+    virtual void cancelNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands) = 0;
     virtual void scheduleNodeEditorRefresh() = 0;
     virtual void flushNodeEditorRefresh() = 0;
     virtual void refreshNodeEditorPresentation() = 0;
@@ -120,7 +123,8 @@ public:
     virtual void recordNodeEditorMovement(
             const String&,
             const String&,
-            uint64_t) {
+            uint64_t,
+            std::optional<UpdateProduct> = UpdateProduct::LocalSlice) {
     }
     virtual void commitNodeEditorLocalState(
             const String&,

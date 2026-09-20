@@ -12,8 +12,6 @@
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/NodeGraph.h"
-#include "Nodes/Curve/Editor/CurveEditorWidget.h"
-#include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentMenu.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
@@ -23,6 +21,7 @@
 #include "UI/NodeCanvasAutomationController.h"
 #include "UI/NodeCanvasAuthoring.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
+#include "UI/NodeCanvasGuideEditorCoordinator.h"
 #include "UI/NodeCanvasPresentation.h"
 #include "UI/NodeCanvasQueryModel.h"
 #include "UI/NodeCableRenderer.h"
@@ -164,9 +163,6 @@ private:
     GraphCommandDispatcher commands;
     const NodeGraph& graph;
     GraphPresentationModel presentation;
-    const GraphCompileResult& compileResult;
-    const RuntimeProcessTrace& runtimeTrace;
-    const GraphPreviewResult& previewResult;
     NodeCanvasQueryModel queries;
     CanvasPerformanceMetrics performanceMetrics;
     NodeEditorCommandService editorCommands;
@@ -179,31 +175,20 @@ private:
     int& selectedEdgeIndex;
     int& spliceTargetEdgeIndex;
     NodeCanvasEditorCoordinator editorCoordinator;
+    NodeCanvasGuideEditorCoordinator guideEditorCoordinator;
     NodeCanvasPresentation canvasPresentation;
     NodeCanvasAutomationController automation;
     RenderInvalidationAccumulator renderInvalidation;
     NodePalette palette;
     NodeCanvasHitRouter hitRouter;
-    std::unique_ptr<CurveEditorWidget> guideEditorWidget;
-    std::unique_ptr<GuideCurveEditorComponent> guideEditor;
-
-    int activeTrimeshVertexIndex { -1 };
     int hoveredEdgeIndex { -1 };
     Point<float> lastMousePosition;
     String resolvedHoverText;
     bool pointerInsideCanvas {};
-    bool draggingTrimeshMorph {};
-    bool trimeshMorphUndoPushed {};
-    bool draggingTrimeshVertexParameter {};
-    bool trimeshVertexParameterUndoPushed {};
     bool canvasOpenGlAttached {};
     bool compiledStateRefreshPending {};
     PresentationRefreshScope compiledStateRefreshScope {
             PresentationRefreshScope::Downstream };
-    String draggingSpectralPanNodeId;
-    String draggingOutputGainNodeId;
-    float spectralPanDragStartValue {};
-    float outputGainDragStartValue { 0.5f };
     SignalProbeRailState probeRailState;
     GuideCurveShelfState guideShelfState;
     SignalProbeDetailState probeDetailState;
@@ -212,9 +197,6 @@ private:
     std::unique_ptr<WorkspaceDockInteractionController> dockInteraction;
     std::unique_ptr<InlinePresetBrowser> presetSidebar;
     UnisonPreviewContext globalUnisonPreviewContext;
-    String draggingProbeId;
-    String expandedGuideId;
-    std::optional<uint64_t> guideTransactionBaseRevision;
     std::function<void()> graphDocumentStateChangedCallback;
     uint32 compiledStateRefreshDueMs {};
     std::function<void()> overlayOcclusionChanged;
@@ -308,6 +290,9 @@ private:
             GraphCommandDispatcher& commands,
             const GraphDocument& document,
             const String& localField = {}) override;
+    void cancelNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands) override;
     void scheduleNodeEditorRefresh() override;
     void flushNodeEditorRefresh() override;
     void refreshNodeEditorPresentation() override;
@@ -317,7 +302,8 @@ private:
     void recordNodeEditorMovement(
             const String& nodeId,
             const String& field,
-            uint64_t effectiveFingerprint) override;
+            uint64_t effectiveFingerprint,
+            std::optional<UpdateProduct> localProduct = UpdateProduct::LocalSlice) override;
     void commitNodeEditorLocalState(
             const String& nodeId,
             const String& field,

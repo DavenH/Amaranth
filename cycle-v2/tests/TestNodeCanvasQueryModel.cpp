@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "Graph/GraphEditor.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
@@ -28,13 +29,17 @@ TEST_CASE("Node canvas queries expose graph execution and presentation semantics
     GraphPreviewResult previewResult;
     previewResult.nodes.push_back({ "wave", PreviewModuleRole::Waveform });
 
-    NodeCanvasQueryModel queries(graph, compileResult, runtimeTrace, previewResult);
+    GraphPresentationSnapshot snapshot;
+    snapshot.compileResult = compileResult;
+    snapshot.runtimeTrace = runtimeTrace;
+    snapshot.previewResult = previewResult;
+    NodeCanvasQueryModel queries(graph, snapshot);
     const Node* wave = queries.findNode("wave");
     REQUIRE(wave != nullptr);
     REQUIRE(queries.findNodeAt({ 25.f, 45.f }) == wave);
     REQUIRE(queries.findPort(*wave, "out", false) != nullptr);
-    REQUIRE(queries.findRuntimeTrace("wave") == &runtimeTrace.nodes.front());
-    REQUIRE(queries.findPreviewResult("wave") == &previewResult.nodes.front());
+    REQUIRE(queries.findRuntimeTrace("wave") == &snapshot.runtimeTrace.nodes.front());
+    REQUIRE(queries.findPreviewResult("wave") == &snapshot.previewResult.nodes.front());
     REQUIRE(queries.displayDomainForEdge(graph.getEdges().front()) == PortDomain::TimeSignal);
     REQUIRE(queries.displayDomainForNodeOutput(*wave, "out") == PortDomain::TimeSignal);
     REQUIRE(queries.executionIndexForNode("wave") >= 0);
@@ -62,7 +67,8 @@ TEST_CASE("Node hover help describes musical intent in plain ASCII",
     graph.addNode(factory.createNode(NodeKind::Reverb, "reverb", {}));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
 
-    NodeCanvasQueryModel queries(graph, {}, {}, {});
+    GraphPresentationSnapshot snapshot;
+    NodeCanvasQueryModel queries(graph, snapshot);
     REQUIRE(queries.hoverTextForNode(*graph.findNode("shape"))
             == "Shapes the waveform with a custom transfer curve.");
     REQUIRE(queries.hoverTextForNode(*graph.findNode("reverb"))
@@ -107,7 +113,9 @@ TEST_CASE("Scratch attachment help distinguishes defaults inheritance and exclus
 
     const GraphCompileResult compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
-    NodeCanvasQueryModel queries(graph, compiled, {}, {});
+    GraphPresentationSnapshot snapshot;
+    snapshot.compileResult = compiled;
+    NodeCanvasQueryModel queries(graph, snapshot);
 
     REQUIRE(queries.hoverTextForPort({ "voice", "scratch", true }).contains("default"));
     REQUIRE(queries.hoverTextForPort({ "inherited", "scratch", true }).contains("Inherits"));
@@ -115,4 +123,47 @@ TEST_CASE("Scratch attachment help distinguishes defaults inheritance and exclus
     REQUIRE(queries.hoverTextForPort({ "voiceTime", "scratch", false }).contains("instead"));
     REQUIRE(queries.hoverTextForEdge(graph.getEdges().front()).contains("default"));
     REQUIRE(queries.hoverTextForEdge(graph.getEdges().back()).startsWith("Stops"));
+}
+
+TEST_CASE("Indexed canvas presentation queries ignore disconnected graph scale",
+        "[cycle-v2][canvas][queries][complexity]") {
+    for (const int unrelatedNodeCount : { 0, 128 }) {
+        GraphNodeFactory factory;
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+        graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+        graph.addEdge({
+                "wave", "out", "output", "time",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        });
+        for (int index = 0; index < unrelatedNodeCount; ++index) {
+            graph.addNode(factory.createNode(
+                    NodeKind::Multiply,
+                    "unrelated" + String(index),
+                    {}));
+        }
+
+        GraphPresentationSnapshot snapshot;
+        snapshot.compileResult = GraphCompiler().compile(graph);
+        snapshot.previewResult.nodes.push_back({
+                "wave", PreviewModuleRole::Waveform
+        });
+        snapshot.facts = std::make_shared<const GraphPresentationFacts>(graph, snapshot);
+        NodeCanvasQueryModel queries(graph, snapshot);
+        const Node* wave = graph.findNode("wave");
+        REQUIRE(wave != nullptr);
+
+        InteractionComplexityDiagnostics::reset();
+        for (int repetition = 0; repetition < 16; ++repetition) {
+            REQUIRE(queries.displayDomainForEdge(graph.getEdges().front())
+                    == PortDomain::TimeSignal);
+            REQUIRE(queries.findPreviewResult("wave") != nullptr);
+            REQUIRE(queries.renderProfileForNodeOutput(*wave, "out").getDomain()
+                    == PortDomain::TimeSignal);
+        }
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(counts.domainTransfers == 0);
+        REQUIRE(counts.validationEdgeVisits == 0);
+        REQUIRE(counts.nodeLinearScans == 0);
+    }
 }

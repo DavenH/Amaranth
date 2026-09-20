@@ -1,5 +1,6 @@
 #include "Graph/NodeGraph.h"
 
+#include "Graph/GraphGuideIndex.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/NodeParameterMap.h"
 
@@ -63,7 +64,7 @@ bool NodeGraph::addGuideCurve(GuideCurveResource resource) {
     }
 
     guideCurves.push_back(std::move(resource));
-    guideResourceIndex[guideCurves.back().id] = guideCurves.size() - 1;
+    guideIndex->addResource(guideCurves.back().id, guideCurves.size() - 1);
     ++revision;
     return true;
 }
@@ -80,18 +81,17 @@ bool NodeGraph::removeGuideCurve(const String& guideId) {
     eraseIf(guideAssignments, [&](const GuideCurveAssignment& assignment) {
         return assignment.guideId == guideId;
     });
-    rebuildGuideResourceIndex();
-    rebuildGuideAssignmentIndexes();
+    guideIndex->rebuildResources(guideCurves);
+    guideIndex->rebuildAssignments(guideAssignments);
     removeUnreferencedGuideHeatmaps();
     ++revision;
     return true;
 }
 
 const GuideCurveResource* NodeGraph::findGuideCurve(const String& guideId) const {
-    const auto found = guideResourceIndex.find(guideId);
-    const GuideCurveResource* local = found != guideResourceIndex.end()
-                    && found->second < guideCurves.size()
-            ? &guideCurves[found->second]
+    const auto found = guideIndex->resourceIndex(guideId);
+    const GuideCurveResource* local = found.has_value() && *found < guideCurves.size()
+            ? &guideCurves[*found]
             : nullptr;
     return local != nullptr || overlayBase == nullptr
             ? local
@@ -99,9 +99,9 @@ const GuideCurveResource* NodeGraph::findGuideCurve(const String& guideId) const
 }
 
 GuideCurveResource* NodeGraph::findGuideCurveForEditing(const String& guideId) {
-    const auto found = guideResourceIndex.find(guideId);
-    if (found != guideResourceIndex.end() && found->second < guideCurves.size()) {
-        return &guideCurves[found->second];
+    const auto found = guideIndex->resourceIndex(guideId);
+    if (found.has_value() && *found < guideCurves.size()) {
+        return &guideCurves[*found];
     }
     const GuideCurveResource* baseGuide = overlayBase != nullptr
             ? overlayBase->findGuideCurve(guideId)
@@ -111,7 +111,7 @@ GuideCurveResource* NodeGraph::findGuideCurveForEditing(const String& guideId) {
     }
 
     guideCurves.push_back(*baseGuide);
-    guideResourceIndex[guideId] = guideCurves.size() - 1;
+    guideIndex->addResource(guideId, guideCurves.size() - 1);
     return &guideCurves.back();
 }
 
@@ -134,16 +134,15 @@ bool NodeGraph::addGuideHeatmap(GuideHeatmapAssetPtr asset) {
         return true;
     }
     guideHeatmaps.push_back(std::move(asset));
-    guideHeatmapIndex[guideHeatmaps.back()->id()] = guideHeatmaps.size() - 1;
+    guideIndex->addHeatmap(guideHeatmaps.back()->id(), guideHeatmaps.size() - 1);
     ++revision;
     return true;
 }
 
 const GuideHeatmapAsset* NodeGraph::findGuideHeatmap(const String& assetId) const {
-    const auto found = guideHeatmapIndex.find(assetId);
-    const GuideHeatmapAsset* local = found != guideHeatmapIndex.end()
-                    && found->second < guideHeatmaps.size()
-            ? guideHeatmaps[found->second].get()
+    const auto found = guideIndex->heatmapIndex(assetId);
+    const GuideHeatmapAsset* local = found.has_value() && *found < guideHeatmaps.size()
+            ? guideHeatmaps[*found].get()
             : nullptr;
     return local != nullptr || overlayBase == nullptr
             ? local
@@ -151,9 +150,9 @@ const GuideHeatmapAsset* NodeGraph::findGuideHeatmap(const String& assetId) cons
 }
 
 GuideHeatmapAssetPtr NodeGraph::guideHeatmapAsset(const String& assetId) const {
-    const auto found = guideHeatmapIndex.find(assetId);
-    const GuideHeatmapAssetPtr local = found != guideHeatmapIndex.end()
-            ? guideHeatmaps[found->second]
+    const auto found = guideIndex->heatmapIndex(assetId);
+    const GuideHeatmapAssetPtr local = found.has_value() && *found < guideHeatmaps.size()
+            ? guideHeatmaps[*found]
             : GuideHeatmapAssetPtr();
     return local != nullptr || overlayBase == nullptr
             ? local
@@ -170,10 +169,7 @@ void NodeGraph::removeUnreferencedGuideHeatmaps() {
     eraseIf(guideHeatmaps, [&](const GuideHeatmapAssetPtr& asset) {
         return asset == nullptr || referenced.find(asset->id()) == referenced.end();
     });
-    guideHeatmapIndex.clear();
-    for (size_t index = 0; index < guideHeatmaps.size(); ++index) {
-        guideHeatmapIndex[guideHeatmaps[index]->id()] = index;
-    }
+    guideIndex->rebuildHeatmaps(guideHeatmaps);
 }
 
 bool NodeGraph::moveGuideCurve(const String& guideId, int shelfOrder) {
@@ -198,7 +194,7 @@ bool NodeGraph::moveGuideCurve(const String& guideId, int shelfOrder) {
     for (int index = 0; index < (int) guideCurves.size(); ++index) {
         guideCurves[(size_t) index].shelfOrder = index;
     }
-    rebuildGuideResourceIndex();
+    guideIndex->rebuildResources(guideCurves);
     ++revision;
     return true;
 }
@@ -210,23 +206,22 @@ bool NodeGraph::assignGuideCurve(GuideCurveAssignment assignment) {
         return false;
     }
 
-    const auto target = guideAssignmentTargetIndex.find({
+    const auto target = guideIndex->assignmentIndex(
             assignment.targetNodeId,
-            assignment.target
-    });
-    if (target != guideAssignmentTargetIndex.end()) {
-        GuideCurveAssignment& existing = guideAssignments[target->second];
+            assignment.target);
+    if (target.has_value()) {
+        GuideCurveAssignment& existing = guideAssignments[*target];
         if (existing.guideId == assignment.guideId) {
             return false;
         }
         existing = std::move(assignment);
-        rebuildGuideAssignmentIndexes();
+        guideIndex->rebuildAssignments(guideAssignments);
         ++revision;
         return true;
     }
 
     guideAssignments.push_back(std::move(assignment));
-    rebuildGuideAssignmentIndexes();
+    guideIndex->rebuildAssignments(guideAssignments);
     ++revision;
     return true;
 }
@@ -338,7 +333,7 @@ bool NodeGraph::removeGuideAssignment(
         return false;
     }
 
-    rebuildGuideAssignmentIndexes();
+    guideIndex->rebuildAssignments(guideAssignments);
     ++revision;
     return true;
 }
@@ -346,10 +341,9 @@ bool NodeGraph::removeGuideAssignment(
 const GuideCurveAssignment* NodeGraph::guideAssignmentForTarget(
         const String& nodeId,
         const TrimeshCubeComponentGuideTarget& target) const {
-    const auto found = guideAssignmentTargetIndex.find({ nodeId, target });
-    if (found != guideAssignmentTargetIndex.end()
-            && found->second < guideAssignments.size()) {
-        return &guideAssignments[found->second];
+    const auto found = guideIndex->assignmentIndex(nodeId, target);
+    if (found.has_value() && *found < guideAssignments.size()) {
+        return &guideAssignments[*found];
     }
     return overlayBase != nullptr
             ? overlayBase->guideAssignmentForTarget(nodeId, target)
@@ -375,68 +369,30 @@ int NodeGraph::removeGuideAssignmentsOutsideCubeRange(
         return 0;
     }
 
-    rebuildGuideAssignmentIndexes();
+    guideIndex->rebuildAssignments(guideAssignments);
     ++revision;
     return removedCount;
 }
 
 int NodeGraph::guideUsageCount(const String& guideId) const {
-    const auto found = guideUsageCounts.find(guideId);
-    return found != guideUsageCounts.end()
-            ? found->second
+    const int local = guideIndex->usageCount(guideId);
+    return local != 0
+            ? local
             : (overlayBase != nullptr ? overlayBase->guideUsageCount(guideId) : 0);
 }
 
 const std::vector<String>& NodeGraph::guideTargetNodeIds(const String& guideId) const {
-    static const std::vector<String> empty;
-    const auto found = guideTargetNodes.find(guideId);
-    return found != guideTargetNodes.end()
-            ? found->second
-            : (overlayBase != nullptr ? overlayBase->guideTargetNodeIds(guideId) : empty);
+    const auto& local = guideIndex->targetNodeIds(guideId);
+    return !local.empty() || overlayBase == nullptr
+            ? local
+            : overlayBase->guideTargetNodeIds(guideId);
 }
 
 const std::vector<String>& NodeGraph::guideIdsForTargetNode(const String& nodeId) const {
-    static const std::vector<String> empty;
-    const auto found = targetNodeGuides.find(nodeId);
-    return found != targetNodeGuides.end()
-            ? found->second
-            : (overlayBase != nullptr ? overlayBase->guideIdsForTargetNode(nodeId) : empty);
-}
-
-void NodeGraph::rebuildGuideResourceIndex() {
-    guideResourceIndex.clear();
-    guideResourceIndex.reserve(guideCurves.size());
-    for (size_t index = 0; index < guideCurves.size(); ++index) {
-        guideResourceIndex[guideCurves[index].id] = index;
-    }
-}
-
-void NodeGraph::rebuildGuideAssignmentIndexes() {
-    InteractionComplexityDiagnostics::recordAssignmentLinearScan();
-    guideAssignmentTargetIndex.clear();
-    guideUsageCounts.clear();
-    guideTargetNodes.clear();
-    targetNodeGuides.clear();
-    guideAssignmentTargetIndex.reserve(guideAssignments.size());
-    using StringSet = std::unordered_set<String, StringHash>;
-    std::unordered_map<String, StringSet, StringHash> targetNodesByGuide;
-    std::unordered_map<String, StringSet, StringHash> guidesByTargetNode;
-    for (size_t index = 0; index < guideAssignments.size(); ++index) {
-        const GuideCurveAssignment& assignment = guideAssignments[index];
-        guideAssignmentTargetIndex[{
-                assignment.targetNodeId,
-                assignment.target
-        }] = index;
-        ++guideUsageCounts[assignment.guideId];
-        if (targetNodesByGuide[assignment.guideId]
-                .insert(assignment.targetNodeId).second) {
-            guideTargetNodes[assignment.guideId].push_back(assignment.targetNodeId);
-        }
-        if (guidesByTargetNode[assignment.targetNodeId]
-                .insert(assignment.guideId).second) {
-            targetNodeGuides[assignment.targetNodeId].push_back(assignment.guideId);
-        }
-    }
+    const auto& local = guideIndex->guideIdsForTargetNode(nodeId);
+    return !local.empty() || overlayBase == nullptr
+            ? local
+            : overlayBase->guideIdsForTargetNode(nodeId);
 }
 
 void NodeGraph::addSignalProbe(SignalProbe probe) {
@@ -507,7 +463,7 @@ void NodeGraph::removeNode(const String& nodeId) {
         return assignment.targetNodeId == nodeId;
     });
     if (guideAssignments.size() != previousAssignmentCount) {
-        rebuildGuideAssignmentIndexes();
+        guideIndex->rebuildAssignments(guideAssignments);
     }
     for (auto& probe : signalProbes) {
         if (probe.sourceNodeId == nodeId) {

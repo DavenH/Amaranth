@@ -308,6 +308,11 @@ public:
             const String& = {}) override {
         session.finishGraphGesture("editor:" + nodeId, commands, document);
     }
+    void cancelNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands) override {
+        session.cancelGraphGesture("editor:" + nodeId, commands);
+    }
     void scheduleNodeEditorRefresh() override {}
     void flushNodeEditorRefresh() override {}
     void refreshNodeEditorPresentation() override {}
@@ -347,6 +352,11 @@ public:
             }
         }
     }
+    void cancelNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands) override {
+        session.cancelGraphGesture("editor:" + nodeId, commands);
+    }
     void scheduleNodeEditorRefresh() override { ++scheduledRefreshes; }
     void flushNodeEditorRefresh() override {}
     void refreshNodeEditorPresentation() override { ++immediateRefreshes; }
@@ -356,7 +366,8 @@ public:
     void recordNodeEditorMovement(
             const String& nodeId,
             const String&,
-            uint64_t fingerprint) override {
+            uint64_t fingerprint,
+            std::optional<UpdateProduct> = UpdateProduct::LocalSlice) override {
         session.recordGraphMovement("editor:" + nodeId, fingerprint);
         ++recordedMovements;
     }
@@ -2943,7 +2954,8 @@ TEST_CASE("Node editor resource commands use the atomic dispatcher boundary",
             "direct"
     }));
     REQUIRE(document.graph().findAudioResourceBinding("ir") != nullptr);
-    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(presentation.immediateRefreshes == 0);
+    REQUIRE(presentation.gestureCommits == 1);
     REQUIRE(presentation.rebinds == 1);
 
     REQUIRE(commands.removeNodeAudioResource("ir"));
@@ -3082,9 +3094,11 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
 
     REQUIRE(commands.beginTrimeshVertexParameterEdit(
             "mesh", "guideGain.amp", 0.5f));
+    const uint64_t revisionBeforeMovement = document.revision();
     InteractionComplexityDiagnostics::reset();
     REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.7f));
     REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.8f));
+    REQUIRE(document.revision() == revisionBeforeMovement);
     REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
     REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
     commands.endTrimeshVertexParameterEdit();
@@ -3092,6 +3106,7 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
     REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
     REQUIRE(InteractionComplexityDiagnostics::counts().audioSamplesCopied == 0);
     REQUIRE(InteractionComplexityDiagnostics::counts().assignmentLinearScans == 0);
+    REQUIRE(document.revision() > revisionBeforeMovement);
 
     const Node* committedNode = document.graph().findNode("mesh");
     REQUIRE(committedNode != nullptr);
@@ -3106,7 +3121,8 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
     REQUIRE(prepared.mesh->getCubes().front()->guideCurveGainAt(Vertex::Amp)
             == Catch::Approx(0.8f));
     REQUIRE(presentation.recordedMovements == 2);
-    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(presentation.immediateRefreshes == 0);
+    REQUIRE(presentation.gestureCommits == 1);
     REQUIRE(document.canUndo());
 
     REQUIRE(document.undo());
@@ -3127,8 +3143,10 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
     REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.5f));
     commands.endTrimeshVertexParameterEdit();
     REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
-    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(presentation.immediateRefreshes == 0);
+    REQUIRE(presentation.gestureCommits == 2);
     REQUIRE(document.graph().findNode("mesh")->model == restored);
+    REQUIRE(document.canUndo());
 }
 
 TEST_CASE("Clicking an open Trimesh Guide selector dismisses its popup",

@@ -1,5 +1,7 @@
-#include "Graph/GraphEdgeIndex.h"
+#include <algorithm>
+#include <unordered_set>
 
+#include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphEdgeView.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 
@@ -95,6 +97,38 @@ std::vector<size_t> GraphEdgeIndexOverlay::incomingEdges(
 std::vector<size_t> GraphEdgeIndexOverlay::outgoingEdges(
         const String& nodeId) const {
     return nodeEdges(nodeId, Direction::Outgoing);
+}
+
+std::vector<size_t> GraphEdgeIndexOverlay::edgesAtChangedDestinations() const {
+    std::vector<String> destinations;
+    const auto appendDestination = [&](const String& nodeId) {
+        if (std::find(destinations.begin(), destinations.end(), nodeId)
+                == destinations.end()) {
+            destinations.push_back(nodeId);
+        }
+    };
+
+    for (const size_t removedIndex : proposed.removedIndices()) {
+        appendDestination(proposed.existingEdge(removedIndex).destNodeId);
+    }
+    for (const Edge& edge : proposed.addedEdges()) {
+        appendDestination(edge.destNodeId);
+    }
+
+    std::vector<size_t> affected;
+    std::unordered_set<size_t> included;
+    const auto appendEdges = [&](const std::vector<size_t>& edgeIndices) {
+        for (const size_t edgeIndex : edgeIndices) {
+            if (included.insert(edgeIndex).second) {
+                affected.push_back(edgeIndex);
+            }
+        }
+    };
+    for (const String& destination : destinations) {
+        appendEdges(incomingEdges(destination));
+        appendEdges(outgoingEdges(destination));
+    }
+    return affected;
 }
 
 std::vector<size_t> GraphEdgeIndexOverlay::translatedBaseEdges(

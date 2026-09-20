@@ -7,9 +7,10 @@
 #include "UI/NodeCanvasPresentationPerformanceObserver.h"
 #include "UI/SignalProbePreviewTileCache.h"
 #include "UI/WorkspaceDock.h"
-#include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/DefaultOutputProbeResolver.h"
 #include "Graph/PresetPresentation.h"
+#include "Runtime/GraphPresentationFacts.h"
+#include "Runtime/GraphPresentationSnapshot.h"
 #include "Runtime/PresentationRefreshPolicy.h"
 
 namespace CycleV2 {
@@ -54,9 +55,6 @@ public:
     static float maximumHorizontalOffset(Rectangle<float> workspace, int probeCount);
     static int ordinalForProbe(const NodeGraph& graph, const String& probeId);
     static std::vector<String> orderedProbeIds(const NodeGraph& graph);
-    static NodeRenderSemantic renderSemanticForProbe(
-            const NodeGraph& graph,
-            const String& probeId);
     static Point<float> markerCentre(
             const SignalProbe& probe,
             const NodeGraph& graph,
@@ -77,13 +75,15 @@ public:
             Graphics& graphics,
             const NodeGraph& graph,
             const NodeCanvasSceneSnapshot& scene,
+            const GraphPresentationFacts& facts,
             Rectangle<float> workspace,
             const SignalProbeRailState& state,
             float zoom) const;
     void paintRail(
             Graphics& graphics,
             const NodeGraph& graph,
-            const GraphPreviewResult& previews,
+            const GraphPresentationSnapshot& snapshot,
+            const GraphPresentationFacts& facts,
             Rectangle<float> workspace,
             const SignalProbeRailState& state,
             const WorkspaceDockFocus& focus);
@@ -98,15 +98,14 @@ private:
     static Colour colourForProbe(
             const SignalProbe& probe,
             const NodeGraph& graph,
-            const NodeCanvasSceneSnapshot& scene);
-    const GraphPreviewResult::SignalProbePreview* previewFor(
-            const GraphPreviewResult& previews,
-            const String& probeId) const;
+            const NodeCanvasSceneSnapshot& scene,
+            const GraphPresentationFacts& facts);
     void paintCachedPreview(
             Graphics& graphics,
             const NodeGraph& graph,
             const SignalProbe& probe,
             const GraphPreviewResult::SignalProbePreview& preview,
+            const GraphPresentationFacts& facts,
             Rectangle<float> previewBounds,
             float physicalScale);
 

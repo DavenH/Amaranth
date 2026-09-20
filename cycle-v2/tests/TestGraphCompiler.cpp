@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
+#include "NodeGraphTestAccess.h"
+
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeStateEditor.h"
@@ -594,7 +596,7 @@ TEST_CASE("Voice Context scratch reaches Trimesh branches in its oscillator regi
         "[cycle-v2][graph][voice-context][scratch][oscillator-region]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     graph.removeEdgesFromOutput("scratchEnv", "env");
-    Node* voice = graph.findNodeForEditing("voice");
+    Node* voice = NodeGraphTestAccess::findNodeForEditing(graph, "voice");
     REQUIRE(voice != nullptr);
     NodeDefinitionRegistry::instance().normalize(*voice);
     graph.addEdge({

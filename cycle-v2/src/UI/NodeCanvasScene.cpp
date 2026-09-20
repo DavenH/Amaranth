@@ -1,4 +1,5 @@
 #include "UI/NodeCanvasScene.h"
+#include "Graph/GraphEdgeIndex.h"
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodePortGeometry.h"
 #include "UI/NodeViewModule.h"
@@ -49,14 +50,16 @@ const Port* findPort(const Node& node, const juce::String& portId, bool input) {
 
 const Edge* singleSignalEdgeForNode(
         const NodeGraph& graph,
+        const GraphEdgeIndex& edgeIndex,
         const juce::String& nodeId,
         bool incoming) {
     const Edge* result = nullptr;
-    for (const auto& edge : graph.getEdges()) {
-        const bool matches = incoming
-                ? edge.destNodeId == nodeId
-                : edge.sourceNodeId == nodeId;
-        if (!matches || edge.connectionKind != ConnectionKind::Signal) {
+    const auto& candidates = incoming
+            ? edgeIndex.incomingEdges(nodeId)
+            : edgeIndex.outgoingEdges(nodeId);
+    for (const size_t candidate : candidates) {
+        const Edge& edge = graph.getEdges()[candidate];
+        if (edge.connectionKind != ConnectionKind::Signal) {
             continue;
         }
         if (result != nullptr) {
@@ -80,9 +83,10 @@ struct InlinePanRoute {
 
 std::optional<InlinePanRoute> inlinePanRoute(
         const NodeGraph& graph,
+        const GraphEdgeIndex& edgeIndex,
         const Node& node) {
-    const Edge* incoming = singleSignalEdgeForNode(graph, node.id, true);
-    const Edge* outgoing = singleSignalEdgeForNode(graph, node.id, false);
+    const Edge* incoming = singleSignalEdgeForNode(graph, edgeIndex, node.id, true);
+    const Edge* outgoing = singleSignalEdgeForNode(graph, edgeIndex, node.id, false);
     if (incoming == nullptr || outgoing == nullptr) {
         return std::nullopt;
     }
@@ -180,8 +184,9 @@ Path inlinePanPath(const InlinePanRoute& route) {
 
 std::optional<Point<float>> inlinePanCentre(
         const NodeGraph& graph,
+        const GraphEdgeIndex& edgeIndex,
         const Node& node) {
-    const std::optional<InlinePanRoute> route = inlinePanRoute(graph, node);
+    const std::optional<InlinePanRoute> route = inlinePanRoute(graph, edgeIndex, node);
     if (!route.has_value()) {
         return std::nullopt;
     }
@@ -251,16 +256,20 @@ juce::Point<float> NodeCanvasScene::portWorldCentre(const Node& node, const Port
 
 juce::Rectangle<float> NodeCanvasScene::presentationWorldBounds(
         const NodeGraph& graph,
-        const Node& node) {
+        const Node& node,
+        const GraphEdgeIndex& edgeIndex) {
     if (node.kind != NodeKind::SpectralLayer) {
         return node.bounds;
     }
 
-    const std::optional<Point<float>> centre = inlinePanCentre(graph, node);
+    const std::optional<Point<float>> centre = inlinePanCentre(graph, edgeIndex, node);
     return centre.has_value() ? node.bounds.withCentre(*centre) : node.bounds;
 }
 
-int NodeCanvasScene::cableExtraEdgeIndex(const NodeGraph& graph, int edgeIndex) {
+int NodeCanvasScene::cableExtraEdgeIndex(
+        const NodeGraph& graph,
+        int edgeIndex,
+        const GraphEdgeIndex& graphEdgeIndex) {
     if (!isPositiveAndBelow(edgeIndex, (int) graph.getEdges().size())) {
         return edgeIndex;
     }
@@ -271,7 +280,8 @@ int NodeCanvasScene::cableExtraEdgeIndex(const NodeGraph& graph, int edgeIndex) 
         return edgeIndex;
     }
 
-    const Edge* incoming = singleSignalEdgeForNode(graph, sourceNode->id, true);
+    const Edge* incoming = singleSignalEdgeForNode(
+            graph, graphEdgeIndex, sourceNode->id, true);
     return incoming != nullptr
             ? (int) std::distance(graph.getEdges().data(), incoming)
             : edgeIndex;
@@ -290,7 +300,8 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         const NodeGraph& graph,
         const NodeCanvasViewport& viewport,
         uint64_t presentationRevision,
-        uint64_t documentRevision) {
+        uint64_t documentRevision,
+        const GraphEdgeIndex* suppliedEdgeIndex) {
     const uint64_t graphRevision = graph.getRevision();
     if (current.graphRevision == graphRevision
             && current.documentRevision == documentRevision
@@ -305,9 +316,21 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
     current.viewportRevision = viewport.getRevision();
     current.presentationRevision = presentationRevision;
 
+    const std::optional<GraphEdgeIndex> localEdgeIndex = suppliedEdgeIndex == nullptr
+            ? std::optional<GraphEdgeIndex>(std::in_place, graph.getEdges())
+            : std::nullopt;
+    const GraphEdgeIndex& indexedEdges = suppliedEdgeIndex != nullptr
+            ? *suppliedEdgeIndex
+            : *localEdgeIndex;
+
     int zOrder = 100;
     for (const auto& node : graph.getNodes()) {
-        const Rectangle<float> presentationBounds = presentationWorldBounds(graph, node);
+        const std::optional<Point<float>> inlineCentre = node.kind == NodeKind::SpectralLayer
+                ? inlinePanCentre(graph, indexedEdges, node)
+                : std::nullopt;
+        const Rectangle<float> presentationBounds = inlineCentre.has_value()
+                ? node.bounds.withCentre(*inlineCentre)
+                : node.bounds;
         current.targets.push_back({
                 NodeSceneTargetKind::Node,
                 "node:" + node.id,
@@ -390,13 +413,15 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         }
 
         if (sourceNode->kind == NodeKind::SpectralLayer) {
-            const std::optional<InlinePanRoute> route = inlinePanRoute(graph, *sourceNode);
+            const std::optional<InlinePanRoute> route = inlinePanRoute(
+                    graph, indexedEdges, *sourceNode);
             if (route.has_value() && route->outgoingIndex == edgeIndex) {
                 continue;
             }
         }
         if (destinationNode->kind == NodeKind::SpectralLayer) {
-            const std::optional<InlinePanRoute> route = inlinePanRoute(graph, *destinationNode);
+            const std::optional<InlinePanRoute> route = inlinePanRoute(
+                    graph, indexedEdges, *destinationNode);
             if (route.has_value() && route->incomingIndex == edgeIndex) {
                 current.edges.push_back(inlinePanSceneEdge(*route, viewport));
                 continue;
@@ -413,9 +438,19 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         const bool usesSharedModulationSource = isModulationBundle
                 || ModulationCableBundle::usesSharedSourceSocket(*sourceNode, edge);
         Node presentedSourceNode = *sourceNode;
-        presentedSourceNode.bounds = presentationWorldBounds(graph, *sourceNode);
+        const auto sourceCentre = sourceNode->kind == NodeKind::SpectralLayer
+                ? inlinePanCentre(graph, indexedEdges, *sourceNode)
+                : std::nullopt;
+        presentedSourceNode.bounds = sourceCentre.has_value()
+                ? sourceNode->bounds.withCentre(*sourceCentre)
+                : sourceNode->bounds;
         Node presentedDestinationNode = *destinationNode;
-        presentedDestinationNode.bounds = presentationWorldBounds(graph, *destinationNode);
+        const auto destinationCentre = destinationNode->kind == NodeKind::SpectralLayer
+                ? inlinePanCentre(graph, indexedEdges, *destinationNode)
+                : std::nullopt;
+        presentedDestinationNode.bounds = destinationCentre.has_value()
+                ? destinationNode->bounds.withCentre(*destinationCentre)
+                : destinationNode->bounds;
         const auto source = viewport.toScreen(usesSharedModulationSource
                 ? ModulationCableBundle::worldCentre(presentedSourceNode, false)
                 : portWorldCentre(presentedSourceNode, *sourcePort));

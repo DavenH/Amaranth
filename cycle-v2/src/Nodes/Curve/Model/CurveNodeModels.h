@@ -224,12 +224,23 @@ public:
     int currentVersion() const override;
     NodeModelStatePtr createDefault() const override;
     NodeModelStatePtr readJSON(const var& value, String& error) const override;
+    static NodeModelStatePtr readFlatCurveJSON(
+            const var& value,
+            String& error,
+            const String& modelName = {});
 
 private:
     NodeKind kind;
 };
 
+class GuideCurveModelCodec : public NodeModelCodec {
+public:
+    String schemaId() const override;
+    int currentVersion() const override;
+    NodeModelStatePtr createDefault() const override;
+    NodeModelStatePtr readJSON(const var& value, String& error) const override;
+};
+
 NodeModelStatePtr createDefaultGuideCurveModel();
-NodeModelStatePtr readGuideCurveModelJSON(const var& value, String& error);
 
 }

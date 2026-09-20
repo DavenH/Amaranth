@@ -6,16 +6,21 @@
 #include <vector>
 
 #include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphDomainResolver.h"
 #include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSpliceValidator.h"
+#include "Graph/GraphValidationContext.h"
 #include "Graph/NodeParameterMap.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Runtime/PresentationGestureSession.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Panel/FlatCurvePanelAdapter.h"
 #include "Nodes/Envelope/Editor/EnvelopePanelAdapter.h"
+#include "UI/ModulationCableBundle.h"
+#include "UI/NodeCanvasInteraction.h"
 
 #include <Curve/Mesh/Vertex.h>
 
@@ -91,6 +96,368 @@ TEST_CASE("Edge index lookups ignore unrelated graph scale",
         REQUIRE(overlayIndex.outgoingEdges("wave")
                 == rebuiltIndex.outgoingEdges("wave"));
         REQUIRE(InteractionComplexityDiagnostics::counts().validationEdgeVisits == 0);
+    }
+}
+
+TEST_CASE("Proposed domain resolution ignores disconnected graph scale",
+        "[cycle-v2][complexity][domains][index]") {
+    GraphNodeFactory factory;
+    uint64_t expectedTransfers {};
+    for (const int unrelatedBranches : { 0, 128 }) {
+        NodeGraph graph;
+        Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+        const auto signalType = std::find_if(
+                mesh.parameters.begin(),
+                mesh.parameters.end(),
+                [](const NodeParameter& parameter) {
+                    return parameter.id == "signalType";
+                });
+        REQUIRE(signalType != mesh.parameters.end());
+        signalType->value = "spectralMagnitude";
+        graph.addNode(std::move(mesh));
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+        graph.addNode(factory.createNode(NodeKind::SpectralLayer, "layer", {}));
+        graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+        graph.addNode(factory.createNode(NodeKind::Add, "final", {}));
+        graph.addEdge({
+                "mesh", "out", "layer", "in",
+                PortDomain::ControlSignal, ConnectionKind::Signal
+        });
+        graph.addEdge({
+                "layer", "out", "multiply", "right",
+                PortDomain::ControlSignal, ConnectionKind::Signal
+        });
+        graph.addEdge({
+                "multiply", "out", "final", "left",
+                PortDomain::ControlSignal, ConnectionKind::Signal
+        });
+
+        for (int index = 0; index < unrelatedBranches; ++index) {
+            const String sourceId = "source" + String(index);
+            const String destinationId = "destination" + String(index);
+            graph.addNode(factory.createNode(NodeKind::Add, sourceId, {}));
+            graph.addNode(factory.createNode(NodeKind::Multiply, destinationId, {}));
+            graph.addEdge({
+                    sourceId, "out", destinationId, "left",
+                    PortDomain::ControlSignal, ConnectionKind::Signal
+            });
+        }
+
+        const GraphDomainResolver resolver;
+        const auto baseline = resolver.resolve(graph);
+        const GraphEdgeIndex baseIndex(graph.getEdges());
+        const Edge replacement {
+                "wave", "out", "layer", "in",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        };
+        const GraphEdgeView proposed(graph.getEdges(), { 0 }, { replacement });
+        const GraphEdgeIndexOverlay proposedIndex(baseIndex, proposed);
+        const auto expected = resolver.resolve(graph, proposed);
+        InteractionComplexityDiagnostics::reset();
+
+        const auto resolved = resolver.resolve(
+                graph,
+                proposed,
+                proposedIndex,
+                baseline);
+
+        REQUIRE(resolved.domains == expected.domains);
+        REQUIRE(resolved.channelLayouts == expected.channelLayouts);
+        REQUIRE(graph.getEdges()[0].sourceNodeId == "mesh");
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        if (unrelatedBranches == 0) {
+            expectedTransfers = counts.domainTransfers;
+        }
+        REQUIRE(counts.domainTransfers > 0);
+        REQUIRE(counts.domainTransfers == expectedTransfers);
+        REQUIRE(counts.validationNodeVisits == 0);
+        REQUIRE(counts.validationEdgeVisits == 0);
+        REQUIRE(counts.graphCopies == 0);
+    }
+}
+
+TEST_CASE("Proposed audio scope analysis ignores disconnected graph scale",
+        "[cycle-v2][complexity][audio-scope][index]") {
+    GraphNodeFactory factory;
+    uint64_t expectedNodeVisits {};
+    uint64_t expectedEdgeVisits {};
+    for (const int unrelatedBranches : { 0, 128 }) {
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+        graph.addNode(factory.createNode(NodeKind::GenericProcessor, "route", {}));
+        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addEdge({
+                "globalIn", "time", "route", "in",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        });
+        graph.addEdge({
+                "route", "out", "out", "time",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        });
+
+        for (int index = 0; index < unrelatedBranches; ++index) {
+            const String sourceId = "scopeSource" + String(index);
+            const String destinationId = "scopeDestination" + String(index);
+            graph.addNode(factory.createNode(NodeKind::WaveSource, sourceId, {}));
+            graph.addNode(factory.createNode(
+                    NodeKind::GenericProcessor,
+                    destinationId,
+                    {}));
+            graph.addEdge({
+                    sourceId, "out", destinationId, "in",
+                    PortDomain::TimeSignal, ConnectionKind::Signal
+            });
+        }
+
+        const GraphAudioScopeAnalyzer analyzer;
+        const auto baseline = analyzer.analyze(graph);
+        const GraphEdgeIndex baseIndex(graph.getEdges());
+        const Edge replacement {
+                "wave", "out", "route", "in",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        };
+        const GraphEdgeView proposed(graph.getEdges(), { 0 }, { replacement });
+        const GraphEdgeIndexOverlay proposedIndex(baseIndex, proposed);
+        const auto expected = analyzer.analyze(graph, proposed);
+        InteractionComplexityDiagnostics::reset();
+
+        const auto resolved = analyzer.analyze(
+                graph,
+                proposed,
+                proposedIndex,
+                baseline);
+
+        REQUIRE(resolved.nodes == expected.nodes);
+        REQUIRE(resolved.conflictingNeutralNodeIds
+                == expected.conflictingNeutralNodeIds);
+        REQUIRE(resolved.scopeFor("route") == AuthoredAudioScope::Voice);
+        REQUIRE(resolved.hasConflict("route"));
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        if (unrelatedBranches == 0) {
+            expectedNodeVisits = counts.validationNodeVisits;
+            expectedEdgeVisits = counts.validationEdgeVisits;
+        }
+        REQUIRE(counts.validationNodeVisits > 0);
+        REQUIRE(counts.validationNodeVisits == expectedNodeVisits);
+        REQUIRE(counts.validationEdgeVisits == expectedEdgeVisits);
+        REQUIRE(counts.domainTransfers == 0);
+        REQUIRE(counts.graphCopies == 0);
+    }
+}
+
+TEST_CASE("Proposed validation ignores disconnected graph scale",
+        "[cycle-v2][complexity][validation][index]") {
+    GraphNodeFactory factory;
+    uint64_t expectedNodeVisits {};
+    uint64_t expectedEdgeVisits {};
+    uint64_t expectedDomainTransfers {};
+    for (const int unrelatedNodes : { 0, 128 }) {
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+        Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+        const auto signalType = std::find_if(
+                mesh.parameters.begin(),
+                mesh.parameters.end(),
+                [](const NodeParameter& parameter) {
+                    return parameter.id == "signalType";
+                });
+        REQUIRE(signalType != mesh.parameters.end());
+        signalType->value = "spectralMagnitude";
+        graph.addNode(std::move(mesh));
+        for (int index = 0; index < unrelatedNodes; ++index) {
+            graph.addNode(factory.createNode(
+                    NodeKind::Add,
+                    "unrelated" + String(index),
+                    {}));
+        }
+
+        const GraphValidationContext context(graph);
+        const Edge proposedEdge {
+                "mesh", "out", "output", "time",
+                PortDomain::ControlSignal, ConnectionKind::Signal
+        };
+        InteractionComplexityDiagnostics::reset();
+
+        const auto issues = context.validateProposal(graph, {}, { proposedEdge });
+
+        REQUIRE(issues.size() == 1);
+        REQUIRE(issues.front().code == GraphValidationCode::DomainMismatch);
+        REQUIRE(issues.front().sourceNodeId == "mesh");
+        REQUIRE(issues.front().destNodeId == "output");
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        if (unrelatedNodes == 0) {
+            expectedNodeVisits = counts.validationNodeVisits;
+            expectedEdgeVisits = counts.validationEdgeVisits;
+            expectedDomainTransfers = counts.domainTransfers;
+        }
+        REQUIRE(counts.validationNodeVisits == expectedNodeVisits);
+        REQUIRE(counts.validationEdgeVisits == expectedEdgeVisits);
+        REQUIRE(counts.domainTransfers == expectedDomainTransfers);
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
+    }
+}
+
+TEST_CASE("Explicit audio proposal validation ignores disconnected graph scale",
+        "[cycle-v2][complexity][validation][audio-scope][index]") {
+    GraphNodeFactory factory;
+    uint64_t expectedNodeVisits {};
+    uint64_t expectedEdgeVisits {};
+    uint64_t expectedDomainTransfers {};
+    for (const int unrelatedBranches : { 0, 128 }) {
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
+        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+        graph.addNode(factory.createNode(NodeKind::GenericProcessor, "route", {}));
+        graph.addEdge({
+                "globalIn", "time", "route", "in",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        });
+        graph.addEdge({
+                "route", "out", "out", "time",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        });
+        graph.addEdge({
+                "wave", "out", "voiceOut", "time",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        });
+        for (int index = 0; index < unrelatedBranches; ++index) {
+            const String sourceId = "unrelatedSource" + String(index);
+            const String routeId = "unrelatedRoute" + String(index);
+            graph.addNode(factory.createNode(NodeKind::WaveSource, sourceId, {}));
+            graph.addNode(factory.createNode(NodeKind::GenericProcessor, routeId, {}));
+            graph.addEdge({
+                    sourceId, "out", routeId, "in",
+                    PortDomain::TimeSignal, ConnectionKind::Signal
+            });
+        }
+
+        const GraphValidationContext context(graph);
+        const Edge replacement {
+                "wave", "out", "route", "in",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        };
+        InteractionComplexityDiagnostics::reset();
+
+        const auto issues = context.validateProposal(graph, { 0 }, { replacement });
+
+        REQUIRE_FALSE(issues.empty());
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        if (unrelatedBranches == 0) {
+            expectedNodeVisits = counts.validationNodeVisits;
+            expectedEdgeVisits = counts.validationEdgeVisits;
+            expectedDomainTransfers = counts.domainTransfers;
+        }
+        REQUIRE(counts.validationNodeVisits == expectedNodeVisits);
+        REQUIRE(counts.validationEdgeVisits == expectedEdgeVisits);
+        REQUIRE(counts.domainTransfers == expectedDomainTransfers);
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
+    }
+}
+
+TEST_CASE("Connection drag validation ignores disconnected graph scale",
+        "[cycle-v2][complexity][connection][gesture]") {
+    GraphNodeFactory factory;
+    InteractionComplexityCounts expected;
+    for (const int unrelatedNodes : { 0, 128 }) {
+        NodeGraph graph = scaledGraph(unrelatedNodes, 16384);
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+        NodeCanvasSceneSnapshot scene;
+        NodeSceneTarget target;
+        target.kind = NodeSceneTargetKind::InputPort;
+        target.nodeId = "output";
+        target.portId = "time";
+        target.bounds = Rectangle<float>(10.f, 10.f).withCentre({ 200.f, 100.f });
+        scene.targets.push_back(target);
+
+        NodeCanvasInteraction interaction;
+        interaction.beginConnection(
+                graph,
+                { "wave", "out", false },
+                { 100.f, 100.f });
+        InteractionComplexityDiagnostics::reset();
+
+        const auto update = interaction.drag(
+                graph, {}, scene, { 200.f, 100.f }, {});
+
+        const auto* connection = std::get_if<ConnectionDragUpdate>(&update);
+        REQUIRE(connection != nullptr);
+        REQUIRE(connection->target.has_value());
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        if (unrelatedNodes == 0) {
+            expected = counts;
+        }
+        REQUIRE(counts.validationNodeVisits == expected.validationNodeVisits);
+        REQUIRE(counts.validationEdgeVisits == expected.validationEdgeVisits);
+        REQUIRE(counts.domainTransfers == expected.domainTransfers);
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
+    }
+}
+
+TEST_CASE("Splice drag validation ignores disconnected graph scale",
+        "[cycle-v2][complexity][splice][gesture]") {
+    GraphNodeFactory factory;
+    InteractionComplexityCounts expected;
+    for (const int unrelatedNodes : { 0, 128 }) {
+        NodeGraph graph = scaledGraph(unrelatedNodes, 16384);
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+        graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+        graph.addEdge({
+                "wave", "out", "output", "time",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        });
+        const GraphValidationContext context(graph);
+        REQUIRE(graph.setNodeBounds("shape", { 20.f, 30.f, 220.f, 160.f }));
+        InteractionComplexityDiagnostics::reset();
+
+        const auto result = GraphSpliceValidator().validateAfterLayoutChanges(
+                graph, context, 0, "shape");
+
+        REQUIRE(result.succeeded());
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        if (unrelatedNodes == 0) {
+            expected = counts;
+        }
+        REQUIRE(counts.validationNodeVisits == expected.validationNodeVisits);
+        REQUIRE(counts.validationEdgeVisits == expected.validationEdgeVisits);
+        REQUIRE(counts.domainTransfers == expected.domainTransfers);
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
+    }
+}
+
+TEST_CASE("Modulation bundle preview ignores disconnected graph scale",
+        "[cycle-v2][complexity][connection][gesture][modulation]") {
+    GraphNodeFactory factory;
+    InteractionComplexityCounts expected;
+    for (const int unrelatedNodes : { 0, 128 }) {
+        NodeGraph graph = scaledGraph(unrelatedNodes, 16384);
+        graph.addNode(factory.createNode(NodeKind::ModulationTriple, "mod", {}));
+        graph.addNode(factory.createNode(NodeKind::Envelope, "envelope", {}));
+        const GraphValidationContext context(graph);
+        InteractionComplexityDiagnostics::reset();
+
+        const bool accepted = ModulationCableBundle::canConnect(
+                graph,
+                context,
+                ModulationCableBundle::sourceAddress(*graph.findNode("mod")),
+                ModulationCableBundle::destinationAddress(*graph.findNode("envelope")));
+
+        REQUIRE(accepted);
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        if (unrelatedNodes == 0) {
+            expected = counts;
+        }
+        REQUIRE(counts.validationNodeVisits == expected.validationNodeVisits);
+        REQUIRE(counts.validationEdgeVisits == expected.validationEdgeVisits);
+        REQUIRE(counts.domainTransfers == expected.domainTransfers);
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
     }
 }
 

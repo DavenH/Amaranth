@@ -11,6 +11,8 @@
 
 namespace CycleV2 {
 
+class GraphValidationContext;
+
 enum class CanvasNodeActionKind {
     CycleOperationLayout,
     CycleSinglePortLayout,
@@ -38,7 +40,8 @@ public:
     int spliceTargetEdgeAt(
             const NodeCanvasSceneSnapshot& scene,
             Point<float> screenPosition,
-            const String& nodeId) const;
+            const String& nodeId,
+            const GraphValidationContext& context) const;
     String hoverTextFor(
             const NodeCanvasViewport& viewport,
             const NodeCanvasSceneSnapshot& scene,

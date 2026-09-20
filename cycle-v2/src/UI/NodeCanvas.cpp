@@ -45,9 +45,10 @@ bool hasExpandedEditor(NodeKind kind) {
 Rectangle<float> inlinePanHitBounds(
         const NodeCanvasViewport& viewport,
         const NodeGraph& graph,
-        const Node& node) {
+        const Node& node,
+        const GraphEdgeIndex& edgeIndex) {
     return viewport.toScreen(
-            NodeCanvasScene::presentationWorldBounds(graph, node))
+            NodeCanvasScene::presentationWorldBounds(graph, node, edgeIndex))
             .reduced(3.f * viewport.getZoom());
 }
 
@@ -55,8 +56,10 @@ bool inlinePanContains(
         const NodeCanvasViewport& viewport,
         const NodeGraph& graph,
         const Node& node,
+        const GraphEdgeIndex& edgeIndex,
         Point<float> position) {
-    const Rectangle<float> hitBounds = inlinePanHitBounds(viewport, graph, node);
+    const Rectangle<float> hitBounds = inlinePanHitBounds(
+            viewport, graph, node, edgeIndex);
     const float radius = jmin(hitBounds.getWidth(), hitBounds.getHeight()) * 0.5f;
     return hitBounds.getCentre().getDistanceSquaredFrom(position) <= radius * radius;
 }
@@ -64,11 +67,12 @@ bool inlinePanContains(
 const Node* findInlinePanAt(
         const NodeGraph& graph,
         const NodeCanvasViewport& viewport,
+        const GraphEdgeIndex& edgeIndex,
         Point<float> position) {
     const auto& nodes = graph.getNodes();
     for (auto node = nodes.rbegin(); node != nodes.rend(); ++node) {
         if (node->kind == NodeKind::SpectralLayer
-                && inlinePanContains(viewport, graph, *node, position)) {
+                && inlinePanContains(viewport, graph, *node, edgeIndex, position)) {
             return &*node;
         }
     }
@@ -79,10 +83,11 @@ const Node* findInlinePanAt(
 Rectangle<float> outputFaderBounds(
         const NodeCanvasViewport& viewport,
         const NodeGraph& graph,
-        const Node& node) {
+        const Node& node,
+        const GraphEdgeIndex& edgeIndex) {
     const float zoom = viewport.getZoom();
     const Rectangle<float> nodeBounds = viewport.toScreen(
-            NodeCanvasScene::presentationWorldBounds(graph, node));
+            NodeCanvasScene::presentationWorldBounds(graph, node, edgeIndex));
     const Rectangle<float> preview = NodePreviewRenderer::boundsFor(node, nodeBounds, zoom);
     return OutputMeterPresentation::layout(preview, zoom).faderHitTarget;
 }
@@ -90,11 +95,12 @@ Rectangle<float> outputFaderBounds(
 const Node* findOutputFaderAt(
         const NodeGraph& graph,
         const NodeCanvasViewport& viewport,
+        const GraphEdgeIndex& edgeIndex,
         Point<float> position) {
     const auto& nodes = graph.getNodes();
     for (auto node = nodes.rbegin(); node != nodes.rend(); ++node) {
         if (node->kind == NodeKind::Output
-                && outputFaderBounds(viewport, graph, *node).contains(position)) {
+                && outputFaderBounds(viewport, graph, *node, edgeIndex).contains(position)) {
             return &*node;
         }
     }
@@ -102,8 +108,12 @@ const Node* findOutputFaderAt(
     return nullptr;
 }
 
-const SignalProbe* cableExtraProbe(const NodeGraph& graph, int edgeIndex) {
-    const int extraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(graph, edgeIndex);
+const SignalProbe* cableExtraProbe(
+        const NodeGraph& graph,
+        int edgeIndex,
+        const GraphEdgeIndex& graphEdgeIndex) {
+    const int extraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(
+            graph, edgeIndex, graphEdgeIndex);
     if (!isPositiveAndBelow(extraEdgeIndex, (int) graph.getEdges().size())) {
         return nullptr;
     }
@@ -143,10 +153,7 @@ NodeCanvas::NodeCanvas() :
     ,   document(createStartupDocument())
     ,   commands(document)
     ,   graph(document.graph())
-    ,   compileResult(presentation.compileResult())
-    ,   runtimeTrace(presentation.runtimeTrace())
-    ,   previewResult(presentation.previewResult())
-    ,   queries(graph, compileResult, runtimeTrace, previewResult)
+    ,   queries(graph, presentation.snapshot())
     ,   editorCommands(*this, document, commands, *this, *this, &performanceMetrics)
     ,   authoring(document, commands, presentation, editorCommands)
     ,   selectedNodeId(authoring.interactionSession().selectedNodeId)
@@ -162,6 +169,23 @@ NodeCanvas::NodeCanvas() :
             *this,
             *this,
             { expandedNodeId })
+    ,   guideEditorCoordinator(
+            *this,
+            document,
+            commands,
+            *this,
+            {
+                    [this](const String& guideId, GuideHeatmapAssetPtr asset, uint64_t revision) {
+                        return setGuideHeatmap(guideId, std::move(asset), revision);
+                    },
+                    [this](const String& guideId, uint64_t revision) {
+                        return clearGuideHeatmap(guideId, revision);
+                    },
+                    [this]() { refreshCompiledStateAsync(); },
+                    [this]() { scheduleCompiledStateRefresh(); },
+                    [this]() { requestCanvasRepaint(); },
+                    [this]() { notifyOverlayOcclusionChanged(); }
+            })
     ,   canvasPresentation(sceneBuilder, editorCoordinator.previewRenderer(), &performanceMetrics)
     ,   automation({
             *this,
@@ -286,10 +310,7 @@ void NodeCanvas::resized() {
         fitDocumentInViewport();
         documentViewportFitted = true;
     }
-    if (guideEditor != nullptr && guideEditor->isVisible()) {
-        guideEditor->setBounds(
-                GuideCurveEditorComponent::preferredHostBounds(editorContentBounds()).toNearestInt());
-    }
+    guideEditorCoordinator.layout(editorContentBounds());
     editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
     if (presetSidebar != nullptr) {
         presetSidebar->setBounds(GuideCurveShelf::guideWorkspace(
@@ -313,8 +334,8 @@ void NodeCanvas::focusLost(FocusChangeType) {
     guideShelfState.hoveredGuideId = {};
     probeRailState.hoveredProbeId = {};
     dockInteraction->clearFocus();
-    if (draggingOutputGainNodeId.isNotEmpty()) {
-        draggingOutputGainNodeId = {};
+    if (interaction.outputGain() != nullptr) {
+        interaction.reset();
         applyAuthoringResult(authoring.endOutputGainGesture());
     }
     requestCanvasRepaint();
@@ -377,7 +398,8 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
             graph,
             viewport,
             presentation.revision(),
-            document.revision());
+            document.revision(),
+            &queries.presentationFacts().edgeIndex());
     resolvedHoverText = hitRouter.hoverTextFor(viewport, scene, position);
     hoveredEdgeIndex = hitRouter.edgeAt(scene, position);
     if (hoveredEdgeIndex >= 0
@@ -406,8 +428,9 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
                     probeRailState,
                     guideShelfState);
 
-    const Node* inlinePan = findInlinePanAt(graph, viewport, position);
-    const Node* outputFader = findOutputFaderAt(graph, viewport, position);
+    const GraphEdgeIndex& edgeIndex = queries.presentationFacts().edgeIndex();
+    const Node* inlinePan = findInlinePanAt(graph, viewport, edgeIndex, position);
+    const Node* outputFader = findOutputFaderAt(graph, viewport, edgeIndex, position);
     MouseCursor cursor = MouseCursor::NormalCursor;
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
         cursor = MouseCursor::UpDownResizeCursor;
@@ -452,13 +475,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     lastMousePosition = event.position;
     interaction.reset();
     spliceTargetEdgeIndex = -1;
-    draggingTrimeshMorph = false;
-    trimeshMorphUndoPushed = false;
-    draggingTrimeshVertexParameter = false;
-    draggingSpectralPanNodeId = {};
-    draggingOutputGainNodeId = {};
-    trimeshVertexParameterUndoPushed = false;
-    activeTrimeshVertexIndex = -1;
 
     const Rectangle<float> workspace = getLocalBounds().toFloat();
     if (expandedNodeId.isNotEmpty()) {
@@ -517,6 +533,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         if (applyAuthoringResult(result)) {
             if (const Node* node = queries.findNode(result.nodeId)) {
                 interaction.beginNodeDrag(
+                        graph,
                         node->id,
                         { node->id },
                         hitRouter.paletteDragBounds(viewport, *node, event.position));
@@ -566,7 +583,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             graph,
             viewport,
             presentation.revision(),
-            document.revision());
+            document.revision(),
+            &queries.presentationFacts().edgeIndex());
     const String markerProbe = canvasPresentation.probeRail().markerProbeAt(
             event.position, graph, scene);
     if (markerProbe.isNotEmpty()) {
@@ -579,7 +597,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         }
 
         probeRailState.selectedProbeId = markerProbe;
-        draggingProbeId = markerProbe;
+        interaction.beginProbeDrag(markerProbe);
         requestCanvasRepaint();
         return;
     }
@@ -590,18 +608,21 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             return;
         }
     }
-    const Node* inlinePan = findInlinePanAt(graph, viewport, event.position);
+    const GraphEdgeIndex& graphEdgeIndex = queries.presentationFacts().edgeIndex();
+    const Node* inlinePan = findInlinePanAt(
+            graph, viewport, graphEdgeIndex, event.position);
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
         if (authoring.beginSpectralPanGesture(inlinePan->id)) {
-            draggingSpectralPanNodeId = inlinePan->id;
-            spectralPanDragStartValue = NodeParameterMap(*inlinePan)
-                    .floatValue("pan", 0.5f);
+            interaction.beginSpectralPan(
+                    inlinePan->id,
+                    NodeParameterMap(*inlinePan).floatValue("pan", 0.5f));
             authoring.selectNode(inlinePan->id);
             requestCanvasRepaint();
             return;
         }
     }
-    const Node* outputFader = findOutputFaderAt(graph, viewport, event.position);
+    const Node* outputFader = findOutputFaderAt(
+            graph, viewport, graphEdgeIndex, event.position);
     if (outputFader != nullptr) {
         if (event.getNumberOfClicks() >= 2) {
             applyAuthoringResult(authoring.setNodeParameter(
@@ -613,16 +634,16 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             return;
         }
         if (authoring.beginOutputGainGesture(outputFader->id)) {
-            draggingOutputGainNodeId = outputFader->id;
-            outputGainDragStartValue = NodeParameterMap(*outputFader)
-                    .floatValue("gain", 0.5f);
+            interaction.beginOutputGain(
+                    outputFader->id,
+                    NodeParameterMap(*outputFader).floatValue("gain", 0.5f));
             authoring.selectNode(outputFader->id);
             requestCanvasRepaint();
             return;
         }
     }
     if (const auto hitPort = interaction.portAt(scene, event.position)) {
-        interaction.beginConnection(*hitPort, event.position);
+        interaction.beginConnection(graph, *hitPort, event.position);
         authoring.selectNode(hitPort->nodeId);
         requestCanvasRepaint();
         return;
@@ -644,6 +665,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             authoring.makeNodePrimary(hitNode->id);
         }
         interaction.beginNodeDrag(
+                graph,
                 hitNode->id,
                 selectedNodeIds,
                 hitNode->bounds);
@@ -669,8 +691,12 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         if (event.mods.isAltDown()) {
             const int extraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(
                     graph,
-                    selectedEdgeIndex);
-            if (const SignalProbe* probe = cableExtraProbe(graph, selectedEdgeIndex)) {
+                    selectedEdgeIndex,
+                    graphEdgeIndex);
+            if (const SignalProbe* probe = cableExtraProbe(
+                    graph,
+                    selectedEdgeIndex,
+                    graphEdgeIndex)) {
                 applyAuthoringResult(authoring.removeSignalProbe(probe->id));
             } else {
                 applyAuthoringResult(authoring.toggleSignalProbe(extraEdgeIndex, 0.5f));
@@ -700,18 +726,18 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
             CanvasPerformanceMetrics::Trigger::PointerGesture);
     lastMousePosition = event.position;
 
-    if (draggingSpectralPanNodeId.isNotEmpty()) {
+    if (const SpectralPanGesture* gesture = interaction.spectralPan()) {
         const float value = jlimit(
                 0.f,
                 1.f,
-                spectralPanDragStartValue
+                gesture->startValue
                         - event.getOffsetFromDragStart().y / 120.f);
         authoring.updateSpectralPanGesture(value);
         requestCanvasRepaint();
         return;
     }
 
-    if (draggingOutputGainNodeId.isNotEmpty()) {
+    if (const OutputGainGesture* gesture = interaction.outputGain()) {
         constexpr float ordinaryDragDistance = 120.f;
         constexpr float fineAdjustmentMultiplier = 4.f;
         const float adjustmentDistance = ordinaryDragDistance
@@ -719,7 +745,7 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
         const float value = jlimit(
                 0.f,
                 1.f,
-                outputGainDragStartValue
+                gesture->startValue
                         - event.getOffsetFromDragStart().y / adjustmentDistance);
         authoring.updateOutputGainGesture(value);
         requestCanvasRepaint();
@@ -729,7 +755,7 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
     if (dockInteraction->mouseDrag(event, getLocalBounds().toFloat())) {
         return;
     }
-    if (draggingProbeId.isNotEmpty()) {
+    if (interaction.probeDrag() != nullptr) {
         requestCanvasRepaint();
         return;
     }
@@ -738,7 +764,8 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
             graph,
             viewport,
             presentation.revision(),
-            document.revision());
+            document.revision(),
+            &queries.presentationFacts().edgeIndex());
     const auto update = interaction.drag(
             graph,
             viewport,
@@ -757,8 +784,13 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
                 nodeDrag->nodeIds,
                 nodeDrag->nodeId,
                 nodeDrag->bounds);
-        spliceTargetEdgeIndex = nodeDrag->moved
-                ? hitRouter.spliceTargetEdgeAt(scene, event.position, nodeDrag->nodeId)
+        const auto* validationContext = interaction.gestureValidationContext();
+        spliceTargetEdgeIndex = nodeDrag->moved && validationContext != nullptr
+                ? hitRouter.spliceTargetEdgeAt(
+                        scene,
+                        event.position,
+                        nodeDrag->nodeId,
+                        *validationContext)
                 : -1;
     }
 
@@ -769,14 +801,14 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PointerGesture);
     lastMousePosition = event.position;
-    if (draggingSpectralPanNodeId.isNotEmpty()) {
-        draggingSpectralPanNodeId = {};
+    if (interaction.spectralPan() != nullptr) {
+        interaction.reset();
         applyAuthoringResult(authoring.endSpectralPanGesture());
         requestCanvasRepaint();
         return;
     }
-    if (draggingOutputGainNodeId.isNotEmpty()) {
-        draggingOutputGainNodeId = {};
+    if (interaction.outputGain() != nullptr) {
+        interaction.reset();
         applyAuthoringResult(authoring.endOutputGainGesture());
         requestCanvasRepaint();
         return;
@@ -788,13 +820,17 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
             graph,
             viewport,
             presentation.revision(),
-            document.revision());
-    if (draggingProbeId.isNotEmpty()) {
-        const String probeId = std::move(draggingProbeId);
-        draggingProbeId = {};
+            document.revision(),
+            &queries.presentationFacts().edgeIndex());
+    if (const ProbeDragGesture* gesture = interaction.probeDrag()) {
+        const String probeId = gesture->probeId;
+        interaction.reset();
         const int edgeIndex = hitRouter.edgeAt(scene, event.position);
         if (edgeIndex >= 0) {
-            const int extraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(graph, edgeIndex);
+            const int extraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(
+                    graph,
+                    edgeIndex,
+                    queries.presentationFacts().edgeIndex());
             applyAuthoringResult(authoring.reattachSignalProbe(
                     probeId,
                     extraEdgeIndex,
@@ -814,7 +850,8 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
             authoring.addNodesToSelection(interaction.nodeIdsIntersecting(
                     graph,
                     viewport,
-                    selection->bounds));
+                    selection->bounds,
+                    queries.presentationFacts().edgeIndex()));
         }
     } else if (const auto* nodeDrag = std::get_if<NodeDragCompletion>(&completion)) {
         if (nodeDrag->moved
@@ -847,7 +884,11 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
     if (editorCoordinator.blocksCanvas(blockingEditorNode)) {
         return;
     }
-    if (const Node* output = findOutputFaderAt(graph, viewport, event.position)) {
+    if (const Node* output = findOutputFaderAt(
+            graph,
+            viewport,
+            queries.presentationFacts().edgeIndex(),
+            event.position)) {
         const float current = NodeParameterMap(*output).floatValue("gain", 0.5f);
         const float delta = wheel.deltaY * (event.mods.isShiftDown() ? 0.025f : 0.1f);
         applyAuthoringResult(authoring.setNodeParameter(
@@ -953,7 +994,7 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
     }
 
     if (key == KeyPress::escapeKey) {
-        if (expandedGuideId.isNotEmpty()) {
+        if (guideEditorCoordinator.isOpen()) {
             closeGuideEditor();
             return true;
         }
@@ -1027,9 +1068,7 @@ void NodeCanvas::renderOpenGL() {
             });
         }
         editorCoordinator.renderOpenGL((float) openGLContext.getRenderingScale());
-        if (guideEditor != nullptr && guideEditor->isVisible()) {
-            guideEditor->renderOpenGL((float) openGLContext.getRenderingScale());
-        }
+        guideEditorCoordinator.renderOpenGL((float) openGLContext.getRenderingScale());
     } else {
         OpenGLHelpers::clear(CanvasChromePalette::canvasBackground);
     }
@@ -1037,9 +1076,7 @@ void NodeCanvas::renderOpenGL() {
 
 void NodeCanvas::openGLContextClosing() {
     editorCoordinator.releaseOpenGLResources();
-    if (guideEditorWidget != nullptr) {
-        guideEditorWidget->releaseSharedGlResources();
-    }
+    guideEditorCoordinator.releaseOpenGLResources();
 
     renderer.shutdown();
 }
@@ -1114,11 +1151,12 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
         };
     }
     const NodeGraph& displayedGraph = commands.editingGraph();
+    const GraphPresentationSnapshot& snapshot = presentation.snapshot();
 
     return {
             displayedGraph,
-            compileResult,
-            previewResult,
+            snapshot,
+            queries.presentationFacts(),
             viewport,
             palette,
             content,
@@ -1142,7 +1180,9 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             probeDetailState,
             globalUnisonPreviewContext,
             liveOutputMeterLevels,
-            draggingSpectralPanNodeId,
+            interaction.spectralPan() != nullptr
+                    ? interaction.spectralPan()->nodeId
+                    : String {},
             selectedNodeIds,
             hoveredEdgeIndex,
             areaSelectionBounds
@@ -1202,7 +1242,8 @@ void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
         return;
     }
     const Edge edge = graph.getEdges()[(size_t) edgeIndex];
-    const SignalProbe* cableProbe = cableExtraProbe(graph, edgeIndex);
+    const SignalProbe* cableProbe = cableExtraProbe(
+            graph, edgeIndex, queries.presentationFacts().edgeIndex());
     const bool spying = cableProbe != nullptr;
     const String probeId = cableProbe != nullptr ? cableProbe->id : String {};
     const Node* edgeSource = graph.findNode(edge.sourceNodeId);
@@ -1218,7 +1259,8 @@ void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
             graph,
             viewport,
             presentation.revision(),
-            document.revision());
+            document.revision(),
+            &queries.presentationFacts().edgeIndex());
     Point<float> panPosition = viewport.toWorld(screenPosition) - Point<float>(40.f, 40.f);
     for (const auto& sceneEdge : scene.edges) {
         if (sceneEdge.edgeIndex == edgeIndex) {
@@ -1262,7 +1304,8 @@ void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
                     } else {
                         const int currentExtraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(
                                 safeThis->graph,
-                                currentEdgeIndex);
+                                currentEdgeIndex,
+                                safeThis->queries.presentationFacts().edgeIndex());
                         safeThis->applyAuthoringResult(
                                 safeThis->authoring.toggleSignalProbe(currentExtraEdgeIndex, 0.5f));
                     }
@@ -1286,6 +1329,7 @@ void NodeCanvas::refreshCompiledState() {
     compiledStateRefreshPending = false;
     compiledStateRefreshScope = PresentationRefreshScope::Downstream;
     editorCoordinator.clearPreviewCache();
+    editorCoordinator.previewResources().refreshGraph(graph, document.lastChange());
     presentation.refresh(graph, document.revision(), document.lastChange());
     const int midiNote = presentation.previewMidiNote();
     editorCoordinator.previewResources().setPreviewMidiNote(midiNote);
@@ -1308,6 +1352,7 @@ void NodeCanvas::refreshCompiledStateAsync(
             : commands.hasTransientEdit()
             ? commands.transientChanges()
             : document.lastChange();
+    editorCoordinator.previewResources().refreshGraph(refreshGraph, refreshChange);
     auto completion = [safeThis = SafePointer<NodeCanvas>(this)] {
         if (safeThis == nullptr) {
             return;
@@ -1353,11 +1398,17 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
         return;
     }
 
+    const SignalProbe* probe = graph.findSignalProbe(probeId);
+    const NodeRenderSemantic semantic = probe != nullptr
+            ? queries.presentationFacts().renderSemanticForNodeOutput(
+                    graph,
+                    probe->sourceNodeId,
+                    probe->sourcePortId)
+            : NodeRenderSemantic {};
     editorCoordinator.close();
     probeDetailState.open(
             std::move(*preview),
-            SignalProbeRail::renderSemanticForProbe(
-                    commands.editingGraph(), probeId).scalePolicy,
+            semantic.scalePolicy,
             SignalProbeRail::ordinalForProbe(graph, probeId),
             midiNote,
             resolution);
@@ -1413,6 +1464,8 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     if (result.graphChanged) {
         compiledStateRefreshPending = false;
         editorCoordinator.clearPreviewCache();
+        editorCoordinator.previewResources().refreshGraph(
+                commands.editingGraph(), document.lastChange());
 
         if (document.lastChange().probesChanged) {
             if (graph.getSignalProbes().empty()) {
@@ -1499,12 +1552,12 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     dock.keyboardFocusTarget = WorkspaceDockKeyboardNavigation::targetName(
             dockInteraction->focus().target);
     dock.keyboardFocusItemId = dockInteraction->focus().itemId;
-    dock.expandedGuideId = expandedGuideId;
+    dock.expandedGuideId = guideEditorCoordinator.guideId();
     dock.visibleGuidePreviewCount = canvasPresentation.visibleGuidePreviewCount(graph);
     for (const auto& guide : graph.getGuideCurves()) {
         dock.heatmapGuideCount += guide.heatmapAssetId.isNotEmpty() ? 1 : 0;
     }
-    if (const GuideCurveResource* guide = graph.findGuideCurve(expandedGuideId)) {
+    if (const GuideCurveResource* guide = graph.findGuideCurve(guideEditorCoordinator.guideId())) {
         const GuideHeatmapAsset* heatmap = graph.findGuideHeatmap(guide->heatmapAssetId);
         dock.expandedGuideHeatmapActive = heatmap != nullptr;
         dock.expandedGuideHeatmapFilename = heatmap != nullptr ? heatmap->filename() : String {};
@@ -1526,14 +1579,11 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
             workspace,
             probeRailState,
             guideShelfState);
-    dock.guideEditorBounds = guideEditor != nullptr && guideEditor->isVisible()
-            ? guideEditor->getBounds().toFloat()
-            : Rectangle<float> {};
-    dock.guideEditorState = guideEditor != nullptr && guideEditor->isVisible()
-            ? guideEditor->automationState()
-            : var();
+    dock.guideEditorBounds = guideEditorCoordinator.bounds();
+    dock.guideEditorState = guideEditorCoordinator.automationState();
     if (!dock.guideEditorBounds.isEmpty()) {
-        for (const auto& [semanticId, localBounds] : guideEditor->automationPointerTargets()) {
+        for (const auto& [semanticId, localBounds] :
+                guideEditorCoordinator.automationPointerTargets()) {
             dock.guideEditorTargets.push_back({
                     semanticId,
                     localBounds.translated(
@@ -2071,8 +2121,8 @@ Rectangle<int> NodeCanvas::performanceKeyboardDockBounds() const {
 }
 
 Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
-    if (guideEditor != nullptr && guideEditor->isVisible()) {
-        return guideEditor->getBounds().toFloat();
+    if (guideEditorCoordinator.isOpen()) {
+        return guideEditorCoordinator.bounds();
     }
     if (probeDetailState.isOpen()) {
         return SignalProbeDetailView::boundsFor(editorContentBounds());
@@ -2130,13 +2180,14 @@ bool NodeCanvas::capturePresetPreviewForAutomation(
         PresetPreviewView view,
         PresetPreviewImage& image,
         String& errorMessage) const {
-    if (!previewResult.defaultOutput.has_value()) {
+    const auto& defaultOutput = presentation.previewResult().defaultOutput;
+    if (!defaultOutput.has_value()) {
         errorMessage = "The default output spy is not ready";
         return false;
     }
 
     image = PresetPreviewGenerator::encodeJpeg(
-            *previewResult.defaultOutput,
+            *defaultOutput,
             view);
     if (!image.isValid()) {
         errorMessage = "The default output spy did not produce an image";
@@ -2210,8 +2261,11 @@ bool NodeCanvas::spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition) {
             graph,
             viewport,
             presentation.revision(),
-            document.revision());
-    const int edgeIndex = hitRouter.spliceTargetEdgeAt(scene, screenPosition, selectedNodeId);
+            document.revision(),
+            &queries.presentationFacts().edgeIndex());
+    const GraphValidationContext validationContext(graph);
+    const int edgeIndex = hitRouter.spliceTargetEdgeAt(
+            scene, screenPosition, selectedNodeId, validationContext);
     return applyAuthoringResult(authoring.spliceSelectedNodeIntoEdge(edgeIndex));
 }
 
@@ -2250,37 +2304,9 @@ void NodeCanvas::closeNodeEditor() {
 }
 
 void NodeCanvas::openGuideEditor(const String& guideId) {
-    const GuideCurveResource* guide = graph.findGuideCurve(guideId);
-    if (guide == nullptr) {
-        return;
-    }
-
-    if (guideEditor == nullptr) {
-        guideEditorWidget = std::make_unique<CurveEditorWidget>(true);
-        guideEditor = std::make_unique<GuideCurveEditorComponent>(*guideEditorWidget);
-        guideEditor->setDelegate(this);
-        guideEditor->setHeatmapActions(
-                [this](const String& guideId, GuideHeatmapAssetPtr asset, uint64_t expectedRevision) {
-                    return setGuideHeatmap(guideId, std::move(asset), expectedRevision);
-                },
-                [this](const String& guideId, uint64_t expectedRevision) {
-                    return clearGuideHeatmap(guideId, expectedRevision);
-                });
-        guideEditor->setTitle("Guide Curve");
-        addAndMakeVisible(*guideEditor);
-    }
-
     expandedNodeId = {};
     editorCoordinator.close();
-    expandedGuideId = guideId;
-    guideEditor->setGuideResource(
-            *guide,
-            graph.guideHeatmapAsset(guide->heatmapAssetId));
-    guideEditor->setBounds(
-            GuideCurveEditorComponent::preferredHostBounds(editorContentBounds()).toNearestInt());
-    guideEditor->setVisible(true);
-    guideEditor->toFront(false);
-    notifyOverlayOcclusionChanged();
+    guideEditorCoordinator.open(guideId, editorContentBounds());
 }
 
 void NodeCanvas::requestDeleteGuideCurve(const String& guideId) {
@@ -2325,7 +2351,7 @@ bool NodeCanvas::deleteGuideCurve(const String& guideId) {
     if (guideShelfState.selectedGuideId == guideId) {
         guideShelfState.selectedGuideId = {};
     }
-    if (expandedGuideId == guideId) {
+    if (guideEditorCoordinator.guideId() == guideId) {
         closeGuideEditor();
     }
     editStatusMessage = "Guide Curve deleted";
@@ -2366,31 +2392,11 @@ bool NodeCanvas::clearGuideHeatmap(
 }
 
 void NodeCanvas::closeGuideEditor() {
-    if (guideTransactionBaseRevision.has_value()) {
-        commands.cancelTransientEdit();
-        guideTransactionBaseRevision.reset();
-        refreshCompiledStateAsync();
-    }
-    expandedGuideId = {};
-    if (guideEditor != nullptr) {
-        guideEditor->setVisible(false);
-    }
-    notifyOverlayOcclusionChanged();
-    requestCanvasRepaint();
+    guideEditorCoordinator.close();
 }
 
 void NodeCanvas::rebindGuideEditor() {
-    if (guideEditor == nullptr || !guideEditor->isVisible()) {
-        return;
-    }
-    const GuideCurveResource* guide = graph.findGuideCurve(expandedGuideId);
-    if (guide == nullptr) {
-        closeGuideEditor();
-        return;
-    }
-    guideEditor->setGuideResource(
-            *guide,
-            graph.guideHeatmapAsset(guide->heatmapAssetId));
+    guideEditorCoordinator.rebind();
 }
 
 void NodeCanvas::closeCurveEditor() {
@@ -2399,9 +2405,7 @@ void NodeCanvas::closeCurveEditor() {
 
 void NodeCanvas::repaintCurveEditorOpenGL() {
     openGLContext.triggerRepaint();
-    if (guideEditor != nullptr) {
-        guideEditor->repaint();
-    }
+    guideEditorCoordinator.repaint();
 }
 
 bool NodeCanvas::publishCurveState(
@@ -2409,30 +2413,10 @@ bool NodeCanvas::publishCurveState(
         const std::vector<NodeParameter>& controls) {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::ParameterEdit);
-    if (expandedGuideId.isEmpty()) {
-        return false;
-    }
-    const GuideCurveResource* durableGuide = document.graph().findGuideCurve(expandedGuideId);
-    if (durableGuide == nullptr) {
-        return false;
-    }
-    const uint64_t durableBaseRevision = guideTransactionBaseRevision.value_or(
-            durableGuide->revision);
-    const auto result = commands.publishGuideCurveState({
-            expandedGuideId,
-            durableBaseRevision,
+    return guideEditorCoordinator.publishCurveState(
             std::move(model),
-            controls
-    });
-    if (!result.succeeded()) {
-        return false;
-    }
-    if (PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
-                probeRailState.refreshMode)) {
-        scheduleCompiledStateRefresh();
-    }
-    requestCanvasRepaint();
-    return true;
+            controls,
+            probeRailState.refreshMode);
 }
 
 bool NodeCanvas::setNodeParameterText(
@@ -2450,21 +2434,11 @@ bool NodeCanvas::setNodeParameterText(
 }
 
 void NodeCanvas::beginCurveTransaction() {
-    const GuideCurveResource* guide = document.graph().findGuideCurve(expandedGuideId);
-    if (guide == nullptr || guideTransactionBaseRevision.has_value()) {
-        return;
-    }
-    guideTransactionBaseRevision = guide->revision;
-    commands.beginTransientEdit();
+    guideEditorCoordinator.beginTransaction();
 }
 
 void NodeCanvas::commitCurveTransaction() {
-    if (!guideTransactionBaseRevision.has_value()) {
-        return;
-    }
-    commands.commitTransientEdit();
-    guideTransactionBaseRevision.reset();
-    refreshCompiledStateAsync();
+    guideEditorCoordinator.commitTransaction();
 }
 
 void NodeCanvas::repaintNodeEditor(bool openGl) {
@@ -2533,6 +2507,12 @@ void NodeCanvas::finishNodeEditorGesture(
     }
 }
 
+void NodeCanvas::cancelNodeEditorGesture(
+        const String& nodeId,
+        GraphCommandDispatcher& dispatcher) {
+    presentation.editSession().cancelGraphGesture("editor:" + nodeId, dispatcher);
+}
+
 void NodeCanvas::scheduleNodeEditorRefresh() {
     scheduleCompiledStateRefresh();
 }
@@ -2565,7 +2545,10 @@ void NodeCanvas::rebindNodeEditorTransient() {
 void NodeCanvas::recordNodeEditorMovement(
         const String& nodeId,
         const String& field,
-        uint64_t effectiveFingerprint) {
+        uint64_t effectiveFingerprint,
+        std::optional<UpdateProduct> localProduct) {
+    editorCoordinator.previewResources().refreshGraph(
+            commands.editingGraph(), commands.transientChanges());
     const Node* node = commands.editingGraph().findNode(nodeId);
     const bool primaryTrimeshMorph = node != nullptr
             && node->kind == NodeKind::TrilinearMesh
@@ -2573,7 +2556,7 @@ void NodeCanvas::recordNodeEditorMovement(
     const auto decision = PresentationRefreshPolicy::decide({
             EditPhase::Movement,
             probeRailState.refreshMode,
-            UpdateProduct::LocalSlice,
+            localProduct,
             !primaryTrimeshMorph,
             false
     });
@@ -2588,7 +2571,7 @@ void NodeCanvas::recordNodeEditorMovement(
                         PresentationRefreshScope::PreviewOnly,
                         &commands.transientChanges(),
                         std::move(snapshot));
-            } else {
+            } else if (decision.localProduct.has_value()) {
                 const bool localPreviewQueued = node != nullptr
                         && presentation.refreshLocalNodePreview(
                                 *node,

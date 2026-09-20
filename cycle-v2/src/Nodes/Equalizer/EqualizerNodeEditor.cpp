@@ -7,10 +7,9 @@
 #include "Nodes/Equalizer/EqualizerNodeEditor.h"
 #include "Nodes/Equalizer/EqualizerPreviewPainter.h"
 #include "UI/CanvasChromeMetrics.h"
-#include "UI/EditorChromeLayout.h"
-#include "UI/EffectEnableButton.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
 #include "UI/Editors/ProcessingScopeSelector.h"
+#include "UI/ExpandedEditorChrome.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
 namespace CycleV2 {
@@ -100,15 +99,21 @@ public:
             NodeEditorPresentation& presentationToUse) :
             commands     (commandsToUse)
         ,   presentation (presentationToUse)
+        ,   chrome       (*this, "EQUALIZER", "equalizerEditor",
+                    [this] { presentation.closeNodeEditor(); },
+                    [this](bool enabled) {
+                        commands.setNodeParameterValue(
+                                node.id, "enabled", "Enabled", enabled ? 1.f : 0.f);
+                    })
         ,   processingScope ("equalizerEditor") {
-        configureHeader();
+        configureControls();
         createControls();
     }
 
     void setNode(const Node& nextNode) {
         node = nextNode;
         const NodeParameterMap parameters(node);
-        enabled.setToggleState(parameters.boolValue("enabled", true), dontSendNotification);
+        chrome.setEnabled(parameters.boolValue("enabled", true));
         processingScope.setScope(
                 parameters.stringValue("processingScope", "voice"),
                 dontSendNotification);
@@ -121,23 +126,12 @@ public:
     }
 
     void paint(Graphics& graphics) override {
-        graphics.fillAll(Colour(0xff11151b));
-        graphics.setColour(Colour(0xff2b3340));
-        graphics.drawRoundedRectangle(
-                getLocalBounds().toFloat().reduced(0.5f),
-                CanvasChromeMetrics::panelCornerRadius,
-                CanvasChromeMetrics::restingBorderWidth);
-        graphics.setColour(Colour(0xffeef2f6));
-        graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize));
-        const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
-        graphics.drawText("EQUALIZER", header.title, Justification::centredLeft);
+        chrome.paint(graphics);
         paintResponse(graphics);
     }
 
     void resized() override {
-        const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
-        close.setBounds(header.close);
-        enabled.setBounds(header.enabled);
+        chrome.resized();
         processingHeader.setBounds(
                 38,
                 214,
@@ -184,7 +178,7 @@ public:
     var automationState() const {
         auto* state = new DynamicObject();
         state->setProperty("kind", "EQUALIZER");
-        state->setProperty("enabled", enabled.getToggleState());
+        state->setProperty("enabled", chrome.isEnabled());
         state->setProperty("processingScope", processingScope.automationState());
         state->setProperty(
                 "processingGroup",
@@ -206,22 +200,7 @@ public:
     }
 
 private:
-    void configureHeader() {
-        close.setButtonText(String::fromUTF8("×"));
-        close.setComponentID("equalizerEditor.close");
-        close.setTooltip("Close Equalizer editor");
-        close.setWantsKeyboardFocus(true);
-        close.onClick = [this] {
-            presentation.closeNodeEditor();
-        };
-        enabled.setComponentID("equalizerEditor.enabled");
-        enabled.onClick = [this] {
-            commands.setNodeParameterValue(
-                    node.id,
-                    "enabled",
-                    "Enabled",
-                    enabled.getToggleState() ? 1.f : 0.f);
-        };
+    void configureControls() {
         processingScope.onChange = [this](const String& scope) {
             if (!commands.setNodeParameterText(
                     node.id,
@@ -241,8 +220,6 @@ private:
             }
             node.parameters.push_back({ "processingScope", "Processing", scope });
         };
-        addAndMakeVisible(close);
-        addAndMakeVisible(enabled);
         addAndMakeVisible(processingHeader);
         addAndMakeVisible(processingScope);
         addAndMakeVisible(gainHeader);
@@ -294,10 +271,7 @@ private:
         } else {
             configureFrequencyControl(control);
         }
-        EqualizerControl* target = &control;
-        row.onPreviewValue = [this, target](float value) {
-            updateLocalParameter(target->id, value);
-        };
+        row.mirrorPreviewInto(node, NodeKind::Equalizer);
     }
 
     void configureGainControl(EqualizerControl& control) {
@@ -339,7 +313,7 @@ private:
         const Rectangle<float> response = responseBounds();
         graphics.setColour(EffectPlotPalette::forEnabledState(
                 EffectPlotPalette::insetBackground,
-                enabled.getToggleState()));
+                chrome.isEnabled()));
         graphics.fillRoundedRectangle(response, CanvasChromeMetrics::insetCornerRadius);
         EqualizerPreviewPainter().paint(graphics, response.reduced(12.f, 9.f), node, true);
     }
@@ -404,23 +378,7 @@ private:
     void setGraphControlValue(EqualizerControl& control, float value) {
         control.row.slider.setValue(value, dontSendNotification);
         control.row.refreshValueText();
-        updateLocalParameter(control.id, value);
-    }
-
-    void updateLocalParameter(const String& id, float value) {
-        const auto* definition = NodeDefinitionRegistry::instance().findParameter(
-                NodeKind::Equalizer,
-                id);
-        const String normalized = definition != nullptr
-                ? definition->normalized(String(value, 6))
-                : String(value, 6);
-        for (auto& parameter : node.parameters) {
-            if (parameter.id == id) {
-                parameter.value = normalized;
-                break;
-            }
-        }
-        repaint();
+        control.row.previewValue(value);
     }
 
     Rectangle<float> responseBounds() const {
@@ -434,8 +392,7 @@ private:
     NodeEditorCommands& commands;
     NodeEditorPresentation& presentation;
     Node node;
-    TextButton close;
-    EffectEnableButton enabled;
+    ExpandedEditorChrome chrome;
     PropertyGroupLabel processingHeader { "PROCESSING" };
     ProcessingScopeSelector processingScope;
     PropertyGroupLabel gainHeader { "Gain" };

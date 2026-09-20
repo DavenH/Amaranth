@@ -410,10 +410,6 @@ const Node* findNode(const NodeGraph& graph, const String& id) {
     return nullptr;
 }
 
-PortDomain edgeDomain(const NodeGraph& graph, const Edge& edge) {
-    return edge.isAttachment() ? edge.domain : GraphValidator().resolvedDomainForEdge(graph, edge);
-}
-
 Rectangle<float> actionButton(Rectangle<float> nodeBounds, float zoom) {
     const float size = 27.f * zoom;
     return Rectangle<float>(size, size).withCentre({
@@ -437,56 +433,6 @@ void paintGlobalProcessingIcon(
             roundToInt(icon.getCentreY()),
             icon.getX() + 1.5f * zoom,
             icon.getRight() - 1.5f * zoom);
-}
-
-enum class OperationPortLayout {
-    Side,
-    Uptack,
-    Vertical,
-    Tee
-};
-
-OperationPortLayout operationLayout(const Node& node) {
-    if (node.inputs.size() < 2) {
-        return OperationPortLayout::Side;
-    }
-
-    const PortSide first = node.inputs[0].side;
-    const PortSide second = node.inputs[1].side;
-    if (first == PortSide::Left && second == PortSide::Bottom) {
-        return OperationPortLayout::Tee;
-    }
-    if (first == PortSide::Top && second == PortSide::Bottom) {
-        return OperationPortLayout::Vertical;
-    }
-    if (first == PortSide::Left && second == PortSide::Top) {
-        return OperationPortLayout::Uptack;
-    }
-
-    return OperationPortLayout::Side;
-}
-
-OperationPortLayout nextLayout(OperationPortLayout layout) {
-    switch (layout) {
-        case OperationPortLayout::Side:     return OperationPortLayout::Uptack;
-        case OperationPortLayout::Uptack:   return OperationPortLayout::Vertical;
-        case OperationPortLayout::Vertical: return OperationPortLayout::Tee;
-        case OperationPortLayout::Tee:      return OperationPortLayout::Side;
-    }
-
-    return OperationPortLayout::Side;
-}
-
-PortSide nextOutputSide(const Node& node) {
-    const PortSide side = node.outputs.empty() ? PortSide::Right : node.outputs.front().side;
-    switch (side) {
-        case PortSide::Right:  return PortSide::Bottom;
-        case PortSide::Bottom: return PortSide::Top;
-        case PortSide::Top:    return PortSide::Right;
-        case PortSide::Left:   return PortSide::Right;
-    }
-
-    return PortSide::Right;
 }
 
 void paintActionButton(Graphics& graphics, Rectangle<float> button, float scale) {
@@ -628,7 +574,6 @@ NodeCanvasPresentation::NodeCanvasPresentation(
 void NodeCanvasPresentation::paint(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    audioScopes = GraphAudioScopeAnalyzer().analyze(frame.graph);
     {
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
@@ -686,7 +631,8 @@ void NodeCanvasPresentation::paint(
         signalProbeRail.paintRail(
                 graphics,
                 frame.graph,
-                frame.previewResult,
+                frame.snapshot,
+                frame.facts,
                 frame.probeRailState.expanded
                         ? GuideCurveShelf::spyWorkspace(
                                 frame.workspaceBounds,
@@ -742,6 +688,7 @@ void NodeCanvasPresentation::paintContent(
                     graphics,
                     frame.graph,
                     scene.snapshot(),
+                    frame.facts,
                     GuideCurveShelf::spyWorkspace(
                             frame.workspaceBounds,
                             frame.guideShelfState.minimized,
@@ -896,7 +843,8 @@ void NodeCanvasPresentation::paintEdges(
             frame.graph,
             frame.viewport,
             frame.presentationRevision,
-            frame.documentRevision);
+            frame.documentRevision,
+            &frame.facts.edgeIndex());
 
     if (!frame.nodeDragActive) {
         cableLayerCache.beginFrame(frame.canvasBounds.toNearestInt(), physicalScale);
@@ -915,7 +863,7 @@ void NodeCanvasPresentation::paintEdges(
         const bool invalid = GraphValidator().edgeHasValidationIssue(frame.graph, edge);
         const Colour colour = invalid
                 ? Colour(0xffff5a5f)
-                : colourForDomain(edgeDomain(frame.graph, edge));
+                : colourForDomain(frame.facts.domainForEdge(frame.graph, edge));
         const NodeCableStyle style {
                 colour,
                 invalid,
@@ -1070,7 +1018,8 @@ void NodeCanvasPresentation::paintCachedNodes(
     const Rectangle<float> visibleArea = frame.canvasBounds.expanded(120.f);
     for (const Node& node : frame.graph.getNodes()) {
         const Rectangle<float> nodeBounds = frame.viewport.toScreen(
-                NodeCanvasScene::presentationWorldBounds(frame.graph, node));
+                NodeCanvasScene::presentationWorldBounds(
+                        frame.graph, node, frame.facts.edgeIndex()));
         if (!nodeBounds.intersects(visibleArea)) {
             continue;
         }
@@ -1109,7 +1058,8 @@ void NodeCanvasPresentation::paintInlinePanGesture(
     const float zoom = frame.viewport.getZoom();
     const float scale = portScale(zoom);
     const Rectangle<float> nodeBounds = frame.viewport.toScreen(
-            NodeCanvasScene::presentationWorldBounds(frame.graph, *node));
+            NodeCanvasScene::presentationWorldBounds(
+                    frame.graph, *node, frame.facts.edgeIndex()));
     const float pan = jlimit(0.f, 1.f, NodeParameterMap(*node).floatValue("pan", 0.5f));
     const Colour colour = colourForDomain(profileFor(frame, *node).getDomain());
     paintPanGestureArc(graphics, nodeBounds, pan, colour, scale);
@@ -1121,9 +1071,11 @@ void NodeCanvasPresentation::paintCachedNode(
         const Node& node,
         float physicalScale) {
     const Rectangle<float> logicalBounds = frame.viewport.toScreen(
-            NodeCanvasScene::presentationWorldBounds(frame.graph, node))
+            NodeCanvasScene::presentationWorldBounds(
+                    frame.graph, node, frame.facts.edgeIndex()))
             .expanded(32.f * portScale(frame.viewport.getZoom()));
-    const NodePreviewResult* runtimePreview = previewFor(frame.previewResult, node.id);
+    const NodePreviewResult* runtimePreview = frame.facts.previewFor(
+            frame.snapshot, node.id);
     const NodeCanvasNodeLayerCacheAccess cache = nodeLayerCache.access(
             node,
             logicalBounds,
@@ -1185,16 +1137,6 @@ UnisonPreviewContext NodeCanvasPresentation::unisonPreviewContextFor(
     return fallback;
 }
 
-bool NodeCanvasPresentation::hasGlobalProcessingIndicator(
-        const NodeGraph& graph,
-        const String& nodeId) {
-    if (graph.findNode(nodeId) == nullptr) {
-        return false;
-    }
-    return GraphAudioScopeAnalyzer().analyze(graph).scopeFor(nodeId)
-            == AuthoredAudioScope::Global;
-}
-
 Rectangle<float> NodeCanvasPresentation::globalProcessingIndicatorBounds(
         Rectangle<float> header,
         float zoom,
@@ -1218,7 +1160,8 @@ void NodeCanvasPresentation::paintNode(
     const float scale = portScale(zoom);
     const float corner = CanvasChromeMetrics::panelCornerRadius * scale;
     const Rectangle<float> nodeBounds = frame.viewport.toScreen(
-            NodeCanvasScene::presentationWorldBounds(frame.graph, node));
+            NodeCanvasScene::presentationWorldBounds(
+                    frame.graph, node, frame.facts.edgeIndex()));
     if (node.kind == NodeKind::ModulationSource) {
         paintSingleModulationNode(graphics, frame, node, nodeBounds, zoom, scale);
         return;
@@ -1272,7 +1215,7 @@ void NodeCanvasPresentation::paintNode(
                 || supportsSinglePortLayout(node)
                 || capabilities.outputSideControl;
         const bool reservesHeaderRight = hasAction || node.kind == NodeKind::Envelope;
-        const bool globalProcessing = audioScopes.scopeFor(node.id)
+        const bool globalProcessing = frame.facts.audioScopeAnalysis().scopeFor(node.id)
                 == AuthoredAudioScope::Global;
         if (globalProcessing) {
             paintGlobalProcessingIcon(
@@ -1299,7 +1242,7 @@ void NodeCanvasPresentation::paintNode(
                     graphics,
                     actionButton(nodeBounds, zoom),
                     scale,
-                    nextLayout(operationLayout(node)));
+                    nextOperationPortLayout(operationPortLayout(node)));
         } else if (supportsSinglePortLayout(node)) {
             paintSinglePortAction(
                     graphics,
@@ -1311,7 +1254,7 @@ void NodeCanvasPresentation::paintNode(
                     graphics,
                     actionButton(nodeBounds, zoom),
                     scale,
-                    nextOutputSide(node));
+                    nextOutputPortSide(node));
         }
 
         const Rectangle<float> preview = previewRenderer.boundsFor(node, nodeBounds, zoom);
@@ -1333,14 +1276,14 @@ void NodeCanvasPresentation::paintNode(
         } else {
             previewRenderer.paint(graphics, {
                     node,
-                    previewFor(frame.previewResult, node.id),
+                    frame.facts.previewFor(frame.snapshot, node.id),
                     preview,
                     profileFor(frame, node),
                     zoom,
                     true,
                     node.kind == NodeKind::Unison
                             ? unisonPreviewContextFor(
-                                    frame.compileResult.plan,
+                                    frame.snapshot.compileResult.plan,
                                     node.id,
                                     frame.unisonPreviewContext)
                             : frame.unisonPreviewContext,
@@ -1404,18 +1347,6 @@ NodePortPresentation NodeCanvasPresentation::portPresentation(
     };
 }
 
-const NodePreviewResult* NodeCanvasPresentation::previewFor(
-        const GraphPreviewResult& previews,
-        const String& nodeId) const {
-    for (const auto& preview : previews.nodes) {
-        if (preview.nodeId == nodeId) {
-            return &preview;
-        }
-    }
-
-    return nullptr;
-}
-
 TrimeshRenderProfile NodeCanvasPresentation::profileFor(
         const NodeCanvasPresentationFrame& frame,
         const Node& node) const {
@@ -1425,10 +1356,8 @@ TrimeshRenderProfile NodeCanvasPresentation::profileFor(
 NodeRenderSemantic NodeCanvasPresentation::renderSemanticFor(
         const NodeCanvasPresentationFrame& frame,
         const Node& node) const {
-    NodeRenderSemantic semantic = GraphRenderSemanticResolver().semanticForNodeOutput(
-            frame.graph,
-            node.id,
-            "out");
+    NodeRenderSemantic semantic = frame.facts.renderSemanticForNodeOutput(
+            frame.graph, node.id, "out");
     if (semantic.domain == PortDomain::ControlSignal && !node.outputs.empty()) {
         semantic.domain = node.outputs.front().domain;
     }
@@ -1458,7 +1387,7 @@ uint64_t NodeCanvasPresentation::renderContextFingerprintFor(
     }
     if (node.kind == NodeKind::Unison) {
         fingerprint.add(unisonContextFingerprint(unisonPreviewContextFor(
-                frame.compileResult.plan,
+                frame.snapshot.compileResult.plan,
                 node.id,
                 frame.unisonPreviewContext)));
     } else if (node.kind == NodeKind::VoiceContext) {
@@ -1473,7 +1402,8 @@ void NodeCanvasPresentation::renderOpenGLEffectPreviews(
     const Rectangle<float> visibleArea = frame.canvasBounds.expanded(120.f);
     for (const auto& node : frame.graph.getNodes()) {
         const Rectangle<float> nodeBounds = frame.viewport.toScreen(
-                NodeCanvasScene::presentationWorldBounds(frame.graph, node));
+                NodeCanvasScene::presentationWorldBounds(
+                        frame.graph, node, frame.facts.edgeIndex()));
         if (!nodeBounds.intersects(visibleArea)
                 || (!frame.canvasOcclusion.isEmpty()
                     && frame.canvasOcclusion.intersects(nodeBounds))) {

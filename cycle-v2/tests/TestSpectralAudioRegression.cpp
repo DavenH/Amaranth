@@ -13,6 +13,8 @@
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 
+#include "NodeGraphTestAccess.h"
+
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphSerializer.h"
 #include "Runtime/GraphAudioExecutor.h"
@@ -301,7 +303,7 @@ TEST_CASE("Prepared spectral reconstruction retains the final active harmonic",
   #if defined(CYCLE_V2_SOURCE_DIR)
     constexpr int midiNote = 48;
     NodeGraph graph = loadPresetGraph("filter-saw");
-    Node* magnitude = graph.findNodeForEditing("magnitudeLayer1");
+    Node* magnitude = NodeGraphTestAccess::findNodeForEditing(graph, "magnitudeLayer1");
     REQUIRE(magnitude != nullptr);
     auto polarity = std::find_if(
             magnitude->parameters.begin(),

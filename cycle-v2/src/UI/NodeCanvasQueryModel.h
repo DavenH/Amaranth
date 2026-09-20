@@ -8,6 +8,8 @@
 #include "Graph/NodeGraph.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Runtime/GraphPreviewExecutor.h"
+#include "Runtime/GraphPresentationFacts.h"
+#include "Runtime/GraphPresentationSnapshot.h"
 #include "Runtime/GraphRuntime.h"
 
 namespace CycleV2 {
@@ -16,9 +18,7 @@ class NodeCanvasQueryModel {
 public:
     NodeCanvasQueryModel(
             const NodeGraph& graph,
-            const GraphCompileResult& compileResult,
-            const RuntimeProcessTrace& runtimeTrace,
-            const GraphPreviewResult& previewResult);
+            const GraphPresentationSnapshot& snapshot);
 
     const Node* findNode(const String& id) const;
     const Node* findNodeAt(Point<float> worldPosition) const;
@@ -38,11 +38,12 @@ public:
     String hoverTextForNode(const Node& node) const;
     String hoverTextForEdge(const Edge& edge) const;
 
+    const GraphPresentationFacts& presentationFacts() const;
+
 private:
     const NodeGraph& graph;
-    const GraphCompileResult& compileResult;
-    const RuntimeProcessTrace& runtimeTrace;
-    const GraphPreviewResult& previewResult;
+    const GraphPresentationSnapshot* snapshot {};
+    mutable std::shared_ptr<const GraphPresentationFacts> fallbackFacts;
 };
 
 }

@@ -2,6 +2,7 @@
 
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/NodeModelDecodeDiagnostics.h"
+#include "Graph/NodeModelEnvelopeCodec.h"
 
 #include <Curve/Mesh/Mesh.h>
 
@@ -53,12 +54,12 @@ uint64_t TrimeshNodeModelState::revision() const {
 }
 
 var TrimeshNodeModelState::writeJSON() const {
-    auto result = std::make_unique<DynamicObject>();
-    result->setProperty("schema", schemaId());
-    result->setProperty("version", schemaVersion());
-    result->setProperty("revision", (int64) modelRevision);
-    result->setProperty("mesh", meshState->writeJSON());
-    return var(result.release());
+    return NodeModelEnvelopeCodec::write(
+            schemaId(),
+            schemaVersion(),
+            modelRevision,
+            "mesh",
+            meshState->writeJSON());
 }
 
 bool TrimeshNodeModelState::equals(const NodeModelState& other) const {
@@ -84,22 +85,13 @@ NodeModelStatePtr TrimeshNodeModelCodec::createDefault() const {
 
 NodeModelStatePtr TrimeshNodeModelCodec::readJSON(const var& value, String& error) const {
     NodeModelDecodeDiagnostics::recordDecode();
-    const auto* object = value.getDynamicObject();
-    if (object == nullptr || object->getProperty("schema").toString() != schemaId()) {
-        error = "Expected Trimesh model schema 'trimesh'";
-        return nullptr;
-    }
-    if ((int) object->getProperty("version") != currentVersion()) {
-        error = "Unsupported Trimesh model schema version";
-        return nullptr;
-    }
-    const int64 revision = object->getProperty("revision");
-    if (revision < 1) {
-        error = "Trimesh model revision must be positive";
+    const auto envelope = NodeModelEnvelopeCodec::read(
+            value, schemaId(), currentVersion(), "mesh", error);
+    if (!envelope.has_value()) {
         return nullptr;
     }
 
-    const var meshState = object->getProperty("mesh");
+    const var& meshState = envelope->payload;
     const auto* meshObject = meshState.getDynamicObject();
     const auto* vertices = meshObject != nullptr
             ? meshObject->getProperty("vertices").getArray()
@@ -119,7 +111,7 @@ NodeModelStatePtr TrimeshNodeModelCodec::readJSON(const var& value, String& erro
         return nullptr;
     }
     return std::shared_ptr<const TrimeshNodeModelState>(
-            new TrimeshNodeModelState(std::move(validated), (uint64_t) revision));
+            new TrimeshNodeModelState(std::move(validated), envelope->revision));
 }
 
 }

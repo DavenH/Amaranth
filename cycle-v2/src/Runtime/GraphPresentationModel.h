@@ -106,6 +106,11 @@ private:
 
     bool requiresCompilation(const GraphChangeSet& change) const;
     bool requiresPreview(const GraphChangeSet& change) const;
+    bool canAcceptSnapshot(const GraphPresentationSnapshot& snapshot) const;
+    bool acceptSnapshot(
+            GraphPresentationSnapshot snapshot,
+            const NodeGraph& graph,
+            bool reuseStructure);
     bool refreshPreviewControls(
             const NodeGraph& graph,
             uint64_t documentRevision,

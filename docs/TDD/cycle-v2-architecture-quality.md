@@ -2,9 +2,9 @@
 
 ## Status
 
-In progress, 2026-09-18. Graph edit ownership and the Trimesh dependency
-boundaries have completed extraction slices. The UI validation, `NodeGraph`
-ownership, UI coordination, and runtime execution criteria remain open.
+Complete, 2026-09-20. All four refactor slices meet their stated completion
+evidence. The causal-update TDD remains the owner of its separate refresh-host
+deletion targets.
 
 ## Context and baseline
 
@@ -330,6 +330,185 @@ channel-layout cases pass (31 assertions). The next domain slice can seed the
 existing worklist from `GraphEdgeIndexOverlay` without reproducing transfer
 rules or adjacency construction.
 
+Seeded domain recomputation now initializes retained proposed edges from the
+durable `GraphValidationContext` resolution, expands the local downstream
+dependency closure from destinations changed by `GraphEdgeIndexOverlay`, and
+runs the existing domain and channel-layout transfer functions only over that
+closure. Removed and added edges share one structural seed calculation;
+propagation retains the authoritative resolver rules and overlay adjacency.
+`GraphDomainResolver.cpp` grew from 339 to 426 lines,
+`GraphEdgeIndex.cpp` from 131 to 165 lines, and `GraphEdgeView.h` from 101 to
+104 lines. The new code removes no caller yet because incremental audio-scope
+and validation facts remain prerequisites for the live preview path. Full and
+seeded replacement/removal parity tests pass, and a scale test holds the
+affected branch constant while adding 128 disconnected branches: domain
+transfers remain unchanged with zero validation node visits, validation edge
+visits, or graph copies. The focused domain set passes 29 assertions across
+six cases and the complete complexity set passes 605 assertions across 31
+cases. The broader `[graph]` run retains six pre-existing serializer/preset
+fixture failures; its output is in
+`/private/tmp/cycle-v2-graph-seeded-domain.log`. Incremental audio-scope
+analysis is the next indexed fact slice.
+
+Seeded audio-scope analysis now starts from signal-edge endpoints changed by
+`GraphEdgeIndexOverlay`, walks only the affected domain-neutral components,
+and replaces their inherited scope and conflict facts. Full and incremental
+analysis share the authoritative capability, explicit-scope, and component
+resolution rules; deterministic conflict ordering makes their results directly
+comparable. `GraphAudioScope.cpp` grew from 155 to 306 lines and its header
+from 39 to 45 lines. The source remains one cohesive policy owner: full graph
+component discovery, proposed-view component discovery, and their shared scope
+classification. A replacement/removal parity test and a scaled test pass; the
+scaled case adds 128 disconnected branches while holding validation node and
+edge visits constant. The focused audio-scope set passes 144 assertions across
+14 cases, and the complete complexity set passes 623 assertions across 32
+cases. Result materialization still copies the baseline scope map and conflict
+list, so a persistent or layered fact representation remains a prerequisite
+before claiming total proposal cost independent of graph size. Incremental
+affected-closure validation is the next indexed fact slice.
+
+Affected-closure proposal validation now reuses the durable issues in
+`GraphValidationContext`, consumes the affected edge and node sets produced by
+the seeded domain and audio-scope analyses, and revalidates only changed or
+fact-dependent edges and affected operation nodes. Validation issues now carry
+a stable `subjectId` for node-owned policies, so an operation issue can be
+invalidated without parsing its message or discarding unrelated baseline
+issues. Full and proposal topology validation share one indexed operation-node
+rule. `GraphValidator.cpp` grew from 96 to 226 lines,
+`GraphTopologyValidator.cpp` from 113 to 201 lines, and
+`GraphValidationContext.cpp` from 23 to 47 lines; each remains below the size
+review thresholds and retains one policy level. A replacement test proves that
+a repaired mixed-domain operation removes its baseline issue with full-validator
+parity. A scale test adds 128 disconnected nodes while validation node visits,
+edge visits, and domain transfers remain constant. The complete complexity set
+passes 643 assertions across 33 cases. The broader `[graph]` run passes 183 of
+189 cases and retains the same six serializer/preset fixture failures; output
+is in `/private/tmp/cycle-v2-graph-affected-validation.log`. Explicit audio
+graphs and Voice Context
+assignment edits deliberately retain the full validation fallback until the
+context owns indexed reachability, terminal-output, and assignment facts.
+Baseline scope-map and issue-vector materialization also remain graph-sized.
+Those retained global policy facts are the next validation slice before live UI
+callers adopt the context.
+
+Voice Context assignment policy now has one read-only owner,
+`GraphVoiceContextAssignments`. It identifies providers, accepting nodes, and
+explicit assignments once; `GraphCompiler` translates those facts into
+single-context implicit edges, while `GraphTopologyValidator` translates them
+into missing-assignment and multiple-active-context issues. The duplicated node
+predicate and graph/edge scans were deleted. `GraphCompiler.cpp` fell from
+1,563 to 1,522 lines and `GraphTopologyValidator.cpp` from 201 to 185 lines;
+the new focused implementation is 82 lines with a 36-line interface.
+`GraphValidationContext` retains the analysis, and a proposed context edge now
+updates assignment facts and issues without taking the former full validation
+fallback. Three compiler integration cases pass 20 assertions, and three
+validation-context cases pass 17 assertions. Incremental explicit-audio
+reachability and terminal-output facts remain the final global validation
+fallback before caller adoption.
+
+#### Explicit-audio proposal validation design
+
+The authoritative behavior remains `GraphAudioScopeValidator`: singleton audio
+boundaries, neutral-scope conflicts, directed reachability from Global Input,
+reverse reachability to Output, and ambiguous linked-stereo voice terminals.
+The retained validation context will add one audio-validation fact set with the
+boundary IDs, forward- and reverse-reachable node sets, and each voice node's
+count of linked-stereo outputs that bypass Voice Output.
+
+For a proposed edge view, forward reachability can change only at each changed
+edge destination, at nodes whose resolved scope changed, and downstream from
+those seeds. Reverse reachability can change only at each changed edge source,
+at scope-changed nodes, and upstream from those seeds. Recompute each affected
+directed closure over `GraphEdgeIndexOverlay`; initialize it from the retained
+reachability of unchanged boundary predecessors or successors, then propagate
+inside the closure. This preserves alternate paths after removal and handles a
+cycle by recomputing every affected member reachable within the proposed view.
+Do not restart either traversal from Global Input or Output.
+
+Voice-terminal status can change for changed-edge sources, scope-changed nodes,
+and sources of edges entering a scope-changed node. Recompute linked-stereo
+terminal counts only for those nodes through overlay outgoing adjacency, update
+the retained total, and emit the single ambiguity issue from that total.
+Neutral-scope conflict issues use the affected node IDs already returned by
+`GraphAudioScopeAnalysis`. Singleton boundary issues are unchanged because an
+edge proposal cannot add or remove nodes.
+
+Proof requires full-validator parity for edge addition, replacement, removal,
+alternate-path retention, a directed cycle, a neutral node changing scope, and
+voice-terminal consumption. Operation counters must remain unchanged when 128
+disconnected global and voice branches are added while the edited closure stays
+fixed. Once these facts replace the explicit-audio fallback, connection and
+splice gesture contexts may adopt proposal validation and delete the two UI
+`NodeGraph` candidate copies.
+
+The first explicit-audio slice extracts `GraphAudioValidationFacts` as the one
+owner of boundary discovery, indexed forward/reverse reachability, per-node
+voice-terminal counts, and issue materialization. `GraphAudioScopeValidator`
+is now a 30-line adapter instead of a 219-line mixed analysis/validation file;
+the focused fact implementation is 197 lines with a 46-line interface. The
+authoritative behavior is unchanged: all 14 audio-scope cases pass 144
+assertions, proposed/committed validation parity passes eight assertions, and
+the complete complexity set passes 643 assertions across 33 cases. The next
+slice will add the proposed-view constructor described above and retain these
+facts in `GraphValidationContext`.
+
+Incremental explicit-audio facts now copy the retained boundary, membership,
+reachability, and terminal-count facts, then replace only the forward and
+reverse affected closures and changed terminal sources through
+`GraphEdgeIndexOverlay`. `GraphValidationContext` retains the baseline facts,
+and proposal validation rematerializes audio-policy issues from the proposed
+facts; the former full-validation fallback and its duplicate explicit-audio
+predicate were deleted. Full-validator parity covers removal with and without
+an alternate path, a directed cycle, neutral-node scope migration, and voice
+terminal consumption. A scale test adds 128 disconnected branches while
+validation visits and graph/audio copies remain unchanged. The focused
+validation-context set passes 22 assertions across four cases, and the complete
+complexity set passes 655 assertions across 34 cases. During that proof, the
+larger affected worklist exposed a borrowed vector element that could be
+invalidated by worklist growth; `GraphAudioScope` now copies the current node
+ID before appending successors. `GraphAudioValidationFacts.cpp` grew from 197
+to 400 lines and its interface from 46 to 53 lines. This is one cohesive fact
+owner for full construction, proposed closure replacement, and issue
+materialization; it remains below the source review threshold. The explicit
+audio graph now has no graph-wide proposal fallback. Live connection and
+splice callers can adopt the retained context and delete their UI candidate
+copies next.
+
+Live connection, modulation-bundle, and splice previews now retain one
+`GraphValidationContext` for the gesture and call the same read-only connection
+and splice validators used by commit. The three UI `NodeGraph` candidate copies
+and all UI imports of `GraphEditor` were deleted. Node drags may change graph
+revision through bounds updates while leaving topology and validation facts
+intact, so the context exposes an explicit layout-only proposal path; other
+revision changes retain the existing invalidation behavior. Scale tests add
+128 disconnected nodes and 16,384 unrelated audio samples to connection,
+bundle, and splice previews. Movement-time node visits, edge visits, and domain
+transfers remain unchanged, with zero graph and audio-sample copies. The
+gesture complexity set passes 389 assertions across 12 cases. Production file
+sizes after adoption are 110 lines for `GraphConnectionValidator.cpp`, 122 for
+`GraphSpliceValidator.cpp`, 78 for `GraphValidationContext.cpp`, 237 for
+`ModulationCableBundle.cpp`, 373 for `NodeCanvasInteraction.cpp`, and 238 for
+`NodeCanvasHitRouter.cpp`. `NodeCanvas.cpp` grew from 2,594 to 2,603 lines only
+to capture and pass the gesture context; its UI coordination extraction plan
+remains slice 2. This completes shared preview/commit rule adoption and the UI
+copy deletion target. Narrowing the graph aggregate remains open in this slice.
+
+Graph aggregate slice: `GraphGuideIndex` now owns the Guide resource, heatmap,
+assignment-target, usage, guide-to-node, and node-to-guide indexes. `NodeGraph`
+retains the stable Guide read and semantic mutation API while delegating index
+maintenance and queries to that focused owner. Raw mutable node, parameter,
+Guide, and probe lookups plus direct revision marking moved from the public API
+to the private command/editor/serializer/delta boundary; tests use an explicit
+friend access helper for fixture construction. Inline overlay selection also
+moved out of the public header. `NodeGraph.h` fell from 479 to 441 lines and
+`NodeGraph.cpp` from 711 to 667; `NodeGraphEditing.cpp` is 412 lines and the new
+index is 111 lines with a 56-line interface. Ten focused Guide, history,
+overlay-invalidation, and serialization cases pass 113 assertions. The
+architecture audit reports 20 triggers among 479 Cycle V2 C++ files. Together
+with the single dispatcher transaction owner, removal of UI `GraphEditor`
+calls, deletion of the second change accumulator, and the scaled zero-copy
+gesture proofs above, this completes the graph slice.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,
@@ -345,6 +524,90 @@ Completion evidence: a new gesture or automation command no longer requires
 adding state and dispatch branches to both central classes; production sizes
 fall for the original files; existing focused UI automation fixtures retain
 their observable behavior. The causal TDD owns removal of refresh host calls.
+
+Automation registry slice: command names and compatibility aliases now map to
+one typed `CycleV2AutomationCommand` registry instead of being interleaved with
+handler invocation in a 46-branch string chain. `runCommand` performs typed
+dispatch, while protocol aliases such as `connect`, `openMeshPopup`, and
+`removeGuideCurve` have one owner. The registry contract passes five focused
+assertions. `CycleV2Automation.cpp` fell from 2,030 to 1,995 lines; the registry
+is 70 lines with a 61-line interface. Transport, assertions, pointer input, and
+domain handlers still share the original class, so their extraction remains
+open.
+
+Assertion slice: JSON result construction, property reads, path traversal, path
+flattening, and comparison semantics now live in
+`CycleV2AutomationProtocol`; `CycleV2AutomationAssertions` composes that
+protocol with snapshot and parameter-reader callbacks. The state, node
+parameter, and assertion-path handlers were deleted from the transport class.
+`CycleV2Automation.cpp` fell from 1,995 to 1,742 lines. The assertion service is
+110 lines with a 30-line interface, and the shared protocol is 176 lines with a
+41-line interface. Focused assertion behavior passes three checks. Pointer
+input, protocol transport, and UI-facing domain handler extraction remain
+open.
+
+Input slice: keyboard translation, pointer targeting, JUCE event construction,
+cursor reporting, and performance-keyboard automation now live in
+`CycleV2AutomationInput`. The input service receives four semantic expanded
+editor actions as callbacks, so it translates protocol input without owning
+the corresponding graph edits. Shared rectangle and cursor encoding moved to
+`CycleV2AutomationProtocol`; the duplicate helpers were deleted from the
+orchestrator. `CycleV2Automation.cpp` fell from 1,742 to 1,293 lines; the input
+implementation is 443 lines and its interface is 37 lines. The Cycle V2 app
+and test targets build, and a live pointer fixture successfully dispatched its
+double-click and wheel commands. Its two state assertions remain stale because
+their fixed canvas coordinate no longer expands `waveMesh`; the command results
+and final snapshot show that input dispatch completed. Protocol transport,
+UI-facing domain handlers, and `NodeCanvas` gesture/editor ownership remain
+open.
+
+Workspace-command slice: graph edits, Guide edits, node parameters, expanded
+editor controls, and their protocol validation now live in
+`CycleV2AutomationWorkspaceCommands`. It receives the workspace plus snapshot
+and path callbacks and delegates semantic edits to the workspace's existing
+automation boundary. The 18 old handler implementations were deleted from the
+orchestrator; palette invocation and pointer semantic targets call the same
+service. `CycleV2Automation.cpp` fell from 1,293 to 1,036 lines; the new
+implementation is 287 lines with a 46-line interface. The app and test targets
+build, and a live fixture successfully inspected and opened `waveMesh` through
+the service. Session transport and `NodeCanvas` gesture/editor ownership remain
+open.
+
+Session-transport slice: Unix socket lifecycle, blocking client I/O, message
+thread dispatch, request-envelope normalization, response encoding, and quit
+handling now live in `CycleV2AutomationSessionTransport`. The transport owns no
+command policy; it receives one typed JSON command callback. The nested server
+and request handler were deleted from the automation orchestrator, which fell
+from 1,036 to 839 lines. The transport implementation is 216 lines with a
+28-line interface. The app and tests build, and a live session preserved the
+request id while successfully returning `snapshotState` and accepting `quit`.
+Together with the registry, assertions, input, and workspace-command services,
+this completes the automation composition target. `NodeCanvas` gesture and
+editor ownership remains open for this UI slice.
+
+Canvas-gesture state slice: spectral-pan, output-gain, and probe-drag identity
+and baseline values now use the same `NodeCanvasInteraction` variant as pan,
+selection, node drag, connection, and expanded-editor capture. Ten parallel
+fields in `NodeCanvas`, including five vestigial Trimesh flags, were deleted.
+One transition test proves that beginning a new gesture replaces the prior
+domain gesture and that reset returns to the idle state; all nine focused
+interaction cases pass with 99 assertions. `NodeCanvas.cpp` is 2,598 lines and
+`NodeCanvasInteraction.cpp` is 397 lines. Guide-editor lifecycle remains the
+last UI ownership target.
+
+Guide-editor lifecycle slice: `NodeCanvasGuideEditorCoordinator` now owns the
+Guide editor component and widget, open identity, layout, OpenGL resource
+lifecycle, transient base revision, publication, commit, cancellation, and
+rebinding. `NodeCanvas` retains only cross-editor coordination and narrow
+delegate forwarding. Four direct state members and their lifecycle branches
+were deleted. `NodeCanvas.cpp` fell from 2,598 to 2,525 lines and its header
+from 329 to 324; the coordinator is 174 lines with a 71-line interface. The app
+and tests build, and a focused live fixture creates a Guide, opens its editor,
+observes `expandedGuideId`, closes it with Escape, and observes the cleared
+state. The source remains large because it is still the top-level component,
+renderer, dock, presentation, and authoring coordinator, but gesture and editor
+lifecycle state now belong to composed collaborators. This completes the UI
+coordination slice's stated ownership targets.
 
 ### 3. Separate runtime execution policies
 
@@ -366,6 +629,46 @@ nullable policy arguments; no duplicated region eligibility decisions;
 operation-count and audio-parity tests preserve preparation, rendering,
 capture, and realtime allocation contracts. Original orchestration files
 shrink as behavior moves to cohesive owners.
+
+Execution-mode contract slice: `GraphAudioExecutor::processInternal` now takes
+one explicit variant selecting complete diagnostics, incremental diagnostics,
+or realtime execution. Incremental dirty state, cancellation, and result
+capture travel together; realtime pass, observer, and operation counters travel
+together. The former twelve-argument mixture of nullable policy controls was
+deleted. The implementation remains allocation-free for realtime calls: mode
+inspection uses the caller's stack value and the cancellation callback remains
+borrowed. Complete rendering passes 18 assertions, incremental rendering passes
+25 assertions across three cases, realtime ownership-pass coverage passes three
+assertions, and the realtime-tagged set passes 144 assertions across 14 cases.
+`GraphAudioExecutor.cpp` is 1,215 lines and its header is 308 lines after the
+contract change; preparation/cache extraction and the shared oscillator region
+planner remain open.
+
+Oscillator planning slice: `OscillatorRegionPlanView` now owns structural
+region validation, step membership, port lookup, and the decision that an input
+originates inside a region. Both chained and shared-spectral renderers use that
+view while retaining their distinct strategy and supported-role rules. The
+duplicated membership vectors and input traversal helpers were deleted.
+`SpectralOscillatorFrameRenderer.cpp` fell from 828 to 799 lines and
+`ChainedOscillatorRecipeRenderer.cpp` from 377 to 349 lines; the shared view is
+48 lines with a 29-line interface. Its boundary test passes seven assertions,
+and the spectral unresolved-control fallback passes six assertions. The broad
+oscillator set still contains the existing missing preset fixture failures.
+Preparation and processor-cache ownership remain the final runtime extraction
+target.
+
+Processor preparation slice: `GraphAudioProcessorCache` now owns processor
+identity by node and voice, role replacement, preparation signatures,
+configuration adoption, preparation counts, non-realtime service, and stale
+entry eviction. `GraphAudioExecutor` supplies the prepared execution facts and
+retains arena and pass orchestration; it no longer exposes or mutates cache
+entries. Its implementation fell from 1,215 to 1,150 lines and its header from
+308 to 255; the cache is 117 lines with a 72-line interface. Configuration-key
+and revision reuse tests pass with 11 assertions, stale-plan eviction passes
+seven, prepared multi-voice dispatch passes six, ownership-scope operation
+counts pass three, and the prepared realtime no-allocation contract passes ten.
+Together with explicit execution modes and the shared oscillator region plan,
+this completes the runtime policy separation slice.
 
 ### 4. Correct node-domain dependency direction
 
@@ -394,7 +697,7 @@ without copying the algorithm. `TrimeshNodeModel.cpp` fell from 549 to 459
 lines; the new service is 100 lines. The model no longer imports rendering or
 DSP headers. Seven focused Trimesh grid, panel, and spectral presentation
 tests pass (1,463 assertions). This completes the two dependency boundaries
-named in this slice; the broader architecture TDD remains in progress.
+named in this slice.
 
 ## Measurement and exit criteria
 
@@ -404,3 +707,8 @@ removed, and the semantic tests or operation counters used. A smaller source
 file alone is insufficient: the old path and duplicate decisions must be
 deleted. Re-run the repository's architecture review triggers after each slice
 and update this TDD until every slice is implemented or explicitly superseded.
+
+Final review confirms one authoritative owner for each extracted policy, no
+remaining completion target in this document, and no replacement facade that
+retains a deleted duplicate path. Further size-triggered files remain review
+signals for future changes rather than unfinished work in these four slices.

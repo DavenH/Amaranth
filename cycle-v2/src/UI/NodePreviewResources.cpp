@@ -1,15 +1,30 @@
 #include "UI/NodePreviewResources.h"
 
+#include "Graph/GraphEditTypes.h"
 #include "UI/NodeEditorHost.h"
 
 #include "Nodes/Effects/EffectSignalProcessors.h"
 #include "Runtime/FingerprintBuilder.h"
-#include "Runtime/PreviewPitchResolver.h"
 
 namespace CycleV2 {
 
 NodePreviewResources::NodePreviewResources(NodeEditorCommandService& commands) :
         editorCommands(commands) {
+}
+
+void NodePreviewResources::setGraph(const NodeGraph* graphToUse) {
+    graph = graphToUse;
+    if (graph != nullptr) {
+        previewPitchContexts.rebuild(*graph);
+    }
+}
+
+void NodePreviewResources::refreshGraph(
+        const NodeGraph& graphToUse,
+        const GraphChangeSet& changes) {
+    graph = &graphToUse;
+    previewPitchContexts.applyParameterChanges(
+            graphToUse, changes.nodeIds, changes.topologyChanged);
 }
 
 TrimeshWidget& NodePreviewResources::trimeshWidget(const String& nodeId) {
@@ -35,12 +50,8 @@ TrimeshWidget& NodePreviewResources::trimeshWidget(const String& nodeId) {
 
 TrimeshWidget& NodePreviewResources::trimeshWidget(const Node& node) {
     TrimeshWidget& widget = trimeshWidget(node.id);
-    const PreviewPitchContext preview = graph != nullptr
-            ? PreviewPitchResolver::contextForNodeAtPreviewNote(
-                    *graph,
-                    node.id,
-                    selectedPreviewMidiNote)
-            : PreviewPitchContext {};
+    const PreviewPitchContext preview = previewPitchContexts
+            .contextForNodeAtPreviewNote(node.id, selectedPreviewMidiNote);
     widget.setPreviewMidiNote(preview.midiNote);
     widget.setPreviewKeyScaleAxis(preview.keyScaleAxis);
     widget.syncFromNode(node);

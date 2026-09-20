@@ -2,6 +2,7 @@
 
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/NodeModelDecodeDiagnostics.h"
+#include "Graph/NodeModelEnvelopeCodec.h"
 #include "Graph/NodeParameterMap.h"
 
 #include "Nodes/Envelope/EnvelopeMeshState.h"
@@ -693,12 +694,8 @@ var CurveNodeModelState::writeJSON() const {
         object->setProperty("blue", envelopeBlueValue);
         object->setProperty("revision", (int64) modelRevision);
     }
-    auto result = std::make_unique<DynamicObject>();
-    result->setProperty("schema", schema);
-    result->setProperty("version", version);
-    result->setProperty("revision", (int64) modelRevision);
-    result->setProperty("state", state);
-    return var(result.release());
+    return NodeModelEnvelopeCodec::write(
+            schema, version, modelRevision, "state", std::move(state));
 }
 
 bool CurveNodeModelState::equals(const NodeModelState& other) const {
@@ -731,52 +728,70 @@ int CurveNodeDomainCodec::currentVersion() const {
 NodeModelStatePtr CurveNodeDomainCodec::createDefault() const {
     const var state = defaultCurveModelState(kind);
     String error;
-    auto wrapper = std::make_unique<DynamicObject>();
-    wrapper->setProperty("schema", schemaId());
-    wrapper->setProperty("version", currentVersion());
-    wrapper->setProperty("revision", 1);
-    wrapper->setProperty("state", state);
-    return readJSON(var(wrapper.release()), error);
+    return readJSON(NodeModelEnvelopeCodec::write(
+            schemaId(), currentVersion(), 1, "state", state), error);
 }
 
 NodeModelStatePtr CurveNodeDomainCodec::readJSON(const var& value, String& error) const {
-    const auto* object = value.getDynamicObject();
-    if (object == nullptr || object->getProperty("schema").toString() != schemaId()) {
-        error = "Unexpected node model schema";
-        return nullptr;
+    if (kind != NodeKind::Envelope) {
+        return readFlatCurveJSON(value, error);
     }
-    if ((int) object->getProperty("version") != currentVersion()) {
-        error = "Unsupported node model schema version";
-        return nullptr;
-    }
-    const int64 revision = object->getProperty("revision");
-    if (revision < 1) {
-        error = "Node model revision must be positive";
+
+    const auto envelope = NodeModelEnvelopeCodec::read(
+            value, schemaId(), currentVersion(), "state", error);
+    if (!envelope.has_value()) {
         return nullptr;
     }
 
-    const var state = object->getProperty("state");
-    if (kind == NodeKind::Envelope) {
-        auto model = std::make_shared<EnvelopeNodeModel>();
-        if (model->readJSON(state) && model->revision() == (uint64_t) revision) {
-            const float red = jlimit(0.f, 1.f, (float) state.getProperty("red", 0.5f));
-            const float blue = jlimit(0.f, 1.f, (float) state.getProperty("blue", 0.5f));
-            return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
-                    schemaId(), currentVersion(), (uint64_t) revision,
-                    std::move(model), red, blue));
-        }
-    } else {
-        auto model = std::make_shared<FlatCurveModel>();
-        if (model->readJSON(state) && model->revision() == (uint64_t) revision) {
-            return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
-                    schemaId(), currentVersion(), (uint64_t) revision, std::move(model)));
-        }
+    const var& state = envelope->payload;
+    auto model = std::make_shared<EnvelopeNodeModel>();
+    if (model->readJSON(state) && model->revision() == envelope->revision) {
+        const float red = jlimit(0.f, 1.f, (float) state.getProperty("red", 0.5f));
+        const float blue = jlimit(0.f, 1.f, (float) state.getProperty("blue", 0.5f));
+        return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
+                schemaId(), currentVersion(), envelope->revision,
+                std::move(model), red, blue));
     }
     error = "Invalid structured node model state";
     return nullptr;
 }
 
-NodeModelStatePtr createDefaultGuideCurveModel() {
+NodeModelStatePtr CurveNodeDomainCodec::readFlatCurveJSON(
+        const var& value,
+        String& error,
+        const String& modelName) {
+    const auto envelope = NodeModelEnvelopeCodec::read(
+            value,
+            "flatCurve",
+            FlatCurveModel::currentVersion,
+            "state",
+            error);
+    if (!envelope.has_value()) {
+        return nullptr;
+    }
+
+    auto model = std::make_shared<FlatCurveModel>(modelName);
+    if (model->readJSON(envelope->payload)
+            && model->revision() == envelope->revision) {
+        return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
+                "flatCurve",
+                FlatCurveModel::currentVersion,
+                envelope->revision,
+                std::move(model)));
+    }
+    error = "Invalid structured node model state";
+    return nullptr;
+}
+
+String GuideCurveModelCodec::schemaId() const {
+    return "flatCurve";
+}
+
+int GuideCurveModelCodec::currentVersion() const {
+    return FlatCurveModel::currentVersion;
+}
+
+NodeModelStatePtr GuideCurveModelCodec::createDefault() const {
     FlatCurveModel model("CycleV2GuideCurve");
     if (!model.replaceVertices({
                 { 1, 0.05f, 0.5f, 1.f },
@@ -787,28 +802,13 @@ NodeModelStatePtr createDefaultGuideCurveModel() {
     return CurveNodeModelState::copyOf(model, 1);
 }
 
-NodeModelStatePtr readGuideCurveModelJSON(const var& value, String& error) {
-    const auto* object = value.getDynamicObject();
-    if (object == nullptr || object->getProperty("schema").toString() != "flatCurve") {
-        error = "Unexpected Guide Curve model schema";
-        return nullptr;
-    }
-    if ((int) object->getProperty("version") != FlatCurveModel::currentVersion) {
-        error = "Unsupported Guide Curve model schema version";
-        return nullptr;
-    }
-    const int64 revision = object->getProperty("revision");
-    if (revision < 1) {
-        error = "Guide Curve model revision must be positive";
-        return nullptr;
-    }
+NodeModelStatePtr GuideCurveModelCodec::readJSON(const var& value, String& error) const {
+    return CurveNodeDomainCodec::readFlatCurveJSON(
+            value, error, "CycleV2GuideCurve");
+}
 
-    FlatCurveModel model("CycleV2GuideCurve");
-    if (!model.readJSON(object->getProperty("state")) || model.revision() != (uint64_t) revision) {
-        error = "Invalid Guide Curve model state";
-        return nullptr;
-    }
-    return CurveNodeModelState::copyOf(model, (uint64_t) revision);
+NodeModelStatePtr createDefaultGuideCurveModel() {
+    return GuideCurveModelCodec().createDefault();
 }
 
 }

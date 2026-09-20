@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
+#include "NodeGraphTestAccess.h"
+
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
@@ -600,7 +602,7 @@ TEST_CASE("Legacy graph formats are rejected after direct Guide resource convers
 
 TEST_CASE("Graph JSON persists authored port side overrides", "[cycle-v2][graph][layout]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    Node* add = graph.findNodeForEditing("addMag");
+    Node* add = NodeGraphTestAccess::findNodeForEditing(graph, "addMag");
     REQUIRE(add != nullptr);
     add->inputs[0].side = PortSide::Top;
     add->inputs[1].side = PortSide::Bottom;

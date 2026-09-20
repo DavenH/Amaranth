@@ -1,16 +1,20 @@
 #include "Graph/GraphSpliceValidator.h"
 
 #include "Graph/GraphConnectionValidator.h"
-#include "Graph/GraphEdgeIndex.h"
-#include "Graph/GraphEdgeView.h"
+#include "Graph/GraphValidationContext.h"
 #include "Graph/GraphValidator.h"
 
 namespace CycleV2 {
 
-GraphSpliceValidation GraphSpliceValidator::validate(
+namespace {
+
+GraphSpliceValidation validateSplice(
         const NodeGraph& graph,
+        const GraphValidationContext& context,
         size_t edgeIndex,
-        const String& nodeId) const {
+        const String& nodeId,
+        bool layoutChanged) {
+
     if (edgeIndex >= graph.getEdges().size()) {
         return { GraphEditCode::MissingEdge };
     }
@@ -28,10 +32,13 @@ GraphSpliceValidation GraphSpliceValidator::validate(
     const PortAddress source { edge.sourceNodeId, edge.sourcePortId, false };
     const PortAddress destination { edge.destNodeId, edge.destPortId, true };
     const GraphConnectionValidator connectionValidator;
-    const GraphEdgeIndex indexedEdges(graph.getEdges());
-    const GraphValidator validator;
-    const GraphEdgeView withoutOriginal(graph.getEdges(), { edgeIndex }, {});
-    const auto removedEdgeIssues = validator.validate(graph, withoutOriginal);
+    const auto validateProposal = [&](std::vector<size_t> removed, std::vector<Edge> added) {
+        return layoutChanged
+                ? context.validateProposalAfterLayoutChanges(
+                        graph, std::move(removed), std::move(added))
+                : context.validateProposal(graph, std::move(removed), std::move(added));
+    };
+    const auto removedEdgeIssues = validateProposal({ edgeIndex }, {});
 
     for (const auto& input : spliceNode->inputs) {
         if (!input.input) {
@@ -44,13 +51,11 @@ GraphSpliceValidation GraphSpliceValidator::validate(
             continue;
         }
 
-        auto firstRemoved = indexedEdges.edgesToInput(
+        auto firstRemoved = context.edgeIndex().edgesToInput(
                 incoming.destination.nodeId,
                 incoming.destination.portId);
         firstRemoved.push_back(edgeIndex);
-        const GraphEdgeView firstProposal(
-                graph.getEdges(), firstRemoved, { incoming.edge });
-        const auto firstIssues = validator.validate(graph, firstProposal);
+        const auto firstIssues = validateProposal(firstRemoved, { incoming.edge });
         if (!firstIssues.empty()
                 && !GraphValidator::acceptsProposedIssues(
                         removedEdgeIssues, firstIssues)) {
@@ -69,18 +74,16 @@ GraphSpliceValidation GraphSpliceValidator::validate(
             }
 
             auto finalRemoved = firstRemoved;
-            const auto& replacedDestination = indexedEdges.edgesToInput(
+            const auto& replacedDestination = context.edgeIndex().edgesToInput(
                     outgoing.destination.nodeId,
                     outgoing.destination.portId);
             finalRemoved.insert(
                     finalRemoved.end(),
                     replacedDestination.begin(),
                     replacedDestination.end());
-            const GraphEdgeView finalProposal(
-                    graph.getEdges(),
+            const auto finalIssues = validateProposal(
                     std::move(finalRemoved),
                     { incoming.edge, outgoing.edge });
-            const auto finalIssues = validator.validate(graph, finalProposal);
             if (!finalIssues.empty()
                     && !GraphValidator::acceptsProposedIssues(
                             firstIssues, finalIssues)) {
@@ -96,6 +99,24 @@ GraphSpliceValidation GraphSpliceValidator::validate(
     }
 
     return { GraphEditCode::ValidationRejected };
+}
+
+}
+
+GraphSpliceValidation GraphSpliceValidator::validate(
+        const NodeGraph& graph,
+        size_t edgeIndex,
+        const String& nodeId) const {
+    const GraphValidationContext context(graph);
+    return validateSplice(graph, context, edgeIndex, nodeId, false);
+}
+
+GraphSpliceValidation GraphSpliceValidator::validateAfterLayoutChanges(
+        const NodeGraph& graph,
+        const GraphValidationContext& context,
+        size_t edgeIndex,
+        const String& nodeId) const {
+    return validateSplice(graph, context, edgeIndex, nodeId, true);
 }
 
 }

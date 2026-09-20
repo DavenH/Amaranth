@@ -9,6 +9,7 @@
 #include <Util/Arithmetic.h>
 
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
@@ -41,6 +42,7 @@
 #include "UI/WorkspaceDock.h"
 #include "UI/WorkspaceDockKeyboardNavigation.h"
 #include "Runtime/GraphPresentationModel.h"
+#include "Runtime/PreviewPitchContextIndex.h"
 #include "Runtime/PreviewPitchResolver.h"
 
 using namespace CycleV2;
@@ -319,8 +321,8 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
     }));
     REQUIRE(graph.guideTargetNodeIds("guide1").size() == 2);
 
-    GraphCompileResult compileResult;
-    GraphPreviewResult previewResult;
+    GraphPresentationSnapshot snapshot;
+    GraphPresentationFacts facts(graph, snapshot);
     NodeCanvasViewport viewport;
     viewport.setBounds({ 0.f, 0.f, 1000.f, 700.f });
     viewport.setTransform({}, 1.f);
@@ -333,8 +335,8 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
     const Rectangle<float> editorOcclusion { 100.f, 90.f, 200.f, 100.f };
     NodeCanvasPresentationFrame frame {
             graph,
-            compileResult,
-            previewResult,
+            snapshot,
+            facts,
             viewport,
             palette,
             { 0.f, 0.f, 1000.f, 700.f },
@@ -592,6 +594,66 @@ TEST_CASE("Trimesh preview uses the sole implicit Voice Context's key scale",
     REQUIRE(PreviewPitchResolver::contextForNode(graph, "mesh").keyScaleAxis.isEmpty());
 }
 
+TEST_CASE("Trimesh preview pitch lookup reuses publication context",
+        "[cache][canvas][cycle-v2][performance][preview]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationTriple, "triple", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addEdge({
+            "triple", "modulation", "voice", "modulation",
+            PortDomain::VoiceControlSignal, ConnectionKind::ConfigurationAttachment,
+            AttachmentType::ModulationTriple
+    });
+    for (int index = 0; index < 64; ++index) {
+        graph.addNode(factory.createNode(
+                NodeKind::Add,
+                "unrelated-" + String(index),
+                {}));
+    }
+
+    PreviewPitchContextIndex contexts;
+    contexts.rebuild(graph);
+    const size_t resolutionsAfterPublication = contexts.graphResolutionCount();
+    REQUIRE(resolutionsAfterPublication == 1);
+    PreviewPitchContext context;
+    for (int index = 0; index < 100; ++index) {
+        context = contexts.contextForNodeAtPreviewNote("mesh", 72);
+    }
+    REQUIRE(context.midiNote == 72);
+    REQUIRE(context.keyScaleAxis == "red");
+    REQUIRE(contexts.graphResolutionCount() == resolutionsAfterPublication);
+
+    const GraphEditResult sourceEdit = GraphNodeStateEditor().setNodeParameter(
+            graph,
+            "triple",
+            "redSource",
+            "Red Source",
+            "modWheel");
+    REQUIRE(sourceEdit.succeeded());
+    const GraphEditResult keyScaleEdit = GraphNodeStateEditor().setNodeParameter(
+            graph,
+            "triple",
+            "yellowSource",
+            "Yellow Source",
+            "keyScale");
+    REQUIRE(keyScaleEdit.succeeded());
+    GraphChangeSet changes = sourceEdit.changes;
+    changes.nodeIds.insert(
+            changes.nodeIds.end(),
+            keyScaleEdit.changes.nodeIds.begin(),
+            keyScaleEdit.changes.nodeIds.end());
+    contexts.applyParameterChanges(graph, changes.nodeIds, changes.topologyChanged);
+
+    const PreviewPitchContext changed =
+            contexts.contextForNodeAtPreviewNote("mesh", 36);
+    REQUIRE(changed.midiNote == 36);
+    REQUIRE(changed.keyScaleAxis == "yellow");
+    REQUIRE(contexts.graphResolutionCount() == resolutionsAfterPublication);
+    REQUIRE(contexts.parameterRefreshCount() == 1);
+}
+
 TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at full resolution",
         "[cycle-v2][canvas][probe][detail]") {
     GraphNodeFactory factory;
@@ -723,9 +785,11 @@ TEST_CASE("Signal probes inherit spectral mesh render semantics",
     });
     REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
 
-    const NodeRenderSemantic semantic = SignalProbeRail::renderSemanticForProbe(
-            graph,
-            graph.getSignalProbes().front().id);
+    GraphPresentationSnapshot snapshot;
+    GraphPresentationFacts facts(graph, snapshot);
+    const SignalProbe& probe = graph.getSignalProbes().front();
+    const NodeRenderSemantic semantic = facts.renderSemanticForNodeOutput(
+            graph, probe.sourceNodeId, probe.sourcePortId);
     REQUIRE(semantic.domain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(semantic.scalePolicy == RenderScalePolicy::Bipolar);
     REQUIRE(semantic.role == RenderSemanticRole::SpectralMagnitudeBipolar);
@@ -1123,6 +1187,7 @@ TEST_CASE("Graph presentation rejects stale revision results", "[cycle-v2][canva
     GraphChangeSet topology;
     topology.topologyChanged = true;
     REQUIRE(presentation.refresh(NodeGraph::createDemoGraph(), 7, topology));
+    REQUIRE(presentation.snapshot().facts != nullptr);
 
     GraphPresentationSnapshot stale;
     stale.graphRevision = 6;
@@ -1341,6 +1406,7 @@ TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
     graph.addEdge({
             "pan", "out", "ifft", "mag",
             PortDomain::ControlSignal, ConnectionKind::Signal });
+    const GraphEdgeIndex edgeIndex(graph.getEdges());
 
     const Node& mesh = *graph.findNode("mesh");
     const Node& ifft = *graph.findNode("ifft");
@@ -1355,7 +1421,8 @@ TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
     const Point<float> cableMidpoint = cablePath.getPointAlongPath(cablePath.getLength() * 0.5f);
     const Rectangle<float> panOnly = NodeCanvasScene::presentationWorldBounds(
             graph,
-            *graph.findNode("pan"));
+            *graph.findNode("pan"),
+            edgeIndex);
     REQUIRE(panOnly.getCentreX() == Catch::Approx(cableMidpoint.x));
     REQUIRE(panOnly.getCentreY() == Catch::Approx(cableMidpoint.y));
 
@@ -1378,14 +1445,15 @@ TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
             [](const auto& target) {
                 return target.nodeId == "pan" && target.isPort();
             }));
-    REQUIRE(NodeCanvasScene::cableExtraEdgeIndex(graph, 1) == 0);
+    REQUIRE(NodeCanvasScene::cableExtraEdgeIndex(graph, 1, edgeIndex) == 0);
 
     graph.addSignalProbe({
             "probe1", "mesh", "out", "pan", "in", "Spy 1", 0.91f, 0 });
     const Point<float> twoThirds = cablePath.getPointAlongPath(cablePath.getLength() * 2.f / 3.f);
     const Rectangle<float> panWithSpy = NodeCanvasScene::presentationWorldBounds(
             graph,
-            *graph.findNode("pan"));
+            *graph.findNode("pan"),
+            edgeIndex);
     REQUIRE(panWithSpy.getCentreX() == Catch::Approx(twoThirds.x));
     REQUIRE(panWithSpy.getCentreY() == Catch::Approx(twoThirds.y));
     const auto& incomingProbeScene = sceneBuilder.build(graph, viewport, 1, 1);
@@ -1402,7 +1470,8 @@ TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
             "probe2", "pan", "out", "ifft", "mag", "Spy 1", 0.08f, 0 });
     const Rectangle<float> outgoingSpyPan = NodeCanvasScene::presentationWorldBounds(
             graph,
-            *graph.findNode("pan"));
+            *graph.findNode("pan"),
+            edgeIndex);
     REQUIRE(outgoingSpyPan.getCentreX() == Catch::Approx(oneThird.x));
     REQUIRE(outgoingSpyPan.getCentreY() == Catch::Approx(oneThird.y));
     const auto& outgoingProbeScene = sceneBuilder.build(graph, viewport, 1, 1);

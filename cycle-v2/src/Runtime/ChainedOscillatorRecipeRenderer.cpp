@@ -1,6 +1,7 @@
 #include "Runtime/ChainedOscillatorRecipeRenderer.h"
 
 #include "Runtime/AudioPerformanceMetrics.h"
+#include "Runtime/OscillatorRegionPlanView.h"
 
 #include <Util/Arithmetic.h>
 
@@ -18,50 +19,21 @@ bool supportedRole(AudioModuleRole role) {
             || role == AudioModuleRole::Multiply;
 }
 
-const GraphStepInput* inputForPort(
-        const GraphExecutionStep& step,
-        int portIndex) {
-    const auto found = std::find_if(
-            step.inputs.begin(),
-            step.inputs.end(),
-            [&](const GraphStepInput& input) {
-                return input.destPortIndex == portIndex;
-            });
-    return found != step.inputs.end() ? &*found : nullptr;
-}
-
-bool inputComesFromRegion(
-        const GraphStepInput* input,
-        const std::vector<bool>& regionSteps) {
-    return input != nullptr
-            && input->sourceStepIndex >= 0
-            && input->sourceStepIndex < (int) regionSteps.size()
-            && regionSteps[(size_t) input->sourceStepIndex];
-}
-
 }
 
 bool ChainedOscillatorRecipeRenderer::supports(
         const GraphExecutionPlan& plan,
         const OscillatorRegionPlan& region) {
+    const OscillatorRegionPlanView regionView(plan, region);
     if (region.strategy != OscillatorExecutionStrategy::ChainedPerLane
-            || region.stepIndices.empty()
-            || region.materializationStepIndex < 0) {
+            || !regionView.isValid()) {
         return false;
     }
 
-    std::vector<bool> regionSteps(plan.steps.size());
     for (const int stepIndex : region.stepIndices) {
-        if (stepIndex < 0
-                || stepIndex >= (int) plan.steps.size()
-                || !supportedRole(plan.steps[(size_t) stepIndex].audioRole)) {
+        if (!supportedRole(plan.steps[(size_t) stepIndex].audioRole)) {
             return false;
         }
-        regionSteps[(size_t) stepIndex] = true;
-    }
-    if (region.materializationStepIndex >= (int) regionSteps.size()
-            || !regionSteps[(size_t) region.materializationStepIndex]) {
-        return false;
     }
 
     for (const int stepIndex : region.stepIndices) {
@@ -71,19 +43,13 @@ bool ChainedOscillatorRecipeRenderer::supports(
             continue;
         }
         if (step.audioRole == AudioModuleRole::SpectralLayer) {
-            const auto* input = inputForPort(step, 0);
-            if (input == nullptr
-                    || input->sourceStepIndex < 0
-                    || input->sourceStepIndex >= (int) regionSteps.size()
-                    || !regionSteps[(size_t) input->sourceStepIndex]) {
+            if (!regionView.inputComesFromRegion(step, 0)) {
                 return false;
             }
             continue;
         }
-        const bool leftInRegion = inputComesFromRegion(
-                inputForPort(step, 0), regionSteps);
-        const bool rightInRegion = inputComesFromRegion(
-                inputForPort(step, 1), regionSteps);
+        const bool leftInRegion = regionView.inputComesFromRegion(step, 0);
+        const bool rightInRegion = regionView.inputComesFromRegion(step, 1);
         if ((step.audioRole == AudioModuleRole::Add && !leftInRegion && !rightInRegion)
                 || (step.audioRole == AudioModuleRole::Multiply
                         && (!leftInRegion || !rightInRegion))) {
@@ -116,6 +82,7 @@ bool ChainedOscillatorRecipeRenderer::prepare(
     outputOperation = -1;
     operations.clear();
     operations.reserve(region.stepIndices.size());
+    const OscillatorRegionPlanView regionView(plan, region);
     std::vector<int> operationForStep(plan.steps.size(), -1);
 
     for (const int stepIndex : region.stepIndices) {
@@ -139,7 +106,7 @@ bool ChainedOscillatorRecipeRenderer::prepare(
         } else if (step.audioRole == AudioModuleRole::SpectralLayer) {
             const auto configuration = std::dynamic_pointer_cast<
                     const PanConfiguration>(step.configuration.value);
-            const auto* input = inputForPort(step, 0);
+            const auto* input = regionView.inputForPort(step, 0);
             if (configuration == nullptr || input == nullptr) {
                 return false;
             }
@@ -156,8 +123,8 @@ bool ChainedOscillatorRecipeRenderer::prepare(
             operation.type = step.audioRole == AudioModuleRole::Add
                     ? OperationType::Add
                     : OperationType::Multiply;
-            const auto* left = inputForPort(step, 0);
-            const auto* right = inputForPort(step, 1);
+            const auto* left = regionView.inputForPort(step, 0);
+            const auto* right = regionView.inputForPort(step, 1);
             const auto operationIndexForInput = [&](const GraphStepInput* input) {
                 return input != nullptr
                                 && input->sourceStepIndex >= 0

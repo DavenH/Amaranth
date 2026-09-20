@@ -1,5 +1,6 @@
 #include "UI/NodeCanvasHitRouter.h"
-#include "Graph/GraphEditor.h"
+#include "Graph/GraphSpliceValidator.h"
+#include "Graph/GraphValidationContext.h"
 
 #include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"
@@ -120,7 +121,8 @@ int NodeCanvasHitRouter::edgeAt(
 int NodeCanvasHitRouter::spliceTargetEdgeAt(
         const NodeCanvasSceneSnapshot& scene,
         Point<float> screenPosition,
-        const String& nodeId) const {
+        const String& nodeId,
+        const GraphValidationContext& context) const {
     const auto& edges = graph.getEdges();
     for (auto sceneEdge = scene.edges.rbegin(); sceneEdge != scene.edges.rend(); ++sceneEdge) {
         if (sceneEdge->modulationBundle) {
@@ -139,8 +141,8 @@ int NodeCanvasHitRouter::spliceTargetEdgeAt(
             continue;
         }
 
-        NodeGraph candidate = graph;
-        const auto result = GraphEditor().spliceNodeIntoEdge(candidate, (size_t) edgeIndex, nodeId);
+        const auto result = GraphSpliceValidator().validateAfterLayoutChanges(
+                graph, context, (size_t) edgeIndex, nodeId);
 
         if (result.succeeded()) {
             return edgeIndex;

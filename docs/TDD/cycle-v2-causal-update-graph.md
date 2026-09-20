@@ -203,8 +203,8 @@ the same overlay for ordinary and chained time oscillator rendering; its
 nonowning resolver is set during preparation and does not allocate on the
 audio thread. A parity test compares ordinary frames and chained intercepts
 with an edited mesh. No production configuration creates an overlay yet. The
-widget/editor delta producer, two-update gesture sequence, durable local
-commit, and curve counterpart remain open.
+production preview configuration, persistent local-delta commit, and curve
+counterpart remain open.
 
 The vertex-control command service now prepares each effective movement from
 the widget's current mesh through the shared edit core and composes it against
@@ -215,6 +215,41 @@ skips the mesh copy and downstream refresh. The two-movement guide-gain editor
 test covers the resulting commit, prepared guide effect, undo, and return to
 base. This delta is not yet routed into a production preview configuration,
 and a net changed release still copies the complete mesh.
+
+The vertex-parameter family now uses `PresentationGestureSession` for begin,
+movement identity, durable finish, and cancellation. The widget remains the
+authoritative local render during movement, so the command service submits no
+graph-local product and disables downstream movement feedback while the
+immutable graph still contains the pre-gesture mesh. Release publishes the
+accumulated model once and lets the session's commit policy schedule derived
+work. This deletes the vertex path's direct transient transaction calls and
+its `ProbeRefreshMode`-dependent flush/immediate-refresh branch. The sequence
+test proves two movements leave the durable revision unchanged, release
+advances it once, preparation observes the new guide gain, and undo restores
+the prior value. The native 20-command guide-gain fixture passes with no
+failed command and restores gain `0.5` after undo. Report:
+`/private/tmp/cycle-v2-agent-trimesh-guide-gain-report.json`.
+
+Responsibility evidence for this cross-subsystem slice:
+
+- `NodeEditorCommandService` owns vertex-delta preparation, widget mutation,
+  one durable model publication, and widget resynchronization.
+- `PresentationGestureSession` owns transaction and causal-identity lifecycle;
+  `NodeCanvas` owns the one remaining presentation-policy decision.
+- Vertex lifecycle/policy decision sites fell from the command service plus
+  canvas/session to canvas/session only. The old command-side policy branch
+  and direct transaction calls were deleted.
+- Baseline to after sizes were `NodeEditorCommandService.cpp` 823 to 825 lines,
+  `NodeCanvas.cpp` 2,525 to 2,532, `NodeEditorHost.h` 348 to 352, and
+  `NodeCanvas.h` 324 to 328. The small interface growth supplies semantic
+  cancellation and an optional local product; it removes a duplicate policy
+  owner without relocating its branch.
+
+This lifecycle migration does not close the vertex extraction boundary. A net
+changed release still materializes a complete `Mesh`, and movement cannot
+publish a current downstream product until runtime preparation consumes the
+immutable vertex delta or a persistent mesh state directly.
+
 The native guide-gain fixture after this change passes. Its pre-release window
 still records three vertex-update operations and zero preview requests,
 configuration stages, preview-audio stages, or synchronous refreshes, matching

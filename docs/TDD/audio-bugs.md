@@ -897,3 +897,16 @@ layer where the test expected a difference. Log:
 
 Current status: open; the exact presentation, preview, async-browser, and probe
 suites pass and none of these broad-suite cases were changed.
+
+## P2: Stengah probe test expects absent probe identifiers
+
+Context: On 2026-09-20, the broad `[cycle-v2][probe]` run failed
+`Stengah probes reflect an asynchronous Waveshaper curve edit at the correct
+taps` because `findProbePreview(..., "probe2")` found no result. The focused
+test reproduces the failure, and the current
+`cycle-v2/content/presets/stengah.cyclegraph` contains no `probe2` identifier.
+The indexed presentation-facts query, presentation, and ordinary probe tests
+pass; no probe behavior or preset was changed in that refactor.
+
+Current status: open; reconcile the test's `probe2`/`probe5` expectations with
+the maintained Stengah preset before changing runtime behavior.

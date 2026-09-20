@@ -117,14 +117,7 @@ GraphAudioResult GraphAudioExecutor::process(
             frameCount,
             timing,
             std::move(voice),
-            true,
-            nullptr,
-            nullptr,
-            {},
-            nullptr,
-            ProcessingPass::Complete,
-            nullptr,
-            traversalColumnCount);
+            CompleteDiagnosticExecution { traversalColumnCount });
 }
 
 GraphAudioResultView GraphAudioExecutor::processIncremental(
@@ -172,8 +165,11 @@ GraphAudioResultView GraphAudioExecutor::processIncrementalIndexed(
         CancellationCheck cancellationCheck) const {
     GraphAudioResultView result;
     processInternal(
-            plan, frameCount, {}, voice, true, nullptr,
-            &dirtyNodes, cancellationCheck, &result);
+            plan,
+            frameCount,
+            {},
+            voice,
+            IncrementalDiagnosticExecution { dirtyNodes, cancellationCheck, result });
     return result;
 }
 
@@ -185,7 +181,7 @@ void GraphAudioExecutor::clearIncrementalCache() const {
 
 void GraphAudioExecutor::resetExecutionState() const {
     clearIncrementalCache();
-    processors.clear();
+    processorCache.clear();
     preparedVoices.clear();
     bufferSlots.clear();
     voiceMixSlots.clear();
@@ -213,13 +209,11 @@ GraphAudioOutputView GraphAudioExecutor::processRealtime(
             frameCount,
             timing,
             voice,
-            false,
-            observer,
-            nullptr,
-            {},
-            nullptr,
-            ProcessingPass::Complete,
-            operationCounts);
+            RealtimeExecution {
+                    ProcessingPass::Complete,
+                    observer,
+                    operationCounts
+            });
     return { realtimeOutput };
 }
 
@@ -262,13 +256,11 @@ void GraphAudioExecutor::processRealtimeVoiceToMix(
             frameCount,
             timing,
             voice,
-            false,
-            nullptr,
-            nullptr,
-            {},
-            nullptr,
-            ProcessingPass::Voice,
-            operationCounts);
+            RealtimeExecution {
+                    ProcessingPass::Voice,
+                    nullptr,
+                    operationCounts
+            });
     mixVoiceBoundary(plan, frameCount);
 }
 
@@ -285,13 +277,11 @@ GraphAudioOutputView GraphAudioExecutor::processRealtimeGlobal(
             frameCount,
             timing,
             context,
-            false,
-            nullptr,
-            nullptr,
-            {},
-            nullptr,
-            ProcessingPass::Global,
-            operationCounts);
+            RealtimeExecution {
+                    ProcessingPass::Global,
+                    nullptr,
+                    operationCounts
+            });
     return { realtimeOutput };
 }
 
@@ -300,21 +290,36 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         size_t frameCount,
         AudioProcessTiming timing,
         const AudioVoiceContext& voice,
-        bool captureDiagnostics,
-        GraphProcessObserver* observer,
-        const std::vector<uint8_t>* dirtyNodes,
-        const CancellationCheck& cancellationCheck,
-        GraphAudioResultView* incrementalResult,
-        ProcessingPass pass,
-        GraphExecutionOperationCounts* operationCounts,
-        size_t traversalColumnCount) const {
+        const ProcessingMode& mode) const {
+    const auto* completeDiagnostics = std::get_if<CompleteDiagnosticExecution>(&mode);
+    const auto* incrementalDiagnostics = std::get_if<IncrementalDiagnosticExecution>(&mode);
+    const auto* realtime = std::get_if<RealtimeExecution>(&mode);
+    const bool captureDiagnostics = realtime == nullptr;
+    const auto* dirtyNodes = incrementalDiagnostics != nullptr
+            ? &incrementalDiagnostics->dirtyNodes
+            : nullptr;
+    const CancellationCheck* cancellationCheck = incrementalDiagnostics != nullptr
+            ? &incrementalDiagnostics->cancellationCheck
+            : nullptr;
+    GraphAudioResultView* incrementalResult = incrementalDiagnostics != nullptr
+            ? &incrementalDiagnostics->result
+            : nullptr;
+    const ProcessingPass pass = realtime != nullptr
+            ? realtime->pass
+            : ProcessingPass::Complete;
+    GraphProcessObserver* observer = realtime != nullptr ? realtime->observer : nullptr;
+    GraphExecutionOperationCounts* operationCounts = realtime != nullptr
+            ? realtime->operationCounts
+            : nullptr;
     if (captureDiagnostics) {
         AudioExecutionSpec executionSpec;
         executionSpec.maximumFrameCount = frameCount;
         executionSpec.sampleRate = timing.sampleRate;
         executionSpec.bpm = timing.bpm;
         executionSpec.beatsPerMeasure = timing.beatsPerMeasure;
-        executionSpec.traversalColumnCount = traversalColumnCount;
+        executionSpec.traversalColumnCount = completeDiagnostics != nullptr
+                ? completeDiagnostics->traversalColumnCount
+                : 0;
         prepareExecution(plan, executionSpec, voice.voiceIndex);
     }
 
@@ -379,7 +384,10 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         operationCounts->stepVisits += (uint32_t) preparedVoice->second.stepIndices.size();
     }
     for (const size_t stepIndex : preparedVoice->second.stepIndices) {
-        if (dirtyNodes != nullptr && cancellationCheck && !cancellationCheck()) {
+        if (dirtyNodes != nullptr
+                && cancellationCheck != nullptr
+                && *cancellationCheck
+                && !(*cancellationCheck)()) {
             if (incrementalResult != nullptr) {
                 incrementalResult->cancelled = true;
             }
@@ -726,45 +734,22 @@ void GraphAudioExecutor::prepareExecutionInternal(
         preparedVoice.stepIndices.push_back(stepIndex);
         auto& preparedStep = preparedVoice.steps[stepIndex];
         prepareStepContext(plan, step, preparedStep);
-        CachedProcessor& cached = processorFor(
-                step.nodeId,
-                voiceIndex,
-                step.audioRole,
-                factory);
-        NodeAudioProcessor* processor = cached.processor.get();
-        preparedVoice.processors.push_back(processor);
-        if (step.ownsVoiceTail && processor != nullptr) {
-            preparedVoice.tailProcessors.push_back(processor);
-        }
-        if (processor == nullptr) {
-            continue;
-        }
-
         AudioExecutionSpec stepSpec = spec;
         if (!step.outputs.empty()) {
             stepSpec.domain = step.outputs.front().domain;
             stepSpec.channelLayout = step.outputs.front().channelLayout;
         }
-        const PreparationSignature signature {
-                step.configuration.revision,
-                step.configuration.key,
-                spec.maximumFrameCount,
-                spec.traversalColumnCount,
-                spec.sampleRate,
-                stepSpec.domain,
-                stepSpec.channelLayout,
-                stepSpec.bpm,
-                stepSpec.beatsPerMeasure
-        };
-        if (cached.prepared && cached.preparation == signature) {
-            continue;
+        NodeAudioProcessor* processor = processorCache.preparedProcessorFor(
+                step.nodeId,
+                voiceIndex,
+                step.audioRole,
+                factory,
+                step.configuration,
+                stepSpec);
+        preparedVoice.processors.push_back(processor);
+        if (step.ownsVoiceTail && processor != nullptr) {
+            preparedVoice.tailProcessors.push_back(processor);
         }
-
-        processor->adoptConfiguration(step.configuration);
-        processor->prepareExecution(stepSpec);
-        cached.preparation = signature;
-        cached.prepared = true;
-        ++cached.preparationCount;
     }
 
     if (globalPreparation) {
@@ -1095,20 +1080,11 @@ void GraphAudioExecutor::renderOscillatorRegion(
 }
 
 size_t GraphAudioExecutor::preparationCount(const String& nodeId, int voiceIndex) const {
-    const auto found = processors.find({ nodeId, voiceIndex });
-    return found == processors.end() ? 0 : found->second.preparationCount;
+    return processorCache.preparationCount(nodeId, voiceIndex);
 }
 
 size_t GraphAudioExecutor::serviceNonRealtimePreparation() const {
-    size_t preparedCount = 0;
-    for (const auto& [key, entry] : processors) {
-        ignoreUnused(key);
-        if (entry.processor != nullptr
-                && entry.processor->serviceNonRealtimePreparation()) {
-            ++preparedCount;
-        }
-    }
-    return preparedCount;
+    return processorCache.serviceNonRealtimePreparation();
 }
 
 size_t GraphAudioExecutor::preparedBlockStorageValueCount() const {
@@ -1158,50 +1134,17 @@ bool GraphAudioExecutor::hasVoiceTailProcessor(int voiceIndex, bool activeOnly) 
     return false;
 }
 
-GraphAudioExecutor::CachedProcessor& GraphAudioExecutor::processorFor(
-        const String& nodeId,
-        int voiceIndex,
-        AudioModuleRole role,
-        const NodeAudioProcessorFactory& factory) const {
-    const ProcessorKey key { nodeId, voiceIndex };
-    const auto found = processors.find(key);
-    if (found != processors.end()) {
-        CachedProcessor& cached = found->second;
-        if (cached.role != role) {
-            cached.role = role;
-            cached.processor = factory.create(role);
-            cached.prepared = false;
-        }
-
-        return cached;
-    }
-
-    auto [inserted, succeeded] = processors.emplace(key, CachedProcessor {
-            role,
-            factory.create(role)
-    });
-    jassert(succeeded);
-    return inserted->second;
-}
-
 void GraphAudioExecutor::removeUnreferencedProcessors() const {
-    for (auto entry = processors.begin(); entry != processors.end();) {
-        const bool referenced = std::any_of(
-                preparedVoices.begin(),
-                preparedVoices.end(),
-                [&](const auto& voice) {
-                    const auto& voiceProcessors = voice.second.processors;
-                    return std::find(
-                            voiceProcessors.begin(),
-                            voiceProcessors.end(),
-                            entry->second.processor.get()) != voiceProcessors.end();
-                });
-        if (!referenced) {
-            entry = processors.erase(entry);
-        } else {
-            ++entry;
+    std::unordered_set<NodeAudioProcessor*> referenced;
+    for (const auto& [voiceIndex, voice] : preparedVoices) {
+        ignoreUnused(voiceIndex);
+        for (NodeAudioProcessor* processor : voice.processors) {
+            if (processor != nullptr) {
+                referenced.insert(processor);
+            }
         }
     }
+    processorCache.retain(referenced);
 }
 
 }
