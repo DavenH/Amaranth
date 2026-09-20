@@ -136,8 +136,10 @@ runtime -> NodePreviewRenderer -> PresetPresentation codec`
 
 ## Implementation Slices
 
-1. Add the optional preset-presentation model/codec and document round-trip
-   tests without changing graph revisions or undo semantics.
+1. **Complete.** Add the optional preset-presentation model/codec and document
+   round-trip tests without placing presentation data in graph revisions or
+   undo snapshots. The focused persistence suite passes 15 assertions across
+   valid round-trip, malformed optional data, and document-history cases.
 2. Add default output-address selection, offline grid capture, Time/Spectrum
    conversion, normalized rendering, JPEG encoding, and semantic tests proving
    Reverb/Delay/EQ exclusion and Waveshaper/IR inclusion.

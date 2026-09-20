@@ -28,6 +28,8 @@ public:
     bool isDirty() const { return currentStateId != savedStateId; }
     const juce::File& file() const { return currentFile; }
     const GraphChangeSet& lastChange() const { return latestChange; }
+    const PresetPresentation& presentation() const { return presetPresentation; }
+    void setPresentation(PresetPresentation presentation);
 
     bool save(const juce::File& destination);
     bool load(const juce::File& source);
@@ -53,6 +55,7 @@ private:
     static constexpr size_t maximumHistoryDepth = 64;
 
     NodeGraph currentGraph;
+    PresetPresentation presetPresentation;
     juce::File currentFile;
     struct HistoryEntry {
         std::variant<NodeGraph, GraphDelta> edit;

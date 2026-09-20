@@ -9,9 +9,10 @@ GraphDocument GraphDocument::openOrDefault(
         const juce::File& source,
         NodeGraph fallback) {
     if (source.existsAsFile()) {
-        NodeGraph loaded = GraphSerializer().fromJsonString(source.loadFileAsString());
-        if (!loaded.getNodes().empty()) {
-            GraphDocument document(std::move(loaded));
+        GraphLoadResult loaded = GraphSerializer().loadJsonString(source.loadFileAsString());
+        if (loaded.succeeded() && !loaded.graph.getNodes().empty()) {
+            GraphDocument document(std::move(loaded.graph));
+            document.presetPresentation = std::move(loaded.presentation);
             document.currentFile = source;
             return document;
         }
@@ -44,15 +45,16 @@ bool GraphDocument::load(const juce::File& source) {
 }
 
 bool GraphDocument::loadJson(const juce::String& json, bool recordUndo) {
-    NodeGraph candidate = GraphSerializer().fromJsonString(json);
-    if (candidate.getNodes().empty()) {
+    GraphLoadResult loaded = GraphSerializer().loadJsonString(json);
+    if (!loaded.succeeded() || loaded.graph.getNodes().empty()) {
         return false;
     }
 
     if (recordUndo) {
         recordBeforeChange(currentGraph);
     }
-    currentGraph = std::move(candidate);
+    currentGraph = std::move(loaded.graph);
+    presetPresentation = std::move(loaded.presentation);
     GraphChangeSet change;
     change.topologyChanged = true;
     change.layoutChanged = true;
@@ -61,7 +63,12 @@ bool GraphDocument::loadJson(const juce::String& json, bool recordUndo) {
 }
 
 juce::String GraphDocument::toJson() const {
-    return GraphSerializer().toJsonString(currentGraph);
+    return GraphSerializer().toJsonString(currentGraph, presetPresentation);
+}
+
+void GraphDocument::setPresentation(PresetPresentation presentation) {
+    presetPresentation = std::move(presentation);
+    currentStateId = nextStateId++;
 }
 
 bool GraphDocument::undo() {
