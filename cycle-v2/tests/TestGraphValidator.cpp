@@ -1,5 +1,7 @@
 #include <algorithm>
 
+#include "NodeGraphTestAccess.h"
+
 #include <catch2/catch_test_macros.hpp>
 
 #include "Graph/GraphEditor.h"
@@ -371,7 +373,10 @@ TEST_CASE("Resolved edge domains update while graph is invalid", "[cycle-v2][gra
     REQUIRE(validator.edgeHasValidationIssue(graph, signalEdge));
     REQUIRE(validator.resolvedDomainForEdge(graph, signalEdge) == PortDomain::SpectralMagnitudeSignal);
 
-    setParameter(*graph.findNodeForEditing("mesh"), "signalType", "time");
+    setParameter(
+            *NodeGraphTestAccess::findNodeForEditing(graph, "mesh"),
+            "signalType",
+            "time");
 
     REQUIRE(validator.isValid(graph));
     REQUIRE_FALSE(validator.edgeHasValidationIssue(graph, signalEdge));
@@ -961,7 +966,7 @@ TEST_CASE("Validation context retains one exact durable graph baseline",
     REQUIRE(counts.validationEdgeVisits == 0);
     REQUIRE(counts.domainTransfers == 0);
 
-    graph.markChanged();
+    NodeGraphTestAccess::markChanged(graph);
     REQUIRE_FALSE(context.matches(graph));
 }
 

@@ -2,9 +2,9 @@
 
 ## Status
 
-In progress, 2026-09-18. Graph edit ownership and the Trimesh dependency
-boundaries have completed extraction slices. The UI validation, `NodeGraph`
-ownership, UI coordination, and runtime execution criteria remain open.
+Complete, 2026-09-20. All four refactor slices meet their stated completion
+evidence. The causal-update TDD remains the owner of its separate refresh-host
+deletion targets.
 
 ## Context and baseline
 
@@ -493,6 +493,22 @@ to capture and pass the gesture context; its UI coordination extraction plan
 remains slice 2. This completes shared preview/commit rule adoption and the UI
 copy deletion target. Narrowing the graph aggregate remains open in this slice.
 
+Graph aggregate slice: `GraphGuideIndex` now owns the Guide resource, heatmap,
+assignment-target, usage, guide-to-node, and node-to-guide indexes. `NodeGraph`
+retains the stable Guide read and semantic mutation API while delegating index
+maintenance and queries to that focused owner. Raw mutable node, parameter,
+Guide, and probe lookups plus direct revision marking moved from the public API
+to the private command/editor/serializer/delta boundary; tests use an explicit
+friend access helper for fixture construction. Inline overlay selection also
+moved out of the public header. `NodeGraph.h` fell from 479 to 441 lines and
+`NodeGraph.cpp` from 711 to 667; `NodeGraphEditing.cpp` is 412 lines and the new
+index is 111 lines with a 56-line interface. Ten focused Guide, history,
+overlay-invalidation, and serialization cases pass 113 assertions. The
+architecture audit reports 20 triggers among 479 Cycle V2 C++ files. Together
+with the single dispatcher transaction owner, removal of UI `GraphEditor`
+calls, deletion of the second change accumulator, and the scaled zero-copy
+gesture proofs above, this completes the graph slice.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,
@@ -681,7 +697,7 @@ without copying the algorithm. `TrimeshNodeModel.cpp` fell from 549 to 459
 lines; the new service is 100 lines. The model no longer imports rendering or
 DSP headers. Seven focused Trimesh grid, panel, and spectral presentation
 tests pass (1,463 assertions). This completes the two dependency boundaries
-named in this slice; the broader architecture TDD remains in progress.
+named in this slice.
 
 ## Measurement and exit criteria
 
@@ -691,3 +707,8 @@ removed, and the semantic tests or operation counters used. A smaller source
 file alone is insufficient: the old path and duplicate decisions must be
 deleted. Re-run the repository's architecture review triggers after each slice
 and update this TDD until every slice is implemented or explicitly superseded.
+
+Final review confirms one authoritative owner for each extracted policy, no
+remaining completion target in this document, and no replacement facade that
+retains a deleted duplicate path. Further size-triggered files remain review
+signals for future changes rather than unfinished work in these four slices.

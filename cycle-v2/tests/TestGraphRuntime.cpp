@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
+#include "NodeGraphTestAccess.h"
+
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <App/AppConstants.h>
 
@@ -563,7 +565,7 @@ TEST_CASE("Equivalent scratch topology recompiles produce identical previews",
         "[cycle-v2][runtime][preview][voice-context][scratch]") {
     NodeGraph inheritedGraph = NodeGraph::createDemoGraph();
     inheritedGraph.removeEdgesFromOutput("scratchEnv", "env");
-    Node* voice = inheritedGraph.findNodeForEditing("voice");
+    Node* voice = NodeGraphTestAccess::findNodeForEditing(inheritedGraph, "voice");
     REQUIRE(voice != nullptr);
     NodeDefinitionRegistry::instance().normalize(*voice);
     inheritedGraph.addEdge({

@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
+#include "NodeGraphTestAccess.h"
+
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeStateEditor.h"
@@ -45,7 +47,7 @@ std::atomic<size_t> realtimeLockCount {};
 #endif
 
 void setEnvelopePurpose(NodeGraph& graph, const String& nodeId, EnvelopePurpose purpose) {
-    Node* node = graph.findNodeForEditing(nodeId);
+    Node* node = NodeGraphTestAccess::findNodeForEditing(graph, nodeId);
     REQUIRE(node != nullptr);
     for (auto& parameter : node->parameters) {
         if (parameter.id == "purpose") {
@@ -1350,7 +1352,7 @@ TEST_CASE("Logarithmic Envelope applies the Cycle 1 transform to audio and trave
         NodeGraph graph;
         graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
         setEnvelopePurpose(graph, "env", EnvelopePurpose::Volume);
-        Node* envelope = graph.findNodeForEditing("env");
+        Node* envelope = NodeGraphTestAccess::findNodeForEditing(graph, "env");
         REQUIRE(envelope != nullptr);
         for (auto& parameter : envelope->parameters) {
             if (parameter.id == "logarithmic") {
@@ -2214,7 +2216,7 @@ TEST_CASE("Voice Context scratch matches direct attachments across spectral bran
 
     NodeGraph inheritedGraph = directGraph;
     inheritedGraph.removeEdgesFromOutput("scratchEnv", "env");
-    Node* voiceNode = inheritedGraph.findNodeForEditing("voice");
+    Node* voiceNode = NodeGraphTestAccess::findNodeForEditing(inheritedGraph, "voice");
     REQUIRE(voiceNode != nullptr);
     NodeDefinitionRegistry::instance().normalize(*voiceNode);
     inheritedGraph.addEdge({

@@ -17,6 +17,7 @@ using namespace juce;
 class GuideHeatmapAsset;
 using GuideHeatmapAssetPtr = std::shared_ptr<const GuideHeatmapAsset>;
 class GraphDelta;
+class GraphGuideIndex;
 
 enum class PortDomain {
     DomainContext,
@@ -290,56 +291,36 @@ struct NodeNaturalSize {
 
 class NodeGraph {
 public:
-    NodeGraph() = default;
+    NodeGraph();
+    ~NodeGraph();
     NodeGraph(const NodeGraph& other);
-    NodeGraph(NodeGraph&& other) noexcept = default;
+    NodeGraph(NodeGraph&& other) noexcept;
     NodeGraph& operator=(const NodeGraph& other);
-    NodeGraph& operator=(NodeGraph&& other) noexcept = default;
+    NodeGraph& operator=(NodeGraph&& other) noexcept;
 
     static NodeGraph createEditingOverlay(const NodeGraph& base);
     NodeGraph snapshotNodeEdits(std::shared_ptr<const NodeGraph> stableBase) const;
 
     const std::vector<Node>& getNodes() const;
-    const std::vector<String>& editorMorphNodeIds() const {
-        return overlayBase != nullptr ? overlayBase->editorMorphNodeIds() : morphNodeIds;
-    }
-    const std::vector<Edge>& getEdges() const {
-        return overlayBase != nullptr ? overlayBase->getEdges() : edges;
-    }
+    const std::vector<String>& editorMorphNodeIds() const;
+    const std::vector<Edge>& getEdges() const;
     const std::vector<GuideCurveResource>& getGuideCurves() const;
-    const std::vector<GuideHeatmapAssetPtr>& getGuideHeatmaps() const {
-        return overlayBase != nullptr ? overlayBase->getGuideHeatmaps() : guideHeatmaps;
-    }
-    const std::vector<GuideCurveAssignment>& getGuideAssignments() const {
-        return overlayBase != nullptr ? overlayBase->getGuideAssignments() : guideAssignments;
-    }
-    const std::vector<SignalProbe>& getSignalProbes() const {
-        return overlayBase != nullptr ? overlayBase->getSignalProbes() : signalProbes;
-    }
-    const std::vector<AudioSampleResource>& getAudioResources() const {
-        return overlayBase != nullptr ? overlayBase->getAudioResources() : audioResources;
-    }
-    const std::vector<NodeAudioResourceBinding>& getAudioResourceBindings() const {
-        return overlayBase != nullptr
-                ? overlayBase->getAudioResourceBindings()
-                : audioResourceBindings;
-    }
-    uint64_t getRevision() const { return revision; }
+    const std::vector<GuideHeatmapAssetPtr>& getGuideHeatmaps() const;
+    const std::vector<GuideCurveAssignment>& getGuideAssignments() const;
+    const std::vector<SignalProbe>& getSignalProbes() const;
+    const std::vector<AudioSampleResource>& getAudioResources() const;
+    const std::vector<NodeAudioResourceBinding>& getAudioResourceBindings() const;
+    uint64_t getRevision() const;
 
     const Node* findNode(const String& nodeId) const;
-    Node* findNodeForEditing(const String& nodeId);
     const NodeParameter* findNodeParameter(
             const String& nodeId,
             const String& parameterId) const;
-    NodeParameter* findNodeParameterForEditing(
-            const String& nodeId,
-            const String& parameterId);
 
     void addNode(Node node);
     void addEdge(Edge edge);
     bool addGuideCurve(GuideCurveResource resource);
     bool removeGuideCurve(const String& guideId);
-    GuideCurveResource* findGuideCurveForEditing(const String& guideId);
     const GuideCurveResource* findGuideCurve(const String& guideId) const;
     bool replaceGuideCurve(GuideCurveResource resource);
     bool addGuideHeatmap(GuideHeatmapAssetPtr asset);
@@ -370,7 +351,6 @@ public:
     int audioResourceUsageCount(const String& resourceId) const;
     void addSignalProbe(SignalProbe probe);
     bool removeSignalProbe(const String& probeId);
-    SignalProbe* findSignalProbeForEditing(const String& probeId);
     const SignalProbe* findSignalProbe(const String& probeId) const;
     const SignalProbe* findSignalProbeForSource(
             const String& sourceNodeId,
@@ -386,12 +366,17 @@ public:
     bool replaceNodeEditorState(const String& nodeId, var editorState);
     bool setNodeBounds(const String& nodeId, Rectangle<float> bounds);
     void translateNodes(const std::vector<String>& nodeIds, Point<float> offset);
-    void markChanged() { ++revision; }
 
     static NodeGraph createDemoGraph();
 
 private:
+    friend class GraphCommandDispatcher;
     friend class GraphDelta;
+    friend class GraphEditor;
+    friend class GraphNodeStateEditor;
+    friend class GraphSerializer;
+    friend class GuideGraphEditor;
+    friend class NodeGraphTestAccess;
 
     struct StringHash {
         size_t operator()(const String& value) const {
@@ -399,28 +384,13 @@ private:
         }
     };
 
-    struct GuideTargetAddress {
-        String nodeId;
-        TrimeshCubeComponentGuideTarget target;
-
-        bool operator==(const GuideTargetAddress& other) const {
-            return nodeId == other.nodeId && target == other.target;
-        }
-    };
-
-    struct GuideTargetAddressHash {
-        size_t operator()(const GuideTargetAddress& value) const {
-            size_t result = (size_t) value.nodeId.hashCode64();
-            result ^= (size_t) value.target.cubeIndex + 0x9e3779b9U
-                    + (result << 6U) + (result >> 2U);
-            result ^= (size_t) value.target.field + 0x9e3779b9U
-                    + (result << 6U) + (result >> 2U);
-            return result;
-        }
-    };
-
-    void rebuildGuideResourceIndex();
-    void rebuildGuideAssignmentIndexes();
+    Node* findNodeForEditing(const String& nodeId);
+    NodeParameter* findNodeParameterForEditing(
+            const String& nodeId,
+            const String& parameterId);
+    GuideCurveResource* findGuideCurveForEditing(const String& guideId);
+    SignalProbe* findSignalProbeForEditing(const String& probeId);
+    void markChanged() { ++revision; }
     void rebuildNodeIndex();
     void rebuildParameterIndex(const String& nodeId);
     void applyNodeParameterState(
@@ -446,15 +416,7 @@ private:
             String,
             std::unordered_map<String, size_t, StringHash>,
             StringHash> parameterIndices;
-    std::unordered_map<String, size_t, StringHash> guideResourceIndex;
-    std::unordered_map<String, size_t, StringHash> guideHeatmapIndex;
-    std::unordered_map<
-            GuideTargetAddress,
-            size_t,
-            GuideTargetAddressHash> guideAssignmentTargetIndex;
-    std::unordered_map<String, int, StringHash> guideUsageCounts;
-    std::unordered_map<String, std::vector<String>, StringHash> guideTargetNodes;
-    std::unordered_map<String, std::vector<String>, StringHash> targetNodeGuides;
+    std::unique_ptr<GraphGuideIndex> guideIndex;
     mutable std::vector<Node> overlayNodeView;
     mutable std::vector<GuideCurveResource> overlayGuideView;
     mutable uint64_t overlayNodeViewRevision { std::numeric_limits<uint64_t>::max() };
