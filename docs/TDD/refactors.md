@@ -8,7 +8,7 @@ ordered by expected architectural value. Each extraction must delete the
 listed duplicate decisions; introducing another facade around them is not
 completion.
 
-### P1: Publish one indexed presentation-facts view
+### Addressed: Publish one indexed presentation-facts view
 
 `GraphPresentationSnapshot` owns the compiled plan, runtime trace, preview
 result, graph revision, and preview controls. `NodeCanvas` then retains
@@ -151,7 +151,7 @@ facts. `GraphValidationContext` retains the same analysis, and proposed context
 edges update its assignment map without rescanning graph nodes or unrelated
 edges.
 
-### P2: Share the typed node-model envelope codec
+### Addressed: Share the typed node-model envelope codec
 
 `CurveNodeDomainCodec`, `TrimeshNodeModelCodec`, and
 `UnisonNodeModelCodec` each encode and validate the same `schema`, `version`,
@@ -165,6 +165,24 @@ payload validation in their domain codecs. Route Guide Curve loading through
 the flat-curve codec with a Guide-specific default factory, then delete the
 special duplicate reader. Malformed-schema/version/revision tests should be
 table driven across every registered codec.
+
+Implemented in `NodeModelEnvelopeCodec`, which is the sole writer and reader
+for typed model schema, version, positive revision, and named payload fields.
+Curve and Envelope, Trimesh, and Unison codecs retain their payload validation
+and now consume the validated envelope. `GuideCurveModelCodec` supplies its own
+default model and delegates decoding to the flat-curve codec; the duplicated
+Guide reader is deleted. `GraphSerializer` depends on that codec rather than a
+special deserialization function.
+
+A table-driven contract passes valid defaults and malformed schema, version,
+and revision envelopes through the flat curve, Envelope, Guide Curve, Trimesh,
+and Unison codecs: 55 assertions in one case. Canonical graph serialization
+and Guide noise-seed round trips add 13 passing assertions. The shared codec is
+80 focused lines. `TrimeshMeshState.cpp` falls from 125 to 117 lines and
+`UnisonNode.cpp` from 185 to 177. `CurveNodeModels.cpp` remains 814 lines because
+it replaces the Guide reader with the composed Guide codec and one reusable
+flat-curve decode entry point. Domain payload policy stays below the shared
+metadata layer.
 
 ### P2: Compose expanded-editor chrome
 

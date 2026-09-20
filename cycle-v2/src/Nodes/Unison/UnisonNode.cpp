@@ -3,6 +3,7 @@
 #include "Graph/NodeParameterMap.h"
 
 #include "Graph/NodeModelDecodeDiagnostics.h"
+#include "Graph/NodeModelEnvelopeCodec.h"
 
 #include <algorithm>
 #include <cmath>
@@ -57,10 +58,6 @@ uint64_t UnisonNodeModelState::revision() const {
 }
 
 var UnisonNodeModelState::writeJSON() const {
-    auto result = std::make_unique<DynamicObject>();
-    result->setProperty("schema", schemaId());
-    result->setProperty("version", schemaVersion());
-    result->setProperty("revision", (int64) modelRevision);
     Array<var> voices;
     for (const auto& voice : individualVoices) {
         auto encoded = std::make_unique<DynamicObject>();
@@ -69,8 +66,8 @@ var UnisonNodeModelState::writeJSON() const {
         encoded->setProperty("phase", voice.phaseCycles);
         voices.add(var(encoded.release()));
     }
-    result->setProperty("voices", voices);
-    return var(result.release());
+    return NodeModelEnvelopeCodec::write(
+            schemaId(), schemaVersion(), modelRevision, "voices", voices);
 }
 
 bool UnisonNodeModelState::equals(const NodeModelState& other) const {
@@ -106,18 +103,13 @@ NodeModelStatePtr UnisonNodeModelCodec::createDefault() const {
 
 NodeModelStatePtr UnisonNodeModelCodec::readJSON(const var& value, String& error) const {
     NodeModelDecodeDiagnostics::recordDecode();
-    const auto* object = value.getDynamicObject();
-    if (object == nullptr || object->getProperty("schema").toString() != schemaId()) {
-        error = "Expected Unison model schema 'unisonVoices'";
+    const auto envelope = NodeModelEnvelopeCodec::read(
+            value, schemaId(), currentVersion(), "voices", error);
+    if (!envelope.has_value()) {
         return nullptr;
     }
-    if ((int) object->getProperty("version") != currentVersion()) {
-        error = "Unsupported Unison model schema version";
-        return nullptr;
-    }
-    const int64 revision = object->getProperty("revision");
-    const auto* encodedVoices = object->getProperty("voices").getArray();
-    if (revision < 1 || encodedVoices == nullptr || encodedVoices->isEmpty()
+    const auto* encodedVoices = envelope->payload.getArray();
+    if (encodedVoices == nullptr || encodedVoices->isEmpty()
             || encodedVoices->size() > CycleDsp::maximumUnisonOrder) {
         error = "Unison voice state is incomplete";
         return nullptr;
@@ -141,7 +133,7 @@ NodeModelStatePtr UnisonNodeModelCodec::readJSON(const var& value, String& error
         }
         voices.push_back(voice);
     }
-    return UnisonNodeModelState::create(std::move(voices), (uint64_t) revision);
+    return UnisonNodeModelState::create(std::move(voices), envelope->revision);
 }
 
 std::shared_ptr<const UnisonNodeConfiguration> buildUnisonNodeConfiguration(
