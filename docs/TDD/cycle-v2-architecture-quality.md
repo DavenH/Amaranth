@@ -441,6 +441,17 @@ fixed. Once these facts replace the explicit-audio fallback, connection and
 splice gesture contexts may adopt proposal validation and delete the two UI
 `NodeGraph` candidate copies.
 
+The first explicit-audio slice extracts `GraphAudioValidationFacts` as the one
+owner of boundary discovery, indexed forward/reverse reachability, per-node
+voice-terminal counts, and issue materialization. `GraphAudioScopeValidator`
+is now a 30-line adapter instead of a 219-line mixed analysis/validation file;
+the focused fact implementation is 197 lines with a 46-line interface. The
+authoritative behavior is unchanged: all 14 audio-scope cases pass 144
+assertions, proposed/committed validation parity passes eight assertions, and
+the complete complexity set passes 643 assertions across 33 cases. The next
+slice will add the proposed-view constructor described above and retain these
+facts in `GraphValidationContext`.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,
