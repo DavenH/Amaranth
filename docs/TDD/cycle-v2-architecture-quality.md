@@ -350,6 +350,23 @@ fixture failures; its output is in
 `/private/tmp/cycle-v2-graph-seeded-domain.log`. Incremental audio-scope
 analysis is the next indexed fact slice.
 
+Seeded audio-scope analysis now starts from signal-edge endpoints changed by
+`GraphEdgeIndexOverlay`, walks only the affected domain-neutral components,
+and replaces their inherited scope and conflict facts. Full and incremental
+analysis share the authoritative capability, explicit-scope, and component
+resolution rules; deterministic conflict ordering makes their results directly
+comparable. `GraphAudioScope.cpp` grew from 155 to 306 lines and its header
+from 39 to 45 lines. The source remains one cohesive policy owner: full graph
+component discovery, proposed-view component discovery, and their shared scope
+classification. A replacement/removal parity test and a scaled test pass; the
+scaled case adds 128 disconnected branches while holding validation node and
+edge visits constant. The focused audio-scope set passes 144 assertions across
+14 cases, and the complete complexity set passes 623 assertions across 32
+cases. Result materialization still copies the baseline scope map and conflict
+list, so a persistent or layered fact representation remains a prerequisite
+before claiming total proposal cost independent of graph size. Incremental
+affected-closure validation is the next indexed fact slice.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,

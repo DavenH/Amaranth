@@ -7,6 +7,7 @@
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/GraphDomainResolver.h"
+#include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphAudioScope.h"
 #include "Graph/GraphValidationContext.h"
@@ -984,8 +985,15 @@ TEST_CASE("Proposed edge removal updates neutral processing scope without mutati
     NodeGraph committed = graph;
     committed.removeEdgeAt(1);
     const GraphAudioScopeAnalyzer analyzer;
+    const auto baseline = analyzer.analyze(graph);
+    const GraphEdgeIndex baseIndex(graph.getEdges());
     const GraphEdgeView proposed(graph.getEdges(), { 1 }, {});
-    const auto resolved = analyzer.analyze(graph, proposed);
+    const GraphEdgeIndexOverlay proposedIndex(baseIndex, proposed);
+    const auto resolved = analyzer.analyze(
+            graph,
+            proposed,
+            proposedIndex,
+            baseline);
     const auto committedAnalysis = analyzer.analyze(committed);
 
     REQUIRE(resolved.nodes == committedAnalysis.nodes);

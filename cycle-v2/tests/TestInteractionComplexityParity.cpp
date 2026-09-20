@@ -172,6 +172,76 @@ TEST_CASE("Proposed domain resolution ignores disconnected graph scale",
     }
 }
 
+TEST_CASE("Proposed audio scope analysis ignores disconnected graph scale",
+        "[cycle-v2][complexity][audio-scope][index]") {
+    GraphNodeFactory factory;
+    uint64_t expectedNodeVisits {};
+    uint64_t expectedEdgeVisits {};
+    for (const int unrelatedBranches : { 0, 128 }) {
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+        graph.addNode(factory.createNode(NodeKind::GenericProcessor, "route", {}));
+        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addEdge({
+                "globalIn", "time", "route", "in",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        });
+        graph.addEdge({
+                "route", "out", "out", "time",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        });
+
+        for (int index = 0; index < unrelatedBranches; ++index) {
+            const String sourceId = "scopeSource" + String(index);
+            const String destinationId = "scopeDestination" + String(index);
+            graph.addNode(factory.createNode(NodeKind::WaveSource, sourceId, {}));
+            graph.addNode(factory.createNode(
+                    NodeKind::GenericProcessor,
+                    destinationId,
+                    {}));
+            graph.addEdge({
+                    sourceId, "out", destinationId, "in",
+                    PortDomain::TimeSignal, ConnectionKind::Signal
+            });
+        }
+
+        const GraphAudioScopeAnalyzer analyzer;
+        const auto baseline = analyzer.analyze(graph);
+        const GraphEdgeIndex baseIndex(graph.getEdges());
+        const Edge replacement {
+                "wave", "out", "route", "in",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        };
+        const GraphEdgeView proposed(graph.getEdges(), { 0 }, { replacement });
+        const GraphEdgeIndexOverlay proposedIndex(baseIndex, proposed);
+        const auto expected = analyzer.analyze(graph, proposed);
+        InteractionComplexityDiagnostics::reset();
+
+        const auto resolved = analyzer.analyze(
+                graph,
+                proposed,
+                proposedIndex,
+                baseline);
+
+        REQUIRE(resolved.nodes == expected.nodes);
+        REQUIRE(resolved.conflictingNeutralNodeIds
+                == expected.conflictingNeutralNodeIds);
+        REQUIRE(resolved.scopeFor("route") == AuthoredAudioScope::Voice);
+        REQUIRE(resolved.hasConflict("route"));
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        if (unrelatedBranches == 0) {
+            expectedNodeVisits = counts.validationNodeVisits;
+            expectedEdgeVisits = counts.validationEdgeVisits;
+        }
+        REQUIRE(counts.validationNodeVisits > 0);
+        REQUIRE(counts.validationNodeVisits == expectedNodeVisits);
+        REQUIRE(counts.validationEdgeVisits == expectedEdgeVisits);
+        REQUIRE(counts.domainTransfers == 0);
+        REQUIRE(counts.graphCopies == 0);
+    }
+}
+
 TEST_CASE("Connection commit does not copy unrelated graph or audio resources",
         "[cycle-v2][complexity][connection]") {
     GraphNodeFactory factory;
