@@ -9,6 +9,7 @@ using namespace juce;
 class NodeWorkspace;
 class CycleV2AutomationAssertions;
 class CycleV2AutomationInput;
+class CycleV2AutomationWorkspaceCommands;
 
 class CycleV2Automation {
 public:
@@ -36,6 +37,7 @@ private:
     std::unique_ptr<SessionServer> sessionServer;
     std::unique_ptr<CycleV2AutomationAssertions> assertions;
     std::unique_ptr<CycleV2AutomationInput> input;
+    std::unique_ptr<CycleV2AutomationWorkspaceCommands> workspaceCommands;
 
     var runCommand(const var& commandValue);
     var handleSessionRequest(const var& request);
@@ -53,8 +55,6 @@ private:
     var captureAudio(const var& commandValue);
     var captureLiveAudio(const var& commandValue);
     var sendMidi(const var& commandValue);
-    var openNodeEditor(const var& commandValue);
-    var addNode(const var& commandValue);
     var inspectPointerTargets() const;
     var inspectPointerCursor() const;
     var inspectOpenGLDiagnostics() const;
@@ -63,22 +63,6 @@ private:
     var inspectAudioPerformance() const;
     var resetAudioPerformance();
     var requestCanvasOpenGLFrame();
-    var moveNode(const var& commandValue);
-    var connectPorts(const var& commandValue);
-    var deleteNode(const var& commandValue);
-    var deleteEdge(const var& commandValue);
-    var deleteGuideCurve(const var& commandValue);
-    var loadGuideHeatmap(const var& commandValue);
-    var clearGuideHeatmap(const var& commandValue);
-    var undo();
-    var setGuideParameter(const var& commandValue);
-    var setNodeParameter(const var& commandValue);
-    var inspectNodeControls(const var& commandValue) const;
-    var setMorphSlider(const var& commandValue);
-    var setPrimaryAxis(const var& commandValue);
-    var toggleLink(const var& commandValue);
-    var selectVertex(const var& commandValue);
-    var setVertexParameter(const var& commandValue);
     var screenshot(const var& commandValue) const;
     var waitForIdle(const var& commandValue) const;
 

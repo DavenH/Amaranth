@@ -545,6 +545,18 @@ and final snapshot show that input dispatch completed. Protocol transport,
 UI-facing domain handlers, and `NodeCanvas` gesture/editor ownership remain
 open.
 
+Workspace-command slice: graph edits, Guide edits, node parameters, expanded
+editor controls, and their protocol validation now live in
+`CycleV2AutomationWorkspaceCommands`. It receives the workspace plus snapshot
+and path callbacks and delegates semantic edits to the workspace's existing
+automation boundary. The 18 old handler implementations were deleted from the
+orchestrator; palette invocation and pointer semantic targets call the same
+service. `CycleV2Automation.cpp` fell from 1,293 to 1,036 lines; the new
+implementation is 287 lines with a 46-line interface. The app and test targets
+build, and a live fixture successfully inspected and opened `waveMesh` through
+the service. Session transport and `NodeCanvas` gesture/editor ownership remain
+open.
+
 ### 3. Separate runtime execution policies
 
 `GraphAudioExecutor::processInternal` takes diagnostics, observer, dirty-node,

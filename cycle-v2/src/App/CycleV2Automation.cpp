@@ -4,6 +4,7 @@
 #include "App/CycleV2AutomationCommand.h"
 #include "App/CycleV2AutomationInput.h"
 #include "App/CycleV2AutomationProtocol.h"
+#include "App/CycleV2AutomationWorkspaceCommands.h"
 #include "App/OfflineAudioCaptureAutomation.h"
 #include "UI/NodeWorkspace.h"
 
@@ -269,14 +270,18 @@ CycleV2Automation::CycleV2Automation(NodeWorkspace& workspace, Component& window
                 return this->workspace.getNodeParameterForAutomation(
                         nodeId, parameterId, value);
             });
+    workspaceCommands = std::make_unique<CycleV2AutomationWorkspaceCommands>(
+            workspace,
+            [this]() { return snapshotState(); },
+            [this](const String& path) { return resolveCommandPath(path); });
     input = std::make_unique<CycleV2AutomationInput>(
             workspace,
             [this](const String& area) { return componentForArea(area); },
             CycleV2AutomationInput::SemanticHandlers {
-                    [this](const var& command) { return setMorphSlider(command); },
-                    [this](const var& command) { return setPrimaryAxis(command); },
-                    [this](const var& command) { return toggleLink(command); },
-                    [this](const var& command) { return setVertexParameter(command); }
+                    [this](const var& command) { return workspaceCommands->setMorphSlider(command); },
+                    [this](const var& command) { return workspaceCommands->setPrimaryAxis(command); },
+                    [this](const var& command) { return workspaceCommands->toggleLink(command); },
+                    [this](const var& command) { return workspaceCommands->setVertexParameter(command); }
             });
 }
 
@@ -430,41 +435,41 @@ var CycleV2Automation::runCommand(const var& commandValue) {
         case Command::CaptureLiveAudio:
             return captureLiveAudio(commandValue);
         case Command::OpenNodeEditor:
-            return openNodeEditor(commandValue);
+            return workspaceCommands->openNodeEditor(commandValue);
         case Command::AddNode:
-            return addNode(commandValue);
+            return workspaceCommands->addNode(commandValue);
         case Command::MoveNode:
-            return moveNode(commandValue);
+            return workspaceCommands->moveNode(commandValue);
         case Command::ConnectPorts:
-            return connectPorts(commandValue);
+            return workspaceCommands->connectPorts(commandValue);
         case Command::DeleteNode:
-            return deleteNode(commandValue);
+            return workspaceCommands->deleteNode(commandValue);
         case Command::DeleteEdge:
-            return deleteEdge(commandValue);
+            return workspaceCommands->deleteEdge(commandValue);
         case Command::DeleteGuideCurve:
-            return deleteGuideCurve(commandValue);
+            return workspaceCommands->deleteGuideCurve(commandValue);
         case Command::LoadGuideHeatmap:
-            return loadGuideHeatmap(commandValue);
+            return workspaceCommands->loadGuideHeatmap(commandValue);
         case Command::ClearGuideHeatmap:
-            return clearGuideHeatmap(commandValue);
+            return workspaceCommands->clearGuideHeatmap(commandValue);
         case Command::Undo:
-            return undo();
+            return workspaceCommands->undo();
         case Command::SetNodeParameter:
-            return setNodeParameter(commandValue);
+            return workspaceCommands->setNodeParameter(commandValue);
         case Command::SetGuideParameter:
-            return setGuideParameter(commandValue);
+            return workspaceCommands->setGuideParameter(commandValue);
         case Command::InspectNodeControls:
-            return inspectNodeControls(commandValue);
+            return workspaceCommands->inspectNodeControls(commandValue);
         case Command::SetMorphSlider:
-            return setMorphSlider(commandValue);
+            return workspaceCommands->setMorphSlider(commandValue);
         case Command::SetPrimaryAxis:
-            return setPrimaryAxis(commandValue);
+            return workspaceCommands->setPrimaryAxis(commandValue);
         case Command::ToggleLink:
-            return toggleLink(commandValue);
+            return workspaceCommands->toggleLink(commandValue);
         case Command::SelectVertex:
-            return selectVertex(commandValue);
+            return workspaceCommands->selectVertex(commandValue);
         case Command::SetVertexParameter:
-            return setVertexParameter(commandValue);
+            return workspaceCommands->setVertexParameter(commandValue);
         case Command::Pointer:
             return input->pointer(commandValue);
         case Command::Key:
@@ -699,7 +704,7 @@ var CycleV2Automation::invokePaletteItem(const var& commandValue) {
     object->setProperty("kind", id);
     object->setProperty("x", floatProperty(commandValue, "x", 0.f));
     object->setProperty("y", floatProperty(commandValue, "y", 0.f));
-    return addNode(addCommand);
+    return workspaceCommands->addNode(addCommand);
 }
 
 var CycleV2Automation::captureAudio(const var& commandValue) {
@@ -849,22 +854,6 @@ var CycleV2Automation::captureLiveAudio(const var& commandValue) {
     return okResult("captureLiveAudio", data);
 }
 
-var CycleV2Automation::openNodeEditor(const var& commandValue) {
-    const String command = stringProperty(commandValue, "command", "openNodeEditor");
-    const String nodeId = stringProperty(commandValue, "nodeId");
-
-    if (nodeId.isEmpty()) {
-        return failedResult(command, "Missing nodeId");
-    }
-
-    if (!workspace.openNodeEditorForAutomation(nodeId)) {
-        return failedResult(command, "Could not open editor for node: " + nodeId);
-    }
-
-    var data = workspace.inspectNodeControlsForAutomation(nodeId);
-    return okResult(command, data);
-}
-
 var CycleV2Automation::inspectPointerTargets() const {
     return okResult("inspectPointerTargets", workspace.inspectPointerTargetsForAutomation());
 }
@@ -947,252 +936,6 @@ var CycleV2Automation::sendMidi(const var& commandValue) {
 var CycleV2Automation::requestCanvasOpenGLFrame() {
     workspace.requestCanvasOpenGLFrameForAutomation();
     return okResult("requestCanvasOpenGLFrame");
-}
-
-var CycleV2Automation::addNode(const var& commandValue) {
-    const String kind = stringProperty(commandValue, "kind");
-    const Point<float> position {
-            floatProperty(commandValue, "x", 0.f),
-            floatProperty(commandValue, "y", 0.f)
-    };
-    String nodeId;
-
-    if (kind.isEmpty()) {
-        return failedResult("addNode", "Missing kind");
-    }
-
-    if (!workspace.addNodeForAutomation(kind, position, nodeId)) {
-        return failedResult("addNode", "Could not add node kind: " + kind);
-    }
-
-    var data = makeObject();
-    auto* object = objectFor(data);
-    object->setProperty("nodeId", nodeId);
-    object->setProperty("kind", kind);
-    return okResult("addNode", data);
-}
-
-var CycleV2Automation::moveNode(const var& commandValue) {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-    const Point<float> position {
-            floatProperty(commandValue, "x", 0.f),
-            floatProperty(commandValue, "y", 0.f)
-    };
-
-    if (nodeId.isEmpty()) {
-        return failedResult("moveNode", "Missing nodeId");
-    }
-
-    if (!workspace.moveNodeForAutomation(nodeId, position)) {
-        return failedResult("moveNode", "Could not move node: " + nodeId);
-    }
-
-    return okResult("moveNode", snapshotState());
-}
-
-var CycleV2Automation::connectPorts(const var& commandValue) {
-    const String sourceNodeId = stringProperty(commandValue, "sourceNodeId");
-    const String sourcePortId = stringProperty(commandValue, "sourcePortId");
-    const String destNodeId = stringProperty(commandValue, "destNodeId");
-    const String destPortId = stringProperty(commandValue, "destPortId");
-
-    if (sourceNodeId.isEmpty() || sourcePortId.isEmpty() || destNodeId.isEmpty() || destPortId.isEmpty()) {
-        return failedResult("connectPorts", "Missing source or destination port address");
-    }
-
-    if (!workspace.connectPortsForAutomation(sourceNodeId, sourcePortId, destNodeId, destPortId)) {
-        return failedResult("connectPorts", "Could not connect "
-                + sourceNodeId + "." + sourcePortId + " -> " + destNodeId + "." + destPortId);
-    }
-
-    return okResult("connectPorts", snapshotState());
-}
-
-var CycleV2Automation::deleteNode(const var& commandValue) {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-
-    if (nodeId.isEmpty()) {
-        return failedResult("deleteNode", "Missing nodeId");
-    }
-
-    if (!workspace.deleteNodeForAutomation(nodeId)) {
-        return failedResult("deleteNode", "Could not delete node: " + nodeId);
-    }
-
-    return okResult("deleteNode", snapshotState());
-}
-
-var CycleV2Automation::deleteEdge(const var& commandValue) {
-    const int edgeIndex = intProperty(commandValue, "edgeIndex", intProperty(commandValue, "index", -1));
-
-    if (!workspace.deleteEdgeForAutomation(edgeIndex)) {
-        return failedResult("deleteEdge", "Could not delete edge index: " + String(edgeIndex));
-    }
-
-    return okResult("deleteEdge", snapshotState());
-}
-
-var CycleV2Automation::deleteGuideCurve(const var& commandValue) {
-    const String guideId = stringProperty(commandValue, "guideId");
-    if (guideId.isEmpty()) {
-        return failedResult("deleteGuideCurve", "Missing guideId");
-    }
-    if (!workspace.deleteGuideCurveForAutomation(guideId)) {
-        return failedResult("deleteGuideCurve", "Could not delete Guide: " + guideId);
-    }
-    return okResult("deleteGuideCurve", snapshotState());
-}
-
-var CycleV2Automation::loadGuideHeatmap(const var& commandValue) {
-    const String guideId = stringProperty(commandValue, "guideId");
-    const File file = resolveCommandPath(stringProperty(commandValue, "path"));
-    if (guideId.isEmpty() || !file.existsAsFile()) {
-        return failedResult("loadGuideHeatmap", "Missing Guide or image path");
-    }
-    if (!workspace.loadGuideHeatmapForAutomation(guideId, file)) {
-        return failedResult("loadGuideHeatmap", "Could not load Guide heatmap");
-    }
-    return okResult("loadGuideHeatmap", snapshotState());
-}
-
-var CycleV2Automation::clearGuideHeatmap(const var& commandValue) {
-    const String guideId = stringProperty(commandValue, "guideId");
-    if (guideId.isEmpty() || !workspace.clearGuideHeatmapForAutomation(guideId)) {
-        return failedResult("clearGuideHeatmap", "Could not clear Guide heatmap");
-    }
-    return okResult("clearGuideHeatmap", snapshotState());
-}
-
-var CycleV2Automation::undo() {
-    if (!workspace.undoForAutomation()) {
-        return failedResult("undo", "Nothing to undo");
-    }
-    return okResult("undo", snapshotState());
-}
-
-var CycleV2Automation::setGuideParameter(const var& commandValue) {
-    const String guideId = stringProperty(commandValue, "guideId");
-    const String parameterId = stringProperty(commandValue, "parameterId");
-    const String value = stringProperty(commandValue, "value");
-    if (guideId.isEmpty() || parameterId.isEmpty()) {
-        return failedResult("setGuideParameter", "Missing guideId or parameterId");
-    }
-    if (!workspace.setGuideParameterForAutomation(guideId, parameterId, value)) {
-        return failedResult("setGuideParameter", "Could not edit Guide: " + guideId);
-    }
-    return okResult("setGuideParameter", snapshotState());
-}
-
-var CycleV2Automation::setNodeParameter(const var& commandValue) {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-    const String parameterId = stringProperty(commandValue, "parameterId");
-    const String label = stringProperty(commandValue, "label", parameterId);
-    const String value = stringProperty(commandValue, "value");
-
-    if (nodeId.isEmpty() || parameterId.isEmpty()) {
-        return failedResult("setNodeParameter", "Missing nodeId or parameterId");
-    }
-
-    if (!workspace.setNodeParameterForAutomation(nodeId, parameterId, label, value)) {
-        return failedResult("setNodeParameter", "Could not set parameter: " + nodeId + "." + parameterId);
-    }
-
-    return okResult("setNodeParameter", workspace.inspectNodeControlsForAutomation(nodeId));
-}
-
-var CycleV2Automation::inspectNodeControls(const var& commandValue) const {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-
-    if (nodeId.isEmpty()) {
-        return failedResult("inspectNodeControls", "Missing nodeId");
-    }
-
-    var data = workspace.inspectNodeControlsForAutomation(nodeId);
-    if (const auto* object = objectFor(data); object == nullptr || !(bool) object->getProperty("resolved")) {
-        return failedResult("inspectNodeControls", "Unknown node: " + nodeId);
-    }
-
-    return okResult("inspectNodeControls", data);
-}
-
-var CycleV2Automation::setMorphSlider(const var& commandValue) {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-    const String axis = stringProperty(commandValue, "axis", stringProperty(commandValue, "parameterId"));
-    const float value = (float) (objectFor(commandValue) == nullptr ? 0.0 : (double) objectFor(commandValue)->getProperty("value"));
-
-    if (nodeId.isEmpty()) {
-        return failedResult("setMorphSlider", "Missing nodeId");
-    }
-    if (axis.isEmpty()) {
-        return failedResult("setMorphSlider", "Missing axis");
-    }
-
-    if (!workspace.setMorphSliderForAutomation(nodeId, axis, value)) {
-        return failedResult("setMorphSlider", "Could not set morph slider " + nodeId + "." + axis);
-    }
-
-    return okResult("setMorphSlider", workspace.inspectNodeControlsForAutomation(nodeId));
-}
-
-var CycleV2Automation::setPrimaryAxis(const var& commandValue) {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-    const String axis = stringProperty(commandValue, "axis");
-
-    if (nodeId.isEmpty() || axis.isEmpty()) {
-        return failedResult("setPrimaryAxis", "Missing nodeId or axis");
-    }
-
-    if (!workspace.setPrimaryAxisForAutomation(nodeId, axis)) {
-        return failedResult("setPrimaryAxis", "Could not set primary axis: " + nodeId + "." + axis);
-    }
-
-    return okResult("setPrimaryAxis", workspace.inspectNodeControlsForAutomation(nodeId));
-}
-
-var CycleV2Automation::toggleLink(const var& commandValue) {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-    const String axis = stringProperty(commandValue, "axis");
-
-    if (nodeId.isEmpty() || axis.isEmpty()) {
-        return failedResult("toggleLink", "Missing nodeId or axis");
-    }
-
-    if (!workspace.toggleLinkForAutomation(nodeId, axis)) {
-        return failedResult("toggleLink", "Could not toggle link: " + nodeId + "." + axis);
-    }
-
-    return okResult("toggleLink", workspace.inspectNodeControlsForAutomation(nodeId));
-}
-
-var CycleV2Automation::selectVertex(const var& commandValue) {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-    const int vertexIndex = intProperty(commandValue, "vertexIndex", intProperty(commandValue, "index", -1));
-
-    if (nodeId.isEmpty() || vertexIndex < 0) {
-        return failedResult("selectVertex", "Missing nodeId or vertexIndex");
-    }
-
-    if (!workspace.selectVertexForAutomation(nodeId, vertexIndex)) {
-        return failedResult("selectVertex", "Could not select vertex: " + nodeId + "#" + String(vertexIndex));
-    }
-
-    return okResult("selectVertex", workspace.inspectNodeControlsForAutomation(nodeId));
-}
-
-var CycleV2Automation::setVertexParameter(const var& commandValue) {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-    const String parameterId = stringProperty(commandValue, "parameterId");
-    const float value = floatProperty(commandValue, "value", 0.f);
-
-    if (nodeId.isEmpty() || parameterId.isEmpty()) {
-        return failedResult("setVertexParameter", "Missing nodeId or parameterId");
-    }
-
-    if (!workspace.setVertexParameterForAutomation(nodeId, parameterId, value)) {
-        return failedResult("setVertexParameter", "Could not set vertex parameter: " + nodeId + "." + parameterId);
-    }
-
-    return okResult("setVertexParameter", workspace.inspectNodeControlsForAutomation(nodeId));
 }
 
 var CycleV2Automation::screenshot(const var& commandValue) const {
