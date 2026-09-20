@@ -15,8 +15,8 @@
 #include "UI/SignalProbeDetailView.h"
 #include "UI/SignalProbeRail.h"
 #include "Graph/GraphCompiler.h"
-#include "Graph/GraphAudioScope.h"
-#include "Runtime/GraphPreviewExecutor.h"
+#include "Runtime/GraphPresentationFacts.h"
+#include "Runtime/GraphPresentationSnapshot.h"
 
 namespace CycleV2 {
 
@@ -34,8 +34,8 @@ struct SnapGuidePresentation {
 
 struct NodeCanvasPresentationFrame {
     const NodeGraph& graph;
-    const GraphCompileResult& compileResult;
-    const GraphPreviewResult& previewResult;
+    const GraphPresentationSnapshot& snapshot;
+    const GraphPresentationFacts& facts;
     const NodeCanvasViewport& viewport;
     const NodePalette& palette;
     Rectangle<float> canvasBounds;
@@ -141,9 +141,6 @@ private:
             const NodeCanvasPresentationFrame& frame,
             float scaleFactor);
 
-    const NodePreviewResult* previewFor(
-            const GraphPreviewResult& previews,
-            const String& nodeId) const;
     uint64_t renderContextFingerprintFor(
             const NodeCanvasPresentationFrame& frame,
             const Node& node) const;
@@ -160,7 +157,6 @@ private:
     NodeCanvasPresentationPerformanceObserver* performanceObserver;
     NodeCanvasCableLayerCache cableLayerCache;
     NodeCanvasNodeLayerCache nodeLayerCache;
-    GraphAudioScopeAnalysis audioScopes;
     Image paletteCacheImage;
     Rectangle<float> paletteCacheBounds;
     float paletteCacheScale {};

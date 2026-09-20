@@ -1084,8 +1084,8 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
 
     return {
             displayedGraph,
-            snapshot.compileResult,
-            snapshot.previewResult,
+            snapshot,
+            queries.presentationFacts(),
             viewport,
             palette,
             content,

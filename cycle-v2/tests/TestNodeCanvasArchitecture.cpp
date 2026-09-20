@@ -283,8 +283,8 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
     }));
     REQUIRE(graph.guideTargetNodeIds("guide1").size() == 2);
 
-    GraphCompileResult compileResult;
-    GraphPreviewResult previewResult;
+    GraphPresentationSnapshot snapshot;
+    GraphPresentationFacts facts(graph, snapshot);
     NodeCanvasViewport viewport;
     viewport.setBounds({ 0.f, 0.f, 1000.f, 700.f });
     viewport.setTransform({}, 1.f);
@@ -297,8 +297,8 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
     const Rectangle<float> editorOcclusion { 100.f, 90.f, 200.f, 100.f };
     NodeCanvasPresentationFrame frame {
             graph,
-            compileResult,
-            previewResult,
+            snapshot,
+            facts,
             viewport,
             palette,
             { 0.f, 0.f, 1000.f, 700.f },

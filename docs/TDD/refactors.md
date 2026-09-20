@@ -59,9 +59,22 @@ Baseline to after sizes for the first slice are `NodeCanvas.cpp` 2,532 to
 and `NodeCanvasQueryModel.h` 48 to 49. `GraphPresentationModel.cpp` grows from
 542 to 565 lines to attach and reuse the facts at acceptance;
 `GraphPresentationFacts` adds 184 focused lines. The remaining deletion
-targets are the duplicate preview and semantic lookups in
-`NodeCanvasPresentation` and `SignalProbeRail`, the scene's signal-edge scans,
-and the presentation frame's repackaged snapshot members.
+targets are the scene's signal-edge scans and the automation inspector's
+parallel presentation construction.
+
+The second slice passes the snapshot and facts through
+`NodeCanvasPresentationFrame`. `NodeCanvasPresentation` now uses the shared
+node-preview, render-semantic, edge-domain, and audio-scope facts, while
+`SignalProbeRail` uses the shared probe-preview, render-semantic, and
+edge-domain facts. Their duplicate preview loops, per-paint audio-scope
+analysis, and on-demand full domain resolution are deleted. The frame also
+holds one snapshot reference instead of repackaging its compile and preview
+members. Focused canvas presentation tests pass 101 assertions in 10 cases;
+probe tests excluding the stale Stengah preset fixture pass 308 assertions in
+32 cases. `NodeCanvasPresentation.cpp` falls from 1,486 to 1,470 lines and
+`SignalProbeRail.cpp` from 527 to 519; their policy responsibilities move to
+the existing facts owner rather than another presentation helper. The preset
+mismatch is recorded in `audio-bugs.md`.
 
 ### P1: Centralize operation-port layout
 

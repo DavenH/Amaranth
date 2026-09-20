@@ -410,10 +410,6 @@ const Node* findNode(const NodeGraph& graph, const String& id) {
     return nullptr;
 }
 
-PortDomain edgeDomain(const NodeGraph& graph, const Edge& edge) {
-    return edge.isAttachment() ? edge.domain : GraphValidator().resolvedDomainForEdge(graph, edge);
-}
-
 Rectangle<float> actionButton(Rectangle<float> nodeBounds, float zoom) {
     const float size = 27.f * zoom;
     return Rectangle<float>(size, size).withCentre({
@@ -628,7 +624,6 @@ NodeCanvasPresentation::NodeCanvasPresentation(
 void NodeCanvasPresentation::paint(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    audioScopes = GraphAudioScopeAnalyzer().analyze(frame.graph);
     {
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
@@ -685,7 +680,8 @@ void NodeCanvasPresentation::paint(
         signalProbeRail.paintRail(
                 graphics,
                 frame.graph,
-                frame.previewResult,
+                frame.snapshot,
+                frame.facts,
                 frame.probeRailState.expanded
                         ? GuideCurveShelf::spyWorkspace(
                                 frame.workspaceBounds,
@@ -743,6 +739,7 @@ void NodeCanvasPresentation::paintContent(
                     graphics,
                     frame.graph,
                     scene.snapshot(),
+                    frame.facts,
                     GuideCurveShelf::spyWorkspace(
                             frame.workspaceBounds,
                             frame.guideShelfState.minimized,
@@ -911,7 +908,7 @@ void NodeCanvasPresentation::paintEdges(
         const bool invalid = GraphValidator().edgeHasValidationIssue(frame.graph, edge);
         const Colour colour = invalid
                 ? Colour(0xffff5a5f)
-                : colourForDomain(edgeDomain(frame.graph, edge));
+                : colourForDomain(frame.facts.domainForEdge(frame.graph, edge));
         const NodeCableStyle style {
                 colour,
                 invalid,
@@ -1119,7 +1116,8 @@ void NodeCanvasPresentation::paintCachedNode(
     const Rectangle<float> logicalBounds = frame.viewport.toScreen(
             NodeCanvasScene::presentationWorldBounds(frame.graph, node))
             .expanded(32.f * portScale(frame.viewport.getZoom()));
-    const NodePreviewResult* runtimePreview = previewFor(frame.previewResult, node.id);
+    const NodePreviewResult* runtimePreview = frame.facts.previewFor(
+            frame.snapshot, node.id);
     const NodeCanvasNodeLayerCacheAccess cache = nodeLayerCache.access(
             node,
             logicalBounds,
@@ -1268,7 +1266,7 @@ void NodeCanvasPresentation::paintNode(
                 || supportsSinglePortLayout(node)
                 || capabilities.outputSideControl;
         const bool reservesHeaderRight = hasAction || node.kind == NodeKind::Envelope;
-        const bool globalProcessing = audioScopes.scopeFor(node.id)
+        const bool globalProcessing = frame.facts.audioScopeAnalysis().scopeFor(node.id)
                 == AuthoredAudioScope::Global;
         if (globalProcessing) {
             paintGlobalProcessingIcon(
@@ -1329,14 +1327,14 @@ void NodeCanvasPresentation::paintNode(
         } else {
             previewRenderer.paint(graphics, {
                     node,
-                    previewFor(frame.previewResult, node.id),
+                    frame.facts.previewFor(frame.snapshot, node.id),
                     preview,
                     profileFor(frame, node),
                     zoom,
                     true,
                     node.kind == NodeKind::Unison
                             ? unisonPreviewContextFor(
-                                    frame.compileResult.plan,
+                                    frame.snapshot.compileResult.plan,
                                     node.id,
                                     frame.unisonPreviewContext)
                             : frame.unisonPreviewContext,
@@ -1400,18 +1398,6 @@ NodePortPresentation NodeCanvasPresentation::portPresentation(
     };
 }
 
-const NodePreviewResult* NodeCanvasPresentation::previewFor(
-        const GraphPreviewResult& previews,
-        const String& nodeId) const {
-    for (const auto& preview : previews.nodes) {
-        if (preview.nodeId == nodeId) {
-            return &preview;
-        }
-    }
-
-    return nullptr;
-}
-
 TrimeshRenderProfile NodeCanvasPresentation::profileFor(
         const NodeCanvasPresentationFrame& frame,
         const Node& node) const {
@@ -1421,10 +1407,8 @@ TrimeshRenderProfile NodeCanvasPresentation::profileFor(
 NodeRenderSemantic NodeCanvasPresentation::renderSemanticFor(
         const NodeCanvasPresentationFrame& frame,
         const Node& node) const {
-    NodeRenderSemantic semantic = GraphRenderSemanticResolver().semanticForNodeOutput(
-            frame.graph,
-            node.id,
-            "out");
+    NodeRenderSemantic semantic = frame.facts.renderSemanticForNodeOutput(
+            frame.graph, node.id, "out");
     if (semantic.domain == PortDomain::ControlSignal && !node.outputs.empty()) {
         semantic.domain = node.outputs.front().domain;
     }
@@ -1454,7 +1438,7 @@ uint64_t NodeCanvasPresentation::renderContextFingerprintFor(
     }
     if (node.kind == NodeKind::Unison) {
         fingerprint.add(unisonContextFingerprint(unisonPreviewContextFor(
-                frame.compileResult.plan,
+                frame.snapshot.compileResult.plan,
                 node.id,
                 frame.unisonPreviewContext)));
     } else if (node.kind == NodeKind::VoiceContext) {
