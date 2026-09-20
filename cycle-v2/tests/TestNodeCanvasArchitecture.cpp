@@ -230,6 +230,41 @@ TEST_CASE("Workspace dock reveals keyboard-focused overflow tiles",
     REQUIRE(WorkspaceDock::offsetToRevealGuideTile(0.f, maximumOffset, 300.f, 5) > 0.f);
 }
 
+TEST_CASE("Guide shelf keeps actions in the footer and exposes per-tile deletion",
+        "[cycle-v2][canvas][guide-dock][interaction]") {
+    NodeGraph graph;
+    GuideCurveResource guide;
+    guide.id = "guide1";
+    REQUIRE(graph.addGuideCurve(std::move(guide)));
+
+    const Rectangle<float> workspace { 0.f, 0.f, 1200.f, 800.f };
+    SignalProbeRailState dockState;
+    dockState.expanded = true;
+    GuideCurveShelfState guideState;
+    const Rectangle<float> shelf = GuideCurveShelf::boundsFor(
+            workspace, dockState, guideState);
+    const Rectangle<float> add = GuideCurveShelf::addButtonBounds(
+            workspace, dockState, guideState);
+    const Rectangle<float> minimize = GuideCurveShelf::minimizeButtonBounds(
+            workspace, dockState, guideState);
+    const Rectangle<float> tile = GuideCurveShelf::tileBoundsFor(
+            workspace, dockState, guideState, 0);
+    const Rectangle<float> remove = GuideCurveShelf::deleteButtonBoundsFor(
+            workspace, dockState, guideState, 0);
+
+    REQUIRE(add.getY() > tile.getY());
+    REQUIRE(add.getWidth() > minimize.getWidth());
+    REQUIRE_FALSE(add.intersects(minimize));
+    REQUIRE(shelf.contains(add));
+    REQUIRE(tile.contains(remove));
+    REQUIRE(remove.getCentreX() > tile.getCentreX());
+    REQUIRE(remove.getCentreY() < tile.getCentreY());
+    REQUIRE(GuideCurveShelf::guideDeleteAt(
+            remove.getCentre(), graph, workspace, dockState, guideState) == "guide1");
+    REQUIRE(GuideCurveShelf::guideDeleteAt(
+            tile.getCentre(), graph, workspace, dockState, guideState).isEmpty());
+}
+
 TEST_CASE("Guide relationship selection highlights without drawing a persistent tether",
         "[cycle-v2][canvas][guide-dock][relationship]") {
     GuideCurveShelfState state;

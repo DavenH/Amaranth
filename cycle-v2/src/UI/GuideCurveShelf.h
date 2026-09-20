@@ -51,7 +51,18 @@ public:
             const SignalProbeRailState& dockState,
             const GuideCurveShelfState& state,
             int tileIndex);
+    static Rectangle<float> deleteButtonBoundsFor(
+            Rectangle<float> workspace,
+            const SignalProbeRailState& dockState,
+            const GuideCurveShelfState& state,
+            int tileIndex);
     static String guideAt(
+            Point<float> position,
+            const NodeGraph& graph,
+            Rectangle<float> workspace,
+            const SignalProbeRailState& dockState,
+            const GuideCurveShelfState& state);
+    static String guideDeleteAt(
             Point<float> position,
             const NodeGraph& graph,
             Rectangle<float> workspace,

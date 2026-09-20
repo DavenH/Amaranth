@@ -4,6 +4,7 @@
 
 #include "UI/GuideCurveShelf.h"
 
+#include "UI/CanvasChromeIcons.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/SignalProbeRail.h"
@@ -12,12 +13,23 @@ namespace CycleV2 {
 
 namespace {
 
+constexpr float footerHeight = 52.f;
+constexpr float footerControlHeight = 36.f;
+constexpr float footerGap = 7.f;
+constexpr float deleteButtonSize = 30.f;
+
 bool hasDisplayName(const GuideCurveResource& guide) {
     return !guide.name.isEmpty() && guide.name != "Guide Curve";
 }
 
 Rectangle<float> previewBoundsFor(Rectangle<float> tile) {
     return tile.reduced(7.f);
+}
+
+Rectangle<float> visibleTileBounds(Rectangle<float> shelf) {
+    return shelf
+            .withTrimmedTop(WorkspaceDock::headerHeight)
+            .withTrimmedBottom(footerHeight);
 }
 
 WorkspaceDockState workspaceDockState(
@@ -81,9 +93,11 @@ Rectangle<float> GuideCurveShelf::addButtonBounds(
     if (!dockState.expanded || state.minimized) {
         return {};
     }
-    Rectangle<float> header = WorkspaceDock::headerBounds(
-            boundsFor(workspace, dockState, state));
-    return header.removeFromRight(WorkspaceDock::addButtonWidth);
+    Rectangle<float> footer = boundsFor(workspace, dockState, state)
+            .removeFromBottom(footerHeight)
+            .reduced(WorkspaceDock::shelfPadding, 8.f);
+    footer.removeFromLeft(WorkspaceDock::controlSize + footerGap);
+    return footer.withHeight(footerControlHeight);
 }
 
 Rectangle<float> GuideCurveShelf::minimizeButtonBounds(
@@ -93,9 +107,11 @@ Rectangle<float> GuideCurveShelf::minimizeButtonBounds(
     if (!dockState.expanded || state.minimized) {
         return {};
     }
-    Rectangle<float> header = WorkspaceDock::headerBounds(
-            boundsFor(workspace, dockState, state));
-    return header.removeFromLeft(WorkspaceDock::controlSize);
+    Rectangle<float> footer = boundsFor(workspace, dockState, state)
+            .removeFromBottom(footerHeight)
+            .reduced(WorkspaceDock::shelfPadding, 8.f);
+    return footer.removeFromLeft(WorkspaceDock::controlSize)
+            .withHeight(footerControlHeight);
 }
 
 Rectangle<float> GuideCurveShelf::tileBoundsFor(
@@ -109,6 +125,16 @@ Rectangle<float> GuideCurveShelf::tileBoundsFor(
             state.verticalOffset);
 }
 
+Rectangle<float> GuideCurveShelf::deleteButtonBoundsFor(
+        Rectangle<float> workspace,
+        const SignalProbeRailState& dockState,
+        const GuideCurveShelfState& state,
+        int tileIndex) {
+    return tileBoundsFor(workspace, dockState, state, tileIndex)
+            .removeFromRight(deleteButtonSize)
+            .removeFromTop(deleteButtonSize);
+}
+
 String GuideCurveShelf::guideAt(
         Point<float> position,
         const NodeGraph& graph,
@@ -118,8 +144,8 @@ String GuideCurveShelf::guideAt(
     if (state.minimized) {
         return {};
     }
-    const Rectangle<float> visibleTiles = boundsFor(workspace, dockState, state)
-            .withTrimmedTop(WorkspaceDock::headerHeight);
+    const Rectangle<float> visibleTiles = visibleTileBounds(
+            boundsFor(workspace, dockState, state));
     if (visibleTiles.getHeight()
             < WorkspaceDock::guideTileHeight + WorkspaceDock::tileBottomPadding) {
         return {};
@@ -140,6 +166,28 @@ String GuideCurveShelf::guideAt(
     return {};
 }
 
+String GuideCurveShelf::guideDeleteAt(
+        Point<float> position,
+        const NodeGraph& graph,
+        Rectangle<float> workspace,
+        const SignalProbeRailState& dockState,
+        const GuideCurveShelfState& state) {
+    const String hoveredGuide = guideAt(
+            position, graph, workspace, dockState, state);
+    if (hoveredGuide.isEmpty()) {
+        return {};
+    }
+    for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
+        const GuideCurveResource& guide = graph.getGuideCurves()[(size_t) index];
+        if (guide.id == hoveredGuide
+                && deleteButtonBoundsFor(
+                        workspace, dockState, state, index).contains(position)) {
+            return guide.id;
+        }
+    }
+    return {};
+}
+
 float GuideCurveShelf::maximumVerticalOffset(
         Rectangle<float> workspace,
         const SignalProbeRailState& dockState,
@@ -150,13 +198,16 @@ float GuideCurveShelf::maximumVerticalOffset(
     }
     const Rectangle<float> shelf = boundsFor(workspace, dockState, state);
     if (shelf.getHeight() < WorkspaceDock::headerHeight
-            + WorkspaceDock::guideTileHeight + WorkspaceDock::tileBottomPadding) {
+            + WorkspaceDock::guideTileHeight
+            + WorkspaceDock::tileBottomPadding
+            + footerHeight) {
         return 0.f;
     }
     const float contentHeight = WorkspaceDock::headerHeight
             + guideCount * WorkspaceDock::guideTileHeight
             + jmax(0, guideCount - 1) * WorkspaceDock::tileGap
-            + WorkspaceDock::tileBottomPadding;
+            + WorkspaceDock::tileBottomPadding
+            + footerHeight;
     return jmax(0.f, contentHeight - shelf.getHeight());
 }
 
@@ -225,11 +276,6 @@ void GuideCurveShelf::paint(
         return;
     }
 
-    Rectangle<float> header = WorkspaceDock::headerBounds(shelf);
-    graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.94f));
-    graphics.fillRoundedRectangle(
-            shelf.withHeight(WorkspaceDock::headerHeight),
-            CanvasChromeMetrics::controlCornerRadius);
     const Rectangle<float> minimize = minimizeButtonBounds(
             workspace, dockState, state);
     WorkspaceDock::paintIconButton(
@@ -237,12 +283,6 @@ void GuideCurveShelf::paint(
             minimize,
             WorkspaceDockIcon::ChevronRight,
             focus.target == WorkspaceDockFocusTarget::GuideMinimize);
-    graphics.setColour(CanvasChromePalette::text);
-    graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
-    graphics.drawText(
-            "Curve Guides",
-            header.withTrimmedLeft(34.f).withWidth(96.f),
-            Justification::centredLeft);
     const Rectangle<float> add = addButtonBounds(workspace, dockState, state);
     const auto addColours = CanvasChromePalette::control(
             focus.target == WorkspaceDockFocusTarget::GuideAdd
@@ -258,16 +298,19 @@ void GuideCurveShelf::paint(
                     ? CanvasChromeMetrics::focusRingWidth
                     : CanvasChromeMetrics::restingBorderWidth);
     graphics.setColour(addColours.text);
-    graphics.setFont(FontOptions(CanvasChromeMetrics::captionFontSize));
-    graphics.drawText("New", add, Justification::centred);
+    graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
+    graphics.drawText("+  Add curve", add, Justification::centred);
 
     if (shelf.getHeight() < WorkspaceDock::headerHeight
-            + WorkspaceDock::guideTileHeight + WorkspaceDock::tileBottomPadding) {
+            + WorkspaceDock::guideTileHeight
+            + WorkspaceDock::tileBottomPadding
+            + footerHeight) {
         return;
     }
 
     if (graph.getGuideCurves().empty()) {
-        const Rectangle<float> vacancy = WorkspaceDock::vacancyBounds(shelf);
+        const Rectangle<float> vacancy = WorkspaceDock::vacancyBounds(
+                shelf.withTrimmedBottom(footerHeight));
         graphics.setColour(CanvasChromePalette::insetBackground.withAlpha(0.68f));
         graphics.fillRoundedRectangle(vacancy, CanvasChromeMetrics::tileCornerRadius);
         graphics.setColour(CanvasChromePalette::border.withAlpha(0.75f));
@@ -282,7 +325,8 @@ void GuideCurveShelf::paint(
     }
 
     Graphics::ScopedSaveState clip(graphics);
-    graphics.reduceClipRegion(shelf.withTrimmedTop(WorkspaceDock::headerHeight).toNearestInt());
+    const Rectangle<float> visibleTiles = visibleTileBounds(shelf);
+    graphics.reduceClipRegion(visibleTiles.toNearestInt());
     for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
         const GuideCurveResource& guide = graph.getGuideCurves()[(size_t) index];
         const Rectangle<float> tile = tileBoundsFor(
@@ -290,7 +334,7 @@ void GuideCurveShelf::paint(
                 dockState,
                 state,
                 index);
-        if (!tile.intersects(shelf)) {
+        if (!tile.intersects(visibleTiles)) {
             continue;
         }
         const bool selected = guide.id == state.selectedGuideId;
@@ -316,10 +360,20 @@ void GuideCurveShelf::paint(
                     thumbnail.reduced(8.f).removeFromTop(22.f),
                     Justification::centredLeft);
         }
+        if (hovered) {
+            const Rectangle<float> deleteBounds = deleteButtonBoundsFor(
+                    workspace, dockState, state, index);
+            graphics.setColour(CanvasChromePalette::raisedSurface.withAlpha(0.76f));
+            graphics.fillEllipse(deleteBounds.reduced(2.f));
+            CanvasChromeIcons::paintTrash(
+                    graphics,
+                    deleteBounds.reduced(2.f),
+                    CanvasChromePalette::text.withAlpha(0.84f));
+        }
     }
     WorkspaceDock::paintVerticalOverflowFeedback(
             graphics,
-            shelf,
+            shelf.withTrimmedBottom(footerHeight),
             state.verticalOffset,
             maximumVerticalOffset(
                     workspace,

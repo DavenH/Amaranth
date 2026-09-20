@@ -34,7 +34,6 @@ public:
             std::vector<juce::File> directories,
             OpenCallback openCallback,
             ActionCallback browseCallback,
-            ActionCallback newGuideCallback,
             TabCallback tabCallback,
             DeleteCallback deleteCallback = {},
             ConfirmDeleteCallback confirmDeleteCallback = {});
@@ -79,7 +78,6 @@ private:
 
     OpenCallback onOpen;
     ActionCallback onBrowse;
-    ActionCallback onNewGuide;
     TabCallback onTabChanged;
     DeleteCallback onDelete;
     ConfirmDeleteCallback onConfirmDelete;
@@ -87,7 +85,6 @@ private:
     PresetThumbnailCache thumbnails;
     juce::TextButton curves { "CURVES" };
     juce::TextButton presets { "PRESETS" };
-    juce::TextButton addGuide { "+" };
     juce::TextEditor search;
     juce::TextButton all { "ALL" };
     juce::TextButton factory { "FACTORY" };

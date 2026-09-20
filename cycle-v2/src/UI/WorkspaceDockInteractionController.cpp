@@ -205,6 +205,12 @@ bool WorkspaceDockInteractionController::handleGuideControlsDown(
 bool WorkspaceDockInteractionController::handleGuideTileDown(
         const MouseEvent& event,
         Rectangle<float> workspace) {
+    const String guideToDelete = GuideCurveShelf::guideDeleteAt(
+            event.position, graph, workspace, probeState, guideState);
+    if (guideToDelete.isNotEmpty()) {
+        callbacks.requestGuideDeletion(guideToDelete);
+        return true;
+    }
     const String guideId = GuideCurveShelf::guideAt(
             event.position, graph, workspace, probeState, guideState);
     if (guideId.isNotEmpty()) {
@@ -310,6 +316,10 @@ void WorkspaceDockInteractionController::selectGuideFromKeyboard(
     if (openEditor) {
         callbacks.openGuideEditor(guideId);
     }
+}
+
+void WorkspaceDockInteractionController::removeGuideFromKeyboard(const String& guideId) {
+    callbacks.requestGuideDeletion(guideId);
 }
 
 void WorkspaceDockInteractionController::setSpyShelfMinimizedFromKeyboard(bool minimized) {

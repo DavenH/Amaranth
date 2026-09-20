@@ -244,6 +244,8 @@ private:
             const GraphChangeSet* changeOverride = nullptr,
             std::shared_ptr<const NodeGraph> snapshot = {});
     void openProbeDetail(const String& probeId);
+    void requestDeleteGuideCurve(const String& guideId);
+    bool deleteGuideCurve(const String& guideId);
     void refreshProbeDetail();
     void finishPreviewModWheelRefresh();
     enum class PreviewMorphEditScope {

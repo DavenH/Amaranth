@@ -1,5 +1,6 @@
 #include "UI/InlinePresetBrowser.h"
 
+#include "UI/CanvasChromeIcons.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/PresetBrowserComponents.h"
 
@@ -48,23 +49,12 @@ public:
             graphics.fillEllipse(bounds);
         }
 
-        graphics.setColour(isMouseOverButton
-                ? CanvasChromePalette::destructive
-                : CanvasChromePalette::text.withAlpha(0.78f));
-        const auto bin = bounds.reduced(5.f, 4.f);
-        juce::Path body;
-        body.startNewSubPath(bin.getX() + 2.f, bin.getY() + 5.f);
-        body.lineTo(bin.getX() + 3.f, bin.getBottom());
-        body.lineTo(bin.getRight() - 3.f, bin.getBottom());
-        body.lineTo(bin.getRight() - 2.f, bin.getY() + 5.f);
-        graphics.strokePath(body, juce::PathStrokeType(
-                1.5f,
-                juce::PathStrokeType::curved,
-                juce::PathStrokeType::rounded));
-        graphics.drawLine(bin.getX(), bin.getY() + 3.f,
-                bin.getRight(), bin.getY() + 3.f, 1.5f);
-        graphics.drawLine(bin.getCentreX() - 2.f, bin.getY(),
-                bin.getCentreX() + 2.f, bin.getY(), 1.5f);
+        CanvasChromeIcons::paintTrash(
+                graphics,
+                bounds,
+                isMouseOverButton
+                        ? CanvasChromePalette::destructive
+                        : CanvasChromePalette::text.withAlpha(0.78f));
     }
 };
 
@@ -328,13 +318,11 @@ InlinePresetBrowser::InlinePresetBrowser(
         std::vector<juce::File> directories,
         OpenCallback openCallback,
         ActionCallback browseCallback,
-        ActionCallback newGuideCallback,
         TabCallback tabCallback,
         DeleteCallback deleteCallback,
         ConfirmDeleteCallback confirmDeleteCallback) :
         onOpen(std::move(openCallback))
     ,   onBrowse(std::move(browseCallback))
-    ,   onNewGuide(std::move(newGuideCallback))
     ,   onTabChanged(std::move(tabCallback))
     ,   onDelete(std::move(deleteCallback))
     ,   onConfirmDelete(std::move(confirmDeleteCallback))
@@ -354,16 +342,6 @@ InlinePresetBrowser::InlinePresetBrowser(
     presets.onClick = [this] { setActiveTab(WorkspaceSidebarTab::Presets); };
     addAndMakeVisible(curves);
     addAndMakeVisible(presets);
-
-    addGuide.setComponentID("workspace.sidebar.addGuide");
-    addGuide.onClick = [this] { onNewGuide(); };
-    addGuide.setColour(juce::TextButton::buttonColourId,
-            CanvasChromePalette::restingControlSurface);
-    addGuide.setColour(juce::TextButton::buttonOnColourId,
-            CanvasChromePalette::border);
-    addGuide.setColour(juce::TextButton::textColourOffId,
-            CanvasChromePalette::text);
-    addAndMakeVisible(addGuide);
 
     search.setComponentID("workspace.sidebar.search");
     search.setTextToShowWhenEmpty("Search presets...", CanvasChromePalette::mutedText);
@@ -470,9 +448,7 @@ InlinePresetBrowser::pointerTargetsForAutomation() const {
             { "workspace.sidebar.curves", curves.getBounds().toFloat() },
             { "workspace.sidebar.presets", presets.getBounds().toFloat() }
     };
-    if (tab == WorkspaceSidebarTab::Curves) {
-        targets.push_back({ "workspace.sidebar.addGuide", addGuide.getBounds().toFloat() });
-    } else {
+    if (tab == WorkspaceSidebarTab::Presets) {
         targets.push_back({ "workspace.sidebar.search", search.getBounds().toFloat() });
         targets.push_back({ "workspace.sidebar.browse", browse.getBounds().toFloat() });
     }
@@ -506,7 +482,6 @@ void InlinePresetBrowser::paint(juce::Graphics& graphics) {
 void InlinePresetBrowser::resized() {
     auto bounds = getLocalBounds();
     auto tabs = bounds.removeFromTop(46).reduced(8, 0);
-    addGuide.setBounds(tabs.removeFromRight(34).reduced(2, 7));
     const int tabWidth = juce::jmin(100, tabs.getWidth() / 2);
     curves.setBounds(tabs.removeFromLeft(tabWidth));
     presets.setBounds(tabs.removeFromLeft(tabWidth));
@@ -682,7 +657,6 @@ void InlinePresetBrowser::updateVisibility() {
             juce::TextButton::textColourOffId,
             showingPresets ? CanvasChromePalette::text : CanvasChromePalette::mutedText);
     presets.setColour(juce::TextButton::textColourOnId, CanvasChromePalette::text);
-    addGuide.setVisible(!showingPresets);
     search.setVisible(showingPresets);
     all.setVisible(showingPresets);
     factory.setVisible(showingPresets);

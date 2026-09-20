@@ -32,7 +32,6 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
             .getChildFile("presets");
     File opened;
     int browseCount {};
-    int newGuideCount {};
     String deleteConfirmationName;
     File deleted;
     std::function<void(bool)> finishDeleteConfirmation;
@@ -44,7 +43,6 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
                 return true;
             },
             [&] { ++browseCount; },
-            [&] { ++newGuideCount; },
             [&](WorkspaceSidebarTab tab) { tabs.push_back(tab); },
             [&](const File& file) {
                 deleted = file;
@@ -143,7 +141,6 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     browse->triggerClick();
     MessageManager::getInstance()->runDispatchLoopUntil(40);
     REQUIRE(browseCount == 1);
-    REQUIRE(newGuideCount == 0);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

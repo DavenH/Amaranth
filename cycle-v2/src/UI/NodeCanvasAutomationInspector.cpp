@@ -898,6 +898,10 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                         "guide:" + tile.guideId,
                         "guide",
                         tile.bounds));
+                targets.add(AutomationValueEncoder::pointerTargetToVar(
+                        "guide:" + tile.guideId + ".delete",
+                        "guideDelete",
+                        tile.deleteBounds));
             }
         }
         if (!state.guideDock.spiesMinimized) {

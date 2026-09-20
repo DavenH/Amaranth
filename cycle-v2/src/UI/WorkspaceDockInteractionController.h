@@ -18,6 +18,7 @@ namespace CycleV2 {
 struct WorkspaceDockInteractionCallbacks {
     std::function<void(const String&)> openGuideEditor;
     std::function<void(const String&)> openProbeDetail;
+    std::function<void(const String&)> requestGuideDeletion;
     std::function<void(const NodeCanvasAuthoringResult&)> applyAuthoringResult;
     std::function<void()> repaint;
     std::function<void()> resized;
@@ -69,6 +70,7 @@ private:
     void setGuideShelfMinimizedFromKeyboard(bool minimized) override;
     String createGuideFromKeyboard() override;
     void selectGuideFromKeyboard(const String& guideId, bool openEditor) override;
+    void removeGuideFromKeyboard(const String& guideId) override;
     void setSpyShelfMinimizedFromKeyboard(bool minimized) override;
     void selectSpyFromKeyboard(const String& probeId, bool openDetail) override;
     void removeSpyFromKeyboard(const String& probeId) override;

@@ -200,6 +200,7 @@ NodeCanvas::NodeCanvas() :
             WorkspaceDockInteractionCallbacks {
                     [this](const String& guideId) { openGuideEditor(guideId); },
                     [this](const String& probeId) { openProbeDetail(probeId); },
+                    [this](const String& guideId) { requestDeleteGuideCurve(guideId); },
                     [this](const NodeCanvasAuthoringResult& result) { applyAuthoringResult(result); },
                     [this]() { requestCanvasRepaint(); },
                     [this]() { resized(); },
@@ -231,9 +232,6 @@ void NodeCanvas::configurePresetSidebar(
             std::move(directories),
             std::move(openCallback),
             std::move(browseCallback),
-            [this] {
-                dockInteraction->createGuide(getLocalBounds().toFloat());
-            },
             [this](WorkspaceSidebarTab tab) {
                 guideShelfState.presetBrowserVisible = tab == WorkspaceSidebarTab::Presets;
                 requestCanvasRepaint();
@@ -1551,6 +1549,11 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
                         workspace,
                         probeRailState,
                         guideShelfState,
+                        index),
+                GuideCurveShelf::deleteButtonBoundsFor(
+                        workspace,
+                        probeRailState,
+                        guideShelfState,
                         index)
         });
     }
@@ -1677,19 +1680,7 @@ bool NodeCanvas::deleteEdgeForAutomation(int edgeIndex) {
 
 bool NodeCanvas::deleteGuideCurveForAutomation(const String& guideId) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::GraphEdit);
-    if (!commands.removeGuideCurve(guideId).succeeded()) {
-        return false;
-    }
-
-    if (guideShelfState.selectedGuideId == guideId) {
-        guideShelfState.selectedGuideId = {};
-    }
-    if (expandedGuideId == guideId) {
-        closeGuideEditor();
-    }
-    editStatusMessage = "Guide Curve deleted";
-    requestCanvasRepaint();
-    return true;
+    return deleteGuideCurve(guideId);
 }
 
 bool NodeCanvas::loadGuideHeatmapForAutomation(
@@ -2290,6 +2281,56 @@ void NodeCanvas::openGuideEditor(const String& guideId) {
     guideEditor->setVisible(true);
     guideEditor->toFront(false);
     notifyOverlayOcclusionChanged();
+}
+
+void NodeCanvas::requestDeleteGuideCurve(const String& guideId) {
+    const GuideCurveResource* guide = graph.findGuideCurve(guideId);
+    if (guide == nullptr) {
+        return;
+    }
+
+    const int usageCount = graph.guideUsageCount(guideId);
+    if (usageCount == 0) {
+        deleteGuideCurve(guideId);
+        return;
+    }
+
+    const String displayName = guide->name.isNotEmpty()
+            ? guide->name
+            : (guide->shortLabel.isNotEmpty() ? guide->shortLabel : "Guide Curve");
+    const String referenceDescription = usageCount == 1
+            ? "1 curve reference will also be removed."
+            : String(usageCount) + " curve references will also be removed.";
+    AlertWindow::showOkCancelBox(
+            MessageBoxIconType::WarningIcon,
+            "Delete curve?",
+            "“" + displayName + "” is in use. " + referenceDescription,
+            "Delete Curve",
+            "Cancel",
+            this,
+            ModalCallbackFunction::create([
+                    safeThis = Component::SafePointer<NodeCanvas>(this),
+                    guideId](int result) {
+                if (result != 0 && safeThis != nullptr) {
+                    safeThis->deleteGuideCurve(guideId);
+                }
+            }));
+}
+
+bool NodeCanvas::deleteGuideCurve(const String& guideId) {
+    if (!commands.removeGuideCurve(guideId).succeeded()) {
+        return false;
+    }
+
+    if (guideShelfState.selectedGuideId == guideId) {
+        guideShelfState.selectedGuideId = {};
+    }
+    if (expandedGuideId == guideId) {
+        closeGuideEditor();
+    }
+    editStatusMessage = "Guide Curve deleted";
+    requestCanvasRepaint();
+    return true;
 }
 
 bool NodeCanvas::setGuideHeatmap(
