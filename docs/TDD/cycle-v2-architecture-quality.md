@@ -579,6 +579,20 @@ interaction cases pass with 99 assertions. `NodeCanvas.cpp` is 2,598 lines and
 `NodeCanvasInteraction.cpp` is 397 lines. Guide-editor lifecycle remains the
 last UI ownership target.
 
+Guide-editor lifecycle slice: `NodeCanvasGuideEditorCoordinator` now owns the
+Guide editor component and widget, open identity, layout, OpenGL resource
+lifecycle, transient base revision, publication, commit, cancellation, and
+rebinding. `NodeCanvas` retains only cross-editor coordination and narrow
+delegate forwarding. Four direct state members and their lifecycle branches
+were deleted. `NodeCanvas.cpp` fell from 2,598 to 2,525 lines and its header
+from 329 to 324; the coordinator is 174 lines with a 71-line interface. The app
+and tests build, and a focused live fixture creates a Guide, opens its editor,
+observes `expandedGuideId`, closes it with Escape, and observes the cleared
+state. The source remains large because it is still the top-level component,
+renderer, dock, presentation, and authoring coordinator, but gesture and editor
+lifecycle state now belong to composed collaborators. This completes the UI
+coordination slice's stated ownership targets.
+
 ### 3. Separate runtime execution policies
 
 `GraphAudioExecutor::processInternal` takes diagnostics, observer, dirty-node,

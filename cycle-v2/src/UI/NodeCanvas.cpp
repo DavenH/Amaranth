@@ -161,6 +161,23 @@ NodeCanvas::NodeCanvas() :
             *this,
             *this,
             { expandedNodeId })
+    ,   guideEditorCoordinator(
+            *this,
+            document,
+            commands,
+            *this,
+            {
+                    [this](const String& guideId, GuideHeatmapAssetPtr asset, uint64_t revision) {
+                        return setGuideHeatmap(guideId, std::move(asset), revision);
+                    },
+                    [this](const String& guideId, uint64_t revision) {
+                        return clearGuideHeatmap(guideId, revision);
+                    },
+                    [this]() { refreshCompiledStateAsync(); },
+                    [this]() { scheduleCompiledStateRefresh(); },
+                    [this]() { requestCanvasRepaint(); },
+                    [this]() { notifyOverlayOcclusionChanged(); }
+            })
     ,   canvasPresentation(sceneBuilder, editorCoordinator.previewRenderer(), &performanceMetrics)
     ,   automation({
             *this,
@@ -251,10 +268,7 @@ void NodeCanvas::resized() {
         fitDocumentInViewport();
         documentViewportFitted = true;
     }
-    if (guideEditor != nullptr && guideEditor->isVisible()) {
-        guideEditor->setBounds(
-                GuideCurveEditorComponent::preferredHostBounds(editorContentBounds()).toNearestInt());
-    }
+    guideEditorCoordinator.layout(editorContentBounds());
     editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
     requestCanvasRepaint();
 }
@@ -912,7 +926,7 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
     }
 
     if (key == KeyPress::escapeKey) {
-        if (expandedGuideId.isNotEmpty()) {
+        if (guideEditorCoordinator.isOpen()) {
             closeGuideEditor();
             return true;
         }
@@ -986,9 +1000,7 @@ void NodeCanvas::renderOpenGL() {
             });
         }
         editorCoordinator.renderOpenGL((float) openGLContext.getRenderingScale());
-        if (guideEditor != nullptr && guideEditor->isVisible()) {
-            guideEditor->renderOpenGL((float) openGLContext.getRenderingScale());
-        }
+        guideEditorCoordinator.renderOpenGL((float) openGLContext.getRenderingScale());
     } else {
         OpenGLHelpers::clear(CanvasChromePalette::canvasBackground);
     }
@@ -996,9 +1008,7 @@ void NodeCanvas::renderOpenGL() {
 
 void NodeCanvas::openGLContextClosing() {
     editorCoordinator.releaseOpenGLResources();
-    if (guideEditorWidget != nullptr) {
-        guideEditorWidget->releaseSharedGlResources();
-    }
+    guideEditorCoordinator.releaseOpenGLResources();
 
     renderer.shutdown();
 }
@@ -1460,12 +1470,12 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     dock.keyboardFocusTarget = WorkspaceDockKeyboardNavigation::targetName(
             dockInteraction->focus().target);
     dock.keyboardFocusItemId = dockInteraction->focus().itemId;
-    dock.expandedGuideId = expandedGuideId;
+    dock.expandedGuideId = guideEditorCoordinator.guideId();
     dock.visibleGuidePreviewCount = canvasPresentation.visibleGuidePreviewCount(graph);
     for (const auto& guide : graph.getGuideCurves()) {
         dock.heatmapGuideCount += guide.heatmapAssetId.isNotEmpty() ? 1 : 0;
     }
-    if (const GuideCurveResource* guide = graph.findGuideCurve(expandedGuideId)) {
+    if (const GuideCurveResource* guide = graph.findGuideCurve(guideEditorCoordinator.guideId())) {
         const GuideHeatmapAsset* heatmap = graph.findGuideHeatmap(guide->heatmapAssetId);
         dock.expandedGuideHeatmapActive = heatmap != nullptr;
         dock.expandedGuideHeatmapFilename = heatmap != nullptr ? heatmap->filename() : String {};
@@ -1487,14 +1497,11 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
             workspace,
             probeRailState,
             guideShelfState);
-    dock.guideEditorBounds = guideEditor != nullptr && guideEditor->isVisible()
-            ? guideEditor->getBounds().toFloat()
-            : Rectangle<float> {};
-    dock.guideEditorState = guideEditor != nullptr && guideEditor->isVisible()
-            ? guideEditor->automationState()
-            : var();
+    dock.guideEditorBounds = guideEditorCoordinator.bounds();
+    dock.guideEditorState = guideEditorCoordinator.automationState();
     if (!dock.guideEditorBounds.isEmpty()) {
-        for (const auto& [semanticId, localBounds] : guideEditor->automationPointerTargets()) {
+        for (const auto& [semanticId, localBounds] :
+                guideEditorCoordinator.automationPointerTargets()) {
             dock.guideEditorTargets.push_back({
                     semanticId,
                     localBounds.translated(
@@ -1643,7 +1650,7 @@ bool NodeCanvas::deleteGuideCurveForAutomation(const String& guideId) {
     if (guideShelfState.selectedGuideId == guideId) {
         guideShelfState.selectedGuideId = {};
     }
-    if (expandedGuideId == guideId) {
+    if (guideEditorCoordinator.guideId() == guideId) {
         closeGuideEditor();
     }
     editStatusMessage = "Guide Curve deleted";
@@ -2039,8 +2046,8 @@ Rectangle<int> NodeCanvas::performanceKeyboardDockBounds() const {
 }
 
 Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
-    if (guideEditor != nullptr && guideEditor->isVisible()) {
-        return guideEditor->getBounds().toFloat();
+    if (guideEditorCoordinator.isOpen()) {
+        return guideEditorCoordinator.bounds();
     }
     if (probeDetailState.isOpen()) {
         return SignalProbeDetailView::boundsFor(editorContentBounds());
@@ -2179,37 +2186,9 @@ void NodeCanvas::closeNodeEditor() {
 }
 
 void NodeCanvas::openGuideEditor(const String& guideId) {
-    const GuideCurveResource* guide = graph.findGuideCurve(guideId);
-    if (guide == nullptr) {
-        return;
-    }
-
-    if (guideEditor == nullptr) {
-        guideEditorWidget = std::make_unique<CurveEditorWidget>(true);
-        guideEditor = std::make_unique<GuideCurveEditorComponent>(*guideEditorWidget);
-        guideEditor->setDelegate(this);
-        guideEditor->setHeatmapActions(
-                [this](const String& guideId, GuideHeatmapAssetPtr asset, uint64_t expectedRevision) {
-                    return setGuideHeatmap(guideId, std::move(asset), expectedRevision);
-                },
-                [this](const String& guideId, uint64_t expectedRevision) {
-                    return clearGuideHeatmap(guideId, expectedRevision);
-                });
-        guideEditor->setTitle("Guide Curve");
-        addAndMakeVisible(*guideEditor);
-    }
-
     expandedNodeId = {};
     editorCoordinator.close();
-    expandedGuideId = guideId;
-    guideEditor->setGuideResource(
-            *guide,
-            graph.guideHeatmapAsset(guide->heatmapAssetId));
-    guideEditor->setBounds(
-            GuideCurveEditorComponent::preferredHostBounds(editorContentBounds()).toNearestInt());
-    guideEditor->setVisible(true);
-    guideEditor->toFront(false);
-    notifyOverlayOcclusionChanged();
+    guideEditorCoordinator.open(guideId, editorContentBounds());
 }
 
 bool NodeCanvas::setGuideHeatmap(
@@ -2245,31 +2224,11 @@ bool NodeCanvas::clearGuideHeatmap(
 }
 
 void NodeCanvas::closeGuideEditor() {
-    if (guideTransactionBaseRevision.has_value()) {
-        commands.cancelTransientEdit();
-        guideTransactionBaseRevision.reset();
-        refreshCompiledStateAsync();
-    }
-    expandedGuideId = {};
-    if (guideEditor != nullptr) {
-        guideEditor->setVisible(false);
-    }
-    notifyOverlayOcclusionChanged();
-    requestCanvasRepaint();
+    guideEditorCoordinator.close();
 }
 
 void NodeCanvas::rebindGuideEditor() {
-    if (guideEditor == nullptr || !guideEditor->isVisible()) {
-        return;
-    }
-    const GuideCurveResource* guide = graph.findGuideCurve(expandedGuideId);
-    if (guide == nullptr) {
-        closeGuideEditor();
-        return;
-    }
-    guideEditor->setGuideResource(
-            *guide,
-            graph.guideHeatmapAsset(guide->heatmapAssetId));
+    guideEditorCoordinator.rebind();
 }
 
 void NodeCanvas::closeCurveEditor() {
@@ -2278,9 +2237,7 @@ void NodeCanvas::closeCurveEditor() {
 
 void NodeCanvas::repaintCurveEditorOpenGL() {
     openGLContext.triggerRepaint();
-    if (guideEditor != nullptr) {
-        guideEditor->repaint();
-    }
+    guideEditorCoordinator.repaint();
 }
 
 bool NodeCanvas::publishCurveState(
@@ -2288,30 +2245,10 @@ bool NodeCanvas::publishCurveState(
         const std::vector<NodeParameter>& controls) {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::ParameterEdit);
-    if (expandedGuideId.isEmpty()) {
-        return false;
-    }
-    const GuideCurveResource* durableGuide = document.graph().findGuideCurve(expandedGuideId);
-    if (durableGuide == nullptr) {
-        return false;
-    }
-    const uint64_t durableBaseRevision = guideTransactionBaseRevision.value_or(
-            durableGuide->revision);
-    const auto result = commands.publishGuideCurveState({
-            expandedGuideId,
-            durableBaseRevision,
+    return guideEditorCoordinator.publishCurveState(
             std::move(model),
-            controls
-    });
-    if (!result.succeeded()) {
-        return false;
-    }
-    if (PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
-                probeRailState.refreshMode)) {
-        scheduleCompiledStateRefresh();
-    }
-    requestCanvasRepaint();
-    return true;
+            controls,
+            probeRailState.refreshMode);
 }
 
 bool NodeCanvas::setNodeParameterText(
@@ -2329,21 +2266,11 @@ bool NodeCanvas::setNodeParameterText(
 }
 
 void NodeCanvas::beginCurveTransaction() {
-    const GuideCurveResource* guide = document.graph().findGuideCurve(expandedGuideId);
-    if (guide == nullptr || guideTransactionBaseRevision.has_value()) {
-        return;
-    }
-    guideTransactionBaseRevision = guide->revision;
-    commands.beginTransientEdit();
+    guideEditorCoordinator.beginTransaction();
 }
 
 void NodeCanvas::commitCurveTransaction() {
-    if (!guideTransactionBaseRevision.has_value()) {
-        return;
-    }
-    commands.commitTransientEdit();
-    guideTransactionBaseRevision.reset();
-    refreshCompiledStateAsync();
+    guideEditorCoordinator.commitTransaction();
 }
 
 void NodeCanvas::repaintNodeEditor(bool openGl) {
