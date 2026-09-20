@@ -7,6 +7,7 @@ namespace CycleV2 {
 using namespace juce;
 
 class NodeWorkspace;
+class CycleV2AutomationAssertions;
 
 class CycleV2Automation {
 public:
@@ -32,6 +33,7 @@ private:
     Component& window;
     Options options;
     std::unique_ptr<SessionServer> sessionServer;
+    std::unique_ptr<CycleV2AutomationAssertions> assertions;
 
     var runCommand(const var& commandValue);
     var handleSessionRequest(const var& request);
@@ -78,9 +80,6 @@ private:
     var pointer(const var& commandValue);
     var key(const var& commandValue);
     var screenshot(const var& commandValue) const;
-    var assertState(const var& commandValue) const;
-    var assertNodeParameter(const var& commandValue) const;
-    var listAssertionPaths() const;
     var waitForIdle(const var& commandValue) const;
 
     Component* componentForArea(const String& area) const;

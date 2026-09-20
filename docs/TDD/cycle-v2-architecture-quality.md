@@ -519,6 +519,17 @@ is 70 lines with a 61-line interface. Transport, assertions, pointer input, and
 domain handlers still share the original class, so their extraction remains
 open.
 
+Assertion slice: JSON result construction, property reads, path traversal, path
+flattening, and comparison semantics now live in
+`CycleV2AutomationProtocol`; `CycleV2AutomationAssertions` composes that
+protocol with snapshot and parameter-reader callbacks. The state, node
+parameter, and assertion-path handlers were deleted from the transport class.
+`CycleV2Automation.cpp` fell from 1,995 to 1,742 lines. The assertion service is
+110 lines with a 30-line interface, and the shared protocol is 176 lines with a
+41-line interface. Focused assertion behavior passes three checks. Pointer
+input, protocol transport, and UI-facing domain handler extraction remain
+open.
+
 ### 3. Separate runtime execution policies
 
 `GraphAudioExecutor::processInternal` takes diagnostics, observer, dirty-node,
