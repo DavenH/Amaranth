@@ -14,6 +14,8 @@
 
 namespace CycleV2 {
 
+class GraphEdgeIndex;
+
 struct NodeSnapGuides {
     std::optional<float> x;
     std::optional<float> y;
@@ -179,7 +181,8 @@ public:
     std::vector<String> nodeIdsIntersecting(
             const NodeGraph& graph,
             const NodeCanvasViewport& viewport,
-            Rectangle<float> screenBounds) const;
+            Rectangle<float> screenBounds,
+            const GraphEdgeIndex& edgeIndex) const;
 
     SnappedNodeBounds snapNode(
             const NodeGraph& graph,

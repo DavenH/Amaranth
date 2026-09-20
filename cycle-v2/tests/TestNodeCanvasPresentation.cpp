@@ -67,13 +67,20 @@ TEST_CASE("Node canvas marks only authored global processing",
     });
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
+    GraphPresentationSnapshot snapshot;
+    GraphPresentationFacts facts(graph, snapshot);
+    const auto isGlobal = [&](const String& nodeId) {
+        return graph.findNode(nodeId) != nullptr
+                && facts.audioScopeAnalysis().scopeFor(nodeId)
+                        == AuthoredAudioScope::Global;
+    };
 
-    REQUIRE_FALSE(NodeCanvasPresentation::hasGlobalProcessingIndicator(graph, "wave"));
-    REQUIRE(NodeCanvasPresentation::hasGlobalProcessingIndicator(graph, "global"));
-    REQUIRE(NodeCanvasPresentation::hasGlobalProcessingIndicator(graph, "route"));
-    REQUIRE(NodeCanvasPresentation::hasGlobalProcessingIndicator(graph, "delay"));
-    REQUIRE(NodeCanvasPresentation::hasGlobalProcessingIndicator(graph, "out"));
-    REQUIRE_FALSE(NodeCanvasPresentation::hasGlobalProcessingIndicator(graph, "missing"));
+    REQUIRE_FALSE(isGlobal("wave"));
+    REQUIRE(isGlobal("global"));
+    REQUIRE(isGlobal("route"));
+    REQUIRE(isGlobal("delay"));
+    REQUIRE(isGlobal("out"));
+    REQUIRE_FALSE(isGlobal("missing"));
 
     graph.addNode(factory.createNode(NodeKind::Equalizer, "invalidGlobalEq", {}));
     REQUIRE(GraphNodeStateEditor().setNodeParameter(
@@ -83,9 +90,9 @@ TEST_CASE("Node canvas marks only authored global processing",
             "Processing",
             "global").succeeded());
     REQUIRE_FALSE(GraphCompiler().compile(graph).succeeded());
-    REQUIRE(NodeCanvasPresentation::hasGlobalProcessingIndicator(
-            graph,
-            "invalidGlobalEq"));
+    GraphPresentationFacts invalidFacts(graph, snapshot);
+    REQUIRE(invalidFacts.audioScopeAnalysis().scopeFor("invalidGlobalEq")
+            == AuthoredAudioScope::Global);
 
     const Rectangle<float> header { 20.f, 30.f, 180.f, 42.f };
     const auto clear = NodeCanvasPresentation::globalProcessingIndicatorBounds(

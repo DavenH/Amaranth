@@ -94,9 +94,6 @@ public:
     static String canvasStatusText(
             const String& statusMessage,
             const String& hoverText);
-    static bool hasGlobalProcessingIndicator(
-            const NodeGraph& graph,
-            const String& nodeId);
     static Rectangle<float> globalProcessingIndicatorBounds(
             Rectangle<float> header,
             float zoom,

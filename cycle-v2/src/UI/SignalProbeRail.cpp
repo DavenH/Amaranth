@@ -114,25 +114,6 @@ std::vector<String> SignalProbeRail::orderedProbeIds(const NodeGraph& graph) {
     return ids;
 }
 
-NodeRenderSemantic SignalProbeRail::renderSemanticForProbe(
-        const NodeGraph& graph,
-        const String& probeId) {
-    const auto found = std::find_if(
-            graph.getSignalProbes().begin(),
-            graph.getSignalProbes().end(),
-            [&](const auto& probe) {
-                return probe.id == probeId;
-            });
-    if (found == graph.getSignalProbes().end()) {
-        return {};
-    }
-
-    return GraphRenderSemanticResolver().semanticForNodeOutput(
-            graph,
-            found->sourceNodeId,
-            found->sourcePortId);
-}
-
 std::vector<const SignalProbe*> SignalProbeRail::orderedProbes(const NodeGraph& graph) {
     std::vector<const SignalProbe*> probes;
     probes.reserve(graph.getSignalProbes().size());

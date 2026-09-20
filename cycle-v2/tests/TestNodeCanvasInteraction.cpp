@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphNodeFactory.h"
 #include "UI/NodeCanvasInteraction.h"
 
@@ -241,13 +242,16 @@ TEST_CASE("Node canvas interaction keeps one screen-space area selection rectang
     graph.addNode(factory.createNode(NodeKind::Output, "outside", { 500.f, 600.f }));
     NodeCanvasViewport viewport;
     viewport.setTransform({ 10.f, 20.f }, 0.5f);
+    const GraphEdgeIndex edgeIndex(graph.getEdges());
     const Rectangle<float> insideBounds = viewport.toScreen(
             NodeCanvasScene::presentationWorldBounds(
                     graph,
-                    *graph.findNode("inside")));
+                    *graph.findNode("inside"),
+                    edgeIndex));
     REQUIRE(interaction.nodeIdsIntersecting(
             graph,
             viewport,
-            insideBounds.reduced(2.f))
+            insideBounds.reduced(2.f),
+            edgeIndex)
             == std::vector<String> { "inside" });
 }

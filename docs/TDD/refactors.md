@@ -37,7 +37,7 @@ preview/probe loops, and per-query full domain resolution. Scale disconnected
 graph content and assert unchanged lookup/domain work in addition to semantic
 and pixel parity.
 
-Status: in progress. The first slice adds `GraphPresentationFacts` beside each
+Status: addressed. The first slice adds `GraphPresentationFacts` beside each
 accepted snapshot. It owns one structural edge index, domain resolution, and
 audio-scope analysis, plus indexed node previews, probe previews, runtime
 traces, and execution order. Preview-only publications rebuild the small
@@ -75,6 +75,28 @@ probe tests excluding the stale Stengah preset fixture pass 308 assertions in
 `SignalProbeRail.cpp` from 527 to 519; their policy responsibilities move to
 the existing facts owner rather than another presentation helper. The preset
 mismatch is recorded in `audio-bugs.md`.
+
+The final slice makes scene construction, inline-pan placement, cable probe
+resolution, node painting, hover resolution, and area selection consume the
+same published `GraphEdgeIndex`. `NodeCanvasScene` no longer scans the complete
+edge list once or twice per spectral-layer query, and its public placement and
+cable helpers now require an index so a caller cannot silently reintroduce
+per-query topology construction. The automation inspector supplies the facts
+index when it builds its scene. Its remaining preview loops serialize the full
+automation result and do not answer individual presentation queries.
+
+The final deletion audit also removes `SignalProbeRail::renderSemanticForProbe`
+and `NodeCanvasPresentation::hasGlobalProcessingIndicator`, the last UI entry
+points that could independently run render-semantic or audio-scope analysis.
+Production UI code now constructs those structural facts only at snapshot
+publication. The focused scene, hit-router, automation, presentation, and probe
+suites pass 521 assertions in 49 cases, plus the spectral-probe semantic case.
+For this slice, `NodeCanvasPresentation.cpp` falls from 1,470 to 1,466 lines and
+`SignalProbeRail.cpp` from 519 to 500. `NodeCanvasScene.cpp` grows from 489 to
+524 lines to own indexed route lookup; `NodeCanvas.cpp` grows from 2,530 to
+2,570 lines from explicit dependency forwarding without taking on a new
+policy. The resulting dependency direction is snapshot publication to facts,
+then facts to query, scene, and presentation consumers.
 
 ### P1: Centralize operation-port layout
 

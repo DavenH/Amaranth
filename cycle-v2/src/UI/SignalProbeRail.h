@@ -7,7 +7,6 @@
 #include "UI/NodeCanvasPresentationPerformanceObserver.h"
 #include "UI/SignalProbePreviewTileCache.h"
 #include "UI/WorkspaceDock.h"
-#include "Graph/GraphRenderSemanticResolver.h"
 #include "Runtime/GraphPresentationFacts.h"
 #include "Runtime/GraphPresentationSnapshot.h"
 #include "Runtime/PresentationRefreshPolicy.h"
@@ -53,9 +52,6 @@ public:
     static float maximumHorizontalOffset(Rectangle<float> workspace, int probeCount);
     static int ordinalForProbe(const NodeGraph& graph, const String& probeId);
     static std::vector<String> orderedProbeIds(const NodeGraph& graph);
-    static NodeRenderSemantic renderSemanticForProbe(
-            const NodeGraph& graph,
-            const String& probeId);
     static Point<float> markerCentre(
             const SignalProbe& probe,
             const NodeGraph& graph,

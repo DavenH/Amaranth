@@ -889,7 +889,8 @@ void NodeCanvasPresentation::paintEdges(
             frame.graph,
             frame.viewport,
             frame.presentationRevision,
-            frame.documentRevision);
+            frame.documentRevision,
+            &frame.facts.edgeIndex());
 
     if (!frame.nodeDragActive) {
         cableLayerCache.beginFrame(frame.canvasBounds.toNearestInt(), physicalScale);
@@ -1063,7 +1064,8 @@ void NodeCanvasPresentation::paintCachedNodes(
     const Rectangle<float> visibleArea = frame.canvasBounds.expanded(120.f);
     for (const Node& node : frame.graph.getNodes()) {
         const Rectangle<float> nodeBounds = frame.viewport.toScreen(
-                NodeCanvasScene::presentationWorldBounds(frame.graph, node));
+                NodeCanvasScene::presentationWorldBounds(
+                        frame.graph, node, frame.facts.edgeIndex()));
         if (!nodeBounds.intersects(visibleArea)) {
             continue;
         }
@@ -1102,7 +1104,8 @@ void NodeCanvasPresentation::paintInlinePanGesture(
     const float zoom = frame.viewport.getZoom();
     const float scale = portScale(zoom);
     const Rectangle<float> nodeBounds = frame.viewport.toScreen(
-            NodeCanvasScene::presentationWorldBounds(frame.graph, *node));
+            NodeCanvasScene::presentationWorldBounds(
+                    frame.graph, *node, frame.facts.edgeIndex()));
     const float pan = jlimit(0.f, 1.f, NodeParameterMap(*node).floatValue("pan", 0.5f));
     const Colour colour = colourForDomain(profileFor(frame, *node).getDomain());
     paintPanGestureArc(graphics, nodeBounds, pan, colour, scale);
@@ -1114,7 +1117,8 @@ void NodeCanvasPresentation::paintCachedNode(
         const Node& node,
         float physicalScale) {
     const Rectangle<float> logicalBounds = frame.viewport.toScreen(
-            NodeCanvasScene::presentationWorldBounds(frame.graph, node))
+            NodeCanvasScene::presentationWorldBounds(
+                    frame.graph, node, frame.facts.edgeIndex()))
             .expanded(32.f * portScale(frame.viewport.getZoom()));
     const NodePreviewResult* runtimePreview = frame.facts.previewFor(
             frame.snapshot, node.id);
@@ -1179,16 +1183,6 @@ UnisonPreviewContext NodeCanvasPresentation::unisonPreviewContextFor(
     return fallback;
 }
 
-bool NodeCanvasPresentation::hasGlobalProcessingIndicator(
-        const NodeGraph& graph,
-        const String& nodeId) {
-    if (graph.findNode(nodeId) == nullptr) {
-        return false;
-    }
-    return GraphAudioScopeAnalyzer().analyze(graph).scopeFor(nodeId)
-            == AuthoredAudioScope::Global;
-}
-
 Rectangle<float> NodeCanvasPresentation::globalProcessingIndicatorBounds(
         Rectangle<float> header,
         float zoom,
@@ -1212,7 +1206,8 @@ void NodeCanvasPresentation::paintNode(
     const float scale = portScale(zoom);
     const float corner = CanvasChromeMetrics::panelCornerRadius * scale;
     const Rectangle<float> nodeBounds = frame.viewport.toScreen(
-            NodeCanvasScene::presentationWorldBounds(frame.graph, node));
+            NodeCanvasScene::presentationWorldBounds(
+                    frame.graph, node, frame.facts.edgeIndex()));
     if (node.kind == NodeKind::ModulationSource) {
         paintSingleModulationNode(graphics, frame, node, nodeBounds, zoom, scale);
         return;
@@ -1453,7 +1448,8 @@ void NodeCanvasPresentation::renderOpenGLEffectPreviews(
     const Rectangle<float> visibleArea = frame.canvasBounds.expanded(120.f);
     for (const auto& node : frame.graph.getNodes()) {
         const Rectangle<float> nodeBounds = frame.viewport.toScreen(
-                NodeCanvasScene::presentationWorldBounds(frame.graph, node));
+                NodeCanvasScene::presentationWorldBounds(
+                        frame.graph, node, frame.facts.edgeIndex()));
         if (!nodeBounds.intersects(visibleArea)
                 || (!frame.canvasOcclusion.isEmpty()
                     && frame.canvasOcclusion.intersects(nodeBounds))) {

@@ -9,6 +9,7 @@
 #include <Util/Arithmetic.h>
 
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
@@ -687,9 +688,11 @@ TEST_CASE("Signal probes inherit spectral mesh render semantics",
     });
     REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
 
-    const NodeRenderSemantic semantic = SignalProbeRail::renderSemanticForProbe(
-            graph,
-            graph.getSignalProbes().front().id);
+    GraphPresentationSnapshot snapshot;
+    GraphPresentationFacts facts(graph, snapshot);
+    const SignalProbe& probe = graph.getSignalProbes().front();
+    const NodeRenderSemantic semantic = facts.renderSemanticForNodeOutput(
+            graph, probe.sourceNodeId, probe.sourcePortId);
     REQUIRE(semantic.domain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(semantic.scalePolicy == RenderScalePolicy::Bipolar);
     REQUIRE(semantic.role == RenderSemanticRole::SpectralMagnitudeBipolar);
@@ -1306,6 +1309,7 @@ TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
     graph.addEdge({
             "pan", "out", "ifft", "mag",
             PortDomain::ControlSignal, ConnectionKind::Signal });
+    const GraphEdgeIndex edgeIndex(graph.getEdges());
 
     const Node& mesh = *graph.findNode("mesh");
     const Node& ifft = *graph.findNode("ifft");
@@ -1320,7 +1324,8 @@ TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
     const Point<float> cableMidpoint = cablePath.getPointAlongPath(cablePath.getLength() * 0.5f);
     const Rectangle<float> panOnly = NodeCanvasScene::presentationWorldBounds(
             graph,
-            *graph.findNode("pan"));
+            *graph.findNode("pan"),
+            edgeIndex);
     REQUIRE(panOnly.getCentreX() == Catch::Approx(cableMidpoint.x));
     REQUIRE(panOnly.getCentreY() == Catch::Approx(cableMidpoint.y));
 
@@ -1343,14 +1348,15 @@ TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
             [](const auto& target) {
                 return target.nodeId == "pan" && target.isPort();
             }));
-    REQUIRE(NodeCanvasScene::cableExtraEdgeIndex(graph, 1) == 0);
+    REQUIRE(NodeCanvasScene::cableExtraEdgeIndex(graph, 1, edgeIndex) == 0);
 
     graph.addSignalProbe({
             "probe1", "mesh", "out", "pan", "in", "Spy 1", 0.91f, 0 });
     const Point<float> twoThirds = cablePath.getPointAlongPath(cablePath.getLength() * 2.f / 3.f);
     const Rectangle<float> panWithSpy = NodeCanvasScene::presentationWorldBounds(
             graph,
-            *graph.findNode("pan"));
+            *graph.findNode("pan"),
+            edgeIndex);
     REQUIRE(panWithSpy.getCentreX() == Catch::Approx(twoThirds.x));
     REQUIRE(panWithSpy.getCentreY() == Catch::Approx(twoThirds.y));
     const auto& incomingProbeScene = sceneBuilder.build(graph, viewport, 1, 1);
@@ -1367,7 +1373,8 @@ TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
             "probe2", "pan", "out", "ifft", "mag", "Spy 1", 0.08f, 0 });
     const Rectangle<float> outgoingSpyPan = NodeCanvasScene::presentationWorldBounds(
             graph,
-            *graph.findNode("pan"));
+            *graph.findNode("pan"),
+            edgeIndex);
     REQUIRE(outgoingSpyPan.getCentreX() == Catch::Approx(oneThird.x));
     REQUIRE(outgoingSpyPan.getCentreY() == Catch::Approx(oneThird.y));
     const auto& outgoingProbeScene = sceneBuilder.build(graph, viewport, 1, 1);
