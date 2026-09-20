@@ -9,12 +9,11 @@ using namespace juce;
 class NodeWorkspace;
 class CycleV2AutomationAssertions;
 class CycleV2AutomationInput;
+class CycleV2AutomationSessionTransport;
 class CycleV2AutomationWorkspaceCommands;
 
 class CycleV2Automation {
 public:
-    class SessionServer;
-
     struct Options {
         File scriptFile;
         File reportFile;
@@ -34,13 +33,12 @@ private:
     NodeWorkspace& workspace;
     Component& window;
     Options options;
-    std::unique_ptr<SessionServer> sessionServer;
+    std::unique_ptr<CycleV2AutomationSessionTransport> sessionTransport;
     std::unique_ptr<CycleV2AutomationAssertions> assertions;
     std::unique_ptr<CycleV2AutomationInput> input;
     std::unique_ptr<CycleV2AutomationWorkspaceCommands> workspaceCommands;
 
     var runCommand(const var& commandValue);
-    var handleSessionRequest(const var& request);
     void startSessionServer();
     File resolveCommandPath(const String& path) const;
     var snapshotState() const;

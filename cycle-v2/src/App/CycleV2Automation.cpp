@@ -4,19 +4,12 @@
 #include "App/CycleV2AutomationCommand.h"
 #include "App/CycleV2AutomationInput.h"
 #include "App/CycleV2AutomationProtocol.h"
+#include "App/CycleV2AutomationSessionTransport.h"
 #include "App/CycleV2AutomationWorkspaceCommands.h"
 #include "App/OfflineAudioCaptureAutomation.h"
 #include "UI/NodeWorkspace.h"
 
-#include <cerrno>
-#include <cstring>
 #include <utility>
-
-#if JUCE_MAC || JUCE_LINUX
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
-#endif
 
 namespace CycleV2 {
 
@@ -81,153 +74,7 @@ bool checkAudioThresholds(const var& command, const var& metrics, String& messag
             && checkMetricThreshold(command, metrics, "rmsLessThan", "rms", "lessThan", message);
 }
 
-
 }
-
-class CycleV2Automation::SessionServer :
-        public Thread {
-public:
-    SessionServer(CycleV2Automation& owner, String socketPath) :
-            Thread("CycleV2AutomationSession")
-        ,   owner(owner)
-        ,   socketPath(std::move(socketPath)) {
-    }
-
-    ~SessionServer() override {
-        signalThreadShouldExit();
-        closeServerSocket();
-        stopThread(1000);
-      #if JUCE_MAC || JUCE_LINUX
-        ::unlink(socketPath.toRawUTF8());
-      #else
-        File(socketPath).deleteFile();
-      #endif
-    }
-
-    bool start(String& message) {
-      #if JUCE_MAC || JUCE_LINUX
-        ::unlink(socketPath.toRawUTF8());
-
-        serverFd = ::socket(AF_UNIX, SOCK_STREAM, 0);
-
-        if (serverFd < 0) {
-            message = "Could not create Cycle V2 session socket: " + String(std::strerror(errno));
-            return false;
-        }
-
-        sockaddr_un address{};
-        address.sun_family = AF_UNIX;
-        const auto path = socketPath.toRawUTF8();
-        std::strncpy(address.sun_path, path, sizeof(address.sun_path) - 1);
-
-        if (::bind(serverFd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0) {
-            message = "Could not bind Cycle V2 session socket: " + String(std::strerror(errno));
-            closeServerSocket();
-            return false;
-        }
-
-        if (::listen(serverFd, 8) != 0) {
-            message = "Could not listen on Cycle V2 session socket: " + String(std::strerror(errno));
-            closeServerSocket();
-            return false;
-        }
-
-        startThread();
-        message = "Cycle V2 automation session listening: " + socketPath;
-        return true;
-      #else
-        ignoreUnused(message);
-        return false;
-      #endif
-    }
-
-    void run() override {
-      #if JUCE_MAC || JUCE_LINUX
-        while (!threadShouldExit()) {
-            int clientFd = ::accept(serverFd, nullptr, nullptr);
-
-            if (clientFd < 0) {
-                if (!threadShouldExit()) {
-                    Thread::sleep(25);
-                }
-
-                continue;
-            }
-
-            handleClient(clientFd);
-            ::close(clientFd);
-        }
-      #endif
-    }
-
-private:
-    void closeServerSocket() {
-      #if JUCE_MAC || JUCE_LINUX
-        if (serverFd >= 0) {
-            ::shutdown(serverFd, SHUT_RDWR);
-            ::close(serverFd);
-            serverFd = -1;
-        }
-      #endif
-    }
-
-    static var errorResponse(const String& message) {
-        var response = makeObject();
-        auto* object = objectFor(response);
-        object->setProperty("ok", false);
-        object->setProperty("message", message);
-        return response;
-    }
-
-    void handleClient(int clientFd) {
-      #if JUCE_MAC || JUCE_LINUX
-        String requestText;
-        char buffer[1024];
-
-        while (!threadShouldExit()) {
-            const ssize_t count = ::read(clientFd, buffer, sizeof(buffer));
-
-            if (count <= 0) {
-                break;
-            }
-
-            requestText += String::fromUTF8(buffer, int(count));
-
-            if (requestText.containsChar('\n')) {
-                requestText = requestText.upToFirstOccurrenceOf("\n", false, false);
-                break;
-            }
-        }
-
-        const var request = JSON::parse(requestText);
-        auto completed = std::make_shared<WaitableEvent>();
-        auto response = std::make_shared<var>();
-
-        const bool dispatched = MessageManager::callAsync([this, request, response, completed] {
-            *response = owner.handleSessionRequest(request);
-            completed->signal();
-        });
-
-        if (dispatched) {
-            if (!completed->wait(30000)) {
-                *response = errorResponse("Timed out waiting for Cycle V2 message thread");
-            }
-        } else {
-            *response = errorResponse("Could not dispatch Cycle V2 session request to message thread");
-        }
-
-        const String responseText = JSON::toString(*response, true) + "\n";
-        const CharPointer_UTF8 utf8 = responseText.toUTF8();
-        ::write(clientFd, utf8.getAddress(), std::strlen(utf8.getAddress()));
-      #else
-        ignoreUnused(clientFd);
-      #endif
-    }
-
-    CycleV2Automation& owner;
-    String socketPath;
-    int serverFd { -1 };
-};
 
 CycleV2Automation::Options CycleV2Automation::parseCommandLine(const String& commandLine) {
     Options options;
@@ -274,6 +121,8 @@ CycleV2Automation::CycleV2Automation(NodeWorkspace& workspace, Component& window
             workspace,
             [this]() { return snapshotState(); },
             [this](const String& path) { return resolveCommandPath(path); });
+    sessionTransport = std::make_unique<CycleV2AutomationSessionTransport>(
+            [this](const var& command) { return runCommand(command); });
     input = std::make_unique<CycleV2AutomationInput>(
             workspace,
             [this](const String& area) { return componentForArea(area); },
@@ -286,7 +135,7 @@ CycleV2Automation::CycleV2Automation(NodeWorkspace& workspace, Component& window
 }
 
 CycleV2Automation::~CycleV2Automation() {
-    sessionServer = nullptr;
+    sessionTransport = nullptr;
 }
 
 File CycleV2Automation::resolveCommandPath(const String& path) const {
@@ -362,7 +211,7 @@ void CycleV2Automation::runScriptAsync() {
 }
 
 void CycleV2Automation::startSessionServer() {
-    if (sessionServer != nullptr || !options.hasSession) {
+    if (sessionTransport->isRunning() || !options.hasSession) {
         return;
     }
 
@@ -372,11 +221,8 @@ void CycleV2Automation::startSessionServer() {
     }
 
     String message;
-    sessionServer = std::make_unique<SessionServer>(*this, options.sessionPath);
-
-    if (!sessionServer->start(message)) {
+    if (!sessionTransport->start(options.sessionPath, message)) {
         DBG(message);
-        sessionServer = nullptr;
         return;
     }
 
@@ -490,49 +336,6 @@ var CycleV2Automation::runCommand(const var& commandValue) {
 
     jassertfalse;
     return failedResult(command, "Unregistered Cycle V2 automation command");
-}
-
-var CycleV2Automation::handleSessionRequest(const var& request) {
-    var response = makeObject();
-    auto* responseObject = objectFor(response);
-    responseObject->setProperty("ok", false);
-
-    if (request.isVoid()) {
-        responseObject->setProperty("message", "Invalid JSON request");
-        return response;
-    }
-
-    if (const auto* requestObject = objectFor(request)) {
-        const var id = requestObject->getProperty("id");
-
-        if (!id.isVoid()) {
-            responseObject->setProperty("id", id);
-        }
-
-        var command = requestObject->getProperty("command");
-
-        if (command.isVoid()) {
-            command = request;
-        }
-
-        const var result = runCommand(command);
-        const bool ok = boolProperty(result, "ok");
-        responseObject->setProperty("ok", ok);
-        responseObject->setProperty("result", result);
-
-        if (stringProperty(command, "command") == "quit") {
-            MessageManager::callAsync([] {
-                JUCEApplicationBase::quit();
-            });
-        }
-
-        return response;
-    }
-
-    const var result = runCommand(request);
-    responseObject->setProperty("ok", boolProperty(result, "ok"));
-    responseObject->setProperty("result", result);
-    return response;
 }
 
 var CycleV2Automation::snapshotState() const {

@@ -557,6 +557,18 @@ build, and a live fixture successfully inspected and opened `waveMesh` through
 the service. Session transport and `NodeCanvas` gesture/editor ownership remain
 open.
 
+Session-transport slice: Unix socket lifecycle, blocking client I/O, message
+thread dispatch, request-envelope normalization, response encoding, and quit
+handling now live in `CycleV2AutomationSessionTransport`. The transport owns no
+command policy; it receives one typed JSON command callback. The nested server
+and request handler were deleted from the automation orchestrator, which fell
+from 1,036 to 839 lines. The transport implementation is 216 lines with a
+28-line interface. The app and tests build, and a live session preserved the
+request id while successfully returning `snapshotState` and accepting `quit`.
+Together with the registry, assertions, input, and workspace-command services,
+this completes the automation composition target. `NodeCanvas` gesture and
+editor ownership remains open for this UI slice.
+
 ### 3. Separate runtime execution policies
 
 `GraphAudioExecutor::processInternal` takes diagnostics, observer, dirty-node,
