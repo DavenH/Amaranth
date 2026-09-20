@@ -35,13 +35,6 @@ struct NodeCanvasAuthoringResult {
 
 class NodeCanvasAuthoring {
 public:
-    enum class OperationPortLayout {
-        Side,
-        Uptack,
-        Vertical,
-        Tee
-    };
-
     NodeCanvasAuthoring(
             GraphDocument& document,
             GraphCommandDispatcher& commands,
@@ -131,10 +124,6 @@ public:
     NodeCanvasAuthoringResult setTransformMode(
             const String& nodeId,
             TransformMode mode);
-
-    static OperationPortLayout operationPortLayout(const Node& node);
-    static OperationPortLayout nextOperationPortLayout(OperationPortLayout layout);
-    static PortSide nextOutputSide(const Node& node);
 
 private:
     NodeCanvasAuthoringResult graphEditResult(

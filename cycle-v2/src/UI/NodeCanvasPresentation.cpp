@@ -435,56 +435,6 @@ void paintGlobalProcessingIcon(
             icon.getRight() - 1.5f * zoom);
 }
 
-enum class OperationPortLayout {
-    Side,
-    Uptack,
-    Vertical,
-    Tee
-};
-
-OperationPortLayout operationLayout(const Node& node) {
-    if (node.inputs.size() < 2) {
-        return OperationPortLayout::Side;
-    }
-
-    const PortSide first = node.inputs[0].side;
-    const PortSide second = node.inputs[1].side;
-    if (first == PortSide::Left && second == PortSide::Bottom) {
-        return OperationPortLayout::Tee;
-    }
-    if (first == PortSide::Top && second == PortSide::Bottom) {
-        return OperationPortLayout::Vertical;
-    }
-    if (first == PortSide::Left && second == PortSide::Top) {
-        return OperationPortLayout::Uptack;
-    }
-
-    return OperationPortLayout::Side;
-}
-
-OperationPortLayout nextLayout(OperationPortLayout layout) {
-    switch (layout) {
-        case OperationPortLayout::Side:     return OperationPortLayout::Uptack;
-        case OperationPortLayout::Uptack:   return OperationPortLayout::Vertical;
-        case OperationPortLayout::Vertical: return OperationPortLayout::Tee;
-        case OperationPortLayout::Tee:      return OperationPortLayout::Side;
-    }
-
-    return OperationPortLayout::Side;
-}
-
-PortSide nextOutputSide(const Node& node) {
-    const PortSide side = node.outputs.empty() ? PortSide::Right : node.outputs.front().side;
-    switch (side) {
-        case PortSide::Right:  return PortSide::Bottom;
-        case PortSide::Bottom: return PortSide::Top;
-        case PortSide::Top:    return PortSide::Right;
-        case PortSide::Left:   return PortSide::Right;
-    }
-
-    return PortSide::Right;
-}
-
 void paintActionButton(Graphics& graphics, Rectangle<float> button, float scale) {
     graphics.setColour(CanvasChromePalette::insetBackground.withAlpha(0.78f));
     graphics.fillEllipse(button);
@@ -1288,7 +1238,7 @@ void NodeCanvasPresentation::paintNode(
                     graphics,
                     actionButton(nodeBounds, zoom),
                     scale,
-                    nextLayout(operationLayout(node)));
+                    nextOperationPortLayout(operationPortLayout(node)));
         } else if (supportsSinglePortLayout(node)) {
             paintSinglePortAction(
                     graphics,
@@ -1300,7 +1250,7 @@ void NodeCanvasPresentation::paintNode(
                     graphics,
                     actionButton(nodeBounds, zoom),
                     scale,
-                    nextOutputSide(node));
+                    nextOutputPortSide(node));
         }
 
         const Rectangle<float> preview = previewRenderer.boundsFor(node, nodeBounds, zoom);

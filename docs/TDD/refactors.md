@@ -98,7 +98,7 @@ For this slice, `NodeCanvasPresentation.cpp` falls from 1,470 to 1,466 lines and
 policy. The resulting dependency direction is snapshot publication to facts,
 then facts to query, scene, and presentation consumers.
 
-### P1: Centralize operation-port layout
+### Addressed: Centralize operation-port layout
 
 `NodeCanvasPresentation.cpp` and `NodeCanvasAuthoring.cpp` contain separate
 copies of `OperationPortLayout`, the input-side-to-layout mapping, the layout
@@ -110,6 +110,23 @@ Move operation layout classification, cycling, and application into
 `NodePortLayout`. Make presentation and authoring consume that contract and
 delete both private copies. Cover every layout with one test that checks the
 authored port sides, painted port centres, and hit targets together.
+
+Implemented in `NodePortLayout`. It now owns operation-layout support,
+classification, cycling, and application, together with the output-side cycle.
+`NodeCanvasAuthoring` requests and applies the next layout through that API;
+`NodeCanvasPresentation` uses the same next-layout result for its action icon.
+Both private enums, classifiers, cycles, and the authoring-side assignment
+switch are deleted. The cross-layer layout test covers all four states and
+compares the applied input/output sides with `portPresentation` centres and
+the scene hit targets. Focused authoring, presentation, and hit-router layout
+suites pass 101 assertions in four cases.
+
+The original policy owners shrink as a result: `NodeCanvasAuthoring.cpp` from
+1,009 to 947 lines, its header from 176 to 165, and
+`NodeCanvasPresentation.cpp` from 1,466 to 1,416. `NodePortLayout.cpp` grows
+from 57 to 130 lines as the single focused owner; its header grows from 18 to
+32. Presentation and authoring now depend on layout policy, while layout policy
+depends only on the graph's `Node` and port-side types.
 
 ### Addressed: Centralize Voice Context assignment facts
 

@@ -1,11 +1,70 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+#include <array>
+
 #include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "UI/NodeCanvasPresentation.h"
+#include "UI/NodePortLayout.h"
 
 using namespace CycleV2;
+
+TEST_CASE("Operation port layouts share authored, painted, and hit geometry",
+        "[cycle-v2][canvas][presentation][layout]") {
+    struct LayoutExpectation {
+        OperationPortLayout layout;
+        PortSide firstInput;
+        PortSide secondInput;
+    };
+    const std::array<LayoutExpectation, 4> expectations {{
+            { OperationPortLayout::Side, PortSide::Left, PortSide::Left },
+            { OperationPortLayout::Uptack, PortSide::Left, PortSide::Top },
+            { OperationPortLayout::Vertical, PortSide::Top, PortSide::Bottom },
+            { OperationPortLayout::Tee, PortSide::Left, PortSide::Bottom }
+    }};
+
+    NodeCanvasViewport viewport;
+    viewport.setTransform({ 31.f, 47.f }, 0.73f);
+    for (size_t index = 0; index < expectations.size(); ++index) {
+        const LayoutExpectation& expectation = expectations[index];
+        Node node = GraphNodeFactory().createNode(NodeKind::Add, "add", { 120.f, 80.f });
+        applyOperationPortLayout(node, expectation.layout);
+
+        REQUIRE(operationPortLayout(node) == expectation.layout);
+        REQUIRE(nextOperationPortLayout(expectation.layout)
+                == expectations[(index + 1) % expectations.size()].layout);
+        REQUIRE(node.inputs[0].side == expectation.firstInput);
+        REQUIRE(node.inputs[1].side == expectation.secondInput);
+        REQUIRE(node.outputs[0].side == PortSide::Right);
+
+        NodeGraph graph;
+        graph.addNode(node);
+        const Node& stored = *graph.findNode("add");
+        NodeCanvasScene sceneBuilder;
+        const NodeCanvasSceneSnapshot& scene = sceneBuilder.build(graph, viewport);
+        const auto checkPort = [&](const Port& port) {
+            const NodePortPresentation painted = NodeCanvasPresentation::portPresentation(
+                    viewport, stored, port);
+            const auto target = std::find_if(
+                    scene.targets.begin(),
+                    scene.targets.end(),
+                    [&](const NodeSceneTarget& candidate) {
+                        return candidate.nodeId == stored.id
+                                && candidate.portId == port.id
+                                && candidate.isPort();
+                    });
+            REQUIRE(target != scene.targets.end());
+            REQUIRE(target->bounds.contains(painted.centre));
+            REQUIRE(target->bounds.getCentreX() == Catch::Approx(painted.centre.x));
+            REQUIRE(target->bounds.getCentreY() == Catch::Approx(painted.centre.y));
+        };
+        checkPort(stored.inputs[0]);
+        checkPort(stored.inputs[1]);
+        checkPort(stored.outputs[0]);
+    }
+}
 
 TEST_CASE("Node canvas presentation shares port centres with the scene model",
         "[cycle-v2][canvas][presentation]") {
