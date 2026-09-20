@@ -544,6 +544,19 @@ assertions, and the realtime-tagged set passes 144 assertions across 14 cases.
 contract change; preparation/cache extraction and the shared oscillator region
 planner remain open.
 
+Oscillator planning slice: `OscillatorRegionPlanView` now owns structural
+region validation, step membership, port lookup, and the decision that an input
+originates inside a region. Both chained and shared-spectral renderers use that
+view while retaining their distinct strategy and supported-role rules. The
+duplicated membership vectors and input traversal helpers were deleted.
+`SpectralOscillatorFrameRenderer.cpp` fell from 828 to 799 lines and
+`ChainedOscillatorRecipeRenderer.cpp` from 377 to 349 lines; the shared view is
+48 lines with a 29-line interface. Its boundary test passes seven assertions,
+and the spectral unresolved-control fallback passes six assertions. The broad
+oscillator set still contains the existing missing preset fixture failures.
+Preparation and processor-cache ownership remain the final runtime extraction
+target.
+
 ### 4. Correct node-domain dependency direction
 
 `TrimeshNodeModel::renderGrid` constructs blockwise/gridwise DSP processors and

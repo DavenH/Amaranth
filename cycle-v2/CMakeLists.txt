@@ -167,6 +167,7 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeModuleRegistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodePreviewProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/OfflineGraphAudioRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/OscillatorRegionPlanView.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/OscillatorRegionTraversalRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreparedCycleEnvelopeBank.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreparedOscillatorRegion.cpp"
