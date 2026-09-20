@@ -245,7 +245,7 @@ from 187 to 232 lines across header and source, the composed index is 107
 lines, preview resources grow from 261 to 278 lines, and the 2,570-line canvas
 adds six orchestration lines without a new responsibility or policy branch.
 
-## In progress: Cycle V2 spectral frame renderer ownership
+## Addressed: Cycle V2 spectral frame renderer ownership
 
 `cycle-v2/src/Runtime/SpectralOscillatorFrameRenderer.cpp` is about 820 lines
 after the 2026-09-18 Envelope guide seed change. Its lifecycle methods are the
@@ -292,6 +292,40 @@ continue to pass 16 and 19 assertions. Transfer and combining remain within
 the existing graph-combining performance scope and allocate no render-time
 storage. Only the inline time and spectral source rendering bodies remain as
 the completion target for this renderer item.
+
+The final extraction adds `SpectralFrameSourceRenderer` as the narrow prepared
+source interface, with separate private time-frame and spectral-mesh owners.
+They compose a shared morph/capture core while each owns its rasterizer,
+cache, seed policy, and render contract. Together they own time or spectral
+rasterization, source capture, gain and phase shaping, stereo copy, and
+source-stage telemetry. They compose
+the existing `OscillatorLaneRasterizer::renderFixedFrame` and
+`TrimeshBlockwiseDsp` implementations; graph slot routing, recipe telemetry,
+transforms, and graph combining remain in `SpectralOscillatorFrameRenderer`.
+The old source fields and bodies, shared cache arena, reset branches, and seed
+branches are deleted from the parent. The renderer falls from 739 to 555 lines
+and its header from 119 to 108 lines. The extracted owner is 403 lines across
+header and source and stays below both architecture review thresholds.
+
+The fixed-frame FFT case passes 22 assertions, including a second cached
+render that proves the recipe operation still occurs while morph resolution
+and rasterization counts do not increase. Scratch binding passes 22
+assertions, live morph rerasterization passes 12, fixed-time cache boundaries
+pass 1,688, and split-block shared frames pass 19. The existing final-active-
+harmonic failure and offline capture expectation reproduce at the preceding
+commit and remain tracked in `audio-bugs.md`. All renderer deletion targets in
+this item are complete.
+
+## Trimesh voice-rasterizer preparation policy
+
+`SpectralFrameSourceRenderer` and `TrimeshOscillatorCycleRenderer` configure a
+`VoiceRasterizer` with the same guide provider, delta resolver, depth and
+integral settings, bipolar scaling, mesh preparation, reset, and lifecycle
+seed translation. Their render contracts must remain separate: one caches a
+fixed frame and the other advances a chained lane. Extract the common
+preparation and seed mechanics into a narrow Trimesh rasterizer primitive used
+by both owners. Completion reduces the preparation and lifecycle-seed decision
+sites from two to one without adding a mode branch to either renderer.
 
 ## Migrated factory guide-curve attack boundaries
 
