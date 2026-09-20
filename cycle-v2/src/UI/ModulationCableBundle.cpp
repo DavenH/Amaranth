@@ -1,5 +1,7 @@
 #include "UI/ModulationCableBundle.h"
-#include "Graph/GraphEditor.h"
+#include "Graph/GraphConnectionValidator.h"
+#include "Graph/GraphValidationContext.h"
+#include "Graph/GraphValidator.h"
 
 #include <algorithm>
 #include <array>
@@ -121,16 +123,41 @@ bool ModulationCableBundle::canConnect(
         const NodeGraph& graph,
         const PortAddress& first,
         const PortAddress& second) {
-    NodeGraph candidate = graph;
+    const GraphValidationContext context(graph);
+    return canConnect(graph, context, first, second);
+}
+
+bool ModulationCableBundle::canConnect(
+        const NodeGraph& graph,
+        const GraphValidationContext& context,
+        const PortAddress& first,
+        const PortAddress& second) {
     const auto bundleRoutes = routes(graph, first, second);
     if (bundleRoutes.empty()) {
         return false;
     }
 
+    std::vector<size_t> removedEdges;
+    std::vector<Edge> addedEdges;
+    std::vector<GraphValidationIssue> previousIssues = context.validationIssues();
+    const GraphConnectionValidator connectionValidator;
     for (const auto& route : bundleRoutes) {
-        if (!GraphEditor().connect(candidate, route.source, route.destination).succeeded()) {
+        auto proposal = connectionValidator.propose(graph, route.source, route.destination);
+        if (!proposal.succeeded()) {
             return false;
         }
+        const auto& replaced = context.edgeIndex().edgesToInput(
+                proposal.destination.nodeId,
+                proposal.destination.portId);
+        removedEdges.insert(removedEdges.end(), replaced.begin(), replaced.end());
+        addedEdges.push_back(std::move(proposal.edge));
+        auto proposedIssues = context.validateProposal(graph, removedEdges, addedEdges);
+        if (!proposedIssues.empty()
+                && !GraphValidator::acceptsProposedIssues(
+                        previousIssues, proposedIssues)) {
+            return false;
+        }
+        previousIssues = std::move(proposedIssues);
     }
     return true;
 }

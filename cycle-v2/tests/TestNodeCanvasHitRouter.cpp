@@ -3,6 +3,7 @@
 
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphValidationContext.h"
 #include "UI/NodeCanvasHitRouter.h"
 
 using namespace CycleV2;
@@ -68,9 +69,12 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
     const auto& sceneEdge = scene.edges.front();
     const Point<float> edgePoint = sceneEdge.cablePath.getPointAlongPath(
             sceneEdge.cablePath.getLength() * 0.5f);
+    const GraphValidationContext validationContext(graph);
     REQUIRE(router.edgeAt(scene, edgePoint) == 0);
-    REQUIRE(router.spliceTargetEdgeAt(scene, edgePoint, "delay") == 0);
-    REQUIRE(router.spliceTargetEdgeAt(scene, edgePoint, "wave") == -1);
+    REQUIRE(router.spliceTargetEdgeAt(
+            scene, edgePoint, "delay", validationContext) == 0);
+    REQUIRE(router.spliceTargetEdgeAt(
+            scene, edgePoint, "wave", validationContext) == -1);
     const String edgeHelp = router.hoverTextFor(viewport, scene, edgePoint);
     REQUIRE(edgeHelp == queries.hoverTextForEdge(graph.getEdges().front()));
     REQUIRE(edgeHelp == "Audio flows from Wave to Output.");

@@ -3,12 +3,14 @@
 #include <JuceHeader.h>
 
 #include <optional>
+#include <memory>
 #include <variant>
 #include <vector>
 
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeCanvasViewport.h"
 #include "Graph/GraphEditTypes.h"
+#include "Graph/GraphValidationContext.h"
 
 namespace CycleV2 {
 
@@ -123,15 +125,22 @@ public:
     void beginPan(Point<float> startPan);
     void beginAreaSelection(Point<float> start);
     void beginNodeDrag(
+            const NodeGraph& graph,
             const String& nodeId,
             std::vector<String> nodeIds,
             Rectangle<float> startBounds);
-    void beginConnection(const PortAddress& source, Point<float> endpoint);
+    void beginConnection(
+            const NodeGraph& graph,
+            const PortAddress& source,
+            Point<float> endpoint);
     void captureExpandedEditor();
     void reset();
 
     const NodeCanvasGesture& gesture() const { return currentGesture; }
     bool isIdle() const;
+    const GraphValidationContext* gestureValidationContext() const {
+        return validationContext.get();
+    }
 
     std::optional<NodeSceneTarget> hitAt(
             const NodeCanvasSceneSnapshot& scene,
@@ -168,6 +177,7 @@ public:
 private:
     NodeCanvasGesture currentGesture;
     NodeCanvasHitTester hitTester;
+    std::unique_ptr<GraphValidationContext> validationContext;
 };
 
 }

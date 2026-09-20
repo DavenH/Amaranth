@@ -57,7 +57,7 @@ TEST_CASE("Node canvas interaction resolves compatible connection targets by pro
     REQUIRE(sameAddress(*resolvedTarget, target));
     REQUIRE_FALSE(interaction.connectionTargetAt(graph, scene, source, { 100.f, 100.f }).has_value());
 
-    interaction.beginConnection(source, { 100.f, 100.f });
+    interaction.beginConnection(graph, source, { 100.f, 100.f });
     const auto update = interaction.drag(
             graph,
             {},
@@ -140,7 +140,7 @@ TEST_CASE("Node canvas interaction models node drag transaction and completion s
     NodeCanvasViewport viewport;
     viewport.setTransform({}, 0.5f);
     NodeCanvasInteraction interaction;
-    interaction.beginNodeDrag(node.id, { node.id, "peer" }, node.bounds);
+    interaction.beginNodeDrag(graph, node.id, { node.id, "peer" }, node.bounds);
 
     auto first = interaction.drag(graph, viewport, {}, {}, { 10.f, 5.f });
     const auto* firstDrag = std::get_if<NodeDragUpdate>(&first);

@@ -476,6 +476,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         if (applyAuthoringResult(result)) {
             if (const Node* node = queries.findNode(result.nodeId)) {
                 interaction.beginNodeDrag(
+                        graph,
                         node->id,
                         { node->id },
                         hitRouter.paletteDragBounds(viewport, *node, event.position));
@@ -581,7 +582,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         }
     }
     if (const auto hitPort = interaction.portAt(scene, event.position)) {
-        interaction.beginConnection(*hitPort, event.position);
+        interaction.beginConnection(graph, *hitPort, event.position);
         authoring.selectNode(hitPort->nodeId);
         requestCanvasRepaint();
         return;
@@ -603,6 +604,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             authoring.makeNodePrimary(hitNode->id);
         }
         interaction.beginNodeDrag(
+                graph,
                 hitNode->id,
                 selectedNodeIds,
                 hitNode->bounds);
@@ -716,8 +718,13 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
                 nodeDrag->nodeIds,
                 nodeDrag->nodeId,
                 nodeDrag->bounds);
-        spliceTargetEdgeIndex = nodeDrag->moved
-                ? hitRouter.spliceTargetEdgeAt(scene, event.position, nodeDrag->nodeId)
+        const auto* validationContext = interaction.gestureValidationContext();
+        spliceTargetEdgeIndex = nodeDrag->moved && validationContext != nullptr
+                ? hitRouter.spliceTargetEdgeAt(
+                        scene,
+                        event.position,
+                        nodeDrag->nodeId,
+                        *validationContext)
                 : -1;
     }
 
@@ -2136,7 +2143,9 @@ bool NodeCanvas::spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition) {
             viewport,
             presentation.revision(),
             document.revision());
-    const int edgeIndex = hitRouter.spliceTargetEdgeAt(scene, screenPosition, selectedNodeId);
+    const GraphValidationContext validationContext(graph);
+    const int edgeIndex = hitRouter.spliceTargetEdgeAt(
+            scene, screenPosition, selectedNodeId, validationContext);
     return applyAuthoringResult(authoring.spliceSelectedNodeIntoEdge(edgeIndex));
 }
 

@@ -11,6 +11,7 @@
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSpliceValidator.h"
 #include "Graph/GraphValidationContext.h"
 #include "Graph/NodeParameterMap.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
@@ -18,6 +19,8 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Panel/FlatCurvePanelAdapter.h"
 #include "Nodes/Envelope/Editor/EnvelopePanelAdapter.h"
+#include "UI/ModulationCableBundle.h"
+#include "UI/NodeCanvasInteraction.h"
 
 #include <Curve/Mesh/Vertex.h>
 
@@ -351,6 +354,108 @@ TEST_CASE("Explicit audio proposal validation ignores disconnected graph scale",
         REQUIRE(counts.validationNodeVisits == expectedNodeVisits);
         REQUIRE(counts.validationEdgeVisits == expectedEdgeVisits);
         REQUIRE(counts.domainTransfers == expectedDomainTransfers);
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
+    }
+}
+
+TEST_CASE("Connection drag validation ignores disconnected graph scale",
+        "[cycle-v2][complexity][connection][gesture]") {
+    GraphNodeFactory factory;
+    InteractionComplexityCounts expected;
+    for (const int unrelatedNodes : { 0, 128 }) {
+        NodeGraph graph = scaledGraph(unrelatedNodes, 16384);
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+        NodeCanvasSceneSnapshot scene;
+        NodeSceneTarget target;
+        target.kind = NodeSceneTargetKind::InputPort;
+        target.nodeId = "output";
+        target.portId = "time";
+        target.bounds = Rectangle<float>(10.f, 10.f).withCentre({ 200.f, 100.f });
+        scene.targets.push_back(target);
+
+        NodeCanvasInteraction interaction;
+        interaction.beginConnection(
+                graph,
+                { "wave", "out", false },
+                { 100.f, 100.f });
+        InteractionComplexityDiagnostics::reset();
+
+        const auto update = interaction.drag(
+                graph, {}, scene, { 200.f, 100.f }, {});
+
+        const auto* connection = std::get_if<ConnectionDragUpdate>(&update);
+        REQUIRE(connection != nullptr);
+        REQUIRE(connection->target.has_value());
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        if (unrelatedNodes == 0) {
+            expected = counts;
+        }
+        REQUIRE(counts.validationNodeVisits == expected.validationNodeVisits);
+        REQUIRE(counts.validationEdgeVisits == expected.validationEdgeVisits);
+        REQUIRE(counts.domainTransfers == expected.domainTransfers);
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
+    }
+}
+
+TEST_CASE("Splice drag validation ignores disconnected graph scale",
+        "[cycle-v2][complexity][splice][gesture]") {
+    GraphNodeFactory factory;
+    InteractionComplexityCounts expected;
+    for (const int unrelatedNodes : { 0, 128 }) {
+        NodeGraph graph = scaledGraph(unrelatedNodes, 16384);
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+        graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+        graph.addEdge({
+                "wave", "out", "output", "time",
+                PortDomain::TimeSignal, ConnectionKind::Signal
+        });
+        const GraphValidationContext context(graph);
+        REQUIRE(graph.setNodeBounds("shape", { 20.f, 30.f, 220.f, 160.f }));
+        InteractionComplexityDiagnostics::reset();
+
+        const auto result = GraphSpliceValidator().validateAfterLayoutChanges(
+                graph, context, 0, "shape");
+
+        REQUIRE(result.succeeded());
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        if (unrelatedNodes == 0) {
+            expected = counts;
+        }
+        REQUIRE(counts.validationNodeVisits == expected.validationNodeVisits);
+        REQUIRE(counts.validationEdgeVisits == expected.validationEdgeVisits);
+        REQUIRE(counts.domainTransfers == expected.domainTransfers);
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
+    }
+}
+
+TEST_CASE("Modulation bundle preview ignores disconnected graph scale",
+        "[cycle-v2][complexity][connection][gesture][modulation]") {
+    GraphNodeFactory factory;
+    InteractionComplexityCounts expected;
+    for (const int unrelatedNodes : { 0, 128 }) {
+        NodeGraph graph = scaledGraph(unrelatedNodes, 16384);
+        graph.addNode(factory.createNode(NodeKind::ModulationTriple, "mod", {}));
+        graph.addNode(factory.createNode(NodeKind::Envelope, "envelope", {}));
+        const GraphValidationContext context(graph);
+        InteractionComplexityDiagnostics::reset();
+
+        const bool accepted = ModulationCableBundle::canConnect(
+                graph,
+                context,
+                ModulationCableBundle::sourceAddress(*graph.findNode("mod")),
+                ModulationCableBundle::destinationAddress(*graph.findNode("envelope")));
+
+        REQUIRE(accepted);
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        if (unrelatedNodes == 0) {
+            expected = counts;
+        }
+        REQUIRE(counts.validationNodeVisits == expected.validationNodeVisits);
+        REQUIRE(counts.validationEdgeVisits == expected.validationEdgeVisits);
+        REQUIRE(counts.domainTransfers == expected.domainTransfers);
         REQUIRE(counts.graphCopies == 0);
         REQUIRE(counts.audioSamplesCopied == 0);
     }

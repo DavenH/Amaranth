@@ -28,14 +28,44 @@ std::vector<GraphValidationIssue> GraphValidationContext::validateProposal(
         const NodeGraph& graph,
         std::vector<size_t> removedEdges,
         std::vector<Edge> addedEdges) const {
+    jassert(matches(graph));
+    if (!matches(graph)) {
+        const GraphEdgeView proposedEdges(
+                graph.getEdges(),
+                std::move(removedEdges),
+                std::move(addedEdges));
+        return GraphValidator().validate(graph, proposedEdges);
+    }
+
+    return validateRetainedProposal(
+            graph, std::move(removedEdges), std::move(addedEdges));
+}
+
+std::vector<GraphValidationIssue> GraphValidationContext::validateProposalAfterLayoutChanges(
+        const NodeGraph& graph,
+        std::vector<size_t> removedEdges,
+        std::vector<Edge> addedEdges) const {
+    jassert(source == &graph);
+    if (source != &graph) {
+        const GraphEdgeView proposedEdges(
+                graph.getEdges(),
+                std::move(removedEdges),
+                std::move(addedEdges));
+        return GraphValidator().validate(graph, proposedEdges);
+    }
+
+    return validateRetainedProposal(
+            graph, std::move(removedEdges), std::move(addedEdges));
+}
+
+std::vector<GraphValidationIssue> GraphValidationContext::validateRetainedProposal(
+        const NodeGraph& graph,
+        std::vector<size_t> removedEdges,
+        std::vector<Edge> addedEdges) const {
     const GraphEdgeView proposedEdges(
             graph.getEdges(),
             std::move(removedEdges),
             std::move(addedEdges));
-    jassert(matches(graph));
-    if (!matches(graph)) {
-        return GraphValidator().validate(graph, proposedEdges);
-    }
 
     const GraphEdgeIndexOverlay proposedIndex(indexedEdges, proposedEdges);
     return GraphValidator().validateProposal(

@@ -474,6 +474,25 @@ audio graph now has no graph-wide proposal fallback. Live connection and
 splice callers can adopt the retained context and delete their UI candidate
 copies next.
 
+Live connection, modulation-bundle, and splice previews now retain one
+`GraphValidationContext` for the gesture and call the same read-only connection
+and splice validators used by commit. The three UI `NodeGraph` candidate copies
+and all UI imports of `GraphEditor` were deleted. Node drags may change graph
+revision through bounds updates while leaving topology and validation facts
+intact, so the context exposes an explicit layout-only proposal path; other
+revision changes retain the existing invalidation behavior. Scale tests add
+128 disconnected nodes and 16,384 unrelated audio samples to connection,
+bundle, and splice previews. Movement-time node visits, edge visits, and domain
+transfers remain unchanged, with zero graph and audio-sample copies. The
+gesture complexity set passes 389 assertions across 12 cases. Production file
+sizes after adoption are 110 lines for `GraphConnectionValidator.cpp`, 122 for
+`GraphSpliceValidator.cpp`, 78 for `GraphValidationContext.cpp`, 237 for
+`ModulationCableBundle.cpp`, 373 for `NodeCanvasInteraction.cpp`, and 238 for
+`NodeCanvasHitRouter.cpp`. `NodeCanvas.cpp` grew from 2,594 to 2,603 lines only
+to capture and pass the gesture context; its UI coordination extraction plan
+remains slice 2. This completes shared preview/commit rule adoption and the UI
+copy deletion target. Narrowing the graph aggregate remains open in this slice.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,

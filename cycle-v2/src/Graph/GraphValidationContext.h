@@ -28,8 +28,16 @@ public:
             const NodeGraph& graph,
             std::vector<size_t> removedEdges,
             std::vector<Edge> addedEdges) const;
+    std::vector<GraphValidationIssue> validateProposalAfterLayoutChanges(
+            const NodeGraph& graph,
+            std::vector<size_t> removedEdges,
+            std::vector<Edge> addedEdges) const;
 
 private:
+    std::vector<GraphValidationIssue> validateRetainedProposal(
+            const NodeGraph& graph,
+            std::vector<size_t> removedEdges,
+            std::vector<Edge> addedEdges) const;
     const NodeGraph* source {};
     uint64_t revision {};
     GraphEdgeView edges;
