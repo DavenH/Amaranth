@@ -140,6 +140,12 @@ def main():
         default="cycle-v2/content/presets",
         help="Preset directory, relative to the repository by default",
     )
+    parser.add_argument(
+        "--preset",
+        action="append",
+        default=[],
+        help="Generate only this preset path; may be supplied more than once",
+    )
     parser.add_argument("--view", choices=("spectrum", "time"), default="spectrum")
     parser.add_argument("--write", action="store_true", help="Write previews; default is dry-run")
     parser.add_argument(
@@ -154,7 +160,16 @@ def main():
     directory = pathlib.Path(args.directory)
     if not directory.is_absolute():
         directory = repository / directory
-    presets = sorted(directory.glob("*.cyclegraph"))
+    if args.preset:
+        presets = []
+        for preset_name in args.preset:
+            preset = pathlib.Path(preset_name)
+            if not preset.is_absolute():
+                preset = repository / preset
+            presets.append(preset)
+        presets.sort()
+    else:
+        presets = sorted(directory.glob("*.cyclegraph"))
     dirty = modified_paths(repository)
 
     candidates = []

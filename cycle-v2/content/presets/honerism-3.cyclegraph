@@ -1547,14 +1547,14 @@
     ],
     "probes": [
         {
-            "id": "probe",
-            "sourceNodeId": "volumeMultiply",
-            "sourcePortId": "out",
-            "anchorDestNodeId": "voiceOutput",
+            "id": "probe2",
+            "sourceNodeId": "waveshaper",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "delay",
             "anchorDestPortId": "time",
-            "label": "Spy 1",
+            "label": "Spy 2",
             "tapPosition": 0.5,
-            "railOrder": 0
+            "railOrder": 1
         }
     ],
     "presetPresentation": {

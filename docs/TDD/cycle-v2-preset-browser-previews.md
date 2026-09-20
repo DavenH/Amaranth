@@ -149,10 +149,11 @@ runtime -> NodePreviewRenderer -> PresetPresentation codec`
    card/inspector browser, including the rapid typing, arrow-selection, and
    Return-load component sequence.
 5. **Complete.** Added automation plus a bulk generation script. The production
-   run embedded 244 valid 320 x 180 spectral JPEGs, skipped the four pre-existing
-   dirty presets, and skipped `empty.cyclegraph` because it has no renderable
-   source. Every generated preset has an 11-addition/1-replacement metadata-only
-   diff; its graph body is unchanged.
+   run embedded 244 valid 320 x 180 spectral JPEGs while initially skipping four
+   dirty presets. After explicit approval, a targeted follow-up generated those
+   four previews without rewriting their existing graph edits. The only skipped
+   file is `empty.cyclegraph`, because it has no renderable source. Every preview
+   update is confined to root presentation metadata; graph bodies are unchanged.
 6. **Complete.** Captured the production browser with real embedded previews at
    `/private/tmp/cycle-v2-preset-browser-previews-final.png`, completed the
    refactor/style pass, and ran the architecture audit.
