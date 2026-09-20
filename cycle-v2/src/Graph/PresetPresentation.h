@@ -40,6 +40,7 @@ class PresetPresentationCodec {
 public:
     static juce::var writeJSON(const PresetPresentation& presentation);
     static PresetPresentationDecodeResult readJSON(const juce::var& value);
+    static PresetPresentationDecodeResult readMetadataJSON(const juce::var& value);
 };
 
 juce::String idForPresetPreviewView(PresetPreviewView view);

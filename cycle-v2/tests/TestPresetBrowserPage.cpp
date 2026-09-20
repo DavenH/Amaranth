@@ -33,18 +33,25 @@ TEST_CASE("Preset browser coalesces search and opens the highlighted card",
     auto* detail = page.findChildWithID("presetBrowser.detail");
     auto* sidebar = page.findChildWithID("presetBrowser.sidebar");
     auto* open = dynamic_cast<Button*>(page.findChildWithID("presetBrowser.open"));
+    auto* browse = dynamic_cast<Button*>(page.findChildWithID("presetBrowser.browse"));
+    auto* close = dynamic_cast<Button*>(page.findChildWithID("presetBrowser.close"));
     REQUIRE(search != nullptr);
     REQUIRE(grid != nullptr);
     REQUIRE(viewport != nullptr);
     REQUIRE(detail != nullptr);
     REQUIRE(sidebar != nullptr);
     REQUIRE(open != nullptr);
+    REQUIRE(browse != nullptr);
+    REQUIRE(close != nullptr);
     for (int attempt = 0; attempt < 20 && grid->visibleCount() == 0; ++attempt) {
         MessageManager::getInstance()->runDispatchLoopUntil(100);
     }
     REQUIRE(grid->visibleCount() > 1);
     REQUIRE(viewport->getWidth() > sidebar->getWidth());
     REQUIRE(detail->getWidth() > 200);
+    REQUIRE(detail->getBounds().contains(open->getBounds()));
+    REQUIRE(browse->getY() == close->getY());
+    REQUIRE(browse->getBottom() == close->getBottom());
 
     search->setText("kicker", true);
     search->setText("acid-stab", true);

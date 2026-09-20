@@ -13,7 +13,10 @@ PresetBrowserPage::PresetBrowserPage(
         std::function<void()> closeCallback) :
         onOpen   (std::move(openCallback))
     ,   onBrowse (std::move(browseCallback))
-    ,   onClose  (std::move(closeCallback)) {
+    ,   onClose  (std::move(closeCallback))
+    ,   grid     (thumbnails)
+    ,   detail   (thumbnails) {
+    setLookAndFeel(&browserLookAndFeel);
     setComponentID("presetBrowser");
     setWantsKeyboardFocus(true);
 
@@ -34,6 +37,8 @@ PresetBrowserPage::PresetBrowserPage(
     search.setColour(TextEditor::focusedOutlineColourId,
             CanvasChromePalette::navigationAccent);
     search.setColour(TextEditor::textColourId, CanvasChromePalette::text);
+    search.setFont(FontOptions(13.f));
+    search.setIndents(36, 9);
     search.addListener(this);
     search.addKeyListener(this);
     addAndMakeVisible(search);
@@ -68,6 +73,30 @@ PresetBrowserPage::PresetBrowserPage(
     close.onClick = [this] { onClose(); };
     addAndMakeVisible(close);
 
+    auto styleSecondaryButton = [](TextButton& button) {
+        button.setColour(TextButton::buttonColourId,
+                CanvasChromePalette::restingControlSurface);
+        button.setColour(TextButton::buttonOnColourId,
+                CanvasChromePalette::strongBorder.withAlpha(0.72f));
+        button.setColour(TextButton::textColourOffId,
+                CanvasChromePalette::text.withAlpha(0.92f));
+    };
+    styleSecondaryButton(browse);
+    styleSecondaryButton(close);
+    open.setColour(TextButton::buttonColourId,
+            CanvasChromePalette::navigationAccent);
+    open.setColour(TextButton::buttonOnColourId,
+            CanvasChromePalette::navigationAccent.brighter(0.16f));
+    open.setColour(TextButton::textColourOffId,
+            CanvasChromePalette::canvasBackground);
+
+    thumbnails.setReadyCallback([safeThis = SafePointer<PresetBrowserPage>(this)] {
+        if (safeThis != nullptr) {
+            safeThis->grid.repaint();
+            safeThis->detail.repaint();
+        }
+    });
+
     index = std::make_unique<PresetLibraryIndex>(
             std::move(directories),
             [safeThis = SafePointer<PresetBrowserPage>(this)](
@@ -77,6 +106,11 @@ PresetBrowserPage::PresetBrowserPage(
                 }
             });
     index->start();
+}
+
+PresetBrowserPage::~PresetBrowserPage() {
+    thumbnails.setReadyCallback({});
+    setLookAndFeel(nullptr);
 }
 
 void PresetBrowserPage::paint(Graphics& graphics) {
@@ -94,18 +128,18 @@ void PresetBrowserPage::resized() {
     auto titleArea = header.removeFromLeft(220);
     title.setBounds(titleArea.removeFromTop(25));
     subtitle.setBounds(titleArea);
-    search.setBounds(header.withSizeKeepingCentre(jmin(480, header.getWidth()), 34));
+    search.setBounds(header.withSizeKeepingCentre(jmin(620, header.getWidth()), 36));
 
     auto footer = bounds.removeFromBottom(54).reduced(18, 9);
-    browse.setBounds(footer.removeFromLeft(120));
-    footer.removeFromLeft(12);
-    status.setBounds(footer.removeFromLeft(250));
     close.setBounds(footer.removeFromRight(86));
     footer.removeFromRight(9);
-    open.setBounds(footer.removeFromRight(116));
+    browse.setBounds(footer.removeFromRight(120));
+    status.setBounds(footer);
 
     sidebar.setBounds(bounds.removeFromLeft(174));
-    detail.setBounds(bounds.removeFromRight(258));
+    const auto detailBounds = bounds.removeFromRight(258);
+    detail.setBounds(detailBounds);
+    open.setBounds(detailBounds.reduced(20).removeFromBottom(40));
     viewport.setBounds(bounds);
     const int gridWidth = jmax(244, viewport.getMaximumVisibleWidth());
     grid.setSize(gridWidth, grid.contentHeightForWidth(gridWidth));
@@ -172,6 +206,10 @@ void PresetBrowserPage::receiveResults(
     grid.setSize(width, grid.contentHeightForWidth(width));
     status.setText(String(visibleIndices.size()) + " OF " + String(records.size()) + " PRESETS",
             dontSendNotification);
+    if (!records.empty() && !records.front().metadataReady) {
+        status.setText(String(records.size()) + " PRESETS  ·  LOADING DETAILS",
+                dontSendNotification);
+    }
     updateSelection();
 }
 

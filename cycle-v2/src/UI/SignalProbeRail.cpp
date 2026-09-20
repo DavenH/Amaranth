@@ -33,12 +33,11 @@ void paintProbeOrdinal(Graphics& graphics, Rectangle<float> previewBounds, int o
 
 void paintDefaultOutputLabel(
         Graphics& graphics,
-        Rectangle<float> previewBounds,
-        PresetPreviewView view) {
+        Rectangle<float> previewBounds) {
     graphics.setColour(CanvasChromePalette::text.withAlpha(0.90f));
     graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
     graphics.drawText(
-            view == PresetPreviewView::Time ? "OUT  TIME" : "OUT  SPECTRUM",
+            "out",
             previewBounds.reduced(7.f).removeFromTop(20.f),
             Justification::centredLeft);
 }
@@ -110,23 +109,25 @@ float SignalProbeRail::maximumHorizontalOffset(
 }
 
 int SignalProbeRail::ordinalForProbe(const NodeGraph& graph, const String& probeId) {
-    if (probeId == DefaultOutputProbeResolver::probeId) {
-        return 1;
-    }
     const auto probes = orderedProbes(graph);
+    if (probeId == DefaultOutputProbeResolver::probeId) {
+        return (int) probes.size() + 1;
+    }
     const auto found = std::find_if(probes.begin(), probes.end(), [&](const auto* probe) {
         return probe->id == probeId;
     });
     return found == probes.end()
             ? 0
-            : (int) std::distance(probes.begin(), found) + 2;
+            : (int) std::distance(probes.begin(), found) + 1;
 }
 
 std::vector<String> SignalProbeRail::orderedProbeIds(const NodeGraph& graph) {
-    std::vector<String> ids { DefaultOutputProbeResolver::probeId };
+    std::vector<String> ids;
+    ids.reserve(graph.getSignalProbes().size() + 1);
     for (const auto* probe : orderedProbes(graph)) {
         ids.push_back(probe->id);
     }
+    ids.push_back(DefaultOutputProbeResolver::probeId);
     return ids;
 }
 
@@ -486,12 +487,12 @@ void SignalProbeRail::paintRail(
     previewTileCache.beginFrame();
     const int tileCount = (int) probes.size() + 1;
     for (int index = 0; index < tileCount; ++index) {
-        const bool defaultOutput = index == 0;
+        const bool defaultOutput = index == (int) probes.size();
         const String probeId = defaultOutput
                 ? String(DefaultOutputProbeResolver::probeId)
-                : probes[(size_t) index - 1]->id;
+                : probes[(size_t) index]->id;
         const SignalProbe fallback { probeId };
-        const SignalProbe& probe = defaultOutput ? fallback : *probes[(size_t) index - 1];
+        const SignalProbe& probe = defaultOutput ? fallback : *probes[(size_t) index];
         const Rectangle<float> tile = tileBoundsFor(workspace, state, index);
         const GraphPreviewResult::SignalProbePreview* preview {};
         if (defaultOutput) {
@@ -518,7 +519,7 @@ void SignalProbeRail::paintRail(
             graphics.setColour(CanvasChromePalette::mutedText);
             graphics.drawText("Disconnected", previewBounds, Justification::centred);
             if (defaultOutput) {
-                paintDefaultOutputLabel(graphics, previewBounds, state.defaultOutputView);
+                paintDefaultOutputLabel(graphics, previewBounds);
             } else {
                 paintProbeOrdinal(graphics, previewBounds, index + 1);
             }
@@ -539,7 +540,7 @@ void SignalProbeRail::paintRail(
             previewElapsed += performanceObserver->presentationTimestamp() - previewStartedAt;
         }
         if (defaultOutput) {
-            paintDefaultOutputLabel(graphics, previewBounds, state.defaultOutputView);
+            paintDefaultOutputLabel(graphics, previewBounds);
         } else {
             paintProbeOrdinal(graphics, previewBounds, index + 1);
         }

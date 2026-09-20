@@ -7,6 +7,8 @@
 #include <vector>
 
 #include "UI/PresetBrowserComponents.h"
+#include "UI/PresetBrowserLookAndFeel.h"
+#include "UI/PresetThumbnailCache.h"
 
 namespace CycleV2 {
 
@@ -21,6 +23,7 @@ public:
             OpenCallback openCallback,
             std::function<void()> browseCallback,
             std::function<void()> closeCallback);
+    ~PresetBrowserPage() override;
 
     void paint(juce::Graphics& graphics) override;
     void resized() override;
@@ -40,6 +43,8 @@ private:
     OpenCallback onOpen;
     std::function<void()> onBrowse;
     std::function<void()> onClose;
+    PresetBrowserLookAndFeel browserLookAndFeel;
+    PresetThumbnailCache thumbnails;
     juce::Label title;
     juce::Label subtitle;
     juce::TextEditor search;

@@ -3,10 +3,10 @@
 #include <JuceHeader.h>
 
 #include <functional>
-#include <map>
 #include <vector>
 
 #include "UI/PresetLibraryIndex.h"
+#include "UI/PresetThumbnailCache.h"
 
 namespace CycleV2 {
 
@@ -14,6 +14,10 @@ class PresetCardGrid final : public juce::Component {
 public:
     using SelectionCallback = std::function<void()>;
     using OpenCallback = std::function<void()>;
+
+    explicit PresetCardGrid(PresetThumbnailCache& thumbnailsToUse) :
+            thumbnails(thumbnailsToUse) {
+    }
 
     void setResults(
             const std::vector<PresetLibraryRecord>& records,
@@ -28,35 +32,36 @@ public:
     void paint(juce::Graphics& graphics) override;
     void mouseDown(const juce::MouseEvent& event) override;
     void mouseDoubleClick(const juce::MouseEvent& event) override;
+    void mouseMove(const juce::MouseEvent& event) override;
+    void mouseExit(const juce::MouseEvent& event) override;
 
 private:
-    struct CachedPreview {
-        juce::int64 modificationTime {};
-        juce::Image image;
-    };
-
     int columnCount(int width) const;
     int indexAt(juce::Point<int> position) const;
     juce::Rectangle<int> cardBounds(int visibleIndex) const;
-    const juce::Image& previewFor(int recordIndex);
     void select(int visibleIndex);
 
+    PresetThumbnailCache& thumbnails;
     std::vector<PresetLibraryRecord> library;
     std::vector<int> indices;
-    std::map<juce::String, CachedPreview> previewCache;
     SelectionCallback onSelection;
     OpenCallback onOpen;
     int selected {};
+    int hovered { -1 };
 };
 
 class PresetDetailPanel final : public juce::Component {
 public:
+    explicit PresetDetailPanel(PresetThumbnailCache& thumbnailsToUse) :
+            thumbnails(thumbnailsToUse) {
+    }
+
     void setRecord(const PresetLibraryRecord* record);
     void paint(juce::Graphics& graphics) override;
 
 private:
+    PresetThumbnailCache& thumbnails;
     PresetLibraryRecord record;
-    juce::Image preview;
     bool hasRecord {};
 };
 

@@ -17,6 +17,7 @@ struct PresetLibraryRecord {
     PresetPresentation presentation;
     juce::String searchText;
     juce::int64 modificationTime {};
+    bool metadataReady {};
 };
 
 class PresetLibraryIndex final : private juce::Timer {

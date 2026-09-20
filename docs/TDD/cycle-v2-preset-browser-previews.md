@@ -107,6 +107,26 @@ publishes. One text edit is O(number of indexed presets); it does not decode JPE
 bytes, read files again, or block painting. Image decoding is lazy and cached by
 file path plus modification time.
 
+### First-Paint Performance Follow-up
+
+The browser must publish filename-backed cards after directory enumeration,
+before parsing presentation metadata. Full JSON/Base64 validation remains on a
+worker. JPEG decoding belongs to a separate shared thumbnail cache and is
+requested only for cards intersecting the viewport (plus the selected detail
+preview). Painting, filtering, and selection must never decode an image.
+
+The stable design does not require SQLite: the preset document remains the
+authoritative source, the lightweight first publication needs only filenames,
+and path-plus-modification-time cache keys provide exact invalidation. A
+persistent database would add schema, rebuild, and stale-cache policy without
+improving the required first card publication.
+
+The approved visual hierarchy keeps previews dominant, uses Cycle V2 chrome
+colours/radii for search and action controls, reserves cyan fill for the primary
+Load action, and uses geometry plus a 2 px outline for card selection. The
+implicit output spy follows authored spies in signal-flow order and is labelled
+only `out`; its Time/Spectrum mode remains evident from the rendered content.
+
 ## Architecture Review Baseline
 
 Before implementation:
@@ -157,6 +177,9 @@ runtime -> NodePreviewRenderer -> PresetPresentation codec`
 6. **Complete.** Captured the production browser with real embedded previews at
    `/private/tmp/cycle-v2-preset-browser-previews-final.png`, completed the
    refactor/style pass, and ran the architecture audit.
+7. **Complete.** Publish skeleton cards before metadata parsing, decode only
+   visible thumbnails on a worker, converge native widgets on the approved
+   Cycle V2 treatment, and move the terse output spy to the end of the rail.
 
 ## Final Architecture Review
 
@@ -169,8 +192,12 @@ The production diff adds no new domain switchboard and no C++ file grows by
   `GraphPreviewExecutor` only captures the authoritative runtime grid.
 - `PresetPreviewGenerator` owns the fixed raster/JPEG product;
   `NodeCanvas` only coordinates current presentation state and document save.
-- `PresetLibraryIndex` owns filesystem/JSON/filter worker activity;
-  browser components own layout, lazy image decode, and interaction.
+- `PresetLibraryIndex` owns two-stage filesystem/metadata publication and
+  lightweight search strings. `PresetThumbnailCache` owns path-and-mtime keyed
+  worker decoding, and the card grid requests only visible images.
+- Browser components own layout and interaction;
+  `PresetBrowserLookAndFeel` owns widget chrome without duplicating indexing or
+  image-loading policy.
 - `CycleV2Automation` remains command routing/transport. The bulk script asks it
   for JPEG bytes with `embed: false` and surgically replaces only the root
   presentation member, avoiding a graph reserialization.
@@ -182,8 +209,10 @@ canvas painting, and `CycleV2Automation.cpp` still owns automation routing.
 No lifecycle, eligibility, normalization, or output-boundary policy is duplicated
 between those callers.
 
-Final relevant sizes: `PresetBrowserPage.cpp` 187 lines,
-`PresetBrowserComponents.cpp` 367, `PresetLibraryIndex.cpp` 203,
+Final relevant sizes: `PresetBrowserPage.cpp` 236 lines,
+`PresetBrowserComponents.cpp` 390, `PresetLibraryIndex.cpp` 242,
+`PresetThumbnailCache.cpp` 119, `PresetBrowserLookAndFeel.cpp` 96,
+`SignalProbeRail.cpp` 565, `PresetPresentation.cpp` 172,
 `DefaultOutputPreview.cpp` 75, and `PresetPreviewGenerator.cpp` 80. The old
 synchronous `ListBox` implementation and filename-filter loop are deleted.
 
@@ -191,15 +220,21 @@ synchronous `ListBox` implementation and filename-filter loop are deleted.
 
 - `[cycle-v2][preset][preview]`: 39 assertions / 7 cases, including direct
   output plus individual EQ, Reverb, and Delay boundaries.
-- `[cycle-v2][preset][browser]`: 25 assertions / 2 cases.
-- `[cycle-v2][preset][presentation]`: 15 assertions / 3 cases.
-- `[cycle-v2][preset][browser][async]`: 6 assertions / 1 case.
+- `[cycle-v2][preset][browser]`: 44 assertions / 3 cases.
+- `[cycle-v2][preset][presentation]`: 19 assertions / 4 cases.
+- `[cycle-v2][preset][browser][async]`: 10 assertions / 1 case.
+- `[cycle-v2][preset][browser][thumbnail]`: 10 assertions / 1 case.
 - `[cycle-v2][ui][probe]`: 89 assertions / 10 cases.
 - Standalone Debug and test targets build successfully with `--parallel 10`.
 - `scripts/cycle_v2_architecture_audit.py` completed; all reported PLAN/REVIEW
   files pre-date this work and the rationale for the touched ones is above.
 - Modified visualization files contain no scalar `std::<math>` calls in hot
   loops; `git diff --check` passes.
+- A production capture taken about 80 ms after opening already shows the full
+  card grid and most visible thumbnails at
+  `/private/tmp/cycle-v2-preset-browser-review-first.png`; the settled capture
+  is `/private/tmp/cycle-v2-preset-browser-caret-final.png`. The latter also
+  verifies the focused search caret is vertically centred.
 - A broader existing `[cycle-v2][preset]` selector still contains seven
   unrelated legacy parity failures, recorded in `docs/TDD/audio-bugs.md` with
   log `/private/tmp/cycle-v2-preset-broad-tests.log`.

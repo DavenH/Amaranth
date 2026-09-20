@@ -9,31 +9,41 @@ namespace CycleV2 {
 namespace {
 
 constexpr int cardWidth = 218;
-constexpr int cardHeight = 164;
+constexpr int cardHeight = 178;
 constexpr int cardGap = 14;
 constexpr int cardInset = 10;
-
-juce::Image decodePreview(const PresetLibraryRecord& record) {
-    if (!record.presentation.preview.has_value()) {
-        return {};
-    }
-    juce::MemoryInputStream input(record.presentation.preview->jpegData, false);
-    juce::JPEGImageFormat jpeg;
-    return jpeg.decodeImage(input);
-}
 
 void drawStars(juce::Graphics& graphics, int rating, juce::Rectangle<float> bounds) {
     for (int star = 0; star < 5; ++star) {
         graphics.setColour(star < rating
                 ? CanvasChromePalette::navigationAccent
                 : CanvasChromePalette::mutedText.withAlpha(0.34f));
-        const auto mark = bounds.removeFromLeft(13.f)
-                .withSizeKeepingCentre(6.f, 6.f);
+        const auto mark = bounds.removeFromLeft(14.f)
+                .withSizeKeepingCentre(9.f, 9.f);
+        juce::Path shape;
+        shape.addStar(
+                mark.getCentre(),
+                5,
+                2.1f,
+                4.4f,
+                -juce::MathConstants<float>::halfPi);
         if (star < rating) {
-            graphics.fillEllipse(mark);
+            graphics.fillPath(shape);
         } else {
-            graphics.drawEllipse(mark, 1.f);
+            graphics.strokePath(shape, juce::PathStrokeType(0.85f));
         }
+    }
+}
+
+void drawOverflowMenu(juce::Graphics& graphics, juce::Rectangle<float> bounds) {
+    graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.72f));
+    const auto centre = bounds.getCentre();
+    for (int dot = -1; dot <= 1; ++dot) {
+        graphics.fillEllipse(
+                centre.x + (float) dot * 5.f - 1.f,
+                centre.y - 1.f,
+                2.f,
+                2.f);
     }
 }
 
@@ -133,24 +143,31 @@ int PresetCardGrid::contentHeightForWidth(int width) const {
 }
 
 void PresetCardGrid::paint(juce::Graphics& graphics) {
+    const auto clip = graphics.getClipBounds();
     for (int visibleIndex = 0; visibleIndex < (int) indices.size(); ++visibleIndex) {
         const int recordIndex = indices[(size_t) visibleIndex];
         const auto& record = library[(size_t) recordIndex];
         const auto card = cardBounds(visibleIndex).toFloat();
+        if (!clip.intersects(card.toNearestInt())) {
+            continue;
+        }
         const bool isSelected = visibleIndex == selected;
+        const bool isHovered = visibleIndex == hovered;
 
         graphics.setColour(isSelected
                 ? CanvasChromePalette::raisedSurface
-                : CanvasChromePalette::surface);
+                : isHovered
+                        ? CanvasChromePalette::hoveredControlSurface
+                        : CanvasChromePalette::surface);
         graphics.fillRoundedRectangle(card, 5.f);
         graphics.setColour(isSelected
                 ? CanvasChromePalette::navigationAccent
                 : CanvasChromePalette::border.withAlpha(0.76f));
-        graphics.drawRoundedRectangle(card.reduced(0.5f), 5.f, isSelected ? 1.5f : 1.f);
+        graphics.drawRoundedRectangle(card.reduced(1.f), 5.f, isSelected ? 2.f : 1.f);
 
         auto inner = card.reduced((float) cardInset);
         auto previewBounds = inner.removeFromTop(104.f);
-        const auto& preview = previewFor(recordIndex);
+        const juce::Image preview = thumbnails.imageFor(record);
         if (preview.isValid()) {
             graphics.setImageResamplingQuality(juce::Graphics::mediumResamplingQuality);
             graphics.drawImage(preview, previewBounds);
@@ -175,7 +192,9 @@ void PresetCardGrid::paint(juce::Graphics& graphics) {
                 : record.presentation.pack;
         graphics.drawFittedText(meta, metaRow.toNearestInt(),
                 juce::Justification::centredLeft, 1);
-        drawStars(graphics, record.presentation.rating, metaRow.removeFromRight(67.f));
+        auto ratingRow = inner.removeFromTop(14.f);
+        drawStars(graphics, record.presentation.rating, ratingRow.removeFromLeft(72.f));
+        drawOverflowMenu(graphics, ratingRow.removeFromRight(18.f));
     }
 }
 
@@ -191,6 +210,21 @@ void PresetCardGrid::mouseDoubleClick(const juce::MouseEvent& event) {
     select(hit);
     if (onOpen) {
         onOpen();
+    }
+}
+
+void PresetCardGrid::mouseMove(const juce::MouseEvent& event) {
+    const int nextHovered = indexAt(event.getPosition());
+    if (nextHovered != hovered) {
+        hovered = nextHovered;
+        repaint();
+    }
+}
+
+void PresetCardGrid::mouseExit(const juce::MouseEvent&) {
+    if (hovered >= 0) {
+        hovered = -1;
+        repaint();
     }
 }
 
@@ -219,18 +253,6 @@ juce::Rectangle<int> PresetCardGrid::cardBounds(int visibleIndex) const {
     };
 }
 
-const juce::Image& PresetCardGrid::previewFor(int recordIndex) {
-    const auto& record = library[(size_t) recordIndex];
-    const juce::String key = record.file.getFullPathName();
-    auto found = previewCache.find(key);
-    if (found == previewCache.end()
-            || found->second.modificationTime != record.modificationTime) {
-        CachedPreview decoded { record.modificationTime, decodePreview(record) };
-        found = previewCache.insert_or_assign(key, std::move(decoded)).first;
-    }
-    return found->second.image;
-}
-
 void PresetCardGrid::select(int visibleIndex) {
     if (visibleIndex < 0 || visibleIndex >= (int) indices.size() || visibleIndex == selected) {
         return;
@@ -245,7 +267,6 @@ void PresetCardGrid::select(int visibleIndex) {
 void PresetDetailPanel::setRecord(const PresetLibraryRecord* recordToUse) {
     hasRecord = recordToUse != nullptr;
     record = hasRecord ? *recordToUse : PresetLibraryRecord {};
-    preview = hasRecord ? decodePreview(record) : juce::Image {};
     repaint();
 }
 
@@ -260,7 +281,9 @@ void PresetDetailPanel::paint(juce::Graphics& graphics) {
     }
 
     auto bounds = getLocalBounds().reduced(20);
+    bounds.removeFromBottom(58);
     auto previewBounds = bounds.removeFromTop(132).toFloat();
+    const juce::Image preview = thumbnails.imageFor(record);
     if (preview.isValid()) {
         graphics.drawImage(preview, previewBounds);
     } else {

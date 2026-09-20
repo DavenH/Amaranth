@@ -75,6 +75,22 @@ TEST_CASE("Malformed optional preset preview does not invalidate its graph",
     REQUIRE(loaded.presentationWarning.isNotEmpty());
 }
 
+TEST_CASE("Preset metadata can be read without decoding its preview",
+        "[cycle-v2][preset][presentation][metadata]") {
+    PresetPresentation presentation;
+    presentation.author = "Daven";
+    presentation.tags = { "acid" };
+    presentation.preview = jpegPreview();
+
+    const auto decoded = PresetPresentationCodec::readMetadataJSON(
+            PresetPresentationCodec::writeJSON(presentation));
+
+    REQUIRE(decoded.presentation.author == "Daven");
+    REQUIRE(decoded.presentation.tags == StringArray { "acid" });
+    REQUIRE_FALSE(decoded.presentation.preview.has_value());
+    REQUIRE(decoded.warning.isEmpty());
+}
+
 TEST_CASE("Graph document preserves preset presentation through graph history",
         "[cycle-v2][preset][presentation][document]") {
     GraphDocument document(graphWithOutput());

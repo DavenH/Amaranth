@@ -53,6 +53,48 @@ std::optional<PresetPreviewImage> readPreview(const juce::var& value, juce::Stri
     return preview;
 }
 
+void readTags(
+        const juce::var& value,
+        PresetPresentationDecodeResult& result) {
+    if (const auto* tags = value.getArray()) {
+        for (const auto& tag : *tags) {
+            if (tag.isString() && tag.toString().isNotEmpty()) {
+                result.presentation.tags.addIfNotAlreadyThere(tag.toString());
+            }
+        }
+    } else if (!value.isVoid()) {
+        result.warning = "Preset presentation tags must be an array";
+    }
+}
+
+PresetPresentationDecodeResult readPresentation(
+        const juce::var& value,
+        bool includePreview) {
+    PresetPresentationDecodeResult result;
+    if (value.isVoid()) {
+        return result;
+    }
+
+    const auto* object = value.getDynamicObject();
+    if (object == nullptr || (int) object->getProperty("version") != kPresentationVersion) {
+        result.warning = "Preset presentation has an unsupported schema";
+        return result;
+    }
+
+    result.presentation.author = object->getProperty("author").toString();
+    result.presentation.pack = object->getProperty("pack").toString();
+    result.presentation.description = object->getProperty("description").toString();
+    result.presentation.rating = juce::jlimit(0, 5, (int) object->getProperty("rating"));
+
+    readTags(object->getProperty("tags"), result);
+
+    const juce::var previewValue = object->getProperty("preview");
+    if (includePreview && !previewValue.isVoid()) {
+        result.presentation.preview = readPreview(previewValue, result.warning);
+    }
+    return result;
+}
+
 }
 
 bool PresetPreviewImage::isValid() const {
@@ -105,38 +147,12 @@ juce::var PresetPresentationCodec::writeJSON(const PresetPresentation& presentat
 }
 
 PresetPresentationDecodeResult PresetPresentationCodec::readJSON(const juce::var& value) {
-    PresetPresentationDecodeResult result;
-    if (value.isVoid()) {
-        return result;
-    }
+    return readPresentation(value, true);
+}
 
-    const auto* object = value.getDynamicObject();
-    if (object == nullptr || (int) object->getProperty("version") != kPresentationVersion) {
-        result.warning = "Preset presentation has an unsupported schema";
-        return result;
-    }
-
-    result.presentation.author = object->getProperty("author").toString();
-    result.presentation.pack = object->getProperty("pack").toString();
-    result.presentation.description = object->getProperty("description").toString();
-    result.presentation.rating = juce::jlimit(0, 5, (int) object->getProperty("rating"));
-
-    const juce::var tagsValue = object->getProperty("tags");
-    if (const auto* tags = tagsValue.getArray()) {
-        for (const auto& tag : *tags) {
-            if (tag.isString() && tag.toString().isNotEmpty()) {
-                result.presentation.tags.addIfNotAlreadyThere(tag.toString());
-            }
-        }
-    } else if (!tagsValue.isVoid()) {
-        result.warning = "Preset presentation tags must be an array";
-    }
-
-    const juce::var previewValue = object->getProperty("preview");
-    if (!previewValue.isVoid()) {
-        result.presentation.preview = readPreview(previewValue, result.warning);
-    }
-    return result;
+PresetPresentationDecodeResult PresetPresentationCodec::readMetadataJSON(
+        const juce::var& value) {
+    return readPresentation(value, false);
 }
 
 juce::String idForPresetPreviewView(PresetPreviewView view) {

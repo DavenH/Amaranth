@@ -6,21 +6,30 @@ namespace CycleV2 {
 
 namespace {
 
-PresetLibraryRecord readRecord(const juce::File& file, const juce::String& fallbackPack) {
+PresetLibraryRecord skeletonRecord(
+        const juce::File& file,
+        const juce::String& fallbackPack) {
     PresetLibraryRecord record;
     record.file = file;
     record.name = file.getFileNameWithoutExtension();
     record.modificationTime = file.getLastModificationTime().toMilliseconds();
+    record.presentation.pack = fallbackPack;
+    record.searchText = (record.name + " " + fallbackPack).toLowerCase();
+    return record;
+}
+
+PresetLibraryRecord readRecord(const PresetLibraryRecord& skeleton) {
+    PresetLibraryRecord record = skeleton;
 
     juce::var root;
-    if (juce::JSON::parse(file.loadFileAsString(), root).wasOk()) {
+    if (juce::JSON::parse(record.file.loadFileAsString(), root).wasOk()) {
         if (const auto* object = root.getDynamicObject()) {
-            record.presentation = PresetPresentationCodec::readJSON(
+            record.presentation = PresetPresentationCodec::readMetadataJSON(
                     object->getProperty("presetPresentation")).presentation;
         }
     }
     if (record.presentation.pack.isEmpty()) {
-        record.presentation.pack = fallbackPack;
+        record.presentation.pack = skeleton.presentation.pack;
     }
 
     juce::StringArray searchTerms {
@@ -30,21 +39,32 @@ PresetLibraryRecord readRecord(const juce::File& file, const juce::String& fallb
     };
     searchTerms.addArray(record.presentation.tags);
     record.searchText = searchTerms.joinIntoString(" ").toLowerCase();
+    record.metadataReady = true;
     return record;
 }
 
 std::vector<int> matchingIndices(
-        const std::vector<PresetLibraryRecord>& records,
+        const std::vector<juce::String>& searchTexts,
         const juce::String& query) {
     std::vector<int> indices;
     const juce::String normalized = query.trim().toLowerCase();
-    for (int index = 0; index < (int) records.size(); ++index) {
+    for (int index = 0; index < (int) searchTexts.size(); ++index) {
         if (normalized.isEmpty()
-                || records[(size_t) index].searchText.contains(normalized)) {
+                || searchTexts[(size_t) index].contains(normalized)) {
             indices.push_back(index);
         }
     }
     return indices;
+}
+
+std::vector<juce::String> searchTextsFor(
+        const std::vector<PresetLibraryRecord>& records) {
+    std::vector<juce::String> searchTexts;
+    searchTexts.reserve(records.size());
+    for (const auto& record : records) {
+        searchTexts.push_back(record.searchText);
+    }
+    return searchTexts;
 }
 
 }
@@ -76,7 +96,7 @@ public:
                     return record.file == file;
                 });
                 if (duplicate == found.end()) {
-                    found.push_back(readRecord(file, fallbackPack));
+                    found.push_back(skeletonRecord(file, fallbackPack));
                 }
             }
         }
@@ -84,6 +104,19 @@ public:
             return left.name.compareIgnoreCase(right.name) < 0;
         });
 
+        publish(found);
+        for (auto& record : found) {
+            if (shouldExit()) {
+                return jobHasFinished;
+            }
+            record = readRecord(record);
+        }
+        publish(std::move(found));
+        return jobHasFinished;
+    }
+
+private:
+    void publish(std::vector<PresetLibraryRecord> found) {
         const juce::WeakReference<PresetLibraryIndex> safeOwner = owner;
         juce::MessageManager::callAsync([
                 safeOwner,
@@ -95,10 +128,8 @@ public:
                         std::move(recordsToPublish));
             }
         });
-        return jobHasFinished;
     }
 
-private:
     juce::WeakReference<PresetLibraryIndex> owner;
     std::vector<juce::File> directories;
     uint64_t generation {};
@@ -108,18 +139,18 @@ class PresetLibraryIndex::FilterJob final : public juce::ThreadPoolJob {
 public:
     FilterJob(
             PresetLibraryIndex& ownerToUse,
-            std::vector<PresetLibraryRecord> recordsToFilter,
+            std::vector<juce::String> searchTextsToFilter,
             juce::String queryToUse,
             uint64_t generationToPublish) :
             ThreadPoolJob("Cycle V2 preset filter")
         ,   owner(&ownerToUse)
-        ,   records(std::move(recordsToFilter))
+        ,   searchTexts(std::move(searchTextsToFilter))
         ,   query(std::move(queryToUse))
         ,   generation(generationToPublish) {
     }
 
     JobStatus runJob() override {
-        auto indices = matchingIndices(records, query);
+        auto indices = matchingIndices(searchTexts, query);
         const juce::WeakReference<PresetLibraryIndex> safeOwner = owner;
         juce::MessageManager::callAsync([
                 safeOwner,
@@ -136,7 +167,7 @@ public:
 
 private:
     juce::WeakReference<PresetLibraryIndex> owner;
-    std::vector<PresetLibraryRecord> records;
+    std::vector<juce::String> searchTexts;
     juce::String query;
     uint64_t generation {};
 };
@@ -177,7 +208,11 @@ void PresetLibraryIndex::publishScan(
     if (generation > requested.load()) {
         requested = generation;
     }
-    scheduleFilter();
+    const uint64_t currentGeneration = requested.load();
+    published = currentGeneration;
+    if (callback) {
+        callback(records, matchingIndices(searchTextsFor(records), pendingQuery));
+    }
 }
 
 void PresetLibraryIndex::publishFilter(
@@ -197,7 +232,11 @@ void PresetLibraryIndex::scheduleFilter() {
         return;
     }
     const uint64_t generation = requested.load();
-    worker.addJob(new FilterJob(*this, records, pendingQuery, generation), true);
+    worker.addJob(new FilterJob(
+            *this,
+            searchTextsFor(records),
+            pendingQuery,
+            generation), true);
 }
 
 }
