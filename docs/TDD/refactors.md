@@ -215,7 +215,7 @@ chrome is 103 lines; the binding grows from 86 to 114 lines across header and
 source. The five editor owners lose 169 lines overall, with chrome policy and
 preview-mirroring mechanics each having one owner.
 
-## Cache Trimesh preview pitch context at graph publication
+## Addressed: Cache Trimesh preview pitch context at graph publication
 
 `NodePreviewResources::trimeshWidget` resolves pitch context on each widget
 access, including compact canvas painting. `PreviewPitchResolver` traverses
@@ -224,6 +224,26 @@ repaint may repeatedly scan unrelated graph content. Cache each node's pitch
 source and key-scale axis when the accepted graph configuration changes, then
 pass the selected MIDI note separately. Preserve the compiler's implicit
 context rule and invalidate on transient modulation-source edits.
+
+Implemented with `PreviewPitchContextIndex`. `PreviewPitchResolver` remains the
+authoritative owner of explicit traversal and the compiler's implicit Voice
+Context rule. The index owns the published node-to-pitch binding and the
+Modulation Triple dependency map. `NodePreviewResources` owns its lifetime and
+now gives `TrimeshWidget` a cached binding plus the independently selected MIDI
+note. `NodeCanvas` only announces accepted or transient graph changes at its
+existing publication boundaries; it does not perform pitch resolution.
+
+The former `trimeshWidget(Node)` traversal was deleted. Topology publication
+rebuilds the bindings, while parameter-only Modulation Triple changes refresh
+only the recorded dependents. A counter-based test adds 64 unrelated nodes,
+performs 100 widget-equivalent lookups, and observes one graph resolution from
+publication and none from lookup. Two transient source changes coalesce into
+one parameter refresh without another graph resolution. The key-scale and
+canvas-preview suites pass 58 assertions in five cases and 36 assertions in
+seven cases; the focused cache case passes ten assertions. The resolver grows
+from 187 to 232 lines across header and source, the composed index is 107
+lines, preview resources grow from 261 to 278 lines, and the 2,570-line canvas
+adds six orchestration lines without a new responsibility or policy branch.
 
 ## Cycle V2 spectral frame renderer ownership
 

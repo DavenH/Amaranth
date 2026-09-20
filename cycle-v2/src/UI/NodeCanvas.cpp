@@ -1288,6 +1288,7 @@ void NodeCanvas::refreshCompiledState() {
     compiledStateRefreshPending = false;
     compiledStateRefreshScope = PresentationRefreshScope::Downstream;
     editorCoordinator.clearPreviewCache();
+    editorCoordinator.previewResources().refreshGraph(graph, document.lastChange());
     presentation.refresh(graph, document.revision(), document.lastChange());
     const int midiNote = presentation.previewMidiNote();
     editorCoordinator.previewResources().setPreviewMidiNote(midiNote);
@@ -1310,6 +1311,7 @@ void NodeCanvas::refreshCompiledStateAsync(
             : commands.hasTransientEdit()
             ? commands.transientChanges()
             : document.lastChange();
+    editorCoordinator.previewResources().refreshGraph(refreshGraph, refreshChange);
     auto completion = [safeThis = SafePointer<NodeCanvas>(this)] {
         if (safeThis == nullptr) {
             return;
@@ -1421,6 +1423,8 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     if (result.graphChanged) {
         compiledStateRefreshPending = false;
         editorCoordinator.clearPreviewCache();
+        editorCoordinator.previewResources().refreshGraph(
+                commands.editingGraph(), document.lastChange());
 
         if (document.lastChange().probesChanged) {
             if (graph.getSignalProbes().empty()) {
@@ -2417,6 +2421,8 @@ void NodeCanvas::recordNodeEditorMovement(
         const String& field,
         uint64_t effectiveFingerprint,
         std::optional<UpdateProduct> localProduct) {
+    editorCoordinator.previewResources().refreshGraph(
+            commands.editingGraph(), commands.transientChanges());
     const Node* node = commands.editingGraph().findNode(nodeId);
     const bool primaryTrimeshMorph = node != nullptr
             && node->kind == NodeKind::TrilinearMesh

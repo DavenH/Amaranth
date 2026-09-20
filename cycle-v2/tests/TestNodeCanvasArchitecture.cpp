@@ -42,6 +42,7 @@
 #include "UI/WorkspaceDock.h"
 #include "UI/WorkspaceDockKeyboardNavigation.h"
 #include "Runtime/GraphPresentationModel.h"
+#include "Runtime/PreviewPitchContextIndex.h"
 #include "Runtime/PreviewPitchResolver.h"
 
 using namespace CycleV2;
@@ -555,6 +556,66 @@ TEST_CASE("Trimesh preview uses the sole implicit Voice Context's key scale",
 
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "otherVoice", {}));
     REQUIRE(PreviewPitchResolver::contextForNode(graph, "mesh").keyScaleAxis.isEmpty());
+}
+
+TEST_CASE("Trimesh preview pitch lookup reuses publication context",
+        "[cache][canvas][cycle-v2][performance][preview]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationTriple, "triple", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addEdge({
+            "triple", "modulation", "voice", "modulation",
+            PortDomain::VoiceControlSignal, ConnectionKind::ConfigurationAttachment,
+            AttachmentType::ModulationTriple
+    });
+    for (int index = 0; index < 64; ++index) {
+        graph.addNode(factory.createNode(
+                NodeKind::Add,
+                "unrelated-" + String(index),
+                {}));
+    }
+
+    PreviewPitchContextIndex contexts;
+    contexts.rebuild(graph);
+    const size_t resolutionsAfterPublication = contexts.graphResolutionCount();
+    REQUIRE(resolutionsAfterPublication == 1);
+    PreviewPitchContext context;
+    for (int index = 0; index < 100; ++index) {
+        context = contexts.contextForNodeAtPreviewNote("mesh", 72);
+    }
+    REQUIRE(context.midiNote == 72);
+    REQUIRE(context.keyScaleAxis == "red");
+    REQUIRE(contexts.graphResolutionCount() == resolutionsAfterPublication);
+
+    const GraphEditResult sourceEdit = GraphNodeStateEditor().setNodeParameter(
+            graph,
+            "triple",
+            "redSource",
+            "Red Source",
+            "modWheel");
+    REQUIRE(sourceEdit.succeeded());
+    const GraphEditResult keyScaleEdit = GraphNodeStateEditor().setNodeParameter(
+            graph,
+            "triple",
+            "yellowSource",
+            "Yellow Source",
+            "keyScale");
+    REQUIRE(keyScaleEdit.succeeded());
+    GraphChangeSet changes = sourceEdit.changes;
+    changes.nodeIds.insert(
+            changes.nodeIds.end(),
+            keyScaleEdit.changes.nodeIds.begin(),
+            keyScaleEdit.changes.nodeIds.end());
+    contexts.applyParameterChanges(graph, changes.nodeIds, changes.topologyChanged);
+
+    const PreviewPitchContext changed =
+            contexts.contextForNodeAtPreviewNote("mesh", 36);
+    REQUIRE(changed.midiNote == 36);
+    REQUIRE(changed.keyScaleAxis == "yellow");
+    REQUIRE(contexts.graphResolutionCount() == resolutionsAfterPublication);
+    REQUIRE(contexts.parameterRefreshCount() == 1);
 }
 
 TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at full resolution",

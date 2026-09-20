@@ -176,6 +176,7 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreparedCycleEnvelopeBank.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreparedOscillatorRegion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreparedTrimeshMorphBinding.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreviewPitchContextIndex.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreviewPitchResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreviewMorphBinding.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/MonitorPreviewProcessors.cpp"
