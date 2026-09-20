@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 466.0, "y": 818.0 },
+            "position": { "x": 566.03455, "y": 784.0 },
             "parameters": {
                 "octave": 0,
                 "voiceLength": 0.31458,
@@ -21,7 +21,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 837.0 },
+            "position": { "x": 202.16296, "y": 787.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -45,7 +45,7 @@
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1644.0, "y": 568.0 },
+            "position": { "x": 1644.0, "y": 666.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -131,7 +131,7 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1644.0, "y": 1224.0 },
+            "position": { "x": 1644.0, "y": 1050.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -340,8 +340,6 @@
                     "logarithmic": false,
                     "red": 0.0,
                     "blue": 0.0,
-                    "redLinked": true,
-                    "blueLinked": true,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7 ]
                 }
             },
@@ -351,7 +349,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1168.80005, "y": 580.5 },
+            "position": { "x": 1251.80737, "y": 700.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.0, "blue": 1.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -416,8 +414,6 @@
                     "logarithmic": false,
                     "red": 0.0,
                     "blue": 1.0,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3 ]
                 }
             },
@@ -434,7 +430,7 @@
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 746.0, "y": 1541.0 },
+            "position": { "x": 482.16296, "y": 1357.95801 },
             "parameters": { "processingScope": "global", "enabled": true, "size": 0.142857143, "post": 0.492, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
@@ -517,21 +513,21 @@
             "id": "reverb",
             "kind": "reverb",
             "definitionVersion": 1,
-            "position": { "x": 1050.0, "y": 1541.0 },
+            "position": { "x": 786.16296, "y": 1357.95801 },
             "parameters": { "enabled": true, "size": 0.3333, "damp": 1.0, "width": 0.91724, "wet": 0.70633, "highPass": 0.0 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 1314.0, "y": 1541.0 },
+            "position": { "x": 1050.16296, "y": 1357.95801 },
             "parameters": { "gain": 0.779517 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 508.0, "y": 1541.0 },
+            "position": { "x": 244.16296, "y": 1357.95801 },
             "parameters": {}
         },
         {

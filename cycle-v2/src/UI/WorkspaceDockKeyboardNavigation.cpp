@@ -23,10 +23,13 @@ std::vector<WorkspaceDockFocus> WorkspaceDockKeyboardNavigation::focusOrder(
     }
 
     if (model.spiesMinimized) {
-        order.push_back({ WorkspaceDockFocusTarget::SpyDrawer, {} });
+        if (!model.spyIds.empty()) {
+            order.push_back({ WorkspaceDockFocusTarget::SpyDrawer, {} });
+        }
     } else {
-        order.push_back({ WorkspaceDockFocusTarget::SpyRefresh, {} });
-        order.push_back({ WorkspaceDockFocusTarget::SpyMinimize, {} });
+        if (!model.spyIds.empty()) {
+            order.push_back({ WorkspaceDockFocusTarget::SpyMinimize, {} });
+        }
         for (const auto& spyId : model.spyIds) {
             order.push_back({ WorkspaceDockFocusTarget::SpyTile, spyId });
         }
@@ -102,7 +105,6 @@ juce::String WorkspaceDockKeyboardNavigation::targetName(
         case WorkspaceDockFocusTarget::GuideTile:       return "guideTile";
         case WorkspaceDockFocusTarget::SpyDrawer:       return "spyDrawer";
         case WorkspaceDockFocusTarget::SpyMinimize:     return "spyMinimize";
-        case WorkspaceDockFocusTarget::SpyRefresh:      return "spyRefresh";
         case WorkspaceDockFocusTarget::SpyTile:         return "spyTile";
     }
     return "none";
@@ -173,9 +175,6 @@ bool WorkspaceDockKeyboardNavigation::activate(
         case WorkspaceDockFocusTarget::SpyMinimize:
             delegate.setSpyShelfMinimizedFromKeyboard(!model.spiesMinimized);
             break;
-        case WorkspaceDockFocusTarget::SpyRefresh:
-            delegate.toggleSpyRefreshFromKeyboard();
-            break;
         case WorkspaceDockFocusTarget::SpyTile:
             delegate.selectSpyFromKeyboard(focus.itemId, true);
             break;
@@ -194,7 +193,7 @@ bool WorkspaceDockKeyboardNavigation::remove(
     }
 
     delegate.removeSpyFromKeyboard(focus.itemId);
-    focus = { WorkspaceDockFocusTarget::SpyRefresh, {} };
+    focus = {};
     delegate.repaintDockFromKeyboard();
     return true;
 }

@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 460.0, "y": 826.0 },
+            "position": { "x": 689.54108, "y": 760.0 },
             "parameters": {
                 "octave": 0,
                 "voiceLength": 0.415492958,
@@ -21,7 +21,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 700.0 },
+            "position": { "x": 329.54117, "y": 634.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -45,7 +45,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 106.12289, "y": 943.47461 },
+            "position": { "x": 335.66406, "y": 877.47461 },
             "parameters": { "enabled": true, "mode": "group", "order": 3, "width": 14.0, "panSpread": 1.0, "phase": 0.812, "jitter": 1.0 },
             "model": {
                 "schema": "unisonVoices",
@@ -823,8 +823,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7 ]
                 }
             }
@@ -898,8 +896,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3 ]
                 }
             }
@@ -973,8 +969,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3 ]
                 }
             }

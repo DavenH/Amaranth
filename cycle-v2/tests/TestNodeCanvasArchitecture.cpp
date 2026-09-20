@@ -80,14 +80,11 @@ TEST_CASE("Signal probe rail overlays the full canvas", "[cycle-v2][canvas][prob
     const Rectangle<float> spies = GuideCurveShelf::spyWorkspace(workspace);
     REQUIRE(SignalProbeRail::boundsFor(spies, expanded) == dock.rightShelf);
     const Rectangle<float> collapse = dock.collapseHandle;
-    const Rectangle<float> refreshMode = SignalProbeRail::refreshModeBoundsFor(spies, expanded);
     const Rectangle<float> rail = dock.rightShelf;
     REQUIRE(collapse.isEmpty());
-    REQUIRE(rail.contains(refreshMode));
     const WorkspaceDockSpyControls controls = WorkspaceDock::spyControls(rail);
-    REQUIRE(controls.label.getRight() < controls.refresh.getX());
-    REQUIRE(controls.refresh.getRight() < controls.minimize.getX());
-    REQUIRE(controls.minimize.getRight() - controls.label.getX() <= 226.f);
+    REQUIRE(controls.label.getRight() < controls.minimize.getX());
+    REQUIRE(controls.minimize.getRight() - controls.label.getX() <= 116.f);
     REQUIRE(SignalProbeRail::tileBoundsFor(spies, expanded, 0).getY()
             == Catch::Approx(rail.getY()
                     + WorkspaceDock::headerHeight));
@@ -100,8 +97,9 @@ TEST_CASE("Signal probe rail overlays the full canvas", "[cycle-v2][canvas][prob
     const Rectangle<float> editor = NodeCanvasEditorCoordinator::boundsFor(&trimesh, content);
     REQUIRE(content.contains(editor));
     REQUIRE(editor.getBottom() <= content.getBottom());
-    REQUIRE(editor.getWidth() == Catch::Approx(content.getWidth() * 0.81f));
-    REQUIRE(editor.getHeight() == Catch::Approx(content.getHeight() - 36.f));
+    REQUIRE(editor.getCentre() == content.getCentre());
+    REQUIRE(editor.getWidth() == Catch::Approx(content.getWidth() * 0.86f));
+    REQUIRE(editor.getHeight() == Catch::Approx(content.getHeight() * 0.82f));
 
     expanded.expanded = false;
     REQUIRE(WorkspaceDock::layout(workspace,
@@ -116,8 +114,9 @@ TEST_CASE("Workspace dock places Guides beside utilities and Spies above canvas"
 
     const CanvasUtilityDockLayout utilities = CanvasUtilityDock::layout(workspace);
     REQUIRE(balanced.content == workspace);
-    REQUIRE(balanced.leftShelf.getY() == utilities.legend.getBottom() + CanvasUtilityDock::gap);
+    REQUIRE(balanced.leftShelf.getY() == utilities.minimap.getBottom() + CanvasUtilityDock::gap);
     REQUIRE(balanced.leftShelf.getRight() == utilities.minimap.getRight());
+    REQUIRE(balanced.leftShelf.getWidth() == utilities.minimap.getWidth());
     REQUIRE(balanced.leftShelf.getX() > balanced.rightShelf.getRight());
     REQUIRE(balanced.leftShelf.getHeight() > WorkspaceDock::guideTileHeight);
     REQUIRE(balanced.rightShelf.getBottom() == workspace.getBottom());
@@ -150,19 +149,19 @@ TEST_CASE("Workspace dock places Guides beside utilities and Spies above canvas"
     REQUIRE_FALSE(small.rightShelf.intersects(small.leftShelf));
     const WorkspaceDockSpyControls smallSpyControls = WorkspaceDock::spyControls(small.rightShelf);
     REQUIRE(small.rightShelf.contains(smallSpyControls.minimize));
-    REQUIRE(smallSpyControls.refresh.getWidth() > 0.f);
+    REQUIRE(smallSpyControls.label.getWidth() > 0.f);
 
     const Rectangle<float> narrowWorkspace { 0.f, 0.f, 800.f, 600.f };
     const WorkspaceDockLayout narrow = WorkspaceDock::layout(narrowWorkspace, state);
     const CanvasUtilityDockLayout narrowUtilities = CanvasUtilityDock::layout(narrowWorkspace);
-    REQUIRE(narrow.leftShelf.getY() >= narrowUtilities.legend.getBottom());
+    REQUIRE(narrow.leftShelf.getY() >= narrowUtilities.minimap.getBottom());
     REQUIRE(narrow.leftShelf.getHeight()
             >= WorkspaceDock::headerHeight + WorkspaceDock::guideTileHeight);
     REQUIRE_FALSE(narrow.leftShelf.intersects(narrow.rightShelf));
     const WorkspaceDockSpyControls narrowSpyControls = WorkspaceDock::spyControls(narrow.rightShelf);
     REQUIRE(narrow.collapseHandle.isEmpty());
     REQUIRE(narrow.rightShelf.contains(narrowSpyControls.minimize));
-    REQUIRE(narrowSpyControls.refresh.getWidth() >= 80.f);
+    REQUIRE(narrowSpyControls.label.getWidth() >= 80.f);
 
     GraphNodeFactory factory;
     const Node trimesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
@@ -202,7 +201,15 @@ TEST_CASE("Workspace dock keyboard traversal exposes every visible action",
     REQUIRE(focus.itemId == "guide2");
     REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
             KeyPress(KeyPress::tabKey), model, focus));
-    REQUIRE(focus.target == WorkspaceDockFocusTarget::SpyRefresh);
+    REQUIRE(focus.target == WorkspaceDockFocusTarget::SpyMinimize);
+
+    model.spyIds.clear();
+    const auto noSpyOrder = WorkspaceDockKeyboardNavigation::focusOrder(model);
+    REQUIRE(std::none_of(noSpyOrder.begin(), noSpyOrder.end(), [](const auto& target) {
+        return target.target == WorkspaceDockFocusTarget::SpyDrawer
+                || target.target == WorkspaceDockFocusTarget::SpyMinimize
+                || target.target == WorkspaceDockFocusTarget::SpyTile;
+    }));
 
     model.expanded = false;
     const auto collapsedOrder = WorkspaceDockKeyboardNavigation::focusOrder(model);
@@ -1408,11 +1415,10 @@ TEST_CASE("Cable renderer uses one solid grammar with edit-state semantics",
 
 TEST_CASE("Canvas legend collapses non-signal domains into Control",
         "[cycle-v2][canvas][legend]") {
-    REQUIRE(CanvasChromeMetrics::legendFontSize
-            == Catch::Approx(CanvasChromeMetrics::microFontSize * 1.3f));
-    REQUIRE(CanvasChromeMetrics::legendLineLength == Catch::Approx(17.f * 1.3f));
-    REQUIRE(CanvasChromeMetrics::legendLineWidth == Catch::Approx(2.f * 1.3f));
-    REQUIRE(CanvasChromeMetrics::legendRowStride == Catch::Approx(20.f * 1.3f));
+    REQUIRE(CanvasChromeMetrics::legendFontSize == 11.f);
+    REQUIRE(CanvasChromeMetrics::legendLineLength == 14.f);
+    REQUIRE(CanvasChromeMetrics::legendLineWidth == 2.f);
+    REQUIRE(CanvasUtilityDock::preferredLegendHeight == 30.f);
 
     const Colour control = colourForDomain(PortDomain::ControlSignal);
     REQUIRE(colourForDomain(PortDomain::DomainContext) == control);

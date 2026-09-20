@@ -51,7 +51,7 @@ WorkspaceDockLayout WorkspaceDock::layout(
             juce::jmax(drawerWidth, workspace.getWidth() * 0.32f));
     const float activeGuideWidth = state.leftMinimized ? drawerWidth : guideWidth;
     const float guideRight = workspace.getRight() - CanvasUtilityDock::margin;
-    const float guideTop = utilities.legend.getBottom() + CanvasUtilityDock::gap;
+    const float guideTop = utilities.minimap.getBottom() + CanvasUtilityDock::gap;
     const float spyRight = juce::jmax(workspace.getX(),
             guideRight - activeGuideWidth - CanvasUtilityDock::gap);
     result.dock = spyRowBounds(
@@ -90,16 +90,12 @@ WorkspaceDockSpyControls WorkspaceDock::spyControls(juce::Rectangle<float> rail)
     WorkspaceDockSpyControls controls;
     const float usableWidth = juce::jmax(0.f, rail.getWidth() - shelfPadding * 2.f);
     const float gap = 6.f;
-    const float width = juce::jmin(226.f, usableWidth);
-    const float labelWidth = juce::jmin(84.f,
-            juce::jmax(52.f, width - 104.f - controlSize - gap * 2.f));
-    const float refreshWidth = juce::jmax(0.f,
-            width - labelWidth - controlSize - gap * 2.f);
+    const float width = juce::jmin(116.f, usableWidth);
+    const float labelWidth = juce::jmax(0.f, width - controlSize - gap);
     const float x = rail.getX() + shelfPadding;
     const float y = rail.getY() + 5.f;
     controls.label = { x, y, labelWidth, controlSize };
-    controls.refresh = { controls.label.getRight() + gap, y, refreshWidth, controlSize };
-    controls.minimize = { controls.refresh.getRight() + gap, y, controlSize, controlSize };
+    controls.minimize = { controls.label.getRight() + gap, y, controlSize, controlSize };
     return controls;
 }
 
@@ -236,7 +232,6 @@ void WorkspaceDock::paintIconButton(
 void WorkspaceDock::paintTileChrome(
         juce::Graphics& graphics,
         juce::Rectangle<float> tile,
-        juce::Colour token,
         bool selected,
         bool hovered,
         bool focused) {
@@ -244,7 +239,9 @@ void WorkspaceDock::paintTileChrome(
     graphics.fillRoundedRectangle(tile, CanvasChromeMetrics::tileCornerRadius);
 
     const bool active = selected || hovered || focused;
-    const juce::Colour border = active ? token.brighter(0.15f) : token;
+    const juce::Colour border = active
+            ? CanvasChromePalette::selectionOutline
+            : CanvasChromePalette::border.withAlpha(0.56f);
     graphics.setColour(border);
     graphics.drawRoundedRectangle(
             tile,
@@ -258,6 +255,14 @@ void WorkspaceDock::paintTileChrome(
                 tile.reduced(3.f),
                 CanvasChromeMetrics::controlCornerRadius,
                 CanvasChromeMetrics::focusRingWidth);
+    }
+
+    if (selected) {
+        graphics.setColour(CanvasChromePalette::selectionOutline.withAlpha(0.16f));
+        graphics.drawRoundedRectangle(
+                tile.expanded(2.f),
+                CanvasChromeMetrics::tileCornerRadius + 2.f,
+                2.f);
     }
 }
 
@@ -305,7 +310,8 @@ void WorkspaceDock::paintVerticalOverflowFeedback(
     if (maximumOffset <= 0.f) {
         return;
     }
-    const auto track = shelf.removeFromRight(3.f).withTrimmedTop(headerHeight)
+    const auto track = shelf.withTrimmedRight(5.f).removeFromRight(3.f)
+            .withTrimmedTop(headerHeight)
             .withTrimmedBottom(tileBottomPadding);
     const float visibleHeight = shelf.getHeight() - headerHeight - tileBottomPadding;
     const float thumbHeight = juce::jmax(22.f,

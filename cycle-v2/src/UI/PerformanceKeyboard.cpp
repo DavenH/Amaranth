@@ -188,12 +188,10 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
     addAndMakeVisible(octaveDown);
     addAndMakeVisible(octaveUp);
     addAndMakeVisible(modWheel);
-    addAndMakeVisible(playButton);
 
     octaveDown.setTooltip("Lower keyboard by one octave");
     octaveUp.setTooltip("Raise keyboard by one octave");
     modWheel.setTooltip("Preview modulation wheel");
-    playButton.setTooltip("Play the preview note for the voice duration");
     octaveDown.onClick = [this] {
         stopPlayback();
         keyboard.shiftOctave(-1);
@@ -202,7 +200,6 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
         stopPlayback();
         keyboard.shiftOctave(1);
     };
-    playButton.onClick = [this] { togglePlayback(); };
     modWheel.onValueChanged = [this](int value) {
         sendModWheelValue();
         if (modWheelValueChanged) {
@@ -265,17 +262,13 @@ Rectangle<float> PerformanceKeyboardPanel::modWheelBounds() const {
     return modWheel.getBounds().toFloat();
 }
 
-Rectangle<float> PerformanceKeyboardPanel::playButtonBounds() const {
-    return playButton.getBounds().toFloat();
-}
-
 Rectangle<float> PerformanceKeyboardPanel::progressBounds() const {
-    const Rectangle<float> button = playButtonBounds();
+    const Rectangle<float> keys = keyboard.getBounds().toFloat();
     return {
-            0.f,
-            button.getY(),
-            (float) getWidth(),
-            button.getHeight()
+            keys.getX(),
+            (float) getHeight() - 4.f,
+            keys.getWidth(),
+            3.f
     };
 }
 
@@ -376,19 +369,22 @@ void PerformanceKeyboardPanel::releaseAllNotes() {
 
 void PerformanceKeyboardPanel::paint(Graphics& graphics) {
     const Rectangle<float> bounds = getLocalBounds().toFloat().reduced(0.75f);
-    CanvasUtilityDock::paintSurface(graphics, bounds);
+    graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.96f));
+    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::panelCornerRadius);
 
     const Rectangle<float> track = progressBounds();
-    graphics.setColour(CanvasChromePalette::raisedSurface.withAlpha(0.34f));
-    graphics.fillRect(track);
+    const float trackCornerRadius = track.getHeight() * 0.5f;
+    graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.22f));
+    graphics.fillRoundedRectangle(track, trackCornerRadius);
     if (progress > 0.f) {
-        graphics.setColour(CanvasChromePalette::focus.withAlpha(0.13f));
-        graphics.fillRect(track.withWidth(track.getWidth() * progress));
+        graphics.setColour(CanvasChromePalette::focus.withAlpha(0.58f));
+        graphics.fillRoundedRectangle(
+                track.withWidth(track.getWidth() * progress),
+                trackCornerRadius);
     }
 }
 
 void PerformanceKeyboardPanel::resized() {
-    constexpr int transportHeight = 31;
     const bool compact = getWidth() < roundToInt(CanvasUtilityDock::preferredKeyboardWidth);
     const int panelInset = compact ? 4 : 6;
     const int buttonWidth = compact ? 25 : 28;
@@ -396,9 +392,6 @@ void PerformanceKeyboardPanel::resized() {
     const int wheelGap = compact ? 3 : 6;
     const int wheelWidth = compact ? 24 : 32;
     Rectangle<int> content = getLocalBounds().reduced(panelInset);
-    Rectangle<int> transport = content.removeFromTop(transportHeight);
-    playButton.setBounds(transport.withSizeKeepingCentre(buttonWidth, transportHeight));
-    content.removeFromTop(controlGap);
     modWheel.setBounds(content.removeFromLeft(wheelWidth));
     content.removeFromLeft(wheelGap);
     octaveDown.setBounds(content.removeFromLeft(buttonWidth));
@@ -529,46 +522,6 @@ void PerformanceKeyboardPanel::ModWheel::updateFromPointer(float y) {
             1.f,
             (y - track.getY()) / track.getHeight());
     setValue(roundToInt(proportion * 127.f), true);
-}
-
-PerformanceKeyboardPanel::PlayButton::PlayButton(
-        const PerformanceKeyboardPanel& panel) :
-        Button  ("Preview playback")
-    ,   owner   (panel) {
-    setName("PerformanceKeyboard.Play");
-    setMouseCursor(MouseCursor::PointingHandCursor);
-    setWantsKeyboardFocus(true);
-}
-
-void PerformanceKeyboardPanel::PlayButton::paintButton(
-        Graphics& graphics,
-        bool highlighted,
-        bool down) {
-    Rectangle<float> bounds = getLocalBounds().toFloat().reduced(2.f);
-    const auto colours = CanvasChromePalette::control(
-            highlighted || hasKeyboardFocus(true)
-                    ? CanvasChromeControlState::Focused
-                    : CanvasChromeControlState::Resting);
-    graphics.setColour(colours.surface.brighter(down ? 0.08f : 0.f));
-    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
-    graphics.setColour(colours.border);
-    graphics.drawRoundedRectangle(
-            bounds,
-            CanvasChromeMetrics::controlCornerRadius,
-            CanvasChromeMetrics::restingBorderWidth);
-
-    const Rectangle<float> glyph = bounds.withSizeKeepingCentre(10.f, 10.f);
-    graphics.setColour(colours.text);
-    if (owner.isPlaying()) {
-        graphics.fillRect(glyph.reduced(1.f));
-        return;
-    }
-    Path play;
-    play.startNewSubPath(glyph.getX() + 1.f, glyph.getY());
-    play.lineTo(glyph.getRight(), glyph.getCentreY());
-    play.lineTo(glyph.getX() + 1.f, glyph.getBottom());
-    play.closeSubPath();
-    graphics.fillPath(play);
 }
 
 void PerformanceKeyboardPanel::timerCallback() {

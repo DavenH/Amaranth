@@ -81,10 +81,9 @@ Rectangle<float> GuideCurveShelf::addButtonBounds(
     if (!dockState.expanded || state.minimized) {
         return {};
     }
-    const Rectangle<float> header = WorkspaceDock::headerBounds(
+    Rectangle<float> header = WorkspaceDock::headerBounds(
             boundsFor(workspace, dockState, state));
-    return { header.getX() + 132.f, header.getY(), WorkspaceDock::controlSize,
-            WorkspaceDock::controlSize };
+    return header.removeFromRight(WorkspaceDock::addButtonWidth);
 }
 
 Rectangle<float> GuideCurveShelf::minimizeButtonBounds(
@@ -208,7 +207,7 @@ void GuideCurveShelf::paint(
         WorkspaceDock::paintIconButton(
                 graphics,
                 drawerButton,
-                WorkspaceDockIcon::ChevronRight,
+                WorkspaceDockIcon::ChevronLeft,
                 focus.target == WorkspaceDockFocusTarget::GuideDrawer);
         Graphics::ScopedSaveState labelTransform(graphics);
         graphics.addTransform(AffineTransform::rotation(
@@ -233,7 +232,7 @@ void GuideCurveShelf::paint(
     WorkspaceDock::paintIconButton(
             graphics,
             minimize,
-            WorkspaceDockIcon::ChevronLeft,
+            WorkspaceDockIcon::ChevronRight,
             focus.target == WorkspaceDockFocusTarget::GuideMinimize);
     graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
@@ -241,12 +240,23 @@ void GuideCurveShelf::paint(
             "Curve Guides",
             header.withTrimmedLeft(34.f).withWidth(96.f),
             Justification::centredLeft);
-    const Rectangle<float> plus = addButtonBounds(workspace, dockState, state);
-    WorkspaceDock::paintIconButton(
-            graphics,
-            plus,
-            WorkspaceDockIcon::Add,
-            focus.target == WorkspaceDockFocusTarget::GuideAdd);
+    const Rectangle<float> add = addButtonBounds(workspace, dockState, state);
+    const auto addColours = CanvasChromePalette::control(
+            focus.target == WorkspaceDockFocusTarget::GuideAdd
+                    ? CanvasChromeControlState::Focused
+                    : CanvasChromeControlState::Resting);
+    graphics.setColour(addColours.surface);
+    graphics.fillRoundedRectangle(add, CanvasChromeMetrics::controlCornerRadius);
+    graphics.setColour(addColours.border);
+    graphics.drawRoundedRectangle(
+            add,
+            CanvasChromeMetrics::controlCornerRadius,
+            focus.target == WorkspaceDockFocusTarget::GuideAdd
+                    ? CanvasChromeMetrics::focusRingWidth
+                    : CanvasChromeMetrics::restingBorderWidth);
+    graphics.setColour(addColours.text);
+    graphics.setFont(FontOptions(CanvasChromeMetrics::captionFontSize));
+    graphics.drawText("New", add, Justification::centred);
 
     if (shelf.getHeight() < WorkspaceDock::headerHeight
             + WorkspaceDock::guideTileHeight + WorkspaceDock::tileBottomPadding) {
@@ -287,7 +297,6 @@ void GuideCurveShelf::paint(
         WorkspaceDock::paintTileChrome(
                 graphics,
                 tile,
-                CanvasChromePalette::border,
                 selected,
                 hovered,
                 focused);

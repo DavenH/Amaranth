@@ -845,14 +845,12 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
     Array<var> targets;
     targets.add(
             AutomationValueEncoder::pointerTargetToVar("canvas", "canvas", context.canvas.getLocalBounds().toFloat()));
-    targets.add(AutomationValueEncoder::pointerTargetToVar(
-            "probeRefreshMode",
-            "probeRefreshMode",
-            state.probeRefreshModeBounds));
-    targets.add(AutomationValueEncoder::pointerTargetToVar(
-            "guideDock",
-            "guideDock",
-            state.guideDock.dockBounds));
+    if (!state.guideDock.dockBounds.isEmpty()) {
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "guideDock",
+                "guideDock",
+                state.guideDock.dockBounds));
+    }
     if (!state.guideDock.collapseBounds.isEmpty()) {
         targets.add(AutomationValueEncoder::pointerTargetToVar(
                 "guideDock.collapse",
@@ -870,10 +868,12 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                 "guideShelf",
                 "guideShelf",
                 state.guideDock.guideShelfBounds));
-        targets.add(AutomationValueEncoder::pointerTargetToVar(
-                "spyShelf",
-                "spyShelf",
-                state.guideDock.spyShelfBounds));
+        if (!state.guideDock.spyShelfBounds.isEmpty()) {
+            targets.add(AutomationValueEncoder::pointerTargetToVar(
+                    "spyShelf",
+                    "spyShelf",
+                    state.guideDock.spyShelfBounds));
+        }
         if (!state.guideDock.guideMinimizeBounds.isEmpty()) {
             targets.add(AutomationValueEncoder::pointerTargetToVar(
                     "guideShelf.minimize",

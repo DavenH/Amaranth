@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 371.7868, "y": 278.0 },
+            "position": { "x": 492.3508, "y": 421.0 },
             "parameters": {
                 "octave": 0,
                 "voiceLength": 0.767605634,
@@ -21,7 +21,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": -28.77724, "y": 135.0 },
+            "position": { "x": 91.78677, "y": 278.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -52,7 +52,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": -4.77719, "y": 595.80945 },
+            "position": { "x": 115.78682, "y": 738.80945 },
             "parameters": { "enabled": true, "mode": "group", "order": 9, "width": 9.520000000000001, "panSpread": 1.0, "phase": 0.916, "jitter": 0.768 },
             "model": {
                 "schema": "unisonVoices",
@@ -67,7 +67,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1316.88501, "y": 736.0 },
+            "position": { "x": 1358.3313, "y": 736.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -693,7 +693,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": -43.97723, "y": 312.0 },
+            "position": { "x": 76.58678, "y": 454.99997 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.149532706, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1013,7 +1013,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 908.75446, "y": 210.0 },
+            "position": { "x": 939.7868, "y": 210.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.149532706, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",

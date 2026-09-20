@@ -37,9 +37,6 @@ public:
     static Rectangle<float> boundsFor(
             Rectangle<float> workspace,
             const SignalProbeRailState& state);
-    static Rectangle<float> refreshModeBoundsFor(
-            Rectangle<float> workspace,
-            const SignalProbeRailState& state);
     static Rectangle<float> minimizeButtonBoundsFor(
             Rectangle<float> workspace,
             const SignalProbeRailState& state);

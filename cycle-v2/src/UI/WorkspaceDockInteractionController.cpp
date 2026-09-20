@@ -39,13 +39,14 @@ bool WorkspaceDockInteractionController::mouseDown(
                     probeState.minimized,
                     probeState.expandedHeight
             });
-    if (handleChromeDown(event, layout)) {
+    const bool hasSpies = !graph.getSignalProbes().empty();
+    if (hasSpies && handleChromeDown(event, layout)) {
         return true;
     }
     if (handleGuideDown(event, workspace)) {
         return true;
     }
-    return handleSpyDown(event, workspace);
+    return hasSpies && handleSpyDown(event, workspace);
 }
 
 bool WorkspaceDockInteractionController::mouseDrag(
@@ -228,12 +229,6 @@ bool WorkspaceDockInteractionController::handleSpyControlsDown(
         setSpyShelfMinimizedFromKeyboard(false);
         return true;
     }
-    if (probeRail.refreshModeBoundsFor(spies, probeState).contains(event.position)) {
-        keyboardFocus = { WorkspaceDockFocusTarget::SpyRefresh, {} };
-        toggleSpyRefreshFromKeyboard();
-        callbacks.repaint();
-        return true;
-    }
     if (probeRail.minimizeButtonBoundsFor(spies, probeState).contains(event.position)) {
         keyboardFocus = { WorkspaceDockFocusTarget::SpyMinimize, {} };
         setSpyShelfMinimizedFromKeyboard(true);
@@ -316,12 +311,11 @@ void WorkspaceDockInteractionController::setSpyShelfMinimizedFromKeyboard(bool m
     callbacks.repaint();
 }
 
-void WorkspaceDockInteractionController::toggleSpyRefreshFromKeyboard() {
-    probeState.refreshMode = probeState.refreshMode == ProbeRefreshMode::LiveLatest
-            ? ProbeRefreshMode::OnGestureCommit
-            : ProbeRefreshMode::LiveLatest;
+void WorkspaceDockInteractionController::setProbeRefreshMode(ProbeRefreshMode mode) {
+    probeState.refreshMode = mode;
     settings.getGlobalSetting(AppSettings::ProbeEditRefreshPolicy) =
             probeState.refreshMode == ProbeRefreshMode::LiveLatest ? 1 : 0;
+    callbacks.repaint();
 }
 
 void WorkspaceDockInteractionController::selectSpyFromKeyboard(
