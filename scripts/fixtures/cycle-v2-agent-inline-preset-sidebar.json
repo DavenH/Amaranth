@@ -1,0 +1,21 @@
+{
+  "commands": [
+    { "command": "inspectTargets" },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "workspace.sidebar.curves",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "workspace.sidebar.presets",
+      "waitForIdle": true,
+      "idleDelayMs": 1500
+    },
+    { "command": "inspectTargets" }
+  ],
+  "quit": false
+}

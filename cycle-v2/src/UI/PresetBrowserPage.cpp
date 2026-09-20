@@ -37,8 +37,8 @@ PresetBrowserPage::PresetBrowserPage(
     search.setColour(TextEditor::focusedOutlineColourId,
             CanvasChromePalette::navigationAccent);
     search.setColour(TextEditor::textColourId, CanvasChromePalette::text);
-    search.setFont(FontOptions(13.f));
-    search.setIndents(36, 9);
+    search.setFont(FontOptions(15.f));
+    search.setIndents(36, 8);
     search.addListener(this);
     search.addKeyListener(this);
     addAndMakeVisible(search);

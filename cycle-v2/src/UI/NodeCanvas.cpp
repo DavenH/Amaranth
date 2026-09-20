@@ -223,6 +223,41 @@ NodeCanvas::~NodeCanvas() {
     setCanvasOpenGlAttached(false);
 }
 
+void NodeCanvas::configurePresetSidebar(
+        std::vector<File> directories,
+        InlinePresetBrowser::OpenCallback openCallback,
+        InlinePresetBrowser::ActionCallback browseCallback) {
+    presetSidebar = std::make_unique<InlinePresetBrowser>(
+            std::move(directories),
+            std::move(openCallback),
+            std::move(browseCallback),
+            [this] {
+                dockInteraction->createGuide(getLocalBounds().toFloat());
+            },
+            [this](WorkspaceSidebarTab tab) {
+                guideShelfState.presetBrowserVisible = tab == WorkspaceSidebarTab::Presets;
+                requestCanvasRepaint();
+                openGLContext.triggerRepaint();
+            });
+    guideShelfState.presetBrowserVisible = presetSidebar->activeTab()
+            == WorkspaceSidebarTab::Presets;
+    addAndMakeVisible(*presetSidebar);
+    resized();
+}
+
+std::vector<std::pair<String, Rectangle<float>>>
+NodeCanvas::presetSidebarPointerTargetsForAutomation() const {
+    std::vector<std::pair<String, Rectangle<float>>> targets;
+    if (presetSidebar == nullptr) {
+        return targets;
+    }
+    const auto origin = presetSidebar->getPosition().toFloat();
+    for (const auto& [id, bounds] : presetSidebar->pointerTargetsForAutomation()) {
+        targets.push_back({ id, bounds.translated(origin.x, origin.y) });
+    }
+    return targets;
+}
+
 void NodeCanvas::paint(Graphics& g) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Frame::JucePaint);
     const uint64_t framePreparationStartedAt = performanceMetrics.timestamp();
@@ -239,6 +274,7 @@ void NodeCanvas::paint(Graphics& g) {
 
     canvasPresentation.paint(g, frame);
     if (frame.canvasOcclusion.isEmpty()
+            && !guideShelfState.presetBrowserVisible
             && canvasPresentation.guideShelfNeedsOpenGLPreviewRender()) {
         openGLContext.triggerRepaint();
     }
@@ -257,6 +293,12 @@ void NodeCanvas::resized() {
                 GuideCurveEditorComponent::preferredHostBounds(editorContentBounds()).toNearestInt());
     }
     editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
+    if (presetSidebar != nullptr) {
+        presetSidebar->setBounds(GuideCurveShelf::guideWorkspace(
+                getLocalBounds().toFloat(),
+                guideShelfState.minimized,
+                probeRailState.minimized).toNearestInt());
+    }
     requestCanvasRepaint();
 }
 

@@ -164,6 +164,15 @@ bool WorkspaceDockInteractionController::handleGuideDown(
     return handleGuideTileDown(event, workspace);
 }
 
+void WorkspaceDockInteractionController::createGuide(Rectangle<float> workspace) {
+    workspaceBounds = workspace;
+    const String guideId = createGuideFromKeyboard();
+    if (guideId.isNotEmpty()) {
+        keyboardFocus = { WorkspaceDockFocusTarget::GuideTile, guideId };
+    }
+    callbacks.repaint();
+}
+
 bool WorkspaceDockInteractionController::handleGuideControlsDown(
         const MouseEvent& event,
         Rectangle<float> workspace) {

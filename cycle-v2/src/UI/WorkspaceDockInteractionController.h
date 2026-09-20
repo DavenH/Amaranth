@@ -43,6 +43,7 @@ public:
     bool mouseDrag(const MouseEvent& event, Rectangle<float> workspace);
     bool mouseUp();
     bool keyPressed(const KeyPress& key, Rectangle<float> workspace);
+    void createGuide(Rectangle<float> workspace);
 
     const WorkspaceDockFocus& focus() const { return keyboardFocus; }
     void clearFocus() { keyboardFocus = {}; }

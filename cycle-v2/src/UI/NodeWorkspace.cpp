@@ -214,6 +214,9 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
     if (targets == nullptr) {
         return result;
     }
+    for (const auto& [id, bounds] : canvas.presetSidebarPointerTargetsForAutomation()) {
+        targets->add(pointerTarget(id, "presetSidebar", bounds));
+    }
     if (!keyboard.isVisible()) {
         return result;
     }

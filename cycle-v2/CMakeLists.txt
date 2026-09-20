@@ -232,6 +232,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/OutputMeterPresentation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/GuideCurveShelf.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/GuideRelationshipPresentation.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/InlinePresetBrowser.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/TransformCompactEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/VoiceContextCompactEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorHost.cpp"

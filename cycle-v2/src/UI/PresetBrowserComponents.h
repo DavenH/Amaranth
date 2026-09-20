@@ -10,6 +10,19 @@
 
 namespace CycleV2 {
 
+namespace PresetBrowserPainting {
+
+void drawOverflowMenu(
+        juce::Graphics& graphics,
+        juce::Rectangle<float> bounds);
+void drawPreview(
+        juce::Graphics& graphics,
+        const PresetLibraryRecord& record,
+        PresetThumbnailCache& thumbnails,
+        juce::Rectangle<float> bounds);
+
+}
+
 class PresetCardGrid final : public juce::Component {
 public:
     using SelectionCallback = std::function<void()>;

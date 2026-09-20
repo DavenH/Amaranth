@@ -200,6 +200,9 @@ void GuideCurveShelf::paint(
         return;
     }
 
+    graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.96f));
+    graphics.fillRoundedRectangle(shelf, CanvasChromeMetrics::panelCornerRadius);
+
     if (state.minimized) {
         graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.92f));
         graphics.fillRoundedRectangle(shelf, CanvasChromeMetrics::panelCornerRadius);

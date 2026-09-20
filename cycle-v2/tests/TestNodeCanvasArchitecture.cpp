@@ -106,7 +106,7 @@ TEST_CASE("Signal probe rail overlays the full canvas", "[cycle-v2][canvas][prob
             { false, false, false, expanded.expandedHeight }).content == workspace);
 }
 
-TEST_CASE("Workspace dock places Guides beside utilities and Spies above canvas",
+TEST_CASE("Workspace dock gives the unified sidebar the former minimap region",
         "[cycle-v2][canvas][guide-dock]") {
     const Rectangle<float> workspace { 0.f, 0.f, 1000.f, 700.f };
     WorkspaceDockState state;
@@ -114,9 +114,10 @@ TEST_CASE("Workspace dock places Guides beside utilities and Spies above canvas"
 
     const CanvasUtilityDockLayout utilities = CanvasUtilityDock::layout(workspace);
     REQUIRE(balanced.content == workspace);
-    REQUIRE(balanced.leftShelf.getY() == utilities.minimap.getBottom() + CanvasUtilityDock::gap);
+    REQUIRE(balanced.leftShelf.getY() == workspace.getY() + CanvasUtilityDock::margin);
     REQUIRE(balanced.leftShelf.getRight() == utilities.minimap.getRight());
-    REQUIRE(balanced.leftShelf.getWidth() == utilities.minimap.getWidth());
+    REQUIRE(balanced.leftShelf.getWidth() == Catch::Approx(320.f));
+    REQUIRE(balanced.leftShelf.intersects(utilities.minimap));
     REQUIRE(balanced.leftShelf.getX() > balanced.rightShelf.getRight());
     REQUIRE(balanced.leftShelf.getHeight() > WorkspaceDock::guideTileHeight);
     REQUIRE(balanced.rightShelf.getBottom() == workspace.getBottom());
@@ -154,7 +155,7 @@ TEST_CASE("Workspace dock places Guides beside utilities and Spies above canvas"
     const Rectangle<float> narrowWorkspace { 0.f, 0.f, 800.f, 600.f };
     const WorkspaceDockLayout narrow = WorkspaceDock::layout(narrowWorkspace, state);
     const CanvasUtilityDockLayout narrowUtilities = CanvasUtilityDock::layout(narrowWorkspace);
-    REQUIRE(narrow.leftShelf.getY() >= narrowUtilities.minimap.getBottom());
+    REQUIRE(narrow.leftShelf.intersects(narrowUtilities.minimap));
     REQUIRE(narrow.leftShelf.getHeight()
             >= WorkspaceDock::headerHeight + WorkspaceDock::guideTileHeight);
     REQUIRE_FALSE(narrow.leftShelf.intersects(narrow.rightShelf));

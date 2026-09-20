@@ -46,12 +46,11 @@ WorkspaceDockLayout WorkspaceDock::layout(
         return result;
     }
 
-    const CanvasUtilityDockLayout utilities = CanvasUtilityDock::layout(workspace);
-    const float guideWidth = juce::jmin(tileWidth + shelfPadding * 2.f,
+    const float guideWidth = juce::jmin(340.f,
             juce::jmax(drawerWidth, workspace.getWidth() * 0.32f));
     const float activeGuideWidth = state.leftMinimized ? drawerWidth : guideWidth;
     const float guideRight = workspace.getRight() - CanvasUtilityDock::margin;
-    const float guideTop = utilities.minimap.getBottom() + CanvasUtilityDock::gap;
+    const float guideTop = workspace.getY() + CanvasUtilityDock::margin;
     const float spyRight = juce::jmax(workspace.getX(),
             guideRight - activeGuideWidth - CanvasUtilityDock::gap);
     result.dock = spyRowBounds(

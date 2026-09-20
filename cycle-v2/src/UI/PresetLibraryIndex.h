@@ -47,7 +47,7 @@ private:
     std::vector<juce::File> directories;
     std::vector<PresetLibraryRecord> records;
     ResultsCallback callback;
-    juce::ThreadPool worker { 1 };
+    juce::ThreadPool worker { 2 };
     juce::String pendingQuery;
     std::atomic<uint64_t> requested { 0 };
     uint64_t published {};

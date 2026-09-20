@@ -14,6 +14,7 @@ namespace CycleV2 {
 
 struct GuideCurveShelfState {
     bool minimized {};
+    bool presetBrowserVisible {};
     float verticalOffset {};
     String selectedGuideId;
     String hoveredGuideId;

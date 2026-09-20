@@ -35,6 +35,10 @@ void drawStars(juce::Graphics& graphics, int rating, juce::Rectangle<float> boun
     }
 }
 
+}
+
+namespace PresetBrowserPainting {
+
 void drawOverflowMenu(juce::Graphics& graphics, juce::Rectangle<float> bounds) {
     graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.72f));
     const auto centre = bounds.getCentre();
@@ -47,7 +51,9 @@ void drawOverflowMenu(juce::Graphics& graphics, juce::Rectangle<float> bounds) {
     }
 }
 
-void drawPreviewPlaceholder(juce::Graphics& graphics, juce::Rectangle<float> bounds) {
+static void drawPreviewPlaceholder(
+        juce::Graphics& graphics,
+        juce::Rectangle<float> bounds) {
     graphics.setColour(CanvasChromePalette::insetBackground);
     graphics.fillRect(bounds);
     graphics.setColour(CanvasChromePalette::gridMinor.withAlpha(0.7f));
@@ -81,6 +87,22 @@ void drawPreviewPlaceholder(juce::Graphics& graphics, juce::Rectangle<float> bou
             bounds.getX() + quarterWidth * 3.5f, bounds.getCentreY() + amplitude,
             bounds.getRight(), bounds.getCentreY());
     graphics.strokePath(wave, juce::PathStrokeType(1.2f));
+}
+
+void drawPreview(
+        juce::Graphics& graphics,
+        const PresetLibraryRecord& record,
+        PresetThumbnailCache& thumbnails,
+        juce::Rectangle<float> bounds) {
+    const juce::Image preview = thumbnails.imageFor(record);
+    if (preview.isValid()) {
+        graphics.setImageResamplingQuality(juce::Graphics::mediumResamplingQuality);
+        graphics.drawImage(preview, bounds);
+    } else {
+        drawPreviewPlaceholder(graphics, bounds);
+    }
+    graphics.setColour(CanvasChromePalette::border.withAlpha(0.8f));
+    graphics.drawRect(bounds, 1.f);
 }
 
 }
@@ -167,15 +189,8 @@ void PresetCardGrid::paint(juce::Graphics& graphics) {
 
         auto inner = card.reduced((float) cardInset);
         auto previewBounds = inner.removeFromTop(104.f);
-        const juce::Image preview = thumbnails.imageFor(record);
-        if (preview.isValid()) {
-            graphics.setImageResamplingQuality(juce::Graphics::mediumResamplingQuality);
-            graphics.drawImage(preview, previewBounds);
-        } else {
-            drawPreviewPlaceholder(graphics, previewBounds);
-        }
-        graphics.setColour(CanvasChromePalette::border.withAlpha(0.8f));
-        graphics.drawRect(previewBounds, 1.f);
+        PresetBrowserPainting::drawPreview(
+                graphics, record, thumbnails, previewBounds);
 
         inner.removeFromTop(7.f);
         auto nameRow = inner.removeFromTop(17.f);
@@ -194,7 +209,8 @@ void PresetCardGrid::paint(juce::Graphics& graphics) {
                 juce::Justification::centredLeft, 1);
         auto ratingRow = inner.removeFromTop(14.f);
         drawStars(graphics, record.presentation.rating, ratingRow.removeFromLeft(72.f));
-        drawOverflowMenu(graphics, ratingRow.removeFromRight(18.f));
+        PresetBrowserPainting::drawOverflowMenu(
+                graphics, ratingRow.removeFromRight(18.f));
     }
 }
 
@@ -283,14 +299,8 @@ void PresetDetailPanel::paint(juce::Graphics& graphics) {
     auto bounds = getLocalBounds().reduced(20);
     bounds.removeFromBottom(58);
     auto previewBounds = bounds.removeFromTop(132).toFloat();
-    const juce::Image preview = thumbnails.imageFor(record);
-    if (preview.isValid()) {
-        graphics.drawImage(preview, previewBounds);
-    } else {
-        drawPreviewPlaceholder(graphics, previewBounds);
-    }
-    graphics.setColour(CanvasChromePalette::border);
-    graphics.drawRect(previewBounds, 1.f);
+    PresetBrowserPainting::drawPreview(
+            graphics, record, thumbnails, previewBounds);
     bounds.removeFromTop(19);
 
     graphics.setColour(CanvasChromePalette::text);
