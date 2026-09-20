@@ -16,7 +16,8 @@ void drawPreview(
         juce::Graphics& graphics,
         const PresetLibraryRecord& record,
         PresetThumbnailCache& thumbnails,
-        juce::Rectangle<float> bounds);
+        juce::Rectangle<float> bounds,
+        bool drawBorder = true);
 
 }
 

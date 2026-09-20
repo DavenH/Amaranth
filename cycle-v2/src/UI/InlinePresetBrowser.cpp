@@ -1,6 +1,5 @@
 #include "UI/InlinePresetBrowser.h"
 
-#include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/PresetBrowserComponents.h"
 
@@ -98,10 +97,9 @@ public:
         }
 
         const auto bounds = cardBounds();
-        graphics.setColour(CanvasChromePalette::surface);
-        graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::panelCornerRadius);
-        auto content = bounds.reduced(7.f);
-        PresetBrowserPainting::drawPreview(graphics, record, thumbnails, content);
+        auto content = bounds;
+        PresetBrowserPainting::drawPreview(
+                graphics, record, thumbnails, content, false);
 
         const auto metadata = content.removeFromBottom((float) heroMetadataHeight);
         juce::ColourGradient scrim(
@@ -132,15 +130,17 @@ public:
             drawTag(graphics, record.presentation.tags[tag], tags.removeFromLeft(width));
             tags.removeFromLeft(6.f);
         }
-        graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.88f));
-        graphics.drawRoundedRectangle(
-                bounds,
-                CanvasChromeMetrics::panelCornerRadius,
-                CanvasChromeMetrics::restingBorderWidth);
+        graphics.setColour(CanvasChromePalette::navigationAccent.withAlpha(0.82f));
+        graphics.drawLine(
+                bounds.getX(),
+                bounds.getBottom() - 1.f,
+                bounds.getRight(),
+                bounds.getBottom() - 1.f,
+                2.f);
     }
 
     void resized() override {
-        const auto bounds = cardBounds().toNearestInt().reduced(7);
+        const auto bounds = cardBounds().toNearestInt();
         const auto metadata = bounds.withTop(bounds.getBottom() - heroMetadataHeight);
         trash.setBounds(metadata.getRight() - 39, metadata.getY() + 3, 34, 34);
     }

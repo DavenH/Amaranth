@@ -68,6 +68,9 @@ load.
    above the rows viewport while retaining live selection updates.
 8. **Complete.** Reduce the hero contrast scrim from 68 px to 52 px while
    retaining two compact metadata rows and the existing Trash hit target.
+9. **Complete.** Flatten the pinned hero by removing its raised rounded frame
+   and perimeter stroke, filling the card with preview content, and retaining
+   selection emphasis as a single 2 px bottom rule.
 
 ## Architecture Baseline
 
@@ -128,7 +131,7 @@ fact. `NodeWorkspace` remains the owner of document load/audio publication and
 only supplies callbacks. There is one tab/minimap eligibility decision site.
 
 Final relevant sizes: `InlinePresetBrowser.cpp` 715 lines and header 107,
-`PresetBrowserComponents.cpp` 386, `NodeCanvas.cpp` 2,678 and header 355,
+`PresetBrowserComponents.cpp` 389, `NodeCanvas.cpp` 2,678 and header 355,
 `NodeWorkspace.cpp` 548, `NodeCanvasPresentation.cpp` 1,490, and
 `WorkspaceDock.cpp` 370. No existing file grew by 200 lines, and the new
 component remains below the architecture review threshold.
@@ -159,11 +162,12 @@ than adding a sticky-position compatibility path.
   events; all four commands pass. It remains at
   `scripts/fixtures/cycle-v2-agent-inline-preset-sidebar.json`.
 - Production screenshot:
-  `/private/tmp/cycle-v2-inline-sidebar-short-scrim.png`. It shows immediate
+  `/private/tmp/cycle-v2-inline-sidebar-flat-hero.png`. It shows immediate
   filename-backed content, visible thumbnails, no minimap beneath Presets, the
   metadata scrim, 20% narrower rail, compact scrolling rows beneath the pinned
-  hero, the shortened 52 px contrast region, hero-card Trash action,
-  dark-on-cyan filter text, and the flush rail aligned to the workspace edge.
+  flat hero with a single cyan bottom rule, the shortened 52 px contrast region,
+  hero-card Trash action, dark-on-cyan filter text, and the flush rail aligned
+  to the workspace edge.
 - Standalone Debug and test targets build with `--parallel 10`.
 - `scripts/cycle_v2_architecture_audit.py` reports only the documented existing
   PLAN/REVIEW files. `git diff --check` passes.

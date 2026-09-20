@@ -81,7 +81,8 @@ void drawPreview(
         juce::Graphics& graphics,
         const PresetLibraryRecord& record,
         PresetThumbnailCache& thumbnails,
-        juce::Rectangle<float> bounds) {
+        juce::Rectangle<float> bounds,
+        bool drawBorder) {
     const juce::Image preview = thumbnails.imageFor(record);
     if (preview.isValid()) {
         graphics.setImageResamplingQuality(juce::Graphics::mediumResamplingQuality);
@@ -89,8 +90,10 @@ void drawPreview(
     } else {
         drawPreviewPlaceholder(graphics, bounds);
     }
-    graphics.setColour(CanvasChromePalette::border.withAlpha(0.8f));
-    graphics.drawRect(bounds, 1.f);
+    if (drawBorder) {
+        graphics.setColour(CanvasChromePalette::border.withAlpha(0.8f));
+        graphics.drawRect(bounds, 1.f);
+    }
 }
 
 }
