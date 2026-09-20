@@ -867,11 +867,13 @@ TEST_CASE("Node canvas automation controller routes aliases and owns diagnostics
     REQUIRE(document.graph().findNode(added.nodeId)->kind == NodeKind::WaveSource);
     REQUIRE_FALSE(automation.addNode("unknown", {}).handled);
 
-    const var diagnostics = automation.inspectOpenGLDiagnostics({ true, {} });
+    const var diagnostics = automation.inspectOpenGLDiagnostics({ true, 2, 1, {}, {} });
     const auto* object = diagnostics.getDynamicObject();
     REQUIRE(object != nullptr);
     REQUIRE(object->getProperty("schema").toString() == "cycle-v2-opengl-diagnostics.v1");
     REQUIRE((bool) object->getProperty("canvasOpenGlAttached"));
+    REQUIRE((int) object->getProperty("contextCreateCount") == 2);
+    REQUIRE((int) object->getProperty("contextCloseCount") == 1);
     REQUIRE((int) object->getProperty("panelCount") == 0);
 }
 

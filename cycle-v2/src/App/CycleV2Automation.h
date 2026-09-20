@@ -62,6 +62,7 @@ private:
     var inspectAudioPerformance() const;
     var resetAudioPerformance();
     var requestCanvasOpenGLFrame();
+    var recreateCanvasOpenGLContext();
     var screenshot(const var& commandValue) const;
     var waitForIdle(const var& commandValue) const;
 

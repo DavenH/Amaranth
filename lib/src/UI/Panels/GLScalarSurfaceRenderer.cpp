@@ -1,5 +1,6 @@
 #include "GLScalarSurfaceRenderer.h"
 
+#include <array>
 #include <cstdlib>
 
 namespace gl = juce::gl;
@@ -102,6 +103,135 @@ void setColourUniform(unsigned int program, const char* name, juce::Colour colou
             colour.getFloatBlue());
 }
 
+int channelError(juce::uint8 actual, juce::uint8 expected) {
+    const int difference = (int) actual - (int) expected;
+    return difference < 0 ? -difference : difference;
+}
+
+void restoreCapability(unsigned int capability, bool enabled) {
+    if (enabled) {
+        gl::glEnable(capability);
+    } else {
+        gl::glDisable(capability);
+    }
+}
+
+class ScalarSurfaceValidationGlState {
+public:
+    ScalarSurfaceValidationGlState() {
+        framebuffer = juce::OpenGLFrameBuffer::getCurrentFrameBufferTarget();
+        gl::glGetIntegerv(gl::GL_VIEWPORT, viewport);
+        gl::glGetIntegerv(gl::GL_ACTIVE_TEXTURE, &activeTexture);
+        gl::glGetIntegerv(gl::GL_CURRENT_PROGRAM, &program);
+        gl::glGetIntegerv(gl::GL_MATRIX_MODE, &matrixMode);
+        gl::glGetFloatv(gl::GL_COLOR_CLEAR_VALUE, clearColour);
+        gl::glActiveTexture(gl::GL_TEXTURE0);
+        gl::glGetIntegerv(gl::GL_TEXTURE_BINDING_2D, &texture0);
+        gl::glActiveTexture((unsigned int) activeTexture);
+        blendEnabled = gl::glIsEnabled(gl::GL_BLEND) != 0;
+        depthEnabled = gl::glIsEnabled(gl::GL_DEPTH_TEST) != 0;
+        scissorEnabled = gl::glIsEnabled(gl::GL_SCISSOR_TEST) != 0;
+        textureEnabled = gl::glIsEnabled(gl::GL_TEXTURE_2D) != 0;
+    }
+
+    ~ScalarSurfaceValidationGlState() {
+        gl::glUseProgram((unsigned int) program);
+        if (matricesPushed) {
+            gl::glMatrixMode(gl::GL_MODELVIEW);
+            gl::glPopMatrix();
+            gl::glMatrixMode(gl::GL_PROJECTION);
+            gl::glPopMatrix();
+        }
+        gl::glMatrixMode((unsigned int) matrixMode);
+        gl::glBindFramebuffer(gl::GL_FRAMEBUFFER, framebuffer);
+        gl::glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+        gl::glClearColor(clearColour[0], clearColour[1], clearColour[2], clearColour[3]);
+        restoreCapability(gl::GL_BLEND, blendEnabled);
+        restoreCapability(gl::GL_DEPTH_TEST, depthEnabled);
+        restoreCapability(gl::GL_SCISSOR_TEST, scissorEnabled);
+        restoreCapability(gl::GL_TEXTURE_2D, textureEnabled);
+        gl::glActiveTexture(gl::GL_TEXTURE0);
+        gl::glBindTexture(gl::GL_TEXTURE_2D, (unsigned int) texture0);
+        gl::glActiveTexture((unsigned int) activeTexture);
+    }
+
+    void prepare(int width, int height, unsigned int shaderProgram) {
+        gl::glDisable(gl::GL_BLEND);
+        gl::glDisable(gl::GL_DEPTH_TEST);
+        gl::glDisable(gl::GL_SCISSOR_TEST);
+        gl::glEnable(gl::GL_TEXTURE_2D);
+        gl::glViewport(0, 0, width, height);
+        gl::glMatrixMode(gl::GL_PROJECTION);
+        gl::glPushMatrix();
+        gl::glLoadIdentity();
+        gl::glMatrixMode(gl::GL_MODELVIEW);
+        gl::glPushMatrix();
+        gl::glLoadIdentity();
+        gl::glUseProgram(shaderProgram);
+        matricesPushed = true;
+    }
+
+private:
+    int viewport[4] {};
+    int activeTexture {};
+    int texture0 {};
+    int program {};
+    int matrixMode {};
+    float clearColour[4] {};
+    unsigned int framebuffer {};
+    bool blendEnabled {};
+    bool depthEnabled {};
+    bool scissorEnabled {};
+    bool textureEnabled {};
+    bool matricesPushed {};
+};
+
+void drawValidationQuad() {
+    gl::glBegin(gl::GL_QUADS);
+    gl::glTexCoord2f(0.f, 0.f);
+    gl::glVertex2f(-1.f, -1.f);
+    gl::glTexCoord2f(0.f, 1.f);
+    gl::glVertex2f(1.f, -1.f);
+    gl::glTexCoord2f(1.f, 1.f);
+    gl::glVertex2f(1.f, 1.f);
+    gl::glTexCoord2f(1.f, 0.f);
+    gl::glVertex2f(-1.f, 1.f);
+    gl::glEnd();
+}
+
+int maximumValidationError(
+        const juce::PixelARGB* pixels,
+        const float* values,
+        int columns,
+        int rows,
+        const ScalarSurfaceMaterial& material) {
+    int maximumError = 0;
+    for (int column = 0; column < columns; ++column) {
+        for (int row = 0; row < rows; ++row) {
+            const int index = column * rows + row;
+            const juce::Colour expected = ScalarSurfaceMaterialEvaluator::colourFor(
+                    values[index],
+                    ScalarSurfaceMaterialEvaluator::derivativesAt(
+                            values, columns, rows, column, row),
+                    material);
+            const juce::PixelARGB& actual = pixels[row * columns + column];
+            maximumError = juce::jmax(
+                    maximumError,
+                    channelError(actual.getRed(), expected.getRed()));
+            maximumError = juce::jmax(
+                    maximumError,
+                    channelError(actual.getGreen(), expected.getGreen()));
+            maximumError = juce::jmax(
+                    maximumError,
+                    channelError(actual.getBlue(), expected.getBlue()));
+            maximumError = juce::jmax(
+                    maximumError,
+                    channelError(actual.getAlpha(), expected.getAlpha()));
+        }
+    }
+    return maximumError;
+}
+
 }
 
 bool ScalarSurfaceUploadState::needsUpload(const ScalarSurfaceRenderData& data) const {
@@ -140,6 +270,8 @@ bool GLScalarSurfaceRenderer::draw(const ScalarSurfaceRenderData& data) {
     if (!compileProgram() || !ensureTexture(data)) {
         return false;
     }
+
+    validateGpuParity();
 
     gl::glUseProgram(program);
     gl::glActiveTexture(gl::GL_TEXTURE0);
@@ -180,6 +312,9 @@ void GLScalarSurfaceRenderer::clearResources() {
     usingFloatTexture = false;
     textureCapabilityFailed = false;
     diagnostics.capabilityAvailable = false;
+    diagnostics.gpuValidationAttempted = false;
+    diagnostics.gpuValidationPassed = false;
+    diagnostics.gpuValidationMaximumError = 0;
 }
 
 bool GLScalarSurfaceRenderer::compileProgram() {
@@ -287,6 +422,97 @@ bool GLScalarSurfaceRenderer::uploadTexture(const ScalarSurfaceRenderData& data)
 
 bool GLScalarSurfaceRenderer::textureMatches(const ScalarSurfaceRenderData& data) const {
     return !uploadState.needsUpload(data);
+}
+
+void GLScalarSurfaceRenderer::validateGpuParity() {
+    if (diagnostics.gpuValidationAttempted
+            || std::getenv("CYCLE_VALIDATE_SCALAR_SURFACE_SHADER") == nullptr) {
+        return;
+    }
+
+    diagnostics.gpuValidationAttempted = true;
+    juce::OpenGLContext* context = juce::OpenGLContext::getCurrentContext();
+    constexpr int columns = 5;
+    constexpr int rows = 5;
+    constexpr int tolerance = 4;
+    const std::array<float, columns * rows> values {
+            0.08f, 0.14f, 0.22f, 0.14f, 0.08f,
+            0.18f, 0.30f, 0.42f, 0.30f, 0.18f,
+            0.34f, 0.48f, 0.72f, 0.48f, 0.34f,
+            0.58f, 0.70f, 0.86f, 0.70f, 0.58f,
+            0.78f, 0.88f, 0.96f, 0.88f, 0.78f
+    };
+    const std::array<ScalarSurfaceMaterial, 3> materials {
+            ScalarSurfaceMaterial::signedAmplitude(),
+            ScalarSurfaceMaterial::unipolarMagnitude(),
+            ScalarSurfaceMaterial::bipolarPhase()
+    };
+    if (context == nullptr) {
+        DBG("ScalarSurfaceGpuValidation failed: no current OpenGL context");
+        return;
+    }
+
+    ScalarSurfaceValidationGlState savedState;
+    juce::OpenGLFrameBuffer framebuffer;
+    if (!framebuffer.initialise(*context, columns, rows)) {
+        DBG("ScalarSurfaceGpuValidation failed: framebuffer unavailable");
+        return;
+    }
+
+    unsigned int validationTexture = 0;
+    gl::glGenTextures(1, &validationTexture);
+    gl::glActiveTexture(gl::GL_TEXTURE0);
+    gl::glBindTexture(gl::GL_TEXTURE_2D, validationTexture);
+    gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_MIN_FILTER, gl::GL_LINEAR);
+    gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_MAG_FILTER, gl::GL_LINEAR);
+    gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_WRAP_S, gl::GL_CLAMP_TO_EDGE);
+    gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_WRAP_T, gl::GL_CLAMP_TO_EDGE);
+    gl::glTexImage2D(
+            gl::GL_TEXTURE_2D,
+            0,
+            gl::GL_LUMINANCE,
+            rows,
+            columns,
+            0,
+            gl::GL_LUMINANCE,
+            gl::GL_FLOAT,
+            values.data());
+
+    savedState.prepare(columns, rows, program);
+
+    int maximumError = 0;
+    bool readSucceeded = true;
+    std::array<juce::PixelARGB, columns * rows> pixels;
+    for (const ScalarSurfaceMaterial& material: materials) {
+        framebuffer.makeCurrentAndClear();
+        gl::glBindTexture(gl::GL_TEXTURE_2D, validationTexture);
+
+        ScalarSurfaceRenderData data;
+        data.values = values.data();
+        data.valueCount = (int) values.size();
+        data.material = material;
+        data.columns = columns;
+        data.rows = rows;
+        setMaterialUniforms(data);
+
+        drawValidationQuad();
+        gl::glFinish();
+
+        readSucceeded = framebuffer.readPixels(
+                pixels.data(), { 0, 0, columns, rows }) && readSucceeded;
+        maximumError = juce::jmax(
+                maximumError,
+                maximumValidationError(
+                        pixels.data(), values.data(), columns, rows, material));
+    }
+
+    gl::glDeleteTextures(1, &validationTexture);
+
+    diagnostics.gpuValidationMaximumError = maximumError;
+    diagnostics.gpuValidationPassed = readSucceeded && maximumError <= tolerance;
+    DBG(juce::String("ScalarSurfaceGpuValidation ")
+            + juce::String(diagnostics.gpuValidationPassed ? "passed" : "failed")
+            + " maximumChannelError=" + juce::String(maximumError));
 }
 
 void GLScalarSurfaceRenderer::setMaterialUniforms(const ScalarSurfaceRenderData& data) const {

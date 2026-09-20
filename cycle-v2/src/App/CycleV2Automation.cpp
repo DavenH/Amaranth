@@ -262,6 +262,8 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return sendMidi(commandValue);
         case Command::RequestCanvasOpenGLFrame:
             return requestCanvasOpenGLFrame();
+        case Command::RecreateCanvasOpenGLContext:
+            return recreateCanvasOpenGLContext();
         case Command::ExportGraph:
             return exportGraph(commandValue);
         case Command::OpenGraph:
@@ -784,6 +786,11 @@ var CycleV2Automation::sendMidi(const var& commandValue) {
 var CycleV2Automation::requestCanvasOpenGLFrame() {
     workspace.requestCanvasOpenGLFrameForAutomation();
     return okResult("requestCanvasOpenGLFrame");
+}
+
+var CycleV2Automation::recreateCanvasOpenGLContext() {
+    workspace.recreateCanvasOpenGLContextForAutomation();
+    return okResult("recreateCanvasOpenGLContext");
 }
 
 var CycleV2Automation::screenshot(const var& commandValue) const {

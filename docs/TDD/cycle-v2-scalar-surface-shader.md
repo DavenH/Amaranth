@@ -1,7 +1,6 @@
 # Cycle V2 Scalar-Surface Shader
 
-Status: In Progress — Cycle 1 and Cycle V2 integration complete; automated GPU
-readback parity and in-process context recreation proof remain
+Status: Implemented
 
 ## Implementation Record
 
@@ -89,20 +88,27 @@ renderer slice.
 | --- | ---: | --- |
 | `lib/src/UI/Panels/Panel3D.cpp` | 1,069 | Remains panel orchestration; 38 lines adapt the locked authoritative grid to an immutable render view. Material and GL policy stay outside. |
 | `lib/src/UI/Panels/GLPanelRenderer.cpp` | 218 | Nine routing/lifecycle lines; shader policy is delegated to the dedicated collaborator. |
-| `lib/src/UI/Panels/GLScalarSurfaceRenderer.cpp` | 336 | Cohesive GL resource, upload-cache, uniform, and draw owner. |
+| `lib/src/UI/Panels/GLScalarSurfaceRenderer.cpp` | 562 | Cohesive GL resource, upload-cache, uniform, draw, and opt-in parity-validation owner. |
 | `lib/src/UI/Panels/ScalarSurfaceMaterial.cpp` | 198 | Single palette, derivative, and CPU-reference policy owner. |
 | `cycle-v2/src/Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.cpp` | 90 | Reduced by 16 lines and now delegates colour/relief policy. |
 | `cycle-v2/src/Nodes/Trimesh/Editor/TrimeshWidget.cpp` | 830 | No growth; its existing composition role only selects the fixed expanded product resolution. |
-| `cycle-v2/src/UI/NodeCanvas.cpp` | 2,702 | Unchanged; it remains the shared-context lifecycle owner. |
+| `cycle-v2/src/UI/NodeCanvas.cpp` | 2,714 | Remains the shared-context lifecycle owner; context counters and the narrow automation recreate hook sit beside the existing attach/detach callbacks. |
 | `cycle-v2/src/Nodes/Trimesh/Panel/TrimeshPanelHosts.cpp` | 276 | Six lifecycle lines release renderer resources while the shared context is current. |
 | `cycle-v2/src/Nodes/Trimesh/Panel/TrimeshPanel3D.cpp` | 168 | Five adapter lines translate profile semantics to the shared material. |
 
 The after-change architecture audit reports the same 20 pre-existing size
 triggers and no new trigger. `TrimeshWidget.cpp` remains a review-level file,
-but this slice adds no lines or policy to it. `NodeCanvas.cpp` is unchanged.
-Material selection has one profile/domain decision site, GL resource and cache
-policy has one renderer owner, and callers provide only scalar data, bounds,
-revision, and material facts. No graph, mesh, curve, or DSP behavior was copied.
+but this slice adds no lines or policy to it. `NodeCanvas.cpp` was already a
+plan-level file and grew by 12 lines for lifecycle counters and an automation
+entry point. Those members are cohesive with its existing ownership of the
+shared `OpenGLContext`; extracting them would split the attach/detach lifecycle
+across owners. Material selection has one profile/domain decision site, GL
+resource and cache policy has one renderer owner, and callers provide only
+scalar data, bounds, revision, and material facts. No graph, mesh, curve, or
+DSP behavior was copied.
+`CycleV2Automation.cpp` remains a review-level command router at 891 lines; its
+seven added lines only dispatch the context-recreation command to the existing
+workspace/canvas owner and introduce no rendering or lifecycle policy.
 
 ### Verification Record
 
@@ -111,11 +117,23 @@ revision, and material facts. No graph, mesh, curve, or DSP behavior was copied.
   sub-threshold ripple rejection, and upload-cache invalidation.
 - Focused Cycle V2 surface, spectral RGBA parity, orientation, resize,
   magnitude-scale, and phase-mapping tests: 101 assertions across six cases.
+- Automation registry and OpenGL lifecycle diagnostics: 19 assertions across
+  two cases.
 - Standalone Debug `Cycle` and `CycleV2` builds completed with
   `--parallel 10`.
 - Production fixtures passed for Cycle 1, Cycle V2 compact, Cycle V2 expanded,
   and forced shader disable. The expanded report records a 768 by 320 product;
   the Cycle 1 diagnostics report `GL_NO_ERROR` at a 2.0 rendering scale.
+- With `CYCLE_VALIDATE_SCALAR_SURFACE_SHADER=1`, the renderer draws a
+  representative slope/curvature fixture for signed amplitude, unipolar
+  magnitude, and bipolar phase into an offscreen framebuffer. GPU RGBA readback
+  agrees with the CPU reference within the explicit 4/255 per-channel
+  tolerance; the observed maximum error is 3/255. Ordinary rendering performs
+  no readback.
+- `cycle-v2-agent-scalar-surface-lifecycle.json` recreates the shared context
+  in process. Diagnostics advance from create/close counts 1/0 to 2/1, the
+  expanded editor remains present, and the shader parity validation passes
+  both before and after recreation, proving a clean resource rebuild and draw.
 - Visual artifacts: `/tmp/cycle-scalar-v1.png`,
   `/tmp/cycle-scalar-v2-compact.png`, and
   `/tmp/cycle-scalar-v2-expanded.png`. The expanded capture is 1728 by 962 and
@@ -123,11 +141,6 @@ revision, and material facts. No graph, mesh, curve, or DSP behavior was copied.
 - `git diff --check` and the scalar-math hot-loop self-check pass. The local
   environment does not provide `clang-tidy`, so that optional check could not
   run.
-
-The dedicated numeric GPU-readback harness and an automated destroy/recreate
-sequence in one process remain open verification work. The production shader,
-CPU fallback, and clean first-frame lifecycle are exercised, but those two TDD
-proofs must land before changing this document to `Implemented`.
 
 ## Objective
 

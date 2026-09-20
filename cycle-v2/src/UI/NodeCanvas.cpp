@@ -1046,6 +1046,7 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
 }
 
 void NodeCanvas::newOpenGLContextCreated() {
+    ++openGlContextCreateCount;
     renderer.initialize();
 }
 
@@ -1075,6 +1076,7 @@ void NodeCanvas::renderOpenGL() {
 }
 
 void NodeCanvas::openGLContextClosing() {
+    ++openGlContextCloseCount;
     editorCoordinator.releaseOpenGLResources();
     guideEditorCoordinator.releaseOpenGLResources();
 
@@ -1870,7 +1872,11 @@ var NodeCanvas::inspectPointerTargetsForAutomation() const {
 
 var NodeCanvas::inspectOpenGLDiagnosticsForAutomation() const {
     return automation.inspectOpenGLDiagnostics({
-            canvasOpenGlAttached, expandedNodeId, expandedEditorBoundsForOverlay() });
+            canvasOpenGlAttached,
+            openGlContextCreateCount,
+            openGlContextCloseCount,
+            expandedNodeId,
+            expandedEditorBoundsForOverlay() });
 }
 
 var NodeCanvas::inspectPerformanceMetricsForAutomation() const {
@@ -1888,6 +1894,12 @@ void NodeCanvas::resetPerformanceMetricsForAutomation() {
 }
 
 void NodeCanvas::requestOpenGLFrameForAutomation() {
+    openGLContext.triggerRepaint();
+}
+
+void NodeCanvas::recreateOpenGLContextForAutomation() {
+    setCanvasOpenGlAttached(false);
+    setCanvasOpenGlAttached(true);
     openGLContext.triggerRepaint();
 }
 

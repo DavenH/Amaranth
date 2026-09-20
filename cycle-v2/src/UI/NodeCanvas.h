@@ -110,6 +110,7 @@ public:
     var inspectPerformanceMetricsForAutomation() const;
     void resetPerformanceMetricsForAutomation();
     void requestOpenGLFrameForAutomation();
+    void recreateOpenGLContextForAutomation();
     var captureAudioForAutomation(size_t frameCount) const;
     bool copyAudioPlan(GraphExecutionPlan& plan, uint64_t& revision) const;
     uint64_t audioPlanRevision() const { return presentation.audioPlanRevision(); }
@@ -186,6 +187,8 @@ private:
     String resolvedHoverText;
     bool pointerInsideCanvas {};
     bool canvasOpenGlAttached {};
+    uint64_t openGlContextCreateCount {};
+    uint64_t openGlContextCloseCount {};
     bool compiledStateRefreshPending {};
     PresentationRefreshScope compiledStateRefreshScope {
             PresentationRefreshScope::Downstream };

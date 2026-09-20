@@ -84,6 +84,7 @@ public:
     var inspectAudioPerformanceForAutomation() const;
     void resetAudioPerformanceForAutomation();
     void requestCanvasOpenGLFrameForAutomation();
+    void recreateCanvasOpenGLContextForAutomation();
     var captureAudioForAutomation(size_t frameCount) const;
     bool copyAudioPlanForAutomation(GraphExecutionPlan& plan, uint64_t& revision) const;
     var performanceStateForAutomation() const;

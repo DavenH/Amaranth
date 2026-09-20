@@ -11,6 +11,9 @@ struct ScalarSurfaceRendererDiagnostics {
     uint64_t uploadCount {};
     uint64_t allocationCount {};
     bool capabilityAvailable {};
+    bool gpuValidationAttempted {};
+    bool gpuValidationPassed {};
+    int gpuValidationMaximumError {};
 };
 
 class ScalarSurfaceUploadState {
@@ -42,6 +45,7 @@ private:
     bool ensureTexture(const ScalarSurfaceRenderData& data);
     bool uploadTexture(const ScalarSurfaceRenderData& data);
     bool textureMatches(const ScalarSurfaceRenderData& data) const;
+    void validateGpuParity();
     void setMaterialUniforms(const ScalarSurfaceRenderData& data) const;
 
     static unsigned int compileShader(unsigned int type, const char* source);
