@@ -50,6 +50,7 @@ public:
             const String& portId) const;
     std::vector<size_t> incomingEdges(const String& nodeId) const;
     std::vector<size_t> outgoingEdges(const String& nodeId) const;
+    std::vector<size_t> edgesAtChangedDestinations() const;
 
 private:
     enum class Direction {

@@ -34,6 +34,7 @@ struct GraphValidationIssue {
     juce::String sourcePortId;
     juce::String destNodeId;
     juce::String destPortId;
+    juce::String subjectId;
 };
 
 }

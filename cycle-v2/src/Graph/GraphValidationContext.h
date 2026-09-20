@@ -1,10 +1,12 @@
 #pragma once
 
 #include "Graph/GraphAudioScope.h"
+#include "Graph/GraphAudioValidationFacts.h"
 #include "Graph/GraphDomainResolver.h"
 #include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphValidationTypes.h"
+#include "Graph/GraphVoiceContextAssignments.h"
 
 namespace CycleV2 {
 
@@ -17,15 +19,33 @@ public:
     const GraphEdgeIndex& edgeIndex() const { return indexedEdges; }
     const GraphDomainResolution& domainResolution() const { return domains; }
     const GraphAudioScopeAnalysis& audioScopeAnalysis() const { return audioScope; }
+    const GraphAudioValidationFacts& audioValidationFacts() const { return audioFacts; }
     const std::vector<GraphValidationIssue>& validationIssues() const { return issues; }
+    const GraphVoiceContextAssignments& voiceContextAssignments() const {
+        return voiceContexts;
+    }
+    std::vector<GraphValidationIssue> validateProposal(
+            const NodeGraph& graph,
+            std::vector<size_t> removedEdges,
+            std::vector<Edge> addedEdges) const;
+    std::vector<GraphValidationIssue> validateProposalAfterLayoutChanges(
+            const NodeGraph& graph,
+            std::vector<size_t> removedEdges,
+            std::vector<Edge> addedEdges) const;
 
 private:
+    std::vector<GraphValidationIssue> validateRetainedProposal(
+            const NodeGraph& graph,
+            std::vector<size_t> removedEdges,
+            std::vector<Edge> addedEdges) const;
     const NodeGraph* source {};
     uint64_t revision {};
     GraphEdgeView edges;
     GraphEdgeIndex indexedEdges;
     GraphDomainResolution domains;
     GraphAudioScopeAnalysis audioScope;
+    GraphAudioValidationFacts audioFacts;
+    GraphVoiceContextAssignments voiceContexts;
     std::vector<GraphValidationIssue> issues;
 };
 

@@ -1,5 +1,5 @@
 #include "UI/NodeCanvasInteraction.h"
-#include "Graph/GraphEditor.h"
+#include "Graph/GraphConnectionValidator.h"
 #include "UI/ModulationCableBundle.h"
 
 #include <algorithm>
@@ -112,18 +112,21 @@ std::optional<float> bestSnapDelta(
     return bestMatches > 0 ? std::optional<float>(bestDelta) : std::nullopt;
 }
 
-bool canConnect(const NodeGraph& graph, const PortAddress& source, const PortAddress& target) {
+bool canConnect(
+        const NodeGraph& graph,
+        const GraphValidationContext& context,
+        const PortAddress& source,
+        const PortAddress& target) {
     if (source.input == target.input) {
         return false;
     }
 
     if (ModulationCableBundle::isAddress(source)
             || ModulationCableBundle::isAddress(target)) {
-        return ModulationCableBundle::canConnect(graph, source, target);
+        return ModulationCableBundle::canConnect(graph, context, source, target);
     }
 
-    NodeGraph candidate = graph;
-    return GraphEditor().connect(candidate, source, target).succeeded();
+    return GraphConnectionValidator().validate(graph, context, source, target).succeeded();
 }
 
 }
@@ -137,6 +140,7 @@ void NodeCanvasInteraction::beginAreaSelection(Point<float> start) {
 }
 
 void NodeCanvasInteraction::beginNodeDrag(
+        const NodeGraph& graph,
         const String& nodeId,
         std::vector<String> nodeIds,
         Rectangle<float> startBounds) {
@@ -144,12 +148,27 @@ void NodeCanvasInteraction::beginNodeDrag(
         nodeIds.push_back(nodeId);
     }
     currentGesture = NodeDragGesture { nodeId, std::move(nodeIds), startBounds, {} };
+    validationContext = std::make_unique<GraphValidationContext>(graph);
 }
 
 void NodeCanvasInteraction::beginConnection(
+        const NodeGraph& graph,
         const PortAddress& source,
         Point<float> endpoint) {
     currentGesture = PortConnectionGesture { source, endpoint };
+    validationContext = std::make_unique<GraphValidationContext>(graph);
+}
+
+void NodeCanvasInteraction::beginSpectralPan(const String& nodeId, float startValue) {
+    currentGesture = SpectralPanGesture { nodeId, startValue };
+}
+
+void NodeCanvasInteraction::beginOutputGain(const String& nodeId, float startValue) {
+    currentGesture = OutputGainGesture { nodeId, startValue };
+}
+
+void NodeCanvasInteraction::beginProbeDrag(const String& probeId) {
+    currentGesture = ProbeDragGesture { probeId };
 }
 
 void NodeCanvasInteraction::captureExpandedEditor() {
@@ -158,10 +177,23 @@ void NodeCanvasInteraction::captureExpandedEditor() {
 
 void NodeCanvasInteraction::reset() {
     currentGesture = std::monostate {};
+    validationContext.reset();
 }
 
 bool NodeCanvasInteraction::isIdle() const {
     return std::holds_alternative<std::monostate>(currentGesture);
+}
+
+const SpectralPanGesture* NodeCanvasInteraction::spectralPan() const {
+    return std::get_if<SpectralPanGesture>(&currentGesture);
+}
+
+const OutputGainGesture* NodeCanvasInteraction::outputGain() const {
+    return std::get_if<OutputGainGesture>(&currentGesture);
+}
+
+const ProbeDragGesture* NodeCanvasInteraction::probeDrag() const {
+    return std::get_if<ProbeDragGesture>(&currentGesture);
 }
 
 std::optional<NodeSceneTarget> NodeCanvasInteraction::hitAt(
@@ -186,6 +218,12 @@ std::optional<PortAddress> NodeCanvasInteraction::connectionTargetAt(
         Point<float> screenPosition) const {
     float bestDistance = std::numeric_limits<float>::max();
     std::optional<PortAddress> bestTarget;
+    std::unique_ptr<GraphValidationContext> localContext;
+    const GraphValidationContext* context = validationContext.get();
+    if (context == nullptr || !context->matches(graph)) {
+        localContext = std::make_unique<GraphValidationContext>(graph);
+        context = localContext.get();
+    }
 
     for (const auto& target : scene.targets) {
         if (!target.isPort() || !target.bounds.expanded(kConnectionSnapExpansion).contains(screenPosition)) {
@@ -193,7 +231,7 @@ std::optional<PortAddress> NodeCanvasInteraction::connectionTargetAt(
         }
 
         const PortAddress candidate = target.portAddress();
-        if (!canConnect(graph, source, candidate)) {
+        if (!canConnect(graph, *context, source, candidate)) {
             continue;
         }
 

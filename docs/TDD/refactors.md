@@ -1,5 +1,108 @@
 # Refactor Notes
 
+## Cycle V2 duplicated model and policy queue
+
+Review date: 2026-09-19. These findings come from tracing repeated state and
+decision sites after the Cycle 1/Cycle 2 source-allocation comparison. They are
+ordered by expected architectural value. Each extraction must delete the
+listed duplicate decisions; introducing another facade around them is not
+completion.
+
+### P1: Publish one indexed presentation-facts view
+
+`GraphPresentationSnapshot` owns the compiled plan, runtime trace, preview
+result, graph revision, and preview controls. `NodeCanvas` then retains
+separate references to three snapshot members, `NodeCanvasQueryModel` retains
+the same graph/compile/runtime/preview tuple, and `NodeCanvasPresentationFrame`
+repackages the graph, compile result, preview result, and revisions again.
+Consumers also reproduce lookup and derivation policy:
+
+- `NodeCanvasQueryModel` and `NodeCanvasPresentation` each linearly find a
+  `NodePreviewResult` by node ID;
+- `SignalProbeRail` implements the corresponding probe lookup;
+- `NodeCanvasQueryModel` resolves edge domains on demand through
+  `GraphValidator`, while `NodeCanvasPresentation` and `SignalProbeRail`
+  independently invoke `GraphRenderSemanticResolver`; and
+- `GraphRenderSemanticResolver` performs a fresh full domain resolution and
+  graph scans for individual presentation queries even though publication has
+  already compiled the graph.
+
+Introduce one immutable, indexed presentation-facts view built when a snapshot
+is accepted. Compose it from the displayed `NodeGraph` and
+`GraphPresentationSnapshot`; retain domain-specific render semantics below
+`GraphRenderSemanticResolver`. Give node previews, probe previews, execution
+steps, resolved edge domains, and render semantics one lookup owner. Then
+delete the long-lived snapshot-member aliases in `NodeCanvas`, the duplicate
+preview/probe loops, and per-query full domain resolution. Scale disconnected
+graph content and assert unchanged lookup/domain work in addition to semantic
+and pixel parity.
+
+### P1: Centralize operation-port layout
+
+`NodeCanvasPresentation.cpp` and `NodeCanvasAuthoring.cpp` contain separate
+copies of `OperationPortLayout`, the input-side-to-layout mapping, the layout
+cycle, and output-side cycle. Painting and authoring can therefore disagree
+about the same node geometry. `NodePortLayout` already owns the equivalent
+single-input policy.
+
+Move operation layout classification, cycling, and application into
+`NodePortLayout`. Make presentation and authoring consume that contract and
+delete both private copies. Cover every layout with one test that checks the
+authored port sides, painted port centres, and hit targets together.
+
+### Addressed: Centralize Voice Context assignment facts
+
+`GraphTopologyValidator::validateVoiceContextAssignments` and
+`GraphCompiler::buildImplicitVoiceContextEdges` separately decide whether a
+node accepts a `DomainContext`, scan explicit context assignments, and reason
+about the available Voice Context nodes. The duplicated `acceptsContext`
+predicate is textually identical, while the surrounding scans construct two
+partial models of the same assignment policy.
+
+Create a read-only Voice Context assignment analysis over `GraphEdgeView` and
+the graph's node index. It should report context providers, accepting nodes,
+explicit assignments, missing assignments, and the single-context implicit
+source. The compiler should translate valid facts into implicit edges; the
+topology validator should translate invalid facts into issues. Delete both
+local predicates and assignment scans. Preserve compiler/validator parity for
+zero, one, and multiple contexts with explicit and implicit assignments.
+
+Implemented in `GraphVoiceContextAssignments`. Compilation and topology
+validation now consume the same provider, consumer, and explicit-assignment
+facts. `GraphValidationContext` retains the same analysis, and proposed context
+edges update its assignment map without rescanning graph nodes or unrelated
+edges.
+
+### P2: Share the typed node-model envelope codec
+
+`CurveNodeDomainCodec`, `TrimeshNodeModelCodec`, and
+`UnisonNodeModelCodec` each encode and validate the same `schema`, `version`,
+and positive `revision` envelope before delegating to domain payload logic.
+Guide Curve deserialization repeats the flat-curve branch of
+`CurveNodeDomainCodec` in `readGuideCurveModelJSON`.
+
+Extract a narrow node-model envelope reader/writer that owns only common
+metadata validation and diagnostics. Keep mesh, curve, Envelope, and Unison
+payload validation in their domain codecs. Route Guide Curve loading through
+the flat-curve codec with a Guide-specific default factory, then delete the
+special duplicate reader. Malformed-schema/version/revision tests should be
+table driven across every registered codec.
+
+### P2: Compose expanded-editor chrome
+
+Delay, Reverb, Equalizer, Unison, and Modulation expanded editors contain the
+same background, border, title font, header layout, and close-button placement
+block. Four also repeat enabled-button placement. Delay, Reverb, and Equalizer
+repeat local normalized parameter mirroring after `NodePropertySliderRow`
+already owns the edit gesture and command lifecycle.
+
+Add a small composed editor-chrome component or paint/layout primitive that
+accepts title and enabled/close capabilities. Keep previews, property groups,
+and domain controls in each editor. Extend `NodePropertySliderRow` only with
+the minimum local-preview callback needed to remove the remaining normalized
+parameter mirror loops. Delete the repeated chrome blocks and retain the
+existing editor automation states and screenshots.
+
 ## Cache Trimesh preview pitch context at graph publication
 
 `NodePreviewResources::trimeshWidget` resolves pitch context on each widget
@@ -107,7 +210,7 @@ Replace the mutating contract with either renderer-owned transformed scratch or
 an explicit preparation step returning panel coordinates, then make repeated
 stroke draws non-mutating by default.
 
-## Cycle V2 Trimesh model presentation extraction
+## Addressed: Cycle V2 Trimesh model presentation extraction
 
 `cycle-v2/src/Nodes/Trimesh/Model/TrimeshNodeModel.cpp` owns durable/live mesh
 state, but its `renderGrid` path also constructs Trimesh DSP processors and
@@ -120,6 +223,11 @@ accepts the model's prepared mesh/state and delegates to the existing
 blockwise/gridwise DSP and render profile. Keep mesh identity, publication,
 selection, and revision behavior in `TrimeshNodeModel`. Do not move rendering
 policy into the model or introduce a second curve-evaluation implementation.
+
+Implemented in `TrimeshGridRenderService`. The panel data source now owns the
+presentation call, and `TrimeshNodeModel` no longer imports or constructs DSP
+or rendering policy. The service delegates to the existing blockwise,
+gridwise, and render-profile implementations.
 
 ## Cycle V2 Envelope curve panel decomposition
 

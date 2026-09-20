@@ -4,8 +4,10 @@
 #include <memory>
 #include <optional>
 #include <unordered_map>
+#include <variant>
 
 #include "Runtime/GraphRuntime.h"
+#include "Runtime/GraphAudioProcessorCache.h"
 #include "Runtime/NodeAudioProcessor.h"
 #include "Runtime/PreparedOscillatorRegion.h"
 
@@ -138,54 +140,26 @@ private:
         Global
     };
 
-    struct ProcessorKey {
-        String nodeId;
-        int voiceIndex {};
-
-        bool operator==(const ProcessorKey& other) const {
-            return nodeId == other.nodeId && voiceIndex == other.voiceIndex;
-        }
-    };
-
-    struct ProcessorKeyHash {
-        size_t operator()(const ProcessorKey& key) const {
-            const size_t nodeHash = static_cast<size_t>(key.nodeId.hashCode64());
-            const size_t voiceHash = std::hash<int> {}(key.voiceIndex);
-            return nodeHash ^ (voiceHash + 0x9e3779b9 + (nodeHash << 6) + (nodeHash >> 2));
-        }
-    };
-
-    struct PreparationSignature {
-        uint64_t revision {};
-        String configurationKey;
-        size_t maximumFrameCount {};
+    struct CompleteDiagnosticExecution {
         size_t traversalColumnCount {};
-        double sampleRate {};
-        PortDomain domain { PortDomain::ControlSignal };
-        ChannelLayout channelLayout { ChannelLayout::Mono };
-        double bpm {};
-        int beatsPerMeasure {};
-
-        bool operator==(const PreparationSignature& other) const {
-            return revision == other.revision
-                    && configurationKey == other.configurationKey
-                    && maximumFrameCount == other.maximumFrameCount
-                    && traversalColumnCount == other.traversalColumnCount
-                    && sampleRate == other.sampleRate
-                    && domain == other.domain
-                    && channelLayout == other.channelLayout
-                    && bpm == other.bpm
-                    && beatsPerMeasure == other.beatsPerMeasure;
-        }
     };
 
-    struct CachedProcessor {
-        AudioModuleRole role { AudioModuleRole::None };
-        std::unique_ptr<NodeAudioProcessor> processor;
-        PreparationSignature preparation;
-        size_t preparationCount {};
-        bool prepared {};
+    struct IncrementalDiagnosticExecution {
+        const std::vector<uint8_t>& dirtyNodes;
+        const CancellationCheck& cancellationCheck;
+        GraphAudioResultView& result;
     };
+
+    struct RealtimeExecution {
+        ProcessingPass pass { ProcessingPass::Complete };
+        GraphProcessObserver* observer {};
+        GraphExecutionOperationCounts* operationCounts {};
+    };
+
+    using ProcessingMode = std::variant<
+            CompleteDiagnosticExecution,
+            IncrementalDiagnosticExecution,
+            RealtimeExecution>;
 
     struct PreparedVoice {
         struct ModulationBinding {
@@ -225,11 +199,6 @@ private:
         std::vector<OscillatorRegion*> oscillatorRegionByStep;
     };
 
-    CachedProcessor& processorFor(
-            const String& nodeId,
-            int voiceIndex,
-            AudioModuleRole role,
-            const NodeAudioProcessorFactory& factory) const;
     void removeUnreferencedProcessors() const;
     static PreparedVoice::OscillatorRegion* oscillatorRegionForStep(
             PreparedVoice& voice,
@@ -249,14 +218,7 @@ private:
             size_t frameCount,
             AudioProcessTiming timing,
             const AudioVoiceContext& voice,
-            bool captureDiagnostics,
-            GraphProcessObserver* observer,
-            const std::vector<uint8_t>* dirtyNodes = nullptr,
-            const CancellationCheck& cancellationCheck = {},
-            GraphAudioResultView* incrementalResult = nullptr,
-            ProcessingPass pass = ProcessingPass::Complete,
-            GraphExecutionOperationCounts* operationCounts = nullptr,
-            size_t traversalColumnCount = 0) const;
+            const ProcessingMode& mode) const;
     void mixVoiceBoundary(
             const GraphExecutionPlan& plan,
             size_t frameCount) const;
@@ -283,7 +245,7 @@ private:
     mutable std::vector<SignalPayload> bufferSlots;
     mutable std::vector<SignalPayload> voiceMixSlots;
     mutable const SignalPayload* realtimeOutput {};
-    mutable std::unordered_map<ProcessorKey, CachedProcessor, ProcessorKeyHash> processors;
+    mutable GraphAudioProcessorCache processorCache;
     mutable std::unordered_map<int, PreparedVoice> preparedVoices;
     mutable std::vector<String> diagnosticNodeIds;
     mutable std::vector<std::optional<NodeAudioResult>> diagnosticCache;

@@ -1,12 +1,14 @@
 #include "Graph/GraphTopologyValidator.h"
 
 #include <algorithm>
-#include <unordered_map>
 #include <unordered_set>
+#include <utility>
 
 #include "Graph/GraphAudioScope.h"
+#include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphValidationTypes.h"
+#include "Graph/GraphVoiceContextAssignments.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 
 namespace CycleV2 {
@@ -20,8 +22,78 @@ using NodeIdSet = std::unordered_set<
 void addIssue(
         std::vector<GraphValidationIssue>& issues,
         GraphValidationCode code,
-        const String& message) {
-    issues.push_back({ code, message });
+        const String& message,
+        const String& subjectId = {}) {
+    GraphValidationIssue issue { code, message };
+    issue.subjectId = subjectId;
+    issues.push_back(std::move(issue));
+}
+
+void validateOperationNodeEdges(
+        const Node& node,
+        const GraphEdgeView& edges,
+        const std::vector<size_t>& incomingEdges,
+        const GraphDomainResolution& resolution,
+        std::vector<GraphValidationIssue>& issues) {
+    if (node.kind == NodeKind::SpectralLayer) {
+        const auto firstSignal = std::find_if(
+                incomingEdges.begin(),
+                incomingEdges.end(),
+                [&](size_t edgeIndex) { return !edges[edgeIndex].isAttachment(); });
+        if (firstSignal != incomingEdges.end()) {
+            const size_t edgeIndex = *firstSignal;
+            const PortDomain domain = resolution.domains[edgeIndex];
+            if (domain != PortDomain::TimeSignal
+                    && domain != PortDomain::SpectralMagnitudeSignal
+                    && domain != PortDomain::SpectralPhaseSignal) {
+                addIssue(
+                        issues,
+                        GraphValidationCode::DomainMismatch,
+                        "Pan requires time, magnitude, or phase input: " + node.id,
+                        node.id);
+            }
+        }
+        return;
+    }
+    if (node.kind != NodeKind::Add && node.kind != NodeKind::Multiply) {
+        return;
+    }
+
+    PortDomain firstConcreteDomain {};
+    bool hasConcreteDomain = false;
+    for (const size_t edgeIndex : incomingEdges) {
+        const Edge& edge = edges[edgeIndex];
+        if (edge.isAttachment()) {
+            continue;
+        }
+
+        const PortDomain domain = resolution.domains[edgeIndex];
+        if (!GraphDomainResolver::isConcreteOperationDomain(domain)) {
+            continue;
+        }
+        if (node.kind == NodeKind::Multiply
+                && domain == PortDomain::SpectralPhaseSignal) {
+            addIssue(
+                    issues,
+                    GraphValidationCode::DomainMismatch,
+                    "Multiply cannot process spectral phase: " + node.id,
+                    node.id);
+            break;
+        }
+        if (!hasConcreteDomain) {
+            firstConcreteDomain = domain;
+            hasConcreteDomain = true;
+            continue;
+        }
+        if (domain != firstConcreteDomain) {
+            addIssue(
+                    issues,
+                    GraphValidationCode::MixedOperationDomains,
+                    "Operation node mixes incompatible domains: " + node.id,
+                    node.id);
+            break;
+        }
+    }
 }
 
 }
@@ -43,111 +115,59 @@ void GraphTopologyValidator::validateOperationInputs(
         const GraphEdgeView& edges,
         const GraphDomainResolution& resolution,
         std::vector<GraphValidationIssue>& issues) const {
+    const GraphEdgeIndex edgeIndex(edges);
     for (const auto& node : graph.getNodes()) {
-        if (node.kind == NodeKind::SpectralLayer) {
-            const auto found = std::find_if(
-                    edges.begin(),
-                    edges.end(),
-                    [&](const Edge& edge) {
-                        return !edge.isAttachment() && edge.destNodeId == node.id;
-                    });
-            if (found != edges.end()) {
-                const size_t edgeIndex = (size_t) std::distance(edges.begin(), found);
-                const PortDomain domain = resolution.domains[edgeIndex];
-                if (domain != PortDomain::TimeSignal
-                        && domain != PortDomain::SpectralMagnitudeSignal
-                        && domain != PortDomain::SpectralPhaseSignal) {
-                    addIssue(
-                            issues,
-                            GraphValidationCode::DomainMismatch,
-                            "Pan requires time, magnitude, or phase input: " + node.id);
-                }
-            }
-            continue;
-        }
-        if (node.kind != NodeKind::Add && node.kind != NodeKind::Multiply) {
-            continue;
-        }
-
-        PortDomain firstConcreteDomain {};
-        bool hasConcreteDomain = false;
-        for (size_t edgeIndex = 0; edgeIndex < edges.size(); ++edgeIndex) {
-            const Edge& edge = edges[edgeIndex];
-            if (edge.isAttachment() || edge.destNodeId != node.id) {
-                continue;
-            }
-
-            const PortDomain domain = resolution.domains[edgeIndex];
-            if (!GraphDomainResolver::isConcreteOperationDomain(domain)) {
-                continue;
-            }
-            if (node.kind == NodeKind::Multiply
-                    && domain == PortDomain::SpectralPhaseSignal) {
-                addIssue(
-                        issues,
-                        GraphValidationCode::DomainMismatch,
-                        "Multiply cannot process spectral phase: " + node.id);
-                break;
-            }
-            if (!hasConcreteDomain) {
-                firstConcreteDomain = domain;
-                hasConcreteDomain = true;
-                continue;
-            }
-            if (domain != firstConcreteDomain) {
-                addIssue(
-                        issues,
-                        GraphValidationCode::MixedOperationDomains,
-                        "Operation node mixes incompatible domains: " + node.id);
-                break;
-            }
-        }
+        validateOperationNodeEdges(
+                node,
+                edges,
+                edgeIndex.incomingEdges(node.id),
+                resolution,
+                issues);
     }
+}
+
+void GraphTopologyValidator::validateOperationNode(
+        const Node& node,
+        const GraphEdgeView& edges,
+        const GraphEdgeIndexOverlay& edgeIndex,
+        const GraphDomainResolution& resolution,
+        std::vector<GraphValidationIssue>& issues) const {
+    validateOperationNodeEdges(
+            node,
+            edges,
+            edgeIndex.incomingEdges(node.id),
+            resolution,
+            issues);
 }
 
 void GraphTopologyValidator::validateVoiceContextAssignments(
         const NodeGraph& graph,
         const GraphEdgeView& edges,
         std::vector<GraphValidationIssue>& issues) const {
-    const int voiceContextCount = static_cast<int>(std::count_if(
-            graph.getNodes().begin(),
-            graph.getNodes().end(),
-            [](const Node& node) {
-                return node.kind == NodeKind::VoiceContext;
-            }));
-    if (voiceContextCount <= 1) {
+    const GraphVoiceContextAssignments assignments(graph, edges);
+    validateVoiceContextAssignments(graph, assignments, issues);
+}
+
+void GraphTopologyValidator::validateVoiceContextAssignments(
+        const NodeGraph& graph,
+        const GraphVoiceContextAssignments& assignments,
+        std::vector<GraphValidationIssue>& issues) const {
+    if (assignments.contextNodeIds().size() <= 1) {
         return;
     }
 
-    std::unordered_map<String, String, GraphAudioScopeAnalysis::StringHash>
-            explicitAssignments;
-    for (const auto& edge : edges) {
-        if (!edge.isAttachment() && edge.destPortId == "context") {
-            explicitAssignments.emplace(edge.destNodeId, edge.sourceNodeId);
-        }
-    }
-
     NodeIdSet activeContexts;
-    for (const auto& node : graph.getNodes()) {
-        const bool acceptsContext = std::any_of(
-                node.inputs.begin(),
-                node.inputs.end(),
-                [](const Port& port) {
-                    return port.id == "context"
-                            && port.domain == PortDomain::DomainContext;
-                });
-        if (!acceptsContext) {
-            continue;
-        }
-        const auto assignment = explicitAssignments.find(node.id);
-        if (assignment == explicitAssignments.end()) {
+    for (const String& nodeId : assignments.acceptingNodeIds()) {
+        const String* assignment = assignments.explicitContextFor(nodeId);
+        if (assignment == nullptr) {
             addIssue(
                     issues,
                     GraphValidationCode::MissingVoiceContextAssignment,
-                    "Multiple Voice Contexts require an explicit context for " + node.id);
+                    "Multiple Voice Contexts require an explicit context for " + nodeId,
+                    nodeId);
             continue;
         }
-        const Node* source = graph.findNode(assignment->second);
+        const Node* source = graph.findNode(*assignment);
         if (source != nullptr && source->kind == NodeKind::VoiceContext) {
             activeContexts.emplace(source->id);
         }
@@ -157,7 +177,8 @@ void GraphTopologyValidator::validateVoiceContextAssignments(
         addIssue(
                 issues,
                 GraphValidationCode::MultipleActiveVoiceContexts,
-                "Only one Voice Context can participate until multi-oscillator semantics are defined");
+                "Only one Voice Context can participate until multi-oscillator semantics are defined",
+                "voiceContexts");
     }
 }
 

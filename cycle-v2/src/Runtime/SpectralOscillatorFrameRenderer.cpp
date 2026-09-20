@@ -3,6 +3,7 @@
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshDeltaOverlay.h"
 #include "Runtime/AudioPerformanceMetrics.h"
+#include "Runtime/OscillatorRegionPlanView.h"
 
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Audio/CycleDsp/SpectralLayerCore.h>
@@ -36,27 +37,6 @@ bool sourceRole(AudioModuleRole role) {
             || role == AudioModuleRole::WaveSource;
 }
 
-const GraphStepInput* inputForPort(
-        const GraphExecutionStep& step,
-        int portIndex) {
-    const auto found = std::find_if(
-            step.inputs.begin(),
-            step.inputs.end(),
-            [&](const GraphStepInput& input) {
-                return input.destPortIndex == portIndex;
-            });
-    return found != step.inputs.end() ? &*found : nullptr;
-}
-
-bool inputComesFromRegion(
-        const GraphStepInput* input,
-        const std::vector<bool>& regionSteps) {
-    return input != nullptr
-            && input->sourceStepIndex >= 0
-            && input->sourceStepIndex < (int) regionSteps.size()
-            && regionSteps[(size_t) input->sourceStepIndex];
-}
-
 void applyPan(
         PortDomain domain,
         Buffer<float> source,
@@ -84,24 +64,16 @@ void applyPan(
 bool SpectralOscillatorFrameRenderer::supports(
         const GraphExecutionPlan& plan,
         const OscillatorRegionPlan& region) {
+    const OscillatorRegionPlanView regionView(plan, region);
     if (region.strategy != OscillatorExecutionStrategy::SharedSpectralFrame
-            || region.stepIndices.empty()
-            || region.materializationStepIndex < 0) {
+            || !regionView.isValid()) {
         return false;
     }
 
-    std::vector<bool> regionSteps(plan.steps.size());
     for (const int stepIndex : region.stepIndices) {
-        if (stepIndex < 0
-                || stepIndex >= (int) plan.steps.size()
-                || !supportedRole(plan.steps[(size_t) stepIndex].audioRole)) {
+        if (!supportedRole(plan.steps[(size_t) stepIndex].audioRole)) {
             return false;
         }
-        regionSteps[(size_t) stepIndex] = true;
-    }
-    if (region.materializationStepIndex >= (int) regionSteps.size()
-            || !regionSteps[(size_t) region.materializationStepIndex]) {
-        return false;
     }
 
     for (const int stepIndex : region.stepIndices) {
@@ -112,10 +84,8 @@ bool SpectralOscillatorFrameRenderer::supports(
             }
             continue;
         }
-        const bool leftInRegion = inputComesFromRegion(
-                inputForPort(step, 0), regionSteps);
-        const bool rightInRegion = inputComesFromRegion(
-                inputForPort(step, 1), regionSteps);
+        const bool leftInRegion = regionView.inputComesFromRegion(step, 0);
+        const bool rightInRegion = regionView.inputComesFromRegion(step, 1);
         if (step.audioRole == AudioModuleRole::Add) {
             if (!leftInRegion && !rightInRegion) {
                 return false;
@@ -162,6 +132,7 @@ bool SpectralOscillatorFrameRenderer::prepare(
     hasSpectralMesh = false;
     operations.clear();
     operations.reserve(region.stepIndices.size());
+    const OscillatorRegionPlanView regionView(plan, region);
     std::vector<std::array<int, 2>> slotsForStep(
             plan.steps.size(),
             { -1, -1 });
@@ -181,7 +152,7 @@ bool SpectralOscillatorFrameRenderer::prepare(
         }
 
         const auto inputSlot = [&](int portIndex, SpectralMagnitudeTransfer& transfer) {
-            const auto* input = inputForPort(step, portIndex);
+            const auto* input = regionView.inputForPort(step, portIndex);
             if (input == nullptr) {
                 return -1;
             }

@@ -62,6 +62,7 @@ public:
     }
 
     size_t size() const { return existing.size() - removed.size() + added.size(); }
+    size_t existingSize() const { return existing.size(); }
     size_t retainedSize() const { return existing.size() - removed.size(); }
     const std::vector<size_t>& removedIndices() const { return removed; }
     const std::vector<Edge>& addedEdges() const { return added; }
@@ -82,6 +83,8 @@ public:
         }
         return existing[existingIndex];
     }
+
+    const Edge& existingEdge(size_t index) const { return existing[index]; }
 
     std::optional<size_t> viewIndexForExisting(size_t existingIndex) const {
         const auto removedPosition = std::lower_bound(

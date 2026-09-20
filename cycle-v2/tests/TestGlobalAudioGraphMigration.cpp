@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "NodeGraphTestAccess.h"
+
 #include "Graph/GlobalAudioGraphMigration.h"
 #include "Graph/GlobalAudioGraphRepresentationMigration.h"
 #include "Graph/GraphCompiler.h"
@@ -60,9 +62,12 @@ TEST_CASE("Global audio migration preserves voice layout and packs one explicit 
         "[cycle-v2][graph][global-audio-migration]") {
     NodeGraph graph = legacyEffectGraph();
     const Rectangle<float> voiceBounds = graph.findNode("voice")->bounds;
-    graph.findNodeForEditing("shape")->outputs.front().side = PortSide::Bottom;
-    graph.findNodeForEditing("delay")->inputs.front().side = PortSide::Top;
-    graph.findNodeForEditing("delay")->outputs.front().side = PortSide::Bottom;
+    NodeGraphTestAccess::findNodeForEditing(graph, "shape")
+            ->outputs.front().side = PortSide::Bottom;
+    NodeGraphTestAccess::findNodeForEditing(graph, "delay")
+            ->inputs.front().side = PortSide::Top;
+    NodeGraphTestAccess::findNodeForEditing(graph, "delay")
+            ->outputs.front().side = PortSide::Bottom;
 
     const auto migration = GlobalAudioGraphMigration().migrate(graph);
 
@@ -205,7 +210,8 @@ TEST_CASE("Global migration retains authored routing for a branching graph",
             "shape", "time", "reverb", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
-    graph.findNodeForEditing("shape")->outputs.front().side = PortSide::Bottom;
+    NodeGraphTestAccess::findNodeForEditing(graph, "shape")
+            ->outputs.front().side = PortSide::Bottom;
     GraphSerializer serializer;
     var encoded = serializer.writeJSON(graph);
     encoded.getDynamicObject()->setProperty("formatVersion", 4);

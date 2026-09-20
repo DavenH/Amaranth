@@ -1,194 +1,21 @@
 #include "App/CycleV2Automation.h"
 
+#include "App/CycleV2AutomationAssertions.h"
+#include "App/CycleV2AutomationCommand.h"
+#include "App/CycleV2AutomationInput.h"
+#include "App/CycleV2AutomationProtocol.h"
+#include "App/CycleV2AutomationSessionTransport.h"
+#include "App/CycleV2AutomationWorkspaceCommands.h"
 #include "App/OfflineAudioCaptureAutomation.h"
 #include "UI/NodeWorkspace.h"
 
-#include <cerrno>
-#include <cmath>
-#include <cstring>
 #include <utility>
-
-#if JUCE_MAC || JUCE_LINUX
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
-#endif
 
 namespace CycleV2 {
 
+using namespace AutomationProtocol;
+
 namespace {
-
-var makeObject() {
-    return new DynamicObject();
-}
-
-DynamicObject* objectFor(var& value) {
-    return value.getDynamicObject();
-}
-
-const DynamicObject* objectFor(const var& value) {
-    return value.getDynamicObject();
-}
-
-bool compareValues(const var& actual, const String& op, const var& expected);
-
-String stringProperty(const var& value, const Identifier& property, const String& fallback = {}) {
-    if (const auto* object = objectFor(value)) {
-        const var found = object->getProperty(property);
-        return found.isVoid() ? fallback : found.toString();
-    }
-
-    return fallback;
-}
-
-bool boolProperty(const var& value, const Identifier& property, bool fallback = false) {
-    if (const auto* object = objectFor(value)) {
-        const var found = object->getProperty(property);
-        return found.isVoid() ? fallback : (bool) found;
-    }
-
-    return fallback;
-}
-
-int intProperty(const var& value, const Identifier& property, int fallback = 0) {
-    if (const auto* object = objectFor(value)) {
-        const var found = object->getProperty(property);
-        return found.isVoid() ? fallback : (int) found;
-    }
-
-    return fallback;
-}
-
-float floatProperty(const var& value, const Identifier& property, float fallback = 0.f) {
-    if (const auto* object = objectFor(value)) {
-        const var found = object->getProperty(property);
-        return found.isVoid() ? fallback : (float) (double) found;
-    }
-
-    return fallback;
-}
-
-var okResult(const String& type, var data = {}) {
-    var result = makeObject();
-    auto* object = objectFor(result);
-    object->setProperty("ok", true);
-    object->setProperty("type", type);
-
-    if (!data.isVoid()) {
-        object->setProperty("data", data);
-    }
-
-    return result;
-}
-
-var failedResult(const String& type, const String& message) {
-    var result = makeObject();
-    auto* object = objectFor(result);
-    object->setProperty("ok", false);
-    object->setProperty("type", type);
-    object->setProperty("message", message);
-    return result;
-}
-
-String cursorName(const MouseCursor& cursor) {
-    if (cursor == MouseCursor::PointingHandCursor) {
-        return "pointingHand";
-    }
-    if (cursor == MouseCursor::LeftRightResizeCursor) {
-        return "leftRightResize";
-    }
-    if (cursor == MouseCursor::UpDownResizeCursor) {
-        return "upDownResize";
-    }
-    if (cursor == MouseCursor::UpDownLeftRightResizeCursor) {
-        return "move";
-    }
-    if (cursor == MouseCursor::CrosshairCursor) {
-        return "crosshair";
-    }
-    return cursor == MouseCursor::NormalCursor ? "normal" : "custom";
-}
-
-bool automationKeyPress(const String& name, KeyPress& result) {
-    if (name == "tab" || name == "shiftTab") {
-        const ModifierKeys modifiers = name == "shiftTab"
-                ? ModifierKeys::shiftModifier
-                : ModifierKeys {};
-        result = KeyPress(KeyPress::tabKey, modifiers, 0);
-        return true;
-    }
-
-    const std::pair<const char*, int> keys[] {
-            { "left", KeyPress::leftKey },
-            { "right", KeyPress::rightKey },
-            { "up", KeyPress::upKey },
-            { "down", KeyPress::downKey },
-            { "return", KeyPress::returnKey },
-            { "space", KeyPress::spaceKey },
-            { "escape", KeyPress::escapeKey },
-            { "delete", KeyPress::deleteKey }
-    };
-    for (const auto& key : keys) {
-        if (name == key.first) {
-            result = KeyPress(key.second);
-            return true;
-        }
-    }
-    return false;
-}
-
-var rectangleToVar(Rectangle<int> bounds) {
-    var result = makeObject();
-    auto* object = objectFor(result);
-    object->setProperty("x", bounds.getX());
-    object->setProperty("y", bounds.getY());
-    object->setProperty("width", bounds.getWidth());
-    object->setProperty("height", bounds.getHeight());
-    return result;
-}
-
-Rectangle<float> rectangleFromVar(const var& value) {
-    const auto* object = objectFor(value);
-
-    if (object == nullptr) {
-        return {};
-    }
-
-    return {
-            (float) (double) object->getProperty("x"),
-            (float) (double) object->getProperty("y"),
-            (float) (double) object->getProperty("width"),
-            (float) (double) object->getProperty("height")
-    };
-}
-
-bool pointerTargetBounds(const var& targetsValue, const String& targetId, Rectangle<float>& bounds) {
-    const auto* object = objectFor(targetsValue);
-
-    if (object == nullptr) {
-        return false;
-    }
-
-    const var targetArrayValue = object->getProperty("targets");
-    const Array<var>* targets = targetArrayValue.getArray();
-
-    if (targets == nullptr) {
-        return false;
-    }
-
-    for (const auto& target : *targets) {
-        const auto* targetObject = objectFor(target);
-
-        if (targetObject == nullptr || targetObject->getProperty("id").toString() != targetId) {
-            continue;
-        }
-
-        bounds = rectangleFromVar(targetObject->getProperty("bounds"));
-        return !bounds.isEmpty();
-    }
-
-    return false;
-}
 
 var menuItemToVar(const String& id, const String& menu, const String& label, bool requiresPath) {
     var item = makeObject();
@@ -247,347 +74,7 @@ bool checkAudioThresholds(const var& command, const var& metrics, String& messag
             && checkMetricThreshold(command, metrics, "rmsLessThan", "rms", "lessThan", message);
 }
 
-bool getPathValue(const var& root, const String& path, var& result) {
-    if (path.isEmpty()) {
-        result = root;
-        return true;
-    }
-
-    var current = root;
-    StringArray parts;
-    parts.addTokens(path, ".", {});
-
-    for (const auto& part : parts) {
-        if (auto* array = current.getArray()) {
-            const int index = part.getIntValue();
-
-            if (index < 0 || index >= array->size()) {
-                return false;
-            }
-
-            current = array->getReference(index);
-            continue;
-        }
-
-        const auto* object = objectFor(current);
-        if (object == nullptr) {
-            return false;
-        }
-
-        current = object->getProperty(Identifier(part));
-        if (current.isVoid()) {
-            return false;
-        }
-    }
-
-    result = current;
-    return true;
 }
-
-void flattenPaths(const var& value, const String& prefix, Array<var>& paths) {
-    if (const auto* object = objectFor(value)) {
-        const NamedValueSet& properties = object->getProperties();
-
-        for (int i = 0; i < properties.size(); ++i) {
-            const auto propertyName = properties.getName(i).toString();
-            const String next = prefix.isEmpty() ? propertyName : prefix + "." + propertyName;
-            flattenPaths(properties.getValueAt(i), next, paths);
-        }
-
-        return;
-    }
-
-    if (const auto* array = value.getArray()) {
-        for (int i = 0; i < array->size(); ++i) {
-            const String next = prefix.isEmpty() ? String(i) : prefix + "." + String(i);
-            flattenPaths(array->getReference(i), next, paths);
-        }
-
-        return;
-    }
-
-    var entry = makeObject();
-    auto* object = objectFor(entry);
-    object->setProperty("path", prefix);
-    object->setProperty("value", value);
-    object->setProperty("type", value.isBool() ? "bool" : value.isDouble() || value.isInt() ? "number" : "string");
-    paths.add(entry);
-}
-
-bool valuesMatch(const var& actual, const var& expected) {
-    if (actual.isDouble() || actual.isInt() || expected.isDouble() || expected.isInt()) {
-        return std::abs((double) actual - (double) expected) < 0.000001;
-    }
-
-    return actual == expected;
-}
-
-bool compareValues(const var& actual, const String& op, const var& expected) {
-    if (op == "exists") {
-        return true;
-    }
-    if (op == "equals") {
-        return valuesMatch(actual, expected);
-    }
-    if (op == "notEquals") {
-        return !valuesMatch(actual, expected);
-    }
-
-    const double actualNumber = (double) actual;
-    const double expectedNumber = (double) expected;
-
-    if (op == "lessThan") {
-        return actualNumber < expectedNumber;
-    }
-    if (op == "lessThanOrEqual") {
-        return actualNumber <= expectedNumber;
-    }
-    if (op == "greaterThan") {
-        return actualNumber > expectedNumber;
-    }
-    if (op == "greaterThanOrEqual") {
-        return actualNumber >= expectedNumber;
-    }
-
-    return false;
-}
-
-Point<float> getPointerPosition(const var& command, Component& component, const String& xName, const String& yName) {
-    const Rectangle<int> bounds = component.getLocalBounds();
-    const auto* object = objectFor(command);
-    const var xValue = object == nullptr ? var() : object->getProperty(Identifier(xName));
-    const var yValue = object == nullptr ? var() : object->getProperty(Identifier(yName));
-
-    if (!xValue.isVoid() && !yValue.isVoid()) {
-        return { (float) (double) xValue, (float) (double) yValue };
-    }
-
-    const String normalizedXName = xName == "downX" ? "normalizedDownX" : "normalizedX";
-    const String normalizedYName = yName == "downY" ? "normalizedDownY" : "normalizedY";
-    var normalizedX = object == nullptr ? var() : object->getProperty(Identifier(normalizedXName));
-    var normalizedY = object == nullptr ? var() : object->getProperty(Identifier(normalizedYName));
-
-    if ((normalizedX.isVoid() || normalizedY.isVoid()) && xName != "x" && yName != "y") {
-        normalizedX = object == nullptr ? var() : object->getProperty("normalizedX");
-        normalizedY = object == nullptr ? var() : object->getProperty("normalizedY");
-    }
-
-    if (!normalizedX.isVoid() && !normalizedY.isVoid()) {
-        return {
-                bounds.getWidth() * (float) (double) normalizedX,
-                bounds.getHeight() * (float) (double) normalizedY
-        };
-    }
-
-    return bounds.getCentre().toFloat();
-}
-
-ModifierKeys pointerModifiers(const var& command, bool buttonDown) {
-    ModifierKeys modifiers = ModifierKeys::currentModifiers.withoutMouseButtons();
-
-    if (buttonDown) {
-        const String button = stringProperty(command, "button", stringProperty(command, "mouseButton")).toLowerCase();
-
-        if (boolProperty(command, "right") || button == "right" || button == "secondary") {
-            modifiers = modifiers.withFlags(ModifierKeys::rightButtonModifier);
-        } else if (boolProperty(command, "middle") || button == "middle") {
-            modifiers = modifiers.withFlags(ModifierKeys::middleButtonModifier);
-        } else {
-            modifiers = modifiers.withFlags(ModifierKeys::leftButtonModifier);
-        }
-    }
-
-    if (boolProperty(command, "shift")) {
-        modifiers = modifiers.withFlags(ModifierKeys::shiftModifier);
-    }
-    if (boolProperty(command, "command")) {
-        modifiers = modifiers.withFlags(ModifierKeys::commandModifier);
-    }
-    if (boolProperty(command, "ctrl")) {
-        modifiers = modifiers.withFlags(ModifierKeys::ctrlModifier);
-    }
-    if (boolProperty(command, "alt")) {
-        modifiers = modifiers.withFlags(ModifierKeys::altModifier);
-    }
-
-    return modifiers;
-}
-
-MouseEvent makePointerEvent(
-        Component& component,
-        Point<float> position,
-        Point<float> downPosition,
-        const var& command,
-        bool buttonDown,
-        bool wasDragged,
-        int clickCount) {
-    const Time now = Time::getCurrentTime();
-
-    return {
-            Desktop::getInstance().getMainMouseSource(),
-            position,
-            pointerModifiers(command, buttonDown),
-            MouseInputSource::defaultPressure,
-            0.0f,
-            0.0f,
-            0.0f,
-            0.0f,
-            &component,
-            &component,
-            now,
-            downPosition,
-            now,
-            clickCount,
-            wasDragged
-    };
-}
-
-}
-
-class CycleV2Automation::SessionServer :
-        public Thread {
-public:
-    SessionServer(CycleV2Automation& owner, String socketPath) :
-            Thread("CycleV2AutomationSession")
-        ,   owner(owner)
-        ,   socketPath(std::move(socketPath)) {
-    }
-
-    ~SessionServer() override {
-        signalThreadShouldExit();
-        closeServerSocket();
-        stopThread(1000);
-      #if JUCE_MAC || JUCE_LINUX
-        ::unlink(socketPath.toRawUTF8());
-      #else
-        File(socketPath).deleteFile();
-      #endif
-    }
-
-    bool start(String& message) {
-      #if JUCE_MAC || JUCE_LINUX
-        ::unlink(socketPath.toRawUTF8());
-
-        serverFd = ::socket(AF_UNIX, SOCK_STREAM, 0);
-
-        if (serverFd < 0) {
-            message = "Could not create Cycle V2 session socket: " + String(std::strerror(errno));
-            return false;
-        }
-
-        sockaddr_un address{};
-        address.sun_family = AF_UNIX;
-        const auto path = socketPath.toRawUTF8();
-        std::strncpy(address.sun_path, path, sizeof(address.sun_path) - 1);
-
-        if (::bind(serverFd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0) {
-            message = "Could not bind Cycle V2 session socket: " + String(std::strerror(errno));
-            closeServerSocket();
-            return false;
-        }
-
-        if (::listen(serverFd, 8) != 0) {
-            message = "Could not listen on Cycle V2 session socket: " + String(std::strerror(errno));
-            closeServerSocket();
-            return false;
-        }
-
-        startThread();
-        message = "Cycle V2 automation session listening: " + socketPath;
-        return true;
-      #else
-        ignoreUnused(message);
-        return false;
-      #endif
-    }
-
-    void run() override {
-      #if JUCE_MAC || JUCE_LINUX
-        while (!threadShouldExit()) {
-            int clientFd = ::accept(serverFd, nullptr, nullptr);
-
-            if (clientFd < 0) {
-                if (!threadShouldExit()) {
-                    Thread::sleep(25);
-                }
-
-                continue;
-            }
-
-            handleClient(clientFd);
-            ::close(clientFd);
-        }
-      #endif
-    }
-
-private:
-    void closeServerSocket() {
-      #if JUCE_MAC || JUCE_LINUX
-        if (serverFd >= 0) {
-            ::shutdown(serverFd, SHUT_RDWR);
-            ::close(serverFd);
-            serverFd = -1;
-        }
-      #endif
-    }
-
-    static var errorResponse(const String& message) {
-        var response = makeObject();
-        auto* object = objectFor(response);
-        object->setProperty("ok", false);
-        object->setProperty("message", message);
-        return response;
-    }
-
-    void handleClient(int clientFd) {
-      #if JUCE_MAC || JUCE_LINUX
-        String requestText;
-        char buffer[1024];
-
-        while (!threadShouldExit()) {
-            const ssize_t count = ::read(clientFd, buffer, sizeof(buffer));
-
-            if (count <= 0) {
-                break;
-            }
-
-            requestText += String::fromUTF8(buffer, int(count));
-
-            if (requestText.containsChar('\n')) {
-                requestText = requestText.upToFirstOccurrenceOf("\n", false, false);
-                break;
-            }
-        }
-
-        const var request = JSON::parse(requestText);
-        auto completed = std::make_shared<WaitableEvent>();
-        auto response = std::make_shared<var>();
-
-        const bool dispatched = MessageManager::callAsync([this, request, response, completed] {
-            *response = owner.handleSessionRequest(request);
-            completed->signal();
-        });
-
-        if (dispatched) {
-            if (!completed->wait(30000)) {
-                *response = errorResponse("Timed out waiting for Cycle V2 message thread");
-            }
-        } else {
-            *response = errorResponse("Could not dispatch Cycle V2 session request to message thread");
-        }
-
-        const String responseText = JSON::toString(*response, true) + "\n";
-        const CharPointer_UTF8 utf8 = responseText.toUTF8();
-        ::write(clientFd, utf8.getAddress(), std::strlen(utf8.getAddress()));
-      #else
-        ignoreUnused(clientFd);
-      #endif
-    }
-
-    CycleV2Automation& owner;
-    String socketPath;
-    int serverFd { -1 };
-};
 
 CycleV2Automation::Options CycleV2Automation::parseCommandLine(const String& commandLine) {
     Options options;
@@ -624,10 +111,31 @@ CycleV2Automation::CycleV2Automation(NodeWorkspace& workspace, Component& window
         workspace    (workspace)
     ,   window       (window)
     ,   options      (std::move(options)) {
+    assertions = std::make_unique<CycleV2AutomationAssertions>(
+            [this]() { return snapshotState(); },
+            [this](const String& nodeId, const String& parameterId, String& value) {
+                return this->workspace.getNodeParameterForAutomation(
+                        nodeId, parameterId, value);
+            });
+    workspaceCommands = std::make_unique<CycleV2AutomationWorkspaceCommands>(
+            workspace,
+            [this]() { return snapshotState(); },
+            [this](const String& path) { return resolveCommandPath(path); });
+    sessionTransport = std::make_unique<CycleV2AutomationSessionTransport>(
+            [this](const var& command) { return runCommand(command); });
+    input = std::make_unique<CycleV2AutomationInput>(
+            workspace,
+            [this](const String& area) { return componentForArea(area); },
+            CycleV2AutomationInput::SemanticHandlers {
+                    [this](const var& command) { return workspaceCommands->setMorphSlider(command); },
+                    [this](const var& command) { return workspaceCommands->setPrimaryAxis(command); },
+                    [this](const var& command) { return workspaceCommands->toggleLink(command); },
+                    [this](const var& command) { return workspaceCommands->setVertexParameter(command); }
+            });
 }
 
 CycleV2Automation::~CycleV2Automation() {
-    sessionServer = nullptr;
+    sessionTransport = nullptr;
 }
 
 File CycleV2Automation::resolveCommandPath(const String& path) const {
@@ -703,7 +211,7 @@ void CycleV2Automation::runScriptAsync() {
 }
 
 void CycleV2Automation::startSessionServer() {
-    if (sessionServer != nullptr || !options.hasSession) {
+    if (sessionTransport->isRunning() || !options.hasSession) {
         return;
     }
 
@@ -713,11 +221,8 @@ void CycleV2Automation::startSessionServer() {
     }
 
     String message;
-    sessionServer = std::make_unique<SessionServer>(*this, options.sessionPath);
-
-    if (!sessionServer->start(message)) {
+    if (!sessionTransport->start(options.sessionPath, message)) {
         DBG(message);
-        sessionServer = nullptr;
         return;
     }
 
@@ -726,190 +231,111 @@ void CycleV2Automation::startSessionServer() {
 
 var CycleV2Automation::runCommand(const var& commandValue) {
     const String command = stringProperty(commandValue, "command");
-
-    if (command == "snapshotState") {
-        return okResult(command, snapshotState());
-    }
-    if (command == "inspectTargets") {
-        return inspectTargets(commandValue);
-    }
-    if (command == "inspectPointerTargets") {
-        return inspectPointerTargets();
-    }
-    if (command == "inspectPointerCursor") {
-        return inspectPointerCursor();
-    }
-    if (command == "inspectOpenGLDiagnostics") {
-        return inspectOpenGLDiagnostics();
-    }
-    if (command == "inspectCanvasPerformance") {
-        return inspectCanvasPerformance();
-    }
-    if (command == "resetCanvasPerformance") {
-        return resetCanvasPerformance();
-    }
-    if (command == "inspectAudioPerformance") {
-        return inspectAudioPerformance();
-    }
-    if (command == "resetAudioPerformance") {
-        return resetAudioPerformance();
-    }
-    if (command == "sendMidi") {
-        return sendMidi(commandValue);
-    }
-    if (command == "requestCanvasOpenGLFrame") {
-        return requestCanvasOpenGLFrame();
-    }
-    if (command == "exportGraph") {
-        return exportGraph(commandValue);
-    }
-    if (command == "openGraph") {
-        return openGraph(commandValue);
-    }
-    if (command == "saveGraph") {
-        return saveGraph(commandValue);
-    }
-    if (command == "listMenuItems" || command == "listMenus") {
-        return listMenuItems();
-    }
-    if (command == "invokeMenuItem") {
-        return invokeMenuItem(commandValue);
-    }
-    if (command == "listPaletteItems") {
-        return listPaletteItems();
-    }
-    if (command == "invokePaletteItem") {
-        return invokePaletteItem(commandValue);
-    }
-    if (command == "captureAudio") {
-        return captureAudio(commandValue);
-    }
-    if (command == "captureLiveAudio") {
-        return captureLiveAudio(commandValue);
-    }
-    if (command == "openNodeEditor" || command == "openMeshPopup") {
-        return openNodeEditor(commandValue);
-    }
-    if (command == "addNode") {
-        return addNode(commandValue);
-    }
-    if (command == "moveNode") {
-        return moveNode(commandValue);
-    }
-    if (command == "connectPorts" || command == "connect") {
-        return connectPorts(commandValue);
-    }
-    if (command == "deleteNode" || command == "removeNode") {
-        return deleteNode(commandValue);
-    }
-    if (command == "deleteEdge" || command == "removeEdge") {
-        return deleteEdge(commandValue);
-    }
-    if (command == "deleteGuideCurve" || command == "removeGuideCurve") {
-        return deleteGuideCurve(commandValue);
-    }
-    if (command == "loadGuideHeatmap") {
-        return loadGuideHeatmap(commandValue);
-    }
-    if (command == "clearGuideHeatmap") {
-        return clearGuideHeatmap(commandValue);
-    }
-    if (command == "undo") {
-        return undo();
-    }
-    if (command == "setNodeParameter") {
-        return setNodeParameter(commandValue);
-    }
-    if (command == "setGuideParameter") {
-        return setGuideParameter(commandValue);
-    }
-    if (command == "inspectNodeControls") {
-        return inspectNodeControls(commandValue);
-    }
-    if (command == "setMorphSlider") {
-        return setMorphSlider(commandValue);
-    }
-    if (command == "setPrimaryAxis") {
-        return setPrimaryAxis(commandValue);
-    }
-    if (command == "toggleLink") {
-        return toggleLink(commandValue);
-    }
-    if (command == "selectVertex") {
-        return selectVertex(commandValue);
-    }
-    if (command == "setVertexParameter") {
-        return setVertexParameter(commandValue);
-    }
-    if (command == "pointer") {
-        return pointer(commandValue);
-    }
-    if (command == "key") {
-        return key(commandValue);
-    }
-    if (command == "screenshot") {
-        return screenshot(commandValue);
-    }
-    if (command == "assertState") {
-        return assertState(commandValue);
-    }
-    if (command == "assertNodeParameter") {
-        return assertNodeParameter(commandValue);
-    }
-    if (command == "listAssertionPaths") {
-        return listAssertionPaths();
-    }
-    if (command == "waitForIdle") {
-        return waitForIdle(commandValue);
-    }
-    if (command == "quit") {
-        return okResult(command);
+    const auto registered = automationCommandForName(command);
+    if (!registered.has_value()) {
+        return failedResult(
+                command.isEmpty() ? "unknown" : command,
+                "Unknown Cycle V2 automation command");
     }
 
-    return failedResult(command.isEmpty() ? "unknown" : command, "Unknown Cycle V2 automation command");
-}
-
-var CycleV2Automation::handleSessionRequest(const var& request) {
-    var response = makeObject();
-    auto* responseObject = objectFor(response);
-    responseObject->setProperty("ok", false);
-
-    if (request.isVoid()) {
-        responseObject->setProperty("message", "Invalid JSON request");
-        return response;
+    using Command = CycleV2AutomationCommand;
+    switch (*registered) {
+        case Command::SnapshotState:
+            return okResult(command, snapshotState());
+        case Command::InspectTargets:
+            return inspectTargets(commandValue);
+        case Command::InspectPointerTargets:
+            return inspectPointerTargets();
+        case Command::InspectPointerCursor:
+            return inspectPointerCursor();
+        case Command::InspectOpenGLDiagnostics:
+            return inspectOpenGLDiagnostics();
+        case Command::InspectCanvasPerformance:
+            return inspectCanvasPerformance();
+        case Command::ResetCanvasPerformance:
+            return resetCanvasPerformance();
+        case Command::InspectAudioPerformance:
+            return inspectAudioPerformance();
+        case Command::ResetAudioPerformance:
+            return resetAudioPerformance();
+        case Command::SendMidi:
+            return sendMidi(commandValue);
+        case Command::RequestCanvasOpenGLFrame:
+            return requestCanvasOpenGLFrame();
+        case Command::ExportGraph:
+            return exportGraph(commandValue);
+        case Command::OpenGraph:
+            return openGraph(commandValue);
+        case Command::SaveGraph:
+            return saveGraph(commandValue);
+        case Command::ListMenuItems:
+            return listMenuItems();
+        case Command::InvokeMenuItem:
+            return invokeMenuItem(commandValue);
+        case Command::ListPaletteItems:
+            return listPaletteItems();
+        case Command::InvokePaletteItem:
+            return invokePaletteItem(commandValue);
+        case Command::CaptureAudio:
+            return captureAudio(commandValue);
+        case Command::CaptureLiveAudio:
+            return captureLiveAudio(commandValue);
+        case Command::OpenNodeEditor:
+            return workspaceCommands->openNodeEditor(commandValue);
+        case Command::AddNode:
+            return workspaceCommands->addNode(commandValue);
+        case Command::MoveNode:
+            return workspaceCommands->moveNode(commandValue);
+        case Command::ConnectPorts:
+            return workspaceCommands->connectPorts(commandValue);
+        case Command::DeleteNode:
+            return workspaceCommands->deleteNode(commandValue);
+        case Command::DeleteEdge:
+            return workspaceCommands->deleteEdge(commandValue);
+        case Command::DeleteGuideCurve:
+            return workspaceCommands->deleteGuideCurve(commandValue);
+        case Command::LoadGuideHeatmap:
+            return workspaceCommands->loadGuideHeatmap(commandValue);
+        case Command::ClearGuideHeatmap:
+            return workspaceCommands->clearGuideHeatmap(commandValue);
+        case Command::Undo:
+            return workspaceCommands->undo();
+        case Command::SetNodeParameter:
+            return workspaceCommands->setNodeParameter(commandValue);
+        case Command::SetGuideParameter:
+            return workspaceCommands->setGuideParameter(commandValue);
+        case Command::InspectNodeControls:
+            return workspaceCommands->inspectNodeControls(commandValue);
+        case Command::SetMorphSlider:
+            return workspaceCommands->setMorphSlider(commandValue);
+        case Command::SetPrimaryAxis:
+            return workspaceCommands->setPrimaryAxis(commandValue);
+        case Command::ToggleLink:
+            return workspaceCommands->toggleLink(commandValue);
+        case Command::SelectVertex:
+            return workspaceCommands->selectVertex(commandValue);
+        case Command::SetVertexParameter:
+            return workspaceCommands->setVertexParameter(commandValue);
+        case Command::Pointer:
+            return input->pointer(commandValue);
+        case Command::Key:
+            return input->key(commandValue);
+        case Command::Screenshot:
+            return screenshot(commandValue);
+        case Command::AssertState:
+            return assertions->assertState(commandValue);
+        case Command::AssertNodeParameter:
+            return assertions->assertNodeParameter(commandValue);
+        case Command::ListAssertionPaths:
+            return assertions->listAssertionPaths();
+        case Command::WaitForIdle:
+            return waitForIdle(commandValue);
+        case Command::Quit:
+            return okResult(command);
     }
 
-    if (const auto* requestObject = objectFor(request)) {
-        const var id = requestObject->getProperty("id");
-
-        if (!id.isVoid()) {
-            responseObject->setProperty("id", id);
-        }
-
-        var command = requestObject->getProperty("command");
-
-        if (command.isVoid()) {
-            command = request;
-        }
-
-        const var result = runCommand(command);
-        const bool ok = boolProperty(result, "ok");
-        responseObject->setProperty("ok", ok);
-        responseObject->setProperty("result", result);
-
-        if (stringProperty(command, "command") == "quit") {
-            MessageManager::callAsync([] {
-                JUCEApplicationBase::quit();
-            });
-        }
-
-        return response;
-    }
-
-    const var result = runCommand(request);
-    responseObject->setProperty("ok", boolProperty(result, "ok"));
-    responseObject->setProperty("result", result);
-    return response;
+    jassertfalse;
+    return failedResult(command, "Unregistered Cycle V2 automation command");
 }
 
 var CycleV2Automation::snapshotState() const {
@@ -1081,7 +507,7 @@ var CycleV2Automation::invokePaletteItem(const var& commandValue) {
     object->setProperty("kind", id);
     object->setProperty("x", floatProperty(commandValue, "x", 0.f));
     object->setProperty("y", floatProperty(commandValue, "y", 0.f));
-    return addNode(addCommand);
+    return workspaceCommands->addNode(addCommand);
 }
 
 var CycleV2Automation::captureAudio(const var& commandValue) {
@@ -1231,22 +657,6 @@ var CycleV2Automation::captureLiveAudio(const var& commandValue) {
     return okResult("captureLiveAudio", data);
 }
 
-var CycleV2Automation::openNodeEditor(const var& commandValue) {
-    const String command = stringProperty(commandValue, "command", "openNodeEditor");
-    const String nodeId = stringProperty(commandValue, "nodeId");
-
-    if (nodeId.isEmpty()) {
-        return failedResult(command, "Missing nodeId");
-    }
-
-    if (!workspace.openNodeEditorForAutomation(nodeId)) {
-        return failedResult(command, "Could not open editor for node: " + nodeId);
-    }
-
-    var data = workspace.inspectNodeControlsForAutomation(nodeId);
-    return okResult(command, data);
-}
-
 var CycleV2Automation::inspectPointerTargets() const {
     return okResult("inspectPointerTargets", workspace.inspectPointerTargetsForAutomation());
 }
@@ -1331,522 +741,6 @@ var CycleV2Automation::requestCanvasOpenGLFrame() {
     return okResult("requestCanvasOpenGLFrame");
 }
 
-var CycleV2Automation::addNode(const var& commandValue) {
-    const String kind = stringProperty(commandValue, "kind");
-    const Point<float> position {
-            floatProperty(commandValue, "x", 0.f),
-            floatProperty(commandValue, "y", 0.f)
-    };
-    String nodeId;
-
-    if (kind.isEmpty()) {
-        return failedResult("addNode", "Missing kind");
-    }
-
-    if (!workspace.addNodeForAutomation(kind, position, nodeId)) {
-        return failedResult("addNode", "Could not add node kind: " + kind);
-    }
-
-    var data = makeObject();
-    auto* object = objectFor(data);
-    object->setProperty("nodeId", nodeId);
-    object->setProperty("kind", kind);
-    return okResult("addNode", data);
-}
-
-var CycleV2Automation::moveNode(const var& commandValue) {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-    const Point<float> position {
-            floatProperty(commandValue, "x", 0.f),
-            floatProperty(commandValue, "y", 0.f)
-    };
-
-    if (nodeId.isEmpty()) {
-        return failedResult("moveNode", "Missing nodeId");
-    }
-
-    if (!workspace.moveNodeForAutomation(nodeId, position)) {
-        return failedResult("moveNode", "Could not move node: " + nodeId);
-    }
-
-    return okResult("moveNode", snapshotState());
-}
-
-var CycleV2Automation::connectPorts(const var& commandValue) {
-    const String sourceNodeId = stringProperty(commandValue, "sourceNodeId");
-    const String sourcePortId = stringProperty(commandValue, "sourcePortId");
-    const String destNodeId = stringProperty(commandValue, "destNodeId");
-    const String destPortId = stringProperty(commandValue, "destPortId");
-
-    if (sourceNodeId.isEmpty() || sourcePortId.isEmpty() || destNodeId.isEmpty() || destPortId.isEmpty()) {
-        return failedResult("connectPorts", "Missing source or destination port address");
-    }
-
-    if (!workspace.connectPortsForAutomation(sourceNodeId, sourcePortId, destNodeId, destPortId)) {
-        return failedResult("connectPorts", "Could not connect "
-                + sourceNodeId + "." + sourcePortId + " -> " + destNodeId + "." + destPortId);
-    }
-
-    return okResult("connectPorts", snapshotState());
-}
-
-var CycleV2Automation::deleteNode(const var& commandValue) {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-
-    if (nodeId.isEmpty()) {
-        return failedResult("deleteNode", "Missing nodeId");
-    }
-
-    if (!workspace.deleteNodeForAutomation(nodeId)) {
-        return failedResult("deleteNode", "Could not delete node: " + nodeId);
-    }
-
-    return okResult("deleteNode", snapshotState());
-}
-
-var CycleV2Automation::deleteEdge(const var& commandValue) {
-    const int edgeIndex = intProperty(commandValue, "edgeIndex", intProperty(commandValue, "index", -1));
-
-    if (!workspace.deleteEdgeForAutomation(edgeIndex)) {
-        return failedResult("deleteEdge", "Could not delete edge index: " + String(edgeIndex));
-    }
-
-    return okResult("deleteEdge", snapshotState());
-}
-
-var CycleV2Automation::deleteGuideCurve(const var& commandValue) {
-    const String guideId = stringProperty(commandValue, "guideId");
-    if (guideId.isEmpty()) {
-        return failedResult("deleteGuideCurve", "Missing guideId");
-    }
-    if (!workspace.deleteGuideCurveForAutomation(guideId)) {
-        return failedResult("deleteGuideCurve", "Could not delete Guide: " + guideId);
-    }
-    return okResult("deleteGuideCurve", snapshotState());
-}
-
-var CycleV2Automation::loadGuideHeatmap(const var& commandValue) {
-    const String guideId = stringProperty(commandValue, "guideId");
-    const File file = resolveCommandPath(stringProperty(commandValue, "path"));
-    if (guideId.isEmpty() || !file.existsAsFile()) {
-        return failedResult("loadGuideHeatmap", "Missing Guide or image path");
-    }
-    if (!workspace.loadGuideHeatmapForAutomation(guideId, file)) {
-        return failedResult("loadGuideHeatmap", "Could not load Guide heatmap");
-    }
-    return okResult("loadGuideHeatmap", snapshotState());
-}
-
-var CycleV2Automation::clearGuideHeatmap(const var& commandValue) {
-    const String guideId = stringProperty(commandValue, "guideId");
-    if (guideId.isEmpty() || !workspace.clearGuideHeatmapForAutomation(guideId)) {
-        return failedResult("clearGuideHeatmap", "Could not clear Guide heatmap");
-    }
-    return okResult("clearGuideHeatmap", snapshotState());
-}
-
-var CycleV2Automation::undo() {
-    if (!workspace.undoForAutomation()) {
-        return failedResult("undo", "Nothing to undo");
-    }
-    return okResult("undo", snapshotState());
-}
-
-var CycleV2Automation::setGuideParameter(const var& commandValue) {
-    const String guideId = stringProperty(commandValue, "guideId");
-    const String parameterId = stringProperty(commandValue, "parameterId");
-    const String value = stringProperty(commandValue, "value");
-    if (guideId.isEmpty() || parameterId.isEmpty()) {
-        return failedResult("setGuideParameter", "Missing guideId or parameterId");
-    }
-    if (!workspace.setGuideParameterForAutomation(guideId, parameterId, value)) {
-        return failedResult("setGuideParameter", "Could not edit Guide: " + guideId);
-    }
-    return okResult("setGuideParameter", snapshotState());
-}
-
-var CycleV2Automation::setNodeParameter(const var& commandValue) {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-    const String parameterId = stringProperty(commandValue, "parameterId");
-    const String label = stringProperty(commandValue, "label", parameterId);
-    const String value = stringProperty(commandValue, "value");
-
-    if (nodeId.isEmpty() || parameterId.isEmpty()) {
-        return failedResult("setNodeParameter", "Missing nodeId or parameterId");
-    }
-
-    if (!workspace.setNodeParameterForAutomation(nodeId, parameterId, label, value)) {
-        return failedResult("setNodeParameter", "Could not set parameter: " + nodeId + "." + parameterId);
-    }
-
-    return okResult("setNodeParameter", workspace.inspectNodeControlsForAutomation(nodeId));
-}
-
-var CycleV2Automation::inspectNodeControls(const var& commandValue) const {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-
-    if (nodeId.isEmpty()) {
-        return failedResult("inspectNodeControls", "Missing nodeId");
-    }
-
-    var data = workspace.inspectNodeControlsForAutomation(nodeId);
-    if (const auto* object = objectFor(data); object == nullptr || !(bool) object->getProperty("resolved")) {
-        return failedResult("inspectNodeControls", "Unknown node: " + nodeId);
-    }
-
-    return okResult("inspectNodeControls", data);
-}
-
-var CycleV2Automation::setMorphSlider(const var& commandValue) {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-    const String axis = stringProperty(commandValue, "axis", stringProperty(commandValue, "parameterId"));
-    const float value = (float) (objectFor(commandValue) == nullptr ? 0.0 : (double) objectFor(commandValue)->getProperty("value"));
-
-    if (nodeId.isEmpty()) {
-        return failedResult("setMorphSlider", "Missing nodeId");
-    }
-    if (axis.isEmpty()) {
-        return failedResult("setMorphSlider", "Missing axis");
-    }
-
-    if (!workspace.setMorphSliderForAutomation(nodeId, axis, value)) {
-        return failedResult("setMorphSlider", "Could not set morph slider " + nodeId + "." + axis);
-    }
-
-    return okResult("setMorphSlider", workspace.inspectNodeControlsForAutomation(nodeId));
-}
-
-var CycleV2Automation::setPrimaryAxis(const var& commandValue) {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-    const String axis = stringProperty(commandValue, "axis");
-
-    if (nodeId.isEmpty() || axis.isEmpty()) {
-        return failedResult("setPrimaryAxis", "Missing nodeId or axis");
-    }
-
-    if (!workspace.setPrimaryAxisForAutomation(nodeId, axis)) {
-        return failedResult("setPrimaryAxis", "Could not set primary axis: " + nodeId + "." + axis);
-    }
-
-    return okResult("setPrimaryAxis", workspace.inspectNodeControlsForAutomation(nodeId));
-}
-
-var CycleV2Automation::toggleLink(const var& commandValue) {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-    const String axis = stringProperty(commandValue, "axis");
-
-    if (nodeId.isEmpty() || axis.isEmpty()) {
-        return failedResult("toggleLink", "Missing nodeId or axis");
-    }
-
-    if (!workspace.toggleLinkForAutomation(nodeId, axis)) {
-        return failedResult("toggleLink", "Could not toggle link: " + nodeId + "." + axis);
-    }
-
-    return okResult("toggleLink", workspace.inspectNodeControlsForAutomation(nodeId));
-}
-
-var CycleV2Automation::selectVertex(const var& commandValue) {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-    const int vertexIndex = intProperty(commandValue, "vertexIndex", intProperty(commandValue, "index", -1));
-
-    if (nodeId.isEmpty() || vertexIndex < 0) {
-        return failedResult("selectVertex", "Missing nodeId or vertexIndex");
-    }
-
-    if (!workspace.selectVertexForAutomation(nodeId, vertexIndex)) {
-        return failedResult("selectVertex", "Could not select vertex: " + nodeId + "#" + String(vertexIndex));
-    }
-
-    return okResult("selectVertex", workspace.inspectNodeControlsForAutomation(nodeId));
-}
-
-var CycleV2Automation::setVertexParameter(const var& commandValue) {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-    const String parameterId = stringProperty(commandValue, "parameterId");
-    const float value = floatProperty(commandValue, "value", 0.f);
-
-    if (nodeId.isEmpty() || parameterId.isEmpty()) {
-        return failedResult("setVertexParameter", "Missing nodeId or parameterId");
-    }
-
-    if (!workspace.setVertexParameterForAutomation(nodeId, parameterId, value)) {
-        return failedResult("setVertexParameter", "Could not set vertex parameter: " + nodeId + "." + parameterId);
-    }
-
-    return okResult("setVertexParameter", workspace.inspectNodeControlsForAutomation(nodeId));
-}
-
-var CycleV2Automation::key(const var& commandValue) {
-    const String area = stringProperty(commandValue, "area", "canvas");
-    Component* component = componentForArea(area);
-    if (component == nullptr) {
-        return failedResult("key", "Key area could not be resolved: " + area);
-    }
-
-    const String keyName = stringProperty(commandValue, "key");
-    KeyPress keyPress;
-    if (!automationKeyPress(keyName, keyPress)) {
-        return failedResult("key", "Unknown key: " + keyName);
-    }
-
-    const bool handled = component->keyPressed(keyPress);
-    var data = makeObject();
-    objectFor(data)->setProperty("key", keyName);
-    objectFor(data)->setProperty("handled", handled);
-    return handled ? okResult("key", data) : failedResult("key", "Key was not handled: " + keyName);
-}
-
-var CycleV2Automation::pointer(const var& commandValue) {
-    String area = stringProperty(commandValue, "area", "canvas");
-    const String targetId = stringProperty(commandValue, "targetId");
-    const String downTargetId = stringProperty(commandValue, "downTargetId");
-
-    if (targetId.startsWith("PerformanceKeyboard.")
-            || downTargetId.startsWith("PerformanceKeyboard.")) {
-        area = "workspace";
-    } else if (targetId.isNotEmpty() || downTargetId.isNotEmpty()) {
-        area = "canvas";
-    }
-
-    Component* component = componentForArea(area);
-
-    if (component == nullptr) {
-        return failedResult("pointer", "Pointer target could not be resolved: " + area);
-    }
-    if (!component->isShowing()) {
-        return failedResult("pointer", "Pointer target is not showing: " + area);
-    }
-    if (component->getLocalBounds().isEmpty()) {
-        return failedResult("pointer", "Pointer target has empty bounds: " + area);
-    }
-
-    const String eventType = stringProperty(commandValue, "event", stringProperty(commandValue, "pointerEvent", "click"));
-    if (targetId == "PerformanceKeyboard.ModWheel") {
-        const float position = jlimit(
-                0.f,
-                1.f,
-                floatProperty(commandValue, "targetY", 0.5f));
-        const int value = roundToInt((1.f - position) * 127.f);
-        bool handled {};
-        if (eventType == "down") {
-            handled = workspace.performanceBeginModWheelGestureForAutomation(value);
-        } else if (eventType == "drag") {
-            handled = workspace.performanceUpdateModWheelGestureForAutomation(value);
-        } else if (eventType == "up") {
-            handled = workspace.performanceEndModWheelGestureForAutomation();
-        } else {
-            handled = workspace.performanceSetModWheelForAutomation(value);
-        }
-        if (!handled) {
-            return failedResult("pointer", "Performance mod wheel gesture could not be applied");
-        }
-
-        var data = makeObject();
-        auto* object = objectFor(data);
-        object->setProperty("event", eventType);
-        object->setProperty("area", "workspace");
-        object->setProperty("targetId", targetId);
-        object->setProperty("value", value);
-        return okResult("pointer", data);
-    }
-    if (targetId.startsWith("PerformanceKeyboard.Note")) {
-        const int noteNumber = targetId.fromFirstOccurrenceOf(
-                "PerformanceKeyboard.Note", false, false).getIntValue();
-        const float velocity = jlimit(0.05f, 1.f, floatProperty(commandValue, "targetY", 0.8f));
-        const String button = stringProperty(
-                commandValue,
-                "button",
-                stringProperty(commandValue, "mouseButton")).toLowerCase();
-        const bool selectsPreview = boolProperty(commandValue, "right")
-                || button == "right"
-                || button == "secondary";
-        bool handled {};
-        if (selectsPreview && (eventType == "down" || eventType == "click")) {
-            handled = workspace.performanceSelectPreviewNoteForAutomation(noteNumber);
-        } else if (eventType == "down") {
-            handled = workspace.performancePointerDownForAutomation(noteNumber, velocity);
-        } else if (eventType == "drag") {
-            handled = workspace.performancePointerDragForAutomation(noteNumber, velocity);
-        } else if (eventType == "up") {
-            handled = workspace.performancePointerUpForAutomation();
-        } else if (eventType == "click") {
-            handled = workspace.performancePointerDownForAutomation(noteNumber, velocity)
-                    && workspace.performancePointerUpForAutomation();
-        }
-        if (!handled) {
-            return failedResult("pointer", "Performance keyboard gesture could not be applied");
-        }
-
-        var data = makeObject();
-        auto* object = objectFor(data);
-        object->setProperty("event", eventType);
-        object->setProperty("area", "workspace");
-        object->setProperty("targetId", targetId);
-        object->setProperty("note", noteNumber);
-        object->setProperty("velocity", velocity);
-        return okResult("pointer", data);
-    }
-    auto resolveTargetPosition = [&](const String& id, bool down, bool& resolved) -> Point<float> {
-        resolved = true;
-
-        if (id.isEmpty()) {
-            return getPointerPosition(commandValue, *component, down ? "downX" : "x", down ? "downY" : "y");
-        }
-
-        Rectangle<float> targetBounds;
-        const var targets = workspace.inspectPointerTargetsForAutomation();
-
-        if (!pointerTargetBounds(targets, id, targetBounds)) {
-            resolved = false;
-            return getPointerPosition(commandValue, *component, down ? "downX" : "x", down ? "downY" : "y");
-        }
-
-        const float normalizedX = floatProperty(commandValue, down ? "downTargetX" : "targetX", 0.5f);
-        const float normalizedY = floatProperty(commandValue, down ? "downTargetY" : "targetY", 0.5f);
-        return {
-                targetBounds.getX() + targetBounds.getWidth() * normalizedX,
-                targetBounds.getY() + targetBounds.getHeight() * normalizedY
-        };
-    };
-    bool targetResolved {};
-    bool downTargetResolved {};
-    Point<float> position = resolveTargetPosition(targetId, false, targetResolved);
-    Point<float> downPosition = resolveTargetPosition(downTargetId, true, downTargetResolved);
-
-    if (!targetResolved) {
-        return failedResult("pointer", "Pointer target id could not be resolved: " + targetId);
-    }
-    if (!downTargetResolved) {
-        return failedResult("pointer", "Pointer down target id could not be resolved: " + downTargetId);
-    }
-
-    if (targetId.startsWith("expanded:") && eventType == "click") {
-        const String suffix = targetId.fromFirstOccurrenceOf("expanded:", false, false);
-        const String nodeId = suffix.upToFirstOccurrenceOf(".", false, false);
-        const String target = suffix.fromFirstOccurrenceOf(".", false, false);
-        const String targetKind = target.upToFirstOccurrenceOf(".", false, false);
-        const String targetValue = target.fromFirstOccurrenceOf(".", false, false);
-
-        var semanticCommand = makeObject();
-        auto* semanticObject = objectFor(semanticCommand);
-        semanticObject->setProperty("nodeId", nodeId);
-
-        if (targetKind == "trimeshPrimaryAxis") {
-            semanticObject->setProperty("axis", targetValue);
-            var result = setPrimaryAxis(semanticCommand);
-            objectFor(result)->setProperty("pointerTargetId", targetId);
-            return result;
-        }
-        if (targetKind == "trimeshLinkToggle") {
-            semanticObject->setProperty("axis", targetValue);
-            var result = toggleLink(semanticCommand);
-            objectFor(result)->setProperty("pointerTargetId", targetId);
-            return result;
-        }
-        if (targetKind == "trimeshMorphRail") {
-            semanticObject->setProperty("axis", targetValue);
-            semanticObject->setProperty("value", floatProperty(commandValue, "targetX", 0.5f));
-            var result = setMorphSlider(semanticCommand);
-            objectFor(result)->setProperty("pointerTargetId", targetId);
-            return result;
-        }
-        if (targetKind == "trimeshVertexParameter") {
-            semanticObject->setProperty("parameterId", targetValue);
-            semanticObject->setProperty("value", floatProperty(commandValue, "targetX", 0.5f));
-            var result = setVertexParameter(semanticCommand);
-            objectFor(result)->setProperty("pointerTargetId", targetId);
-            return result;
-        }
-    }
-
-    Component* eventComponent = component;
-    if (targetId.isNotEmpty() && !boolProperty(commandValue, "dispatchToArea")) {
-        if (Component* hitComponent = component->getComponentAt(position.roundToInt())) {
-            eventComponent = hitComponent;
-            position = eventComponent->getLocalPoint(component, position);
-            downPosition = eventComponent->getLocalPoint(component, downPosition);
-        }
-    }
-
-    const String targetComponentName = eventComponent == component
-            ? "area"
-            : eventComponent->getName();
-    Component::SafePointer<Component> safeEventComponent(eventComponent);
-    String resolvedCursor = cursorName(eventComponent->getMouseCursor());
-
-    if (eventType == "click") {
-        safeEventComponent->mouseDown(makePointerEvent(
-                *safeEventComponent, position, position, commandValue, true, false, 1));
-        if (safeEventComponent != nullptr) {
-            safeEventComponent->mouseUp(makePointerEvent(
-                    *safeEventComponent, position, position, commandValue, false, false, 1));
-        }
-    } else if (eventType == "doubleClick") {
-        const MouseEvent doubleClick = makePointerEvent(
-                *safeEventComponent, position, position, commandValue, true, false, 2);
-        safeEventComponent->mouseDown(doubleClick);
-        if (safeEventComponent != nullptr) {
-            safeEventComponent->mouseDoubleClick(doubleClick);
-        }
-        if (safeEventComponent != nullptr) {
-            safeEventComponent->mouseUp(makePointerEvent(
-                    *safeEventComponent, position, position, commandValue, false, false, 2));
-        }
-    } else if (eventType == "down") {
-        safeEventComponent->mouseDown(makePointerEvent(
-                *safeEventComponent, position, position, commandValue, true, false, 1));
-    } else if (eventType == "up") {
-        safeEventComponent->mouseUp(makePointerEvent(
-                *safeEventComponent, position, downPosition, commandValue, false, false, 1));
-    } else if (eventType == "drag") {
-        safeEventComponent->mouseDrag(makePointerEvent(
-                *safeEventComponent, position, downPosition, commandValue, true, true, 1));
-    } else if (eventType == "move") {
-        safeEventComponent->mouseMove(makePointerEvent(
-                *safeEventComponent, position, position, commandValue, false, false, 0));
-    } else if (eventType == "wheel") {
-        MouseWheelDetails wheel {
-                floatProperty(commandValue, "deltaX"),
-                floatProperty(commandValue, "deltaY"),
-                boolProperty(commandValue, "reversed"),
-                boolProperty(commandValue, "smooth", true),
-                boolProperty(commandValue, "inertial")
-        };
-
-        safeEventComponent->mouseWheelMove(
-                makePointerEvent(*safeEventComponent, position, position, commandValue, false, false, 0),
-                wheel);
-    } else {
-        return failedResult("pointer", "Unknown pointer event: " + eventType);
-    }
-
-    const bool targetDestroyed = safeEventComponent == nullptr;
-    if (!targetDestroyed) {
-        resolvedCursor = cursorName(safeEventComponent->getMouseCursor());
-    }
-    const String expectedCursor = stringProperty(commandValue, "expectedCursor");
-    if (expectedCursor.isNotEmpty() && resolvedCursor != expectedCursor) {
-        return failedResult(
-                "pointer",
-                "Expected cursor '" + expectedCursor + "' but resolved '" + resolvedCursor + "'");
-    }
-
-    var data = makeObject();
-    auto* object = objectFor(data);
-    object->setProperty("event", eventType);
-    object->setProperty("area", area);
-    object->setProperty("targetId", targetId);
-    object->setProperty("targetComponent", targetComponentName);
-    object->setProperty("targetDestroyed", targetDestroyed);
-    object->setProperty("cursor", resolvedCursor);
-    object->setProperty("x", position.x);
-    object->setProperty("y", position.y);
-    object->setProperty("localBounds", rectangleToVar(component->getLocalBounds()));
-    object->setProperty("screenBounds", rectangleToVar(component->getScreenBounds()));
-    return okResult("pointer", data);
-}
-
 var CycleV2Automation::screenshot(const var& commandValue) const {
     const String area = stringProperty(commandValue, "area", "window");
     const File path = resolveCommandPath(stringProperty(commandValue, "path"));
@@ -1881,91 +775,6 @@ var CycleV2Automation::screenshot(const var& commandValue) const {
     object->setProperty("bounds", rectangleToVar(component->getBounds()));
     object->setProperty("screenBounds", rectangleToVar(component->getScreenBounds()));
     return okResult("screenshot", data);
-}
-
-var CycleV2Automation::assertState(const var& commandValue) const {
-    const String path = stringProperty(commandValue, "path");
-    const auto* commandObject = objectFor(commandValue);
-    const var equalsValue = commandObject == nullptr ? var() : commandObject->getProperty("equals");
-    const var value = commandObject == nullptr ? var() : commandObject->getProperty("value");
-    const String op = stringProperty(commandValue, "op", equalsValue.isVoid() ? "exists" : "equals");
-    const var expected = !equalsValue.isVoid() ? equalsValue : value;
-
-    var actual;
-    const bool found = getPathValue(snapshotState(), path, actual);
-
-    if (!found) {
-        return failedResult("assertState", "State path not found: " + path);
-    }
-
-    if (!compareValues(actual, op, expected)) {
-        var data = makeObject();
-        auto* object = objectFor(data);
-        object->setProperty("path", path);
-        object->setProperty("op", op);
-        object->setProperty("expected", expected);
-        object->setProperty("actual", actual);
-        var result = failedResult("assertState", "State assertion failed: " + path);
-        objectFor(result)->setProperty("data", data);
-        return result;
-    }
-
-    var data = makeObject();
-    auto* object = objectFor(data);
-    object->setProperty("path", path);
-    object->setProperty("op", op);
-    object->setProperty("actual", actual);
-    return okResult("assertState", data);
-}
-
-var CycleV2Automation::assertNodeParameter(const var& commandValue) const {
-    const String nodeId = stringProperty(commandValue, "nodeId");
-    const String parameterId = stringProperty(commandValue, "parameterId");
-    const auto* commandObject = objectFor(commandValue);
-    const var equalsValue = commandObject == nullptr ? var() : commandObject->getProperty("equals");
-    const var value = commandObject == nullptr ? var() : commandObject->getProperty("value");
-    const String op = stringProperty(commandValue, "op", equalsValue.isVoid() ? "equals" : "equals");
-    const var expected = !equalsValue.isVoid() ? equalsValue : value;
-    String actualString;
-
-    if (nodeId.isEmpty() || parameterId.isEmpty()) {
-        return failedResult("assertNodeParameter", "Missing nodeId or parameterId");
-    }
-
-    if (!workspace.getNodeParameterForAutomation(nodeId, parameterId, actualString)) {
-        return failedResult("assertNodeParameter", "Node parameter not found: " + nodeId + "." + parameterId);
-    }
-
-    const var actual = actualString;
-    if (!compareValues(actual, op, expected)) {
-        var data = makeObject();
-        auto* object = objectFor(data);
-        object->setProperty("nodeId", nodeId);
-        object->setProperty("parameterId", parameterId);
-        object->setProperty("op", op);
-        object->setProperty("expected", expected);
-        object->setProperty("actual", actual);
-        var result = failedResult("assertNodeParameter", "Node parameter assertion failed: " + nodeId + "." + parameterId);
-        objectFor(result)->setProperty("data", data);
-        return result;
-    }
-
-    var data = makeObject();
-    auto* object = objectFor(data);
-    object->setProperty("nodeId", nodeId);
-    object->setProperty("parameterId", parameterId);
-    object->setProperty("op", op);
-    object->setProperty("actual", actual);
-    return okResult("assertNodeParameter", data);
-}
-
-var CycleV2Automation::listAssertionPaths() const {
-    Array<var> paths;
-    flattenPaths(snapshotState(), {}, paths);
-
-    var data = makeObject();
-    objectFor(data)->setProperty("paths", paths);
-    return okResult("listAssertionPaths", data);
 }
 
 var CycleV2Automation::waitForIdle(const var& commandValue) const {

@@ -12,8 +12,6 @@
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/NodeGraph.h"
-#include "Nodes/Curve/Editor/CurveEditorWidget.h"
-#include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentMenu.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
@@ -23,6 +21,7 @@
 #include "UI/NodeCanvasAutomationController.h"
 #include "UI/NodeCanvasAuthoring.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
+#include "UI/NodeCanvasGuideEditorCoordinator.h"
 #include "UI/NodeCanvasPresentation.h"
 #include "UI/NodeCanvasQueryModel.h"
 #include "UI/NodeCableRenderer.h"
@@ -164,31 +163,20 @@ private:
     int& selectedEdgeIndex;
     int& spliceTargetEdgeIndex;
     NodeCanvasEditorCoordinator editorCoordinator;
+    NodeCanvasGuideEditorCoordinator guideEditorCoordinator;
     NodeCanvasPresentation canvasPresentation;
     NodeCanvasAutomationController automation;
     RenderInvalidationAccumulator renderInvalidation;
     NodePalette palette;
     NodeCanvasHitRouter hitRouter;
-    std::unique_ptr<CurveEditorWidget> guideEditorWidget;
-    std::unique_ptr<GuideCurveEditorComponent> guideEditor;
-
-    int activeTrimeshVertexIndex { -1 };
     int hoveredEdgeIndex { -1 };
     Point<float> lastMousePosition;
     String resolvedHoverText;
     bool pointerInsideCanvas {};
-    bool draggingTrimeshMorph {};
-    bool trimeshMorphUndoPushed {};
-    bool draggingTrimeshVertexParameter {};
-    bool trimeshVertexParameterUndoPushed {};
     bool canvasOpenGlAttached {};
     bool compiledStateRefreshPending {};
     PresentationRefreshScope compiledStateRefreshScope {
             PresentationRefreshScope::Downstream };
-    String draggingSpectralPanNodeId;
-    String draggingOutputGainNodeId;
-    float spectralPanDragStartValue {};
-    float outputGainDragStartValue { 0.5f };
     SignalProbeRailState probeRailState;
     GuideCurveShelfState guideShelfState;
     SignalProbeDetailState probeDetailState;
@@ -196,9 +184,6 @@ private:
     std::optional<OutputMeterLevels> liveOutputMeterLevels;
     std::unique_ptr<WorkspaceDockInteractionController> dockInteraction;
     UnisonPreviewContext globalUnisonPreviewContext;
-    String draggingProbeId;
-    String expandedGuideId;
-    std::optional<uint64_t> guideTransactionBaseRevision;
     std::function<void()> graphDocumentStateChangedCallback;
     uint32 compiledStateRefreshDueMs {};
     std::function<void()> overlayOcclusionChanged;

@@ -10,6 +10,9 @@
 namespace CycleV2 {
 
 class GraphEdgeView;
+class GraphEdgeIndexOverlay;
+class GraphAudioValidationFacts;
+class GraphValidationContext;
 
 class GraphValidator {
 public:
@@ -22,6 +25,17 @@ public:
             const GraphEdgeView& edges,
             const GraphDomainResolution& resolution,
             const GraphAudioScopeAnalysis& scopeAnalysis) const;
+    std::vector<GraphValidationIssue> validate(
+            const NodeGraph& graph,
+            const GraphEdgeView& edges,
+            const GraphDomainResolution& resolution,
+            const GraphAudioScopeAnalysis& scopeAnalysis,
+            const GraphAudioValidationFacts& audioFacts) const;
+    std::vector<GraphValidationIssue> validateProposal(
+            const NodeGraph& graph,
+            const GraphEdgeView& edges,
+            const GraphEdgeIndexOverlay& edgeIndex,
+            const GraphValidationContext& baseline) const;
     static bool acceptsProposedIssues(
             const std::vector<GraphValidationIssue>& before,
             const std::vector<GraphValidationIssue>& after);

@@ -1,7 +1,6 @@
 #include "Graph/GraphConnectionValidator.h"
 
-#include "Graph/GraphEdgeIndex.h"
-#include "Graph/GraphEdgeView.h"
+#include "Graph/GraphValidationContext.h"
 #include "Graph/GraphValidator.h"
 
 namespace CycleV2 {
@@ -66,24 +65,30 @@ GraphConnectionValidation GraphConnectionValidator::validate(
         const NodeGraph& graph,
         const PortAddress& first,
         const PortAddress& second) const {
+    const GraphValidationContext context(graph);
+    return validate(graph, context, first, second);
+}
+
+GraphConnectionValidation GraphConnectionValidator::validate(
+        const NodeGraph& graph,
+        const GraphValidationContext& context,
+        const PortAddress& first,
+        const PortAddress& second) const {
     GraphConnectionProposal proposal = propose(graph, first, second);
     GraphConnectionValidation result { std::move(proposal), {} };
     if (!result.succeeded()) {
         return result;
     }
 
-    const GraphEdgeIndex edgeIndex(graph.getEdges());
-    const GraphEdgeView proposedEdges(
-            graph.getEdges(),
-            edgeIndex.edgesToInput(
+    result.issues = context.validateProposal(
+            graph,
+            context.edgeIndex().edgesToInput(
                     result.destination.nodeId,
                     result.destination.portId),
             { result.edge });
-    GraphValidator validator;
-    result.issues = validator.validate(graph, proposedEdges);
     if (!result.issues.empty()
             && !GraphValidator::acceptsProposedIssues(
-                    validator.validate(graph), result.issues)) {
+                    context.validationIssues(), result.issues)) {
         result.code = GraphEditCode::ValidationRejected;
     }
     return result;

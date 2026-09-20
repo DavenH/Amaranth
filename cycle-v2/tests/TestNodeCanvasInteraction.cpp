@@ -57,7 +57,7 @@ TEST_CASE("Node canvas interaction resolves compatible connection targets by pro
     REQUIRE(sameAddress(*resolvedTarget, target));
     REQUIRE_FALSE(interaction.connectionTargetAt(graph, scene, source, { 100.f, 100.f }).has_value());
 
-    interaction.beginConnection(source, { 100.f, 100.f });
+    interaction.beginConnection(graph, source, { 100.f, 100.f });
     const auto update = interaction.drag(
             graph,
             {},
@@ -140,7 +140,7 @@ TEST_CASE("Node canvas interaction models node drag transaction and completion s
     NodeCanvasViewport viewport;
     viewport.setTransform({}, 0.5f);
     NodeCanvasInteraction interaction;
-    interaction.beginNodeDrag(node.id, { node.id, "peer" }, node.bounds);
+    interaction.beginNodeDrag(graph, node.id, { node.id, "peer" }, node.bounds);
 
     auto first = interaction.drag(graph, viewport, {}, {}, { 10.f, 5.f });
     const auto* firstDrag = std::get_if<NodeDragUpdate>(&first);
@@ -179,6 +179,31 @@ TEST_CASE("Node canvas interaction distinguishes pan and expanded editor capture
     REQUIRE(std::holds_alternative<ExpandedEditorGesture>(interaction.gesture()));
     REQUIRE(std::holds_alternative<std::monostate>(
             interaction.drag({}, {}, {}, {}, {})));
+}
+
+TEST_CASE("Node canvas interaction owns inline and probe gesture state",
+        "[cycle-v2][ui][interaction]") {
+    NodeCanvasInteraction interaction;
+
+    interaction.beginSpectralPan("spectral", 0.25f);
+    REQUIRE(interaction.spectralPan() != nullptr);
+    REQUIRE(interaction.spectralPan()->nodeId == "spectral");
+    REQUIRE(interaction.spectralPan()->startValue == Catch::Approx(0.25f));
+
+    interaction.beginOutputGain("output", 0.75f);
+    REQUIRE(interaction.spectralPan() == nullptr);
+    REQUIRE(interaction.outputGain() != nullptr);
+    REQUIRE(interaction.outputGain()->nodeId == "output");
+    REQUIRE(interaction.outputGain()->startValue == Catch::Approx(0.75f));
+
+    interaction.beginProbeDrag("probe");
+    REQUIRE(interaction.outputGain() == nullptr);
+    REQUIRE(interaction.probeDrag() != nullptr);
+    REQUIRE(interaction.probeDrag()->probeId == "probe");
+
+    interaction.reset();
+    REQUIRE(interaction.isIdle());
+    REQUIRE(interaction.probeDrag() == nullptr);
 }
 
 TEST_CASE("Node canvas interaction keeps one screen-space area selection rectangle",

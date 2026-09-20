@@ -6,6 +6,8 @@
 
 namespace CycleV2 {
 
+class GraphValidationContext;
+
 struct GraphConnectionProposal {
     GraphEditCode code { GraphEditCode::Connected };
     Edge edge;
@@ -27,6 +29,11 @@ public:
             const PortAddress& second) const;
     GraphConnectionValidation validate(
             const NodeGraph& graph,
+            const PortAddress& first,
+            const PortAddress& second) const;
+    GraphConnectionValidation validate(
+            const NodeGraph& graph,
+            const GraphValidationContext& context,
             const PortAddress& first,
             const PortAddress& second) const;
 private:

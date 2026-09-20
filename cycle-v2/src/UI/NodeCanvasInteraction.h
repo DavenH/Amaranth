@@ -3,12 +3,14 @@
 #include <JuceHeader.h>
 
 #include <optional>
+#include <memory>
 #include <variant>
 #include <vector>
 
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeCanvasViewport.h"
 #include "Graph/GraphEditTypes.h"
+#include "Graph/GraphValidationContext.h"
 
 namespace CycleV2 {
 
@@ -57,12 +59,29 @@ struct PortConnectionGesture {
 struct ExpandedEditorGesture {
 };
 
+struct SpectralPanGesture {
+    String nodeId;
+    float startValue {};
+};
+
+struct OutputGainGesture {
+    String nodeId;
+    float startValue { 0.5f };
+};
+
+struct ProbeDragGesture {
+    String probeId;
+};
+
 using NodeCanvasGesture = std::variant<
         std::monostate,
         CanvasPanGesture,
         AreaSelectionGesture,
         NodeDragGesture,
         PortConnectionGesture,
+        SpectralPanGesture,
+        OutputGainGesture,
+        ProbeDragGesture,
         ExpandedEditorGesture>;
 
 struct PanDragUpdate {
@@ -123,15 +142,28 @@ public:
     void beginPan(Point<float> startPan);
     void beginAreaSelection(Point<float> start);
     void beginNodeDrag(
+            const NodeGraph& graph,
             const String& nodeId,
             std::vector<String> nodeIds,
             Rectangle<float> startBounds);
-    void beginConnection(const PortAddress& source, Point<float> endpoint);
+    void beginConnection(
+            const NodeGraph& graph,
+            const PortAddress& source,
+            Point<float> endpoint);
+    void beginSpectralPan(const String& nodeId, float startValue);
+    void beginOutputGain(const String& nodeId, float startValue);
+    void beginProbeDrag(const String& probeId);
     void captureExpandedEditor();
     void reset();
 
     const NodeCanvasGesture& gesture() const { return currentGesture; }
     bool isIdle() const;
+    const SpectralPanGesture* spectralPan() const;
+    const OutputGainGesture* outputGain() const;
+    const ProbeDragGesture* probeDrag() const;
+    const GraphValidationContext* gestureValidationContext() const {
+        return validationContext.get();
+    }
 
     std::optional<NodeSceneTarget> hitAt(
             const NodeCanvasSceneSnapshot& scene,
@@ -168,6 +200,7 @@ public:
 private:
     NodeCanvasGesture currentGesture;
     NodeCanvasHitTester hitTester;
+    std::unique_ptr<GraphValidationContext> validationContext;
 };
 
 }

@@ -8,16 +8,19 @@
 namespace CycleV2 {
 
 class GraphEdgeView;
+class GraphAudioValidationFacts;
 struct GraphValidationIssue;
 
 class GraphAudioScopeValidator {
 public:
-    static bool usesExplicitAudioGraph(const NodeGraph& graph);
-
     void validate(
             const NodeGraph& graph,
             const GraphEdgeView& edges,
             const GraphAudioScopeAnalysis& analysis,
+            std::vector<GraphValidationIssue>& issues) const;
+    void validate(
+            const GraphAudioScopeAnalysis& analysis,
+            const GraphAudioValidationFacts& facts,
             std::vector<GraphValidationIssue>& issues) const;
 };
 
