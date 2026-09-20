@@ -613,7 +613,8 @@ void NodeCanvasPresentation::paint(
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::GuideShelf);
-        if (frame.probeRailState.expanded) {
+        if (frame.probeRailState.expanded
+                && !frame.guideShelfState.presetBrowserVisible) {
             guideCurveShelf.paint(
                     graphics,
                     frame.graph,
@@ -645,15 +646,13 @@ void NodeCanvasPresentation::paint(
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::DockAndDetail);
-        if (!frame.graph.getSignalProbes().empty()) {
-            WorkspaceDock::paintChrome(
-                    graphics,
-                    dock,
-                    "Curve Guides",
-                    "Spies",
-                    frame.probeRailState.expanded,
-                    frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
-        }
+        WorkspaceDock::paintChrome(
+                graphics,
+                dock,
+                "Curve Guides",
+                "Spies",
+                frame.probeRailState.expanded,
+                frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
         GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
         signalProbeDetailView.paint(
                 graphics,
@@ -725,7 +724,9 @@ void NodeCanvasPresentation::paintContent(
             ScopedNodeCanvasPresentationStage childMeasurement(
                     performanceObserver,
                     NodeCanvasPresentationStage::MiniMap);
-            paintMiniMap(graphics, frame);
+            if (!frame.guideShelfState.presetBrowserVisible) {
+                paintMiniMap(graphics, frame);
+            }
         }
         {
             ScopedNodeCanvasPresentationStage childMeasurement(
@@ -760,6 +761,9 @@ bool NodeCanvasPresentation::renderOpenGL(
             frame.viewport.getPan());
     renderOpenGLEffectPreviews(frame, scaleFactor);
     if (!frame.canvasOcclusion.isEmpty()) {
+        return false;
+    }
+    if (frame.guideShelfState.presetBrowserVisible) {
         return false;
     }
     const bool guideSnapshotUpdated = guideCurveShelf.renderOpenGL(

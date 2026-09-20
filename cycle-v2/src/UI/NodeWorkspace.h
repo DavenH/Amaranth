@@ -19,12 +19,29 @@ public:
 
     bool saveGraphToFile(const File& file);
     bool loadGraphFromFile(const File& file);
+    bool capturePresetPreviewForAutomation(
+            PresetPreviewView view,
+            PresetPreviewImage& image,
+            String& errorMessage) const;
+    bool savePresetPreviewForAutomation(
+            PresetPreviewImage image,
+            const File& destination,
+            String& errorMessage);
     bool isGraphDirty() const { return canvas.isGraphDirty(); }
     const File& graphFile() const { return canvas.graphFile(); }
     ProbeRefreshMode probeRefreshMode() const { return canvas.probeRefreshMode(); }
     void setProbeRefreshMode(ProbeRefreshMode mode) { canvas.setProbeRefreshMode(mode); }
     void setGraphDocumentStateChangedCallback(std::function<void()> callback) {
         canvas.setGraphDocumentStateChangedCallback(std::move(callback));
+    }
+    void configurePresetSidebar(
+            std::vector<File> directories,
+            InlinePresetBrowser::OpenCallback openCallback,
+            InlinePresetBrowser::ActionCallback browseCallback) {
+        canvas.configurePresetSidebar(
+                std::move(directories),
+                std::move(openCallback),
+                std::move(browseCallback));
     }
     var exportAutomationState() const;
     String exportGraphJson() const;

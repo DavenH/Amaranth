@@ -67,6 +67,10 @@ public:
             workspace->setGraphDocumentStateChangedCallback([this] {
                 updateDocumentPresentation();
             });
+            workspace->configurePresetSidebar(
+                    { repositoryPresetDirectory(), defaultGraphDirectory() },
+                    [this](const File& file) { return openGraphFile(file); },
+                    [this] { chooseOpenGraph(); });
 
             commandManager.registerAllCommandsForTarget(this);
             addKeyListener(commandManager.getKeyMappings());
@@ -336,7 +340,7 @@ public:
                             safeThis->closePresetBrowser();
                         }
                     });
-            page->setSize(900, 660);
+            page->setSize(1180, 760);
             DialogWindow::LaunchOptions options;
             options.dialogTitle = "Preset Browser";
             options.dialogBackgroundColour = Colour(0xff111922);

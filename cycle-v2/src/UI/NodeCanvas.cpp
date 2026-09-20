@@ -18,6 +18,7 @@
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Control/ModulationSource.h"
 #include "UI/NodeViewModule.h"
+#include "UI/PresetPreviewGenerator.h"
 #include "UI/TransformCompactEditor.h"
 #include "UI/WorkspaceDockKeyboardNavigation.h"
 
@@ -223,6 +224,7 @@ NodeCanvas::NodeCanvas() :
             WorkspaceDockInteractionCallbacks {
                     [this](const String& guideId) { openGuideEditor(guideId); },
                     [this](const String& probeId) { openProbeDetail(probeId); },
+                    [this](const String& guideId) { requestDeleteGuideCurve(guideId); },
                     [this](const NodeCanvasAuthoringResult& result) { applyAuthoringResult(result); },
                     [this]() { requestCanvasRepaint(); },
                     [this]() { resized(); },
@@ -246,6 +248,38 @@ NodeCanvas::~NodeCanvas() {
     setCanvasOpenGlAttached(false);
 }
 
+void NodeCanvas::configurePresetSidebar(
+        std::vector<File> directories,
+        InlinePresetBrowser::OpenCallback openCallback,
+        InlinePresetBrowser::ActionCallback browseCallback) {
+    presetSidebar = std::make_unique<InlinePresetBrowser>(
+            std::move(directories),
+            std::move(openCallback),
+            std::move(browseCallback),
+            [this](WorkspaceSidebarTab tab) {
+                guideShelfState.presetBrowserVisible = tab == WorkspaceSidebarTab::Presets;
+                requestCanvasRepaint();
+                openGLContext.triggerRepaint();
+            });
+    guideShelfState.presetBrowserVisible = presetSidebar->activeTab()
+            == WorkspaceSidebarTab::Presets;
+    addAndMakeVisible(*presetSidebar);
+    resized();
+}
+
+std::vector<std::pair<String, Rectangle<float>>>
+NodeCanvas::presetSidebarPointerTargetsForAutomation() const {
+    std::vector<std::pair<String, Rectangle<float>>> targets;
+    if (presetSidebar == nullptr) {
+        return targets;
+    }
+    const auto origin = presetSidebar->getPosition().toFloat();
+    for (const auto& [id, bounds] : presetSidebar->pointerTargetsForAutomation()) {
+        targets.push_back({ id, bounds.translated(origin.x, origin.y) });
+    }
+    return targets;
+}
+
 void NodeCanvas::paint(Graphics& g) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Frame::JucePaint);
     const uint64_t framePreparationStartedAt = performanceMetrics.timestamp();
@@ -262,6 +296,7 @@ void NodeCanvas::paint(Graphics& g) {
 
     canvasPresentation.paint(g, frame);
     if (frame.canvasOcclusion.isEmpty()
+            && !guideShelfState.presetBrowserVisible
             && canvasPresentation.guideShelfNeedsOpenGLPreviewRender()) {
         openGLContext.triggerRepaint();
     }
@@ -277,6 +312,12 @@ void NodeCanvas::resized() {
     }
     guideEditorCoordinator.layout(editorContentBounds());
     editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
+    if (presetSidebar != nullptr) {
+        presetSidebar->setBounds(GuideCurveShelf::guideWorkspace(
+                getLocalBounds().toFloat(),
+                guideShelfState.minimized,
+                probeRailState.minimized).toNearestInt());
+    }
     requestCanvasRepaint();
 }
 
@@ -1439,7 +1480,7 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
                                     getLocalBounds().toFloat(),
                                     guideShelfState.minimized,
                                     probeRailState.minimized),
-                            (int) graph.getSignalProbes().size()));
+                            (int) graph.getSignalProbes().size() + 1));
             if (SignalProbeRail::ordinalForProbe(graph, probeDetailState.probeId) == 0) {
                 probeDetailState.close();
             }
@@ -1521,7 +1562,7 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
         dock.expandedGuideHeatmapActive = heatmap != nullptr;
         dock.expandedGuideHeatmapFilename = heatmap != nullptr ? heatmap->filename() : String {};
     }
-    const bool hasSpies = !graph.getSignalProbes().empty();
+    const bool hasSpies = true;
     dock.dockBounds = hasSpies ? workspaceDock.dock : Rectangle<float> {};
     dock.guideShelfBounds = workspaceDock.leftShelf;
     dock.spyShelfBounds = hasSpies ? workspaceDock.rightShelf : Rectangle<float> {};
@@ -1555,6 +1596,11 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
         dock.guideTiles.push_back({
                 graph.getGuideCurves()[(size_t) index].id,
                 GuideCurveShelf::tileBoundsFor(
+                        workspace,
+                        probeRailState,
+                        guideShelfState,
+                        index),
+                GuideCurveShelf::deleteButtonBoundsFor(
                         workspace,
                         probeRailState,
                         guideShelfState,
@@ -1684,19 +1730,7 @@ bool NodeCanvas::deleteEdgeForAutomation(int edgeIndex) {
 
 bool NodeCanvas::deleteGuideCurveForAutomation(const String& guideId) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::GraphEdit);
-    if (!commands.removeGuideCurve(guideId).succeeded()) {
-        return false;
-    }
-
-    if (guideShelfState.selectedGuideId == guideId) {
-        guideShelfState.selectedGuideId = {};
-    }
-    if (guideEditorCoordinator.guideId() == guideId) {
-        closeGuideEditor();
-    }
-    editStatusMessage = "Guide Curve deleted";
-    requestCanvasRepaint();
-    return true;
+    return deleteGuideCurve(guideId);
 }
 
 bool NodeCanvas::loadGuideHeatmapForAutomation(
@@ -2142,6 +2176,48 @@ bool NodeCanvas::loadGraphFromFile(const File& file) {
     return loaded;
 }
 
+bool NodeCanvas::capturePresetPreviewForAutomation(
+        PresetPreviewView view,
+        PresetPreviewImage& image,
+        String& errorMessage) const {
+    const auto& defaultOutput = presentation.previewResult().defaultOutput;
+    if (!defaultOutput.has_value()) {
+        errorMessage = "The default output spy is not ready";
+        return false;
+    }
+
+    image = PresetPreviewGenerator::encodeJpeg(
+            *defaultOutput,
+            view);
+    if (!image.isValid()) {
+        errorMessage = "The default output spy did not produce an image";
+        return false;
+    }
+    return true;
+}
+
+bool NodeCanvas::savePresetPreviewForAutomation(
+        PresetPreviewImage image,
+        const File& destination,
+        String& errorMessage) {
+    const File target = destination == File() ? document.file() : destination;
+    if (target == File()) {
+        errorMessage = "No preset destination was provided";
+        return false;
+    }
+
+    PresetPresentation original = document.presentation();
+    PresetPresentation updated = original;
+    updated.preview = std::move(image);
+    document.setPresentation(std::move(updated));
+    if (!saveGraphToFile(target)) {
+        document.setPresentation(std::move(original));
+        errorMessage = "Could not save the preset preview";
+        return false;
+    }
+    return true;
+}
+
 bool NodeCanvas::saveSnapshot() {
     const auto result = authoring.saveSnapshot(snapshotFile());
     applyAuthoringResult(result);
@@ -2231,6 +2307,56 @@ void NodeCanvas::openGuideEditor(const String& guideId) {
     expandedNodeId = {};
     editorCoordinator.close();
     guideEditorCoordinator.open(guideId, editorContentBounds());
+}
+
+void NodeCanvas::requestDeleteGuideCurve(const String& guideId) {
+    const GuideCurveResource* guide = graph.findGuideCurve(guideId);
+    if (guide == nullptr) {
+        return;
+    }
+
+    const int usageCount = graph.guideUsageCount(guideId);
+    if (usageCount == 0) {
+        deleteGuideCurve(guideId);
+        return;
+    }
+
+    const String displayName = guide->name.isNotEmpty()
+            ? guide->name
+            : (guide->shortLabel.isNotEmpty() ? guide->shortLabel : "Guide Curve");
+    const String referenceDescription = usageCount == 1
+            ? "1 curve reference will also be removed."
+            : String(usageCount) + " curve references will also be removed.";
+    AlertWindow::showOkCancelBox(
+            MessageBoxIconType::WarningIcon,
+            "Delete curve?",
+            "“" + displayName + "” is in use. " + referenceDescription,
+            "Delete Curve",
+            "Cancel",
+            this,
+            ModalCallbackFunction::create([
+                    safeThis = Component::SafePointer<NodeCanvas>(this),
+                    guideId](int result) {
+                if (result != 0 && safeThis != nullptr) {
+                    safeThis->deleteGuideCurve(guideId);
+                }
+            }));
+}
+
+bool NodeCanvas::deleteGuideCurve(const String& guideId) {
+    if (!commands.removeGuideCurve(guideId).succeeded()) {
+        return false;
+    }
+
+    if (guideShelfState.selectedGuideId == guideId) {
+        guideShelfState.selectedGuideId = {};
+    }
+    if (guideEditorCoordinator.guideId() == guideId) {
+        closeGuideEditor();
+    }
+    editStatusMessage = "Guide Curve deleted";
+    requestCanvasRepaint();
+    return true;
 }
 
 bool NodeCanvas::setGuideHeatmap(

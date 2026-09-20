@@ -188,11 +188,14 @@ bool WorkspaceDockKeyboardNavigation::activate(
 bool WorkspaceDockKeyboardNavigation::remove(
         WorkspaceDockFocus& focus,
         WorkspaceDockKeyboardDelegate& delegate) {
-    if (focus.target != WorkspaceDockFocusTarget::SpyTile) {
+    if (focus.target == WorkspaceDockFocusTarget::GuideTile) {
+        delegate.removeGuideFromKeyboard(focus.itemId);
+    } else if (focus.target == WorkspaceDockFocusTarget::SpyTile) {
+        delegate.removeSpyFromKeyboard(focus.itemId);
+    } else {
         return false;
     }
 
-    delegate.removeSpyFromKeyboard(focus.itemId);
     focus = {};
     delegate.repaintDockFromKeyboard();
     return true;

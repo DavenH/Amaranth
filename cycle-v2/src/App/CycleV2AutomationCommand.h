@@ -21,6 +21,7 @@ enum class CycleV2AutomationCommand {
     ExportGraph,
     OpenGraph,
     SaveGraph,
+    GeneratePresetPreview,
     ListMenuItems,
     InvokeMenuItem,
     ListPaletteItems,

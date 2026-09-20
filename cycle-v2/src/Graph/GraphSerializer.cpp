@@ -580,6 +580,12 @@ void appendCanonicalJSON(
 }
 
 var GraphSerializer::writeJSON(const NodeGraph& graph) const {
+    return writeJSON(graph, {});
+}
+
+var GraphSerializer::writeJSON(
+        const NodeGraph& graph,
+        const PresetPresentation& presentation) const {
     auto root = std::make_unique<DynamicObject>();
     root->setProperty("format", formatId);
     root->setProperty("formatVersion", currentFormatVersion);
@@ -679,6 +685,11 @@ var GraphSerializer::writeJSON(const NodeGraph& graph) const {
         probes.add(probeToJSON(probe));
     }
     root->setProperty("probes", var(std::move(probes)));
+    if (!presentation.empty()) {
+        root->setProperty(
+                "presetPresentation",
+                PresetPresentationCodec::writeJSON(presentation));
+    }
     return var(root.release());
 }
 
@@ -713,6 +724,11 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         result.issues.push_back({ GraphLoadCode::UnsupportedVersion, "Unsupported Cycle V2 graph format version" });
         return result;
     }
+
+    const auto presentation = PresetPresentationCodec::readJSON(
+            root->getProperty("presetPresentation"));
+    result.presentation = presentation.presentation;
+    result.presentationWarning = presentation.warning;
 
     const auto* encodedNodes = root->getProperty("nodes").getArray();
     const auto* encodedEdges = root->getProperty("edges").getArray();
@@ -1186,6 +1202,12 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
 
 String GraphSerializer::toJsonString(const NodeGraph& graph) const {
     return toJsonString(writeJSON(graph));
+}
+
+String GraphSerializer::toJsonString(
+        const NodeGraph& graph,
+        const PresetPresentation& presentation) const {
+    return toJsonString(writeJSON(graph, presentation));
 }
 
 String GraphSerializer::toJsonString(const var& graphRepresentation) const {

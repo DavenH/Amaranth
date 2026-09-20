@@ -39,7 +39,7 @@ bool WorkspaceDockInteractionController::mouseDown(
                     probeState.minimized,
                     probeState.expandedHeight
             });
-    const bool hasSpies = !graph.getSignalProbes().empty();
+    const bool hasSpies = true;
     if (hasSpies && handleChromeDown(event, layout)) {
         return true;
     }
@@ -125,7 +125,7 @@ WorkspaceDockKeyboardLayout WorkspaceDockInteractionController::keyboardLayout(
                     (int) graph.getGuideCurves().size()),
             SignalProbeRail::maximumHorizontalOffset(
                     spies,
-                    (int) graph.getSignalProbes().size())
+                    (int) graph.getSignalProbes().size() + 1)
     };
 }
 
@@ -164,6 +164,15 @@ bool WorkspaceDockInteractionController::handleGuideDown(
     return handleGuideTileDown(event, workspace);
 }
 
+void WorkspaceDockInteractionController::createGuide(Rectangle<float> workspace) {
+    workspaceBounds = workspace;
+    const String guideId = createGuideFromKeyboard();
+    if (guideId.isNotEmpty()) {
+        keyboardFocus = { WorkspaceDockFocusTarget::GuideTile, guideId };
+    }
+    callbacks.repaint();
+}
+
 bool WorkspaceDockInteractionController::handleGuideControlsDown(
         const MouseEvent& event,
         Rectangle<float> workspace) {
@@ -196,6 +205,12 @@ bool WorkspaceDockInteractionController::handleGuideControlsDown(
 bool WorkspaceDockInteractionController::handleGuideTileDown(
         const MouseEvent& event,
         Rectangle<float> workspace) {
+    const String guideToDelete = GuideCurveShelf::guideDeleteAt(
+            event.position, graph, workspace, probeState, guideState);
+    if (guideToDelete.isNotEmpty()) {
+        callbacks.requestGuideDeletion(guideToDelete);
+        return true;
+    }
     const String guideId = GuideCurveShelf::guideAt(
             event.position, graph, workspace, probeState, guideState);
     if (guideId.isNotEmpty()) {
@@ -245,7 +260,11 @@ bool WorkspaceDockInteractionController::handleSpyTileDown(
     if (probeId.isNotEmpty()) {
         keyboardFocus = { WorkspaceDockFocusTarget::SpyTile, probeId };
         probeState.selectedProbeId = probeId;
-        if (event.getNumberOfClicks() >= 2) {
+        if (probeId == DefaultOutputProbeResolver::probeId) {
+            probeState.defaultOutputView = probeState.defaultOutputView == PresetPreviewView::Time
+                    ? PresetPreviewView::Spectrum
+                    : PresetPreviewView::Time;
+        } else if (event.getNumberOfClicks() >= 2) {
             callbacks.openProbeDetail(probeId);
         }
         callbacks.repaint();
@@ -299,6 +318,10 @@ void WorkspaceDockInteractionController::selectGuideFromKeyboard(
     }
 }
 
+void WorkspaceDockInteractionController::removeGuideFromKeyboard(const String& guideId) {
+    callbacks.requestGuideDeletion(guideId);
+}
+
 void WorkspaceDockInteractionController::setSpyShelfMinimizedFromKeyboard(bool minimized) {
     probeState.minimized = minimized;
     settings.getGlobalSetting(AppSettings::SpyShelfMinimized) = minimized;
@@ -322,12 +345,19 @@ void WorkspaceDockInteractionController::selectSpyFromKeyboard(
         const String& probeId,
         bool openDetail) {
     probeState.selectedProbeId = probeId;
-    if (openDetail) {
+    if (openDetail && probeId == DefaultOutputProbeResolver::probeId) {
+        probeState.defaultOutputView = probeState.defaultOutputView == PresetPreviewView::Time
+                ? PresetPreviewView::Spectrum
+                : PresetPreviewView::Time;
+    } else if (openDetail) {
         callbacks.openProbeDetail(probeId);
     }
 }
 
 void WorkspaceDockInteractionController::removeSpyFromKeyboard(const String& probeId) {
+    if (probeId == DefaultOutputProbeResolver::probeId) {
+        return;
+    }
     callbacks.applyAuthoringResult(authoring.removeSignalProbe(probeId));
     if (probeDetailState.probeId == probeId) {
         probeDetailState.close();

@@ -31,6 +31,7 @@ public:
     virtual void setGuideShelfMinimizedFromKeyboard(bool minimized) = 0;
     virtual juce::String createGuideFromKeyboard() = 0;
     virtual void selectGuideFromKeyboard(const juce::String& guideId, bool openEditor) = 0;
+    virtual void removeGuideFromKeyboard(const juce::String& guideId) = 0;
     virtual void setSpyShelfMinimizedFromKeyboard(bool minimized) = 0;
     virtual void selectSpyFromKeyboard(const juce::String& probeId, bool openDetail) = 0;
     virtual void removeSpyFromKeyboard(const juce::String& probeId) = 0;

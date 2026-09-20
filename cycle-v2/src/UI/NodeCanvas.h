@@ -27,6 +27,7 @@
 #include "UI/NodeCableRenderer.h"
 #include "UI/NodeCanvasGlRenderer.h"
 #include "UI/NodeCanvasHitRouter.h"
+#include "UI/InlinePresetBrowser.h"
 #include "UI/NodeCanvasInteraction.h"
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeCanvasViewport.h"
@@ -55,9 +56,21 @@ public:
 
     bool saveGraphToFile(const File& file);
     bool loadGraphFromFile(const File& file);
+    bool capturePresetPreviewForAutomation(
+            PresetPreviewView view,
+            PresetPreviewImage& image,
+            String& errorMessage) const;
+    bool savePresetPreviewForAutomation(
+            PresetPreviewImage image,
+            const File& destination,
+            String& errorMessage);
     bool isGraphDirty() const { return document.isDirty(); }
     const File& graphFile() const { return document.file(); }
     void setGraphDocumentStateChangedCallback(std::function<void()> callback);
+    void configurePresetSidebar(
+            std::vector<File> directories,
+            InlinePresetBrowser::OpenCallback openCallback,
+            InlinePresetBrowser::ActionCallback browseCallback);
     var exportAutomationState() const;
     String exportGraphJson() const;
     bool openNodeEditorForAutomation(const String& nodeId);
@@ -91,6 +104,8 @@ public:
     bool getNodeParameterForAutomation(const String& nodeId, const String& parameterId, String& value) const;
     var inspectNodeControlsForAutomation(const String& nodeId) const;
     var inspectPointerTargetsForAutomation() const;
+    std::vector<std::pair<String, Rectangle<float>>>
+            presetSidebarPointerTargetsForAutomation() const;
     var inspectOpenGLDiagnosticsForAutomation() const;
     var inspectPerformanceMetricsForAutomation() const;
     void resetPerformanceMetricsForAutomation();
@@ -180,6 +195,7 @@ private:
     OutputMeterBallistics outputMeterBallistics;
     std::optional<OutputMeterLevels> liveOutputMeterLevels;
     std::unique_ptr<WorkspaceDockInteractionController> dockInteraction;
+    std::unique_ptr<InlinePresetBrowser> presetSidebar;
     UnisonPreviewContext globalUnisonPreviewContext;
     std::function<void()> graphDocumentStateChangedCallback;
     uint32 compiledStateRefreshDueMs {};
@@ -210,6 +226,8 @@ private:
             const GraphChangeSet* changeOverride = nullptr,
             std::shared_ptr<const NodeGraph> snapshot = {});
     void openProbeDetail(const String& probeId);
+    void requestDeleteGuideCurve(const String& guideId);
+    bool deleteGuideCurve(const String& guideId);
     void refreshProbeDetail();
     void finishPreviewModWheelRefresh();
     enum class PreviewMorphEditScope {

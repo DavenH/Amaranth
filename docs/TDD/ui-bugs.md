@@ -530,3 +530,13 @@ the mapped-wheel fixture still passes. Reports:
 
 Current status: addressed; `cycle-v2-agent-saxophone-unmapped-wheel.json`
 guards the regression.
+
+## Addressed: Preset-browser rating glyph triggered JUCE shaping assertions
+
+On 2026-09-19, opening the new preset card browser emitted repeated
+`JUCE Assertion failure in juce_String.cpp:327` and
+`juce_SimpleShapedText.cpp:497` messages while painting the Unicode star rating
+glyph. Log: `/private/tmp/cycle-v2-browser-new.log`.
+
+Current status: addressed; ratings use native ellipse geometry and no longer
+depend on font glyph coverage.

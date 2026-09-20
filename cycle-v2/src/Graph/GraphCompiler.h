@@ -189,6 +189,7 @@ struct GraphExecutionPlan {
     std::vector<CompiledVoiceContext> voiceContexts;
     std::vector<OscillatorRegionPlan> oscillatorRegions;
     std::vector<CompiledSignalProbe> signalProbes;
+    std::optional<CompiledSignalProbe> defaultOutputProbe;
     std::vector<int> voiceMixBufferIndices;
     int globalInputBufferIndex { -1 };
     GraphDependencyIndex dependencyIndex;

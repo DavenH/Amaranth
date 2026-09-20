@@ -16,6 +16,7 @@ namespace CycleV2 {
 struct GuideTileAutomationPresentation {
     juce::String guideId;
     juce::Rectangle<float> bounds;
+    juce::Rectangle<float> deleteBounds;
 };
 
 struct SpyTileAutomationPresentation {

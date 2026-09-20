@@ -20,6 +20,7 @@ std::optional<CycleV2AutomationCommand> automationCommandForName(
             { "exportGraph", Command::ExportGraph },
             { "openGraph", Command::OpenGraph },
             { "saveGraph", Command::SaveGraph },
+            { "generatePresetPreview", Command::GeneratePresetPreview },
             { "listMenuItems", Command::ListMenuItems },
             { "listMenus", Command::ListMenuItems },
             { "invokeMenuItem", Command::InvokeMenuItem },

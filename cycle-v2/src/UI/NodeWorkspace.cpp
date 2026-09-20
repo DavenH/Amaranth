@@ -81,6 +81,21 @@ bool NodeWorkspace::loadGraphFromFile(const File& file) {
     return true;
 }
 
+bool NodeWorkspace::capturePresetPreviewForAutomation(
+        PresetPreviewView view,
+        PresetPreviewImage& image,
+        String& errorMessage) const {
+    return canvas.capturePresetPreviewForAutomation(view, image, errorMessage);
+}
+
+bool NodeWorkspace::savePresetPreviewForAutomation(
+        PresetPreviewImage image,
+        const File& destination,
+        String& errorMessage) {
+    return canvas.savePresetPreviewForAutomation(
+            std::move(image), destination, errorMessage);
+}
+
 var NodeWorkspace::exportAutomationState() const {
     var state = canvas.exportAutomationState();
     if (auto* object = state.getDynamicObject()) {
@@ -198,6 +213,9 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
     Array<var>* targets = resultObject->getProperty("targets").getArray();
     if (targets == nullptr) {
         return result;
+    }
+    for (const auto& [id, bounds] : canvas.presetSidebarPointerTargetsForAutomation()) {
+        targets->add(pointerTarget(id, "presetSidebar", bounds));
     }
     if (!keyboard.isVisible()) {
         return result;

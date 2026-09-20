@@ -268,6 +268,8 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return openGraph(commandValue);
         case Command::SaveGraph:
             return saveGraph(commandValue);
+        case Command::GeneratePresetPreview:
+            return generatePresetPreview(commandValue);
         case Command::ListMenuItems:
             return listMenuItems();
         case Command::InvokeMenuItem:
@@ -422,6 +424,49 @@ var CycleV2Automation::saveGraph(const var& commandValue) {
     var data = makeObject();
     objectFor(data)->setProperty("path", path.getFullPathName());
     return okResult("saveGraph", data);
+}
+
+var CycleV2Automation::generatePresetPreview(const var& commandValue) {
+    const String viewId = stringProperty(commandValue, "view", "spectrum");
+    const auto view = presetPreviewViewForId(viewId);
+    if (!view.has_value()) {
+        return failedResult(
+                "generatePresetPreview",
+                "Unknown preview view: " + viewId);
+    }
+
+    const String path = stringProperty(commandValue, "path");
+    const File destination = path.isEmpty() ? File() : resolveCommandPath(path);
+    const bool embed = boolProperty(commandValue, "embed", true);
+    String errorMessage;
+    PresetPreviewImage image;
+    if (!workspace.capturePresetPreviewForAutomation(
+                *view,
+                image,
+                errorMessage)) {
+        return failedResult("generatePresetPreview", errorMessage);
+    }
+    const MemoryBlock encoded = image.jpegData;
+    const int width = image.width;
+    const int height = image.height;
+    if (embed && !workspace.savePresetPreviewForAutomation(
+                std::move(image), destination, errorMessage)) {
+        return failedResult("generatePresetPreview", errorMessage);
+    }
+
+    var data = makeObject();
+    if (embed) {
+        objectFor(data)->setProperty(
+                "path",
+                (destination == File() ? workspace.graphFile() : destination).getFullPathName());
+    }
+    objectFor(data)->setProperty("view", idForPresetPreviewView(*view));
+    objectFor(data)->setProperty("width", width);
+    objectFor(data)->setProperty("height", height);
+    objectFor(data)->setProperty("mediaType", "image/jpeg");
+    objectFor(data)->setProperty("data", Base64::toBase64(
+            encoded.getData(), encoded.getSize()));
+    return okResult("generatePresetPreview", data);
 }
 
 var CycleV2Automation::listMenuItems() const {
