@@ -2339,6 +2339,12 @@ void NodeCanvas::finishNodeEditorGesture(
     }
 }
 
+void NodeCanvas::cancelNodeEditorGesture(
+        const String& nodeId,
+        GraphCommandDispatcher& dispatcher) {
+    presentation.editSession().cancelGraphGesture("editor:" + nodeId, dispatcher);
+}
+
 void NodeCanvas::scheduleNodeEditorRefresh() {
     scheduleCompiledStateRefresh();
 }
@@ -2371,7 +2377,8 @@ void NodeCanvas::rebindNodeEditorTransient() {
 void NodeCanvas::recordNodeEditorMovement(
         const String& nodeId,
         const String& field,
-        uint64_t effectiveFingerprint) {
+        uint64_t effectiveFingerprint,
+        std::optional<UpdateProduct> localProduct) {
     const Node* node = commands.editingGraph().findNode(nodeId);
     const bool primaryTrimeshMorph = node != nullptr
             && node->kind == NodeKind::TrilinearMesh
@@ -2379,7 +2386,7 @@ void NodeCanvas::recordNodeEditorMovement(
     const auto decision = PresentationRefreshPolicy::decide({
             EditPhase::Movement,
             probeRailState.refreshMode,
-            UpdateProduct::LocalSlice,
+            localProduct,
             !primaryTrimeshMorph,
             false
     });
@@ -2394,7 +2401,7 @@ void NodeCanvas::recordNodeEditorMovement(
                         PresentationRefreshScope::PreviewOnly,
                         &commands.transientChanges(),
                         std::move(snapshot));
-            } else {
+            } else if (decision.localProduct.has_value()) {
                 const bool localPreviewQueued = node != nullptr
                         && presentation.refreshLocalNodePreview(
                                 *node,
