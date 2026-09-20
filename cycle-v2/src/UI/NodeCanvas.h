@@ -172,23 +172,14 @@ private:
     std::unique_ptr<CurveEditorWidget> guideEditorWidget;
     std::unique_ptr<GuideCurveEditorComponent> guideEditor;
 
-    int activeTrimeshVertexIndex { -1 };
     int hoveredEdgeIndex { -1 };
     Point<float> lastMousePosition;
     String resolvedHoverText;
     bool pointerInsideCanvas {};
-    bool draggingTrimeshMorph {};
-    bool trimeshMorphUndoPushed {};
-    bool draggingTrimeshVertexParameter {};
-    bool trimeshVertexParameterUndoPushed {};
     bool canvasOpenGlAttached {};
     bool compiledStateRefreshPending {};
     PresentationRefreshScope compiledStateRefreshScope {
             PresentationRefreshScope::Downstream };
-    String draggingSpectralPanNodeId;
-    String draggingOutputGainNodeId;
-    float spectralPanDragStartValue {};
-    float outputGainDragStartValue { 0.5f };
     SignalProbeRailState probeRailState;
     GuideCurveShelfState guideShelfState;
     SignalProbeDetailState probeDetailState;
@@ -196,7 +187,6 @@ private:
     std::optional<OutputMeterLevels> liveOutputMeterLevels;
     std::unique_ptr<WorkspaceDockInteractionController> dockInteraction;
     UnisonPreviewContext globalUnisonPreviewContext;
-    String draggingProbeId;
     String expandedGuideId;
     std::optional<uint64_t> guideTransactionBaseRevision;
     std::function<void()> graphDocumentStateChangedCallback;

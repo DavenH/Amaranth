@@ -272,8 +272,8 @@ void NodeCanvas::focusLost(FocusChangeType) {
     guideShelfState.hoveredGuideId = {};
     probeRailState.hoveredProbeId = {};
     dockInteraction->clearFocus();
-    if (draggingOutputGainNodeId.isNotEmpty()) {
-        draggingOutputGainNodeId = {};
+    if (interaction.outputGain() != nullptr) {
+        interaction.reset();
         applyAuthoringResult(authoring.endOutputGainGesture());
     }
     requestCanvasRepaint();
@@ -411,13 +411,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     lastMousePosition = event.position;
     interaction.reset();
     spliceTargetEdgeIndex = -1;
-    draggingTrimeshMorph = false;
-    trimeshMorphUndoPushed = false;
-    draggingTrimeshVertexParameter = false;
-    draggingSpectralPanNodeId = {};
-    draggingOutputGainNodeId = {};
-    trimeshVertexParameterUndoPushed = false;
-    activeTrimeshVertexIndex = -1;
 
     const Rectangle<float> workspace = getLocalBounds().toFloat();
     if (expandedNodeId.isNotEmpty()) {
@@ -539,7 +532,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         }
 
         probeRailState.selectedProbeId = markerProbe;
-        draggingProbeId = markerProbe;
+        interaction.beginProbeDrag(markerProbe);
         requestCanvasRepaint();
         return;
     }
@@ -553,9 +546,9 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     const Node* inlinePan = findInlinePanAt(graph, viewport, event.position);
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
         if (authoring.beginSpectralPanGesture(inlinePan->id)) {
-            draggingSpectralPanNodeId = inlinePan->id;
-            spectralPanDragStartValue = NodeParameterMap(*inlinePan)
-                    .floatValue("pan", 0.5f);
+            interaction.beginSpectralPan(
+                    inlinePan->id,
+                    NodeParameterMap(*inlinePan).floatValue("pan", 0.5f));
             authoring.selectNode(inlinePan->id);
             requestCanvasRepaint();
             return;
@@ -573,9 +566,9 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             return;
         }
         if (authoring.beginOutputGainGesture(outputFader->id)) {
-            draggingOutputGainNodeId = outputFader->id;
-            outputGainDragStartValue = NodeParameterMap(*outputFader)
-                    .floatValue("gain", 0.5f);
+            interaction.beginOutputGain(
+                    outputFader->id,
+                    NodeParameterMap(*outputFader).floatValue("gain", 0.5f));
             authoring.selectNode(outputFader->id);
             requestCanvasRepaint();
             return;
@@ -661,18 +654,18 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
             CanvasPerformanceMetrics::Trigger::PointerGesture);
     lastMousePosition = event.position;
 
-    if (draggingSpectralPanNodeId.isNotEmpty()) {
+    if (const SpectralPanGesture* gesture = interaction.spectralPan()) {
         const float value = jlimit(
                 0.f,
                 1.f,
-                spectralPanDragStartValue
+                gesture->startValue
                         - event.getOffsetFromDragStart().y / 120.f);
         authoring.updateSpectralPanGesture(value);
         requestCanvasRepaint();
         return;
     }
 
-    if (draggingOutputGainNodeId.isNotEmpty()) {
+    if (const OutputGainGesture* gesture = interaction.outputGain()) {
         constexpr float ordinaryDragDistance = 120.f;
         constexpr float fineAdjustmentMultiplier = 4.f;
         const float adjustmentDistance = ordinaryDragDistance
@@ -680,7 +673,7 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
         const float value = jlimit(
                 0.f,
                 1.f,
-                outputGainDragStartValue
+                gesture->startValue
                         - event.getOffsetFromDragStart().y / adjustmentDistance);
         authoring.updateOutputGainGesture(value);
         requestCanvasRepaint();
@@ -690,7 +683,7 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
     if (dockInteraction->mouseDrag(event, getLocalBounds().toFloat())) {
         return;
     }
-    if (draggingProbeId.isNotEmpty()) {
+    if (interaction.probeDrag() != nullptr) {
         requestCanvasRepaint();
         return;
     }
@@ -735,14 +728,14 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PointerGesture);
     lastMousePosition = event.position;
-    if (draggingSpectralPanNodeId.isNotEmpty()) {
-        draggingSpectralPanNodeId = {};
+    if (interaction.spectralPan() != nullptr) {
+        interaction.reset();
         applyAuthoringResult(authoring.endSpectralPanGesture());
         requestCanvasRepaint();
         return;
     }
-    if (draggingOutputGainNodeId.isNotEmpty()) {
-        draggingOutputGainNodeId = {};
+    if (interaction.outputGain() != nullptr) {
+        interaction.reset();
         applyAuthoringResult(authoring.endOutputGainGesture());
         requestCanvasRepaint();
         return;
@@ -755,9 +748,9 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
             viewport,
             presentation.revision(),
             document.revision());
-    if (draggingProbeId.isNotEmpty()) {
-        const String probeId = std::move(draggingProbeId);
-        draggingProbeId = {};
+    if (const ProbeDragGesture* gesture = interaction.probeDrag()) {
+        const String probeId = gesture->probeId;
+        interaction.reset();
         const int edgeIndex = hitRouter.edgeAt(scene, event.position);
         if (edgeIndex >= 0) {
             const int extraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(graph, edgeIndex);
@@ -1108,7 +1101,9 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             probeDetailState,
             globalUnisonPreviewContext,
             liveOutputMeterLevels,
-            draggingSpectralPanNodeId,
+            interaction.spectralPan() != nullptr
+                    ? interaction.spectralPan()->nodeId
+                    : String {},
             selectedNodeIds,
             hoveredEdgeIndex,
             areaSelectionBounds

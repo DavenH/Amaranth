@@ -59,12 +59,29 @@ struct PortConnectionGesture {
 struct ExpandedEditorGesture {
 };
 
+struct SpectralPanGesture {
+    String nodeId;
+    float startValue {};
+};
+
+struct OutputGainGesture {
+    String nodeId;
+    float startValue { 0.5f };
+};
+
+struct ProbeDragGesture {
+    String probeId;
+};
+
 using NodeCanvasGesture = std::variant<
         std::monostate,
         CanvasPanGesture,
         AreaSelectionGesture,
         NodeDragGesture,
         PortConnectionGesture,
+        SpectralPanGesture,
+        OutputGainGesture,
+        ProbeDragGesture,
         ExpandedEditorGesture>;
 
 struct PanDragUpdate {
@@ -133,11 +150,17 @@ public:
             const NodeGraph& graph,
             const PortAddress& source,
             Point<float> endpoint);
+    void beginSpectralPan(const String& nodeId, float startValue);
+    void beginOutputGain(const String& nodeId, float startValue);
+    void beginProbeDrag(const String& probeId);
     void captureExpandedEditor();
     void reset();
 
     const NodeCanvasGesture& gesture() const { return currentGesture; }
     bool isIdle() const;
+    const SpectralPanGesture* spectralPan() const;
+    const OutputGainGesture* outputGain() const;
+    const ProbeDragGesture* probeDrag() const;
     const GraphValidationContext* gestureValidationContext() const {
         return validationContext.get();
     }

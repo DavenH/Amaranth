@@ -569,6 +569,16 @@ Together with the registry, assertions, input, and workspace-command services,
 this completes the automation composition target. `NodeCanvas` gesture and
 editor ownership remains open for this UI slice.
 
+Canvas-gesture state slice: spectral-pan, output-gain, and probe-drag identity
+and baseline values now use the same `NodeCanvasInteraction` variant as pan,
+selection, node drag, connection, and expanded-editor capture. Ten parallel
+fields in `NodeCanvas`, including five vestigial Trimesh flags, were deleted.
+One transition test proves that beginning a new gesture replaces the prior
+domain gesture and that reset returns to the idle state; all nine focused
+interaction cases pass with 99 assertions. `NodeCanvas.cpp` is 2,598 lines and
+`NodeCanvasInteraction.cpp` is 397 lines. Guide-editor lifecycle remains the
+last UI ownership target.
+
 ### 3. Separate runtime execution policies
 
 `GraphAudioExecutor::processInternal` takes diagnostics, observer, dirty-node,

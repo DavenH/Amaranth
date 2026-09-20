@@ -181,6 +181,31 @@ TEST_CASE("Node canvas interaction distinguishes pan and expanded editor capture
             interaction.drag({}, {}, {}, {}, {})));
 }
 
+TEST_CASE("Node canvas interaction owns inline and probe gesture state",
+        "[cycle-v2][ui][interaction]") {
+    NodeCanvasInteraction interaction;
+
+    interaction.beginSpectralPan("spectral", 0.25f);
+    REQUIRE(interaction.spectralPan() != nullptr);
+    REQUIRE(interaction.spectralPan()->nodeId == "spectral");
+    REQUIRE(interaction.spectralPan()->startValue == Catch::Approx(0.25f));
+
+    interaction.beginOutputGain("output", 0.75f);
+    REQUIRE(interaction.spectralPan() == nullptr);
+    REQUIRE(interaction.outputGain() != nullptr);
+    REQUIRE(interaction.outputGain()->nodeId == "output");
+    REQUIRE(interaction.outputGain()->startValue == Catch::Approx(0.75f));
+
+    interaction.beginProbeDrag("probe");
+    REQUIRE(interaction.outputGain() == nullptr);
+    REQUIRE(interaction.probeDrag() != nullptr);
+    REQUIRE(interaction.probeDrag()->probeId == "probe");
+
+    interaction.reset();
+    REQUIRE(interaction.isIdle());
+    REQUIRE(interaction.probeDrag() == nullptr);
+}
+
 TEST_CASE("Node canvas interaction keeps one screen-space area selection rectangle",
         "[cycle-v2][ui][interaction][selection]") {
     NodeCanvasInteraction interaction;

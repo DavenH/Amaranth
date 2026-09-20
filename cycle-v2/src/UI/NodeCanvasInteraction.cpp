@@ -159,6 +159,18 @@ void NodeCanvasInteraction::beginConnection(
     validationContext = std::make_unique<GraphValidationContext>(graph);
 }
 
+void NodeCanvasInteraction::beginSpectralPan(const String& nodeId, float startValue) {
+    currentGesture = SpectralPanGesture { nodeId, startValue };
+}
+
+void NodeCanvasInteraction::beginOutputGain(const String& nodeId, float startValue) {
+    currentGesture = OutputGainGesture { nodeId, startValue };
+}
+
+void NodeCanvasInteraction::beginProbeDrag(const String& probeId) {
+    currentGesture = ProbeDragGesture { probeId };
+}
+
 void NodeCanvasInteraction::captureExpandedEditor() {
     currentGesture = ExpandedEditorGesture {};
 }
@@ -170,6 +182,18 @@ void NodeCanvasInteraction::reset() {
 
 bool NodeCanvasInteraction::isIdle() const {
     return std::holds_alternative<std::monostate>(currentGesture);
+}
+
+const SpectralPanGesture* NodeCanvasInteraction::spectralPan() const {
+    return std::get_if<SpectralPanGesture>(&currentGesture);
+}
+
+const OutputGainGesture* NodeCanvasInteraction::outputGain() const {
+    return std::get_if<OutputGainGesture>(&currentGesture);
+}
+
+const ProbeDragGesture* NodeCanvasInteraction::probeDrag() const {
+    return std::get_if<ProbeDragGesture>(&currentGesture);
 }
 
 std::optional<NodeSceneTarget> NodeCanvasInteraction::hitAt(
