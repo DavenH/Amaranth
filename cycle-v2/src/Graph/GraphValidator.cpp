@@ -104,10 +104,10 @@ std::vector<GraphValidationIssue> GraphValidator::validateProposal(
             edges,
             edgeIndex,
             baseline.audioScopeAnalysis());
-    if (baseline.usesExplicitAudioGraph()
-            || changesVoiceContextAssignment(edges)) {
+    if (baseline.usesExplicitAudioGraph()) {
         return validate(graph, edges, resolution, scopeAnalysis);
     }
+    const bool voiceContextChanged = changesVoiceContextAssignment(edges);
 
     std::vector<size_t> edgesToValidate;
     std::unordered_set<size_t> includedEdges;
@@ -155,7 +155,10 @@ std::vector<GraphValidationIssue> GraphValidator::validateProposal(
         const bool invalidatedOperation = operationIssue
                 && issue.subjectId.isNotEmpty()
                 && affectedOperationNodes.count(issue.subjectId) > 0;
-        if (!invalidatedEdge && !invalidatedOperation) {
+        const bool voiceContextIssue = voiceContextChanged
+                && (issue.code == GraphValidationCode::MissingVoiceContextAssignment
+                        || issue.code == GraphValidationCode::MultipleActiveVoiceContexts);
+        if (!invalidatedEdge && !invalidatedOperation && !voiceContextIssue) {
             issues.push_back(issue);
         }
     }
@@ -181,6 +184,15 @@ std::vector<GraphValidationIssue> GraphValidator::validateProposal(
                     resolution,
                     issues);
         }
+    }
+    if (voiceContextChanged) {
+        const GraphVoiceContextAssignments assignments(
+                baseline.voiceContextAssignments(),
+                edges);
+        topologyValidator.validateVoiceContextAssignments(
+                graph,
+                assignments,
+                issues);
     }
     return issues;
 }

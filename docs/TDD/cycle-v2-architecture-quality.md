@@ -391,6 +391,21 @@ Baseline scope-map and issue-vector materialization also remain graph-sized.
 Those retained global policy facts are the next validation slice before live UI
 callers adopt the context.
 
+Voice Context assignment policy now has one read-only owner,
+`GraphVoiceContextAssignments`. It identifies providers, accepting nodes, and
+explicit assignments once; `GraphCompiler` translates those facts into
+single-context implicit edges, while `GraphTopologyValidator` translates them
+into missing-assignment and multiple-active-context issues. The duplicated node
+predicate and graph/edge scans were deleted. `GraphCompiler.cpp` fell from
+1,563 to 1,522 lines and `GraphTopologyValidator.cpp` from 201 to 185 lines;
+the new focused implementation is 82 lines with a 36-line interface.
+`GraphValidationContext` retains the analysis, and a proposed context edge now
+updates assignment facts and issues without taking the former full validation
+fallback. Three compiler integration cases pass 20 assertions, and three
+validation-context cases pass 17 assertions. Incremental explicit-audio
+reachability and terminal-output facts remain the final global validation
+fallback before caller adoption.
+
 ### 2. Reduce UI coordination surfaces
 
 `NodeCanvas` inherits component, OpenGL, timer, editor presentation/resources,

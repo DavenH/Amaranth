@@ -974,6 +974,34 @@ TEST_CASE("Validation context recomputes affected operation policy",
     REQUIRE(proposedIssues.size() == fullIssues.size());
 }
 
+TEST_CASE("Validation context updates Voice Context assignment policy",
+        "[cycle-v2][graph][validation-context][voice-context]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "firstVoice", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "secondVoice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    const GraphValidationContext context(graph);
+    REQUIRE(std::any_of(
+            context.validationIssues().begin(),
+            context.validationIssues().end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::MissingVoiceContextAssignment
+                        && issue.subjectId == "mesh";
+            }));
+
+    const Edge assignment {
+            "firstVoice", "context", "mesh", "context",
+            PortDomain::DomainContext, ConnectionKind::Signal
+    };
+    const auto proposedIssues = context.validateProposal(graph, {}, { assignment });
+    const GraphEdgeView proposedEdges(graph.getEdges(), {}, { assignment });
+    const auto fullIssues = GraphValidator().validate(graph, proposedEdges);
+
+    REQUIRE(proposedIssues.empty());
+    REQUIRE(proposedIssues.size() == fullIssues.size());
+}
+
 TEST_CASE("Neutral routing cannot participate in both audio partitions",
         "[cycle-v2][graph][audio-scope]") {
     GraphNodeFactory factory;

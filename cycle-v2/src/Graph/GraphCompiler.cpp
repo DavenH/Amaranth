@@ -1,6 +1,8 @@
 #include "Graph/GraphCompiler.h"
 
 #include "Graph/GraphAudioScopeCompiler.h"
+#include "Graph/GraphEdgeView.h"
+#include "Graph/GraphVoiceContextAssignments.h"
 #include "Graph/NodeParameterMap.h"
 #include "Graph/TrimeshSignalSemantics.h"
 
@@ -220,51 +222,8 @@ std::vector<String> buildNodeOrder(
 }
 
 std::vector<Edge> buildImplicitVoiceContextEdges(const NodeGraph& graph) {
-    const Node* context = nullptr;
-    for (const auto& node : graph.getNodes()) {
-        if (node.kind != NodeKind::VoiceContext) {
-            continue;
-        }
-        if (context != nullptr) {
-            return {};
-        }
-        context = &node;
-    }
-    if (context == nullptr) {
-        return {};
-    }
-
-    std::unordered_set<String, GraphAudioScopeAnalysis::StringHash>
-            explicitlyAssignedNodes;
-    for (const auto& edge : graph.getEdges()) {
-        if (!edge.isAttachment() && edge.destPortId == "context") {
-            explicitlyAssignedNodes.emplace(edge.destNodeId);
-        }
-    }
-
-    std::vector<Edge> edges;
-    for (const auto& node : graph.getNodes()) {
-        const bool acceptsContext = std::any_of(
-                node.inputs.begin(),
-                node.inputs.end(),
-                [](const Port& port) {
-                    return port.id == "context"
-                            && port.domain == PortDomain::DomainContext;
-                });
-        const bool hasContext = explicitlyAssignedNodes.find(node.id)
-                != explicitlyAssignedNodes.end();
-        if (acceptsContext && !hasContext) {
-            edges.push_back({
-                    context->id,
-                    "context",
-                    node.id,
-                    "context",
-                    PortDomain::DomainContext,
-                    ConnectionKind::Signal
-            });
-        }
-    }
-    return edges;
+    const GraphEdgeView edges(graph.getEdges());
+    return GraphVoiceContextAssignments(graph, edges).implicitEdges();
 }
 
 std::vector<GraphExecutionStep> buildExecutionSteps(

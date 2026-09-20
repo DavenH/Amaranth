@@ -12,6 +12,7 @@ GraphValidationContext::GraphValidationContext(const NodeGraph& graph) :
     ,   indexedEdges(edges)
     ,   domains(GraphDomainResolver().resolve(graph, edges))
     ,   audioScope(GraphAudioScopeAnalyzer().analyze(graph, edges))
+    ,   voiceContexts(graph, edges)
     ,   issues(GraphValidator().validate(
                 graph,
                 edges,

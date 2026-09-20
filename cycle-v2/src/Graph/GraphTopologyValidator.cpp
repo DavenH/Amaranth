@@ -1,7 +1,6 @@
 #include "Graph/GraphTopologyValidator.h"
 
 #include <algorithm>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -9,6 +8,7 @@
 #include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphValidationTypes.h"
+#include "Graph/GraphVoiceContextAssignments.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 
 namespace CycleV2 {
@@ -144,46 +144,30 @@ void GraphTopologyValidator::validateVoiceContextAssignments(
         const NodeGraph& graph,
         const GraphEdgeView& edges,
         std::vector<GraphValidationIssue>& issues) const {
-    const int voiceContextCount = static_cast<int>(std::count_if(
-            graph.getNodes().begin(),
-            graph.getNodes().end(),
-            [](const Node& node) {
-                return node.kind == NodeKind::VoiceContext;
-            }));
-    if (voiceContextCount <= 1) {
+    const GraphVoiceContextAssignments assignments(graph, edges);
+    validateVoiceContextAssignments(graph, assignments, issues);
+}
+
+void GraphTopologyValidator::validateVoiceContextAssignments(
+        const NodeGraph& graph,
+        const GraphVoiceContextAssignments& assignments,
+        std::vector<GraphValidationIssue>& issues) const {
+    if (assignments.contextNodeIds().size() <= 1) {
         return;
     }
 
-    std::unordered_map<String, String, GraphAudioScopeAnalysis::StringHash>
-            explicitAssignments;
-    for (const auto& edge : edges) {
-        if (!edge.isAttachment() && edge.destPortId == "context") {
-            explicitAssignments.emplace(edge.destNodeId, edge.sourceNodeId);
-        }
-    }
-
     NodeIdSet activeContexts;
-    for (const auto& node : graph.getNodes()) {
-        const bool acceptsContext = std::any_of(
-                node.inputs.begin(),
-                node.inputs.end(),
-                [](const Port& port) {
-                    return port.id == "context"
-                            && port.domain == PortDomain::DomainContext;
-                });
-        if (!acceptsContext) {
-            continue;
-        }
-        const auto assignment = explicitAssignments.find(node.id);
-        if (assignment == explicitAssignments.end()) {
+    for (const String& nodeId : assignments.acceptingNodeIds()) {
+        const String* assignment = assignments.explicitContextFor(nodeId);
+        if (assignment == nullptr) {
             addIssue(
                     issues,
                     GraphValidationCode::MissingVoiceContextAssignment,
-                    "Multiple Voice Contexts require an explicit context for " + node.id,
-                    node.id);
+                    "Multiple Voice Contexts require an explicit context for " + nodeId,
+                    nodeId);
             continue;
         }
-        const Node* source = graph.findNode(assignment->second);
+        const Node* source = graph.findNode(*assignment);
         if (source != nullptr && source->kind == NodeKind::VoiceContext) {
             activeContexts.emplace(source->id);
         }

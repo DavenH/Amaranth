@@ -5,6 +5,7 @@
 #include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphEdgeView.h"
 #include "Graph/GraphValidationTypes.h"
+#include "Graph/GraphVoiceContextAssignments.h"
 
 namespace CycleV2 {
 
@@ -18,6 +19,9 @@ public:
     const GraphDomainResolution& domainResolution() const { return domains; }
     const GraphAudioScopeAnalysis& audioScopeAnalysis() const { return audioScope; }
     const std::vector<GraphValidationIssue>& validationIssues() const { return issues; }
+    const GraphVoiceContextAssignments& voiceContextAssignments() const {
+        return voiceContexts;
+    }
     bool usesExplicitAudioGraph() const { return explicitAudioGraph; }
     std::vector<GraphValidationIssue> validateProposal(
             const NodeGraph& graph,
@@ -31,6 +35,7 @@ private:
     GraphEdgeIndex indexedEdges;
     GraphDomainResolution domains;
     GraphAudioScopeAnalysis audioScope;
+    GraphVoiceContextAssignments voiceContexts;
     std::vector<GraphValidationIssue> issues;
     bool explicitAudioGraph {};
 };

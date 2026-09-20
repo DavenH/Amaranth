@@ -50,7 +50,7 @@ Move operation layout classification, cycling, and application into
 delete both private copies. Cover every layout with one test that checks the
 authored port sides, painted port centres, and hit targets together.
 
-### P1: Centralize Voice Context assignment facts
+### Addressed: Centralize Voice Context assignment facts
 
 `GraphTopologyValidator::validateVoiceContextAssignments` and
 `GraphCompiler::buildImplicitVoiceContextEdges` separately decide whether a
@@ -66,6 +66,12 @@ source. The compiler should translate valid facts into implicit edges; the
 topology validator should translate invalid facts into issues. Delete both
 local predicates and assignment scans. Preserve compiler/validator parity for
 zero, one, and multiple contexts with explicit and implicit assignments.
+
+Implemented in `GraphVoiceContextAssignments`. Compilation and topology
+validation now consume the same provider, consumer, and explicit-assignment
+facts. `GraphValidationContext` retains the same analysis, and proposed context
+edges update its assignment map without rescanning graph nodes or unrelated
+edges.
 
 ### P2: Share the typed node-model envelope codec
 
