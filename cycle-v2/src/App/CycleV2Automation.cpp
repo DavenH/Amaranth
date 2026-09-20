@@ -1,5 +1,6 @@
 #include "App/CycleV2Automation.h"
 
+#include "App/CycleV2AutomationCommand.h"
 #include "App/OfflineAudioCaptureAutomation.h"
 #include "UI/NodeWorkspace.h"
 
@@ -726,147 +727,111 @@ void CycleV2Automation::startSessionServer() {
 
 var CycleV2Automation::runCommand(const var& commandValue) {
     const String command = stringProperty(commandValue, "command");
-
-    if (command == "snapshotState") {
-        return okResult(command, snapshotState());
-    }
-    if (command == "inspectTargets") {
-        return inspectTargets(commandValue);
-    }
-    if (command == "inspectPointerTargets") {
-        return inspectPointerTargets();
-    }
-    if (command == "inspectPointerCursor") {
-        return inspectPointerCursor();
-    }
-    if (command == "inspectOpenGLDiagnostics") {
-        return inspectOpenGLDiagnostics();
-    }
-    if (command == "inspectCanvasPerformance") {
-        return inspectCanvasPerformance();
-    }
-    if (command == "resetCanvasPerformance") {
-        return resetCanvasPerformance();
-    }
-    if (command == "inspectAudioPerformance") {
-        return inspectAudioPerformance();
-    }
-    if (command == "resetAudioPerformance") {
-        return resetAudioPerformance();
-    }
-    if (command == "sendMidi") {
-        return sendMidi(commandValue);
-    }
-    if (command == "requestCanvasOpenGLFrame") {
-        return requestCanvasOpenGLFrame();
-    }
-    if (command == "exportGraph") {
-        return exportGraph(commandValue);
-    }
-    if (command == "openGraph") {
-        return openGraph(commandValue);
-    }
-    if (command == "saveGraph") {
-        return saveGraph(commandValue);
-    }
-    if (command == "listMenuItems" || command == "listMenus") {
-        return listMenuItems();
-    }
-    if (command == "invokeMenuItem") {
-        return invokeMenuItem(commandValue);
-    }
-    if (command == "listPaletteItems") {
-        return listPaletteItems();
-    }
-    if (command == "invokePaletteItem") {
-        return invokePaletteItem(commandValue);
-    }
-    if (command == "captureAudio") {
-        return captureAudio(commandValue);
-    }
-    if (command == "captureLiveAudio") {
-        return captureLiveAudio(commandValue);
-    }
-    if (command == "openNodeEditor" || command == "openMeshPopup") {
-        return openNodeEditor(commandValue);
-    }
-    if (command == "addNode") {
-        return addNode(commandValue);
-    }
-    if (command == "moveNode") {
-        return moveNode(commandValue);
-    }
-    if (command == "connectPorts" || command == "connect") {
-        return connectPorts(commandValue);
-    }
-    if (command == "deleteNode" || command == "removeNode") {
-        return deleteNode(commandValue);
-    }
-    if (command == "deleteEdge" || command == "removeEdge") {
-        return deleteEdge(commandValue);
-    }
-    if (command == "deleteGuideCurve" || command == "removeGuideCurve") {
-        return deleteGuideCurve(commandValue);
-    }
-    if (command == "loadGuideHeatmap") {
-        return loadGuideHeatmap(commandValue);
-    }
-    if (command == "clearGuideHeatmap") {
-        return clearGuideHeatmap(commandValue);
-    }
-    if (command == "undo") {
-        return undo();
-    }
-    if (command == "setNodeParameter") {
-        return setNodeParameter(commandValue);
-    }
-    if (command == "setGuideParameter") {
-        return setGuideParameter(commandValue);
-    }
-    if (command == "inspectNodeControls") {
-        return inspectNodeControls(commandValue);
-    }
-    if (command == "setMorphSlider") {
-        return setMorphSlider(commandValue);
-    }
-    if (command == "setPrimaryAxis") {
-        return setPrimaryAxis(commandValue);
-    }
-    if (command == "toggleLink") {
-        return toggleLink(commandValue);
-    }
-    if (command == "selectVertex") {
-        return selectVertex(commandValue);
-    }
-    if (command == "setVertexParameter") {
-        return setVertexParameter(commandValue);
-    }
-    if (command == "pointer") {
-        return pointer(commandValue);
-    }
-    if (command == "key") {
-        return key(commandValue);
-    }
-    if (command == "screenshot") {
-        return screenshot(commandValue);
-    }
-    if (command == "assertState") {
-        return assertState(commandValue);
-    }
-    if (command == "assertNodeParameter") {
-        return assertNodeParameter(commandValue);
-    }
-    if (command == "listAssertionPaths") {
-        return listAssertionPaths();
-    }
-    if (command == "waitForIdle") {
-        return waitForIdle(commandValue);
-    }
-    if (command == "quit") {
-        return okResult(command);
+    const auto registered = automationCommandForName(command);
+    if (!registered.has_value()) {
+        return failedResult(
+                command.isEmpty() ? "unknown" : command,
+                "Unknown Cycle V2 automation command");
     }
 
-    return failedResult(command.isEmpty() ? "unknown" : command, "Unknown Cycle V2 automation command");
+    using Command = CycleV2AutomationCommand;
+    switch (*registered) {
+        case Command::SnapshotState:
+            return okResult(command, snapshotState());
+        case Command::InspectTargets:
+            return inspectTargets(commandValue);
+        case Command::InspectPointerTargets:
+            return inspectPointerTargets();
+        case Command::InspectPointerCursor:
+            return inspectPointerCursor();
+        case Command::InspectOpenGLDiagnostics:
+            return inspectOpenGLDiagnostics();
+        case Command::InspectCanvasPerformance:
+            return inspectCanvasPerformance();
+        case Command::ResetCanvasPerformance:
+            return resetCanvasPerformance();
+        case Command::InspectAudioPerformance:
+            return inspectAudioPerformance();
+        case Command::ResetAudioPerformance:
+            return resetAudioPerformance();
+        case Command::SendMidi:
+            return sendMidi(commandValue);
+        case Command::RequestCanvasOpenGLFrame:
+            return requestCanvasOpenGLFrame();
+        case Command::ExportGraph:
+            return exportGraph(commandValue);
+        case Command::OpenGraph:
+            return openGraph(commandValue);
+        case Command::SaveGraph:
+            return saveGraph(commandValue);
+        case Command::ListMenuItems:
+            return listMenuItems();
+        case Command::InvokeMenuItem:
+            return invokeMenuItem(commandValue);
+        case Command::ListPaletteItems:
+            return listPaletteItems();
+        case Command::InvokePaletteItem:
+            return invokePaletteItem(commandValue);
+        case Command::CaptureAudio:
+            return captureAudio(commandValue);
+        case Command::CaptureLiveAudio:
+            return captureLiveAudio(commandValue);
+        case Command::OpenNodeEditor:
+            return openNodeEditor(commandValue);
+        case Command::AddNode:
+            return addNode(commandValue);
+        case Command::MoveNode:
+            return moveNode(commandValue);
+        case Command::ConnectPorts:
+            return connectPorts(commandValue);
+        case Command::DeleteNode:
+            return deleteNode(commandValue);
+        case Command::DeleteEdge:
+            return deleteEdge(commandValue);
+        case Command::DeleteGuideCurve:
+            return deleteGuideCurve(commandValue);
+        case Command::LoadGuideHeatmap:
+            return loadGuideHeatmap(commandValue);
+        case Command::ClearGuideHeatmap:
+            return clearGuideHeatmap(commandValue);
+        case Command::Undo:
+            return undo();
+        case Command::SetNodeParameter:
+            return setNodeParameter(commandValue);
+        case Command::SetGuideParameter:
+            return setGuideParameter(commandValue);
+        case Command::InspectNodeControls:
+            return inspectNodeControls(commandValue);
+        case Command::SetMorphSlider:
+            return setMorphSlider(commandValue);
+        case Command::SetPrimaryAxis:
+            return setPrimaryAxis(commandValue);
+        case Command::ToggleLink:
+            return toggleLink(commandValue);
+        case Command::SelectVertex:
+            return selectVertex(commandValue);
+        case Command::SetVertexParameter:
+            return setVertexParameter(commandValue);
+        case Command::Pointer:
+            return pointer(commandValue);
+        case Command::Key:
+            return key(commandValue);
+        case Command::Screenshot:
+            return screenshot(commandValue);
+        case Command::AssertState:
+            return assertState(commandValue);
+        case Command::AssertNodeParameter:
+            return assertNodeParameter(commandValue);
+        case Command::ListAssertionPaths:
+            return listAssertionPaths();
+        case Command::WaitForIdle:
+            return waitForIdle(commandValue);
+        case Command::Quit:
+            return okResult(command);
+    }
+
+    jassertfalse;
+    return failedResult(command, "Unregistered Cycle V2 automation command");
 }
 
 var CycleV2Automation::handleSessionRequest(const var& request) {

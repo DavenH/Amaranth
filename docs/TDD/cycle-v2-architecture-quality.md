@@ -509,6 +509,16 @@ adding state and dispatch branches to both central classes; production sizes
 fall for the original files; existing focused UI automation fixtures retain
 their observable behavior. The causal TDD owns removal of refresh host calls.
 
+Automation registry slice: command names and compatibility aliases now map to
+one typed `CycleV2AutomationCommand` registry instead of being interleaved with
+handler invocation in a 46-branch string chain. `runCommand` performs typed
+dispatch, while protocol aliases such as `connect`, `openMeshPopup`, and
+`removeGuideCurve` have one owner. The registry contract passes five focused
+assertions. `CycleV2Automation.cpp` fell from 2,030 to 1,995 lines; the registry
+is 70 lines with a 61-line interface. Transport, assertions, pointer input, and
+domain handlers still share the original class, so their extraction remains
+open.
+
 ### 3. Separate runtime execution policies
 
 `GraphAudioExecutor::processInternal` takes diagnostics, observer, dirty-node,

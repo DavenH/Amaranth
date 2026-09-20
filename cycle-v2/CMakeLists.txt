@@ -427,6 +427,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             ${NODE_SOURCES}
             ${CANVAS_ARCHITECTURE_SOURCES}
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/GraphFileHistory.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2AutomationCommand.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/OfflineAudioCaptureAutomation.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserPage.cpp"
             ${TEST_SOURCES}
