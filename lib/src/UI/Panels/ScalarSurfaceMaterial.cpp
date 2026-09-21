@@ -1,3 +1,5 @@
+#include <array>
+
 #include <Binary/Gradients.h>
 
 #include "ScalarSurfaceMaterial.h"
@@ -9,7 +11,19 @@ float smoothUnit(float value) {
     return unit * unit * (3.f - 2.f * unit);
 }
 
-juce::Colour signedColour(float value, const ScalarSurfaceMaterial& material) {
+juce::Colour signedAmplitudeColour(float value, const ScalarSurfaceMaterial& material) {
+    const float unit = juce::jlimit(0.f, 1.f, value);
+    const float palettePosition = unit
+            * (float) (ScalarSurfaceMaterial::signedPaletteStopCount - 1);
+    const int lowerIndex = juce::jmin(
+            (int) palettePosition,
+            ScalarSurfaceMaterial::signedPaletteStopCount - 2);
+    return material.signedPaletteStops[(size_t) lowerIndex].interpolatedWith(
+            material.signedPaletteStops[(size_t) lowerIndex + 1],
+            palettePosition - (float) lowerIndex);
+}
+
+juce::Colour bipolarColour(float value, const ScalarSurfaceMaterial& material) {
     const float unit = juce::jlimit(0.f, 1.f, value);
     const float magnitude = unit < 0.5f
             ? 1.f - 2.f * unit
@@ -42,11 +56,22 @@ juce::Colour paletteColour(float value, const ScalarSurfaceMaterial& material) {
         return magnitudeColour(unit);
     }
 
-    return signedColour(unit, material);
+    if (material.palette == ScalarSurfacePalette::SignedAmplitude) {
+        return signedAmplitudeColour(unit, material);
+    }
+
+    return bipolarColour(unit, material);
 }
 
-juce::Colour modulateBrightness(juce::Colour colour, float amount, float opacity) {
-    const float multiplier = juce::jlimit(0.68f, 1.30f, 1.f + amount);
+juce::Colour modulateBrightness(
+        juce::Colour colour,
+        float amount,
+        float opacity,
+        const ScalarSurfaceMaterial& material) {
+    const float multiplier = juce::jlimit(
+            material.minimumBrightness,
+            material.maximumBrightness,
+            1.f + amount);
     return juce::Colour::fromFloatRGBA(
             juce::jlimit(0.f, 1.f, colour.getFloatRed() * multiplier),
             juce::jlimit(0.f, 1.f, colour.getFloatGreen() * multiplier),
@@ -59,10 +84,28 @@ juce::Colour modulateBrightness(juce::Colour colour, float amount, float opacity
 ScalarSurfaceMaterial ScalarSurfaceMaterial::signedAmplitude() {
     ScalarSurfaceMaterial material;
     material.palette = ScalarSurfacePalette::SignedAmplitude;
-    material.negativeAnchor = juce::Colour(0xff123b76);
-    material.neutralAnchor = juce::Colour(0xff1b1c1e);
-    material.positiveAnchor = juce::Colour(0xffd2782d);
-    material.opacity = 0.82f;
+    material.signedPaletteStops = {
+        juce::Colour(0xff11153b),
+        juce::Colour(0xff283f87),
+        juce::Colour(0xff536fbd),
+        juce::Colour(0xff99a7df),
+        juce::Colour(0xff2a252f),
+        juce::Colour(0xffb76252),
+        juce::Colour(0xffdf7e58),
+        juce::Colour(0xfff5a979),
+        juce::Colour(0xffffd0a2)
+    };
+    material.negativeAnchor = material.signedPaletteStops.front();
+    material.neutralAnchor = material.signedPaletteStops[4];
+    material.positiveAnchor = material.signedPaletteStops.back();
+    material.opacity = 1.f;
+    material.reliefGain = 6.f;
+    material.diffuseStrength = 0.24f;
+    material.specularStrength = 0.24f;
+    material.ridgeHighlightStrength = 0.14f;
+    material.valleyShadowStrength = 0.26f;
+    material.minimumBrightness = 0.56f;
+    material.maximumBrightness = 1.46f;
     return material;
 }
 
@@ -167,7 +210,7 @@ juce::Colour ScalarSurfaceMaterialEvaluator::colourFor(
             + specular
             + ridgeAmount * material.ridgeHighlightStrength
             - valleyAmount * material.valleyShadowStrength;
-    return modulateBrightness(colour, relief, opacity);
+    return modulateBrightness(colour, relief, opacity, material);
 }
 
 juce::Image ScalarSurfaceMaterialEvaluator::createImage(

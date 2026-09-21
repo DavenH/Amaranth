@@ -8,13 +8,6 @@
 
 namespace {
 
-float colourDistance(juce::Colour left, juce::Colour right) {
-    const float red = left.getFloatRed() - right.getFloatRed();
-    const float green = left.getFloatGreen() - right.getFloatGreen();
-    const float blue = left.getFloatBlue() - right.getFloatBlue();
-    return red * red + green * green + blue * blue;
-}
-
 ScalarSurfaceDerivatives derivativesFor(
         std::vector<float>& values,
         int columns,
@@ -31,7 +24,7 @@ ScalarSurfaceDerivatives derivativesFor(
 
 }
 
-TEST_CASE("Signed scalar surface preserves its semantic colour anchors", "[ui][surface-material]") {
+TEST_CASE("Signed scalar surface uses a scalar-only pearl palette", "[ui][surface-material]") {
     const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::signedAmplitude();
     const ScalarSurfaceDerivatives flat;
 
@@ -42,26 +35,30 @@ TEST_CASE("Signed scalar surface preserves its semantic colour anchors", "[ui][s
     REQUIRE(ScalarSurfaceMaterialEvaluator::colourFor(1.f, flat, material)
             .withAlpha(1.f) == material.positiveAnchor.withAlpha(1.f));
 
-    const auto neutral = material.neutralAnchor;
-    float previousNegativeDistance = colourDistance(neutral, material.negativeAnchor);
-    for (int step = 1; step <= 32; ++step) {
-        const float value = 0.5f * (float) step / 32.f;
-        const auto colour = ScalarSurfaceMaterialEvaluator::colourFor(value, flat, material);
-        const float distance = colourDistance(neutral, colour);
-        REQUIRE(distance <= previousNegativeDistance + 1.e-6f);
-        previousNegativeDistance = distance;
-    }
+    const auto troughShoulder = ScalarSurfaceMaterialEvaluator::colourFor(0.375f, flat, material);
+    const auto warmShoulder = ScalarSurfaceMaterialEvaluator::colourFor(0.75f, flat, material);
+    REQUIRE(troughShoulder.getBrightness() > material.negativeAnchor.getBrightness());
+    REQUIRE(troughShoulder.getBrightness() > material.neutralAnchor.getBrightness());
+    REQUIRE(troughShoulder.getBlue() > troughShoulder.getRed());
+    REQUIRE(warmShoulder.getRed() > warmShoulder.getBlue());
+    REQUIRE(material.positiveAnchor.getBrightness() > warmShoulder.getBrightness());
+    REQUIRE(material.neutralAnchor.getBrightness() < 0.22f);
+    REQUIRE(material.neutralAnchor.getSaturation() < 0.28f);
 
-    float previousPositiveDistance = 0.f;
-    for (int step = 0; step <= 32; ++step) {
-        const float value = 0.5f + 0.5f * (float) step / 32.f;
-        const auto colour = ScalarSurfaceMaterialEvaluator::colourFor(value, flat, material);
-        const float distance = colourDistance(neutral, colour);
-        REQUIRE(distance + 1.e-6f >= previousPositiveDistance);
-        previousPositiveDistance = distance;
+    constexpr int side = 4;
+    const std::vector<float> constantSurface(side * side, 0.375f);
+    const juce::Image image = ScalarSurfaceMaterialEvaluator::createImage(
+            constantSurface.data(),
+            (int) constantSurface.size(),
+            side,
+            side,
+            material);
+    const juce::Colour expected = image.getPixelAt(0, 0);
+    for (int x = 0; x < side; ++x) {
+        for (int y = 0; y < side; ++y) {
+            REQUIRE(image.getPixelAt(x, y) == expected);
+        }
     }
-
-    REQUIRE(neutral.getSaturation() < 0.18f);
 }
 
 TEST_CASE("Scalar surface derivatives distinguish planes from local features", "[ui][surface-material]") {

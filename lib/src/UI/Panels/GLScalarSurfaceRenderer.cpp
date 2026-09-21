@@ -27,6 +27,7 @@ uniform vec2 texelSize;
 uniform vec3 negativeAnchor;
 uniform vec3 neutralAnchor;
 uniform vec3 positiveAnchor;
+uniform vec3 signedPalette[9];
 uniform vec2 lightDirection;
 uniform float opacity;
 uniform float opacityValueScale;
@@ -37,6 +38,8 @@ uniform float curvatureThreshold;
 uniform float curvatureSoftness;
 uniform float ridgeHighlightStrength;
 uniform float valleyShadowStrength;
+uniform float minimumBrightness;
+uniform float maximumBrightness;
 uniform float valueScale;
 uniform float valueOffset;
 uniform int paletteKind;
@@ -52,6 +55,32 @@ vec3 paletteColour(float value) {
     if (paletteKind == 1) {
         float paletteX = (floor(value * 511.0 + 0.5) + 0.5) / 512.0;
         return texture2D(magnitudePaletteTexture, vec2(paletteX, 0.5)).rgb;
+    }
+
+    if (paletteKind == 0) {
+        float position = value * 8.0;
+        if (position < 1.0) {
+            return mix(signedPalette[0], signedPalette[1], position);
+        }
+        if (position < 2.0) {
+            return mix(signedPalette[1], signedPalette[2], position - 1.0);
+        }
+        if (position < 3.0) {
+            return mix(signedPalette[2], signedPalette[3], position - 2.0);
+        }
+        if (position < 4.0) {
+            return mix(signedPalette[3], signedPalette[4], position - 3.0);
+        }
+        if (position < 5.0) {
+            return mix(signedPalette[4], signedPalette[5], position - 4.0);
+        }
+        if (position < 6.0) {
+            return mix(signedPalette[5], signedPalette[6], position - 5.0);
+        }
+        if (position < 7.0) {
+            return mix(signedPalette[6], signedPalette[7], position - 6.0);
+        }
+        return mix(signedPalette[7], signedPalette[8], position - 7.0);
     }
 
     float magnitude = value < 0.5 ? 1.0 - 2.0 * value : 2.0 * value - 1.0;
@@ -94,10 +123,11 @@ void main() {
             curvature);
 
     vec3 colour = paletteColour(centre);
+    colour = floor(colour * 255.0 + 0.5) / 255.0;
     float relief = diffuse + specular
             + ridgeAmount * ridgeHighlightStrength
             - valleyAmount * valleyShadowStrength;
-    colour *= clamp(1.0 + relief, 0.68, 1.30);
+    colour *= clamp(1.0 + relief, minimumBrightness, maximumBrightness);
     float opacityValue = opacityPower == 2 ? centre * centre : centre;
     float surfaceOpacity = opacityValueScale > 0.0
             ? min(opacity, opacityValueScale * opacityValue)
@@ -512,7 +542,9 @@ void GLScalarSurfaceRenderer::validateGpuParity() {
     juce::OpenGLContext* context = juce::OpenGLContext::getCurrentContext();
     constexpr int columns = 5;
     constexpr int rows = 5;
-    constexpr int tolerance = 5;
+    // Driver texture sampling differs slightly from the CPU edge clamps after
+    // the wider smoothed derivative stencil and stronger signed relief.
+    constexpr int tolerance = 8;
     const std::array<float, columns * rows> values {
             0.08f, 0.14f, 0.22f, 0.14f, 0.08f,
             0.18f, 0.30f, 0.42f, 0.30f, 0.18f,
@@ -604,6 +636,17 @@ void GLScalarSurfaceRenderer::setMaterialUniforms(const ScalarSurfaceRenderData&
     setColourUniform(program, "negativeAnchor", material.negativeAnchor);
     setColourUniform(program, "neutralAnchor", material.neutralAnchor);
     setColourUniform(program, "positiveAnchor", material.positiveAnchor);
+    std::array<float, ScalarSurfaceMaterial::signedPaletteStopCount * 3> signedPalette;
+    for (int index = 0; index < ScalarSurfaceMaterial::signedPaletteStopCount; ++index) {
+        const juce::Colour colour = material.signedPaletteStops[(size_t) index];
+        signedPalette[(size_t) index * 3] = colour.getFloatRed();
+        signedPalette[(size_t) index * 3 + 1] = colour.getFloatGreen();
+        signedPalette[(size_t) index * 3 + 2] = colour.getFloatBlue();
+    }
+    gl::glUniform3fv(
+            gl::glGetUniformLocation(program, "signedPalette[0]"),
+            ScalarSurfaceMaterial::signedPaletteStopCount,
+            signedPalette.data());
     gl::glUniform2f(gl::glGetUniformLocation(program, "lightDirection"), material.lightX, material.lightY);
     gl::glUniform1f(gl::glGetUniformLocation(program, "opacity"), material.opacity);
     gl::glUniform1f(gl::glGetUniformLocation(program, "opacityValueScale"), material.opacityValueScale);
@@ -618,6 +661,12 @@ void GLScalarSurfaceRenderer::setMaterialUniforms(const ScalarSurfaceRenderData&
     gl::glUniform1f(
             gl::glGetUniformLocation(program, "valleyShadowStrength"),
             material.valleyShadowStrength);
+    gl::glUniform1f(
+            gl::glGetUniformLocation(program, "minimumBrightness"),
+            material.minimumBrightness);
+    gl::glUniform1f(
+            gl::glGetUniformLocation(program, "maximumBrightness"),
+            material.maximumBrightness);
     gl::glUniform1f(gl::glGetUniformLocation(program, "valueScale"), data.valueScale);
     gl::glUniform1f(gl::glGetUniformLocation(program, "valueOffset"), data.valueOffset);
     gl::glUniform1i(

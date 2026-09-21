@@ -183,7 +183,39 @@ introduced. The shared GL renderer is 646 lines after the correction, below
 its review trigger, and remains cohesive around shader compilation, its scalar
 and static palette textures, upload invalidation, draw state, cleanup, and
 opt-in parity validation. The architecture audit still reports the same 20
-pre-existing size triggers.
+  pre-existing size triggers.
+
+### Pearl Palette And Relief Correction (2026-09-20)
+
+- Signed amplitude now uses a shared nine-stop scalar palette instead of the
+  original three-anchor interpolation. Deep indigo troughs rise through blue
+  and periwinkle before converging narrowly on dark low-chroma plum at zero;
+  positive values rise through warm rose, apricot, peach, and pale amber. The
+  lookup has no coordinate, band, or region input, so equal scalar values
+  always receive the same base colour.
+- Signed surfaces are opaque and have material-local luminance bounds. Their
+  stronger diffuse, specular, ridge, and cavity response does not alter the
+  established spectral-magnitude or bipolar-phase materials. Lighting remains
+  a scalar multiplier after palette lookup and therefore cannot rotate hue or
+  move the zero boundary.
+- The CPU evaluator owns the palette stops and uploads them as shader uniforms,
+  avoiding a second hard-coded GPU palette. The shader matches the CPU
+  evaluator's eight-bit palette quantization before relief modulation. GPU
+  parity uses an explicit 8/255 limit for driver sampling differences at the
+  smoothed texture edges; the observed maximum is 7/255 before and after
+  in-process context recreation.
+- Focused material tests now include 50 assertions across five cases, including
+  the periwinkle negative shoulder, plum neutral, peach positive branch,
+  coordinate-independent constant-scalar rendering, luminance-only relief,
+  and exact preservation of the legacy burnt-alum magnitude palette.
+- Production Cycle 1 review capture:
+  `/tmp/cycle-surface-pearl-final-v1-clean.png`. The capture shows smooth
+  directional embossing without the paired curvature outlines or stippled
+  calculation-noise appearance of the earlier derivative shader.
+- The seven-load Cycle 1 and five-graph Cycle 2 churn fixtures completed with
+  no crash or OpenGL error. The focused Cycle 2 render-profile case passes 52
+  assertions with the opaque signed material, and final GPU validation passes
+  at 7/255 both before and after context recreation.
 
 ## Objective
 
@@ -237,12 +269,13 @@ frequency remapping, preview normalization, or editor interaction.
 For bipolar time-domain surfaces, value is the semantic truth:
 
 - the negative extreme maps to deep navy/ultramarine;
-- zero maps to a low-chroma charcoal, not teal, purple, or orange;
-- the positive extreme maps to burnt orange/amber;
-- colour moves monotonically through the negative, neutral, and positive
-  branches; and
-- increasing absolute magnitude may increase saturation and value, but must
-  not move the zero boundary.
+- values approaching zero from below may pass through a brighter periwinkle
+  shoulder before converging on the neutral boundary;
+- zero maps to low-chroma charcoal or dark plum, never teal or orange;
+- the positive branch passes through warm rose and apricot to a pale
+  peach/amber extreme; and
+- colour is a continuous function of scalar value only. Local lighting may
+  change luminance, but must not move the zero boundary.
 
 The shader receives display-normalized values after the authoritative profile
 mapping. For a bipolar profile, `0.5` is exactly neutral. Lighting and detail

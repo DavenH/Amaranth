@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 
 #include "JuceHeader.h"
@@ -11,6 +12,8 @@ enum class ScalarSurfacePalette {
 };
 
 struct ScalarSurfaceMaterial {
+    static constexpr int signedPaletteStopCount = 9;
+
     static ScalarSurfaceMaterial signedAmplitude();
     static ScalarSurfaceMaterial unipolarMagnitude();
     static ScalarSurfaceMaterial bipolarPhase();
@@ -19,6 +22,7 @@ struct ScalarSurfaceMaterial {
     juce::Colour negativeAnchor;
     juce::Colour neutralAnchor;
     juce::Colour positiveAnchor;
+    std::array<juce::Colour, signedPaletteStopCount> signedPaletteStops;
     float opacity { 1.f };
     float opacityValueScale {};
     float reliefGain { 5.f };
@@ -28,6 +32,8 @@ struct ScalarSurfaceMaterial {
     float curvatureSoftness { 0.025f };
     float ridgeHighlightStrength { 0.08f };
     float valleyShadowStrength { 0.20f };
+    float minimumBrightness { 0.68f };
+    float maximumBrightness { 1.30f };
     float lightX { -0.55f };
     float lightY { -0.75f };
     int opacityPower { 1 };
