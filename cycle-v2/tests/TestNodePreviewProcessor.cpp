@@ -175,9 +175,18 @@ TEST_CASE("Signal spy heatmaps reveal low-amplitude time signals",
     REQUIRE(image.isValid());
     CHECK(image.getPixelAt(0, 1) != image.getPixelAt(0, 0));
     CHECK(image.getPixelAt(1, 1) != image.getPixelAt(1, 0));
+    float maximumBrightness {};
+    for (int y = 0; y < image.getHeight(); ++y) {
+        for (int x = 0; x < image.getWidth(); ++x) {
+            maximumBrightness = jmax(
+                    maximumBrightness,
+                    image.getPixelAt(x, y).getPerceivedBrightness());
+        }
+    }
+    REQUIRE(maximumBrightness > 0.45f);
 }
 
-TEST_CASE("Signal spy heatmaps preserve absolute time-signal gain",
+TEST_CASE("Signal spy heatmaps normalize time-signal contrast across gain",
         "[cycle-v2][runtime][probe][ui]") {
     const auto render = [](float gain) {
         NodePreviewResult result;
@@ -194,13 +203,18 @@ TEST_CASE("Signal spy heatmaps preserve absolute time-signal gain",
     REQUIRE(quiet.isValid());
     REQUIRE(loud.isValid());
 
-    bool differs {};
-    for (int y = 0; y < quiet.getHeight(); ++y) {
-        for (int x = 0; x < quiet.getWidth(); ++x) {
-            differs = differs || quiet.getPixelAt(x, y) != loud.getPixelAt(x, y);
-        }
-    }
-    REQUIRE(differs);
+    REQUIRE(imagesMatch(quiet, loud));
+
+    const auto renderMesh = [](float gain) {
+        NodePreviewResult result;
+        result.role = PreviewModuleRole::MeshSurface;
+        result.primary = { -gain, gain, -gain * 0.5f, gain * 0.5f };
+        result.gridColumns = 2;
+        result.gridRows = 2;
+        result.domain = PortDomain::TimeSignal;
+        return NodePreviewRenderer::createRuntimeHeatmapImage(result);
+    };
+    REQUIRE_FALSE(imagesMatch(renderMesh(0.25f), renderMesh(0.5f)));
 }
 
 TEST_CASE("Signal spy heatmaps preserve detail above unity gain",
@@ -539,6 +553,29 @@ TEST_CASE("FFT magnitude spy heatmaps map linear bins and amplitude once",
     REQUIRE(spyImage.isValid());
     REQUIRE(expectedImage.isValid());
     REQUIRE(imagesMatch(spyImage, expectedImage));
+}
+
+TEST_CASE("Spectral spies normalize visible magnitude contrast across gain",
+        "[cycle-v2][runtime][probe][spectral][ui]") {
+    const auto render = [](float gain) {
+        NodePreviewResult spy;
+        spy.role = PreviewModuleRole::SignalSpy;
+        spy.primary = {
+                20.f, 0.f, 0.2f * gain, gain, 0.4f * gain,
+                20.f, 0.f, 0.2f * gain, gain, 0.4f * gain
+        };
+        spy.gridColumns = 2;
+        spy.gridRows = 5;
+        spy.domain = PortDomain::SpectralMagnitudeSignal;
+        spy.frequencySampling = TraversalGridFrequencySampling::LinearBins;
+        return NodePreviewRenderer::createRuntimeHeatmapImage(spy);
+    };
+
+    const Image quiet = render(0.001f);
+    const Image loud = render(0.5f);
+    REQUIRE(quiet.isValid());
+    REQUIRE(loud.isValid());
+    REQUIRE(imagesMatch(quiet, loud));
 }
 
 TEST_CASE("Disabled compact effect previews are greyscale",

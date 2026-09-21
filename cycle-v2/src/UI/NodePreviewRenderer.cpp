@@ -7,6 +7,8 @@
 
 #include "UI/NodePreviewRenderer.h"
 
+#include "Runtime/PreviewContrastNormalization.h"
+
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Delay/DelayPreviewPainter.h"
@@ -159,6 +161,7 @@ std::vector<float> mappedSurface(
     }
 
     const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
+    const bool signalSpy = preview.role == PreviewModuleRole::SignalSpy;
     const bool spectral = preview.domain == PortDomain::SpectralMagnitudeSignal
             || preview.domain == PortDomain::SpectralPhaseSignal;
     if (meshSurface && spectral) {
@@ -169,6 +172,13 @@ std::vector<float> mappedSurface(
                 preview.frequencyMidiNote);
     }
     if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
+        if (signalSpy) {
+            PreviewContrastNormalization::applySpectralMagnitude(
+                    surface,
+                    preview.gridColumns,
+                    preview.gridRows,
+                    1.f);
+        }
         return profile.mapSpectrum2DGridToDisplay(
                 surface,
                 preview.gridColumns,
@@ -185,8 +195,8 @@ std::vector<float> mappedSurface(
     Buffer<float> buffer(surface.data(), (int) surface.size());
     if (meshSurface) {
         profile.mapValuesToDisplay(buffer);
-    } else if (preview.role == PreviewModuleRole::SignalSpy
-            && preview.domain == PortDomain::TimeSignal) {
+    } else if (signalSpy && preview.domain == PortDomain::TimeSignal) {
+        PreviewContrastNormalization::apply(surface, 3.f);
         std::vector<float> magnitude = surface;
         Buffer<float> magnitudeBuffer(magnitude.data(), (int) magnitude.size());
         magnitudeBuffer.abs().add(1.f);

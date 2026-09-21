@@ -217,6 +217,41 @@ opt-in parity validation. The architecture audit still reports the same 20
   assertions with the opaque signed material, and final GPU validation passes
   at 7/255 both before and after context recreation.
 
+### Signal Spy Contrast Normalization (2026-09-20)
+
+- Signal Spies previously applied their soft-sign time transform directly to
+  raw audio amplitude. Ordinary levels therefore occupied only a narrow range
+  around scalar zero and appeared uniformly plum and desaturated even though
+  the shared material could render the full palette.
+- `PreviewContrastNormalization` is the authoritative display-only peak
+  normalizer. It extracts the mature normalization formerly local to
+  `DefaultOutputPreview`; both default-output presentation and Signal Spy
+  presentation now reuse it. Raw probe values, statistics, audio products, and
+  authored Trimesh grids remain unchanged.
+- Time Spies normalize to a peak of three before the existing soft-sign curve,
+  placing their strongest values at 0.125 and 0.875 rather than clipping to the
+  palette endpoints. Spectral-magnitude Spies normalize their visible bins to
+  unity before logarithmic display mapping; DC is excluded from the peak just
+  as it is excluded from the displayed logarithmic rows. Phase retains its
+  existing domain normalization.
+- This adds one bounded `O(columns * rows)` pass over the local render product.
+  It does not traverse the graph or mutate runtime data, and Mesh Surface
+  previews retain absolute authored gain. The old private default-output
+  normalizer was deleted rather than copied.
+- Focused `[probe][ui]` coverage includes low-level chroma, gain-invariant time
+  and magnitude Spy images, above-unity detail, DC exclusion, and a negative
+  assertion that Trimesh previews are not normalized. Production captures:
+  `/tmp/cycle-v2-spy-compact.png` and `/tmp/cycle-v2-spy-detail.png`.
+
+The architecture audit remains at the same 20 pre-existing triggers.
+`NodePreviewRenderer.cpp` grows from 1,032 to 1,042 lines and remains the
+preview-role/domain routing and painting owner; it supplies only role,
+dimensions, and local values to the normalization boundary. The new 53-line
+runtime helper owns peak selection and scaling, while `TrimeshRenderProfile`
+continues to own domain mapping and `TrimeshSurfaceRenderer` continues to own
+image generation. The former duplicate decision site in
+`DefaultOutputPreview.cpp` was deleted, reducing that file to 59 lines.
+
 ## Objective
 
 Move live Trimesh heatmap colouring and relief shading from per-cell CPU paint
