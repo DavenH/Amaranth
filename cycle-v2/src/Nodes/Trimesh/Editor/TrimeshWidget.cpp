@@ -113,6 +113,9 @@ void TrimeshWidget::paintCompact(
     const TrimeshRenderData& renderData = bridge.getDataSource().getRenderData();
     TrimeshNodeModel& model = bridge.getModel();
     const uint64_t compactRevision = model.getDerivedRevisions().compactPreview;
+    const Rectangle<float> previewArea = meshPreviewContentArea(area);
+    const float surfaceAspectRatio = previewArea.getWidth()
+            / jmax(1.f, previewArea.getHeight());
 
     if (!renderData.canDrawSurface()) {
         return;
@@ -126,8 +129,13 @@ void TrimeshWidget::paintCompact(
             || compactHeatmap.domain != profile.getDomain()
             || compactHeatmap.scalePolicy != profile.getScalePolicy()
             || compactHeatmap.midiNote != renderData.midiNote
-            || compactHeatmap.pitchSpansColumns != renderData.pitchSpansColumns) {
-        compactHeatmap.image = TrimeshSurfaceRenderer::createHeatmapImage(renderData, profile);
+            || compactHeatmap.pitchSpansColumns != renderData.pitchSpansColumns
+            || compactHeatmap.surfaceAspectRatio != surfaceAspectRatio) {
+        compactHeatmap.image = TrimeshSurfaceRenderer::createHeatmapImage(
+                renderData,
+                profile,
+                false,
+                surfaceAspectRatio);
         compactHeatmap.valueCount = renderData.surface.size();
         compactHeatmap.rows = renderData.rows;
         compactHeatmap.columns = renderData.columns;
@@ -136,11 +144,12 @@ void TrimeshWidget::paintCompact(
         compactHeatmap.scalePolicy = profile.getScalePolicy();
         compactHeatmap.midiNote = renderData.midiNote;
         compactHeatmap.pitchSpansColumns = renderData.pitchSpansColumns;
+        compactHeatmap.surfaceAspectRatio = surfaceAspectRatio;
     }
 
     if (compactHeatmap.image.isValid()) {
         g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-        g.drawImage(compactHeatmap.image, meshPreviewContentArea(area));
+        g.drawImage(compactHeatmap.image, previewArea);
     }
 }
 

@@ -557,18 +557,22 @@ bool NodePreviewRenderer::requiresCurveModel(NodeKind kind) {
 
 Image NodePreviewRenderer::createRuntimeHeatmapImage(
         const NodePreviewResult& preview,
-        bool desaturated) {
+        bool desaturated,
+        float surfaceAspectRatio) {
     return createRuntimeHeatmapImage(
             preview,
             TrimeshRenderProfile::fromDomain(preview.domain),
-            desaturated);
+            desaturated,
+            surfaceAspectRatio);
 }
 
 Image NodePreviewRenderer::createRuntimeHeatmapImage(
         const NodePreviewResult& preview,
         const TrimeshRenderProfile& profile,
-        bool desaturated) {
-    const auto createImage = [&preview, &profile](const std::vector<float>& values) {
+        bool desaturated,
+        float surfaceAspectRatio) {
+    const auto createImage = [&preview, &profile, surfaceAspectRatio](
+                                     const std::vector<float>& values) {
         TrimeshRenderData data;
         data.surface = mappedSurface(preview, values, profile);
         data.domain = preview.domain;
@@ -577,7 +581,9 @@ Image NodePreviewRenderer::createRuntimeHeatmapImage(
         data.cyclic = preview.domain == PortDomain::TimeSignal;
         return TrimeshSurfaceRenderer::createHeatmapImage(
                 data,
-                profile);
+                profile,
+                false,
+                surfaceAspectRatio);
     };
 
     Image image = createImage(preview.primary);
@@ -817,17 +823,21 @@ bool NodePreviewRenderer::paintRuntimeHeatmap(
             result.domain);
     const bool desaturated = result.role == PreviewModuleRole::ReverbSpectrogram
             && !NodeParameterMap(request.node).boolValue("enabled", true);
+    const float surfaceAspectRatio = request.area.getWidth()
+            / jmax(1.f, request.area.getHeight());
     const String signature = runtimeSignature(result)
             + "|desaturated:" + String(desaturated ? 1 : 0)
             + "|domain:" + String((int) result.domain)
-            + "|scale:" + String((int) heatmapProfile.getScalePolicy());
+            + "|scale:" + String((int) heatmapProfile.getScalePolicy())
+            + "|aspect:" + String(surfaceAspectRatio, 4);
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
     if (!cached.runtimeHeatmap.isValid()
             || cached.runtimeHeatmapSignature != signature) {
         cached.runtimeHeatmap = createRuntimeHeatmapImage(
                 result,
                 heatmapProfile,
-                desaturated);
+                desaturated,
+                surfaceAspectRatio);
         cached.runtimeHeatmapSignature = signature;
     }
 

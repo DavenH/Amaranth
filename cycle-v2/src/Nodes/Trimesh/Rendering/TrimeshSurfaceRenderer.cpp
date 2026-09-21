@@ -9,7 +9,8 @@ Colour TrimeshSurfaceRenderer::colourForProfile(float value, const TrimeshRender
 Image TrimeshSurfaceRenderer::createHeatmapImage(
         const TrimeshRenderData& renderData,
         const TrimeshRenderProfile& profile,
-        bool opaque) {
+        bool opaque,
+        float surfaceAspectRatio) {
     if (!renderData.canDrawSurface()) {
         return {};
     }
@@ -30,7 +31,8 @@ Image TrimeshSurfaceRenderer::createHeatmapImage(
             renderData.columns,
             renderData.rows,
             profile.getSurfaceStyle().surfaceMaterial(),
-            opaque);
+            opaque,
+            surfaceAspectRatio);
 }
 
 void TrimeshSurfaceRenderer::drawHeatmap(
@@ -44,7 +46,11 @@ void TrimeshSurfaceRenderer::drawHeatmap(
     }
 
     const Rectangle<float> surface = area.reduced(area.getWidth() * 0.025f, area.getHeight() * 0.06f);
-    const Image heatmap = createHeatmapImage(renderData, profile);
+    const Image heatmap = createHeatmapImage(
+            renderData,
+            profile,
+            false,
+            surface.getWidth() / jmax(1.f, surface.getHeight()));
     if (!heatmap.isValid()) {
         return;
     }

@@ -31,11 +31,13 @@ public:
     static bool requiresCurveModel(NodeKind kind);
     static Image createRuntimeHeatmapImage(
             const NodePreviewResult& preview,
-            bool desaturated = false);
+            bool desaturated = false,
+            float surfaceAspectRatio = 0.f);
     static Image createRuntimeHeatmapImage(
             const NodePreviewResult& preview,
             const TrimeshRenderProfile& profile,
-            bool desaturated = false);
+            bool desaturated = false,
+            float surfaceAspectRatio = 0.f);
 
     static Rectangle<float> boundsFor(
             const Node& node,

@@ -23,19 +23,29 @@ struct ScalarSurfaceMaterial {
     juce::Colour neutralAnchor;
     juce::Colour positiveAnchor;
     std::array<juce::Colour, signedPaletteStopCount> signedPaletteStops;
+    std::array<float, signedPaletteStopCount> signedPalettePositions;
+    juce::Colour negativePearlTint;
+    juce::Colour neutralPearlTint;
+    juce::Colour positivePearlTint;
     float opacity { 1.f };
     float opacityValueScale {};
-    float reliefGain { 5.f };
-    float diffuseStrength { 0.20f };
-    float specularStrength { 0.16f };
-    float curvatureThreshold { 0.006f };
-    float curvatureSoftness { 0.025f };
-    float ridgeHighlightStrength { 0.08f };
-    float valleyShadowStrength { 0.20f };
-    float minimumBrightness { 0.68f };
-    float maximumBrightness { 1.30f };
-    float lightX { -0.55f };
-    float lightY { -0.75f };
+    float normalSampleRadius { 0.012f };
+    float largeSampleRadius { 0.045f };
+    float reliefScale { 1.8f };
+    float ambientStrength { 0.58f };
+    float diffuseStrength { 0.52f };
+    float specularStrength { 0.20f };
+    float pearlTintStrength { 0.72f };
+    float shadowStrength { 0.24f };
+    float shadowStart { 0.006f };
+    float shadowSoftness { 0.12f };
+    float cavityStrength { 0.12f };
+    float curvatureThreshold { 0.008f };
+    float curvatureSoftness { 0.08f };
+    float lightX { -0.46f };
+    float lightY { -0.54f };
+    float lightZ { 0.70f };
+    int specularPower { 8 };
     int opacityPower { 1 };
 };
 
@@ -43,6 +53,8 @@ struct ScalarSurfaceDerivatives {
     float slopeX {};
     float slopeY {};
     float curvature {};
+    float largeCurvature {};
+    float horizonShadow {};
 };
 
 struct ScalarSurfaceRenderData {
@@ -74,6 +86,17 @@ public:
             int rows,
             int column,
             int row);
+    static ScalarSurfaceDerivatives derivativesAt(
+            const float* values,
+            int columns,
+            int rows,
+            int column,
+            int row,
+            const ScalarSurfaceMaterial& material,
+            float surfaceAspectRatio);
+    static juce::Colour baseColourFor(
+            float value,
+            const ScalarSurfaceMaterial& material);
     static juce::Colour colourFor(
             float value,
             const ScalarSurfaceDerivatives& derivatives,
@@ -84,7 +107,8 @@ public:
             int columns,
             int rows,
             const ScalarSurfaceMaterial& material,
-            bool opaque = false);
+            bool opaque = false,
+            float surfaceAspectRatio = 0.f);
     static juce::Image createGradientImage(
             const ScalarSurfaceMaterial& material,
             int width = 512);

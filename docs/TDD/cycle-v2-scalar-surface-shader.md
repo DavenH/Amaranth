@@ -252,6 +252,55 @@ continues to own domain mapping and `TrimeshSurfaceRenderer` continues to own
 image generation. The former duplicate decision site in
 `DefaultOutputPreview.cpp` was deleted, reducing that file to 59 lines.
 
+### Resolution-Correct Pseudo-Normal Relief (2026-09-21)
+
+- The shared material retains the nine signed-amplitude anchors, but their
+  scalar positions are now explicit. Cool dusk and warm dusk stops flank a
+  narrow charcoal zero interval. A neutral-specific luminance floor prevents
+  a steep zero crossing from turning the semantic neutral into an artificial
+  black contour; it does not move or recolour the sign boundary.
+- The former five-tap emboss calculation was deleted. CPU and GPU evaluators
+  now sample deliberate normalized radii, derive aspect-correct gradients,
+  construct a three-dimensional pseudo-normal, and apply normal-based diffuse
+  plus Blinn-Phong specular lighting. Broad forms therefore retain coherent
+  lighting as grid resolution changes.
+- Three projected-light samples provide bounded directional horizon shadow.
+  Small- and large-radius curvature contribute only a restrained cavity term.
+  The centre scalar remains authoritative for palette lookup; neither wider
+  sample path blurs or replaces it.
+- Lighting is evaluated in linear RGB. Specular blends toward sign-specific
+  pearl tints, while diffuse, horizon shadow, and cavity remain luminance
+  effects. The CPU transfer functions use one-time lookup tables, avoiding
+  scalar power calls in the image loop. The remaining scalar square root is a
+  deliberate fallback for one coupled three-component normal per output
+  pixel; expressing it through `Buffer` would require several product-sized
+  temporaries and would not remove the per-pixel cross-channel dependency.
+- Display aspect is passed to Cycle V2 compact, expanded, and Signal Spy CPU
+  images and participates in compact-image cache identity. Cycle 1 and Cycle
+  V2 expanded panels continue to obtain the same fact from their shared
+  `ScalarSurfaceRenderData::bounds` boundary.
+- GPU uniform translation was extracted to the 127-line
+  `GLScalarSurfaceUniforms.h`. `GLScalarSurfaceRenderer.cpp` is 717 lines and
+  remains responsible only for shader/resource lifecycle, texture upload,
+  draw submission, and parity validation. `ScalarSurfaceMaterial.cpp` is 512
+  lines and remains the single CPU material/reference owner. The touched
+  Cycle V2 review-trigger files grew only through aspect translation:
+  `NodePreviewRenderer.cpp` is 1,052 lines and `TrimeshWidget.cpp` is 839
+  lines; neither gained material or sampling policy.
+- Focused material coverage now includes scalar-only palette semantics, narrow
+  zero continuity, uniform flat fields, mirrored pseudo-normal response,
+  view-dependent specular response, resolution-stable broad planes,
+  directional horizon shadow, constant-offset invariance, and legacy spectral
+  palette preservation. The opt-in offscreen GPU comparison passes at 2/255
+  maximum channel error.
+- Production review artifacts are
+  `/private/tmp/cycle-surface-normal-final-v1.png`,
+  `/private/tmp/cycle-surface-normal-v2-expanded.png`, and
+  `/private/tmp/cycle-v2-spy-detail.png`. Seven-load Cycle 1 and five-graph
+  Cycle V2 preset-churn fixtures completed with no failed command or new crash.
+  Existing startup `FileManager.cpp:174` and Trimesh `Curve.cpp:56/57`
+  assertions remain recorded in `ui-bugs.md`.
+
 ## Objective
 
 Move live Trimesh heatmap colouring and relief shading from per-cell CPU paint
