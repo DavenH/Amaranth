@@ -1,9 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
+#include <Binary/Gradients.h>
+#include <cmath>
+#include <vector>
 
 #include "UI/Panels/ScalarSurfaceMaterial.h"
 #include "UI/Panels/GLScalarSurfaceRenderer.h"
-
-#include <vector>
 
 namespace {
 
@@ -94,7 +95,7 @@ TEST_CASE("Scalar surface derivatives distinguish planes from local features", "
     REQUIRE(derivativesFor(valley, columns, rows, 5, 5).curvature == 0.f);
 }
 
-TEST_CASE("Derivative accents remain gated below the material threshold", "[ui][surface-material]") {
+TEST_CASE("Relief separates ridges and valleys without changing hue", "[ui][surface-material]") {
     const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::signedAmplitude();
     const ScalarSurfaceDerivatives flat;
     ScalarSurfaceDerivatives ripple;
@@ -104,9 +105,29 @@ TEST_CASE("Derivative accents remain gated below the material threshold", "[ui][
     const auto belowThreshold = ScalarSurfaceMaterialEvaluator::colourFor(0.75f, ripple, material);
     REQUIRE(base == belowThreshold);
 
+    ripple.curvature = -(material.curvatureThreshold + material.curvatureSoftness);
+    const auto ridge = ScalarSurfaceMaterialEvaluator::colourFor(0.75f, ripple, material);
     ripple.curvature = material.curvatureThreshold + material.curvatureSoftness;
-    const auto accented = ScalarSurfaceMaterialEvaluator::colourFor(0.75f, ripple, material);
-    REQUIRE(accented != base);
+    const auto valley = ScalarSurfaceMaterialEvaluator::colourFor(0.75f, ripple, material);
+    REQUIRE(ridge.getBrightness() > base.getBrightness());
+    REQUIRE(valley.getBrightness() < base.getBrightness());
+    REQUIRE(std::abs(ridge.getHue() - base.getHue()) < 0.01f);
+    REQUIRE(std::abs(valley.getHue() - base.getHue()) < 0.01f);
+}
+
+TEST_CASE("Spectral magnitude retains the legacy burnt alum palette", "[ui][surface-material]") {
+    const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::unipolarMagnitude();
+    const ScalarSurfaceDerivatives flat;
+    const juce::Image legacy = juce::PNGImageFormat::loadFrom(
+            Gradients::burntalum_png,
+            Gradients::burntalum_pngSize);
+
+    REQUIRE(ScalarSurfaceMaterialEvaluator::colourFor(0.f, flat, material)
+            .withAlpha(1.f) == legacy.getPixelAt(0, 0).withAlpha(1.f));
+    REQUIRE(ScalarSurfaceMaterialEvaluator::colourFor(0.5f, flat, material)
+            .withAlpha(1.f) == legacy.getPixelAt(256, 0).withAlpha(1.f));
+    REQUIRE(ScalarSurfaceMaterialEvaluator::colourFor(1.f, flat, material)
+            .withAlpha(1.f) == legacy.getPixelAt(511, 0).withAlpha(1.f));
 }
 
 TEST_CASE("Scalar texture uploads depend only on product identity and transform",

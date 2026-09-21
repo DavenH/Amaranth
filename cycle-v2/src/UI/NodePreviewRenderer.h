@@ -21,6 +21,7 @@ struct NodePreviewRenderRequest {
     UnisonPreviewContext unisonContext;
     bool highQuality {};
     std::optional<OutputMeterLevels> liveOutputLevels;
+    const NodeGraph* graph {};
 };
 
 class NodePreviewRenderer {

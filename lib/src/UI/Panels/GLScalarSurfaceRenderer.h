@@ -42,6 +42,7 @@ public:
 
 private:
     bool compileProgram();
+    bool ensureMagnitudePaletteTexture();
     bool ensureTexture(const ScalarSurfaceRenderData& data);
     bool uploadTexture(const ScalarSurfaceRenderData& data);
     bool textureMatches(const ScalarSurfaceRenderData& data) const;
@@ -53,6 +54,7 @@ private:
     ScalarSurfaceUploadState uploadState;
     unsigned int program {};
     unsigned int texture {};
+    unsigned int magnitudePaletteTexture {};
     bool compileAttempted {};
     bool usingFloatTexture {};
     bool textureCapabilityFailed {};

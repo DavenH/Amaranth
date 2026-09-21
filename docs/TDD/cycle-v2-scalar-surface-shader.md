@@ -142,6 +142,49 @@ workspace/canvas owner and introduce no rendering or lifecycle policy.
   environment does not provide `clang-tidy`, so that optional check could not
   run.
 
+### Visual And Preset-Lifecycle Correction (2026-09-20)
+
+- The initial absolute-curvature accent emphasized the discontinuities of a
+  linearly filtered scalar texture and produced paired, blotchy outlines. The
+  corrected evaluator first applies the same five-tap cross smoothing on CPU
+  and GPU, then uses signed curvature: ridges receive a restrained luminance
+  lift and valleys receive cavity shadow. Relief no longer blends toward a
+  separate accent hue.
+- Spectral magnitude again samples the authoritative 512-pixel
+  `burntalum_png` asset. The shader owns a static palette texture in addition
+  to its single live scalar-data texture; this does not change scalar upload
+  identity or steady-state graph/render cost.
+- The GPU readback tolerance is explicitly 5/255 after the wider derivative
+  stencil; the observed maximum error is 5/255 before and after context
+  recreation.
+- Cycle V2 preview resources retain only the durable document graph. A
+  transient editing overlay is passed explicitly for the preview call that
+  consumes it, so live guide context remains current without replacing the
+  retained pointer and dangling after gesture completion.
+- Cycle 1 unison visualization now sizes its scratch arena from the largest
+  actual preset column. It no longer assumes all retained columns match the
+  current FFT-order-derived size during preset replacement.
+- Regression fixtures alternate five Cycle V2 graph loads and seven Cycle 1
+  preset loads. Both completed with no new crash report. Production captures:
+  `/tmp/cycle-surface-relief-v1.png`,
+  `/tmp/cycle-surface-relief-v2.png`, and
+  `/tmp/cycle-surface-magnitude-v2.png`.
+
+The correction touches existing Cycle V2 size-trigger files only as narrow
+orchestration adapters. `NodeCanvas` owns the current editing-graph read and
+passes it to the preview boundary; `NodeCanvasPresentation` packages the graph
+already present in its immutable frame; `NodePreviewRenderer` forwards that
+fact without deciding lifecycle. `NodePreviewResources` remains the owner of
+preview widgets, cached sprites, pitch contexts, and their graph-lifetime
+boundary: its retained pointer is durable, while transient graphs are
+call-scoped. `NodeCanvasEditorCoordinator` supplies the durable document graph
+for its durable-node path. No second lifecycle decision site or graph copy was
+introduced. The shared GL renderer is 646 lines after the correction, below
+its review trigger, and remains cohesive around shader compilation, its scalar
+and static palette textures, upload invalidation, draw state, cleanup, and
+opt-in parity validation. The architecture audit still reports the same 20
+pre-existing size triggers.
+
 ## Objective
 
 Move live Trimesh heatmap colouring and relief shading from per-cell CPU paint

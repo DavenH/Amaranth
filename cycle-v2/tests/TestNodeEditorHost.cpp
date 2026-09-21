@@ -542,6 +542,41 @@ TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
     REQUIRE(checksum(withRuntime) == checksum(authoritative));
 }
 
+TEST_CASE("Trimesh preview retains the durable graph after a transient refresh",
+        "[cycle-v2][canvas][preview][trimesh][lifecycle][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component canvas;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher graphCommands(document);
+    NullPresentation presentation;
+    NullResources editorResources;
+    NodeEditorCommandService editorCommands(
+            canvas,
+            document,
+            graphCommands,
+            presentation,
+            editorResources);
+    NodePreviewResources resources(editorCommands);
+    resources.setGraph(&document.graph());
+
+    {
+        NodeGraph transient = NodeGraph::createEditingOverlay(document.graph());
+        GraphChangeSet changes;
+        changes.nodeIds.push_back("mesh");
+        resources.refreshGraph(transient, changes);
+        resources.trimeshWidget(*transient.findNode("mesh"), &transient);
+    }
+
+    const Node& node = *document.graph().findNode("mesh");
+    TrimeshWidget& widget = resources.trimeshWidget(node, &document.graph());
+    REQUIRE(widget.guideContextKey().isNotEmpty());
+}
+
 TEST_CASE("Reverb heatmap palette follows its runtime spectral domain",
         "[cycle-v2][canvas][preview][reverb][regression]") {
     ScopedJuceInitialiser_GUI juce;

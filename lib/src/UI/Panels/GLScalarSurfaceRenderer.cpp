@@ -1,7 +1,9 @@
-#include "GLScalarSurfaceRenderer.h"
-
+#include <Binary/Gradients.h>
 #include <array>
 #include <cstdlib>
+#include <vector>
+
+#include "GLScalarSurfaceRenderer.h"
 
 namespace gl = juce::gl;
 
@@ -20,6 +22,7 @@ void main() {
 constexpr const char* fragmentShaderSource = R"glsl(
 #version 120
 uniform sampler2D scalarTexture;
+uniform sampler2D magnitudePaletteTexture;
 uniform vec2 texelSize;
 uniform vec3 negativeAnchor;
 uniform vec3 neutralAnchor;
@@ -32,7 +35,8 @@ uniform float diffuseStrength;
 uniform float specularStrength;
 uniform float curvatureThreshold;
 uniform float curvatureSoftness;
-uniform float accentStrength;
+uniform float ridgeHighlightStrength;
+uniform float valleyShadowStrength;
 uniform float valueScale;
 uniform float valueOffset;
 uniform int paletteKind;
@@ -46,8 +50,8 @@ float scalarAt(vec2 coordinate) {
 
 vec3 paletteColour(float value) {
     if (paletteKind == 1) {
-        float amount = value * value * (3.0 - 2.0 * value);
-        return mix(neutralAnchor, positiveAnchor, amount);
+        float paletteX = (floor(value * 511.0 + 0.5) + 0.5) / 512.0;
+        return texture2D(magnitudePaletteTexture, vec2(paletteX, 0.5)).rgb;
     }
 
     float magnitude = value < 0.5 ? 1.0 - 2.0 * value : 2.0 * value - 1.0;
@@ -57,30 +61,43 @@ vec3 paletteColour(float value) {
             : mix(neutralAnchor, positiveAnchor, amount);
 }
 
+float smoothScalarAt(vec2 coordinate) {
+    return 0.5 * scalarAt(coordinate)
+            + 0.125 * (scalarAt(coordinate - vec2(0.0, texelSize.y))
+                    + scalarAt(coordinate + vec2(0.0, texelSize.y))
+                    + scalarAt(coordinate - vec2(texelSize.x, 0.0))
+                    + scalarAt(coordinate + vec2(texelSize.x, 0.0)));
+}
+
 void main() {
     vec2 coordinate = surfaceTextureCoordinate;
     float centre = scalarAt(coordinate);
-    float left = scalarAt(coordinate - vec2(0.0, texelSize.y));
-    float right = scalarAt(coordinate + vec2(0.0, texelSize.y));
-    float lower = scalarAt(coordinate - vec2(texelSize.x, 0.0));
-    float upper = scalarAt(coordinate + vec2(texelSize.x, 0.0));
+    float smoothCentre = smoothScalarAt(coordinate);
+    float left = smoothScalarAt(coordinate - vec2(0.0, texelSize.y));
+    float right = smoothScalarAt(coordinate + vec2(0.0, texelSize.y));
+    float lower = smoothScalarAt(coordinate - vec2(texelSize.x, 0.0));
+    float upper = smoothScalarAt(coordinate + vec2(texelSize.x, 0.0));
     vec2 slope = 0.5 * vec2(right - left, upper - lower);
-    float curvature = left + right + lower + upper - 4.0 * centre;
+    float curvature = left + right + lower + upper - 4.0 * smoothCentre;
     float directionalSlope = -reliefGain * dot(slope, lightDirection);
     float diffuse = clamp(directionalSlope, -1.0, 1.0) * diffuseStrength;
     float positiveSlope = max(0.0, directionalSlope);
-    float specular = min(1.0, positiveSlope * positiveSlope) * specularStrength;
-    float curvatureAmount = smoothstep(
+    float specularAmount = positiveSlope * (2.0 - min(1.0, positiveSlope));
+    float specular = min(1.0, specularAmount) * specularStrength;
+    float ridgeAmount = smoothstep(
             curvatureThreshold,
             curvatureThreshold + curvatureSoftness,
-            abs(curvature));
+            -curvature);
+    float valleyAmount = smoothstep(
+            curvatureThreshold,
+            curvatureThreshold + curvatureSoftness,
+            curvature);
 
     vec3 colour = paletteColour(centre);
-    vec3 accent = abs(centre - 0.5) < 0.08
-            ? vec3(0.725, 0.761, 0.796)
-            : mix(centre < 0.5 ? negativeAnchor : positiveAnchor, vec3(1.0), 0.22);
-    colour = mix(colour, accent, curvatureAmount * accentStrength);
-    colour *= clamp(1.0 + diffuse + specular, 0.72, 1.28);
+    float relief = diffuse + specular
+            + ridgeAmount * ridgeHighlightStrength
+            - valleyAmount * valleyShadowStrength;
+    colour *= clamp(1.0 + relief, 0.68, 1.30);
     float opacityValue = opacityPower == 2 ? centre * centre : centre;
     float surfaceOpacity = opacityValueScale > 0.0
             ? min(opacity, opacityValueScale * opacityValue)
@@ -127,6 +144,8 @@ public:
         gl::glGetFloatv(gl::GL_COLOR_CLEAR_VALUE, clearColour);
         gl::glActiveTexture(gl::GL_TEXTURE0);
         gl::glGetIntegerv(gl::GL_TEXTURE_BINDING_2D, &texture0);
+        gl::glActiveTexture(gl::GL_TEXTURE1);
+        gl::glGetIntegerv(gl::GL_TEXTURE_BINDING_2D, &texture1);
         gl::glActiveTexture((unsigned int) activeTexture);
         blendEnabled = gl::glIsEnabled(gl::GL_BLEND) != 0;
         depthEnabled = gl::glIsEnabled(gl::GL_DEPTH_TEST) != 0;
@@ -152,6 +171,8 @@ public:
         restoreCapability(gl::GL_TEXTURE_2D, textureEnabled);
         gl::glActiveTexture(gl::GL_TEXTURE0);
         gl::glBindTexture(gl::GL_TEXTURE_2D, (unsigned int) texture0);
+        gl::glActiveTexture(gl::GL_TEXTURE1);
+        gl::glBindTexture(gl::GL_TEXTURE_2D, (unsigned int) texture1);
         gl::glActiveTexture((unsigned int) activeTexture);
     }
 
@@ -175,6 +196,7 @@ private:
     int viewport[4] {};
     int activeTexture {};
     int texture0 {};
+    int texture1 {};
     int program {};
     int matrixMode {};
     float clearColour[4] {};
@@ -267,14 +289,16 @@ bool GLScalarSurfaceRenderer::draw(const ScalarSurfaceRenderData& data) {
         return false;
     }
 
-    if (!compileProgram() || !ensureTexture(data)) {
+    if (!compileProgram() || !ensureMagnitudePaletteTexture() || !ensureTexture(data)) {
         return false;
     }
 
+    gl::glActiveTexture(gl::GL_TEXTURE1);
+    gl::glBindTexture(gl::GL_TEXTURE_2D, magnitudePaletteTexture);
+    gl::glActiveTexture(gl::GL_TEXTURE0);
     validateGpuParity();
 
     gl::glUseProgram(program);
-    gl::glActiveTexture(gl::GL_TEXTURE0);
     gl::glEnable(gl::GL_TEXTURE_2D);
     gl::glBindTexture(gl::GL_TEXTURE_2D, texture);
     setMaterialUniforms(data);
@@ -301,6 +325,9 @@ void GLScalarSurfaceRenderer::clearResources() {
     if (texture != 0) {
         gl::glDeleteTextures(1, &texture);
     }
+    if (magnitudePaletteTexture != 0) {
+        gl::glDeleteTextures(1, &magnitudePaletteTexture);
+    }
     if (program != 0) {
         gl::glDeleteProgram(program);
     }
@@ -308,6 +335,7 @@ void GLScalarSurfaceRenderer::clearResources() {
     uploadState.clear();
     program = 0;
     texture = 0;
+    magnitudePaletteTexture = 0;
     compileAttempted = false;
     usingFloatTexture = false;
     textureCapabilityFailed = false;
@@ -355,6 +383,56 @@ bool GLScalarSurfaceRenderer::compileProgram() {
 
     diagnostics.capabilityAvailable = true;
     return true;
+}
+
+bool GLScalarSurfaceRenderer::ensureMagnitudePaletteTexture() {
+    if (magnitudePaletteTexture != 0) {
+        return true;
+    }
+
+    const juce::Image gradient = juce::PNGImageFormat::loadFrom(
+            Gradients::burntalum_png,
+            Gradients::burntalum_pngSize);
+    if (!gradient.isValid()) {
+        return false;
+    }
+
+    std::vector<juce::uint8> pixels((size_t) gradient.getWidth() * 4);
+    for (int x = 0; x < gradient.getWidth(); ++x) {
+        const juce::Colour colour = gradient.getPixelAt(x, 0);
+        const size_t offset = (size_t) x * 4;
+        pixels[offset] = colour.getRed();
+        pixels[offset + 1] = colour.getGreen();
+        pixels[offset + 2] = colour.getBlue();
+        pixels[offset + 3] = 255;
+    }
+
+    gl::glGenTextures(1, &magnitudePaletteTexture);
+    gl::glActiveTexture(gl::GL_TEXTURE1);
+    gl::glBindTexture(gl::GL_TEXTURE_2D, magnitudePaletteTexture);
+    gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
+    gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
+    gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_WRAP_S, gl::GL_CLAMP_TO_EDGE);
+    gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_WRAP_T, gl::GL_CLAMP_TO_EDGE);
+    gl::glPixelStorei(gl::GL_UNPACK_ALIGNMENT, 1);
+    clearGlErrors();
+    gl::glTexImage2D(
+            gl::GL_TEXTURE_2D,
+            0,
+            gl::GL_RGBA,
+            gradient.getWidth(),
+            1,
+            0,
+            gl::GL_RGBA,
+            gl::GL_UNSIGNED_BYTE,
+            pixels.data());
+    const bool succeeded = gl::glGetError() == gl::GL_NO_ERROR;
+    gl::glActiveTexture(gl::GL_TEXTURE0);
+    if (!succeeded) {
+        gl::glDeleteTextures(1, &magnitudePaletteTexture);
+        magnitudePaletteTexture = 0;
+    }
+    return succeeded;
 }
 
 bool GLScalarSurfaceRenderer::ensureTexture(const ScalarSurfaceRenderData& data) {
@@ -434,7 +512,7 @@ void GLScalarSurfaceRenderer::validateGpuParity() {
     juce::OpenGLContext* context = juce::OpenGLContext::getCurrentContext();
     constexpr int columns = 5;
     constexpr int rows = 5;
-    constexpr int tolerance = 4;
+    constexpr int tolerance = 5;
     const std::array<float, columns * rows> values {
             0.08f, 0.14f, 0.22f, 0.14f, 0.08f,
             0.18f, 0.30f, 0.42f, 0.30f, 0.18f,
@@ -518,6 +596,7 @@ void GLScalarSurfaceRenderer::validateGpuParity() {
 void GLScalarSurfaceRenderer::setMaterialUniforms(const ScalarSurfaceRenderData& data) const {
     const ScalarSurfaceMaterial& material = data.material;
     gl::glUniform1i(gl::glGetUniformLocation(program, "scalarTexture"), 0);
+    gl::glUniform1i(gl::glGetUniformLocation(program, "magnitudePaletteTexture"), 1);
     gl::glUniform2f(
             gl::glGetUniformLocation(program, "texelSize"),
             1.f / (float) data.rows,
@@ -533,7 +612,12 @@ void GLScalarSurfaceRenderer::setMaterialUniforms(const ScalarSurfaceRenderData&
     gl::glUniform1f(gl::glGetUniformLocation(program, "specularStrength"), material.specularStrength);
     gl::glUniform1f(gl::glGetUniformLocation(program, "curvatureThreshold"), material.curvatureThreshold);
     gl::glUniform1f(gl::glGetUniformLocation(program, "curvatureSoftness"), material.curvatureSoftness);
-    gl::glUniform1f(gl::glGetUniformLocation(program, "accentStrength"), material.accentStrength);
+    gl::glUniform1f(
+            gl::glGetUniformLocation(program, "ridgeHighlightStrength"),
+            material.ridgeHighlightStrength);
+    gl::glUniform1f(
+            gl::glGetUniformLocation(program, "valleyShadowStrength"),
+            material.valleyShadowStrength);
     gl::glUniform1f(gl::glGetUniformLocation(program, "valueScale"), data.valueScale);
     gl::glUniform1f(gl::glGetUniformLocation(program, "valueOffset"), data.valueOffset);
     gl::glUniform1i(

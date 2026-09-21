@@ -2633,7 +2633,9 @@ void NodeCanvas::syncCurveGuideContext(CurveEditorWidget& widget, const Node& no
 }
 
 TrimeshWidget* NodeCanvas::trimeshWidget(const Node& node) {
-    return &editorCoordinator.previewResources().trimeshWidget(node);
+    return &editorCoordinator.previewResources().trimeshWidget(
+            node,
+            &commands.editingGraph());
 }
 
 TrimeshWidget* NodeCanvas::findTrimeshWidget(const String& nodeId) {

@@ -1,0 +1,14 @@
+{
+  "commands": [
+    { "command": "openFactoryPreset", "preset": "CalmingKeys", "waitForIdle": true },
+    { "command": "openFactoryPreset", "preset": "Organ3", "waitForIdle": true },
+    { "command": "openFactoryPreset", "preset": "AcidStab", "waitForIdle": true },
+    { "command": "openFactoryPreset", "preset": "CalmingKeys", "waitForIdle": true },
+    { "command": "openFactoryPreset", "preset": "Organ3", "waitForIdle": true },
+    { "command": "openFactoryPreset", "preset": "AcidStab", "waitForIdle": true },
+    { "command": "openFactoryPreset", "preset": "CalmingKeys", "waitForIdle": true },
+    { "command": "inspectTargets", "area": "AreaWfrmWaveform3D" },
+    { "command": "openGLDiagnostics", "area": "AreaWfrmWaveform3D" }
+  ],
+  "quit": true
+}

@@ -31,7 +31,9 @@ public:
     explicit NodePreviewResources(NodeEditorCommandService& commands);
 
     TrimeshWidget& trimeshWidget(const String& nodeId);
-    TrimeshWidget& trimeshWidget(const Node& node);
+    TrimeshWidget& trimeshWidget(
+            const Node& node,
+            const NodeGraph* graphToUse = nullptr);
     TrimeshWidget* findTrimeshWidget(const String& nodeId);
     void setGraph(const NodeGraph* graphToUse);
     void refreshGraph(
@@ -61,7 +63,7 @@ private:
     std::vector<std::pair<String, std::unique_ptr<CurveEditorWidget>>> curveEditorWidgets;
     std::vector<std::pair<String, CachedNodePreviewSprite>> cachedSprites;
 
-    const NodeGraph* graph {};
+    const NodeGraph* durableGraph {};
     PreviewPitchContextIndex previewPitchContexts;
 };
 

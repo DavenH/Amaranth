@@ -76,6 +76,16 @@ Context:
 Current status: open; select the intended default and make its persisted key
 follow the factory preset filename-resolution contract.
 
+## P3: Cycle 1 emits leaked-object assertions after preset-churn shutdown
+
+The 2026-09-20 scalar-surface preset-churn fixture completed all seven
+explicit preset loads, then emitted three `juce_LeakedObjectDetector.h:104`
+assertions during application shutdown. No crash report was produced. Log:
+`/private/tmp/cycle-surface-preset-churn-v1-logs.txt`.
+
+Current status: open; the shutdown assertions are separate from
+the repaired unison scratch-buffer overrun during preset rasterization.
+
 ## P1: Opening a graph can discard unsaved edits without confirmation
 
 Context:

@@ -1290,7 +1290,8 @@ void NodeCanvasPresentation::paintNode(
                     false,
                     node.kind == NodeKind::Output
                             ? frame.liveOutputMeterLevels
-                            : std::optional<OutputMeterLevels> {}
+                            : std::optional<OutputMeterLevels> {},
+                    &frame.graph
             });
         }
     }
