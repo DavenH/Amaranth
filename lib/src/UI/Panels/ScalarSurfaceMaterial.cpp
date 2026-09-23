@@ -3,12 +3,13 @@
 
 #include <Binary/Gradients.h>
 
+#include "Array/Buffer.h"
+#include "Array/VecOps.h"
 #include "ScalarSurfaceMaterial.h"
 
 namespace {
 
-constexpr float minimumIllumination = 0.18f;
-constexpr float neutralMinimumIllumination = 0.46f;
+constexpr float minimumIllumination = 0.16f;
 constexpr int linearTransferTableSize = 4096;
 
 float smoothUnit(float value) {
@@ -132,23 +133,7 @@ LinearColour pearlColour(float value, const ScalarSurfaceMaterial& material) {
             magnitude);
 }
 
-int sampleRadius(float radius, int dimension) {
-    return juce::jmax(1, juce::roundToInt(radius * (float) juce::jmax(1, dimension - 1)));
-}
-
-struct SamplingGeometry {
-    int smallX {};
-    int smallY {};
-    int largeX {};
-    int largeY {};
-    float xStep {};
-    float yStep {};
-    float aspect {};
-};
-
 struct LightGeometry {
-    float horizontalX {};
-    float horizontalY {};
     float x {};
     float y {};
     float z {};
@@ -158,15 +143,11 @@ struct LightGeometry {
 };
 
 LightGeometry lightGeometry(const ScalarSurfaceMaterial& material) {
-    const float horizontalLength = std::sqrt(
-            material.lightX * material.lightX + material.lightY * material.lightY);
     const float lightLength = std::sqrt(
             material.lightX * material.lightX
                     + material.lightY * material.lightY
                     + material.lightZ * material.lightZ);
     LightGeometry geometry;
-    geometry.horizontalX = horizontalLength > 0.f ? material.lightX / horizontalLength : 0.f;
-    geometry.horizontalY = horizontalLength > 0.f ? material.lightY / horizontalLength : 0.f;
     const float safeLightLength = juce::jmax(0.000001f, lightLength);
     geometry.x = material.lightX / safeLightLength;
     geometry.y = material.lightY / safeLightLength;
@@ -182,66 +163,18 @@ LightGeometry lightGeometry(const ScalarSurfaceMaterial& material) {
     return geometry;
 }
 
-SamplingGeometry samplingGeometry(
-        int columns,
-        int rows,
-        const ScalarSurfaceMaterial& material,
-        float surfaceAspectRatio) {
-    SamplingGeometry geometry;
-    geometry.smallX = sampleRadius(material.normalSampleRadius, columns);
-    geometry.smallY = sampleRadius(material.normalSampleRadius, rows);
-    geometry.largeX = sampleRadius(material.largeSampleRadius, columns);
-    geometry.largeY = sampleRadius(material.largeSampleRadius, rows);
-    geometry.xStep = (float) geometry.smallX / (float) juce::jmax(1, columns - 1);
-    geometry.yStep = (float) geometry.smallY / (float) juce::jmax(1, rows - 1);
-    geometry.aspect = surfaceAspectRatio > 0.f
-            ? surfaceAspectRatio
-            : (float) juce::jmax(1, columns - 1) / (float) juce::jmax(1, rows - 1);
-    return geometry;
-}
-
-template<typename Sample>
-float horizonShadowAt(
-        const Sample& sample,
-        int columns,
-        int rows,
-        int column,
-        int row,
-        float centre,
-        const ScalarSurfaceMaterial& material,
-        const LightGeometry& light) {
-    const std::array<float, 3> radii {
-        material.normalSampleRadius * 2.f,
-        material.largeSampleRadius,
-        material.largeSampleRadius * 2.f
-    };
-    float occlusion = 0.f;
-    for (int index = 0; index < (int) radii.size(); ++index) {
-        const int offsetX = juce::roundToInt(
-                light.horizontalX * radii[(size_t) index]
-                        * (float) juce::jmax(1, columns - 1));
-        const int offsetY = juce::roundToInt(
-                light.horizontalY * radii[(size_t) index]
-                        * (float) juce::jmax(1, rows - 1));
-        const float bias = material.shadowStart * (float) (index + 1);
-        occlusion = juce::jmax(
-                occlusion,
-                sample(column - offsetX, row - offsetY) - centre - bias);
-    }
-    return smoothUnit(occlusion / material.shadowSoftness);
-}
-
 struct SurfaceLighting {
     float diffuse {};
     float specular {};
 };
 
 SurfaceLighting lightingFor(
-        const ScalarSurfaceDerivatives& derivatives,
+        float slopeX,
+        float slopeY,
         const ScalarSurfaceMaterial& material,
         const LightGeometry& light) {
-    const float normalX = -derivatives.slopeX * material.reliefScale;
-    const float normalY = -derivatives.slopeY * material.reliefScale;
+    const float normalX = -slopeX * material.reliefScale;
+    const float normalY = -slopeY * material.reliefScale;
     const float normalLength = std::sqrt(normalX * normalX + normalY * normalY + 1.f);
     const float nx = normalX / normalLength;
     const float ny = normalY / normalLength;
@@ -261,6 +194,74 @@ SurfaceLighting lightingFor(
     return lighting;
 }
 
+int boundedBlurRadius(float radius, int dimension, int minimum, int maximum) {
+    const int scaled = juce::roundToInt(radius * (float) juce::jmax(1, dimension - 1));
+    return juce::jlimit(1, juce::jmax(1, dimension - 1), juce::jlimit(minimum, maximum, scaled));
+}
+
+void blurRows(
+        const std::vector<float>& source,
+        std::vector<float>& destination,
+        int columns,
+        int rows,
+        int radius) {
+    const float scale = 1.f / (float) (2 * radius + 1);
+    for (int column = 0; column < columns; ++column) {
+        const int offset = column * rows;
+        float sum = 0.f;
+        for (int tap = -radius; tap <= radius; ++tap) {
+            sum += source[(size_t) offset + (size_t) juce::jlimit(0, rows - 1, tap)];
+        }
+        for (int row = 0; row < rows; ++row) {
+            destination[(size_t) offset + (size_t) row] = sum * scale;
+            const int outgoing = juce::jlimit(0, rows - 1, row - radius);
+            const int incoming = juce::jlimit(0, rows - 1, row + radius + 1);
+            sum += source[(size_t) offset + (size_t) incoming]
+                    - source[(size_t) offset + (size_t) outgoing];
+        }
+    }
+}
+
+void blurColumns(
+        const std::vector<float>& source,
+        std::vector<float>& destination,
+        int columns,
+        int rows,
+        int radius) {
+    const float scale = 1.f / (float) (2 * radius + 1);
+    for (int row = 0; row < rows; ++row) {
+        float sum = 0.f;
+        for (int tap = -radius; tap <= radius; ++tap) {
+            sum += source[(size_t) juce::jlimit(0, columns - 1, tap) * rows + row];
+        }
+        for (int column = 0; column < columns; ++column) {
+            destination[(size_t) column * rows + row] = sum * scale;
+            const int outgoing = juce::jlimit(0, columns - 1, column - radius);
+            const int incoming = juce::jlimit(0, columns - 1, column + radius + 1);
+            sum += source[(size_t) incoming * rows + row]
+                    - source[(size_t) outgoing * rows + row];
+        }
+    }
+}
+
+void packScale(
+        const std::vector<float>& source,
+        std::vector<float>& packed,
+        int channel) {
+    for (size_t index = 0; index < source.size(); ++index) {
+        packed[index * 4 + (size_t) channel] = source[index];
+    }
+}
+
+float heightAt(
+        const ScalarSurfaceHeightScales& scales,
+        int column,
+        int row,
+        int channel) {
+    const size_t index = ((size_t) column * scales.rows + (size_t) row) * 4;
+    return scales.packedValues[index + (size_t) channel];
+}
+
 float opacityFor(float unitValue, const ScalarSurfaceMaterial& material) {
     if (material.opacityValueScale <= 0.f) {
         return material.opacity;
@@ -272,64 +273,74 @@ float opacityFor(float unitValue, const ScalarSurfaceMaterial& material) {
 }
 
 ScalarSurfaceDerivatives derivativesFor(
-        const float* values,
-        int columns,
-        int rows,
+        const ScalarSurfaceHeightScales& scales,
         int column,
         int row,
         const ScalarSurfaceMaterial& material,
-        float surfaceAspectRatio,
-        const LightGeometry& light) {
-    const auto sample = [values, columns, rows](int x, int y) {
-        return values[juce::jlimit(0, columns - 1, x) * rows
-                + juce::jlimit(0, rows - 1, y)];
-    };
-    const SamplingGeometry sampling = samplingGeometry(
-            columns, rows, material, surfaceAspectRatio);
-    const float centre = sample(column, row);
-    const float left = sample(column - sampling.smallX, row);
-    const float right = sample(column + sampling.smallX, row);
-    const float lower = sample(column, row - sampling.smallY);
-    const float upper = sample(column, row + sampling.smallY);
+        float surfaceAspectRatio) {
+    const int leftColumn = juce::jmax(0, column - 1);
+    const int rightColumn = juce::jmin(scales.columns - 1, column + 1);
+    const int lowerRow = juce::jmax(0, row - 1);
+    const int upperRow = juce::jmin(scales.rows - 1, row + 1);
+    const float aspect = surfaceAspectRatio > 0.f
+            ? surfaceAspectRatio
+            : (float) (scales.columns - 1) / (float) (scales.rows - 1);
+    const float xDistance = (float) (rightColumn - leftColumn)
+            / (float) (scales.columns - 1) * aspect;
+    const float yDistance = (float) (upperRow - lowerRow)
+            / (float) (scales.rows - 1);
 
     ScalarSurfaceDerivatives result;
-    result.slopeX = (right - left) / (2.f * sampling.xStep * sampling.aspect);
-    result.slopeY = (upper - lower) / (2.f * sampling.yStep);
-    result.curvature = left + right + lower + upper - 4.f * centre;
-    result.largeCurvature = sample(column - sampling.largeX, row)
-            + sample(column + sampling.largeX, row)
-            + sample(column, row - sampling.largeY)
-            + sample(column, row + sampling.largeY)
-            - 4.f * centre;
-    result.horizonShadow = horizonShadowAt(
-            sample, columns, rows, column, row, centre, material, light);
+    for (int scale = 0; scale < 4; ++scale) {
+        result.slopeX[(size_t) scale] = (
+                heightAt(scales, rightColumn, row, scale)
+                - heightAt(scales, leftColumn, row, scale)) / xDistance;
+        result.slopeY[(size_t) scale] = (
+                heightAt(scales, column, upperRow, scale)
+                - heightAt(scales, column, lowerRow, scale)) / yDistance;
+    }
+
+    const float original = heightAt(scales, column, row, 0);
+    float obscurance = 0.f;
+    for (int scale = 1; scale < 4; ++scale) {
+        const float cavity = heightAt(scales, column, row, scale)
+                - original - material.obscuranceBiases[(size_t) scale - 1];
+        obscurance += material.hillshadeWeights[(size_t) scale]
+                * juce::jmax(0.f, cavity);
+    }
+    result.obscurance = juce::jlimit(0.f, 1.f, material.obscuranceScale * obscurance);
+    result.exposure = juce::jlimit(
+            0.f,
+            1.f,
+            material.exposureScale * juce::jmax(
+                    0.f,
+                    original - heightAt(scales, column, row, 2) - material.exposureBias));
     return result;
 }
 
 juce::Colour evaluateColour(
         float value,
         const ScalarSurfaceDerivatives& derivatives,
-        const ScalarSurfaceMaterial& material,
-        const LightGeometry& light) {
+    const ScalarSurfaceMaterial& material,
+    const LightGeometry& light) {
     const float unitValue = juce::jlimit(0.f, 1.f, value);
-    const SurfaceLighting lighting = lightingFor(derivatives, material, light);
-    const float detailCurvature = 0.65f * derivatives.curvature
-            + 0.35f * derivatives.largeCurvature;
-    const float cavity = smoothUnit(
-            (detailCurvature - material.curvatureThreshold)
-                    / material.curvatureSoftness);
-    const float distanceFromNeutral = unitValue < 0.5f
-            ? 0.5f - unitValue
-            : unitValue - 0.5f;
-    const float semanticMagnitude = smoothUnit(distanceFromNeutral * 2.f);
-    const float illuminationFloor = neutralMinimumIllumination
-            + semanticMagnitude * (minimumIllumination - neutralMinimumIllumination);
+    float hillshade = 0.f;
+    for (int scale = 0; scale < 4; ++scale) {
+        hillshade += material.hillshadeWeights[(size_t) scale]
+                * lightingFor(
+                        derivatives.slopeX[(size_t) scale],
+                        derivatives.slopeY[(size_t) scale],
+                        material,
+                        light).diffuse;
+    }
+    const SurfaceLighting specularLighting = lightingFor(
+            derivatives.slopeX[2], derivatives.slopeY[2], material, light);
     const float illumination = juce::jmax(
-            illuminationFloor,
+            minimumIllumination,
             material.ambientStrength
-                    + material.diffuseStrength * lighting.diffuse
-                    - material.shadowStrength * derivatives.horizonShadow
-                    - material.cavityStrength * cavity);
+                    + material.diffuseStrength * hillshade
+                    - material.obscuranceStrength * derivatives.obscurance
+                    + material.exposureStrength * derivatives.exposure);
     const juce::Colour base = paletteColour(unitValue, material);
     LinearColour shaded = toLinear(base);
     shaded.red *= illumination;
@@ -342,7 +353,12 @@ juce::Colour evaluateColour(
     shaded = interpolate(
             shaded,
             highlight,
-            juce::jlimit(0.f, 1.f, material.specularStrength * lighting.specular));
+            juce::jlimit(
+                    0.f,
+                    1.f,
+                    material.specularStrength * specularLighting.specular
+                            + material.exposureStrength * material.pearlTintStrength
+                                    * derivatives.exposure));
 
     return juce::Colour::fromFloatRGBA(
             linearToSrgb(shaded.red),
@@ -357,25 +373,25 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::signedAmplitude() {
     ScalarSurfaceMaterial material;
     material.palette = ScalarSurfacePalette::SignedAmplitude;
     material.signedPaletteStops = {
-        juce::Colour(0xff11153b),
-        juce::Colour(0xff283f87),
-        juce::Colour(0xff99a7df),
-        juce::Colour(0xff626a88),
-        juce::Colour(0xff342e39),
-        juce::Colour(0xff825861),
-        juce::Colour(0xffdf7e58),
-        juce::Colour(0xfff5a979),
-        juce::Colour(0xffffd0a2)
+        juce::Colour(0xff06142c),
+        juce::Colour(0xff0b2855),
+        juce::Colour(0xff174989),
+        juce::Colour(0xff316db4),
+        juce::Colour(0xff5f91d2),
+        juce::Colour(0xff94b9e7),
+        juce::Colour(0xffbfd6f2),
+        juce::Colour(0xffe0ecfa),
+        juce::Colour(0xfff7fbff)
     };
     material.signedPalettePositions = {
-        0.f, 0.18f, 0.34f, 0.465f, 0.5f, 0.535f, 0.66f, 0.82f, 1.f
+        0.f, 0.14f, 0.28f, 0.42f, 0.56f, 0.70f, 0.82f, 0.92f, 1.f
     };
     material.negativeAnchor = material.signedPaletteStops.front();
     material.neutralAnchor = material.signedPaletteStops[4];
     material.positiveAnchor = material.signedPaletteStops.back();
-    material.negativePearlTint = juce::Colour(0xffc3ccff);
-    material.neutralPearlTint = juce::Colour(0xff766f7c);
-    material.positivePearlTint = juce::Colour(0xffffddba);
+    material.negativePearlTint = juce::Colour(0xffd5e3ff);
+    material.neutralPearlTint = juce::Colour(0xffffd8b8);
+    material.positivePearlTint = juce::Colour(0xffffe4c9);
     return material;
 }
 
@@ -390,11 +406,11 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::unipolarMagnitude() {
     material.positivePearlTint = juce::Colour(0xffffd6a0);
     material.opacityValueScale = 25.f;
     material.opacityPower = 2;
-    material.reliefScale = 0.9f;
+    material.reliefScale = 0.65f;
     material.diffuseStrength = 0.24f;
-    material.specularStrength = 0.08f;
-    material.shadowStrength = 0.12f;
-    material.cavityStrength = 0.06f;
+    material.specularStrength = 0.035f;
+    material.obscuranceStrength = 0.10f;
+    material.exposureStrength = 0.035f;
     return material;
 }
 
@@ -408,12 +424,57 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::bipolarPhase() {
     material.neutralPearlTint = juce::Colour(0xff756b7c);
     material.positivePearlTint = juce::Colour(0xffdfc4ff);
     material.opacityValueScale = 5.f;
-    material.reliefScale = 1.f;
+    material.reliefScale = 0.75f;
     material.diffuseStrength = 0.28f;
-    material.specularStrength = 0.10f;
-    material.shadowStrength = 0.14f;
-    material.cavityStrength = 0.06f;
+    material.specularStrength = 0.04f;
+    material.obscuranceStrength = 0.12f;
+    material.exposureStrength = 0.04f;
     return material;
+}
+
+ScalarSurfaceHeightScales ScalarSurfaceMaterialEvaluator::createHeightScales(
+        const float* values,
+        int valueCount,
+        int columns,
+        int rows,
+        const ScalarSurfaceMaterial& material,
+        float valueScale,
+        float valueOffset) {
+    ScalarSurfaceHeightScales result;
+    if (columns < 2 || rows < 2 || values == nullptr || valueCount < columns * rows) {
+        return result;
+    }
+
+    const int valueTotal = columns * rows;
+    std::vector<float> original((size_t) valueTotal);
+    VecOps::copy(values, original.data(), valueTotal);
+    Buffer<float>(original.data(), valueTotal).mul(valueScale).add(valueOffset).clip(0.f, 1.f);
+
+    result.columns = columns;
+    result.rows = rows;
+    result.packedValues.resize((size_t) valueTotal * 4);
+    packScale(original, result.packedValues, 0);
+
+    std::vector<float> horizontal((size_t) valueTotal);
+    std::vector<float> blurred((size_t) valueTotal);
+    constexpr std::array<int, 3> minimumRadii { 2, 4, 8 };
+    constexpr std::array<int, 3> maximumRadii { 3, 12, 48 };
+    for (int scale = 0; scale < 3; ++scale) {
+        const int columnRadius = boundedBlurRadius(
+                material.blurRadii[(size_t) scale],
+                columns,
+                minimumRadii[(size_t) scale],
+                maximumRadii[(size_t) scale]);
+        const int rowRadius = boundedBlurRadius(
+                material.blurRadii[(size_t) scale],
+                rows,
+                minimumRadii[(size_t) scale],
+                maximumRadii[(size_t) scale]);
+        blurColumns(original, horizontal, columns, rows, columnRadius);
+        blurRows(horizontal, blurred, columns, rows, rowRadius);
+        packScale(blurred, result.packedValues, scale + 1);
+    }
+    return result;
 }
 
 ScalarSurfaceDerivatives ScalarSurfaceMaterialEvaluator::derivativesAt(
@@ -436,15 +497,26 @@ ScalarSurfaceDerivatives ScalarSurfaceMaterialEvaluator::derivativesAt(
         int row,
         const ScalarSurfaceMaterial& material,
         float surfaceAspectRatio) {
+    const ScalarSurfaceHeightScales scales = createHeightScales(
+            values, columns * rows, columns, rows, material);
+    return derivativesAt(scales, column, row, material, surfaceAspectRatio);
+}
+
+ScalarSurfaceDerivatives ScalarSurfaceMaterialEvaluator::derivativesAt(
+        const ScalarSurfaceHeightScales& scales,
+        int column,
+        int row,
+        const ScalarSurfaceMaterial& material,
+        float surfaceAspectRatio) {
+    if (!scales.isValid()) {
+        return {};
+    }
     return derivativesFor(
-            values,
-            columns,
-            rows,
+            scales,
             column,
             row,
             material,
-            surfaceAspectRatio,
-            lightGeometry(material));
+            surfaceAspectRatio);
 }
 
 juce::Colour ScalarSurfaceMaterialEvaluator::baseColourFor(
@@ -474,6 +546,8 @@ juce::Image ScalarSurfaceMaterialEvaluator::createImage(
     const float aspect = surfaceAspectRatio > 0.f
             ? surfaceAspectRatio
             : (float) (columns - 1) / (float) (rows - 1);
+    const ScalarSurfaceHeightScales scales = createHeightScales(
+            values, valueCount, columns, rows, material);
     juce::Image image(opaque ? juce::Image::RGB : juce::Image::ARGB, columns, rows, true);
     juce::Image::BitmapData bitmap(image, juce::Image::BitmapData::writeOnly);
     const LightGeometry light = lightGeometry(material);
@@ -481,7 +555,7 @@ juce::Image ScalarSurfaceMaterialEvaluator::createImage(
         for (int row = 0; row < rows; ++row) {
             const int index = column * rows + row;
             const ScalarSurfaceDerivatives derivatives = derivativesFor(
-                    values, columns, rows, column, row, material, aspect, light);
+                    scales, column, row, material, aspect);
             juce::Colour colour = evaluateColour(values[index], derivatives, material, light);
             if (opaque) {
                 colour = colour.withAlpha(1.f);
@@ -498,7 +572,7 @@ juce::Image ScalarSurfaceMaterialEvaluator::createGradientImage(
         return {};
     }
     juce::Image image(juce::Image::ARGB, width, 1, true);
-    const ScalarSurfaceDerivatives flat;
+    const ScalarSurfaceDerivatives flat {};
     for (int x = 0; x < width; ++x) {
         image.setPixelAt(
                 x,

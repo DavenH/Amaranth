@@ -25,25 +25,20 @@ ScalarSurfaceDerivatives derivativesFor(
 
 }
 
-TEST_CASE("Signed scalar surface uses a scalar-only pearl palette", "[ui][surface-material]") {
+TEST_CASE("Time scalar surface uses a continuous blue-to-white palette", "[ui][surface-material]") {
     const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::signedAmplitude();
 
     REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(0.f, material)
             .withAlpha(1.f) == material.negativeAnchor.withAlpha(1.f));
-    REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(0.5f, material)
-            .withAlpha(1.f) == material.neutralAnchor.withAlpha(1.f));
     REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(1.f, material)
             .withAlpha(1.f) == material.positiveAnchor.withAlpha(1.f));
 
-    const auto troughShoulder = ScalarSurfaceMaterialEvaluator::baseColourFor(0.34f, material);
-    const auto warmShoulder = ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, material);
-    REQUIRE(troughShoulder.getBrightness() > material.negativeAnchor.getBrightness());
-    REQUIRE(troughShoulder.getBrightness() > material.neutralAnchor.getBrightness());
-    REQUIRE(troughShoulder.getBlue() > troughShoulder.getRed());
-    REQUIRE(warmShoulder.getRed() > warmShoulder.getBlue());
-    REQUIRE(material.positiveAnchor.getBrightness() > warmShoulder.getBrightness());
-    REQUIRE(material.neutralAnchor.getBrightness() < 0.24f);
-    REQUIRE(material.neutralAnchor.getSaturation() < 0.28f);
+    float previousBrightness = -1.f;
+    for (const juce::Colour colour: material.signedPaletteStops) {
+        REQUIRE(colour.getPerceivedBrightness() > previousBrightness);
+        REQUIRE(colour.getBlue() >= colour.getRed());
+        previousBrightness = colour.getPerceivedBrightness();
+    }
 
     constexpr int side = 4;
     const std::vector<float> constantSurface(side * side, 0.375f);
@@ -61,31 +56,29 @@ TEST_CASE("Signed scalar surface uses a scalar-only pearl palette", "[ui][surfac
     }
 }
 
-TEST_CASE("Signed palette gives zero crossings a narrow semantic transition",
+TEST_CASE("Time palette has no zero-crossing luminance trench",
         "[ui][surface-material]") {
     const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::signedAmplitude();
-    const juce::Colour coolDusk = ScalarSurfaceMaterialEvaluator::baseColourFor(0.465f, material);
+    const juce::Colour below = ScalarSurfaceMaterialEvaluator::baseColourFor(0.49f, material);
     const juce::Colour neutral = ScalarSurfaceMaterialEvaluator::baseColourFor(0.5f, material);
-    const juce::Colour warmDusk = ScalarSurfaceMaterialEvaluator::baseColourFor(0.535f, material);
-    const juce::Colour justNegative = ScalarSurfaceMaterialEvaluator::baseColourFor(0.499f, material);
-    const juce::Colour justPositive = ScalarSurfaceMaterialEvaluator::baseColourFor(0.501f, material);
+    const juce::Colour above = ScalarSurfaceMaterialEvaluator::baseColourFor(0.51f, material);
 
-    REQUIRE(coolDusk.getBrightness() > neutral.getBrightness());
-    REQUIRE(warmDusk.getBrightness() > neutral.getBrightness());
-    REQUIRE(coolDusk.getBlue() > coolDusk.getRed());
-    REQUIRE(warmDusk.getRed() > warmDusk.getBlue());
-    REQUIRE(std::abs((int) justNegative.getRed() - (int) justPositive.getRed()) < 8);
-    REQUIRE(std::abs((int) justNegative.getBlue() - (int) justPositive.getBlue()) < 8);
+    REQUIRE(below.getPerceivedBrightness() < neutral.getPerceivedBrightness());
+    REQUIRE(neutral.getPerceivedBrightness() < above.getPerceivedBrightness());
+    REQUIRE(std::abs(
+            (neutral.getPerceivedBrightness() - below.getPerceivedBrightness())
+            - (above.getPerceivedBrightness() - neutral.getPerceivedBrightness())) < 0.02f);
 }
 
-TEST_CASE("Scalar surface derivatives distinguish planes from local features", "[ui][surface-material]") {
+TEST_CASE("Scalar surface scales distinguish planes from local features", "[ui][surface-material]") {
     constexpr int columns = 7;
     constexpr int rows = 7;
     std::vector<float> flat((size_t) columns * (size_t) rows, 0.5f);
     const auto flatDerivatives = derivativesFor(flat, columns, rows, 3, 3);
-    REQUIRE(flatDerivatives.slopeX == 0.f);
-    REQUIRE(flatDerivatives.slopeY == 0.f);
-    REQUIRE(flatDerivatives.curvature == 0.f);
+    REQUIRE(flatDerivatives.slopeX[0] == 0.f);
+    REQUIRE(flatDerivatives.slopeY[0] == 0.f);
+    REQUIRE(flatDerivatives.obscurance == 0.f);
+    REQUIRE(flatDerivatives.exposure == 0.f);
 
     std::vector<float> ramp(flat.size());
     for (int column = 0; column < columns; ++column) {
@@ -94,19 +87,19 @@ TEST_CASE("Scalar surface derivatives distinguish planes from local features", "
         }
     }
     const auto rampDerivatives = derivativesFor(ramp, columns, rows, 3, 3);
-    REQUIRE(rampDerivatives.slopeX > 0.f);
-    REQUIRE(rampDerivatives.curvature > -1.e-6f);
-    REQUIRE(rampDerivatives.curvature < 1.e-6f);
+    const auto edgeDerivatives = derivativesFor(ramp, columns, rows, 0, 3);
+    REQUIRE(rampDerivatives.slopeX[0] > 0.f);
+    REQUIRE(rampDerivatives.slopeY[0] == 0.f);
+    REQUIRE(edgeDerivatives.slopeX[0]
+            == Catch::Approx(rampDerivatives.slopeX[0]).margin(0.0001f));
 
     std::vector<float> ridge = flat;
     ridge[(size_t) 3 * rows + 3] = 0.8f;
-    REQUIRE(derivativesFor(ridge, columns, rows, 3, 3).curvature < 0.f);
-    REQUIRE(derivativesFor(ridge, columns, rows, 1, 1).curvature == 0.f);
+    REQUIRE(derivativesFor(ridge, columns, rows, 3, 3).exposure > 0.f);
 
     std::vector<float> valley = flat;
     valley[(size_t) 3 * rows + 3] = 0.2f;
-    REQUIRE(derivativesFor(valley, columns, rows, 3, 3).curvature > 0.f);
-    REQUIRE(derivativesFor(valley, columns, rows, 5, 5).curvature == 0.f);
+    REQUIRE(derivativesFor(valley, columns, rows, 3, 3).obscurance > 0.f);
 }
 
 TEST_CASE("Pseudo-normal lighting responds to orientation and semantic hue",
@@ -114,18 +107,18 @@ TEST_CASE("Pseudo-normal lighting responds to orientation and semantic hue",
     const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::signedAmplitude();
     const ScalarSurfaceDerivatives flat;
     ScalarSurfaceDerivatives towardLight;
-    towardLight.slopeX = 0.2f;
-    towardLight.slopeY = 0.2f;
+    towardLight.slopeX.fill(0.2f);
+    towardLight.slopeY.fill(0.2f);
     ScalarSurfaceDerivatives awayFromLight;
-    awayFromLight.slopeX = -0.2f;
-    awayFromLight.slopeY = -0.2f;
+    awayFromLight.slopeX.fill(-0.2f);
+    awayFromLight.slopeY.fill(-0.2f);
 
     const juce::Colour lit = ScalarSurfaceMaterialEvaluator::colourFor(0.75f, towardLight, material);
     const juce::Colour shaded = ScalarSurfaceMaterialEvaluator::colourFor(
             0.75f, awayFromLight, material);
     REQUIRE(lit.getPerceivedBrightness() > shaded.getPerceivedBrightness());
-    REQUIRE(lit.getRed() > lit.getBlue());
-    REQUIRE(shaded.getRed() > shaded.getBlue());
+    REQUIRE(lit.getBlue() > lit.getRed());
+    REQUIRE(shaded.getBlue() > shaded.getRed());
 
     const juce::Colour negative = ScalarSurfaceMaterialEvaluator::colourFor(
             0.25f, towardLight, material);
@@ -135,8 +128,8 @@ TEST_CASE("Pseudo-normal lighting responds to orientation and semantic hue",
 
     ScalarSurfaceMaterial specularOnly = material;
     specularOnly.diffuseStrength = 0.f;
-    specularOnly.shadowStrength = 0.f;
-    specularOnly.cavityStrength = 0.f;
+    specularOnly.obscuranceStrength = 0.f;
+    specularOnly.exposureStrength = 0.f;
     specularOnly.specularStrength = 0.45f;
     REQUIRE(ScalarSurfaceMaterialEvaluator::colourFor(0.75f, towardLight, specularOnly)
             .getPerceivedBrightness()
@@ -160,20 +153,25 @@ TEST_CASE("Broad scalar relief is stable across grid resolution", "[ui][surface-
 
     const ScalarSurfaceDerivatives lowResolution = planeDerivatives(33);
     const ScalarSurfaceDerivatives highResolution = planeDerivatives(129);
-    REQUIRE(lowResolution.slopeX == Catch::Approx(highResolution.slopeX).margin(0.015f));
-    REQUIRE(lowResolution.slopeY == Catch::Approx(0.f).margin(0.0001f));
-    REQUIRE(highResolution.slopeY == Catch::Approx(0.f).margin(0.0001f));
+    for (int scale = 0; scale < 4; ++scale) {
+        REQUIRE(lowResolution.slopeX[(size_t) scale]
+                == Catch::Approx(highResolution.slopeX[(size_t) scale]).margin(0.025f));
+        REQUIRE(lowResolution.slopeY[(size_t) scale]
+                == Catch::Approx(0.f).margin(0.0001f));
+        REQUIRE(highResolution.slopeY[(size_t) scale]
+                == Catch::Approx(0.f).margin(0.0001f));
+    }
 }
 
-TEST_CASE("Relief is offset invariant and horizon shadow darkens valleys",
+TEST_CASE("Relief is offset invariant and multi-scale obscurance darkens valleys",
         "[ui][surface-material]") {
     const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::signedAmplitude();
-    ScalarSurfaceDerivatives unshadowed;
-    ScalarSurfaceDerivatives shadowed;
-    shadowed.horizonShadow = 1.f;
-    REQUIRE(ScalarSurfaceMaterialEvaluator::colourFor(0.5f, shadowed, material)
+    ScalarSurfaceDerivatives exposed;
+    ScalarSurfaceDerivatives obscured;
+    obscured.obscurance = 1.f;
+    REQUIRE(ScalarSurfaceMaterialEvaluator::colourFor(0.5f, obscured, material)
             .getPerceivedBrightness()
-            < ScalarSurfaceMaterialEvaluator::colourFor(0.5f, unshadowed, material)
+            < ScalarSurfaceMaterialEvaluator::colourFor(0.5f, exposed, material)
                     .getPerceivedBrightness());
 
     constexpr int side = 33;
@@ -190,21 +188,25 @@ TEST_CASE("Relief is offset invariant and horizon shadow darkens valleys",
             original.data(), side, side, side / 2, side / 2, material, 1.f);
     const auto second = ScalarSurfaceMaterialEvaluator::derivativesAt(
             offset.data(), side, side, side / 2, side / 2, material, 1.f);
-    REQUIRE(first.slopeX == Catch::Approx(second.slopeX).margin(0.0001f));
-    REQUIRE(first.slopeY == Catch::Approx(second.slopeY).margin(0.0001f));
-    REQUIRE(first.curvature == Catch::Approx(second.curvature).margin(0.0001f));
-    REQUIRE(first.largeCurvature == Catch::Approx(second.largeCurvature).margin(0.0001f));
-    REQUIRE(first.horizonShadow == Catch::Approx(second.horizonShadow).margin(0.0001f));
+    for (int scale = 0; scale < 4; ++scale) {
+        REQUIRE(first.slopeX[(size_t) scale]
+                == Catch::Approx(second.slopeX[(size_t) scale]).margin(0.0001f));
+        REQUIRE(first.slopeY[(size_t) scale]
+                == Catch::Approx(second.slopeY[(size_t) scale]).margin(0.0001f));
+    }
+    REQUIRE(first.obscurance == Catch::Approx(second.obscurance).margin(0.0001f));
+    REQUIRE(first.exposure == Catch::Approx(second.exposure).margin(0.0001f));
 
     std::vector<float> ridge((size_t) side * side, 0.4f);
     for (int row = 0; row < side; ++row) {
         ridge[(size_t) (side / 2) * side + row] = 0.9f;
     }
-    const auto opposedSide = ScalarSurfaceMaterialEvaluator::derivativesAt(
-            ridge.data(), side, side, side / 2 - 2, side / 2, material, 1.f);
-    const auto lightSide = ScalarSurfaceMaterialEvaluator::derivativesAt(
-            ridge.data(), side, side, side / 2 + 2, side / 2, material, 1.f);
-    REQUIRE(opposedSide.horizonShadow > lightSide.horizonShadow);
+    std::vector<float> valley((size_t) side * side, 0.6f);
+    valley[(size_t) (side / 2) * side + side / 2] = 0.2f;
+    REQUIRE(ScalarSurfaceMaterialEvaluator::derivativesAt(
+            valley.data(), side, side, side / 2, side / 2, material, 1.f).obscurance > 0.f);
+    REQUIRE(ScalarSurfaceMaterialEvaluator::derivativesAt(
+            ridge.data(), side, side, side / 2, side / 2, material, 1.f).exposure > 0.f);
 }
 
 TEST_CASE("Spectral magnitude retains the legacy burnt alum palette", "[ui][surface-material]") {

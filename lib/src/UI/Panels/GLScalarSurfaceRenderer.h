@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 #include "JuceHeader.h"
 
@@ -52,6 +53,7 @@ private:
     static unsigned int compileShader(unsigned int type, const char* source);
 
     ScalarSurfaceUploadState uploadState;
+    std::vector<float> packedHeightScales;
     unsigned int program {};
     unsigned int texture {};
     unsigned int magnitudePaletteTexture {};

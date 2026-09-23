@@ -301,6 +301,64 @@ image generation. The former duplicate decision site in
   Existing startup `FileManager.cpp:174` and Trimesh `Curve.cpp:56/57`
   assertions remain recorded in `ui-bugs.md`.
 
+### Cached Multi-Scale Matte Relief (2026-09-22)
+
+This slice supersedes the signed palette and single-scale relief described
+above while retaining the same ownership boundaries.
+
+- Time-domain amplitude returns to a continuous navy, blue, pale-blue, and
+  white scalar ramp. It has no polarity-specific neutral stop and therefore no
+  luminance trench at the bipolar centre line. Warm colour is limited to a
+  weak, relief-derived highlight tint. Spectral magnitude retains the mature
+  Burnt Alum mapping, and bipolar phase retains its domain palette.
+- `ScalarSurfaceMaterialEvaluator` owns the authoritative cached product: H0
+  plus three replicated-edge separable box blurs at small, medium, and broad
+  domain-relative radii. The four fields are packed as RGBA floats. Cycle 1
+  and Cycle 2 expanded views build and upload this product only when scalar
+  texture identity changes; compact/headless CPU output builds the identical
+  representation once per generated image.
+- CPU and GPU evaluators differentiate each scale at one texel with one-sided
+  boundary differences. The former wide derivative stencil and clamped
+  projected horizon samples are deleted, removing the asymmetric edge support
+  that produced the left bevel.
+- Four normal-based diffuse hillshades blend at 15/25/35/25 percent. Fine
+  detail is deliberately subordinate to medium and broad form. Valley
+  obscurance derives from positive `Hn - H0 - bias`; weaker ridge exposure
+  derives from `H0 - H2 - bias`. The explicit horizon-shadow and one-texel
+  curvature paths are deleted.
+- Lighting remains linear RGB. Medium-scale Blinn-Phong is retained only as a
+  narrow 4.5-percent finishing term with a 24-power lobe; pearl tint is 16
+  percent. Multi-scale matte luminance, rather than gloss, now carries shape.
+- The blur pass is O(columns * rows) per scale through sliding sums. Its inner
+  loops contain only indexing, addition, subtraction, and writes. Source
+  transform and clamping use the repository `VecOps`/`Buffer` boundary. There
+  is no reusable repository 2D image blur; the audio convolution code remains
+  isolated from visualization representation and lifecycle.
+- CPU fallback shading evaluates five coupled three-component normal lengths
+  per pixel (four diffuse scales plus the medium-scale highlight). Scalar
+  square root is retained for that cross-channel calculation because the
+  repository array operations cannot express it without several additional
+  product-sized gradient and normal buffers. Palette transfer powers remain
+  one-time lookup-table initialization, not per-pixel work.
+- Focused contracts cover a monotonic blue ramp, smooth midpoint luminance,
+  uniform flat fields including boundaries, resolution-stable slopes,
+  constant-offset invariance, ridge exposure, valley obscurance, legacy
+  spectral colour, upload identity, and CPU/GPU parity.
+- Post-change sizes are 586 lines for `ScalarSurfaceMaterial.cpp`, 732 for
+  `GLScalarSurfaceRenderer.cpp`, 95 for the uniform translator, and 141 for
+  the material contract header. Responsibilities remain separated: material
+  policy and CPU reference, GL resource/upload/draw lifecycle, and uniform
+  representation translation respectively. The Cycle V2 architecture audit
+  remains at the same 20 pre-existing triggers; no triggered Cycle V2 file was
+  changed by this slice.
+- Production review artifacts are
+  `/private/tmp/cycle-surface-matte-v1-os.png`,
+  `/private/tmp/cycle-surface-matte-v2-expanded-os.png`, and
+  `/private/tmp/cycle-v2-spy-detail.png`. GPU parity passes at 2/255. Seven
+  Cycle 1 loads and five Cycle 2 graph loads completed without a failed
+  command or crash; the existing startup, CoreMIDI, leak-detector, and Curve
+  assertions remain tracked in `ui-bugs.md`.
+
 ## Objective
 
 Move live Trimesh heatmap colouring and relief shading from per-cell CPU paint

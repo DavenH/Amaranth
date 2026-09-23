@@ -1,6 +1,7 @@
 #include <Binary/Gradients.h>
 #include <array>
 #include <cstdlib>
+#include <utility>
 #include <vector>
 
 #include "GLScalarSurfaceRenderer.h"
@@ -32,12 +33,10 @@ uniform float signedPalettePositions[9];
 uniform vec3 negativePearlTint;
 uniform vec3 neutralPearlTint;
 uniform vec3 positivePearlTint;
-uniform vec2 smallSampleTextureOffset;
-uniform vec2 smallSampleDomainStep;
-uniform vec2 largeSampleTextureOffset;
-uniform vec2 shadowOffset1;
-uniform vec2 shadowOffset2;
-uniform vec2 shadowOffset3;
+uniform vec2 textureStep;
+uniform vec2 textureToDomainScale;
+uniform vec4 hillshadeWeights;
+uniform vec3 obscuranceBiases;
 uniform vec3 lightDirection;
 uniform float surfaceAspectRatio;
 uniform float opacity;
@@ -47,22 +46,19 @@ uniform float ambientStrength;
 uniform float diffuseStrength;
 uniform float specularStrength;
 uniform float pearlTintStrength;
-uniform float shadowStrength;
-uniform float shadowStart;
-uniform float shadowSoftness;
-uniform float cavityStrength;
-uniform float curvatureThreshold;
-uniform float curvatureSoftness;
-uniform float valueScale;
-uniform float valueOffset;
+uniform float obscuranceStrength;
+uniform float obscuranceScale;
+uniform float exposureStrength;
+uniform float exposureScale;
+uniform float exposureBias;
 uniform int paletteKind;
 uniform int opacityPower;
 uniform int specularPower;
 
 varying vec2 surfaceTextureCoordinate;
 
-float scalarAt(vec2 coordinate) {
-    return clamp(texture2D(scalarTexture, coordinate).r * valueScale + valueOffset, 0.0, 1.0);
+vec4 heightScalesAt(vec2 coordinate) {
+    return texture2D(scalarTexture, coordinate);
 }
 
 vec3 paletteColour(float value) {
@@ -140,48 +136,57 @@ vec3 pearlColour(float value) {
 
 void main() {
     vec2 coordinate = surfaceTextureCoordinate;
-    float centre = scalarAt(coordinate);
-    float left = scalarAt(coordinate - vec2(0.0, smallSampleTextureOffset.y));
-    float right = scalarAt(coordinate + vec2(0.0, smallSampleTextureOffset.y));
-    float lower = scalarAt(coordinate - vec2(smallSampleTextureOffset.x, 0.0));
-    float upper = scalarAt(coordinate + vec2(smallSampleTextureOffset.x, 0.0));
-    vec2 gradient = vec2(
-            (right - left) / (2.0 * smallSampleDomainStep.y * surfaceAspectRatio),
-            (upper - lower) / (2.0 * smallSampleDomainStep.x));
-    float curvature = left + right + lower + upper - 4.0 * centre;
-    float largeCurvature = scalarAt(coordinate - vec2(0.0, largeSampleTextureOffset.y))
-            + scalarAt(coordinate + vec2(0.0, largeSampleTextureOffset.y))
-            + scalarAt(coordinate - vec2(largeSampleTextureOffset.x, 0.0))
-            + scalarAt(coordinate + vec2(largeSampleTextureOffset.x, 0.0))
-            - 4.0 * centre;
-    vec3 normal = normalize(vec3(-gradient * reliefScale, 1.0));
+    float leftCoordinate = coordinate.y < textureStep.y
+            ? coordinate.y : coordinate.y - textureStep.y;
+    float rightCoordinate = coordinate.y > 1.0 - textureStep.y
+            ? coordinate.y : coordinate.y + textureStep.y;
+    float lowerCoordinate = coordinate.x < textureStep.x
+            ? coordinate.x : coordinate.x - textureStep.x;
+    float upperCoordinate = coordinate.x > 1.0 - textureStep.x
+            ? coordinate.x : coordinate.x + textureStep.x;
+    vec4 centreScales = heightScalesAt(coordinate);
+    vec4 left = heightScalesAt(vec2(coordinate.x, leftCoordinate));
+    vec4 right = heightScalesAt(vec2(coordinate.x, rightCoordinate));
+    vec4 lower = heightScalesAt(vec2(lowerCoordinate, coordinate.y));
+    vec4 upper = heightScalesAt(vec2(upperCoordinate, coordinate.y));
+    float xDistance = (rightCoordinate - leftCoordinate)
+            * textureToDomainScale.y * surfaceAspectRatio;
+    float yDistance = (upperCoordinate - lowerCoordinate)
+            * textureToDomainScale.x;
+    vec4 gradientX = (right - left) / xDistance;
+    vec4 gradientY = (upper - lower) / yDistance;
     vec3 light = normalize(lightDirection);
-    float diffuse = max(dot(normal, light), 0.0);
     vec3 halfVector = normalize(light + vec3(0.0, 0.0, 1.0));
-    float specular = pow(max(dot(normal, halfVector), 0.0), float(specularPower));
-    float occlusion = max(0.0,
-            scalarAt(coordinate - shadowOffset1) - centre - shadowStart);
-    occlusion = max(occlusion,
-            scalarAt(coordinate - shadowOffset2) - centre - 2.0 * shadowStart);
-    occlusion = max(occlusion,
-            scalarAt(coordinate - shadowOffset3) - centre - 3.0 * shadowStart);
-    float shadow = smoothstep(0.0, shadowSoftness, occlusion);
-    float cavity = smoothstep(
-            curvatureThreshold,
-            curvatureThreshold + curvatureSoftness,
-            0.65 * curvature + 0.35 * largeCurvature);
-
+    vec3 normal0 = normalize(vec3(-vec2(gradientX.r, gradientY.r) * reliefScale, 1.0));
+    vec3 normal1 = normalize(vec3(-vec2(gradientX.g, gradientY.g) * reliefScale, 1.0));
+    vec3 normal2 = normalize(vec3(-vec2(gradientX.b, gradientY.b) * reliefScale, 1.0));
+    vec3 normal3 = normalize(vec3(-vec2(gradientX.a, gradientY.a) * reliefScale, 1.0));
+    vec4 diffuse = max(vec4(
+            dot(normal0, light),
+            dot(normal1, light),
+            dot(normal2, light),
+            dot(normal3, light)), 0.0);
+    float hillshade = dot(diffuse, hillshadeWeights);
+    float specular = pow(max(dot(normal2, halfVector), 0.0), float(specularPower));
+    vec3 cavity = max(
+            centreScales.gba - centreScales.rrr - obscuranceBiases,
+            vec3(0.0));
+    float obscurance = clamp(obscuranceScale * dot(cavity, hillshadeWeights.gba), 0.0, 1.0);
+    float exposure = clamp(exposureScale
+            * max(centreScales.r - centreScales.b - exposureBias, 0.0), 0.0, 1.0);
+    float centre = centreScales.r;
     vec3 base = floor(paletteColour(centre) * 255.0 + 0.5) / 255.0;
     vec3 colour = srgbToLinear(base);
-    float semanticMagnitude = smoothstep(0.0, 1.0, abs(centre - 0.5) * 2.0);
-    float illuminationFloor = mix(0.46, 0.18, semanticMagnitude);
-    float illumination = max(illuminationFloor,
-            ambientStrength + diffuseStrength * diffuse
-                    - shadowStrength * shadow - cavityStrength * cavity);
+    float illumination = max(0.16,
+            ambientStrength + diffuseStrength * hillshade
+                    - obscuranceStrength * obscurance
+                    + exposureStrength * exposure);
     colour *= illumination;
     vec3 highlight = mix(srgbToLinear(base), srgbToLinear(pearlColour(centre)),
             pearlTintStrength);
-    colour = mix(colour, highlight, clamp(specularStrength * specular, 0.0, 1.0));
+    float highlightAmount = specularStrength * specular
+            + exposureStrength * pearlTintStrength * exposure;
+    colour = mix(colour, highlight, clamp(highlightAmount, 0.0, 1.0));
     float opacityValue = opacityPower == 2 ? centre * centre : centre;
     float surfaceOpacity = opacityValueScale > 0.0
             ? min(opacity, opacityValueScale * opacityValue)
@@ -298,27 +303,23 @@ void drawValidationQuad() {
 
 int maximumValidationError(
         const juce::PixelARGB* pixels,
-        const float* values,
-        int columns,
-        int rows,
+        const ScalarSurfaceHeightScales& scales,
         const ScalarSurfaceMaterial& material,
         float surfaceAspectRatio) {
     int maximumError = 0;
-    for (int column = 0; column < columns; ++column) {
-        for (int row = 0; row < rows; ++row) {
-            const int index = column * rows + row;
+    for (int column = 0; column < scales.columns; ++column) {
+        for (int row = 0; row < scales.rows; ++row) {
+            const int index = column * scales.rows + row;
             const juce::Colour expected = ScalarSurfaceMaterialEvaluator::colourFor(
-                    values[index],
+                    scales.packedValues[(size_t) index * 4],
                     ScalarSurfaceMaterialEvaluator::derivativesAt(
-                            values,
-                            columns,
-                            rows,
+                            scales,
                             column,
                             row,
                             material,
                             surfaceAspectRatio),
                     material);
-            const juce::PixelARGB& actual = pixels[row * columns + column];
+            const juce::PixelARGB& actual = pixels[row * scales.columns + column];
             maximumError = juce::jmax(
                     maximumError,
                     channelError(actual.getRed(), expected.getRed()));
@@ -415,6 +416,7 @@ void GLScalarSurfaceRenderer::clearResources() {
     }
 
     uploadState.clear();
+    packedHeightScales.clear();
     program = 0;
     texture = 0;
     magnitudePaletteTexture = 0;
@@ -535,6 +537,19 @@ bool GLScalarSurfaceRenderer::ensureTexture(const ScalarSurfaceRenderData& data)
 }
 
 bool GLScalarSurfaceRenderer::uploadTexture(const ScalarSurfaceRenderData& data) {
+    ScalarSurfaceHeightScales scales = ScalarSurfaceMaterialEvaluator::createHeightScales(
+            data.values,
+            data.valueCount,
+            data.columns,
+            data.rows,
+            data.material,
+            data.valueScale,
+            data.valueOffset);
+    if (!scales.isValid()) {
+        return false;
+    }
+    packedHeightScales = std::move(scales.packedValues);
+
     gl::glBindTexture(gl::GL_TEXTURE_2D, texture);
     gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_MIN_FILTER, gl::GL_LINEAR);
     gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_MAG_FILTER, gl::GL_LINEAR);
@@ -546,13 +561,13 @@ bool GLScalarSurfaceRenderer::uploadTexture(const ScalarSurfaceRenderData& data)
     gl::glTexImage2D(
             gl::GL_TEXTURE_2D,
             0,
-            gl::GL_R32F,
+            gl::GL_RGBA32F,
             data.rows,
             data.columns,
             0,
-            gl::GL_RED,
+            gl::GL_RGBA,
             gl::GL_FLOAT,
-            data.values);
+            packedHeightScales.data());
     usingFloatTexture = gl::glGetError() == gl::GL_NO_ERROR;
 
     if (!usingFloatTexture) {
@@ -560,13 +575,13 @@ bool GLScalarSurfaceRenderer::uploadTexture(const ScalarSurfaceRenderData& data)
         gl::glTexImage2D(
                 gl::GL_TEXTURE_2D,
                 0,
-                gl::GL_LUMINANCE,
+                gl::GL_RGBA,
                 data.rows,
                 data.columns,
                 0,
-                gl::GL_LUMINANCE,
+                gl::GL_RGBA,
                 gl::GL_FLOAT,
-                data.values);
+                packedHeightScales.data());
         usingFloatTexture = gl::glGetError() == gl::GL_NO_ERROR;
     }
 
@@ -629,23 +644,26 @@ void GLScalarSurfaceRenderer::validateGpuParity() {
     gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_MAG_FILTER, gl::GL_LINEAR);
     gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_WRAP_S, gl::GL_CLAMP_TO_EDGE);
     gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_WRAP_T, gl::GL_CLAMP_TO_EDGE);
-    gl::glTexImage2D(
-            gl::GL_TEXTURE_2D,
-            0,
-            gl::GL_LUMINANCE,
-            rows,
-            columns,
-            0,
-            gl::GL_LUMINANCE,
-            gl::GL_FLOAT,
-            values.data());
-
     savedState.prepare(columns, rows, program);
 
     int maximumError = 0;
     bool readSucceeded = true;
     std::array<juce::PixelARGB, columns * rows> pixels;
     for (const ScalarSurfaceMaterial& material: materials) {
+        const ScalarSurfaceHeightScales scales =
+                ScalarSurfaceMaterialEvaluator::createHeightScales(
+                        values.data(), (int) values.size(), columns, rows, material);
+        gl::glBindTexture(gl::GL_TEXTURE_2D, validationTexture);
+        gl::glTexImage2D(
+                gl::GL_TEXTURE_2D,
+                0,
+                gl::GL_RGBA32F,
+                rows,
+                columns,
+                0,
+                gl::GL_RGBA,
+                gl::GL_FLOAT,
+                scales.packedValues.data());
         framebuffer.makeCurrentAndClear();
         gl::glBindTexture(gl::GL_TEXTURE_2D, validationTexture);
 
@@ -666,7 +684,7 @@ void GLScalarSurfaceRenderer::validateGpuParity() {
         maximumError = juce::jmax(
                 maximumError,
                 maximumValidationError(
-                        pixels.data(), values.data(), columns, rows, material, 1.f));
+                        pixels.data(), scales, material, 1.f));
     }
 
     gl::glDeleteTextures(1, &validationTexture);
@@ -683,13 +701,10 @@ void GLScalarSurfaceRenderer::setMaterialUniforms(const ScalarSurfaceRenderData&
     gl::glUniform1i(gl::glGetUniformLocation(program, "scalarTexture"), 0);
     gl::glUniform1i(gl::glGetUniformLocation(program, "magnitudePaletteTexture"), 1);
     ScalarSurfaceUniforms::setPalette(program, material);
-    ScalarSurfaceUniforms::setSampling(program, data, material);
-    ScalarSurfaceUniforms::setShadows(program, data, material);
+    ScalarSurfaceUniforms::setSampling(program, data);
     ScalarSurfaceUniforms::setLighting(program, data, material);
     ScalarSurfaceUniforms::setFloat(program, "opacity", material.opacity);
     ScalarSurfaceUniforms::setFloat(program, "opacityValueScale", material.opacityValueScale);
-    ScalarSurfaceUniforms::setFloat(program, "valueScale", data.valueScale);
-    ScalarSurfaceUniforms::setFloat(program, "valueOffset", data.valueOffset);
     gl::glUniform1i(
             gl::glGetUniformLocation(program, "paletteKind"),
             (int) material.palette);

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <vector>
 
 #include "JuceHeader.h"
 
@@ -27,34 +28,45 @@ struct ScalarSurfaceMaterial {
     juce::Colour negativePearlTint;
     juce::Colour neutralPearlTint;
     juce::Colour positivePearlTint;
+    std::array<float, 3> blurRadii { 0.003f, 0.012f, 0.04f };
+    std::array<float, 4> hillshadeWeights { 0.15f, 0.25f, 0.35f, 0.25f };
+    std::array<float, 3> obscuranceBiases { 0.002f, 0.006f, 0.012f };
     float opacity { 1.f };
     float opacityValueScale {};
-    float normalSampleRadius { 0.012f };
-    float largeSampleRadius { 0.045f };
-    float reliefScale { 1.8f };
-    float ambientStrength { 0.58f };
-    float diffuseStrength { 0.52f };
-    float specularStrength { 0.20f };
-    float pearlTintStrength { 0.72f };
-    float shadowStrength { 0.24f };
-    float shadowStart { 0.006f };
-    float shadowSoftness { 0.12f };
-    float cavityStrength { 0.12f };
-    float curvatureThreshold { 0.008f };
-    float curvatureSoftness { 0.08f };
+    float reliefScale { 1.15f };
+    float ambientStrength { 0.52f };
+    float diffuseStrength { 0.54f };
+    float specularStrength { 0.045f };
+    float pearlTintStrength { 0.16f };
+    float obscuranceStrength { 0.24f };
+    float obscuranceScale { 4.f };
+    float exposureStrength { 0.08f };
+    float exposureScale { 2.f };
+    float exposureBias { 0.006f };
     float lightX { -0.46f };
     float lightY { -0.54f };
     float lightZ { 0.70f };
-    int specularPower { 8 };
+    int specularPower { 24 };
     int opacityPower { 1 };
 };
 
 struct ScalarSurfaceDerivatives {
-    float slopeX {};
-    float slopeY {};
-    float curvature {};
-    float largeCurvature {};
-    float horizonShadow {};
+    std::array<float, 4> slopeX {};
+    std::array<float, 4> slopeY {};
+    float obscurance {};
+    float exposure {};
+};
+
+struct ScalarSurfaceHeightScales {
+    std::vector<float> packedValues;
+    int columns {};
+    int rows {};
+
+    bool isValid() const {
+        return columns >= 2
+                && rows >= 2
+                && packedValues.size() >= (size_t) columns * (size_t) rows * 4;
+    }
 };
 
 struct ScalarSurfaceRenderData {
@@ -80,6 +92,14 @@ struct ScalarSurfaceRenderData {
 
 class ScalarSurfaceMaterialEvaluator {
 public:
+    static ScalarSurfaceHeightScales createHeightScales(
+            const float* values,
+            int valueCount,
+            int columns,
+            int rows,
+            const ScalarSurfaceMaterial& material,
+            float valueScale = 1.f,
+            float valueOffset = 0.f);
     static ScalarSurfaceDerivatives derivativesAt(
             const float* values,
             int columns,
@@ -90,6 +110,12 @@ public:
             const float* values,
             int columns,
             int rows,
+            int column,
+            int row,
+            const ScalarSurfaceMaterial& material,
+            float surfaceAspectRatio);
+    static ScalarSurfaceDerivatives derivativesAt(
+            const ScalarSurfaceHeightScales& scales,
             int column,
             int row,
             const ScalarSurfaceMaterial& material,

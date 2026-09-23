@@ -510,6 +510,17 @@ assertion in `TestTrimeshNodeDsp.cpp` expected 22 control regions and observed
 
 Current status: open; reconcile the control layout contract and its assertion.
 
+## P3: Hosted Trimesh point-drag test retains two selected vertices
+
+On 2026-09-22, the broad `[nodes][trimesh]` test filter failed in
+`Hosted Trimesh point drag defers mesh replacement across publications`: the
+post-gesture selection assertion expected one selected vertex and observed
+two. This occurred while verifying the scalar-surface material; that change
+does not touch Trimesh selection or graph publication. The focused surface
+renderer test passed in the same build.
+
+Current status: open; inspect selection reset across the hosted drag sequence.
+
 ## P3: Cycle 1 FileManager assertion during a mismatched automation launch
 
 On 2026-09-18, the Cycle V2 guide-gain audit fixture was accidentally run

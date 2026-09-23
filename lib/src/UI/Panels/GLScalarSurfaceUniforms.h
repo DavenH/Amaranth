@@ -1,8 +1,6 @@
 #pragma once
 
 #include <array>
-#include <cmath>
-
 #include "JuceHeader.h"
 
 #include "ScalarSurfaceMaterial.h"
@@ -48,54 +46,17 @@ inline void setPalette(unsigned int program, const ScalarSurfaceMaterial& materi
             material.signedPalettePositions.data());
 }
 
-inline int pixelRadius(float radius, int dimension) {
-    const int span = juce::jmax(1, dimension - 1);
-    return juce::jmax(1, juce::roundToInt(radius * (float) span));
-}
-
 inline void setSampling(
         unsigned int program,
-        const ScalarSurfaceRenderData& data,
-        const ScalarSurfaceMaterial& material) {
-    const int smallRow = pixelRadius(material.normalSampleRadius, data.rows);
-    const int smallColumn = pixelRadius(material.normalSampleRadius, data.columns);
-    const int largeRow = pixelRadius(material.largeSampleRadius, data.rows);
-    const int largeColumn = pixelRadius(material.largeSampleRadius, data.columns);
+        const ScalarSurfaceRenderData& data) {
     gl::glUniform2f(
-            gl::glGetUniformLocation(program, "smallSampleTextureOffset"),
-            (float) smallRow / (float) data.rows,
-            (float) smallColumn / (float) data.columns);
+            gl::glGetUniformLocation(program, "textureStep"),
+            1.f / (float) data.rows,
+            1.f / (float) data.columns);
     gl::glUniform2f(
-            gl::glGetUniformLocation(program, "smallSampleDomainStep"),
-            (float) smallRow / (float) juce::jmax(1, data.rows - 1),
-            (float) smallColumn / (float) juce::jmax(1, data.columns - 1));
-    gl::glUniform2f(
-            gl::glGetUniformLocation(program, "largeSampleTextureOffset"),
-            (float) largeRow / (float) data.rows,
-            (float) largeColumn / (float) data.columns);
-}
-
-inline void setShadows(
-        unsigned int program,
-        const ScalarSurfaceRenderData& data,
-        const ScalarSurfaceMaterial& material) {
-    const float lightLength = std::sqrt(
-            material.lightX * material.lightX + material.lightY * material.lightY);
-    const float lightX = lightLength > 0.f ? material.lightX / lightLength : 0.f;
-    const float lightY = lightLength > 0.f ? material.lightY / lightLength : 0.f;
-    const auto setOffset = [&](const char* name, float radius) {
-        const float columnOffset = (float) juce::roundToInt(
-                lightX * radius * (float) juce::jmax(1, data.columns - 1));
-        const float rowOffset = (float) juce::roundToInt(
-                lightY * radius * (float) juce::jmax(1, data.rows - 1));
-        gl::glUniform2f(
-                gl::glGetUniformLocation(program, name),
-                rowOffset / (float) data.rows,
-                columnOffset / (float) data.columns);
-    };
-    setOffset("shadowOffset1", material.normalSampleRadius * 2.f);
-    setOffset("shadowOffset2", material.largeSampleRadius);
-    setOffset("shadowOffset3", material.largeSampleRadius * 2.f);
+            gl::glGetUniformLocation(program, "textureToDomainScale"),
+            (float) data.rows / (float) juce::jmax(1, data.rows - 1),
+            (float) data.columns / (float) juce::jmax(1, data.columns - 1));
 }
 
 inline void setLighting(
@@ -116,12 +77,19 @@ inline void setLighting(
     setFloat(program, "diffuseStrength", material.diffuseStrength);
     setFloat(program, "specularStrength", material.specularStrength);
     setFloat(program, "pearlTintStrength", material.pearlTintStrength);
-    setFloat(program, "shadowStrength", material.shadowStrength);
-    setFloat(program, "shadowStart", material.shadowStart);
-    setFloat(program, "shadowSoftness", material.shadowSoftness);
-    setFloat(program, "cavityStrength", material.cavityStrength);
-    setFloat(program, "curvatureThreshold", material.curvatureThreshold);
-    setFloat(program, "curvatureSoftness", material.curvatureSoftness);
+    setFloat(program, "obscuranceStrength", material.obscuranceStrength);
+    setFloat(program, "obscuranceScale", material.obscuranceScale);
+    setFloat(program, "exposureStrength", material.exposureStrength);
+    setFloat(program, "exposureScale", material.exposureScale);
+    setFloat(program, "exposureBias", material.exposureBias);
+    gl::glUniform4fv(
+            gl::glGetUniformLocation(program, "hillshadeWeights"),
+            1,
+            material.hillshadeWeights.data());
+    gl::glUniform3fv(
+            gl::glGetUniformLocation(program, "obscuranceBiases"),
+            1,
+            material.obscuranceBiases.data());
 }
 
 }
