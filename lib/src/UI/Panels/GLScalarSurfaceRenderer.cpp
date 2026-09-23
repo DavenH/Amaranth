@@ -33,8 +33,12 @@ uniform float signedPalettePositions[9];
 uniform vec3 negativePearlTint;
 uniform vec3 neutralPearlTint;
 uniform vec3 positivePearlTint;
+uniform vec3 negativeEdgeTint;
+uniform vec3 positiveEdgeTint;
 uniform vec2 textureStep;
 uniform vec2 textureToDomainScale;
+uniform vec2 detailBoundaryStart;
+uniform vec2 detailBoundaryEnd;
 uniform vec4 hillshadeWeights;
 uniform vec3 obscuranceBiases;
 uniform vec3 lightDirection;
@@ -51,7 +55,17 @@ uniform float obscuranceScale;
 uniform float exposureStrength;
 uniform float exposureScale;
 uniform float exposureBias;
+uniform float detailReliefScale;
+uniform float embossLimit;
+uniform float embossStrength;
+uniform float detailGradientLow;
+uniform float detailGradientHigh;
+uniform float detailEnergyLow;
+uniform float detailEnergyHigh;
+uniform float edgeTintStrength;
+uniform float neutralAccentWidth;
 uniform int paletteKind;
+uniform int reliefKind;
 uniform int opacityPower;
 uniform int specularPower;
 
@@ -70,42 +84,34 @@ vec3 paletteColour(float value) {
     if (paletteKind == 0) {
         if (value < signedPalettePositions[1]) {
             return mix(signedPalette[0], signedPalette[1],
-                    (value - signedPalettePositions[0])
-                            / (signedPalettePositions[1] - signedPalettePositions[0]));
+                    smoothstep(signedPalettePositions[0], signedPalettePositions[1], value));
         }
         if (value < signedPalettePositions[2]) {
             return mix(signedPalette[1], signedPalette[2],
-                    (value - signedPalettePositions[1])
-                            / (signedPalettePositions[2] - signedPalettePositions[1]));
+                    smoothstep(signedPalettePositions[1], signedPalettePositions[2], value));
         }
         if (value < signedPalettePositions[3]) {
             return mix(signedPalette[2], signedPalette[3],
-                    (value - signedPalettePositions[2])
-                            / (signedPalettePositions[3] - signedPalettePositions[2]));
+                    smoothstep(signedPalettePositions[2], signedPalettePositions[3], value));
         }
         if (value < signedPalettePositions[4]) {
             return mix(signedPalette[3], signedPalette[4],
-                    (value - signedPalettePositions[3])
-                            / (signedPalettePositions[4] - signedPalettePositions[3]));
+                    smoothstep(signedPalettePositions[3], signedPalettePositions[4], value));
         }
         if (value < signedPalettePositions[5]) {
             return mix(signedPalette[4], signedPalette[5],
-                    (value - signedPalettePositions[4])
-                            / (signedPalettePositions[5] - signedPalettePositions[4]));
+                    smoothstep(signedPalettePositions[4], signedPalettePositions[5], value));
         }
         if (value < signedPalettePositions[6]) {
             return mix(signedPalette[5], signedPalette[6],
-                    (value - signedPalettePositions[5])
-                            / (signedPalettePositions[6] - signedPalettePositions[5]));
+                    smoothstep(signedPalettePositions[5], signedPalettePositions[6], value));
         }
         if (value < signedPalettePositions[7]) {
             return mix(signedPalette[6], signedPalette[7],
-                    (value - signedPalettePositions[6])
-                            / (signedPalettePositions[7] - signedPalettePositions[6]));
+                    smoothstep(signedPalettePositions[6], signedPalettePositions[7], value));
         }
         return mix(signedPalette[7], signedPalette[8],
-                (value - signedPalettePositions[7])
-                        / (signedPalettePositions[8] - signedPalettePositions[7]));
+                smoothstep(signedPalettePositions[7], signedPalettePositions[8], value));
     }
 
     float magnitude = value < 0.5 ? 1.0 - 2.0 * value : 2.0 * value - 1.0;
@@ -156,6 +162,53 @@ void main() {
     vec4 gradientX = (right - left) / xDistance;
     vec4 gradientY = (upper - lower) / yDistance;
     vec3 light = normalize(lightDirection);
+    float centre = centreScales.r;
+    vec3 base = floor(paletteColour(centre) * 255.0 + 0.5) / 255.0;
+    float opacityValue = opacityPower == 2 ? centre * centre : centre;
+    float surfaceOpacity = opacityValueScale > 0.0
+            ? min(opacity, opacityValueScale * opacityValue)
+            : opacity;
+
+    if (reliefKind == 0) {
+        vec2 detailGradient = vec2(
+                gradientX.r - gradientX.g,
+                gradientY.r - gradientY.g);
+        float boundaryX = smoothstep(
+                detailBoundaryStart.x,
+                detailBoundaryEnd.x,
+                min(coordinate.x, 1.0 - coordinate.x));
+        float boundaryY = smoothstep(
+                detailBoundaryStart.y,
+                detailBoundaryEnd.y,
+                min(coordinate.y, 1.0 - coordinate.y));
+        float boundaryFade = min(boundaryX, boundaryY);
+        vec3 detailNormal = normalize(vec3(-detailGradient * detailReliefScale, 1.0));
+        float emboss = clamp(
+                (dot(detailNormal, light) - light.z) / max(embossLimit, 0.000001),
+                -1.0,
+                1.0) * boundaryFade;
+        vec3 colour = srgbToLinear(base) * (1.0 + embossStrength * emboss);
+        float gradientEnergy = dot(detailGradient, detailGradient);
+        float edge = smoothstep(
+                detailGradientLow * detailGradientLow,
+                detailGradientHigh * detailGradientHigh,
+                gradientEnergy);
+        float detailGate = smoothstep(
+                detailEnergyLow,
+                detailEnergyHigh,
+                abs(centreScales.r - centreScales.g));
+        float semanticMagnitude = smoothstep(
+                neutralAccentWidth,
+                1.0,
+                abs(2.0 * centre - 1.0));
+        float edgeAmount = edge * detailGate * semanticMagnitude
+                * edgeTintStrength * boundaryFade;
+        vec3 edgeTint = centre < 0.5 ? negativeEdgeTint : positiveEdgeTint;
+        colour = mix(colour, srgbToLinear(edgeTint), edgeAmount);
+        gl_FragColor = vec4(linearToSrgb(colour), surfaceOpacity);
+        return;
+    }
+
     vec3 halfVector = normalize(light + vec3(0.0, 0.0, 1.0));
     vec3 normal0 = normalize(vec3(-vec2(gradientX.r, gradientY.r) * reliefScale, 1.0));
     vec3 normal1 = normalize(vec3(-vec2(gradientX.g, gradientY.g) * reliefScale, 1.0));
@@ -174,8 +227,6 @@ void main() {
     float obscurance = clamp(obscuranceScale * dot(cavity, hillshadeWeights.gba), 0.0, 1.0);
     float exposure = clamp(exposureScale
             * max(centreScales.r - centreScales.b - exposureBias, 0.0), 0.0, 1.0);
-    float centre = centreScales.r;
-    vec3 base = floor(paletteColour(centre) * 255.0 + 0.5) / 255.0;
     vec3 colour = srgbToLinear(base);
     float illumination = max(0.16,
             ambientStrength + diffuseStrength * hillshade
@@ -187,10 +238,6 @@ void main() {
     float highlightAmount = specularStrength * specular
             + exposureStrength * pearlTintStrength * exposure;
     colour = mix(colour, highlight, clamp(highlightAmount, 0.0, 1.0));
-    float opacityValue = opacityPower == 2 ? centre * centre : centre;
-    float surfaceOpacity = opacityValueScale > 0.0
-            ? min(opacity, opacityValueScale * opacityValue)
-            : opacity;
     gl_FragColor = vec4(linearToSrgb(colour), surfaceOpacity);
 }
 )glsl";
@@ -701,13 +748,16 @@ void GLScalarSurfaceRenderer::setMaterialUniforms(const ScalarSurfaceRenderData&
     gl::glUniform1i(gl::glGetUniformLocation(program, "scalarTexture"), 0);
     gl::glUniform1i(gl::glGetUniformLocation(program, "magnitudePaletteTexture"), 1);
     ScalarSurfaceUniforms::setPalette(program, material);
-    ScalarSurfaceUniforms::setSampling(program, data);
+    ScalarSurfaceUniforms::setSampling(program, data, material);
     ScalarSurfaceUniforms::setLighting(program, data, material);
     ScalarSurfaceUniforms::setFloat(program, "opacity", material.opacity);
     ScalarSurfaceUniforms::setFloat(program, "opacityValueScale", material.opacityValueScale);
     gl::glUniform1i(
             gl::glGetUniformLocation(program, "paletteKind"),
             (int) material.palette);
+    gl::glUniform1i(
+            gl::glGetUniformLocation(program, "reliefKind"),
+            (int) material.relief);
     gl::glUniform1i(gl::glGetUniformLocation(program, "opacityPower"), material.opacityPower);
     gl::glUniform1i(gl::glGetUniformLocation(program, "specularPower"), material.specularPower);
 }

@@ -12,6 +12,11 @@ enum class ScalarSurfacePalette {
     BipolarPhase
 };
 
+enum class ScalarSurfaceRelief {
+    MicroEmboss,
+    MultiscaleTerrain
+};
+
 struct ScalarSurfaceMaterial {
     static constexpr int signedPaletteStopCount = 9;
 
@@ -28,7 +33,9 @@ struct ScalarSurfaceMaterial {
     juce::Colour negativePearlTint;
     juce::Colour neutralPearlTint;
     juce::Colour positivePearlTint;
-    std::array<float, 3> blurRadii { 0.003f, 0.012f, 0.04f };
+    juce::Colour negativeEdgeTint;
+    juce::Colour positiveEdgeTint;
+    std::array<float, 3> blurRadii { 0.004f, 0.012f, 0.04f };
     std::array<float, 4> hillshadeWeights { 0.15f, 0.25f, 0.35f, 0.25f };
     std::array<float, 3> obscuranceBiases { 0.002f, 0.006f, 0.012f };
     float opacity { 1.f };
@@ -43,11 +50,21 @@ struct ScalarSurfaceMaterial {
     float exposureStrength { 0.08f };
     float exposureScale { 2.f };
     float exposureBias { 0.006f };
+    float detailReliefScale { 0.25f };
+    float embossLimit { 0.08f };
+    float embossStrength { 0.06f };
+    float detailGradientLow { 0.004f };
+    float detailGradientHigh { 0.08f };
+    float detailEnergyLow { 0.0015f };
+    float detailEnergyHigh { 0.025f };
+    float edgeTintStrength { 0.04f };
+    float neutralAccentWidth { 0.12f };
     float lightX { -0.46f };
     float lightY { -0.54f };
     float lightZ { 0.70f };
     int specularPower { 24 };
     int opacityPower { 1 };
+    ScalarSurfaceRelief relief { ScalarSurfaceRelief::MultiscaleTerrain };
 };
 
 struct ScalarSurfaceDerivatives {
@@ -55,6 +72,10 @@ struct ScalarSurfaceDerivatives {
     std::array<float, 4> slopeY {};
     float obscurance {};
     float exposure {};
+    float detailSlopeX {};
+    float detailSlopeY {};
+    float detailEnergy {};
+    float boundaryFade { 1.f };
 };
 
 struct ScalarSurfaceHeightScales {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+
 #include "JuceHeader.h"
 
 #include "ScalarSurfaceMaterial.h"
@@ -28,6 +29,8 @@ inline void setPalette(unsigned int program, const ScalarSurfaceMaterial& materi
     setColour(program, "negativePearlTint", material.negativePearlTint);
     setColour(program, "neutralPearlTint", material.neutralPearlTint);
     setColour(program, "positivePearlTint", material.positivePearlTint);
+    setColour(program, "negativeEdgeTint", material.negativeEdgeTint);
+    setColour(program, "positiveEdgeTint", material.positiveEdgeTint);
 
     std::array<float, ScalarSurfaceMaterial::signedPaletteStopCount * 3> palette;
     for (int index = 0; index < ScalarSurfaceMaterial::signedPaletteStopCount; ++index) {
@@ -48,7 +51,8 @@ inline void setPalette(unsigned int program, const ScalarSurfaceMaterial& materi
 
 inline void setSampling(
         unsigned int program,
-        const ScalarSurfaceRenderData& data) {
+        const ScalarSurfaceRenderData& data,
+        const ScalarSurfaceMaterial& material) {
     gl::glUniform2f(
             gl::glGetUniformLocation(program, "textureStep"),
             1.f / (float) data.rows,
@@ -57,6 +61,21 @@ inline void setSampling(
             gl::glGetUniformLocation(program, "textureToDomainScale"),
             (float) data.rows / (float) juce::jmax(1, data.rows - 1),
             (float) data.columns / (float) juce::jmax(1, data.columns - 1));
+    const auto radius = [&material](int dimension) {
+        const int scaled = juce::roundToInt(
+                material.blurRadii[0] * (float) juce::jmax(1, dimension - 1));
+        return juce::jlimit(1, juce::jmax(1, dimension - 1), juce::jlimit(2, 4, scaled));
+    };
+    const int rowRadius = radius(data.rows);
+    const int columnRadius = radius(data.columns);
+    gl::glUniform2f(
+            gl::glGetUniformLocation(program, "detailBoundaryStart"),
+            ((float) rowRadius + 0.5f) / (float) data.rows,
+            ((float) columnRadius + 0.5f) / (float) data.columns);
+    gl::glUniform2f(
+            gl::glGetUniformLocation(program, "detailBoundaryEnd"),
+            ((float) rowRadius + 2.5f) / (float) data.rows,
+            ((float) columnRadius + 2.5f) / (float) data.columns);
 }
 
 inline void setLighting(
@@ -82,6 +101,15 @@ inline void setLighting(
     setFloat(program, "exposureStrength", material.exposureStrength);
     setFloat(program, "exposureScale", material.exposureScale);
     setFloat(program, "exposureBias", material.exposureBias);
+    setFloat(program, "detailReliefScale", material.detailReliefScale);
+    setFloat(program, "embossLimit", material.embossLimit);
+    setFloat(program, "embossStrength", material.embossStrength);
+    setFloat(program, "detailGradientLow", material.detailGradientLow);
+    setFloat(program, "detailGradientHigh", material.detailGradientHigh);
+    setFloat(program, "detailEnergyLow", material.detailEnergyLow);
+    setFloat(program, "detailEnergyHigh", material.detailEnergyHigh);
+    setFloat(program, "edgeTintStrength", material.edgeTintStrength);
+    setFloat(program, "neutralAccentWidth", material.neutralAccentWidth);
     gl::glUniform4fv(
             gl::glGetUniformLocation(program, "hillshadeWeights"),
             1,

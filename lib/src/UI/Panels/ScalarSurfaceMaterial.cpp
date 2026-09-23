@@ -80,7 +80,8 @@ juce::Colour signedAmplitudeColour(float value, const ScalarSurfaceMaterial& mat
         const float lower = material.signedPalettePositions[(size_t) index];
         const float upper = material.signedPalettePositions[(size_t) index + 1];
         if (unit <= upper) {
-            const float amount = (unit - lower) / juce::jmax(0.000001f, upper - lower);
+            const float amount = smoothUnit(
+                    (unit - lower) / juce::jmax(0.000001f, upper - lower));
             return material.signedPaletteStops[(size_t) index].interpolatedWith(
                     material.signedPaletteStops[(size_t) index + 1],
                     juce::jlimit(0.f, 1.f, amount));
@@ -131,6 +132,10 @@ LinearColour pearlColour(float value, const ScalarSurfaceMaterial& material) {
             toLinear(material.neutralPearlTint),
             toLinear(unit < 0.5f ? material.negativePearlTint : material.positivePearlTint),
             magnitude);
+}
+
+LinearColour edgeColour(float value, const ScalarSurfaceMaterial& material) {
+    return toLinear(value < 0.5f ? material.negativeEdgeTint : material.positiveEdgeTint);
 }
 
 struct LightGeometry {
@@ -205,19 +210,26 @@ void blurRows(
         int columns,
         int rows,
         int radius) {
-    const float scale = 1.f / (float) (2 * radius + 1);
     for (int column = 0; column < columns; ++column) {
         const int offset = column * rows;
         float sum = 0.f;
-        for (int tap = -radius; tap <= radius; ++tap) {
-            sum += source[(size_t) offset + (size_t) juce::jlimit(0, rows - 1, tap)];
+        const int initialEnd = juce::jmin(rows - 1, radius);
+        for (int tap = 0; tap <= initialEnd; ++tap) {
+            sum += source[(size_t) offset + (size_t) tap];
         }
+        int sampleCount = initialEnd + 1;
         for (int row = 0; row < rows; ++row) {
-            destination[(size_t) offset + (size_t) row] = sum * scale;
-            const int outgoing = juce::jlimit(0, rows - 1, row - radius);
-            const int incoming = juce::jlimit(0, rows - 1, row + radius + 1);
-            sum += source[(size_t) offset + (size_t) incoming]
-                    - source[(size_t) offset + (size_t) outgoing];
+            destination[(size_t) offset + (size_t) row] = sum / (float) sampleCount;
+            const int outgoing = row - radius;
+            const int incoming = row + radius + 1;
+            if (outgoing >= 0) {
+                sum -= source[(size_t) offset + (size_t) outgoing];
+                --sampleCount;
+            }
+            if (incoming < rows) {
+                sum += source[(size_t) offset + (size_t) incoming];
+                ++sampleCount;
+            }
         }
     }
 }
@@ -228,18 +240,25 @@ void blurColumns(
         int columns,
         int rows,
         int radius) {
-    const float scale = 1.f / (float) (2 * radius + 1);
     for (int row = 0; row < rows; ++row) {
         float sum = 0.f;
-        for (int tap = -radius; tap <= radius; ++tap) {
-            sum += source[(size_t) juce::jlimit(0, columns - 1, tap) * rows + row];
+        const int initialEnd = juce::jmin(columns - 1, radius);
+        for (int tap = 0; tap <= initialEnd; ++tap) {
+            sum += source[(size_t) tap * rows + row];
         }
+        int sampleCount = initialEnd + 1;
         for (int column = 0; column < columns; ++column) {
-            destination[(size_t) column * rows + row] = sum * scale;
-            const int outgoing = juce::jlimit(0, columns - 1, column - radius);
-            const int incoming = juce::jlimit(0, columns - 1, column + radius + 1);
-            sum += source[(size_t) incoming * rows + row]
-                    - source[(size_t) outgoing * rows + row];
+            destination[(size_t) column * rows + row] = sum / (float) sampleCount;
+            const int outgoing = column - radius;
+            const int incoming = column + radius + 1;
+            if (outgoing >= 0) {
+                sum -= source[(size_t) outgoing * rows + row];
+                --sampleCount;
+            }
+            if (incoming < columns) {
+                sum += source[(size_t) incoming * rows + row];
+                ++sampleCount;
+            }
         }
     }
 }
@@ -291,7 +310,10 @@ ScalarSurfaceDerivatives derivativesFor(
             / (float) (scales.rows - 1);
 
     ScalarSurfaceDerivatives result;
-    for (int scale = 0; scale < 4; ++scale) {
+    const int derivativeScaleCount = material.relief == ScalarSurfaceRelief::MicroEmboss
+            ? 2
+            : 4;
+    for (int scale = 0; scale < derivativeScaleCount; ++scale) {
         result.slopeX[(size_t) scale] = (
                 heightAt(scales, rightColumn, row, scale)
                 - heightAt(scales, leftColumn, row, scale)) / xDistance;
@@ -301,6 +323,23 @@ ScalarSurfaceDerivatives derivativesFor(
     }
 
     const float original = heightAt(scales, column, row, 0);
+    if (material.relief == ScalarSurfaceRelief::MicroEmboss) {
+        result.detailSlopeX = result.slopeX[0] - result.slopeX[1];
+        result.detailSlopeY = result.slopeY[0] - result.slopeY[1];
+        const float detail = original - heightAt(scales, column, row, 1);
+        result.detailEnergy = detail < 0.f ? -detail : detail;
+        const int columnRadius = boundedBlurRadius(
+                material.blurRadii[0], scales.columns, 2, 4);
+        const int rowRadius = boundedBlurRadius(material.blurRadii[0], scales.rows, 2, 4);
+        const int columnDistance = juce::jmin(column, scales.columns - 1 - column);
+        const int rowDistance = juce::jmin(row, scales.rows - 1 - row);
+        const float columnFade = smoothUnit(
+                (float) (columnDistance - columnRadius) * 0.5f);
+        const float rowFade = smoothUnit((float) (rowDistance - rowRadius) * 0.5f);
+        result.boundaryFade = juce::jmin(columnFade, rowFade);
+        return result;
+    }
+
     float obscurance = 0.f;
     for (int scale = 1; scale < 4; ++scale) {
         const float cavity = heightAt(scales, column, row, scale)
@@ -318,12 +357,78 @@ ScalarSurfaceDerivatives derivativesFor(
     return result;
 }
 
+float microEmboss(
+        const ScalarSurfaceDerivatives& derivatives,
+        const ScalarSurfaceMaterial& material,
+        const LightGeometry& light) {
+    const float normalX = -derivatives.detailSlopeX * material.detailReliefScale;
+    const float normalY = -derivatives.detailSlopeY * material.detailReliefScale;
+    const float normalLength = std::sqrt(normalX * normalX + normalY * normalY + 1.f);
+    const float detailLight = (
+            normalX * light.x + normalY * light.y + light.z) / normalLength - light.z;
+    return juce::jlimit(
+            -1.f,
+            1.f,
+            detailLight / juce::jmax(0.000001f, material.embossLimit))
+            * derivatives.boundaryFade;
+}
+
+float edgeAmount(
+        float value,
+        const ScalarSurfaceDerivatives& derivatives,
+        const ScalarSurfaceMaterial& material) {
+    const float gradientEnergy = derivatives.detailSlopeX * derivatives.detailSlopeX
+            + derivatives.detailSlopeY * derivatives.detailSlopeY;
+    const float lowGradient = material.detailGradientLow * material.detailGradientLow;
+    const float highGradient = material.detailGradientHigh * material.detailGradientHigh;
+    const float edge = smoothUnit(
+            (gradientEnergy - lowGradient) / juce::jmax(0.000001f, highGradient - lowGradient));
+    const float detailGate = smoothUnit(
+            (derivatives.detailEnergy - material.detailEnergyLow)
+                    / juce::jmax(
+                            0.000001f,
+                            material.detailEnergyHigh - material.detailEnergyLow));
+    const float signedValue = 2.f * value - 1.f;
+    const float magnitude = signedValue < 0.f ? -signedValue : signedValue;
+    const float semanticGate = smoothUnit(
+            (magnitude - material.neutralAccentWidth)
+                    / juce::jmax(0.000001f, 1.f - material.neutralAccentWidth));
+    return edge * detailGate * semanticGate * material.edgeTintStrength
+            * derivatives.boundaryFade;
+}
+
+juce::Colour evaluateMicroEmboss(
+        float unitValue,
+        const ScalarSurfaceDerivatives& derivatives,
+        const ScalarSurfaceMaterial& material,
+        const LightGeometry& light) {
+    const juce::Colour base = paletteColour(unitValue, material);
+    LinearColour colour = toLinear(base);
+    const float illumination = 1.f
+            + material.embossStrength * microEmboss(derivatives, material, light);
+    colour.red *= illumination;
+    colour.green *= illumination;
+    colour.blue *= illumination;
+    colour = interpolate(
+            colour,
+            edgeColour(unitValue, material),
+            edgeAmount(unitValue, derivatives, material));
+    return juce::Colour::fromFloatRGBA(
+            linearToSrgb(colour.red),
+            linearToSrgb(colour.green),
+            linearToSrgb(colour.blue),
+            juce::jlimit(0.f, 1.f, opacityFor(unitValue, material)));
+}
+
 juce::Colour evaluateColour(
         float value,
         const ScalarSurfaceDerivatives& derivatives,
-    const ScalarSurfaceMaterial& material,
-    const LightGeometry& light) {
+        const ScalarSurfaceMaterial& material,
+        const LightGeometry& light) {
     const float unitValue = juce::jlimit(0.f, 1.f, value);
+    if (material.relief == ScalarSurfaceRelief::MicroEmboss) {
+        return evaluateMicroEmboss(unitValue, derivatives, material, light);
+    }
     float hillshade = 0.f;
     for (int scale = 0; scale < 4; ++scale) {
         hillshade += material.hillshadeWeights[(size_t) scale]
@@ -372,26 +477,29 @@ juce::Colour evaluateColour(
 ScalarSurfaceMaterial ScalarSurfaceMaterial::signedAmplitude() {
     ScalarSurfaceMaterial material;
     material.palette = ScalarSurfacePalette::SignedAmplitude;
+    material.relief = ScalarSurfaceRelief::MicroEmboss;
     material.signedPaletteStops = {
-        juce::Colour(0xff06142c),
-        juce::Colour(0xff0b2855),
-        juce::Colour(0xff174989),
-        juce::Colour(0xff316db4),
-        juce::Colour(0xff5f91d2),
-        juce::Colour(0xff94b9e7),
-        juce::Colour(0xffbfd6f2),
-        juce::Colour(0xffe0ecfa),
-        juce::Colour(0xfff7fbff)
+        juce::Colour(0xff11163c),
+        juce::Colour(0xff293f82),
+        juce::Colour(0xff738bcd),
+        juce::Colour(0xff596078),
+        juce::Colour(0xff37323c),
+        juce::Colour(0xff714d57),
+        juce::Colour(0xffd37a5c),
+        juce::Colour(0xfff0a071),
+        juce::Colour(0xffffd0a0)
     };
     material.signedPalettePositions = {
-        0.f, 0.14f, 0.28f, 0.42f, 0.56f, 0.70f, 0.82f, 0.92f, 1.f
+        0.f, 0.18f, 0.32f, 0.42f, 0.5f, 0.58f, 0.68f, 0.82f, 1.f
     };
     material.negativeAnchor = material.signedPaletteStops.front();
     material.neutralAnchor = material.signedPaletteStops[4];
     material.positiveAnchor = material.signedPaletteStops.back();
-    material.negativePearlTint = juce::Colour(0xffd5e3ff);
-    material.neutralPearlTint = juce::Colour(0xffffd8b8);
-    material.positivePearlTint = juce::Colour(0xffffe4c9);
+    material.negativePearlTint = juce::Colour(0xffc6d1ff);
+    material.neutralPearlTint = juce::Colour(0xff776f7c);
+    material.positivePearlTint = juce::Colour(0xffffd9b8);
+    material.negativeEdgeTint = juce::Colour(0xffc6d1ff);
+    material.positiveEdgeTint = juce::Colour(0xffffcfad);
     return material;
 }
 
@@ -404,6 +512,8 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::unipolarMagnitude() {
     material.negativePearlTint = juce::Colour(0xff8b745d);
     material.neutralPearlTint = juce::Colour(0xff776f68);
     material.positivePearlTint = juce::Colour(0xffffd6a0);
+    material.negativeEdgeTint = material.negativePearlTint;
+    material.positiveEdgeTint = material.positivePearlTint;
     material.opacityValueScale = 25.f;
     material.opacityPower = 2;
     material.reliefScale = 0.65f;
@@ -423,6 +533,8 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::bipolarPhase() {
     material.negativePearlTint = juce::Colour(0xffffc09e);
     material.neutralPearlTint = juce::Colour(0xff756b7c);
     material.positivePearlTint = juce::Colour(0xffdfc4ff);
+    material.negativeEdgeTint = material.negativePearlTint;
+    material.positiveEdgeTint = material.positivePearlTint;
     material.opacityValueScale = 5.f;
     material.reliefScale = 0.75f;
     material.diffuseStrength = 0.28f;
@@ -458,8 +570,9 @@ ScalarSurfaceHeightScales ScalarSurfaceMaterialEvaluator::createHeightScales(
     std::vector<float> horizontal((size_t) valueTotal);
     std::vector<float> blurred((size_t) valueTotal);
     constexpr std::array<int, 3> minimumRadii { 2, 4, 8 };
-    constexpr std::array<int, 3> maximumRadii { 3, 12, 48 };
-    for (int scale = 0; scale < 3; ++scale) {
+    constexpr std::array<int, 3> maximumRadii { 4, 12, 48 };
+    const int blurScaleCount = material.relief == ScalarSurfaceRelief::MicroEmboss ? 1 : 3;
+    for (int scale = 0; scale < blurScaleCount; ++scale) {
         const int columnRadius = boundedBlurRadius(
                 material.blurRadii[(size_t) scale],
                 columns,
@@ -473,6 +586,10 @@ ScalarSurfaceHeightScales ScalarSurfaceMaterialEvaluator::createHeightScales(
         blurColumns(original, horizontal, columns, rows, columnRadius);
         blurRows(horizontal, blurred, columns, rows, rowRadius);
         packScale(blurred, result.packedValues, scale + 1);
+    }
+    if (blurScaleCount == 1) {
+        packScale(blurred, result.packedValues, 2);
+        packScale(blurred, result.packedValues, 3);
     }
     return result;
 }

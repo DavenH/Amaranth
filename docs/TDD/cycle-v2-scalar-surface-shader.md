@@ -359,6 +359,53 @@ above while retaining the same ownership boundaries.
   command or crash; the existing startup, CoreMIDI, leak-detector, and Curve
   assertions remain tracked in `ui-bugs.md`.
 
+### Fidelity-First Signed Micro-Emboss (2026-09-23)
+
+This slice supersedes the cached terrain treatment for signed time-domain
+surfaces only. Spectral magnitude and bipolar phase retain the multi-scale
+material where broad relief remains useful.
+
+- Signed amplitude again uses continuous bipolar semantics: deep indigo and
+  periwinkle for negative values, a broad low-chroma plum neighbourhood at
+  zero, and rose through pale amber for positive values. Smooth interpolation
+  within every palette interval gives the transition a zero first derivative
+  at its anchors and avoids a narrow, shader-created zero contour.
+- The signed material consumes only H0 and the smallest blur H1. Its normal is
+  derived from the gradient of `H0 - H1`, never from the complete height
+  field. Consequently, a constant surface, linear ramp, or broad smooth sine
+  does not become a sequence of illuminated terrain faces.
+- Flat-light subtraction and an explicit limit bound the micro-emboss to six
+  percent luminance. Signed edge colour is additionally gated by both detail
+  gradient and high-pass energy, fades smoothly near neutral, and blends at no
+  more than four percent toward cool periwinkle or warm peach. The signed path
+  has no diffuse hillshade, obscurance, exposure, horizon shadow, specular, or
+  pearl term.
+- The separable blur now renormalizes its kernel using only valid samples at
+  every boundary. A short support-aware fade prevents any remaining H0/H1
+  mismatch from becoming an edge-localized accent. The packed RGBA product is
+  retained as the shared representation, but the signed path computes only
+  H1 and does not spend work generating H2 or H3.
+- Focused material coverage has 148 assertions across eight cases. It checks
+  bipolar hue branches, a smooth zero transition, exact constant-field colour
+  through all four boundaries, rejection of broad planes, colour-dominant
+  smooth sine output, weak-ripple selection, and comparable detail energy at
+  512 and 1024 samples. Signal Spy normalization and authored Trimesh
+  amplitude tests remain green at their existing boundary.
+- GPU parity passes at 2/255 before and after in-process context recreation.
+  Forced CPU fallback and the live shader produce visually equivalent expanded
+  Cycle V2 surfaces. Seven Cycle 1 preset loads and five Cycle V2 graph loads
+  complete without a failed command or crash.
+- Review artifacts are
+  `/private/tmp/cycle-surface-micro-v1-os.png`,
+  `/private/tmp/cycle-surface-micro-v2-os.png`, and
+  `/private/tmp/cycle-v2-spy-detail.png`; forced fallback is
+  `/private/tmp/cycle-surface-micro-v2-fallback-os.png`.
+- Post-change shared-file sizes are 703 lines for the CPU material/evaluator,
+  782 for the GL renderer, 123 for uniform translation, and 162 for the
+  material contract. They retain their existing responsibilities; no Cycle V2
+  orchestration or domain file changed. The architecture audit therefore
+  remains at the same 20 pre-existing triggers.
+
 ## Objective
 
 Move live Trimesh heatmap colouring and relief shading from per-cell CPU paint

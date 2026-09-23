@@ -23,22 +23,55 @@ ScalarSurfaceDerivatives derivativesFor(
             row);
 }
 
+template<typename Sample>
+std::vector<float> extrudedSurface(int columns, int rows, const Sample& sample) {
+    std::vector<float> values((size_t) columns * (size_t) rows);
+    for (int column = 0; column < columns; ++column) {
+        const float x = (float) column / (float) (columns - 1);
+        for (int row = 0; row < rows; ++row) {
+            values[(size_t) column * rows + row] = sample(x);
+        }
+    }
+    return values;
 }
 
-TEST_CASE("Time scalar surface uses a continuous blue-to-white palette", "[ui][surface-material]") {
+int maximumChannelDifference(juce::Colour first, juce::Colour second) {
+    return juce::jmax(
+            std::abs((int) first.getRed() - (int) second.getRed()),
+            std::abs((int) first.getGreen() - (int) second.getGreen()),
+            std::abs((int) first.getBlue() - (int) second.getBlue()));
+}
+
+float meanDetailEnergy(
+        const std::vector<float>& values,
+        int columns,
+        int rows,
+        const ScalarSurfaceMaterial& material) {
+    const ScalarSurfaceHeightScales scales = ScalarSurfaceMaterialEvaluator::createHeightScales(
+            values.data(), (int) values.size(), columns, rows, material);
+    float total = 0.f;
+    for (int column = 8; column < columns - 8; ++column) {
+        total += ScalarSurfaceMaterialEvaluator::derivativesAt(
+                scales, column, rows / 2, material, 1.f).detailEnergy;
+    }
+    return total / (float) juce::jmax(1, columns - 16);
+}
+
+}
+
+TEST_CASE("Time scalar surface uses continuous bipolar semantics", "[ui][surface-material]") {
     const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::signedAmplitude();
 
     REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(0.f, material)
             .withAlpha(1.f) == material.negativeAnchor.withAlpha(1.f));
     REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(1.f, material)
             .withAlpha(1.f) == material.positiveAnchor.withAlpha(1.f));
-
-    float previousBrightness = -1.f;
-    for (const juce::Colour colour: material.signedPaletteStops) {
-        REQUIRE(colour.getPerceivedBrightness() > previousBrightness);
-        REQUIRE(colour.getBlue() >= colour.getRed());
-        previousBrightness = colour.getPerceivedBrightness();
-    }
+    REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(0.5f, material)
+            .withAlpha(1.f) == material.neutralAnchor.withAlpha(1.f));
+    REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(0.25f, material).getBlue()
+            > ScalarSurfaceMaterialEvaluator::baseColourFor(0.25f, material).getRed());
+    REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, material).getRed()
+            > ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, material).getBlue());
 
     constexpr int side = 4;
     const std::vector<float> constantSurface(side * side, 0.375f);
@@ -63,22 +96,27 @@ TEST_CASE("Time palette has no zero-crossing luminance trench",
     const juce::Colour neutral = ScalarSurfaceMaterialEvaluator::baseColourFor(0.5f, material);
     const juce::Colour above = ScalarSurfaceMaterialEvaluator::baseColourFor(0.51f, material);
 
-    REQUIRE(below.getPerceivedBrightness() < neutral.getPerceivedBrightness());
-    REQUIRE(neutral.getPerceivedBrightness() < above.getPerceivedBrightness());
-    REQUIRE(std::abs(
-            (neutral.getPerceivedBrightness() - below.getPerceivedBrightness())
-            - (above.getPerceivedBrightness() - neutral.getPerceivedBrightness())) < 0.02f);
+    const juce::Colour justBelow = ScalarSurfaceMaterialEvaluator::baseColourFor(0.499f, material);
+    const juce::Colour justAbove = ScalarSurfaceMaterialEvaluator::baseColourFor(0.501f, material);
+
+    REQUIRE(below.getPerceivedBrightness() > neutral.getPerceivedBrightness());
+    REQUIRE(above.getPerceivedBrightness() > neutral.getPerceivedBrightness());
+    REQUIRE(maximumChannelDifference(justBelow, neutral) < 2);
+    REQUIRE(maximumChannelDifference(justAbove, neutral) < 2);
+    REQUIRE(maximumChannelDifference(justBelow, justAbove) < 4);
 }
 
-TEST_CASE("Scalar surface scales distinguish planes from local features", "[ui][surface-material]") {
+TEST_CASE("Micro emboss rejects broad planes and boundary bias", "[ui][surface-material]") {
     constexpr int columns = 7;
     constexpr int rows = 7;
+    const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::signedAmplitude();
     std::vector<float> flat((size_t) columns * (size_t) rows, 0.5f);
     const auto flatDerivatives = derivativesFor(flat, columns, rows, 3, 3);
     REQUIRE(flatDerivatives.slopeX[0] == 0.f);
     REQUIRE(flatDerivatives.slopeY[0] == 0.f);
-    REQUIRE(flatDerivatives.obscurance == 0.f);
-    REQUIRE(flatDerivatives.exposure == 0.f);
+    REQUIRE(flatDerivatives.detailSlopeX == 0.f);
+    REQUIRE(flatDerivatives.detailSlopeY == 0.f);
+    REQUIRE(flatDerivatives.detailEnergy == 0.f);
 
     std::vector<float> ramp(flat.size());
     for (int column = 0; column < columns; ++column) {
@@ -92,121 +130,90 @@ TEST_CASE("Scalar surface scales distinguish planes from local features", "[ui][
     REQUIRE(rampDerivatives.slopeY[0] == 0.f);
     REQUIRE(edgeDerivatives.slopeX[0]
             == Catch::Approx(rampDerivatives.slopeX[0]).margin(0.0001f));
+    REQUIRE(rampDerivatives.detailSlopeX == Catch::Approx(0.f).margin(0.0001f));
+    REQUIRE(edgeDerivatives.boundaryFade == 0.f);
 
     std::vector<float> ridge = flat;
     ridge[(size_t) 3 * rows + 3] = 0.8f;
-    REQUIRE(derivativesFor(ridge, columns, rows, 3, 3).exposure > 0.f);
+    REQUIRE(derivativesFor(ridge, columns, rows, 3, 3).detailEnergy > 0.f);
 
-    std::vector<float> valley = flat;
-    valley[(size_t) 3 * rows + 3] = 0.2f;
-    REQUIRE(derivativesFor(valley, columns, rows, 3, 3).obscurance > 0.f);
+    const juce::Image constantImage = ScalarSurfaceMaterialEvaluator::createImage(
+            flat.data(), (int) flat.size(), columns, rows, material, true, 1.f);
+    const juce::Colour expected = ScalarSurfaceMaterialEvaluator::baseColourFor(0.5f, material)
+            .withAlpha(1.f);
+    for (int x = 0; x < constantImage.getWidth(); ++x) {
+        for (int y = 0; y < constantImage.getHeight(); ++y) {
+            REQUIRE(constantImage.getPixelAt(x, y) == expected);
+        }
+    }
 }
 
-TEST_CASE("Pseudo-normal lighting responds to orientation and semantic hue",
+TEST_CASE("Micro emboss responds only to high-pass detail",
         "[ui][surface-material]") {
-    const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::signedAmplitude();
+    ScalarSurfaceMaterial material = ScalarSurfaceMaterial::signedAmplitude();
+    material.edgeTintStrength = 0.f;
     const ScalarSurfaceDerivatives flat;
     ScalarSurfaceDerivatives towardLight;
-    towardLight.slopeX.fill(0.2f);
-    towardLight.slopeY.fill(0.2f);
+    towardLight.detailSlopeX = 0.2f;
+    towardLight.detailSlopeY = 0.2f;
     ScalarSurfaceDerivatives awayFromLight;
-    awayFromLight.slopeX.fill(-0.2f);
-    awayFromLight.slopeY.fill(-0.2f);
+    awayFromLight.detailSlopeX = -0.2f;
+    awayFromLight.detailSlopeY = -0.2f;
 
     const juce::Colour lit = ScalarSurfaceMaterialEvaluator::colourFor(0.75f, towardLight, material);
     const juce::Colour shaded = ScalarSurfaceMaterialEvaluator::colourFor(
             0.75f, awayFromLight, material);
     REQUIRE(lit.getPerceivedBrightness() > shaded.getPerceivedBrightness());
-    REQUIRE(lit.getBlue() > lit.getRed());
-    REQUIRE(shaded.getBlue() > shaded.getRed());
+    REQUIRE(lit.getRed() > lit.getBlue());
+    REQUIRE(shaded.getRed() > shaded.getBlue());
 
     const juce::Colour negative = ScalarSurfaceMaterialEvaluator::colourFor(
             0.25f, towardLight, material);
     REQUIRE(negative.getBlue() > negative.getRed());
-    REQUIRE(ScalarSurfaceMaterialEvaluator::colourFor(0.75f, flat, material)
+    ScalarSurfaceDerivatives broadSlope;
+    broadSlope.slopeX.fill(0.4f);
+    broadSlope.slopeY.fill(0.4f);
+    REQUIRE(ScalarSurfaceMaterialEvaluator::colourFor(0.75f, broadSlope, material)
             == ScalarSurfaceMaterialEvaluator::colourFor(0.75f, flat, material));
-
-    ScalarSurfaceMaterial specularOnly = material;
-    specularOnly.diffuseStrength = 0.f;
-    specularOnly.obscuranceStrength = 0.f;
-    specularOnly.exposureStrength = 0.f;
-    specularOnly.specularStrength = 0.45f;
-    REQUIRE(ScalarSurfaceMaterialEvaluator::colourFor(0.75f, towardLight, specularOnly)
-            .getPerceivedBrightness()
-            > ScalarSurfaceMaterialEvaluator::colourFor(0.75f, awayFromLight, specularOnly)
-                    .getPerceivedBrightness());
 }
 
-TEST_CASE("Broad scalar relief is stable across grid resolution", "[ui][surface-material]") {
+TEST_CASE("Smooth analytical signals remain colour-dominant", "[ui][surface-material]") {
     const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::signedAmplitude();
-    const auto planeDerivatives = [&material](int side) {
-        std::vector<float> values((size_t) side * (size_t) side);
-        for (int column = 0; column < side; ++column) {
-            const float x = (float) column / (float) (side - 1);
-            for (int row = 0; row < side; ++row) {
-                values[(size_t) column * side + row] = 0.35f + 0.3f * x;
-            }
-        }
-        return ScalarSurfaceMaterialEvaluator::derivativesAt(
-                values.data(), side, side, side / 2, side / 2, material, 1.f);
-    };
-
-    const ScalarSurfaceDerivatives lowResolution = planeDerivatives(33);
-    const ScalarSurfaceDerivatives highResolution = planeDerivatives(129);
-    for (int scale = 0; scale < 4; ++scale) {
-        REQUIRE(lowResolution.slopeX[(size_t) scale]
-                == Catch::Approx(highResolution.slopeX[(size_t) scale]).margin(0.025f));
-        REQUIRE(lowResolution.slopeY[(size_t) scale]
-                == Catch::Approx(0.f).margin(0.0001f));
-        REQUIRE(highResolution.slopeY[(size_t) scale]
-                == Catch::Approx(0.f).margin(0.0001f));
+    constexpr int columns = 512;
+    constexpr int rows = 8;
+    const auto sine = extrudedSurface(columns, rows, [](float x) {
+        return 0.5f + 0.35f * std::sin(juce::MathConstants<float>::twoPi * 3.f * x);
+    });
+    const juce::Image image = ScalarSurfaceMaterialEvaluator::createImage(
+            sine.data(), (int) sine.size(), columns, rows, material, true, 2.f);
+    for (int column = 8; column < columns - 8; column += 11) {
+        const juce::Colour base = ScalarSurfaceMaterialEvaluator::baseColourFor(
+                sine[(size_t) column * rows], material).withAlpha(1.f);
+        REQUIRE(maximumChannelDifference(image.getPixelAt(column, rows / 2), base) <= 10);
     }
 }
 
-TEST_CASE("Relief is offset invariant and multi-scale obscurance darkens valleys",
+TEST_CASE("Micro detail is stable across resolution and emphasizes weak ripple",
         "[ui][surface-material]") {
     const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::signedAmplitude();
-    ScalarSurfaceDerivatives exposed;
-    ScalarSurfaceDerivatives obscured;
-    obscured.obscurance = 1.f;
-    REQUIRE(ScalarSurfaceMaterialEvaluator::colourFor(0.5f, obscured, material)
-            .getPerceivedBrightness()
-            < ScalarSurfaceMaterialEvaluator::colourFor(0.5f, exposed, material)
-                    .getPerceivedBrightness());
+    const auto signal = [](int columns, bool ripple) {
+        return extrudedSurface(columns, 8, [ripple](float x) {
+            const float broad = 0.28f * std::sin(
+                    juce::MathConstants<float>::twoPi * 3.f * x);
+            const float detail = ripple ? 0.018f * std::sin(
+                    juce::MathConstants<float>::twoPi * 48.f * x) : 0.f;
+            return 0.5f + broad + detail;
+        });
+    };
+    const auto broad512 = signal(512, false);
+    const auto mixed512 = signal(512, true);
+    const auto mixed1024 = signal(1024, true);
+    const float broadEnergy = meanDetailEnergy(broad512, 512, 8, material);
+    const float detail512 = meanDetailEnergy(mixed512, 512, 8, material);
+    const float detail1024 = meanDetailEnergy(mixed1024, 1024, 8, material);
 
-    constexpr int side = 33;
-    std::vector<float> original((size_t) side * side);
-    std::vector<float> offset((size_t) side * side);
-    for (int column = 0; column < side; ++column) {
-        for (int row = 0; row < side; ++row) {
-            const float value = 0.2f + 0.3f * (float) column / (float) (side - 1);
-            original[(size_t) column * side + row] = value;
-            offset[(size_t) column * side + row] = value + 0.2f;
-        }
-    }
-    const auto first = ScalarSurfaceMaterialEvaluator::derivativesAt(
-            original.data(), side, side, side / 2, side / 2, material, 1.f);
-    const auto second = ScalarSurfaceMaterialEvaluator::derivativesAt(
-            offset.data(), side, side, side / 2, side / 2, material, 1.f);
-    for (int scale = 0; scale < 4; ++scale) {
-        REQUIRE(first.slopeX[(size_t) scale]
-                == Catch::Approx(second.slopeX[(size_t) scale]).margin(0.0001f));
-        REQUIRE(first.slopeY[(size_t) scale]
-                == Catch::Approx(second.slopeY[(size_t) scale]).margin(0.0001f));
-    }
-    REQUIRE(first.obscurance == Catch::Approx(second.obscurance).margin(0.0001f));
-    REQUIRE(first.exposure == Catch::Approx(second.exposure).margin(0.0001f));
-
-    std::vector<float> ridge((size_t) side * side, 0.4f);
-    for (int row = 0; row < side; ++row) {
-        ridge[(size_t) (side / 2) * side + row] = 0.9f;
-    }
-    std::vector<float> valley((size_t) side * side, 0.6f);
-    valley[(size_t) (side / 2) * side + side / 2] = 0.2f;
-    REQUIRE(ScalarSurfaceMaterialEvaluator::derivativesAt(
-            valley.data(), side, side, side / 2, side / 2, material, 1.f).obscurance > 0.f);
-    REQUIRE(ScalarSurfaceMaterialEvaluator::derivativesAt(
-            ridge.data(), side, side, side / 2, side / 2, material, 1.f).exposure > 0.f);
+    REQUIRE(detail512 > broadEnergy * 3.f);
+    REQUIRE(detail1024 == Catch::Approx(detail512).epsilon(0.4f));
 }
 
 TEST_CASE("Spectral magnitude retains the legacy burnt alum palette", "[ui][surface-material]") {
