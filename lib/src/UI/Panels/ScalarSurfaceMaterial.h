@@ -70,10 +70,8 @@ struct ScalarSurfaceMaterial {
     float detailReliefScale { 0.25f };
     float embossLimit { 0.08f };
     float embossStrength { 0.06f };
-    float detailGradientLow { 0.004f };
-    float detailGradientHigh { 0.08f };
-    float detailEnergyLow { 0.0015f };
-    float detailEnergyHigh { 0.025f };
+    float detailGradientKnee { 0.02f };
+    float detailEnergyKnee { 0.004f };
     float edgeTintStrength { 0.04f };
     float neutralAccentWidth { 0.12f };
     float lightX { -0.46f };

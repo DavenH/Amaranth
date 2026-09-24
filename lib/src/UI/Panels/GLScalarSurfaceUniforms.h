@@ -116,10 +116,8 @@ inline void setLighting(
     setFloat(program, "detailReliefScale", material.detailReliefScale);
     setFloat(program, "embossLimit", material.embossLimit);
     setFloat(program, "embossStrength", material.embossStrength);
-    setFloat(program, "detailGradientLow", material.detailGradientLow);
-    setFloat(program, "detailGradientHigh", material.detailGradientHigh);
-    setFloat(program, "detailEnergyLow", material.detailEnergyLow);
-    setFloat(program, "detailEnergyHigh", material.detailEnergyHigh);
+    setFloat(program, "detailGradientKnee", material.detailGradientKnee);
+    setFloat(program, "detailEnergyKnee", material.detailEnergyKnee);
     setFloat(program, "edgeTintStrength", material.edgeTintStrength);
     setFloat(program, "neutralAccentWidth", material.neutralAccentWidth);
     gl::glUniform4fv(

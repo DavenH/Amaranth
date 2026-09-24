@@ -425,11 +425,11 @@ material where broad relief remains useful.
   percent, and keeps midpoint saturation below twenty percent. A perfect
   constant, ramp, or other H0/H1-low-pass form therefore remains a smooth blue
   depth field.
-- Warm colour is not part of the base palette. The existing high-pass
-  gradient/energy gates index a four-stop burgundy, red, coral, and amber
-  detail palette, then blend at no more than ten percent in linear RGB. Unlike
-  the bipolar material, this sequential mode does not suppress detail colour
-  near scalar `0.5`; depth has no polarity boundary to protect.
+- Warm colour is not part of the base palette. High-pass energy and its local
+  gradient index a four-stop rose, red, coral, and amber detail palette, then
+  blend at no more than ten percent in linear RGB. Unlike the bipolar
+  material, this sequential mode does not suppress detail colour near scalar
+  `0.5`; depth has no polarity boundary to protect.
 - Cycle V2 compact and runtime heatmap cache signatures include the selected
   style only for non-spectral domains. Changing the option rebuilds affected
   time products while spectral magnitude/phase sprites retain their cache
@@ -454,11 +454,35 @@ boundary. `NodePreviewRenderer.cpp` grows from 1,052 to 1,067 lines to include
 material choice in its existing cache-key policy; it does not choose the
 material. `Main.cpp` remains menu/application orchestration at 500 lines.
 Shared `ScalarSurfaceMaterial.cpp` and `GLScalarSurfaceRenderer.cpp` are 808
-and 813 lines respectively, crossing the review threshold but remaining
+and 815 lines respectively, crossing the review threshold but remaining
 cohesive: the former owns palette/detail policy, cached field preparation, and
 the CPU reference; the latter owns only shader/resource/upload/draw/parity
 lifecycle. Neither reaches the extraction-plan threshold, and no graph, DSP,
 or interaction policy moved into them.
+
+### Continuous High-Pass Accent (2026-09-24)
+
+- Production feedback showed that multiplying separate gradient and energy
+  `smoothstep` gates made the detail accent behave like a thresholded mask.
+  Most visible samples clustered at the first dark-burgundy palette stop, then
+  appeared over a narrow interval with little hue variation.
+- Both CPU and GPU implementations now use zero-origin saturating response
+  curves, `x / (x + knee)`, for high-pass energy and gradient energy. There is
+  no lower cutoff. High-pass energy continuously controls both tint amount and
+  palette position; the gradient response only provides a smooth secondary
+  weight and never suppresses low-energy detail completely.
+- The tint LUT now begins at rose rather than dark burgundy and progresses
+  through red and coral to amber. Since zero energy produces zero blend, a dark
+  first stop is unnecessary and only muddies weak detail.
+- A focused contract proves that sub-threshold energy from the former model is
+  visible, that red and green channels progress with energy, and that crossing
+  the former cutoff changes no channel by more than 1/255. Material coverage is
+  now 704 assertions across eleven cases. GPU parity remains within 2/255
+  before and after OpenGL context recreation.
+- Production captures are `/private/tmp/cycle-v2-spy-detail.png` and
+  `/private/tmp/cycle-v1-smooth-detail.png`. Broad forms remain governed by the
+  monotonic blue depth palette while fine structure varies continuously from a
+  faint rose accent toward coral/amber.
 
 ## Objective
 

@@ -59,10 +59,8 @@ uniform float exposureBias;
 uniform float detailReliefScale;
 uniform float embossLimit;
 uniform float embossStrength;
-uniform float detailGradientLow;
-uniform float detailGradientHigh;
-uniform float detailEnergyLow;
-uniform float detailEnergyHigh;
+uniform float detailGradientKnee;
+uniform float detailEnergyKnee;
 uniform float edgeTintStrength;
 uniform float neutralAccentWidth;
 uniform int paletteKind;
@@ -162,6 +160,11 @@ vec3 detailPaletteColourLinear(float amount) {
             smoothstep(2.0, 3.0, position));
 }
 
+float saturatingDetailResponse(float value, float knee) {
+    float positiveValue = max(0.0, value);
+    return positiveValue / max(0.000001, positiveValue + knee);
+}
+
 void main() {
     vec2 coordinate = surfaceTextureCoordinate;
     float leftCoordinate = coordinate.y < textureStep.y
@@ -211,14 +214,12 @@ void main() {
                 1.0) * boundaryFade;
         vec3 colour = srgbToLinear(base) * (1.0 + embossStrength * emboss);
         float gradientEnergy = dot(detailGradient, detailGradient);
-        float edge = smoothstep(
-                detailGradientLow * detailGradientLow,
-                detailGradientHigh * detailGradientHigh,
-                gradientEnergy);
-        float detailGate = smoothstep(
-                detailEnergyLow,
-                detailEnergyHigh,
-                abs(centreScales.r - centreScales.g));
+        float gradientResponse = saturatingDetailResponse(
+                gradientEnergy,
+                detailGradientKnee * detailGradientKnee);
+        float detailResponse = saturatingDetailResponse(
+                abs(centreScales.r - centreScales.g),
+                detailEnergyKnee);
         float semanticMagnitude = smoothstep(
                 neutralAccentWidth,
                 1.0,
@@ -226,10 +227,11 @@ void main() {
         if (detailColourKind == 1) {
             semanticMagnitude = 1.0;
         }
-        float edgeAmount = edge * detailGate * semanticMagnitude
+        float slopeWeight = 0.35 + 0.65 * gradientResponse;
+        float edgeAmount = detailResponse * slopeWeight * semanticMagnitude
                 * edgeTintStrength * boundaryFade;
         vec3 edgeTintLinear = detailColourKind == 1
-                ? detailPaletteColourLinear(detailGate)
+                ? detailPaletteColourLinear(detailResponse)
                 : srgbToLinear(centre < 0.5 ? negativeEdgeTint : positiveEdgeTint);
         colour = mix(colour, edgeTintLinear, edgeAmount);
         gl_FragColor = vec4(linearToSrgb(colour), surfaceOpacity);

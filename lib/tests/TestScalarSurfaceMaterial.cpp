@@ -147,7 +147,7 @@ TEST_CASE("Blue time surface is smooth monotonic depth with inferno detail",
     ScalarSurfaceDerivatives detail;
     detail.detailSlopeX = 0.2f;
     detail.detailSlopeY = 0.2f;
-    detail.detailEnergy = material.detailEnergyHigh;
+    detail.detailEnergy = material.detailEnergyKnee * 4.f;
     const juce::Colour base = ScalarSurfaceMaterialEvaluator::baseColourFor(0.2f, material);
     const juce::Colour unaccented = ScalarSurfaceMaterialEvaluator::colourFor(
             0.2f,
@@ -178,6 +178,34 @@ TEST_CASE("Time surface style selection changes only the time material",
             != ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, blue));
     REQUIRE(ScalarSurfaceMaterial::unipolarMagnitude().palette
             == ScalarSurfacePalette::UnipolarMagnitude);
+}
+
+TEST_CASE("Inferno detail response is continuous and energy graded",
+        "[ui][surface-material]") {
+    ScalarSurfaceMaterial material = ScalarSurfaceMaterial::blueDepthWarmDetail();
+    material.embossStrength = 0.f;
+    material.edgeTintStrength = 0.5f;
+
+    const auto colourAtEnergy = [&material](float energy) {
+        ScalarSurfaceDerivatives detail;
+        detail.detailSlopeX = 0.04f;
+        detail.detailSlopeY = 0.04f;
+        detail.detailEnergy = energy;
+        return ScalarSurfaceMaterialEvaluator::colourFor(0.2f, detail, material);
+    };
+
+    const juce::Colour base = colourAtEnergy(0.f);
+    const juce::Colour low = colourAtEnergy(0.0005f);
+    const juce::Colour medium = colourAtEnergy(material.detailEnergyKnee);
+    const juce::Colour high = colourAtEnergy(material.detailEnergyKnee * 4.f);
+    REQUIRE(low.getRed() > base.getRed());
+    REQUIRE(medium.getRed() > low.getRed());
+    REQUIRE(high.getRed() > medium.getRed());
+    REQUIRE(high.getGreen() > medium.getGreen());
+
+    const juce::Colour belowOldThreshold = colourAtEnergy(0.00149f);
+    const juce::Colour aboveOldThreshold = colourAtEnergy(0.00151f);
+    REQUIRE(maximumChannelDifference(belowOldThreshold, aboveOldThreshold) <= 1);
 }
 
 TEST_CASE("Micro emboss rejects broad planes and boundary bias", "[ui][surface-material]") {

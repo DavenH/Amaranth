@@ -393,21 +393,22 @@ float microEmboss(
             * derivatives.boundaryFade;
 }
 
-float edgeAmount(
+float saturatingDetailResponse(float value, float knee) {
+    const float positiveValue = juce::jmax(0.f, value);
+    return positiveValue / juce::jmax(0.000001f, positiveValue + knee);
+}
+
+float detailAccentAmount(
         float value,
         const ScalarSurfaceDerivatives& derivatives,
         const ScalarSurfaceMaterial& material) {
     const float gradientEnergy = derivatives.detailSlopeX * derivatives.detailSlopeX
             + derivatives.detailSlopeY * derivatives.detailSlopeY;
-    const float lowGradient = material.detailGradientLow * material.detailGradientLow;
-    const float highGradient = material.detailGradientHigh * material.detailGradientHigh;
-    const float edge = smoothUnit(
-            (gradientEnergy - lowGradient) / juce::jmax(0.000001f, highGradient - lowGradient));
-    const float detailGate = smoothUnit(
-            (derivatives.detailEnergy - material.detailEnergyLow)
-                    / juce::jmax(
-                            0.000001f,
-                            material.detailEnergyHigh - material.detailEnergyLow));
+    const float gradientKnee = material.detailGradientKnee * material.detailGradientKnee;
+    const float gradientResponse = saturatingDetailResponse(gradientEnergy, gradientKnee);
+    const float detailResponse = saturatingDetailResponse(
+            derivatives.detailEnergy,
+            material.detailEnergyKnee);
     const float signedValue = 2.f * value - 1.f;
     const float magnitude = signedValue < 0.f ? -signedValue : signedValue;
     const float semanticGate = material.detailColour == ScalarSurfaceDetailColour::Inferno
@@ -415,18 +416,17 @@ float edgeAmount(
             : smoothUnit(
                     (magnitude - material.neutralAccentWidth)
                             / juce::jmax(0.000001f, 1.f - material.neutralAccentWidth));
-    return edge * detailGate * semanticGate * material.edgeTintStrength
-            * derivatives.boundaryFade;
+    const float slopeWeight = 0.35f + 0.65f * gradientResponse;
+    return detailResponse * slopeWeight * semanticGate
+            * material.edgeTintStrength * derivatives.boundaryFade;
 }
 
 float detailPaletteAmount(
         const ScalarSurfaceDerivatives& derivatives,
         const ScalarSurfaceMaterial& material) {
-    return smoothUnit(
-            (derivatives.detailEnergy - material.detailEnergyLow)
-                    / juce::jmax(
-                            0.000001f,
-                            material.detailEnergyHigh - material.detailEnergyLow));
+    return saturatingDetailResponse(
+            derivatives.detailEnergy,
+            material.detailEnergyKnee);
 }
 
 juce::Colour evaluateMicroEmboss(
@@ -447,7 +447,7 @@ juce::Colour evaluateMicroEmboss(
                     unitValue,
                     detailPaletteAmount(derivatives, material),
                     material),
-            edgeAmount(unitValue, derivatives, material));
+            detailAccentAmount(unitValue, derivatives, material));
     return juce::Colour::fromFloatRGBA(
             linearToSrgb(colour.red),
             linearToSrgb(colour.green),
@@ -572,10 +572,10 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::blueDepthWarmDetail() {
     material.negativeEdgeTint = juce::Colour(0xff8e2437);
     material.positiveEdgeTint = juce::Colour(0xffffb15d);
     material.detailPaletteStops = {
-        juce::Colour(0xff541332),
-        juce::Colour(0xff9f2f45),
-        juce::Colour(0xffe05b49),
-        juce::Colour(0xffffb15d)
+        juce::Colour(0xffb13b4d),
+        juce::Colour(0xffdc4f49),
+        juce::Colour(0xfff2794f),
+        juce::Colour(0xffffc36b)
     };
     material.edgeTintStrength = 0.10f;
     material.neutralAccentWidth = 0.f;
