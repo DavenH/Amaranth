@@ -1,4 +1,5 @@
 #include <array>
+#include <atomic>
 #include <cmath>
 
 #include <Binary/Gradients.h>
@@ -11,6 +12,8 @@ namespace {
 
 constexpr float minimumIllumination = 0.16f;
 constexpr int linearTransferTableSize = 4096;
+std::atomic<ScalarSurfaceTimeStyle> selectedTimeSurfaceStyle {
+        ScalarSurfaceTimeStyle::BlueDepthWarmDetail };
 
 float smoothUnit(float value) {
     const float unit = juce::jlimit(0.f, 1.f, value);
@@ -134,7 +137,24 @@ LinearColour pearlColour(float value, const ScalarSurfaceMaterial& material) {
             magnitude);
 }
 
-LinearColour edgeColour(float value, const ScalarSurfaceMaterial& material) {
+LinearColour detailPaletteColour(float amount, const ScalarSurfaceMaterial& material) {
+    constexpr int intervalCount = 3;
+    const float position = juce::jlimit(0.f, 1.f, amount) * (float) intervalCount;
+    const int lower = juce::jmin(intervalCount - 1, (int) position);
+    const float blend = smoothUnit(position - (float) lower);
+    return interpolate(
+            toLinear(material.detailPaletteStops[(size_t) lower]),
+            toLinear(material.detailPaletteStops[(size_t) lower + 1]),
+            blend);
+}
+
+LinearColour edgeColour(
+        float value,
+        float detailAmount,
+        const ScalarSurfaceMaterial& material) {
+    if (material.detailColour == ScalarSurfaceDetailColour::Inferno) {
+        return detailPaletteColour(detailAmount, material);
+    }
     return toLinear(value < 0.5f ? material.negativeEdgeTint : material.positiveEdgeTint);
 }
 
@@ -390,11 +410,23 @@ float edgeAmount(
                             material.detailEnergyHigh - material.detailEnergyLow));
     const float signedValue = 2.f * value - 1.f;
     const float magnitude = signedValue < 0.f ? -signedValue : signedValue;
-    const float semanticGate = smoothUnit(
-            (magnitude - material.neutralAccentWidth)
-                    / juce::jmax(0.000001f, 1.f - material.neutralAccentWidth));
+    const float semanticGate = material.detailColour == ScalarSurfaceDetailColour::Inferno
+            ? 1.f
+            : smoothUnit(
+                    (magnitude - material.neutralAccentWidth)
+                            / juce::jmax(0.000001f, 1.f - material.neutralAccentWidth));
     return edge * detailGate * semanticGate * material.edgeTintStrength
             * derivatives.boundaryFade;
+}
+
+float detailPaletteAmount(
+        const ScalarSurfaceDerivatives& derivatives,
+        const ScalarSurfaceMaterial& material) {
+    return smoothUnit(
+            (derivatives.detailEnergy - material.detailEnergyLow)
+                    / juce::jmax(
+                            0.000001f,
+                            material.detailEnergyHigh - material.detailEnergyLow));
 }
 
 juce::Colour evaluateMicroEmboss(
@@ -411,7 +443,10 @@ juce::Colour evaluateMicroEmboss(
     colour.blue *= illumination;
     colour = interpolate(
             colour,
-            edgeColour(unitValue, material),
+            edgeColour(
+                    unitValue,
+                    detailPaletteAmount(derivatives, material),
+                    material),
             edgeAmount(unitValue, derivatives, material));
     return juce::Colour::fromFloatRGBA(
             linearToSrgb(colour.red),
@@ -500,7 +535,75 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::signedAmplitude() {
     material.positivePearlTint = juce::Colour(0xffffd9b8);
     material.negativeEdgeTint = juce::Colour(0xffc6d1ff);
     material.positiveEdgeTint = juce::Colour(0xffffcfad);
+    material.detailPaletteStops = {
+        juce::Colour(0xffc6d1ff),
+        juce::Colour(0xffd5d5e8),
+        juce::Colour(0xffffc7a3),
+        juce::Colour(0xffffcfad)
+    };
     return material;
+}
+
+ScalarSurfaceMaterial ScalarSurfaceMaterial::blueDepthWarmDetail() {
+    ScalarSurfaceMaterial material;
+    material.palette = ScalarSurfacePalette::SignedAmplitude;
+    material.relief = ScalarSurfaceRelief::MicroEmboss;
+    material.detailColour = ScalarSurfaceDetailColour::Inferno;
+    material.signedPaletteStops = {
+        juce::Colour(0xff050b18),
+        juce::Colour(0xff0c1e38),
+        juce::Colour(0xff19365b),
+        juce::Colour(0xff36506c),
+        juce::Colour(0xff6b7480),
+        juce::Colour(0xff8197ad),
+        juce::Colour(0xff9ebcd0),
+        juce::Colour(0xffc5dfec),
+        juce::Colour(0xfff2fbff)
+    };
+    material.signedPalettePositions = {
+        0.f, 0.125f, 0.25f, 0.375f, 0.5f, 0.625f, 0.75f, 0.875f, 1.f
+    };
+    material.negativeAnchor = material.signedPaletteStops.front();
+    material.neutralAnchor = material.signedPaletteStops[4];
+    material.positiveAnchor = material.signedPaletteStops.back();
+    material.negativePearlTint = juce::Colour(0xffb7cae0);
+    material.neutralPearlTint = juce::Colour(0xff9aa4af);
+    material.positivePearlTint = juce::Colour(0xfff3f6f8);
+    material.negativeEdgeTint = juce::Colour(0xff8e2437);
+    material.positiveEdgeTint = juce::Colour(0xffffb15d);
+    material.detailPaletteStops = {
+        juce::Colour(0xff541332),
+        juce::Colour(0xff9f2f45),
+        juce::Colour(0xffe05b49),
+        juce::Colour(0xffffb15d)
+    };
+    material.edgeTintStrength = 0.10f;
+    material.neutralAccentWidth = 0.f;
+    return material;
+}
+
+ScalarSurfaceMaterial ScalarSurfaceMaterial::timeDomain() {
+    return timeSurfaceStyle() == ScalarSurfaceTimeStyle::BlueDepthWarmDetail
+            ? blueDepthWarmDetail()
+            : signedAmplitude();
+}
+
+ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyle() {
+    return selectedTimeSurfaceStyle.load(std::memory_order_relaxed);
+}
+
+ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(int index) {
+    return index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::Bipolar)
+            ? ScalarSurfaceTimeStyle::Bipolar
+            : ScalarSurfaceTimeStyle::BlueDepthWarmDetail;
+}
+
+int ScalarSurfaceMaterial::timeSurfaceStyleIndex(ScalarSurfaceTimeStyle style) {
+    return (int) style;
+}
+
+void ScalarSurfaceMaterial::setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
+    selectedTimeSurfaceStyle.store(style, std::memory_order_relaxed);
 }
 
 ScalarSurfaceMaterial ScalarSurfaceMaterial::unipolarMagnitude() {
@@ -514,6 +617,7 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::unipolarMagnitude() {
     material.positivePearlTint = juce::Colour(0xffffd6a0);
     material.negativeEdgeTint = material.negativePearlTint;
     material.positiveEdgeTint = material.positivePearlTint;
+    material.detailPaletteStops.fill(material.positivePearlTint);
     material.opacityValueScale = 25.f;
     material.opacityPower = 2;
     material.reliefScale = 0.65f;
@@ -535,6 +639,7 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::bipolarPhase() {
     material.positivePearlTint = juce::Colour(0xffdfc4ff);
     material.negativeEdgeTint = material.negativePearlTint;
     material.positiveEdgeTint = material.positivePearlTint;
+    material.detailPaletteStops.fill(material.positivePearlTint);
     material.opacityValueScale = 5.f;
     material.reliefScale = 0.75f;
     material.diffuseStrength = 0.28f;

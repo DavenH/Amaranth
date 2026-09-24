@@ -66,6 +66,8 @@ public:
             String& errorMessage);
     bool isGraphDirty() const { return document.isDirty(); }
     const File& graphFile() const { return document.file(); }
+    ScalarSurfaceTimeStyle timeSurfaceStyle() const;
+    void setTimeSurfaceStyle(ScalarSurfaceTimeStyle style);
     void setGraphDocumentStateChangedCallback(std::function<void()> callback);
     void configurePresetSidebar(
             std::vector<File> directories,

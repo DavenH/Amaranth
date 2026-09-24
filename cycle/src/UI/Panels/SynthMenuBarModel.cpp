@@ -21,6 +21,7 @@
 
 #include "../CycleDefs.h"
 #include "../VertexPanels/Waveform2D.h"
+#include "../VertexPanels/Waveform3D.h"
 
 #include "../../App/CycleTour.h"
 #include "../../App/MainAppWindow.h"
@@ -115,6 +116,22 @@ PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String
 		menu.addItem(VertsOnHover, 		"Draw verts only on hover",	true, getSetting(ViewVertsOnlyOnHover) == 1);
 
 		menu.addSeparator();
+
+        {
+            const ScalarSurfaceTimeStyle style = ScalarSurfaceMaterial::timeSurfaceStyle();
+            PopupMenu surfaceMenu;
+            surfaceMenu.addItem(
+                    TimeSurfaceBipolar,
+                    "Bipolar",
+                    true,
+                    style == ScalarSurfaceTimeStyle::Bipolar);
+            surfaceMenu.addItem(
+                    TimeSurfaceBlueWarmDetail,
+                    "Blue Depth + Warm Detail",
+                    true,
+                    style == ScalarSurfaceTimeStyle::BlueDepthWarmDetail);
+            menu.addSubMenu("Time Surface Colour", surfaceMenu, true);
+        }
 
 		{
 			int viewStage = getSetting(ViewStage);
@@ -287,7 +304,17 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 			getObj(Waveform2D).repaint();
 		} else if (item == DrawScales) {
 			getSetting(DrawScales) ^= true;
-		}
+		} else if (item == TimeSurfaceBipolar
+                || item == TimeSurfaceBlueWarmDetail) {
+            const ScalarSurfaceTimeStyle style = item == TimeSurfaceBipolar
+                    ? ScalarSurfaceTimeStyle::Bipolar
+                    : ScalarSurfaceTimeStyle::BlueDepthWarmDetail;
+            getSetting(TimeSurfaceStyle) =
+                    ScalarSurfaceMaterial::timeSurfaceStyleIndex(style);
+            ScalarSurfaceMaterial::setTimeSurfaceStyle(style);
+            getObj(Waveform3D).updateTimeSurfaceStyle();
+            getObj(Updater).update(UpdateSources::SourceWaveform3D, Repaint);
+        }
 
 		/*
 		else if(item == UseOpenGL)

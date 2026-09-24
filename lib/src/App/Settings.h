@@ -32,6 +32,7 @@ namespace AppSettings {
     ,   SpyShelfMinimized
     ,   GuideSpyDockExpanded
     ,   GuideSpyDockHeight
+    ,   TimeSurfaceStyle
 
     ,   numSettings
     };

@@ -93,8 +93,11 @@ Waveform3D::~Waveform3D() {
 void Waveform3D::init() {
     Panel3D::init();
 
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(
+            ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(
+                    getSettingValue(TimeSurfaceStyle)));
     Image blue = ScalarSurfaceMaterialEvaluator::createGradientImage(
-            ScalarSurfaceMaterial::signedAmplitude());
+            ScalarSurfaceMaterial::timeDomain());
     surfInteractor 	= &getObj(WaveformInter3D);
     interactor3D  	= surfInteractor;
     setInteractor(interactor3D);
@@ -472,8 +475,15 @@ bool Waveform3D::isSurfaceDetailReduced() {
 }
 
 bool Waveform3D::getScalarSurfaceMaterial(ScalarSurfaceMaterial& material) const {
-    material = ScalarSurfaceMaterial::signedAmplitude();
+    material = ScalarSurfaceMaterial::timeDomain();
     return true;
+}
+
+void Waveform3D::updateTimeSurfaceStyle() {
+    Image image = ScalarSurfaceMaterialEvaluator::createGradientImage(
+            ScalarSurfaceMaterial::timeDomain());
+    gradient.read(image, true, false);
+    repaint();
 }
 
 var Waveform3D::exportAutomationState() const {

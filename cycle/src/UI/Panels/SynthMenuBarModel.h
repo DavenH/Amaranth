@@ -77,6 +77,8 @@ public:
         ViewStageD,
 
         WaveformWaterfall,
+        TimeSurfaceBipolar,
+        TimeSurfaceBlueWarmDetail,
 
         UseOpenGL,
         UseLargerPoints,

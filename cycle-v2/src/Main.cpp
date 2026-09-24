@@ -50,7 +50,9 @@ public:
             CommandSaveGraph,
             CommandSaveGraphAs,
             CommandSpyRefreshOnRelease,
-            CommandSpyRefreshLive
+            CommandSpyRefreshLive,
+            CommandTimeSurfaceBipolar,
+            CommandTimeSurfaceBlueWarmDetail
         };
 
         MainWindow(
@@ -63,6 +65,9 @@ public:
             setUsingNativeTitleBar(true);
             setResizable(true, true);
             workspace = new CycleV2::NodeWorkspace(audioEngine);
+            workspace->setTimeSurfaceStyle(
+                    ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(
+                            properties->getIntValue("timeSurfaceStyle", 1)));
             setContentOwned(workspace, true);
             workspace->setGraphDocumentStateChangedCallback([this] {
                 updateDocumentPresentation();
@@ -117,7 +122,7 @@ public:
         }
 
         StringArray getMenuBarNames() override {
-            return { "File" };
+            return { "File", "View" };
         }
 
         PopupMenu getMenuForIndex(int menuIndex, const String&) override {
@@ -144,6 +149,15 @@ public:
                         CommandSpyRefreshLive);
                 menu.addSeparator();
                 menu.addSubMenu("Spy Refresh", spyRefreshMenu);
+            } else if (menuIndex == 1) {
+                PopupMenu timeSurfaceMenu;
+                timeSurfaceMenu.addCommandItem(
+                        &commandManager,
+                        CommandTimeSurfaceBipolar);
+                timeSurfaceMenu.addCommandItem(
+                        &commandManager,
+                        CommandTimeSurfaceBlueWarmDetail);
+                menu.addSubMenu("Time Surface Colour", timeSurfaceMenu);
             }
 
             return menu;
@@ -165,7 +179,9 @@ public:
                     CommandSaveGraph,
                     CommandSaveGraphAs,
                     CommandSpyRefreshOnRelease,
-                    CommandSpyRefreshLive
+                    CommandSpyRefreshLive,
+                    CommandTimeSurfaceBipolar,
+                    CommandTimeSurfaceBlueWarmDetail
             });
         }
 
@@ -209,6 +225,28 @@ public:
                                     == CycleV2::ProbeRefreshMode::LiveLatest);
                     break;
 
+                case CommandTimeSurfaceBipolar:
+                    result.setInfo(
+                            "Bipolar",
+                            "Use blue and warm colour to show signal polarity",
+                            "View",
+                            0);
+                    result.setTicked(workspace != nullptr
+                            && workspace->timeSurfaceStyle()
+                                    == ScalarSurfaceTimeStyle::Bipolar);
+                    break;
+
+                case CommandTimeSurfaceBlueWarmDetail:
+                    result.setInfo(
+                            "Blue Depth + Warm Detail",
+                            "Use monotonic blue depth with warm high-pass detail",
+                            "View",
+                            0);
+                    result.setTicked(workspace != nullptr
+                            && workspace->timeSurfaceStyle()
+                                    == ScalarSurfaceTimeStyle::BlueDepthWarmDetail);
+                    break;
+
                 default:
                     break;
             }
@@ -234,6 +272,14 @@ public:
 
                 case CommandSpyRefreshLive:
                     setSpyRefreshMode(CycleV2::ProbeRefreshMode::LiveLatest);
+                    return true;
+
+                case CommandTimeSurfaceBipolar:
+                    setTimeSurfaceStyle(ScalarSurfaceTimeStyle::Bipolar);
+                    return true;
+
+                case CommandTimeSurfaceBlueWarmDetail:
+                    setTimeSurfaceStyle(ScalarSurfaceTimeStyle::BlueDepthWarmDetail);
                     return true;
 
                 default:
@@ -314,6 +360,19 @@ public:
                 return;
             }
             workspace->setProbeRefreshMode(mode);
+            commandManager.commandStatusChanged();
+            menuItemsChanged();
+        }
+
+        void setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
+            if (workspace == nullptr) {
+                return;
+            }
+            workspace->setTimeSurfaceStyle(style);
+            properties->setValue(
+                    "timeSurfaceStyle",
+                    ScalarSurfaceMaterial::timeSurfaceStyleIndex(style));
+            properties->saveIfNeeded();
             commandManager.commandStatusChanged();
             menuItemsChanged();
         }

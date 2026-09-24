@@ -406,6 +406,60 @@ material where broad relief remains useful.
   orchestration or domain file changed. The architecture audit therefore
   remains at the same 20 pre-existing triggers.
 
+### Selectable Time-Surface Colour (2026-09-24)
+
+- Cycle 1 and Cycle V2 now expose `View > Time Surface Colour` with two
+  mutually exclusive choices: `Bipolar` retains the signed indigo/plum/amber
+  treatment, while `Blue Depth + Warm Detail` uses a sequential depth ramp.
+  The new blue mode is the default. Cycle 1 stores the choice in its existing
+  global settings document; Cycle V2 stores it in its existing application
+  properties file.
+- `ScalarSurfaceMaterial` is the authoritative process-wide presentation
+  preference and factory. Callers still request one time-domain material;
+  neither Cycle product owns a shader or copies palette/detail policy. Integer
+  persistence translation is centralized at this boundary rather than
+  repeated in menu and canvas code.
+- The blue base progresses from near-black navy through low-chroma slate at
+  scalar `0.5` to ice white. A 512-sample contract proves nondecreasing
+  perceived luminance, limits the largest adjacent step to less than two
+  percent, and keeps midpoint saturation below twenty percent. A perfect
+  constant, ramp, or other H0/H1-low-pass form therefore remains a smooth blue
+  depth field.
+- Warm colour is not part of the base palette. The existing high-pass
+  gradient/energy gates index a four-stop burgundy, red, coral, and amber
+  detail palette, then blend at no more than ten percent in linear RGB. Unlike
+  the bipolar material, this sequential mode does not suppress detail colour
+  near scalar `0.5`; depth has no polarity boundary to protect.
+- Cycle V2 compact and runtime heatmap cache signatures include the selected
+  style only for non-spectral domains. Changing the option rebuilds affected
+  time products while spectral magnitude/phase sprites retain their cache
+  identity. Expanded OpenGL presentation receives a repaint and resolves the
+  material through the same dynamic factory.
+- GPU validation now covers both time styles plus magnitude and phase and
+  passes at 2/255 maximum channel error. The same tolerance holds before and
+  after forced OpenGL context recreation, with all ten lifecycle automation
+  commands succeeding. The same lifecycle fixture also passes all ten commands
+  with the scalar-surface shader explicitly disabled, covering the CPU
+  fallback. Focused material coverage has 699 assertions across ten cases; the
+  Cycle V2 profile and Signal Spy contrast contracts also pass. Production
+  artifacts are
+  `/private/tmp/cycle-blue-warm-v1.png`,
+  `/private/tmp/cycle-blue-warm-v2.png`, and
+  `/private/tmp/cycle-v2-spy-detail.png`.
+
+The architecture audit remains at the same 20 pre-existing triggers.
+`NodeCanvas.cpp` grows from 2,716 to 2,731 lines solely at its existing global
+settings, preview-cache, component repaint, and OpenGL repaint lifecycle
+boundary. `NodePreviewRenderer.cpp` grows from 1,052 to 1,067 lines to include
+material choice in its existing cache-key policy; it does not choose the
+material. `Main.cpp` remains menu/application orchestration at 500 lines.
+Shared `ScalarSurfaceMaterial.cpp` and `GLScalarSurfaceRenderer.cpp` are 808
+and 813 lines respectively, crossing the review threshold but remaining
+cohesive: the former owns palette/detail policy, cached field preparation, and
+the CPU reference; the latter owns only shader/resource/upload/draw/parity
+lifecycle. Neither reaches the extraction-plan threshold, and no graph, DSP,
+or interaction policy moved into them.
+
 ## Objective
 
 Move live Trimesh heatmap colouring and relief shading from per-cell CPU paint

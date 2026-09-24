@@ -199,6 +199,9 @@ NodeCanvas::NodeCanvas() :
     ,   renderInvalidation(*this)
     ,   hitRouter(graph, palette, queries) {
     settings.initialiseSettings();
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(
+            ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(
+                    settings.getGlobalSettingValue(AppSettings::TimeSurfaceStyle)));
     probeRailState.refreshMode = settings.getGlobalSettingValue(
             AppSettings::ProbeEditRefreshPolicy) == 1
             ? ProbeRefreshMode::LiveLatest
@@ -2153,6 +2156,18 @@ void NodeCanvas::setOverlayOcclusionChangedCallback(std::function<void()> callba
 void NodeCanvas::setGraphDocumentStateChangedCallback(
         std::function<void()> callback) {
     graphDocumentStateChangedCallback = std::move(callback);
+}
+
+ScalarSurfaceTimeStyle NodeCanvas::timeSurfaceStyle() const {
+    return ScalarSurfaceMaterial::timeSurfaceStyle();
+}
+
+void NodeCanvas::setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
+    settings.getGlobalSetting(AppSettings::TimeSurfaceStyle) =
+            ScalarSurfaceMaterial::timeSurfaceStyleIndex(style);
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(style);
+    repaintNodeEditor(true);
+    repaint();
 }
 
 void NodeCanvas::notifyOverlayOcclusionChanged() {

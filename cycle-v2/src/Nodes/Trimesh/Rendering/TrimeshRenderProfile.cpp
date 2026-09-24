@@ -338,7 +338,7 @@ ScalarSurfaceMaterial TrimeshSurfaceStyle::surfaceMaterial() const {
     if (domain == PortDomain::SpectralMagnitudeSignal) {
         return ScalarSurfaceMaterial::unipolarMagnitude();
     }
-    return ScalarSurfaceMaterial::signedAmplitude();
+    return ScalarSurfaceMaterial::timeDomain();
 }
 
 TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :

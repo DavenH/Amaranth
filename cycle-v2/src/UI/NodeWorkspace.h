@@ -31,6 +31,10 @@ public:
     const File& graphFile() const { return canvas.graphFile(); }
     ProbeRefreshMode probeRefreshMode() const { return canvas.probeRefreshMode(); }
     void setProbeRefreshMode(ProbeRefreshMode mode) { canvas.setProbeRefreshMode(mode); }
+    ScalarSurfaceTimeStyle timeSurfaceStyle() const { return canvas.timeSurfaceStyle(); }
+    void setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
+        canvas.setTimeSurfaceStyle(style);
+    }
     void setGraphDocumentStateChangedCallback(std::function<void()> callback) {
         canvas.setGraphDocumentStateChangedCallback(std::move(callback));
     }

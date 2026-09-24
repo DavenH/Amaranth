@@ -35,6 +35,7 @@ uniform vec3 neutralPearlTint;
 uniform vec3 positivePearlTint;
 uniform vec3 negativeEdgeTint;
 uniform vec3 positiveEdgeTint;
+uniform vec3 detailPalette[4];
 uniform vec2 textureStep;
 uniform vec2 textureToDomainScale;
 uniform vec2 detailBoundaryStart;
@@ -66,6 +67,7 @@ uniform float edgeTintStrength;
 uniform float neutralAccentWidth;
 uniform int paletteKind;
 uniform int reliefKind;
+uniform int detailColourKind;
 uniform int opacityPower;
 uniform int specularPower;
 
@@ -140,6 +142,26 @@ vec3 pearlColour(float value) {
     return mix(neutralPearlTint, semantic, magnitude);
 }
 
+vec3 detailPaletteColourLinear(float amount) {
+    float position = clamp(amount, 0.0, 1.0) * 3.0;
+    if (position < 1.0) {
+        return mix(
+                srgbToLinear(detailPalette[0]),
+                srgbToLinear(detailPalette[1]),
+                smoothstep(0.0, 1.0, position));
+    }
+    if (position < 2.0) {
+        return mix(
+                srgbToLinear(detailPalette[1]),
+                srgbToLinear(detailPalette[2]),
+                smoothstep(1.0, 2.0, position));
+    }
+    return mix(
+            srgbToLinear(detailPalette[2]),
+            srgbToLinear(detailPalette[3]),
+            smoothstep(2.0, 3.0, position));
+}
+
 void main() {
     vec2 coordinate = surfaceTextureCoordinate;
     float leftCoordinate = coordinate.y < textureStep.y
@@ -201,10 +223,15 @@ void main() {
                 neutralAccentWidth,
                 1.0,
                 abs(2.0 * centre - 1.0));
+        if (detailColourKind == 1) {
+            semanticMagnitude = 1.0;
+        }
         float edgeAmount = edge * detailGate * semanticMagnitude
                 * edgeTintStrength * boundaryFade;
-        vec3 edgeTint = centre < 0.5 ? negativeEdgeTint : positiveEdgeTint;
-        colour = mix(colour, srgbToLinear(edgeTint), edgeAmount);
+        vec3 edgeTintLinear = detailColourKind == 1
+                ? detailPaletteColourLinear(detailGate)
+                : srgbToLinear(centre < 0.5 ? negativeEdgeTint : positiveEdgeTint);
+        colour = mix(colour, edgeTintLinear, edgeAmount);
         gl_FragColor = vec4(linearToSrgb(colour), surfaceOpacity);
         return;
     }
@@ -666,8 +693,9 @@ void GLScalarSurfaceRenderer::validateGpuParity() {
             0.58f, 0.70f, 0.86f, 0.70f, 0.58f,
             0.78f, 0.88f, 0.96f, 0.88f, 0.78f
     };
-    const std::array<ScalarSurfaceMaterial, 3> materials {
+    const std::array<ScalarSurfaceMaterial, 4> materials {
             ScalarSurfaceMaterial::signedAmplitude(),
+            ScalarSurfaceMaterial::blueDepthWarmDetail(),
             ScalarSurfaceMaterial::unipolarMagnitude(),
             ScalarSurfaceMaterial::bipolarPhase()
     };
@@ -758,6 +786,9 @@ void GLScalarSurfaceRenderer::setMaterialUniforms(const ScalarSurfaceRenderData&
     gl::glUniform1i(
             gl::glGetUniformLocation(program, "reliefKind"),
             (int) material.relief);
+    gl::glUniform1i(
+            gl::glGetUniformLocation(program, "detailColourKind"),
+            (int) material.detailColour);
     gl::glUniform1i(gl::glGetUniformLocation(program, "opacityPower"), material.opacityPower);
     gl::glUniform1i(gl::glGetUniformLocation(program, "specularPower"), material.specularPower);
 }

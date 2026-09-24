@@ -72,6 +72,7 @@ public:
     void updateScratchComboBox();
     void updateSmoothedParameters(int deltaSamples);
     void updateSmoothParametersToTarget(int voiceIndex);
+    void updateTimeSurfaceStyle();
     void zoomUpdated(int updateSource) override;
     void doZoomExtra(bool commandDown) override;
 

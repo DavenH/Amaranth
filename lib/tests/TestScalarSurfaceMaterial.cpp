@@ -106,6 +106,80 @@ TEST_CASE("Time palette has no zero-crossing luminance trench",
     REQUIRE(maximumChannelDifference(justBelow, justAbove) < 4);
 }
 
+TEST_CASE("Blue time surface is smooth monotonic depth with inferno detail",
+        "[ui][surface-material]") {
+    ScalarSurfaceMaterial material = ScalarSurfaceMaterial::blueDepthWarmDetail();
+    REQUIRE(material.detailColour == ScalarSurfaceDetailColour::Inferno);
+
+    float previousBrightness = -1.f;
+    float maximumBrightnessStep = 0.f;
+    for (int index = 0; index < 512; ++index) {
+        const juce::Colour colour = ScalarSurfaceMaterialEvaluator::baseColourFor(
+                (float) index / 511.f,
+                material);
+        const float brightness = colour.getPerceivedBrightness();
+        REQUIRE(brightness + 0.0001f >= previousBrightness);
+        if (index > 0) {
+            maximumBrightnessStep = juce::jmax(
+                    maximumBrightnessStep,
+                    brightness - previousBrightness);
+        }
+        previousBrightness = brightness;
+    }
+    REQUIRE(maximumBrightnessStep < 0.02f);
+    REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(0.5f, material).getSaturation()
+            < 0.20f);
+
+    constexpr int columns = 512;
+    constexpr int rows = 8;
+    const auto ramp = extrudedSurface(columns, rows, [](float x) { return x; });
+    const juce::Image rampImage = ScalarSurfaceMaterialEvaluator::createImage(
+            ramp.data(), (int) ramp.size(), columns, rows, material, true, 2.f);
+    for (int column = 12; column < columns - 12; column += 17) {
+        const juce::Colour expected = ScalarSurfaceMaterialEvaluator::baseColourFor(
+                ramp[(size_t) column * rows], material).withAlpha(1.f);
+        REQUIRE(maximumChannelDifference(
+                rampImage.getPixelAt(column, rows / 2), expected) <= 1);
+    }
+
+    material.embossStrength = 0.f;
+    const ScalarSurfaceDerivatives flat;
+    ScalarSurfaceDerivatives detail;
+    detail.detailSlopeX = 0.2f;
+    detail.detailSlopeY = 0.2f;
+    detail.detailEnergy = material.detailEnergyHigh;
+    const juce::Colour base = ScalarSurfaceMaterialEvaluator::baseColourFor(0.2f, material);
+    const juce::Colour unaccented = ScalarSurfaceMaterialEvaluator::colourFor(
+            0.2f,
+            flat,
+            material);
+    const juce::Colour accented = ScalarSurfaceMaterialEvaluator::colourFor(
+            0.2f,
+            detail,
+            material);
+    REQUIRE(unaccented == base);
+    REQUIRE(accented.getRed() > unaccented.getRed());
+    REQUIRE(accented.getBlue() >= unaccented.getBlue());
+}
+
+TEST_CASE("Time surface style selection changes only the time material",
+        "[ui][surface-material]") {
+    const ScalarSurfaceTimeStyle previous = ScalarSurfaceMaterial::timeSurfaceStyle();
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(ScalarSurfaceTimeStyle::Bipolar);
+    const ScalarSurfaceMaterial bipolar = ScalarSurfaceMaterial::timeDomain();
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(
+            ScalarSurfaceTimeStyle::BlueDepthWarmDetail);
+    const ScalarSurfaceMaterial blue = ScalarSurfaceMaterial::timeDomain();
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(previous);
+
+    REQUIRE(bipolar.detailColour == ScalarSurfaceDetailColour::Signed);
+    REQUIRE(blue.detailColour == ScalarSurfaceDetailColour::Inferno);
+    REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, bipolar)
+            != ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, blue));
+    REQUIRE(ScalarSurfaceMaterial::unipolarMagnitude().palette
+            == ScalarSurfacePalette::UnipolarMagnitude);
+}
+
 TEST_CASE("Micro emboss rejects broad planes and boundary bias", "[ui][surface-material]") {
     constexpr int columns = 7;
     constexpr int rows = 7;
