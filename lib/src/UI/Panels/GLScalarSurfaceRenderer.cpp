@@ -35,7 +35,7 @@ uniform vec3 neutralPearlTint;
 uniform vec3 positivePearlTint;
 uniform vec3 negativeEdgeTint;
 uniform vec3 positiveEdgeTint;
-uniform vec3 detailPalette[4];
+uniform vec3 directionalDetailColours[3];
 uniform vec2 textureStep;
 uniform vec2 textureToDomainScale;
 uniform vec2 detailBoundaryStart;
@@ -140,24 +140,20 @@ vec3 pearlColour(float value) {
     return mix(neutralPearlTint, semantic, magnitude);
 }
 
-vec3 detailPaletteColourLinear(float amount) {
-    float position = clamp(amount, 0.0, 1.0) * 3.0;
-    if (position < 1.0) {
-        return mix(
-                srgbToLinear(detailPalette[0]),
-                srgbToLinear(detailPalette[1]),
-                smoothstep(0.0, 1.0, position));
-    }
-    if (position < 2.0) {
-        return mix(
-                srgbToLinear(detailPalette[1]),
-                srgbToLinear(detailPalette[2]),
-                smoothstep(1.0, 2.0, position));
-    }
-    return mix(
-            srgbToLinear(detailPalette[2]),
-            srgbToLinear(detailPalette[3]),
-            smoothstep(2.0, 3.0, position));
+vec3 directionalDetailColourLinear(vec2 gradient) {
+    const float sine60 = 0.8660254;
+    vec3 projection = vec3(
+            gradient.x,
+            0.5 * gradient.x + sine60 * gradient.y,
+            -0.5 * gradient.x + sine60 * gradient.y);
+    vec3 weights = projection * projection;
+    weights *= weights;
+    float totalWeight = max(1.e-20, weights.x + weights.y + weights.z);
+    return (
+            srgbToLinear(directionalDetailColours[0]) * weights.x
+            + srgbToLinear(directionalDetailColours[1]) * weights.y
+            + srgbToLinear(directionalDetailColours[2]) * weights.z)
+            / totalWeight;
 }
 
 float saturatingDetailResponse(float value, float knee) {
@@ -224,14 +220,17 @@ void main() {
                 neutralAccentWidth,
                 1.0,
                 abs(2.0 * centre - 1.0));
-        if (detailColourKind == 1) {
+        bool directionalDetail = detailColourKind == 1;
+        if (directionalDetail) {
             semanticMagnitude = 1.0;
         }
-        float slopeWeight = 0.35 + 0.65 * gradientResponse;
+        float slopeWeight = directionalDetail
+                ? gradientResponse
+                : 0.35 + 0.65 * gradientResponse;
         float edgeAmount = detailResponse * slopeWeight * semanticMagnitude
                 * edgeTintStrength * boundaryFade;
-        vec3 edgeTintLinear = detailColourKind == 1
-                ? detailPaletteColourLinear(detailResponse)
+        vec3 edgeTintLinear = directionalDetail
+                ? directionalDetailColourLinear(detailGradient)
                 : srgbToLinear(centre < 0.5 ? negativeEdgeTint : positiveEdgeTint);
         colour = mix(colour, edgeTintLinear, edgeAmount);
         gl_FragColor = vec4(linearToSrgb(colour), surfaceOpacity);
@@ -697,7 +696,7 @@ void GLScalarSurfaceRenderer::validateGpuParity() {
     };
     const std::array<ScalarSurfaceMaterial, 4> materials {
             ScalarSurfaceMaterial::signedAmplitude(),
-            ScalarSurfaceMaterial::blueDepthWarmDetail(),
+            ScalarSurfaceMaterial::blueDepthDirectionalDetail(),
             ScalarSurfaceMaterial::unipolarMagnitude(),
             ScalarSurfaceMaterial::bipolarPhase()
     };

@@ -106,10 +106,10 @@ TEST_CASE("Time palette has no zero-crossing luminance trench",
     REQUIRE(maximumChannelDifference(justBelow, justAbove) < 4);
 }
 
-TEST_CASE("Blue time surface is smooth monotonic depth with inferno detail",
+TEST_CASE("Blue time surface is smooth monotonic depth with directional detail",
         "[ui][surface-material]") {
-    ScalarSurfaceMaterial material = ScalarSurfaceMaterial::blueDepthWarmDetail();
-    REQUIRE(material.detailColour == ScalarSurfaceDetailColour::Inferno);
+    ScalarSurfaceMaterial material = ScalarSurfaceMaterial::blueDepthDirectionalDetail();
+    REQUIRE(material.detailColour == ScalarSurfaceDetailColour::DirectionalCmy);
 
     float previousBrightness = -1.f;
     float maximumBrightnessStep = 0.f;
@@ -168,21 +168,21 @@ TEST_CASE("Time surface style selection changes only the time material",
     ScalarSurfaceMaterial::setTimeSurfaceStyle(ScalarSurfaceTimeStyle::Bipolar);
     const ScalarSurfaceMaterial bipolar = ScalarSurfaceMaterial::timeDomain();
     ScalarSurfaceMaterial::setTimeSurfaceStyle(
-            ScalarSurfaceTimeStyle::BlueDepthWarmDetail);
+            ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail);
     const ScalarSurfaceMaterial blue = ScalarSurfaceMaterial::timeDomain();
     ScalarSurfaceMaterial::setTimeSurfaceStyle(previous);
 
     REQUIRE(bipolar.detailColour == ScalarSurfaceDetailColour::Signed);
-    REQUIRE(blue.detailColour == ScalarSurfaceDetailColour::Inferno);
+    REQUIRE(blue.detailColour == ScalarSurfaceDetailColour::DirectionalCmy);
     REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, bipolar)
             != ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, blue));
     REQUIRE(ScalarSurfaceMaterial::unipolarMagnitude().palette
             == ScalarSurfacePalette::UnipolarMagnitude);
 }
 
-TEST_CASE("Inferno detail response is continuous and energy graded",
+TEST_CASE("Directional detail response is continuous and energy graded",
         "[ui][surface-material]") {
-    ScalarSurfaceMaterial material = ScalarSurfaceMaterial::blueDepthWarmDetail();
+    ScalarSurfaceMaterial material = ScalarSurfaceMaterial::blueDepthDirectionalDetail();
     material.embossStrength = 0.f;
     material.edgeTintStrength = 0.5f;
 
@@ -206,6 +206,38 @@ TEST_CASE("Inferno detail response is continuous and energy graded",
     const juce::Colour belowOldThreshold = colourAtEnergy(0.00149f);
     const juce::Colour aboveOldThreshold = colourAtEnergy(0.00151f);
     REQUIRE(maximumChannelDifference(belowOldThreshold, aboveOldThreshold) <= 1);
+}
+
+TEST_CASE("Directional detail maps undirected angle to magenta cyan and yellow",
+        "[ui][surface-material]") {
+    ScalarSurfaceMaterial material = ScalarSurfaceMaterial::blueDepthDirectionalDetail();
+    material.embossStrength = 0.f;
+    material.edgeTintStrength = 1.f;
+
+    const auto colourForSlope = [&material](float slopeX, float slopeY) {
+        ScalarSurfaceDerivatives detail;
+        detail.detailSlopeX = slopeX;
+        detail.detailSlopeY = slopeY;
+        detail.detailEnergy = material.detailEnergyKnee * 8.f;
+        return ScalarSurfaceMaterialEvaluator::colourFor(0.5f, detail, material);
+    };
+
+    const juce::Colour magenta = colourForSlope(0.1f, 0.f);
+    const juce::Colour cyan = colourForSlope(0.05f, 0.08660254f);
+    const juce::Colour yellow = colourForSlope(-0.05f, 0.08660254f);
+    REQUIRE(magenta.getRed() > magenta.getGreen());
+    REQUIRE(magenta.getBlue() > magenta.getGreen());
+    REQUIRE(cyan.getGreen() > cyan.getRed());
+    REQUIRE(cyan.getBlue() > cyan.getRed());
+    REQUIRE(yellow.getRed() > yellow.getBlue());
+    REQUIRE(yellow.getGreen() > yellow.getBlue());
+
+    const juce::Colour oppositeMagenta = colourForSlope(-0.1f, 0.f);
+    const juce::Colour oppositeCyan = colourForSlope(-0.05f, -0.08660254f);
+    const juce::Colour oppositeYellow = colourForSlope(0.05f, -0.08660254f);
+    REQUIRE(maximumChannelDifference(magenta, oppositeMagenta) <= 1);
+    REQUIRE(maximumChannelDifference(cyan, oppositeCyan) <= 1);
+    REQUIRE(maximumChannelDifference(yellow, oppositeYellow) <= 1);
 }
 
 TEST_CASE("Micro emboss rejects broad planes and boundary bias", "[ui][surface-material]") {

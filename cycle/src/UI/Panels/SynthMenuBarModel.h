@@ -78,7 +78,7 @@ public:
 
         WaveformWaterfall,
         TimeSurfaceBipolar,
-        TimeSurfaceBlueWarmDetail,
+        TimeSurfaceBlueDirectionalDetail,
 
         UseOpenGL,
         UseLargerPoints,

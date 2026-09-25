@@ -32,17 +32,17 @@ inline void setPalette(unsigned int program, const ScalarSurfaceMaterial& materi
     setColour(program, "negativeEdgeTint", material.negativeEdgeTint);
     setColour(program, "positiveEdgeTint", material.positiveEdgeTint);
 
-    std::array<float, 12> detailPalette;
-    for (int index = 0; index < (int) material.detailPaletteStops.size(); ++index) {
-        const juce::Colour colour = material.detailPaletteStops[(size_t) index];
-        detailPalette[(size_t) index * 3] = colour.getFloatRed();
-        detailPalette[(size_t) index * 3 + 1] = colour.getFloatGreen();
-        detailPalette[(size_t) index * 3 + 2] = colour.getFloatBlue();
+    std::array<float, 9> directionalDetailColours;
+    for (int index = 0; index < (int) material.directionalDetailColours.size(); ++index) {
+        const juce::Colour colour = material.directionalDetailColours[(size_t) index];
+        directionalDetailColours[(size_t) index * 3] = colour.getFloatRed();
+        directionalDetailColours[(size_t) index * 3 + 1] = colour.getFloatGreen();
+        directionalDetailColours[(size_t) index * 3 + 2] = colour.getFloatBlue();
     }
     gl::glUniform3fv(
-            gl::glGetUniformLocation(program, "detailPalette[0]"),
-            (int) material.detailPaletteStops.size(),
-            detailPalette.data());
+            gl::glGetUniformLocation(program, "directionalDetailColours[0]"),
+            (int) material.directionalDetailColours.size(),
+            directionalDetailColours.data());
 
     std::array<float, ScalarSurfaceMaterial::signedPaletteStopCount * 3> palette;
     for (int index = 0; index < ScalarSurfaceMaterial::signedPaletteStopCount; ++index) {

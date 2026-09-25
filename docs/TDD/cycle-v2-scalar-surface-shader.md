@@ -410,10 +410,10 @@ material where broad relief remains useful.
 
 - Cycle 1 and Cycle V2 now expose `View > Time Surface Colour` with two
   mutually exclusive choices: `Bipolar` retains the signed indigo/plum/amber
-  treatment, while `Blue Depth + Warm Detail` uses a sequential depth ramp.
-  The new blue mode is the default. Cycle 1 stores the choice in its existing
-  global settings document; Cycle V2 stores it in its existing application
-  properties file.
+  treatment, while `Blue Depth + Directional Detail` uses a sequential depth
+  ramp. The new blue mode is the default. Cycle 1 stores the choice in its
+  existing global settings document; Cycle V2 stores it in its existing
+  application properties file.
 - `ScalarSurfaceMaterial` is the authoritative process-wide presentation
   preference and factory. Callers still request one time-domain material;
   neither Cycle product owns a shader or copies palette/detail policy. Integer
@@ -425,11 +425,12 @@ material where broad relief remains useful.
   percent, and keeps midpoint saturation below twenty percent. A perfect
   constant, ramp, or other H0/H1-low-pass form therefore remains a smooth blue
   depth field.
-- Warm colour is not part of the base palette. High-pass energy and its local
-  gradient index a four-stop rose, red, coral, and amber detail palette, then
-  blend at no more than ten percent in linear RGB. Unlike the bipolar
-  material, this sequential mode does not suppress detail colour near scalar
-  `0.5`; depth has no polarity boundary to protect.
+- Accent colour is not part of the base palette. High-pass energy controls
+  blend strength, while the undirected local-gradient angle selects a smooth
+  magenta/cyan/yellow tint. The result blends at no more than ten percent in
+  linear RGB. Unlike the bipolar material, this sequential mode does not
+  suppress detail colour near scalar `0.5`; depth has no polarity boundary to
+  protect.
 - Cycle V2 compact and runtime heatmap cache signatures include the selected
   style only for non-spectral domains. Changing the option rebuilds affected
   time products while spectral magnitude/phase sprites retain their cache
@@ -452,9 +453,9 @@ The architecture audit remains at the same 20 pre-existing triggers.
 settings, preview-cache, component repaint, and OpenGL repaint lifecycle
 boundary. `NodePreviewRenderer.cpp` grows from 1,052 to 1,067 lines to include
 material choice in its existing cache-key policy; it does not choose the
-material. `Main.cpp` remains menu/application orchestration at 500 lines.
-Shared `ScalarSurfaceMaterial.cpp` and `GLScalarSurfaceRenderer.cpp` are 808
-and 815 lines respectively, crossing the review threshold but remaining
+material. `Main.cpp` remains menu/application orchestration at 501 lines.
+Shared `ScalarSurfaceMaterial.cpp` and `GLScalarSurfaceRenderer.cpp` are 833
+and 814 lines respectively, crossing the review threshold but remaining
 cohesive: the former owns palette/detail policy, cached field preparation, and
 the CPU reference; the latter owns only shader/resource/upload/draw/parity
 lifecycle. Neither reaches the extraction-plan threshold, and no graph, DSP,
@@ -479,10 +480,33 @@ or interaction policy moved into them.
   the former cutoff changes no channel by more than 1/255. Material coverage is
   now 704 assertions across eleven cases. GPU parity remains within 2/255
   before and after OpenGL context recreation.
-- Production captures are `/private/tmp/cycle-v2-spy-detail.png` and
-  `/private/tmp/cycle-v1-smooth-detail.png`. Broad forms remain governed by the
-  monotonic blue depth palette while fine structure varies continuously from a
-  faint rose accent toward coral/amber.
+- The intermediate captures were `/private/tmp/cycle-v2-spy-detail.png` and
+  `/private/tmp/cycle-v1-smooth-detail.png`. Broad forms remained governed by
+  the monotonic blue depth palette while fine structure varied continuously
+  from a faint rose accent toward coral/amber.
+
+### Directional CMY Detail (2026-09-25)
+
+- The intermediate rose/red/coral/amber energy palette is superseded. Detail
+  hue now encodes local high-pass orientation: the three principal undirected
+  axes map to magenta, cyan, and yellow, with continuous mixtures between them.
+- Orientation is sign-invariant. Reversing the gradient produces the same
+  colour, so opposite flanks of one ridge do not receive unrelated hues. The
+  mapping uses normalized fourth-power projection weights rather than angle
+  thresholds or `atan`, avoiding seams and scalar trigonometry in the pixel
+  loop.
+- High-pass energy still controls accent amount through the continuous
+  zero-origin response. Gradient energy also fades the directional colour to
+  zero where an angle is undefined. The monotonic blue depth palette remains
+  authoritative and spectral materials remain unchanged.
+- The View-menu label is now `Blue Depth + Directional Detail` in both Cycle
+  versions. Its persisted enum index is unchanged, so existing preferences
+  continue selecting the same mode.
+- Focused material coverage has 713 assertions across twelve cases, including
+  CMY principal-axis semantics and invariance under gradient reversal. The
+  production artifacts are `/private/tmp/cycle-v2-spy-detail.png` and
+  `/private/tmp/cycle-v1-cmy-detail.png`. GPU parity remains within 2/255 before
+  and after context recreation.
 
 ## Objective
 

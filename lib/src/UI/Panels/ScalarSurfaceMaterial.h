@@ -19,19 +19,19 @@ enum class ScalarSurfaceRelief {
 
 enum class ScalarSurfaceTimeStyle {
     Bipolar,
-    BlueDepthWarmDetail
+    BlueDepthDirectionalDetail
 };
 
 enum class ScalarSurfaceDetailColour {
     Signed,
-    Inferno
+    DirectionalCmy
 };
 
 struct ScalarSurfaceMaterial {
     static constexpr int signedPaletteStopCount = 9;
 
     static ScalarSurfaceMaterial signedAmplitude();
-    static ScalarSurfaceMaterial blueDepthWarmDetail();
+    static ScalarSurfaceMaterial blueDepthDirectionalDetail();
     static ScalarSurfaceMaterial timeDomain();
     static ScalarSurfaceMaterial unipolarMagnitude();
     static ScalarSurfaceMaterial bipolarPhase();
@@ -51,7 +51,7 @@ struct ScalarSurfaceMaterial {
     juce::Colour positivePearlTint;
     juce::Colour negativeEdgeTint;
     juce::Colour positiveEdgeTint;
-    std::array<juce::Colour, 4> detailPaletteStops;
+    std::array<juce::Colour, 3> directionalDetailColours;
     std::array<float, 3> blurRadii { 0.004f, 0.012f, 0.04f };
     std::array<float, 4> hillshadeWeights { 0.15f, 0.25f, 0.35f, 0.25f };
     std::array<float, 3> obscuranceBiases { 0.002f, 0.006f, 0.012f };

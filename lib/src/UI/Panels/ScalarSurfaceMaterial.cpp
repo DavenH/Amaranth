@@ -13,7 +13,7 @@ namespace {
 constexpr float minimumIllumination = 0.16f;
 constexpr int linearTransferTableSize = 4096;
 std::atomic<ScalarSurfaceTimeStyle> selectedTimeSurfaceStyle {
-        ScalarSurfaceTimeStyle::BlueDepthWarmDetail };
+        ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail };
 
 float smoothUnit(float value) {
     const float unit = juce::jlimit(0.f, 1.f, value);
@@ -137,23 +137,57 @@ LinearColour pearlColour(float value, const ScalarSurfaceMaterial& material) {
             magnitude);
 }
 
-LinearColour detailPaletteColour(float amount, const ScalarSurfaceMaterial& material) {
-    constexpr int intervalCount = 3;
-    const float position = juce::jlimit(0.f, 1.f, amount) * (float) intervalCount;
-    const int lower = juce::jmin(intervalCount - 1, (int) position);
-    const float blend = smoothUnit(position - (float) lower);
-    return interpolate(
-            toLinear(material.detailPaletteStops[(size_t) lower]),
-            toLinear(material.detailPaletteStops[(size_t) lower + 1]),
-            blend);
+LinearColour weightedDirectionalColour(
+        const std::array<juce::Colour, 3>& colours,
+        float magentaWeight,
+        float cyanWeight,
+        float yellowWeight) {
+    const float totalWeight = juce::jmax(
+            1.e-20f,
+            magentaWeight + cyanWeight + yellowWeight);
+    const LinearColour magenta = toLinear(colours[0]);
+    const LinearColour cyan = toLinear(colours[1]);
+    const LinearColour yellow = toLinear(colours[2]);
+    return {
+        (magenta.red * magentaWeight + cyan.red * cyanWeight
+                + yellow.red * yellowWeight) / totalWeight,
+        (magenta.green * magentaWeight + cyan.green * cyanWeight
+                + yellow.green * yellowWeight) / totalWeight,
+        (magenta.blue * magentaWeight + cyan.blue * cyanWeight
+                + yellow.blue * yellowWeight) / totalWeight
+    };
 }
 
-LinearColour edgeColour(
-        float value,
-        float detailAmount,
+LinearColour directionalDetailColour(
+        float slopeX,
+        float slopeY,
         const ScalarSurfaceMaterial& material) {
-    if (material.detailColour == ScalarSurfaceDetailColour::Inferno) {
-        return detailPaletteColour(detailAmount, material);
+    constexpr float sine60 = 0.8660254f;
+    const float magentaProjection = slopeX;
+    const float cyanProjection = 0.5f * slopeX + sine60 * slopeY;
+    const float yellowProjection = -0.5f * slopeX + sine60 * slopeY;
+    const float magentaSquared = magentaProjection * magentaProjection;
+    const float cyanSquared = cyanProjection * cyanProjection;
+    const float yellowSquared = yellowProjection * yellowProjection;
+    const float magentaWeight = magentaSquared * magentaSquared;
+    const float cyanWeight = cyanSquared * cyanSquared;
+    const float yellowWeight = yellowSquared * yellowSquared;
+    return weightedDirectionalColour(
+            material.directionalDetailColours,
+            magentaWeight,
+            cyanWeight,
+            yellowWeight);
+}
+
+LinearColour detailColour(
+        float value,
+        const ScalarSurfaceDerivatives& derivatives,
+        const ScalarSurfaceMaterial& material) {
+    if (material.detailColour == ScalarSurfaceDetailColour::DirectionalCmy) {
+        return directionalDetailColour(
+                derivatives.detailSlopeX,
+                derivatives.detailSlopeY,
+                material);
     }
     return toLinear(value < 0.5f ? material.negativeEdgeTint : material.positiveEdgeTint);
 }
@@ -411,22 +445,18 @@ float detailAccentAmount(
             material.detailEnergyKnee);
     const float signedValue = 2.f * value - 1.f;
     const float magnitude = signedValue < 0.f ? -signedValue : signedValue;
-    const float semanticGate = material.detailColour == ScalarSurfaceDetailColour::Inferno
+    const bool directional = material.detailColour
+            == ScalarSurfaceDetailColour::DirectionalCmy;
+    const float semanticGate = directional
             ? 1.f
             : smoothUnit(
                     (magnitude - material.neutralAccentWidth)
                             / juce::jmax(0.000001f, 1.f - material.neutralAccentWidth));
-    const float slopeWeight = 0.35f + 0.65f * gradientResponse;
+    const float slopeWeight = directional
+            ? gradientResponse
+            : 0.35f + 0.65f * gradientResponse;
     return detailResponse * slopeWeight * semanticGate
             * material.edgeTintStrength * derivatives.boundaryFade;
-}
-
-float detailPaletteAmount(
-        const ScalarSurfaceDerivatives& derivatives,
-        const ScalarSurfaceMaterial& material) {
-    return saturatingDetailResponse(
-            derivatives.detailEnergy,
-            material.detailEnergyKnee);
 }
 
 juce::Colour evaluateMicroEmboss(
@@ -443,10 +473,7 @@ juce::Colour evaluateMicroEmboss(
     colour.blue *= illumination;
     colour = interpolate(
             colour,
-            edgeColour(
-                    unitValue,
-                    detailPaletteAmount(derivatives, material),
-                    material),
+            detailColour(unitValue, derivatives, material),
             detailAccentAmount(unitValue, derivatives, material));
     return juce::Colour::fromFloatRGBA(
             linearToSrgb(colour.red),
@@ -535,20 +562,19 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::signedAmplitude() {
     material.positivePearlTint = juce::Colour(0xffffd9b8);
     material.negativeEdgeTint = juce::Colour(0xffc6d1ff);
     material.positiveEdgeTint = juce::Colour(0xffffcfad);
-    material.detailPaletteStops = {
+    material.directionalDetailColours = {
         juce::Colour(0xffc6d1ff),
         juce::Colour(0xffd5d5e8),
-        juce::Colour(0xffffc7a3),
         juce::Colour(0xffffcfad)
     };
     return material;
 }
 
-ScalarSurfaceMaterial ScalarSurfaceMaterial::blueDepthWarmDetail() {
+ScalarSurfaceMaterial ScalarSurfaceMaterial::blueDepthDirectionalDetail() {
     ScalarSurfaceMaterial material;
     material.palette = ScalarSurfacePalette::SignedAmplitude;
     material.relief = ScalarSurfaceRelief::MicroEmboss;
-    material.detailColour = ScalarSurfaceDetailColour::Inferno;
+    material.detailColour = ScalarSurfaceDetailColour::DirectionalCmy;
     material.signedPaletteStops = {
         juce::Colour(0xff050b18),
         juce::Colour(0xff0c1e38),
@@ -571,11 +597,10 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::blueDepthWarmDetail() {
     material.positivePearlTint = juce::Colour(0xfff3f6f8);
     material.negativeEdgeTint = juce::Colour(0xff8e2437);
     material.positiveEdgeTint = juce::Colour(0xffffb15d);
-    material.detailPaletteStops = {
-        juce::Colour(0xffb13b4d),
-        juce::Colour(0xffdc4f49),
-        juce::Colour(0xfff2794f),
-        juce::Colour(0xffffc36b)
+    material.directionalDetailColours = {
+        juce::Colour(0xffff4fd8),
+        juce::Colour(0xff54e5ff),
+        juce::Colour(0xffffd84d)
     };
     material.edgeTintStrength = 0.10f;
     material.neutralAccentWidth = 0.f;
@@ -583,8 +608,8 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::blueDepthWarmDetail() {
 }
 
 ScalarSurfaceMaterial ScalarSurfaceMaterial::timeDomain() {
-    return timeSurfaceStyle() == ScalarSurfaceTimeStyle::BlueDepthWarmDetail
-            ? blueDepthWarmDetail()
+    return timeSurfaceStyle() == ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail
+            ? blueDepthDirectionalDetail()
             : signedAmplitude();
 }
 
@@ -595,7 +620,7 @@ ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyle() {
 ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(int index) {
     return index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::Bipolar)
             ? ScalarSurfaceTimeStyle::Bipolar
-            : ScalarSurfaceTimeStyle::BlueDepthWarmDetail;
+            : ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail;
 }
 
 int ScalarSurfaceMaterial::timeSurfaceStyleIndex(ScalarSurfaceTimeStyle style) {
@@ -617,7 +642,7 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::unipolarMagnitude() {
     material.positivePearlTint = juce::Colour(0xffffd6a0);
     material.negativeEdgeTint = material.negativePearlTint;
     material.positiveEdgeTint = material.positivePearlTint;
-    material.detailPaletteStops.fill(material.positivePearlTint);
+    material.directionalDetailColours.fill(material.positivePearlTint);
     material.opacityValueScale = 25.f;
     material.opacityPower = 2;
     material.reliefScale = 0.65f;
@@ -639,7 +664,7 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::bipolarPhase() {
     material.positivePearlTint = juce::Colour(0xffdfc4ff);
     material.negativeEdgeTint = material.negativePearlTint;
     material.positiveEdgeTint = material.positivePearlTint;
-    material.detailPaletteStops.fill(material.positivePearlTint);
+    material.directionalDetailColours.fill(material.positivePearlTint);
     material.opacityValueScale = 5.f;
     material.reliefScale = 0.75f;
     material.diffuseStrength = 0.28f;

@@ -52,7 +52,7 @@ public:
             CommandSpyRefreshOnRelease,
             CommandSpyRefreshLive,
             CommandTimeSurfaceBipolar,
-            CommandTimeSurfaceBlueWarmDetail
+            CommandTimeSurfaceBlueDirectionalDetail
         };
 
         MainWindow(
@@ -156,7 +156,7 @@ public:
                         CommandTimeSurfaceBipolar);
                 timeSurfaceMenu.addCommandItem(
                         &commandManager,
-                        CommandTimeSurfaceBlueWarmDetail);
+                        CommandTimeSurfaceBlueDirectionalDetail);
                 menu.addSubMenu("Time Surface Colour", timeSurfaceMenu);
             }
 
@@ -181,7 +181,7 @@ public:
                     CommandSpyRefreshOnRelease,
                     CommandSpyRefreshLive,
                     CommandTimeSurfaceBipolar,
-                    CommandTimeSurfaceBlueWarmDetail
+                    CommandTimeSurfaceBlueDirectionalDetail
             });
         }
 
@@ -236,15 +236,15 @@ public:
                                     == ScalarSurfaceTimeStyle::Bipolar);
                     break;
 
-                case CommandTimeSurfaceBlueWarmDetail:
+                case CommandTimeSurfaceBlueDirectionalDetail:
                     result.setInfo(
-                            "Blue Depth + Warm Detail",
-                            "Use monotonic blue depth with warm high-pass detail",
+                            "Blue Depth + Directional Detail",
+                            "Use monotonic blue depth with angle-coloured high-pass detail",
                             "View",
                             0);
                     result.setTicked(workspace != nullptr
                             && workspace->timeSurfaceStyle()
-                                    == ScalarSurfaceTimeStyle::BlueDepthWarmDetail);
+                                    == ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail);
                     break;
 
                 default:
@@ -278,8 +278,9 @@ public:
                     setTimeSurfaceStyle(ScalarSurfaceTimeStyle::Bipolar);
                     return true;
 
-                case CommandTimeSurfaceBlueWarmDetail:
-                    setTimeSurfaceStyle(ScalarSurfaceTimeStyle::BlueDepthWarmDetail);
+                case CommandTimeSurfaceBlueDirectionalDetail:
+                    setTimeSurfaceStyle(
+                            ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail);
                     return true;
 
                 default:
