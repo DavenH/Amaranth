@@ -1065,8 +1065,11 @@ TEST_CASE("Preset transitions replace equal-revision Trimesh DSP content",
             .getChildFile("presets");
     const NodeGraph african = GraphSerializer().fromJsonString(
             presets.getChildFile("african-horn.cyclegraph").loadFileAsString());
-    const NodeGraph baroque = GraphSerializer().fromJsonString(
+    NodeGraph baroque = GraphSerializer().fromJsonString(
             presets.getChildFile("baroque-flute.cyclegraph").loadFileAsString());
+    baroque.addSignalProbe({
+            "probe", "timeLayer1", "out", "timeOp1", "left", "Time layer", 0.5f, 0
+    });
     GraphChangeSet topology;
     topology.topologyChanged = true;
 
