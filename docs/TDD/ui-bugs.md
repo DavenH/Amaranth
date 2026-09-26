@@ -252,7 +252,7 @@ Current status: open as broader native-fixture stability work; investigate the
 delete targeting and graph-state polling independently of Trimesh drag pointer
 lifetime.
 
-## P2: Broad Waveshaper native sequence can drag the wrong vertex
+## Resolved P2: Broad Waveshaper native sequence can drag the wrong vertex
 
 Context:
 
@@ -264,8 +264,14 @@ Context:
 - The latest shared launch log is
   `/private/var/folders/zx/hdzf3v1s6vvdz7chbz40bbtc0000gn/T/cycle-v2-native-edit-smoke.log`.
 
-Current status: open; make the fixture assert the hovered vertex identity before
-mouse-down and investigate why the new intercept is not the drag target.
+Current status: resolved 2026-09-25 as foreground native-automation
+interference, not a reproduced interactor defect. The native fixture now
+asserts the exact hovered model identity before mouse-down and verifies that
+all peer vertices remain unchanged. A focused in-process component regression
+inserts a vertex, acquires it, performs six movement updates, and proves the
+same identity moves while every peer remains stable. This verification does
+not launch or focus the Cycle application; visible native runs remain invalid
+if the user changes foreground focus during their OS-level pointer sequence.
 
 ## Resolved P2: Envelope release native edit does not restore exact mesh on undo
 

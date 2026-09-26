@@ -1,7 +1,6 @@
 # Cycle V2 UI Reliability Train
 
-Status: In progress. Clean editor-open and safe document-replacement slices
-completed 2026-09-25.
+Status: Implemented 2026-09-25.
 
 Architecture review after safe replacement: `Main.cpp` is 515 lines and owns
 JUCE application composition, menu/dialog routing, and window presentation.
@@ -26,6 +25,15 @@ now invalidates only that node's durable preview product, editor commits
 invalidate the corresponding graph source, and synchronous graph refreshes
 supersede queued local jobs. The downstream cache and static resources remain
 reusable.
+
+Waveshaper targeting audit: the broad native sequence uses foreground,
+screen-coordinate input and can be interrupted when another application takes
+focus. The production interactor's in-process sequence acquires the newly
+inserted vertex, retains that identity through six movement updates, and leaves
+every peer vertex byte-for-byte unchanged. The native fixture now asserts the
+hovered identity before mouse-down and peer stability after mouse-up, so future
+foreground interference is reported as invalid acquisition or routing evidence
+instead of being attributed to the interactor.
 
 ## Scope
 

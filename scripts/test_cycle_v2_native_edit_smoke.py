@@ -899,6 +899,35 @@ class NativeEditSmoke:
                 1.0 - (y - zoom["y"]) / zoom["h"],
             )
 
+        def hovered_vertex_id(inspection):
+            current = inspection["effect2D"]["panelState"].get("currentVertex")
+            if current is None:
+                return None
+            vertices = self.flat_snapshot(inspection)["vertices"]
+            closest = min(
+                vertices,
+                key=lambda vertex: abs(vertex["x"] - current["x"])
+                + abs(vertex["y"] - current["y"]),
+            )
+            assert abs(closest["x"] - current["x"]) < 1.0e-6
+            assert abs(closest["y"] - current["y"]) < 1.0e-6
+            return closest["id"]
+
+        def acquire_vertex(vertex):
+            nominal = panel_position(vertex["x"], vertex["y"])
+            self.move_pointer((1, 1))
+            self.move_pointer(nominal)
+            inspection = self.inspect("waveshaper")
+            hovered_id = hovered_vertex_id(inspection)
+            assert hovered_id == vertex["id"], (
+                "Waveshaper vertex was not acquired",
+                vertex,
+                hovered_id,
+                inspection["effect2D"]["panelState"],
+            )
+            print(f"[waveshaper] acquired vertex {hovered_id}", flush=True)
+            return nominal, inspection
+
         add_at = panel_position(open_phase(initial["vertices"]), 0.32)
         self.click(f"rc:{add_at[0]},{add_at[1]}")
         added = self.flat_snapshot(self.inspect("waveshaper"))
@@ -908,9 +937,14 @@ class NativeEditSmoke:
         })
 
         panel = self.target("expanded:waveshaper.panel2D")
-        source = panel_position(added_vertex["x"], added_vertex["y"])
+        source, acquired = acquire_vertex(added_vertex)
+        assert hovered_vertex_id(acquired) == added_vertex["id"]
         destination = panel_position(min(0.85, added_vertex["x"] + 0.16), min(0.85, added_vertex["y"] + 0.16))
-        self.click(f"m:{source[0]},{source[1]}")
+        before_vertex_drag = {
+            vertex["id"]: vertex
+            for vertex in self.flat_snapshot(acquired)["vertices"]
+            if vertex["id"] != added_vertex["id"]
+        }
         self.drag(source, destination)
         moved_state = self.inspect_until(
             "waveshaper",
@@ -930,6 +964,15 @@ class NativeEditSmoke:
             moved_state["effect2D"]["panelState"],
         )
         assert moved["selection"] == added_vertex["id"]
+        for peer in moved["vertices"]:
+            if peer["id"] == added_vertex["id"]:
+                continue
+            assert peer == before_vertex_drag[peer["id"]], (
+                "Waveshaper drag changed a peer vertex",
+                added_vertex,
+                before_vertex_drag[peer["id"]],
+                peer,
+            )
 
         reshaped = moved
         used_vertex_ids = set()
@@ -1008,6 +1051,14 @@ class NativeEditSmoke:
                     )
                     for point in current_panel["waveformPoints"]
                 ]
+                projected_vertices = [
+                    (
+                        (vertex["x"] - current_zoom["x"]) / current_zoom["w"],
+                        1.0 - (vertex["y"] - current_zoom["y"]) / current_zoom["h"],
+                    )
+                    for vertex in self.flat_snapshot(
+                        self.inspect("waveshaper"))["vertices"]
+                ]
                 blank_fraction = max(
                     (
                         (x / 10.0, y / 10.0)
@@ -1017,7 +1068,7 @@ class NativeEditSmoke:
                     key=lambda candidate: min(
                         (candidate[0] - point[0]) ** 2
                         + (candidate[1] - point[1]) ** 2
-                        for point in projected_waveform
+                        for point in projected_waveform + projected_vertices
                     ),
                 )
                 blank = self.point(panel, *blank_fraction)
@@ -1026,7 +1077,6 @@ class NativeEditSmoke:
                 blank_state = self.inspect("waveshaper")["effect2D"]["panelState"]
                 assert not blank_state["curveHover"], "curve hover remained active away from the curve"
                 assert not blank_state["curveResizeCursor"], "curve cursor remained active away from the curve"
-                self.cursor_until("normal")
                 self.capture("effect2d-before-hover", panel)
             self.move_pointer((1, 1))
             self.move_pointer(curve_start)

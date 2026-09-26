@@ -59,6 +59,33 @@ public:
     ~CurveTableScope() { Curve::deleteTable(); }
 };
 
+MouseEvent curvePanelMouseEvent(
+        Component& component,
+        Point<float> position,
+        ModifierKeys modifiers,
+        Point<float> mouseDownPosition,
+        bool dragged,
+        int clickCount = 1) {
+    const Time now = Time::getCurrentTime();
+    return {
+            Desktop::getInstance().getMainMouseSource(),
+            position,
+            modifiers,
+            1.f,
+            0.f,
+            0.f,
+            0.f,
+            0.f,
+            &component,
+            &component,
+            now,
+            mouseDownPosition,
+            now,
+            clickCount,
+            dragged
+    };
+}
+
 void addUnrelatedInteractionState(NodeGraph& graph) {
     GraphNodeFactory factory;
     for (int index = 0; index < 128; ++index) {
@@ -2413,6 +2440,111 @@ TEST_CASE("Guide editor presents heatmap state and clears through its semantic a
 
     editor.setGuideResource(guide, nullptr);
     REQUIRE_FALSE((bool) widget.automationState().getProperty("heatmapActive", {}));
+}
+
+TEST_CASE("Waveshaper point drag retains the hovered vertex identity",
+        "[cycle-v2][node-editor-host][waveshaper][interaction][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Node node = GraphNodeFactory().createNode(NodeKind::Waveshaper, "waveshaper", {});
+    CurveEditorWidget widget(NodeKind::Waveshaper);
+    Component* panel = widget.prepareExpandedPanelComponent(
+            node, Rectangle<float>(0.f, 0.f, 436.f, 436.f));
+    REQUIRE(panel != nullptr);
+    panel->setBounds(0, 0, 436, 436);
+    panel->addToDesktop(ComponentPeer::windowIsTemporary);
+
+    const auto pointFor = [&](float x, float y) {
+        const var zoom = widget.automationState().getProperty("zoom", {});
+        const float zoomX = zoom.getProperty("x", {});
+        const float zoomY = zoom.getProperty("y", {});
+        const float zoomWidth = zoom.getProperty("w", {});
+        const float zoomHeight = zoom.getProperty("h", {});
+        return Point<float>(
+                panel->getWidth() * (x - zoomX) / zoomWidth,
+                panel->getHeight() * (1.f - (y - zoomY) / zoomHeight));
+    };
+
+    const Point<float> insertion = pointFor(0.5f, 0.32f);
+    panel->mouseDoubleClick(curvePanelMouseEvent(
+            *panel,
+            insertion,
+            ModifierKeys::leftButtonModifier,
+            insertion,
+            false,
+            2));
+    NodeModelStatePtr insertedPublication = widget.prepareModelPublication(
+            node.model->revision());
+    REQUIRE(insertedPublication != nullptr);
+    const auto insertedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            insertedPublication);
+    REQUIRE(insertedModel != nullptr);
+    REQUIRE(insertedModel->flatCurve() != nullptr);
+    REQUIRE(insertedModel->flatCurve()->selectedVertexId().has_value());
+    const CurveVertexId insertedId = *insertedModel->flatCurve()->selectedVertexId();
+    const auto insertedVertices = insertedModel->flatCurve()->getVertices();
+    const auto inserted = std::find_if(
+            insertedVertices.begin(),
+            insertedVertices.end(),
+            [&](const auto& vertex) { return vertex.id == insertedId; });
+    REQUIRE(inserted != insertedVertices.end());
+    const FlatCurveVertex insertedVertex = *inserted;
+
+    node.model = std::move(insertedPublication);
+    auto* editorState = new DynamicObject();
+    editorState->setProperty("selectedVertexId", (int64) insertedId);
+    node.editorState = var(editorState);
+    widget.syncFromNode(node);
+
+    const Point<float> source = pointFor(insertedVertex.x, insertedVertex.y);
+    panel->mouseMove(curvePanelMouseEvent(*panel, source, {}, source, false));
+    const var hovered = widget.automationState().getProperty("currentVertex", {});
+    REQUIRE(static_cast<double>(hovered.getProperty("x", {}))
+            == Catch::Approx(insertedVertex.x));
+    REQUIRE(static_cast<double>(hovered.getProperty("y", {}))
+            == Catch::Approx(insertedVertex.y));
+
+    panel->mouseDown(curvePanelMouseEvent(
+            *panel,
+            source,
+            ModifierKeys::leftButtonModifier,
+            source,
+            false));
+    const Point<float> destination = pointFor(0.66f, 0.48f);
+    for (int step = 1; step <= 6; ++step) {
+        const float amount = (float) step / 6.f;
+        const Point<float> position = source + (destination - source) * amount;
+        panel->mouseDrag(curvePanelMouseEvent(
+                *panel,
+                position,
+                ModifierKeys::leftButtonModifier,
+                source,
+                true));
+    }
+    panel->mouseUp(curvePanelMouseEvent(*panel, destination, {}, source, true));
+
+    const auto movedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            widget.prepareModelPublication(node.model->revision()));
+    REQUIRE(movedModel != nullptr);
+    REQUIRE(movedModel->flatCurve() != nullptr);
+    const auto movedVertices = movedModel->flatCurve()->getVertices();
+    const auto moved = std::find_if(
+            movedVertices.begin(),
+            movedVertices.end(),
+            [&](const auto& vertex) { return vertex.id == insertedId; });
+    REQUIRE(moved != movedVertices.end());
+    REQUIRE(std::abs(moved->x - insertedVertex.x) > 0.02f);
+    for (const auto& before : insertedVertices) {
+        if (before.id == insertedId) {
+            continue;
+        }
+        const auto after = std::find_if(
+                movedVertices.begin(),
+                movedVertices.end(),
+                [&](const auto& vertex) { return vertex.id == before.id; });
+        REQUIRE(after != movedVertices.end());
+        REQUIRE(*after == before);
+    }
 }
 
 TEST_CASE("Selected flat curve state binds before its panel host exists",
