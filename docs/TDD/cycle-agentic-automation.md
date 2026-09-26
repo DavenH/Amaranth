@@ -684,7 +684,7 @@ Current verified behavior:
   submenu presence.
 - `invokeMenuItem` executes a resolved main menu item through
   `SynthMenuBarModel::menuItemSelected(...)`; the focused fixture invokes
-  Graphics / Displayed Processing Stage / 2. After envelopes and asserts
+  View / Displayed Processing Stage / 2. After envelopes and asserts
   `viewStageName == postEnvelopes`.
 - `TabbedSelector` targets report selected index, tab count, tab labels, and
   tab-local bounds; `setControl` can select a tab by index or text. The focused

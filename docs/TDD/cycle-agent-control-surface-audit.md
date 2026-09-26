@@ -47,7 +47,7 @@ These should be added before trying to claim near-total UI coverage.
      state, tick state, and submenu paths from `SynthMenuBarModel`.
      Done for main menu-bar `PopupMenu` trees.
    - Add `invokeMenuItem` with stable selectors such as
-     `{ "menu": "Graphics", "path": ["Displayed Processing Stage", "3. After spectral filtering"] }`
+     `{ "menu": "View", "path": ["Displayed Processing Stage", "3. After spectral filtering"] }`
      and an id fallback for tests that intentionally bind to enum ids.
      Done for main menu-bar items.
    - Use `SynthMenuBarModel::menuItemSelected(...)` for execution so tests hit

@@ -25,20 +25,6 @@ runs completed with zero failed commands. Capture the initialized endpoint
 names and launch sequence if it recurs before changing MIDI initialization or
 teardown.
 
-## P2: Cycle 1 menu smoke requests the removed Graphics menu
-
-Context:
-
-- An incidental smoke run on 2026-09-06 listed the current menus successfully,
-  then `cycle-agent-menu-commands.json` failed with `Menu not found: Graphics`.
-- The application now exposes the related display commands under `View`; the
-  audio-pipeline changes do not alter menus or the fixture.
-- Repro report:
-  `/private/tmp/cycle-agent-audio-parity/cycle-agent-smokes-report.json`.
-
-Current status: open; update the menu fixture against the intended current menu
-contract in a focused UI slice.
-
 ## P2: Graph document save test cannot use JUCE's default temporary directory
 
 Context:
