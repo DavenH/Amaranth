@@ -117,12 +117,30 @@ juce::Colour magnitudeColour(float value) {
     return legacyBurntAlum.getPixelAt(x, 0);
 }
 
+juce::Colour legacyBlueColour(float value) {
+    static const juce::Image legacyBlue = juce::PNGImageFormat::loadFrom(
+            Gradients::blue_png,
+            Gradients::blue_pngSize);
+    if (!legacyBlue.isValid()) {
+        return juce::Colour(0xff53657a);
+    }
+    const int x = juce::jlimit(
+            0,
+            legacyBlue.getWidth() - 1,
+            juce::roundToInt(juce::jlimit(0.f, 1.f, value)
+                    * (float) (legacyBlue.getWidth() - 1)));
+    return legacyBlue.getPixelAt(x, 0);
+}
+
 juce::Colour paletteColour(float value, const ScalarSurfaceMaterial& material) {
     if (material.palette == ScalarSurfacePalette::UnipolarMagnitude) {
         return magnitudeColour(value);
     }
     if (material.palette == ScalarSurfacePalette::SignedAmplitude) {
         return signedAmplitudeColour(value, material);
+    }
+    if (material.palette == ScalarSurfacePalette::LegacyBlue) {
+        return legacyBlueColour(value);
     }
     return bipolarColour(value, material);
 }
@@ -364,6 +382,9 @@ ScalarSurfaceDerivatives derivativesFor(
             / (float) (scales.rows - 1);
 
     ScalarSurfaceDerivatives result;
+    if (material.relief == ScalarSurfaceRelief::None) {
+        return result;
+    }
     const int derivativeScaleCount = material.relief == ScalarSurfaceRelief::MicroEmboss
             ? 2
             : 4;
@@ -488,6 +509,9 @@ juce::Colour evaluateColour(
         const ScalarSurfaceMaterial& material,
         const LightGeometry& light) {
     const float unitValue = juce::jlimit(0.f, 1.f, value);
+    if (material.relief == ScalarSurfaceRelief::None) {
+        return paletteColour(unitValue, material).withAlpha(opacityFor(unitValue, material));
+    }
     if (material.relief == ScalarSurfaceRelief::MicroEmboss) {
         return evaluateMicroEmboss(unitValue, derivatives, material, light);
     }
@@ -570,11 +594,10 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::signedAmplitude() {
     return material;
 }
 
-ScalarSurfaceMaterial ScalarSurfaceMaterial::blueDepthDirectionalDetail() {
+ScalarSurfaceMaterial ScalarSurfaceMaterial::blueDepth() {
     ScalarSurfaceMaterial material;
-    material.palette = ScalarSurfacePalette::SignedAmplitude;
-    material.relief = ScalarSurfaceRelief::MicroEmboss;
-    material.detailColour = ScalarSurfaceDetailColour::DirectionalCmy;
+    material.palette = ScalarSurfacePalette::LegacyBlue;
+    material.relief = ScalarSurfaceRelief::None;
     material.signedPaletteStops = {
         juce::Colour(0xff050b18),
         juce::Colour(0xff0c1e38),
@@ -602,15 +625,34 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::blueDepthDirectionalDetail() {
         juce::Colour(0xff54e5ff),
         juce::Colour(0xffffd84d)
     };
-    material.edgeTintStrength = 0.10f;
+    material.embossStrength = 0.f;
+    material.edgeTintStrength = 0.f;
     material.neutralAccentWidth = 0.f;
     return material;
 }
 
+ScalarSurfaceMaterial ScalarSurfaceMaterial::blueDepthDirectionalDetail() {
+    ScalarSurfaceMaterial material = blueDepth();
+    material.palette = ScalarSurfacePalette::SignedAmplitude;
+    material.relief = ScalarSurfaceRelief::MicroEmboss;
+    material.detailColour = ScalarSurfaceDetailColour::DirectionalCmy;
+    material.embossStrength = 0.06f;
+    material.edgeTintStrength = 0.10f;
+    return material;
+}
+
 ScalarSurfaceMaterial ScalarSurfaceMaterial::timeDomain() {
-    return timeSurfaceStyle() == ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail
-            ? blueDepthDirectionalDetail()
-            : signedAmplitude();
+    switch (timeSurfaceStyle()) {
+        case ScalarSurfaceTimeStyle::Bipolar:
+            return signedAmplitude();
+
+        case ScalarSurfaceTimeStyle::BlueDepth:
+            return blueDepth();
+
+        case ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail:
+            return blueDepthDirectionalDetail();
+    }
+    return blueDepthDirectionalDetail();
 }
 
 ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyle() {
@@ -618,9 +660,13 @@ ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyle() {
 }
 
 ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(int index) {
-    return index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::Bipolar)
-            ? ScalarSurfaceTimeStyle::Bipolar
-            : ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail;
+    if (index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::Bipolar)) {
+        return ScalarSurfaceTimeStyle::Bipolar;
+    }
+    if (index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::BlueDepth)) {
+        return ScalarSurfaceTimeStyle::BlueDepth;
+    }
+    return ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail;
 }
 
 int ScalarSurfaceMaterial::timeSurfaceStyleIndex(ScalarSurfaceTimeStyle style) {
@@ -701,7 +747,9 @@ ScalarSurfaceHeightScales ScalarSurfaceMaterialEvaluator::createHeightScales(
     std::vector<float> blurred((size_t) valueTotal);
     constexpr std::array<int, 3> minimumRadii { 2, 4, 8 };
     constexpr std::array<int, 3> maximumRadii { 4, 12, 48 };
-    const int blurScaleCount = material.relief == ScalarSurfaceRelief::MicroEmboss ? 1 : 3;
+    const int blurScaleCount = material.relief == ScalarSurfaceRelief::MultiscaleTerrain
+            ? 3
+            : material.relief == ScalarSurfaceRelief::MicroEmboss ? 1 : 0;
     for (int scale = 0; scale < blurScaleCount; ++scale) {
         const int columnRadius = boundedBlurRadius(
                 material.blurRadii[(size_t) scale],
@@ -717,7 +765,11 @@ ScalarSurfaceHeightScales ScalarSurfaceMaterialEvaluator::createHeightScales(
         blurRows(horizontal, blurred, columns, rows, rowRadius);
         packScale(blurred, result.packedValues, scale + 1);
     }
-    if (blurScaleCount == 1) {
+    if (blurScaleCount == 0) {
+        packScale(original, result.packedValues, 1);
+        packScale(original, result.packedValues, 2);
+        packScale(original, result.packedValues, 3);
+    } else if (blurScaleCount == 1) {
         packScale(blurred, result.packedValues, 2);
         packScale(blurred, result.packedValues, 3);
     }

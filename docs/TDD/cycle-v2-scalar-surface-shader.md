@@ -2,6 +2,38 @@
 
 Status: Implemented
 
+## Pure Cycle 1 Blue Mode (2026-09-25)
+
+Cycle 1 and Cycle V2 expose a third `Blue Depth` time-surface option alongside
+`Bipolar` and `Blue Depth + Directional Detail`. `Blue Depth` uses the original
+Cycle 1 `Gradients::blue_png` lookup table exactly; it is not an approximation
+made from the newer hand-authored blue stops. Its material relief mode is
+explicitly `None`, so CPU fallback and GPU output contain no emboss,
+directional tint, cavity, shadow, exposure, pearl, or specular contribution.
+
+The GPU packs the legacy magnitude and blue lookup tables into separate rows of
+one palette texture. The CPU evaluator samples the same 512-entry source asset,
+and parity validation covers the pure blue material. Existing persisted enum
+indices remain unchanged (`Bipolar = 0`, directional detail `= 1`); pure blue is
+the new value `2`.
+
+The post-change files remain cohesive despite their review-trigger sizes:
+`ScalarSurfaceMaterial.cpp` is 885 lines and remains the single CPU material,
+palette, preprocessing, and reference-evaluation owner;
+`GLScalarSurfaceRenderer.cpp` is 834 lines and remains the single GPU program,
+texture, parity, and GL-lifecycle owner. `cycle-v2/src/Main.cpp` is 521 lines;
+its additions are only command/menu orchestration. No graph, node, rasterizer,
+or domain lifecycle policy moved into these files, and no equivalent Cycle V2
+policy site was introduced.
+
+Verification on 2026-09-25 built `AmaranthLib_tests`, Cycle 1, Cycle V2, and
+`CycleV2_tests`. The surface-material suite passed 733 assertions in 13 cases;
+the focused Trimesh profile and Signal Spy normalization cases passed 52 and 4
+assertions. All ten scalar-surface lifecycle automation commands passed across
+OpenGL context recreation, and CPU/GPU parity passed before and after recreation
+with a maximum channel error of 2. The run also emitted the pre-existing
+`Curve.cpp:56/57` assertions already tracked in `docs/TDD/ui-bugs.md`.
+
 ## Implementation Record
 
 ### Baseline (2026-09-20)

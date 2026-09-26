@@ -43,7 +43,7 @@ public:
 
 private:
     bool compileProgram();
-    bool ensureMagnitudePaletteTexture();
+    bool ensureScalarPaletteTexture();
     bool ensureTexture(const ScalarSurfaceRenderData& data);
     bool uploadTexture(const ScalarSurfaceRenderData& data);
     bool textureMatches(const ScalarSurfaceRenderData& data) const;
@@ -56,7 +56,7 @@ private:
     std::vector<float> packedHeightScales;
     unsigned int program {};
     unsigned int texture {};
-    unsigned int magnitudePaletteTexture {};
+    unsigned int scalarPaletteTexture {};
     bool compileAttempted {};
     bool usingFloatTexture {};
     bool textureCapabilityFailed {};

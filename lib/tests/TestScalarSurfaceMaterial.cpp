@@ -169,15 +169,55 @@ TEST_CASE("Time surface style selection changes only the time material",
     const ScalarSurfaceMaterial bipolar = ScalarSurfaceMaterial::timeDomain();
     ScalarSurfaceMaterial::setTimeSurfaceStyle(
             ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail);
+    const ScalarSurfaceMaterial directional = ScalarSurfaceMaterial::timeDomain();
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(ScalarSurfaceTimeStyle::BlueDepth);
     const ScalarSurfaceMaterial blue = ScalarSurfaceMaterial::timeDomain();
     ScalarSurfaceMaterial::setTimeSurfaceStyle(previous);
 
     REQUIRE(bipolar.detailColour == ScalarSurfaceDetailColour::Signed);
-    REQUIRE(blue.detailColour == ScalarSurfaceDetailColour::DirectionalCmy);
+    REQUIRE(directional.detailColour == ScalarSurfaceDetailColour::DirectionalCmy);
+    REQUIRE(blue.relief == ScalarSurfaceRelief::None);
+    REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleIndex(
+            ScalarSurfaceTimeStyle::Bipolar) == 0);
+    REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleIndex(
+            ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail) == 1);
+    REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleIndex(
+            ScalarSurfaceTimeStyle::BlueDepth) == 2);
+    REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(99)
+            == ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail);
     REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, bipolar)
             != ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, blue));
     REQUIRE(ScalarSurfaceMaterial::unipolarMagnitude().palette
             == ScalarSurfacePalette::UnipolarMagnitude);
+}
+
+TEST_CASE("Pure blue depth ignores derivative effects", "[ui][surface-material]") {
+    const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::blueDepth();
+    const juce::Image legacyBlue = juce::PNGImageFormat::loadFrom(
+            Gradients::blue_png,
+            Gradients::blue_pngSize);
+    ScalarSurfaceDerivatives derivatives;
+    derivatives.slopeX.fill(100.f);
+    derivatives.slopeY.fill(-100.f);
+    derivatives.obscurance = 1.f;
+    derivatives.exposure = 1.f;
+    derivatives.detailSlopeX = 100.f;
+    derivatives.detailSlopeY = -100.f;
+    derivatives.detailEnergy = 1.f;
+    derivatives.boundaryFade = 1.f;
+
+    REQUIRE(material.relief == ScalarSurfaceRelief::None);
+    REQUIRE(material.palette == ScalarSurfacePalette::LegacyBlue);
+    REQUIRE(material.embossStrength == 0.f);
+    REQUIRE(material.edgeTintStrength == 0.f);
+    REQUIRE(legacyBlue.isValid());
+    for (const float value: { 0.f, 0.25f, 0.5f, 0.75f, 1.f }) {
+        const int x = juce::roundToInt(value * (float) (legacyBlue.getWidth() - 1));
+        REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(value, material)
+                == legacyBlue.getPixelAt(x, 0));
+        REQUIRE(ScalarSurfaceMaterialEvaluator::colourFor(value, derivatives, material)
+                == ScalarSurfaceMaterialEvaluator::baseColourFor(value, material));
+    }
 }
 
 TEST_CASE("Directional detail response is continuous and energy graded",

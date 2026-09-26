@@ -126,6 +126,11 @@ PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String
                     true,
                     style == ScalarSurfaceTimeStyle::Bipolar);
             surfaceMenu.addItem(
+                    TimeSurfaceBlueDepth,
+                    "Blue Depth",
+                    true,
+                    style == ScalarSurfaceTimeStyle::BlueDepth);
+            surfaceMenu.addItem(
                     TimeSurfaceBlueDirectionalDetail,
                     "Blue Depth + Directional Detail",
                     true,
@@ -305,10 +310,14 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 		} else if (item == DrawScales) {
 			getSetting(DrawScales) ^= true;
         } else if (item == TimeSurfaceBipolar
+                || item == TimeSurfaceBlueDepth
                 || item == TimeSurfaceBlueDirectionalDetail) {
-            const ScalarSurfaceTimeStyle style = item == TimeSurfaceBipolar
-                    ? ScalarSurfaceTimeStyle::Bipolar
-                    : ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail;
+            ScalarSurfaceTimeStyle style = ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail;
+            if (item == TimeSurfaceBipolar) {
+                style = ScalarSurfaceTimeStyle::Bipolar;
+            } else if (item == TimeSurfaceBlueDepth) {
+                style = ScalarSurfaceTimeStyle::BlueDepth;
+            }
             getSetting(TimeSurfaceStyle) =
                     ScalarSurfaceMaterial::timeSurfaceStyleIndex(style);
             ScalarSurfaceMaterial::setTimeSurfaceStyle(style);
