@@ -958,7 +958,16 @@ TEST_CASE("Stengah probes reflect an asynchronous Waveshaper curve edit at the c
             .getChildFile("stengah.cyclegraph");
     REQUIRE(preset.existsAsFile());
 
-    GraphDocument document(GraphSerializer().fromJsonString(preset.loadFileAsString()));
+    NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    graph.addSignalProbe({
+            "probe2", "waveshaper", "time", "impulseResponse", "time",
+            "Waveshaper output", 0.5f, 0
+    });
+    graph.addSignalProbe({
+            "probe5", "volumeMultiply", "out", "voiceOutput", "time",
+            "Waveshaper input", 0.5f, 1
+    });
+    GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     GraphPresentationModel presentation;
     GraphChangeSet topology;
@@ -1108,6 +1117,10 @@ TEST_CASE("Stengah upstream probes remain stable across spectral pan edits",
             0.5f,
             8
     });
+    graph.addSignalProbe({
+            "probe6", "phaseOp2", "out", "phaseOp3", "left",
+            "Post-pan phase", 0.5f, 9
+    });
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     GraphPresentationModel presentation;
@@ -1128,7 +1141,7 @@ TEST_CASE("Stengah upstream probes remain stable across spectral pan edits",
 
     for (const String pan : { "1", "0.5", "0", "0.5" }) {
         REQUIRE(commands.setNodeParameter(
-                "phaseLayer1Process", "pan", "Pan", pan).succeeded());
+                "pan2", "pan", "Pan", pan).succeeded());
         REQUIRE(presentation.refresh(
                 document.graph(),
                 document.revision(),

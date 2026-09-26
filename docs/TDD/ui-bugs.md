@@ -79,16 +79,6 @@ case also fails in isolation before exercising the morph-selection correction.
 The new morph-selection, disabled-control, and pointer-interaction cases pass
 independently; this remains open as shared test setup/lifetime work.
 
-## P3: Causal-tag runtime suite misses expected probe previews
-
-On 2026-09-17, `CycleV2_tests '[cycle-v2][runtime][causal]'` reported two
-`TestGraphRuntime.cpp:48` failures because `findProbePreview` could not find
-the requested probe. One was the Stengah asynchronous Waveshaper test at line
-839 (`probe2`); the other occurred earlier in the same tag run. The focused
-presentation-session and policy tests pass. Log: `/tmp/causal-all-tests.log`.
-Current status: open; identify the second case and determine whether preset
-topology or preview planning caused the missing probes.
-
 ## P3: Parallel macOS automation launches contend for CoreMIDI
 
 Context:
