@@ -1,50 +1,9 @@
 # Cycle V2 UI Bug Notes
 
-## Resolved P2: Trimesh spectral backgrounds and expanded surface resolution
-
-Reported 2026-09-18. Spectral Trimesh backgrounds used a fixed 128-position
-harmonic ramp, the 3D background ignored the key-scale pitch across columns,
-and expanded surfaces used 96 columns regardless of panel width. The preview
-pitch resolver also missed the Voice Context on factory graphs with implicit
-context routing. The panel now uses the full per-key `LogRegions` ramp and
-pitch-dependent 3D harmonic traces; expanded grid resolution follows the
-panel width. The Organ 4 native fixture reports 586 columns across a 586-pixel
-panel and pitch spanning MIDI 20–127, with no failed commands.
-
-Follow-up 2026-09-18: mapping Key Scale to Red exposed a snap-back when moving
-the red morph rail. The panel bridge was replacing the node's red value with
-the selected keyboard preview note on every refresh, which also fixed the
-harmonic grid at that note. The bridge now reads the mapped morph value for its
-panel pitch. A focused red-rail gesture fixture covers movement and undo.
-Further follow-up: with Red as the primary 3D axis, every column was sampled
-using the moving red slice's note while its grid position used the column's own
-note. The expanded editor also fell back to 96 columns during a local morph
-move. The column sampler now uses the column key and the expanded edit retains
-its pixel-width grid. Direct harmonic parity, invariant surface data, and a
-586-column native gesture fixture cover the repair.
-
 ## Remaining priority
 
 There are no open deterministic P0 or P1 regressions as of 2026-09-09.
 Resolved and no-longer-reproducing entries have been removed from this ledger.
-
-## Resolved P2: Flat curve editors omitted vertex hover highlighting
-
-Reported 2026-09-26. Waveshaper and Impulse Response panels acquired the
-nearest editable vertex for interaction, but cleared the intercept index used
-by the shared yellow hover-marker path. Their panels now adapt a vertex that is
-actually within the standard hit radius into the same marker rendering used by
-the other 2D vertex editors. Selection remains unhighlighted when the pointer
-is elsewhere or has left the panel. Focused in-process coverage exercises both
-editors without launching a foreground application window.
-
-## Resolved P2: Undoing a Trimesh morph gesture closed the expanded editor
-
-The 2026-09-18 Organ 4 red-rail gesture fixture observed that undo restored
-the morph value but cleared the expanded editor. Undo and redo now reconcile
-selection with the restored graph and retain the editor for a surviving node.
-The native Trimesh vertex-drag fixture asserts that the editor stays open after
-undo; `TestNodeCanvasAuthoring.cpp` also covers undo and redo.
 
 ## P2: Broader Trimesh tests retain a stale control-region expectation
 
@@ -54,22 +13,6 @@ column equality (`96` versus `450`) was also stale after expanded pixel-width
 sampling; its test now checks shared source data at their respective resolutions.
 The control-region expectation remains open; log:
 `/tmp/cycle-v2-trimesh-tests.txt`.
-
-## Resolved P2: Mod Wheel release published duplicate graph/Spy updates
-
-Reported 2026-09-17. While moving the MIDI keyboard Mod Wheel, the Spy appears
-to refresh twice after release, suggesting two graph updates for one movement
-or gesture commit. A graph update also appears to cancel a running audition
-note. These are observations, not yet an established shared cause; the preview
-audio failing to follow the wheel on `filter-saw-2` is tracked separately in
-`docs/TDD/audio-bugs.md`.
-
-Current status: focused On Release path resolved 2026-09-17. The Honerism 3
-fixture reproduced two preview requests and a canceled held note before the
-repair, then one asynchronous request/publication with the held note preserved.
-The workspace now skips unchanged audio-plan copies and defers compatible plan
-adoption until the current note ends. Live-mode commit deduplication remains in
-`docs/TDD/cycle-v2-mod-wheel-refresh-audit.md` and the causal-policy cleanup.
 
 ## P2: Cycle 1 default factory preset key no longer resolves
 
@@ -85,24 +28,6 @@ Context:
 
 Current status: open; select the intended default and make its persisted key
 follow the factory preset filename-resolution contract.
-
-## Resolved P1: Opening a graph can discard unsaved edits without confirmation
-
-Context:
-
-- Moving a node now publishes the normal dirty-document presentation, exposing
-  the same unsaved state as other semantic graph edits.
-- Opening another preset while the current graph is dirty replaces the document
-  without a save/discard/cancel decision.
-- This branch intentionally fixes dirty-state publication only; the document-open
-  confirmation is separate window/document-lifecycle work.
-
-Current status: resolved 2026-09-25. Every interactive graph-open entry point
-uses one replacement controller. Clean documents open immediately; dirty
-documents require Save, Discard, or Cancel. Replacement after Save occurs only
-when saving succeeds, while Cancel and failed saves retain the current graph.
-Focused file-workflow tests cover the decision sequence and pending-target
-exclusion.
 
 ## P2: Intermittent CoreMIDI endpoint assertion during automation startup
 
@@ -164,23 +89,6 @@ and compiles` on `african-horn.cyclegraph`. The graph compiles, but a
 deserialize/serialize pass changes its JSON representation. This predates and
 is independent of the document-declick changes; regenerate that preset through
 the canonical serializer without expanding unrelated preset diffs.
-
-## Resolved P2: Trimesh preview key scale also changes the default red morph axis
-
-Context:
-
-- After merging `master` on 2026-09-13, the focused
-  `Trimesh preview pitch positions whichever morph axis owns key scale` test
-  fails independently of the audio-parity and Voice Context conflict paths.
-- With preview key scale assigned to Time at MIDI 48, Time reaches the expected
-  normalized `0.261682`, but Red also becomes `0.261682` instead of retaining
-  its neutral `0.5` value.
-- The test and the relevant Trimesh preview behavior arrived from `master`; no
-  conflict hunk touched that implementation.
-
-Current status: resolved 2026-09-18. The mapped axis now reads its authored
-morph parameter; selecting a preview key updates that parameter through the
-existing graph command path. Other axes retain their own values.
 
 ## P2: Envelope purpose rail-spacing assertion no longer matches layout
 
@@ -261,69 +169,6 @@ Context:
 Current status: open as broader native-fixture stability work; investigate the
 delete targeting and graph-state polling independently of Trimesh drag pointer
 lifetime.
-
-## Resolved P2: Broad Waveshaper native sequence can drag the wrong vertex
-
-Context:
-
-- A focused run on 2026-09-11 inserted a Waveshaper vertex, then attempted to
-  drag that exact intercept. The inserted vertex remained unchanged while the
-  panel's current vertex moved to the requested destination.
-- The failure occurs before the curve-reshape portion of the sequence and is
-  independent of curve-pole or hidden-axis gesture scaling.
-- The latest shared launch log is
-  `/private/var/folders/zx/hdzf3v1s6vvdz7chbz40bbtc0000gn/T/cycle-v2-native-edit-smoke.log`.
-
-Current status: resolved 2026-09-25 as foreground native-automation
-interference, not a reproduced interactor defect. The native fixture now
-asserts the exact hovered model identity before mouse-down and verifies that
-all peer vertices remain unchanged. A focused in-process component regression
-inserts a vertex, acquires it, performs six movement updates, and proves the
-same identity moves while every peer remains stable. This verification does
-not launch or focus the Cycle application; visible native runs remain invalid
-if the user changes foreground focus during their OS-level pointer sequence.
-
-## Resolved P2: Envelope release native edit does not restore exact mesh on undo
-
-Context:
-
-- After native automation was corrected to target the exact launched process,
-  the focused `envelope-release` sequence edited the release region but its
-  final undo did not restore the initial serialized mesh exactly.
-- The failure occurred after the hover-entry assertion passed and is independent
-  of the Trimesh hover-proximity correction.
-- The latest shared launch log is
-  `/private/var/folders/zx/hdzf3v1s6vvdz7chbz40bbtc0000gn/T/cycle-v2-native-edit-smoke.log`.
-
-Current status: resolved 2026-09-25 as a fixture observation race. The routed
-gesture's inverse delta restores every serialized mesh field exactly, including
-floating-point values at zero tolerance. The native inspector had allowed only
-100 ms for the asynchronous undo publication and could return the preceding
-state. The focused sequence now retains exact comparison and waits up to 600 ms;
-four consecutive diagnostic/verification runs restored the initial mesh.
-
-## P2: Complexity regression test omitted Guide noise seed
-
-Context:
-
-- The 2026-09-12 tests-preset build failed while compiling
-  `TestInteractionComplexityParity.cpp` because its `GuideCurveResource`
-  aggregate still used the field order from before `noiseSeed` was introduced.
-- Production Guide behavior was unaffected; the test fixture passed its model
-  pointer into the integer seed field and no longer compiled.
-
-Current status: addressed by supplying the default `-1` seed explicitly.
-
-## P2: Legacy Pan migration test expected the removed pre-mode schema
-
-Context:
-
-- The 2026-09-12 graph suite failed after loading a legacy Pan `mode` because
-  the test still expected no Pan mode parameter.
-- Pan now owns the canonical `auto`/`additive`/`multiplicative` mode parameter;
-  loading removes the legacy payload and normalization supplies `auto`.
-
-Current status: addressed by asserting the current canonical `auto` value.
 
 ## P2: Full Cycle V2 suite retains cross-test graph and Trimesh failures
 
@@ -480,19 +325,6 @@ Stengah probes or update the test fixture at its authoring boundary.
   fixture assertion until the intended archived graph and resolution contract
   are reconciled.
 
-## Resolved P3: Opening an Envelope editor marks the document dirty
-
-The 2026-09-17 `cycle-v2-agent-envelope-link-toggle.json` run opens the saved
-`old/vox-1.cyclegraph` clean, but `documentDirty` is already true immediately
-after opening the expanded pitch Envelope, before any link click. The focused
-link fixture therefore checks session state and reopen behavior, not dirty
-state. Report: `/private/tmp/cycle-v2-envelope-link-session2`.
-
-Current status: resolved 2026-09-25. Opening an Envelope or Trimesh editor no
-longer publishes the current keyboard preview morph into the graph. Preview
-note and CC1 gestures remain the authoritative durable morph-edit paths. The
-focused Envelope link fixture asserts a clean document after both editor opens.
-
 ## P3: With-spies Trimesh morph fixture expects a value absent after load
 
 On 2026-09-18, `cycle-v2-agent-trimesh-morph-selection.json` failed its undo
@@ -504,23 +336,6 @@ source `with-spies.cyclegraph` contains `yellow: 0.317`. Diagnostic reports:
 
 Current status: open; inspect graph load or parameter normalization. The
 fixture's undo value should not be changed until that discrepancy is resolved.
-
-## Resolved P3: Reverb preview can remain changed after a second no-op gesture
-
-On 2026-09-18, a diagnostic native sequence dragged Reverb size, committed,
-undid, reopened the editor, then dragged damping. The second drag changed the
-local spectrogram, but the durable Reverb parameters stayed at their initial
-values and a subsequent undo left the changed preview visible. A separate
-fresh-graph damping drag/commit/undo fixture passes. Report:
-`/private/tmp/causal-reverb-kernel-size-damp.json`.
-
-Current status: resolved 2026-09-25. Editor-local preview publication now
-invalidates the corresponding durable preview product, editor commits
-invalidate the graph source's no-op state, and synchronous refresh supersedes
-queued local jobs. The focused size/undo/reopen/damping/undo fixture restores
-both the durable damping parameter and the exact initial Reverb preview
-fingerprint. Targeted causal tests prove that only the displaced local preview
-product reruns; unchanged downstream products remain cached.
 
 ## P3: Trimesh expanded control-region count test expects an old layout
 
@@ -541,33 +356,3 @@ Cycle V2. The mismatched-run log was replaced by the successful rerun; use
 the wrapper defaults with `/tmp/causal-trimesh-guide-audit.json` to reproduce.
 
 Current status: open in Cycle 1; unrelated to the Cycle V2 gesture change.
-
-## Addressed: Unmapped saxophone mod wheel edited Trimesh blue morphs
-
-On 2026-09-18, the Live keyboard wheel on `saxophone.cyclegraph` changed
-`timeLayer1.blue` from `0` to `0.897637784` and marked the document dirty,
-although the attached Modulation Triple used `inverseVelocity` for blue.
-The preview command had applied red/blue values to every Trimesh and Envelope
-without checking each compiled input source. Baseline report:
-`/private/tmp/cycle-v2-sax-wheel-live-before.json`.
-
-Keyboard morph edits now target only axes sourced from key scale or the mod
-wheel. A wheel with no mapped source updates its keyboard position without a
-graph edit or preview job. The native fixture passes with blue still `0`, a
-clean document, two unchanged spy sums, and zero worker/configuration stages;
-the mapped-wheel fixture still passes. Reports:
-`/private/tmp/cycle-v2-sax-wheel-live-after.json` and
-`/private/tmp/cycle-v2-honerism-wheel-mapping-after.json`.
-
-Current status: addressed; `cycle-v2-agent-saxophone-unmapped-wheel.json`
-guards the regression.
-
-## Addressed: Preset-browser rating glyph triggered JUCE shaping assertions
-
-On 2026-09-19, opening the new preset card browser emitted repeated
-`JUCE Assertion failure in juce_String.cpp:327` and
-`juce_SimpleShapedText.cpp:497` messages while painting the Unicode star rating
-glyph. Log: `/private/tmp/cycle-v2-browser-new.log`.
-
-Current status: addressed; ratings use native ellipse geometry and no longer
-depend on font glyph coverage.

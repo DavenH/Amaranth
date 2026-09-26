@@ -2547,7 +2547,7 @@ TEST_CASE("Waveshaper point drag retains the hovered vertex identity",
     }
 }
 
-TEST_CASE("Flat curve editors highlight only the hovered vertex",
+TEST_CASE("Flat curve editors highlight the closest vertex across the panel",
         "[cycle-v2][node-editor-host][curve][hover][regression]") {
     ScopedJuceInitialiser_GUI juce;
     CurveTableScope curveTable;
@@ -2566,9 +2566,12 @@ TEST_CASE("Flat curve editors highlight only the hovered vertex",
         const float zoomY = zoom.getProperty("y", {});
         const float zoomWidth = zoom.getProperty("w", {});
         const float zoomHeight = zoom.getProperty("h", {});
-        const Point<float> vertexPosition(
-                panel->getWidth() * (0.5f - zoomX) / zoomWidth,
-                panel->getHeight() * (1.f - (0.35f - zoomY) / zoomHeight));
+        const auto panelPoint = [&](float x, float y) {
+            return Point<float>(
+                    panel->getWidth() * (x - zoomX) / zoomWidth,
+                    panel->getHeight() * (1.f - (y - zoomY) / zoomHeight));
+        };
+        const Point<float> vertexPosition = panelPoint(0.5f, 0.35f);
 
         panel->mouseDoubleClick(curvePanelMouseEvent(
                 *panel,
@@ -2577,13 +2580,20 @@ TEST_CASE("Flat curve editors highlight only the hovered vertex",
                 vertexPosition,
                 false,
                 2));
+        const Point<float> distantPointer = panelPoint(0.5f, 0.85f);
         panel->mouseMove(curvePanelMouseEvent(
-                *panel, vertexPosition, {}, vertexPosition, false));
-        REQUIRE((bool) widget.automationState().getProperty(
+                *panel, distantPointer, {}, distantPointer, false));
+        const var hoverState = widget.automationState();
+        REQUIRE((bool) hoverState.getProperty(
                 "hoverHighlightVisible", false));
+        const var highlightedVertex = hoverState.getProperty("currentVertex", {});
+        const Point<float> highlightedPosition = panelPoint(
+                highlightedVertex.getProperty("x", {}),
+                highlightedVertex.getProperty("y", {}));
+        REQUIRE(highlightedPosition.getDistanceFrom(distantPointer) > 15.f);
 
         panel->mouseExit(curvePanelMouseEvent(
-                *panel, vertexPosition, {}, vertexPosition, false));
+                *panel, distantPointer, {}, distantPointer, false));
         REQUIRE_FALSE((bool) widget.automationState().getProperty(
                 "hoverHighlightVisible", true));
     };

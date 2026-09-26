@@ -164,7 +164,9 @@ public:
         state.currentIcpt = -1;
         state.currentFreeVert = -1;
         state.currentCube = nullptr;
-        return Interactor::locateClosestElement();
+        const bool changed = Interactor::locateClosestElement();
+        flag(SimpleRepaint) = true;
+        return changed;
     }
     void highlightCurrentIntercept() override {
         if (state.currentIcpt != -1 || state.currentFreeVert != -1) {
@@ -392,13 +394,7 @@ private:
         return vertices.empty() ? nullptr : vertices.front();
     }
     bool hasFlatVertexHover() const {
-        if (!mouseFlag(MouseOver) || state.currentVertex == nullptr) {
-            return false;
-        }
-        const Point<int> mousePosition(
-                roundToInt(sx(state.currentMouse.x)),
-                roundToInt(sy(state.currentMouse.y)));
-        return const_cast<FlatCurvePanelBase*>(this)->isCurrentVertexHit(mousePosition);
+        return mouseFlag(MouseOver) && state.currentVertex != nullptr;
     }
     static int vertexDimensionForParameter(const String& parameterId) {
         const String field = parameterId.fromLastOccurrenceOf(".", false, false);
