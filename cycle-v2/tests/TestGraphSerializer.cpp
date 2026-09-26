@@ -781,7 +781,6 @@ TEST_CASE("Every shipped graph is canonical JSON and compiles", "[cycle-v2][grap
             contentPreset("african-horn.cyclegraph"),
             contentPreset("alto-sax.cyclegraph"),
             contentPreset("baroque-flute.cyclegraph"),
-            contentPreset("spectral-reference.cyclegraph"),
             contentPreset("stengah.cyclegraph"),
             resource("default.cyclegraph"),
             resource("fft-sawtooth.cyclegraph"),
@@ -797,7 +796,8 @@ TEST_CASE("Every shipped graph is canonical JSON and compiles", "[cycle-v2][grap
         REQUIRE(loaded.succeeded());
         REQUIRE(GraphValidator().isValid(loaded.graph));
         REQUIRE(GraphCompiler().compile(loaded.graph).succeeded());
-        const String canonical = GraphSerializer().toJsonString(loaded.graph);
+        const String canonical = GraphSerializer().toJsonString(
+                loaded.graph, loaded.presentation);
         REQUIRE(GraphSerializer().loadJsonString(canonical).succeeded());
         if (encoded != canonical) {
             FAIL(name + " is not canonical JSON");

@@ -39,7 +39,8 @@ int main(int argc, char* argv[]) {
             std::cerr << trimeshMigration.error << "\n";
             return 1;
         }
-        if (!destination.replaceWithText(GraphSerializer().toJsonString(encoded))) {
+        if (!destination.replaceWithText(
+                GraphSerializer().toJsonString(encoded), false, false, "\n")) {
             std::cerr << "Could not write migrated graph\n";
             return 1;
         }
@@ -52,7 +53,11 @@ int main(int argc, char* argv[]) {
         }
         return 1;
     }
-    if (!destination.replaceWithText(GraphSerializer().toJsonString(loaded.graph))) {
+    if (!destination.replaceWithText(
+            GraphSerializer().toJsonString(loaded.graph, loaded.presentation),
+            false,
+            false,
+            "\n")) {
         std::cerr << "Could not write migrated graph\n";
         return 1;
     }
