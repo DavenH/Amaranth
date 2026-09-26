@@ -25,16 +25,6 @@ runs completed with zero failed commands. Capture the initialized endpoint
 names and launch sequence if it recurs before changing MIDI initialization or
 teardown.
 
-## P2: African Horn factory graph is not canonical JSON
-
-Status: Open
-
-The full Cycle V2 suite currently fails `Every shipped graph is canonical JSON
-and compiles` on `african-horn.cyclegraph`. The graph compiles, but a
-deserialize/serialize pass changes its JSON representation. This predates and
-is independent of the document-declick changes; regenerate that preset through
-the canonical serializer without expanding unrelated preset diffs.
-
 ## P2: Envelope purpose rail-spacing assertion no longer matches layout
 
 Context:
