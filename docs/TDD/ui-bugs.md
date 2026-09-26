@@ -25,21 +25,6 @@ runs completed with zero failed commands. Capture the initialized endpoint
 names and launch sequence if it recurs before changing MIDI initialization or
 teardown.
 
-## P2: Pan definition and legacy-migration assertions disagree with mode state
-
-Context:
-
-- The full Cycle V2 suite on 2026-09-11 fails `Pan presents as an inline cable
-  control`: the current Pan node has two parameters while the test expects one.
-- The same run fails `Graph JSON migrates legacy Pan range to its spectral
-  Trimesh`: the migrated Pan retains a nonempty `mode` while the test expects
-  none.
-- These failures are independent of the delay, Output gain, and meter-cache
-  paths, whose focused tests pass.
-
-Current status: open; reconcile the Pan mode serialization contract and update
-the paired definition/migration expectations together.
-
 ## P2: Full-suite Trimesh tests retain order-dependent failures
 
 Context:
