@@ -228,6 +228,98 @@ TEST_CASE("Flat bipolar maps value directly to colour", "[ui][surface-material]"
     }
 }
 
+TEST_CASE("Bipolar shaded lighting follows direction continuously", "[ui][surface-material]") {
+    const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::bipolarShaded();
+    REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(4)
+            == ScalarSurfaceTimeStyle::BipolarShaded);
+    const ScalarSurfaceTimeStyle previous = ScalarSurfaceMaterial::timeSurfaceStyle();
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(ScalarSurfaceTimeStyle::BipolarShaded);
+    const auto selected = ScalarSurfaceMaterial::timeDomain();
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(previous);
+    REQUIRE(selected.relief == ScalarSurfaceRelief::DirectionalShaded);
+
+    for (const float value: { 0.1f, 0.5f, 0.9f }) {
+        const auto base = ScalarSurfaceMaterialEvaluator::baseColourFor(value, material);
+        ScalarSurfaceDerivatives derivatives;
+        REQUIRE(maximumChannelDifference(base,
+                ScalarSurfaceMaterialEvaluator::colourFor(value, derivatives, material)) <= 1);
+        derivatives.slopeX.fill(4.f);
+        const auto lit = ScalarSurfaceMaterialEvaluator::colourFor(value, derivatives, material);
+        derivatives.slopeX.fill(-4.f);
+        const auto shaded = ScalarSurfaceMaterialEvaluator::colourFor(value, derivatives, material);
+        REQUIRE(lit.getPerceivedBrightness() > base.getPerceivedBrightness() + 0.03f);
+        REQUIRE(shaded.getPerceivedBrightness() < base.getPerceivedBrightness());
+        if (value < 0.5f) {
+            REQUIRE(lit.getBlue() > lit.getRed());
+        } else if (value > 0.5f) {
+            REQUIRE(lit.getRed() > lit.getBlue());
+        }
+    }
+
+    juce::Colour previousColour;
+    for (int index = 0; index <= 200; ++index) {
+        ScalarSurfaceDerivatives derivatives;
+        derivatives.slopeX.fill(-2.f + 0.02f * (float) index);
+        const auto colour = ScalarSurfaceMaterialEvaluator::colourFor(0.3f, derivatives, material);
+        if (index > 0) {
+            REQUIRE(maximumChannelDifference(colour, previousColour) <= 2);
+        }
+        previousColour = colour;
+    }
+}
+
+TEST_CASE("Bipolar shaded fixtures remain smooth across resolutions", "[ui][surface-material]") {
+    const auto material = ScalarSurfaceMaterial::bipolarShaded();
+    std::array<juce::Colour, 2> centres;
+    for (int resolutionIndex = 0; resolutionIndex < 2; ++resolutionIndex) {
+        const int side = resolutionIndex == 0 ? 128 : 256;
+        const auto ramp = extrudedSurface(side, side, [](float x) { return 0.1f + 0.8f * x; });
+        const auto scales = ScalarSurfaceMaterialEvaluator::createHeightScales(
+                ramp.data(), (int) ramp.size(), side, side, material);
+        const auto derivatives = ScalarSurfaceMaterialEvaluator::derivativesAt(
+                scales, side / 2, side / 2, material, 1.f);
+        centres[(size_t) resolutionIndex] = ScalarSurfaceMaterialEvaluator::colourFor(
+                0.3f, derivatives, material);
+        const auto boundary = ScalarSurfaceMaterialEvaluator::derivativesAt(
+                scales, 0, side / 2, material, 1.f);
+        REQUIRE(maximumChannelDifference(centres[(size_t) resolutionIndex],
+                ScalarSurfaceMaterialEvaluator::colourFor(0.3f, boundary, material)) <= 1);
+        const std::vector<float> constant((size_t) side * side, 0.3f);
+        const auto image = ScalarSurfaceMaterialEvaluator::createImage(
+                constant.data(), (int) constant.size(), side, side, material);
+        REQUIRE(image.getPixelAt(0, 0) == image.getPixelAt(side / 2, side / 2));
+        REQUIRE(image.getPixelAt(side - 1, side - 1) == image.getPixelAt(0, 0));
+    }
+    REQUIRE(maximumChannelDifference(centres[0], centres[1]) <= 1);
+
+    // Optional reference sheet: columns are palette-only, shaded, previous bipolar detail.
+    if (const char* path = std::getenv("CYCLE_SURFACE_REFERENCE_PNG")) {
+        constexpr int side = 256;
+        juce::Image sheet(juce::Image::RGB, side * 3, side * 3, true);
+        juce::Graphics graphics(sheet);
+        auto flat = material;
+        flat.relief = ScalarSurfaceRelief::None;
+        const std::array<ScalarSurfaceMaterial, 3> materials {
+            flat, material, ScalarSurfaceMaterial::signedAmplitude()
+        };
+        for (int fixture = 0; fixture < 3; ++fixture) {
+            const auto values = extrudedSurface(side, side, [fixture](float x) {
+                const float broad = 0.5f + 0.4f * std::sin(x * 12.5663706f);
+                return fixture == 0 ? x : broad
+                        + (fixture == 2 ? 0.035f * std::sin(x * 201.06193f) : 0.f);
+            });
+            for (int column = 0; column < 3; ++column) {
+                graphics.drawImageAt(ScalarSurfaceMaterialEvaluator::createImage(
+                        values.data(), (int) values.size(), side, side,
+                        materials[(size_t) column]), column * side, fixture * side);
+            }
+        }
+        juce::FileOutputStream stream { juce::File(path) };
+        REQUIRE(stream.openedOk());
+        REQUIRE(juce::PNGImageFormat().writeImageToStream(sheet, stream));
+    }
+}
+
 TEST_CASE("Pure blue depth ignores derivative effects", "[ui][surface-material]") {
     const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::blueDepth();
     const juce::Image legacyBlue = juce::PNGImageFormat::loadFrom(
@@ -433,7 +525,7 @@ TEST_CASE("Spectral magnitude retains the legacy burnt alum palette", "[ui][surf
             .withAlpha(1.f) == legacy.getPixelAt(511, 0).withAlpha(1.f));
 }
 
-TEST_CASE("Scalar texture uploads depend only on product identity and transform",
+TEST_CASE("Scalar texture uploads track product and height preprocessing",
         "[ui][surface-material][performance]") {
     std::vector<float> values(64, 0.5f);
     ScalarSurfaceRenderData data;
@@ -452,6 +544,16 @@ TEST_CASE("Scalar texture uploads depend only on product identity and transform"
 
     data.bounds = { 0.f, 0.f, 220.f, 140.f };
     data.material.reliefScale += 1.f;
+    REQUIRE_FALSE(state.needsUpload(data));
+
+    data.material = ScalarSurfaceMaterial::signedAmplitudeFlat();
+    REQUIRE(state.needsUpload(data));
+    state.markUploaded(data);
+    data.material = ScalarSurfaceMaterial::bipolarShaded();
+    REQUIRE(state.needsUpload(data));
+    state.markUploaded(data);
+    REQUIRE_FALSE(state.needsUpload(data));
+    data.material.shadedHighlightStrength += 0.1f;
     REQUIRE_FALSE(state.needsUpload(data));
 
     ++data.revision;

@@ -54,7 +54,8 @@ public:
             CommandTimeSurfaceBipolar,
             CommandTimeSurfaceBipolarFlat,
             CommandTimeSurfaceBlueDepth,
-            CommandTimeSurfaceBlueDirectionalDetail
+            CommandTimeSurfaceBlueDirectionalDetail,
+            CommandTimeSurfaceBipolarShaded
         };
 
         MainWindow(
@@ -161,6 +162,9 @@ public:
                         CommandTimeSurfaceBipolarFlat);
                 timeSurfaceMenu.addCommandItem(
                         &commandManager,
+                        CommandTimeSurfaceBipolarShaded);
+                timeSurfaceMenu.addCommandItem(
+                        &commandManager,
                         CommandTimeSurfaceBlueDepth);
                 timeSurfaceMenu.addCommandItem(
                         &commandManager,
@@ -191,7 +195,8 @@ public:
                     CommandTimeSurfaceBipolar,
                     CommandTimeSurfaceBipolarFlat,
                     CommandTimeSurfaceBlueDepth,
-                    CommandTimeSurfaceBlueDirectionalDetail
+                    CommandTimeSurfaceBlueDirectionalDetail,
+                    CommandTimeSurfaceBipolarShaded
             });
         }
 
@@ -268,6 +273,17 @@ public:
                                     == ScalarSurfaceTimeStyle::BlueDepth);
                     break;
 
+                case CommandTimeSurfaceBipolarShaded:
+                    result.setInfo(
+                            "Bipolar Shaded",
+                            "Use bipolar colour with directional highlights and soft shade",
+                            "View",
+                            0);
+                    result.setTicked(workspace != nullptr
+                            && workspace->timeSurfaceStyle()
+                                    == ScalarSurfaceTimeStyle::BipolarShaded);
+                    break;
+
                 case CommandTimeSurfaceBlueDirectionalDetail:
                     result.setInfo(
                             "Blue Depth + Directional Detail",
@@ -312,6 +328,10 @@ public:
 
                 case CommandTimeSurfaceBipolarFlat:
                     setTimeSurfaceStyle(ScalarSurfaceTimeStyle::BipolarFlat);
+                    return true;
+
+                case CommandTimeSurfaceBipolarShaded:
+                    setTimeSurfaceStyle(ScalarSurfaceTimeStyle::BipolarShaded);
                     return true;
 
                 case CommandTimeSurfaceBlueDepth:

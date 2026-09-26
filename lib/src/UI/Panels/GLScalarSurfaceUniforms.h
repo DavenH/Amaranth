@@ -120,6 +120,9 @@ inline void setLighting(
     setFloat(program, "detailEnergyKnee", material.detailEnergyKnee);
     setFloat(program, "edgeTintStrength", material.edgeTintStrength);
     setFloat(program, "neutralAccentWidth", material.neutralAccentWidth);
+    setFloat(program, "shadedSlopeScale", material.shadedSlopeScale);
+    setFloat(program, "shadedHighlightStrength", material.shadedHighlightStrength);
+    setFloat(program, "shadedShadowStrength", material.shadedShadowStrength);
     gl::glUniform4fv(
             gl::glGetUniformLocation(program, "hillshadeWeights"),
             1,

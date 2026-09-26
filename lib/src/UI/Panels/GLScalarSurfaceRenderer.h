@@ -30,6 +30,8 @@ private:
     int rows {};
     float valueScale {};
     float valueOffset {};
+    ScalarSurfaceRelief relief { ScalarSurfaceRelief::None };
+    std::array<float, 3> blurRadii {};
 };
 
 class GLScalarSurfaceRenderer {

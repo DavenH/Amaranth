@@ -63,6 +63,9 @@ uniform float detailGradientKnee;
 uniform float detailEnergyKnee;
 uniform float edgeTintStrength;
 uniform float neutralAccentWidth;
+uniform float shadedSlopeScale;
+uniform float shadedHighlightStrength;
+uniform float shadedShadowStrength;
 uniform int paletteKind;
 uniform int reliefKind;
 uniform int detailColourKind;
@@ -201,7 +204,7 @@ void main() {
     vec4 gradientY = (upper - lower) / yDistance;
     vec3 light = normalize(lightDirection);
 
-    if (reliefKind == 0) {
+    if (reliefKind == 0 || reliefKind == 3) {
         vec2 detailGradient = vec2(
                 gradientX.r - gradientX.g,
                 gradientY.r - gradientY.g);
@@ -214,6 +217,22 @@ void main() {
                 detailBoundaryEnd.y,
                 min(coordinate.y, 1.0 - coordinate.y));
         float boundaryFade = min(boundaryX, boundaryY);
+        if (reliefKind == 3) {
+            float smoothing = (1.0 - detailReliefScale) * boundaryFade;
+            vec2 slope = vec2(gradientX.r, gradientY.r) - smoothing * detailGradient;
+            float projected = -shadedSlopeScale * dot(slope, light.xy);
+            float response = projected / (1.0 + abs(projected));
+            float facing = max(0.0, response);
+            float illumination = 1.0 + shadedShadowStrength * min(0.0, response);
+            vec3 colour = srgbToLinear(base) * illumination;
+            vec3 pearl = mix(srgbToLinear(neutralPearlTint),
+                    srgbToLinear(centre < 0.5 ? negativePearlTint : positivePearlTint),
+                    smoothstep(0.0, 1.0, abs(centre - 0.5) * 2.0));
+            colour = mix(colour, pearl,
+                    shadedHighlightStrength * facing * facing);
+            gl_FragColor = vec4(linearToSrgb(colour), surfaceOpacity);
+            return;
+        }
         vec3 detailNormal = normalize(vec3(-detailGradient * detailReliefScale, 1.0));
         float emboss = clamp(
                 (dot(detailNormal, light) - light.z) / max(embossLimit, 0.000001),
@@ -432,7 +451,9 @@ bool ScalarSurfaceUploadState::needsUpload(const ScalarSurfaceRenderData& data) 
             || columns != data.columns
             || rows != data.rows
             || valueScale != data.valueScale
-            || valueOffset != data.valueOffset;
+            || valueOffset != data.valueOffset
+            || relief != data.material.relief
+            || blurRadii != data.material.blurRadii;
 }
 
 void ScalarSurfaceUploadState::markUploaded(const ScalarSurfaceRenderData& data) {
@@ -442,6 +463,8 @@ void ScalarSurfaceUploadState::markUploaded(const ScalarSurfaceRenderData& data)
     rows = data.rows;
     valueScale = data.valueScale;
     valueOffset = data.valueOffset;
+    relief = data.material.relief;
+    blurRadii = data.material.blurRadii;
 }
 
 void ScalarSurfaceUploadState::clear() {
@@ -702,21 +725,28 @@ void GLScalarSurfaceRenderer::validateGpuParity() {
 
     diagnostics.gpuValidationAttempted = true;
     juce::OpenGLContext* context = juce::OpenGLContext::getCurrentContext();
-    constexpr int columns = 5;
-    constexpr int rows = 5;
+    constexpr int columns = 17;
+    constexpr int rows = 17;
     // Driver texture sampling differs slightly from the CPU edge clamps after
     // the wider smoothed derivative stencil and stronger signed relief.
     constexpr int tolerance = 8;
-    const std::array<float, columns * rows> values {
+    const std::array<float, 25> tile {
             0.08f, 0.14f, 0.22f, 0.14f, 0.08f,
             0.18f, 0.30f, 0.42f, 0.30f, 0.18f,
             0.34f, 0.48f, 0.72f, 0.48f, 0.34f,
             0.58f, 0.70f, 0.86f, 0.70f, 0.58f,
             0.78f, 0.88f, 0.96f, 0.88f, 0.78f
     };
-    const std::array<ScalarSurfaceMaterial, 6> materials {
+    std::array<float, columns * rows> values;
+    for (int column = 0; column < columns; ++column) {
+        for (int row = 0; row < rows; ++row) {
+            values[(size_t) column * rows + row] = tile[(size_t) (column % 5) * 5 + row % 5];
+        }
+    }
+    const std::array<ScalarSurfaceMaterial, 7> materials {
             ScalarSurfaceMaterial::signedAmplitude(),
             ScalarSurfaceMaterial::signedAmplitudeFlat(),
+            ScalarSurfaceMaterial::bipolarShaded(),
             ScalarSurfaceMaterial::blueDepth(),
             ScalarSurfaceMaterial::blueDepthDirectionalDetail(),
             ScalarSurfaceMaterial::unipolarMagnitude(),

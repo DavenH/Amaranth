@@ -385,9 +385,9 @@ ScalarSurfaceDerivatives derivativesFor(
     if (material.relief == ScalarSurfaceRelief::None) {
         return result;
     }
-    const int derivativeScaleCount = material.relief == ScalarSurfaceRelief::MicroEmboss
-            ? 2
-            : 4;
+    const int derivativeScaleCount = material.relief == ScalarSurfaceRelief::MultiscaleTerrain
+            ? 4
+            : 2;
     for (int scale = 0; scale < derivativeScaleCount; ++scale) {
         result.slopeX[(size_t) scale] = (
                 heightAt(scales, rightColumn, row, scale)
@@ -398,7 +398,7 @@ ScalarSurfaceDerivatives derivativesFor(
     }
 
     const float original = heightAt(scales, column, row, 0);
-    if (material.relief == ScalarSurfaceRelief::MicroEmboss) {
+    if (material.relief != ScalarSurfaceRelief::MultiscaleTerrain) {
         result.detailSlopeX = result.slopeX[0] - result.slopeX[1];
         result.detailSlopeY = result.slopeY[0] - result.slopeY[1];
         const float detail = original - heightAt(scales, column, row, 1);
@@ -503,6 +503,32 @@ juce::Colour evaluateMicroEmboss(
             juce::jlimit(0.f, 1.f, opacityFor(unitValue, material)));
 }
 
+juce::Colour evaluateDirectionalShaded(
+        float value,
+        const ScalarSurfaceDerivatives& derivatives,
+        const ScalarSurfaceMaterial& material,
+        const LightGeometry& light) {
+    const float smoothing = (1.f - material.detailReliefScale) * derivatives.boundaryFade;
+    const float slopeX = derivatives.slopeX[0] - smoothing * derivatives.detailSlopeX;
+    const float slopeY = derivatives.slopeY[0] - smoothing * derivatives.detailSlopeY;
+    const float projected = -material.shadedSlopeScale * (slopeX * light.x + slopeY * light.y);
+    const float magnitude = projected < 0.f ? -projected : projected;
+    const float response = projected / (1.f + magnitude);
+    const float facing = juce::jmax(0.f, response);
+    const float illumination = 1.f + material.shadedShadowStrength * juce::jmin(0.f, response);
+    LinearColour colour = toLinear(paletteColour(value, material));
+    colour.red *= illumination;
+    colour.green *= illumination;
+    colour.blue *= illumination;
+    colour = interpolate(colour, pearlColour(value, material),
+            material.shadedHighlightStrength * facing * facing);
+    return juce::Colour::fromFloatRGBA(
+            linearToSrgb(colour.red),
+            linearToSrgb(colour.green),
+            linearToSrgb(colour.blue),
+            juce::jlimit(0.f, 1.f, opacityFor(value, material)));
+}
+
 juce::Colour evaluateColour(
         float value,
         const ScalarSurfaceDerivatives& derivatives,
@@ -511,6 +537,9 @@ juce::Colour evaluateColour(
     const float unitValue = juce::jlimit(0.f, 1.f, value);
     if (material.relief == ScalarSurfaceRelief::None) {
         return paletteColour(unitValue, material).withAlpha(opacityFor(unitValue, material));
+    }
+    if (material.relief == ScalarSurfaceRelief::DirectionalShaded) {
+        return evaluateDirectionalShaded(unitValue, derivatives, material, light);
     }
     if (material.relief == ScalarSurfaceRelief::MicroEmboss) {
         return evaluateMicroEmboss(unitValue, derivatives, material, light);
@@ -602,6 +631,30 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::signedAmplitudeFlat() {
     return material;
 }
 
+ScalarSurfaceMaterial ScalarSurfaceMaterial::bipolarShaded() {
+    ScalarSurfaceMaterial material = signedAmplitude();
+    material.relief = ScalarSurfaceRelief::DirectionalShaded;
+    material.signedPaletteStops = {
+        juce::Colour(0xff647db6),
+        juce::Colour(0xff435b94),
+        juce::Colour(0xff354263),
+        juce::Colour(0xff30323e),
+        juce::Colour(0xff302c36),
+        juce::Colour(0xff42343e),
+        juce::Colour(0xff785053),
+        juce::Colour(0xffb77460),
+        juce::Colour(0xffe4a479)
+    };
+    material.negativeAnchor = material.signedPaletteStops.front();
+    material.neutralAnchor = material.signedPaletteStops[4];
+    material.positiveAnchor = material.signedPaletteStops.back();
+    material.negativePearlTint = juce::Colour(0xffcfddff);
+    material.neutralPearlTint = juce::Colour(0xffaaa4b0);
+    material.positivePearlTint = juce::Colour(0xffffdfb1);
+    material.detailReliefScale = 0.2f;
+    return material;
+}
+
 ScalarSurfaceMaterial ScalarSurfaceMaterial::blueDepth() {
     ScalarSurfaceMaterial material;
     material.palette = ScalarSurfacePalette::LegacyBlue;
@@ -662,6 +715,9 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::timeDomain() {
 
         case ScalarSurfaceTimeStyle::BipolarFlat:
             return signedAmplitudeFlat();
+
+        case ScalarSurfaceTimeStyle::BipolarShaded:
+            return bipolarShaded();
     }
     return blueDepthDirectionalDetail();
 }
@@ -679,6 +735,9 @@ ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(int inde
     }
     if (index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::BipolarFlat)) {
         return ScalarSurfaceTimeStyle::BipolarFlat;
+    }
+    if (index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::BipolarShaded)) {
+        return ScalarSurfaceTimeStyle::BipolarShaded;
     }
     return ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail;
 }
@@ -763,7 +822,7 @@ ScalarSurfaceHeightScales ScalarSurfaceMaterialEvaluator::createHeightScales(
     constexpr std::array<int, 3> maximumRadii { 4, 12, 48 };
     const int blurScaleCount = material.relief == ScalarSurfaceRelief::MultiscaleTerrain
             ? 3
-            : material.relief == ScalarSurfaceRelief::MicroEmboss ? 1 : 0;
+            : material.relief == ScalarSurfaceRelief::None ? 0 : 1;
     for (int scale = 0; scale < blurScaleCount; ++scale) {
         const int columnRadius = boundedBlurRadius(
                 material.blurRadii[(size_t) scale],

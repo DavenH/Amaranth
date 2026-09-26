@@ -2,6 +2,51 @@
 
 Status: Implemented
 
+## Bipolar Shaded (2026-09-26, implemented)
+
+Add an opt-in illustrative material using the authoritative signed palette
+contract, cached H0/H1 blur, aspect-correct gradients, and shared CPU/GPU
+renderer. Append preference index 4. Existing menus delegate selection through
+their existing invalidation boundary. No graph or audio state changes.
+
+Use a quieter palette with lightness increasing away from neutral on either
+side. Project H1 slope plus a restrained H0-H1 slope onto the light direction;
+compress the signed response continuously, shade opposing slopes softly, and
+blend facing slopes toward a continuous cool/neutral/warm pearl tint in linear
+RGB. A constant field contributes zero lighting. Reuse boundary stabilization;
+no AO, terrain stack, procedural texture, or thresholded edge mask. Work stays
+linear in changed grid size and cached across frames; no new lifecycle owner.
+
+Completed: both menus, saved-index compatibility, CPU/GPU parity, smooth and
+rippled fixture checks, and visual inspection. The material/evaluator remains
+the policy owner and the GL renderer remains the context/resource owner; the
+existing large cohesive files gain only this material branch, not node policy.
+
+At boundaries, smoothly return to the original one-sided slope as blur support
+becomes asymmetric; a plane retains the same lighting at its boundary and
+interior. Height-texture identity now includes relief mode and blur radii so
+switching out of Colour Only cannot reuse an unblurred H1. Lighting strength
+changes still require no upload. No source scalar or DSP product is modified.
+
+Validation: Cycle 1 and Cycle V2 built; 976 assertions in 16 material cases
+passed with the optional reference image enabled. The enlarged 17x17 GPU
+fixture exercises interior shading and passes all seven materials with maximum
+channel error 2 in both applications and after V2 context recreation. All ten
+V2 lifecycle commands and four V1 fixture commands passed. Native V2 menu
+selection was checked and the expanded Signal Spy inspected at production size.
+Artifacts: `/private/tmp/bipolar-shaded-fixtures.png` (columns: new base,
+new shaded, old bipolar detail; rows: ramp, sine, sine plus ripple),
+`/private/tmp/bipolar-shaded-v2-selected.png`, and
+`/private/tmp/bipolar-shaded-lifecycle.log`. Startup CoreMIDI,
+`FileManager.cpp:174`, and `Curve.cpp:56/57` assertions were the existing issues
+already recorded in `ui-bugs.md`. Clang-tidy was unavailable.
+
+Architecture review: material evaluator 899 -> 958 lines; GL renderer
+836 -> 866; V2 Main 541 -> 561. Material policy remains below menus and domain
+profiles; upload invalidation stays in ScalarSurfaceUploadState. The larger
+files remain cohesive around CPU reference/preprocessing and GPU rendering,
+respectively. No rasterizer, interaction, graph, or lifecycle policy was copied.
+
 ## Flat Bipolar Mode (2026-09-26)
 
 Cycle 1 and Cycle V2 expose `Bipolar (Colour Only)` as a fourth time-surface

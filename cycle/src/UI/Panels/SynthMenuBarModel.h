@@ -81,6 +81,7 @@ public:
         TimeSurfaceBipolarFlat,
         TimeSurfaceBlueDepth,
         TimeSurfaceBlueDirectionalDetail,
+        TimeSurfaceBipolarShaded,
 
         UseOpenGL,
         UseLargerPoints,
