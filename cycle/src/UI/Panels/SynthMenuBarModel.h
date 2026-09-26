@@ -78,6 +78,7 @@ public:
 
         WaveformWaterfall,
         TimeSurfaceBipolar,
+        TimeSurfaceBipolarFlat,
         TimeSurfaceBlueDepth,
         TimeSurfaceBlueDirectionalDetail,
 

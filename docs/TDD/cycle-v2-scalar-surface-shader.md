@@ -2,6 +2,30 @@
 
 Status: Implemented
 
+## Flat Bipolar Mode (2026-09-26)
+
+Cycle 1 and Cycle V2 expose `Bipolar (Colour Only)` as a fourth time-surface
+choice. It reuses the exact nine-stop bipolar palette from `signedAmplitude()`
+but selects the shared `None` relief path, making the displayed pixel a direct
+function of scalar value and opacity. No derivative, emboss, edge tint,
+specular, shadow, or cavity term is evaluated. The previous `Bipolar` entry is
+retained as `Bipolar + Detail` and keeps its persisted value `0`; the new flat
+style is appended as value `3`, preserving all prior saved preferences.
+
+The post-change review sizes are 541 lines for Cycle V2 `Main.cpp`, 899 lines
+for `ScalarSurfaceMaterial.cpp`, and 836 lines for
+`GLScalarSurfaceRenderer.cpp`. Their responsibilities remain unchanged: menu
+command routing, CPU material/reference policy, and GPU resource/render policy,
+respectively. The slice adds no graph or node policy and no second renderer.
+
+Verification built Cycle 1, Cycle V2, `AmaranthLib_tests`, and `CycleV2_tests`.
+The surface-material suite passed 750 assertions in 14 cases; the focused
+Trimesh profile and Signal Spy normalization cases passed 52 and 4 assertions.
+All ten lifecycle commands and context recreation passed. CPU/GPU parity,
+including both flat materials, passed before and after recreation with a
+maximum channel error of 2. Only the pre-existing `Curve.cpp:56/57` assertions
+already tracked in `docs/TDD/ui-bugs.md` remained in the final run.
+
 ## Pure Cycle 1 Blue Mode (2026-09-25)
 
 Cycle 1 and Cycle V2 expose a third `Blue Depth` time-surface option alongside

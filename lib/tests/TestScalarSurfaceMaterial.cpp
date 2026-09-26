@@ -42,6 +42,19 @@ int maximumChannelDifference(juce::Colour first, juce::Colour second) {
             std::abs((int) first.getBlue() - (int) second.getBlue()));
 }
 
+ScalarSurfaceDerivatives exaggeratedDerivatives() {
+    ScalarSurfaceDerivatives derivatives;
+    derivatives.slopeX.fill(100.f);
+    derivatives.slopeY.fill(-100.f);
+    derivatives.obscurance = 1.f;
+    derivatives.exposure = 1.f;
+    derivatives.detailSlopeX = 100.f;
+    derivatives.detailSlopeY = -100.f;
+    derivatives.detailEnergy = 1.f;
+    derivatives.boundaryFade = 1.f;
+    return derivatives;
+}
+
 float meanDetailEnergy(
         const std::vector<float>& values,
         int columns,
@@ -172,17 +185,24 @@ TEST_CASE("Time surface style selection changes only the time material",
     const ScalarSurfaceMaterial directional = ScalarSurfaceMaterial::timeDomain();
     ScalarSurfaceMaterial::setTimeSurfaceStyle(ScalarSurfaceTimeStyle::BlueDepth);
     const ScalarSurfaceMaterial blue = ScalarSurfaceMaterial::timeDomain();
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(ScalarSurfaceTimeStyle::BipolarFlat);
+    const ScalarSurfaceMaterial bipolarFlat = ScalarSurfaceMaterial::timeDomain();
     ScalarSurfaceMaterial::setTimeSurfaceStyle(previous);
 
     REQUIRE(bipolar.detailColour == ScalarSurfaceDetailColour::Signed);
     REQUIRE(directional.detailColour == ScalarSurfaceDetailColour::DirectionalCmy);
     REQUIRE(blue.relief == ScalarSurfaceRelief::None);
+    REQUIRE(bipolarFlat.relief == ScalarSurfaceRelief::None);
     REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleIndex(
             ScalarSurfaceTimeStyle::Bipolar) == 0);
     REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleIndex(
             ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail) == 1);
     REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleIndex(
             ScalarSurfaceTimeStyle::BlueDepth) == 2);
+    REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleIndex(
+            ScalarSurfaceTimeStyle::BipolarFlat) == 3);
+    REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(3)
+            == ScalarSurfaceTimeStyle::BipolarFlat);
     REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(99)
             == ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail);
     REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, bipolar)
@@ -191,20 +211,29 @@ TEST_CASE("Time surface style selection changes only the time material",
             == ScalarSurfacePalette::UnipolarMagnitude);
 }
 
+TEST_CASE("Flat bipolar maps value directly to colour", "[ui][surface-material]") {
+    const ScalarSurfaceMaterial detailed = ScalarSurfaceMaterial::signedAmplitude();
+    const ScalarSurfaceMaterial flat = ScalarSurfaceMaterial::signedAmplitudeFlat();
+    const ScalarSurfaceDerivatives derivatives = exaggeratedDerivatives();
+
+    REQUIRE(flat.relief == ScalarSurfaceRelief::None);
+    REQUIRE(flat.palette == ScalarSurfacePalette::SignedAmplitude);
+    REQUIRE(flat.embossStrength == 0.f);
+    REQUIRE(flat.edgeTintStrength == 0.f);
+    for (const float value: { 0.f, 0.25f, 0.5f, 0.75f, 1.f }) {
+        REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(value, flat)
+                == ScalarSurfaceMaterialEvaluator::baseColourFor(value, detailed));
+        REQUIRE(ScalarSurfaceMaterialEvaluator::colourFor(value, derivatives, flat)
+                == ScalarSurfaceMaterialEvaluator::baseColourFor(value, flat));
+    }
+}
+
 TEST_CASE("Pure blue depth ignores derivative effects", "[ui][surface-material]") {
     const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::blueDepth();
     const juce::Image legacyBlue = juce::PNGImageFormat::loadFrom(
             Gradients::blue_png,
             Gradients::blue_pngSize);
-    ScalarSurfaceDerivatives derivatives;
-    derivatives.slopeX.fill(100.f);
-    derivatives.slopeY.fill(-100.f);
-    derivatives.obscurance = 1.f;
-    derivatives.exposure = 1.f;
-    derivatives.detailSlopeX = 100.f;
-    derivatives.detailSlopeY = -100.f;
-    derivatives.detailEnergy = 1.f;
-    derivatives.boundaryFade = 1.f;
+    const ScalarSurfaceDerivatives derivatives = exaggeratedDerivatives();
 
     REQUIRE(material.relief == ScalarSurfaceRelief::None);
     REQUIRE(material.palette == ScalarSurfacePalette::LegacyBlue);

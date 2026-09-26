@@ -594,6 +594,14 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::signedAmplitude() {
     return material;
 }
 
+ScalarSurfaceMaterial ScalarSurfaceMaterial::signedAmplitudeFlat() {
+    ScalarSurfaceMaterial material = signedAmplitude();
+    material.relief = ScalarSurfaceRelief::None;
+    material.embossStrength = 0.f;
+    material.edgeTintStrength = 0.f;
+    return material;
+}
+
 ScalarSurfaceMaterial ScalarSurfaceMaterial::blueDepth() {
     ScalarSurfaceMaterial material;
     material.palette = ScalarSurfacePalette::LegacyBlue;
@@ -651,6 +659,9 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::timeDomain() {
 
         case ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail:
             return blueDepthDirectionalDetail();
+
+        case ScalarSurfaceTimeStyle::BipolarFlat:
+            return signedAmplitudeFlat();
     }
     return blueDepthDirectionalDetail();
 }
@@ -665,6 +676,9 @@ ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(int inde
     }
     if (index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::BlueDepth)) {
         return ScalarSurfaceTimeStyle::BlueDepth;
+    }
+    if (index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::BipolarFlat)) {
+        return ScalarSurfaceTimeStyle::BipolarFlat;
     }
     return ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail;
 }

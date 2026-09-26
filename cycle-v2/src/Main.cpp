@@ -52,6 +52,7 @@ public:
             CommandSpyRefreshOnRelease,
             CommandSpyRefreshLive,
             CommandTimeSurfaceBipolar,
+            CommandTimeSurfaceBipolarFlat,
             CommandTimeSurfaceBlueDepth,
             CommandTimeSurfaceBlueDirectionalDetail
         };
@@ -157,6 +158,9 @@ public:
                         CommandTimeSurfaceBipolar);
                 timeSurfaceMenu.addCommandItem(
                         &commandManager,
+                        CommandTimeSurfaceBipolarFlat);
+                timeSurfaceMenu.addCommandItem(
+                        &commandManager,
                         CommandTimeSurfaceBlueDepth);
                 timeSurfaceMenu.addCommandItem(
                         &commandManager,
@@ -185,6 +189,7 @@ public:
                     CommandSpyRefreshOnRelease,
                     CommandSpyRefreshLive,
                     CommandTimeSurfaceBipolar,
+                    CommandTimeSurfaceBipolarFlat,
                     CommandTimeSurfaceBlueDepth,
                     CommandTimeSurfaceBlueDirectionalDetail
             });
@@ -232,13 +237,24 @@ public:
 
                 case CommandTimeSurfaceBipolar:
                     result.setInfo(
-                            "Bipolar",
-                            "Use blue and warm colour to show signal polarity",
+                            "Bipolar + Detail",
+                            "Use bipolar colour with high-pass edge detail",
                             "View",
                             0);
                     result.setTicked(workspace != nullptr
                             && workspace->timeSurfaceStyle()
                                     == ScalarSurfaceTimeStyle::Bipolar);
+                    break;
+
+                case CommandTimeSurfaceBipolarFlat:
+                    result.setInfo(
+                            "Bipolar (Colour Only)",
+                            "Map signal values directly to the bipolar palette",
+                            "View",
+                            0);
+                    result.setTicked(workspace != nullptr
+                            && workspace->timeSurfaceStyle()
+                                    == ScalarSurfaceTimeStyle::BipolarFlat);
                     break;
 
                 case CommandTimeSurfaceBlueDepth:
@@ -292,6 +308,10 @@ public:
 
                 case CommandTimeSurfaceBipolar:
                     setTimeSurfaceStyle(ScalarSurfaceTimeStyle::Bipolar);
+                    return true;
+
+                case CommandTimeSurfaceBipolarFlat:
+                    setTimeSurfaceStyle(ScalarSurfaceTimeStyle::BipolarFlat);
                     return true;
 
                 case CommandTimeSurfaceBlueDepth:

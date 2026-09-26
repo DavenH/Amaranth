@@ -22,7 +22,8 @@ enum class ScalarSurfaceRelief {
 enum class ScalarSurfaceTimeStyle {
     Bipolar,
     BlueDepthDirectionalDetail,
-    BlueDepth
+    BlueDepth,
+    BipolarFlat
 };
 
 enum class ScalarSurfaceDetailColour {
@@ -34,6 +35,7 @@ struct ScalarSurfaceMaterial {
     static constexpr int signedPaletteStopCount = 9;
 
     static ScalarSurfaceMaterial signedAmplitude();
+    static ScalarSurfaceMaterial signedAmplitudeFlat();
     static ScalarSurfaceMaterial blueDepth();
     static ScalarSurfaceMaterial blueDepthDirectionalDetail();
     static ScalarSurfaceMaterial timeDomain();

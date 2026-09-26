@@ -714,8 +714,9 @@ void GLScalarSurfaceRenderer::validateGpuParity() {
             0.58f, 0.70f, 0.86f, 0.70f, 0.58f,
             0.78f, 0.88f, 0.96f, 0.88f, 0.78f
     };
-    const std::array<ScalarSurfaceMaterial, 5> materials {
+    const std::array<ScalarSurfaceMaterial, 6> materials {
             ScalarSurfaceMaterial::signedAmplitude(),
+            ScalarSurfaceMaterial::signedAmplitudeFlat(),
             ScalarSurfaceMaterial::blueDepth(),
             ScalarSurfaceMaterial::blueDepthDirectionalDetail(),
             ScalarSurfaceMaterial::unipolarMagnitude(),
