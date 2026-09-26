@@ -489,7 +489,7 @@ source `with-spies.cyclegraph` contains `yellow: 0.317`. Diagnostic reports:
 Current status: open; inspect graph load or parameter normalization. The
 fixture's undo value should not be changed until that discrepancy is resolved.
 
-## P3: Reverb preview can remain changed after a second no-op gesture
+## Resolved P3: Reverb preview can remain changed after a second no-op gesture
 
 On 2026-09-18, a diagnostic native sequence dragged Reverb size, committed,
 undid, reopened the editor, then dragged damping. The second drag changed the
@@ -498,7 +498,13 @@ values and a subsequent undo left the changed preview visible. A separate
 fresh-graph damping drag/commit/undo fixture passes. Report:
 `/private/tmp/causal-reverb-kernel-size-damp.json`.
 
-Current status: open; inspect gesture lifecycle and editor rebind after undo.
+Current status: resolved 2026-09-25. Editor-local preview publication now
+invalidates the corresponding durable preview product, editor commits
+invalidate the graph source's no-op state, and synchronous refresh supersedes
+queued local jobs. The focused size/undo/reopen/damping/undo fixture restores
+both the durable damping parameter and the exact initial Reverb preview
+fingerprint. Targeted causal tests prove that only the displaced local preview
+product reruns; unchanged downstream products remain cached.
 
 ## P3: Trimesh expanded control-region count test expects an old layout
 

@@ -62,11 +62,15 @@ public:
             const String& field,
             uint64_t effectiveFingerprint,
             bool deferredUntilCommit);
+    void invalidateLocalPreview(
+            const GraphExecutionPlan& plan,
+            const String& nodeId);
     bool commitLocalEditorState(
             const GraphExecutionPlan& plan,
             const String& nodeId,
             const String& field,
             uint64_t effectiveFingerprint);
+    void invalidateAsyncRequests();
     uint64_t beginAsyncRequest();
     void enqueueLocalProduct(
             GraphPresentationPerformanceMetrics& performance,

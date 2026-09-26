@@ -17,6 +17,16 @@ The fixture now uses a bounded 600 ms wait for this sequence and compares every
 serialized float with zero tolerance; four consecutive runs passed. No
 production mesh or undo behavior was duplicated or changed.
 
+Reverb preview audit: editor-local rendering publishes directly into the
+current presentation snapshot, while durable graph refreshes are deduplicated
+by source fingerprint and product fingerprint. After a prior undo, both durable
+caches could correctly describe the baseline graph even though a later local
+gesture had displaced the Reverb preview in the snapshot. Local publication
+now invalidates only that node's durable preview product, editor commits
+invalidate the corresponding graph source, and synchronous graph refreshes
+supersede queued local jobs. The downstream cache and static resources remain
+reusable.
+
 ## Scope
 
 This train repairs five deterministic or sequence-reproducible UI failures:

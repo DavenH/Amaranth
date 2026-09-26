@@ -1,0 +1,31 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/resources/with-spies.cyclegraph" },
+    { "command": "openNodeEditor", "nodeId": "reverb", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "assertState", "path": "probeRefreshMode", "equals": "On Release" },
+    { "command": "assertState", "path": "previewStats.7.contentFingerprint", "equals": "6213505229202872133" },
+    { "command": "pointer", "event": "down", "targetId": "reverbEditor.size", "targetX": 0.4 },
+    { "command": "pointer", "event": "drag", "targetId": "reverbEditor.size", "downTargetId": "reverbEditor.size", "targetX": 0.75, "downTargetX": 0.4 },
+    { "command": "waitForIdle", "idleDelayMs": 800 },
+    { "command": "pointer", "event": "drag", "targetId": "reverbEditor.size", "downTargetId": "reverbEditor.size", "targetX": 0.9, "downTargetX": 0.4 },
+    { "command": "waitForIdle", "idleDelayMs": 800 },
+    { "command": "pointer", "event": "up", "targetId": "reverbEditor.size", "downTargetId": "reverbEditor.size", "targetX": 0.9, "downTargetX": 0.4, "waitForIdle": true, "idleDelayMs": 500 },
+    { "command": "assertNodeParameter", "nodeId": "reverb", "parameterId": "size", "op": "notEquals", "value": "0.4999" },
+    { "command": "undo", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "assertNodeParameter", "nodeId": "reverb", "parameterId": "size", "equals": "0.4999" },
+    { "command": "assertState", "path": "previewStats.7.contentFingerprint", "equals": "6213505229202872133" },
+    { "command": "openNodeEditor", "nodeId": "reverb", "waitForIdle": true, "idleDelayMs": 200 },
+    { "command": "pointer", "event": "down", "targetId": "reverbEditor.damp", "targetX": 0.4 },
+    { "command": "pointer", "event": "drag", "targetId": "reverbEditor.damp", "downTargetId": "reverbEditor.damp", "targetX": 0.75, "downTargetX": 0.4 },
+    { "command": "waitForIdle", "idleDelayMs": 800 },
+    { "command": "assertState", "path": "previewStats.7.contentFingerprint", "op": "notEquals", "value": "6213505229202872133" },
+    { "command": "pointer", "event": "drag", "targetId": "reverbEditor.damp", "downTargetId": "reverbEditor.damp", "targetX": 0.9, "downTargetX": 0.4 },
+    { "command": "waitForIdle", "idleDelayMs": 300 },
+    { "command": "pointer", "event": "up", "targetId": "reverbEditor.damp", "downTargetId": "reverbEditor.damp", "targetX": 0.9, "downTargetX": 0.4, "waitForIdle": true, "idleDelayMs": 500 },
+    { "command": "assertNodeParameter", "nodeId": "reverb", "parameterId": "damp", "op": "notEquals", "value": "1.0" },
+    { "command": "undo", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "assertNodeParameter", "nodeId": "reverb", "parameterId": "damp", "equals": "1" },
+    { "command": "assertState", "path": "previewStats.7.contentFingerprint", "equals": "6213505229202872133" }
+  ],
+  "quit": true
+}

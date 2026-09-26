@@ -172,6 +172,16 @@ void PresentationGestureSession::cancel(const String& sourceStreamId) {
     }
 }
 
+void PresentationGestureSession::invalidateSource(const String& sourceStreamId) {
+    editGate.invalidateSource(sourceStreamId);
+    pendingMovements.erase(sourceStreamId);
+    if (latestPendingStream == sourceStreamId) {
+        latestPendingStream = pendingMovements.empty()
+                ? String()
+                : pendingMovements.begin()->first;
+    }
+}
+
 String PresentationGestureSession::activeStreamOr(const String& fallback) const {
     return latestPendingStream.isNotEmpty() ? latestPendingStream : fallback;
 }
