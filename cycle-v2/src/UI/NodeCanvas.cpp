@@ -672,7 +672,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
         if (event.getNumberOfClicks() >= 2 && hasExpandedEditor(hitNode->kind)) {
             expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
-            synchronizeOpenedEditorMorph();
             editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
             notifyOverlayOcclusionChanged();
         }
@@ -1492,7 +1491,6 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
         spliceTargetEdgeIndex = -1;
     }
     if (result.effects.editorBindingChanged) {
-        synchronizeOpenedEditorMorph();
         editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
         notifyOverlayOcclusionChanged();
     }
@@ -2097,18 +2095,6 @@ GraphEditResult NodeCanvas::editPreviewMorph(
             targets,
             red,
             blue);
-}
-
-void NodeCanvas::synchronizeOpenedEditorMorph() {
-    const Node* node = queries.findNode(expandedNodeId);
-    if (node == nullptr || (node->kind != NodeKind::Envelope
-            && node->kind != NodeKind::TrilinearMesh)) {
-        return;
-    }
-    persistPreviewMorph(
-            presentation.previewMidiNote(),
-            presentation.previewModWheelValue(),
-            PreviewMorphEditScope::Both);
 }
 
 void NodeCanvas::finishPreviewModWheelRefresh() {

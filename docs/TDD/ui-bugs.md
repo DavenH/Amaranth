@@ -457,7 +457,7 @@ Stengah probes or update the test fixture at its authoring boundary.
   fixture assertion until the intended archived graph and resolution contract
   are reconciled.
 
-## P3: Opening an Envelope editor marks the document dirty
+## Resolved P3: Opening an Envelope editor marks the document dirty
 
 The 2026-09-17 `cycle-v2-agent-envelope-link-toggle.json` run opens the saved
 `old/vox-1.cyclegraph` clean, but `documentDirty` is already true immediately
@@ -465,8 +465,10 @@ after opening the expanded pitch Envelope, before any link click. The focused
 link fixture therefore checks session state and reopen behavior, not dirty
 state. Report: `/private/tmp/cycle-v2-envelope-link-session2`.
 
-Current status: open; distinguish selection/editor-state publication from a
-durable document edit. Envelope link toggles themselves remain session-only.
+Current status: resolved 2026-09-25. Opening an Envelope or Trimesh editor no
+longer publishes the current keyboard preview morph into the graph. Preview
+note and CC1 gestures remain the authoritative durable morph-edit paths. The
+focused Envelope link fixture asserts a clean document after both editor opens.
 
 ## P3: With-spies Trimesh morph fixture expects a value absent after load
 

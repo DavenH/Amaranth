@@ -243,7 +243,6 @@ private:
             int midiNote,
             int modWheelValue,
             PreviewMorphEditScope scope);
-    void synchronizeOpenedEditorMorph();
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh(
