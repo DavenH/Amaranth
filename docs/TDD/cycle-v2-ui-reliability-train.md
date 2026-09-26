@@ -1,6 +1,14 @@
 # Cycle V2 UI Reliability Train
 
-Status: In progress. Clean editor-open slice completed 2026-09-25.
+Status: In progress. Clean editor-open and safe document-replacement slices
+completed 2026-09-25.
+
+Architecture review after safe replacement: `Main.cpp` is 515 lines and owns
+JUCE application composition, menu/dialog routing, and window presentation.
+The new lifecycle policy is not retained there: the 117-line
+`GraphDocumentReplacement` implementation and interface own pending-target,
+decision, and save-completion state, leaving one replacement decision site for
+the inline browser, full browser, file chooser, and recent-file menu.
 
 ## Scope
 

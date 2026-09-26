@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "App/CycleV2Automation.h"
+#include "App/GraphDocumentReplacement.h"
 #include "App/GraphFileHistory.h"
 #include "App/StandaloneAudioEngine.h"
 #include "UI/NodeWorkspace.h"
@@ -59,7 +60,10 @@ public:
                 DocumentWindow(name, Colour(0xff101318), allButtons)
             ,   applicationName(name)
             ,   properties(createProperties())
-            ,   fileHistory(*properties) {
+            ,   fileHistory(*properties)
+            ,   graphReplacement([this](const File& file) {
+                    return openGraphFileUnchecked(file);
+                }) {
             setUsingNativeTitleBar(true);
             setResizable(true, true);
             workspace = new CycleV2::NodeWorkspace(audioEngine);
@@ -69,7 +73,7 @@ public:
             });
             workspace->configurePresetSidebar(
                     { repositoryPresetDirectory(), defaultGraphDirectory() },
-                    [this](const File& file) { return openGraphFile(file); },
+                    [this](const File& file) { return requestOpenGraphFile(file); },
                     [this] { chooseOpenGraph(); });
 
             commandManager.registerAllCommandsForTarget(this);
@@ -151,7 +155,7 @@ public:
 
         void menuItemSelected(int menuItemId, int) override {
             if (fileHistory.isRecentMenuItem(menuItemId)) {
-                openGraphFile(fileHistory.fileForMenuItem(menuItemId));
+                requestOpenGraphFile(fileHistory.fileForMenuItem(menuItemId));
             }
         }
 
@@ -270,7 +274,20 @@ public:
             return fileHistory.initialOpenDirectory(fallback);
         }
 
-        bool openGraphFile(const File& file) {
+        bool requestOpenGraphFile(const File& file) {
+            if (workspace == nullptr) {
+                return false;
+            }
+
+            const auto result = graphReplacement.request(file, workspace->isGraphDirty());
+            if (result == CycleV2::GraphDocumentReplacement::RequestResult::DecisionRequired) {
+                showUnsavedGraphPrompt();
+            }
+            return result == CycleV2::GraphDocumentReplacement::RequestResult::Replaced
+                    || result == CycleV2::GraphDocumentReplacement::RequestResult::DecisionRequired;
+        }
+
+        bool openGraphFileUnchecked(const File& file) {
             if (file == File() || workspace == nullptr
                     || !workspace->loadGraphFromFile(file)) {
                 return false;
@@ -280,6 +297,48 @@ public:
             fileHistory.recordOpened(file);
             updateDocumentPresentation();
             return true;
+        }
+
+        void showUnsavedGraphPrompt() {
+            const File file = workspace != nullptr ? workspace->graphFile() : File();
+            const String graphName = file == File()
+                    ? "Untitled"
+                    : file.getFileNameWithoutExtension();
+            const auto options = MessageBoxOptions()
+                    .withIconType(MessageBoxIconType::WarningIcon)
+                    .withTitle("Save changes?")
+                    .withMessage("Save changes to \"" + graphName
+                            + "\" before opening another preset?")
+                    .withButton("Save")
+                    .withButton("Discard")
+                    .withButton("Cancel")
+                    .withAssociatedComponent(this);
+            AlertWindow::showAsync(options, [safeThis = SafePointer<MainWindow>(this)](int result) {
+                if (safeThis == nullptr) {
+                    return;
+                }
+
+                using Decision = CycleV2::GraphDocumentReplacement::Decision;
+                const Decision decision = result == 1
+                        ? Decision::Save
+                        : result == 2
+                                ? Decision::Discard
+                                : Decision::Cancel;
+                safeThis->resolveGraphReplacement(decision);
+            });
+        }
+
+        void resolveGraphReplacement(CycleV2::GraphDocumentReplacement::Decision decision) {
+            const auto resolution = graphReplacement.resolve(decision);
+            if (resolution != CycleV2::GraphDocumentReplacement::Resolution::SaveRequired) {
+                return;
+            }
+
+            saveGraphForReplacement([safeThis = SafePointer<MainWindow>(this)](bool saved) {
+                if (safeThis != nullptr) {
+                    safeThis->graphReplacement.completeSave(saved);
+                }
+            });
         }
 
         bool saveGraphFile(const File& file) {
@@ -327,7 +386,7 @@ public:
             auto* page = new CycleV2::PresetBrowserPage(
                     std::vector<File> { repositoryPresetDirectory(), defaultGraphDirectory() },
                     [safeThis = SafePointer<MainWindow>(this)](const File& file) {
-                        return safeThis != nullptr && safeThis->openGraphFile(file);
+                        return safeThis != nullptr && safeThis->requestOpenGraphFile(file);
                     },
                     [safeThis = SafePointer<MainWindow>(this)] {
                         if (safeThis != nullptr) {
@@ -370,7 +429,7 @@ public:
                         }
 
                         const File file = chooser.getResult();
-                        safeThis->openGraphFile(file);
+                        safeThis->requestOpenGraphFile(file);
 
                         safeThis->fileChooser = nullptr;
                     });
@@ -385,7 +444,16 @@ public:
             saveGraphFile(currentGraphFile);
         }
 
-        void chooseSaveGraphAs() {
+        void saveGraphForReplacement(std::function<void(bool)> completion) {
+            if (currentGraphFile == File()) {
+                chooseSaveGraphAs(std::move(completion));
+                return;
+            }
+
+            completion(saveGraphFile(currentGraphFile));
+        }
+
+        void chooseSaveGraphAs(std::function<void(bool)> completion = {}) {
             const File initialFile = currentGraphFile == File()
                     ? defaultGraphDirectory().getChildFile("Untitled.cyclegraph")
                     : currentGraphFile;
@@ -398,18 +466,23 @@ public:
                     FileBrowserComponent::saveMode
                             | FileBrowserComponent::canSelectFiles
                             | FileBrowserComponent::warnAboutOverwriting,
-                    [safeThis = SafePointer<MainWindow>(this)](const FileChooser& chooser) {
+                    [safeThis = SafePointer<MainWindow>(this),
+                     completion = std::move(completion)](const FileChooser& chooser) {
                         if (safeThis == nullptr) {
                             return;
                         }
 
                         File file = chooser.getResult();
+                        bool saved = false;
                         if (file != File()) {
                             if (file.getFileExtension().isEmpty()) {
                                 file = file.withFileExtension("cyclegraph");
                             }
 
-                            safeThis->saveGraphFile(file);
+                            saved = safeThis->saveGraphFile(file);
+                        }
+                        if (completion) {
+                            completion(saved);
                         }
 
                         safeThis->fileChooser = nullptr;
@@ -420,6 +493,7 @@ public:
         ApplicationCommandManager commandManager;
         std::unique_ptr<PropertiesFile> properties;
         CycleV2::GraphFileHistory fileHistory;
+        CycleV2::GraphDocumentReplacement graphReplacement;
         CycleV2::NodeWorkspace* workspace {};
         std::unique_ptr<CycleV2::CycleV2Automation> automation;
         std::unique_ptr<FileChooser> fileChooser;

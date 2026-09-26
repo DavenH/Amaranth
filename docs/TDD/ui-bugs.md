@@ -76,7 +76,7 @@ Context:
 Current status: open; select the intended default and make its persisted key
 follow the factory preset filename-resolution contract.
 
-## P1: Opening a graph can discard unsaved edits without confirmation
+## Resolved P1: Opening a graph can discard unsaved edits without confirmation
 
 Context:
 
@@ -87,9 +87,12 @@ Context:
 - This branch intentionally fixes dirty-state publication only; the document-open
   confirmation is separate window/document-lifecycle work.
 
-Current status: open; prompt to save, discard, or cancel before replacing a dirty
-graph, and clear the dirty state only after a successful save or confirmed
-discard.
+Current status: resolved 2026-09-25. Every interactive graph-open entry point
+uses one replacement controller. Clean documents open immediately; dirty
+documents require Save, Discard, or Cancel. Replacement after Save occurs only
+when saving succeeds, while Cancel and failed saves retain the current graph.
+Focused file-workflow tests cover the decision sequence and pending-target
+exclusion.
 
 ## P2: Intermittent CoreMIDI endpoint assertion during automation startup
 
