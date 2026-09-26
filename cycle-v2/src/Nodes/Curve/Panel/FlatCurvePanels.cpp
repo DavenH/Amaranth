@@ -166,6 +166,18 @@ public:
         state.currentCube = nullptr;
         return Interactor::locateClosestElement();
     }
+    void highlightCurrentIntercept() override {
+        if (state.currentIcpt != -1 || state.currentFreeVert != -1) {
+            Panel2D::highlightCurrentIntercept();
+            return;
+        }
+        if (!hasFlatVertexHover()) {
+            return;
+        }
+        drawVertexHighlight(Vertex2(
+                state.currentVertex->values[Vertex::Phase],
+                state.currentVertex->values[Vertex::Amp]));
+    }
     void setExtraElements(float x) override {
         Interactor2D::setExtraElements(x);
     }
@@ -362,6 +374,7 @@ private:
         }
         root.setProperty("movingVertexCount", (int) state.selectedFrame.size());
         root.setProperty("hasCurrentCube", false);
+        root.setProperty("hoverHighlightVisible", hasFlatVertexHover());
         root.setProperty("firstControl", controlA);
         root.setProperty("secondControl", controlB);
         root.setProperty("thirdControl", controlC);
@@ -377,6 +390,15 @@ private:
     Vertex* firstEditableVertex() const {
         const auto& vertices = mesh.getVerts();
         return vertices.empty() ? nullptr : vertices.front();
+    }
+    bool hasFlatVertexHover() const {
+        if (!mouseFlag(MouseOver) || state.currentVertex == nullptr) {
+            return false;
+        }
+        const Point<int> mousePosition(
+                roundToInt(sx(state.currentMouse.x)),
+                roundToInt(sy(state.currentMouse.y)));
+        return const_cast<FlatCurvePanelBase*>(this)->isCurrentVertexHit(mousePosition);
     }
     static int vertexDimensionForParameter(const String& parameterId) {
         const String field = parameterId.fromLastOccurrenceOf(".", false, false);

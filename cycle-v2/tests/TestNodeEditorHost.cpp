@@ -2547,6 +2547,51 @@ TEST_CASE("Waveshaper point drag retains the hovered vertex identity",
     }
 }
 
+TEST_CASE("Flat curve editors highlight only the hovered vertex",
+        "[cycle-v2][node-editor-host][curve][hover][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+
+    const auto verifyHoverHighlight = [](NodeKind kind, const String& nodeId) {
+        Node node = GraphNodeFactory().createNode(kind, nodeId, {});
+        CurveEditorWidget widget(kind);
+        Component* panel = widget.prepareExpandedPanelComponent(
+                node, Rectangle<float>(0.f, 0.f, 436.f, 436.f));
+        REQUIRE(panel != nullptr);
+        panel->setBounds(0, 0, 436, 436);
+        panel->addToDesktop(ComponentPeer::windowIsTemporary);
+
+        const var zoom = widget.automationState().getProperty("zoom", {});
+        const float zoomX = zoom.getProperty("x", {});
+        const float zoomY = zoom.getProperty("y", {});
+        const float zoomWidth = zoom.getProperty("w", {});
+        const float zoomHeight = zoom.getProperty("h", {});
+        const Point<float> vertexPosition(
+                panel->getWidth() * (0.5f - zoomX) / zoomWidth,
+                panel->getHeight() * (1.f - (0.35f - zoomY) / zoomHeight));
+
+        panel->mouseDoubleClick(curvePanelMouseEvent(
+                *panel,
+                vertexPosition,
+                ModifierKeys::leftButtonModifier,
+                vertexPosition,
+                false,
+                2));
+        panel->mouseMove(curvePanelMouseEvent(
+                *panel, vertexPosition, {}, vertexPosition, false));
+        REQUIRE((bool) widget.automationState().getProperty(
+                "hoverHighlightVisible", false));
+
+        panel->mouseExit(curvePanelMouseEvent(
+                *panel, vertexPosition, {}, vertexPosition, false));
+        REQUIRE_FALSE((bool) widget.automationState().getProperty(
+                "hoverHighlightVisible", true));
+    };
+
+    verifyHoverHighlight(NodeKind::Waveshaper, "waveshaper");
+    verifyHoverHighlight(NodeKind::ImpulseResponse, "impulse-response");
+}
+
 TEST_CASE("Selected flat curve state binds before its panel host exists",
           "[cycle-v2][node-editor-host][presets][selection]") {
   #if defined(CYCLE_V2_SOURCE_DIR)

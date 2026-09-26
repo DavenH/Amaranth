@@ -28,6 +28,16 @@ its pixel-width grid. Direct harmonic parity, invariant surface data, and a
 There are no open deterministic P0 or P1 regressions as of 2026-09-09.
 Resolved and no-longer-reproducing entries have been removed from this ledger.
 
+## Resolved P2: Flat curve editors omitted vertex hover highlighting
+
+Reported 2026-09-26. Waveshaper and Impulse Response panels acquired the
+nearest editable vertex for interaction, but cleared the intercept index used
+by the shared yellow hover-marker path. Their panels now adapt a vertex that is
+actually within the standard hit radius into the same marker rendering used by
+the other 2D vertex editors. Selection remains unhighlighted when the pointer
+is elsewhere or has left the panel. Focused in-process coverage exercises both
+editors without launching a foreground application window.
+
 ## Resolved P2: Undoing a Trimesh morph gesture closed the expanded editor
 
 The 2026-09-18 Organ 4 red-rail gesture fixture observed that undo restored
