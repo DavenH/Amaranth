@@ -131,27 +131,11 @@ Context:
 - On 2026-09-17, a full Cycle V2 CTest run passed 1040/1076 tests and failed
   36, predominantly tests still naming root preset files or old Baroque and
   Stengah fixture contents after legacy presets were archived. Examples:
-  `Prepared oscillator preset matrix...` cannot load its preset, and
-  `Curve panel adapters resynchronize equal-revision models...` expects 55
-  Stengah Guide vertices while the current fixture has 73. This is distinct
-  from the editor UI repairs, whose focused tests pass.
+  `Prepared oscillator preset matrix...` cannot load its preset. This is
+  distinct from the editor UI repairs, whose focused tests pass.
 
 Current status: open; reconcile test paths and semantic expectations against
 the canonical preset set rather than weakening the assertions.
-
-- The grouped `[cycle-v2][runtime][probe][presets]` run on 2026-09-14 fails
-  `Stengah spies render the exact output selected by each probe` because the
-  freshly migrated `stengah.cyclegraph` contains an empty `probes` array.
-- The focused PWM Lead Spy regression uses its checked-in probe and passes.
-
-Current status: open fixture/test synchronization issue; restore the intended
-Stengah probes or update the test fixture at its authoring boundary.
-
-- On 2026-09-18, a grouped causal/presentation/Reverb test run again failed
-  the Stengah async Waveshaper probe case at `findProbePreview(..., "probe2")`
-  immediately after loading the preset; 48 of 50 cases passed. The local
-  Reverb preview path is not invoked by this test. Log:
-  `/private/tmp/causal-reverb-tests.log`.
 
 - On 2026-09-18, `cycle-v2-agent-spy-detail.json` opened the probe detail on
   archived `old/stengah.cyclegraph`, but its `probeDetailRows` assertion
