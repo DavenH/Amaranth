@@ -79,19 +79,6 @@ case also fails in isolation before exercising the morph-selection correction.
 The new morph-selection, disabled-control, and pointer-interaction cases pass
 independently; this remains open as shared test setup/lifetime work.
 
-## P3: Isolated Delay causal test expects previews from an unconnected graph
-
-Context:
-
-- `Ordinary DSP edits refresh configuration without compiling topology` fails
-  in isolation because `previewRenderCount()` remains zero instead of two.
-- The fixture contains only an unconnected Delay node, so the current runtime
-  produces no previewable execution product. The focused connected Reverb
-  causal sequence passes and the failure does not overlap Reverb kernel reuse.
-
-Current status: open; reconcile the Delay fixture topology with its preview
-count expectation rather than weakening the runtime product boundary.
-
 ## P3: Causal-tag runtime suite misses expected probe previews
 
 On 2026-09-17, `CycleV2_tests '[cycle-v2][runtime][causal]'` reported two
