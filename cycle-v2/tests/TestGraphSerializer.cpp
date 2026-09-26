@@ -51,6 +51,12 @@ File contentPreset(const String& name) {
   #endif
 }
 
+File graphTestOutputFile(const String& name) {
+    const File outputDirectory(String(CYCLE_V2_TEST_OUTPUT_DIR));
+    ignoreUnused(outputDirectory.createDirectory());
+    return outputDirectory.getNonexistentChildFile(name, ".cyclegraph");
+}
+
 bool hasGuideAssignment(
         const NodeGraph& graph,
         const String& guideId,
@@ -136,8 +142,7 @@ TEST_CASE("Graph JSON preserves authored Guide noise seeds", "[cycle-v2][graph][
 
 TEST_CASE("Graph documents save canonical JSON with stable line endings",
         "[cycle-v2][graph]") {
-    const File destination = File::getSpecialLocation(File::tempDirectory)
-            .getNonexistentChildFile("cycle-v2-canonical-graph", ".cyclegraph");
+    const File destination = graphTestOutputFile("cycle-v2-canonical-graph");
     GraphDocument document(NodeGraph::createDemoGraph());
 
     REQUIRE(document.save(destination));
@@ -165,8 +170,7 @@ TEST_CASE("Graph JSON preserves parameter precision needed for Cycle parity",
 
 TEST_CASE("Graph document dirty state follows its save point through history",
         "[cycle-v2][graph][dirty]") {
-    const File destination = File::getSpecialLocation(File::tempDirectory)
-            .getNonexistentChildFile("cycle-v2-dirty-state", ".cyclegraph");
+    const File destination = graphTestOutputFile("cycle-v2-dirty-state");
     NodeGraph graph = NodeGraph::createDemoGraph();
     const String movedNodeId = graph.getNodes().front().id;
     GraphDocument document(std::move(graph));

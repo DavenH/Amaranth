@@ -462,6 +462,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
             BUILD_TESTING=1
             CYCLE_V2_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+            CYCLE_V2_TEST_OUTPUT_DIR="${CMAKE_CURRENT_BINARY_DIR}/test-output"
             JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/incl/JucePluginDefines.h"
         )
 

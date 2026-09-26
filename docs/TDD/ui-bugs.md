@@ -25,23 +25,6 @@ runs completed with zero failed commands. Capture the initialized endpoint
 names and launch sequence if it recurs before changing MIDI initialization or
 teardown.
 
-## P2: Graph document save test cannot use JUCE's default temporary directory
-
-Context:
-
-- The full Cycle V2 suite and a focused rerun on 2026-09-07 fail
-  `Graph documents save canonical JSON with stable line endings` at
-  `TestGraphSerializer.cpp:111`.
-- JUCE first asserts at `juce_TemporaryFile.cpp:126`; the destination is chosen
-  from `File::tempDirectory`, and `GraphDocument::save()` then returns false.
-- Preset serialization itself passes in the workspace-backed native migration
-  runs, including 221 load/save/reopen cycles.
-- Full-suite log: `/private/tmp/cycle-v2-full-tests.log`.
-
-Current status: open as a sandbox/test-fixture path issue. Give temporary-file
-fixtures an explicitly writable test root rather than weakening document-save
-behavior.
-
 ## P2: African Horn factory graph is not canonical JSON
 
 Status: Open
