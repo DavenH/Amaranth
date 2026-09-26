@@ -5,15 +5,6 @@
 There are no open deterministic P0 or P1 regressions as of 2026-09-09.
 Resolved and no-longer-reproducing entries have been removed from this ledger.
 
-## P2: Broader Trimesh tests retain a stale control-region expectation
-
-The 2026-09-18 `CycleV2_tests '[trimesh]'` run passed the mapped pitch tests but
-failed the control-region count (`28` versus `22`). The compact versus expanded
-column equality (`96` versus `450`) was also stale after expanded pixel-width
-sampling; its test now checks shared source data at their respective resolutions.
-The control-region expectation remains open; log:
-`/tmp/cycle-v2-trimesh-tests.txt`.
-
 ## P2: Cycle 1 default factory preset key no longer resolves
 
 Context:
@@ -336,15 +327,6 @@ source `with-spies.cyclegraph` contains `yellow: 0.317`. Diagnostic reports:
 
 Current status: open; inspect graph load or parameter normalization. The
 fixture's undo value should not be changed until that discrepancy is resolved.
-
-## P3: Trimesh expanded control-region count test expects an old layout
-
-On 2026-09-18, the broad Trimesh node test filter passed 64 of 65 cases; one
-assertion in `TestTrimeshNodeDsp.cpp` expected 22 control regions and observed
-28. The focused vertex delta and guide-gain gesture tests passed. Log:
-`/private/tmp/causal-trimesh-delta-tests.log`.
-
-Current status: open; reconcile the control layout contract and its assertion.
 
 ## P3: Cycle 1 FileManager assertion during a mismatched automation launch
 

@@ -2411,15 +2411,15 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     controls.setNode(node);
     controls.setContentBounds({ 10.f, 42.f, 1380.f, 710.f });
 
-    REQUIRE(controls.getControlRegionCount() == 22);
+    REQUIRE(controls.getControlRegionCount() == 28);
     REQUIRE(controls.getMorphSliderCount() == 3);
     REQUIRE(controls.getOutputScaleSliderCount() == 1);
     REQUIRE(controls.getPrimaryAxisButtonCount() == 3);
     REQUIRE(controls.getLinkToggleButtonCount() == 3);
     REQUIRE(controls.getVertexParameterSliderCount() == 6);
-    REQUIRE(controls.getVertexGuideGainKnobCount() == 3);
-    REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 3);
-    REQUIRE(controls.getNumChildComponents() == 22);
+    REQUIRE(controls.getVertexGuideGainKnobCount() == 6);
+    REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 6);
+    REQUIRE(controls.getNumChildComponents() == 28);
     Component* link = controls.findChildWithID("trimesh.link.red");
     REQUIRE(link != nullptr);
     REQUIRE_FALSE(link->keyPressed(KeyPress(' ')));
