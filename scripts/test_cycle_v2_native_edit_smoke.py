@@ -437,8 +437,8 @@ class NativeEditSmoke:
     def inspect(self, node_id):
         return self.command({"command": "inspectNodeControls", "nodeId": node_id})
 
-    def inspect_until(self, node_id, predicate):
-        deadline = time.monotonic() + 0.1
+    def inspect_until(self, node_id, predicate, timeout_seconds=0.1):
+        deadline = time.monotonic() + timeout_seconds
         state = self.inspect(node_id)
         while not predicate(state) and time.monotonic() < deadline:
             time.sleep(0.005)
@@ -581,7 +581,7 @@ class NativeEditSmoke:
         return state["model"]["mesh"]
 
     @staticmethod
-    def assert_serialized_mesh_equal(expected, actual, path="mesh"):
+    def assert_serialized_mesh_equal(expected, actual, path="mesh", abs_tol=1.0e-5):
         if isinstance(expected, dict):
             assert isinstance(actual, dict), (path, expected, actual)
             assert actual.keys() == expected.keys(), (
@@ -594,6 +594,7 @@ class NativeEditSmoke:
                     value,
                     actual[key],
                     f"{path}.{key}",
+                    abs_tol,
                 )
             return
 
@@ -605,6 +606,7 @@ class NativeEditSmoke:
                     value,
                     actual[index],
                     f"{path}[{index}]",
+                    abs_tol,
                 )
             return
 
@@ -614,7 +616,7 @@ class NativeEditSmoke:
                 expected,
                 actual,
             )
-            assert math.isclose(expected, float(actual), rel_tol=0.0, abs_tol=1.0e-5), (
+            assert math.isclose(expected, float(actual), rel_tol=0.0, abs_tol=abs_tol), (
                 path,
                 expected,
                 actual,
@@ -1443,8 +1445,14 @@ class NativeEditSmoke:
         undone = self.inspect_until(
             "env",
             lambda state: state["model"]["state"]["mesh"] == initial_mesh,
+            timeout_seconds=0.6,
         )
-        assert undone["model"]["state"]["mesh"] == initial_mesh
+        self.assert_serialized_mesh_equal(
+            initial_mesh,
+            undone["model"]["state"]["mesh"],
+            "envelope-release.mesh",
+            0.0,
+        )
 
     def guide_preview_sequence(self):
         self.command({

@@ -267,7 +267,7 @@ Context:
 Current status: open; make the fixture assert the hovered vertex identity before
 mouse-down and investigate why the new intercept is not the drag target.
 
-## P2: Envelope release native edit does not restore exact mesh on undo
+## Resolved P2: Envelope release native edit does not restore exact mesh on undo
 
 Context:
 
@@ -279,8 +279,12 @@ Context:
 - The latest shared launch log is
   `/private/var/folders/zx/hdzf3v1s6vvdz7chbz40bbtc0000gn/T/cycle-v2-native-edit-smoke.log`.
 
-Current status: open; compare the forward/inverse Envelope vertex delta after a
-real routed release drag without folding that investigation into hover behavior.
+Current status: resolved 2026-09-25 as a fixture observation race. The routed
+gesture's inverse delta restores every serialized mesh field exactly, including
+floating-point values at zero tolerance. The native inspector had allowed only
+100 ms for the asynchronous undo publication and could return the preceding
+state. The focused sequence now retains exact comparison and waits up to 600 ms;
+four consecutive diagnostic/verification runs restored the initial mesh.
 
 ## P2: Complexity regression test omitted Guide noise seed
 

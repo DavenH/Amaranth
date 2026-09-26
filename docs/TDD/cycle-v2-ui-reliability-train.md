@@ -10,6 +10,13 @@ The new lifecycle policy is not retained there: the 117-line
 decision, and save-completion state, leaving one replacement decision site for
 the inline browser, full browser, file chooser, and recent-file menu.
 
+Envelope release audit: the mature interactor and inverse graph delta already
+restore the serialized mesh exactly. The reported mismatch was the native
+fixture's 100 ms observation deadline racing asynchronous undo publication.
+The fixture now uses a bounded 600 ms wait for this sequence and compares every
+serialized float with zero tolerance; four consecutive runs passed. No
+production mesh or undo behavior was duplicated or changed.
+
 ## Scope
 
 This train repairs five deterministic or sequence-reproducible UI failures:
