@@ -12,6 +12,7 @@ RAW_LOG_PATH="${CYCLE_RAW_LOG_PATH:-$LOG_PATH.raw}"
 PROCESS_NAME="${CYCLE_PROCESS_NAME:-Cycle}"
 WAIT_SECONDS="${CYCLE_WAIT_SECONDS:-20}"
 FOCUS_SECONDS="${CYCLE_FOCUS_SECONDS:-2}"
+FOCUS_ON_LAUNCH="${CYCLE_FOCUS_ON_LAUNCH:-0}"
 QUIT_WAIT_SECONDS="${CYCLE_QUIT_WAIT_SECONDS:-3}"
 REUSE_EXISTING="${CYCLE_REUSE_EXISTING:-0}"
 FILTER_LOGS="${CYCLE_FILTER_LOGS:-1}"
@@ -421,7 +422,9 @@ if ! open -n \
     "$app_executable" "${launch_args[@]}" >> "$RAW_LOG_PATH" 2>&1 &
 fi
 
-focus_process "$APP_BUNDLE_ID" || true
+if [[ "$FOCUS_ON_LAUNCH" == "1" ]]; then
+    focus_process "$APP_BUNDLE_ID" || true
+fi
 
 deadline=$((SECONDS + WAIT_SECONDS))
 while (( SECONDS < deadline )); do

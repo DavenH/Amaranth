@@ -25,21 +25,6 @@ runs completed with zero failed commands. Capture the initialized endpoint
 names and launch sequence if it recurs before changing MIDI initialization or
 teardown.
 
-## P2: Paired audio automation intermittently cannot focus the applications
-
-Context:
-
-- Organ 2 differential runs on 2026-09-11 repeatedly logged AppleScript error
-  `-10006` when System Events attempted to activate either `Cycle` or
-  `CycleV2`.
-- Each application still completed its scripted offline capture and wrote a
-  valid report, raw float sidecar, and WAV, so the error does not invalidate
-  the audio comparison.
-- Repro artifact: `/tmp/cycle-organ-2-reverb-mix-debug-4/`.
-
-Current status: open; make foreground activation best-effort or synchronize it
-with process launch without weakening command/report completion checks.
-
 ## P2: Broad native Trimesh sequence has intermittent late-step assertions
 
 Context:
