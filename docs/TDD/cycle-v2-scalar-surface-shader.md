@@ -2,6 +2,37 @@
 
 Status: Implemented
 
+## Copper/Ice revision (2026-09-26)
+
+The shaded mode's pearl blend produced a grey film over zero crossings. Replace
+that blend with hue-preserving linear-light exposure: a smoothly compressed
+directional response, cubed on the facing side to restrict bright coverage,
+and softer opposing shade. Cap exposure uniformly across RGB before any channel
+clips. Reuse the existing H0/H1 preparation, boundary correction, and cache.
+Use a sequential navy/steel/copper/apricot base with a steel-blue zero rather
+than a plum luminance trench. This is an illustrative copper/ice treatment;
+the other bipolar palettes remain direct references. No new material mode or
+saved preference value is needed. This supersedes the pearl blending and
+diverging-lightness palette described in the original shaded-mode section below.
+
+Implementation and automated verification complete: both applications build;
+17 material cases pass 1,490 assertions. The palette test allows one 8-bit
+code of rounding error against the running maximum brightness, not cumulative
+downward drift. All ten V2 lifecycle commands pass; GPU parity has maximum
+channel error 2 before and after context recreation. Visually inspected
+`/private/tmp/copper-ice-fixtures.png` (base/shaded/old-detail columns;
+ramp/sine/ripple rows). Production cyclogram comparison remains pending: the
+desktop capture did not capture the application. Existing Curve assertions
+remain tracked in `ui-bugs.md`; clang-tidy is unavailable.
+
+Refactor/style review: material evaluator 958 -> 959 lines, GPU renderer
+866 -> 865. They retain CPU material/preprocessing and GPU resource/render
+responsibilities respectively, collaborating through the shared material and
+upload contracts. No new lifecycle, node, invalidation, or domain decisions;
+no new scalar standard-math calls in hot paths. The architecture audit remains
+at 20 existing size triggers across 516 V2 files. Existing cached work and
+per-pixel complexity are unchanged; the old pearl blend is deleted for this mode.
+
 ## Bipolar Shaded (2026-09-26, implemented)
 
 Add an opt-in illustrative material using the authoritative signed palette

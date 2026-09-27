@@ -515,13 +515,15 @@ juce::Colour evaluateDirectionalShaded(
     const float magnitude = projected < 0.f ? -projected : projected;
     const float response = projected / (1.f + magnitude);
     const float facing = juce::jmax(0.f, response);
-    const float illumination = 1.f + material.shadedShadowStrength * juce::jmin(0.f, response);
+    const float illumination = 1.f
+            + material.shadedHighlightStrength * facing * facing * facing
+            + material.shadedShadowStrength * juce::jmin(0.f, response);
     LinearColour colour = toLinear(paletteColour(value, material));
-    colour.red *= illumination;
-    colour.green *= illumination;
-    colour.blue *= illumination;
-    colour = interpolate(colour, pearlColour(value, material),
-            material.shadedHighlightStrength * facing * facing);
+    const float peak = juce::jmax(0.000001f, colour.red, colour.green, colour.blue);
+    const float exposure = juce::jmin(illumination, 1.f / peak);
+    colour.red *= exposure;
+    colour.green *= exposure;
+    colour.blue *= exposure;
     return juce::Colour::fromFloatRGBA(
             linearToSrgb(colour.red),
             linearToSrgb(colour.green),
@@ -635,22 +637,21 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::bipolarShaded() {
     ScalarSurfaceMaterial material = signedAmplitude();
     material.relief = ScalarSurfaceRelief::DirectionalShaded;
     material.signedPaletteStops = {
-        juce::Colour(0xff647db6),
-        juce::Colour(0xff435b94),
-        juce::Colour(0xff354263),
-        juce::Colour(0xff30323e),
-        juce::Colour(0xff302c36),
-        juce::Colour(0xff42343e),
-        juce::Colour(0xff785053),
-        juce::Colour(0xffb77460),
-        juce::Colour(0xffe4a479)
+        juce::Colour(0xff031426),
+        juce::Colour(0xff082a43),
+        juce::Colour(0xff17445f),
+        juce::Colour(0xff345b70),
+        juce::Colour(0xff577080),
+        juce::Colour(0xff877e7a),
+        juce::Colour(0xffbe8c70),
+        juce::Colour(0xffe4aa7d),
+        juce::Colour(0xffffd4a5)
     };
     material.negativeAnchor = material.signedPaletteStops.front();
     material.neutralAnchor = material.signedPaletteStops[4];
     material.positiveAnchor = material.signedPaletteStops.back();
-    material.negativePearlTint = juce::Colour(0xffcfddff);
-    material.neutralPearlTint = juce::Colour(0xffaaa4b0);
-    material.positivePearlTint = juce::Colour(0xffffdfb1);
+    material.shadedHighlightStrength = 1.8f;
+    material.shadedShadowStrength = 0.18f;
     material.detailReliefScale = 0.2f;
     return material;
 }

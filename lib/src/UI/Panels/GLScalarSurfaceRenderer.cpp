@@ -223,13 +223,12 @@ void main() {
             float projected = -shadedSlopeScale * dot(slope, light.xy);
             float response = projected / (1.0 + abs(projected));
             float facing = max(0.0, response);
-            float illumination = 1.0 + shadedShadowStrength * min(0.0, response);
-            vec3 colour = srgbToLinear(base) * illumination;
-            vec3 pearl = mix(srgbToLinear(neutralPearlTint),
-                    srgbToLinear(centre < 0.5 ? negativePearlTint : positivePearlTint),
-                    smoothstep(0.0, 1.0, abs(centre - 0.5) * 2.0));
-            colour = mix(colour, pearl,
-                    shadedHighlightStrength * facing * facing);
+            float illumination = 1.0
+                    + shadedHighlightStrength * facing * facing * facing
+                    + shadedShadowStrength * min(0.0, response);
+            vec3 colour = srgbToLinear(base);
+            float peak = max(0.000001, max(colour.r, max(colour.g, colour.b)));
+            colour *= min(illumination, 1.0 / peak);
             gl_FragColor = vec4(linearToSrgb(colour), surfaceOpacity);
             return;
         }

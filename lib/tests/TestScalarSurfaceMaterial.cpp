@@ -247,7 +247,7 @@ TEST_CASE("Bipolar shaded lighting follows direction continuously", "[ui][surfac
         const auto lit = ScalarSurfaceMaterialEvaluator::colourFor(value, derivatives, material);
         derivatives.slopeX.fill(-4.f);
         const auto shaded = ScalarSurfaceMaterialEvaluator::colourFor(value, derivatives, material);
-        REQUIRE(lit.getPerceivedBrightness() > base.getPerceivedBrightness() + 0.03f);
+        REQUIRE(lit.getPerceivedBrightness() > base.getPerceivedBrightness());
         REQUIRE(shaded.getPerceivedBrightness() < base.getPerceivedBrightness());
         if (value < 0.5f) {
             REQUIRE(lit.getBlue() > lit.getRed());
@@ -265,6 +265,25 @@ TEST_CASE("Bipolar shaded lighting follows direction continuously", "[ui][surfac
             REQUIRE(maximumChannelDifference(colour, previousColour) <= 2);
         }
         previousColour = colour;
+    }
+}
+
+TEST_CASE("Copper ice shading preserves its palette without a pearl overlay", "[ui][surface-material]") {
+    auto material = ScalarSurfaceMaterial::bipolarShaded();
+    ScalarSurfaceDerivatives derivatives;
+    derivatives.slopeX.fill(8.f);
+    const auto lit = ScalarSurfaceMaterialEvaluator::colourFor(0.5f, derivatives, material);
+    material.neutralPearlTint = juce::Colours::magenta;
+    material.negativePearlTint = juce::Colours::yellow;
+    material.positivePearlTint = juce::Colours::green;
+    REQUIRE(ScalarSurfaceMaterialEvaluator::colourFor(0.5f, derivatives, material) == lit);
+    REQUIRE(lit.getBlue() > lit.getRed());
+    float previousBrightness = 0.f;
+    for (int index = 0; index < 512; ++index) {
+        const auto base = ScalarSurfaceMaterialEvaluator::baseColourFor((float) index / 511.f, material);
+        // Independent 8-bit channel rounding can introduce sub-code dips as hue turns.
+        REQUIRE(base.getPerceivedBrightness() + 1.f / 255.f >= previousBrightness);
+        previousBrightness = juce::jmax(previousBrightness, base.getPerceivedBrightness());
     }
 }
 
