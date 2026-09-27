@@ -2,6 +2,45 @@
 
 Status: Implemented
 
+## Copper/Ice detail separation (2026-09-27, implemented)
+
+The production comparison still shows broad plastic-looking illuminated faces.
+Replace full-field directional slope in the illustrative shaded mode with the
+existing H0-H1 high-pass gradient. Reuse cached light blur, boundary fade, soft
+saturation, linear RGB transfers, and semantic edge colours. No new blur,
+texture, app-specific shader, lifecycle owner, or signal normalization.
+The base palette carries broad form; deepen navy and strengthen copper/orange
+before a pale yellow endpoint. Continuously energy-gated ice/gold detail may
+brighten genuine ripples, never a broad plane. No threshold masks or white film.
+Existing material owns all constants; CPU evaluator and GPU implement the same
+contract. Per-product O(pixels) preparation and cached presentation are unchanged.
+Delete broad-slope shading, retain all other view options. Verify plain ramps,
+smooth sine versus ripple response, boundaries, resolution, CPU/GPU parity and
+the production cyclogram before assessing the visual match.
+
+Verification: both apps build; 18 material cases pass. At 512/1024 columns,
+the maximum shading delta is 0/0 for ramps and broad sines, versus 36/31
+8-bit channel levels for sine-plus-ripple. Resolution strength is bounded by
+eight channel levels. Constant-field boundaries and gradual directional
+response remain covered. GPU parity passes with maximum channel error 2,
+including context recreation; all ten lifecycle commands pass. Existing
+Curve.cpp:56/57 assertions remain the previously recorded issue.
+
+Visual review used `/private/tmp/copper-detail-fixtures.png` and actual-size
+expanded stengah Spies 4 and 5 (`/private/tmp/copper-detail-cyclogram.png`,
+`/private/tmp/copper-detail-production.png`). Broad grey lighting is removed;
+colour is more saturated, and fine structure receives localized ice/gold
+accents. The fixture differs from the user's exact displayed signal, so this
+is an approximation, not a claim of reference-image parity. No procedural
+texture, spatial recolouring, or synthetic structure was added.
+
+Refactor/style review: evaluator 959 -> 963 lines; renderer 865 -> 867.
+These remain cohesive reference/material and GPU resource/render owners;
+no new node, lifecycle, cache, or graph policy sites. The replaced full-slope
+path is deleted, not retained alongside detail shading. Audit remains 20
+existing V2 size triggers. No new scalar standard-math in production hot
+loops; clang-tidy is unavailable. Other palettes and mode indices are unchanged.
+
 ## Copper/Ice revision (2026-09-26)
 
 The shaded mode's pearl blend produced a grey film over zero crossings. Replace

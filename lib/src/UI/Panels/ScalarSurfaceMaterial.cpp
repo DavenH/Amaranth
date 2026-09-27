@@ -508,10 +508,8 @@ juce::Colour evaluateDirectionalShaded(
         const ScalarSurfaceDerivatives& derivatives,
         const ScalarSurfaceMaterial& material,
         const LightGeometry& light) {
-    const float smoothing = (1.f - material.detailReliefScale) * derivatives.boundaryFade;
-    const float slopeX = derivatives.slopeX[0] - smoothing * derivatives.detailSlopeX;
-    const float slopeY = derivatives.slopeY[0] - smoothing * derivatives.detailSlopeY;
-    const float projected = -material.shadedSlopeScale * (slopeX * light.x + slopeY * light.y);
+    const float projected = -material.shadedSlopeScale * derivatives.boundaryFade
+            * (derivatives.detailSlopeX * light.x + derivatives.detailSlopeY * light.y);
     const float magnitude = projected < 0.f ? -projected : projected;
     const float response = projected / (1.f + magnitude);
     const float facing = juce::jmax(0.f, response);
@@ -524,6 +522,10 @@ juce::Colour evaluateDirectionalShaded(
     colour.red *= exposure;
     colour.green *= exposure;
     colour.blue *= exposure;
+    const float detail = saturatingDetailResponse(derivatives.detailEnergy, material.detailEnergyKnee);
+    const float semantic = smoothUnit(2.f * (value < 0.5f ? 0.5f - value : value - 0.5f));
+    const LinearColour tint = toLinear(value < 0.5f ? material.negativeEdgeTint : material.positiveEdgeTint);
+    colour = interpolate(colour, tint, material.edgeTintStrength * facing * detail * semantic);
     return juce::Colour::fromFloatRGBA(
             linearToSrgb(colour.red),
             linearToSrgb(colour.green),
@@ -637,22 +639,24 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::bipolarShaded() {
     ScalarSurfaceMaterial material = signedAmplitude();
     material.relief = ScalarSurfaceRelief::DirectionalShaded;
     material.signedPaletteStops = {
-        juce::Colour(0xff031426),
-        juce::Colour(0xff082a43),
-        juce::Colour(0xff17445f),
-        juce::Colour(0xff345b70),
-        juce::Colour(0xff577080),
-        juce::Colour(0xff877e7a),
-        juce::Colour(0xffbe8c70),
-        juce::Colour(0xffe4aa7d),
-        juce::Colour(0xffffd4a5)
+        juce::Colour(0xff021323),
+        juce::Colour(0xff06263c),
+        juce::Colour(0xff103e56),
+        juce::Colour(0xff31566b),
+        juce::Colour(0xff536b7a),
+        juce::Colour(0xff987560),
+        juce::Colour(0xffdf8245),
+        juce::Colour(0xffffad48),
+        juce::Colour(0xffffedaa)
     };
     material.negativeAnchor = material.signedPaletteStops.front();
     material.neutralAnchor = material.signedPaletteStops[4];
     material.positiveAnchor = material.signedPaletteStops.back();
-    material.shadedHighlightStrength = 1.8f;
+    material.shadedHighlightStrength = 2.4f;
     material.shadedShadowStrength = 0.18f;
-    material.detailReliefScale = 0.2f;
+    material.edgeTintStrength = 0.45f;
+    material.negativeEdgeTint = juce::Colour(0xffb9e5ff);
+    material.positiveEdgeTint = juce::Colour(0xffffefae);
     return material;
 }
 

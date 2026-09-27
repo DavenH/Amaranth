@@ -218,9 +218,7 @@ void main() {
                 min(coordinate.y, 1.0 - coordinate.y));
         float boundaryFade = min(boundaryX, boundaryY);
         if (reliefKind == 3) {
-            float smoothing = (1.0 - detailReliefScale) * boundaryFade;
-            vec2 slope = vec2(gradientX.r, gradientY.r) - smoothing * detailGradient;
-            float projected = -shadedSlopeScale * dot(slope, light.xy);
+            float projected = -shadedSlopeScale * boundaryFade * dot(detailGradient, light.xy);
             float response = projected / (1.0 + abs(projected));
             float facing = max(0.0, response);
             float illumination = 1.0
@@ -229,6 +227,10 @@ void main() {
             vec3 colour = srgbToLinear(base);
             float peak = max(0.000001, max(colour.r, max(colour.g, colour.b)));
             colour *= min(illumination, 1.0 / peak);
+            float detail = saturatingDetailResponse(abs(centreScales.r - centreScales.g), detailEnergyKnee);
+            float semantic = smoothstep(0.0, 1.0, abs(centre - 0.5) * 2.0);
+            vec3 tint = srgbToLinear(centre < 0.5 ? negativeEdgeTint : positiveEdgeTint);
+            colour = mix(colour, tint, edgeTintStrength * facing * detail * semantic);
             gl_FragColor = vec4(linearToSrgb(colour), surfaceOpacity);
             return;
         }

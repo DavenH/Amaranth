@@ -243,9 +243,10 @@ TEST_CASE("Bipolar shaded lighting follows direction continuously", "[ui][surfac
         ScalarSurfaceDerivatives derivatives;
         REQUIRE(maximumChannelDifference(base,
                 ScalarSurfaceMaterialEvaluator::colourFor(value, derivatives, material)) <= 1);
-        derivatives.slopeX.fill(4.f);
+        derivatives.detailSlopeX = 4.f;
+        derivatives.detailEnergy = 0.01f;
         const auto lit = ScalarSurfaceMaterialEvaluator::colourFor(value, derivatives, material);
-        derivatives.slopeX.fill(-4.f);
+        derivatives.detailSlopeX = -4.f;
         const auto shaded = ScalarSurfaceMaterialEvaluator::colourFor(value, derivatives, material);
         REQUIRE(lit.getPerceivedBrightness() > base.getPerceivedBrightness());
         REQUIRE(shaded.getPerceivedBrightness() < base.getPerceivedBrightness());
@@ -259,7 +260,8 @@ TEST_CASE("Bipolar shaded lighting follows direction continuously", "[ui][surfac
     juce::Colour previousColour;
     for (int index = 0; index <= 200; ++index) {
         ScalarSurfaceDerivatives derivatives;
-        derivatives.slopeX.fill(-2.f + 0.02f * (float) index);
+        derivatives.detailSlopeX = -2.f + 0.02f * (float) index;
+        derivatives.detailEnergy = 0.01f;
         const auto colour = ScalarSurfaceMaterialEvaluator::colourFor(0.3f, derivatives, material);
         if (index > 0) {
             REQUIRE(maximumChannelDifference(colour, previousColour) <= 2);
@@ -271,7 +273,8 @@ TEST_CASE("Bipolar shaded lighting follows direction continuously", "[ui][surfac
 TEST_CASE("Copper ice shading preserves its palette without a pearl overlay", "[ui][surface-material]") {
     auto material = ScalarSurfaceMaterial::bipolarShaded();
     ScalarSurfaceDerivatives derivatives;
-    derivatives.slopeX.fill(8.f);
+    derivatives.detailSlopeX = 8.f;
+    derivatives.detailEnergy = 0.01f;
     const auto lit = ScalarSurfaceMaterialEvaluator::colourFor(0.5f, derivatives, material);
     material.neutralPearlTint = juce::Colours::magenta;
     material.negativePearlTint = juce::Colours::yellow;
@@ -284,6 +287,42 @@ TEST_CASE("Copper ice shading preserves its palette without a pearl overlay", "[
         // Independent 8-bit channel rounding can introduce sub-code dips as hue turns.
         REQUIRE(base.getPerceivedBrightness() + 1.f / 255.f >= previousBrightness);
         previousBrightness = juce::jmax(previousBrightness, base.getPerceivedBrightness());
+    }
+}
+
+TEST_CASE("Copper ice accent rejects broad form and follows real ripple detail", "[ui][surface-material]") {
+    const auto material = ScalarSurfaceMaterial::bipolarShaded();
+    int previousRippleAccent = 0;
+    for (const int columns: { 512, 1024 }) {
+        constexpr int rows = 32;
+        std::array<int, 3> maximumAccent {};
+        for (int fixture = 0; fixture < 3; ++fixture) {
+            const auto values = extrudedSurface(columns, rows, [fixture](float x) {
+                const float broad = 0.5f + 0.4f * std::sin(x * 12.5663706f);
+                return fixture == 0 ? x : broad
+                        + (fixture == 2 ? 0.035f * std::sin(x * 201.06193f) : 0.f);
+            });
+            const auto scales = ScalarSurfaceMaterialEvaluator::createHeightScales(
+                    values.data(), (int) values.size(), columns, rows, material);
+            for (int column = 0; column < columns; ++column) {
+                const float value = values[(size_t) column * rows + rows / 2];
+                const auto derivatives = ScalarSurfaceMaterialEvaluator::derivativesAt(
+                        scales, column, rows / 2, material, 1.f);
+                const auto base = ScalarSurfaceMaterialEvaluator::baseColourFor(value, material);
+                const auto shaded = ScalarSurfaceMaterialEvaluator::colourFor(value, derivatives, material);
+                maximumAccent[(size_t) fixture] = juce::jmax(
+                        maximumAccent[(size_t) fixture], maximumChannelDifference(base, shaded));
+            }
+        }
+        INFO("resolution " << columns << "; ramp/sine/ripple "
+                << maximumAccent[0] << "/" << maximumAccent[1] << "/" << maximumAccent[2]);
+        REQUIRE(maximumAccent[0] <= 1);
+        REQUIRE(maximumAccent[1] <= 3);
+        REQUIRE(maximumAccent[2] > maximumAccent[1] + 3);
+        if (previousRippleAccent != 0) {
+            REQUIRE(std::abs(maximumAccent[2] - previousRippleAccent) <= 8);
+        }
+        previousRippleAccent = maximumAccent[2];
     }
 }
 
