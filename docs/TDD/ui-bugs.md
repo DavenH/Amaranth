@@ -144,18 +144,6 @@ the canonical preset set rather than weakening the assertions.
   fixture assertion until the intended archived graph and resolution contract
   are reconciled.
 
-## P3: With-spies Trimesh morph fixture expects a value absent after load
-
-On 2026-09-18, `cycle-v2-agent-trimesh-morph-selection.json` failed its undo
-assertion: it expected `waveMesh.yellow` to return to `0.317`, but the loaded
-node reports `0` immediately after `openGraph`, before any editor action. The
-source `with-spies.cyclegraph` contains `yellow: 0.317`. Diagnostic reports:
-`/private/tmp/causal-morph-initial-report.json` and
-`/private/tmp/causal-morph-diagnostic-report.json`.
-
-Current status: open; inspect graph load or parameter normalization. The
-fixture's undo value should not be changed until that discrepancy is resolved.
-
 ## P3: Cycle 1 FileManager assertion during a mismatched automation launch
 
 On 2026-09-18, the Cycle V2 guide-gain audit fixture was accidentally run
