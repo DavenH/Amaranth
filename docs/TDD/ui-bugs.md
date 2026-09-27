@@ -79,6 +79,11 @@ case also fails in isolation before exercising the morph-selection correction.
 The new morph-selection, disabled-control, and pointer-interaction cases pass
 independently; this remains open as shared test setup/lifetime work.
 
+Update 2026-09-27: seed `3643743595` completed without a crash, with 39 failed
+test cases and 41 failed assertions. Most failures now reference archived
+factory presets or stale fixture topology; current focused causal and shipped
+canonical-graph groups pass. Log: `/tmp/cycle-v2-seed-3643743595.log`.
+
 ## P3: Parallel macOS automation launches contend for CoreMIDI
 
 Context:
@@ -124,7 +129,7 @@ Current status: open; change the generic cable-insertion smoke to use a node
 whose execution scope is legal in the selected cable, or assert insertion
 separately from compilation validity.
 
-## P3: Stengah Spy test expects probes absent from the current fixture
+## P3: Archived preset tests still target moved fixtures
 
 Context:
 
@@ -143,14 +148,3 @@ the canonical preset set rather than weakening the assertions.
   passed. Report: `/private/tmp/causal-probe-extract-native.json`. Keep the
   fixture assertion until the intended archived graph and resolution contract
   are reconciled.
-
-## P3: Cycle 1 FileManager assertion during a mismatched automation launch
-
-On 2026-09-18, the Cycle V2 guide-gain audit fixture was accidentally run
-through the wrapper's default Cycle 1 app. The commands were unsupported and
-the filtered log emitted `JUCE Assertion failure in FileManager.cpp:174`.
-The same fixture passed when `CYCLE_APP_PATH` and `CYCLE_PROCESS_NAME` targeted
-Cycle V2. The mismatched-run log was replaced by the successful rerun; use
-the wrapper defaults with `/tmp/causal-trimesh-guide-audit.json` to reproduce.
-
-Current status: open in Cycle 1; unrelated to the Cycle V2 gesture change.
