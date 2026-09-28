@@ -131,8 +131,8 @@ function drawControls() {
   }
   slider("Gain","gain",0,100,.1); slider("Offset","offset",-1,1,.01); slider("Opacity","opacity",0,1,.01);
   selectControl("Blend","blend",[["normal","Normal"],["colour","Colour · OKLab"],["hue","Hue · OKLab"],["add","Add · lighten"],["multiply","Multiply · darken"],["screen","Screen · lighten"]]);
-  selectControl("Alpha source","mask",[["none","Uniform"],["amplitude","Detail amplitude"]]);
-  if (layer.mask === "amplitude") {
+  selectControl("Alpha source","mask",[["none","Uniform"],["amplitude","Detail amplitude"],["inverse_amplitude","1 − detail amplitude"]]);
+  if (layer.mask !== "none") {
     slider("Alpha boost", "alpha_boost", 1, 16, .1);
   }
 }

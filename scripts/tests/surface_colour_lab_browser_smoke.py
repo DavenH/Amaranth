@@ -42,6 +42,13 @@ def main():
         assert colour != page.locator("#result").get_attribute("src")
         page.locator("#view").select_option("alpha")
         assert page.locator("#result").get_attribute("src") == page.evaluate("lastRender.alpha")
+        ordinary_alpha = page.locator("#result").get_attribute("src")
+        page.locator("#layer-mask").select_option("inverse_amplitude")
+        page.wait_for_timeout(1000)
+        page.wait_for_function("!busy")
+        assert page.locator("#result").get_attribute("src") != ordinary_alpha
+        page.screenshot(path=str(Path(args.screenshot).with_name("surface-lab-inverse-alpha.png")), full_page=True)
+        page.locator("#layer-mask").select_option("amplitude")
         page.locator("#view").select_option("image")
         page.get_by_label("Alpha boost value", exact=True).fill("2")
         page.wait_for_timeout(1000)

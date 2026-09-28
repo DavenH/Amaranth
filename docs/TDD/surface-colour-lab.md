@@ -27,6 +27,11 @@ at the same 1600 × 1100 geometry. Defaults are deliberately subtle, gain 1 rath
 than 8. Refactor removed duplicated coordinate mapping and the old energy mask;
 pixel work remains vectorized. No remaining slice or deletion target.
 
+Inverse amplitude option: invert the shared boosted amplitude before opacity;
+do not duplicate the curve. Tests prove complementary coverage, symmetry and
+midpoint/endpoint behavior. Reported asymmetric recipe used uniform alpha and
+offset -0.85 with gain 17.9, not the amplitude mask; the user file stays unchanged.
+
 Build a small offline Python/browser experiment tool, not another Cycle shader
 revision. Load authoritative exported scalar grids without modifying them.
 The existing Stengah reference export owns fixture generation and orientation;

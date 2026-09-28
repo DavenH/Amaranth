@@ -76,6 +76,9 @@ detail have equal coverage at equal magnitude. **Alpha boost** b replaces a with
 `b × a / (1 + (b − 1) × a)`: b=1 is exactly proportional; higher values lift
 coverage smoothly without an early hard saturation plateau. There is no threshold.
 Gain can still drive the mapped value outside 0…1; inspect the clipping statistic.
+**1 − detail amplitude** inverts that boosted amplitude before multiplying by
+opacity: the midpoint receives full layer opacity and the endpoints receive zero.
+It is the exact coverage complement of Detail amplitude at the same boost.
 
 Every blend is gated by this alpha. **Normal** blends the detail RGB directly.
 **Colour · OKLab** uses detail hue/chroma with base OKLab lightness; **Hue · OKLab**

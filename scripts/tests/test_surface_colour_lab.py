@@ -169,6 +169,20 @@ class EngineTests(unittest.TestCase):
             detail["blend"] = mode
             np.testing.assert_array_equal(engine.render(recipe)[0], expected)
 
+    def test_inverse_alpha_complements_detail_coverage(self):
+        layer = new_layer("highpass")
+        layer["opacity"] = .6
+        values = np.linspace(-.2, 1.2, 101)
+        for boost in (1, 2, 16):
+            layer["alpha_boost"] = boost
+            layer["mask"] = "amplitude"
+            ordinary = layer_alpha(values, layer)
+            layer["mask"] = "inverse_amplitude"
+            inverse = layer_alpha(values, layer)
+            np.testing.assert_allclose(ordinary + inverse, .6, atol=1.e-7)
+            np.testing.assert_allclose(inverse, inverse[::-1], atol=1.e-7)
+            np.testing.assert_allclose(layer_alpha(np.array([0, .5, 1]), layer)[..., 0], [0, .6, 0])
+
     def test_perceptual_blends_transfer_hue_without_dimming_base(self):
         base_lab = np.array([[[.6, .035, .02], [.6, .035, .02]]])
         detail_lab = np.array([[[.4, -.04, .03], [.8, .02, -.04]]])

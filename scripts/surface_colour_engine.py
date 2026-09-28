@@ -82,7 +82,7 @@ def validate_recipe(recipe):
             raise ValueError("Unknown filter axis")
         if layer.get("blend") not in ("normal", "add", "multiply", "screen", "colour", "hue"):
             raise ValueError("Unknown blend mode")
-        if layer.get("mask") not in ("none", "amplitude"):
+        if layer.get("mask") not in ("none", "amplitude", "inverse_amplitude"):
             raise ValueError("Unknown mask")
         for key, lo, hi in (("sigma", 0, 64), ("outer", 0, 128), ("gain", 0, 100),
                             ("offset", -1, 1), ("opacity", 0, 1), ("alpha_boost", 1, 16)):
@@ -204,10 +204,12 @@ def mapped_coordinate(field, layer):
 
 def layer_alpha(coordinate, layer):
     alpha = np.ones_like(coordinate)
-    if layer["mask"] == "amplitude":
+    if layer["mask"] in ("amplitude", "inverse_amplitude"):
         amplitude = np.clip(2 * np.abs(coordinate - .5), 0, 1)
         boost = layer["alpha_boost"]
         alpha = boost * amplitude / (1 + (boost - 1) * amplitude)
+        if layer["mask"] == "inverse_amplitude":
+            alpha = 1 - alpha
     return (layer["opacity"] * alpha)[..., None]
 
 
