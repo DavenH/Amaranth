@@ -387,7 +387,7 @@ ScalarSurfaceDerivatives derivativesFor(
     }
     const int derivativeScaleCount = material.relief == ScalarSurfaceRelief::MultiscaleTerrain
             ? 4
-            : 2;
+            : material.detailLowpassScale() + 1;
     for (int scale = 0; scale < derivativeScaleCount; ++scale) {
         result.slopeX[(size_t) scale] = (
                 heightAt(scales, rightColumn, row, scale)
@@ -399,13 +399,14 @@ ScalarSurfaceDerivatives derivativesFor(
 
     const float original = heightAt(scales, column, row, 0);
     if (material.relief != ScalarSurfaceRelief::MultiscaleTerrain) {
-        result.detailSlopeX = result.slopeX[0] - result.slopeX[1];
-        result.detailSlopeY = result.slopeY[0] - result.slopeY[1];
-        const float detail = original - heightAt(scales, column, row, 1);
+        const int lowpass = material.detailLowpassScale();
+        result.detailSlopeX = result.slopeX[(size_t) lowpass - 1] - result.slopeX[(size_t) lowpass];
+        result.detailSlopeY = result.slopeY[(size_t) lowpass - 1] - result.slopeY[(size_t) lowpass];
+        const float detail = heightAt(scales, column, row, lowpass - 1)
+                - heightAt(scales, column, row, lowpass);
         result.detailEnergy = detail < 0.f ? -detail : detail;
-        const int columnRadius = boundedBlurRadius(
-                material.blurRadii[0], scales.columns, 2, 4);
-        const int rowRadius = boundedBlurRadius(material.blurRadii[0], scales.rows, 2, 4);
+        const int columnRadius = material.detailBlurRadius(scales.columns);
+        const int rowRadius = material.detailBlurRadius(scales.rows);
         const int columnDistance = juce::jmin(column, scales.columns - 1 - column);
         const int rowDistance = juce::jmin(row, scales.rows - 1 - row);
         const float columnFade = smoothUnit(
@@ -641,23 +642,33 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::bipolarShaded() {
     material.signedPaletteStops = {
         juce::Colour(0xff021323),
         juce::Colour(0xff06263c),
-        juce::Colour(0xff103e56),
-        juce::Colour(0xff31566b),
-        juce::Colour(0xff536b7a),
-        juce::Colour(0xff987560),
-        juce::Colour(0xffdf8245),
-        juce::Colour(0xffffad48),
+        juce::Colour(0xff13374d),
+        juce::Colour(0xff294556),
+        juce::Colour(0xff3c5361),
+        juce::Colour(0xff795e55),
+        juce::Colour(0xffca693c),
+        juce::Colour(0xffffb667),
         juce::Colour(0xffffedaa)
     };
     material.negativeAnchor = material.signedPaletteStops.front();
     material.neutralAnchor = material.signedPaletteStops[4];
     material.positiveAnchor = material.signedPaletteStops.back();
-    material.shadedHighlightStrength = 2.4f;
-    material.shadedShadowStrength = 0.18f;
-    material.edgeTintStrength = 0.45f;
-    material.negativeEdgeTint = juce::Colour(0xffb9e5ff);
-    material.positiveEdgeTint = juce::Colour(0xffffefae);
+    material.shadedHighlightStrength = 1.8f;
+    material.shadedShadowStrength = 0.35f;
+    material.edgeTintStrength = 1.f;
+    material.negativeEdgeTint = juce::Colour(0xff315e75);
+    material.positiveEdgeTint = juce::Colour(0xfffff4b0);
     return material;
+}
+
+int ScalarSurfaceMaterial::detailLowpassScale() const {
+    return relief == ScalarSurfaceRelief::DirectionalShaded ? 2 : 1;
+}
+
+int ScalarSurfaceMaterial::detailBlurRadius(int sampleCount) const {
+    const int scale = detailLowpassScale() - 1;
+    return boundedBlurRadius(blurRadii[(size_t) scale], sampleCount,
+            scale == 0 ? 2 : 4, scale == 0 ? 4 : 12);
 }
 
 ScalarSurfaceMaterial ScalarSurfaceMaterial::blueDepth() {
@@ -827,7 +838,7 @@ ScalarSurfaceHeightScales ScalarSurfaceMaterialEvaluator::createHeightScales(
     constexpr std::array<int, 3> maximumRadii { 4, 12, 48 };
     const int blurScaleCount = material.relief == ScalarSurfaceRelief::MultiscaleTerrain
             ? 3
-            : material.relief == ScalarSurfaceRelief::None ? 0 : 1;
+            : material.relief == ScalarSurfaceRelief::None ? 0 : material.detailLowpassScale();
     for (int scale = 0; scale < blurScaleCount; ++scale) {
         const int columnRadius = boundedBlurRadius(
                 material.blurRadii[(size_t) scale],
@@ -849,6 +860,8 @@ ScalarSurfaceHeightScales ScalarSurfaceMaterialEvaluator::createHeightScales(
         packScale(original, result.packedValues, 3);
     } else if (blurScaleCount == 1) {
         packScale(blurred, result.packedValues, 2);
+        packScale(blurred, result.packedValues, 3);
+    } else if (blurScaleCount == 2) {
         packScale(blurred, result.packedValues, 3);
     }
     return result;

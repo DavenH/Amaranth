@@ -2,6 +2,62 @@
 
 Status: Implemented
 
+## Same-signal corrective comparison (2026-09-28, implemented candidate)
+
+User rejected the last iterations as moving farther from the reference.
+Acceptance now requires Stengah, B0, Spy 1 (impulseResponse.time), not the
+old Stengah graph's different probes or a generic sine fixture. Use the
+authoritative GraphPresentationModel.captureProbePreview and
+NodePreviewRenderer.createRuntimeHeatmapImage boundaries, preserving their
+pitch, normalization, and scalar mapping unchanged. A manual reference test
+writes the actual rendered fixture; do not copy DSP or display preprocessing.
+Compare the current render, earlier copper/ice and candidates before changing
+the shipped material. Synthetic tests remain safety checks, not visual proof.
+
+Matching capture established: MIDI 35 (B0 in Cycle), resolution from
+SignalProbeDetailView::resolutionForMidiNote at 44.1 kHz, rather than a fixed
+256/512 sample capture. The returned grid is downsampled by the existing probe
+pipeline. This reproduces the screenshot's forks and four broad bands.
+
+Candidate: H1-H2 band-pass detail rather than H0-H1. The existing separable
+blur cache now prepares two scales for this mode; the smallest blur removes
+near-grid speckling before differentiation. Medium-radius blur removes broad
+form. No AO, new terrain lighting or raw-field directional slope. Material
+owns the detail-scale/radius contract, shared by CPU sampling and GPU boundary
+uniforms; shader reads green/blue channels of the existing RGBA texture.
+One extra separable blur runs only on changed products; storage and per-frame
+texture reads are unchanged. A lower-chroma navy accent replaces the pale-blue
+overlay, while warmer highlights use a cream tint. Base remains value-only.
+Colour-only, spectral, Spy normalization, and authored amplitude are unchanged.
+
+Compared the matching pre-change capture `/private/tmp/stengah-exact/` with
+bandpass, darker-copper, and reduced-blue-accent candidates; selected
+`/private/tmp/stengah-bandpass-gold/stengah-b0-spy1-presented.png`.
+The concentrated gold accents and suppressed blue speckle are visible in this
+same-signal comparison. This is not a claim of synthetic-target parity or user
+acceptance. Earlier copper/ice screenshots remain the visual baseline; unlike
+the rejected iterations, the new fixture matches the user's folds and framing.
+The manual `[surface-reference]` case writes both the native and presentation
+PNG plus raw probe samples (little-endian columns/rows int32 then float32 in
+column-major order) when CYCLE_SURFACE_REFERENCE_DIR is set. It delegates
+display preprocessing unchanged and asserts source samples remain unchanged.
+
+Verification: Cycle 1 and V2 builds pass; 19 material cases pass 1,497
+assertions. All ten GPU lifecycle commands pass, with maximum CPU/GPU channel
+error 2 before and after context recreation. The bandpass retains midband
+response while reducing near-grid gradient energy to about 1% of the old
+high-pass fixture. Existing Curve.cpp:56/57 assertions remain tracked in
+ui-bugs.md. Native desktop capture remains unavailable due macOS Accessibility;
+the same-signal images use the production CPU renderer, with GPU parity proven
+separately. Clang-tidy is unavailable.
+
+Refactor/style review: evaluator 963 -> 976 lines, GPU renderer 867 -> 870,
+uniform binding 136 -> 131, material header 190 -> 192. Material still owns
+appearance and sampling scale policy; CPU evaluator owns cached preprocessing;
+renderer owns GL lifecycle. Removed the uniform layer's duplicated blur-radius
+calculation. No graph/client branches or new adapter; architecture audit remains
+20 existing V2 size triggers. No new scalar standard-math calls in hot paths.
+
 ## Copper/Ice detail separation (2026-09-27, implemented)
 
 The production comparison still shows broad plastic-looking illuminated faces.

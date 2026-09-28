@@ -48,6 +48,8 @@ struct ScalarSurfaceMaterial {
     static ScalarSurfaceTimeStyle timeSurfaceStyleFromIndex(int index);
     static int timeSurfaceStyleIndex(ScalarSurfaceTimeStyle style);
     static void setTimeSurfaceStyle(ScalarSurfaceTimeStyle style);
+    int detailLowpassScale() const;
+    int detailBlurRadius(int sampleCount) const;
 
     ScalarSurfacePalette palette { ScalarSurfacePalette::SignedAmplitude };
     juce::Colour negativeAnchor;

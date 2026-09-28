@@ -208,6 +208,9 @@ void main() {
         vec2 detailGradient = vec2(
                 gradientX.r - gradientX.g,
                 gradientY.r - gradientY.g);
+        if (reliefKind == 3) {
+            detailGradient = vec2(gradientX.g - gradientX.b, gradientY.g - gradientY.b);
+        }
         float boundaryX = smoothstep(
                 detailBoundaryStart.x,
                 detailBoundaryEnd.x,
@@ -227,7 +230,7 @@ void main() {
             vec3 colour = srgbToLinear(base);
             float peak = max(0.000001, max(colour.r, max(colour.g, colour.b)));
             colour *= min(illumination, 1.0 / peak);
-            float detail = saturatingDetailResponse(abs(centreScales.r - centreScales.g), detailEnergyKnee);
+            float detail = saturatingDetailResponse(abs(centreScales.g - centreScales.b), detailEnergyKnee);
             float semantic = smoothstep(0.0, 1.0, abs(centre - 0.5) * 2.0);
             vec3 tint = srgbToLinear(centre < 0.5 ? negativeEdgeTint : positiveEdgeTint);
             colour = mix(colour, tint, edgeTintStrength * facing * detail * semantic);

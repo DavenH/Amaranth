@@ -378,6 +378,35 @@ TEST_CASE("Bipolar shaded fixtures remain smooth across resolutions", "[ui][surf
     }
 }
 
+TEST_CASE("Shaded detail band suppresses near-grid ripple without losing mid detail", "[ui][surface-material]") {
+    constexpr int columns = 512;
+    constexpr int rows = 32;
+    for (const float cycles: { 24.f, 192.f }) {
+        const auto values = extrudedSurface(columns, rows, [cycles](float x) {
+            return 0.5f + 0.05f * std::sin(x * cycles * 6.2831853f);
+        });
+        std::array<float, 2> energy {};
+        const std::array<ScalarSurfaceMaterial, 2> materials {
+            ScalarSurfaceMaterial::signedAmplitude(), ScalarSurfaceMaterial::bipolarShaded()
+        };
+        for (size_t index = 0; index < materials.size(); ++index) {
+            const auto scales = ScalarSurfaceMaterialEvaluator::createHeightScales(
+                    values.data(), (int) values.size(), columns, rows, materials[index]);
+            for (int column = 16; column < columns - 16; ++column) {
+                const auto derivatives = ScalarSurfaceMaterialEvaluator::derivativesAt(
+                        scales, column, rows / 2, materials[index], 1.f);
+                energy[index] += derivatives.detailSlopeX * derivatives.detailSlopeX;
+            }
+        }
+        INFO("cycles " << cycles << "; highpass/bandpass " << energy[0] << "/" << energy[1]);
+        if (cycles > 100.f) {
+            REQUIRE(energy[1] < energy[0] * 0.1f);
+        } else {
+            REQUIRE(energy[1] > energy[0] * 0.5f);
+        }
+    }
+}
+
 TEST_CASE("Pure blue depth ignores derivative effects", "[ui][surface-material]") {
     const ScalarSurfaceMaterial material = ScalarSurfaceMaterial::blueDepth();
     const juce::Image legacyBlue = juce::PNGImageFormat::loadFrom(

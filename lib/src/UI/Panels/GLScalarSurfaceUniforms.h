@@ -73,13 +73,8 @@ inline void setSampling(
             gl::glGetUniformLocation(program, "textureToDomainScale"),
             (float) data.rows / (float) juce::jmax(1, data.rows - 1),
             (float) data.columns / (float) juce::jmax(1, data.columns - 1));
-    const auto radius = [&material](int dimension) {
-        const int scaled = juce::roundToInt(
-                material.blurRadii[0] * (float) juce::jmax(1, dimension - 1));
-        return juce::jlimit(1, juce::jmax(1, dimension - 1), juce::jlimit(2, 4, scaled));
-    };
-    const int rowRadius = radius(data.rows);
-    const int columnRadius = radius(data.columns);
+    const int rowRadius = material.detailBlurRadius(data.rows);
+    const int columnRadius = material.detailBlurRadius(data.columns);
     gl::glUniform2f(
             gl::glGetUniformLocation(program, "detailBoundaryStart"),
             ((float) rowRadius + 0.5f) / (float) data.rows,
