@@ -60,7 +60,7 @@ figcaption {color:#b8c6d5;margin-bottom:8px;font-size:13px} .surface {width:100%
   <div class="viewbar">
     <label><input type="checkbox" id="compare" checked> Compare raw mapping</label>
     <label><input type="checkbox" id="pixels"> Nearest-neighbour preview</label>
-    <label for="view">View</label><select id="view"><option value="image">Composite</option><option value="field">Selected filter field</option></select>
+    <label for="view">View</label><select id="view"><option value="image">Composite</option><option value="field">Selected filter field</option><option value="alpha">Selected layer alpha</option></select>
     <label for="aspect">Aspect</label><input type="number" id="aspect" min="0.1" max="10" step="0.01" value="1.64">
   </div>
   <div id="views" class="views">
@@ -68,7 +68,7 @@ figcaption {color:#b8c6d5;margin-bottom:8px;font-size:13px} .surface {width:100%
     <figure><figcaption id="resultLabel">Composite</figcaption><img class="surface" id="result" alt="Rendered surface"></figure>
   </div>
   <div id="status" role="status">Connecting…</div><div id="stats"></div>
-  <p class="hint">Start with raw colour. Add a detail layer, choose a filter and gradient, then raise its opacity gently. Gaussian sigma is measured in source-grid pixels; band-pass subtracts the outer blur from the inner blur. “Detail energy” makes zero detail transparent instead of covering the base with the gradient’s midpoint.</p>
+  <p class="hint">Detail amplitude alpha = 2 × |mapped value − 0.5|, scaled by opacity. Alpha boost lifts it smoothly; 1 is proportional. Colour transfers the detail gradient’s hue/chroma while retaining base lightness; Hue retains base chroma too. Gaussian σ is in source pixels. No threshold mask.</p>
 </main>
 </div>
 <script>
@@ -97,7 +97,14 @@ async function render() {
   } catch(error) {if(version===revision) status(error.message,true);}
   finally {busy=false; if(version!==revision) {clearTimeout(timer); timer=setTimeout(render,120);}}
 }
-function showResult() {if(lastRender) $("result").src=lastRender[$("view").value]; $("resultLabel").textContent=$("view").value==="field"?"Selected filter field · grey = mapped value":"Composite";}
+function showResult() {
+  const view = $("view").value;
+  if (lastRender) {
+    $("result").src = lastRender[view];
+  }
+  const labels = {image:"Composite", field:"Selected filter field · grey = mapped value", alpha:"Selected alpha · black = transparent"};
+  $("resultLabel").textContent = labels[view];
+}
 function option(value,label) {const el=document.createElement("option"); el.value=value; el.textContent=label; return el;}
 function labelRow(label) {const row=document.createElement("div"); row.className="row"; const el=document.createElement("label"); el.textContent=label; row.append(el); return [row,el];}
 function selectControl(label,key,options) {
@@ -123,9 +130,11 @@ function drawControls() {
     if(layer.filter==="bandpass") slider("Outer σ","outer",.25,128,.25);
   }
   slider("Gain","gain",0,100,.1); slider("Offset","offset",-1,1,.01); slider("Opacity","opacity",0,1,.01);
-  selectControl("Blend","blend",[["normal","Normal"],["add","Add"],["multiply","Multiply"],["screen","Screen"]]);
-  selectControl("Opacity mask","mask",[["none","None"],["energy","Detail energy"]]);
-  if(layer.mask==="energy") slider("Mask gain","mask_gain",0,100,.5);
+  selectControl("Blend","blend",[["normal","Normal"],["colour","Colour · OKLab"],["hue","Hue · OKLab"],["add","Add · lighten"],["multiply","Multiply · darken"],["screen","Screen · lighten"]]);
+  selectControl("Alpha source","mask",[["none","Uniform"],["amplitude","Detail amplitude"]]);
+  if (layer.mask === "amplitude") {
+    slider("Alpha boost", "alpha_boost", 1, 16, .1);
+  }
 }
 function drawLayers() {
   $("layers").replaceChildren(); recipe.layers.forEach((layer,index)=>{
@@ -160,7 +169,14 @@ $("input").onchange=()=>{recipe.input=$("input").value; schedule();}; $("space")
 $("aspect").onchange=()=>{const value=Number($("aspect").value); if(value>=.1 && value<=10) {recipe.aspect=value; setAspect();}};
 $("compare").onchange=()=>$("views").classList.toggle("solo",!$("compare").checked);
 $("pixels").onchange=()=>$("views").classList.toggle("pixelated",$("pixels").checked); $("view").onchange=showResult;
-$("add").onclick=()=>{const layer=clone(defaults.layers[0]); Object.assign(layer,{name:"Detail",filter:"bandpass",gain:8,opacity:.35,mask:"energy",stops:clone(palettes["Copper / ice"])}); recipe.layers.push(layer); selected=recipe.layers.length-1; drawEditor(); schedule();};
+$("add").onclick = () => {
+  const layer = clone(defaults.layers[0]);
+  Object.assign(layer, {name:"Detail", filter:"bandpass", gain:1, opacity:.35, mask:"amplitude", alpha_boost:1, stops:clone(palettes["Copper / ice"])});
+  recipe.layers.push(layer);
+  selected = recipe.layers.length - 1;
+  drawEditor();
+  schedule();
+};
 $("duplicate").onclick=()=>{recipe.layers.splice(selected+1,0,clone(recipe.layers[selected])); selected++; drawEditor(); schedule();};
 $("remove").onclick=()=>{recipe.layers.splice(selected,1); selected=Math.min(selected,recipe.layers.length-1); drawEditor(); schedule();};
 function move(direction) {const next=selected+direction; [recipe.layers[selected],recipe.layers[next]]=[recipe.layers[next],recipe.layers[selected]]; selected=next; drawEditor(); schedule();}
@@ -172,7 +188,23 @@ $("saveRecipe").onclick=()=>download(new Blob([JSON.stringify(recipe,null,2)],{t
 $("export").onclick=async()=>{try {status("Exporting…"); const response=await request("/api/export",recipe); download(await response.blob(),"surface.png"); status("Exported native-resolution PNG; display aspect is stored in the recipe.");} catch(error) {status(error.message,true);}};
 $("loadGrid").onclick=()=>$("gridFile").click(); $("loadRecipe").onclick=()=>$("recipeFile").click();
 $("gridFile").onchange=async event=>{const file=event.target.files[0]; if(!file) return; revision++; try {sourceInfo(await (await request("/api/load?name="+encodeURIComponent(file.name),await file.arrayBuffer(),true)).json()); schedule();} catch(error) {status(error.message,true);} event.target.value="";};
-$("recipeFile").onchange=async event=>{const file=event.target.files[0]; if(!file) return; try {const candidate=JSON.parse(await file.text()); await request("/api/render",candidate); applyRecipe(candidate);} catch(error) {status("Recipe not loaded: "+error.message,true);} event.target.value="";};
+$("recipeFile").onchange = async event => {
+  const file = event.target.files[0];
+  if (!file) {
+    return;
+  }
+  try {
+    const candidate = JSON.parse(await file.text());
+    const response = await (await request("/api/render", candidate)).json();
+    applyRecipe(response.recipe);
+    if (candidate.version === 1) {
+      alert("Recipe upgraded: the old energy mask is now proportional mapped-amplitude alpha with boost 1. Gradients and other settings are unchanged.");
+    }
+  } catch (error) {
+    status("Recipe not loaded: " + error.message, true);
+  }
+  event.target.value = "";
+};
 async function start() {try {const info=await (await fetch("/api/info")).json(); token=info.token; defaults=info.recipe; palettes=info.palettes; for(const name of Object.keys(palettes)) $("palette").append(option(name,name)); sourceInfo(info); applyRecipe(defaults);} catch(error) {status(error.message,true);}}
 start();
 </script>

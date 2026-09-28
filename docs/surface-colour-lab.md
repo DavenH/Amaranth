@@ -28,8 +28,9 @@ or **Open scalar grid** in the editor.
    parity with existing Cycle materials.
 2. Add a layer. Choose low-pass, high-pass or band-pass and its own gradient.
    Gaussian sigma is in source pixels; axes can be X, Y or both.
-3. Adjust gain, offset, opacity and blend. **Detail energy** fades zero detail to
-   transparency continuously; without it, zero detail paints the midpoint colour.
+3. Adjust gain, offset, opacity and blend. **Detail amplitude** alpha fades the
+   mapped midpoint to transparency. With **Uniform** alpha, the midpoint paints
+   its colour like any other value. New detail layers start at gain 1, not 8.
 4. Compare with raw mapping or inspect **Selected filter field**. Disable a layer
    to evaluate its contribution. Disable comparison for a larger composite.
 5. Save a JSON recipe and export a PNG. Reload recipes to revisit experiments.
@@ -38,6 +39,9 @@ The reference uses the first layer's gradient with unit gain and no filters.
 Input scaling and interpolation space are shared by both views. The selected-field
 view shows the filter after gain/offset, before its gradient and opacity mask.
 Clipping statistics report values outside the palette range.
+**Selected layer alpha** displays effective coverage (including opacity), black
+for transparent and white for opaque; this previews the selected layer's alpha
+even when that layer is disabled in the composite.
 
 **Nearest-neighbour preview** avoids browser interpolation when evaluating fine
 detail. **Aspect** only stretches presentation; PNGs retain native grid dimensions.
@@ -65,6 +69,25 @@ range, endpoint colours extend. Gradient interpolation supports sRGB, linear RGB
 and OKLab; all layer compositing is linear RGB with final gamut clipping. Layers
 run bottom to top, initially over black. No normals, shadows or lighting are hidden
 in the engine. Blur results use a bounded cache across palette edits.
+
+Detail amplitude alpha is `opacity × a`, where `a = clamp(2 × abs(mappedValue − 0.5), 0, 1)`.
+It uses the same post-gain/offset value as the gradient, so positive and negative
+detail have equal coverage at equal magnitude. **Alpha boost** b replaces a with
+`b × a / (1 + (b − 1) × a)`: b=1 is exactly proportional; higher values lift
+coverage smoothly without an early hard saturation plateau. There is no threshold.
+Gain can still drive the mapped value outside 0…1; inspect the clipping statistic.
+
+Every blend is gated by this alpha. **Normal** blends the detail RGB directly.
+**Colour · OKLab** uses detail hue/chroma with base OKLab lightness; **Hue · OKLab**
+also keeps base chroma (achromatic detail leaves hue unchanged). Out-of-gamut
+perceptual targets reduce chroma at fixed lightness/hue. Final opacity interpolation
+is linear RGB, so partial blends need not retain exact OKLab lightness.
+Multiply remains a darkening operation, not a hue-transfer operation. Add and
+Screen lighten; detail alpha prevents them from affecting neutral-detail regions.
+
+Version 1 recipes load with an explicit upgrade notice: the old energy mask becomes
+mapped-amplitude alpha at boost 1; old mask gain is discarded. Other authored
+settings remain unchanged, including any high gain. Save again to store version 2.
 
 Input scaling choices are explicit: already-unit values (clipped to 0…1), bipolar
 peak normalization, or peak normalization followed by Spy-style soft clipping

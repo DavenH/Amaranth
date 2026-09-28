@@ -2,6 +2,31 @@
 
 Status: Implemented
 
+## Detail compositing revision (implemented)
+
+Replace raw-field energy thresholding with alpha from mapped distance to 0.5:
+`a = clamp(2 * abs(value - 0.5), 0, 1)`, optionally boosted continuously with
+`b*a / (1 + (b-1)*a)`. Default b=1 is exactly proportional. The same alpha gates
+every blend mode. Add OKLab Colour (preserve base lightness) and Hue (also preserve
+base chroma); reuse existing OKLab transforms, reduce out-of-gamut chroma rather
+than clipping channels for these modes. Cost stays O(pixels × layers), vectorized.
+The engine owns mapping/alpha/blending; UI only selects parameters. Keep the existing
+360px rail, direct numerical alpha-boost entry and comparison views; add an alpha
+inspection view. Version 1 recipes migrate explicitly to the new alpha contract,
+discarding old mask gain, while preserving authored gradients and layer settings.
+Delete the old energy-mask implementation. Verify proportional/symmetric alpha,
+neutral identity for every blend, hue transfer/lightness retention, migration and
+browser interaction. No Cycle production changes.
+
+Completed with shared coordinate/alpha/blend functions, versioned recipe migration,
+alpha inspection and new UI blend choices. New regression tests cover proportional
+alpha, all-mode neutral identity, hue/chroma/lightness, gamut reduction and masked
+Add/Multiply composition. Browser smoke exercises Hue/Colour, alpha view and numeric
+boost entry, then saves/reloads/exports. Inspected `/tmp/surface-colour-lab-alpha.png`
+at the same 1600 × 1100 geometry. Defaults are deliberately subtle, gain 1 rather
+than 8. Refactor removed duplicated coordinate mapping and the old energy mask;
+pixel work remains vectorized. No remaining slice or deletion target.
+
 Build a small offline Python/browser experiment tool, not another Cycle shader
 revision. Load authoritative exported scalar grids without modifying them.
 The existing Stengah reference export owns fixture generation and orientation;

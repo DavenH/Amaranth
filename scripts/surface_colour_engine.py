@@ -2,6 +2,7 @@
 
 import base64
 from collections import OrderedDict
+from copy import deepcopy
 import io
 import math
 import struct
@@ -21,16 +22,16 @@ PALETTES = {
 
 
 def default_recipe():
-    return {"version": 1, "input": "spy", "space": "oklab", "aspect": 1.64,
+    return {"version": 2, "input": "spy", "space": "oklab", "aspect": 1.64,
             "layers": [new_layer("raw", "Blue")]}
 
 
 def new_layer(kind="bandpass", palette="Copper / ice"):
     return {"name": "Base" if kind == "raw" else "Detail", "enabled": True,
             "filter": kind, "sigma": 2., "outer": 8., "axis": "both",
-            "gain": 1. if kind in ("raw", "lowpass") else 8., "offset": 0.,
+            "gain": 1., "offset": 0.,
             "opacity": 1. if kind == "raw" else .35, "blend": "normal",
-            "mask": "none" if kind == "raw" else "energy", "mask_gain": 12.,
+            "mask": "none" if kind == "raw" else "amplitude", "alpha_boost": 1.,
             "stops": [list(stop) for stop in PALETTES[palette]]}
 
 
@@ -44,7 +45,19 @@ def number(value, minimum, maximum, name):
 
 
 def validate_recipe(recipe):
-    if not isinstance(recipe, dict) or recipe.get("version") != 1:
+    if isinstance(recipe, dict) and recipe.get("version") == 1:
+        recipe = deepcopy(recipe)
+        recipe["version"] = 2
+        old_layers = recipe.get("layers", [])
+        if not isinstance(old_layers, list):
+            raise ValueError("Use 1–12 layers")
+        for layer in old_layers:
+            if isinstance(layer, dict):
+                if layer.get("mask") == "energy":
+                    layer["mask"] = "amplitude"
+                layer.pop("mask_gain", None)
+                layer["alpha_boost"] = 1.
+    if not isinstance(recipe, dict) or recipe.get("version") != 2:
         raise ValueError("Unsupported recipe version")
     if recipe.get("input") not in ("spy", "peak", "unit"):
         raise ValueError("Unknown input scaling")
@@ -61,12 +74,12 @@ def validate_recipe(recipe):
             raise ValueError("Unknown filter")
         if layer.get("axis") not in ("both", "x", "y"):
             raise ValueError("Unknown filter axis")
-        if layer.get("blend") not in ("normal", "add", "multiply", "screen"):
+        if layer.get("blend") not in ("normal", "add", "multiply", "screen", "colour", "hue"):
             raise ValueError("Unknown blend mode")
-        if layer.get("mask") not in ("none", "energy"):
+        if layer.get("mask") not in ("none", "amplitude"):
             raise ValueError("Unknown mask")
         for key, lo, hi in (("sigma", 0, 64), ("outer", 0, 128), ("gain", 0, 100),
-                            ("offset", -1, 1), ("opacity", 0, 1), ("mask_gain", 0, 100)):
+                            ("offset", -1, 1), ("opacity", 0, 1), ("alpha_boost", 1, 16)):
             number(layer.get(key), lo, hi, key)
         if layer["filter"] == "bandpass" and layer["outer"] <= layer["sigma"]:
             raise ValueError("Band-pass outer sigma must exceed inner sigma")
@@ -178,6 +191,63 @@ def image_url(rgb):
     return "data:image/png;base64," + base64.b64encode(png_bytes(rgb)).decode("ascii")
 
 
+def mapped_coordinate(field, layer):
+    centred = field if layer["filter"] in ("highpass", "bandpass") else field - .5
+    return .5 + centred * layer["gain"] + layer["offset"]
+
+
+def layer_alpha(coordinate, layer):
+    alpha = np.ones_like(coordinate)
+    if layer["mask"] == "amplitude":
+        amplitude = np.clip(2 * np.abs(coordinate - .5), 0, 1)
+        boost = layer["alpha_boost"]
+        alpha = boost * amplitude / (1 + (boost - 1) * amplitude)
+    return (layer["opacity"] * alpha)[..., None]
+
+
+def gamut_safe_oklab(lab):
+    """Reduce chroma at fixed lightness/hue, using a bounded vectorized search."""
+    low = np.zeros(lab.shape[:-1])
+    high = np.ones_like(low)
+    original = oklab_to_linear(lab)
+    in_gamut = np.all((original >= 0) & (original <= 1), axis=-1)
+    if np.all(in_gamut):
+        return original
+    for _ in range(12):
+        scale = (low + high) * .5
+        candidate = lab.copy()
+        candidate[..., 1:] *= scale[..., None]
+        rgb = oklab_to_linear(candidate)
+        valid = np.all((rgb >= 0) & (rgb <= 1), axis=-1)
+        low = np.where(valid, scale, low)
+        high = np.where(valid, high, scale)
+    mapped = lab.copy()
+    mapped[..., 1:] *= np.where(in_gamut, 1, low)[..., None]
+    return np.clip(oklab_to_linear(mapped), 0, 1)
+
+
+def blend_colour(base, detail, mode):
+    if mode == "add":
+        return base + detail
+    if mode == "multiply":
+        return base * detail
+    if mode == "screen":
+        return 1 - (1 - base) * (1 - detail)
+    if mode not in ("colour", "hue"):
+        return detail
+    base_lab = linear_to_oklab(base)
+    detail_lab = linear_to_oklab(detail)
+    target = base_lab.copy()
+    if mode == "colour":
+        target[..., 1:] = detail_lab[..., 1:]
+    else:
+        base_chroma = np.linalg.norm(base_lab[..., 1:], axis=-1, keepdims=True)
+        detail_chroma = np.linalg.norm(detail_lab[..., 1:], axis=-1, keepdims=True)
+        directed = detail_lab[..., 1:] * base_chroma / np.maximum(detail_chroma, 1.e-6)
+        target[..., 1:] = np.where(detail_chroma > 1.e-6, directed, base_lab[..., 1:])
+    return gamut_safe_oklab(target)
+
+
 class SurfaceEngine:
     def __init__(self, source):
         self.source = checked_grid(source)
@@ -217,7 +287,7 @@ class SurfaceEngine:
         return low - self.blur(height, scaling, layer["outer"], layer["axis"])
 
     def render(self, recipe):
-        validate_recipe(recipe)
+        recipe = validate_recipe(recipe)
         height = self.height(recipe["input"])
         result = np.zeros((*height.shape, 3), dtype=np.float32)
         reference = gradient(height, recipe["layers"][0]["stops"], recipe["space"])
@@ -227,33 +297,22 @@ class SurfaceEngine:
                 diagnostics.append(None)
                 continue
             field = self.field(height, recipe["input"], layer)
-            signed = layer["filter"] in ("highpass", "bandpass")
-            centred = field if signed else field - .5
-            coordinate = .5 + centred * layer["gain"] + layer["offset"]
+            coordinate = mapped_coordinate(field, layer)
             colour = gradient(coordinate, layer["stops"], recipe["space"])
-            alpha = np.full((*height.shape, 1), layer["opacity"], dtype=np.float32)
-            if layer["mask"] == "energy":
-                alpha *= np.clip(np.abs(centred) * layer["mask_gain"], 0, 1)[..., None]
-            mode = layer["blend"]
-            if mode == "add":
-                combined = result + colour
-            elif mode == "multiply":
-                combined = result * colour
-            elif mode == "screen":
-                combined = 1 - (1 - result) * (1 - colour)
-            else:
-                combined = colour
+            alpha = layer_alpha(coordinate, layer)
+            combined = blend_colour(result, colour, layer["blend"])
             result = np.clip(result * (1 - alpha) + combined * alpha, 0, 1)
             diagnostics.append({"min": float(field.min()), "max": float(field.max()),
                                 "clipped": float(np.mean((coordinate < 0) | (coordinate > 1)))})
         return result, reference, diagnostics
 
     def inspect_layer(self, recipe, index):
+        recipe = validate_recipe(recipe)
         layer = recipe["layers"][index]
         field = self.field(self.height(recipe["input"]), recipe["input"], layer)
-        centred = field if layer["filter"] in ("highpass", "bandpass") else field - .5
-        values = .5 + centred * layer["gain"] + layer["offset"]
+        values = mapped_coordinate(field, layer)
         return {
+            "alpha": image_url(gradient(layer_alpha(values, layer)[..., 0], PALETTES["Greyscale"], "srgb")),
             "field": image_url(gradient(values, PALETTES["Greyscale"], "srgb")),
             "gradient": image_url(gradient(np.linspace(0, 1, 512)[None, :], layer["stops"], recipe["space"]))
         }

@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urlsplit
 import webbrowser
 
 from surface_colour_engine import (
-    PALETTES, SurfaceEngine, default_recipe, demo_grid, image_url, load_grid, png_bytes,
+    PALETTES, SurfaceEngine, default_recipe, demo_grid, image_url, load_grid, png_bytes, validate_recipe,
 )
 
 HERE = Path(__file__).resolve().parent
@@ -81,7 +81,7 @@ class LabHandler(BaseHTTPRequestHandler):
                     self.reply(200, self.info())
                 elif url.path in ("/api/render", "/api/export"):
                     started = time.perf_counter()
-                    recipe = json.loads(data)
+                    recipe = validate_recipe(json.loads(data))
                     result, reference, diagnostics = self.server.engine.render(recipe)
                     if url.path == "/api/export":
                         self.reply(200, png_bytes(result), "image/png")
@@ -89,7 +89,7 @@ class LabHandler(BaseHTTPRequestHandler):
                         index = max(0, min(len(recipe["layers"]) - 1, int(recipe.get("selected", 0))))
                         self.reply(200, {**self.server.engine.inspect_layer(recipe, index),
                                          "image": image_url(result), "reference": image_url(reference),
-                                         "layers": diagnostics,
+                                         "layers": diagnostics, "recipe": recipe,
                                          "ms": round((time.perf_counter() - started) * 1000)})
                 else:
                     self.reply(404, {"error": "Not found"})

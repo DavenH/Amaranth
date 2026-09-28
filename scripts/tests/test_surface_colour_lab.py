@@ -16,7 +16,7 @@ from PIL import Image
 from surface_colour_engine import (
     SurfaceEngine, checked_grid, default_recipe, gradient, linear_to_oklab,
     linear_to_srgb, load_grid, new_layer, oklab_to_linear, png_bytes,
-    srgb_to_linear, validate_recipe,
+    srgb_to_linear, validate_recipe, layer_alpha, blend_colour, mapped_coordinate, gamut_safe_oklab,
 )
 from surface_colour_lab import LabServer, SAMPLE
 
@@ -141,6 +141,87 @@ class EngineTests(unittest.TestCase):
         field = load_grid(SAMPLE.read_bytes(), SAMPLE.name)
         self.assertEqual(field.shape, (512, 512))
         self.assertGreater(float(np.ptp(field)), .1)
+
+    def test_alpha_is_proportional_symmetric_and_smoothly_boosted(self):
+        layer = new_layer("highpass")
+        layer["opacity"] = .7
+        values = np.array([0., .25, .49, .5, .51, .75, 1.])
+        alpha = layer_alpha(values, layer)[..., 0]
+        np.testing.assert_allclose(alpha, .7 * 2 * np.abs(values - .5))
+        np.testing.assert_allclose(alpha, alpha[::-1])
+        layer["alpha_boost"] = 4
+        boosted = layer_alpha(values, layer)[..., 0]
+        self.assertEqual(boosted[3], 0)
+        self.assertTrue(np.all(boosted >= alpha))
+        self.assertLess(boosted[1], .7)
+        layer["gain"] = 2
+        layer["offset"] = .1
+        mapped = mapped_coordinate(np.array([-.1, 0., .1]), layer)
+        np.testing.assert_allclose(mapped, [.4, .6, .8])
+
+    def test_every_blend_preserves_base_at_zero_detail(self):
+        engine = SurfaceEngine(np.full((16, 16), .3))
+        recipe = default_recipe()
+        expected = engine.render(recipe)[0]
+        detail = new_layer("highpass")
+        recipe["layers"].append(detail)
+        for mode in ("normal", "add", "multiply", "screen", "hue", "colour"):
+            detail["blend"] = mode
+            np.testing.assert_array_equal(engine.render(recipe)[0], expected)
+
+    def test_perceptual_blends_transfer_hue_without_dimming_base(self):
+        base_lab = np.array([[[.6, .035, .02], [.6, .035, .02]]])
+        detail_lab = np.array([[[.4, -.04, .03], [.8, .02, -.04]]])
+        base = oklab_to_linear(base_lab)
+        detail = oklab_to_linear(detail_lab)
+        for mode in ("hue", "colour"):
+            result = linear_to_oklab(blend_colour(base, detail, mode))
+            np.testing.assert_allclose(result[..., 0], base_lab[..., 0], atol=1.e-6)
+            direction = result[..., 1:] / np.linalg.norm(result[..., 1:], axis=-1, keepdims=True)
+            expected = detail_lab[..., 1:] / np.linalg.norm(detail_lab[..., 1:], axis=-1, keepdims=True)
+            np.testing.assert_allclose(direction, expected, atol=1.e-5)
+            chroma_source = base_lab if mode == "hue" else detail_lab
+            np.testing.assert_allclose(np.linalg.norm(result[..., 1:], axis=-1),
+                                       np.linalg.norm(chroma_source[..., 1:], axis=-1), atol=1.e-6)
+
+    def test_old_recipe_migrates_without_mutating_user_settings(self):
+        recipe = default_recipe()
+        recipe["version"] = 1
+        recipe["layers"].append(new_layer())
+        detail = recipe["layers"][1]
+        detail.update(mask="energy", mask_gain=12, gain=3)
+        detail.pop("alpha_boost")
+        migrated = validate_recipe(recipe)
+        self.assertEqual(migrated["version"], 2)
+        self.assertEqual(migrated["layers"][1]["mask"], "amplitude")
+        self.assertEqual(migrated["layers"][1]["alpha_boost"], 1)
+        self.assertEqual(migrated["layers"][1]["gain"], 3)
+        self.assertEqual(recipe["layers"][1]["mask"], "energy")
+        np.testing.assert_array_equal(self.engine.render(recipe)[0], self.engine.render(migrated)[0])
+
+    def test_gamut_reduction_retains_lightness_and_hue(self):
+        lab = np.array([[[.25, .4, .3], [.85, -.4, -.3]]])
+        rgb = gamut_safe_oklab(lab)
+        self.assertTrue(np.all((rgb >= 0) & (rgb <= 1)))
+        actual = linear_to_oklab(rgb)
+        np.testing.assert_allclose(actual[..., 0], lab[..., 0], atol=1.e-6)
+        np.testing.assert_allclose(actual[..., 1] / actual[..., 2], lab[..., 1] / lab[..., 2], atol=1.e-5)
+
+    def test_add_and_multiply_are_gated_by_mapped_detail_alpha(self):
+        recipe = default_recipe()
+        base = self.engine.render(recipe)[0]
+        detail = new_layer("highpass")
+        detail.update(gain=1.5, alpha_boost=2)
+        recipe["layers"].append(detail)
+        field = self.engine.field(self.engine.height(recipe["input"]), recipe["input"], detail)
+        coordinate = mapped_coordinate(field, detail)
+        colour = gradient(coordinate, detail["stops"], recipe["space"])
+        alpha = layer_alpha(coordinate, detail)
+        for mode in ("add", "multiply"):
+            detail["blend"] = mode
+            combined = base + colour if mode == "add" else base * colour
+            expected = np.clip(base * (1 - alpha) + combined * alpha, 0, 1)
+            np.testing.assert_allclose(self.engine.render(recipe)[0], expected, atol=1.e-7)
 
 
 class ServerTests(unittest.TestCase):
