@@ -54,6 +54,13 @@ def main():
         page.wait_for_timeout(1000)
         page.wait_for_function("!busy")
         page.screenshot(path=args.screenshot, full_page=True)
+        filtered = page.locator("#result").get_attribute("src")
+        alpha = page.evaluate("lastRender.alpha")
+        page.locator("#layer-colour_source").select_option("original")
+        page.wait_for_timeout(1000)
+        page.wait_for_function("!busy")
+        assert page.locator("#result").get_attribute("src") != filtered
+        assert page.evaluate("lastRender.alpha") == alpha
         page.get_by_label("Enable Detail", exact=True).uncheck()
         page.wait_for_function("!busy && lastRender.layers[1] === null")
         assert baseline == page.locator("#result").get_attribute("src")

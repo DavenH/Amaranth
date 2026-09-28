@@ -91,7 +91,7 @@ async function render() {
     if(version===revision) {
       lastRender=data; $("reference").src=data.reference; $("gradient").src=data.gradient; showResult();
       const stats=data.layers[selected];
-      $("stats").textContent=stats?`Selected field: ${stats.min.toFixed(5)} … ${stats.max.toFixed(5)} · ${(100*stats.clipped).toFixed(1)}% outside gradient range`:"Layer disabled";
+      $("stats").textContent=stats?`Field: ${stats.min.toFixed(5)} … ${stats.max.toFixed(5)} · field clipped ${(100*stats.clipped).toFixed(1)}% · colour clipped ${(100*stats.colour_clipped).toFixed(1)}%`:"Layer disabled";
       status(`${data.ms} ms · ${recipe.layers.filter(x=>x.enabled).length} active layer(s) · source unchanged`);
     }
   } catch(error) {if(version===revision) status(error.message,true);}
@@ -130,6 +130,11 @@ function drawControls() {
     if(layer.filter==="bandpass") slider("Outer σ","outer",.25,128,.25);
   }
   slider("Gain","gain",0,100,.1); slider("Offset","offset",-1,1,.01); slider("Opacity","opacity",0,1,.01);
+  selectControl("Colour from", "colour_source", [["filtered","Filtered layer"],["original","Original signal"]]);
+  if (layer.colour_source === "original") {
+    slider("Colour gain", "colour_gain", 0, 100, .1);
+    slider("Colour offset", "colour_offset", -1, 1, .01);
+  }
   selectControl("Blend","blend",[["normal","Normal"],["colour","Colour · OKLab"],["hue","Hue · OKLab"],["add","Add · lighten"],["multiply","Multiply · darken"],["screen","Screen · lighten"]]);
   selectControl("Alpha source","mask",[["none","Uniform"],["amplitude","Detail amplitude"],["inverse_amplitude","1 − detail amplitude"]]);
   if (layer.mask !== "none") {
@@ -161,7 +166,21 @@ function drawStops() {
   $("addStop").disabled=stops.length>=32;
 }
 function drawEditor() {drawLayers(); drawControls(); drawStops();}
-function applyRecipe(value) {recipe=clone(value); selected=0; $("input").value=recipe.input; $("space").value=recipe.space; $("aspect").value=recipe.aspect; setAspect(); drawEditor(); schedule();}
+function applyRecipe(value) {
+  recipe = clone(value);
+  for (const layer of recipe.layers) {
+    layer.colour_source ??= "filtered";
+    layer.colour_gain ??= 1;
+    layer.colour_offset ??= 0;
+  }
+  selected = 0;
+  $("input").value = recipe.input;
+  $("space").value = recipe.space;
+  $("aspect").value = recipe.aspect;
+  setAspect();
+  drawEditor();
+  schedule();
+}
 function setAspect() {document.querySelectorAll(".surface").forEach(el=>el.style.aspectRatio=recipe.aspect);}
 function sourceInfo(info) {$("source").textContent=`${info.name} · ${info.width} × ${info.height} · ${info.min.toFixed(4)} … ${info.max.toFixed(4)}`;}
 function download(blob,name) {const url=URL.createObjectURL(blob), link=document.createElement("a"); link.href=url; link.download=name; link.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);}

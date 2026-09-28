@@ -92,6 +92,22 @@ Version 1 recipes load with an explicit upgrade notice: the old energy mask beco
 mapped-amplitude alpha at boost 1; old mask gain is discarded. Other authored
 settings remain unchanged, including any high gain. Save again to store version 2.
 
+### Greyscale amplitude with polarity-coloured detail
+
+Load `scripts/fixtures/surface-colour-lab/greyscale-icy-hot.json` as a starting point.
+It uses a monotonic white-to-black raw base, following recipe 9's direction, with
+gain 1 to avoid clipping the base. Reverse its stops for black-to-white instead.
+An Icy-hot overlay uses **Colour from → Original signal** while high-pass controls
+only alpha. The **Colour gain/offset** controls affect palette lookup independently
+of the filtered layer's gain/offset, which still control its alpha.
+
+This retains the original signal's polarity colours instead of colouring the sign
+of its high-pass residual. Colour blend retains base OKLab lightness in the target;
+Normal can reintroduce the palette's own bright highlights if preferred. Hue alone
+cannot colour an achromatic base because it preserves base chroma. Older recipes
+continue using **Filtered layer** unless explicitly changed. This is an experimental
+starting recipe, not an exact reproduction of recipe 8 on a different background.
+
 Input scaling choices are explicit: already-unit values (clipped to 0…1), bipolar
 peak normalization, or peak normalization followed by Spy-style soft clipping
 (`x = source / peak × 3; H = 0.5 + 0.5 × x / (1 + abs(x))`). They never alter

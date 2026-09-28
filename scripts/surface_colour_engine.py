@@ -19,8 +19,8 @@ PALETTES = {
     "Bipolar": [[0, "#153366"], [.25, "#8baadc"], [.5, "#6c6a70"], [.75, "#db8562"], [1, "#ffe4b5"]],
     "Icy-hot": [
         [0, "#b9f6ff"], [.15, "#6d96b3"], [.27, "#1a6191"],
-        [.35, "#3e3f8e"], [.42, "#353259"], [.5, "#343434"],
-        [.58, "#291522"], [.66, "#58001d"], [.73, "#8c463c"],
+        [.35, "#3e3f8e"], [.42, "#272543"], [.5, "#151515"],
+        [.58, "#2e1726"], [.66, "#580d1d"], [.73, "#8c463c"],
         [.85, "#fba900"], [1, "#ecf4b8"],
     ],
     "Greyscale": [[0, "#000000"], [1, "#ffffff"]],
@@ -38,6 +38,7 @@ def new_layer(kind="bandpass", palette="Copper / ice"):
             "gain": 1., "offset": 0.,
             "opacity": 1. if kind == "raw" else .35, "blend": "normal",
             "mask": "none" if kind == "raw" else "amplitude", "alpha_boost": 1.,
+            "colour_source": "filtered", "colour_gain": 1., "colour_offset": 0.,
             "stops": [list(stop) for stop in PALETTES[palette]]}
 
 
@@ -84,6 +85,10 @@ def validate_recipe(recipe):
             raise ValueError("Unknown blend mode")
         if layer.get("mask") not in ("none", "amplitude", "inverse_amplitude"):
             raise ValueError("Unknown mask")
+        if layer.get("colour_source", "filtered") not in ("filtered", "original"):
+            raise ValueError("Unknown colour source")
+        number(layer.get("colour_gain", 1.), 0, 100, "Colour gain")
+        number(layer.get("colour_offset", 0.), -1, 1, "Colour offset")
         for key, lo, hi in (("sigma", 0, 64), ("outer", 0, 128), ("gain", 0, 100),
                             ("offset", -1, 1), ("opacity", 0, 1), ("alpha_boost", 1, 16)):
             number(layer.get(key), lo, hi, key)
@@ -213,6 +218,12 @@ def layer_alpha(coordinate, layer):
     return (layer["opacity"] * alpha)[..., None]
 
 
+def colour_coordinate(height, filtered_coordinate, layer):
+    if layer.get("colour_source", "filtered") == "original":
+        return .5 + (height - .5) * layer.get("colour_gain", 1.) + layer.get("colour_offset", 0.)
+    return filtered_coordinate
+
+
 def gamut_safe_oklab(lab):
     """Reduce chroma at fixed lightness/hue, using a bounded vectorized search."""
     low = np.zeros(lab.shape[:-1])
@@ -306,12 +317,14 @@ class SurfaceEngine:
                 continue
             field = self.field(height, recipe["input"], layer)
             coordinate = mapped_coordinate(field, layer)
-            colour = gradient(coordinate, layer["stops"], recipe["space"])
+            palette_value = colour_coordinate(height, coordinate, layer)
+            colour = gradient(palette_value, layer["stops"], recipe["space"])
             alpha = layer_alpha(coordinate, layer)
             combined = blend_colour(result, colour, layer["blend"])
             result = np.clip(result * (1 - alpha) + combined * alpha, 0, 1)
             diagnostics.append({"min": float(field.min()), "max": float(field.max()),
-                                "clipped": float(np.mean((coordinate < 0) | (coordinate > 1)))})
+                                "clipped": float(np.mean((coordinate < 0) | (coordinate > 1))),
+                                "colour_clipped": float(np.mean((palette_value < 0) | (palette_value > 1)))})
         return result, reference, diagnostics
 
     def inspect_layer(self, recipe, index):

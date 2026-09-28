@@ -17,6 +17,7 @@ from surface_colour_engine import (
     SurfaceEngine, checked_grid, default_recipe, gradient, linear_to_oklab,
     linear_to_srgb, load_grid, new_layer, oklab_to_linear, png_bytes,
     srgb_to_linear, validate_recipe, layer_alpha, blend_colour, mapped_coordinate, gamut_safe_oklab,
+    colour_coordinate,
 )
 from surface_colour_lab import LabServer, SAMPLE
 
@@ -182,6 +183,25 @@ class EngineTests(unittest.TestCase):
             np.testing.assert_allclose(ordinary + inverse, .6, atol=1.e-7)
             np.testing.assert_allclose(inverse, inverse[::-1], atol=1.e-7)
             np.testing.assert_allclose(layer_alpha(np.array([0, .5, 1]), layer)[..., 0], [0, .6, 0])
+
+    def test_original_colour_is_independent_of_residual_and_alpha(self):
+        layer = new_layer("highpass")
+        height = np.array([.25, .25, .75, .75])
+        filtered = np.array([.1, .8, .2, .9])
+        expected_alpha = layer_alpha(filtered, layer)
+        np.testing.assert_array_equal(colour_coordinate(height, filtered, layer), filtered)
+        layer.update(colour_source="original", colour_gain=1.1)
+        mapped = colour_coordinate(height, filtered, layer)
+        np.testing.assert_allclose(mapped, [.225, .225, .775, .775])
+        np.testing.assert_array_equal(layer_alpha(filtered, layer), expected_alpha)
+
+    def test_greyscale_icy_hot_recipe_retains_neutral_regions(self):
+        recipe = json.loads((SAMPLE.parent / "greyscale-icy-hot.json").read_text())
+        engine = SurfaceEngine(np.full((16, 16), .3))
+        actual, reference, _ = engine.render(recipe)
+        np.testing.assert_array_equal(actual, reference)
+        result = self.engine.render(recipe)[0]
+        self.assertTrue(np.any(np.ptp(result, axis=-1) > .01))
 
     def test_perceptual_blends_transfer_hue_without_dimming_base(self):
         base_lab = np.array([[[.6, .035, .02], [.6, .035, .02]]])

@@ -2,6 +2,26 @@
 
 Status: Implemented
 
+## Independent colour source (implemented)
+
+Recipes 8/9 expose coupling between detail alpha and palette indexing. Reuse the
+existing filtered coordinate for alpha, but optionally index the palette with
+original scaled signal plus independent colour gain/offset. Default remains
+filtered for old recipes. The engine owns this one choice; no duplicate filter
+pipeline, complexity unchanged. Existing OKLab Colour blend retains greyscale-base
+lightness while detail alpha admits polarity colours. Supply a recipe using the
+user's updated Icy-hot stops and recipe 8's high-pass selection. Validate equal
+original values receive equal palette coordinates despite different residuals,
+and that changing colour source leaves alpha unchanged. Keep the rail geometry;
+show the two additional controls only for Original signal.
+
+Completed with 27 passing unit/API tests and browser verification: switching colour
+source changes rendering but leaves the alpha image identical. Starter recipe uses
+monotonic white-to-black base with gain 1; no claim of matching the earlier artistic
+result's brightness. Screenshot `/tmp/greyscale-icy-hot-lab.png` reviews the existing
+rail geometry with independent colour controls. Existing recipe files unchanged;
+the palette default is updated to the user's revised stops. No pending deletion.
+
 ## Detail compositing revision (implemented)
 
 Replace raw-field energy thresholding with alpha from mapped distance to 0.5:
