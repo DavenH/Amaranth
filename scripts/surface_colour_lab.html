@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Surface Colour Lab</title>
+<style>
+:root {color-scheme:dark; font:14px system-ui,sans-serif; background:#10151c; color:#dce5ef}
+* {box-sizing:border-box} body {margin:0} button,input,select {font:inherit}
+button,select,input[type=number],input[type=text] {background:#202b38;color:inherit;border:1px solid #405063;border-radius:5px;padding:6px 9px}
+button {cursor:pointer} button:hover {background:#314254} button:disabled {opacity:.4;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible {outline:2px solid #ffbd77;outline-offset:2px}
+header {padding:12px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #334050;flex-wrap:wrap}
+h1 {font-size:18px;margin:0 12px 0 0} h2 {font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#aebfd1;margin:0 0 12px}
+header .spacer {flex:1} .layout {display:grid;grid-template-columns:360px minmax(0,1fr);height:calc(100vh - 62px)}
+aside {overflow:auto;padding:18px;border-right:1px solid #334050;background:#161e28}
+section {padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid #303e4e}
+.row {display:flex;gap:8px;align-items:center;margin:8px 0} .row>label:first-child {flex:1}
+select {max-width:210px} input[type=range] {width:140px;accent-color:#e4ae75}
+input[type=number] {width:76px;font-variant-numeric:tabular-nums} input[type=checkbox] {accent-color:#e4ae75}
+.muted {color:#9babbd;font-size:12px;line-height:1.5} #source {overflow-wrap:anywhere}
+#layers {display:grid;gap:5px;margin-bottom:10px} .layer {display:flex;gap:6px;align-items:center;padding:5px;border:1px solid transparent;border-radius:5px}
+.layer.active {border-color:#d2a16b;background:#263341} .layer button {flex:1;text-align:left;border:0;background:transparent}
+.toolbar {display:flex;gap:6px;flex-wrap:wrap} .stop {display:flex;gap:8px;align-items:center;margin:6px 0}
+.stop input[type=color] {width:58px;height:30px;border:0;background:transparent;padding:0}
+.stop button {margin-left:auto} #gradient {display:block;width:100%;height:24px;margin:12px 0;border:1px solid #596879}
+main {padding:18px;overflow:auto;min-width:0} .viewbar {display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.views {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px} figure {margin:0;min-width:0}
+figcaption {color:#b8c6d5;margin-bottom:8px;font-size:13px} .surface {width:100%;aspect-ratio:1.64;background:#05090e;border:1px solid #334050;display:block;object-fit:fill}
+.views.solo {grid-template-columns:1fr} .views.solo #referenceFigure {display:none}
+.pixelated .surface {image-rendering:pixelated} #status {margin-top:14px;min-height:24px;color:#a8bacb;font-size:13px}
+#status.error {color:#ffb3a3} #stats {font:12px ui-monospace,monospace;color:#a8bacb;margin-top:12px}
+.hint {max-width:760px;line-height:1.6;color:#95a9bd;font-size:13px;margin-top:18px}
+@media(max-width:1150px) {.views {grid-template-columns:1fr}.layout {grid-template-columns:330px minmax(0,1fr)}aside {padding:14px}}
+@media(max-width:720px) {.layout {display:flex;flex-direction:column;height:auto}main {order:-1}aside {border:0}.views {grid-template-columns:1fr}header .spacer {display:none}}
+</style>
+<header>
+  <h1>Surface Colour Lab</h1><span class="muted">CPU material sketchbook</span><span class="spacer"></span>
+  <button id="loadGrid">Open scalar grid…</button><button id="loadRecipe">Load recipe…</button>
+  <button id="saveRecipe">Save recipe</button><button id="export">Export PNG</button>
+  <input id="gridFile" type="file" accept=".f32,.csv" hidden><input id="recipeFile" type="file" accept=".json" hidden>
+</header>
+<div class="layout">
+<aside>
+  <section><h2>Source</h2><div id="source" class="muted">Connecting…</div>
+    <div class="row"><label for="input">Input scaling</label><select id="input"><option value="spy">Peak + soft clip (Spy)</option><option value="peak">Bipolar peak → 0…1</option><option value="unit">Already 0…1</option></select></div>
+    <div class="row"><label for="space">Gradient interpolation</label><select id="space"><option value="oklab">OKLab</option><option value="linear">Linear RGB</option><option value="srgb">sRGB</option></select></div>
+    <div class="muted">Source values stay unchanged. Blending is always in linear RGB.</div>
+  </section>
+  <section><h2>Layers · bottom to top</h2><div id="layers"></div>
+    <div class="toolbar"><button id="add">+ Layer</button><button id="duplicate">Duplicate</button><button id="down" title="Move earlier in the stack">↓</button><button id="up" title="Move later in the stack">↑</button><button id="remove">Remove</button></div>
+  </section>
+  <section><h2>Selected layer</h2><div id="controls"></div></section>
+  <section><h2>Gradient</h2><div class="row"><label for="palette">Starting palette</label><select id="palette"></select><button id="applyPalette">Apply</button></div>
+    <img id="gradient" alt="Selected gradient"><div id="stops"></div><button id="addStop">+ Colour stop</button>
+    <div class="muted" style="margin-top:10px">Stop positions run from 0 to 1. Detail fields map zero to 0.5 before gain and offset.</div>
+  </section>
+  <button id="reset">Reset to raw blue</button>
+</aside>
+<main>
+  <div class="viewbar">
+    <label><input type="checkbox" id="compare" checked> Compare raw mapping</label>
+    <label><input type="checkbox" id="pixels"> Nearest-neighbour preview</label>
+    <label for="view">View</label><select id="view"><option value="image">Composite</option><option value="field">Selected filter field</option></select>
+    <label for="aspect">Aspect</label><input type="number" id="aspect" min="0.1" max="10" step="0.01" value="1.64">
+  </div>
+  <div id="views" class="views">
+    <figure id="referenceFigure"><figcaption>Unfiltered · first layer’s gradient, gain 1</figcaption><img class="surface" id="reference" alt="Unfiltered scalar mapping"></figure>
+    <figure><figcaption id="resultLabel">Composite</figcaption><img class="surface" id="result" alt="Rendered surface"></figure>
+  </div>
+  <div id="status" role="status">Connecting…</div><div id="stats"></div>
+  <p class="hint">Start with raw colour. Add a detail layer, choose a filter and gradient, then raise its opacity gently. Gaussian sigma is measured in source-grid pixels; band-pass subtracts the outer blur from the inner blur. “Detail energy” makes zero detail transparent instead of covering the base with the gradient’s midpoint.</p>
+</main>
+</div>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+let recipe, defaults, palettes, token, selected = 0, revision = 0, busy = false, timer, lastRender;
+const clone = value => JSON.parse(JSON.stringify(value));
+function status(text, error=false) {$("status").textContent=text; $("status").classList.toggle("error",error);}
+async function request(path, body, binary=false) {
+  const response=await fetch(path,{method:"POST",headers:{"X-Lab-Token":token,"Content-Type":binary?"application/octet-stream":"application/json"},body:binary?body:JSON.stringify(body)});
+  if(!response.ok) {const error=await response.json(); throw new Error(error.error || response.statusText);}
+  return response;
+}
+function schedule() {revision++; clearTimeout(timer); timer=setTimeout(render,120);}
+async function render() {
+  if(busy || !recipe) return;
+  busy=true; const version=revision; status("Rendering…");
+  try {
+    const data=await (await request("/api/render",{...recipe,selected})).json();
+    if(version===revision) {
+      lastRender=data; $("reference").src=data.reference; $("gradient").src=data.gradient; showResult();
+      const stats=data.layers[selected];
+      $("stats").textContent=stats?`Selected field: ${stats.min.toFixed(5)} … ${stats.max.toFixed(5)} · ${(100*stats.clipped).toFixed(1)}% outside gradient range`:"Layer disabled";
+      status(`${data.ms} ms · ${recipe.layers.filter(x=>x.enabled).length} active layer(s) · source unchanged`);
+    }
+  } catch(error) {if(version===revision) status(error.message,true);}
+  finally {busy=false; if(version!==revision) {clearTimeout(timer); timer=setTimeout(render,120);}}
+}
+function showResult() {if(lastRender) $("result").src=lastRender[$("view").value]; $("resultLabel").textContent=$("view").value==="field"?"Selected filter field · grey = mapped value":"Composite";}
+function option(value,label) {const el=document.createElement("option"); el.value=value; el.textContent=label; return el;}
+function labelRow(label) {const row=document.createElement("div"); row.className="row"; const el=document.createElement("label"); el.textContent=label; row.append(el); return [row,el];}
+function selectControl(label,key,options) {
+  const [row,caption]=labelRow(label), input=document.createElement("select"); input.id="layer-"+key; caption.htmlFor=input.id;
+  options.forEach(([value,text])=>input.append(option(value,text))); input.value=recipe.layers[selected][key];
+  input.onchange=()=>{recipe.layers[selected][key]=input.value; drawLayers(); drawControls(); schedule();}; row.append(input); $("controls").append(row);
+}
+function slider(label,key,min,max,step) {
+  const [row,caption]=labelRow(label), range=document.createElement("input"), numeric=document.createElement("input");
+  range.type="range"; numeric.type="number"; range.id="layer-"+key; caption.htmlFor=range.id; numeric.setAttribute("aria-label",label+" value");
+  for(const input of [range,numeric]) {input.min=min; input.max=max; input.step=step; input.value=recipe.layers[selected][key];}
+  function change(event) {const value=Number(event.target.value); if(!Number.isFinite(value) || event.target.value==="") return; recipe.layers[selected][key]=value; range.value=numeric.value=value; schedule();}
+  range.oninput=change; numeric.oninput=change; row.append(range,numeric); $("controls").append(row);
+}
+function drawControls() {
+  $("controls").replaceChildren(); const layer=recipe.layers[selected];
+  const [row,caption]=labelRow("Name"), name=document.createElement("input"); name.type="text"; name.value=layer.name; name.id="layer-name"; caption.htmlFor=name.id; name.style.width="210px";
+  name.onchange=()=>{layer.name=name.value; drawLayers();}; row.append(name); $("controls").append(row);
+  selectControl("Filter","filter",[["raw","Raw values"],["lowpass","Low-pass"],["highpass","High-pass"],["bandpass","Band-pass"]]);
+  if(layer.filter!=="raw") {
+    selectControl("Axes","axis",[["both","X + Y"],["x","X only"],["y","Y only"]]);
+    slider(layer.filter==="bandpass"?"Inner σ":"Blur σ","sigma",0,64,.25);
+    if(layer.filter==="bandpass") slider("Outer σ","outer",.25,128,.25);
+  }
+  slider("Gain","gain",0,100,.1); slider("Offset","offset",-1,1,.01); slider("Opacity","opacity",0,1,.01);
+  selectControl("Blend","blend",[["normal","Normal"],["add","Add"],["multiply","Multiply"],["screen","Screen"]]);
+  selectControl("Opacity mask","mask",[["none","None"],["energy","Detail energy"]]);
+  if(layer.mask==="energy") slider("Mask gain","mask_gain",0,100,.5);
+}
+function drawLayers() {
+  $("layers").replaceChildren(); recipe.layers.forEach((layer,index)=>{
+    const row=document.createElement("div"); row.className="layer"+(index===selected?" active":"");
+    const check=document.createElement("input"); check.type="checkbox"; check.checked=layer.enabled; check.setAttribute("aria-label","Enable "+layer.name);
+    check.onchange=()=>{layer.enabled=check.checked; schedule();};
+    const button=document.createElement("button"); button.textContent=`${index+1}. ${layer.name} · ${layer.filter}`; button.setAttribute("aria-pressed",index===selected);
+    button.onclick=()=>{selected=index; drawEditor(); schedule();}; row.append(check,button); $("layers").append(row);
+  });
+  $("down").disabled=selected===0; $("up").disabled=selected===recipe.layers.length-1;
+  $("remove").disabled=recipe.layers.length===1; $("add").disabled=$("duplicate").disabled=recipe.layers.length>=12;
+}
+function drawStops() {
+  $("stops").replaceChildren(); const stops=recipe.layers[selected].stops;
+  stops.forEach((stop,index)=>{
+    const row=document.createElement("div"); row.className="stop";
+    const position=document.createElement("input"); position.type="number"; position.min=0; position.max=1; position.step=.01; position.value=stop[0]; position.setAttribute("aria-label",`Stop ${index+1} position`);
+    position.onchange=()=>{stop[0]=Number(position.value); stops.sort((a,b)=>a[0]-b[0]); drawStops(); schedule();};
+    const colour=document.createElement("input"); colour.type="color"; colour.value=stop[1]; colour.setAttribute("aria-label",`Stop ${index+1} colour`);
+    const hex=document.createElement("span"); hex.className="muted"; hex.textContent=stop[1]; colour.oninput=()=>{stop[1]=colour.value; hex.textContent=colour.value; schedule();};
+    const remove=document.createElement("button"); remove.textContent="×"; remove.setAttribute("aria-label",`Remove stop ${index+1}`); remove.disabled=stops.length<=2;
+    remove.onclick=()=>{stops.splice(index,1); drawStops(); schedule();}; row.append(position,colour,hex,remove); $("stops").append(row);
+  });
+  $("addStop").disabled=stops.length>=32;
+}
+function drawEditor() {drawLayers(); drawControls(); drawStops();}
+function applyRecipe(value) {recipe=clone(value); selected=0; $("input").value=recipe.input; $("space").value=recipe.space; $("aspect").value=recipe.aspect; setAspect(); drawEditor(); schedule();}
+function setAspect() {document.querySelectorAll(".surface").forEach(el=>el.style.aspectRatio=recipe.aspect);}
+function sourceInfo(info) {$("source").textContent=`${info.name} · ${info.width} × ${info.height} · ${info.min.toFixed(4)} … ${info.max.toFixed(4)}`;}
+function download(blob,name) {const url=URL.createObjectURL(blob), link=document.createElement("a"); link.href=url; link.download=name; link.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);}
+$("input").onchange=()=>{recipe.input=$("input").value; schedule();}; $("space").onchange=()=>{recipe.space=$("space").value; schedule();};
+$("aspect").onchange=()=>{const value=Number($("aspect").value); if(value>=.1 && value<=10) {recipe.aspect=value; setAspect();}};
+$("compare").onchange=()=>$("views").classList.toggle("solo",!$("compare").checked);
+$("pixels").onchange=()=>$("views").classList.toggle("pixelated",$("pixels").checked); $("view").onchange=showResult;
+$("add").onclick=()=>{const layer=clone(defaults.layers[0]); Object.assign(layer,{name:"Detail",filter:"bandpass",gain:8,opacity:.35,mask:"energy",stops:clone(palettes["Copper / ice"])}); recipe.layers.push(layer); selected=recipe.layers.length-1; drawEditor(); schedule();};
+$("duplicate").onclick=()=>{recipe.layers.splice(selected+1,0,clone(recipe.layers[selected])); selected++; drawEditor(); schedule();};
+$("remove").onclick=()=>{recipe.layers.splice(selected,1); selected=Math.min(selected,recipe.layers.length-1); drawEditor(); schedule();};
+function move(direction) {const next=selected+direction; [recipe.layers[selected],recipe.layers[next]]=[recipe.layers[next],recipe.layers[selected]]; selected=next; drawEditor(); schedule();}
+$("down").onclick=()=>move(-1); $("up").onclick=()=>move(1);
+$("applyPalette").onclick=()=>{recipe.layers[selected].stops=clone(palettes[$("palette").value]); drawStops(); schedule();};
+$("addStop").onclick=()=>{const stops=recipe.layers[selected].stops; let gap=0; for(let i=1;i<stops.length-1;i++) if(stops[i+1][0]-stops[i][0]>stops[gap+1][0]-stops[gap][0]) gap=i; stops.splice(gap+1,0,[(stops[gap][0]+stops[gap+1][0])/2,stops[gap][1]]); drawStops(); schedule();};
+$("reset").onclick=()=>{if(confirm("Replace the current recipe with raw blue?")) applyRecipe(defaults);};
+$("saveRecipe").onclick=()=>download(new Blob([JSON.stringify(recipe,null,2)],{type:"application/json"}),"surface-recipe.json");
+$("export").onclick=async()=>{try {status("Exporting…"); const response=await request("/api/export",recipe); download(await response.blob(),"surface.png"); status("Exported native-resolution PNG; display aspect is stored in the recipe.");} catch(error) {status(error.message,true);}};
+$("loadGrid").onclick=()=>$("gridFile").click(); $("loadRecipe").onclick=()=>$("recipeFile").click();
+$("gridFile").onchange=async event=>{const file=event.target.files[0]; if(!file) return; revision++; try {sourceInfo(await (await request("/api/load?name="+encodeURIComponent(file.name),await file.arrayBuffer(),true)).json()); schedule();} catch(error) {status(error.message,true);} event.target.value="";};
+$("recipeFile").onchange=async event=>{const file=event.target.files[0]; if(!file) return; try {const candidate=JSON.parse(await file.text()); await request("/api/render",candidate); applyRecipe(candidate);} catch(error) {status("Recipe not loaded: "+error.message,true);} event.target.value="";};
+async function start() {try {const info=await (await fetch("/api/info")).json(); token=info.token; defaults=info.recipe; palettes=info.palettes; for(const name of Object.keys(palettes)) $("palette").append(option(name,name)); sourceInfo(info); applyRecipe(defaults);} catch(error) {status(error.message,true);}}
+start();
+</script>
+</html>
