@@ -84,6 +84,7 @@ PresetPresentationDecodeResult readPresentation(
     result.presentation.author = object->getProperty("author").toString();
     result.presentation.pack = object->getProperty("pack").toString();
     result.presentation.description = object->getProperty("description").toString();
+    result.presentation.timeSurfaceStyle = object->getProperty("timeSurfaceStyle").toString();
     result.presentation.rating = juce::jlimit(0, 5, (int) object->getProperty("rating"));
 
     readTags(object->getProperty("tags"), result);
@@ -105,6 +106,7 @@ bool PresetPresentation::empty() const {
     return author.isEmpty()
             && pack.isEmpty()
             && description.isEmpty()
+            && timeSurfaceStyle.isEmpty()
             && tags.isEmpty()
             && rating == 0
             && !preview.has_value();
@@ -113,6 +115,9 @@ bool PresetPresentation::empty() const {
 juce::var PresetPresentationCodec::writeJSON(const PresetPresentation& presentation) {
     auto result = std::make_unique<juce::DynamicObject>();
     result->setProperty("version", kPresentationVersion);
+    if (presentation.timeSurfaceStyle.isNotEmpty()) {
+        result->setProperty("timeSurfaceStyle", presentation.timeSurfaceStyle);
+    }
     if (presentation.author.isNotEmpty()) {
         result->setProperty("author", presentation.author);
     }

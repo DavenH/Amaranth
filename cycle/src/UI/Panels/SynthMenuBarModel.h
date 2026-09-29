@@ -77,14 +77,6 @@ public:
         ViewStageD,
 
         WaveformWaterfall,
-        TimeSurfaceBipolar,
-        TimeSurfaceBipolarFlat,
-        TimeSurfaceBlueDepth,
-        TimeSurfaceBlueDirectionalDetail,
-        TimeSurfaceBipolarShaded,
-        TimeSurfaceIcyHot13,
-        TimeSurfaceIcyHot14,
-
         UseOpenGL,
         UseLargerPoints,
 
@@ -97,7 +89,8 @@ public:
         Reduction5x,
 
         InterpWaveCycles,
-        WrapWaveCycles
+        WrapWaveCycles,
+        TimeSurfaceFirst = 2000
     };
 
     enum EditItem {

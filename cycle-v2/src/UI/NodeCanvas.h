@@ -150,6 +150,7 @@ public:
     bool keyPressed(const KeyPress& key) override;
 
 private:
+    void synchronizeTimeSurfaceStyle();
     enum class HoverRepaint {
         None,
         Status,

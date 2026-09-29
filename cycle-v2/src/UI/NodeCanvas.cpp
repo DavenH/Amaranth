@@ -9,6 +9,7 @@
 
 #include <App/AppConstants.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
+#include <UI/Panels/TimeSurfaceStyles.h>
 
 #include "UI/NodeCanvas.h"
 #include "UI/CanvasChromePalette.h"
@@ -200,8 +201,7 @@ NodeCanvas::NodeCanvas() :
     ,   hitRouter(graph, palette, queries) {
     settings.initialiseSettings();
     ScalarSurfaceMaterial::setTimeSurfaceStyle(
-            ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(
-                    settings.getGlobalSettingValue(AppSettings::TimeSurfaceStyle)));
+            TimeSurfaceStyles::fromId(document.presentation().timeSurfaceStyle));
     probeRailState.refreshMode = settings.getGlobalSettingValue(
             AppSettings::ProbeEditRefreshPolicy) == 1
             ? ProbeRefreshMode::LiveLatest
@@ -1465,6 +1465,7 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     if (!result.handled) {
         return false;
     }
+    synchronizeTimeSurfaceStyle();
 
     if (result.graphChanged) {
         compiledStateRefreshPending = false;
@@ -2159,15 +2160,25 @@ void NodeCanvas::setGraphDocumentStateChangedCallback(
 }
 
 ScalarSurfaceTimeStyle NodeCanvas::timeSurfaceStyle() const {
-    return ScalarSurfaceMaterial::timeSurfaceStyle();
+    return TimeSurfaceStyles::fromId(document.presentation().timeSurfaceStyle);
 }
 
 void NodeCanvas::setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
-    settings.getGlobalSetting(AppSettings::TimeSurfaceStyle) =
-            ScalarSurfaceMaterial::timeSurfaceStyleIndex(style);
-    ScalarSurfaceMaterial::setTimeSurfaceStyle(style);
-    repaintNodeEditor(true);
-    repaint();
+    if (commands.setTimeSurfaceStyle(TimeSurfaceStyles::id(style))) {
+        synchronizeTimeSurfaceStyle();
+        if (graphDocumentStateChangedCallback) {
+            graphDocumentStateChangedCallback();
+        }
+    }
+}
+
+void NodeCanvas::synchronizeTimeSurfaceStyle() {
+    const auto style = timeSurfaceStyle();
+    if (ScalarSurfaceMaterial::timeSurfaceStyle() != style) {
+        ScalarSurfaceMaterial::setTimeSurfaceStyle(style);
+        repaintNodeEditor(true);
+        repaint();
+    }
 }
 
 void NodeCanvas::notifyOverlayOcclusionChanged() {

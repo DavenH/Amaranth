@@ -10,7 +10,8 @@ enum class ScalarSurfacePalette {
     SignedAmplitude,
     UnipolarMagnitude,
     BipolarPhase,
-    LegacyBlue
+    LegacyBlue,
+    Greyscale
 };
 
 enum class ScalarSurfaceRelief {
@@ -19,17 +20,31 @@ enum class ScalarSurfaceRelief {
     None,
     DirectionalShaded,
     Program13,
-    Program14
+    Program14,
+    Program15,
+    Program16,
+    Program17,
+    Program18,
+    Program19,
+    Program20
 };
 
 enum class ScalarSurfaceTimeStyle {
-    Bipolar,
-    BlueDepthDirectionalDetail,
-    BlueDepth,
-    BipolarFlat,
-    BipolarShaded,
-    IcyHot13,
-    IcyHot14
+    // Stable document values; menu order and labels live in TimeSurfaceStyles.
+    Bipolar = 0,
+    BlueDepthDirectionalDetail = 1,
+    BlueDepth = 2,
+    BipolarFlat = 3,
+    BipolarShaded = 4,
+    IcyHot13 = 5,
+    IcyHot14 = 6,
+    Greyscale = 7,
+    Recipe15 = 8,
+    Recipe16 = 9,
+    Recipe17 = 10,
+    Recipe18 = 11,
+    Recipe19 = 12,
+    Bullion = 13
 };
 
 enum class ScalarSurfaceDetailColour {
@@ -44,6 +59,8 @@ struct ScalarSurfaceMaterial {
     static ScalarSurfaceMaterial signedAmplitudeFlat();
     static ScalarSurfaceMaterial bipolarShaded();
     static ScalarSurfaceMaterial icyHotProgram(bool program14);
+    static ScalarSurfaceMaterial savedProgram(int number);
+    static ScalarSurfaceMaterial greyscale();
     static ScalarSurfaceMaterial blueDepth();
     static ScalarSurfaceMaterial blueDepthDirectionalDetail();
     static ScalarSurfaceMaterial timeDomain();

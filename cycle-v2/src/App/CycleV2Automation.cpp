@@ -1,3 +1,5 @@
+#include <UI/Panels/TimeSurfaceStyles.h>
+
 #include "App/CycleV2Automation.h"
 
 #include "App/CycleV2AutomationAssertions.h"
@@ -346,6 +348,7 @@ var CycleV2Automation::snapshotState() const {
     var state = workspace.exportAutomationState();
 
     if (auto* object = objectFor(state)) {
+        object->setProperty("timeSurfaceStyleId", TimeSurfaceStyles::id(workspace.timeSurfaceStyle()));
         object->setProperty("windowTitle", window.getName());
         object->setProperty("windowBounds", rectangleToVar(window.getBounds()));
         object->setProperty("workspaceBounds", rectangleToVar(workspace.getBounds()));
@@ -474,8 +477,10 @@ var CycleV2Automation::generatePresetPreview(const var& commandValue) {
 var CycleV2Automation::listMenuItems() const {
     Array<var> items;
     items.add(menuItemToVar("file.openGraph", "File", "Open Preset...", true));
-    items.add(menuItemToVar("view.icyHot13", "View > Time Surface Colour", "Icy-hot 13", false));
-    items.add(menuItemToVar("view.icyHot14", "View > Time Surface Colour", "Icy-hot 14", false));
+    for (const auto& entry : TimeSurfaceStyles::entries) {
+        items.add(menuItemToVar("view.surface." + String(entry.id),
+                "View > Time Surface Colour", entry.label, true));
+    }
     items.add(menuItemToVar(
             "file.saveGraph",
             "File",
@@ -504,13 +509,16 @@ var CycleV2Automation::invokeMenuItem(const var& commandValue) {
     if (id == "file.openGraph") {
         return openGraph(commandValue);
     }
-    if (id == "view.icyHot13" || id == "view.icyHot14") {
-        workspace.setTimeSurfaceStyle(id == "view.icyHot14"
-                ? ScalarSurfaceTimeStyle::IcyHot14 : ScalarSurfaceTimeStyle::IcyHot13);
-        var data = makeObject();
-        objectFor(data)->setProperty("timeSurfaceStyle",
-                ScalarSurfaceMaterial::timeSurfaceStyleIndex(workspace.timeSurfaceStyle()));
-        return okResult("invokeMenuItem", data);
+    for (const auto& entry : TimeSurfaceStyles::entries) {
+        const bool legacyAlias = (id == "view.icyHot13" && entry.style == ScalarSurfaceTimeStyle::IcyHot13)
+                || (id == "view.icyHot14" && entry.style == ScalarSurfaceTimeStyle::IcyHot14);
+        if (id == "view.surface." + String(entry.id) || legacyAlias) {
+            workspace.setTimeSurfaceStyle(entry.style);
+            var data = makeObject();
+            objectFor(data)->setProperty("timeSurfaceStyle", (int) workspace.timeSurfaceStyle());
+            objectFor(data)->setProperty("timeSurfaceStyleId", TimeSurfaceStyles::id(workspace.timeSurfaceStyle()));
+            return okResult("invokeMenuItem", data);
+        }
     }
     if (id == "file.saveGraph" || id == "file.saveGraphAs") {
         return saveGraph(commandValue);

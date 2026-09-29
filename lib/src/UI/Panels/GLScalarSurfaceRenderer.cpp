@@ -90,6 +90,9 @@ vec3 paletteColour(float value) {
         return texture2D(scalarPaletteTexture, vec2(paletteX, 0.75)).rgb;
     }
 
+    if (paletteKind == 4) {
+        return vec3(value);
+    }
     if (paletteKind == 0) {
         if (value < signedPalettePositions[1]) {
             return mix(signedPalette[0], signedPalette[1],
@@ -173,7 +176,7 @@ float saturatingDetailResponse(float value, float knee) {
 void main() {
     vec2 coordinate = surfaceTextureCoordinate;
     vec4 centreScales = heightScalesAt(coordinate);
-    if (reliefKind == 4 || reliefKind == 5) {
+    if (reliefKind >= 4) {
         gl_FragColor = centreScales;
         return;
     }
@@ -765,7 +768,14 @@ void GLScalarSurfaceRenderer::validateGpuParity() {
             values[(size_t) column * rows + row] = tile[(size_t) (column % 5) * 5 + row % 5];
         }
     }
-    const std::array<ScalarSurfaceMaterial, 9> materials {
+    const std::array<ScalarSurfaceMaterial, 16> materials {
+            ScalarSurfaceMaterial::greyscale(),
+            ScalarSurfaceMaterial::savedProgram(15),
+            ScalarSurfaceMaterial::savedProgram(16),
+            ScalarSurfaceMaterial::savedProgram(17),
+            ScalarSurfaceMaterial::savedProgram(18),
+            ScalarSurfaceMaterial::savedProgram(19),
+            ScalarSurfaceMaterial::savedProgram(20),
             ScalarSurfaceMaterial::icyHotProgram(false),
             ScalarSurfaceMaterial::icyHotProgram(true),
             ScalarSurfaceMaterial::signedAmplitude(),

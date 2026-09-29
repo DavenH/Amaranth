@@ -1,0 +1,136 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "view.surface.bullion"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "timeSurfaceStyleId",
+      "equals": "bullion"
+    },
+    {
+      "command": "saveGraph",
+      "path": "/tmp/cycle-v2-surface-style-test.cyclegraph"
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "view.surface.greyscale"
+    },
+    {
+      "command": "openGraph",
+      "path": "/tmp/cycle-v2-surface-style-test.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "timeSurfaceStyleId",
+      "equals": "bullion"
+    },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "timeSurfaceStyleId",
+      "equals": "blues"
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "view.surface.recipe-15"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "timeSurfaceStyleId",
+      "equals": "recipe-15"
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "view.surface.recipe-16"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "timeSurfaceStyleId",
+      "equals": "recipe-16"
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "view.surface.recipe-17"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "timeSurfaceStyleId",
+      "equals": "recipe-17"
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "view.surface.recipe-18"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "timeSurfaceStyleId",
+      "equals": "recipe-18"
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "view.surface.recipe-19"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "timeSurfaceStyleId",
+      "equals": "recipe-19"
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "view.surface.icy-hot"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 500
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/tmp/cycle-v2-canonical-icy-hot.png"
+    },
+    {
+      "command": "recreateCanvasOpenGLContext"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 500
+    },
+    {
+      "command": "inspectOpenGLDiagnostics"
+    }
+  ],
+  "quit": true
+}

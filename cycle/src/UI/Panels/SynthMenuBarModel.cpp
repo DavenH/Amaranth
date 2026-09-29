@@ -6,6 +6,7 @@
 #include <Inter/Interactor.h>
 #include <Inter/Interactor3D.h>
 #include <UI/IConsole.h>
+#include <UI/Panels/TimeSurfaceStyles.h>
 #include <UI/MiscGraphics.h>
 #include <Util/Util.h>
 #include <Util/CommonEnums.h>
@@ -119,36 +120,7 @@ PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String
 
         {
             const ScalarSurfaceTimeStyle style = ScalarSurfaceMaterial::timeSurfaceStyle();
-            PopupMenu surfaceMenu;
-            surfaceMenu.addItem(TimeSurfaceIcyHot13, "Icy-hot 13", true,
-                    style == ScalarSurfaceTimeStyle::IcyHot13);
-            surfaceMenu.addItem(TimeSurfaceIcyHot14, "Icy-hot 14", true,
-                    style == ScalarSurfaceTimeStyle::IcyHot14);
-            surfaceMenu.addItem(
-                    TimeSurfaceBipolar,
-                    "Bipolar + Detail",
-                    true,
-                    style == ScalarSurfaceTimeStyle::Bipolar);
-            surfaceMenu.addItem(
-                    TimeSurfaceBipolarFlat,
-                    "Bipolar (Colour Only)",
-                    true,
-                    style == ScalarSurfaceTimeStyle::BipolarFlat);
-            surfaceMenu.addItem(
-                    TimeSurfaceBipolarShaded,
-                    "Bipolar Shaded",
-                    true,
-                    style == ScalarSurfaceTimeStyle::BipolarShaded);
-            surfaceMenu.addItem(
-                    TimeSurfaceBlueDepth,
-                    "Blue Depth",
-                    true,
-                    style == ScalarSurfaceTimeStyle::BlueDepth);
-            surfaceMenu.addItem(
-                    TimeSurfaceBlueDirectionalDetail,
-                    "Blue Depth + Directional Detail",
-                    true,
-                    style == ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail);
+            auto surfaceMenu = TimeSurfaceStyles::menu(style, TimeSurfaceFirst);
             menu.addSubMenu("Time Surface Colour", surfaceMenu, true);
         }
 
@@ -323,30 +295,9 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 			getObj(Waveform2D).repaint();
 		} else if (item == DrawScales) {
 			getSetting(DrawScales) ^= true;
-        } else if (item == TimeSurfaceBipolar
-                || item == TimeSurfaceIcyHot13
-                || item == TimeSurfaceIcyHot14
-                || item == TimeSurfaceBipolarShaded
-                || item == TimeSurfaceBipolarFlat
-                || item == TimeSurfaceBlueDepth
-                || item == TimeSurfaceBlueDirectionalDetail) {
-            ScalarSurfaceTimeStyle style = ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail;
-            if (item == TimeSurfaceIcyHot13) {
-                style = ScalarSurfaceTimeStyle::IcyHot13;
-            } else if (item == TimeSurfaceIcyHot14) {
-                style = ScalarSurfaceTimeStyle::IcyHot14;
-            } else if (item == TimeSurfaceBipolar) {
-                style = ScalarSurfaceTimeStyle::Bipolar;
-            } else if (item == TimeSurfaceBipolarShaded) {
-                style = ScalarSurfaceTimeStyle::BipolarShaded;
-            } else if (item == TimeSurfaceBipolarFlat) {
-                style = ScalarSurfaceTimeStyle::BipolarFlat;
-            } else if (item == TimeSurfaceBlueDepth) {
-                style = ScalarSurfaceTimeStyle::BlueDepth;
-            }
-            getSetting(TimeSurfaceStyle) =
-                    ScalarSurfaceMaterial::timeSurfaceStyleIndex(style);
-            ScalarSurfaceMaterial::setTimeSurfaceStyle(style);
+        } else if (const auto* entry = TimeSurfaceStyles::find(item - TimeSurfaceFirst)) {
+            getObj(Settings).getDocumentSetting(DocSettings::TimeSurfaceStyle) = (int) entry->style;
+            editedSomething = true;
             getObj(Waveform3D).updateTimeSurfaceStyle();
             getObj(Updater).update(UpdateSources::SourceWaveform3D, Repaint);
         }

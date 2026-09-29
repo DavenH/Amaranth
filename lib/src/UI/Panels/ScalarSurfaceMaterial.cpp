@@ -14,7 +14,7 @@ namespace {
 constexpr float minimumIllumination = 0.16f;
 constexpr int linearTransferTableSize = 4096;
 std::atomic<ScalarSurfaceTimeStyle> selectedTimeSurfaceStyle {
-        ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail };
+        ScalarSurfaceTimeStyle::BlueDepth };
 
 float smoothUnit(float value) {
     const float unit = juce::jlimit(0.f, 1.f, value);
@@ -134,6 +134,10 @@ juce::Colour legacyBlueColour(float value) {
 }
 
 juce::Colour paletteColour(float value, const ScalarSurfaceMaterial& material) {
+    if (material.palette == ScalarSurfacePalette::Greyscale) {
+        const float level = juce::jlimit(0.f, 1.f, value);
+        return juce::Colour::fromFloatRGBA(level, level, level, 1.f);
+    }
     if (material.palette == ScalarSurfacePalette::UnipolarMagnitude) {
         return magnitudeColour(value);
     }
@@ -720,8 +724,19 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::blueDepthDirectionalDetail() {
 }
 
 ScalarSurfaceMaterial ScalarSurfaceMaterial::icyHotProgram(bool program14) {
+    return savedProgram(program14 ? 14 : 13);
+}
+
+ScalarSurfaceMaterial ScalarSurfaceMaterial::savedProgram(int number) {
     auto material = signedAmplitudeFlat();
-    material.relief = program14 ? ScalarSurfaceRelief::Program14 : ScalarSurfaceRelief::Program13;
+    material.relief = (ScalarSurfaceRelief) ((int) ScalarSurfaceRelief::Program13
+            + juce::jlimit(13, 20, number) - 13);
+    return material;
+}
+
+ScalarSurfaceMaterial ScalarSurfaceMaterial::greyscale() {
+    auto material = signedAmplitudeFlat();
+    material.palette = ScalarSurfacePalette::Greyscale;
     return material;
 }
 
@@ -745,6 +760,20 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::timeDomain() {
             return icyHotProgram(false);
         case ScalarSurfaceTimeStyle::IcyHot14:
             return icyHotProgram(true);
+        case ScalarSurfaceTimeStyle::Greyscale:
+            return greyscale();
+        case ScalarSurfaceTimeStyle::Recipe15:
+            return savedProgram(15);
+        case ScalarSurfaceTimeStyle::Recipe16:
+            return savedProgram(16);
+        case ScalarSurfaceTimeStyle::Recipe17:
+            return savedProgram(17);
+        case ScalarSurfaceTimeStyle::Recipe18:
+            return savedProgram(18);
+        case ScalarSurfaceTimeStyle::Recipe19:
+            return savedProgram(19);
+        case ScalarSurfaceTimeStyle::Bullion:
+            return savedProgram(20);
     }
     return blueDepthDirectionalDetail();
 }
@@ -754,25 +783,10 @@ ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyle() {
 }
 
 ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(int index) {
-    if (index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::IcyHot13)) {
-        return ScalarSurfaceTimeStyle::IcyHot13;
+    if (index >= 0 && index <= (int) ScalarSurfaceTimeStyle::Bullion) {
+        return (ScalarSurfaceTimeStyle) index;
     }
-    if (index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::IcyHot14)) {
-        return ScalarSurfaceTimeStyle::IcyHot14;
-    }
-    if (index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::Bipolar)) {
-        return ScalarSurfaceTimeStyle::Bipolar;
-    }
-    if (index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::BlueDepth)) {
-        return ScalarSurfaceTimeStyle::BlueDepth;
-    }
-    if (index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::BipolarFlat)) {
-        return ScalarSurfaceTimeStyle::BipolarFlat;
-    }
-    if (index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::BipolarShaded)) {
-        return ScalarSurfaceTimeStyle::BipolarShaded;
-    }
-    return ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail;
+    return ScalarSurfaceTimeStyle::BlueDepth;
 }
 
 int ScalarSurfaceMaterial::timeSurfaceStyleIndex(ScalarSurfaceTimeStyle style) {

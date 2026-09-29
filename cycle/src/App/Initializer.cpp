@@ -290,6 +290,7 @@ void Initializer::setDefaultSettings() {
     getObj(Settings).addDocumentSetting(DocSettings::ResamplingAlgoRend,   "ResamplingAlgoRend",   Resampling::Sinc);
     getObj(Settings).addDocumentSetting(DocSettings::OversampleFactorRltm, "OversampleFactorRltm", 1);
     getObj(Settings).addDocumentSetting(DocSettings::OversampleFactorRend, "OversampleFactorRend", 2);
+    getObj(Settings).addDocumentSetting(DocSettings::TimeSurfaceStyle, "TimeSurfaceStyle", 2, true);
 
     getSetting(IgnoringMessages) 		= true;
     getSetting(MagnitudeDrawMode) 		= true;

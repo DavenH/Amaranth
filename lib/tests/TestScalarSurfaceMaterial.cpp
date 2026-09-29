@@ -205,7 +205,7 @@ TEST_CASE("Time surface style selection changes only the time material",
     REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(3)
             == ScalarSurfaceTimeStyle::BipolarFlat);
     REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(99)
-            == ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail);
+            == ScalarSurfaceTimeStyle::BlueDepth);
     REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, bipolar)
             != ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, blue));
     REQUIRE(ScalarSurfaceMaterial::unipolarMagnitude().palette
@@ -671,11 +671,11 @@ TEST_CASE("Saved Icy-hot programs match the lab Stengah reference", "[scalar-sur
     Buffer<float>(magnitude.data(), (int) magnitude.size()).abs();
     const float peak = Buffer<float>(magnitude.data(), (int) magnitude.size()).max();
     Buffer<float>(values.data(), (int) values.size()).mul(0.5f / peak).add(0.5f);
-    for (const bool program14 : { false, true }) {
-        const auto material = ScalarSurfaceMaterial::icyHotProgram(program14);
+    for (int number = 13; number <= 20; ++number) {
+        const auto material = ScalarSurfaceMaterial::savedProgram(number);
         const auto image = ScalarSurfaceMaterialEvaluator::createImage(
                 values.data(), (int) values.size(), columns, rows, material);
-        const juce::String name = program14 ? "program-14.png" : "program-13.png";
+        const juce::String name = "program-" + juce::String(number) + ".png";
         const auto expected = juce::ImageFileFormat::loadFrom(fixtures.getChildFile(name));
         REQUIRE(expected.isValid());
         int maximumError = 0;
@@ -709,6 +709,12 @@ TEST_CASE("Icy-hot style changes invalidate cached scalar products", "[scalar-su
     REQUIRE_FALSE(cache.needsUpload(data));
     data.material = ScalarSurfaceMaterial::icyHotProgram(true);
     REQUIRE(cache.needsUpload(data));
+    for (int number = 15; number <= 20; ++number) {
+        cache.markUploaded(data);
+        REQUIRE_FALSE(cache.needsUpload(data));
+        data.material = ScalarSurfaceMaterial::savedProgram(number);
+        REQUIRE(cache.needsUpload(data));
+    }
     for (auto style : { ScalarSurfaceTimeStyle::IcyHot13, ScalarSurfaceTimeStyle::IcyHot14 }) {
         REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(
                 ScalarSurfaceMaterial::timeSurfaceStyleIndex(style)) == style);
@@ -730,4 +736,24 @@ TEST_CASE("Icy-hot constant surfaces stay uniform and preserve authored level", 
         const auto second = ScalarSurfaceMaterialEvaluator::createImage(values.data(), 64, 8, 8, material);
         REQUIRE(first.getPixelAt(4, 4) != second.getPixelAt(4, 4));
     }
+}
+
+TEST_CASE("Greyscale is an undistorted value mapping across boundaries", "[surface-program]") {
+    const auto material = ScalarSurfaceMaterial::greyscale();
+    std::vector<float> values(256 * 4);
+    for (int column = 0; column < 256; ++column) {
+        for (int row = 0; row < 4; ++row) {
+            values[(size_t) column * 4 + row] = (float) column / 255.f;
+        }
+    }
+    const auto original = values;
+    const auto image = ScalarSurfaceMaterialEvaluator::createImage(values.data(), (int) values.size(),
+            256, 4, material);
+    for (int column = 0; column < 256; ++column) {
+        for (int row = 0; row < 4; ++row) {
+            REQUIRE(image.getPixelAt(column, row) == juce::Colour((uint8_t) column,
+                    (uint8_t) column, (uint8_t) column));
+        }
+    }
+    REQUIRE(values == original);
 }

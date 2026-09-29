@@ -3,6 +3,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include <UI/Panels/TimeSurfaceStyles.h>
 
 #include "App/CycleV2Automation.h"
 #include "App/GraphFileHistory.h"
@@ -51,13 +52,7 @@ public:
             CommandSaveGraphAs,
             CommandSpyRefreshOnRelease,
             CommandSpyRefreshLive,
-            CommandTimeSurfaceBipolar,
-            CommandTimeSurfaceBipolarFlat,
-            CommandTimeSurfaceBlueDepth,
-            CommandTimeSurfaceBlueDirectionalDetail,
-            CommandTimeSurfaceBipolarShaded,
-            CommandTimeSurfaceIcyHot13,
-            CommandTimeSurfaceIcyHot14
+            TimeSurfaceFirst = 0x3100
         };
 
         MainWindow(
@@ -70,9 +65,7 @@ public:
             setUsingNativeTitleBar(true);
             setResizable(true, true);
             workspace = new CycleV2::NodeWorkspace(audioEngine);
-            workspace->setTimeSurfaceStyle(
-                    ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(
-                            properties->getIntValue("timeSurfaceStyle", 1)));
+
             setContentOwned(workspace, true);
             workspace->setGraphDocumentStateChangedCallback([this] {
                 updateDocumentPresentation();
@@ -155,24 +148,7 @@ public:
                 menu.addSeparator();
                 menu.addSubMenu("Spy Refresh", spyRefreshMenu);
             } else if (menuIndex == 1) {
-                PopupMenu timeSurfaceMenu;
-                timeSurfaceMenu.addCommandItem(&commandManager, CommandTimeSurfaceIcyHot13);
-                timeSurfaceMenu.addCommandItem(&commandManager, CommandTimeSurfaceIcyHot14);
-                timeSurfaceMenu.addCommandItem(
-                        &commandManager,
-                        CommandTimeSurfaceBipolar);
-                timeSurfaceMenu.addCommandItem(
-                        &commandManager,
-                        CommandTimeSurfaceBipolarFlat);
-                timeSurfaceMenu.addCommandItem(
-                        &commandManager,
-                        CommandTimeSurfaceBipolarShaded);
-                timeSurfaceMenu.addCommandItem(
-                        &commandManager,
-                        CommandTimeSurfaceBlueDepth);
-                timeSurfaceMenu.addCommandItem(
-                        &commandManager,
-                        CommandTimeSurfaceBlueDirectionalDetail);
+                auto timeSurfaceMenu = TimeSurfaceStyles::menu(workspace->timeSurfaceStyle(), TimeSurfaceFirst);
                 menu.addSubMenu("Time Surface Colour", timeSurfaceMenu);
             }
 
@@ -180,6 +156,10 @@ public:
         }
 
         void menuItemSelected(int menuItemId, int) override {
+            if (const auto* entry = TimeSurfaceStyles::find(menuItemId - TimeSurfaceFirst)) {
+                setTimeSurfaceStyle(entry->style);
+                return;
+            }
             if (fileHistory.isRecentMenuItem(menuItemId)) {
                 openGraphFile(fileHistory.fileForMenuItem(menuItemId));
             }
@@ -195,14 +175,7 @@ public:
                     CommandSaveGraph,
                     CommandSaveGraphAs,
                     CommandSpyRefreshOnRelease,
-                    CommandSpyRefreshLive,
-                    CommandTimeSurfaceBipolar,
-                    CommandTimeSurfaceBipolarFlat,
-                    CommandTimeSurfaceBlueDepth,
-                    CommandTimeSurfaceBlueDirectionalDetail,
-                    CommandTimeSurfaceBipolarShaded,
-                    CommandTimeSurfaceIcyHot13,
-                    CommandTimeSurfaceIcyHot14
+                    CommandSpyRefreshLive
             });
         }
 
@@ -246,71 +219,6 @@ public:
                                     == CycleV2::ProbeRefreshMode::LiveLatest);
                     break;
 
-                case CommandTimeSurfaceBipolar:
-                    result.setInfo(
-                            "Bipolar + Detail",
-                            "Use bipolar colour with high-pass edge detail",
-                            "View",
-                            0);
-                    result.setTicked(workspace != nullptr
-                            && workspace->timeSurfaceStyle()
-                                    == ScalarSurfaceTimeStyle::Bipolar);
-                    break;
-
-                case CommandTimeSurfaceBipolarFlat:
-                    result.setInfo(
-                            "Bipolar (Colour Only)",
-                            "Map signal values directly to the bipolar palette",
-                            "View",
-                            0);
-                    result.setTicked(workspace != nullptr
-                            && workspace->timeSurfaceStyle()
-                                    == ScalarSurfaceTimeStyle::BipolarFlat);
-                    break;
-
-                case CommandTimeSurfaceBlueDepth:
-                    result.setInfo(
-                            "Blue Depth",
-                            "Use the monotonic blue depth gradient without edge effects",
-                            "View",
-                            0);
-                    result.setTicked(workspace != nullptr
-                            && workspace->timeSurfaceStyle()
-                                    == ScalarSurfaceTimeStyle::BlueDepth);
-                    break;
-
-                case CommandTimeSurfaceBipolarShaded:
-                    result.setInfo(
-                            "Bipolar Shaded",
-                            "Use bipolar colour with directional highlights and soft shade",
-                            "View",
-                            0);
-                    result.setTicked(workspace != nullptr
-                            && workspace->timeSurfaceStyle()
-                                    == ScalarSurfaceTimeStyle::BipolarShaded);
-                    break;
-
-                case CommandTimeSurfaceIcyHot13:
-                case CommandTimeSurfaceIcyHot14: {
-                    const bool program14 = commandID == CommandTimeSurfaceIcyHot14;
-                    result.setInfo(program14 ? "Icy-hot 14" : "Icy-hot 13",
-                            "Use the saved Icy-hot surface colour program", "View", 0);
-                    result.setTicked(workspace != nullptr && workspace->timeSurfaceStyle()
-                            == (program14 ? ScalarSurfaceTimeStyle::IcyHot14 : ScalarSurfaceTimeStyle::IcyHot13));
-                    break;
-                }
-
-                case CommandTimeSurfaceBlueDirectionalDetail:
-                    result.setInfo(
-                            "Blue Depth + Directional Detail",
-                            "Use monotonic blue depth with angle-coloured high-pass detail",
-                            "View",
-                            0);
-                    result.setTicked(workspace != nullptr
-                            && workspace->timeSurfaceStyle()
-                                    == ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail);
-                    break;
-
                 default:
                     break;
             }
@@ -318,12 +226,6 @@ public:
 
         bool perform(const InvocationInfo& info) override {
             switch (info.commandID) {
-                case CommandTimeSurfaceIcyHot13:
-                    setTimeSurfaceStyle(ScalarSurfaceTimeStyle::IcyHot13);
-                    return true;
-                case CommandTimeSurfaceIcyHot14:
-                    setTimeSurfaceStyle(ScalarSurfaceTimeStyle::IcyHot14);
-                    return true;
                 case CommandOpenGraph:
                     chooseOpenGraph();
                     return true;
@@ -342,27 +244,6 @@ public:
 
                 case CommandSpyRefreshLive:
                     setSpyRefreshMode(CycleV2::ProbeRefreshMode::LiveLatest);
-                    return true;
-
-                case CommandTimeSurfaceBipolar:
-                    setTimeSurfaceStyle(ScalarSurfaceTimeStyle::Bipolar);
-                    return true;
-
-                case CommandTimeSurfaceBipolarFlat:
-                    setTimeSurfaceStyle(ScalarSurfaceTimeStyle::BipolarFlat);
-                    return true;
-
-                case CommandTimeSurfaceBipolarShaded:
-                    setTimeSurfaceStyle(ScalarSurfaceTimeStyle::BipolarShaded);
-                    return true;
-
-                case CommandTimeSurfaceBlueDepth:
-                    setTimeSurfaceStyle(ScalarSurfaceTimeStyle::BlueDepth);
-                    return true;
-
-                case CommandTimeSurfaceBlueDirectionalDetail:
-                    setTimeSurfaceStyle(
-                            ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail);
                     return true;
 
                 default:
@@ -452,10 +333,6 @@ public:
                 return;
             }
             workspace->setTimeSurfaceStyle(style);
-            properties->setValue(
-                    "timeSurfaceStyle",
-                    ScalarSurfaceMaterial::timeSurfaceStyleIndex(style));
-            properties->saveIfNeeded();
             commandManager.commandStatusChanged();
             menuItemsChanged();
         }

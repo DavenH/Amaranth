@@ -1,6 +1,7 @@
+#include <array>
+#include <cstdlib>
 #include <catch2/catch_test_macros.hpp>
 #include <UI/Panels/ScalarSurfaceMaterial.h>
-#include <cstdlib>
 
 #include "Graph/GraphSerializer.h"
 #include "Runtime/GraphPresentationModel.h"
@@ -25,12 +26,17 @@ TEST_CASE("Icy-hot Spy previews match saved lab programs", "[surface-program]") 
     }
     const auto source = preview.primary;
     const auto previous = ScalarSurfaceMaterial::timeSurfaceStyle();
-    for (const bool program14 : { false, true }) {
-        ScalarSurfaceMaterial::setTimeSurfaceStyle(program14
-                ? ScalarSurfaceTimeStyle::IcyHot14 : ScalarSurfaceTimeStyle::IcyHot13);
+    const std::array<ScalarSurfaceTimeStyle, 8> styles {
+        ScalarSurfaceTimeStyle::IcyHot13, ScalarSurfaceTimeStyle::IcyHot14,
+        ScalarSurfaceTimeStyle::Recipe15, ScalarSurfaceTimeStyle::Recipe16,
+        ScalarSurfaceTimeStyle::Recipe17, ScalarSurfaceTimeStyle::Recipe18,
+        ScalarSurfaceTimeStyle::Recipe19, ScalarSurfaceTimeStyle::Bullion
+    };
+    for (size_t index = 0; index < styles.size(); ++index) {
+        ScalarSurfaceMaterial::setTimeSurfaceStyle(styles[index]);
         const auto actual = NodePreviewRenderer::createRuntimeHeatmapImage(preview, false, 1.64f);
         const auto expected = ImageFileFormat::loadFrom(fixtures.getChildFile(
-                program14 ? "program-14.png" : "program-13.png"));
+                "program-" + String((int) index + 13) + ".png"));
         CHECK(actual.isValid());
         CHECK(expected.isValid());
         int error = 0;

@@ -25,7 +25,9 @@ public:
 
     const NodeGraph& graph() const { return currentGraph; }
     uint64_t revision() const { return documentRevision; }
-    bool isDirty() const { return currentStateId != savedStateId; }
+    bool isDirty() const {
+        return currentStateId != savedStateId || presentationRevision != savedPresentationRevision;
+    }
     const juce::File& file() const { return currentFile; }
     const GraphChangeSet& lastChange() const { return latestChange; }
     const PresetPresentation& presentation() const { return presetPresentation; }
@@ -71,6 +73,8 @@ private:
     uint64_t currentStateId { 1 };
     uint64_t savedStateId { 1 };
     uint64_t nextStateId { 2 };
+    uint64_t presentationRevision {};
+    uint64_t savedPresentationRevision {};
     std::optional<uint64_t> pendingStateId;
 };
 

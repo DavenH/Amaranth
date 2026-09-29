@@ -1,9 +1,9 @@
 {
   "commands": [
     { "command": "openFactoryPreset", "preset": "CalmingKeys", "waitForIdle": true },
-    { "command": "invokeMenuItem", "menu": "View", "path": ["Time Surface Colour", "Icy-hot 13"], "waitForIdle": true, "idleDelayMs": 500 },
+    { "command": "invokeMenuItem", "menu": "View", "path": ["Time Surface Colour", "Icy Hot"], "waitForIdle": true, "idleDelayMs": 500 },
     { "command": "openGLDiagnostics", "area": "AreaWfrmWaveform3D" },
-    { "command": "invokeMenuItem", "menu": "View", "path": ["Time Surface Colour", "Icy-hot 14"], "waitForIdle": true, "idleDelayMs": 500 },
+    { "command": "invokeMenuItem", "menu": "View", "path": ["Time Surface Colour", "Legacy", "Icy-hot 14"], "waitForIdle": true, "idleDelayMs": 500 },
     { "command": "openGLDiagnostics", "area": "AreaWfrmWaveform3D" }
   ],
   "quit": true

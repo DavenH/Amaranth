@@ -92,10 +92,11 @@ Waveform3D::~Waveform3D() {
 
 void Waveform3D::init() {
     Panel3D::init();
+    getObj(Document).addListener(this);
 
     ScalarSurfaceMaterial::setTimeSurfaceStyle(
             ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(
-                    getSettingValue(TimeSurfaceStyle)));
+                    getObj(Settings).getDocumentSettingValue(DocSettings::TimeSurfaceStyle)));
     Image blue = ScalarSurfaceMaterialEvaluator::createGradientImage(
             ScalarSurfaceMaterial::timeDomain());
     surfInteractor 	= &getObj(WaveformInter3D);
@@ -480,10 +481,29 @@ bool Waveform3D::getScalarSurfaceMaterial(ScalarSurfaceMaterial& material) const
 }
 
 void Waveform3D::updateTimeSurfaceStyle() {
+    const auto style = ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(
+            getObj(Settings).getDocumentSettingValue(DocSettings::TimeSurfaceStyle));
+    if (ScalarSurfaceMaterial::timeSurfaceStyle() == style) {
+        return;
+    }
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(style);
     Image image = ScalarSurfaceMaterialEvaluator::createGradientImage(
             ScalarSurfaceMaterial::timeDomain());
     gradient.read(image, true, false);
     repaint();
+}
+
+void Waveform3D::documentHasLoaded() {
+    if (MessageManager::getInstance()->isThisTheMessageThread()) {
+        updateTimeSurfaceStyle();
+    } else {
+        triggerAsyncUpdate();
+    }
+}
+
+void Waveform3D::handleAsyncUpdate() {
+    updateTimeSurfaceStyle();
+    AsyncUIUpdater::handleAsyncUpdate();
 }
 
 var Waveform3D::exportAutomationState() const {
@@ -502,6 +522,7 @@ var Waveform3D::exportAutomationState() const {
     json->setProperty("layerGroupName", "time");
 
     view->setProperty("viewStage", viewStage);
+    view->setProperty("timeSurfaceStyle", (int) ScalarSurfaceMaterial::timeSurfaceStyle());
     view->setProperty("viewStageName", viewStageName(viewStage));
     view->setProperty("drawWave", bool(getSettingValue(DrawWave)));
     view->setProperty("waveLoaded", bool(getSettingValue(WaveLoaded)));
