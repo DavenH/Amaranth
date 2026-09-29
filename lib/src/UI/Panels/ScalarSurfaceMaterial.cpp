@@ -7,6 +7,7 @@
 #include "Array/Buffer.h"
 #include "Array/VecOps.h"
 #include "ScalarSurfaceMaterial.h"
+#include "ScalarSurfaceProgram.h"
 
 namespace {
 
@@ -718,6 +719,12 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::blueDepthDirectionalDetail() {
     return material;
 }
 
+ScalarSurfaceMaterial ScalarSurfaceMaterial::icyHotProgram(bool program14) {
+    auto material = signedAmplitudeFlat();
+    material.relief = program14 ? ScalarSurfaceRelief::Program14 : ScalarSurfaceRelief::Program13;
+    return material;
+}
+
 ScalarSurfaceMaterial ScalarSurfaceMaterial::timeDomain() {
     switch (timeSurfaceStyle()) {
         case ScalarSurfaceTimeStyle::Bipolar:
@@ -734,6 +741,10 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::timeDomain() {
 
         case ScalarSurfaceTimeStyle::BipolarShaded:
             return bipolarShaded();
+        case ScalarSurfaceTimeStyle::IcyHot13:
+            return icyHotProgram(false);
+        case ScalarSurfaceTimeStyle::IcyHot14:
+            return icyHotProgram(true);
     }
     return blueDepthDirectionalDetail();
 }
@@ -743,6 +754,12 @@ ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyle() {
 }
 
 ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(int index) {
+    if (index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::IcyHot13)) {
+        return ScalarSurfaceTimeStyle::IcyHot13;
+    }
+    if (index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::IcyHot14)) {
+        return ScalarSurfaceTimeStyle::IcyHot14;
+    }
     if (index == timeSurfaceStyleIndex(ScalarSurfaceTimeStyle::Bipolar)) {
         return ScalarSurfaceTimeStyle::Bipolar;
     }
@@ -826,6 +843,9 @@ ScalarSurfaceHeightScales ScalarSurfaceMaterialEvaluator::createHeightScales(
     std::vector<float> original((size_t) valueTotal);
     VecOps::copy(values, original.data(), valueTotal);
     Buffer<float>(original.data(), valueTotal).mul(valueScale).add(valueOffset).clip(0.f, 1.f);
+    if (ScalarSurfaceProgram::isProgram(material)) {
+        return ScalarSurfaceProgram::render(original, columns, rows, material);
+    }
 
     result.columns = columns;
     result.rows = rows;
@@ -944,6 +964,10 @@ juce::Image ScalarSurfaceMaterialEvaluator::createImage(
     for (int column = 0; column < columns; ++column) {
         for (int row = 0; row < rows; ++row) {
             const int index = column * rows + row;
+            if (ScalarSurfaceProgram::isProgram(material)) {
+                bitmap.setPixelColour(column, rows - 1 - row, ScalarSurfaceProgram::colourAt(scales, index));
+                continue;
+            }
             const ScalarSurfaceDerivatives derivatives = derivativesFor(
                     scales, column, row, material, aspect);
             juce::Colour colour = evaluateColour(values[index], derivatives, material, light);

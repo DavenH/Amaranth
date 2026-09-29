@@ -6,6 +6,7 @@
 
 #include "GLScalarSurfaceRenderer.h"
 #include "GLScalarSurfaceUniforms.h"
+#include "ScalarSurfaceProgram.h"
 
 namespace gl = juce::gl;
 
@@ -172,6 +173,10 @@ float saturatingDetailResponse(float value, float knee) {
 void main() {
     vec2 coordinate = surfaceTextureCoordinate;
     vec4 centreScales = heightScalesAt(coordinate);
+    if (reliefKind == 4 || reliefKind == 5) {
+        gl_FragColor = centreScales;
+        return;
+    }
     float centre = centreScales.r;
     vec3 base = floor(paletteColour(centre) * 255.0 + 0.5) / 255.0;
     float opacityValue = opacityPower == 2 ? centre * centre : centre;
@@ -419,7 +424,9 @@ int maximumValidationError(
     for (int column = 0; column < scales.columns; ++column) {
         for (int row = 0; row < scales.rows; ++row) {
             const int index = column * scales.rows + row;
-            const juce::Colour expected = ScalarSurfaceMaterialEvaluator::colourFor(
+            const juce::Colour expected = ScalarSurfaceProgram::isProgram(material)
+                    ? ScalarSurfaceProgram::colourAt(scales, index)
+                    : ScalarSurfaceMaterialEvaluator::colourFor(
                     scales.packedValues[(size_t) index * 4],
                     ScalarSurfaceMaterialEvaluator::derivativesAt(
                             scales,
@@ -481,23 +488,33 @@ void ScalarSurfaceUploadState::clear() {
 }
 
 bool GLScalarSurfaceRenderer::draw(const ScalarSurfaceRenderData& data) {
-    if (!data.isValid() || std::getenv("CYCLE_DISABLE_SCALAR_SURFACE_SHADER") != nullptr) {
+    if (!data.isValid()) {
         return false;
     }
-
-    if (!compileProgram() || !ensureScalarPaletteTexture() || !ensureTexture(data)) {
+    const bool useShader = std::getenv("CYCLE_DISABLE_SCALAR_SURFACE_SHADER") == nullptr
+            && compileProgram();
+    if ((!useShader && !ScalarSurfaceProgram::isProgram(data.material))
+            || (useShader && !ensureScalarPaletteTexture()) || !ensureTexture(data)) {
         return false;
     }
 
     gl::glActiveTexture(gl::GL_TEXTURE1);
     gl::glBindTexture(gl::GL_TEXTURE_2D, scalarPaletteTexture);
     gl::glActiveTexture(gl::GL_TEXTURE0);
-    validateGpuParity();
+    if (useShader) {
+        validateGpuParity();
+    }
 
-    gl::glUseProgram(program);
+    gl::glUseProgram(useShader ? program : 0);
     gl::glEnable(gl::GL_TEXTURE_2D);
     gl::glBindTexture(gl::GL_TEXTURE_2D, texture);
-    setMaterialUniforms(data);
+    int previousTextureMode {};
+    gl::glGetTexEnviv(gl::GL_TEXTURE_ENV, gl::GL_TEXTURE_ENV_MODE, &previousTextureMode);
+    if (useShader) {
+        setMaterialUniforms(data);
+    } else {
+        gl::glTexEnvi(gl::GL_TEXTURE_ENV, gl::GL_TEXTURE_ENV_MODE, gl::GL_REPLACE);
+    }
 
     const auto bounds = data.bounds;
     gl::glBegin(gl::GL_QUADS);
@@ -511,6 +528,7 @@ bool GLScalarSurfaceRenderer::draw(const ScalarSurfaceRenderData& data) {
     gl::glVertex2f(bounds.getX(), bounds.getBottom());
     gl::glEnd();
 
+    gl::glTexEnvi(gl::GL_TEXTURE_ENV, gl::GL_TEXTURE_ENV_MODE, previousTextureMode);
     gl::glUseProgram(0);
     gl::glDisable(gl::GL_TEXTURE_2D);
     ++diagnostics.drawCount;
@@ -747,7 +765,9 @@ void GLScalarSurfaceRenderer::validateGpuParity() {
             values[(size_t) column * rows + row] = tile[(size_t) (column % 5) * 5 + row % 5];
         }
     }
-    const std::array<ScalarSurfaceMaterial, 7> materials {
+    const std::array<ScalarSurfaceMaterial, 9> materials {
+            ScalarSurfaceMaterial::icyHotProgram(false),
+            ScalarSurfaceMaterial::icyHotProgram(true),
             ScalarSurfaceMaterial::signedAmplitude(),
             ScalarSurfaceMaterial::signedAmplitudeFlat(),
             ScalarSurfaceMaterial::bipolarShaded(),

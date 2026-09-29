@@ -120,6 +120,10 @@ PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String
         {
             const ScalarSurfaceTimeStyle style = ScalarSurfaceMaterial::timeSurfaceStyle();
             PopupMenu surfaceMenu;
+            surfaceMenu.addItem(TimeSurfaceIcyHot13, "Icy-hot 13", true,
+                    style == ScalarSurfaceTimeStyle::IcyHot13);
+            surfaceMenu.addItem(TimeSurfaceIcyHot14, "Icy-hot 14", true,
+                    style == ScalarSurfaceTimeStyle::IcyHot14);
             surfaceMenu.addItem(
                     TimeSurfaceBipolar,
                     "Bipolar + Detail",
@@ -320,12 +324,18 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 		} else if (item == DrawScales) {
 			getSetting(DrawScales) ^= true;
         } else if (item == TimeSurfaceBipolar
+                || item == TimeSurfaceIcyHot13
+                || item == TimeSurfaceIcyHot14
                 || item == TimeSurfaceBipolarShaded
                 || item == TimeSurfaceBipolarFlat
                 || item == TimeSurfaceBlueDepth
                 || item == TimeSurfaceBlueDirectionalDetail) {
             ScalarSurfaceTimeStyle style = ScalarSurfaceTimeStyle::BlueDepthDirectionalDetail;
-            if (item == TimeSurfaceBipolar) {
+            if (item == TimeSurfaceIcyHot13) {
+                style = ScalarSurfaceTimeStyle::IcyHot13;
+            } else if (item == TimeSurfaceIcyHot14) {
+                style = ScalarSurfaceTimeStyle::IcyHot14;
+            } else if (item == TimeSurfaceBipolar) {
                 style = ScalarSurfaceTimeStyle::Bipolar;
             } else if (item == TimeSurfaceBipolarShaded) {
                 style = ScalarSurfaceTimeStyle::BipolarShaded;

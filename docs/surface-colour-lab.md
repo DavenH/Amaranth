@@ -1,5 +1,10 @@
 # Surface Colour Lab
 
+Saved programs 13 and 14 are also available in Cycle 1 and Cycle 2 under
+**View → Time Surface Colour → Icy-hot 13 / Icy-hot 14**. These are fixed versions
+of the saved recipes, not live links to Downloads. Cycle needs no Python at runtime;
+filters/compositing are cached when the scalar product changes.
+
 A local Python/browser sketchbook for scalar-field colour experiments. No Cycle
 build is needed, and nothing changes Cycle's materials, presets or source data.
 

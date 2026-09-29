@@ -4,6 +4,7 @@
 #include <limits>
 
 #include <Audio/CycleDsp/IrModel.h>
+#include <UI/Panels/ScalarSurfaceProgram.h>
 
 #include "UI/NodePreviewRenderer.h"
 
@@ -205,6 +206,11 @@ std::vector<float> mappedSurface(
     if (meshSurface) {
         profile.mapValuesToDisplay(buffer);
     } else if (signalSpy && preview.domain == PortDomain::TimeSignal) {
+        if (ScalarSurfaceProgram::isProgram(profile.getSurfaceStyle().surfaceMaterial())) {
+            PreviewContrastNormalization::apply(surface, 1.f);
+            buffer.mul(0.5f).add(0.5f);
+            return surface;
+        }
         PreviewContrastNormalization::apply(surface, 3.f);
         std::vector<float> magnitude = surface;
         Buffer<float> magnitudeBuffer(magnitude.data(), (int) magnitude.size());

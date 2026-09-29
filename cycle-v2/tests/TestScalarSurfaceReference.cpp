@@ -9,6 +9,46 @@
 
 using namespace CycleV2;
 
+TEST_CASE("Icy-hot Spy previews match saved lab programs", "[surface-program]") {
+    const File fixtures = File(CYCLE_V2_SOURCE_DIR).getParentDirectory()
+            .getChildFile("scripts/fixtures/surface-colour-lab");
+    FileInputStream input(fixtures.getChildFile("stengah-b0-spy1.f32"));
+    REQUIRE(input.openedOk());
+    NodePreviewResult preview;
+    preview.role = PreviewModuleRole::SignalSpy;
+    preview.domain = PortDomain::TimeSignal;
+    preview.gridColumns = (size_t) input.readInt();
+    preview.gridRows = (size_t) input.readInt();
+    preview.primary.resize(preview.gridColumns * preview.gridRows);
+    for (float& value : preview.primary) {
+        value = input.readFloat();
+    }
+    const auto source = preview.primary;
+    const auto previous = ScalarSurfaceMaterial::timeSurfaceStyle();
+    for (const bool program14 : { false, true }) {
+        ScalarSurfaceMaterial::setTimeSurfaceStyle(program14
+                ? ScalarSurfaceTimeStyle::IcyHot14 : ScalarSurfaceTimeStyle::IcyHot13);
+        const auto actual = NodePreviewRenderer::createRuntimeHeatmapImage(preview, false, 1.64f);
+        const auto expected = ImageFileFormat::loadFrom(fixtures.getChildFile(
+                program14 ? "program-14.png" : "program-13.png"));
+        CHECK(actual.isValid());
+        CHECK(expected.isValid());
+        int error = 0;
+        for (int y = 0; y < actual.getHeight(); ++y) {
+            for (int x = 0; x < actual.getWidth(); ++x) {
+                const auto a = actual.getPixelAt(x, y);
+                const auto b = expected.getPixelAt(x, y);
+                error = jmax(error, std::abs((int) a.getRed() - b.getRed()),
+                        std::abs((int) a.getGreen() - b.getGreen()),
+                        std::abs((int) a.getBlue() - b.getBlue()));
+            }
+        }
+        CHECK(error <= 3);
+        CHECK(preview.primary == source);
+    }
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(previous);
+}
+
 TEST_CASE("Render Stengah B0 Spy 1 material reference", "[.][surface-reference]") {
     const char* output = std::getenv("CYCLE_SURFACE_REFERENCE_DIR");
     REQUIRE(output != nullptr);

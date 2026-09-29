@@ -17,7 +17,9 @@ enum class ScalarSurfaceRelief {
     MicroEmboss,
     MultiscaleTerrain,
     None,
-    DirectionalShaded
+    DirectionalShaded,
+    Program13,
+    Program14
 };
 
 enum class ScalarSurfaceTimeStyle {
@@ -25,7 +27,9 @@ enum class ScalarSurfaceTimeStyle {
     BlueDepthDirectionalDetail,
     BlueDepth,
     BipolarFlat,
-    BipolarShaded
+    BipolarShaded,
+    IcyHot13,
+    IcyHot14
 };
 
 enum class ScalarSurfaceDetailColour {
@@ -39,6 +43,7 @@ struct ScalarSurfaceMaterial {
     static ScalarSurfaceMaterial signedAmplitude();
     static ScalarSurfaceMaterial signedAmplitudeFlat();
     static ScalarSurfaceMaterial bipolarShaded();
+    static ScalarSurfaceMaterial icyHotProgram(bool program14);
     static ScalarSurfaceMaterial blueDepth();
     static ScalarSurfaceMaterial blueDepthDirectionalDetail();
     static ScalarSurfaceMaterial timeDomain();

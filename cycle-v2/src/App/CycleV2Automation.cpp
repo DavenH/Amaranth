@@ -474,6 +474,8 @@ var CycleV2Automation::generatePresetPreview(const var& commandValue) {
 var CycleV2Automation::listMenuItems() const {
     Array<var> items;
     items.add(menuItemToVar("file.openGraph", "File", "Open Preset...", true));
+    items.add(menuItemToVar("view.icyHot13", "View > Time Surface Colour", "Icy-hot 13", false));
+    items.add(menuItemToVar("view.icyHot14", "View > Time Surface Colour", "Icy-hot 14", false));
     items.add(menuItemToVar(
             "file.saveGraph",
             "File",
@@ -501,6 +503,14 @@ var CycleV2Automation::invokeMenuItem(const var& commandValue) {
 
     if (id == "file.openGraph") {
         return openGraph(commandValue);
+    }
+    if (id == "view.icyHot13" || id == "view.icyHot14") {
+        workspace.setTimeSurfaceStyle(id == "view.icyHot14"
+                ? ScalarSurfaceTimeStyle::IcyHot14 : ScalarSurfaceTimeStyle::IcyHot13);
+        var data = makeObject();
+        objectFor(data)->setProperty("timeSurfaceStyle",
+                ScalarSurfaceMaterial::timeSurfaceStyleIndex(workspace.timeSurfaceStyle()));
+        return okResult("invokeMenuItem", data);
     }
     if (id == "file.saveGraph" || id == "file.saveGraphAs") {
         return saveGraph(commandValue);

@@ -6,6 +6,7 @@
 
 #include "UI/Panels/ScalarSurfaceMaterial.h"
 #include "UI/Panels/GLScalarSurfaceRenderer.h"
+#include "Array/Buffer.h"
 
 namespace {
 
@@ -653,4 +654,80 @@ TEST_CASE("Scalar texture uploads track product and height preprocessing",
     data.hasStableRevision = false;
     state.markUploaded(data);
     REQUIRE(state.needsUpload(data));
+}
+
+TEST_CASE("Saved Icy-hot programs match the lab Stengah reference", "[scalar-surface][surface-program]") {
+    const juce::File fixtures = juce::File(__FILE__).getParentDirectory().getParentDirectory()
+            .getParentDirectory().getChildFile("scripts/fixtures/surface-colour-lab");
+    juce::FileInputStream source(fixtures.getChildFile("stengah-b0-spy1.f32"));
+    REQUIRE(source.openedOk());
+    const int columns = source.readInt();
+    const int rows = source.readInt();
+    std::vector<float> values((size_t) columns * rows);
+    for (float& value : values) {
+        value = source.readFloat();
+    }
+    std::vector<float> magnitude = values;
+    Buffer<float>(magnitude.data(), (int) magnitude.size()).abs();
+    const float peak = Buffer<float>(magnitude.data(), (int) magnitude.size()).max();
+    Buffer<float>(values.data(), (int) values.size()).mul(0.5f / peak).add(0.5f);
+    for (const bool program14 : { false, true }) {
+        const auto material = ScalarSurfaceMaterial::icyHotProgram(program14);
+        const auto image = ScalarSurfaceMaterialEvaluator::createImage(
+                values.data(), (int) values.size(), columns, rows, material);
+        const juce::String name = program14 ? "program-14.png" : "program-13.png";
+        const auto expected = juce::ImageFileFormat::loadFrom(fixtures.getChildFile(name));
+        REQUIRE(expected.isValid());
+        int maximumError = 0;
+        for (int y = 0; y < rows; ++y) {
+            for (int x = 0; x < columns; ++x) {
+                const auto actual = image.getPixelAt(x, y);
+                const auto reference = expected.getPixelAt(x, y);
+                maximumError = juce::jmax(maximumError,
+                        std::abs((int) actual.getRed() - reference.getRed()),
+                        std::abs((int) actual.getGreen() - reference.getGreen()),
+                        std::abs((int) actual.getBlue() - reference.getBlue()));
+            }
+        }
+        INFO(name << " maximum channel error " << maximumError);
+        REQUIRE(maximumError <= 3);
+    }
+}
+
+TEST_CASE("Icy-hot style changes invalidate cached scalar products", "[scalar-surface][surface-program]") {
+    std::vector<float> values(64, 0.5f);
+    ScalarSurfaceRenderData data;
+    data.values = values.data();
+    data.valueCount = 64;
+    data.columns = 8;
+    data.rows = 8;
+    data.bounds = { 0.f, 0.f, 100.f, 100.f };
+    data.hasStableRevision = true;
+    data.material = ScalarSurfaceMaterial::icyHotProgram(false);
+    ScalarSurfaceUploadState cache;
+    cache.markUploaded(data);
+    REQUIRE_FALSE(cache.needsUpload(data));
+    data.material = ScalarSurfaceMaterial::icyHotProgram(true);
+    REQUIRE(cache.needsUpload(data));
+    for (auto style : { ScalarSurfaceTimeStyle::IcyHot13, ScalarSurfaceTimeStyle::IcyHot14 }) {
+        REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(
+                ScalarSurfaceMaterial::timeSurfaceStyleIndex(style)) == style);
+    }
+}
+
+TEST_CASE("Icy-hot constant surfaces stay uniform and preserve authored level", "[surface-program]") {
+    for (const bool program14 : { false, true }) {
+        const auto material = ScalarSurfaceMaterial::icyHotProgram(program14);
+        std::vector<float> values(64, 0.2f);
+        const auto first = ScalarSurfaceMaterialEvaluator::createImage(values.data(), 64, 8, 8, material);
+        for (int y = 0; y < 8; ++y) {
+            for (int x = 0; x < 8; ++x) {
+                REQUIRE(first.getPixelAt(x, y) == first.getPixelAt(4, 4));
+            }
+        }
+        REQUIRE(values.front() == 0.2f);
+        std::fill(values.begin(), values.end(), 0.4f);
+        const auto second = ScalarSurfaceMaterialEvaluator::createImage(values.data(), 64, 8, 8, material);
+        REQUIRE(first.getPixelAt(4, 4) != second.getPixelAt(4, 4));
+    }
 }

@@ -55,7 +55,9 @@ public:
             CommandTimeSurfaceBipolarFlat,
             CommandTimeSurfaceBlueDepth,
             CommandTimeSurfaceBlueDirectionalDetail,
-            CommandTimeSurfaceBipolarShaded
+            CommandTimeSurfaceBipolarShaded,
+            CommandTimeSurfaceIcyHot13,
+            CommandTimeSurfaceIcyHot14
         };
 
         MainWindow(
@@ -154,6 +156,8 @@ public:
                 menu.addSubMenu("Spy Refresh", spyRefreshMenu);
             } else if (menuIndex == 1) {
                 PopupMenu timeSurfaceMenu;
+                timeSurfaceMenu.addCommandItem(&commandManager, CommandTimeSurfaceIcyHot13);
+                timeSurfaceMenu.addCommandItem(&commandManager, CommandTimeSurfaceIcyHot14);
                 timeSurfaceMenu.addCommandItem(
                         &commandManager,
                         CommandTimeSurfaceBipolar);
@@ -196,7 +200,9 @@ public:
                     CommandTimeSurfaceBipolarFlat,
                     CommandTimeSurfaceBlueDepth,
                     CommandTimeSurfaceBlueDirectionalDetail,
-                    CommandTimeSurfaceBipolarShaded
+                    CommandTimeSurfaceBipolarShaded,
+                    CommandTimeSurfaceIcyHot13,
+                    CommandTimeSurfaceIcyHot14
             });
         }
 
@@ -284,6 +290,16 @@ public:
                                     == ScalarSurfaceTimeStyle::BipolarShaded);
                     break;
 
+                case CommandTimeSurfaceIcyHot13:
+                case CommandTimeSurfaceIcyHot14: {
+                    const bool program14 = commandID == CommandTimeSurfaceIcyHot14;
+                    result.setInfo(program14 ? "Icy-hot 14" : "Icy-hot 13",
+                            "Use the saved Icy-hot surface colour program", "View", 0);
+                    result.setTicked(workspace != nullptr && workspace->timeSurfaceStyle()
+                            == (program14 ? ScalarSurfaceTimeStyle::IcyHot14 : ScalarSurfaceTimeStyle::IcyHot13));
+                    break;
+                }
+
                 case CommandTimeSurfaceBlueDirectionalDetail:
                     result.setInfo(
                             "Blue Depth + Directional Detail",
@@ -302,6 +318,12 @@ public:
 
         bool perform(const InvocationInfo& info) override {
             switch (info.commandID) {
+                case CommandTimeSurfaceIcyHot13:
+                    setTimeSurfaceStyle(ScalarSurfaceTimeStyle::IcyHot13);
+                    return true;
+                case CommandTimeSurfaceIcyHot14:
+                    setTimeSurfaceStyle(ScalarSurfaceTimeStyle::IcyHot14);
+                    return true;
                 case CommandOpenGraph:
                     chooseOpenGraph();
                     return true;
