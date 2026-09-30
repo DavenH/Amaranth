@@ -28,6 +28,7 @@
 #include "UI/GuideCurveShelf.h"
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
+#include "UI/NodeCanvasCursorPolicy.h"
 #include "UI/NodeCanvasPresentation.h"
 #include "UI/NodeCableRenderer.h"
 #include "UI/NodeCanvasViewport.h"
@@ -47,6 +48,19 @@
 #include "Runtime/PreviewPitchResolver.h"
 
 using namespace CycleV2;
+
+TEST_CASE("Node canvas Shift cursor preserves adjustment priority",
+        "[cycle-v2][canvas][cursor]") {
+    REQUIRE(NodeCanvasCursorPolicy::cursorFor(
+            false, ModifierKeys::shiftModifier)
+            == NodeCanvasCursorKind::AddToSelection);
+    REQUIRE(NodeCanvasCursorPolicy::cursorFor(
+            false, {})
+            == NodeCanvasCursorKind::Normal);
+    REQUIRE(NodeCanvasCursorPolicy::cursorFor(
+            true, ModifierKeys::shiftModifier)
+            == NodeCanvasCursorKind::VerticalAdjust);
+}
 
 TEST_CASE("EQ response preview does not require a Curve model",
         "[cycle-v2][canvas][equalizer][regression]") {

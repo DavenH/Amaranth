@@ -626,3 +626,21 @@ The Envelope editor adapter now reads Red/Blue from node parameters, and
 `EnvelopeNodeModel` no longer caches them. Morph-only `CurveNodeModelState`
 revisions share immutable Envelope geometry and carry the authored scalar
 values. The existing serialized schema and one-command undo behavior remain.
+
+## Cycle V2 Canvas Selection Cursor Size Review
+
+Status: reviewed 2026-09-30.
+
+The Shift selection-cursor slice grows `NodeCanvas.cpp` from 2,713 to 2,738
+lines and `NodeCanvas.h` from 343 to 347. `NodeCanvas` retains hover orchestration:
+it supplies hit-test facts,
+modifier state, and the resulting cursor to JUCE. The reusable decision is in
+the small `NodeCanvasCursorPolicy`, while `MiscGraphics` remains the single
+owner of the Cycle 1 cursor bitmap coordinates and hotspot. The mature mesh
+editor and the canvas now construct the add-to-selection cursor through that
+same factory; no cursor artwork or selection semantics are copied.
+
+The stable deletion target is the broader canvas pointer/hover coordination
+extraction: modifier refresh and cursor application can move with hover routing
+when `NodeCanvas` no longer owns top-level pointer dispatch. This slice does not
+add graph, selection mutation, or rendering policy to the canvas.

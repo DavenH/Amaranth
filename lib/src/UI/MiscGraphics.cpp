@@ -30,12 +30,12 @@ void MiscGraphics::init() {
     powerIcon = getIcon(5, 5);
     powerIcon.duplicateIfShared();
 
-    cursors.add(new MouseCursor(getIcon(1, 2), 0,  0));  // pencil
-    cursors.add(new MouseCursor(getIcon(2, 2), 0,  0));  // pencil edit
-    cursors.add(new MouseCursor(getIcon(0, 2), 11, 11)); // cross cursor
-    cursors.add(new MouseCursor(getIcon(5, 6), 11, 11)); // cross add cursor
-    cursors.add(new MouseCursor(getIcon(4, 6), 11, 11)); // cross sub cursor
-    cursors.add(new MouseCursor(getIcon(8, 7), 0,  0));  // cancel cursor
+    cursors.add(new MouseCursor(createCursor(PencilCursor)));
+    cursors.add(new MouseCursor(createCursor(PencilEditCursor)));
+    cursors.add(new MouseCursor(createCursor(CrossCursor)));
+    cursors.add(new MouseCursor(createCursor(CrossAddCursor)));
+    cursors.add(new MouseCursor(createCursor(CrossSubCursor)));
+    cursors.add(new MouseCursor(createCursor(NotApplicableCursor)));
 
     // MemoryInputStream fontStream(Silkscreen::output, Silkscreen::outputSize, false);
     // auto typeface = Typeface::createSystemTypefaceFor(Silkscreen::output, Silkscreen::outputSize);
@@ -157,6 +157,28 @@ void MiscGraphics::addPulloutIcon(Image& image, bool horz) {
 Image MiscGraphics::getIcon(int x, int y) const {
     const_cast<MiscGraphics*>(this)->ensureIconsLoaded();
     return icons.getClippedImage(Rectangle<int>(x * 24, y * 24, 24, 24));
+}
+
+MouseCursor MiscGraphics::createCursor(CursorType type) {
+    static const Image cursorIcons = PNGImageFormat::loadFrom(
+            Images::icons_png, Images::icons_pngSize);
+    int x = 0;
+    int y = 2;
+    Point<int> hotspot;
+    switch (type) {
+        case PencilCursor:        x = 1; break;
+        case PencilEditCursor:    x = 2; break;
+        case CrossCursor:         hotspot = { 11, 11 }; break;
+        case CrossAddCursor:      x = 5; y = 6; hotspot = { 11, 11 }; break;
+        case CrossSubCursor:      x = 4; y = 6; hotspot = { 11, 11 }; break;
+        case NotApplicableCursor: x = 8; y = 7; break;
+        default:                  break;
+    }
+    return {
+        cursorIcons.getClippedImage(Rectangle<int>(x * 24, y * 24, 24, 24)),
+        hotspot.x,
+        hotspot.y
+    };
 }
 
 void MiscGraphics::drawPowerSymbol(Graphics& g, Rectangle<int> bounds) const {

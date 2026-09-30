@@ -9,11 +9,13 @@
 
 #include <App/AppConstants.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
+#include <UI/MiscGraphics.h>
 
 #include "UI/NodeCanvas.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/CanvasUtilityDock.h"
 #include "UI/Editors/PropertyControls.h"
+#include "UI/NodeCanvasCursorPolicy.h"
 
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Control/ModulationSource.h"
@@ -197,7 +199,8 @@ NodeCanvas::NodeCanvas() :
             editorCoordinator.previewResources()
         })
     ,   renderInvalidation(*this)
-    ,   hitRouter(graph, palette, queries) {
+    ,   hitRouter(graph, palette, queries)
+    ,   addToSelectionCursor(MiscGraphics::createCursor(MiscGraphics::CrossAddCursor)) {
     settings.initialiseSettings();
     probeRailState.refreshMode = settings.getGlobalSettingValue(
             AppSettings::ProbeEditRefreshPolicy) == 1
@@ -344,7 +347,7 @@ void NodeCanvas::focusLost(FocusChangeType) {
 
 void NodeCanvas::mouseMove(const MouseEvent& event) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Hover);
-    requestHoverRepaint(updateHoverAt(event.position));
+    requestHoverRepaint(updateHoverAt(event.position, event.mods));
 }
 
 void NodeCanvas::mouseExit(const MouseEvent&) {
@@ -366,7 +369,9 @@ void NodeCanvas::mouseExit(const MouseEvent&) {
     requestHoverRepaint(repaint);
 }
 
-NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
+NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
+        Point<float> position,
+        ModifierKeys modifiers) {
     const uint64_t startedAt = performanceMetrics.timestamp();
     const int previousPaletteSection = palette.activeSection();
     const String previousGuideId = guideShelfState.hoveredGuideId;
@@ -382,6 +387,7 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
         guideShelfState.hoveredGuideId = {};
         probeRailState.hoveredProbeId = {};
         hoveredEdgeIndex = -1;
+        setMouseCursor(MouseCursor::NormalCursor);
         const bool canvasChanged = paletteChanged
                 || previousGuideId.isNotEmpty()
                 || previousProbeId.isNotEmpty()
@@ -432,15 +438,26 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
     const GraphEdgeIndex& edgeIndex = queries.presentationFacts().edgeIndex();
     const Node* inlinePan = findInlinePanAt(graph, viewport, edgeIndex, position);
     const Node* outputFader = findOutputFaderAt(graph, viewport, edgeIndex, position);
-    MouseCursor cursor = MouseCursor::NormalCursor;
-    if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
-        cursor = MouseCursor::UpDownResizeCursor;
-    } else if (outputFader != nullptr) {
-        cursor = MouseCursor::UpDownResizeCursor;
+    const bool adjustsInlinePan = inlinePan != nullptr
+            && inlinePan->kind == NodeKind::SpectralLayer;
+    const bool adjustsOutputGain = outputFader != nullptr;
+    if (adjustsOutputGain) {
         const float gain = NodeParameterMap(*outputFader).floatValue("gain", 0.5f);
         resolvedHoverText = "Master gain: " + OutputMeterPresentation::gainLabel(gain);
     }
-    setMouseCursor(cursor);
+    switch (NodeCanvasCursorPolicy::cursorFor(
+            adjustsInlinePan || adjustsOutputGain,
+            modifiers)) {
+        case NodeCanvasCursorKind::VerticalAdjust:
+            setMouseCursor(MouseCursor::UpDownResizeCursor);
+            break;
+        case NodeCanvasCursorKind::AddToSelection:
+            setMouseCursor(addToSelectionCursor);
+            break;
+        case NodeCanvasCursorKind::Normal:
+            setMouseCursor(MouseCursor::NormalCursor);
+            break;
+    }
     performanceMetrics.recordOperation(
             CanvasPerformanceMetrics::Operation::HoverResolution,
             performanceMetrics.timestamp() - startedAt);
@@ -452,6 +469,12 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
     const HoverRepaint repaint = hoverRepaintFor(canvasChanged, statusChanged);
     performanceMetrics.recordHoverState(repaint != HoverRepaint::None);
     return repaint;
+}
+
+void NodeCanvas::modifierKeysChanged(const ModifierKeys& modifiers) {
+    if (pointerInsideCanvas) {
+        requestHoverRepaint(updateHoverAt(lastMousePosition, modifiers));
+    }
 }
 
 NodeCanvas::HoverRepaint NodeCanvas::hoverRepaintFor(
@@ -1103,7 +1126,9 @@ void NodeCanvas::timerCallback() {
     if (getLocalBounds().toFloat().contains(mouse)
             && (mouse != lastMousePosition || previousPaletteSectionIndex != palette.activeSection())) {
         const bool paletteChanged = previousPaletteSectionIndex != palette.activeSection();
-        HoverRepaint repaint = updateHoverAt(mouse);
+        HoverRepaint repaint = updateHoverAt(
+                mouse,
+                ModifierKeys::getCurrentModifiersRealtime());
         if (paletteChanged) {
             repaint = HoverRepaint::Canvas;
         }
