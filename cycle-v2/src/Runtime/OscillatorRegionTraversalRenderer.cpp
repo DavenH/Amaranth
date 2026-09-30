@@ -15,6 +15,7 @@ void OscillatorRegionTraversalRenderer::prepare(
             ? CycleDsp::UnisonVoiceLayout {}
             : context.lanes;
     pitchEnvelopeUnitValues = context.pitchEnvelopeUnitValues;
+    pitchEnvelopeUnitValuesByLane = context.pitchEnvelopeUnitValuesByLane;
     workspace.resize((int) (3 * maximumRowCount));
 }
 
@@ -54,14 +55,14 @@ bool OscillatorRegionTraversalRenderer::render(
                 (int) grid.rows);
         destination.copyTo(source);
         source.add(-source.mean()).mul(0.5f);
-        const double pitchSemitones = CycleDsp::UnisonCore::pitchSemitonesForUnitValue(
-                pitchUnitValue(column, grid.columns));
-        const double pitchFrequencyOffset = CycleDsp::UnisonCore::frequencyForMidiPitch(
-                (double) midiNote + pitchSemitones) - baseFrequency;
         for (int laneIndex = 0; laneIndex < layout.order; ++laneIndex) {
             const auto& lane = layout[laneIndex];
             phases[(size_t) laneIndex] = (float) (
                     cumulativePhases[(size_t) laneIndex] + lane.phaseCycles);
+            const double pitchSemitones = CycleDsp::UnisonCore::pitchSemitonesForUnitValue(
+                    pitchUnitValue(laneIndex, column, grid.columns));
+            const double pitchFrequencyOffset = CycleDsp::UnisonCore::frequencyForMidiPitch(
+                    (double) midiNote + pitchSemitones) - baseFrequency;
             const double unisonFrequencyOffset = CycleDsp::UnisonCore::frequencyForMidiNote(
                     midiNote,
                     lane.detuneCents) - baseFrequency;
@@ -85,19 +86,24 @@ bool OscillatorRegionTraversalRenderer::render(
 }
 
 float OscillatorRegionTraversalRenderer::pitchUnitValue(
+        int laneIndex,
         size_t column,
         size_t columnCount) const {
-    if (pitchEnvelopeUnitValues.empty()) {
+    const auto& values = laneIndex >= 0
+                    && laneIndex < (int) pitchEnvelopeUnitValuesByLane.size()
+            ? pitchEnvelopeUnitValuesByLane[(size_t) laneIndex]
+            : pitchEnvelopeUnitValues;
+    if (values.empty()) {
         return 0.5f;
     }
-    if (columnCount <= 1 || pitchEnvelopeUnitValues.size() == 1) {
-        return pitchEnvelopeUnitValues.front();
+    if (columnCount <= 1 || values.size() == 1) {
+        return values.front();
     }
 
     const size_t index = std::min(
-            pitchEnvelopeUnitValues.size() - 1,
-            column * pitchEnvelopeUnitValues.size() / columnCount);
-    return pitchEnvelopeUnitValues[index];
+            values.size() - 1,
+            column * values.size() / columnCount);
+    return values[index];
 }
 
 }

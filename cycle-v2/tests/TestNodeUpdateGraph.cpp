@@ -119,6 +119,18 @@ TEST_CASE("Semantic edit gate accepts zero as an initial effective state",
     REQUIRE_FALSE(repeated.has_value());
 }
 
+TEST_CASE("Invalidating a semantic source admits its current state again",
+        "[cycle-v2][runtime][causal]") {
+    SemanticEditGate gate;
+
+    REQUIRE(gate.accept("graph:reverb", 42, EditPhase::Commit).has_value());
+    REQUIRE_FALSE(gate.accept("graph:reverb", 42, EditPhase::Commit).has_value());
+
+    gate.invalidateSource("graph:reverb");
+
+    REQUIRE(gate.accept("graph:reverb", 42, EditPhase::Commit).has_value());
+}
+
 TEST_CASE("Standalone commits do not leak their gesture into later movement",
         "[cycle-v2][runtime][causal]") {
     SemanticEditGate gate;
@@ -161,6 +173,28 @@ TEST_CASE("Commit reuses an already current live product", "[cycle-v2][runtime][
     REQUIRE(executions == 4);
     REQUIRE(graph.trace().count(
             21, "join", UpdateProduct::PreviewTraversal, UpdateTracePhase::AlreadyCurrent) == 1);
+}
+
+TEST_CASE("Invalidating a local preview reruns only its durable preview product",
+        "[cycle-v2][runtime][causal]") {
+    NodeUpdateGraph graph;
+    const auto plan = causalDiamondPlan();
+    int executions {};
+    const ProductInvalidation invalidation {
+        "root", "graph:root", UpdateProduct::PreviewTraversal, 91,
+        { { "root", "state" } }, true
+    };
+    const auto execute = [&](const auto&) {
+        ++executions;
+        return true;
+    };
+
+    graph.execute(plan, { { 40, 10, EditPhase::Commit }, { invalidation }, {} }, execute);
+    const int initialExecutions = executions;
+    graph.invalidateProduct(plan, "root", UpdateProduct::PreviewTraversal);
+    graph.execute(plan, { { 41, 11, EditPhase::Commit }, { invalidation }, {} }, execute);
+
+    REQUIRE(executions == initialExecutions + 1);
 }
 
 TEST_CASE("A duplicate product execution for one edit violates the invariant",

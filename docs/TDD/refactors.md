@@ -574,6 +574,50 @@ below panel construction. Do not weaken `SingletonRepo` lookup or add nullable
 production behavior for this test. This failure is unrelated to the Voice
 Context/Envelope parity slice; its focused runtime Envelope tests pass.
 
+## Cycle V2 Spy Detail Routing Size Review
+
+Status: reviewed 2026-09-30.
+
+The `out` Spy expansion change grows `NodeCanvas.cpp` from 2,686 to 2,698
+lines. The added code remains cohesive cross-editor orchestration: it requests
+the authoritative full-resolution capture, chooses the output Spy's current
+time/spectrum representation, closes the node editor, and announces overlay
+occlusion. Pointer gesture policy stays in
+`WorkspaceDockInteractionController`; output capture stays in
+`PresentationPreviewRenderer`; rendering stays in `SignalProbeDetailView`.
+No Spy interaction, DSP, or drawing policy was added to `NodeCanvas`.
+
+The stable deletion target remains the broader editor-overlay coordination
+extraction tracked in the Cycle V2 architecture-quality work; this slice does
+not introduce a second decision site or a new adapter.
+
+## Cycle V2 Preset Sidebar Occlusion Size Review
+
+Status: reviewed 2026-09-30.
+
+The preset-sidebar occlusion fix grows `NodeCanvas.cpp` from 2,698 to 2,710
+lines. `NodeCanvas` retains only child-component lifecycle: it supplies the
+current expanded-overlay and sidebar bounds, applies visibility, and suppresses
+automation hit targets while the child is hidden. `WorkspaceDock` owns the
+single intersection policy; `NodeCanvasEditorCoordinator` remains authoritative
+for expanded-editor geometry, and `InlinePresetBrowser` remains authoritative
+for preset content and interaction.
+
+This does not duplicate overlay eligibility, editor geometry, or sidebar
+interaction policy. The stable deletion target remains the broader
+editor-overlay coordination extraction tracked in the Cycle V2 architecture
+quality work.
+
+## Cycle V2 Spy Detail And Preview Resource Lifetime Review
+
+Status: reviewed 2026-09-30.
+
+Removing the expanded Spy header and replacing its close glyph with symmetric
+double-click dismissal grows `NodeCanvas.cpp` from 2,710 to 2,713 lines. The
+canvas still owns only top-level pointer routing and overlay lifecycle;
+`SignalProbeDetailView` owns the plot geometry and dismissal classification.
+The automation inspector shrinks by removing the retired close target.
+
 ## Envelope Morph State Ownership
 
 Status: closed 2026-09-17.
@@ -582,3 +626,21 @@ The Envelope editor adapter now reads Red/Blue from node parameters, and
 `EnvelopeNodeModel` no longer caches them. Morph-only `CurveNodeModelState`
 revisions share immutable Envelope geometry and carry the authored scalar
 values. The existing serialized schema and one-command undo behavior remain.
+
+## Cycle V2 Canvas Selection Cursor Size Review
+
+Status: reviewed 2026-09-30.
+
+The Shift selection-cursor slice grows `NodeCanvas.cpp` from 2,713 to 2,738
+lines and `NodeCanvas.h` from 343 to 347. `NodeCanvas` retains hover orchestration:
+it supplies hit-test facts,
+modifier state, and the resulting cursor to JUCE. The reusable decision is in
+the small `NodeCanvasCursorPolicy`, while `MiscGraphics` remains the single
+owner of the Cycle 1 cursor bitmap coordinates and hotspot. The mature mesh
+editor and the canvas now construct the add-to-selection cursor through that
+same factory; no cursor artwork or selection semantics are copied.
+
+The stable deletion target is the broader canvas pointer/hover coordination
+extraction: modifier refresh and cursor application can move with hover routing
+when `NodeCanvas` no longer owns top-level pointer dispatch. This slice does not
+add graph, selection mutation, or rendering policy to the canvas.

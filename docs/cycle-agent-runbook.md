@@ -41,8 +41,11 @@ scripts/run_cycle_agent.sh \
 
 Run GUI automation fixtures sequentially. The wrapper launches Cycle through
 LaunchServices and writes one report/log pair per app instance; concurrent runs
-can race over the foreground app process and leave one wrapper waiting for a
-missing report.
+can race over the app process and leave one wrapper waiting for a missing
+report. Semantic file/socket automation does not take foreground focus by
+default. Set `CYCLE_FOCUS_ON_LAUNCH=1` only when an interactive investigation
+needs the app raised; OS screenshot capture and native-input smoke tests focus
+the app explicitly when required.
 
 Inspect artifacts in this order:
 

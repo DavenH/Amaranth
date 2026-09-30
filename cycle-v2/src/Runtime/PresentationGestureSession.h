@@ -53,6 +53,7 @@ public:
             EditPhase phase);
     EditIdentity commit(const String& sourceStreamId);
     void cancel(const String& sourceStreamId);
+    void invalidateSource(const String& sourceStreamId);
     String activeStreamOr(const String& fallback) const;
 
 private:

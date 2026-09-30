@@ -41,7 +41,7 @@ NodeCanvasEditorCoordinator::NodeCanvasEditorCoordinator(
     ,   resources(commandsToUse)
     ,   renderer(resources)
     ,   editorHost(owner, commandsToUse, presentation, editorResources) {
-    resources.setGraph(&document.graph());
+    resources.setDurableGraph(&document.graph());
 }
 
 NodeCanvasEditorCoordinator::~NodeCanvasEditorCoordinator() {

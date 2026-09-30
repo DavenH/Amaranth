@@ -303,6 +303,10 @@ void Panel2D::highlightCurrentIntercept()
         point.y = icpts[icptIdx].y;
     }
 
+    drawVertexHighlight(point);
+}
+
+void Panel2D::drawVertexHighlight(const Vertex2& point) {
     PanelRenderer* renderer = getRenderer(this);
     jassert(renderer != nullptr);
     renderer->setCurrentColour(1.0f, 0.8f, 0.0f);

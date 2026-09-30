@@ -475,14 +475,13 @@ void SignalProbeRail::paintRail(
         } else {
             preview = facts.probePreviewFor(snapshot, probe.id);
         }
-        const bool selected = probeId == state.selectedProbeId;
         const bool hovered = probeId == state.hoveredProbeId;
         const bool focused = focus.target == WorkspaceDockFocusTarget::SpyTile
                 && focus.itemId == probeId;
         WorkspaceDock::paintTileChrome(
                 graphics,
                 tile,
-                selected,
+                false,
                 hovered,
                 focused);
 

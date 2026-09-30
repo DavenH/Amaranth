@@ -442,6 +442,11 @@ int InlinePresetBrowser::visiblePresetCount() const {
     return list->count();
 }
 
+juce::String InlinePresetBrowser::deleteConfirmationMessage(
+        const juce::String& presetName) {
+    return "\"" + presetName + "\" will be removed from the preset library.";
+}
+
 std::vector<std::pair<juce::String, juce::Rectangle<float>>>
 InlinePresetBrowser::pointerTargetsForAutomation() const {
     std::vector<std::pair<juce::String, juce::Rectangle<float>>> targets {
@@ -625,10 +630,10 @@ void InlinePresetBrowser::requestDeleteSelected() {
     juce::AlertWindow::showOkCancelBox(
             juce::MessageBoxIconType::WarningIcon,
             "Move preset to Trash?",
-            "“" + name + "” will be removed from the preset library and moved to Trash.",
+            deleteConfirmationMessage(name),
             "Move to Trash",
             "Cancel",
-            this,
+            getTopLevelComponent(),
             juce::ModalCallbackFunction::create([
                     completion = std::move(completion)](int result) mutable {
                 completion(result != 0);

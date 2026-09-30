@@ -32,7 +32,11 @@ public:
 
     static size_t resolutionForMidiNote(int midiNote, double sampleRate = 44100.0);
     static Rectangle<float> boundsFor(Rectangle<float> availableContent);
-    static Rectangle<float> closeBounds(Rectangle<float> detailBounds);
+    static Rectangle<float> plotBounds(Rectangle<float> detailBounds);
+    static bool dismissesOnClick(
+            Rectangle<float> detailBounds,
+            Point<float> position,
+            int clickCount);
 
     void paint(
             Graphics& graphics,

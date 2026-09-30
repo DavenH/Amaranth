@@ -114,6 +114,26 @@ TEST_CASE("Node canvas authoring preserves graph and layout semantics",
     REQUIRE(document.graph().findNode(added.nodeId) == nullptr);
 }
 
+TEST_CASE("Guide deletion refreshes authoring state and is undoable",
+        "[cycle-v2][canvas][authoring][guide][undo]") {
+    NodeGraph graph;
+    REQUIRE(graph.addGuideCurve({ "guide1", "G1", "Guide 1" }));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    const auto removed = authoring.removeGuideCurve("guide1");
+    REQUIRE(removed.succeeded);
+    REQUIRE(removed.graphChanged);
+    REQUIRE(document.graph().findGuideCurve("guide1") == nullptr);
+    REQUIRE(document.canUndo());
+
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().findGuideCurve("guide1") != nullptr);
+}
+
 TEST_CASE("Node canvas authoring keeps a toggled selection and bulk move in one undo",
         "[cycle-v2][canvas][authoring][selection]") {
     GraphNodeFactory factory;

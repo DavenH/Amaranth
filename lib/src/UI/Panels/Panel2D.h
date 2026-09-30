@@ -36,6 +36,7 @@ public:
 
 protected:
     float curveLineWidth() const;
+    void drawVertexHighlight(const Vertex2& point);
 
     bool curveIsBipolar, cyclicLines, haveVertZoom;
 

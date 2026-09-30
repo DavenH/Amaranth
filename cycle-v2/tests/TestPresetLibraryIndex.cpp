@@ -58,3 +58,81 @@ TEST_CASE("Preset library publishes only the newest coalesced search",
 
     REQUIRE(directory.deleteRecursively());
 }
+
+TEST_CASE("Preset library prefers the factory copy of duplicate preset names",
+        "[cycle-v2][preset][browser][deduplication]") {
+    ScopedJuceInitialiser_GUI juce;
+    const File root = File::getSpecialLocation(File::tempDirectory)
+            .getNonexistentChildFile("cycle-v2-preset-deduplication", {}, false);
+    const File factory = root.getChildFile("factory");
+    const File user = root.getChildFile("user");
+    REQUIRE(factory.createDirectory().wasOk());
+    REQUIRE(user.createDirectory().wasOk());
+    REQUIRE(factory.getChildFile("Lead.cyclegraph").replaceWithText("{}"));
+    REQUIRE(user.getChildFile("lead.cyclegraph").replaceWithText("{}"));
+
+    std::vector<PresetLibraryRecord> published;
+    PresetLibraryIndex index({ factory, user }, [&](const auto& records, const auto&) {
+        published = records;
+    });
+    index.start();
+    for (int attempt = 0; attempt < 20
+            && (published.empty() || !published.front().metadataReady); ++attempt) {
+        MessageManager::getInstance()->runDispatchLoopUntil(25);
+    }
+
+    REQUIRE(published.size() == 1);
+    REQUIRE(published.front().file.getParentDirectory() == factory);
+    REQUIRE(root.deleteRecursively());
+}
+
+TEST_CASE("Preset library retains differently authored presets with the same name",
+        "[cycle-v2][preset][browser][deduplication]") {
+    ScopedJuceInitialiser_GUI juce;
+    const File root = File::getSpecialLocation(File::tempDirectory)
+            .getNonexistentChildFile("cycle-v2-preset-name-collision", {}, false);
+    const File factory = root.getChildFile("factory");
+    const File user = root.getChildFile("user");
+    REQUIRE(factory.createDirectory().wasOk());
+    REQUIRE(user.createDirectory().wasOk());
+    REQUIRE(factory.getChildFile("Lead.cyclegraph").replaceWithText("{}"));
+    REQUIRE(user.getChildFile("lead.cyclegraph").replaceWithText("{\"user\":true}"));
+
+    std::vector<PresetLibraryRecord> published;
+    PresetLibraryIndex index({ factory, user }, [&](const auto& records, const auto&) {
+        published = records;
+    });
+    index.start();
+    for (int attempt = 0; attempt < 20
+            && (published.size() < 2 || !published.front().metadataReady); ++attempt) {
+        MessageManager::getInstance()->runDispatchLoopUntil(25);
+    }
+
+    REQUIRE(published.size() == 2);
+    REQUIRE(root.deleteRecursively());
+}
+
+TEST_CASE("Preset library does not rescan a nested history directory",
+        "[cycle-v2][preset][browser][directories]") {
+    ScopedJuceInitialiser_GUI juce;
+    const File root = File::getSpecialLocation(File::tempDirectory)
+            .getNonexistentChildFile("cycle-v2-preset-nested-history", {}, false);
+    const File old = root.getChildFile("old");
+    REQUIRE(old.createDirectory().wasOk());
+    REQUIRE(root.getChildFile("Current.cyclegraph").replaceWithText("{}"));
+    REQUIRE(old.getChildFile("Archived.cyclegraph").replaceWithText("{}"));
+
+    std::vector<PresetLibraryRecord> published;
+    PresetLibraryIndex index({ root, old }, [&](const auto& records, const auto&) {
+        published = records;
+    });
+    index.start();
+    for (int attempt = 0; attempt < 20
+            && (published.empty() || !published.front().metadataReady); ++attempt) {
+        MessageManager::getInstance()->runDispatchLoopUntil(25);
+    }
+
+    REQUIRE(published.size() == 1);
+    REQUIRE(published.front().name == "Current");
+    REQUIRE(root.deleteRecursively());
+}

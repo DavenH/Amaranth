@@ -42,6 +42,7 @@ public:
     void setActiveTab(WorkspaceSidebarTab tab);
     WorkspaceSidebarTab activeTab() const { return tab; }
     int visiblePresetCount() const;
+    static juce::String deleteConfirmationMessage(const juce::String& presetName);
     std::vector<std::pair<juce::String, juce::Rectangle<float>>>
             pointerTargetsForAutomation() const;
 

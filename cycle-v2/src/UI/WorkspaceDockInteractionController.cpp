@@ -258,19 +258,42 @@ bool WorkspaceDockInteractionController::handleSpyTileDown(
     const Rectangle<float> spies = spyWorkspace(workspace);
     const String probeId = probeRail.probeAt(event.position, spies, graph, probeState);
     if (probeId.isNotEmpty()) {
-        keyboardFocus = { WorkspaceDockFocusTarget::SpyTile, probeId };
-        probeState.selectedProbeId = probeId;
-        if (probeId == DefaultOutputProbeResolver::probeId) {
-            probeState.defaultOutputView = probeState.defaultOutputView == PresetPreviewView::Time
-                    ? PresetPreviewView::Spectrum
-                    : PresetPreviewView::Time;
-        } else if (event.getNumberOfClicks() >= 2) {
-            callbacks.openProbeDetail(probeId);
+        keyboardFocus = {};
+        probeState.selectedProbeId = {};
+        switch (spyTilePointerAction(
+                event.mods.isPopupMenu(),
+                event.getNumberOfClicks(),
+                probeId == DefaultOutputProbeResolver::probeId)) {
+            case SpyTilePointerAction::ToggleDefaultOutputView:
+                probeState.defaultOutputView = probeState.defaultOutputView
+                                == PresetPreviewView::Time
+                        ? PresetPreviewView::Spectrum
+                        : PresetPreviewView::Time;
+                break;
+            case SpyTilePointerAction::OpenDetail:
+                callbacks.openProbeDetail(probeId);
+                break;
+            case SpyTilePointerAction::None:
+                break;
         }
         callbacks.repaint();
         return true;
     }
     return false;
+}
+
+SpyTilePointerAction WorkspaceDockInteractionController::spyTilePointerAction(
+        bool popupClick,
+        int clickCount,
+        bool defaultOutput) {
+    if (popupClick) {
+        return defaultOutput
+                ? SpyTilePointerAction::ToggleDefaultOutputView
+                : SpyTilePointerAction::None;
+    }
+    return clickCount >= 2
+            ? SpyTilePointerAction::OpenDetail
+            : SpyTilePointerAction::None;
 }
 
 void WorkspaceDockInteractionController::setDockExpandedFromKeyboard(bool expanded) {
@@ -344,12 +367,8 @@ void WorkspaceDockInteractionController::setProbeRefreshMode(ProbeRefreshMode mo
 void WorkspaceDockInteractionController::selectSpyFromKeyboard(
         const String& probeId,
         bool openDetail) {
-    probeState.selectedProbeId = probeId;
-    if (openDetail && probeId == DefaultOutputProbeResolver::probeId) {
-        probeState.defaultOutputView = probeState.defaultOutputView == PresetPreviewView::Time
-                ? PresetPreviewView::Spectrum
-                : PresetPreviewView::Time;
-    } else if (openDetail) {
+    probeState.selectedProbeId = {};
+    if (openDetail) {
         callbacks.openProbeDetail(probeId);
     }
 }

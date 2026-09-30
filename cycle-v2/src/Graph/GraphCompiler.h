@@ -127,6 +127,7 @@ struct CompiledVoiceContext {
     std::shared_ptr<const INodeDspConfiguration> pitchEnvelope;
     String pitchEnvelopeNodeId;
     std::vector<float> pitchEnvelopeUnitValues;
+    std::vector<std::vector<float>> pitchEnvelopeUnitValuesByLane;
     std::shared_ptr<const INodeDspConfiguration> unison;
     String defaultScratchNodeId;
     CycleDsp::UnisonVoiceLayout lanes;

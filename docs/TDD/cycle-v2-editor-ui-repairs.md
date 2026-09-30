@@ -84,8 +84,8 @@ Envelope geometry remains shared across morph-only model revisions. The
 revision carries Red/Blue values, and its serializer writes them into the
 existing schema. The Envelope geometry model no longer caches those values;
 its editor adapter reads node parameters. The graph keeps a morph-node identity
-index so a preview gesture does not scan unrelated nodes. Loading a preset
-remains clean; opening a morph editor or changing the preview note/CC1 performs
+index so a preview gesture does not scan unrelated nodes. Loading a preset and
+opening a morph editor remain clean; changing the preview note or CC1 performs
 the durable overwrite.
 
 Diff review: `CurveNodeModels.cpp` remains over 800 lines because it already

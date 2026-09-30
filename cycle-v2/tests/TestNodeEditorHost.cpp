@@ -59,6 +59,33 @@ public:
     ~CurveTableScope() { Curve::deleteTable(); }
 };
 
+MouseEvent curvePanelMouseEvent(
+        Component& component,
+        Point<float> position,
+        ModifierKeys modifiers,
+        Point<float> mouseDownPosition,
+        bool dragged,
+        int clickCount = 1) {
+    const Time now = Time::getCurrentTime();
+    return {
+            Desktop::getInstance().getMainMouseSource(),
+            position,
+            modifiers,
+            1.f,
+            0.f,
+            0.f,
+            0.f,
+            0.f,
+            &component,
+            &component,
+            now,
+            mouseDownPosition,
+            now,
+            clickCount,
+            dragged
+    };
+}
+
 void addUnrelatedInteractionState(NodeGraph& graph) {
     GraphNodeFactory factory;
     for (int index = 0; index < 128; ++index) {
@@ -510,7 +537,7 @@ TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
 
     const auto render = [&](const NodePreviewResult* runtime) {
         NodePreviewResources resources(editorCommands);
-        resources.setGraph(&document.graph());
+        resources.setDurableGraph(&document.graph());
         NodePreviewRenderer renderer(resources);
         Image image(Image::ARGB, 120, 96, true);
         Graphics graphics(image);
@@ -542,6 +569,48 @@ TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
     REQUIRE(checksum(withRuntime) == checksum(authoritative));
 }
 
+TEST_CASE("Transient preview refresh retains the durable graph for Trimesh resources",
+        "[cycle-v2][canvas][preview][trimesh][lifetime][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component canvas;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GuideCurveResource guide;
+    guide.id = "guide1";
+    REQUIRE(graph.addGuideCurve(std::move(guide)));
+    REQUIRE(graph.assignGuideCurve({
+            "guide1",
+            "mesh",
+            { 0, GuideCurveField::Time }
+    }));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher graphCommands(document);
+    NullPresentation presentation;
+    NullResources editorResources;
+    NodeEditorCommandService editorCommands(
+            canvas,
+            document,
+            graphCommands,
+            presentation,
+            editorResources);
+    NodePreviewResources resources(editorCommands);
+    resources.setDurableGraph(&document.graph());
+
+    const Node& node = *document.graph().findNode("mesh");
+    const String durableKey = resources.trimeshWidget(node).guideContextKey();
+    NodeGraph transient = document.graph();
+    REQUIRE(GuideGraphEditor().renameGuideCurve(
+            transient, "guide1", "Transient guide").succeeded());
+    GraphChangeSet transientChange;
+    transientChange.guidesChanged = true;
+    resources.refreshGraph(transient, transientChange);
+
+    REQUIRE(resources.trimeshWidget(node).guideContextKey() == durableKey);
+}
+
 TEST_CASE("Reverb heatmap palette follows its runtime spectral domain",
         "[cycle-v2][canvas][preview][reverb][regression]") {
     ScopedJuceInitialiser_GUI juce;
@@ -559,7 +628,7 @@ TEST_CASE("Reverb heatmap palette follows its runtime spectral domain",
             presentation,
             editorResources);
     NodePreviewResources resources(editorCommands);
-    resources.setGraph(&document.graph());
+    resources.setDurableGraph(&document.graph());
     NodePreviewRenderer renderer(resources);
     const Node& node = *document.graph().findNode("reverb");
     NodePreviewResult runtime {
@@ -632,7 +701,7 @@ TEST_CASE("First compact Envelope paint synchronizes its durable curve model",
             presentation,
             editorResources);
     NodePreviewResources resources(editorCommands);
-    resources.setGraph(&document.graph());
+    resources.setDurableGraph(&document.graph());
     NodePreviewRenderer renderer(resources);
     const Node& node = *document.graph().findNode("env");
 
@@ -751,11 +820,20 @@ public:
     std::optional<NodeAudioResourceSummary> audioResourceSummary() const override {
         return resource;
     }
+    bool showEnvelopeGuideAttachmentMenu(
+            const String& field,
+            Rectangle<int> targetScreenArea) override {
+        guideMenuField = field;
+        guideMenuTarget = targetScreenArea;
+        return true;
+    }
 
     StringArray events;
     String status;
     String textParameterId;
     String textValue;
+    String guideMenuField;
+    Rectangle<int> guideMenuTarget;
     NodeAudioResourceEdit appliedResource;
     std::optional<NodeAudioResourceSummary> resource;
     bool resourceRemovalSucceeds { true };
@@ -2415,6 +2493,166 @@ TEST_CASE("Guide editor presents heatmap state and clears through its semantic a
     REQUIRE_FALSE((bool) widget.automationState().getProperty("heatmapActive", {}));
 }
 
+TEST_CASE("Waveshaper point drag retains the hovered vertex identity",
+        "[cycle-v2][node-editor-host][waveshaper][interaction][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Node node = GraphNodeFactory().createNode(NodeKind::Waveshaper, "waveshaper", {});
+    CurveEditorWidget widget(NodeKind::Waveshaper);
+    Component* panel = widget.prepareExpandedPanelComponent(
+            node, Rectangle<float>(0.f, 0.f, 436.f, 436.f));
+    REQUIRE(panel != nullptr);
+    panel->setBounds(0, 0, 436, 436);
+    panel->addToDesktop(ComponentPeer::windowIsTemporary);
+
+    const auto pointFor = [&](float x, float y) {
+        const var zoom = widget.automationState().getProperty("zoom", {});
+        const float zoomX = zoom.getProperty("x", {});
+        const float zoomY = zoom.getProperty("y", {});
+        const float zoomWidth = zoom.getProperty("w", {});
+        const float zoomHeight = zoom.getProperty("h", {});
+        return Point<float>(
+                panel->getWidth() * (x - zoomX) / zoomWidth,
+                panel->getHeight() * (1.f - (y - zoomY) / zoomHeight));
+    };
+
+    const Point<float> insertion = pointFor(0.5f, 0.32f);
+    panel->mouseDoubleClick(curvePanelMouseEvent(
+            *panel,
+            insertion,
+            ModifierKeys::leftButtonModifier,
+            insertion,
+            false,
+            2));
+    NodeModelStatePtr insertedPublication = widget.prepareModelPublication(
+            node.model->revision());
+    REQUIRE(insertedPublication != nullptr);
+    const auto insertedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            insertedPublication);
+    REQUIRE(insertedModel != nullptr);
+    REQUIRE(insertedModel->flatCurve() != nullptr);
+    REQUIRE(insertedModel->flatCurve()->selectedVertexId().has_value());
+    const CurveVertexId insertedId = *insertedModel->flatCurve()->selectedVertexId();
+    const auto insertedVertices = insertedModel->flatCurve()->getVertices();
+    const auto inserted = std::find_if(
+            insertedVertices.begin(),
+            insertedVertices.end(),
+            [&](const auto& vertex) { return vertex.id == insertedId; });
+    REQUIRE(inserted != insertedVertices.end());
+    const FlatCurveVertex insertedVertex = *inserted;
+
+    node.model = std::move(insertedPublication);
+    auto* editorState = new DynamicObject();
+    editorState->setProperty("selectedVertexId", (int64) insertedId);
+    node.editorState = var(editorState);
+    widget.syncFromNode(node);
+
+    const Point<float> source = pointFor(insertedVertex.x, insertedVertex.y);
+    panel->mouseMove(curvePanelMouseEvent(*panel, source, {}, source, false));
+    const var hovered = widget.automationState().getProperty("currentVertex", {});
+    REQUIRE(static_cast<double>(hovered.getProperty("x", {}))
+            == Catch::Approx(insertedVertex.x));
+    REQUIRE(static_cast<double>(hovered.getProperty("y", {}))
+            == Catch::Approx(insertedVertex.y));
+
+    panel->mouseDown(curvePanelMouseEvent(
+            *panel,
+            source,
+            ModifierKeys::leftButtonModifier,
+            source,
+            false));
+    const Point<float> destination = pointFor(0.66f, 0.48f);
+    for (int step = 1; step <= 6; ++step) {
+        const float amount = (float) step / 6.f;
+        const Point<float> position = source + (destination - source) * amount;
+        panel->mouseDrag(curvePanelMouseEvent(
+                *panel,
+                position,
+                ModifierKeys::leftButtonModifier,
+                source,
+                true));
+    }
+    panel->mouseUp(curvePanelMouseEvent(*panel, destination, {}, source, true));
+
+    const auto movedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            widget.prepareModelPublication(node.model->revision()));
+    REQUIRE(movedModel != nullptr);
+    REQUIRE(movedModel->flatCurve() != nullptr);
+    const auto movedVertices = movedModel->flatCurve()->getVertices();
+    const auto moved = std::find_if(
+            movedVertices.begin(),
+            movedVertices.end(),
+            [&](const auto& vertex) { return vertex.id == insertedId; });
+    REQUIRE(moved != movedVertices.end());
+    REQUIRE(std::abs(moved->x - insertedVertex.x) > 0.02f);
+    for (const auto& before : insertedVertices) {
+        if (before.id == insertedId) {
+            continue;
+        }
+        const auto after = std::find_if(
+                movedVertices.begin(),
+                movedVertices.end(),
+                [&](const auto& vertex) { return vertex.id == before.id; });
+        REQUIRE(after != movedVertices.end());
+        REQUIRE(*after == before);
+    }
+}
+
+TEST_CASE("Flat curve editors highlight the closest vertex across the panel",
+        "[cycle-v2][node-editor-host][curve][hover][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+
+    const auto verifyHoverHighlight = [](NodeKind kind, const String& nodeId) {
+        Node node = GraphNodeFactory().createNode(kind, nodeId, {});
+        CurveEditorWidget widget(kind);
+        Component* panel = widget.prepareExpandedPanelComponent(
+                node, Rectangle<float>(0.f, 0.f, 436.f, 436.f));
+        REQUIRE(panel != nullptr);
+        panel->setBounds(0, 0, 436, 436);
+        panel->addToDesktop(ComponentPeer::windowIsTemporary);
+
+        const var zoom = widget.automationState().getProperty("zoom", {});
+        const float zoomX = zoom.getProperty("x", {});
+        const float zoomY = zoom.getProperty("y", {});
+        const float zoomWidth = zoom.getProperty("w", {});
+        const float zoomHeight = zoom.getProperty("h", {});
+        const auto panelPoint = [&](float x, float y) {
+            return Point<float>(
+                    panel->getWidth() * (x - zoomX) / zoomWidth,
+                    panel->getHeight() * (1.f - (y - zoomY) / zoomHeight));
+        };
+        const Point<float> vertexPosition = panelPoint(0.5f, 0.35f);
+
+        panel->mouseDoubleClick(curvePanelMouseEvent(
+                *panel,
+                vertexPosition,
+                ModifierKeys::leftButtonModifier,
+                vertexPosition,
+                false,
+                2));
+        const Point<float> distantPointer = panelPoint(0.5f, 0.85f);
+        panel->mouseMove(curvePanelMouseEvent(
+                *panel, distantPointer, {}, distantPointer, false));
+        const var hoverState = widget.automationState();
+        REQUIRE((bool) hoverState.getProperty(
+                "hoverHighlightVisible", false));
+        const var highlightedVertex = hoverState.getProperty("currentVertex", {});
+        const Point<float> highlightedPosition = panelPoint(
+                highlightedVertex.getProperty("x", {}),
+                highlightedVertex.getProperty("y", {}));
+        REQUIRE(highlightedPosition.getDistanceFrom(distantPointer) > 15.f);
+
+        panel->mouseExit(curvePanelMouseEvent(
+                *panel, distantPointer, {}, distantPointer, false));
+        REQUIRE_FALSE((bool) widget.automationState().getProperty(
+                "hoverHighlightVisible", true));
+    };
+
+    verifyHoverHighlight(NodeKind::Waveshaper, "waveshaper");
+    verifyHoverHighlight(NodeKind::ImpulseResponse, "impulse-response");
+}
+
 TEST_CASE("Selected flat curve state binds before its panel host exists",
           "[cycle-v2][node-editor-host][presets][selection]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
@@ -2697,6 +2935,22 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     selectedNode.editorState = var(selectedEditorState);
     editor->setNode(selectedNode);
     const var selectedState = editor->automationState();
+    const auto* guideTargetRails = selectedState.getProperty(
+            "vertexParameterRails", {}).getArray();
+    REQUIRE(guideTargetRails != nullptr);
+    REQUIRE_FALSE(guideTargetRails->isEmpty());
+    const auto guideBounds = rectangleProperty(
+            guideTargetRails->getFirst(), "guideBounds");
+    REQUIRE(guideBounds.getWidth() > 1.f);
+    editor->mouseDown(curvePanelMouseEvent(
+            *editor,
+            guideBounds.getCentre(),
+            ModifierKeys::leftButtonModifier,
+            guideBounds.getCentre(),
+            false));
+    REQUIRE(delegate.guideMenuField.isNotEmpty());
+    REQUIRE(delegate.guideMenuTarget
+            == editor->localAreaToGlobal(guideBounds.toNearestInt()));
     REQUIRE((bool) selectedState.getProperty("loopEnabled", {}));
     REQUIRE((bool) selectedState.getProperty("sustainEnabled", {}));
     REQUIRE(loopMarker->getTooltip().containsIgnoreCase("toggle selected vertex"));

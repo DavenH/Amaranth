@@ -130,6 +130,7 @@ public:
             EditPhase phase = EditPhase::Movement);
     EditIdentity commit(const String& sourceStreamId);
     void cancelGesture(const String& sourceStreamId);
+    void invalidateSource(const String& sourceStreamId);
 
     const UpdateAuditTrace& trace() const { return auditTrace; }
 
@@ -163,6 +164,10 @@ public:
             const GraphExecutionPlan& plan,
             const CausalUpdateRequest& request,
             const ProductBatchExecutor& executor);
+    void invalidateProduct(
+            const GraphExecutionPlan& plan,
+            const String& nodeId,
+            UpdateProduct product);
     void publish(
             const CausalUpdateRequest& request,
             const CausalUpdateResult& result);
