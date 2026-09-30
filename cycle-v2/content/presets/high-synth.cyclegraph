@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 475.20001, "y": 826.0 },
-            "parameters": { "octave": 1, "voiceLength": 0.267175573, "pitch": 0.0, "portamento": false, "oversampling": "2x", "controlInterval": "64" }
+            "parameters": {
+                "octave": 1,
+                "voiceLength": 0.267175573,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "2x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -30,7 +38,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 855.20001, "y": 886.0 },
+            "position": { "x": 1221.00366, "y": 727.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -232,7 +240,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1752.0, "y": 1084.0 },
+            "position": { "x": 1211.80371, "y": 1085.74255 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -336,8 +344,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6 ]
                 }
             }
@@ -541,8 +547,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ]
                 }
             }
@@ -551,7 +555,7 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2127.19995, "y": 886.0 },
+            "position": { "x": 1587.00366, "y": 887.74255 },
             "parameters": {}
         },
         {
@@ -625,7 +629,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 1633.19995, "y": 1424.0 },
-            "parameters": { "gain": 0.496183206 }
+            "parameters": { "gain": 0.63785 }
         },
         {
             "id": "globalInput",
@@ -638,7 +642,7 @@
             "id": "voiceOutput",
             "kind": "voiceOutput",
             "definitionVersion": 1,
-            "position": { "x": 2325.19995, "y": 886.0 },
+            "position": { "x": 1785.00366, "y": 887.74255 },
             "parameters": {}
         }
     ],
@@ -686,7 +690,18 @@
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "impulseResponse", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": [],
+    "probes": [
+        {
+            "id": "probe",
+            "sourceNodeId": "impulseResponse",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "equalizer",
+            "anchorDestPortId": "time",
+            "label": "Spy 1",
+            "tapPosition": 0.5,
+            "railOrder": 0
+        }
+    ],
     "presetPresentation": {
         "version": 1,
         "preview": {

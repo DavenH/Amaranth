@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <optional>
 #include <utility>
 #include "JuceHeader.h"
 #include "SingletonAccessor.h"
@@ -32,6 +33,7 @@ namespace AppSettings {
     ,   SpyShelfMinimized
     ,   GuideSpyDockExpanded
     ,   GuideSpyDockHeight
+    ,   TimeSurfaceStyle // Retired global key; time-surface choices are preset metadata.
 
     ,   numSettings
     };
@@ -50,6 +52,7 @@ public:
     void writeXML(XmlElement* element) const override;
     var writeJSON() const override;
     bool readJSON(const var& object) override;
+    void readMissingJSON() override;
     XmlElement* getMidiSettingsElement();
 
     void init() override;
@@ -66,7 +69,7 @@ public:
     [[nodiscard]] int getGlobalSettingValue(int setting) const { return globalSettingsMap.at(setting).value; }
     [[nodiscard]] int getDocumentSettingValue(int setting) const { return documentSettingsMap.at(setting).value; }
     void setPropertiesPath(const String& path) { this->propertiesPath = path; }
-    void addDocumentSetting(int setting, const String& key, int defaultValue);
+    void addDocumentSetting(int setting, const String& key, int defaultValue, bool resetWhenMissing = false);
 
 protected:
     class Setting {
@@ -76,6 +79,7 @@ protected:
 
         String key;
         int value;
+        std::optional<int> missingValue;
     };
 
     /* ----------------------------------------------------------------------------- */

@@ -7,6 +7,17 @@
 
 namespace CycleV2 {
 
+bool GraphCommandDispatcher::setTimeSurfaceStyle(const juce::String& styleId) {
+    if (hasTransientEdit() || document.presetPresentation.timeSurfaceStyle == styleId) {
+        return false;
+    }
+    // Presentation metadata follows setPresentation: dirty, but no DSP revision,
+    // graph snapshot, or graph undo entry.
+    document.presetPresentation.timeSurfaceStyle = styleId;
+    ++document.presentationRevision;
+    return true;
+}
+
 GraphEditResult GraphCommandDispatcher::addNode(NodeKind kind, juce::Point<float> position) {
     return apply([&](auto& graph) {
         return GraphEditor().addNode(graph, kind, position);

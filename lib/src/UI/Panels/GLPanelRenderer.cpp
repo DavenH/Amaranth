@@ -3,6 +3,7 @@
 #include "CommonGfx.h"
 #include "PanelRenderContext.h"
 #include "GLSurfaceCache.h"
+#include "GLScalarSurfaceRenderer.h"
 #include "Texture.h"
 
 using namespace gl;
@@ -10,8 +11,11 @@ using namespace gl;
 GLPanelRenderer::GLPanelRenderer(CommonGfx* gfx, GLSurfaceCache* surfaceCache) :
         gfx(gfx)
     ,   surfaceCache(surfaceCache)
+    ,   scalarSurfaceRenderer(std::make_unique<GLScalarSurfaceRenderer>())
 {
 }
+
+GLPanelRenderer::~GLPanelRenderer() = default;
 
 void GLPanelRenderer::beginPanelRender(const PanelRenderContext& context) {
     currentContext = &context;
@@ -32,6 +36,7 @@ void GLPanelRenderer::checkErrors() {
 
 void GLPanelRenderer::clearResources() {
     resourceCache.clear();
+    scalarSurfaceRenderer->clearResources();
 }
 
 void GLPanelRenderer::endPanelRender() {
@@ -52,6 +57,10 @@ void GLPanelRenderer::drawBackground(const juce::Rectangle<int>& bounds, bool fi
 
 void GLPanelRenderer::drawCachedTexture(Texture* texture, const juce::Rectangle<float>& bounds) {
     resourceCache.drawCachedTexture(gfx, texture, bounds);
+}
+
+bool GLPanelRenderer::drawScalarSurface(const ScalarSurfaceRenderData& data) {
+    return scalarSurfaceRenderer->draw(data);
 }
 
 void GLPanelRenderer::drawSurfaceColumn(Buffer<Int8u> colours, Buffer<float> vertices, int stride, int sizeY) {

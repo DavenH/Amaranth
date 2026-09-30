@@ -1,0 +1,20 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/organ.cyclegraph" },
+    { "command": "waitForIdle", "idleDelayMs": 250 },
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/filter-saw.cyclegraph" },
+    { "command": "waitForIdle", "idleDelayMs": 250 },
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/organ.cyclegraph" },
+    { "command": "waitForIdle", "idleDelayMs": 250 },
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/filter-saw.cyclegraph" },
+    { "command": "waitForIdle", "idleDelayMs": 250 },
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/organ.cyclegraph" },
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    { "command": "openMeshPopup", "nodeId": "magnitudeLayer1" },
+    { "command": "waitForIdle", "idleDelayMs": 700 },
+    { "command": "assertState", "path": "expandedNodeId", "equals": "magnitudeLayer1" },
+    { "command": "inspectOpenGLDiagnostics" },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

@@ -5,6 +5,7 @@
 
 #include <Array/Buffer.h>
 #include <Obj/Color.h>
+#include <UI/Panels/ScalarSurfaceMaterial.h>
 
 #include <JuceHeader.h>
 
@@ -26,6 +27,7 @@ struct TrimeshSurfaceStyle {
 
     juce::Image gradientImage() const;
     juce::Colour colourForValue(float value) const;
+    ScalarSurfaceMaterial surfaceMaterial() const;
 };
 
 struct TrimeshCurveStyle {

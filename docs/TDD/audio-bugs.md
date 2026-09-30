@@ -886,6 +886,12 @@ inline-browser suites passed 123 assertions in eight cases. No DSP or preset
 production path was changed, and the existing preset working-tree edits were
 left untouched.
 
+Update 2026-09-20: the scalar-surface material verification run completed with
+1,130 of 1,172 cases passing. After rebuilding the one changed profile test,
+the surface-material and Trimesh profile suites pass; the remaining failures
+are in the same documented missing/modified preset, offline spectral, and
+prepared-runtime groups. No audio or preset production behavior changed.
+
 ## P3: Broad preset-tag suite includes seven legacy parity failures
 
 On 2026-09-20, the broad Cycle V2 Catch2 filter `[cycle-v2][preset]` passed 20

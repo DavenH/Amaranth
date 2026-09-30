@@ -1,3 +1,5 @@
+#include <UI/Panels/TimeSurfaceStyles.h>
+
 #include "App/CycleV2Automation.h"
 
 #include "App/CycleV2AutomationAssertions.h"
@@ -262,6 +264,8 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return sendMidi(commandValue);
         case Command::RequestCanvasOpenGLFrame:
             return requestCanvasOpenGLFrame();
+        case Command::RecreateCanvasOpenGLContext:
+            return recreateCanvasOpenGLContext();
         case Command::ExportGraph:
             return exportGraph(commandValue);
         case Command::OpenGraph:
@@ -344,6 +348,7 @@ var CycleV2Automation::snapshotState() const {
     var state = workspace.exportAutomationState();
 
     if (auto* object = objectFor(state)) {
+        object->setProperty("timeSurfaceStyleId", TimeSurfaceStyles::id(workspace.timeSurfaceStyle()));
         object->setProperty("windowTitle", window.getName());
         object->setProperty("windowBounds", rectangleToVar(window.getBounds()));
         object->setProperty("workspaceBounds", rectangleToVar(workspace.getBounds()));
@@ -472,6 +477,10 @@ var CycleV2Automation::generatePresetPreview(const var& commandValue) {
 var CycleV2Automation::listMenuItems() const {
     Array<var> items;
     items.add(menuItemToVar("file.openGraph", "File", "Open Preset...", true));
+    for (const auto& entry : TimeSurfaceStyles::entries) {
+        items.add(menuItemToVar("view.surface." + String(entry.id),
+                "View > Time Surface Colour", entry.label, true));
+    }
     items.add(menuItemToVar(
             "file.saveGraph",
             "File",
@@ -499,6 +508,17 @@ var CycleV2Automation::invokeMenuItem(const var& commandValue) {
 
     if (id == "file.openGraph") {
         return openGraph(commandValue);
+    }
+    for (const auto& entry : TimeSurfaceStyles::entries) {
+        const bool legacyAlias = (id == "view.icyHot13" && entry.style == ScalarSurfaceTimeStyle::IcyHot13)
+                || (id == "view.icyHot14" && entry.style == ScalarSurfaceTimeStyle::IcyHot14);
+        if (id == "view.surface." + String(entry.id) || legacyAlias) {
+            workspace.setTimeSurfaceStyle(entry.style);
+            var data = makeObject();
+            objectFor(data)->setProperty("timeSurfaceStyle", (int) workspace.timeSurfaceStyle());
+            objectFor(data)->setProperty("timeSurfaceStyleId", TimeSurfaceStyles::id(workspace.timeSurfaceStyle()));
+            return okResult("invokeMenuItem", data);
+        }
     }
     if (id == "file.saveGraph" || id == "file.saveGraphAs") {
         return saveGraph(commandValue);
@@ -784,6 +804,11 @@ var CycleV2Automation::sendMidi(const var& commandValue) {
 var CycleV2Automation::requestCanvasOpenGLFrame() {
     workspace.requestCanvasOpenGLFrameForAutomation();
     return okResult("requestCanvasOpenGLFrame");
+}
+
+var CycleV2Automation::recreateCanvasOpenGLContext() {
+    workspace.recreateCanvasOpenGLContextForAutomation();
+    return okResult("recreateCanvasOpenGLContext");
 }
 
 var CycleV2Automation::screenshot(const var& commandValue) const {

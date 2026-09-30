@@ -1,0 +1,19 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/stengah.cyclegraph" },
+    { "command": "invokeMenuItem", "id": "view.icyHot13" },
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    { "command": "screenshot", "area": "canvas", "path": "/tmp/cycle-v2-icy-hot-13.png" },
+    { "command": "invokeMenuItem", "id": "view.icyHot14" },
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    { "command": "screenshot", "area": "canvas", "path": "/tmp/cycle-v2-icy-hot-14.png" },
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/organ.cyclegraph" },
+    { "command": "openMeshPopup", "nodeId": "timeLayer1" },
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    { "command": "inspectOpenGLDiagnostics" },
+    { "command": "recreateCanvasOpenGLContext" },
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    { "command": "inspectOpenGLDiagnostics" }
+  ],
+  "quit": true
+}

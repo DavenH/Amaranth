@@ -18,6 +18,7 @@ enum class CycleV2AutomationCommand {
     ResetAudioPerformance,
     SendMidi,
     RequestCanvasOpenGLFrame,
+    RecreateCanvasOpenGLContext,
     ExportGraph,
     OpenGraph,
     SaveGraph,

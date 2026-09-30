@@ -5,6 +5,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include <UI/Panels/TimeSurfaceStyles.h>
 
 #include "App/CycleV2Automation.h"
 #include "App/GraphDocumentReplacement.h"
@@ -53,7 +54,8 @@ public:
             CommandSaveGraph,
             CommandSaveGraphAs,
             CommandSpyRefreshOnRelease,
-            CommandSpyRefreshLive
+            CommandSpyRefreshLive,
+            TimeSurfaceFirst = 0x3100
         };
 
         MainWindow(
@@ -69,6 +71,7 @@ public:
             setUsingNativeTitleBar(true);
             setResizable(true, true);
             workspace = new CycleV2::NodeWorkspace(audioEngine);
+
             setContentOwned(workspace, true);
             workspace->setGraphDocumentStateChangedCallback([this] {
                 updateDocumentPresentation();
@@ -128,7 +131,7 @@ public:
         }
 
         StringArray getMenuBarNames() override {
-            return { "File" };
+            return { "File", "View" };
         }
 
         PopupMenu getMenuForIndex(int menuIndex, const String&) override {
@@ -155,12 +158,19 @@ public:
                         CommandSpyRefreshLive);
                 menu.addSeparator();
                 menu.addSubMenu("Spy Refresh", spyRefreshMenu);
+            } else if (menuIndex == 1) {
+                auto timeSurfaceMenu = TimeSurfaceStyles::menu(workspace->timeSurfaceStyle(), TimeSurfaceFirst);
+                menu.addSubMenu("Time Surface Colour", timeSurfaceMenu);
             }
 
             return menu;
         }
 
         void menuItemSelected(int menuItemId, int) override {
+            if (const auto* entry = TimeSurfaceStyles::find(menuItemId - TimeSurfaceFirst)) {
+                setTimeSurfaceStyle(entry->style);
+                return;
+            }
             if (fileHistory.isRecentMenuItem(menuItemId)) {
                 requestOpenGraphFile(fileHistory.fileForMenuItem(menuItemId));
             }
@@ -388,6 +398,15 @@ public:
                 return;
             }
             workspace->setProbeRefreshMode(mode);
+            commandManager.commandStatusChanged();
+            menuItemsChanged();
+        }
+
+        void setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
+            if (workspace == nullptr) {
+                return;
+            }
+            workspace->setTimeSurfaceStyle(style);
             commandManager.commandStatusChanged();
             menuItemsChanged();
         }

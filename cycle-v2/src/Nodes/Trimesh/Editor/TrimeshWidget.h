@@ -185,6 +185,7 @@ private:
         RenderScalePolicy scalePolicy { RenderScalePolicy::Unipolar };
         int midiNote { 48 };
         bool pitchSpansColumns {};
+        float surfaceAspectRatio {};
     };
 
     static juce::Rectangle<float> meshPreviewContentArea(juce::Rectangle<float> area);

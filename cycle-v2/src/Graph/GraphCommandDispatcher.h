@@ -29,6 +29,7 @@ public:
     explicit GraphCommandDispatcher(GraphDocument& documentToUse) : document(documentToUse) {}
 
     GraphEditResult addNode(NodeKind kind, juce::Point<float> position);
+    bool setTimeSurfaceStyle(const juce::String& styleId);
     GraphEditResult removeNode(const juce::String& nodeId);
     GraphEditResult removeEdgeAt(size_t edgeIndex);
     GraphEditResult connect(const PortAddress& first, const PortAddress& second);

@@ -27,8 +27,11 @@ public:
             int keyScaleAxis = -1);
 
     Buffer<float> getColumnArray() override;
+    Buffer<float> getScalarSurfaceArray() override;
     const std::vector<Column>& getColumns() override;
     CriticalSection& getGridLock() override;
+    uint64_t getScalarSurfaceRevision() const override { return scalarSurfaceRevision; }
+    bool hasStableScalarSurfaceRevision() const override { return true; }
 
     const TrimeshRenderData& getRenderData() const { return renderData; }
     const std::vector<Column>& getPanelColumns() const { return panelColumns; }
@@ -36,8 +39,10 @@ public:
 private:
     TrimeshRenderData renderData;
     std::vector<float> storage;
+    std::vector<float> scalarSurfaceStorage;
     std::vector<Column> panelColumns;
     CriticalSection gridLock;
+    uint64_t scalarSurfaceRevision {};
 };
 
 }

@@ -1,0 +1,123 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "CalmingKeys",
+      "waitForIdle": true
+    },
+    {
+      "command": "invokeMenuItem",
+      "menu": "View",
+      "path": [
+        "Time Surface Colour",
+        "Bullion"
+      ],
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "panels.waveform3D.view.timeSurfaceStyle",
+      "equals": 13
+    },
+    {
+      "command": "savePreset",
+      "path": "/tmp/cycle-surface-style-test.cyc"
+    },
+    {
+      "command": "invokeMenuItem",
+      "menu": "View",
+      "path": [
+        "Time Surface Colour",
+        "Greyscale"
+      ],
+      "waitForIdle": true
+    },
+    {
+      "command": "assertState",
+      "path": "panels.waveform3D.view.timeSurfaceStyle",
+      "equals": 7
+    },
+    {
+      "command": "openPreset",
+      "path": "/tmp/cycle-surface-style-test.cyc",
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "panels.waveform3D.view.timeSurfaceStyle",
+      "equals": 13
+    },
+    {
+      "command": "openFactoryPreset",
+      "preset": "CalmingKeys",
+      "waitForIdle": true
+    },
+    {
+      "command": "assertState",
+      "path": "panels.waveform3D.view.timeSurfaceStyle",
+      "equals": 2
+    },
+    {
+      "command": "invokeMenuItem",
+      "menu": "View",
+      "path": [
+        "Time Surface Colour",
+        "Experimental",
+        "Recipe 15"
+      ],
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "invokeMenuItem",
+      "menu": "View",
+      "path": [
+        "Time Surface Colour",
+        "Experimental",
+        "Recipe 16"
+      ],
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "invokeMenuItem",
+      "menu": "View",
+      "path": [
+        "Time Surface Colour",
+        "Experimental",
+        "Recipe 17"
+      ],
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "invokeMenuItem",
+      "menu": "View",
+      "path": [
+        "Time Surface Colour",
+        "Experimental",
+        "Recipe 18"
+      ],
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "invokeMenuItem",
+      "menu": "View",
+      "path": [
+        "Time Surface Colour",
+        "Experimental",
+        "Recipe 19"
+      ],
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "openGLDiagnostics",
+      "area": "AreaWfrmWaveform3D"
+    }
+  ],
+  "quit": true
+}

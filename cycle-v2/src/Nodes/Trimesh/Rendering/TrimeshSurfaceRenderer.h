@@ -13,7 +13,8 @@ public:
     static juce::Image createHeatmapImage(
             const TrimeshRenderData& renderData,
             const TrimeshRenderProfile& profile,
-            bool opaque = false);
+            bool opaque = false,
+            float surfaceAspectRatio = 0.f);
     static void drawHeatmap(
             juce::Graphics& g,
             juce::Rectangle<float> area,

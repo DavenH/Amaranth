@@ -14,5 +14,7 @@ TEST_CASE("Automation command registry owns aliases",
             == CycleV2AutomationCommand::OpenNodeEditor);
     REQUIRE(automationCommandForName("removeGuideCurve")
             == CycleV2AutomationCommand::DeleteGuideCurve);
+    REQUIRE(automationCommandForName("recreateCanvasOpenGLContext")
+            == CycleV2AutomationCommand::RecreateCanvasOpenGLContext);
     REQUIRE_FALSE(automationCommandForName("missing").has_value());
 }

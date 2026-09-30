@@ -17,6 +17,7 @@ std::optional<CycleV2AutomationCommand> automationCommandForName(
             { "resetAudioPerformance", Command::ResetAudioPerformance },
             { "sendMidi", Command::SendMidi },
             { "requestCanvasOpenGLFrame", Command::RequestCanvasOpenGLFrame },
+            { "recreateCanvasOpenGLContext", Command::RecreateCanvasOpenGLContext },
             { "exportGraph", Command::ExportGraph },
             { "openGraph", Command::OpenGraph },
             { "saveGraph", Command::SaveGraph },

@@ -66,6 +66,8 @@ public:
             String& errorMessage);
     bool isGraphDirty() const { return document.isDirty(); }
     const File& graphFile() const { return document.file(); }
+    ScalarSurfaceTimeStyle timeSurfaceStyle() const;
+    void setTimeSurfaceStyle(ScalarSurfaceTimeStyle style);
     void setGraphDocumentStateChangedCallback(std::function<void()> callback);
     void configurePresetSidebar(
             std::vector<File> directories,
@@ -110,6 +112,7 @@ public:
     var inspectPerformanceMetricsForAutomation() const;
     void resetPerformanceMetricsForAutomation();
     void requestOpenGLFrameForAutomation();
+    void recreateOpenGLContextForAutomation();
     var captureAudioForAutomation(size_t frameCount) const;
     bool copyAudioPlan(GraphExecutionPlan& plan, uint64_t& revision) const;
     uint64_t audioPlanRevision() const { return presentation.audioPlanRevision(); }
@@ -148,6 +151,7 @@ public:
     bool keyPressed(const KeyPress& key) override;
 
 private:
+    void synchronizeTimeSurfaceStyle();
     enum class HoverRepaint {
         None,
         Status,
@@ -188,6 +192,8 @@ private:
     String resolvedHoverText;
     bool pointerInsideCanvas {};
     bool canvasOpenGlAttached {};
+    uint64_t openGlContextCreateCount {};
+    uint64_t openGlContextCloseCount {};
     bool compiledStateRefreshPending {};
     PresentationRefreshScope compiledStateRefreshScope {
             PresentationRefreshScope::Downstream };

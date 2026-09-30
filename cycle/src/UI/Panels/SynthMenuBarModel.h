@@ -77,7 +77,6 @@ public:
         ViewStageD,
 
         WaveformWaterfall,
-
         UseOpenGL,
         UseLargerPoints,
 
@@ -90,7 +89,8 @@ public:
         Reduction5x,
 
         InterpWaveCycles,
-        WrapWaveCycles
+        WrapWaveCycles,
+        TimeSurfaceFirst = 2000
     };
 
     enum EditItem {
