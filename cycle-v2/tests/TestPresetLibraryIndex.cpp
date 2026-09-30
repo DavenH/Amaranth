@@ -111,3 +111,28 @@ TEST_CASE("Preset library retains differently authored presets with the same nam
     REQUIRE(published.size() == 2);
     REQUIRE(root.deleteRecursively());
 }
+
+TEST_CASE("Preset library does not rescan a nested history directory",
+        "[cycle-v2][preset][browser][directories]") {
+    ScopedJuceInitialiser_GUI juce;
+    const File root = File::getSpecialLocation(File::tempDirectory)
+            .getNonexistentChildFile("cycle-v2-preset-nested-history", {}, false);
+    const File old = root.getChildFile("old");
+    REQUIRE(old.createDirectory().wasOk());
+    REQUIRE(root.getChildFile("Current.cyclegraph").replaceWithText("{}"));
+    REQUIRE(old.getChildFile("Archived.cyclegraph").replaceWithText("{}"));
+
+    std::vector<PresetLibraryRecord> published;
+    PresetLibraryIndex index({ root, old }, [&](const auto& records, const auto&) {
+        published = records;
+    });
+    index.start();
+    for (int attempt = 0; attempt < 20
+            && (published.empty() || !published.front().metadataReady); ++attempt) {
+        MessageManager::getInstance()->runDispatchLoopUntil(25);
+    }
+
+    REQUIRE(published.size() == 1);
+    REQUIRE(published.front().name == "Current");
+    REQUIRE(root.deleteRecursively());
+}
