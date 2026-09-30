@@ -820,11 +820,20 @@ public:
     std::optional<NodeAudioResourceSummary> audioResourceSummary() const override {
         return resource;
     }
+    bool showEnvelopeGuideAttachmentMenu(
+            const String& field,
+            Rectangle<int> targetScreenArea) override {
+        guideMenuField = field;
+        guideMenuTarget = targetScreenArea;
+        return true;
+    }
 
     StringArray events;
     String status;
     String textParameterId;
     String textValue;
+    String guideMenuField;
+    Rectangle<int> guideMenuTarget;
     NodeAudioResourceEdit appliedResource;
     std::optional<NodeAudioResourceSummary> resource;
     bool resourceRemovalSucceeds { true };
@@ -2926,6 +2935,22 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     selectedNode.editorState = var(selectedEditorState);
     editor->setNode(selectedNode);
     const var selectedState = editor->automationState();
+    const auto* guideTargetRails = selectedState.getProperty(
+            "vertexParameterRails", {}).getArray();
+    REQUIRE(guideTargetRails != nullptr);
+    REQUIRE_FALSE(guideTargetRails->isEmpty());
+    const auto guideBounds = rectangleProperty(
+            guideTargetRails->getFirst(), "guideBounds");
+    REQUIRE(guideBounds.getWidth() > 1.f);
+    editor->mouseDown(curvePanelMouseEvent(
+            *editor,
+            guideBounds.getCentre(),
+            ModifierKeys::leftButtonModifier,
+            guideBounds.getCentre(),
+            false));
+    REQUIRE(delegate.guideMenuField.isNotEmpty());
+    REQUIRE(delegate.guideMenuTarget
+            == editor->localAreaToGlobal(guideBounds.toNearestInt()));
     REQUIRE((bool) selectedState.getProperty("loopEnabled", {}));
     REQUIRE((bool) selectedState.getProperty("sustainEnabled", {}));
     REQUIRE(loopMarker->getTooltip().containsIgnoreCase("toggle selected vertex"));
