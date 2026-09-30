@@ -50,6 +50,15 @@ uint64_t unisonContextFingerprint(const UnisonPreviewContext& context) {
         std::memcpy(&valueBits, &value, sizeof(valueBits));
         fingerprint.add(valueBits);
     }
+    fingerprint.add(context.pitchEnvelopeUnitValuesByLane.size());
+    for (const auto& lane : context.pitchEnvelopeUnitValuesByLane) {
+        fingerprint.add(lane.size());
+        for (const float value : lane) {
+            uint32_t valueBits {};
+            std::memcpy(&valueBits, &value, sizeof(valueBits));
+            fingerprint.add(valueBits);
+        }
+    }
     return fingerprint.value();
 }
 
@@ -1111,6 +1120,8 @@ UnisonPreviewContext NodeCanvasPresentation::unisonPreviewContextFor(
     if (directContext != plan.voiceContexts.end()) {
         fallback.voiceDurationSeconds = directContext->voiceDurationSeconds;
         fallback.pitchEnvelopeUnitValues = directContext->pitchEnvelopeUnitValues;
+        fallback.pitchEnvelopeUnitValuesByLane
+                = directContext->pitchEnvelopeUnitValuesByLane;
         return fallback;
     }
     std::vector<const Edge*> attachments;
@@ -1133,6 +1144,8 @@ UnisonPreviewContext NodeCanvasPresentation::unisonPreviewContextFor(
     if (context != plan.voiceContexts.end()) {
         fallback.voiceDurationSeconds = context->voiceDurationSeconds;
         fallback.pitchEnvelopeUnitValues = context->pitchEnvelopeUnitValues;
+        fallback.pitchEnvelopeUnitValuesByLane
+                = context->pitchEnvelopeUnitValuesByLane;
     }
     return fallback;
 }

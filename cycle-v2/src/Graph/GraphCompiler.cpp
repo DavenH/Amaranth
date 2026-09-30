@@ -9,6 +9,7 @@
 #include "Graph/TrimeshSignalSemantics.h"
 
 #include "Nodes/Control/ModulationTriple.h"
+#include "Nodes/Envelope/EnvelopePitchPreview.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "Nodes/Unison/UnisonNode.h"
@@ -720,29 +721,17 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
                         context.pitchEnvelope);
                 if (envelope != nullptr) {
                     constexpr int previewSamples = 129;
-                    if (!envelope->enabled) {
-                        context.pitchEnvelopeUnitValues.assign(
-                                previewSamples,
-                                envelope->neutralValue);
-                        continue;
+                    constexpr uint32_t unisonPreviewSeed = 0x554e4953u;
+                    context.pitchEnvelopeUnitValuesByLane
+                            = EnvelopePitchPreview::renderLanes(
+                                    envelope,
+                                    context.lanes.order,
+                                    previewSamples,
+                                    unisonPreviewSeed);
+                    if (!context.pitchEnvelopeUnitValuesByLane.empty()) {
+                        context.pitchEnvelopeUnitValues
+                                = context.pitchEnvelopeUnitValuesByLane.front();
                     }
-                    Rasterization::EnvelopePlaybackEngine playback;
-                    playback.ensureVoiceCount(1);
-                    playback.validate(envelope->rasterizer->preparedPlaybackView());
-                    playback.noteOn();
-                    MeshLibrary::EnvProps props;
-                    props.active = true;
-                    playback.renderToBuffer(
-                            envelope->rasterizer->preparedPlaybackView(),
-                            previewSamples,
-                            1.0 / (double) (previewSamples - 1),
-                            Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
-                            props,
-                            1.f);
-                    const Buffer<float> values = playback.output().withSize(previewSamples);
-                    context.pitchEnvelopeUnitValues.assign(
-                            values.get(),
-                            values.get() + previewSamples);
                 }
             }
         }

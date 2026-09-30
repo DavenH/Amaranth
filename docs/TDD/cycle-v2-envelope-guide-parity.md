@@ -72,6 +72,27 @@ audio voice's lifecycle seed; it does not reproduce Cycle 1's exact PRNG draw
 position across all volume, pitch, and scratch layers. Exact seed-sequence
 parity remains part of the isolated Cycle 1/Cycle V2 comparison.
 
+The compiled Unison and traversal previews must also retain the lane-specific
+pitch trajectories. A single baked pitch vector erases component-Guide phase
+randomness even when realtime audio is correct. Preview preparation therefore
+uses the same decoupled Envelope materializer and playback engine with Cycle
+1's stable Unison visualization seed, producing one trajectory per configured
+lane at compile time. Painting remains a lookup-only operation.
+
+Architecture review: `GraphCompiler.cpp` shrinks from 1,546 to 1,535 lines.
+It continues to own graph-to-plan orchestration and only requests prepared
+lane trajectories. `EnvelopePitchPreview` owns the decoupled materialization
+and playback detail, collaborating with the existing `EnvelopeConfiguration`,
+`RealtimeEnvelopeMaterializer`, and `EnvelopePlaybackEngine`. The traversal
+renderer consumes the prepared lane values and owns only phase integration.
+There is no compatibility adapter or duplicated Guide sampler to delete.
+`NodeCanvasPresentation.cpp` grows from 1,420 to 1,433 lines only to include
+the prepared lane vectors in its cache fingerprint and copy them from the
+compiled Voice Context into the Unison paint context. It does not choose seeds,
+materialize Envelopes, or integrate pitch. Its stable deletion target remains
+the broader presentation-facts/painter routing extraction tracked in
+`docs/TDD/refactors.md`.
+
 The Envelope editor exposes meaningful component guide attachments and gains
 for the selected logical cube. It must not expose the hidden Time-pole storage
 vertices as extra selectable vertices. Trimesh Time/Red/Blue rows expose their
