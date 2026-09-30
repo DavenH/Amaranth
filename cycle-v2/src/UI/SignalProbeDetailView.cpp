@@ -14,35 +14,6 @@ namespace {
 
 const Colour kBackdrop { 0xb0000000 };
 
-void paintHeader(
-        Graphics& graphics,
-        Rectangle<float> detail,
-        Rectangle<float> header,
-        const SignalProbeDetailState& state) {
-    graphics.setColour(colourForDomain(state.domain));
-    graphics.fillEllipse(Rectangle<float>(10.f, 10.f).withCentre({
-            header.getX() + 7.f,
-            header.getCentreY()
-    }));
-    graphics.setColour(CanvasChromePalette::text);
-    graphics.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize));
-    graphics.drawText(
-            String(state.ordinal),
-            header.withTrimmedLeft(20.f),
-            Justification::centredLeft);
-
-    graphics.setColour(CanvasChromePalette::mutedText);
-    graphics.setFont(FontOptions(CanvasChromeMetrics::captionFontSize));
-    graphics.drawText(
-            String((int) state.resolution) + " samples",
-            header.withTrimmedRight(38.f),
-            Justification::centredRight);
-
-    const Rectangle<float> close = SignalProbeDetailView::closeBounds(detail).reduced(7.f);
-    graphics.drawLine(Line<float>(close.getTopLeft(), close.getBottomRight()), 1.5f);
-    graphics.drawLine(Line<float>(close.getTopRight(), close.getBottomLeft()), 1.5f);
-}
-
 }
 
 void SignalProbeDetailState::open(
@@ -88,11 +59,15 @@ Rectangle<float> SignalProbeDetailView::boundsFor(Rectangle<float> availableCont
     return Rectangle<float>(width, height).withCentre(availableContent.getCentre());
 }
 
-Rectangle<float> SignalProbeDetailView::closeBounds(Rectangle<float> detailBounds) {
-    return Rectangle<float>(30.f, 30.f).withCentre({
-            detailBounds.getRight() - 22.f,
-            detailBounds.getY() + 22.f
-    });
+Rectangle<float> SignalProbeDetailView::plotBounds(Rectangle<float> detailBounds) {
+    return detailBounds.reduced(14.f);
+}
+
+bool SignalProbeDetailView::dismissesOnClick(
+        Rectangle<float> detailBounds,
+        Point<float> position,
+        int clickCount) {
+    return clickCount >= 2 && detailBounds.contains(position);
 }
 
 void SignalProbeDetailView::paint(
@@ -115,17 +90,13 @@ void SignalProbeDetailView::paint(
             CanvasChromeMetrics::panelCornerRadius,
             CanvasChromeMetrics::restingBorderWidth);
 
-    Rectangle<float> content = detail.reduced(14.f);
-    Rectangle<float> header = content.removeFromTop(34.f);
-    paintHeader(graphics, detail, header, state);
-
     Node displayNode;
     displayNode.id = state.renderResult.nodeId;
     displayNode.kind = NodeKind::GenericProcessor;
     renderer.paint(graphics, {
             displayNode,
             &state.renderResult,
-            content.withTrimmedTop(4.f),
+            plotBounds(detail),
             TrimeshRenderProfile::fromSemantic({
                     state.domain,
                     state.scalePolicy,

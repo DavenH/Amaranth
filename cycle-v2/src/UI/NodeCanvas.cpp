@@ -509,7 +509,10 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     guideShelfState.hoveredGuideId = {};
     if (probeDetailState.isOpen()) {
         const Rectangle<float> detail = SignalProbeDetailView::boundsFor(editorContentBounds());
-        if (SignalProbeDetailView::closeBounds(detail).contains(event.position)) {
+        if (SignalProbeDetailView::dismissesOnClick(
+                detail,
+                event.position,
+                event.getNumberOfClicks())) {
             probeDetailState.close();
             notifyOverlayOcclusionChanged();
             requestCanvasRepaint();

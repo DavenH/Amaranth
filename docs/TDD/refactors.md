@@ -608,6 +608,16 @@ interaction policy. The stable deletion target remains the broader
 editor-overlay coordination extraction tracked in the Cycle V2 architecture
 quality work.
 
+## Cycle V2 Spy Detail And Preview Resource Lifetime Review
+
+Status: reviewed 2026-09-30.
+
+Removing the expanded Spy header and replacing its close glyph with symmetric
+double-click dismissal grows `NodeCanvas.cpp` from 2,710 to 2,713 lines. The
+canvas still owns only top-level pointer routing and overlay lifecycle;
+`SignalProbeDetailView` owns the plot geometry and dismissal classification.
+The automation inspector shrinks by removing the retired close target.
+
 ## Envelope Morph State Ownership
 
 Status: closed 2026-09-17.

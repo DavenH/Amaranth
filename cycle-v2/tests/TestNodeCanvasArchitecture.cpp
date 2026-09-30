@@ -453,10 +453,18 @@ TEST_CASE("Signal probe detail uses the audition-note period resolution",
 
     const Rectangle<float> content { 0.f, 0.f, 1200.f, 610.f };
     const Rectangle<float> detail = SignalProbeDetailView::boundsFor(content);
+    const Rectangle<float> plot = SignalProbeDetailView::plotBounds(detail);
     REQUIRE(content.contains(detail));
     REQUIRE(detail.getWidth() > 700.f);
     REQUIRE(detail.getHeight() > 400.f);
-    REQUIRE(detail.contains(SignalProbeDetailView::closeBounds(detail)));
+    REQUIRE(plot.getY() == detail.getY() + 14.f);
+    REQUIRE(plot.getBottom() == detail.getBottom() - 14.f);
+    REQUIRE_FALSE(SignalProbeDetailView::dismissesOnClick(
+            detail, detail.getCentre(), 1));
+    REQUIRE(SignalProbeDetailView::dismissesOnClick(
+            detail, detail.getCentre(), 2));
+    REQUIRE_FALSE(SignalProbeDetailView::dismissesOnClick(
+            detail, detail.getBottomRight() + Point<float>(1.f, 1.f), 2));
 }
 
 TEST_CASE("Signal probe detail resolves the attached Voice Context key value",

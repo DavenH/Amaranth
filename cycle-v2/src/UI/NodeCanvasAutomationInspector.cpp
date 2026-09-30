@@ -945,10 +945,6 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                 "probeDetail:" + state.probeDetailId,
                 "probeDetail",
                 state.probeDetailBounds));
-        targets.add(AutomationValueEncoder::pointerTargetToVar(
-                "probeDetailClose",
-                "probeDetailClose",
-                SignalProbeDetailView::closeBounds(state.probeDetailBounds)));
     }
 
     const GraphPresentationSnapshot& presentationSnapshot = context.presentation.snapshot();
