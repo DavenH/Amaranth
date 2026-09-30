@@ -148,3 +148,16 @@ the canonical preset set rather than weakening the assertions.
   passed. Report: `/private/tmp/causal-probe-extract-native.json`. Keep the
   fixture assertion until the intended archived graph and resolution contract
   are reconciled.
+
+## P3: Primary-morph editor test still assumes a populated new Trimesh
+
+Context:
+
+- On 2026-09-30, the focused `Trimesh primary morph commits refresh graph
+  presentation` case failed before its gesture assertions because it selects
+  vertex 2 from a newly created Trimesh, whose correct default is now empty.
+- The live primary- and non-primary-morph gesture cases pass independently.
+
+Current status: open fixture maintenance; explicitly author the mesh topology
+needed by the selection-preservation assertions rather than restoring implicit
+content to newly added Trimesh nodes.

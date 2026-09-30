@@ -8,7 +8,8 @@ TrimeshInvalidationResult withPanelContextRefresh(
         TrimeshInvalidationResult result,
         const TrimeshChange& change) {
     if (change.gridShapeChanged || change.renderDomainChanged) {
-        result.rebuildNodeData = true;
+        result.rebuildSurfaceData = true;
+        result.rebuildSliceData = true;
         result.updateRasterizer = true;
         result.refresh2DPanel = true;
         result.refresh3DGeometry = true;
@@ -40,7 +41,8 @@ TrimeshInvalidationResult TrimeshInvalidation::invalidate(const TrimeshChange& c
                     && !((change.primaryViewAxis != Vertex::Time && change.yellowChanged)
                             || (change.primaryViewAxis != Vertex::Red && change.redChanged)
                             || (change.primaryViewAxis != Vertex::Blue && change.blueChanged));
-            result.rebuildNodeData = true;
+            result.rebuildSurfaceData = !onlyPrimaryChanged;
+            result.rebuildSliceData = true;
             result.updateRasterizer = true;
             result.refresh2DPanel = true;
             result.refresh3DGeometry = (change.primaryViewAxis != Vertex::Time && change.yellowChanged)
@@ -55,7 +57,8 @@ TrimeshInvalidationResult TrimeshInvalidation::invalidate(const TrimeshChange& c
         }
 
         case TrimeshChangeKind::PrimaryAxis:
-            result.rebuildNodeData = true;
+            result.rebuildSurfaceData = true;
+            result.rebuildSliceData = true;
             result.updateRasterizer = true;
             result.refresh2DPanel = true;
             result.refresh3DGeometry = true;
@@ -68,7 +71,8 @@ TrimeshInvalidationResult TrimeshInvalidation::invalidate(const TrimeshChange& c
 
         case TrimeshChangeKind::MeshEdit:
         case TrimeshChangeKind::VertexEdit:
-            result.rebuildNodeData = true;
+            result.rebuildSurfaceData = true;
+            result.rebuildSliceData = true;
             result.updateRasterizer = true;
             result.refresh2DPanel = true;
             result.refresh3DGeometry = !change.sourceIs3D;
@@ -91,7 +95,8 @@ TrimeshInvalidationResult TrimeshInvalidation::invalidate(const TrimeshChange& c
             return withPanelContextRefresh(result, change);
 
         case TrimeshChangeKind::Layout:
-            result.rebuildNodeData = true;
+            result.rebuildSurfaceData = true;
+            result.rebuildSliceData = true;
             result.updateRasterizer = true;
             result.refresh2DPanel = true;
             result.refresh3DGeometry = true;

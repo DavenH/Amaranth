@@ -93,11 +93,15 @@ bool TrimeshNodeModel::syncFromNode(
     const int nextSelectedVertexIndex = (int) node.editorState.getProperty(
             "selectedVertexId", -1);
 
-    if (nextMorph.time.getTargetValue() != morph.time.getTargetValue()
-            || nextMorph.red.getTargetValue() != morph.red.getTargetValue()
-            || nextMorph.blue.getTargetValue() != morph.blue.getTargetValue()) {
+    const bool yellowChanged = nextMorph.time.getTargetValue() != morph.time.getTargetValue();
+    const bool redChanged = nextMorph.red.getTargetValue() != morph.red.getTargetValue();
+    const bool blueChanged = nextMorph.blue.getTargetValue() != morph.blue.getTargetValue();
+    if (yellowChanged || redChanged || blueChanged) {
         morph = nextMorph;
-        bumpMorphRevision();
+        const bool affectsSurface = (nextPrimaryAxis != Vertex::Time && yellowChanged)
+                || (nextPrimaryAxis != Vertex::Red && redChanged)
+                || (nextPrimaryAxis != Vertex::Blue && blueChanged);
+        bumpMorphRevision(affectsSurface);
     }
 
     if (nextPrimaryAxis != primaryViewAxis) {
@@ -306,8 +310,16 @@ void TrimeshNodeModel::bumpMeshContentRevision() {
             | TrimeshDerivedProduct::SelectedControl);
 }
 
-void TrimeshNodeModel::bumpMorphRevision() {
-    advanceDerivedRevisions(renderProducts);
+void TrimeshNodeModel::bumpMorphRevision(bool affectsSurface) {
+    TrimeshDerivedProduct products = TrimeshDerivedProduct::SliceRasterization
+            | TrimeshDerivedProduct::InterceptsRails;
+    if (affectsSurface) {
+        products = products
+                | TrimeshDerivedProduct::Columns3D
+                | TrimeshDerivedProduct::CompactPreview
+                | TrimeshDerivedProduct::DspPreparation;
+    }
+    advanceDerivedRevisions(products);
 }
 
 void TrimeshNodeModel::bumpPrimaryAxisRevision() {

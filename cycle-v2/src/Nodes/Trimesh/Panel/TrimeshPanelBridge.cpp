@@ -208,13 +208,21 @@ void TrimeshPanelBridge::syncFromNode(
     change.renderDomainChanged = renderDomainChanged || renderScaleChanged;
 
     const TrimeshInvalidationResult invalidated = invalidation.invalidate(change);
-    dataSource.rebuild(
-            model,
-            rows,
-            columns,
-            renderProfile,
-            panelMidiNote,
-            previewKeyScaleAxis);
+    if (invalidated.rebuildSurfaceData) {
+        dataSource.rebuild(
+                model,
+                rows,
+                columns,
+                renderProfile,
+                panelMidiNote,
+                previewKeyScaleAxis);
+    } else if (invalidated.rebuildSliceData) {
+        dataSource.rebuildSlice(
+                model,
+                rows,
+                renderProfile,
+                panelMidiNote);
+    }
     updateRasterizer(invalidated.refresh2DPanel, invalidated.refresh3DGeometry);
     lastSyncedRevision = nextPanelRevision;
     lastRenderDomain = renderProfile.getDomain();
