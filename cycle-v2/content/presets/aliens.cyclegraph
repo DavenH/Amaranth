@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 475.20001, "y": 826.0 },
-            "parameters": { "octave": 0, "voiceLength": 0.635714286, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.635714286,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -52,8 +60,8 @@
                 "signalType": "time",
                 "polarity": "bipolar",
                 "yellow": 0.5,
-                "red": 0.5,
-                "blue": 0.5,
+                "red": 0.112149529,
+                "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -121,8 +129,8 @@
                 "signalType": "time",
                 "polarity": "bipolar",
                 "yellow": 0.5,
-                "red": 0.5,
-                "blue": 0.5,
+                "red": 0.112149529,
+                "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -200,8 +208,8 @@
                 "signalType": "spectralMagnitude",
                 "polarity": "bipolar",
                 "yellow": 0.5,
-                "red": 0.5,
-                "blue": 0.5,
+                "red": 0.112149529,
+                "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -292,8 +300,8 @@
                 "signalType": "spectralMagnitude",
                 "polarity": "bipolar",
                 "yellow": 0.5,
-                "red": 0.5,
-                "blue": 0.5,
+                "red": 0.112149529,
+                "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -384,8 +392,8 @@
                 "signalType": "spectralMagnitude",
                 "polarity": "unipolar",
                 "yellow": 0.5,
-                "red": 0.5,
-                "blue": 0.5,
+                "red": 0.112149529,
+                "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -586,8 +594,8 @@
                 "signalType": "spectralMagnitude",
                 "polarity": "bipolar",
                 "yellow": 0.5,
-                "red": 0.5,
-                "blue": 0.5,
+                "red": 0.112149529,
+                "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -739,15 +747,15 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 3230.0, "y": 1084.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.112149529, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 2,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 2,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
@@ -853,10 +861,8 @@
                         "sustainIndices": [ 3 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
-                    "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
+                    "red": 0.11215,
+                    "blue": 0.0,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7 ]
                 }
             }
@@ -866,15 +872,15 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 863.0 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.112149529, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 2,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 2,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
@@ -941,10 +947,8 @@
                         "sustainIndices": [ 1 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
-                    "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
+                    "red": 0.11215,
+                    "blue": 0.0,
                     "cubeIds": [ 1, 2, 3, 4 ]
                 }
             }
@@ -1265,7 +1269,18 @@
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": [],
+    "probes": [
+        {
+            "id": "probe",
+            "sourceNodeId": "volumeMultiply",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "voiceOutput",
+            "anchorDestPortId": "time",
+            "label": "Spy 1",
+            "tapPosition": 0.5,
+            "railOrder": 0
+        }
+    ],
     "presetPresentation": {
         "version": 1,
         "preview": {

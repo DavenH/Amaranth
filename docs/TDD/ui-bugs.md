@@ -1,40 +1,5 @@
 # Cycle V2 UI Bug Notes
 
-## Resolved P2: Trimesh spectral backgrounds and expanded surface resolution
-
-Reported 2026-09-18. Spectral Trimesh backgrounds used a fixed 128-position
-harmonic ramp, the 3D background ignored the key-scale pitch across columns,
-and expanded surfaces used 96 columns regardless of panel width. The preview
-pitch resolver also missed the Voice Context on factory graphs with implicit
-context routing. The panel now uses the full per-key `LogRegions` ramp and
-pitch-dependent 3D harmonic traces; expanded grid resolution follows the
-panel width. The Organ 4 native fixture reports 586 columns across a 586-pixel
-panel and pitch spanning MIDI 20–127, with no failed commands.
-
-Follow-up 2026-09-18: mapping Key Scale to Red exposed a snap-back when moving
-the red morph rail. The panel bridge was replacing the node's red value with
-the selected keyboard preview note on every refresh, which also fixed the
-harmonic grid at that note. The bridge now reads the mapped morph value for its
-panel pitch. A focused red-rail gesture fixture covers movement and undo.
-Further follow-up: with Red as the primary 3D axis, every column was sampled
-using the moving red slice's note while its grid position used the column's own
-note. The expanded editor also fell back to 96 columns during a local morph
-move. The column sampler now uses the column key and the expanded edit retains
-its pixel-width grid. Direct harmonic parity, invariant surface data, and a
-586-column native gesture fixture cover the repair.
-
-## Remaining priority
-
-There are no open deterministic P0 or P1 regressions as of 2026-09-09.
-Resolved and no-longer-reproducing entries have been removed from this ledger.
-
-## Resolved P2: Undoing a Trimesh morph gesture closed the expanded editor
-
-The 2026-09-18 Organ 4 red-rail gesture fixture observed that undo restored
-the morph value but cleared the expanded editor. Undo and redo now reconcile
-selection with the restored graph and retain the editor for a surviving node.
-The native Trimesh vertex-drag fixture asserts that the editor stays open after
-undo; `TestNodeCanvasAuthoring.cpp` also covers undo and redo.
 
 ## P2: Broader Trimesh tests retain a stale control-region expectation
 
@@ -75,6 +40,36 @@ Context:
 
 Current status: open; select the intended default and make its persisted key
 follow the factory preset filename-resolution contract.
+
+## P1: Empty trimesh vertex problem
+
+Adding vertices to an empty trimesh node adds them at phase=0 regardless of where is clicked
+
+## P1: the preset page overlays the trilinear mesh 2d editor
+
+let's just hide it along with the rest of the elements that get hidden/dimmed on expand
+
+## P2: The spy nodes get deeply dimmed when clicked for some reason
+
+## P2: the 'out' spy node cannot be expanded
+
+## P3: vertex selection rect doesn't have appropriate hover cursors on edges or center
+
+## P2: Spy node preview content often doesn't agree with its expanded content
+
+## P3: envelope nodes with a component curve do not render that componetn curve on preset load until expanded
+
+## P2: envelope component curves with randomness do not get randomness reseeded based on unison voice
+
+## P2: a graph update causes the playing audio note to stop 
+
+## P3: Cycle2's expanded 'out' spy node at C1 takes about 20x longer to render than Cycle 1's comparable DSP grids
+
+## P2: Moving the view-axis' morph slider on trimesh invalidates and repaints the whole grid
+
+But the grid content cannot change moving this slider - only the 2d editor should be updated.
+
+##  P3: An 'empty' trimesh node starts with a default mesh.
 
 ## P3: Cycle 1 emits leaked-object assertions after preset-churn shutdown
 
@@ -535,36 +530,9 @@ It recurred during the 2026-09-20 scalar-surface visual audit because the saved
 default preset name `ooh-aah` did not resolve before the fixture opened
 `CalmingKeys`; the fixture itself completed and the OpenGL panel reported no
 error. Log: `/private/tmp/cycle-scalar-v1-logs.txt`.
+It also recurred during the 2026-09-29 Icy-hot program automation; both View menu
+switches and GL validation passed afterward. Log: `/tmp/cycle-icy-hot.log`.
 
-## Addressed: Unmapped saxophone mod wheel edited Trimesh blue morphs
-
-On 2026-09-18, the Live keyboard wheel on `saxophone.cyclegraph` changed
-`timeLayer1.blue` from `0` to `0.897637784` and marked the document dirty,
-although the attached Modulation Triple used `inverseVelocity` for blue.
-The preview command had applied red/blue values to every Trimesh and Envelope
-without checking each compiled input source. Baseline report:
-`/private/tmp/cycle-v2-sax-wheel-live-before.json`.
-
-Keyboard morph edits now target only axes sourced from key scale or the mod
-wheel. A wheel with no mapped source updates its keyboard position without a
-graph edit or preview job. The native fixture passes with blue still `0`, a
-clean document, two unchanged spy sums, and zero worker/configuration stages;
-the mapped-wheel fixture still passes. Reports:
-`/private/tmp/cycle-v2-sax-wheel-live-after.json` and
-`/private/tmp/cycle-v2-honerism-wheel-mapping-after.json`.
-
-Current status: addressed; `cycle-v2-agent-saxophone-unmapped-wheel.json`
-guards the regression.
-
-## Addressed: Preset-browser rating glyph triggered JUCE shaping assertions
-
-On 2026-09-19, opening the new preset card browser emitted repeated
-`JUCE Assertion failure in juce_String.cpp:327` and
-`juce_SimpleShapedText.cpp:497` messages while painting the Unicode star rating
-glyph. Log: `/private/tmp/cycle-v2-browser-new.log`.
-
-Current status: addressed; ratings use native ellipse geometry and no longer
-depend on font glyph coverage.
 
 ## P3: Organ graph load emits legacy Curve endpoint assertions
 
@@ -576,3 +544,24 @@ remained attached, and the expanded surface rendered. Log:
 
 Current status: open; unrelated to scalar-surface shader compilation or GL
 resource lifetime.
+
+## P1: Cycle 1 can crash rasterizing presets with more than ten unison voices
+
+Five Cycle 1 crash reports from 2026-09-29 and 2026-09-30 terminate on the
+main thread with `EXC_BAD_ACCESS` in
+`Cycle::Rasterization::UnisonPhaseColumnRenderer::render`, during the
+`VisualDsp` spectrogram refresh after a preset load. Reports:
+`~/Library/Logs/DiagnosticReports/Cycle-2026-09-29-{145603,150303,153814}.ips`
+and `Cycle-2026-09-30-{014550,015513}.ips` in the same directory.
+
+The renderer allocates `phases` and `gains` for `maximumUnisonOrder` (10),
+but loops to `Unison::getOrder(false)`, which returns the uncapped saved voice
+count in individual mode. Several factory `.cyc` presets contain 11–36
+individual voices. This is a likely stack-buffer overrun; the exact preset
+loaded at each crash has not been established. This is a visualization/preset
+rasterization path, not evidence of a scalar shader failure. The earlier
+scratch-buffer repair noted above did not cover this fixed-array bound.
+
+Current status: open. Size the renderer's scratch storage for the actual
+individual voice count without truncating authored voices, then regression-test
+loading and rasterizing a preset with more than ten voices.

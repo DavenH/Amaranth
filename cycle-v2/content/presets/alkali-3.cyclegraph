@@ -312,11 +312,11 @@
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 3,
+                "revision": 4,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 3,
+                    "revision": 4,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
@@ -619,8 +619,6 @@
                     "logarithmic": false,
                     "red": 0.03738,
                     "blue": 0.0,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22 ]
                 }
             }
@@ -634,11 +632,11 @@
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 3,
+                "revision": 4,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 3,
+                    "revision": 4,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
@@ -928,8 +926,6 @@
                     "logarithmic": false,
                     "red": 0.03738,
                     "blue": 0.0,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 ]
                 }
             }
@@ -1073,7 +1069,18 @@
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "waveshaper", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": [],
+    "probes": [
+        {
+            "id": "probe",
+            "sourceNodeId": "impulseResponse",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "delay",
+            "anchorDestPortId": "time",
+            "label": "Spy 1",
+            "tapPosition": 0.5,
+            "railOrder": 0
+        }
+    ],
     "presetPresentation": {
         "version": 1,
         "preview": {
