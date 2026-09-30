@@ -14,7 +14,9 @@ AmaranthLookAndFeel::AmaranthLookAndFeel() :
         AmaranthLookAndFeel(nullptr) {
 }
 
-AmaranthLookAndFeel::AmaranthLookAndFeel(SingletonRepo* repo) :
+AmaranthLookAndFeel::AmaranthLookAndFeel(
+        SingletonRepo* repo,
+        bool installAsDefault) :
         SingletonAccessor(repo, "AmaranthLookAndFeel") {
     Colour textColour(Colour::greyLevel(0.7f));
     Colour darkGrey(Colour::greyLevel(0.13f));
@@ -62,7 +64,9 @@ AmaranthLookAndFeel::AmaranthLookAndFeel(SingletonRepo* repo) :
     setColour(FileBrowserComponent::filenameBoxBackgroundColourId, darkGrey);
     setColour(FileBrowserComponent::filenameBoxTextColourId, textColour);
 
-    setDefaultLookAndFeel(this);
+    if (installAsDefault) {
+        setDefaultLookAndFeel(this);
+    }
 }
 
 std::unique_ptr<SingletonRepo> AmaranthLookAndFeel::createStandaloneUiRepo(

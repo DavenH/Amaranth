@@ -1397,13 +1397,25 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
         return;
     }
 
+    if (probeId == DefaultOutputProbeResolver::probeId) {
+        *preview = PresetPreviewGenerator::forView(
+                *preview,
+                probeRailState.defaultOutputView);
+    }
+
     const SignalProbe* probe = graph.findSignalProbe(probeId);
-    const NodeRenderSemantic semantic = probe != nullptr
-            ? queries.presentationFacts().renderSemanticForNodeOutput(
-                    graph,
-                    probe->sourceNodeId,
-                    probe->sourcePortId)
-            : NodeRenderSemantic {};
+    NodeRenderSemantic semantic;
+    if (probe != nullptr) {
+        semantic = queries.presentationFacts().renderSemanticForNodeOutput(
+                graph,
+                probe->sourceNodeId,
+                probe->sourcePortId);
+    } else {
+        const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(
+                preview->domain);
+        semantic.domain = preview->domain;
+        semantic.scalePolicy = profile.getScalePolicy();
+    }
     editorCoordinator.close();
     probeDetailState.open(
             std::move(*preview),

@@ -8,6 +8,7 @@
 #include <App/AppConstants.h>
 #include <Util/Arithmetic.h>
 
+#include "Graph/DefaultOutputProbeResolver.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphNodeStateEditor.h"
@@ -661,12 +662,17 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 400.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", { 800.f, 0.f }));
     graph.addEdge({
             "voice", "context", "mesh", "context",
             PortDomain::DomainContext, ConnectionKind::Signal
     });
     graph.addEdge({
             "mesh", "out", "fft", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "mesh", "out", "output", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
     REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
@@ -685,12 +691,21 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
             graph.getSignalProbes().front().id,
             resolution,
             72);
+    const auto defaultOutputDetail = presentation.captureProbePreview(
+            graph,
+            DefaultOutputProbeResolver::probeId,
+            resolution,
+            72);
 
     REQUIRE(detail.has_value());
     REQUIRE(detail->connected);
     REQUIRE(detail->gridColumns == 512);
     REQUIRE(detail->gridRows == resolution);
     REQUIRE(detail->values.size() == detail->gridColumns * resolution);
+    REQUIRE(defaultOutputDetail.has_value());
+    REQUIRE(defaultOutputDetail->connected);
+    REQUIRE(defaultOutputDetail->probeId == DefaultOutputProbeResolver::probeId);
+    REQUIRE(defaultOutputDetail->gridColumns == 512);
 
     const size_t lowNoteResolution = SignalProbeDetailView::resolutionForMidiNote(36);
     const auto lowNoteDetail = presentation.captureProbePreview(

@@ -574,6 +574,23 @@ below panel construction. Do not weaken `SingletonRepo` lookup or add nullable
 production behavior for this test. This failure is unrelated to the Voice
 Context/Envelope parity slice; its focused runtime Envelope tests pass.
 
+## Cycle V2 Spy Detail Routing Size Review
+
+Status: reviewed 2026-09-30.
+
+The `out` Spy expansion change grows `NodeCanvas.cpp` from 2,686 to 2,698
+lines. The added code remains cohesive cross-editor orchestration: it requests
+the authoritative full-resolution capture, chooses the output Spy's current
+time/spectrum representation, closes the node editor, and announces overlay
+occlusion. Pointer gesture policy stays in
+`WorkspaceDockInteractionController`; output capture stays in
+`PresentationPreviewRenderer`; rendering stays in `SignalProbeDetailView`.
+No Spy interaction, DSP, or drawing policy was added to `NodeCanvas`.
+
+The stable deletion target remains the broader editor-overlay coordination
+extraction tracked in the Cycle V2 architecture-quality work; this slice does
+not introduce a second decision site or a new adapter.
+
 ## Envelope Morph State Ownership
 
 Status: closed 2026-09-17.

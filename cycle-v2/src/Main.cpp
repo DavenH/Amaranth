@@ -1,5 +1,7 @@
 #include <JuceHeader.h>
 
+#include <UI/AmaranthLookAndFeel.h>
+
 #include <memory>
 #include <utility>
 #include <vector>
@@ -94,6 +96,11 @@ public:
         }
 
         ~MainWindow() override {
+            if (presetChangePrompt != nullptr) {
+                presetChangePrompt->setLookAndFeel(nullptr);
+                presetChangePrompt->exitModalState(0);
+                presetChangePrompt = nullptr;
+            }
             if (workspace != nullptr) {
                 workspace->setGraphDocumentStateChangedCallback({});
             }
@@ -300,23 +307,31 @@ public:
         }
 
         void showUnsavedGraphPrompt() {
+            if (presetChangePrompt != nullptr) {
+                presetChangePrompt->toFront(true);
+                return;
+            }
             const File file = workspace != nullptr ? workspace->graphFile() : File();
             const String graphName = file == File()
                     ? "Untitled"
                     : file.getFileNameWithoutExtension();
-            const auto options = MessageBoxOptions()
-                    .withIconType(MessageBoxIconType::WarningIcon)
-                    .withTitle("Save changes?")
-                    .withMessage("Save changes to \"" + graphName
-                            + "\" before opening another preset?")
-                    .withButton("Save")
-                    .withButton("Discard")
-                    .withButton("Cancel")
-                    .withAssociatedComponent(this);
-            AlertWindow::showAsync(options, [safeThis = SafePointer<MainWindow>(this)](int result) {
+            auto* prompt = new AlertWindow(
+                    "Save Current Preset",
+                    "Save changes to \"" + graphName
+                            + "\" before opening another preset?",
+                    MessageBoxIconType::QuestionIcon,
+                    this);
+            presetChangePrompt = prompt;
+            prompt->setLookAndFeel(&presetChangeLookAndFeel);
+            prompt->addButton("Save", 1);
+            prompt->addButton("Don't Save", 2);
+            prompt->addButton("Cancel", 0, KeyPress(KeyPress::escapeKey));
+            prompt->enterModalState(true, ModalCallbackFunction::create([
+                    safeThis = SafePointer<MainWindow>(this)](int result) {
                 if (safeThis == nullptr) {
                     return;
                 }
+                safeThis->presetChangePrompt = nullptr;
 
                 using Decision = CycleV2::GraphDocumentReplacement::Decision;
                 const Decision decision = result == 1
@@ -325,7 +340,7 @@ public:
                                 ? Decision::Discard
                                 : Decision::Cancel;
                 safeThis->resolveGraphReplacement(decision);
-            });
+            }), true);
         }
 
         void resolveGraphReplacement(CycleV2::GraphDocumentReplacement::Decision decision) {
@@ -491,12 +506,14 @@ public:
 
         const String applicationName;
         ApplicationCommandManager commandManager;
+        AmaranthLookAndFeel presetChangeLookAndFeel { nullptr, false };
         std::unique_ptr<PropertiesFile> properties;
         CycleV2::GraphFileHistory fileHistory;
         CycleV2::GraphDocumentReplacement graphReplacement;
         CycleV2::NodeWorkspace* workspace {};
         std::unique_ptr<CycleV2::CycleV2Automation> automation;
         std::unique_ptr<FileChooser> fileChooser;
+        SafePointer<AlertWindow> presetChangePrompt;
         SafePointer<DialogWindow> presetBrowserWindow;
         File currentGraphFile;
 
