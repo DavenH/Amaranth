@@ -79,6 +79,7 @@ public:
     NodeCanvasAuthoringResult deleteEdge(int edgeIndex);
     NodeCanvasAuthoringResult toggleSignalProbe(int edgeIndex, float tapPosition);
     NodeCanvasAuthoringResult removeSignalProbe(const String& probeId);
+    NodeCanvasAuthoringResult removeGuideCurve(const String& guideId);
     NodeCanvasAuthoringResult reattachSignalProbe(
             const String& probeId,
             int edgeIndex,

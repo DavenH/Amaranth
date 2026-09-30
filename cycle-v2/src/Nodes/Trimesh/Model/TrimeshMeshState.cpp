@@ -78,7 +78,7 @@ int TrimeshNodeModelCodec::currentVersion() const {
 }
 
 NodeModelStatePtr TrimeshNodeModelCodec::createDefault() const {
-    auto mesh = TrimeshMeshFactory::createDefaultMesh("Cycle2TrimeshNode");
+    auto mesh = TrimeshMeshFactory::createEmptyMesh("Cycle2TrimeshNode");
     return std::shared_ptr<const TrimeshNodeModelState>(
             new TrimeshNodeModelState(ownedMesh(mesh.release()), 1));
 }

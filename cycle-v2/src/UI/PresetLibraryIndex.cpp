@@ -93,7 +93,9 @@ public:
             const juce::String fallbackPack = directoryIndex == 0 ? "Factory" : "User";
             for (const auto& file : files) {
                 const auto duplicate = std::find_if(found.begin(), found.end(), [&](const auto& record) {
-                    return record.file == file;
+                    return record.file == file
+                            || (record.file.getFileName().equalsIgnoreCase(file.getFileName())
+                                    && record.file.hasIdenticalContentTo(file));
                 });
                 if (duplicate == found.end()) {
                     found.push_back(skeletonRecord(file, fallbackPack));

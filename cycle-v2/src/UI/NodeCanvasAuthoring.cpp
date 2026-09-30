@@ -332,6 +332,14 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::removeSignalProbe(const String& p
             { true, false, true });
 }
 
+NodeCanvasAuthoringResult NodeCanvasAuthoring::removeGuideCurve(const String& guideId) {
+    return graphEditResult(
+            commands.removeGuideCurve(guideId),
+            "Guide Curve deleted",
+            {},
+            { true, false, true });
+}
+
 NodeCanvasAuthoringResult NodeCanvasAuthoring::reattachSignalProbe(
         const String& probeId,
         int edgeIndex,

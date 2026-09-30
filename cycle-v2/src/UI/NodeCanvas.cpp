@@ -2330,7 +2330,7 @@ void NodeCanvas::requestDeleteGuideCurve(const String& guideId) {
 }
 
 bool NodeCanvas::deleteGuideCurve(const String& guideId) {
-    if (!commands.removeGuideCurve(guideId).succeeded()) {
+    if (!applyAuthoringResult(authoring.removeGuideCurve(guideId))) {
         return false;
     }
 
@@ -2340,8 +2340,6 @@ bool NodeCanvas::deleteGuideCurve(const String& guideId) {
     if (guideEditorCoordinator.guideId() == guideId) {
         closeGuideEditor();
     }
-    editStatusMessage = "Guide Curve deleted";
-    requestCanvasRepaint();
     return true;
 }
 
