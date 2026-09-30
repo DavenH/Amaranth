@@ -13,8 +13,23 @@ namespace CycleV2 {
 namespace {
 
 constexpr size_t kCompactPreviewFrameCount = 512;
+constexpr size_t kCompactPreviewColumnCount = 256;
 constexpr size_t kExpandedProbeColumnCount = 512;
 constexpr size_t kMaximumExpandedProbeRows = 512;
+
+void reduceCompactProbeRows(GraphPreviewResult& result) {
+    for (auto& probe : result.probes) {
+        GraphPreviewExecutor::reduceProbeRows(probe, kCompactPreviewFrameCount);
+    }
+    if (result.defaultOutput.has_value()) {
+        GraphPreviewExecutor::reduceProbeRows(
+                *result.defaultOutput, kCompactPreviewFrameCount);
+    }
+    if (result.defaultOutputSpectrum.has_value()) {
+        GraphPreviewExecutor::reduceProbeRows(
+                *result.defaultOutputSpectrum, kCompactPreviewFrameCount);
+    }
+}
 
 GraphPreviewResult captureProbePreviews(
         const NodeGraph& graph,
@@ -64,8 +79,11 @@ bool PresentationPreviewRenderer::render(
         return true;
     }
 
-    const AudioExecutionSpec spec {
+    const size_t sourceFrameCount = jmax(
             kCompactPreviewFrameCount,
+            GraphPreviewExecutor::periodRowsForMidiNote(snapshot.previewMidiNote));
+    const AudioExecutionSpec spec {
+            sourceFrameCount,
             44100.0,
             ChannelLayout::LinkedStereo
     };
@@ -87,9 +105,10 @@ bool PresentationPreviewRenderer::render(
         const GraphAudioResult audio = audioExecutor.process(
                 graph,
                 snapshot.compileResult.plan,
-                kCompactPreviewFrameCount,
+                sourceFrameCount,
                 {},
-                previewVoice);
+                previewVoice,
+                kCompactPreviewColumnCount);
         performance.record(
                 GraphPresentationPerformanceMetrics::Stage::PreviewAudio,
                 performance.timestamp() - audioStartedAt);
@@ -100,6 +119,7 @@ bool PresentationPreviewRenderer::render(
                 graph.getSignalProbes(),
                 40,
                 &previewControls);
+        reduceCompactProbeRows(snapshot.previewResult);
         performance.record(
                 GraphPresentationPerformanceMetrics::Stage::PreviewExtraction,
                 performance.timestamp() - extractionStartedAt);
@@ -123,10 +143,11 @@ bool PresentationPreviewRenderer::render(
     const GraphAudioResultView audio = audioExecutor.processIncrementalIndexed(
             graph,
             snapshot.compileResult.plan,
-            kCompactPreviewFrameCount,
+            sourceFrameCount,
             dirtyNodes,
             previewVoice,
-            cancellationCheck);
+            cancellationCheck,
+            kCompactPreviewColumnCount);
     performance.record(
             GraphPresentationPerformanceMetrics::Stage::PreviewAudio,
             performance.timestamp() - audioStartedAt);
@@ -151,6 +172,7 @@ bool PresentationPreviewRenderer::render(
                 40,
                 snapshot.previewResult,
                 &previewControls);
+        reduceCompactProbeRows(snapshot.previewResult);
     }
     performance.record(
             GraphPresentationPerformanceMetrics::Stage::PreviewExtraction,
