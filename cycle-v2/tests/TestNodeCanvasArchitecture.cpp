@@ -281,6 +281,26 @@ TEST_CASE("Guide relationship selection highlights without drawing a persistent 
     REQUIRE(GuideRelationshipPresentation::tetherGuideId(state) == "guide2");
 }
 
+TEST_CASE("Expanded Trimesh editor occludes intersecting workspace sidebar content",
+        "[cycle-v2][canvas][editor][sidebar][regression]") {
+    const Rectangle<float> workspace { 0.f, 0.f, 1200.f, 800.f };
+    const Rectangle<float> sidebar = GuideCurveShelf::guideWorkspace(
+            workspace, false, false);
+    const Node mesh = GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            { 440.f, 260.f });
+    const Rectangle<float> editor = NodeCanvasEditorCoordinator::boundsFor(
+            &mesh, workspace);
+
+    REQUIRE(editor.intersects(sidebar));
+    REQUIRE_FALSE(WorkspaceDock::isOverlayComponentVisible(sidebar, editor));
+    REQUIRE(WorkspaceDock::isOverlayComponentVisible(sidebar, {}));
+    REQUIRE(WorkspaceDock::isOverlayComponentVisible(
+            sidebar,
+            editor.translated(-workspace.getWidth(), 0.f)));
+}
+
 TEST_CASE("Canvas status gives hover help precedence over the last edit",
         "[cycle-v2][canvas][status]") {
     REQUIRE(NodeCanvasPresentation::canvasStatusText("Node added", {}) == "Node added");

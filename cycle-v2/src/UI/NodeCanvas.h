@@ -213,6 +213,7 @@ private:
     void requestCanvasRepaint();
     void requestCanvasStatusRepaint();
     void requestHoverRepaint(HoverRepaint repaint);
+    void updatePresetSidebarVisibility();
     void notifyOverlayOcclusionChanged();
     std::optional<NodeAudioResourceSummary> audioResourceSummary(
             const String& nodeId) const override;

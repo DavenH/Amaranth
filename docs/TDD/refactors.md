@@ -591,6 +591,23 @@ The stable deletion target remains the broader editor-overlay coordination
 extraction tracked in the Cycle V2 architecture-quality work; this slice does
 not introduce a second decision site or a new adapter.
 
+## Cycle V2 Preset Sidebar Occlusion Size Review
+
+Status: reviewed 2026-09-30.
+
+The preset-sidebar occlusion fix grows `NodeCanvas.cpp` from 2,698 to 2,710
+lines. `NodeCanvas` retains only child-component lifecycle: it supplies the
+current expanded-overlay and sidebar bounds, applies visibility, and suppresses
+automation hit targets while the child is hidden. `WorkspaceDock` owns the
+single intersection policy; `NodeCanvasEditorCoordinator` remains authoritative
+for expanded-editor geometry, and `InlinePresetBrowser` remains authoritative
+for preset content and interaction.
+
+This does not duplicate overlay eligibility, editor geometry, or sidebar
+interaction policy. The stable deletion target remains the broader
+editor-overlay coordination extraction tracked in the Cycle V2 architecture
+quality work.
+
 ## Envelope Morph State Ownership
 
 Status: closed 2026-09-17.

@@ -270,7 +270,7 @@ void NodeCanvas::configurePresetSidebar(
 std::vector<std::pair<String, Rectangle<float>>>
 NodeCanvas::presetSidebarPointerTargetsForAutomation() const {
     std::vector<std::pair<String, Rectangle<float>>> targets;
-    if (presetSidebar == nullptr) {
+    if (presetSidebar == nullptr || !presetSidebar->isVisible()) {
         return targets;
     }
     const auto origin = presetSidebar->getPosition().toFloat();
@@ -317,6 +317,7 @@ void NodeCanvas::resized() {
                 getLocalBounds().toFloat(),
                 guideShelfState.minimized,
                 probeRailState.minimized).toNearestInt());
+        updatePresetSidebarVisibility();
     }
     requestCanvasRepaint();
 }
@@ -2141,7 +2142,18 @@ void NodeCanvas::setGraphDocumentStateChangedCallback(
     graphDocumentStateChangedCallback = std::move(callback);
 }
 
+void NodeCanvas::updatePresetSidebarVisibility() {
+    if (presetSidebar == nullptr) {
+        return;
+    }
+
+    presetSidebar->setVisible(WorkspaceDock::isOverlayComponentVisible(
+            presetSidebar->getBounds().toFloat(),
+            expandedEditorBoundsForOverlay()));
+}
+
 void NodeCanvas::notifyOverlayOcclusionChanged() {
+    updatePresetSidebarVisibility();
     if (overlayOcclusionChanged) {
         overlayOcclusionChanged();
     }
