@@ -590,6 +590,9 @@ public:
                 GuideCurveTargetKind::EnvelopeCubeComponent);
         guideCurveProvider = std::move(prepared.provider);
         envelopePanel().setEnvelopeGuideProvider(guideCurveProvider.get());
+        if (envelopePurposeFor(node) == EnvelopePurpose::Pitch) {
+            envelopePanel().fitEnvelopeVerticalRange();
+        }
         guideConfigurationKey = key;
         guideNeedsSync = false;
     }

@@ -2475,6 +2475,7 @@ void NodeCanvas::beginCurveTransaction() {
 
 void NodeCanvas::commitCurveTransaction() {
     guideEditorCoordinator.commitTransaction();
+    notifyGraphDocumentStateChanged();
 }
 
 void NodeCanvas::repaintNodeEditor(bool openGl) {
@@ -2519,6 +2520,7 @@ void NodeCanvas::finishNodeEditorGesture(
     if (!finished.changed || !finished.durableChanged) {
         return;
     }
+    notifyGraphDocumentStateChanged();
     if (localField.isNotEmpty()) {
         presentation.commitLocalEditorState(
                 nodeId,
@@ -2550,6 +2552,7 @@ void NodeCanvas::cancelNodeEditorGesture(
 }
 
 void NodeCanvas::scheduleNodeEditorRefresh() {
+    notifyGraphDocumentStateChanged();
     scheduleCompiledStateRefresh();
 }
 
@@ -2560,7 +2563,14 @@ void NodeCanvas::flushNodeEditorRefresh() {
 void NodeCanvas::refreshNodeEditorPresentation() {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PreviewRuntime);
+    notifyGraphDocumentStateChanged();
     refreshCompiledStateAsync();
+}
+
+void NodeCanvas::notifyGraphDocumentStateChanged() {
+    if (graphDocumentStateChangedCallback) {
+        graphDocumentStateChangedCallback();
+    }
 }
 
 Point<float> NodeCanvas::nodeEditorCreationPosition() const {
