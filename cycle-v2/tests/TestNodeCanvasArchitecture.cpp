@@ -8,6 +8,7 @@
 #include <App/AppConstants.h>
 #include <Util/Arithmetic.h>
 
+#include "Graph/DefaultOutputProbeResolver.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphNodeStateEditor.h"
@@ -27,6 +28,7 @@
 #include "UI/GuideCurveShelf.h"
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
+#include "UI/NodeCanvasCursorPolicy.h"
 #include "UI/NodeCanvasPresentation.h"
 #include "UI/NodeCableRenderer.h"
 #include "UI/NodeCanvasViewport.h"
@@ -46,6 +48,19 @@
 #include "Runtime/PreviewPitchResolver.h"
 
 using namespace CycleV2;
+
+TEST_CASE("Node canvas Shift cursor preserves adjustment priority",
+        "[cycle-v2][canvas][cursor]") {
+    REQUIRE(NodeCanvasCursorPolicy::cursorFor(
+            false, ModifierKeys::shiftModifier)
+            == NodeCanvasCursorKind::AddToSelection);
+    REQUIRE(NodeCanvasCursorPolicy::cursorFor(
+            false, {})
+            == NodeCanvasCursorKind::Normal);
+    REQUIRE(NodeCanvasCursorPolicy::cursorFor(
+            true, ModifierKeys::shiftModifier)
+            == NodeCanvasCursorKind::VerticalAdjust);
+}
 
 TEST_CASE("EQ response preview does not require a Curve model",
         "[cycle-v2][canvas][equalizer][regression]") {
@@ -280,6 +295,26 @@ TEST_CASE("Guide relationship selection highlights without drawing a persistent 
     REQUIRE(GuideRelationshipPresentation::tetherGuideId(state) == "guide2");
 }
 
+TEST_CASE("Expanded Trimesh editor occludes intersecting workspace sidebar content",
+        "[cycle-v2][canvas][editor][sidebar][regression]") {
+    const Rectangle<float> workspace { 0.f, 0.f, 1200.f, 800.f };
+    const Rectangle<float> sidebar = GuideCurveShelf::guideWorkspace(
+            workspace, false, false);
+    const Node mesh = GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            { 440.f, 260.f });
+    const Rectangle<float> editor = NodeCanvasEditorCoordinator::boundsFor(
+            &mesh, workspace);
+
+    REQUIRE(editor.intersects(sidebar));
+    REQUIRE_FALSE(WorkspaceDock::isOverlayComponentVisible(sidebar, editor));
+    REQUIRE(WorkspaceDock::isOverlayComponentVisible(sidebar, {}));
+    REQUIRE(WorkspaceDock::isOverlayComponentVisible(
+            sidebar,
+            editor.translated(-workspace.getWidth(), 0.f)));
+}
+
 TEST_CASE("Canvas status gives hover help precedence over the last edit",
         "[cycle-v2][canvas][status]") {
     REQUIRE(NodeCanvasPresentation::canvasStatusText("Node added", {}) == "Node added");
@@ -432,10 +467,18 @@ TEST_CASE("Signal probe detail uses the audition-note period resolution",
 
     const Rectangle<float> content { 0.f, 0.f, 1200.f, 610.f };
     const Rectangle<float> detail = SignalProbeDetailView::boundsFor(content);
+    const Rectangle<float> plot = SignalProbeDetailView::plotBounds(detail);
     REQUIRE(content.contains(detail));
     REQUIRE(detail.getWidth() > 700.f);
     REQUIRE(detail.getHeight() > 400.f);
-    REQUIRE(detail.contains(SignalProbeDetailView::closeBounds(detail)));
+    REQUIRE(plot.getY() == detail.getY() + 14.f);
+    REQUIRE(plot.getBottom() == detail.getBottom() - 14.f);
+    REQUIRE_FALSE(SignalProbeDetailView::dismissesOnClick(
+            detail, detail.getCentre(), 1));
+    REQUIRE(SignalProbeDetailView::dismissesOnClick(
+            detail, detail.getCentre(), 2));
+    REQUIRE_FALSE(SignalProbeDetailView::dismissesOnClick(
+            detail, detail.getBottomRight() + Point<float>(1.f, 1.f), 2));
 }
 
 TEST_CASE("Signal probe detail resolves the attached Voice Context key value",
@@ -661,12 +704,17 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 400.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", { 800.f, 0.f }));
     graph.addEdge({
             "voice", "context", "mesh", "context",
             PortDomain::DomainContext, ConnectionKind::Signal
     });
     graph.addEdge({
             "mesh", "out", "fft", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "mesh", "out", "output", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
     REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
@@ -685,12 +733,21 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
             graph.getSignalProbes().front().id,
             resolution,
             72);
+    const auto defaultOutputDetail = presentation.captureProbePreview(
+            graph,
+            DefaultOutputProbeResolver::probeId,
+            resolution,
+            72);
 
     REQUIRE(detail.has_value());
     REQUIRE(detail->connected);
     REQUIRE(detail->gridColumns == 512);
     REQUIRE(detail->gridRows == resolution);
     REQUIRE(detail->values.size() == detail->gridColumns * resolution);
+    REQUIRE(defaultOutputDetail.has_value());
+    REQUIRE(defaultOutputDetail->connected);
+    REQUIRE(defaultOutputDetail->probeId == DefaultOutputProbeResolver::probeId);
+    REQUIRE(defaultOutputDetail->gridColumns == 512);
 
     const size_t lowNoteResolution = SignalProbeDetailView::resolutionForMidiNote(36);
     const auto lowNoteDetail = presentation.captureProbePreview(

@@ -122,12 +122,22 @@ TEST_CASE("Curve panel adapters resynchronize equal-revision models after preset
     REQUIRE(baroqueGuide != nullptr);
     REQUIRE(stengahGuide != nullptr);
     REQUIRE(baroqueGuide->model->revision() == stengahGuide->model->revision());
+    const auto baroqueModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            baroqueGuide->model);
+    const auto stengahModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            stengahGuide->model);
+    REQUIRE(baroqueModel != nullptr);
+    REQUIRE(stengahModel != nullptr);
+    REQUIRE(baroqueModel->flatCurve() != nullptr);
+    REQUIRE(stengahModel->flatCurve() != nullptr);
 
     FlatCurvePanelAdapter adapter(true);
     REQUIRE(adapter.syncFromGuideResource(*baroqueGuide));
-    REQUIRE(adapter.mesh().getNumVerts() == 4);
+    REQUIRE(adapter.mesh().getNumVerts()
+            == static_cast<int>(baroqueModel->flatCurve()->getVertices().size()));
     REQUIRE(adapter.syncFromGuideResource(*stengahGuide));
-    REQUIRE(adapter.mesh().getNumVerts() == 55);
+    REQUIRE(adapter.mesh().getNumVerts()
+            == static_cast<int>(stengahModel->flatCurve()->getVertices().size()));
 }
 
 TEST_CASE("Flat curve models validate atomically and preserve stable selection",

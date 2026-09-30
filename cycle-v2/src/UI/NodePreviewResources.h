@@ -35,7 +35,7 @@ public:
             const Node& node,
             const NodeGraph* graphToUse = nullptr);
     TrimeshWidget* findTrimeshWidget(const String& nodeId);
-    void setGraph(const NodeGraph* graphToUse);
+    void setDurableGraph(const NodeGraph* graphToUse);
     void refreshGraph(
             const NodeGraph& graphToUse,
             const GraphChangeSet& changes);

@@ -295,6 +295,7 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Unison/UnisonPreviewPainter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effects/EffectSignalProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopeMeshState.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopePitchPreview.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopePurpose.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopeSignalProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftBlockwiseDsp.cpp"
@@ -449,6 +450,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             ${RUNTIME_SOURCES}
             ${NODE_SOURCES}
             ${CANVAS_ARCHITECTURE_SOURCES}
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/App/GraphDocumentReplacement.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/GraphFileHistory.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2AutomationCommand.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2AutomationAssertions.cpp"
@@ -462,6 +464,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
             BUILD_TESTING=1
             CYCLE_V2_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+            CYCLE_V2_TEST_OUTPUT_DIR="${CMAKE_CURRENT_BINARY_DIR}/test-output"
             JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/incl/JucePluginDefines.h"
         )
 

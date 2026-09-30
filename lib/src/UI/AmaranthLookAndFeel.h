@@ -15,7 +15,9 @@ private:
 
 public:
     AmaranthLookAndFeel();
-    explicit AmaranthLookAndFeel(SingletonRepo* repo);
+    explicit AmaranthLookAndFeel(
+            SingletonRepo* repo,
+            bool installAsDefault = true);
 
     static std::unique_ptr<SingletonRepo> createStandaloneUiRepo(
             const String& companyName,

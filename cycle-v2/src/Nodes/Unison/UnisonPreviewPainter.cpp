@@ -26,11 +26,14 @@ std::vector<UnisonPreviewPath> UnisonPreviewPainter::makePaths(
     paths.reserve((size_t) configuration->layout.order);
     for (int index = 0; index < configuration->layout.order; ++index) {
         const auto& voice = configuration->layout[index];
+        const auto& pitchValues = index < (int) context.pitchEnvelopeUnitValuesByLane.size()
+                ? context.pitchEnvelopeUnitValuesByLane[(size_t) index]
+                : context.pitchEnvelopeUnitValues;
         paths.push_back({
                 index,
                 voice.detuneCents,
                 voice.pan,
-                context.pitchEnvelopeUnitValues.empty()
+                pitchValues.empty()
                         ? CycleDsp::UnisonCore::phaseSegments(
                                 CycleDsp::UnisonCore::phaseTrajectory(
                                         context.midiNote,
@@ -42,7 +45,7 @@ std::vector<UnisonPreviewPath> UnisonPreviewPainter::makePaths(
                                 voice.detuneCents,
                                 voice.phaseCycles,
                                 context.voiceDurationSeconds,
-                                context.pitchEnvelopeUnitValues)
+                                pitchValues)
         });
     }
     return paths;

@@ -85,6 +85,12 @@ juce::Rectangle<float> WorkspaceDock::editorAvailableBounds(const WorkspaceDockL
             layout.content.getX(), layout.leftShelf.getX() - CanvasUtilityDock::gap));
 }
 
+bool WorkspaceDock::isOverlayComponentVisible(
+        juce::Rectangle<float> componentBounds,
+        juce::Rectangle<float> overlayBounds) {
+    return overlayBounds.isEmpty() || !overlayBounds.intersects(componentBounds);
+}
+
 WorkspaceDockSpyControls WorkspaceDock::spyControls(juce::Rectangle<float> rail) {
     WorkspaceDockSpyControls controls;
     const float usableWidth = juce::jmax(0.f, rail.getWidth() - shelfPadding * 2.f);

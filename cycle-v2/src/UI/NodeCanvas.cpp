@@ -10,11 +10,13 @@
 #include <App/AppConstants.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <UI/Panels/TimeSurfaceStyles.h>
+#include <UI/MiscGraphics.h>
 
 #include "UI/NodeCanvas.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/CanvasUtilityDock.h"
 #include "UI/Editors/PropertyControls.h"
+#include "UI/NodeCanvasCursorPolicy.h"
 
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Control/ModulationSource.h"
@@ -198,7 +200,8 @@ NodeCanvas::NodeCanvas() :
             editorCoordinator.previewResources()
         })
     ,   renderInvalidation(*this)
-    ,   hitRouter(graph, palette, queries) {
+    ,   hitRouter(graph, palette, queries)
+    ,   addToSelectionCursor(MiscGraphics::createCursor(MiscGraphics::CrossAddCursor)) {
     settings.initialiseSettings();
     ScalarSurfaceMaterial::setTimeSurfaceStyle(
             TimeSurfaceStyles::fromId(document.presentation().timeSurfaceStyle));
@@ -273,7 +276,7 @@ void NodeCanvas::configurePresetSidebar(
 std::vector<std::pair<String, Rectangle<float>>>
 NodeCanvas::presetSidebarPointerTargetsForAutomation() const {
     std::vector<std::pair<String, Rectangle<float>>> targets;
-    if (presetSidebar == nullptr) {
+    if (presetSidebar == nullptr || !presetSidebar->isVisible()) {
         return targets;
     }
     const auto origin = presetSidebar->getPosition().toFloat();
@@ -320,6 +323,7 @@ void NodeCanvas::resized() {
                 getLocalBounds().toFloat(),
                 guideShelfState.minimized,
                 probeRailState.minimized).toNearestInt());
+        updatePresetSidebarVisibility();
     }
     requestCanvasRepaint();
 }
@@ -346,7 +350,7 @@ void NodeCanvas::focusLost(FocusChangeType) {
 
 void NodeCanvas::mouseMove(const MouseEvent& event) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Hover);
-    requestHoverRepaint(updateHoverAt(event.position));
+    requestHoverRepaint(updateHoverAt(event.position, event.mods));
 }
 
 void NodeCanvas::mouseExit(const MouseEvent&) {
@@ -368,7 +372,9 @@ void NodeCanvas::mouseExit(const MouseEvent&) {
     requestHoverRepaint(repaint);
 }
 
-NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
+NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
+        Point<float> position,
+        ModifierKeys modifiers) {
     const uint64_t startedAt = performanceMetrics.timestamp();
     const int previousPaletteSection = palette.activeSection();
     const String previousGuideId = guideShelfState.hoveredGuideId;
@@ -384,6 +390,7 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
         guideShelfState.hoveredGuideId = {};
         probeRailState.hoveredProbeId = {};
         hoveredEdgeIndex = -1;
+        setMouseCursor(MouseCursor::NormalCursor);
         const bool canvasChanged = paletteChanged
                 || previousGuideId.isNotEmpty()
                 || previousProbeId.isNotEmpty()
@@ -434,15 +441,26 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
     const GraphEdgeIndex& edgeIndex = queries.presentationFacts().edgeIndex();
     const Node* inlinePan = findInlinePanAt(graph, viewport, edgeIndex, position);
     const Node* outputFader = findOutputFaderAt(graph, viewport, edgeIndex, position);
-    MouseCursor cursor = MouseCursor::NormalCursor;
-    if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
-        cursor = MouseCursor::UpDownResizeCursor;
-    } else if (outputFader != nullptr) {
-        cursor = MouseCursor::UpDownResizeCursor;
+    const bool adjustsInlinePan = inlinePan != nullptr
+            && inlinePan->kind == NodeKind::SpectralLayer;
+    const bool adjustsOutputGain = outputFader != nullptr;
+    if (adjustsOutputGain) {
         const float gain = NodeParameterMap(*outputFader).floatValue("gain", 0.5f);
         resolvedHoverText = "Master gain: " + OutputMeterPresentation::gainLabel(gain);
     }
-    setMouseCursor(cursor);
+    switch (NodeCanvasCursorPolicy::cursorFor(
+            adjustsInlinePan || adjustsOutputGain,
+            modifiers)) {
+        case NodeCanvasCursorKind::VerticalAdjust:
+            setMouseCursor(MouseCursor::UpDownResizeCursor);
+            break;
+        case NodeCanvasCursorKind::AddToSelection:
+            setMouseCursor(addToSelectionCursor);
+            break;
+        case NodeCanvasCursorKind::Normal:
+            setMouseCursor(MouseCursor::NormalCursor);
+            break;
+    }
     performanceMetrics.recordOperation(
             CanvasPerformanceMetrics::Operation::HoverResolution,
             performanceMetrics.timestamp() - startedAt);
@@ -454,6 +472,12 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
     const HoverRepaint repaint = hoverRepaintFor(canvasChanged, statusChanged);
     performanceMetrics.recordHoverState(repaint != HoverRepaint::None);
     return repaint;
+}
+
+void NodeCanvas::modifierKeysChanged(const ModifierKeys& modifiers) {
+    if (pointerInsideCanvas) {
+        requestHoverRepaint(updateHoverAt(lastMousePosition, modifiers));
+    }
 }
 
 NodeCanvas::HoverRepaint NodeCanvas::hoverRepaintFor(
@@ -511,7 +535,10 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     guideShelfState.hoveredGuideId = {};
     if (probeDetailState.isOpen()) {
         const Rectangle<float> detail = SignalProbeDetailView::boundsFor(editorContentBounds());
-        if (SignalProbeDetailView::closeBounds(detail).contains(event.position)) {
+        if (SignalProbeDetailView::dismissesOnClick(
+                detail,
+                event.position,
+                event.getNumberOfClicks())) {
             probeDetailState.close();
             notifyOverlayOcclusionChanged();
             requestCanvasRepaint();
@@ -675,7 +702,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
         if (event.getNumberOfClicks() >= 2 && hasExpandedEditor(hitNode->kind)) {
             expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
-            synchronizeOpenedEditorMorph();
             editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
             notifyOverlayOcclusionChanged();
         }
@@ -1105,7 +1131,9 @@ void NodeCanvas::timerCallback() {
     if (getLocalBounds().toFloat().contains(mouse)
             && (mouse != lastMousePosition || previousPaletteSectionIndex != palette.activeSection())) {
         const bool paletteChanged = previousPaletteSectionIndex != palette.activeSection();
-        HoverRepaint repaint = updateHoverAt(mouse);
+        HoverRepaint repaint = updateHoverAt(
+                mouse,
+                ModifierKeys::getCurrentModifiersRealtime());
         if (paletteChanged) {
             repaint = HoverRepaint::Canvas;
         }
@@ -1403,13 +1431,25 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
         return;
     }
 
+    if (probeId == DefaultOutputProbeResolver::probeId) {
+        *preview = PresetPreviewGenerator::forView(
+                *preview,
+                probeRailState.defaultOutputView);
+    }
+
     const SignalProbe* probe = graph.findSignalProbe(probeId);
-    const NodeRenderSemantic semantic = probe != nullptr
-            ? queries.presentationFacts().renderSemanticForNodeOutput(
-                    graph,
-                    probe->sourceNodeId,
-                    probe->sourcePortId)
-            : NodeRenderSemantic {};
+    NodeRenderSemantic semantic;
+    if (probe != nullptr) {
+        semantic = queries.presentationFacts().renderSemanticForNodeOutput(
+                graph,
+                probe->sourceNodeId,
+                probe->sourcePortId);
+    } else {
+        const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(
+                preview->domain);
+        semantic.domain = preview->domain;
+        semantic.scalePolicy = profile.getScalePolicy();
+    }
     editorCoordinator.close();
     probeDetailState.open(
             std::move(*preview),
@@ -1498,7 +1538,6 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
         spliceTargetEdgeIndex = -1;
     }
     if (result.effects.editorBindingChanged) {
-        synchronizeOpenedEditorMorph();
         editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
         notifyOverlayOcclusionChanged();
     }
@@ -2115,18 +2154,6 @@ GraphEditResult NodeCanvas::editPreviewMorph(
             blue);
 }
 
-void NodeCanvas::synchronizeOpenedEditorMorph() {
-    const Node* node = queries.findNode(expandedNodeId);
-    if (node == nullptr || (node->kind != NodeKind::Envelope
-            && node->kind != NodeKind::TrilinearMesh)) {
-        return;
-    }
-    persistPreviewMorph(
-            presentation.previewMidiNote(),
-            presentation.previewModWheelValue(),
-            PreviewMorphEditScope::Both);
-}
-
 void NodeCanvas::finishPreviewModWheelRefresh() {
     refreshProbeDetail();
     requestCanvasRepaint();
@@ -2181,7 +2208,18 @@ void NodeCanvas::synchronizeTimeSurfaceStyle() {
     }
 }
 
+void NodeCanvas::updatePresetSidebarVisibility() {
+    if (presetSidebar == nullptr) {
+        return;
+    }
+
+    presetSidebar->setVisible(WorkspaceDock::isOverlayComponentVisible(
+            presetSidebar->getBounds().toFloat(),
+            expandedEditorBoundsForOverlay()));
+}
+
 void NodeCanvas::notifyOverlayOcclusionChanged() {
+    updatePresetSidebarVisibility();
     if (overlayOcclusionChanged) {
         overlayOcclusionChanged();
     }
@@ -2382,7 +2420,7 @@ void NodeCanvas::requestDeleteGuideCurve(const String& guideId) {
 }
 
 bool NodeCanvas::deleteGuideCurve(const String& guideId) {
-    if (!commands.removeGuideCurve(guideId).succeeded()) {
+    if (!applyAuthoringResult(authoring.removeGuideCurve(guideId))) {
         return false;
     }
 
@@ -2392,8 +2430,6 @@ bool NodeCanvas::deleteGuideCurve(const String& guideId) {
     if (guideEditorCoordinator.guideId() == guideId) {
         closeGuideEditor();
     }
-    editStatusMessage = "Guide Curve deleted";
-    requestCanvasRepaint();
     return true;
 }
 

@@ -655,7 +655,7 @@ bool EnvelopeEditorComponent::handleVertexParameterMouseDown(
             if (delegate != nullptr && widget.selectedEnvelopeGuideCubeIndex() >= 0) {
                 delegate->showEnvelopeGuideAttachmentMenu(
                         field,
-                        Rectangle<int>(localPointToGlobal(position.roundToInt()), { 1, 1 }));
+                        localAreaToGlobal(guideBox.toNearestInt()));
             }
             return true;
         }

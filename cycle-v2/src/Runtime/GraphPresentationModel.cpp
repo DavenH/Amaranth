@@ -83,6 +83,8 @@ bool GraphPresentationModel::refresh(
     const bool preview = compile || requiresPreview(change);
     if (compile) {
         scheduler.cancelAndWait();
+    } else {
+        scheduler.invalidateAsyncRequests();
     }
 
     GraphPresentationSnapshot next = current;
@@ -416,6 +418,9 @@ bool GraphPresentationModel::refreshLocalNodePreview(
             [this, stepIndex, preview, completion = std::move(completion)] {
                 GraphPreviewExecutor::publishLocalNodePreview(
                         current.previewResult, stepIndex, std::move(*preview));
+                scheduler.invalidateLocalPreview(
+                        current.compileResult.plan,
+                        current.compileResult.plan.steps[stepIndex].nodeId);
                 ++previewRenders;
                 ++presentationRevision;
                 if (completion) {

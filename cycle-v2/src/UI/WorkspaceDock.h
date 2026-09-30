@@ -79,6 +79,9 @@ public:
             juce::Rectangle<float> workspace,
             const WorkspaceDockState& state);
     static juce::Rectangle<float> editorAvailableBounds(const WorkspaceDockLayout& layout);
+    static bool isOverlayComponentVisible(
+            juce::Rectangle<float> componentBounds,
+            juce::Rectangle<float> overlayBounds);
     static WorkspaceDockSpyControls spyControls(juce::Rectangle<float> rail);
     static juce::Rectangle<float> spyRowBounds(
             juce::Rectangle<float> workspace,

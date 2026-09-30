@@ -8,6 +8,7 @@
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "UI/SignalProbeRail.h"
+#include "UI/WorkspaceDockInteractionController.h"
 
 using namespace CycleV2;
 
@@ -56,6 +57,24 @@ TEST_CASE("Default output spy ends the rail without becoming graph state",
             graph,
             state) == DefaultOutputProbeResolver::probeId);
     REQUIRE(graph.getSignalProbes().size() == 1);
+}
+
+TEST_CASE("Spy tiles reserve right click for output view and double click for detail",
+        "[cycle-v2][ui][probe][interaction]") {
+    using Action = SpyTilePointerAction;
+
+    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
+            false, 1, false) == Action::None);
+    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
+            false, 1, true) == Action::None);
+    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
+            true, 1, true) == Action::ToggleDefaultOutputView);
+    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
+            true, 1, false) == Action::None);
+    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
+            false, 2, false) == Action::OpenDetail);
+    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
+            false, 2, true) == Action::OpenDetail);
 }
 
 TEST_CASE("Signal probes toggle once per source output without changing execution", "[cycle-v2][probe]") {

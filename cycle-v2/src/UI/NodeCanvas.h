@@ -147,6 +147,7 @@ public:
     void mouseUp(const MouseEvent& event) override;
     void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override;
     void mouseMagnify(const MouseEvent& event, float scaleFactor) override;
+    void modifierKeysChanged(const ModifierKeys& modifiers) override;
     bool keyPressed(const KeyPress& key) override;
 
 private:
@@ -187,6 +188,7 @@ private:
     NodeCanvasHitRouter hitRouter;
     int hoveredEdgeIndex { -1 };
     Point<float> lastMousePosition;
+    MouseCursor addToSelectionCursor;
     String resolvedHoverText;
     bool pointerInsideCanvas {};
     bool canvasOpenGlAttached {};
@@ -211,7 +213,9 @@ private:
     void renderOpenGL() override;
     void openGLContextClosing() override;
     void timerCallback() override;
-    HoverRepaint updateHoverAt(juce::Point<float> position);
+    HoverRepaint updateHoverAt(
+            juce::Point<float> position,
+            ModifierKeys modifiers);
     static HoverRepaint hoverRepaintFor(bool canvasChanged, bool statusChanged);
 
     void setCanvasOpenGlAttached(bool shouldAttach);
@@ -219,6 +223,7 @@ private:
     void requestCanvasRepaint();
     void requestCanvasStatusRepaint();
     void requestHoverRepaint(HoverRepaint repaint);
+    void updatePresetSidebarVisibility();
     void notifyOverlayOcclusionChanged();
     std::optional<NodeAudioResourceSummary> audioResourceSummary(
             const String& nodeId) const override;
@@ -249,7 +254,6 @@ private:
             int midiNote,
             int modWheelValue,
             PreviewMorphEditScope scope);
-    void synchronizeOpenedEditorMorph();
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh(

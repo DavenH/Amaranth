@@ -67,6 +67,24 @@ std::vector<juce::String> searchTextsFor(
     return searchTexts;
 }
 
+std::vector<juce::File> removeCoveredDirectories(
+        const std::vector<juce::File>& directories) {
+    std::vector<juce::File> roots;
+    roots.reserve(directories.size());
+    for (const auto& directory : directories) {
+        const bool alreadyCovered = std::any_of(
+                roots.begin(),
+                roots.end(),
+                [&](const auto& root) {
+                    return directory == root || directory.isAChildOf(root);
+                });
+        if (!alreadyCovered) {
+            roots.push_back(directory);
+        }
+    }
+    return roots;
+}
+
 }
 
 class PresetLibraryIndex::ScanJob final : public juce::ThreadPoolJob {
@@ -93,7 +111,9 @@ public:
             const juce::String fallbackPack = directoryIndex == 0 ? "Factory" : "User";
             for (const auto& file : files) {
                 const auto duplicate = std::find_if(found.begin(), found.end(), [&](const auto& record) {
-                    return record.file == file;
+                    return record.file == file
+                            || (record.file.getFileName().equalsIgnoreCase(file.getFileName())
+                                    && record.file.hasIdenticalContentTo(file));
                 });
                 if (duplicate == found.end()) {
                     found.push_back(skeletonRecord(file, fallbackPack));
@@ -175,7 +195,7 @@ private:
 PresetLibraryIndex::PresetLibraryIndex(
         std::vector<juce::File> directoriesToScan,
         ResultsCallback resultsCallback) :
-        directories(std::move(directoriesToScan))
+        directories(removeCoveredDirectories(directoriesToScan))
     ,   callback(std::move(resultsCallback)) {
 }
 

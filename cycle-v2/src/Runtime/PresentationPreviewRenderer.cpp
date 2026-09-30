@@ -5,6 +5,7 @@
 #include "Runtime/PresentationPreviewRenderer.h"
 #include "Runtime/GraphPresentationSnapshot.h"
 #include "Runtime/GraphPreviewExecutor.h"
+#include "Graph/DefaultOutputProbeResolver.h"
 #include "Nodes/Control/ModulationSource.h"
 
 namespace CycleV2 {
@@ -172,6 +173,16 @@ PresentationPreviewRenderer::captureProbePreview(
             rasterRowCount,
             midiNote,
             modWheelValue);
+    if (probeId == DefaultOutputProbeResolver::probeId) {
+        if (!previews.defaultOutput.has_value()
+                || !previews.defaultOutput->connected) {
+            return std::nullopt;
+        }
+        GraphPreviewExecutor::reduceProbeRows(
+                *previews.defaultOutput,
+                std::min(rasterRowCount, kMaximumExpandedProbeRows));
+        return previews.defaultOutput;
+    }
     auto found = std::find_if(
             previews.probes.begin(),
             previews.probes.end(),

@@ -5,8 +5,12 @@
 
 namespace CycleV2 {
 
+std::unique_ptr<Mesh> TrimeshMeshFactory::createEmptyMesh(const juce::String& name) {
+    return std::make_unique<Mesh>(name);
+}
+
 std::unique_ptr<Mesh> TrimeshMeshFactory::createDefaultMesh(const juce::String& name) {
-    auto mesh = std::make_unique<Mesh>(name);
+    auto mesh = createEmptyMesh(name);
 
     addVoiceCube(*mesh, 0.00f, 0.10f, 0.50f, 0.82f, 0.24f);
     addVoiceCube(*mesh, 0.10f, 0.18f, 0.82f, 0.24f, 0.62f);

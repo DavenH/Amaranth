@@ -31,6 +31,11 @@ CausalUpdateRequest PresentationRefreshScheduler::request(
     if (!identity.has_value()) {
         return {};
     }
+    if (phase == EditPhase::Commit && stream.startsWith("editor:")) {
+        for (const auto& nodeId : change.nodeIds) {
+            gestureSession.invalidateSource("graph:" + nodeId);
+        }
+    }
     return PresentationUpdateRequestBuilder::build(
             graph, plan, change, *identity, stream, fingerprint, compile, preview, scope);
 }
@@ -100,6 +105,12 @@ void PresentationRefreshScheduler::recordEditorMovement(
     }
 }
 
+void PresentationRefreshScheduler::invalidateLocalPreview(
+        const GraphExecutionPlan& plan,
+        const String& nodeId) {
+    updateGraph.invalidateProduct(plan, nodeId, UpdateProduct::PreviewTraversal);
+}
+
 bool PresentationRefreshScheduler::commitLocalEditorState(
         const GraphExecutionPlan& plan,
         const String& nodeId,
@@ -130,11 +141,16 @@ bool PresentationRefreshScheduler::commitLocalEditorState(
             [](const auto&) {
                 return true;
             });
+    gestureSession.invalidateSource("graph:" + nodeId);
     return true;
 }
 
 PresentationRefreshScheduler::~PresentationRefreshScheduler() {
     shutdown();
+}
+
+void PresentationRefreshScheduler::invalidateAsyncRequests() {
+    currentGeneration.fetch_add(1);
 }
 
 uint64_t PresentationRefreshScheduler::beginAsyncRequest() {
@@ -288,13 +304,13 @@ bool PresentationRefreshScheduler::isCurrent(
 }
 
 void PresentationRefreshScheduler::cancelAndWait() {
-    currentGeneration.fetch_add(1);
+    invalidateAsyncRequests();
     asyncWorker.cancelAndWait();
 }
 
 void PresentationRefreshScheduler::shutdown() {
     alive.store(false);
-    currentGeneration.fetch_add(1);
+    invalidateAsyncRequests();
     asyncWorker.shutdown();
 }
 

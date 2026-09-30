@@ -5,11 +5,11 @@
     },
     {
       "command": "listMenus",
-      "menu": "Graphics"
+      "menu": "View"
     },
     {
       "command": "invokeMenuItem",
-      "menu": "Graphics",
+      "menu": "View",
       "path": ["Displayed Processing Stage", "2. After envelopes"],
       "waitForIdle": true,
       "idleDelayMs": 100

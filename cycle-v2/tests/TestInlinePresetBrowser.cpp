@@ -145,3 +145,26 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
 }
+
+TEST_CASE("Preset deletion confirmation uses compact ASCII-safe copy",
+        "[cycle-v2][preset][browser][inline][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component applicationWindow;
+    applicationWindow.setBounds(100, 80, 1200, 800);
+    std::unique_ptr<AlertWindow> alert(
+            applicationWindow.getLookAndFeel().createAlertWindow(
+                    "Move preset to Trash?",
+                    InlinePresetBrowser::deleteConfirmationMessage("acoustic"),
+                    "Move to Trash",
+                    "Cancel",
+                    {},
+                    MessageBoxIconType::WarningIcon,
+                    2,
+                    &applicationWindow));
+
+    REQUIRE(InlinePresetBrowser::deleteConfirmationMessage("acoustic")
+            == "\"acoustic\" will be removed from the preset library.");
+    REQUIRE(alert != nullptr);
+    REQUIRE(alert->getWidth() <= 600);
+    REQUIRE(alert->getBounds().getCentre() == applicationWindow.getBounds().getCentre());
+}

@@ -12,7 +12,7 @@ NodePreviewResources::NodePreviewResources(NodeEditorCommandService& commands) :
         editorCommands(commands) {
 }
 
-void NodePreviewResources::setGraph(const NodeGraph* graphToUse) {
+void NodePreviewResources::setDurableGraph(const NodeGraph* graphToUse) {
     durableGraph = graphToUse;
     if (durableGraph != nullptr) {
         previewPitchContexts.rebuild(*durableGraph);

@@ -490,6 +490,7 @@ void Waveform3D::updateTimeSurfaceStyle() {
     Image image = ScalarSurfaceMaterialEvaluator::createGradientImage(
             ScalarSurfaceMaterial::timeDomain());
     gradient.read(image, true, false);
+    bakeTexturesNextRepaint();
     repaint();
 }
 

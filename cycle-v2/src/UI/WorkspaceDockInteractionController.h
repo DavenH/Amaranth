@@ -25,6 +25,12 @@ struct WorkspaceDockInteractionCallbacks {
     std::function<void()> occlusionChanged;
 };
 
+enum class SpyTilePointerAction {
+    None,
+    ToggleDefaultOutputView,
+    OpenDetail
+};
+
 class WorkspaceDockInteractionController final :
         private WorkspaceDockKeyboardDelegate {
 public:
@@ -51,6 +57,10 @@ public:
     void setFocus(WorkspaceDockFocus focusToUse) { keyboardFocus = std::move(focusToUse); }
     void clearEphemeralState();
     void setProbeRefreshMode(ProbeRefreshMode mode);
+    static SpyTilePointerAction spyTilePointerAction(
+            bool popupClick,
+            int clickCount,
+            bool defaultOutput);
 
 private:
     WorkspaceDockKeyboardModel keyboardModel() const;

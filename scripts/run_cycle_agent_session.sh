@@ -10,6 +10,7 @@ WAIT_SECONDS="${CYCLE_WAIT_SECONDS:-20}"
 APPEND_LOG="${CYCLE_SESSION_APPEND_LOG:-0}"
 PROCESS_NAME="${CYCLE_PROCESS_NAME:-Cycle}"
 FOCUS_SECONDS="${CYCLE_FOCUS_SECONDS:-2}"
+FOCUS_ON_LAUNCH="${CYCLE_FOCUS_ON_LAUNCH:-0}"
 
 if [[ ! -d "$APP_PATH" ]]; then
     echo "Cycle app not found: $APP_PATH" >&2
@@ -69,7 +70,9 @@ APP_BUNDLE_ID="$(plutil -extract CFBundleIdentifier raw -o - "$APP_PATH/Contents
 deadline=$((SECONDS + WAIT_SECONDS))
 while (( SECONDS < deadline )); do
     if [[ -S "$SOCKET_PATH" ]]; then
-        focus_process "$APP_BUNDLE_ID" || true
+        if [[ "$FOCUS_ON_LAUNCH" == "1" ]]; then
+            focus_process "$APP_BUNDLE_ID" || true
+        fi
         echo "$SOCKET_PATH"
         echo "$LOG_PATH"
         exit 0

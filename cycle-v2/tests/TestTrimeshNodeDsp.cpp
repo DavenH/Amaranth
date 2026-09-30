@@ -153,6 +153,54 @@ MouseEvent panelMouseEvent(
 
 }
 
+TEST_CASE("New Trimesh nodes begin without authored mesh content",
+        "[cycle-v2][nodes][trimesh][authoring]") {
+    const Node node = GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh, "mesh", {});
+    const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            node.model);
+
+    REQUIRE(model != nullptr);
+    REQUIRE(model->mesh().getNumVerts() == 0);
+    REQUIRE(model->mesh().getNumCubes() == 0);
+}
+
+TEST_CASE("First Trimesh point is created at the requested phase",
+        "[cycle-v2][nodes][trimesh][authoring][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(node, 320, 96);
+
+    Component* host = bridge.getPanel2DHostComponent();
+    host->setBounds(0, 0, 640, 280);
+    bridge.syncFromNode(node, 320, 96);
+    const Point<float> position(
+            bridge.getPanel2D().sx(0.65f),
+            bridge.getPanel2D().sy(0.4f));
+    auto down = panelMouseEvent(
+            *host,
+            position,
+            ModifierKeys::rightButtonModifier,
+            position,
+            false);
+    bridge.getInteractor2D().mouseDown(down);
+    auto up = panelMouseEvent(*host, position, {}, position, false);
+    bridge.getInteractor2D().mouseUp(up);
+
+    const Mesh& mesh = bridge.getModel().getMeshForPanel();
+    REQUIRE(mesh.getNumCubes() == 1);
+    REQUIRE(mesh.getNumVerts() == VertCube::numVerts);
+    for (const Vertex* vertex : mesh.getVerts()) {
+        REQUIRE(vertex->values[Vertex::Phase] == Catch::Approx(0.65f).margin(0.002f));
+    }
+    const int selected = bridge.selectedVertexIndexForPanel();
+    REQUIRE(selected >= 0);
+    const auto parameters = bridge.getModel().getVertexParametersForIndex(selected);
+    REQUIRE(parameters[3].id == "vertex.phase");
+    REQUIRE(parameters[3].value == Catch::Approx(0.65f).margin(0.002f));
+}
+
 TEST_CASE("Trimesh vertex edit deltas apply and invert across matching meshes",
         "[cycle-v2][nodes][trimesh][gesture][delta]") {
     auto verify = [](int unrelatedCubeCount) {
@@ -2422,15 +2470,15 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     controls.setNode(node);
     controls.setContentBounds({ 10.f, 42.f, 1380.f, 710.f });
 
-    REQUIRE(controls.getControlRegionCount() == 22);
+    REQUIRE(controls.getControlRegionCount() == 28);
     REQUIRE(controls.getMorphSliderCount() == 3);
     REQUIRE(controls.getOutputScaleSliderCount() == 1);
     REQUIRE(controls.getPrimaryAxisButtonCount() == 3);
     REQUIRE(controls.getLinkToggleButtonCount() == 3);
     REQUIRE(controls.getVertexParameterSliderCount() == 6);
-    REQUIRE(controls.getVertexGuideGainKnobCount() == 3);
-    REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 3);
-    REQUIRE(controls.getNumChildComponents() == 22);
+    REQUIRE(controls.getVertexGuideGainKnobCount() == 6);
+    REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 6);
+    REQUIRE(controls.getNumChildComponents() == 28);
     Component* link = controls.findChildWithID("trimesh.link.red");
     REQUIRE(link != nullptr);
     REQUIRE_FALSE(link->keyPressed(KeyPress(' ')));
