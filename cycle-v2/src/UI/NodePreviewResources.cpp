@@ -12,17 +12,16 @@ NodePreviewResources::NodePreviewResources(NodeEditorCommandService& commands) :
         editorCommands(commands) {
 }
 
-void NodePreviewResources::setGraph(const NodeGraph* graphToUse) {
-    graph = graphToUse;
-    if (graph != nullptr) {
-        previewPitchContexts.rebuild(*graph);
+void NodePreviewResources::setDurableGraph(const NodeGraph* graphToUse) {
+    durableGraph = graphToUse;
+    if (durableGraph != nullptr) {
+        previewPitchContexts.rebuild(*durableGraph);
     }
 }
 
 void NodePreviewResources::refreshGraph(
         const NodeGraph& graphToUse,
         const GraphChangeSet& changes) {
-    graph = &graphToUse;
     previewPitchContexts.applyParameterChanges(
             graphToUse, changes.nodeIds, changes.topologyChanged);
 }
@@ -55,8 +54,8 @@ TrimeshWidget& NodePreviewResources::trimeshWidget(const Node& node) {
     widget.setPreviewMidiNote(preview.midiNote);
     widget.setPreviewKeyScaleAxis(preview.keyScaleAxis);
     widget.syncFromNode(node);
-    if (graph != nullptr) {
-        widget.syncGuideContext(*graph, node);
+    if (durableGraph != nullptr) {
+        widget.syncGuideContext(*durableGraph, node);
     }
     return widget;
 }
@@ -78,7 +77,7 @@ CurveEditorWidget& NodePreviewResources::curveEditorWidget(const Node& node) {
     }
     if (created && node.kind == NodeKind::ImpulseResponse) {
         widget->setImpulseResponseAudioResource(
-                IrSignalProcessor::directResource(graph, node.id));
+                IrSignalProcessor::directResource(durableGraph, node.id));
     }
     return *widget;
 }
@@ -87,11 +86,11 @@ void NodePreviewResources::syncCurveEditorWidget(const Node& node) {
     CurveEditorWidget& widget = curveEditorWidget(node);
     if (node.kind == NodeKind::ImpulseResponse) {
         widget.setImpulseResponseAudioResource(
-                IrSignalProcessor::directResource(graph, node.id));
+                IrSignalProcessor::directResource(durableGraph, node.id));
     }
     widget.syncFromNode(node);
-    if (graph != nullptr && node.kind == NodeKind::Envelope) {
-        widget.syncGuideContext(*graph, node);
+    if (durableGraph != nullptr && node.kind == NodeKind::Envelope) {
+        widget.syncGuideContext(*durableGraph, node);
     }
 }
 

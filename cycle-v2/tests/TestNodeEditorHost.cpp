@@ -537,7 +537,7 @@ TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
 
     const auto render = [&](const NodePreviewResult* runtime) {
         NodePreviewResources resources(editorCommands);
-        resources.setGraph(&document.graph());
+        resources.setDurableGraph(&document.graph());
         NodePreviewRenderer renderer(resources);
         Image image(Image::ARGB, 120, 96, true);
         Graphics graphics(image);
@@ -569,6 +569,48 @@ TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
     REQUIRE(checksum(withRuntime) == checksum(authoritative));
 }
 
+TEST_CASE("Transient preview refresh retains the durable graph for Trimesh resources",
+        "[cycle-v2][canvas][preview][trimesh][lifetime][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component canvas;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GuideCurveResource guide;
+    guide.id = "guide1";
+    REQUIRE(graph.addGuideCurve(std::move(guide)));
+    REQUIRE(graph.assignGuideCurve({
+            "guide1",
+            "mesh",
+            { 0, GuideCurveField::Time }
+    }));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher graphCommands(document);
+    NullPresentation presentation;
+    NullResources editorResources;
+    NodeEditorCommandService editorCommands(
+            canvas,
+            document,
+            graphCommands,
+            presentation,
+            editorResources);
+    NodePreviewResources resources(editorCommands);
+    resources.setDurableGraph(&document.graph());
+
+    const Node& node = *document.graph().findNode("mesh");
+    const String durableKey = resources.trimeshWidget(node).guideContextKey();
+    NodeGraph transient = document.graph();
+    REQUIRE(GuideGraphEditor().renameGuideCurve(
+            transient, "guide1", "Transient guide").succeeded());
+    GraphChangeSet transientChange;
+    transientChange.guidesChanged = true;
+    resources.refreshGraph(transient, transientChange);
+
+    REQUIRE(resources.trimeshWidget(node).guideContextKey() == durableKey);
+}
+
 TEST_CASE("Reverb heatmap palette follows its runtime spectral domain",
         "[cycle-v2][canvas][preview][reverb][regression]") {
     ScopedJuceInitialiser_GUI juce;
@@ -586,7 +628,7 @@ TEST_CASE("Reverb heatmap palette follows its runtime spectral domain",
             presentation,
             editorResources);
     NodePreviewResources resources(editorCommands);
-    resources.setGraph(&document.graph());
+    resources.setDurableGraph(&document.graph());
     NodePreviewRenderer renderer(resources);
     const Node& node = *document.graph().findNode("reverb");
     NodePreviewResult runtime {
@@ -659,7 +701,7 @@ TEST_CASE("First compact Envelope paint synchronizes its durable curve model",
             presentation,
             editorResources);
     NodePreviewResources resources(editorCommands);
-    resources.setGraph(&document.graph());
+    resources.setDurableGraph(&document.graph());
     NodePreviewRenderer renderer(resources);
     const Node& node = *document.graph().findNode("env");
 
