@@ -9,8 +9,9 @@ constexpr int tableModulo = GuideCurveProvider::tableSize - 1;
 int phaseOffsetFor(
         const GuideCurveTableParameters& parameters,
         const GuideCurveProvider::NoiseContext& context) {
-    return (context.phaseOffset & (tableModulo - GuideCurveProvider::tableSize / 2))
-            * parameters.phaseOffsetLevel;
+    const int centredOffset = (context.phaseOffset & tableModulo)
+            - GuideCurveProvider::tableSize / 2;
+    return centredOffset * parameters.phaseOffsetLevel;
 }
 
 void rotatePhase(
