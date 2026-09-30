@@ -791,13 +791,21 @@ TEST_CASE("Compact Envelope paint synchronizes component Guide curves",
     const String enabledWaveform = paint();
     const GuideCurveResource* guide = document.graph().findGuideCurve("guide1");
     REQUIRE(guide != nullptr);
+    FlatCurveModel editedGuideModel;
+    REQUIRE(editedGuideModel.replaceVertices({
+            { 1, 0.f, 0.f, 1.f },
+            { 2, 1.f, 0.f, 1.f }
+    }));
+    editedGuideModel.setPublicationRevision(guide->model->revision() + 1);
     graphCommands.beginTransientEdit();
     REQUIRE(graphCommands.publishGuideCurveState({
             "guide1",
             guide->revision,
-            guide->model,
+            CurveNodeModelState::copyOf(
+                    editedGuideModel,
+                    editedGuideModel.revision()),
             {
-                    { "enabled", "Enabled", "0" },
+                    { "enabled", "Enabled", "1" },
                     { "noise", "Noise", String(guide->noise) },
                     { "dcOffset", "DC Offset", String(guide->dcOffset) },
                     { "phase", "Phase", String(guide->phase) }
@@ -807,10 +815,10 @@ TEST_CASE("Compact Envelope paint synchronizes component Guide curves",
             graphCommands.editingGraph(),
             graphCommands.transientChanges());
     resources.clearCachedSprites();
-    const String disabledWaveform = paint();
+    const String editedWaveform = paint();
     graphCommands.commitTransientEdit();
 
-    REQUIRE(enabledWaveform != disabledWaveform);
+    REQUIRE(enabledWaveform != editedWaveform);
     const var state = resources.curveEditorWidget(
             *document.graph().findNode("env")).automationState();
     REQUIRE(static_cast<double>(state.getProperty("verticalZoomHeight", {})) < 1.0);
