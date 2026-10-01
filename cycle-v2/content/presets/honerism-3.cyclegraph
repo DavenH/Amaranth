@@ -38,7 +38,7 @@
             "id": "ifft",
             "kind": "ifft",
             "definitionVersion": 1,
-            "position": { "x": 2651.19995, "y": 886.0 },
+            "position": { "x": 2501.95654, "y": 682.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
         },
         {
@@ -503,7 +503,7 @@
             "id": "magnitudeOp2",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 2178.177, "y": 682.0 },
+            "position": { "x": 2057.14575, "y": 682.0 },
             "parameters": {}
         },
         {
@@ -582,7 +582,7 @@
             "id": "magnitudeOp3",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2396.66333, "y": 682.0 },
+            "position": { "x": 2265.33154, "y": 682.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -701,7 +701,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2651.19995, "y": 406.53058 },
+            "position": { "x": 2501.95654, "y": 370.02304 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.32710281, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1253,7 +1253,7 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 3009.19995, "y": 886.0 },
+            "position": { "x": 2854.69189, "y": 682.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -1284,7 +1284,7 @@
             "id": "voiceOutput",
             "kind": "voiceOutput",
             "definitionVersion": 1,
-            "position": { "x": 3207.19995, "y": 886.0 },
+            "position": { "x": 3062.99243, "y": 682.0 },
             "parameters": {}
         }
     ],
