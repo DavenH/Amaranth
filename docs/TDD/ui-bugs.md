@@ -60,7 +60,7 @@ let's just hide it along with the rest of the elements that get hidden/dimmed on
 
 ## P2: envelope component curves with randomness do not get randomness reseeded based on unison voice
 
-## P2: a graph update causes the playing audio note to stop 
+## P2: a graph update causes the playing audio note to stop
 
 ## P3: Cycle2's expanded 'out' spy node at C1 takes about 20x longer to render than Cycle 1's comparable DSP grids
 
@@ -238,6 +238,19 @@ the canonical preset set rather than weakening the assertions.
   passed. Report: `/private/tmp/causal-probe-extract-native.json`. Keep the
   fixture assertion until the intended archived graph and resolution contract
   are reconciled.
+## P3: Primary-morph editor test still assumes a populated new Trimesh
+
+Context:
+
+- On 2026-09-30, the focused `Trimesh primary morph commits refresh graph
+  presentation` case failed before its gesture assertions because it selects
+  vertex 2 from a newly created Trimesh, whose correct default is now empty.
+- The live primary- and non-primary-morph gesture cases pass independently.
+
+Current status: open fixture maintenance; explicitly author the mesh topology
+needed by the selection-preservation assertions rather than restoring implicit
+content to newly added Trimesh nodes.
+
 ## P3: Opening an Envelope editor marks the document dirty
 
 The 2026-09-17 `cycle-v2-agent-envelope-link-toggle.json` run opens the saved

@@ -24,16 +24,38 @@ void NodePreviewResources::refreshGraph(
         const GraphChangeSet& changes) {
     previewPitchContexts.applyParameterChanges(
             graphToUse, changes.nodeIds, changes.topologyChanged);
+    if (!changes.guidesChanged) {
+        return;
+    }
+    for (const String& nodeId : changes.nodeIds) {
+        const Node* node = graphToUse.findNode(nodeId);
+        if (node == nullptr) {
+            continue;
+        }
+        if (trimeshWidgetIndices.contains(nodeId)) {
+            auto& widget = *trimeshWidgets[(size_t) trimeshWidgetIndices[nodeId]].second;
+            widget.syncFromNode(*node);
+            widget.syncGuideContext(graphToUse, *node);
+            initializedTrimeshGuideContexts.addIfNotAlreadyThere(nodeId);
+        }
+        if (node->kind == NodeKind::Envelope
+                && curveEditorWidgetIndices.contains(nodeId)) {
+            auto& widget = *curveEditorWidgets[
+                    (size_t) curveEditorWidgetIndices[nodeId]].second;
+            widget.syncFromNode(*node);
+            widget.syncGuideContext(graphToUse, *node);
+            initializedCurveGuideContexts.addIfNotAlreadyThere(nodeId);
+        }
+    }
 }
 
 TrimeshWidget& NodePreviewResources::trimeshWidget(const String& nodeId) {
-    for (auto& entry : trimeshWidgets) {
-        if (entry.first == nodeId) {
-            return *entry.second;
-        }
+    if (trimeshWidgetIndices.contains(nodeId)) {
+        return *trimeshWidgets[(size_t) trimeshWidgetIndices[nodeId]].second;
     }
 
     trimeshWidgets.emplace_back(nodeId, std::make_unique<TrimeshWidget>());
+    trimeshWidgetIndices.set(nodeId, (int) trimeshWidgets.size() - 1);
     TrimeshWidget& widget = *trimeshWidgets.back().second;
     widget.setMeshEditedCallback([this, nodeId](TrimeshMeshEditEvent event) {
         if (event.selectionOnly) {
@@ -57,27 +79,22 @@ TrimeshWidget& NodePreviewResources::trimeshWidget(
     widget.setPreviewKeyScaleAxis(preview.keyScaleAxis);
     widget.syncFromNode(node);
     const NodeGraph* guideGraph = graphToUse != nullptr ? graphToUse : durableGraph;
-    if (guideGraph != nullptr) {
+    if (guideGraph != nullptr
+            && !initializedTrimeshGuideContexts.contains(node.id)) {
         widget.syncGuideContext(*guideGraph, node);
+        initializedTrimeshGuideContexts.add(node.id);
     }
     return widget;
 }
 
 CurveEditorWidget& NodePreviewResources::curveEditorWidget(const Node& node) {
-    CurveEditorWidget* widget {};
-    bool created {};
-    for (auto& entry : curveEditorWidgets) {
-        if (entry.first == node.id) {
-            widget = entry.second.get();
-            break;
-        }
-    }
-
-    if (widget == nullptr) {
+    const bool created = !curveEditorWidgetIndices.contains(node.id);
+    if (created) {
         curveEditorWidgets.emplace_back(node.id, std::make_unique<CurveEditorWidget>(node.kind));
-        widget = curveEditorWidgets.back().second.get();
-        created = true;
+        curveEditorWidgetIndices.set(node.id, (int) curveEditorWidgets.size() - 1);
     }
+    CurveEditorWidget* widget = curveEditorWidgets[
+            (size_t) curveEditorWidgetIndices[node.id]].second.get();
     if (created && node.kind == NodeKind::ImpulseResponse) {
         widget->setImpulseResponseAudioResource(
                 IrSignalProcessor::directResource(durableGraph, node.id));
@@ -92,8 +109,11 @@ void NodePreviewResources::syncCurveEditorWidget(const Node& node) {
                 IrSignalProcessor::directResource(durableGraph, node.id));
     }
     widget.syncFromNode(node);
-    if (durableGraph != nullptr && node.kind == NodeKind::Envelope) {
+    if (durableGraph != nullptr
+            && node.kind == NodeKind::Envelope
+            && !initializedCurveGuideContexts.contains(node.id)) {
         widget.syncGuideContext(*durableGraph, node);
+        initializedCurveGuideContexts.add(node.id);
     }
 }
 
@@ -110,30 +130,27 @@ CachedNodePreviewSprite& NodePreviewResources::cachedSprite(const String& nodeId
 
 uint64_t NodePreviewResources::nodePresentationFingerprint(const String& nodeId) const {
     FingerprintBuilder fingerprint;
-    for (const auto& entry : curveEditorWidgets) {
-        if (entry.first == nodeId) {
-            return fingerprint
-                    .add(entry.second->contentRevision())
-                    .add(entry.second->previewRevision())
-                    .add(entry.second->previewSnapshotRevision())
-                    .value();
-        }
+    if (curveEditorWidgetIndices.contains(nodeId)) {
+        const auto& widget = curveEditorWidgets[
+                (size_t) curveEditorWidgetIndices[nodeId]].second;
+        return fingerprint
+                .add(widget->contentRevision())
+                .add(widget->previewRevision())
+                .add(widget->previewSnapshotRevision())
+                .value();
     }
-    for (const auto& entry : trimeshWidgets) {
-        if (entry.first == nodeId) {
-            return fingerprint.add(entry.second->guideContextKey()).value();
-        }
+    if (trimeshWidgetIndices.contains(nodeId)) {
+        const auto& widget = trimeshWidgets[
+                (size_t) trimeshWidgetIndices[nodeId]].second;
+        return fingerprint.add(widget->guideContextKey()).value();
     }
     return fingerprint.value();
 }
 
 const TrimeshWidget* NodePreviewResources::findTrimeshWidget(const String& nodeId) const {
-    for (const auto& entry : trimeshWidgets) {
-        if (entry.first == nodeId) {
-            return entry.second.get();
-        }
+    if (trimeshWidgetIndices.contains(nodeId)) {
+        return trimeshWidgets[(size_t) trimeshWidgetIndices[nodeId]].second.get();
     }
-
     return nullptr;
 }
 
@@ -148,6 +165,8 @@ void NodePreviewResources::clearCachedSprites() {
 
 void NodePreviewResources::resetDocumentPreviews() {
     clearCachedSprites();
+    initializedTrimeshGuideContexts.clear();
+    initializedCurveGuideContexts.clear();
     for (auto& entry : curveEditorWidgets) {
         entry.second->resetDocumentPresentation();
     }

@@ -1420,10 +1420,15 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
     const int midiNote = presentation.previewMidiNote();
     const size_t resolution = SignalProbeDetailView::resolutionForMidiNote(
             midiNote);
+    const size_t captureResolution = probeId == DefaultOutputProbeResolver::probeId
+            ? PresetPreviewGenerator::sourceRowCountForView(
+                    resolution,
+                    probeRailState.defaultOutputView)
+            : resolution;
     auto preview = presentation.captureProbePreview(
             commands.editingGraph(),
             probeId,
-            resolution,
+            captureResolution,
             midiNote);
     if (!preview.has_value()) {
         probeDetailState.close();
@@ -1456,7 +1461,7 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
             semantic.scalePolicy,
             SignalProbeRail::ordinalForProbe(graph, probeId),
             midiNote,
-            resolution);
+            captureResolution);
     notifyOverlayOcclusionChanged();
 }
 
@@ -2513,6 +2518,7 @@ void NodeCanvas::beginCurveTransaction() {
 
 void NodeCanvas::commitCurveTransaction() {
     guideEditorCoordinator.commitTransaction();
+    notifyGraphDocumentStateChanged();
 }
 
 void NodeCanvas::repaintNodeEditor(bool openGl) {
@@ -2557,6 +2563,7 @@ void NodeCanvas::finishNodeEditorGesture(
     if (!finished.changed || !finished.durableChanged) {
         return;
     }
+    notifyGraphDocumentStateChanged();
     if (localField.isNotEmpty()) {
         presentation.commitLocalEditorState(
                 nodeId,
@@ -2588,6 +2595,7 @@ void NodeCanvas::cancelNodeEditorGesture(
 }
 
 void NodeCanvas::scheduleNodeEditorRefresh() {
+    notifyGraphDocumentStateChanged();
     scheduleCompiledStateRefresh();
 }
 
@@ -2598,7 +2606,14 @@ void NodeCanvas::flushNodeEditorRefresh() {
 void NodeCanvas::refreshNodeEditorPresentation() {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PreviewRuntime);
+    notifyGraphDocumentStateChanged();
     refreshCompiledStateAsync();
+}
+
+void NodeCanvas::notifyGraphDocumentStateChanged() {
+    if (graphDocumentStateChangedCallback) {
+        graphDocumentStateChangedCallback();
+    }
 }
 
 Point<float> NodeCanvas::nodeEditorCreationPosition() const {

@@ -448,6 +448,14 @@ public:
     double voiceLengthSeconds { 1.0 };
 };
 
+class EnvelopeEditorResources final : public NullResources {
+public:
+    CurveEditorWidget* curveEditorWidget(const Node&) override { return &widget; }
+
+private:
+    CurveEditorWidget widget { NodeKind::Envelope };
+};
+
 class RecordingVoiceCommands final : public NullCommands {
 public:
     bool beginNodeParameterEdit(
@@ -752,6 +760,103 @@ TEST_CASE("First compact Envelope paint synchronizes its durable curve model",
     });
 
     REQUIRE(resources.curveEditorWidget(node).modelRevision() == node.model->revision());
+}
+
+TEST_CASE("Compact Envelope paint synchronizes component Guide curves",
+        "[cycle-v2][canvas][preview][envelope][guides][preset][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Component canvas;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "env", "purpose", "Purpose", "pitch").succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
+    const GuideCurveResource* createdGuide = graph.findGuideCurve("guide1");
+    REQUIRE(createdGuide != nullptr);
+    FlatCurveModel guideModel;
+    REQUIRE(guideModel.replaceVertices({
+            { 1, 0.f, 1.f, 1.f },
+            { 2, 1.f, 1.f, 1.f }
+    }));
+    guideModel.setPublicationRevision(createdGuide->model->revision() + 1);
+    REQUIRE(GuideGraphEditor().replaceGuideCurve(
+            graph,
+            "guide1",
+            CurveNodeModelState::copyOf(guideModel, guideModel.revision()),
+            {
+                    { "enabled", "Enabled", "1" },
+                    { "noise", "Noise", "0" },
+                    { "dcOffset", "DC Offset", "0" },
+                    { "phase", "Phase", "0" }
+            }).succeeded());
+    REQUIRE(GuideGraphEditor().assignGuideCurveToMeshComponent(
+            graph, "guide1", "env", 0, "amp").succeeded());
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher graphCommands(document);
+    NullPresentation presentation;
+    NullResources editorResources;
+    NodeEditorCommandService editorCommands(
+            canvas,
+            document,
+            graphCommands,
+            presentation,
+            editorResources);
+    NodePreviewResources resources(editorCommands);
+    resources.setDurableGraph(&document.graph());
+    NodePreviewRenderer renderer(resources);
+    Image image(Image::ARGB, 180, 140, true);
+    Graphics graphics(image);
+    const auto paint = [&] {
+        const Node& node = *document.graph().findNode("env");
+        renderer.paint(graphics, {
+                node,
+                nullptr,
+                image.getBounds().toFloat(),
+                TrimeshRenderProfile::fromDomain(PortDomain::EnvelopeSignal),
+                1.f,
+                true
+        });
+        return JSON::toString(
+                resources.curveEditorWidget(node).automationState().getProperty(
+                        "waveformPoints", {}),
+                true);
+    };
+
+    const String enabledWaveform = paint();
+    const GuideCurveResource* guide = document.graph().findGuideCurve("guide1");
+    REQUIRE(guide != nullptr);
+    FlatCurveModel editedGuideModel;
+    REQUIRE(editedGuideModel.replaceVertices({
+            { 1, 0.f, 0.f, 1.f },
+            { 2, 1.f, 0.f, 1.f }
+    }));
+    editedGuideModel.setPublicationRevision(guide->model->revision() + 1);
+    graphCommands.beginTransientEdit();
+    REQUIRE(graphCommands.publishGuideCurveState({
+            "guide1",
+            guide->revision,
+            CurveNodeModelState::copyOf(
+                    editedGuideModel,
+                    editedGuideModel.revision()),
+            {
+                    { "enabled", "Enabled", "1" },
+                    { "noise", "Noise", String(guide->noise) },
+                    { "dcOffset", "DC Offset", String(guide->dcOffset) },
+                    { "phase", "Phase", String(guide->phase) }
+            }
+    }).succeeded());
+    resources.refreshGraph(
+            graphCommands.editingGraph(),
+            graphCommands.transientChanges());
+    resources.clearCachedSprites();
+    const String editedWaveform = paint();
+    graphCommands.commitTransientEdit();
+
+    REQUIRE(enabledWaveform != editedWaveform);
+    const var state = resources.curveEditorWidget(
+            *document.graph().findNode("env")).automationState();
+    REQUIRE(static_cast<double>(state.getProperty("verticalZoomHeight", {})) < 1.0);
 }
 
 std::vector<double> irEditableSamplesAt(
@@ -4090,4 +4195,37 @@ TEST_CASE("Effect discrete parameter changes are independently undoable",
 
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("delay"), "enabled") == "1");
+}
+
+TEST_CASE("Envelope enable button commits one undoable edit",
+        "[cycle-v2][editor][envelope][enabled][undo][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    EnvelopeEditorResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+    REQUIRE(host.bind(document.graph().findNode("env"), { 0, 0, 840, 684 }));
+    auto* enabled = dynamic_cast<EffectEnableButton*>(
+            host.component()->findChildWithID("envelopeEditor.enabled"));
+    REQUIRE(enabled != nullptr);
+
+    enabled->setToggleState(false, sendNotificationSync);
+
+    REQUIRE(parameterValueForNode(*document.graph().findNode("env"), "enabled") == "0");
+    REQUIRE(presentation.scheduledRefreshes == 1);
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("env"), "enabled") == "1");
+    REQUIRE_FALSE(document.canUndo());
 }

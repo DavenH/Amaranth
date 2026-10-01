@@ -55,6 +55,8 @@ void TrimeshPanelDataSource::rebuild(
         int keyScaleAxis) {
     const ScopedLock lock(gridLock);
 
+    ++renderCounters.sliceRebuilds;
+    ++renderCounters.surfaceRebuilds;
     renderData = TrimeshGridRenderService::renderGrid(
             model,
             rows,
@@ -104,6 +106,21 @@ void TrimeshPanelDataSource::rebuild(
                 x,
                 (char) columnMidiNote);
     }
+}
+
+void TrimeshPanelDataSource::rebuildSlice(
+        TrimeshNodeModel& model,
+        int rows,
+        const TrimeshRenderProfile& renderProfile,
+        int midiNote) {
+    const ScopedLock lock(gridLock);
+
+    ++renderCounters.sliceRebuilds;
+    renderData.slice = TrimeshGridRenderService::renderSlice(
+            model,
+            rows,
+            renderProfile,
+            midiNote);
 }
 
 Buffer<float> TrimeshPanelDataSource::getColumnArray() {

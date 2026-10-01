@@ -62,6 +62,10 @@ private:
     std::vector<std::pair<String, std::unique_ptr<TrimeshWidget>>> trimeshWidgets;
     std::vector<std::pair<String, std::unique_ptr<CurveEditorWidget>>> curveEditorWidgets;
     std::vector<std::pair<String, CachedNodePreviewSprite>> cachedSprites;
+    HashMap<String, int> trimeshWidgetIndices;
+    HashMap<String, int> curveEditorWidgetIndices;
+    StringArray initializedTrimeshGuideContexts;
+    StringArray initializedCurveGuideContexts;
 
     const NodeGraph* durableGraph {};
     PreviewPitchContextIndex previewPitchContexts;

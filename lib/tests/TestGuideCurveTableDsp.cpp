@@ -27,8 +27,8 @@ TEST_CASE("Guide curve table DSP applies the Cycle playback contract",
 
     const int tableModulo = GuideCurveProvider::tableSize - 1;
     const int tableIndex = (int) (0.25f * (float) tableModulo);
-    const int phaseOffset = (context.phaseOffset
-            & (tableModulo - GuideCurveProvider::tableSize / 2))
+    const int phaseOffset = ((context.phaseOffset & tableModulo)
+            - GuideCurveProvider::tableSize / 2)
             * parameters.phaseOffsetLevel;
     const float expected = table[(size_t) ((tableIndex + phaseOffset) & tableModulo)]
             + parameters.noiseLevel
@@ -42,6 +42,49 @@ TEST_CASE("Guide curve table DSP applies the Cycle playback contract",
             0.25f,
             context);
     REQUIRE(actual == Catch::Approx(expected));
+}
+
+TEST_CASE("Guide curve phase randomness spans the full bipolar cycle",
+        "[guide][dsp][phase][regression]") {
+    std::vector<float> table(GuideCurveProvider::tableSize);
+    std::vector<float> noise(GuideCurveProvider::tableSize);
+    std::vector<float> phaseScratch(GuideCurveProvider::tableSize);
+    std::vector<float> destination(GuideCurveProvider::tableSize);
+    for (int index = 0; index < GuideCurveProvider::tableSize; ++index) {
+        table[(size_t) index] = (float) index;
+    }
+    GuideCurveTableParameters parameters;
+    parameters.phaseOffsetLevel = 1.f;
+    GuideCurveProvider::NoiseContext context;
+    constexpr float progress = 0.5f;
+
+    context.phaseOffset = 0;
+    const float negativeHalfCycle = GuideCurveTableDsp::tableValue(
+            { table.data(), (int) table.size() },
+            { noise.data(), (int) noise.size() },
+            parameters,
+            progress,
+            context);
+    context.phaseOffset = GuideCurveProvider::tableSize - 1;
+    const float positiveHalfCycle = GuideCurveTableDsp::tableValue(
+            { table.data(), (int) table.size() },
+            { noise.data(), (int) noise.size() },
+            parameters,
+            progress,
+            context);
+
+    REQUIRE(negativeHalfCycle == 8191.f);
+    REQUIRE(positiveHalfCycle == 8190.f);
+
+    context.phaseOffset = 0;
+    GuideCurveTableDsp::sampleDownAddNoise(
+            { table.data(), (int) table.size() },
+            { noise.data(), (int) noise.size() },
+            { phaseScratch.data(), (int) phaseScratch.size() },
+            parameters,
+            { destination.data(), (int) destination.size() },
+            context);
+    REQUIRE(destination.front() == 4096.f);
 }
 
 TEST_CASE("Guide curve table DSP initializes stable deterministic noise",

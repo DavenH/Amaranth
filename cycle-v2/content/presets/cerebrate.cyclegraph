@@ -179,7 +179,7 @@
                 "gain": 0.5,
                 "range": 0.75,
                 "signalType": "spectralMagnitude",
-                "polarity": "bipolar",
+                "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.149532706,
                 "blue": 0.0,

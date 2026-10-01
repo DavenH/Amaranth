@@ -1,12 +1,16 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <cmath>
+
 #include "Graph/DefaultOutputProbeResolver.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Runtime/GraphAudioExecutor.h"
+#include "Runtime/GraphPresentationModel.h"
 #include "Runtime/GraphPreviewExecutor.h"
 #include "UI/PresetPreviewGenerator.h"
+#include "UI/SignalProbeDetailView.h"
 
 using namespace CycleV2;
 using namespace juce;
@@ -167,4 +171,56 @@ TEST_CASE("Preset preview generator produces normalized time and spectral JPEGs"
     REQUIRE(ImageFileFormat::loadFrom(
             spectrumJpeg.jpegData.getData(),
             spectrumJpeg.jpegData.getSize()).getBounds() == Rectangle<int>(0, 0, 160, 90));
+}
+
+TEST_CASE("Expanded output spectrum retains the compact FFT resolution",
+        "[cycle-v2][preset][preview][spectrum][detail][regression]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(CYCLE_V2_SOURCE_DIR)
+            .getChildFile("content/presets/acidic-2.cyclegraph");
+    const NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(graph, 1));
+    REQUIRE(presentation.previewResult().defaultOutputSpectrum.has_value());
+    const auto& compact = *presentation.previewResult().defaultOutputSpectrum;
+    REQUIRE(compact.gridColumns == 256);
+    REQUIRE(compact.gridRows == 257);
+    REQUIRE(compact.values.size() == compact.gridColumns * compact.gridRows);
+
+    const size_t noteRows = SignalProbeDetailView::resolutionForMidiNote(
+            presentation.previewMidiNote());
+    const size_t sourceRows = PresetPreviewGenerator::sourceRowCountForView(
+            noteRows,
+            PresetPreviewView::Spectrum);
+    const auto detailTime = presentation.captureProbePreview(
+            graph,
+            DefaultOutputProbeResolver::probeId,
+            sourceRows,
+            presentation.previewMidiNote());
+    REQUIRE(noteRows < 512);
+    REQUIRE(sourceRows == 512);
+    REQUIRE(detailTime.has_value());
+    const auto detail = PresetPreviewGenerator::forView(
+            *detailTime,
+            PresetPreviewView::Spectrum);
+    REQUIRE(detail.gridColumns == 512);
+    REQUIRE(detail.gridRows == compact.gridRows);
+    REQUIRE(detail.values.size() == detail.gridColumns * detail.gridRows);
+
+    double meanDifference {};
+    for (size_t column = 0; column < compact.gridColumns; ++column) {
+        const size_t detailColumn = (size_t) std::round(
+                (double) column * (double) (detail.gridColumns - 1)
+                / (double) (compact.gridColumns - 1));
+        for (size_t row = 0; row < compact.gridRows; ++row) {
+            meanDifference += std::abs(
+                    compact.values[column * compact.gridRows + row]
+                    - detail.values[detailColumn * detail.gridRows + row]);
+        }
+    }
+    meanDifference /= (double) compact.values.size();
+    REQUIRE(meanDifference < 0.02);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
 }

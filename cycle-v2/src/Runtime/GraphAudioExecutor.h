@@ -107,7 +107,8 @@ public:
             size_t frameCount,
             const std::vector<uint8_t>& dirtyNodes,
             AudioVoiceContext voice,
-            CancellationCheck cancellationCheck = {}) const;
+            CancellationCheck cancellationCheck = {},
+            size_t traversalColumnCount = 0) const;
     void clearIncrementalCache() const;
     void resetExecutionState() const;
     size_t diagnosticProcessCount(const String& nodeId) const;
@@ -148,6 +149,7 @@ private:
         const std::vector<uint8_t>& dirtyNodes;
         const CancellationCheck& cancellationCheck;
         GraphAudioResultView& result;
+        size_t traversalColumnCount {};
     };
 
     struct RealtimeExecution {

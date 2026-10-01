@@ -720,8 +720,8 @@ bool NodePreviewRenderer::renderOpenGL(
         return false;
     }
 
+    resources.syncCurveEditorWidget(node);
     CurveEditorWidget& widget = resources.curveEditorWidget(node);
-    widget.syncFromNode(node);
     widget.renderPreviewSnapshotOpenGL(node, area, scaleFactor);
     return true;
 }
@@ -747,8 +747,8 @@ bool NodePreviewRenderer::paintAuthoritativeModel(
         return false;
     }
 
+    resources.syncCurveEditorWidget(request.node);
     CurveEditorWidget& widget = resources.curveEditorWidget(request.node);
-    widget.syncFromNode(request.node);
     if (!widget.paintPreviewSnapshot(graphics, request.area)) {
         drawCurveFallback(
                 graphics,

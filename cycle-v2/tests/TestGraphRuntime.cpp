@@ -5,6 +5,7 @@
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <App/AppConstants.h>
+#include <Curve/Mesh/Mesh.h>
 
 #include <algorithm>
 
@@ -21,6 +22,8 @@
 #include "Nodes/Control/ModulationTriple.h"
 #include "Nodes/Control/ModulationSource.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/GraphRuntime.h"
@@ -85,6 +88,18 @@ GuideHeatmapAssetPtr verticalGradientHeatmap() {
     REQUIRE(asset != nullptr);
     REQUIRE(error.isEmpty());
     return asset;
+}
+
+NodeGraph demoGraphWithPopulatedWaveMesh() {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("GuideRuntimeMesh");
+    REQUIRE(mesh != nullptr);
+    const NodeModelStatePtr model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    mesh->destroy();
+    REQUIRE(graph.replaceNodeModel(
+            "waveMesh",
+            model));
+    return graph;
 }
 
 NodeModelStatePtr horizontalGuideModel(float y, uint64_t revision) {
@@ -654,7 +669,7 @@ TEST_CASE("Unused Guide organization changes do not rebuild DSP presentation",
 
 TEST_CASE("Two live Guide updates refresh an attached downstream Spy before one undo",
         "[cycle-v2][runtime][guides][causal][gesture]") {
-    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphDocument document(demoGraphWithPopulatedWaveMesh());
     GraphCommandDispatcher commands(document);
     REQUIRE(commands.createGuideCurve().succeeded());
     REQUIRE(commands.assignGuideCurve("guide1", "waveMesh", 2, "amp").succeeded());
@@ -703,7 +718,7 @@ TEST_CASE("Two live Guide updates refresh an attached downstream Spy before one 
 
 TEST_CASE("Two live image-backed Guide path updates refresh downstream before one undo",
         "[cycle-v2][runtime][guides][heatmap][gesture]") {
-    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphDocument document(demoGraphWithPopulatedWaveMesh());
     GraphCommandDispatcher commands(document);
     REQUIRE(commands.createGuideCurve().succeeded());
     REQUIRE(commands.assignGuideCurve("guide1", "waveMesh", 2, "amp").succeeded());
