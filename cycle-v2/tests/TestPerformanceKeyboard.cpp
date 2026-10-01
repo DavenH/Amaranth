@@ -423,6 +423,52 @@ TEST_CASE("Performance keyboard preview transport follows its configured duratio
     REQUIRE(sink.messages.size() == messageCount);
 }
 
+TEST_CASE("Preset playback lasts for the roll length after its last note ends",
+        "[cycle-v2][keyboard][sequence][transport]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    phrase.notes.push_back({ 60, 100, 0.0, 0.5 });
+    panel.setSequence(phrase);
+
+    REQUIRE(panel.startPlayback(1'000.0));
+    panel.updatePlayback(2'000.0);
+    REQUIRE(panel.isPlaying());
+    REQUIRE(panel.playbackProgress() == Catch::Approx(0.25f));
+    REQUIRE(sink.messages.back().isNoteOff());
+    panel.updatePlayback(5'000.0);
+    REQUIRE_FALSE(panel.isPlaying());
+    REQUIRE(panel.playbackProgress() == 1.f);
+}
+
+TEST_CASE("A roll without notes auditions the selected key for audition length",
+        "[cycle-v2][keyboard][sequence][transport]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    panel.setPreviewNote(55);
+    panel.setPlaybackDurationSeconds(2.f);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 10.0;
+    phrase.controls.push_back({ 1, 20, 0.0 });
+    panel.setSequence(phrase);
+
+    REQUIRE(panel.startPlayback(1'000.0));
+    REQUIRE(sink.messages.back().isController());
+    REQUIRE(panel.heldNote() == 55);
+    panel.updatePlayback(2'000.0);
+    REQUIRE(panel.isPlaying());
+    REQUIRE(panel.playbackProgress() == Catch::Approx(0.5f));
+    panel.updatePlayback(3'000.0);
+    REQUIRE_FALSE(panel.isPlaying());
+    REQUIRE(panel.playbackProgress() == 1.f);
+    REQUIRE(sink.messages.back().isNoteOff());
+}
+
 TEST_CASE("Preview transport duration uses the longest Voice Context",
         "[cycle-v2][keyboard][transport][voice-context]") {
     GraphExecutionPlan plan;

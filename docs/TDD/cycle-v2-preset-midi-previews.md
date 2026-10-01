@@ -1,6 +1,71 @@
 # Cycle V2 Preset MIDI Previews
 
-Status: Complete
+Status: Complete — piano-roll navigation and performance revision
+
+## Revision design (2026-10-01, follow-up)
+
+The preset sequence's saved `durationSeconds` is the piano-roll timeline and
+owns playback length whenever notes exist, including trailing silence. The
+keyboard panel remains the sole MIDI transport and note-lifecycle owner. If a
+sequence has no notes, it auditions the selected keyboard note for the
+configured audition length, even when CC points remain. The popup sends
+note-on/off requests through the panel for click audition and reads a transport
+position callback for its playhead; it does not route MIDI itself.
+
+The editor owns one viewport with an integer time-step offset and integer
+lowest pitch. Wheel fractions accumulate across events before either axis
+moves. Notes, curve points, grid, ruler, playhead, and minimap projection all
+use that viewport. Wheel and minimap navigation publish no document edits.
+The minimap shows the entire timeline and pitch extent, with a draggable
+viewport rectangle. A dedicated velocity lane edits each note's saved
+velocity; Shift-drag and arrow keys permit one-step precision. The modulation
+lane is enlarged and follows the existing canvas palette's dark field,
+contrasting curve, point handles, and viewport indication.
+
+At pointer-down, note/velocity audition begins; pointer-up, popup destruction,
+and a pitch change release the prior note. A visible right-edge grip and a
+`MOVE`/`RESIZE` readout distinguish note gestures even when the note's start is
+offscreen. Playback position repaint is UI-only. Editing remains O(1) per
+gesture update (excluding local repaint); minimap painting scans sequence
+events. No graph clone, audio preparation, or serialization occurs during a
+gesture.
+
+Baseline: `PresetMidiEditor.cpp` 395 lines and `PerformanceKeyboard.cpp` 823
+lines. Paint and navigation will be split from gesture code if editor growth
+crosses the 200-line review trigger. Deletion target: the old independent
+horizontal/vertical wheel rounding and fixed grid origin. Complete when
+focused gesture tests, playback-duration/fallback tests, actual-size render,
+Cycle 2 fixtures, style check, architecture audit, build, and commit pass.
+
+### Revision review and verification
+
+The gesture and transport-facing editor is now 484 lines, with 400 lines of
+viewport mapping and painting in `PresetMidiEditorView.cpp`; the original
+395-line mixed editor no longer owns rendering. `PerformanceKeyboard.cpp` is
+865 lines (from 823). Its responsibilities remain held-key state, MIDI sink,
+recording, and audition transport. It delegates saved phrase validation to
+`PresetPresentationCodec`, document publication to the workspace/dispatcher,
+and all piano-roll viewport decisions to `PresetMidiEditor`. The panel alone
+decides whether the phrase has notes and owns the note-off path for editor
+audition and playback. No second transport or document-lifecycle policy was
+added. The old wheel rounding and fixed horizontal grid origin were removed;
+the view reads the editor's single viewport. There are no new graph-kind
+branches, copies, serialization, or resource preparation in pointer updates.
+
+Standalone Debug and `CycleV2_tests` build with `--parallel 10`. Focused
+keyboard and sequence tests pass: 227 assertions in 25 cases. These cover
+fractional trackpad pan, snapped note/CC positioning, minimap navigation,
+offscreen resizing, note audition, velocity editing, explicit roll length,
+trailing silence, CC-only audition fallback, and playhead/row rendering. The
+Cycle 2 editor fixture passes 11/11 commands, including held-note release and
+Space transport, and the preset preview record/save/reload fixture passes
+24/24. Actual-size populated and empty editor captures were reviewed at
+`/tmp/cycle-v2-piano-roll-large-populated.png` and
+`/tmp/cycle-v2-piano-roll-large-empty.png`. The architecture audit reports
+`PerformanceKeyboard.cpp` at the existing 800-line review threshold, below
+the 1,200-line plan threshold. `git diff --check` passes; no DSP or raster
+hot loops were changed. `clang-tidy` is unavailable locally. Seventeen
+pre-existing modified factory preset files remain user-owned and unstaged.
 
 ## Revision design (2026-10-01)
 

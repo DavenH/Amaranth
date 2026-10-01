@@ -373,6 +373,7 @@ void PerformanceKeyboardPanel::setPlaybackDurationSeconds(float seconds) {
 void PerformanceKeyboardPanel::setSequence(std::optional<PresetMidiSequence> nextSequence) {
     stopPlayback();
     stopRecording();
+    releaseEditorAudition();
     sequence = std::move(nextSequence);
     rebuildPlaybackEvents();
     if (sequence.has_value() && !sequence->notes.empty()) {
@@ -389,6 +390,30 @@ void PerformanceKeyboardPanel::setSequence(std::optional<PresetMidiSequence> nex
 void PerformanceKeyboardPanel::setSequenceChangedCallback(
         std::function<void(PresetMidiSequence)> callback) {
     sequenceChanged = std::move(callback);
+}
+
+bool PerformanceKeyboardPanel::hasSequenceNotes() const {
+    return sequence.has_value() && !sequence->notes.empty();
+}
+
+void PerformanceKeyboardPanel::auditionSequenceNote(
+        int pitch, int velocity, bool noteOn) {
+    if (noteOn) {
+        stopPlayback();
+        releaseEditorAudition();
+        editorAuditionPitch = pitch;
+        setPreviewNote(pitch);
+        keyboardState.noteOn(1, pitch, (float) velocity / 127.f);
+    } else if (editorAuditionPitch == pitch) {
+        releaseEditorAudition();
+    }
+}
+
+void PerformanceKeyboardPanel::releaseEditorAudition() {
+    if (editorAuditionPitch >= 0) {
+        keyboardState.noteOff(1, editorAuditionPitch, 0.f);
+        editorAuditionPitch = -1;
+    }
 }
 
 void PerformanceKeyboardPanel::rebuildPlaybackEvents() {
@@ -435,6 +460,7 @@ void PerformanceKeyboardPanel::rebuildPlaybackEvents() {
 }
 
 bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
+    releaseEditorAudition();
     stopPlayback();
     stopRecording();
     nextPlaybackEvent = 0;
@@ -447,9 +473,10 @@ bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
     playing = true;
     playButton.setButtonText("STOP");
     sendModWheelValue();
-    if (!sequence.has_value() || sequence->empty()) {
+    if (!hasSequenceNotes()) {
         keyboardState.noteOn(1, playbackNote, 0.8f);
-    } else {
+    }
+    if (sequence.has_value()) {
         dispatchSequenceEvents(0.0);
     }
     startTimerHz(60);
@@ -467,7 +494,7 @@ void PerformanceKeyboardPanel::togglePlayback() {
 
 void PerformanceKeyboardPanel::stopPlayback(bool resetProgress) {
     stopTimer();
-    if (playing && (!sequence.has_value() || sequence->empty()) && playbackNote >= 0) {
+    if (playing && !hasSequenceNotes() && playbackNote >= 0) {
         keyboardState.noteOff(1, playbackNote, 0.f);
     }
     for (int note = 0; note < 128; ++note) {
@@ -492,13 +519,13 @@ void PerformanceKeyboardPanel::updatePlayback(double nowMilliseconds) {
     const double elapsedSeconds = jmax(
             0.0,
             (nowMilliseconds - playbackStartedAtMilliseconds) / 1000.0);
-    if (sequence.has_value() && !sequence->empty()) {
+    if (sequence.has_value()) {
         dispatchSequenceEvents(elapsedSeconds);
     }
     progress = jlimit(
             0.f,
             1.f,
-            (float) (elapsedSeconds / (sequence.has_value() && !sequence->empty()
+            (float) (elapsedSeconds / (hasSequenceNotes()
                     ? sequence->durationSeconds : (double) playbackDuration)));
     if (progress >= 1.f) {
         stopPlayback(false);
@@ -615,6 +642,7 @@ void PerformanceKeyboardPanel::stopRecording() {
 void PerformanceKeyboardPanel::releaseAllNotes() {
     stopPlayback();
     stopRecording();
+    releaseEditorAudition();
     keyboard.releaseAllNotes();
 }
 
@@ -680,6 +708,20 @@ void PerformanceKeyboardPanel::openSequenceEditor() {
                 if (safeThis != nullptr) {
                     safeThis->togglePlayback();
                 }
+            },
+            [safeThis](int pitch, int velocity, bool noteOn) {
+                if (safeThis != nullptr) {
+                    safeThis->auditionSequenceNote(pitch, velocity, noteOn);
+                }
+            },
+            [safeThis]() -> std::optional<double> {
+                if (safeThis == nullptr || !safeThis->playing) {
+                    return std::nullopt;
+                }
+                const double duration = safeThis->hasSequenceNotes()
+                        ? safeThis->sequence->durationSeconds
+                        : (double) safeThis->playbackDuration;
+                return duration * safeThis->progress;
             });
     auto* editorContent = editor.get();
     CallOutBox::launchAsynchronously(

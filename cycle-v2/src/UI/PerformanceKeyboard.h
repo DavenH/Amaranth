@@ -188,8 +188,11 @@ private:
     void sendModWheelValue();
     void openSequenceEditor();
     void stopRecording();
+    void auditionSequenceNote(int pitch, int velocity, bool noteOn);
+    void releaseEditorAudition();
     void dispatchSequenceEvents(double elapsedSeconds);
     void rebuildPlaybackEvents();
+    bool hasSequenceNotes() const;
 
     struct PlaybackEvent {
         double timeSeconds {};
@@ -200,6 +203,7 @@ private:
     bool recording {};
     int selectedPreviewNote { 48 };
     int playbackNote { -1 };
+    int editorAuditionPitch { -1 };
     float playbackDuration { 1.f };
     float progress {};
     double playbackStartedAtMilliseconds {};
