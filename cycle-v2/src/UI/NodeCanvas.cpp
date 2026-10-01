@@ -1415,10 +1415,15 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
     const int midiNote = presentation.previewMidiNote();
     const size_t resolution = SignalProbeDetailView::resolutionForMidiNote(
             midiNote);
+    const size_t captureResolution = probeId == DefaultOutputProbeResolver::probeId
+            ? PresetPreviewGenerator::sourceRowCountForView(
+                    resolution,
+                    probeRailState.defaultOutputView)
+            : resolution;
     auto preview = presentation.captureProbePreview(
             commands.editingGraph(),
             probeId,
-            resolution,
+            captureResolution,
             midiNote);
     if (!preview.has_value()) {
         probeDetailState.close();
@@ -1451,7 +1456,7 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
             semantic.scalePolicy,
             SignalProbeRail::ordinalForProbe(graph, probeId),
             midiNote,
-            resolution);
+            captureResolution);
     notifyOverlayOcclusionChanged();
 }
 
