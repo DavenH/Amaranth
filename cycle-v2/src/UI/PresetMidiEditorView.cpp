@@ -3,6 +3,7 @@
 
 #include "UI/PresetMidiEditor.h"
 #include "UI/CanvasChromePalette.h"
+#include "UI/MidiPatternMiniMap.h"
 
 namespace CycleV2 {
 
@@ -94,23 +95,7 @@ float PresetMidiEditor::xForTime(double time) const {
 }
 
 Range<int> PresetMidiEditor::overviewPitches() const {
-    if (sequence.notes.empty()) {
-        return { 0, 128 };
-    }
-    int lowest = sequence.notes.front().pitch;
-    int highest = lowest;
-    for (const auto& note : sequence.notes) {
-        lowest = jmin(lowest, note.pitch);
-        highest = jmax(highest, note.pitch);
-    }
-    lowest = jmax(0, lowest - 12);
-    highest = jmin(127, highest + 12);
-    if (highest - lowest < 47) {
-        const int centre = (lowest + highest) / 2;
-        lowest = jlimit(0, 80, centre - 23);
-        highest = lowest + 47;
-    }
-    return { lowest, highest + 1 };
+    return MidiPatternMiniMap::pitchRange(sequence, 48, 12);
 }
 
 int PresetMidiEditor::controllerLane() const {
@@ -177,19 +162,10 @@ void PresetMidiEditor::paintMiniMap(Graphics& graphics) const {
     const auto pitches = overviewPitches();
     graphics.setColour(CanvasChromePalette::minimapBackground);
     graphics.fillRoundedRectangle(map, 3.f);
-    Graphics::ScopedSaveState saveState(graphics);
-    graphics.reduceClipRegion(map.getSmallestIntegerContainer());
-    for (const auto& note : sequence.notes) {
-        const float x = map.getX() + map.getWidth()
-                * (float) (note.startSeconds / sequence.durationSeconds);
-        const float width = jmax(2.f, map.getWidth()
-                * (float) (note.durationSeconds / sequence.durationSeconds));
-        const float y = map.getBottom() - map.getHeight()
-                * ((float) (note.pitch - pitches.getStart()) + 0.5f)
-                / (float) pitches.getLength();
-        graphics.setColour(CanvasChromePalette::focus.withAlpha(0.76f));
-        graphics.fillRoundedRectangle({ x, y - 1.f, width, 2.f }, 1.f);
-    }
+    MidiPatternMiniMap::paintNotes(graphics, sequence,
+            map.withTrimmedBottom(9.f), pitches);
+    MidiPatternMiniMap::paintControls(graphics, sequence,
+            map.withTrimmedTop(map.getHeight() - 9.f));
     const float left = map.getX() + map.getWidth()
             * (float) (timeOffset() / sequence.durationSeconds);
     const float width = map.getWidth()

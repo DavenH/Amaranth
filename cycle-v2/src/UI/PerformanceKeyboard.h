@@ -123,6 +123,8 @@ public:
     bool isRecording() const { return recording; }
     void setSequence(std::optional<PresetMidiSequence> sequence);
     void setSequenceChangedCallback(std::function<void(PresetMidiSequence)> callback);
+    void showSequenceEditor(PresetMidiSequence sequence,
+            std::function<void(PresetMidiSequence)> onEdit);
     void setRecordingChangedCallback(std::function<void(bool)> callback) {
         recordingChanged = std::move(callback);
     }

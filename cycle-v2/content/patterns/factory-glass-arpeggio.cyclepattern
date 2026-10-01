@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "id": "factory-glass-arpeggio",
+  "name": "Glass Arpeggio",
+  "sequence": {
+    "durationSeconds": 4,
+    "notes": [
+      {
+        "pitch": 64,
+        "velocity": 91,
+        "startSeconds": 0,
+        "durationSeconds": 0.23
+      },
+      {
+        "pitch": 68,
+        "velocity": 68,
+        "startSeconds": 0.25,
+        "durationSeconds": 0.22
+      },
+      {
+        "pitch": 71,
+        "velocity": 81,
+        "startSeconds": 0.5,
+        "durationSeconds": 0.2
+      },
+      {
+        "pitch": 76,
+        "velocity": 102,
+        "startSeconds": 0.75,
+        "durationSeconds": 0.3
+      },
+      {
+        "pitch": 71,
+        "velocity": 76,
+        "startSeconds": 1.25,
+        "durationSeconds": 0.25
+      },
+      {
+        "pitch": 68,
+        "velocity": 89,
+        "startSeconds": 1.5,
+        "durationSeconds": 0.23
+      },
+      {
+        "pitch": 66,
+        "velocity": 95,
+        "startSeconds": 2,
+        "durationSeconds": 0.23
+      },
+      {
+        "pitch": 69,
+        "velocity": 70,
+        "startSeconds": 2.25,
+        "durationSeconds": 0.22
+      },
+      {
+        "pitch": 73,
+        "velocity": 86,
+        "startSeconds": 2.5,
+        "durationSeconds": 0.23
+      },
+      {
+        "pitch": 78,
+        "velocity": 108,
+        "startSeconds": 2.75,
+        "durationSeconds": 0.34
+      },
+      {
+        "pitch": 73,
+        "velocity": 75,
+        "startSeconds": 3.25,
+        "durationSeconds": 0.23
+      },
+      {
+        "pitch": 69,
+        "velocity": 93,
+        "startSeconds": 3.5,
+        "durationSeconds": 0.24
+      }
+    ],
+    "controls": [
+      {
+        "controller": 1,
+        "value": 24,
+        "timeSeconds": 0.0
+      },
+      {
+        "controller": 1,
+        "value": 61,
+        "timeSeconds": 1.0
+      },
+      {
+        "controller": 1,
+        "value": 38,
+        "timeSeconds": 2.0
+      },
+      {
+        "controller": 1,
+        "value": 87,
+        "timeSeconds": 3.0
+      },
+      {
+        "controller": 1,
+        "value": 29,
+        "timeSeconds": 4.0
+      }
+    ]
+  }
+}

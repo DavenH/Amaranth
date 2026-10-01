@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "id": "factory-octave-engine",
+  "name": "Octave Engine",
+  "sequence": {
+    "durationSeconds": 4,
+    "notes": [
+      {
+        "pitch": 36,
+        "velocity": 110,
+        "startSeconds": 0,
+        "durationSeconds": 0.3
+      },
+      {
+        "pitch": 48,
+        "velocity": 72,
+        "startSeconds": 0.5,
+        "durationSeconds": 0.25
+      },
+      {
+        "pitch": 36,
+        "velocity": 102,
+        "startSeconds": 1,
+        "durationSeconds": 0.32
+      },
+      {
+        "pitch": 43,
+        "velocity": 81,
+        "startSeconds": 1.5,
+        "durationSeconds": 0.25
+      },
+      {
+        "pitch": 36,
+        "velocity": 117,
+        "startSeconds": 2,
+        "durationSeconds": 0.35
+      },
+      {
+        "pitch": 48,
+        "velocity": 68,
+        "startSeconds": 2.5,
+        "durationSeconds": 0.25
+      },
+      {
+        "pitch": 46,
+        "velocity": 96,
+        "startSeconds": 3,
+        "durationSeconds": 0.3
+      },
+      {
+        "pitch": 43,
+        "velocity": 88,
+        "startSeconds": 3.5,
+        "durationSeconds": 0.26
+      }
+    ],
+    "controls": [
+      {
+        "controller": 1,
+        "value": 29,
+        "timeSeconds": 0.0
+      },
+      {
+        "controller": 1,
+        "value": 45,
+        "timeSeconds": 1.0
+      },
+      {
+        "controller": 1,
+        "value": 83,
+        "timeSeconds": 2.0
+      },
+      {
+        "controller": 1,
+        "value": 52,
+        "timeSeconds": 3.0
+      },
+      {
+        "controller": 1,
+        "value": 31,
+        "timeSeconds": 4.0
+      }
+    ]
+  }
+}

@@ -176,6 +176,7 @@ PresetPresentationDecodeResult readPresentation(
     result.presentation.pack = object->getProperty("pack").toString();
     result.presentation.description = object->getProperty("description").toString();
     result.presentation.timeSurfaceStyle = object->getProperty("timeSurfaceStyle").toString();
+    result.presentation.patternId = object->getProperty("patternId").toString();
     result.presentation.rating = juce::jlimit(0, 5, (int) object->getProperty("rating"));
 
     readTags(object->getProperty("tags"), result);
@@ -208,6 +209,7 @@ bool PresetPresentation::empty() const {
             && tags.isEmpty()
             && rating == 0
             && !preview.has_value()
+            && patternId.isEmpty()
             && !sequence.has_value();
 }
 
@@ -247,7 +249,9 @@ juce::var PresetPresentationCodec::writeJSON(const PresetPresentation& presentat
                 preview.jpegData.getData(), preview.jpegData.getSize()));
         result->setProperty("preview", juce::var(encoded.release()));
     }
-    if (presentation.sequence.has_value()) {
+    if (presentation.patternId.isNotEmpty()) {
+        result->setProperty("patternId", presentation.patternId);
+    } else if (presentation.sequence.has_value()) {
         result->setProperty("sequence", writeSequence(*presentation.sequence));
     }
     return juce::var(result.release());
@@ -260,6 +264,16 @@ PresetPresentationDecodeResult PresetPresentationCodec::readJSON(const juce::var
 PresetPresentationDecodeResult PresetPresentationCodec::readMetadataJSON(
         const juce::var& value) {
     return readPresentation(value, false);
+}
+
+juce::var PresetPresentationCodec::writeSequenceJSON(
+        const PresetMidiSequence& sequence) {
+    return writeSequence(sequence);
+}
+
+std::optional<PresetMidiSequence> PresetPresentationCodec::readSequenceJSON(
+        const juce::var& value) {
+    return readSequence(value);
 }
 
 juce::String idForPresetPreviewView(PresetPreviewView view) {

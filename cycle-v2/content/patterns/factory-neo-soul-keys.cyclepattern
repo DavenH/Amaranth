@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "id": "factory-neo-soul-keys",
+  "name": "Neo Soul Keys",
+  "sequence": {
+    "durationSeconds": 6,
+    "notes": [
+      {
+        "pitch": 55,
+        "velocity": 87,
+        "startSeconds": 0,
+        "durationSeconds": 0.65
+      },
+      {
+        "pitch": 58,
+        "velocity": 69,
+        "startSeconds": 0,
+        "durationSeconds": 0.65
+      },
+      {
+        "pitch": 65,
+        "velocity": 78,
+        "startSeconds": 0,
+        "durationSeconds": 0.65
+      },
+      {
+        "pitch": 62,
+        "velocity": 97,
+        "startSeconds": 1.65,
+        "durationSeconds": 0.28
+      },
+      {
+        "pitch": 60,
+        "velocity": 72,
+        "startSeconds": 2,
+        "durationSeconds": 0.4
+      },
+      {
+        "pitch": 57,
+        "velocity": 90,
+        "startSeconds": 3,
+        "durationSeconds": 0.66
+      },
+      {
+        "pitch": 60,
+        "velocity": 74,
+        "startSeconds": 3,
+        "durationSeconds": 0.66
+      },
+      {
+        "pitch": 64,
+        "velocity": 82,
+        "startSeconds": 3,
+        "durationSeconds": 0.66
+      },
+      {
+        "pitch": 67,
+        "velocity": 103,
+        "startSeconds": 4.45,
+        "durationSeconds": 0.28
+      },
+      {
+        "pitch": 65,
+        "velocity": 77,
+        "startSeconds": 4.8,
+        "durationSeconds": 0.45
+      }
+    ],
+    "controls": [
+      {
+        "controller": 1,
+        "value": 17,
+        "timeSeconds": 0.0
+      },
+      {
+        "controller": 1,
+        "value": 40,
+        "timeSeconds": 1.5
+      },
+      {
+        "controller": 1,
+        "value": 70,
+        "timeSeconds": 3.0
+      },
+      {
+        "controller": 1,
+        "value": 31,
+        "timeSeconds": 4.5
+      },
+      {
+        "controller": 1,
+        "value": 20,
+        "timeSeconds": 6.0
+      }
+    ]
+  }
+}

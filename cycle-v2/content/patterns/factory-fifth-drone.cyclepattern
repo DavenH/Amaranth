@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "id": "factory-fifth-drone",
+  "name": "Fifth Drone",
+  "sequence": {
+    "durationSeconds": 12,
+    "notes": [
+      {
+        "pitch": 43,
+        "velocity": 72,
+        "startSeconds": 0.0,
+        "durationSeconds": 5.5
+      },
+      {
+        "pitch": 50,
+        "velocity": 79,
+        "startSeconds": 0.12,
+        "durationSeconds": 5.5
+      },
+      {
+        "pitch": 55,
+        "velocity": 86,
+        "startSeconds": 0.24,
+        "durationSeconds": 5.5
+      },
+      {
+        "pitch": 45,
+        "velocity": 75,
+        "startSeconds": 6.0,
+        "durationSeconds": 5.5
+      },
+      {
+        "pitch": 52,
+        "velocity": 82,
+        "startSeconds": 6.12,
+        "durationSeconds": 5.5
+      },
+      {
+        "pitch": 57,
+        "velocity": 89,
+        "startSeconds": 6.24,
+        "durationSeconds": 5.5
+      }
+    ],
+    "controls": [
+      {
+        "controller": 1,
+        "value": 8,
+        "timeSeconds": 0.0
+      },
+      {
+        "controller": 1,
+        "value": 26,
+        "timeSeconds": 3.0
+      },
+      {
+        "controller": 1,
+        "value": 61,
+        "timeSeconds": 6.0
+      },
+      {
+        "controller": 1,
+        "value": 85,
+        "timeSeconds": 9.0
+      },
+      {
+        "controller": 1,
+        "value": 37,
+        "timeSeconds": 12.0
+      }
+    ]
+  }
+}

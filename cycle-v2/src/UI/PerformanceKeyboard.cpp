@@ -689,19 +689,31 @@ void PerformanceKeyboardPanel::resized() {
 }
 
 void PerformanceKeyboardPanel::openSequenceEditor() {
+    showSequenceEditor(sequence.value_or(PresetMidiSequence {}),
+            [safeThis = Component::SafePointer<PerformanceKeyboardPanel>(this)](
+                    PresetMidiSequence edited) {
+                if (safeThis != nullptr && safeThis->sequenceChanged) {
+                    safeThis->sequenceChanged(std::move(edited));
+                }
+            });
+}
+
+void PerformanceKeyboardPanel::showSequenceEditor(
+        PresetMidiSequence initial,
+        std::function<void(PresetMidiSequence)> onEdit) {
     if (recording) {
         stopRecording();
     }
     Component::SafePointer<PerformanceKeyboardPanel> safeThis(this);
     auto editor = std::make_unique<PresetMidiEditor>(
-            sequence.value_or(PresetMidiSequence {}),
-            [safeThis](PresetMidiSequence edited) {
+            std::move(initial),
+            [safeThis, onEdit = std::move(onEdit)](PresetMidiSequence edited) {
                 if (safeThis == nullptr) {
                     return;
                 }
                 safeThis->setSequence(edited);
-                if (safeThis->sequenceChanged) {
-                    safeThis->sequenceChanged(std::move(edited));
+                if (onEdit) {
+                    onEdit(std::move(edited));
                 }
             },
             [safeThis] {

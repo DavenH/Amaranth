@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "id": "factory-swing-comp",
+  "name": "Swing Comp",
+  "sequence": {
+    "durationSeconds": 6,
+    "notes": [
+      {
+        "pitch": 57,
+        "velocity": 92,
+        "startSeconds": 0,
+        "durationSeconds": 0.6
+      },
+      {
+        "pitch": 61,
+        "velocity": 76,
+        "startSeconds": 0,
+        "durationSeconds": 0.6
+      },
+      {
+        "pitch": 67,
+        "velocity": 83,
+        "startSeconds": 0,
+        "durationSeconds": 0.6
+      },
+      {
+        "pitch": 60,
+        "velocity": 85,
+        "startSeconds": 1.5,
+        "durationSeconds": 0.45
+      },
+      {
+        "pitch": 64,
+        "velocity": 72,
+        "startSeconds": 1.5,
+        "durationSeconds": 0.45
+      },
+      {
+        "pitch": 69,
+        "velocity": 79,
+        "startSeconds": 1.5,
+        "durationSeconds": 0.45
+      },
+      {
+        "pitch": 62,
+        "velocity": 96,
+        "startSeconds": 3.15,
+        "durationSeconds": 0.55
+      },
+      {
+        "pitch": 66,
+        "velocity": 78,
+        "startSeconds": 3.15,
+        "durationSeconds": 0.55
+      },
+      {
+        "pitch": 69,
+        "velocity": 88,
+        "startSeconds": 3.15,
+        "durationSeconds": 0.55
+      },
+      {
+        "pitch": 64,
+        "velocity": 87,
+        "startSeconds": 4.65,
+        "durationSeconds": 0.58
+      },
+      {
+        "pitch": 67,
+        "velocity": 73,
+        "startSeconds": 4.65,
+        "durationSeconds": 0.58
+      },
+      {
+        "pitch": 71,
+        "velocity": 80,
+        "startSeconds": 4.65,
+        "durationSeconds": 0.58
+      }
+    ],
+    "controls": [
+      {
+        "controller": 1,
+        "value": 28,
+        "timeSeconds": 0.0
+      },
+      {
+        "controller": 1,
+        "value": 35,
+        "timeSeconds": 1.5
+      },
+      {
+        "controller": 1,
+        "value": 62,
+        "timeSeconds": 3.0
+      },
+      {
+        "controller": 1,
+        "value": 45,
+        "timeSeconds": 4.5
+      },
+      {
+        "controller": 1,
+        "value": 25,
+        "timeSeconds": 6.0
+      }
+    ]
+  }
+}

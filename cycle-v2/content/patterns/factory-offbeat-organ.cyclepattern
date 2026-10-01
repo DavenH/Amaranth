@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "id": "factory-offbeat-organ",
+  "name": "Offbeat Organ",
+  "sequence": {
+    "durationSeconds": 4,
+    "notes": [
+      {
+        "pitch": 57,
+        "velocity": 97,
+        "startSeconds": 0.5,
+        "durationSeconds": 0.24
+      },
+      {
+        "pitch": 64,
+        "velocity": 79,
+        "startSeconds": 0.5,
+        "durationSeconds": 0.24
+      },
+      {
+        "pitch": 60,
+        "velocity": 91,
+        "startSeconds": 1.5,
+        "durationSeconds": 0.22
+      },
+      {
+        "pitch": 67,
+        "velocity": 72,
+        "startSeconds": 1.5,
+        "durationSeconds": 0.22
+      },
+      {
+        "pitch": 62,
+        "velocity": 101,
+        "startSeconds": 2.5,
+        "durationSeconds": 0.23
+      },
+      {
+        "pitch": 69,
+        "velocity": 81,
+        "startSeconds": 2.5,
+        "durationSeconds": 0.23
+      },
+      {
+        "pitch": 60,
+        "velocity": 94,
+        "startSeconds": 3.5,
+        "durationSeconds": 0.24
+      },
+      {
+        "pitch": 67,
+        "velocity": 74,
+        "startSeconds": 3.5,
+        "durationSeconds": 0.24
+      }
+    ],
+    "controls": [
+      {
+        "controller": 1,
+        "value": 35,
+        "timeSeconds": 0.0
+      },
+      {
+        "controller": 1,
+        "value": 29,
+        "timeSeconds": 1.0
+      },
+      {
+        "controller": 1,
+        "value": 75,
+        "timeSeconds": 2.0
+      },
+      {
+        "controller": 1,
+        "value": 56,
+        "timeSeconds": 3.0
+      },
+      {
+        "controller": 1,
+        "value": 33,
+        "timeSeconds": 4.0
+      }
+    ]
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "id": "factory-tom-steps",
+  "name": "Tom Steps",
+  "sequence": {
+    "durationSeconds": 4,
+    "notes": [
+      {
+        "pitch": 43,
+        "velocity": 116,
+        "startSeconds": 0,
+        "durationSeconds": 0.2
+      },
+      {
+        "pitch": 46,
+        "velocity": 77,
+        "startSeconds": 0.5,
+        "durationSeconds": 0.16
+      },
+      {
+        "pitch": 50,
+        "velocity": 98,
+        "startSeconds": 1,
+        "durationSeconds": 0.19
+      },
+      {
+        "pitch": 53,
+        "velocity": 67,
+        "startSeconds": 1.5,
+        "durationSeconds": 0.16
+      },
+      {
+        "pitch": 50,
+        "velocity": 109,
+        "startSeconds": 2,
+        "durationSeconds": 0.18
+      },
+      {
+        "pitch": 46,
+        "velocity": 82,
+        "startSeconds": 2.5,
+        "durationSeconds": 0.16
+      },
+      {
+        "pitch": 43,
+        "velocity": 120,
+        "startSeconds": 3,
+        "durationSeconds": 0.22
+      },
+      {
+        "pitch": 53,
+        "velocity": 74,
+        "startSeconds": 3.5,
+        "durationSeconds": 0.17
+      }
+    ],
+    "controls": [
+      {
+        "controller": 1,
+        "value": 15,
+        "timeSeconds": 0.0
+      },
+      {
+        "controller": 1,
+        "value": 37,
+        "timeSeconds": 1.0
+      },
+      {
+        "controller": 1,
+        "value": 72,
+        "timeSeconds": 2.0
+      },
+      {
+        "controller": 1,
+        "value": 51,
+        "timeSeconds": 3.0
+      },
+      {
+        "controller": 1,
+        "value": 19,
+        "timeSeconds": 4.0
+      }
+    ]
+  }
+}

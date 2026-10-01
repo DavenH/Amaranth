@@ -263,14 +263,31 @@ void NodeCanvas::configurePresetSidebar(
             std::move(openCallback),
             std::move(browseCallback),
             [this](WorkspaceSidebarTab tab) {
-                guideShelfState.presetBrowserVisible = tab == WorkspaceSidebarTab::Presets;
+                guideShelfState.presetBrowserVisible = tab != WorkspaceSidebarTab::Curves;
                 requestCanvasRepaint();
                 openGLContext.triggerRepaint();
             });
     guideShelfState.presetBrowserVisible = presetSidebar->activeTab()
-            == WorkspaceSidebarTab::Presets;
+            != WorkspaceSidebarTab::Curves;
     addAndMakeVisible(*presetSidebar);
     resized();
+}
+
+void NodeCanvas::configurePatternSidebar(
+        InlinePresetBrowser::PatternSelectCallback select,
+        InlinePresetBrowser::PatternEditCallback edit,
+        InlinePresetBrowser::PatternCreateCallback create) {
+    if (presetSidebar != nullptr) {
+        presetSidebar->configurePatterns(
+                std::move(select), std::move(edit), std::move(create));
+    }
+}
+
+void NodeCanvas::setPatternSidebarRecords(
+        std::vector<PatternRecord> records, const String& selectedId) {
+    if (presetSidebar != nullptr) {
+        presetSidebar->setPatterns(std::move(records), selectedId);
+    }
 }
 
 std::vector<std::pair<String, Rectangle<float>>>
@@ -2201,6 +2218,16 @@ void NodeCanvas::setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
 
 bool NodeCanvas::setPresetSequence(PresetMidiSequence sequence) {
     if (!commands.setPresetSequence(std::move(sequence))) {
+        return false;
+    }
+    if (graphDocumentStateChangedCallback) {
+        graphDocumentStateChangedCallback();
+    }
+    return true;
+}
+
+bool NodeCanvas::setPresetPatternId(const String& id) {
+    if (!commands.setPresetPatternId(id)) {
         return false;
     }
     if (graphDocumentStateChangedCallback) {

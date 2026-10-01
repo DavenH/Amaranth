@@ -1,0 +1,40 @@
+#pragma once
+
+#include <JuceHeader.h>
+
+#include <functional>
+#include <memory>
+#include <vector>
+
+#include "Graph/PatternLibrary.h"
+
+namespace CycleV2 {
+
+class PatternBrowser final : public juce::Component {
+public:
+    using SelectCallback = std::function<void(const juce::String&)>;
+    using EditCallback = std::function<void(const juce::String&)>;
+    using CreateCallback = std::function<void(const juce::String&)>;
+
+    PatternBrowser(SelectCallback select, EditCallback edit, CreateCallback create);
+    ~PatternBrowser() override;
+    void setRecords(std::vector<PatternRecord> records, const juce::String& selectedId);
+    std::vector<std::pair<juce::String, juce::Rectangle<float>>>
+            pointerTargetsForAutomation() const;
+    void resized() override;
+
+private:
+    class List;
+    void editSelected();
+
+    EditCallback onEdit;
+    CreateCallback onCreate;
+    juce::TextEditor nameEntry;
+    juce::TextButton createButton { "NEW FROM CURRENT" };
+    juce::TextButton editButton { "EDIT" };
+    juce::Label status;
+    juce::Viewport viewport;
+    std::unique_ptr<List> list;
+};
+
+}

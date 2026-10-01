@@ -23,6 +23,19 @@ bool GraphCommandDispatcher::setPresetSequence(PresetMidiSequence sequence) {
         return false;
     }
     document.presetPresentation.sequence = std::move(sequence);
+    document.presetPresentation.patternId.clear();
+    ++document.presentationRevision;
+    return true;
+}
+
+bool GraphCommandDispatcher::setPresetPatternId(const juce::String& id) {
+    if (hasTransientEdit() || id.isEmpty()
+            || (document.presetPresentation.patternId == id
+                    && !document.presetPresentation.sequence.has_value())) {
+        return false;
+    }
+    document.presetPresentation.patternId = id;
+    document.presetPresentation.sequence.reset();
     ++document.presentationRevision;
     return true;
 }

@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "id": "factory-sax-night-walk",
+  "name": "Sax Night Walk",
+  "sequence": {
+    "durationSeconds": 8,
+    "notes": [
+      {
+        "pitch": 55,
+        "velocity": 75,
+        "startSeconds": 0,
+        "durationSeconds": 1.15
+      },
+      {
+        "pitch": 62,
+        "velocity": 91,
+        "startSeconds": 1.45,
+        "durationSeconds": 0.65
+      },
+      {
+        "pitch": 65,
+        "velocity": 68,
+        "startSeconds": 2.35,
+        "durationSeconds": 0.42
+      },
+      {
+        "pitch": 67,
+        "velocity": 107,
+        "startSeconds": 2.95,
+        "durationSeconds": 1.2
+      },
+      {
+        "pitch": 64,
+        "velocity": 77,
+        "startSeconds": 4.45,
+        "durationSeconds": 0.48
+      },
+      {
+        "pitch": 62,
+        "velocity": 94,
+        "startSeconds": 5.1,
+        "durationSeconds": 0.62
+      },
+      {
+        "pitch": 58,
+        "velocity": 72,
+        "startSeconds": 6,
+        "durationSeconds": 0.36
+      },
+      {
+        "pitch": 55,
+        "velocity": 101,
+        "startSeconds": 6.6,
+        "durationSeconds": 1.05
+      }
+    ],
+    "controls": [
+      {
+        "controller": 1,
+        "value": 22,
+        "timeSeconds": 0.0
+      },
+      {
+        "controller": 1,
+        "value": 34,
+        "timeSeconds": 2.0
+      },
+      {
+        "controller": 1,
+        "value": 79,
+        "timeSeconds": 4.0
+      },
+      {
+        "controller": 1,
+        "value": 62,
+        "timeSeconds": 6.0
+      },
+      {
+        "controller": 1,
+        "value": 20,
+        "timeSeconds": 8.0
+      }
+    ]
+  }
+}

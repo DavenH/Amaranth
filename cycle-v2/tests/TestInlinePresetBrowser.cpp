@@ -58,6 +58,8 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
             browser.findChildWithID("workspace.sidebar.curves"));
     auto* presets = dynamic_cast<Button*>(
             browser.findChildWithID("workspace.sidebar.presets"));
+    auto* patterns = dynamic_cast<Button*>(
+            browser.findChildWithID("workspace.sidebar.patterns"));
     auto* search = dynamic_cast<TextEditor*>(
             browser.findChildWithID("workspace.sidebar.search"));
     auto* browse = dynamic_cast<Button*>(
@@ -72,6 +74,7 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
             findDescendantWithID(browser, "workspace.sidebar.delete"));
     REQUIRE(curves != nullptr);
     REQUIRE(presets != nullptr);
+    REQUIRE(patterns != nullptr);
     REQUIRE(search != nullptr);
     REQUIRE(browse != nullptr);
     REQUIRE(all != nullptr);

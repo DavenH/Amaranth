@@ -80,6 +80,10 @@ public:
                     { repositoryPresetDirectory(), defaultGraphDirectory() },
                     [this](const File& file) { return requestOpenGraphFile(file); },
                     [this] { chooseOpenGraph(); });
+            workspace->configurePatternLibrary(
+                    repositoryPresetDirectory().getSiblingFile("patterns"),
+                    File::getSpecialLocation(File::userApplicationDataDirectory)
+                            .getChildFile("Amaranth Audio/Cycle V2/Patterns"));
 
             commandManager.registerAllCommandsForTarget(this);
             addKeyListener(commandManager.getKeyMappings());

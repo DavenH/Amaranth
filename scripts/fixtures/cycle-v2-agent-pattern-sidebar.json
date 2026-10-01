@@ -1,0 +1,18 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/sitar-pad.cyclegraph" },
+    { "command": "assertState", "path": "performance.previewPatternId", "equals": "factory-suspended-cloud" },
+    { "command": "assertState", "path": "performance.previewSequenceNoteCount", "equals": 9 },
+    { "command": "pointer", "targetId": "workspace.sidebar.patterns", "event": "click" },
+    { "command": "waitForIdle", "idleDelayMs": 100 },
+    { "command": "pointer", "targetId": "workspace.sidebar.pattern.factory-swing-comp", "event": "click" },
+    { "command": "assertState", "path": "performance.previewPatternId", "equals": "factory-swing-comp" },
+    { "command": "assertState", "path": "performance.previewSequenceNoteCount", "equals": 12 },
+    { "command": "saveGraph", "path": "/private/tmp/cycle-v2-pattern-assigned.cyclegraph" },
+    { "command": "openGraph", "path": "/private/tmp/cycle-v2-pattern-assigned.cyclegraph" },
+    { "command": "assertState", "path": "performance.previewPatternId", "equals": "factory-swing-comp" },
+    { "command": "inspectTargets" },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-pattern-sidebar.png" }
+  ],
+  "quit": true
+}

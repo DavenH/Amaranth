@@ -9,12 +9,14 @@
 #include "UI/PresetBrowserLookAndFeel.h"
 #include "UI/PresetLibraryIndex.h"
 #include "UI/PresetThumbnailCache.h"
+#include "UI/PatternBrowser.h"
 
 namespace CycleV2 {
 
 enum class WorkspaceSidebarTab {
     Curves,
-    Presets
+    Presets,
+    Patterns
 };
 
 class InlinePresetBrowser final :
@@ -29,6 +31,9 @@ public:
     using ConfirmDeleteCallback = std::function<void(
             const juce::String&,
             std::function<void(bool)>)>;
+    using PatternSelectCallback = PatternBrowser::SelectCallback;
+    using PatternEditCallback = PatternBrowser::EditCallback;
+    using PatternCreateCallback = PatternBrowser::CreateCallback;
 
     InlinePresetBrowser(
             std::vector<juce::File> directories,
@@ -40,6 +45,10 @@ public:
     ~InlinePresetBrowser() override;
 
     void setActiveTab(WorkspaceSidebarTab tab);
+    void configurePatterns(PatternSelectCallback select,
+            PatternEditCallback edit, PatternCreateCallback create);
+    void setPatterns(std::vector<PatternRecord> records,
+            const juce::String& selectedId);
     WorkspaceSidebarTab activeTab() const { return tab; }
     int visiblePresetCount() const;
     static juce::String deleteConfirmationMessage(const juce::String& presetName);
@@ -86,6 +95,8 @@ private:
     PresetThumbnailCache thumbnails;
     juce::TextButton curves { "CURVES" };
     juce::TextButton presets { "PRESETS" };
+    juce::TextButton patterns { "PATTERNS" };
+    std::unique_ptr<PatternBrowser> patternBrowser;
     juce::TextEditor search;
     juce::TextButton all { "ALL" };
     juce::TextButton factory { "FACTORY" };

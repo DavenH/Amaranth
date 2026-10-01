@@ -73,6 +73,12 @@ public:
             std::vector<File> directories,
             InlinePresetBrowser::OpenCallback openCallback,
             InlinePresetBrowser::ActionCallback browseCallback);
+    void configurePatternSidebar(
+            InlinePresetBrowser::PatternSelectCallback select,
+            InlinePresetBrowser::PatternEditCallback edit,
+            InlinePresetBrowser::PatternCreateCallback create);
+    void setPatternSidebarRecords(
+            std::vector<PatternRecord> records, const String& selectedId);
     var exportAutomationState() const;
     String exportGraphJson() const;
     bool openNodeEditorForAutomation(const String& nodeId);
@@ -122,6 +128,10 @@ public:
         return document.presentation().sequence;
     }
     bool setPresetSequence(PresetMidiSequence sequence);
+    const String& presetPatternId() const {
+        return document.presentation().patternId;
+    }
+    bool setPresetPatternId(const String& id);
     ProbeRefreshMode probeRefreshMode() const override { return probeRailState.refreshMode; }
     void setProbeRefreshMode(ProbeRefreshMode mode);
     bool setPreviewMidiNote(int midiNote);

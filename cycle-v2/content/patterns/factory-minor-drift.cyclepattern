@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "id": "factory-minor-drift",
+  "name": "Minor Drift",
+  "sequence": {
+    "durationSeconds": 10,
+    "notes": [
+      {
+        "pitch": 50,
+        "velocity": 72,
+        "startSeconds": 0.0,
+        "durationSeconds": 2.8
+      },
+      {
+        "pitch": 53,
+        "velocity": 79,
+        "startSeconds": 0.12,
+        "durationSeconds": 2.8
+      },
+      {
+        "pitch": 57,
+        "velocity": 86,
+        "startSeconds": 0.24,
+        "durationSeconds": 2.8
+      },
+      {
+        "pitch": 55,
+        "velocity": 75,
+        "startSeconds": 3.15,
+        "durationSeconds": 2.8
+      },
+      {
+        "pitch": 58,
+        "velocity": 82,
+        "startSeconds": 3.27,
+        "durationSeconds": 2.8
+      },
+      {
+        "pitch": 62,
+        "velocity": 89,
+        "startSeconds": 3.39,
+        "durationSeconds": 2.8
+      },
+      {
+        "pitch": 53,
+        "velocity": 78,
+        "startSeconds": 6.3,
+        "durationSeconds": 3
+      },
+      {
+        "pitch": 57,
+        "velocity": 85,
+        "startSeconds": 6.42,
+        "durationSeconds": 3
+      },
+      {
+        "pitch": 60,
+        "velocity": 72,
+        "startSeconds": 6.54,
+        "durationSeconds": 3
+      }
+    ],
+    "controls": [
+      {
+        "controller": 1,
+        "value": 31,
+        "timeSeconds": 0.0
+      },
+      {
+        "controller": 1,
+        "value": 19,
+        "timeSeconds": 2.5
+      },
+      {
+        "controller": 1,
+        "value": 69,
+        "timeSeconds": 5.0
+      },
+      {
+        "controller": 1,
+        "value": 100,
+        "timeSeconds": 7.5
+      },
+      {
+        "controller": 1,
+        "value": 42,
+        "timeSeconds": 10.0
+      }
+    ]
+  }
+}

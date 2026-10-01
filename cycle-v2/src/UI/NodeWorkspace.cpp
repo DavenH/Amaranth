@@ -40,7 +40,7 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     keyboard.setPreviewNote(canvas.previewMidiNote());
     keyboard.setSequence(canvas.presetSequence());
     keyboard.setSequenceChangedCallback([this](PresetMidiSequence sequence) {
-        canvas.setPresetSequence(std::move(sequence));
+        saveEditedSequence(std::move(sequence), canvas.presetPatternId());
     });
     keyboard.setRecordingChangedCallback([this](bool enabled) {
         audioEngine.setMidiRecordingEnabled(enabled);
@@ -73,6 +73,125 @@ NodeWorkspace::~NodeWorkspace() {
     keyboard.releaseAllNotes();
 }
 
+void NodeWorkspace::configurePresetSidebar(
+        std::vector<File> directories,
+        InlinePresetBrowser::OpenCallback openCallback,
+        InlinePresetBrowser::ActionCallback browseCallback) {
+    canvas.configurePresetSidebar(
+            std::move(directories),
+            std::move(openCallback),
+            std::move(browseCallback));
+    canvas.configurePatternSidebar(
+            [this](const String& id) { selectPattern(id); },
+            [this](const String& id) { editPattern(id); },
+            [this](const String& name) { createPattern(name); });
+    refreshPatternSidebar();
+}
+
+void NodeWorkspace::configurePatternLibrary(File factoryDirectory, File userDirectory) {
+    patternLibrary = std::make_unique<PatternLibrary>(
+            std::move(factoryDirectory), std::move(userDirectory));
+    keyboard.setSequence(resolvedPresetSequence());
+    refreshPatternSidebar();
+}
+
+std::optional<PresetMidiSequence> NodeWorkspace::resolvedPresetSequence() const {
+    if (patternLibrary != nullptr && canvas.presetPatternId().isNotEmpty()) {
+        if (const auto* pattern = patternLibrary->find(canvas.presetPatternId())) {
+            return pattern->sequence;
+        }
+    }
+    return canvas.presetSequence();
+}
+
+void NodeWorkspace::refreshPatternSidebar() {
+    if (patternLibrary != nullptr) {
+        canvas.setPatternSidebarRecords(
+                patternLibrary->records(), canvas.presetPatternId());
+    }
+}
+
+void NodeWorkspace::selectPattern(const String& id) {
+    if (patternLibrary == nullptr) {
+        return;
+    }
+    const auto* pattern = patternLibrary->find(id);
+    if (pattern == nullptr) {
+        return;
+    }
+    if (canvas.setPresetPatternId(id)) {
+        keyboard.setSequence(pattern->sequence);
+        refreshPatternSidebar();
+    }
+}
+
+void NodeWorkspace::createPattern(const String& name) {
+    if (patternLibrary == nullptr) {
+        return;
+    }
+    const auto sequence = resolvedPresetSequence().value_or(PresetMidiSequence {});
+    const auto saved = patternLibrary->saveUserPattern(
+            patternLibrary->newUserId(), name, sequence);
+    if (saved.has_value()) {
+        selectPattern(saved->id);
+        editPattern(saved->id);
+    } else {
+        showPatternSaveError();
+    }
+}
+
+void NodeWorkspace::editPattern(const String& id) {
+    if (patternLibrary == nullptr) {
+        return;
+    }
+    const auto* pattern = patternLibrary->find(id);
+    if (pattern == nullptr) {
+        return;
+    }
+    selectPattern(id);
+    auto editingId = std::make_shared<String>(id);
+    keyboard.showSequenceEditor(pattern->sequence,
+            [safeThis = Component::SafePointer<NodeWorkspace>(this), editingId](
+                    PresetMidiSequence sequence) {
+                if (safeThis != nullptr) {
+                    safeThis->saveEditedSequence(std::move(sequence), *editingId);
+                    *editingId = safeThis->canvas.presetPatternId();
+                }
+            });
+}
+
+void NodeWorkspace::saveEditedSequence(
+        PresetMidiSequence sequence, const String& sourceId) {
+    if (patternLibrary == nullptr) {
+        canvas.setPresetSequence(std::move(sequence));
+        return;
+    }
+    const auto* source = patternLibrary->find(sourceId);
+    const bool updateUserPattern = source != nullptr && !source->factory;
+    const String id = updateUserPattern
+            ? sourceId : patternLibrary->newUserId();
+    const String presetName = canvas.graphFile().getFileNameWithoutExtension();
+    const String name = source != nullptr
+            ? source->name + (updateUserPattern ? "" : " Variation")
+            : (presetName.isNotEmpty() ? presetName : "Untitled") + " Pattern";
+    const auto saved = patternLibrary->saveUserPattern(id, name, sequence);
+    if (saved.has_value()) {
+        canvas.setPresetPatternId(saved->id);
+        refreshPatternSidebar();
+    } else {
+        keyboard.setSequence(resolvedPresetSequence());
+        showPatternSaveError();
+    }
+}
+
+void NodeWorkspace::showPatternSaveError() {
+    AlertWindow::showMessageBoxAsync(
+            MessageBoxIconType::WarningIcon,
+            "Pattern not saved",
+            "The pattern library could not save this phrase.",
+            "OK");
+}
+
 bool NodeWorkspace::saveGraphToFile(const File& file) {
     return canvas.saveGraphToFile(file);
 }
@@ -83,7 +202,8 @@ bool NodeWorkspace::loadGraphFromFile(const File& file) {
         return false;
     }
     keyboard.setPreviewNote(canvas.previewMidiNote());
-    keyboard.setSequence(canvas.presetSequence());
+    keyboard.setSequence(resolvedPresetSequence());
+    refreshPatternSidebar();
     const auto status = audioEngine.status();
     audioEngine.setGraphOutputGain(canvas.graphOutputGain());
     publishAudioPlan(status, true);
@@ -338,6 +458,7 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("previewRecording", keyboard.isRecording());
     object->setProperty("previewSequenceNoteCount", (int) keyboard.sequenceNoteCount());
     object->setProperty("previewSequenceControlCount", (int) keyboard.sequenceControlCount());
+    object->setProperty("previewPatternId", canvas.presetPatternId());
     object->setProperty("previewProgress", keyboard.playbackProgress());
     object->setProperty("previewDurationSeconds", keyboard.playbackDurationSeconds());
     object->setProperty("audioDeviceReady", status.deviceReady);

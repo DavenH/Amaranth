@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "id": "factory-skyward-arc",
+  "name": "Skyward Arc",
+  "sequence": {
+    "durationSeconds": 5,
+    "notes": [
+      {
+        "pitch": 60,
+        "velocity": 83,
+        "startSeconds": 0,
+        "durationSeconds": 0.42
+      },
+      {
+        "pitch": 63,
+        "velocity": 96,
+        "startSeconds": 0.5,
+        "durationSeconds": 0.42
+      },
+      {
+        "pitch": 67,
+        "velocity": 108,
+        "startSeconds": 1,
+        "durationSeconds": 0.7
+      },
+      {
+        "pitch": 70,
+        "velocity": 81,
+        "startSeconds": 2,
+        "durationSeconds": 0.45
+      },
+      {
+        "pitch": 72,
+        "velocity": 116,
+        "startSeconds": 2.5,
+        "durationSeconds": 0.82
+      },
+      {
+        "pitch": 67,
+        "velocity": 89,
+        "startSeconds": 3.5,
+        "durationSeconds": 0.42
+      },
+      {
+        "pitch": 63,
+        "velocity": 101,
+        "startSeconds": 4,
+        "durationSeconds": 0.76
+      }
+    ],
+    "controls": [
+      {
+        "controller": 1,
+        "value": 18,
+        "timeSeconds": 0.0
+      },
+      {
+        "controller": 1,
+        "value": 38,
+        "timeSeconds": 1.25
+      },
+      {
+        "controller": 1,
+        "value": 81,
+        "timeSeconds": 2.5
+      },
+      {
+        "controller": 1,
+        "value": 100,
+        "timeSeconds": 3.75
+      },
+      {
+        "controller": 1,
+        "value": 35,
+        "timeSeconds": 5.0
+      }
+    ]
+  }
+}

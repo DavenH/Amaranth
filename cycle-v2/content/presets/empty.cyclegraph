@@ -63,20 +63,6 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "sequence": {
-            "durationSeconds": 4.0,
-            "notes": [
-                {"pitch": 57, "velocity": 89, "startSeconds": 0.0, "durationSeconds": 0.25},
-                {"pitch": 62, "velocity": 81, "startSeconds": 0.5, "durationSeconds": 0.34},
-                {"pitch": 64, "velocity": 87, "startSeconds": 1.0, "durationSeconds": 0.34},
-                {"pitch": 60, "velocity": 69, "startSeconds": 1.625, "durationSeconds": 0.42},
-                {"pitch": 67, "velocity": 101, "startSeconds": 2.0, "durationSeconds": 0.42},
-                {"pitch": 64, "velocity": 70, "startSeconds": 2.5, "durationSeconds": 0.25},
-                {"pitch": 60, "velocity": 98, "startSeconds": 3.0, "durationSeconds": 0.25},
-                {"pitch": 57, "velocity": 94, "startSeconds": 3.625, "durationSeconds": 0.25}
-            ],
-            "controls": [
-            ]
-        }
+        "patternId": "factory-offbeat-organ"
     }
 }
