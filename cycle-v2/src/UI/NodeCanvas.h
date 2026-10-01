@@ -118,6 +118,10 @@ public:
     uint64_t audioPlanRevision() const { return presentation.audioPlanRevision(); }
     float graphOutputGain() const;
     int previewMidiNote() const { return presentation.previewMidiNote(); }
+    const std::optional<PresetMidiSequence>& presetSequence() const {
+        return document.presentation().sequence;
+    }
+    bool setPresetSequence(PresetMidiSequence sequence);
     ProbeRefreshMode probeRefreshMode() const override { return probeRailState.refreshMode; }
     void setProbeRefreshMode(ProbeRefreshMode mode);
     bool setPreviewMidiNote(int midiNote);

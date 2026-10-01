@@ -108,6 +108,7 @@ public:
 
 private:
     void timerCallback() override;
+    void drainRecordedMidi();
     bool publishAudioPlan(
             const StandaloneAudioEngine::Status& status,
             bool forcePublication);

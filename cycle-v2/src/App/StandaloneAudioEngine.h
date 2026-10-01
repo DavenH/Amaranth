@@ -47,6 +47,10 @@ public:
             const juce::MidiMessage& message,
             MidiEventSource source) override;
     void releaseMidiSource(MidiEventSource source) override;
+    void setMidiRecordingEnabled(bool enabled) { midiRecordingEnabled.store(enabled); }
+    bool dequeueRecordedMidi(RealtimeMidiEvent& event) {
+        return recordedMidiEvents.dequeue(event);
+    }
 
     void audioDeviceIOCallbackWithContext(
             const float* const* inputChannelData,
@@ -72,6 +76,8 @@ private:
     std::unique_ptr<juce::PropertiesFile> deviceProperties;
     juce::AudioDeviceManager deviceManager;
     RealtimeMidiEventQueue midiEvents;
+    RealtimeMidiEventQueue recordedMidiEvents;
+    std::atomic<bool> midiRecordingEnabled {};
     RealtimeGraphRenderer renderer;
     AudioPerformanceMetrics audioPerformanceMetrics;
     AudioPerformanceMetrics::RealtimeSample realtimePerformanceSample;

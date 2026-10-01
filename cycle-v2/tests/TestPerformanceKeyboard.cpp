@@ -108,6 +108,13 @@ TEST_CASE("Performance keyboard octave changes release its owned notes",
     keyboard.shiftOctave(20);
     REQUIRE(keyboard.baseNote() == 103);
     REQUIRE_FALSE(keyboard.noteBounds(127).isEmpty());
+
+    keyboard.revealRange(24, 96);
+    REQUIRE(keyboard.baseNote() == 48);
+    REQUIRE_FALSE(keyboard.noteBounds(60).isEmpty());
+    keyboard.revealRange(20, 42);
+    REQUIRE(keyboard.baseNote() == 24);
+    REQUIRE_FALSE(keyboard.noteBounds(42).isEmpty());
 }
 
 TEST_CASE("Performance keyboard right click selects preview note without sounding it",
@@ -149,13 +156,90 @@ TEST_CASE("Performance keyboard keeps a loaded preview note visible",
     REQUIRE(sink.messages.empty());
 }
 
+TEST_CASE("Preset phrase playback sends notes and CC through the performance MIDI path",
+        "[cycle-v2][keyboard][sequence][transport]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    panel.setBounds(0, 0, 489, 135);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 2.0;
+    phrase.notes.push_back({ 67, 110, 0.0, 0.5 });
+    phrase.notes.push_back({ 72, 90, 0.5, 0.5 });
+    phrase.controls.push_back({ 1, 15, 0.0 });
+    phrase.controls.push_back({ 1, 115, 1.0 });
+    panel.setSequence(phrase);
+
+    REQUIRE_FALSE(panel.noteBounds(67).isEmpty());
+    REQUIRE_FALSE(panel.noteBounds(72).isEmpty());
+    const double startedAt = Time::getMillisecondCounterHiRes();
+    REQUIRE(panel.startPlayback(startedAt));
+    REQUIRE(sink.messages[1].isNoteOn());
+    REQUIRE(sink.messages[1].getNoteNumber() == 67);
+    REQUIRE(sink.messages[2].isController());
+    REQUIRE(sink.messages[2].getControllerValue() == 15);
+    panel.updatePlayback(startedAt + 800.0);
+    REQUIRE(sink.messages.size() >= 6);
+    REQUIRE(sink.messages[3].isNoteOff());
+    REQUIRE(sink.messages[4].isNoteOn());
+    REQUIRE(sink.messages[5].isController());
+    REQUIRE(sink.messages[5].getControllerValue() == 95);
+    panel.stopPlayback();
+    REQUIRE(sink.messages.back().isNoteOff());
+    REQUIRE(sink.messages.back().getNoteNumber() == 72);
+}
+
+TEST_CASE("Record button captures MIDI note and controller gestures into the preset phrase",
+        "[cycle-v2][keyboard][sequence][record]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    panel.setBounds(0, 0, 489, 135);
+    PresetMidiSequence saved;
+    int saveCount = 0;
+    panel.setSequenceChangedCallback([&](PresetMidiSequence sequence) {
+        saved = std::move(sequence);
+        ++saveCount;
+    });
+    Button* record = nullptr;
+    for (int index = 0; index < panel.getNumChildComponents(); ++index) {
+        if (auto* button = dynamic_cast<Button*>(panel.getChildComponent(index))) {
+            if (button->getName() == "PerformanceKeyboard.RecordSequence") {
+                record = button;
+            }
+        }
+    }
+    REQUIRE(record != nullptr);
+    record->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(panel.isRecording());
+    const double now = Time::getMillisecondCounterHiRes() / 1000.0;
+    panel.recordMidiMessage(MidiMessage::noteOn(1, 48, (uint8) 101), now + 0.1);
+    panel.recordMidiMessage(MidiMessage::controllerEvent(1, 1, 75), now + 0.2);
+    panel.recordMidiMessage(MidiMessage::noteOff(1, 48), now + 0.6);
+    record->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+
+    REQUIRE_FALSE(panel.isRecording());
+    REQUIRE(saveCount == 1);
+    REQUIRE(saved.notes.size() == 1);
+    REQUIRE(saved.notes[0].pitch == 48);
+    REQUIRE(saved.notes[0].velocity == 101);
+    REQUIRE(saved.notes[0].durationSeconds == Catch::Approx(0.5).margin(0.01));
+    REQUIRE(saved.controls.size() == 1);
+    REQUIRE(saved.controls[0].controller == 1);
+    REQUIRE(saved.controls[0].value == 75);
+}
+
 TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
         "[cycle-v2][keyboard][ui]") {
     ScopedJuceInitialiser_GUI gui;
     MidiKeyboardState state;
     RecordingMidiSink sink;
     PerformanceKeyboardPanel panel(state, sink);
-    panel.setBounds(0, 0, 489, 112);
+    panel.setBounds(0, 0, 489, 135);
 
     const Rectangle<float> whiteKey = panel.noteBounds(60);
     const Rectangle<float> blackKey = panel.noteBounds(61);
@@ -191,7 +275,7 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     REQUIRE(panel.getLocalBounds().toFloat().contains(whiteKey));
     REQUIRE(panel.getLocalBounds().toFloat().contains(panel.noteBounds(72)));
 
-    panel.setBounds(0, 0, 464, 117);
+    panel.setBounds(0, 0, 464, 140);
     const Rectangle<float> compactWhiteKey = panel.noteBounds(48);
     REQUIRE(panel.modWheelBounds().getWidth() == 24.f);
     REQUIRE(panel.modWheelBounds().getHeight() == compactWhiteKey.getHeight());

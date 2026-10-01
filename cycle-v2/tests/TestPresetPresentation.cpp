@@ -41,6 +41,12 @@ TEST_CASE("Preset presentation round trips outside graph state",
     presentation.tags = { "acid", "lead" };
     presentation.rating = 4;
     presentation.preview = jpegPreview();
+    PresetMidiSequence sequence;
+    sequence.durationSeconds = 4.0;
+    sequence.notes.push_back({ 60, 96, 0.0, 1.25 });
+    sequence.notes.push_back({ 67, 80, 1.5, 0.5 });
+    sequence.controls.push_back({ 1, 92, 1.0 });
+    presentation.sequence = sequence;
 
     const String json = GraphSerializer().toJsonString(graphWithOutput(), presentation);
     const GraphLoadResult loaded = GraphSerializer().loadJsonString(json);
@@ -52,6 +58,50 @@ TEST_CASE("Preset presentation round trips outside graph state",
     REQUIRE(loaded.presentation.rating == 4);
     REQUIRE(loaded.presentation.preview.has_value());
     REQUIRE(loaded.presentation.preview->jpegData == presentation.preview->jpegData);
+    REQUIRE(loaded.presentation.sequence.has_value());
+    REQUIRE(loaded.presentation.sequence->notes.size() == 2);
+    REQUIRE(loaded.presentation.sequence->notes[0].durationSeconds == 1.25);
+    REQUIRE(loaded.presentation.sequence->controls.size() == 1);
+    REQUIRE(loaded.presentation.sequence->controls[0].value == 92);
+}
+
+TEST_CASE("Preset MIDI changes are dirty presentation edits without graph publication",
+        "[cycle-v2][preset][sequence]") {
+    GraphDocument document(graphWithOutput());
+    GraphCommandDispatcher commands(document);
+    const auto graphRevision = document.revision();
+    PresetMidiSequence phrase;
+    phrase.notes.push_back({ 36, 100, 0.0, 0.4 });
+    REQUIRE(commands.setPresetSequence(phrase));
+    REQUIRE(document.isDirty());
+    REQUIRE(document.revision() == graphRevision);
+    REQUIRE_FALSE(document.canUndo());
+    REQUIRE(document.presentation().sequence->notes[0].pitch == 36);
+}
+
+TEST_CASE("Invalid preset MIDI is ignored without rejecting the graph",
+        "[cycle-v2][preset][sequence][serialization]") {
+    var encoded = GraphSerializer().writeJSON(graphWithOutput());
+    auto presentation = std::make_unique<DynamicObject>();
+    presentation->setProperty("version", 1);
+    auto sequence = std::make_unique<DynamicObject>();
+    sequence->setProperty("durationSeconds", 4.0);
+    auto note = std::make_unique<DynamicObject>();
+    note->setProperty("pitch", 200);
+    note->setProperty("velocity", 100);
+    note->setProperty("startSeconds", 0.0);
+    note->setProperty("durationSeconds", 1.0);
+    Array<var> notes;
+    notes.add(var(note.release()));
+    sequence->setProperty("notes", notes);
+    presentation->setProperty("sequence", var(sequence.release()));
+    encoded.getDynamicObject()->setProperty(
+            "presetPresentation", var(presentation.release()));
+
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(JSON::toString(encoded));
+    REQUIRE(loaded.succeeded());
+    REQUIRE_FALSE(loaded.presentation.sequence.has_value());
+    REQUIRE(loaded.presentationWarning.isNotEmpty());
 }
 
 TEST_CASE("Time surface styles belong to each preset without changing graph or audio revisions",

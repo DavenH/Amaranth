@@ -904,6 +904,14 @@ layer where the test expected a difference. Log:
 Current status: open; the exact presentation, preview, async-browser, and probe
 suites pass and none of these broad-suite cases were changed.
 
+Update 2026-10-01: `[cycle-v2][preset]` passed 31 of 39 cases after adding MIDI
+preview phrase tests. Eight failures remain in the same missing archived preset,
+deserialization, spectral frontier, pan edit, and traversal/probe parity areas;
+the detailed run is `/tmp/cycle-v2-all-preset-tests.txt`. A JSON comparison
+against `HEAD` confirmed that the 249 edited factory files changed only their
+new presentation sequence (plus the presentation wrapper for `empty`), leaving
+all node, edge, and DSP content intact. Status: open.
+
 ## P2: Stengah probe test expects absent probe identifiers
 
 Context: On 2026-09-20, the broad `[cycle-v2][probe]` run failed

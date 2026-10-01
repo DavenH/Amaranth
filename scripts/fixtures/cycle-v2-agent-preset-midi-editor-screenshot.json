@@ -1,0 +1,9 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/sitar-pad.cyclegraph" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.EditSequence", "event": "click" },
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

@@ -144,7 +144,11 @@ StandaloneAudioEngine::LiveCapture StandaloneAudioEngine::captureLiveAudio(
 bool StandaloneAudioEngine::enqueueMidiMessage(
         const MidiMessage& message,
         MidiEventSource source) {
-    return midiEvents.enqueue(message, source, currentTimeSeconds());
+    const double now = currentTimeSeconds();
+    if (midiRecordingEnabled.load(std::memory_order_relaxed)) {
+        recordedMidiEvents.enqueue(message, source, now);
+    }
+    return midiEvents.enqueue(message, source, now);
 }
 
 void StandaloneAudioEngine::releaseMidiSource(MidiEventSource source) {
@@ -217,10 +221,14 @@ void StandaloneAudioEngine::audioDeviceStopped() {
 void StandaloneAudioEngine::handleIncomingMidiMessage(
         MidiInput*,
         const MidiMessage& message) {
+    const double now = currentTimeSeconds();
+    if (midiRecordingEnabled.load(std::memory_order_relaxed)) {
+        recordedMidiEvents.enqueue(message, MidiEventSource::Hardware, now);
+    }
     midiEvents.enqueue(
             message,
             MidiEventSource::Hardware,
-            currentTimeSeconds());
+            now);
 }
 
 void StandaloneAudioEngine::timerCallback() {

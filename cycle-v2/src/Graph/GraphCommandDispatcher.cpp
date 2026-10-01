@@ -18,6 +18,15 @@ bool GraphCommandDispatcher::setTimeSurfaceStyle(const juce::String& styleId) {
     return true;
 }
 
+bool GraphCommandDispatcher::setPresetSequence(PresetMidiSequence sequence) {
+    if (hasTransientEdit()) {
+        return false;
+    }
+    document.presetPresentation.sequence = std::move(sequence);
+    ++document.presentationRevision;
+    return true;
+}
+
 GraphEditResult GraphCommandDispatcher::addNode(NodeKind kind, juce::Point<float> position) {
     return apply([&](auto& graph) {
         return GraphEditor().addNode(graph, kind, position);

@@ -38,6 +38,14 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
         }
     });
     keyboard.setPreviewNote(canvas.previewMidiNote());
+    keyboard.setSequence(canvas.presetSequence());
+    keyboard.setSequenceChangedCallback([this](PresetMidiSequence sequence) {
+        canvas.setPresetSequence(std::move(sequence));
+    });
+    keyboard.setRecordingChangedCallback([this](bool enabled) {
+        audioEngine.setMidiRecordingEnabled(enabled);
+    });
+    keyboard.setFlushRecordingInputCallback([this] { drainRecordedMidi(); });
     keyboard.setPreviewNoteSelectedCallback([this](int midiNote) {
         canvas.setPreviewMidiNote(midiNote);
     });
@@ -56,6 +64,7 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
 
 NodeWorkspace::~NodeWorkspace() {
     stopTimer();
+    audioEngine.setMidiRecordingEnabled(false);
     canvas.setOverlayOcclusionChangedCallback({});
     canvas.setPreviewPlaybackToggleCallback({});
     keyboard.setModWheelValueChangedCallback({});
@@ -74,6 +83,7 @@ bool NodeWorkspace::loadGraphFromFile(const File& file) {
         return false;
     }
     keyboard.setPreviewNote(canvas.previewMidiNote());
+    keyboard.setSequence(canvas.presetSequence());
     const auto status = audioEngine.status();
     audioEngine.setGraphOutputGain(canvas.graphOutputGain());
     publishAudioPlan(status, true);
@@ -240,6 +250,24 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
             keyboard.octaveUpBounds().translated(
                     keyboardBounds.getX(),
                     keyboardBounds.getY())));
+    targets->add(pointerTarget(
+            "PerformanceKeyboard.PlaySequence",
+            "performanceSequencePlay",
+            keyboard.playBounds().translated(
+                    keyboardBounds.getX(),
+                    keyboardBounds.getY())));
+    targets->add(pointerTarget(
+            "PerformanceKeyboard.EditSequence",
+            "performanceSequenceEdit",
+            keyboard.editBounds().translated(
+                    keyboardBounds.getX(),
+                    keyboardBounds.getY())));
+    targets->add(pointerTarget(
+            "PerformanceKeyboard.RecordSequence",
+            "performanceSequenceRecord",
+            keyboard.recordBounds().translated(
+                    keyboardBounds.getX(),
+                    keyboardBounds.getY())));
     for (int note = keyboard.baseNote(); note <= keyboard.baseNote() + 24; ++note) {
         targets->add(pointerTarget(
                 "PerformanceKeyboard.Note" + String(note),
@@ -307,6 +335,9 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("modWheelValue", keyboard.modWheelValue());
     object->setProperty("previewNote", keyboard.previewNote());
     object->setProperty("previewPlaying", keyboard.isPlaying());
+    object->setProperty("previewRecording", keyboard.isRecording());
+    object->setProperty("previewSequenceNoteCount", (int) keyboard.sequenceNoteCount());
+    object->setProperty("previewSequenceControlCount", (int) keyboard.sequenceControlCount());
     object->setProperty("previewProgress", keyboard.playbackProgress());
     object->setProperty("previewDurationSeconds", keyboard.playbackDurationSeconds());
     object->setProperty("audioDeviceReady", status.deviceReady);
@@ -463,6 +494,7 @@ void NodeWorkspace::resized() {
 }
 
 void NodeWorkspace::timerCallback() {
+    drainRecordedMidi();
     const auto status = audioEngine.status();
     updateOutputMeter(status);
     audioEngine.setGraphOutputGain(canvas.graphOutputGain());
@@ -473,6 +505,13 @@ void NodeWorkspace::timerCallback() {
     layoutPerformanceKeyboard();
 
     publishAudioPlan(status, false);
+}
+
+void NodeWorkspace::drainRecordedMidi() {
+    RealtimeMidiEvent recorded;
+    while (audioEngine.dequeueRecordedMidi(recorded)) {
+        keyboard.recordMidiMessage(recorded.toMidiMessage(), recorded.timestampSeconds);
+    }
 }
 
 bool NodeWorkspace::publishAudioPlan(

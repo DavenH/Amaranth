@@ -2199,6 +2199,16 @@ void NodeCanvas::setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
     }
 }
 
+bool NodeCanvas::setPresetSequence(PresetMidiSequence sequence) {
+    if (!commands.setPresetSequence(std::move(sequence))) {
+        return false;
+    }
+    if (graphDocumentStateChangedCallback) {
+        graphDocumentStateChangedCallback();
+    }
+    return true;
+}
+
 void NodeCanvas::synchronizeTimeSurfaceStyle() {
     const auto style = timeSurfaceStyle();
     if (ScalarSurfaceMaterial::timeSurfaceStyle() != style) {

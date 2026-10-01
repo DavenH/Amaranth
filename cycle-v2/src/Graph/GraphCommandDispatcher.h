@@ -30,6 +30,7 @@ public:
 
     GraphEditResult addNode(NodeKind kind, juce::Point<float> position);
     bool setTimeSurfaceStyle(const juce::String& styleId);
+    bool setPresetSequence(PresetMidiSequence sequence);
     GraphEditResult removeNode(const juce::String& nodeId);
     GraphEditResult removeEdgeAt(size_t edgeIndex);
     GraphEditResult connect(const PortAddress& first, const PortAddress& second);
