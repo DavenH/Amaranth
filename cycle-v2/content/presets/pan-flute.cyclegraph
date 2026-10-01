@@ -1040,18 +1040,18 @@
         "sequence": {
             "durationSeconds": 6.0,
             "notes": [
-                {"pitch": 57, "velocity": 80, "startSeconds": 0.0, "durationSeconds": 0.98},
-                {"pitch": 61, "velocity": 83, "startSeconds": 1.15, "durationSeconds": 0.98},
-                {"pitch": 64, "velocity": 86, "startSeconds": 2.3, "durationSeconds": 0.98},
-                {"pitch": 62, "velocity": 89, "startSeconds": 3.45, "durationSeconds": 0.98},
-                {"pitch": 61, "velocity": 70, "startSeconds": 4.6, "durationSeconds": 0.98}
+                {"pitch": 57, "velocity": 81, "startSeconds": 0.0, "durationSeconds": 0.9},
+                {"pitch": 62, "velocity": 93, "startSeconds": 1.15, "durationSeconds": 0.9},
+                {"pitch": 66, "velocity": 84, "startSeconds": 2.3, "durationSeconds": 0.9},
+                {"pitch": 64, "velocity": 87, "startSeconds": 3.45, "durationSeconds": 1.1},
+                {"pitch": 59, "velocity": 81, "startSeconds": 4.6, "durationSeconds": 1.1}
             ],
             "controls": [
-                {"controller": 1, "value": 8, "timeSeconds": 0.0},
-                {"controller": 1, "value": 21, "timeSeconds": 1.2},
-                {"controller": 1, "value": 84, "timeSeconds": 2.4},
-                {"controller": 1, "value": 61, "timeSeconds": 3.6},
-                {"controller": 1, "value": 16, "timeSeconds": 4.8}
+                {"controller": 1, "value": 37, "timeSeconds": 0.0},
+                {"controller": 1, "value": 89, "timeSeconds": 1.2},
+                {"controller": 1, "value": 51, "timeSeconds": 2.4},
+                {"controller": 1, "value": 107, "timeSeconds": 3.6},
+                {"controller": 1, "value": 41, "timeSeconds": 4.8}
             ]
         }
     }

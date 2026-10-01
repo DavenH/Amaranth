@@ -713,21 +713,21 @@
         "sequence": {
             "durationSeconds": 4.0,
             "notes": [
-                {"pitch": 57, "velocity": 73, "startSeconds": 0.0, "durationSeconds": 0.43},
-                {"pitch": 61, "velocity": 82, "startSeconds": 0.5, "durationSeconds": 0.36},
-                {"pitch": 64, "velocity": 91, "startSeconds": 1.0, "durationSeconds": 0.43},
-                {"pitch": 69, "velocity": 76, "startSeconds": 1.5, "durationSeconds": 0.36},
-                {"pitch": 64, "velocity": 85, "startSeconds": 2.0, "durationSeconds": 0.43},
-                {"pitch": 61, "velocity": 70, "startSeconds": 2.5, "durationSeconds": 0.36},
-                {"pitch": 62, "velocity": 79, "startSeconds": 3.0, "durationSeconds": 0.43},
-                {"pitch": 59, "velocity": 88, "startSeconds": 3.5, "durationSeconds": 0.36}
+                {"pitch": 61, "velocity": 99, "startSeconds": 0.0, "durationSeconds": 0.42},
+                {"pitch": 64, "velocity": 99, "startSeconds": 0.5, "durationSeconds": 0.25},
+                {"pitch": 68, "velocity": 87, "startSeconds": 1.0, "durationSeconds": 0.25},
+                {"pitch": 73, "velocity": 69, "startSeconds": 1.625, "durationSeconds": 0.34},
+                {"pitch": 68, "velocity": 83, "startSeconds": 2.0, "durationSeconds": 0.25},
+                {"pitch": 64, "velocity": 69, "startSeconds": 2.5, "durationSeconds": 0.25},
+                {"pitch": 66, "velocity": 89, "startSeconds": 3.0, "durationSeconds": 0.25},
+                {"pitch": 63, "velocity": 90, "startSeconds": 3.625, "durationSeconds": 0.42}
             ],
             "controls": [
-                {"controller": 1, "value": 8, "timeSeconds": 0.0},
-                {"controller": 1, "value": 21, "timeSeconds": 0.8},
-                {"controller": 1, "value": 84, "timeSeconds": 1.6},
-                {"controller": 1, "value": 61, "timeSeconds": 2.4},
-                {"controller": 1, "value": 16, "timeSeconds": 3.2}
+                {"controller": 1, "value": 36, "timeSeconds": 0.0},
+                {"controller": 1, "value": 53, "timeSeconds": 0.8},
+                {"controller": 1, "value": 101, "timeSeconds": 1.6},
+                {"controller": 1, "value": 75, "timeSeconds": 2.4},
+                {"controller": 1, "value": 42, "timeSeconds": 3.2}
             ]
         }
     }

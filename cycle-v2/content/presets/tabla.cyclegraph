@@ -1117,18 +1117,18 @@
         "sequence": {
             "durationSeconds": 4.0,
             "notes": [
-                {"pitch": 57, "velocity": 107, "startSeconds": 0.0, "durationSeconds": 0.13},
-                {"pitch": 59, "velocity": 80, "startSeconds": 0.3, "durationSeconds": 0.13},
-                {"pitch": 55, "velocity": 91, "startSeconds": 0.7, "durationSeconds": 0.13},
-                {"pitch": 52, "velocity": 102, "startSeconds": 0.9, "durationSeconds": 0.13},
-                {"pitch": 57, "velocity": 75, "startSeconds": 1.2, "durationSeconds": 0.13},
-                {"pitch": 59, "velocity": 86, "startSeconds": 1.6, "durationSeconds": 0.13},
-                {"pitch": 55, "velocity": 97, "startSeconds": 1.8, "durationSeconds": 0.13},
-                {"pitch": 52, "velocity": 70, "startSeconds": 2.1, "durationSeconds": 0.13},
-                {"pitch": 57, "velocity": 81, "startSeconds": 2.5, "durationSeconds": 0.13},
-                {"pitch": 59, "velocity": 92, "startSeconds": 2.7, "durationSeconds": 0.13},
-                {"pitch": 55, "velocity": 103, "startSeconds": 3.0, "durationSeconds": 0.13},
-                {"pitch": 52, "velocity": 76, "startSeconds": 3.4, "durationSeconds": 0.13}
+                {"pitch": 59, "velocity": 67, "startSeconds": 0, "durationSeconds": 0.2},
+                {"pitch": 52, "velocity": 105, "startSeconds": 0.25, "durationSeconds": 0.2},
+                {"pitch": 59, "velocity": 109, "startSeconds": 0.75, "durationSeconds": 0.1},
+                {"pitch": 55, "velocity": 114, "startSeconds": 1, "durationSeconds": 0.1},
+                {"pitch": 57, "velocity": 92, "startSeconds": 1.5, "durationSeconds": 0.2},
+                {"pitch": 59, "velocity": 70, "startSeconds": 1.75, "durationSeconds": 0.1},
+                {"pitch": 57, "velocity": 80, "startSeconds": 2, "durationSeconds": 0.1},
+                {"pitch": 52, "velocity": 114, "startSeconds": 2.5, "durationSeconds": 0.2},
+                {"pitch": 52, "velocity": 82, "startSeconds": 2.75, "durationSeconds": 0.1},
+                {"pitch": 52, "velocity": 68, "startSeconds": 3, "durationSeconds": 0.14},
+                {"pitch": 52, "velocity": 60, "startSeconds": 3.5, "durationSeconds": 0.2},
+                {"pitch": 59, "velocity": 80, "startSeconds": 3.75, "durationSeconds": 0.2}
             ],
             "controls": [
             ]

@@ -219,6 +219,15 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
     playButton.setTooltip("Play or stop this preset preview phrase");
     editButton.setTooltip("Edit preset preview notes and modulation");
     recordButton.setTooltip("Record MIDI input into this preset preview");
+    for (auto* button : { &playButton, &editButton, &recordButton }) {
+        button->setColour(TextButton::buttonColourId,
+                CanvasChromePalette::restingControlSurface);
+        button->setColour(TextButton::buttonOnColourId,
+                CanvasChromePalette::raisedSurface);
+        button->setColour(TextButton::textColourOffId,
+                CanvasChromePalette::text);
+        button->setMouseCursor(MouseCursor::PointingHandCursor);
+    }
     playButton.onClick = [this] { togglePlayback(); };
     editButton.onClick = [this] { openSequenceEditor(); };
     recordButton.onClick = [this] {
@@ -396,8 +405,12 @@ void PerformanceKeyboardPanel::rebuildPlaybackEvents() {
                 note.startSeconds + note.durationSeconds,
                 MidiMessage::noteOff(1, note.pitch) });
     }
+    const int envelopeController = sequence->controls.empty() ? 1
+            : (std::any_of(sequence->controls.begin(), sequence->controls.end(),
+                    [](const PresetMidiControl& control) { return control.controller == 1; })
+                    ? 1 : sequence->controls.front().controller);
     for (const auto& control : sequence->controls) {
-        if (control.controller == 1) {
+        if (control.controller == envelopeController) {
             modulationEnvelope.push_back(control);
             continue;
         }
@@ -532,7 +545,7 @@ void PerformanceKeyboardPanel::dispatchSequenceEvents(double elapsedSeconds) {
     }
     if (value != lastSentModulation) {
         eventSink.enqueueMidiMessage(
-                MidiMessage::controllerEvent(1, 1, value),
+                MidiMessage::controllerEvent(1, first.controller, value),
                 MidiEventSource::PerformanceKeyboard);
         lastSentModulation = value;
     }
@@ -609,10 +622,6 @@ void PerformanceKeyboardPanel::paint(Graphics& graphics) {
     const Rectangle<float> bounds = getLocalBounds().toFloat().reduced(0.75f);
     graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.96f));
     graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::panelCornerRadius);
-    graphics.setColour(CanvasChromePalette::mutedText);
-    graphics.setFont(FontOptions(10.f, Font::bold));
-    graphics.drawText("PREVIEW", 78, 6, 100, 15, Justification::centredLeft);
-
     const Rectangle<float> track = progressBounds();
     const float trackCornerRadius = track.getHeight() * 0.5f;
     graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.22f));
@@ -633,13 +642,15 @@ void PerformanceKeyboardPanel::resized() {
     const int wheelGap = compact ? 3 : 6;
     const int wheelWidth = compact ? 24 : 32;
     Rectangle<int> content = getLocalBounds().reduced(panelInset);
-    Rectangle<int> actions = content.removeFromTop(21);
-    editButton.setBounds(actions.removeFromRight(45));
-    actions.removeFromRight(3);
-    recordButton.setBounds(actions.removeFromRight(48));
-    actions.removeFromRight(3);
-    playButton.setBounds(actions.removeFromRight(48));
-    content.removeFromTop(2);
+    Rectangle<int> actions = content.removeFromRight(compact ? 37 : 44);
+    content.removeFromRight(compact ? 2 : 4);
+    const int actionGap = 3;
+    const int actionHeight = (actions.getHeight() - 2 * actionGap) / 3;
+    playButton.setBounds(actions.removeFromTop(actionHeight));
+    actions.removeFromTop(actionGap);
+    recordButton.setBounds(actions.removeFromTop(actionHeight));
+    actions.removeFromTop(actionGap);
+    editButton.setBounds(actions);
     modWheel.setBounds(content.removeFromLeft(wheelWidth));
     content.removeFromLeft(wheelGap);
     octaveDown.setBounds(content.removeFromLeft(buttonWidth));
@@ -664,8 +675,16 @@ void PerformanceKeyboardPanel::openSequenceEditor() {
                 if (safeThis->sequenceChanged) {
                     safeThis->sequenceChanged(std::move(edited));
                 }
+            },
+            [safeThis] {
+                if (safeThis != nullptr) {
+                    safeThis->togglePlayback();
+                }
             });
-    CallOutBox::launchAsynchronously(std::move(editor), editButton.getScreenBounds(), nullptr);
+    auto* editorContent = editor.get();
+    CallOutBox::launchAsynchronously(
+            std::move(editor), editButton.getScreenBounds(), nullptr);
+    editorContent->grabKeyboardFocus();
 }
 
 PerformanceKeyboardPanel::ModWheel::ModWheel() {

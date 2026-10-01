@@ -803,11 +803,11 @@
         "sequence": {
             "durationSeconds": 6.0,
             "notes": [
-                {"pitch": 59, "velocity": 73, "startSeconds": 0.0, "durationSeconds": 0.98},
-                {"pitch": 63, "velocity": 76, "startSeconds": 1.15, "durationSeconds": 0.98},
-                {"pitch": 66, "velocity": 79, "startSeconds": 2.3, "durationSeconds": 0.98},
-                {"pitch": 64, "velocity": 82, "startSeconds": 3.45, "durationSeconds": 0.98},
-                {"pitch": 63, "velocity": 85, "startSeconds": 4.6, "durationSeconds": 0.98}
+                {"pitch": 59, "velocity": 62, "startSeconds": 0.0, "durationSeconds": 1.02},
+                {"pitch": 66, "velocity": 65, "startSeconds": 1.15, "durationSeconds": 1.1},
+                {"pitch": 69, "velocity": 52, "startSeconds": 2.3, "durationSeconds": 1.02},
+                {"pitch": 67, "velocity": 92, "startSeconds": 3.45, "durationSeconds": 0.9},
+                {"pitch": 62, "velocity": 74, "startSeconds": 4.6, "durationSeconds": 1.1}
             ],
             "controls": [
             ]

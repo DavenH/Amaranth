@@ -997,14 +997,14 @@
         "sequence": {
             "durationSeconds": 4.0,
             "notes": [
-                {"pitch": 38, "velocity": 89, "startSeconds": 0, "durationSeconds": 0.4},
-                {"pitch": 45, "velocity": 96, "startSeconds": 0.5, "durationSeconds": 0.25},
-                {"pitch": 38, "velocity": 103, "startSeconds": 0.75, "durationSeconds": 0.25},
-                {"pitch": 41, "velocity": 83, "startSeconds": 1.5, "durationSeconds": 0.4},
-                {"pitch": 43, "velocity": 90, "startSeconds": 2, "durationSeconds": 0.25},
-                {"pitch": 38, "velocity": 97, "startSeconds": 2.5, "durationSeconds": 0.25},
-                {"pitch": 45, "velocity": 104, "startSeconds": 3, "durationSeconds": 0.4},
-                {"pitch": 38, "velocity": 84, "startSeconds": 3.5, "durationSeconds": 0.25}
+                {"pitch": 40, "velocity": 89, "startSeconds": 0, "durationSeconds": 0.22},
+                {"pitch": 40, "velocity": 69, "startSeconds": 0.75, "durationSeconds": 0.3},
+                {"pitch": 47, "velocity": 91, "startSeconds": 1, "durationSeconds": 0.3},
+                {"pitch": 48, "velocity": 115, "startSeconds": 1.5, "durationSeconds": 0.38},
+                {"pitch": 40, "velocity": 97, "startSeconds": 2.25, "durationSeconds": 0.22},
+                {"pitch": 45, "velocity": 88, "startSeconds": 2.5, "durationSeconds": 0.3},
+                {"pitch": 48, "velocity": 71, "startSeconds": 3.25, "durationSeconds": 0.22},
+                {"pitch": 40, "velocity": 78, "startSeconds": 3.5, "durationSeconds": 0.3}
             ],
             "controls": [
             ]

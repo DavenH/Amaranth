@@ -862,6 +862,9 @@ var CycleV2Automation::waitForIdle(const var& commandValue) const {
 }
 
 Component* CycleV2Automation::componentForArea(const String& area) const {
+    if (area == "focused") {
+        return Component::getCurrentlyFocusedComponent();
+    }
     if (area == "window" || area == "AreaWindow") {
         return const_cast<Component*>(&window);
     }

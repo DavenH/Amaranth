@@ -4,6 +4,7 @@
 import hashlib
 import json
 import pathlib
+import random
 import re
 import sys
 
@@ -29,15 +30,33 @@ def family(name, voice_length):
 
 def phrase(name, graph):
     seed = int.from_bytes(hashlib.sha256(name.encode()).digest()[:4], "big")
+    rng = random.Random(seed)
     voice = next((node for node in graph["nodes"] if node["kind"] == "voiceContext"), None)
     length = voice["parameters"].get("voiceLength", 0.5) if voice else 0.5
     kind = family(name, length)
     root = {
         "bass": 36, "percussion": 48, "pad": 48,
         "lead": 60, "sustained": 55, "keys": 57,
-    }[kind] + (seed % 3) * 2
-    mode = [0, 2, 3, 5, 7, 10, 12] if seed % 4 == 0 else [0, 2, 4, 5, 7, 9, 12]
+    }[kind] + rng.choice([-2, 0, 2, 4])
+    mode = rng.choice([[0, 2, 3, 5, 7, 10, 12],
+                       [0, 2, 4, 5, 7, 9, 12],
+                       [0, 3, 5, 7, 8, 10, 12]])
     notes = []
+    attached = {edge["sourceNodeId"] for edge in graph["edges"]
+                if edge.get("connectionKind") == "configurationAttachment"
+                and edge.get("attachmentType") == "modulationTriple"}
+    sources = [(node["parameters"].get(axis + "Source", default),
+                node["parameters"].get(axis + "Controller", 1))
+               for node in graph["nodes"] if node["kind"] == "modulationTriple"
+               and node["id"] in attached
+               for axis, default in (("blue", "modWheel"),
+                                     ("red", "keyScale"),
+                                     ("yellow", "voiceTime"))]
+    controller = next((1 if source == "modWheel" else int(number)
+                       for source, number in sources
+                       if source in ("modWheel", "midiCC")), None)
+    velocity_mapped = any(source in ("velocity", "inverseVelocity")
+                          for source, _ in sources)
 
     def add(pitch, start, duration, velocity):
         notes.append(dict(pitch=pitch, velocity=velocity,
@@ -46,53 +65,74 @@ def phrase(name, graph):
 
     if kind == "pad":
         duration = 10.0
-        progression = [0, 5, 3] if seed % 2 else [0, 3, 4]
+        progression = rng.choice([[0, 5, 3], [0, 3, 4], [0, 4, 5],
+                                  [0, 3, 1], [0, 5, 4]])
         for index, degree in enumerate(progression):
             start = index * 3.0
-            chord = [0, mode[2], mode[4]]
+            chord = rng.choice([[0, mode[2], mode[4]],
+                                [0, mode[3], mode[5]],
+                                [0, mode[2], mode[5]]])
             for voice_index, interval in enumerate(chord):
-                add(root + degree + interval, start + voice_index * 0.12,
-                    2.9 - voice_index * 0.1, 65 + (seed + index + voice_index) % 15)
+                add(root + degree + interval, start + voice_index * 0.16,
+                    rng.choice([2.5, 2.7, 2.85]),
+                    rng.randint(48, 112) if velocity_mapped else rng.randint(65, 86))
     elif kind == "bass":
         duration = 4.0
-        rhythm = [0, 0.5, 0.75, 1.5, 2, 2.5, 3, 3.5]
-        degrees = [0, 0, 4, 0, 3, 0, 4, 2] if seed % 2 else [0, 4, 0, 2, 3, 0, 4, 0]
+        rhythm = rng.choice([[0, .5, .75, 1.5, 2, 2.5, 3, 3.5],
+                             [0, .375, 1, 1.5, 1.75, 2.5, 3, 3.25],
+                             [0, .75, 1, 1.5, 2.25, 2.5, 3.25, 3.5]])
+        degrees = rng.choice([[0, 0, 4, 0, 3, 0, 4, 2],
+                              [0, 4, 0, 2, 3, 0, 4, 0],
+                              [0, 0, 3, 4, 0, 2, 4, 0]])
         for index, (start, degree) in enumerate(zip(rhythm, degrees)):
-            add(root + mode[degree], start, 0.25 if index % 3 else 0.4,
-                82 + (seed + index * 7) % 27)
+            add(root + mode[degree], start, rng.choice([.22, .3, .38]),
+                rng.randint(51, 120) if velocity_mapped else rng.randint(78, 112))
     elif kind == "percussion":
         duration = 4.0
-        for index in range(12):
-            step = index * 0.3 + (0.1 if index % 3 == 2 else 0.0)
-            add(root + [0, 5, 7, 3][(index + seed) % 4], step, 0.13,
-                70 + (index * 11 + seed) % 38)
+        rhythm = rng.choice([[0, .3, .6, 1, 1.3, 1.6, 2, 2.3, 2.6, 3, 3.3, 3.6],
+                             [0, .25, .75, 1, 1.5, 1.75, 2, 2.5, 2.75, 3, 3.5, 3.75]])
+        for index, step in enumerate(rhythm):
+            add(root + rng.choice([0, 3, 5, 7]), step, rng.choice([.1, .14, .2]),
+                rng.randint(54, 122))
     elif kind == "lead":
         duration = 5.0
-        contour = [0, 2, 4, 2, 5, 4, 3, 1, 0]
-        if seed % 2:
-            contour = [0, 3, 4, 6, 4, 2, 3, 1, 0]
+        contour = rng.choice([[0, 2, 4, 2, 5, 4, 3, 1, 0],
+                              [0, 3, 4, 6, 4, 2, 3, 1, 0],
+                              [0, 4, 3, 2, 5, 6, 4, 2, 0],
+                              [0, 1, 3, 5, 4, 2, 1, 3, 0]])
         for index, degree in enumerate(contour):
-            start = index * 0.5 + (0.125 if index % 4 == 3 else 0.0)
-            add(root + mode[degree], start, 0.32 if index % 4 else 0.57,
-                75 + (seed + index * 5) % 28)
+            start = index * .5 + (.125 if index % 4 == rng.randrange(4) else 0)
+            add(root + mode[degree], start, rng.choice([.27, .34, .53]),
+                rng.randint(53, 119) if velocity_mapped else rng.randint(72, 110))
     elif kind == "sustained":
         duration = 6.0
-        for index, degree in enumerate([0, 2, 4, 3, 2]):
-            add(root + mode[degree], index * 1.15, 0.98,
-                68 + (seed + index * 3) % 22)
+        for index, degree in enumerate(rng.choice([[0, 2, 4, 3, 2],
+                                                    [0, 3, 5, 4, 1],
+                                                    [0, 4, 2, 3, 0]])):
+            add(root + mode[degree], index * 1.15, rng.choice([.9, 1.02, 1.1]),
+                rng.randint(52, 113) if velocity_mapped else rng.randint(68, 94))
     else:
         duration = 4.0
-        degrees = [0, 2, 4, 6, 4, 2, 3, 1]
+        degrees = rng.choice([[0, 2, 4, 6, 4, 2, 3, 1],
+                              [0, 3, 4, 2, 5, 4, 2, 0],
+                              [0, 4, 2, 3, 5, 3, 1, 0]])
         for index, degree in enumerate(degrees):
-            add(root + mode[degree], index * 0.5, 0.36 if index % 2 else 0.43,
-                70 + (seed + index * 9) % 24)
+            add(root + mode[degree], index * .5 + (.125 if index % 4 == 3 else 0),
+                rng.choice([.25, .34, .42]),
+                rng.randint(51, 119) if velocity_mapped else rng.randint(69, 101))
 
     controls = []
-    if "modWheel" in str(graph["nodes"]):
-        values = [12, 48, 91, 34, 76, 18] if kind == "pad" else [8, 21, 84, 61, 16]
-        for index, value in enumerate(values):
-            controls.append(dict(controller=1, value=value,
-                                 timeSeconds=round(duration * index / len(values), 3)))
+    if controller is not None:
+        shape = rng.choice([[0.12, 0.3, 0.82, 0.54, 0.18],
+                            [0.18, 0.72, 0.32, 0.91, 0.22],
+                            [0.69, 0.24, 0.87, 0.4, 0.72],
+                            [0.08, 0.24, 0.52, 0.8, 0.18]])
+        depth = rng.uniform(.5, .9)
+        centre = rng.uniform(.35, .65)
+        for index, level in enumerate(shape):
+            value = max(0, min(127, round(127 * (centre + depth * (level - .5)))))
+            controls.append(dict(controller=controller, value=value,
+                                 timeSeconds=round(duration * index / len(shape), 3)))
     return dict(durationSeconds=duration, notes=notes, controls=controls), kind
 
 

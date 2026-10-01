@@ -19,11 +19,11 @@
     { "command": "waitForIdle", "idleDelayMs": 100 },
     { "command": "assertState", "path": "performance.previewRecording", "equals": false },
     { "command": "assertState", "path": "performance.previewSequenceNoteCount", "equals": 10 },
-    { "command": "assertState", "path": "performance.previewSequenceControlCount", "equals": 7 },
+    { "command": "assertState", "path": "performance.previewSequenceControlCount", "equals": 6 },
     { "command": "saveGraph", "path": "/private/tmp/cycle-v2-preset-midi-recorded.cyclegraph" },
     { "command": "openGraph", "path": "/private/tmp/cycle-v2-preset-midi-recorded.cyclegraph" },
     { "command": "assertState", "path": "performance.previewSequenceNoteCount", "equals": 10 },
-    { "command": "assertState", "path": "performance.previewSequenceControlCount", "equals": 7 }
+    { "command": "assertState", "path": "performance.previewSequenceControlCount", "equals": 6 }
   ],
   "quit": false
 }

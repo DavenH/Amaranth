@@ -1584,11 +1584,11 @@
         "sequence": {
             "durationSeconds": 6.0,
             "notes": [
-                {"pitch": 57, "velocity": 80, "startSeconds": 0.0, "durationSeconds": 0.98},
-                {"pitch": 61, "velocity": 83, "startSeconds": 1.15, "durationSeconds": 0.98},
-                {"pitch": 64, "velocity": 86, "startSeconds": 2.3, "durationSeconds": 0.98},
-                {"pitch": 62, "velocity": 89, "startSeconds": 3.45, "durationSeconds": 0.98},
-                {"pitch": 61, "velocity": 70, "startSeconds": 4.6, "durationSeconds": 0.98}
+                {"pitch": 57, "velocity": 59, "startSeconds": 0.0, "durationSeconds": 0.9},
+                {"pitch": 64, "velocity": 110, "startSeconds": 1.15, "durationSeconds": 0.9},
+                {"pitch": 60, "velocity": 111, "startSeconds": 2.3, "durationSeconds": 0.9},
+                {"pitch": 62, "velocity": 94, "startSeconds": 3.45, "durationSeconds": 1.02},
+                {"pitch": 57, "velocity": 102, "startSeconds": 4.6, "durationSeconds": 1.02}
             ],
             "controls": [
             ]

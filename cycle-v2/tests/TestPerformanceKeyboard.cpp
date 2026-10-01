@@ -190,6 +190,28 @@ TEST_CASE("Preset phrase playback sends notes and CC through the performance MID
     REQUIRE(sink.messages.back().getNoteNumber() == 72);
 }
 
+TEST_CASE("Preset automation interpolates the configured MIDI controller",
+        "[cycle-v2][keyboard][sequence][transport]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 2.0;
+    phrase.notes.push_back({ 60, 100, 0.0, 1.5 });
+    phrase.controls.push_back({ 3, 10, 0.0 });
+    phrase.controls.push_back({ 3, 110, 1.0 });
+    panel.setSequence(phrase);
+
+    const double startedAt = Time::getMillisecondCounterHiRes();
+    REQUIRE(panel.startPlayback(startedAt));
+    REQUIRE(sink.messages.back().isController());
+    REQUIRE(sink.messages.back().getControllerNumber() == 3);
+    panel.updatePlayback(startedAt + 500.0);
+    REQUIRE(sink.messages.back().getControllerNumber() == 3);
+    REQUIRE(sink.messages.back().getControllerValue() == 60);
+}
+
 TEST_CASE("Record button captures MIDI note and controller gestures into the preset phrase",
         "[cycle-v2][keyboard][sequence][record]") {
     ScopedJuceInitialiser_GUI gui;
@@ -241,7 +263,9 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     MidiKeyboardState state;
     RecordingMidiSink sink;
     PerformanceKeyboardPanel panel(state, sink);
-    panel.setBounds(0, 0, 489, 135);
+    panel.setBounds(0, 0,
+            (int) CanvasUtilityDock::preferredKeyboardWidth,
+            (int) CanvasUtilityDock::preferredKeyboardHeight);
 
     const Rectangle<float> whiteKey = panel.noteBounds(60);
     const Rectangle<float> blackKey = panel.noteBounds(61);
@@ -268,6 +292,10 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     REQUIRE(progress.getWidth() == Catch::Approx(
             panel.noteBounds(72).getRight() - panel.noteBounds(48).getX()).margin(1.f));
     REQUIRE(progress.getHeight() == 3.f);
+    REQUIRE(panel.playBounds().getX() > octaveUp.getRight());
+    REQUIRE(panel.playBounds().getBottom() < panel.recordBounds().getY());
+    REQUIRE(panel.recordBounds().getBottom() < panel.editBounds().getY());
+    REQUIRE(panel.editBounds().getBottom() <= whiteKey.getBottom());
     REQUIRE(whiteKey.getWidth() >= 25.f);
     REQUIRE(whiteAspect == Catch::Approx(4.f).margin(0.03f));
     REQUIRE(blackAspect == Catch::Approx(4.f).margin(0.03f));
@@ -283,8 +311,8 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     REQUIRE(panel.modWheelBounds().getHeight() == compactWhiteKey.getHeight());
     REQUIRE(panel.octaveDownBounds().getHeight() == compactWhiteKey.getHeight());
     REQUIRE(panel.octaveUpBounds().getHeight() == compactWhiteKey.getHeight());
-    REQUIRE(compactWhiteKey.getWidth() >= 23.f);
-    REQUIRE(compactWhiteKey.getHeight() == 109.f);
+    REQUIRE(compactWhiteKey.getWidth() >= 22.f);
+    REQUIRE(compactWhiteKey.getHeight() == 132.f);
 }
 
 TEST_CASE("Performance mod wheel drag controls preview CC 1 and audition start",
