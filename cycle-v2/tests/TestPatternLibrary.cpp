@@ -30,7 +30,7 @@ TEST_CASE("Pattern IDs round trip without embedding MIDI events",
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "output", {}));
     PresetPresentation presentation;
-    presentation.patternId = "factory-sax-blue-hour";
+    presentation.patternId = "factory-basic-sustained";
     PresetMidiSequence legacy;
     legacy.notes.push_back({ 60, 90, 0.0, 0.5 });
     presentation.sequence = legacy;
@@ -56,10 +56,11 @@ TEST_CASE("Pattern library validates and updates a stable user ID",
     phrase.notes.push_back({ 55, 72, 0.0, 1.0 });
     phrase.controls.push_back({ 1, 95, 2.0 });
     const String id = library.newUserId();
-    const auto created = library.saveUserPattern(id, "Jazz Phrase", phrase);
+    const auto created = library.saveUserPattern(id, "Jazz Phrase", phrase, "Keys");
     REQUIRE(created.has_value());
     REQUIRE(created->name == "Jazz Phrase");
     REQUIRE(created->sequence.controls.size() == 1);
+    REQUIRE(created->tag == "Keys");
 
     phrase.notes[0].velocity = 109;
     const auto updated = library.saveUserPattern(id, "Jazz Phrase", phrase);
@@ -67,6 +68,7 @@ TEST_CASE("Pattern library validates and updates a stable user ID",
     library.reload();
     REQUIRE(library.records().size() == 1);
     REQUIRE(library.find(id)->sequence.notes[0].velocity == 109);
+    REQUIRE(library.find(id)->tag == "Keys");
 
     user.getChildFile("invalid.cyclepattern").replaceWithText("{ bad json");
     library.reload();
@@ -79,7 +81,19 @@ TEST_CASE("Factory preset references resolve through the curated pattern library
   #if defined(CYCLE_V2_SOURCE_DIR)
     const File content = File(CYCLE_V2_SOURCE_DIR).getChildFile("content");
     PatternLibrary library(content.getChildFile("patterns"), {});
-    REQUIRE(library.records().size() >= 25);
+    REQUIRE(library.records().size() >= 5);
+    REQUIRE(library.records().size() <= 8);
+    REQUIRE(library.find("factory-sax-blue-hour") != nullptr);
+    REQUIRE(library.find("factory-sax-blue-hour")->id == "factory-basic-sustained");
+    REQUIRE(library.find("factory-acid-turn")->id == "factory-basic-bass");
+    REQUIRE(library.find("factory-skyward-arc")->id == "factory-basic-lead");
+    REQUIRE(library.find("factory-suspended-cloud")->id == "factory-basic-pad");
+    REQUIRE(library.find("factory-swing-comp")->id == "factory-basic-keys");
+    REQUIRE(library.find("factory-tom-steps")->id == "factory-basic-rhythm");
+    for (const auto& record : library.records()) {
+        REQUIRE(record.tag.isNotEmpty());
+        REQUIRE(record.sequence.notes.size() >= 4);
+    }
     int references = 0;
     for (const auto& file : content.getChildFile("presets").findChildFiles(
             File::findFiles, false, "*.cyclegraph")) {
@@ -88,7 +102,7 @@ TEST_CASE("Factory preset references resolve through the curated pattern library
         REQUIRE(object != nullptr);
         const auto presentation = PresetPresentationCodec::readMetadataJSON(
                 object->getProperty("presetPresentation")).presentation;
-        if (presentation.patternId.isNotEmpty()) {
+        if (presentation.patternId.startsWith("factory-")) {
             REQUIRE(library.find(presentation.patternId) != nullptr);
             REQUIRE_FALSE(presentation.sequence.has_value());
             ++references;
@@ -110,21 +124,42 @@ TEST_CASE("Pattern browser rows show notes and assign their stable ID",
     PatternBrowser browser(
             [&](const String& id) { selected = id; },
             [](const String&) {},
-            [&](const String& name) { createdName = name; });
-    browser.setSize(310, 480);
-    browser.setRecords({ { "factory-jazz", "Jazz Walk", phrase, {}, true } }, {});
+            [&](const String& name, const String& tag) {
+                createdName = name + ":" + tag;
+            });
+    browser.setSize(310, 240);
+    std::vector<PatternRecord> records;
+    for (int index = 0; index < 8; ++index) {
+        records.push_back({ "factory-" + String(index), "Pattern " + String(index),
+                phrase, {}, true, index % 2 == 0 ? "Keys" : "Bass" });
+    }
+    browser.setRecords(records, {});
     const Image image = browser.createComponentSnapshot(browser.getLocalBounds());
     REQUIRE(image.isValid());
     REQUIRE(image.getWidth() == 310);
     auto* list = findChild(browser, "workspace.sidebar.patternList");
     REQUIRE(list != nullptr);
+    auto* viewport = dynamic_cast<Viewport*>(
+            findChild(browser, "workspace.sidebar.patternViewport"));
+    REQUIRE(viewport != nullptr);
+    viewport->setViewPosition(0, 3 * 88);
+    const int scrollBeforeSelection = viewport->getViewPositionY();
+    REQUIRE(scrollBeforeSelection > 0);
     const Time now = Time::getCurrentTime();
+    const Point<float> rowPosition { 40.f, 3.f * 88.f + 40.f };
     MouseEvent click(Desktop::getInstance().getMainMouseSource(),
-            { 40.f, 40.f }, ModifierKeys::leftButtonModifier,
+            rowPosition, ModifierKeys::leftButtonModifier,
             1.f, 0.f, 0.f, 0.f, 0.f, list, list,
-            now, { 40.f, 40.f }, now, 1, false);
+            now, rowPosition, now, 1, false);
     list->mouseUp(click);
-    REQUIRE(selected == "factory-jazz");
+    REQUIRE(selected == "factory-3");
+    browser.setRecords(records, selected);
+    REQUIRE(viewport->getViewPositionY() == scrollBeforeSelection);
+    auto* filter = dynamic_cast<ComboBox*>(
+            findChild(browser, "workspace.sidebar.patternType"));
+    REQUIRE(filter != nullptr);
+    filter->setSelectedId(3, sendNotificationSync);
+    REQUIRE(list->getHeight() == 4 * 88);
     auto* name = dynamic_cast<TextEditor*>(
             findChild(browser, "workspace.sidebar.patternName"));
     auto* create = dynamic_cast<Button*>(
@@ -134,5 +169,5 @@ TEST_CASE("Pattern browser rows show notes and assign their stable ID",
     name->setText("Swing Variations");
     create->triggerClick();
     MessageManager::getInstance()->runDispatchLoopUntil(40);
-    REQUIRE(createdName == "Swing Variations");
+    REQUIRE(createdName == "Swing Variations:Bass");
 }

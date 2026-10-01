@@ -20,6 +20,32 @@ bool validId(const juce::String& id) {
     return true;
 }
 
+juce::String legacyFactoryId(const juce::String& id) {
+    const std::pair<const char*, const char*> aliases[] {
+        { "deep-pocket", "bass" }, { "acid-turn", "bass" },
+        { "walking-blue", "bass" }, { "dub-space", "bass" },
+        { "octave-engine", "bass" }, { "skyward-arc", "lead" },
+        { "minor-hook", "lead" }, { "wide-legato", "lead" },
+        { "trance-ladder", "lead" }, { "blues-answer", "lead" },
+        { "suspended-cloud", "pad" }, { "open-horizon", "pad" },
+        { "minor-drift", "pad" }, { "fifth-drone", "pad" },
+        { "luminous-rise", "pad" }, { "swing-comp", "keys" },
+        { "jazz-run", "keys" }, { "neo-soul-keys", "keys" },
+        { "glass-arpeggio", "keys" }, { "offbeat-organ", "keys" },
+        { "vibraphone-drops", "keys" }, { "sax-blue-hour", "sustained" },
+        { "sax-night-walk", "sustained" }, { "brass-fanfare", "sustained" },
+        { "flute-current", "sustained" }, { "strings-dialogue", "sustained" },
+        { "hand-drum-dialogue", "rhythm" },
+        { "metallic-sparks", "rhythm" }, { "tom-steps", "rhythm" }
+    };
+    for (const auto& [oldName, tag] : aliases) {
+        if (id == "factory-" + juce::String(oldName)) {
+            return "factory-basic-" + juce::String(tag);
+        }
+    }
+    return id;
+}
+
 std::optional<PatternRecord> readPattern(const juce::File& file, bool factory) {
     const juce::var value = juce::JSON::parse(file);
     const auto* object = value.getDynamicObject();
@@ -31,6 +57,7 @@ std::optional<PatternRecord> readPattern(const juce::File& file, bool factory) {
     result.name = object->getProperty("name").toString();
     result.file = file;
     result.factory = factory;
+    result.tag = object->getProperty("tag").toString();
     if (!validId(result.id) || result.name.isEmpty()) {
         return std::nullopt;
     }
@@ -48,6 +75,7 @@ juce::var writePattern(const PatternRecord& pattern) {
     object->setProperty("version", 1);
     object->setProperty("id", pattern.id);
     object->setProperty("name", pattern.name);
+    object->setProperty("tag", pattern.tag);
     object->setProperty("sequence",
             PresetPresentationCodec::writeSequenceJSON(pattern.sequence));
     return juce::var(object.release());
@@ -84,8 +112,11 @@ void PatternLibrary::readDirectory(const juce::File& directory, bool factory) {
 }
 
 const PatternRecord* PatternLibrary::find(const juce::String& id) const {
+    const auto canonicalId = legacyFactoryId(id);
     const auto found = std::find_if(patterns.begin(), patterns.end(),
-            [&id](const PatternRecord& pattern) { return pattern.id == id; });
+            [&canonicalId](const PatternRecord& pattern) {
+                return pattern.id == canonicalId;
+            });
     return found == patterns.end() ? nullptr : &*found;
 }
 
@@ -96,14 +127,16 @@ juce::String PatternLibrary::newUserId() const {
 std::optional<PatternRecord> PatternLibrary::saveUserPattern(
         const juce::String& id,
         const juce::String& name,
-        const PresetMidiSequence& sequence) {
+        const PresetMidiSequence& sequence,
+        const juce::String& tag) {
     const auto* existing = find(id);
     if (!validId(id) || name.trim().isEmpty()
             || (existing != nullptr && existing->factory)) {
         return std::nullopt;
     }
     PatternRecord record { id, name.trim(), sequence,
-            userDirectory.getChildFile(id + ".cyclepattern"), false };
+            userDirectory.getChildFile(id + ".cyclepattern"), false,
+            tag.isNotEmpty() ? tag : (existing != nullptr ? existing->tag : juce::String()) };
     if (!PresetPresentationCodec::readSequenceJSON(
             PresetPresentationCodec::writeSequenceJSON(sequence)).has_value()
             || userDirectory.createDirectory().failed()) {

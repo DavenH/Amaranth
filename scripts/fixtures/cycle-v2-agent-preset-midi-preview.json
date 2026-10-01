@@ -1,7 +1,7 @@
 {
   "commands": [
     { "command": "openGraph", "path": "../../cycle-v2/content/presets/sitar-pad.cyclegraph" },
-    { "command": "assertState", "path": "performance.previewSequenceNoteCount", "equals": 9 },
+    { "command": "assertState", "path": "performance.previewSequenceNoteCount", "equals": 6 },
     { "command": "assertState", "path": "performance.baseNote", "equals": 48 },
     { "command": "pointer", "targetId": "PerformanceKeyboard.PlaySequence", "event": "click" },
     { "command": "waitForIdle", "idleDelayMs": 100 },
@@ -18,12 +18,12 @@
     { "command": "pointer", "targetId": "PerformanceKeyboard.RecordSequence", "event": "click" },
     { "command": "waitForIdle", "idleDelayMs": 100 },
     { "command": "assertState", "path": "performance.previewRecording", "equals": false },
-    { "command": "assertState", "path": "performance.previewSequenceNoteCount", "equals": 10 },
-    { "command": "assertState", "path": "performance.previewSequenceControlCount", "equals": 6 },
+    { "command": "assertState", "path": "performance.previewSequenceNoteCount", "equals": 7 },
+    { "command": "assertState", "path": "performance.previewSequenceControlCount", "equals": 4 },
     { "command": "saveGraph", "path": "/private/tmp/cycle-v2-preset-midi-recorded.cyclegraph" },
     { "command": "openGraph", "path": "/private/tmp/cycle-v2-preset-midi-recorded.cyclegraph" },
-    { "command": "assertState", "path": "performance.previewSequenceNoteCount", "equals": 10 },
-    { "command": "assertState", "path": "performance.previewSequenceControlCount", "equals": 6 }
+    { "command": "assertState", "path": "performance.previewSequenceNoteCount", "equals": 7 },
+    { "command": "assertState", "path": "performance.previewSequenceControlCount", "equals": 4 }
   ],
   "quit": false
 }

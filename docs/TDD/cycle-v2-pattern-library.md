@@ -2,6 +2,65 @@
 
 Status: Complete
 
+## Current revision
+
+The library currently contains 29 composed phrases. Replace them with six short,
+basic templates: bass, lead, pad, keys, sustained, and rhythm. These are starting
+points for sound audition, not finished compositions. Retarget clean factory
+presets by sound family; preserve modified preset files. The sequence codec and
+library remain authoritative for MIDI content and persistence. Add a type tag to
+pattern metadata and filter the browser at the presentation boundary. Saving a
+new pattern uses the chosen tag; editing a user pattern preserves its tag.
+
+The browser should allocate one compact row to naming and actions, one row to
+the type filter, then give the rest to 88 px pattern rows. Selecting a row must
+retain the viewport position, including when selection refreshes the sidebar.
+The minimap's CC line uses a muted warm colour distinct from the note blue.
+No graph or audio policy moves into the browser; list filtering is O(patterns)
+only when the filter or library changes, and row selection is O(1).
+
+The old factory IDs are translated to the corresponding basic type only when
+`PatternLibrary::find` resolves a reference. The authoritative data remains
+the six `.cyclepattern` files and the authoritative sequence validator remains
+`PresetPresentationCodec`. This narrow ID translation keeps older external
+presets loadable; it does not duplicate MIDI behavior or keep old compositions.
+The alias lookup is a stable compatibility boundary for saved preset IDs.
+
+Completion requires a focused scroll regression, tag persistence and filter
+test, retargeted fixture, actual-size screenshot, build, architecture audit,
+style review, and commit. The prior verification below records the first slice.
+
+## Revision verification
+
+- Six basic factory patterns cover Bass, Lead, Pad, Keys, Sustained, and Rhythm.
+  The bass template is an eight-note bassline; pad notes last several seconds.
+  All templates contain CC1 motion and velocity variation. The 29 prior
+  compositions were removed.
+- 226 clean factory presets changed only their `patternId` to the basic type.
+  The 23 pre-existing modified preset files were not edited. All factory
+  references in the working tree resolve; old shipped IDs resolve through the
+  compatibility translation.
+- The browser stores a type tag with each pattern and filters by it. A new
+  pattern takes the selected type; subsequent user edits retain it. The name
+  field, create action, filter, and edit action occupy two compact rows. The
+  search icon appears only in the actual preset search field. Row selection
+  preserves the viewport's scroll position.
+- At production size, the sidebar screenshot at
+  `/private/tmp/cycle-v2-pattern-sidebar.png` shows the compact header, tagged
+  rows, and warm automation traces. The piano-roll screenshot at
+  `/private/tmp/cycle-v2-pattern-editor.png` shows the same automation colour.
+- Pattern tests pass with 751 assertions across four cases. Piano-roll editor
+  tests pass with 37 assertions across six cases. The app pattern, editor, and
+  recording fixtures pass 13/13, 11/11, and 24/24 commands respectively.
+  The broader MIDI tag has one unrelated failure because the pre-existing
+  modified `astral-3.cyclegraph` no longer loads in its realtime test.
+- Standalone Debug and test targets build with `--parallel 10`. The architecture
+  audit reports only existing size triggers. Touched production files remain
+  below size triggers; `NodeWorkspace` grew by two lines and still only routes
+  creation and edit events. `git diff --check` passes. The touched painting
+  paths contain no scalar `std::<math>` hot-loop calls. `clang-tidy` is not
+  installed locally.
+
 ## Design
 
 Patterns are named, separately stored MIDI phrases with stable IDs. A preset

@@ -15,6 +15,7 @@ struct PatternRecord {
     PresetMidiSequence sequence;
     juce::File file;
     bool factory {};
+    juce::String tag;
 };
 
 class PatternLibrary {
@@ -27,7 +28,8 @@ public:
     std::optional<PatternRecord> saveUserPattern(
             const juce::String& id,
             const juce::String& name,
-            const PresetMidiSequence& sequence);
+            const PresetMidiSequence& sequence,
+            const juce::String& tag = {});
     juce::String newUserId() const;
 
 private:

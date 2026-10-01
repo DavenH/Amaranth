@@ -120,7 +120,7 @@ void PresetMidiEditor::paint(Graphics& graphics) {
         graphics.drawText(resizingNote ? "RESIZE NOTE" : "MOVE NOTE",
                 258, 9, 150, 22, Justification::centredLeft);
     } else if (activeVelocity >= 0) {
-        graphics.setColour(CanvasChromePalette::navigationAccent);
+        graphics.setColour(CanvasChromePalette::focus);
         graphics.setFont(FontOptions(12.f, Font::bold));
         graphics.drawText("VELOCITY "
                         + String(sequence.notes[(size_t) activeVelocity].velocity),
@@ -272,7 +272,7 @@ void PresetMidiEditor::paintVelocity(Graphics& graphics) const {
         const auto& note = sequence.notes[index];
         const float x = xForTime(note.startSeconds);
         const float height = grid.getHeight() * note.velocity / 127.f;
-        graphics.setColour(CanvasChromePalette::navigationAccent.withAlpha(
+        graphics.setColour(CanvasChromePalette::focus.withAlpha(
                 (int) index == selectedNote ? 0.96f : 0.54f));
         graphics.fillRoundedRectangle({ x - 4.f, grid.getBottom() - height,
                 8.f, height }, 2.f);
@@ -331,10 +331,10 @@ void PresetMidiEditor::paintModulation(Graphics& graphics) const {
         fill.lineTo(xForTime(sequence.controls[points.front()].timeSeconds),
                 grid.getBottom());
         fill.closeSubPath();
-        graphics.setColour(CanvasChromePalette::focus.withAlpha(0.12f));
+        graphics.setColour(CanvasChromePalette::patternAutomation.withAlpha(0.12f));
         graphics.fillPath(fill);
     }
-    graphics.setColour(CanvasChromePalette::focus.withAlpha(0.9f));
+    graphics.setColour(CanvasChromePalette::patternAutomation.withAlpha(0.9f));
     graphics.strokePath(line, PathStrokeType(2.f));
     for (const size_t index : points) {
         const auto& control = sequence.controls[index];
@@ -342,7 +342,7 @@ void PresetMidiEditor::paintModulation(Graphics& graphics) const {
         const float y = grid.getBottom() - grid.getHeight()
                 * control.value / 127.f;
         graphics.setColour((int) index == selectedControl
-                ? Colours::white : CanvasChromePalette::focus);
+                ? Colours::white : CanvasChromePalette::patternAutomation);
         graphics.fillEllipse(x - 4.f, y - 4.f, 8.f, 8.f);
         graphics.setColour(CanvasChromePalette::dockSurface);
         graphics.drawEllipse(x - 4.f, y - 4.f, 8.f, 8.f, 1.f);

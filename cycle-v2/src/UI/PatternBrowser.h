@@ -14,7 +14,7 @@ class PatternBrowser final : public juce::Component {
 public:
     using SelectCallback = std::function<void(const juce::String&)>;
     using EditCallback = std::function<void(const juce::String&)>;
-    using CreateCallback = std::function<void(const juce::String&)>;
+    using CreateCallback = std::function<void(const juce::String&, const juce::String&)>;
 
     PatternBrowser(SelectCallback select, EditCallback edit, CreateCallback create);
     ~PatternBrowser() override;
@@ -26,15 +26,19 @@ public:
 private:
     class List;
     void editSelected();
+    void applyFilter();
 
     EditCallback onEdit;
     CreateCallback onCreate;
     juce::TextEditor nameEntry;
-    juce::TextButton createButton { "NEW FROM CURRENT" };
+    juce::TextButton createButton { "+ NEW" };
     juce::TextButton editButton { "EDIT" };
+    juce::ComboBox typeFilter;
     juce::Label status;
     juce::Viewport viewport;
     std::unique_ptr<List> list;
+    std::vector<PatternRecord> allRecords;
+    juce::String selectedId;
 };
 
 }

@@ -84,7 +84,9 @@ void NodeWorkspace::configurePresetSidebar(
     canvas.configurePatternSidebar(
             [this](const String& id) { selectPattern(id); },
             [this](const String& id) { editPattern(id); },
-            [this](const String& name) { createPattern(name); });
+            [this](const String& name, const String& tag) {
+                createPattern(name, tag);
+            });
     refreshPatternSidebar();
 }
 
@@ -125,13 +127,13 @@ void NodeWorkspace::selectPattern(const String& id) {
     }
 }
 
-void NodeWorkspace::createPattern(const String& name) {
+void NodeWorkspace::createPattern(const String& name, const String& tag) {
     if (patternLibrary == nullptr) {
         return;
     }
     const auto sequence = resolvedPresetSequence().value_or(PresetMidiSequence {});
     const auto saved = patternLibrary->saveUserPattern(
-            patternLibrary->newUserId(), name, sequence);
+            patternLibrary->newUserId(), name, sequence, tag);
     if (saved.has_value()) {
         selectPattern(saved->id);
         editPattern(saved->id);
@@ -174,7 +176,8 @@ void NodeWorkspace::saveEditedSequence(
     const String name = source != nullptr
             ? source->name + (updateUserPattern ? "" : " Variation")
             : (presetName.isNotEmpty() ? presetName : "Untitled") + " Pattern";
-    const auto saved = patternLibrary->saveUserPattern(id, name, sequence);
+    const auto saved = patternLibrary->saveUserPattern(id, name, sequence,
+            source != nullptr ? source->tag : juce::String());
     if (saved.has_value()) {
         canvas.setPresetPatternId(saved->id);
         refreshPatternSidebar();

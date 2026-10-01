@@ -67,15 +67,14 @@ void PresetBrowserLookAndFeel::fillTextEditorBackground(
             juce::Rectangle<float>(0.f, 0.f, (float) width, (float) height),
             CanvasChromeMetrics::controlCornerRadius);
 
-    const juce::Rectangle<float> lens(14.f, (float) height * 0.5f - 5.f, 9.f, 9.f);
-    graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.82f));
-    graphics.drawEllipse(lens, 1.25f);
-    graphics.drawLine(
-            lens.getRight() - 1.f,
-            lens.getBottom() - 1.f,
-            lens.getRight() + 3.f,
-            lens.getBottom() + 3.f,
-            1.25f);
+    if (editor.getComponentID() == "workspace.sidebar.search") {
+        const juce::Rectangle<float> lens(
+                14.f, (float) height * 0.5f - 5.f, 9.f, 9.f);
+        graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.82f));
+        graphics.drawEllipse(lens, 1.25f);
+        graphics.drawLine(lens.getRight() - 1.f, lens.getBottom() - 1.f,
+                lens.getRight() + 3.f, lens.getBottom() + 3.f, 1.25f);
+    }
 }
 
 void PresetBrowserLookAndFeel::drawTextEditorOutline(

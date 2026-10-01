@@ -107,7 +107,7 @@ private:
     std::optional<PresetMidiSequence> resolvedPresetSequence() const;
     void refreshPatternSidebar();
     void selectPattern(const String& id);
-    void createPattern(const String& name);
+    void createPattern(const String& name, const String& tag);
     void editPattern(const String& id);
     void saveEditedSequence(PresetMidiSequence sequence, const String& sourceId);
     void showPatternSaveError();

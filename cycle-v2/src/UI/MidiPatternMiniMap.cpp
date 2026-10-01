@@ -84,7 +84,7 @@ void paintControls(
     }
     juce::Graphics::ScopedSaveState save(graphics);
     graphics.reduceClipRegion(bounds.toNearestInt());
-    graphics.setColour(CanvasChromePalette::navigationAccent.withAlpha(0.84f));
+    graphics.setColour(CanvasChromePalette::patternAutomation.withAlpha(0.84f));
     graphics.strokePath(path, juce::PathStrokeType(1.1f));
     if (points.size() == 1) {
         const auto& point = *points.front();

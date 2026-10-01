@@ -28,15 +28,6 @@ public:
 
     const juce::String& selection() const { return selectedId; }
 
-    int selectedIndex() const {
-        for (int index = 0; index < (int) records.size(); ++index) {
-            if (records[(size_t) index].id == selectedId) {
-                return index;
-            }
-        }
-        return 0;
-    }
-
     std::vector<std::pair<juce::String, juce::Rectangle<float>>>
             pointerTargetsForAutomation(
                     const juce::Rectangle<int>& viewportBounds,
@@ -72,12 +63,14 @@ public:
             graphics.setColour(CanvasChromePalette::text);
             graphics.setFont(juce::FontOptions(13.f, juce::Font::bold));
             graphics.drawFittedText(record.name,
-                    row.withHeight(22.f).reduced(8.f, 0.f).toNearestInt(),
+                    row.withHeight(22.f).withTrimmedRight(78.f)
+                            .reduced(8.f, 0.f).toNearestInt(),
                     juce::Justification::centredLeft, 1);
             graphics.setColour(CanvasChromePalette::mutedText);
             graphics.setFont(juce::FontOptions(9.f));
-            graphics.drawText(record.factory ? "FACTORY" : "USER",
-                    row.getRight() - 61.f, row.getY() + 7.f, 51.f, 13.f,
+            graphics.drawText(record.tag.isNotEmpty() ? record.tag.toUpperCase()
+                            : (record.factory ? "FACTORY" : "USER"),
+                    row.getRight() - 75.f, row.getY() + 7.f, 65.f, 13.f,
                     juce::Justification::centredRight);
             const auto preview = row.withTrimmedTop(27.f).reduced(8.f, 6.f);
             graphics.setColour(CanvasChromePalette::insetBackground);
@@ -120,24 +113,48 @@ PatternBrowser::PatternBrowser(
     setComponentID("workspace.sidebar.patternBrowser");
     createButton.setComponentID("workspace.sidebar.patternNew");
     editButton.setComponentID("workspace.sidebar.patternEdit");
-    nameEntry.setTextToShowWhenEmpty("New pattern name...",
+    nameEntry.setTextToShowWhenEmpty("Pattern name",
             CanvasChromePalette::mutedText);
     nameEntry.setComponentID("workspace.sidebar.patternName");
     nameEntry.setColour(juce::TextEditor::backgroundColourId,
             CanvasChromePalette::restingControlSurface);
     nameEntry.setColour(juce::TextEditor::textColourId,
             CanvasChromePalette::text);
+    nameEntry.setColour(juce::TextEditor::outlineColourId,
+            CanvasChromePalette::border);
+    nameEntry.setColour(juce::TextEditor::focusedOutlineColourId,
+            CanvasChromePalette::focus);
+    nameEntry.setFont(juce::FontOptions(13.f));
+    nameEntry.setIndents(10, 6);
+    nameEntry.onReturnKey = [this] { createButton.triggerClick(); };
     addAndMakeVisible(nameEntry);
+    createButton.setTooltip("Save the current MIDI phrase with the selected type");
+    typeFilter.setTooltip("Filter patterns and choose the type for a new pattern");
     createButton.onClick = [this] {
         const auto name = nameEntry.getText().trim();
         if (name.isNotEmpty()) {
-            onCreate(name);
+            onCreate(name, typeFilter.getSelectedId() > 1
+                    ? typeFilter.getText() : juce::String("Other"));
             nameEntry.clear();
         } else {
             nameEntry.grabKeyboardFocus();
         }
     };
     editButton.onClick = [this] { editSelected(); };
+    typeFilter.setComponentID("workspace.sidebar.patternType");
+    typeFilter.addItem("All types", 1);
+    for (const auto& tag : { "Bass", "Lead", "Pad", "Keys", "Sustained", "Rhythm", "Other" }) {
+        typeFilter.addItem(tag, typeFilter.getNumItems() + 2);
+    }
+    typeFilter.setSelectedId(1, juce::dontSendNotification);
+    typeFilter.onChange = [this] { applyFilter(); };
+    typeFilter.setColour(juce::ComboBox::backgroundColourId,
+            CanvasChromePalette::restingControlSurface);
+    typeFilter.setColour(juce::ComboBox::textColourId,
+            CanvasChromePalette::text);
+    typeFilter.setColour(juce::ComboBox::outlineColourId,
+            CanvasChromePalette::border);
+    addAndMakeVisible(typeFilter);
     for (auto* button : { &createButton, &editButton }) {
         button->setColour(juce::TextButton::buttonColourId,
                 CanvasChromePalette::restingControlSurface);
@@ -150,6 +167,7 @@ PatternBrowser::PatternBrowser(
     status.setFont(juce::FontOptions(11.f));
     addAndMakeVisible(status);
     viewport.setViewedComponent(list.get(), false);
+    viewport.setComponentID("workspace.sidebar.patternViewport");
     viewport.setScrollBarsShown(true, false);
     addAndMakeVisible(viewport);
 }
@@ -159,11 +177,27 @@ PatternBrowser::~PatternBrowser() = default;
 void PatternBrowser::setRecords(
         std::vector<PatternRecord> records,
         const juce::String& selectedId) {
-    status.setText(juce::String(records.size()) + " PATTERNS  ·  CLICK TO ASSIGN",
+    allRecords = std::move(records);
+    this->selectedId = selectedId;
+    applyFilter();
+}
+
+void PatternBrowser::applyFilter() {
+    const int previousScroll = viewport.getViewPositionY();
+    std::vector<PatternRecord> visible;
+    const auto tag = typeFilter.getSelectedId() > 1
+            ? typeFilter.getText() : juce::String();
+    for (const auto& record : allRecords) {
+        if (tag.isEmpty() || record.tag.equalsIgnoreCase(tag)
+                || (tag == "Other" && record.tag.isEmpty())) {
+            visible.push_back(record);
+        }
+    }
+    status.setText(juce::String(visible.size()) + " PATTERNS",
             juce::dontSendNotification);
-    list->setRecords(std::move(records), selectedId);
+    list->setRecords(std::move(visible), selectedId);
     resized();
-    viewport.setViewPosition(0, list->selectedIndex() * rowHeight);
+    viewport.setViewPosition(0, previousScroll);
 }
 
 std::vector<std::pair<juce::String, juce::Rectangle<float>>>
@@ -179,14 +213,17 @@ void PatternBrowser::editSelected() {
 }
 
 void PatternBrowser::resized() {
-    auto bounds = getLocalBounds().reduced(10, 8);
-    nameEntry.setBounds(bounds.removeFromTop(34));
-    bounds.removeFromTop(5);
-    auto actions = bounds.removeFromTop(32);
-    editButton.setBounds(actions.removeFromRight(70));
-    actions.removeFromRight(7);
-    createButton.setBounds(actions);
-    status.setBounds(bounds.removeFromTop(28));
+    auto bounds = getLocalBounds().reduced(10, 7);
+    auto createRow = bounds.removeFromTop(30);
+    createButton.setBounds(createRow.removeFromRight(69));
+    createRow.removeFromRight(5);
+    nameEntry.setBounds(createRow);
+    bounds.removeFromTop(6);
+    auto filterRow = bounds.removeFromTop(30);
+    editButton.setBounds(filterRow.removeFromRight(69));
+    filterRow.removeFromRight(5);
+    typeFilter.setBounds(filterRow);
+    status.setBounds(bounds.removeFromTop(24));
     viewport.setBounds(bounds);
     list->setSize(juce::jmax(1, viewport.getMaximumVisibleWidth()),
             list->getHeight());
