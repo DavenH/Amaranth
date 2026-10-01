@@ -20,8 +20,8 @@ which updates only preset presentation and dirty state.
 Events include note start, duration and velocity, and time stamped CC values.
 CC1 keyframes form a linear modulation envelope during playback; other CCs
 retain their recorded event timing.
-Playback sends note off before note on at shared boundaries. Stop, preset load,
-and editor closure release preview notes. Existing presets without a sequence
+Playback sends note off before note on at shared boundaries. Stop and preset
+load release preview notes. Existing presets without a sequence
 keep the one-note audition behavior. The keyboard displays the phrase's pitch
 range centred within its 24-semitone viewport where possible.
 
@@ -75,11 +75,12 @@ or rasterization behavior is copied. There are no new node-kind branches.
 ## Verification
 
 - All 249 factory files parse, with 3,089 note/CC events in range; 202 presets
-  have CC1 motion. The generator is idempotent. A JSON comparison against
-  `HEAD` confirms that only new sequence presentation data was added.
+  have CC1 motion. The generator is idempotent. A JSON comparison against the
+  pre-change commit confirms that only new sequence presentation data was added.
 - Focused Catch2 keyboard, editor, and preset serialization tests pass:
-  193 assertions across 19 cases. The editor test covers move, resize, CC draw,
-  delete, and one publication per complete gesture.
+  195 assertions across 19 cases. The editor test covers move, resize, CC draw,
+  delete, and one publication per complete gesture; recording also recentres the
+  keyboard on a new pitch range.
 - `cycle-v2-agent-preset-midi-preview.json` passes through the real app:
   play/stop, live note and mod-wheel capture, stop, save to a new file, reload,
   and retention of ten notes and seven CC points.

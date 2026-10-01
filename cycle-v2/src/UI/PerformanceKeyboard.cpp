@@ -593,7 +593,7 @@ void PerformanceKeyboardPanel::stopRecording() {
     sequence->durationSeconds = jmax(sequence->durationSeconds, end + 0.1);
     recording = false;
     recordButton.setButtonText("REC");
-    rebuildPlaybackEvents();
+    setSequence(*sequence);
     if (sequenceChanged) {
         sequenceChanged(*sequence);
     }

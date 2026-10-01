@@ -216,16 +216,18 @@ TEST_CASE("Record button captures MIDI note and controller gestures into the pre
     MessageManager::getInstance()->runDispatchLoopUntil(40);
     REQUIRE(panel.isRecording());
     const double now = Time::getMillisecondCounterHiRes() / 1000.0;
-    panel.recordMidiMessage(MidiMessage::noteOn(1, 48, (uint8) 101), now + 0.1);
+    panel.recordMidiMessage(MidiMessage::noteOn(1, 72, (uint8) 101), now + 0.1);
     panel.recordMidiMessage(MidiMessage::controllerEvent(1, 1, 75), now + 0.2);
-    panel.recordMidiMessage(MidiMessage::noteOff(1, 48), now + 0.6);
+    panel.recordMidiMessage(MidiMessage::noteOff(1, 72), now + 0.6);
     record->triggerClick();
     MessageManager::getInstance()->runDispatchLoopUntil(40);
 
     REQUIRE_FALSE(panel.isRecording());
     REQUIRE(saveCount == 1);
     REQUIRE(saved.notes.size() == 1);
-    REQUIRE(saved.notes[0].pitch == 48);
+    REQUIRE(saved.notes[0].pitch == 72);
+    REQUIRE(panel.baseNote() == 60);
+    REQUIRE_FALSE(panel.noteBounds(72).isEmpty());
     REQUIRE(saved.notes[0].velocity == 101);
     REQUIRE(saved.notes[0].durationSeconds == Catch::Approx(0.5).margin(0.01));
     REQUIRE(saved.controls.size() == 1);
