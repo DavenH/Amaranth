@@ -30,7 +30,8 @@ public:
         automationOptions = CycleV2::CycleV2Automation::parseCommandLine(commandLine);
         audioEngine = std::make_unique<CycleV2::StandaloneAudioEngine>();
         audioEngine->start();
-        mainWindow = std::make_unique<MainWindow>(getApplicationName(), *audioEngine);
+        mainWindow = std::make_unique<MainWindow>(
+                getApplicationName(), *audioEngine, automationOptions);
         mainWindow->setVisible(true);
         mainWindow->toFront(true);
 
@@ -60,14 +61,20 @@ public:
 
         MainWindow(
                 const String& name,
-                CycleV2::StandaloneAudioEngine& audioEngine) :
+                CycleV2::StandaloneAudioEngine& audioEngine,
+                const CycleV2::CycleV2Automation::Options& options) :
                 DocumentWindow(name, Colour(0xff101318), allButtons)
             ,   applicationName(name)
             ,   properties(createProperties())
             ,   fileHistory(*properties)
             ,   graphReplacement([this](const File& file) {
                     return openGraphFileUnchecked(file);
-                }) {
+                })
+            ,   agentPatternDirectory(CycleV2::CycleV2Automation::hasAutomation(options)
+                        ? File::getSpecialLocation(File::tempDirectory).getChildFile(
+                                "cycle-v2-agent-patterns-"
+                                        + Uuid().toString().removeCharacters("{}"))
+                        : File()) {
             setUsingNativeTitleBar(true);
             setResizable(true, true);
             workspace = new CycleV2::NodeWorkspace(audioEngine);
@@ -82,8 +89,10 @@ public:
                     [this] { chooseOpenGraph(); });
             workspace->configurePatternLibrary(
                     repositoryPresetDirectory().getSiblingFile("patterns"),
-                    File::getSpecialLocation(File::userApplicationDataDirectory)
-                            .getChildFile("Amaranth Audio/Cycle V2/Patterns"));
+                    agentPatternDirectory != File()
+                            ? agentPatternDirectory
+                            : File::getSpecialLocation(File::userApplicationDataDirectory)
+                                    .getChildFile("Amaranth Audio/Cycle V2/Patterns"));
 
             commandManager.registerAllCommandsForTarget(this);
             addKeyListener(commandManager.getKeyMappings());
@@ -119,6 +128,9 @@ public:
             setMenuBar(nullptr);
           #endif
             removeKeyListener(commandManager.getKeyMappings());
+            if (agentPatternDirectory != File()) {
+                agentPatternDirectory.deleteRecursively();
+            }
         }
 
         void closeButtonPressed() override {
@@ -533,6 +545,7 @@ public:
         std::unique_ptr<PropertiesFile> properties;
         CycleV2::GraphFileHistory fileHistory;
         CycleV2::GraphDocumentReplacement graphReplacement;
+        File agentPatternDirectory;
         CycleV2::NodeWorkspace* workspace {};
         std::unique_ptr<CycleV2::CycleV2Automation> automation;
         std::unique_ptr<FileChooser> fileChooser;

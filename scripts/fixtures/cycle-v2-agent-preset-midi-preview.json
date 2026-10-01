@@ -25,5 +25,5 @@
     { "command": "assertState", "path": "performance.previewSequenceNoteCount", "equals": 7 },
     { "command": "assertState", "path": "performance.previewSequenceControlCount", "equals": 4 }
   ],
-  "quit": false
+  "quit": true
 }

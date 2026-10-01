@@ -1,5 +1,14 @@
 # Cycle V2 UI Bug Notes
 
+## Resolved: Relative agent script path asserted in JUCE File
+
+On 2026-10-01, a direct Cycle V2 automation launch passed a relative
+`--agent-script` path and logged `JUCE Assertion failure in juce_File.cpp:219`
+at `/private/tmp/cycle-v2-pattern-isolation-logs.txt`. JUCE requires an
+absolute path in that constructor. The run was repeated with an absolute
+script path at `/private/tmp/cycle-v2-pattern-isolation-logs-2.txt`; it passed
+24/24 commands without the assertion. No product failure remains.
+
 ## P2: Broader Trimesh tests retain a stale control-region expectation
 
 The 2026-09-18 `CycleV2_tests '[trimesh]'` run passed the mapped pitch tests but

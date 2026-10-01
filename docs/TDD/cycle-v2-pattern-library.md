@@ -2,6 +2,39 @@
 
 Status: Complete
 
+## Automation isolation follow-up
+
+Cycle V2 UI automation previously opened the normal user
+pattern directory, so recording and piano-roll fixtures that edit a factory
+pattern save repeated `Basic Pad Variation` files into the user's library.
+The app already parses `CycleV2Automation::Options` before constructing the
+window. Use that existing automation boundary to give each automated app
+session its own temporary user pattern directory. `PatternLibrary` retains all
+validation, save, and reload behavior unchanged; `MainWindow` only chooses the
+directory and removes the temporary one on normal shutdown. Regular launches
+continue using the same durable user directory. Delete only the three files
+proven to have been created by the previous agent fixtures, after backing them
+up outside the library. Completion requires an app fixture that records MIDI,
+verifies the durable library is unchanged, a screenshot check, focused build,
+architecture/style review, and commit.
+
+The three confirmed fixture artifacts were moved to
+`~/Library/Amaranth Audio/Cycle V2/Pattern Backups/agent-test-2026-10-01`;
+the pre-existing
+`Acid Turn Variation` pattern remains in the user library, byte for byte.
+Each automated app launch now gets a unique temporary user pattern directory
+that is removed on normal shutdown. The recording fixture passed 24/24 in a
+separate app instance; the durable user pattern list and its file hash were
+identical before and after. The sidebar fixture passed 13/13 and its
+production-size screenshot at `/private/tmp/cycle-v2-pattern-sidebar.png`
+shows only the six factory rows in the isolated session. The user's existing
+app session was left running; it must restart to reload the cleaned library.
+`Main.cpp` grew from 555 to 568 lines. It only selects and owns the temporary
+directory at application startup and shutdown. Pattern loading, saving, and
+validation remain in `PatternLibrary`; no graph or audio policy was added to
+the window. The architecture audit reports only existing size triggers, and
+`git diff --check` passes. No DSP or raster hot path changed.
+
 ## Current revision
 
 The library currently contains 29 composed phrases. Replace them with six short,
