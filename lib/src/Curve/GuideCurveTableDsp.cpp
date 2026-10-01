@@ -24,9 +24,12 @@ void rotatePhase(
     }
 
     const int phaseOffset = phaseOffsetFor(parameters, context);
+    const int destinationSize = destination.size();
+    const int wrappedPhaseOffset = (phaseOffset % destinationSize + destinationSize)
+            % destinationSize;
     destination.withPhase(
-            phaseOffset % destination.size(),
-            phaseScratch.withSize(destination.size()));
+            wrappedPhaseOffset,
+            phaseScratch.withSize(destinationSize));
 }
 
 void addNoise(

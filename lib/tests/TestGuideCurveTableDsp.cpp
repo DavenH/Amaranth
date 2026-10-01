@@ -48,6 +48,8 @@ TEST_CASE("Guide curve phase randomness spans the full bipolar cycle",
         "[guide][dsp][phase][regression]") {
     std::vector<float> table(GuideCurveProvider::tableSize);
     std::vector<float> noise(GuideCurveProvider::tableSize);
+    std::vector<float> phaseScratch(GuideCurveProvider::tableSize);
+    std::vector<float> destination(GuideCurveProvider::tableSize);
     for (int index = 0; index < GuideCurveProvider::tableSize; ++index) {
         table[(size_t) index] = (float) index;
     }
@@ -73,6 +75,16 @@ TEST_CASE("Guide curve phase randomness spans the full bipolar cycle",
 
     REQUIRE(negativeHalfCycle == 8191.f);
     REQUIRE(positiveHalfCycle == 8190.f);
+
+    context.phaseOffset = 0;
+    GuideCurveTableDsp::sampleDownAddNoise(
+            { table.data(), (int) table.size() },
+            { noise.data(), (int) noise.size() },
+            { phaseScratch.data(), (int) phaseScratch.size() },
+            parameters,
+            { destination.data(), (int) destination.size() },
+            context);
+    REQUIRE(destination.front() == 4096.f);
 }
 
 TEST_CASE("Guide curve table DSP initializes stable deterministic noise",
