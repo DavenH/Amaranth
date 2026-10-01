@@ -4,8 +4,11 @@
 #include <limits>
 
 #include <Audio/CycleDsp/IrModel.h>
+#include <UI/Panels/ScalarSurfaceProgram.h>
 
 #include "UI/NodePreviewRenderer.h"
+
+#include "Runtime/PreviewContrastNormalization.h"
 
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeParameterMap.h"
@@ -81,6 +84,15 @@ String runtimeSignature(const NodePreviewResult& preview) {
         return "revision:" + String((int64) preview.contentRevision);
     }
     return String::toHexString((int64) nodePreviewResultFingerprint(preview));
+}
+
+int timeSurfaceStyleSignature(PortDomain domain) {
+    const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
+            || domain == PortDomain::SpectralPhaseSignal;
+    return spectral
+            ? -1
+            : ScalarSurfaceMaterial::timeSurfaceStyleIndex(
+                    ScalarSurfaceMaterial::timeSurfaceStyle());
 }
 
 void drawTrace(
@@ -159,6 +171,7 @@ std::vector<float> mappedSurface(
     }
 
     const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
+    const bool signalSpy = preview.role == PreviewModuleRole::SignalSpy;
     const bool spectral = preview.domain == PortDomain::SpectralMagnitudeSignal
             || preview.domain == PortDomain::SpectralPhaseSignal;
     if (meshSurface && spectral) {
@@ -169,6 +182,13 @@ std::vector<float> mappedSurface(
                 preview.frequencyMidiNote);
     }
     if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
+        if (signalSpy) {
+            PreviewContrastNormalization::applySpectralMagnitude(
+                    surface,
+                    preview.gridColumns,
+                    preview.gridRows,
+                    1.f);
+        }
         return profile.mapSpectrum2DGridToDisplay(
                 surface,
                 preview.gridColumns,
@@ -185,8 +205,15 @@ std::vector<float> mappedSurface(
     Buffer<float> buffer(surface.data(), (int) surface.size());
     if (meshSurface) {
         profile.mapValuesToDisplay(buffer);
-    } else if (preview.role == PreviewModuleRole::SignalSpy
-            && preview.domain == PortDomain::TimeSignal) {
+    } else if (signalSpy && preview.domain == PortDomain::TimeSignal) {
+        const auto material = profile.getSurfaceStyle().surfaceMaterial();
+        if (ScalarSurfaceProgram::isProgram(material)
+                || material.palette == ScalarSurfacePalette::Greyscale) {
+            PreviewContrastNormalization::apply(surface, 1.f);
+            buffer.mul(0.5f).add(0.5f);
+            return surface;
+        }
+        PreviewContrastNormalization::apply(surface, 3.f);
         std::vector<float> magnitude = surface;
         Buffer<float> magnitudeBuffer(magnitude.data(), (int) magnitude.size());
         magnitudeBuffer.abs().add(1.f);
@@ -547,18 +574,22 @@ bool NodePreviewRenderer::requiresCurveModel(NodeKind kind) {
 
 Image NodePreviewRenderer::createRuntimeHeatmapImage(
         const NodePreviewResult& preview,
-        bool desaturated) {
+        bool desaturated,
+        float surfaceAspectRatio) {
     return createRuntimeHeatmapImage(
             preview,
             TrimeshRenderProfile::fromDomain(preview.domain),
-            desaturated);
+            desaturated,
+            surfaceAspectRatio);
 }
 
 Image NodePreviewRenderer::createRuntimeHeatmapImage(
         const NodePreviewResult& preview,
         const TrimeshRenderProfile& profile,
-        bool desaturated) {
-    const auto createImage = [&preview, &profile](const std::vector<float>& values) {
+        bool desaturated,
+        float surfaceAspectRatio) {
+    const auto createImage = [&preview, &profile, surfaceAspectRatio](
+                                     const std::vector<float>& values) {
         TrimeshRenderData data;
         data.surface = mappedSurface(preview, values, profile);
         data.domain = preview.domain;
@@ -567,7 +598,9 @@ Image NodePreviewRenderer::createRuntimeHeatmapImage(
         data.cyclic = preview.domain == PortDomain::TimeSignal;
         return TrimeshSurfaceRenderer::createHeatmapImage(
                 data,
-                profile);
+                profile,
+                false,
+                surfaceAspectRatio);
     };
 
     Image image = createImage(preview.primary);
@@ -641,9 +674,12 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
     const int width = roundToInt(request.area.getWidth());
     const int height = roundToInt(request.area.getHeight());
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
-    String signature = nodeSignature(request.node, request.profile.getDomain());
+    String signature = nodeSignature(request.node, request.profile.getDomain())
+            + "|timeSurfaceStyle:"
+            + String(timeSurfaceStyleSignature(request.profile.getDomain()));
     if (request.node.kind == NodeKind::TrilinearMesh) {
-        signature += "|guide:" + resources.trimeshWidget(request.node).guideContextKey();
+        signature += "|guide:"
+                + resources.trimeshWidget(request.node, request.graph).guideContextKey();
     }
     if (request.node.kind == NodeKind::Unison) {
         signature += "|previewNote:" + String(request.unisonContext.midiNote)
@@ -698,7 +734,7 @@ bool NodePreviewRenderer::paintAuthoritativeModel(
         Graphics& graphics,
         const NodePreviewRenderRequest& request) {
     if (request.node.kind == NodeKind::TrilinearMesh) {
-        resources.trimeshWidget(request.node).paintCompact(
+        resources.trimeshWidget(request.node, request.graph).paintCompact(
                 graphics,
                 request.node,
                 request.area,
@@ -806,17 +842,23 @@ bool NodePreviewRenderer::paintRuntimeHeatmap(
             result.domain);
     const bool desaturated = result.role == PreviewModuleRole::ReverbSpectrogram
             && !NodeParameterMap(request.node).boolValue("enabled", true);
+    const float surfaceAspectRatio = request.area.getWidth()
+            / jmax(1.f, request.area.getHeight());
     const String signature = runtimeSignature(result)
             + "|desaturated:" + String(desaturated ? 1 : 0)
             + "|domain:" + String((int) result.domain)
-            + "|scale:" + String((int) heatmapProfile.getScalePolicy());
+            + "|scale:" + String((int) heatmapProfile.getScalePolicy())
+            + "|timeSurfaceStyle:"
+            + String(timeSurfaceStyleSignature(result.domain))
+            + "|aspect:" + String(surfaceAspectRatio, 4);
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
     if (!cached.runtimeHeatmap.isValid()
             || cached.runtimeHeatmapSignature != signature) {
         cached.runtimeHeatmap = createRuntimeHeatmapImage(
                 result,
                 heatmapProfile,
-                desaturated);
+                desaturated,
+                surfaceAspectRatio);
         cached.runtimeHeatmapSignature = signature;
     }
 
@@ -844,7 +886,9 @@ bool NodePreviewRenderer::paintCachedHeatmap(
     const int width = roundToInt(request.area.getWidth());
     const int height = roundToInt(request.area.getHeight());
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
-    const String signature = runtimeSignature(result);
+    const String signature = runtimeSignature(result)
+            + "|timeSurfaceStyle:"
+            + String(timeSurfaceStyleSignature(result.domain));
 
     if (!cached.image.isValid()
             || cached.width != width

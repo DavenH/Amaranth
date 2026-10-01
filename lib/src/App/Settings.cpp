@@ -66,9 +66,12 @@ void Settings::initialiseSettings() {
     addSetting(ViewVertsOnlyOnHover,    false);
 }
 
-void Settings::addDocumentSetting(int setting, const String& key, int defaultValue) {
+void Settings::addDocumentSetting(int setting, const String& key, int defaultValue, bool resetWhenMissing) {
     jassert(! key.isEmpty());
     documentSettingsMap[setting] = Setting(key, defaultValue);
+    if (resetWhenMissing) {
+        documentSettingsMap[setting].missingValue = defaultValue;
+    }
 }
 
 void Settings::readGlobalSettings(XmlElement* settingsDocElem) {
@@ -130,17 +133,13 @@ void Settings::writeXML(XmlElement* topElement) const {
 bool Settings::readXML(const XmlElement* element) {
     XmlElement* prstElem = element->getChildByName("Settings");
 
-    if (prstElem == nullptr) {
-        return false;
-    }
-
     for (auto& settingPair : documentSettingsMap) {
         Setting& setting = settingPair.second;
-
-        setting.value = prstElem->getIntAttribute(setting.key, setting.value);
+        const int fallback = setting.missingValue.value_or(setting.value);
+        setting.value = prstElem != nullptr ? prstElem->getIntAttribute(setting.key, fallback) : fallback;
     }
 
-    return true;
+    return prstElem != nullptr;
 }
 
 var Settings::writeJSON() const {
@@ -155,22 +154,25 @@ var Settings::writeJSON() const {
 }
 
 bool Settings::readJSON(const var& object) {
-    if (PresetJson::getObject(object) == nullptr) {
-        return false;
-    }
-
     for (auto& settingPair : documentSettingsMap) {
         Setting& setting = settingPair.second;
-        setting.value = PresetJson::intProperty(object, setting.key, setting.value);
+        setting.value = PresetJson::intProperty(object, setting.key, setting.missingValue.value_or(setting.value));
     }
 
-    return true;
+    return PresetJson::getObject(object) != nullptr;
 }
 
 String Settings::getProperty(const String& key, const String& defaultStr) {
     jassert(propsElem != nullptr);
 
     return propsElem == nullptr ? defaultStr : propsElem->getStringAttribute(key, defaultStr);
+}
+
+void Settings::readMissingJSON() {
+    for (auto& settingPair : documentSettingsMap) {
+        auto& setting = settingPair.second;
+        setting.value = setting.missingValue.value_or(setting.value);
+    }
 }
 
 void Settings::setProperty(const String& key,

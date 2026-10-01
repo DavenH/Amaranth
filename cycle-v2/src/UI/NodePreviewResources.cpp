@@ -69,16 +69,19 @@ TrimeshWidget& NodePreviewResources::trimeshWidget(const String& nodeId) {
     return widget;
 }
 
-TrimeshWidget& NodePreviewResources::trimeshWidget(const Node& node) {
+TrimeshWidget& NodePreviewResources::trimeshWidget(
+        const Node& node,
+        const NodeGraph* graphToUse) {
     TrimeshWidget& widget = trimeshWidget(node.id);
     const PreviewPitchContext preview = previewPitchContexts
             .contextForNodeAtPreviewNote(node.id, selectedPreviewMidiNote);
     widget.setPreviewMidiNote(preview.midiNote);
     widget.setPreviewKeyScaleAxis(preview.keyScaleAxis);
     widget.syncFromNode(node);
-    if (durableGraph != nullptr
+    const NodeGraph* guideGraph = graphToUse != nullptr ? graphToUse : durableGraph;
+    if (guideGraph != nullptr
             && !initializedTrimeshGuideContexts.contains(node.id)) {
-        widget.syncGuideContext(*durableGraph, node);
+        widget.syncGuideContext(*guideGraph, node);
         initializedTrimeshGuideContexts.add(node.id);
     }
     return widget;

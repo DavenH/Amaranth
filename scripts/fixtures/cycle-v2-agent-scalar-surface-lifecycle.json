@@ -1,0 +1,42 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/organ.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "timeLayer1"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 700
+    },
+    {
+      "command": "inspectOpenGLDiagnostics"
+    },
+    {
+      "command": "recreateCanvasOpenGLContext"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 1000
+    },
+    {
+      "command": "requestCanvasOpenGLFrame"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 500
+    },
+    {
+      "command": "inspectOpenGLDiagnostics"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeId",
+      "equals": "timeLayer1"
+    }
+  ],
+  "quit": false
+}

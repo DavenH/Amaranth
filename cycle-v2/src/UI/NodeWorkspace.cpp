@@ -275,6 +275,10 @@ void NodeWorkspace::requestCanvasOpenGLFrameForAutomation() {
     canvas.requestOpenGLFrameForAutomation();
 }
 
+void NodeWorkspace::recreateCanvasOpenGLContextForAutomation() {
+    canvas.recreateOpenGLContextForAutomation();
+}
+
 var NodeWorkspace::captureAudioForAutomation(size_t frameCount) const {
     return canvas.captureAudioForAutomation(frameCount);
 }

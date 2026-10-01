@@ -31,7 +31,9 @@ public:
     explicit NodePreviewResources(NodeEditorCommandService& commands);
 
     TrimeshWidget& trimeshWidget(const String& nodeId);
-    TrimeshWidget& trimeshWidget(const Node& node);
+    TrimeshWidget& trimeshWidget(
+            const Node& node,
+            const NodeGraph* graphToUse = nullptr);
     TrimeshWidget* findTrimeshWidget(const String& nodeId);
     void setDurableGraph(const NodeGraph* graphToUse);
     void refreshGraph(

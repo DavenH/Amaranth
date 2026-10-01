@@ -17,6 +17,7 @@ public:
     void drawViewableVerts() override {}
     bool shouldDrawGrid() override { return true; }
     bool willAdjustSurfaceColumns() override { return pitchSpansColumns; }
+    bool getScalarSurfaceMaterial(ScalarSurfaceMaterial& material) const override;
     int interceptLinePrimaryDimension() override { return primaryViewAxis; }
     void drawBackground(bool fillBackground = true) override;
     void panelResized() override;

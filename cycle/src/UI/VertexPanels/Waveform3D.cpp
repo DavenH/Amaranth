@@ -3,7 +3,6 @@
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Binary/Gradients.h>
 #include <Curve/Mesh/Mesh.h>
 #include <UI/Widgets/CalloutUtils.h>
 #include <UI/Layout/DynamicSizeContainer.h>
@@ -93,8 +92,13 @@ Waveform3D::~Waveform3D() {
 
 void Waveform3D::init() {
     Panel3D::init();
+    getObj(Document).addListener(this);
 
-    Image blue 		= PNGImageFormat::loadFrom(Gradients::blue_png, Gradients::blue_pngSize);
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(
+            ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(
+                    getObj(Settings).getDocumentSettingValue(DocSettings::TimeSurfaceStyle)));
+    Image blue = ScalarSurfaceMaterialEvaluator::createGradientImage(
+            ScalarSurfaceMaterial::timeDomain());
     surfInteractor 	= &getObj(WaveformInter3D);
     interactor3D  	= surfInteractor;
     setInteractor(interactor3D);
@@ -471,6 +475,38 @@ bool Waveform3D::isSurfaceDetailReduced() {
     return getObj(TimeRasterizer).isDetailReduced();
 }
 
+bool Waveform3D::getScalarSurfaceMaterial(ScalarSurfaceMaterial& material) const {
+    material = ScalarSurfaceMaterial::timeDomain();
+    return true;
+}
+
+void Waveform3D::updateTimeSurfaceStyle() {
+    const auto style = ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(
+            getObj(Settings).getDocumentSettingValue(DocSettings::TimeSurfaceStyle));
+    if (ScalarSurfaceMaterial::timeSurfaceStyle() == style) {
+        return;
+    }
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(style);
+    Image image = ScalarSurfaceMaterialEvaluator::createGradientImage(
+            ScalarSurfaceMaterial::timeDomain());
+    gradient.read(image, true, false);
+    bakeTexturesNextRepaint();
+    repaint();
+}
+
+void Waveform3D::documentHasLoaded() {
+    if (MessageManager::getInstance()->isThisTheMessageThread()) {
+        updateTimeSurfaceStyle();
+    } else {
+        triggerAsyncUpdate();
+    }
+}
+
+void Waveform3D::handleAsyncUpdate() {
+    updateTimeSurfaceStyle();
+    AsyncUIUpdater::handleAsyncUpdate();
+}
+
 var Waveform3D::exportAutomationState() const {
     auto json = PresetJson::object();
     auto view = PresetJson::object();
@@ -487,6 +523,7 @@ var Waveform3D::exportAutomationState() const {
     json->setProperty("layerGroupName", "time");
 
     view->setProperty("viewStage", viewStage);
+    view->setProperty("timeSurfaceStyle", (int) ScalarSurfaceMaterial::timeSurfaceStyle());
     view->setProperty("viewStageName", viewStageName(viewStage));
     view->setProperty("drawWave", bool(getSettingValue(DrawWave)));
     view->setProperty("waveLoaded", bool(getSettingValue(WaveLoaded)));

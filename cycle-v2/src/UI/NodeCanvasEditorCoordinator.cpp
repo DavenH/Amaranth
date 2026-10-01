@@ -142,7 +142,7 @@ std::array<String, 6> NodeCanvasEditorCoordinator::trimeshGuideLabelsFor(const N
         return labels;
     }
 
-    TrimeshWidget& widget = resources.trimeshWidget(node);
+    TrimeshWidget& widget = resources.trimeshWidget(node, &document.graph());
     const int vertexIndex = widget.resolvedSelectedVertexIndexForNode(node);
     const auto& fields = TrimeshGuideAttachmentTarget::fields();
 

@@ -42,6 +42,21 @@ Colour storedArgbPixel(Colour colour) {
     return image.getPixelAt(0, 0);
 }
 
+Colour expectedSurfacePixel(
+        const std::vector<float>& values,
+        int columns,
+        int rows,
+        int column,
+        int row,
+        const TrimeshRenderProfile& profile) {
+    const auto derivatives = ScalarSurfaceMaterialEvaluator::derivativesAt(
+            values.data(), columns, rows, column, row);
+    return storedArgbPixel(ScalarSurfaceMaterialEvaluator::colourFor(
+            values[(size_t) column * (size_t) rows + (size_t) row],
+            derivatives,
+            profile.getSurfaceStyle().surfaceMaterial()));
+}
+
 bool imagesMatch(const Image& first, const Image& second) {
     if (first.getBounds() != second.getBounds()) {
         return false;
@@ -160,9 +175,18 @@ TEST_CASE("Signal spy heatmaps reveal low-amplitude time signals",
     REQUIRE(image.isValid());
     CHECK(image.getPixelAt(0, 1) != image.getPixelAt(0, 0));
     CHECK(image.getPixelAt(1, 1) != image.getPixelAt(1, 0));
+    float maximumBrightness {};
+    for (int y = 0; y < image.getHeight(); ++y) {
+        for (int x = 0; x < image.getWidth(); ++x) {
+            maximumBrightness = jmax(
+                    maximumBrightness,
+                    image.getPixelAt(x, y).getPerceivedBrightness());
+        }
+    }
+    REQUIRE(maximumBrightness > 0.45f);
 }
 
-TEST_CASE("Signal spy heatmaps preserve absolute time-signal gain",
+TEST_CASE("Signal spy heatmaps normalize time-signal contrast across gain",
         "[cycle-v2][runtime][probe][ui]") {
     const auto render = [](float gain) {
         NodePreviewResult result;
@@ -179,13 +203,18 @@ TEST_CASE("Signal spy heatmaps preserve absolute time-signal gain",
     REQUIRE(quiet.isValid());
     REQUIRE(loud.isValid());
 
-    bool differs {};
-    for (int y = 0; y < quiet.getHeight(); ++y) {
-        for (int x = 0; x < quiet.getWidth(); ++x) {
-            differs = differs || quiet.getPixelAt(x, y) != loud.getPixelAt(x, y);
-        }
-    }
-    REQUIRE(differs);
+    REQUIRE(imagesMatch(quiet, loud));
+
+    const auto renderMesh = [](float gain) {
+        NodePreviewResult result;
+        result.role = PreviewModuleRole::MeshSurface;
+        result.primary = { -gain, gain, -gain * 0.5f, gain * 0.5f };
+        result.gridColumns = 2;
+        result.gridRows = 2;
+        result.domain = PortDomain::TimeSignal;
+        return NodePreviewRenderer::createRuntimeHeatmapImage(result);
+    };
+    REQUIRE_FALSE(imagesMatch(renderMesh(0.25f), renderMesh(0.5f)));
 }
 
 TEST_CASE("Signal spy heatmaps preserve detail above unity gain",
@@ -359,8 +388,13 @@ TEST_CASE("Magnitude mesh heatmaps consume the full unipolar colour scale",
         if (column == 0) {
             CHECK(actual.getAlpha() == 0);
         } else {
-            CHECK(actual == profile.getSurfaceStyle().colourForValue(
-                    expected[(size_t) column * result.gridRows]));
+            CHECK(actual == expectedSurfacePixel(
+                    expected,
+                    result.gridColumns,
+                    result.gridRows,
+                    column,
+                    result.gridRows - 1,
+                    profile));
         }
     }
 }
@@ -414,13 +448,18 @@ TEST_CASE("Phase mesh heatmaps convert bipolar values exactly once",
 
     const Image image = NodePreviewRenderer::createRuntimeHeatmapImage(result);
     const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(result.domain);
-    const float expected[] { 0.f, 0.5f, 1.f };
+    const std::vector<float> expected { 0.f, 0.f, 0.5f, 0.5f, 1.f, 1.f };
 
     REQUIRE(image.isValid());
     for (int column = 0; column < image.getWidth(); ++column) {
         CAPTURE(column);
-        CHECK(image.getPixelAt(column, 0) == storedArgbPixel(
-                profile.getSurfaceStyle().colourForValue(expected[column])));
+        CHECK(image.getPixelAt(column, 0) == expectedSurfacePixel(
+                expected,
+                result.gridColumns,
+                result.gridRows,
+                column,
+                result.gridRows - 1,
+                profile));
     }
 }
 
@@ -514,6 +553,29 @@ TEST_CASE("FFT magnitude spy heatmaps map linear bins and amplitude once",
     REQUIRE(spyImage.isValid());
     REQUIRE(expectedImage.isValid());
     REQUIRE(imagesMatch(spyImage, expectedImage));
+}
+
+TEST_CASE("Spectral spies normalize visible magnitude contrast across gain",
+        "[cycle-v2][runtime][probe][spectral][ui]") {
+    const auto render = [](float gain) {
+        NodePreviewResult spy;
+        spy.role = PreviewModuleRole::SignalSpy;
+        spy.primary = {
+                20.f, 0.f, 0.2f * gain, gain, 0.4f * gain,
+                20.f, 0.f, 0.2f * gain, gain, 0.4f * gain
+        };
+        spy.gridColumns = 2;
+        spy.gridRows = 5;
+        spy.domain = PortDomain::SpectralMagnitudeSignal;
+        spy.frequencySampling = TraversalGridFrequencySampling::LinearBins;
+        return NodePreviewRenderer::createRuntimeHeatmapImage(spy);
+    };
+
+    const Image quiet = render(0.001f);
+    const Image loud = render(0.5f);
+    REQUIRE(quiet.isValid());
+    REQUIRE(loud.isValid());
+    REQUIRE(imagesMatch(quiet, loud));
 }
 
 TEST_CASE("Disabled compact effect previews are greyscale",

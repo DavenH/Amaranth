@@ -62,7 +62,7 @@
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.037383176,
-                "blue": 0.5,
+                "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -213,9 +213,9 @@
                 "range": 0.5,
                 "signalType": "time",
                 "polarity": "bipolar",
-                "yellow": 0.5,
+                "yellow": 0.0,
                 "red": 0.037383176,
-                "blue": 0.5,
+                "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -302,7 +302,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 1364.94336, "y": 1103.0188 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.037383176, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.037383176, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -391,7 +391,7 @@
                     },
                     "logarithmic": false,
                     "red": 0.03738,
-                    "blue": 0.5,
+                    "blue": 0.0,
                     "cubeIds": [ 1, 2, 3, 4, 5 ]
                 }
             }
@@ -401,7 +401,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": -22.97359, "y": 732.49054 },
-            "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.037383176, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.037383176, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -451,7 +451,7 @@
                     },
                     "logarithmic": false,
                     "red": 0.03738,
-                    "blue": 0.5,
+                    "blue": 0.0,
                     "cubeIds": [ 1, 2 ]
                 }
             }
@@ -461,7 +461,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": -22.97359, "y": 1046.49048 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.037383176, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.037383176, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -524,7 +524,7 @@
                     },
                     "logarithmic": false,
                     "red": 0.03738,
-                    "blue": 0.5,
+                    "blue": 0.0,
                     "cubeIds": [ 1, 2, 3 ]
                 }
             }
@@ -670,7 +670,18 @@
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": [],
+    "probes": [
+        {
+            "id": "probe",
+            "sourceNodeId": "volumeMultiply",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "voiceOutput",
+            "anchorDestPortId": "time",
+            "label": "Spy 1",
+            "tapPosition": 0.5,
+            "railOrder": 0
+        }
+    ],
     "presetPresentation": {
         "version": 1,
         "preview": {

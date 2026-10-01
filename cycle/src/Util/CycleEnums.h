@@ -107,7 +107,8 @@ namespace DocSettings {
         ResamplingAlgoRltm,
         ResamplingAlgoRend,
         OversampleFactorRltm,
-        OversampleFactorRend
+        OversampleFactorRend,
+        TimeSurfaceStyle
     };
 }
 

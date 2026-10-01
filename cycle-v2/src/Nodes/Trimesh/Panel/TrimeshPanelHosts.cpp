@@ -172,6 +172,12 @@ void TrimeshPanelHosts::initialiseSharedGlResources() {
 }
 
 void TrimeshPanelHosts::releaseSharedGlResources() {
+    if (panel2DRenderer != nullptr) {
+        panel2DRenderer->clearResources();
+    }
+    if (panel3DRenderer != nullptr) {
+        panel3DRenderer->clearResources();
+    }
     panel2D.setPanelRenderer(nullptr);
     panel3D.setPanelRenderer(nullptr);
     panel2DRenderer = nullptr;

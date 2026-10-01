@@ -92,7 +92,7 @@
                 "signalType": "time",
                 "polarity": "bipolar",
                 "yellow": 0.0,
-                "red": 0.196261689,
+                "red": 0.214953274,
                 "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
@@ -232,7 +232,7 @@
                 "signalType": "spectralMagnitude",
                 "polarity": "unipolar",
                 "yellow": 0.0,
-                "red": 0.196261689,
+                "red": 0.214953274,
                 "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
@@ -408,7 +408,7 @@
                 "signalType": "spectralMagnitude",
                 "polarity": "bipolar",
                 "yellow": 0.0,
-                "red": 0.196261689,
+                "red": 0.214953274,
                 "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
@@ -480,7 +480,7 @@
                 "signalType": "spectralPhase",
                 "polarity": "unipolar",
                 "yellow": 0.0,
-                "red": 0.196261689,
+                "red": 0.214953274,
                 "blue": 0.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
@@ -542,15 +542,15 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 3119.76514, "y": 653.62183 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.196261689, "blue": 0.0, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.214953274, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 6,
+                "revision": 7,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 6,
+                    "revision": 7,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
@@ -630,7 +630,7 @@
                         "sustainIndices": [ 3 ]
                     },
                     "logarithmic": false,
-                    "red": 0.19626,
+                    "red": 0.21495,
                     "blue": 0.0,
                     "cubeIds": [ 1, 2, 3, 4, 5 ]
                 }
@@ -640,16 +640,16 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 600.68512, "y": 154.80212 },
-            "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.196261689, "blue": 0.0, "level": 1.0 },
+            "position": { "x": 600.68506, "y": 158.66376 },
+            "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.214953274, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 15,
+                "revision": 16,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 15,
+                    "revision": 16,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
@@ -703,7 +703,7 @@
                         "sustainIndices": [ 2 ]
                     },
                     "logarithmic": false,
-                    "red": 0.19626,
+                    "red": 0.21495,
                     "blue": 0.0,
                     "cubeIds": [ 1, 2, 3 ]
                 }
@@ -715,15 +715,15 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 1272.98804, "y": 517.31952 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.196261689, "blue": 0.0, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.214953274, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 6,
+                "revision": 7,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 6,
+                    "revision": 7,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
@@ -829,7 +829,7 @@
                         "sustainIndices": [ 1 ]
                     },
                     "logarithmic": false,
-                    "red": 0.19626,
+                    "red": 0.21495,
                     "blue": 0.0,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7 ]
                 }

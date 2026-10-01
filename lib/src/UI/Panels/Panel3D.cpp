@@ -845,6 +845,10 @@ void Panel3D::drawSurface() {
     draw.adjustColumns  = willAdjustSurfaceColumns();
     draw.ramp           = Buffer<float>();
 
+    if (drawScalarSurface(grid)) {
+        return;
+    }
+
     downsampAcc.resize(draw.colSourceSizeY);
     clrIndicesA.resize(draw.colSourceSizeY);
     clrIndicesB.resize(draw.colSourceSizeY);
@@ -877,6 +881,40 @@ void Panel3D::drawSurface() {
     haveLogarithmicY ?
         drawLogSurface(grid) :
         drawLinSurface(grid);
+}
+
+bool Panel3D::drawScalarSurface(const vector<Column>& grid) {
+    ScalarSurfaceMaterial material;
+    if (!getScalarSurfaceMaterial(material)) {
+        return false;
+    }
+
+    for (const Column& column: grid) {
+        if (column.size() != draw.sizeY) {
+            return false;
+        }
+    }
+
+    Buffer<float> values = dataRetriever->getScalarSurfaceArray();
+    ScalarSurfaceRenderData data;
+    data.values = values.get();
+    data.valueCount = values.size();
+    data.bounds = Rectangle<float>::leftTopRightBottom(
+            sx(grid.front().x),
+            sy(1.f),
+            sx(grid.back().x),
+            sy(0.f));
+    data.material = material;
+    data.revision = dataRetriever->getScalarSurfaceRevision();
+    data.columns = draw.sizeX;
+    data.rows = draw.sizeY;
+    data.valueScale = volumeScale;
+    data.valueOffset = volumeTrans;
+    data.hasStableRevision = dataRetriever->hasStableScalarSurfaceRevision();
+
+    PanelRenderer* renderer = ::getPanelRenderer(this);
+    jassert(renderer != nullptr);
+    return renderer->drawScalarSurface(data);
 }
 
 void Panel3D::postVertsDraw() {

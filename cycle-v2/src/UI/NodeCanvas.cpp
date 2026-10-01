@@ -9,6 +9,7 @@
 
 #include <App/AppConstants.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
+#include <UI/Panels/TimeSurfaceStyles.h>
 #include <UI/MiscGraphics.h>
 
 #include "UI/NodeCanvas.h"
@@ -202,6 +203,8 @@ NodeCanvas::NodeCanvas() :
     ,   hitRouter(graph, palette, queries)
     ,   addToSelectionCursor(MiscGraphics::createCursor(MiscGraphics::CrossAddCursor)) {
     settings.initialiseSettings();
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(
+            TimeSurfaceStyles::fromId(document.presentation().timeSurfaceStyle));
     probeRailState.refreshMode = settings.getGlobalSettingValue(
             AppSettings::ProbeEditRefreshPolicy) == 1
             ? ProbeRefreshMode::LiveLatest
@@ -1072,6 +1075,7 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
 }
 
 void NodeCanvas::newOpenGLContextCreated() {
+    ++openGlContextCreateCount;
     renderer.initialize();
 }
 
@@ -1101,6 +1105,7 @@ void NodeCanvas::renderOpenGL() {
 }
 
 void NodeCanvas::openGLContextClosing() {
+    ++openGlContextCloseCount;
     editorCoordinator.releaseOpenGLResources();
     guideEditorCoordinator.releaseOpenGLResources();
 
@@ -1505,6 +1510,7 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     if (!result.handled) {
         return false;
     }
+    synchronizeTimeSurfaceStyle();
 
     if (result.graphChanged) {
         compiledStateRefreshPending = false;
@@ -1914,7 +1920,11 @@ var NodeCanvas::inspectPointerTargetsForAutomation() const {
 
 var NodeCanvas::inspectOpenGLDiagnosticsForAutomation() const {
     return automation.inspectOpenGLDiagnostics({
-            canvasOpenGlAttached, expandedNodeId, expandedEditorBoundsForOverlay() });
+            canvasOpenGlAttached,
+            openGlContextCreateCount,
+            openGlContextCloseCount,
+            expandedNodeId,
+            expandedEditorBoundsForOverlay() });
 }
 
 var NodeCanvas::inspectPerformanceMetricsForAutomation() const {
@@ -1932,6 +1942,12 @@ void NodeCanvas::resetPerformanceMetricsForAutomation() {
 }
 
 void NodeCanvas::requestOpenGLFrameForAutomation() {
+    openGLContext.triggerRepaint();
+}
+
+void NodeCanvas::recreateOpenGLContextForAutomation() {
+    setCanvasOpenGlAttached(false);
+    setCanvasOpenGlAttached(true);
     openGLContext.triggerRepaint();
 }
 
@@ -2173,6 +2189,28 @@ void NodeCanvas::setOverlayOcclusionChangedCallback(std::function<void()> callba
 void NodeCanvas::setGraphDocumentStateChangedCallback(
         std::function<void()> callback) {
     graphDocumentStateChangedCallback = std::move(callback);
+}
+
+ScalarSurfaceTimeStyle NodeCanvas::timeSurfaceStyle() const {
+    return TimeSurfaceStyles::fromId(document.presentation().timeSurfaceStyle);
+}
+
+void NodeCanvas::setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
+    if (commands.setTimeSurfaceStyle(TimeSurfaceStyles::id(style))) {
+        synchronizeTimeSurfaceStyle();
+        if (graphDocumentStateChangedCallback) {
+            graphDocumentStateChangedCallback();
+        }
+    }
+}
+
+void NodeCanvas::synchronizeTimeSurfaceStyle() {
+    const auto style = timeSurfaceStyle();
+    if (ScalarSurfaceMaterial::timeSurfaceStyle() != style) {
+        ScalarSurfaceMaterial::setTimeSurfaceStyle(style);
+        repaintNodeEditor(true);
+        repaint();
+    }
 }
 
 void NodeCanvas::updatePresetSidebarVisibility() {
@@ -2672,7 +2710,9 @@ void NodeCanvas::syncCurveGuideContext(CurveEditorWidget& widget, const Node& no
 }
 
 TrimeshWidget* NodeCanvas::trimeshWidget(const Node& node) {
-    return &editorCoordinator.previewResources().trimeshWidget(node);
+    return &editorCoordinator.previewResources().trimeshWidget(
+            node,
+            &commands.editingGraph());
 }
 
 TrimeshWidget* NodeCanvas::findTrimeshWidget(const String& nodeId) {

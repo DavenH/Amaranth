@@ -1,34 +1,14 @@
 #include "Runtime/DefaultOutputPreview.h"
 
-#include <Array/Buffer.h>
-
 #include "Nodes/FFT/FftGridwiseDsp.h"
+#include "Runtime/PreviewContrastNormalization.h"
 
 namespace CycleV2 {
-
-namespace {
-
-void normalizeContrast(std::vector<float>& values, float targetPeak) {
-    if (values.empty()) {
-        return;
-    }
-    std::vector<float> magnitude = values;
-    Buffer<float> magnitudeBuffer(magnitude.data(), (int) magnitude.size());
-    magnitudeBuffer.abs();
-    float peak {};
-    int peakIndex {};
-    magnitudeBuffer.getMax(peak, peakIndex);
-    if (peak > 0.f) {
-        Buffer<float>(values.data(), (int) values.size()).mul(targetPeak / peak);
-    }
-}
-
-}
 
 GraphPreviewResult::SignalProbePreview DefaultOutputPreview::normalizedTime(
         const GraphPreviewResult::SignalProbePreview& preview) {
     auto result = preview;
-    normalizeContrast(result.values, 3.f);
+    PreviewContrastNormalization::apply(result.values, 3.f);
     return result;
 }
 
@@ -68,7 +48,11 @@ GraphPreviewResult::SignalProbePreview DefaultOutputPreview::spectrum(
                 column.magnitude.block.samples.begin(),
                 column.magnitude.block.samples.end());
     }
-    normalizeContrast(result.values, 1.f);
+    PreviewContrastNormalization::applySpectralMagnitude(
+            result.values,
+            result.gridColumns,
+            result.gridRows,
+            1.f);
     return result;
 }
 

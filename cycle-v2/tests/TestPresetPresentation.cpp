@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "Graph/GraphDocument.h"
+#include "Graph/GraphCommandDispatcher.h"
+#include <UI/Panels/TimeSurfaceStyles.h>
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Graph/PresetPresentation.h"
@@ -50,6 +52,44 @@ TEST_CASE("Preset presentation round trips outside graph state",
     REQUIRE(loaded.presentation.rating == 4);
     REQUIRE(loaded.presentation.preview.has_value());
     REQUIRE(loaded.presentation.preview->jpegData == presentation.preview->jpegData);
+}
+
+TEST_CASE("Time surface styles belong to each preset without changing graph or audio revisions",
+        "[cycle-v2][preset][surface-program]") {
+    GraphDocument document(graphWithOutput());
+    GraphCommandDispatcher commands(document);
+    const auto revision = document.revision();
+    const auto graphJson = GraphSerializer().toJsonString(document.graph());
+    const auto oldPreset = document.toJson();
+    REQUIRE_FALSE(document.isDirty());
+    REQUIRE(commands.setTimeSurfaceStyle("bullion"));
+    REQUIRE(document.isDirty());
+    REQUIRE(document.revision() == revision);
+    REQUIRE(GraphSerializer().toJsonString(document.graph()) == graphJson);
+    REQUIRE_FALSE(document.canUndo());
+    const auto bullion = document.toJson();
+    REQUIRE(commands.setTimeSurfaceStyle("recipe-19"));
+    REQUIRE(document.loadJson(bullion, false));
+    REQUIRE(document.presentation().timeSurfaceStyle == "bullion");
+    REQUIRE(document.loadJson(oldPreset, false));
+    REQUIRE(TimeSurfaceStyles::fromId(document.presentation().timeSurfaceStyle)
+            == ScalarSurfaceTimeStyle::BlueDepth);
+
+    const File temporary = File::getSpecialLocation(File::tempDirectory)
+            .getNonexistentChildFile("surface-style-preset", ".cyclegraph");
+    REQUIRE(commands.setTimeSurfaceStyle("icy-hot"));
+    REQUIRE(document.save(temporary));
+    REQUIRE_FALSE(document.isDirty());
+    REQUIRE(commands.setTimeSurfaceStyle("recipe-15"));
+    REQUIRE(document.load(temporary));
+    REQUIRE_FALSE(document.isDirty());
+    REQUIRE(document.presentation().timeSurfaceStyle == "icy-hot");
+    REQUIRE(commands.addNode(NodeKind::WaveSource, { 30.f, 40.f }).succeeded());
+    REQUIRE(commands.setTimeSurfaceStyle("bullion"));
+    REQUIRE(document.undo());
+    REQUIRE(document.isDirty());
+    REQUIRE(document.presentation().timeSurfaceStyle == "bullion");
+    REQUIRE(temporary.deleteFile());
 }
 
 TEST_CASE("Malformed optional preset preview does not invalidate its graph",

@@ -1,6 +1,5 @@
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 
-#include <Binary/Gradients.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 
@@ -16,54 +15,6 @@ const Color kSpectralBlue(0.44f, 0.605f, 0.88f, 0.82f);
 const Color kPhasePurple(0.70f, 0.52f, 1.0f, 0.84f);
 const Color kPhaseOrange(1.0f, 0.48f, 0.18f, 0.78f);
 const Color kWaveformGrey(0.86f, 0.86f, 0.94f, 0.74f);
-
-Image& blueGradientImage() {
-    static Image image = PNGImageFormat::loadFrom(Gradients::blue_png, Gradients::blue_pngSize);
-    return image;
-}
-
-Image& burntalumGradientImage() {
-    static Image image = PNGImageFormat::loadFrom(Gradients::burntalum_png, Gradients::burntalum_pngSize);
-    return image;
-}
-
-Colour sampleGradient(Image& gradient, float value) {
-    if (!gradient.isValid() || gradient.getWidth() <= 0) {
-        return Colour(0xff53657a);
-    }
-
-    const int x = jlimit(
-            0,
-            gradient.getWidth() - 1,
-            roundToInt(jlimit(0.f, 1.f, value) * (float) (gradient.getWidth() - 1)));
-    return gradient.getPixelAt(x, 0);
-}
-
-Colour phaseSurfaceColour(float value) {
-    const float v = jlimit(0.f, 1.f, value);
-    const Colour negative(0xffff7a3d);
-    const Colour centre(0xff120d18);
-    const Colour positive(0xffb887ff);
-    const Colour colour = v < 0.5f
-            ? negative.interpolatedWith(centre, v * 2.f)
-            : centre.interpolatedWith(positive, (v - 0.5f) * 2.f);
-    return colour.withAlpha(v < 0.2f ? 5.f * v : 1.f);
-}
-
-Image& phaseGradientImage() {
-    static Image image = [] {
-        const int width = burntalumGradientImage().getWidth();
-        Image result(Image::ARGB, width, 1, true);
-        for (int x = 0; x < width; ++x) {
-            result.setPixelAt(
-                    x,
-                    0,
-                    phaseSurfaceColour((float) x / (float) width));
-        }
-        return result;
-    }();
-    return image;
-}
 
 Color positiveCurveColourFor(bool spectral, bool phase) {
     if (phase) {
@@ -370,29 +321,24 @@ void TrimeshRenderProfile::mapValuesToDisplay(Buffer<float> values) const {
 }
 
 Image TrimeshSurfaceStyle::gradientImage() const {
-    if (domain == PortDomain::SpectralPhaseSignal) {
-        return phaseGradientImage();
-    }
-    const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
-            || domain == PortDomain::SpectralPhaseSignal;
-    return spectral ? burntalumGradientImage() : blueGradientImage();
+    return ScalarSurfaceMaterialEvaluator::createGradientImage(surfaceMaterial());
 }
 
 Colour TrimeshSurfaceStyle::colourForValue(float value) const {
-    const float v = jlimit(0.f, 1.f, value);
-    const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
-            || domain == PortDomain::SpectralPhaseSignal;
+    return ScalarSurfaceMaterialEvaluator::colourFor(
+            value,
+            {},
+            surfaceMaterial());
+}
 
+ScalarSurfaceMaterial TrimeshSurfaceStyle::surfaceMaterial() const {
     if (domain == PortDomain::SpectralPhaseSignal) {
-        return phaseSurfaceColour(v);
+        return ScalarSurfaceMaterial::bipolarPhase();
     }
-
-    if (spectral) {
-        const float alpha = jmin(1.f, 25.f * v * v);
-        return sampleGradient(burntalumGradientImage(), v).withAlpha(alpha);
+    if (domain == PortDomain::SpectralMagnitudeSignal) {
+        return ScalarSurfaceMaterial::unipolarMagnitude();
     }
-
-    return sampleGradient(blueGradientImage(), v).withAlpha(0.82f);
+    return ScalarSurfaceMaterial::timeDomain();
 }
 
 TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :

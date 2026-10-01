@@ -24,6 +24,7 @@ struct PresetPresentation {
     juce::String author;
     juce::String pack;
     juce::String description;
+    juce::String timeSurfaceStyle;
     juce::StringArray tags;
     int rating {};
     std::optional<PresetPreviewImage> preview;

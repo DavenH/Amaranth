@@ -31,6 +31,7 @@ bool GraphDocument::save(const juce::File& destination) {
 
     currentFile = destination;
     savedStateId = currentStateId;
+    savedPresentationRevision = presentationRevision;
     return true;
 }
 
@@ -41,6 +42,7 @@ bool GraphDocument::load(const juce::File& source) {
 
     currentFile = source;
     savedStateId = currentStateId;
+    savedPresentationRevision = presentationRevision;
     return true;
 }
 
@@ -55,6 +57,7 @@ bool GraphDocument::loadJson(const juce::String& json, bool recordUndo) {
     }
     currentGraph = std::move(loaded.graph);
     presetPresentation = std::move(loaded.presentation);
+    ++presentationRevision;
     GraphChangeSet change;
     change.topologyChanged = true;
     change.layoutChanged = true;
@@ -68,7 +71,7 @@ juce::String GraphDocument::toJson() const {
 
 void GraphDocument::setPresentation(PresetPresentation presentation) {
     presetPresentation = std::move(presentation);
-    currentStateId = nextStateId++;
+    ++presentationRevision;
 }
 
 bool GraphDocument::undo() {
