@@ -7,7 +7,7 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr int rowHeight = 88;
+constexpr int rowHeight = 84;
 
 }
 
@@ -54,12 +54,12 @@ public:
             const bool selected = record.id == selectedId;
             graphics.setColour(selected
                     ? CanvasChromePalette::raisedSurface
-                    : CanvasChromePalette::dockSurface);
+                    : CanvasChromePalette::surface);
             graphics.fillRoundedRectangle(row, 5.f);
-            if (selected) {
-                graphics.setColour(CanvasChromePalette::navigationAccent);
-                graphics.drawRoundedRectangle(row, 5.f, 1.2f);
-            }
+            graphics.setColour(selected
+                    ? CanvasChromePalette::navigationAccent
+                    : CanvasChromePalette::border.withAlpha(0.55f));
+            graphics.drawRoundedRectangle(row, 5.f, selected ? 1.2f : 0.8f);
             graphics.setColour(CanvasChromePalette::text);
             graphics.setFont(juce::FontOptions(13.f, juce::Font::bold));
             graphics.drawFittedText(record.name,
@@ -72,7 +72,8 @@ public:
                             : (record.factory ? "FACTORY" : "USER"),
                     row.getRight() - 75.f, row.getY() + 7.f, 65.f, 13.f,
                     juce::Justification::centredRight);
-            const auto preview = row.withTrimmedTop(27.f).reduced(8.f, 6.f);
+            const auto preview = row.withTrimmedTop(20.f)
+                    .withTrimmedBottom(4.f).reduced(8.f, 0.f);
             graphics.setColour(CanvasChromePalette::insetBackground);
             graphics.fillRoundedRectangle(preview, 3.f);
             MidiPatternMiniMap::paintNotes(graphics, record.sequence,

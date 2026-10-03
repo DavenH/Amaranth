@@ -2,6 +2,45 @@
 
 Status: Complete
 
+## Sidebar cohesion and guide hover follow-up
+
+Before this slice, the 272 px Patterns sidebar painted each 88 px row almost
+the same colour as the page. The heading line ended roughly 11 px above its
+MIDI preview,
+so neighbouring titles and previews did not read as one item. Keep the existing
+`PatternBrowser::List` painter as the authoritative row presentation. Use an
+84 px row with a low-contrast card edge, align heading and preview at one inner
+inset, and leave a 4–5 px gap between them. Each card edge separates adjacent
+rows without another large container or extra vertical padding. The whole row
+remains the hit target.
+
+The Curves shelf is hidden behind the Presets and Patterns pages, but
+`GuideCurveShelf::guideAt` previously accepted positions there and
+`GuideRelationshipPresentation` painted relationships from stale hover or
+selection state. Those existing classes remain authoritative for guide hit
+testing and rendering. Reject hidden-shelf hits, suppress relationship visuals
+while either library page is open, and clear transient guide hover when the tab
+changes. This is constant-time per event; no graph or preview work is added.
+
+Verify the real hover sequence (guide tile, then Patterns and Presets rows),
+selected-guide paint eligibility, a production-size screenshot, architecture
+audit, style check, focused tests, and a commit. The canvas slowdown at extreme
+zoom is a separate open issue in `ui-bugs.md`; this slice does not approximate
+a performance fix without a measured reproduction.
+
+The 23-command app fixture passes with a clean `sitar-pad-2` preset: it hovers
+a guide tile, visits both library pages, confirms guide hover stays empty, then
+assigns and reloads a pattern. The production-size capture at
+`/private/tmp/cycle-v2-pattern-sidebar.png` shows the heading, tag, and MIDI
+preview within each outlined row. Pattern tests pass 641 assertions across four
+cases; guide-dock tests pass 90 assertions across seven cases. Standalone Debug
+and test targets build with `--parallel 10`; the architecture audit reports only
+existing size triggers, and `git diff --check` passes. `PatternBrowser` is 233
+lines, `GuideCurveShelf` 458, and `GuideRelationshipPresentation` 191.
+`NodeCanvas` rose from 2,815 to 2,816 lines solely to clear transient hover
+at the existing tab-change callback; its sidebar-host extraction plan below
+remains the deletion target. No DSP or per-pixel math path changed.
+
 ## Automation isolation follow-up
 
 Cycle V2 UI automation previously opened the normal user

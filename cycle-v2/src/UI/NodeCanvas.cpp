@@ -264,6 +264,7 @@ void NodeCanvas::configurePresetSidebar(
             std::move(browseCallback),
             [this](WorkspaceSidebarTab tab) {
                 guideShelfState.presetBrowserVisible = tab != WorkspaceSidebarTab::Curves;
+                guideShelfState.hoveredGuideId.clear();
                 requestCanvasRepaint();
                 openGLContext.triggerRepaint();
             });

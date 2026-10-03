@@ -141,7 +141,7 @@ String GuideCurveShelf::guideAt(
         Rectangle<float> workspace,
         const SignalProbeRailState& dockState,
         const GuideCurveShelfState& state) {
-    if (state.minimized) {
+    if (state.minimized || state.presetBrowserVisible) {
         return {};
     }
     const Rectangle<float> visibleTiles = visibleTileBounds(

@@ -1,5 +1,13 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Canvas navigation slows at high zoom
+
+Reported 2026-10-02: when zoomed in a lot, navigating the Cycle V2 canvas
+becomes sluggish. The zoom level, graph size, and affected pan input have not
+yet been measured. Reproduce with canvas performance counters and compare
+per-move work across zoom levels before changing rendering or interaction code.
+Status: open.
+
 ## Resolved: Relative agent script path asserted in JUCE File
 
 On 2026-10-01, a direct Cycle V2 automation launch passed a relative
