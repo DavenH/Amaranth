@@ -215,6 +215,21 @@ void PresetLibraryIndex::setQuery(const juce::String& query) {
     startTimer(70);
 }
 
+void PresetLibraryIndex::refreshRecord(const juce::File& file) {
+    const auto found = std::find_if(records.begin(), records.end(),
+            [&](const PresetLibraryRecord& record) {
+                return record.file == file;
+            });
+    if (found == records.end()) {
+        return;
+    }
+    *found = readRecord(*found);
+    published = ++requested;
+    if (callback) {
+        callback(records, matchingIndices(searchTextsFor(records), pendingQuery));
+    }
+}
+
 void PresetLibraryIndex::timerCallback() {
     stopTimer();
     scheduleFilter();

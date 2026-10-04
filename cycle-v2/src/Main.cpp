@@ -461,6 +461,15 @@ public:
                         if (safeThis != nullptr && safeThis->workspace != nullptr) {
                             safeThis->workspace->togglePreviewPlayback();
                         }
+                    },
+                    [safeThis = SafePointer<MainWindow>(this)](
+                            const File& file, const StringArray& tags) {
+                        if (safeThis != nullptr && safeThis->workspace != nullptr) {
+                            safeThis->workspace->refreshPresetSidebarRecord(file);
+                            if (safeThis->currentGraphFile == file) {
+                                safeThis->workspace->setCurrentPresetTags(tags);
+                            }
+                        }
                     });
             page->setSize(1180, 760);
             DialogWindow::LaunchOptions options;

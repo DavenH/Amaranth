@@ -289,6 +289,16 @@ void NodeCanvas::refreshPresetSidebarIndex() {
     }
 }
 
+void NodeCanvas::refreshPresetSidebarRecord(const juce::File& file) {
+    if (presetSidebar != nullptr) {
+        presetSidebar->refreshRecord(file);
+    }
+}
+
+void NodeCanvas::setCurrentPresetTags(juce::StringArray tags) {
+    commands.setPresetTags(std::move(tags));
+}
+
 void NodeCanvas::configurePatternSidebar(
         InlinePresetBrowser::PatternSelectCallback select,
         InlinePresetBrowser::PatternEditCallback edit,

@@ -32,6 +32,7 @@ public:
     bool setTimeSurfaceStyle(const juce::String& styleId);
     bool setPresetSequence(PresetMidiSequence sequence);
     bool setPresetPatternId(const juce::String& id);
+    bool setPresetTags(juce::StringArray tags);
     GraphEditResult removeNode(const juce::String& nodeId);
     GraphEditResult removeEdgeAt(size_t edgeIndex);
     GraphEditResult connect(const PortAddress& first, const PortAddress& second);

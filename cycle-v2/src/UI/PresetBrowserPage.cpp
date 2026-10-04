@@ -1,5 +1,6 @@
 #include "UI/PresetBrowserPage.h"
 
+#include "Graph/PresetTagStore.h"
 #include "UI/CanvasChromePalette.h"
 
 namespace CycleV2 {
@@ -11,11 +12,13 @@ PresetBrowserPage::PresetBrowserPage(
         OpenCallback openCallback,
         std::function<void()> browseCallback,
         std::function<void()> closeCallback,
-        std::function<void()> playbackToggleCallback) :
+        std::function<void()> playbackToggleCallback,
+        std::function<void(const File&, const StringArray&)> tagsChangedCallback) :
         onOpen   (std::move(openCallback))
     ,   onBrowse (std::move(browseCallback))
     ,   onClose  (std::move(closeCallback))
     ,   onTogglePlayback (std::move(playbackToggleCallback))
+    ,   onTagsChanged (std::move(tagsChangedCallback))
     ,   grid     (thumbnails)
     ,   detail   (thumbnails) {
     setLookAndFeel(&browserLookAndFeel);
@@ -67,6 +70,9 @@ PresetBrowserPage::PresetBrowserPage(
     open.setComponentID("presetBrowser.open");
     open.onClick = [this] { openSelected(); };
     addAndMakeVisible(open);
+    editTags.setComponentID("presetBrowser.editTags");
+    editTags.onClick = [this] { editSelectedTags(); };
+    addAndMakeVisible(editTags);
     close.setComponentID("presetBrowser.close");
     close.onClick = [this] { onClose(); };
     addAndMakeVisible(close);
@@ -81,6 +87,7 @@ PresetBrowserPage::PresetBrowserPage(
     };
     styleSecondaryButton(browse);
     styleSecondaryButton(close);
+    styleSecondaryButton(editTags);
     open.setColour(TextButton::buttonColourId,
             CanvasChromePalette::navigationAccent);
     open.setColour(TextButton::buttonOnColourId,
@@ -139,7 +146,10 @@ void PresetBrowserPage::resized() {
     sidebar.setBounds(bounds.removeFromLeft(174));
     const auto detailBounds = bounds.removeFromRight(258);
     detail.setBounds(detailBounds);
-    open.setBounds(detailBounds.reduced(20).removeFromBottom(40));
+    auto detailActions = detailBounds.reduced(20).removeFromBottom(40);
+    editTags.setBounds(detailActions.removeFromLeft(100));
+    detailActions.removeFromLeft(8);
+    open.setBounds(detailActions);
     viewport.setBounds(bounds);
     const int gridWidth = jmax(244, viewport.getMaximumVisibleWidth());
     grid.setSize(gridWidth, grid.contentHeightForWidth(gridWidth));
@@ -228,8 +238,10 @@ void PresetBrowserPage::receiveResults(
 }
 
 void PresetBrowserPage::updateSelection() {
-    detail.setRecord(grid.selectedRecord());
-    open.setEnabled(grid.selectedRecord() != nullptr);
+    const auto* record = grid.selectedRecord();
+    detail.setRecord(record);
+    open.setEnabled(record != nullptr);
+    editTags.setEnabled(record != nullptr && record->metadataReady);
 }
 
 void PresetBrowserPage::openSelected() {
@@ -245,6 +257,45 @@ void PresetBrowserPage::openSelected() {
             MessageBoxIconType::WarningIcon,
             "Unable to open preset",
             "The selected preset could not be loaded.");
+}
+
+void PresetBrowserPage::editSelectedTags() {
+    const auto* record = grid.selectedRecord();
+    if (record == nullptr) {
+        return;
+    }
+    const auto file = record->file;
+    auto* prompt = new AlertWindow(
+            "Edit preset tags",
+            "Separate tags with commas.",
+            MessageBoxIconType::QuestionIcon,
+            getTopLevelComponent());
+    prompt->addTextEditor("tags",
+            record->presentation.tags.joinIntoString(", "), "Tags");
+    prompt->addButton("Save", 1, KeyPress(KeyPress::returnKey));
+    prompt->addButton("Cancel", 0, KeyPress(KeyPress::escapeKey));
+    prompt->enterModalState(true,
+            ModalCallbackFunction::create([
+                    safeThis = SafePointer<PresetBrowserPage>(this),
+                    prompt, file](int result) {
+                if (result != 1 || safeThis == nullptr) {
+                    return;
+                }
+                StringArray tags;
+                tags.addTokens(prompt->getTextEditorContents("tags"), ",", "\"");
+                tags = PresetTagStore::normalize(std::move(tags));
+                String error;
+                if (!PresetTagStore::save(file, tags, error)) {
+                    AlertWindow::showMessageBoxAsync(
+                            MessageBoxIconType::WarningIcon,
+                            "Unable to save tags", error);
+                    return;
+                }
+                safeThis->index->refreshRecord(file);
+                if (safeThis->onTagsChanged) {
+                    safeThis->onTagsChanged(file, tags);
+                }
+            }), true);
 }
 
 }

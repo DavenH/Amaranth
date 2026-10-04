@@ -322,6 +322,10 @@ void InlinePresetBrowser::refreshIndex() {
     index->start();
 }
 
+void InlinePresetBrowser::refreshRecord(const juce::File& file) {
+    index->refreshRecord(file);
+}
+
 void InlinePresetBrowser::setPlaybackToggleCallback(ActionCallback callback) {
     onTogglePlayback = std::move(callback);
     search.setPlaybackToggleCallback(onTogglePlayback);

@@ -75,6 +75,8 @@ public:
             InlinePresetBrowser::ActionCallback browseCallback,
             InlinePresetBrowser::ActionCallback createCallback);
     void refreshPresetSidebarIndex();
+    void refreshPresetSidebarRecord(const juce::File& file);
+    void setCurrentPresetTags(juce::StringArray tags);
     void configurePatternSidebar(
             InlinePresetBrowser::PatternSelectCallback select,
             InlinePresetBrowser::PatternEditCallback edit,

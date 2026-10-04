@@ -40,6 +40,15 @@ bool GraphCommandDispatcher::setPresetPatternId(const juce::String& id) {
     return true;
 }
 
+bool GraphCommandDispatcher::setPresetTags(juce::StringArray tags) {
+    if (hasTransientEdit() || document.presetPresentation.tags == tags) {
+        return false;
+    }
+    document.presetPresentation.tags = std::move(tags);
+    ++document.presentationRevision;
+    return true;
+}
+
 GraphEditResult GraphCommandDispatcher::addNode(NodeKind kind, juce::Point<float> position) {
     return apply([&](auto& graph) {
         return GraphEditor().addNode(graph, kind, position);

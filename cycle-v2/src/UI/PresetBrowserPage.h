@@ -24,7 +24,9 @@ public:
             OpenCallback openCallback,
             std::function<void()> browseCallback,
             std::function<void()> closeCallback,
-            std::function<void()> playbackToggleCallback);
+            std::function<void()> playbackToggleCallback,
+            std::function<void(const juce::File&, const juce::StringArray&)>
+                    tagsChangedCallback);
     ~PresetBrowserPage() override;
 
     void paint(juce::Graphics& graphics) override;
@@ -41,11 +43,13 @@ private:
             const std::vector<int>& visibleIndices);
     void updateSelection();
     void openSelected();
+    void editSelectedTags();
 
     OpenCallback onOpen;
     std::function<void()> onBrowse;
     std::function<void()> onClose;
     std::function<void()> onTogglePlayback;
+    std::function<void(const juce::File&, const juce::StringArray&)> onTagsChanged;
     PresetBrowserLookAndFeel browserLookAndFeel;
     PresetThumbnailCache thumbnails;
     juce::Label title;
@@ -58,6 +62,7 @@ private:
     juce::Label status;
     juce::TextButton browse { "BROWSE FILES" };
     juce::TextButton open { "LOAD PRESET" };
+    juce::TextButton editTags { "EDIT TAGS" };
     juce::TextButton close { "CLOSE" };
     std::unique_ptr<PresetLibraryIndex> index;
 };

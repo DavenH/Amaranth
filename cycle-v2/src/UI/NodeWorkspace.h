@@ -45,6 +45,8 @@ public:
             InlinePresetBrowser::ActionCallback browseCallback,
             InlinePresetBrowser::ActionCallback createCallback);
     void refreshPresetSidebarIndex();
+    void refreshPresetSidebarRecord(const File& file);
+    void setCurrentPresetTags(StringArray tags);
     void configurePatternLibrary(File factoryDirectory, File userDirectory);
     var exportAutomationState() const;
     String exportGraphJson() const;

@@ -56,6 +56,7 @@ public:
     WorkspaceSidebarTab activeTab() const { return tab; }
     int visiblePresetCount() const;
     void refreshIndex();
+    void refreshRecord(const juce::File& file);
     void setPlaybackToggleCallback(ActionCallback callback);
     static juce::String deleteConfirmationMessage(const juce::String& presetName);
     std::vector<std::pair<juce::String, juce::Rectangle<float>>>

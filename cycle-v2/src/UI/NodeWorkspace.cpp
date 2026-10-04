@@ -94,6 +94,14 @@ void NodeWorkspace::refreshPresetSidebarIndex() {
     canvas.refreshPresetSidebarIndex();
 }
 
+void NodeWorkspace::refreshPresetSidebarRecord(const File& file) {
+    canvas.refreshPresetSidebarRecord(file);
+}
+
+void NodeWorkspace::setCurrentPresetTags(StringArray tags) {
+    canvas.setCurrentPresetTags(std::move(tags));
+}
+
 void NodeWorkspace::configurePatternLibrary(File factoryDirectory, File userDirectory) {
     patternLibrary = std::make_unique<PatternLibrary>(
             std::move(factoryDirectory), std::move(userDirectory));

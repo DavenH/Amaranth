@@ -79,6 +79,21 @@ TEST_CASE("Preset MIDI changes are dirty presentation edits without graph public
     REQUIRE(document.presentation().sequence->notes[0].pitch == 36);
 }
 
+TEST_CASE("Editing loaded preset tags keeps the graph and later saves in sync",
+        "[cycle-v2][preset][tags]") {
+    GraphDocument document(graphWithOutput());
+    GraphCommandDispatcher commands(document);
+    const auto revision = document.revision();
+    REQUIRE(commands.setPresetTags({ "Brass", "Sustained" }));
+    REQUIRE(document.presentation().tags == StringArray { "Brass", "Sustained" });
+    REQUIRE(document.revision() == revision);
+    REQUIRE(document.isDirty());
+    REQUIRE_FALSE(document.canUndo());
+    const auto saved = GraphSerializer().loadJsonString(document.toJson());
+    REQUIRE(saved.succeeded());
+    REQUIRE(saved.presentation.tags == document.presentation().tags);
+}
+
 TEST_CASE("Invalid preset MIDI is ignored without rejecting the graph",
         "[cycle-v2][preset][sequence][serialization]") {
     var encoded = GraphSerializer().writeJSON(graphWithOutput());

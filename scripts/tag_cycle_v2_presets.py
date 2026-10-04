@@ -12,13 +12,13 @@ PRESETS = ROOT / "cycle-v2/content/presets"
 PATTERNS = ROOT / "cycle-v2/content/patterns"
 
 FAMILY_RULES = (
-    ("Percussion", r"drum|conga|cymbal|crash|kick|tabla|melodruma|stomper"),
+    ("Percussion", r"drum|conga|cymbal|crash|tabla|melodruma"),
     ("Vocal", r"ooh|aah|talker|oh-yeah"),
-    ("Wind", r"sax|flute|reed|didge|mouth-harp"),
-    ("Brass", r"horn|brass|trumpet|trombone"),
+    ("Wind", r"flute|reed|didge|mouth-harp"),
+    ("Brass", r"sax|horn|brass|trumpet|trombone"),
     ("Strings", r"cello|string|tanpura"),
     ("Guitar", r"guitar|pick-chorus|^acoustic"),
-    ("Bass", r"bass|ebass|^acid|alkali|squelch"),
+    ("Bass", r"bass|ebass|^acid|alkali|squelch|kicker|stomper"),
     ("Pluck", r"pluck|^ping|pinger"),
     ("Pad", r"pad|ambi|astral|coral|divining|mellow|mysterie|omnius|"
             r"spherical|^storm|warmth|honerism|nordic|psi-storm"),
@@ -60,8 +60,8 @@ OVERRIDES = {
     "sitar-pad": "Pad",
     "sitar-pad-2": "Pad",
     "solo-string": "Strings",
-    "synsax": "Wind",
-    "synsax-2": "Wind",
+    "synsax": "Brass",
+    "synsax-2": "Brass",
     "tanpura-pad-4": "Pad",
     "thick-square": "Bass",
     "time": "Texture",
