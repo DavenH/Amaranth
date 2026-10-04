@@ -448,6 +448,11 @@ public:
                         if (safeThis != nullptr) {
                             safeThis->closePresetBrowser();
                         }
+                    },
+                    [safeThis = SafePointer<MainWindow>(this)] {
+                        if (safeThis != nullptr && safeThis->workspace != nullptr) {
+                            safeThis->workspace->togglePreviewPlayback();
+                        }
                     });
             page->setSize(1180, 760);
             DialogWindow::LaunchOptions options;

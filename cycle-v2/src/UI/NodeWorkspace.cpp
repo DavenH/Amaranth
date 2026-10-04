@@ -33,9 +33,7 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
         layoutPerformanceKeyboard();
     });
     canvas.setPreviewPlaybackToggleCallback([this] {
-        if (keyboard.isVisible()) {
-            keyboard.togglePlayback();
-        }
+        togglePreviewPlayback();
     });
     keyboard.setPreviewNote(canvas.previewMidiNote());
     keyboard.setSequence(canvas.presetSequence());
@@ -593,12 +591,16 @@ bool NodeWorkspace::performanceEndModWheelGestureForAutomation() {
     return true;
 }
 
-bool NodeWorkspace::togglePreviewPlaybackForAutomation() {
+bool NodeWorkspace::togglePreviewPlayback() {
     if (!keyboard.isVisible()) {
         return false;
     }
     keyboard.togglePlayback();
     return true;
+}
+
+bool NodeWorkspace::togglePreviewPlaybackForAutomation() {
+    return togglePreviewPlayback();
 }
 
 bool NodeWorkspace::enqueueMidiForAutomation(const MidiMessage& message) {

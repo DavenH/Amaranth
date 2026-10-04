@@ -97,6 +97,7 @@ public:
     bool performanceBeginModWheelGestureForAutomation(int value);
     bool performanceUpdateModWheelGestureForAutomation(int value);
     bool performanceEndModWheelGestureForAutomation();
+    bool togglePreviewPlayback();
     bool togglePreviewPlaybackForAutomation();
     bool enqueueMidiForAutomation(const juce::MidiMessage& message);
     StandaloneAudioEngine::LiveCapture captureLiveAudioForAutomation(int durationMs);

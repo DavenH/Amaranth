@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "UI/PresetBrowserPage.h"
+#include "UI/PresetSearchField.h"
 
 using namespace CycleV2;
 using namespace juce;
@@ -16,6 +17,7 @@ TEST_CASE("Preset browser coalesces search and opens the highlighted card",
     File opened;
     int browseCount {};
     int closeCount {};
+    int playbackToggles {};
     PresetBrowserPage page(
             { directory },
             [&](const File& file) {
@@ -23,7 +25,8 @@ TEST_CASE("Preset browser coalesces search and opens the highlighted card",
                 return true;
             },
             [&] { ++browseCount; },
-            [&] { ++closeCount; });
+            [&] { ++closeCount; },
+            [&] { ++playbackToggles; });
     page.setBounds(0, 0, 1000, 700);
     auto* search = dynamic_cast<TextEditor*>(page.findChildWithID("presetBrowser.search"));
     auto* viewport = dynamic_cast<Viewport*>(page.findChildWithID("presetBrowser.viewport"));
@@ -36,6 +39,12 @@ TEST_CASE("Preset browser coalesces search and opens the highlighted card",
     auto* browse = dynamic_cast<Button*>(page.findChildWithID("presetBrowser.browse"));
     auto* close = dynamic_cast<Button*>(page.findChildWithID("presetBrowser.close"));
     REQUIRE(search != nullptr);
+    REQUIRE(dynamic_cast<PresetSearchField*>(search) != nullptr);
+    REQUIRE(search->keyPressed(KeyPress(' ', ModifierKeys::noModifiers, ' ')));
+    REQUIRE(search->getText().isEmpty());
+    REQUIRE(playbackToggles == 1);
+    REQUIRE(page.keyPressed(KeyPress(KeyPress::spaceKey)));
+    REQUIRE(playbackToggles == 2);
     REQUIRE(grid != nullptr);
     REQUIRE(viewport != nullptr);
     REQUIRE(detail != nullptr);

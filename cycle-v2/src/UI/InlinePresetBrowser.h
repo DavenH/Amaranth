@@ -10,6 +10,7 @@
 #include "UI/PresetLibraryIndex.h"
 #include "UI/PresetThumbnailCache.h"
 #include "UI/PatternBrowser.h"
+#include "UI/PresetSearchField.h"
 
 namespace CycleV2 {
 
@@ -51,6 +52,7 @@ public:
             const juce::String& selectedId);
     WorkspaceSidebarTab activeTab() const { return tab; }
     int visiblePresetCount() const;
+    void setPlaybackToggleCallback(ActionCallback callback);
     static juce::String deleteConfirmationMessage(const juce::String& presetName);
     std::vector<std::pair<juce::String, juce::Rectangle<float>>>
             pointerTargetsForAutomation() const;
@@ -97,7 +99,7 @@ private:
     juce::TextButton presets { "PRESETS" };
     juce::TextButton patterns { "PATTERNS" };
     std::unique_ptr<PatternBrowser> patternBrowser;
-    juce::TextEditor search;
+    PresetSearchField search { "Search presets..." };
     juce::TextButton all { "ALL" };
     juce::TextButton factory { "FACTORY" };
     juce::TextButton user { "USER" };

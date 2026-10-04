@@ -2,6 +2,7 @@
 
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
+#include "UI/PresetSearchField.h"
 
 namespace CycleV2 {
 
@@ -67,7 +68,7 @@ void PresetBrowserLookAndFeel::fillTextEditorBackground(
             juce::Rectangle<float>(0.f, 0.f, (float) width, (float) height),
             CanvasChromeMetrics::controlCornerRadius);
 
-    if (editor.getComponentID() == "workspace.sidebar.search") {
+    if (dynamic_cast<PresetSearchField*>(&editor) != nullptr) {
         const juce::Rectangle<float> lens(
                 14.f, (float) height * 0.5f - 5.f, 9.f, 9.f);
         graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.82f));

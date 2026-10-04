@@ -327,15 +327,6 @@ InlinePresetBrowser::InlinePresetBrowser(
     addAndMakeVisible(patterns);
 
     search.setComponentID("workspace.sidebar.search");
-    search.setTextToShowWhenEmpty("Search presets...", CanvasChromePalette::mutedText);
-    search.setColour(juce::TextEditor::backgroundColourId,
-            CanvasChromePalette::restingControlSurface);
-    search.setColour(juce::TextEditor::outlineColourId, CanvasChromePalette::border);
-    search.setColour(juce::TextEditor::focusedOutlineColourId,
-            CanvasChromePalette::navigationAccent);
-    search.setColour(juce::TextEditor::textColourId, CanvasChromePalette::text);
-    search.setFont(juce::FontOptions(15.f));
-    search.setIndents(36, 11);
     search.addListener(this);
     search.addKeyListener(this);
     addAndMakeVisible(search);
@@ -441,6 +432,10 @@ void InlinePresetBrowser::setActiveTab(WorkspaceSidebarTab nextTab) {
 
 int InlinePresetBrowser::visiblePresetCount() const {
     return list->count();
+}
+
+void InlinePresetBrowser::setPlaybackToggleCallback(ActionCallback callback) {
+    search.setPlaybackToggleCallback(std::move(callback));
 }
 
 juce::String InlinePresetBrowser::deleteConfirmationMessage(

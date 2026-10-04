@@ -268,6 +268,11 @@ void NodeCanvas::configurePresetSidebar(
                 requestCanvasRepaint();
                 openGLContext.triggerRepaint();
             });
+    presetSidebar->setPlaybackToggleCallback([this] {
+        if (previewPlaybackToggle) {
+            previewPlaybackToggle();
+        }
+    });
     guideShelfState.presetBrowserVisible = presetSidebar->activeTab()
             != WorkspaceSidebarTab::Curves;
     addAndMakeVisible(*presetSidebar);

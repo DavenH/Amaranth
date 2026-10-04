@@ -10,10 +10,12 @@ PresetBrowserPage::PresetBrowserPage(
         std::vector<File> directories,
         OpenCallback openCallback,
         std::function<void()> browseCallback,
-        std::function<void()> closeCallback) :
+        std::function<void()> closeCallback,
+        std::function<void()> playbackToggleCallback) :
         onOpen   (std::move(openCallback))
     ,   onBrowse (std::move(browseCallback))
     ,   onClose  (std::move(closeCallback))
+    ,   onTogglePlayback (std::move(playbackToggleCallback))
     ,   grid     (thumbnails)
     ,   detail   (thumbnails) {
     setLookAndFeel(&browserLookAndFeel);
@@ -30,15 +32,11 @@ PresetBrowserPage::PresetBrowserPage(
     addAndMakeVisible(subtitle);
 
     search.setComponentID("presetBrowser.search");
-    search.setTextToShowWhenEmpty("Search presets, authors, packs, or tags",
-            CanvasChromePalette::mutedText);
-    search.setColour(TextEditor::backgroundColourId, CanvasChromePalette::restingControlSurface);
-    search.setColour(TextEditor::outlineColourId, CanvasChromePalette::border);
-    search.setColour(TextEditor::focusedOutlineColourId,
-            CanvasChromePalette::navigationAccent);
-    search.setColour(TextEditor::textColourId, CanvasChromePalette::text);
-    search.setFont(FontOptions(15.f));
-    search.setIndents(36, 8);
+    search.setPlaybackToggleCallback([this] {
+        if (onTogglePlayback) {
+            onTogglePlayback();
+        }
+    });
     search.addListener(this);
     search.addKeyListener(this);
     addAndMakeVisible(search);
@@ -162,7 +160,18 @@ bool PresetBrowserPage::keyPressed(const KeyPress& key) {
     return keyPressed(key, this);
 }
 
-bool PresetBrowserPage::keyPressed(const KeyPress& key, Component*) {
+bool PresetBrowserPage::keyPressed(const KeyPress& key, Component* source) {
+    if (key.getKeyCode() == KeyPress::spaceKey
+            && !key.getModifiers().isCommandDown()
+            && !key.getModifiers().isCtrlDown()
+            && !key.getModifiers().isAltDown()
+            && onTogglePlayback) {
+        if (source == &search || search.hasKeyboardFocus(true)) {
+            return false;
+        }
+        onTogglePlayback();
+        return true;
+    }
     if (key == KeyPress::escapeKey) {
         onClose();
         return true;

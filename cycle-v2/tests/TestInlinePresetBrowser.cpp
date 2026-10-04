@@ -2,6 +2,7 @@
 
 #include "UI/CanvasChromePalette.h"
 #include "UI/InlinePresetBrowser.h"
+#include "UI/PresetSearchField.h"
 #include "UI/SidebarMediaRow.h"
 
 using namespace CycleV2;
@@ -22,6 +23,29 @@ Component* findDescendantWithID(Component& parent, const String& id) {
     return nullptr;
 }
 
+}
+
+TEST_CASE("Preset search fields reserve Space for playback when empty",
+        "[cycle-v2][preset][browser][search][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    PresetSearchField search("Search presets...");
+    int playbackToggles {};
+    search.setPlaybackToggleCallback([&] { ++playbackToggles; });
+
+    REQUIRE(search.keyPressed(KeyPress(' ', ModifierKeys::noModifiers, ' ')));
+    REQUIRE(search.getText().isEmpty());
+    REQUIRE(playbackToggles == 1);
+
+    search.setText("bass", false);
+    search.setCaretPosition(search.getText().length());
+    REQUIRE(search.keyPressed(KeyPress(' ', ModifierKeys::noModifiers, ' ')));
+    REQUIRE(search.getText() == "bass ");
+    REQUIRE(playbackToggles == 1);
+
+    search.clear();
+    REQUIRE(search.keyPressed(KeyPress(' ', ModifierKeys::noModifiers, ' ')));
+    REQUIRE(search.getText().isEmpty());
+    REQUIRE(playbackToggles == 2);
 }
 
 TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
@@ -77,6 +101,12 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(presets != nullptr);
     REQUIRE(patterns != nullptr);
     REQUIRE(search != nullptr);
+    REQUIRE(dynamic_cast<PresetSearchField*>(search) != nullptr);
+    int playbackToggles {};
+    browser.setPlaybackToggleCallback([&] { ++playbackToggles; });
+    REQUIRE(search->keyPressed(KeyPress(' ', ModifierKeys::noModifiers, ' ')));
+    REQUIRE(search->getText().isEmpty());
+    REQUIRE(playbackToggles == 1);
     REQUIRE(browse != nullptr);
     REQUIRE(all != nullptr);
     REQUIRE(list != nullptr);
