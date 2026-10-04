@@ -240,6 +240,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/MidiPatternMiniMap.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/PatternLibrary.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PatternBrowser.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SidebarMediaRow.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserComponents.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserLookAndFeel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetLibraryIndex.cpp"

@@ -205,6 +205,27 @@ decision. This feature adds no sidebar rendering or file policy to the canvas.
 
 ## Verification
 
+### Shared sidebar row presentation (2026-10-03)
+
+Preset and pattern lists now use one `SidebarMediaRow` painter for card inset,
+selection border, title, category tag, and full-width preview bounds. Each
+browser retains its own list model, selection, and scroll behavior. The preset
+thumbnail remains owned by `PresetBrowserPainting`; MIDI note projection remains
+owned by `MidiPatternMiniMap`. Pattern list rows no longer paint the CC trace;
+the piano-roll automation editor and sequence data are unchanged. Both lists
+use an 84-pixel row stride. This removes the old preset left-thumbnail layout
+and the duplicate pattern row chrome. No adapter or copied interaction state
+is introduced.
+
+The focused preset and pattern suite passes (678 assertions in six cases).
+`cycle-v2-agent-sidebar-media-rows.json` passes all seven commands and captures
+both tabs at the production sidebar width. `InlinePresetBrowser.cpp` decreased
+from 737 to 716 lines; `PatternBrowser.cpp` is 210 lines and the shared painter
+is 41 lines. The architecture audit reports no new size trigger. The row
+painter owns only card geometry and chrome; the two browsers continue to own
+their respective selection and data policies.
+
+
 - Twenty-nine distinct factory patterns cover six families, with dedicated
   jazz keys and sax lines. Piano, electric piano, and keys presets select from
   the jazz group; sax, brass, flute, organ, vibraphone, acid bass, and selected

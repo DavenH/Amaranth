@@ -2,14 +2,9 @@
 
 #include "UI/CanvasChromePalette.h"
 #include "UI/MidiPatternMiniMap.h"
+#include "UI/SidebarMediaRow.h"
 
 namespace CycleV2 {
-
-namespace {
-
-constexpr int rowHeight = 84;
-
-}
 
 class PatternBrowser::List final : public juce::Component {
 public:
@@ -22,7 +17,7 @@ public:
     void setRecords(std::vector<PatternRecord> next, const juce::String& id) {
         records = std::move(next);
         selectedId = id;
-        setSize(getWidth(), (int) records.size() * rowHeight);
+        setSize(getWidth(), (int) records.size() * SidebarMediaRow::height);
         repaint();
     }
 
@@ -36,8 +31,10 @@ public:
         for (int index = 0; index < (int) records.size(); ++index) {
             const auto row = juce::Rectangle<float>(
                     (float) viewportBounds.getX(),
-                    (float) viewportBounds.getY() + index * rowHeight - viewPositionY,
-                    (float) viewportBounds.getWidth(), (float) rowHeight);
+                    (float) viewportBounds.getY()
+                            + index * SidebarMediaRow::height - viewPositionY,
+                    (float) viewportBounds.getWidth(),
+                    (float) SidebarMediaRow::height);
             if (row.intersects(viewportBounds.toFloat())) {
                 targets.push_back({ "workspace.sidebar.pattern." + records[(size_t) index].id,
                         row.getIntersection(viewportBounds.toFloat()) });
@@ -49,43 +46,23 @@ public:
     void paint(juce::Graphics& graphics) override {
         for (int index = 0; index < (int) records.size(); ++index) {
             const auto& record = records[(size_t) index];
-            const auto row = getLocalBounds().withY(index * rowHeight)
-                    .withHeight(rowHeight).reduced(7, 3).toFloat();
+            const auto row = getLocalBounds()
+                    .withY(index * SidebarMediaRow::height)
+                    .withHeight(SidebarMediaRow::height).toFloat();
             const bool selected = record.id == selectedId;
-            graphics.setColour(selected
-                    ? CanvasChromePalette::raisedSurface
-                    : CanvasChromePalette::surface);
-            graphics.fillRoundedRectangle(row, 5.f);
-            graphics.setColour(selected
-                    ? CanvasChromePalette::navigationAccent
-                    : CanvasChromePalette::border.withAlpha(0.55f));
-            graphics.drawRoundedRectangle(row, 5.f, selected ? 1.2f : 0.8f);
-            graphics.setColour(CanvasChromePalette::text);
-            graphics.setFont(juce::FontOptions(13.f, juce::Font::bold));
-            graphics.drawFittedText(record.name,
-                    row.withHeight(22.f).withTrimmedRight(78.f)
-                            .reduced(8.f, 0.f).toNearestInt(),
-                    juce::Justification::centredLeft, 1);
-            graphics.setColour(CanvasChromePalette::mutedText);
-            graphics.setFont(juce::FontOptions(9.f));
-            graphics.drawText(record.tag.isNotEmpty() ? record.tag.toUpperCase()
-                            : (record.factory ? "FACTORY" : "USER"),
-                    row.getRight() - 75.f, row.getY() + 7.f, 65.f, 13.f,
-                    juce::Justification::centredRight);
-            const auto preview = row.withTrimmedTop(20.f)
-                    .withTrimmedBottom(4.f).reduced(8.f, 0.f);
-            graphics.setColour(CanvasChromePalette::insetBackground);
-            graphics.fillRoundedRectangle(preview, 3.f);
+            const auto preview = SidebarMediaRow::paint(graphics, row,
+                    record.name,
+                    record.tag.isNotEmpty() ? record.tag
+                            : (record.factory ? "Factory" : "User"),
+                    selected);
             MidiPatternMiniMap::paintNotes(graphics, record.sequence,
-                    preview.withTrimmedBottom(10.f),
+                    preview,
                     MidiPatternMiniMap::pitchRange(record.sequence, 12, 0));
-            MidiPatternMiniMap::paintControls(graphics, record.sequence,
-                    preview.withTrimmedTop(preview.getHeight() - 10.f));
         }
     }
 
     void mouseUp(const juce::MouseEvent& event) override {
-        const int index = event.y / rowHeight;
+        const int index = event.y / SidebarMediaRow::height;
         if (index < 0 || index >= (int) records.size()) {
             return;
         }

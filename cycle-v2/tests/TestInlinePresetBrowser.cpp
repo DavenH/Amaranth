@@ -2,6 +2,7 @@
 
 #include "UI/CanvasChromePalette.h"
 #include "UI/InlinePresetBrowser.h"
+#include "UI/SidebarMediaRow.h"
 
 using namespace CycleV2;
 using namespace juce;
@@ -106,7 +107,8 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
         MessageManager::getInstance()->runDispatchLoopUntil(100);
     }
     REQUIRE(browser.visiblePresetCount() > 1);
-    REQUIRE(list->getHeight() == 20 + browser.visiblePresetCount() * 78);
+    REQUIRE(list->getHeight()
+            == 20 + browser.visiblePresetCount() * SidebarMediaRow::height);
 
     const Rectangle<int> pinnedHeroBounds = hero->getBounds();
     viewport->setViewPosition(0, 100);

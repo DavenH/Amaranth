@@ -3,6 +3,7 @@
 #include "UI/CanvasChromeIcons.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/PresetBrowserComponents.h"
+#include "UI/SidebarMediaRow.h"
 
 namespace CycleV2 {
 
@@ -10,8 +11,6 @@ namespace {
 
 constexpr int heroHeight = 204;
 constexpr int heroMetadataHeight = 52;
-constexpr int rowHeight = 76;
-constexpr int rowGap = 2;
 constexpr int contentInset = 10;
 
 void drawTag(
@@ -236,10 +235,10 @@ public:
 private:
     juce::Rectangle<int> rowBounds(int index) const {
         return {
-                contentInset,
-                contentInset + index * (rowHeight + rowGap),
-                getWidth() - contentInset * 2,
-                rowHeight
+                0,
+                contentInset + index * SidebarMediaRow::height,
+                getWidth(),
+                SidebarMediaRow::height
         };
     }
 
@@ -265,7 +264,7 @@ private:
 
     void updateHeight() {
         const int height = contentInset * 2
-                + (int) indices.size() * (rowHeight + rowGap);
+                + (int) indices.size() * SidebarMediaRow::height;
         setSize(juce::jmax(1, getWidth()), juce::jmax(1, height));
     }
 
@@ -275,35 +274,15 @@ private:
             juce::Rectangle<float> bounds) {
         const auto& record = library[(size_t) indices[(size_t) visibleIndex]];
         const bool isSelected = visibleIndex == selected;
-        graphics.setColour(isSelected
-                ? CanvasChromePalette::raisedSurface
-                : CanvasChromePalette::dockSurface.withAlpha(0.7f));
-        graphics.fillRoundedRectangle(bounds, 5.f);
-        if (isSelected) {
-            graphics.setColour(CanvasChromePalette::navigationAccent);
-            graphics.drawRoundedRectangle(bounds.reduced(1.f), 5.f, 2.f);
+        auto tag = record.presentation.tags.isEmpty()
+                ? juce::String() : record.presentation.tags[0];
+        if (record.presentation.tags.size() > 1) {
+            tag += " +" + juce::String(record.presentation.tags.size() - 1);
         }
-
-        auto content = bounds.reduced(6.f);
-        auto preview = content.removeFromLeft(124.f);
-        PresetBrowserPainting::drawPreview(graphics, record, thumbnails, preview);
-        content.removeFromLeft(9.f);
-        auto name = content.removeFromTop(23.f);
-        graphics.setColour(CanvasChromePalette::text);
-        graphics.setFont(juce::FontOptions(13.f).withStyle("Bold"));
-        graphics.drawFittedText(
-                record.name,
-                name.toNearestInt(),
-                juce::Justification::centredLeft,
-                1);
-
-        auto tags = content.removeFromTop(21.f);
-        for (int tag = 0; tag < juce::jmin(2, record.presentation.tags.size()); ++tag) {
-            const float width = juce::jlimit(
-                    40.f, 70.f, 16.f + (float) record.presentation.tags[tag].length() * 5.5f);
-            drawTag(graphics, record.presentation.tags[tag], tags.removeFromLeft(width));
-            tags.removeFromLeft(5.f);
-        }
+        const auto preview = SidebarMediaRow::paint(
+                graphics, bounds, record.name, tag, isSelected);
+        PresetBrowserPainting::drawPreview(
+                graphics, record, thumbnails, preview, false);
     }
 
     PresetThumbnailCache& thumbnails;
