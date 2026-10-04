@@ -38,6 +38,8 @@ void paintLabels(
     const auto tagBounds = header.removeFromRight(70.f);
     const juce::Font titleFont(juce::FontOptions(13.f, juce::Font::bold));
     const juce::Font tagFont(juce::FontOptions(9.f));
+    auto tagTextBounds = tagBounds;
+    auto tagJustification = juce::Justification::centredRight;
     if (onImage) {
         graphics.setColour(juce::Colour(0xff333333));
         const float titleWidth = juce::jmin(
@@ -50,9 +52,12 @@ void paintLabels(
             const float tagWidth = juce::jmin(
                     tagBounds.getWidth(),
                     tagFont.getStringWidthFloat(tag.toUpperCase()) + 12.f);
-            graphics.fillRoundedRectangle(
+            const juce::Rectangle<float> tagChip(
                     tagBounds.getRight() - tagWidth,
-                    header.getY() + 2.f, tagWidth, 19.f, 3.f);
+                    header.getY() + 2.f, tagWidth, 19.f);
+            graphics.fillRoundedRectangle(tagChip, 3.f);
+            tagTextBounds = tagChip.reduced(5.f, 0.f);
+            tagJustification = juce::Justification::centred;
         }
     }
     graphics.setColour(CanvasChromePalette::text);
@@ -64,8 +69,7 @@ void paintLabels(
             : CanvasChromePalette::mutedText);
     graphics.setFont(tagFont);
     graphics.drawFittedText(tag.toUpperCase(),
-            tagBounds.toNearestInt(),
-            juce::Justification::centredRight, 1);
+            tagTextBounds.toNearestInt(), tagJustification, 1);
 }
 
 }
