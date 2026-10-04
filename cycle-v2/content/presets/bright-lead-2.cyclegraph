@@ -329,11 +329,11 @@
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 4,
+                "revision": 6,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 4,
+                    "revision": 6,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
@@ -441,11 +441,11 @@
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 4,
+                "revision": 6,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 4,
+                    "revision": 6,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
@@ -642,22 +642,24 @@
         "sequence": {
             "durationSeconds": 5.0,
             "notes": [
-                {"pitch": 60, "velocity": 85, "startSeconds": 0.0, "durationSeconds": 0.34},
-                {"pitch": 63, "velocity": 89, "startSeconds": 0.5, "durationSeconds": 0.53},
-                {"pitch": 67, "velocity": 107, "startSeconds": 1.125, "durationSeconds": 0.27},
-                {"pitch": 70, "velocity": 100, "startSeconds": 1.5, "durationSeconds": 0.27},
-                {"pitch": 68, "velocity": 75, "startSeconds": 2.0, "durationSeconds": 0.27},
-                {"pitch": 65, "velocity": 75, "startSeconds": 2.625, "durationSeconds": 0.34},
-                {"pitch": 63, "velocity": 109, "startSeconds": 3.0, "durationSeconds": 0.27},
-                {"pitch": 67, "velocity": 86, "startSeconds": 3.625, "durationSeconds": 0.27},
-                {"pitch": 60, "velocity": 77, "startSeconds": 4.0, "durationSeconds": 0.34}
+                { "pitch": 60, "velocity": 85, "startSeconds": 0.0, "durationSeconds": 0.34 },
+                { "pitch": 63, "velocity": 89, "startSeconds": 0.5, "durationSeconds": 0.53 },
+                { "pitch": 67, "velocity": 107, "startSeconds": 1.125, "durationSeconds": 0.27 },
+                { "pitch": 70, "velocity": 100, "startSeconds": 1.5, "durationSeconds": 0.27 },
+                { "pitch": 67, "velocity": 75, "startSeconds": 1.84375, "durationSeconds": 0.27 },
+                { "pitch": 48, "velocity": 100, "startSeconds": 0.3125, "durationSeconds": 0.3125 },
+                { "pitch": 48, "velocity": 100, "startSeconds": 0.9375, "durationSeconds": 0.3125 },
+                { "pitch": 46, "velocity": 100, "startSeconds": 1.5625, "durationSeconds": 0.3125 },
+                { "pitch": 36, "velocity": 100, "startSeconds": 0.15625, "durationSeconds": 0.15625 },
+                { "pitch": 36, "velocity": 100, "startSeconds": 0.625, "durationSeconds": 0.15625 },
+                { "pitch": 36, "velocity": 100, "startSeconds": 1.40625, "durationSeconds": 0.15625 }
             ],
             "controls": [
-                {"controller": 1, "value": 63, "timeSeconds": 0.0},
-                {"controller": 1, "value": 20, "timeSeconds": 1.0},
-                {"controller": 1, "value": 80, "timeSeconds": 2.0},
-                {"controller": 1, "value": 35, "timeSeconds": 3.0},
-                {"controller": 1, "value": 66, "timeSeconds": 4.0}
+                { "controller": 1, "value": 127, "timeSeconds": 0.0 },
+                { "controller": 1, "value": 107, "timeSeconds": 0.625 },
+                { "controller": 1, "value": 31, "timeSeconds": 1.71875 },
+                { "controller": 1, "value": 22, "timeSeconds": 4.07227 },
+                { "controller": 1, "value": 0, "timeSeconds": 2.97363 }
             ]
         }
     }

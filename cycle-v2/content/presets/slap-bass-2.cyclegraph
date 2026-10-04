@@ -548,8 +548,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6 ]
                 }
             }
@@ -566,7 +564,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 746.0, "y": 1571.0 },
-            "parameters": { "gain": 0.58778626 }
+            "parameters": { "gain": 0.679453 }
         },
         {
             "id": "globalInput",

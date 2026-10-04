@@ -60,7 +60,7 @@
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1576.0, "y": 387.0 },
+            "position": { "x": 1578.0, "y": 387.0 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -449,7 +449,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2984.80005, "y": 1131.37659 },
+            "position": { "x": 3064.80005, "y": 542.28564 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -700,6 +700,9 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 3360.0, "y": 886.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {

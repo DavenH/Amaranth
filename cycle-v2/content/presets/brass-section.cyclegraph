@@ -850,7 +850,7 @@
             "kind": "reverb",
             "definitionVersion": 1,
             "position": { "x": 895.88507, "y": 1047.92188 },
-            "parameters": { "enabled": true, "size": 0.504000003, "damp": 1.0, "width": 1.0, "wet": 0.176000012, "highPass": 0.0 }
+            "parameters": { "enabled": true, "size": 0.6666, "damp": 0.93861, "width": 1.0, "wet": 0.41201, "highPass": 0.0 }
         },
         {
             "id": "output",
@@ -1125,18 +1125,17 @@
         "sequence": {
             "durationSeconds": 6.0,
             "notes": [
-                {"pitch": 57, "velocity": 86, "startSeconds": 0.0, "durationSeconds": 0.9},
-                {"pitch": 64, "velocity": 85, "startSeconds": 1.15, "durationSeconds": 1.02},
-                {"pitch": 60, "velocity": 89, "startSeconds": 2.3, "durationSeconds": 1.02},
-                {"pitch": 62, "velocity": 93, "startSeconds": 3.45, "durationSeconds": 0.9},
-                {"pitch": 57, "velocity": 70, "startSeconds": 4.6, "durationSeconds": 1.1}
+                { "pitch": 33, "velocity": 100, "startSeconds": 0.0, "durationSeconds": 2.625 },
+                { "pitch": 45, "velocity": 100, "startSeconds": 0.0, "durationSeconds": 2.625 },
+                { "pitch": 21, "velocity": 100, "startSeconds": 0.0, "durationSeconds": 3.1875 }
             ],
             "controls": [
-                {"controller": 1, "value": 26, "timeSeconds": 0.0},
-                {"controller": 1, "value": 41, "timeSeconds": 1.2},
-                {"controller": 1, "value": 68, "timeSeconds": 2.4},
-                {"controller": 1, "value": 95, "timeSeconds": 3.6},
-                {"controller": 1, "value": 35, "timeSeconds": 4.8}
+                { "controller": 1, "value": 26, "timeSeconds": 0.0 },
+                { "controller": 1, "value": 47, "timeSeconds": 2.4375 },
+                { "controller": 1, "value": 96, "timeSeconds": 3.69727 },
+                { "controller": 1, "value": 127, "timeSeconds": 4.72852 },
+                { "controller": 1, "value": 0, "timeSeconds": 0.0 },
+                { "controller": 1, "value": 0, "timeSeconds": 0.75 }
             ]
         }
     }
