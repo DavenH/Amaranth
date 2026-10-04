@@ -4,7 +4,7 @@ Status: Complete (2026-10-04).
 
 ## Contract and ownership
 
-The sidebar and full preset browser both use `PresetSearchField`, a `TextEditor`
+The sidebar and full preset browser both use `LibrarySearchField`, a `TextEditor`
 subclass that owns their common placeholder styling, search icon identity, and
 Space handling. When its text is empty, an unmodified Space is consumed and
 calls the supplied playback toggle. When text is present, JUCE's editor handles
@@ -13,8 +13,9 @@ by each browser. The existing `NodeWorkspace` playback action owns transport;
 the field only invokes a callback on the UI thread.
 
 The field adds O(1) work per key. The old duplicated field setup is deleted
-from both browser constructors. The look and feel identifies the shared type
-instead of a sidebar-specific component ID. No graph or audio state is copied.
+from both browser constructors. The icon is painted by the field itself, so
+it does not depend on a browser-specific look and feel. No graph or audio
+state is copied.
 
 ## Completion criteria
 
@@ -37,8 +38,9 @@ commands and captures the focused sidebar field at
 does not establish keyboard focus, so keyboard behavior is asserted in the
 component tests instead of an agent key command.
 
-`PresetSearchField` is 36 lines. The two browser constructors lose their
-duplicated styling; the look and feel removes its component-ID special case.
+`LibrarySearchField` is 61 lines after the shared icon and whitespace handling.
+The browser constructors lose their duplicated styling; the look and feel
+removes its component-ID special case.
 `NodeWorkspace` remains the playback owner, with its existing automation
 entrypoint delegating to the UI action. `NodeCanvas.cpp` is already above the
 size-plan trigger, so this change adds only five lines of sidebar callback

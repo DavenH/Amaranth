@@ -3,6 +3,7 @@
 #include "UI/CanvasChromePalette.h"
 #include "UI/MidiPatternMiniMap.h"
 #include "UI/SidebarMediaRow.h"
+#include "UI/SidebarTypeFilter.h"
 
 namespace CycleV2 {
 
@@ -50,11 +51,11 @@ public:
                     .withY(index * SidebarMediaRow::height)
                     .withHeight(SidebarMediaRow::height).toFloat();
             const bool selected = record.id == selectedId;
-            const auto preview = SidebarMediaRow::paint(graphics, row,
-                    record.name,
+            const auto preview = SidebarMediaRow::paintFrame(graphics, row,
+                    selected, SidebarMediaRow::PreviewPosition::BelowLabels);
+            SidebarMediaRow::paintLabels(graphics, row, record.name,
                     record.tag.isNotEmpty() ? record.tag
-                            : (record.factory ? "Factory" : "User"),
-                    selected);
+                            : (record.factory ? "Factory" : "User"), false);
             MidiPatternMiniMap::paintNotes(graphics, record.sequence,
                     preview,
                     MidiPatternMiniMap::pitchRange(record.sequence, 12, 0));
@@ -91,47 +92,16 @@ PatternBrowser::PatternBrowser(
     setComponentID("workspace.sidebar.patternBrowser");
     createButton.setComponentID("workspace.sidebar.patternNew");
     editButton.setComponentID("workspace.sidebar.patternEdit");
-    nameEntry.setTextToShowWhenEmpty("Pattern name",
-            CanvasChromePalette::mutedText);
-    nameEntry.setComponentID("workspace.sidebar.patternName");
-    nameEntry.setColour(juce::TextEditor::backgroundColourId,
-            CanvasChromePalette::restingControlSurface);
-    nameEntry.setColour(juce::TextEditor::textColourId,
-            CanvasChromePalette::text);
-    nameEntry.setColour(juce::TextEditor::outlineColourId,
-            CanvasChromePalette::border);
-    nameEntry.setColour(juce::TextEditor::focusedOutlineColourId,
-            CanvasChromePalette::focus);
-    nameEntry.setFont(juce::FontOptions(13.f));
-    nameEntry.setIndents(10, 6);
-    nameEntry.onReturnKey = [this] { createButton.triggerClick(); };
-    addAndMakeVisible(nameEntry);
+    search.setComponentID("workspace.sidebar.patternSearch");
+    search.onTextChange = [this] { applyFilter(); };
+    addAndMakeVisible(search);
     createButton.setTooltip("Save the current MIDI phrase with the selected type");
     typeFilter.setTooltip("Filter patterns and choose the type for a new pattern");
-    createButton.onClick = [this] {
-        const auto name = nameEntry.getText().trim();
-        if (name.isNotEmpty()) {
-            onCreate(name, typeFilter.getSelectedId() > 1
-                    ? typeFilter.getText() : juce::String("Other"));
-            nameEntry.clear();
-        } else {
-            nameEntry.grabKeyboardFocus();
-        }
-    };
+    createButton.onClick = [this] { createPattern(); };
     editButton.onClick = [this] { editSelected(); };
     typeFilter.setComponentID("workspace.sidebar.patternType");
-    typeFilter.addItem("All types", 1);
-    for (const auto& tag : { "Bass", "Lead", "Pad", "Keys", "Sustained", "Rhythm", "Other" }) {
-        typeFilter.addItem(tag, typeFilter.getNumItems() + 2);
-    }
-    typeFilter.setSelectedId(1, juce::dontSendNotification);
+    SidebarTypeFilter::configure(typeFilter);
     typeFilter.onChange = [this] { applyFilter(); };
-    typeFilter.setColour(juce::ComboBox::backgroundColourId,
-            CanvasChromePalette::restingControlSurface);
-    typeFilter.setColour(juce::ComboBox::textColourId,
-            CanvasChromePalette::text);
-    typeFilter.setColour(juce::ComboBox::outlineColourId,
-            CanvasChromePalette::border);
     addAndMakeVisible(typeFilter);
     for (auto* button : { &createButton, &editButton }) {
         button->setColour(juce::TextButton::buttonColourId,
@@ -140,10 +110,6 @@ PatternBrowser::PatternBrowser(
                 CanvasChromePalette::text);
         addAndMakeVisible(*button);
     }
-    status.setColour(juce::Label::textColourId,
-            CanvasChromePalette::mutedText);
-    status.setFont(juce::FontOptions(11.f));
-    addAndMakeVisible(status);
     viewport.setViewedComponent(list.get(), false);
     viewport.setComponentID("workspace.sidebar.patternViewport");
     viewport.setScrollBarsShown(true, false);
@@ -160,19 +126,51 @@ void PatternBrowser::setRecords(
     applyFilter();
 }
 
+void PatternBrowser::setPlaybackToggleCallback(std::function<void()> callback) {
+    search.setPlaybackToggleCallback(std::move(callback));
+}
+
+void PatternBrowser::createPattern() {
+    auto* prompt = new juce::AlertWindow(
+            "New pattern",
+            "Name the MIDI phrase to save in the pattern library.",
+            juce::MessageBoxIconType::QuestionIcon,
+            getTopLevelComponent());
+    prompt->addTextEditor("name", {}, "Pattern name");
+    prompt->addButton("Create", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    prompt->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    prompt->enterModalState(true,
+            juce::ModalCallbackFunction::create([
+                    safeThis = juce::Component::SafePointer<PatternBrowser>(this),
+                    prompt](int result) {
+                if (result != 1 || safeThis == nullptr) {
+                    return;
+                }
+                const auto name = prompt->getTextEditorContents("name").trim();
+                if (name.isEmpty()) {
+                    return;
+                }
+                const auto type = SidebarTypeFilter::selectedType(safeThis->typeFilter);
+                safeThis->onCreate(name,
+                        type.isNotEmpty() ? type : juce::String("Other"));
+            }), true);
+}
+
 void PatternBrowser::applyFilter() {
     const int previousScroll = viewport.getViewPositionY();
     std::vector<PatternRecord> visible;
-    const auto tag = typeFilter.getSelectedId() > 1
-            ? typeFilter.getText() : juce::String();
+    const auto tag = SidebarTypeFilter::selectedType(typeFilter);
+    const auto query = search.getText().trim();
     for (const auto& record : allRecords) {
-        if (tag.isEmpty() || record.tag.equalsIgnoreCase(tag)
-                || (tag == "Other" && record.tag.isEmpty())) {
+        const bool matchesType = tag.isEmpty() || record.tag.equalsIgnoreCase(tag)
+                || (tag == "Other" && record.tag.isEmpty());
+        const bool matchesQuery = query.isEmpty()
+                || record.name.containsIgnoreCase(query)
+                || record.tag.containsIgnoreCase(query);
+        if (matchesType && matchesQuery) {
             visible.push_back(record);
         }
     }
-    status.setText(juce::String(visible.size()) + " PATTERNS",
-            juce::dontSendNotification);
     list->setRecords(std::move(visible), selectedId);
     resized();
     viewport.setViewPosition(0, previousScroll);
@@ -180,8 +178,17 @@ void PatternBrowser::applyFilter() {
 
 std::vector<std::pair<juce::String, juce::Rectangle<float>>>
 PatternBrowser::pointerTargetsForAutomation() const {
-    return list->pointerTargetsForAutomation(
-            viewport.getBounds(), viewport.getViewPositionY());
+    std::vector<std::pair<juce::String, juce::Rectangle<float>>> targets {
+            { "workspace.sidebar.patternSearch", search.getBounds().toFloat() },
+            { "workspace.sidebar.patternNew", createButton.getBounds().toFloat() },
+            { "workspace.sidebar.patternType", typeFilter.getBounds().toFloat() },
+            { "workspace.sidebar.patternEdit", editButton.getBounds().toFloat() }
+    };
+    for (const auto& target : list->pointerTargetsForAutomation(
+            viewport.getBounds(), viewport.getViewPositionY())) {
+        targets.push_back(target);
+    }
+    return targets;
 }
 
 void PatternBrowser::editSelected() {
@@ -195,13 +202,13 @@ void PatternBrowser::resized() {
     auto createRow = bounds.removeFromTop(30);
     createButton.setBounds(createRow.removeFromRight(69));
     createRow.removeFromRight(5);
-    nameEntry.setBounds(createRow);
+    search.setBounds(createRow);
     bounds.removeFromTop(6);
     auto filterRow = bounds.removeFromTop(30);
     editButton.setBounds(filterRow.removeFromRight(69));
     filterRow.removeFromRight(5);
     typeFilter.setBounds(filterRow);
-    status.setBounds(bounds.removeFromTop(24));
+    bounds.removeFromTop(7);
     viewport.setBounds(bounds);
     list->setSize(juce::jmax(1, viewport.getMaximumVisibleWidth()),
             list->getHeight());

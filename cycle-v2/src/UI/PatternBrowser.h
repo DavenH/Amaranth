@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "Graph/PatternLibrary.h"
+#include "UI/LibrarySearchField.h"
 
 namespace CycleV2 {
 
@@ -19,6 +20,7 @@ public:
     PatternBrowser(SelectCallback select, EditCallback edit, CreateCallback create);
     ~PatternBrowser() override;
     void setRecords(std::vector<PatternRecord> records, const juce::String& selectedId);
+    void setPlaybackToggleCallback(std::function<void()> callback);
     std::vector<std::pair<juce::String, juce::Rectangle<float>>>
             pointerTargetsForAutomation() const;
     void resized() override;
@@ -27,14 +29,14 @@ private:
     class List;
     void editSelected();
     void applyFilter();
+    void createPattern();
 
     EditCallback onEdit;
     CreateCallback onCreate;
-    juce::TextEditor nameEntry;
+    LibrarySearchField search { "Search patterns..." };
     juce::TextButton createButton { "+ NEW" };
     juce::TextButton editButton { "EDIT" };
     juce::ComboBox typeFilter;
-    juce::Label status;
     juce::Viewport viewport;
     std::unique_ptr<List> list;
     std::vector<PatternRecord> allRecords;

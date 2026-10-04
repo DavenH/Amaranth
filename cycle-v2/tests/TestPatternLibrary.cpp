@@ -161,14 +161,24 @@ TEST_CASE("Pattern browser rows show notes and assign their stable ID",
     REQUIRE(filter != nullptr);
     filter->setSelectedId(3, sendNotificationSync);
     REQUIRE(list->getHeight() == 4 * rowHeight);
-    auto* name = dynamic_cast<TextEditor*>(
-            findChild(browser, "workspace.sidebar.patternName"));
+    auto* search = dynamic_cast<LibrarySearchField*>(
+            findChild(browser, "workspace.sidebar.patternSearch"));
     auto* create = dynamic_cast<Button*>(
             findChild(browser, "workspace.sidebar.patternNew"));
-    REQUIRE(name != nullptr);
+    REQUIRE(search != nullptr);
     REQUIRE(create != nullptr);
-    name->setText("Swing Variations");
+    search->setText("Pattern 1", true);
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(list->getHeight() == rowHeight);
+    search->setText({}, true);
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
     create->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    auto* prompt = dynamic_cast<AlertWindow*>(
+            ModalComponentManager::getInstance()->getModalComponent(0));
+    REQUIRE(prompt != nullptr);
+    prompt->getTextEditor("name")->setText("Swing Variations");
+    prompt->exitModalState(1);
     MessageManager::getInstance()->runDispatchLoopUntil(40);
     REQUIRE(createdName == "Swing Variations:Bass");
 }

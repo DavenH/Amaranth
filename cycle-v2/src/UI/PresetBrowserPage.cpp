@@ -161,6 +161,9 @@ bool PresetBrowserPage::keyPressed(const KeyPress& key) {
 }
 
 bool PresetBrowserPage::keyPressed(const KeyPress& key, Component* source) {
+    if (source == &search && search.handlePlaybackSpace(key)) {
+        return true;
+    }
     if (key.getKeyCode() == KeyPress::spaceKey
             && !key.getModifiers().isCommandDown()
             && !key.getModifiers().isCtrlDown()

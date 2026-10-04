@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "UI/PresetBrowserPage.h"
-#include "UI/PresetSearchField.h"
+#include "UI/LibrarySearchField.h"
 
 using namespace CycleV2;
 using namespace juce;
@@ -39,7 +39,7 @@ TEST_CASE("Preset browser coalesces search and opens the highlighted card",
     auto* browse = dynamic_cast<Button*>(page.findChildWithID("presetBrowser.browse"));
     auto* close = dynamic_cast<Button*>(page.findChildWithID("presetBrowser.close"));
     REQUIRE(search != nullptr);
-    REQUIRE(dynamic_cast<PresetSearchField*>(search) != nullptr);
+    REQUIRE(dynamic_cast<LibrarySearchField*>(search) != nullptr);
     REQUIRE(search->keyPressed(KeyPress(' ', ModifierKeys::noModifiers, ' ')));
     REQUIRE(search->getText().isEmpty());
     REQUIRE(playbackToggles == 1);

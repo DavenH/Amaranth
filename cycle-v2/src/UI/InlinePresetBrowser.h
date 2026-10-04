@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include <functional>
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -10,7 +11,7 @@
 #include "UI/PresetLibraryIndex.h"
 #include "UI/PresetThumbnailCache.h"
 #include "UI/PatternBrowser.h"
-#include "UI/PresetSearchField.h"
+#include "UI/LibrarySearchField.h"
 
 namespace CycleV2 {
 
@@ -42,7 +43,8 @@ public:
             ActionCallback browseCallback,
             TabCallback tabCallback,
             DeleteCallback deleteCallback = {},
-            ConfirmDeleteCallback confirmDeleteCallback = {});
+            ConfirmDeleteCallback confirmDeleteCallback = {},
+            ActionCallback createCallback = {});
     ~InlinePresetBrowser() override;
 
     void setActiveTab(WorkspaceSidebarTab tab);
@@ -52,6 +54,7 @@ public:
             const juce::String& selectedId);
     WorkspaceSidebarTab activeTab() const { return tab; }
     int visiblePresetCount() const;
+    void refreshIndex();
     void setPlaybackToggleCallback(ActionCallback callback);
     static juce::String deleteConfirmationMessage(const juce::String& presetName);
     std::vector<std::pair<juce::String, juce::Rectangle<float>>>
@@ -64,13 +67,6 @@ public:
 
 private:
     class CompactList;
-    class SelectedPresetCard;
-
-    enum class PackFilter {
-        All,
-        Factory,
-        User
-    };
 
     bool keyPressed(const juce::KeyPress& key, juce::Component*) override;
     void textEditorTextChanged(juce::TextEditor&) override;
@@ -78,18 +74,18 @@ private:
     void receiveResults(
             const std::vector<PresetLibraryRecord>& records,
             const std::vector<int>& visibleIndices);
-    void applyPackFilter();
-    void setPackFilter(PackFilter filter);
-    void updateSelectedPreview();
+    void applyTypeFilter();
+    juce::String typeFor(const PresetLibraryRecord& record) const;
     void openSelected();
     void requestDeleteSelected();
     void deletePreset(const juce::File& file);
     void updateVisibility();
     void styleTabButton(juce::TextButton& button);
-    void styleFilterButton(juce::TextButton& button);
 
     OpenCallback onOpen;
     ActionCallback onBrowse;
+    ActionCallback onCreate;
+    ActionCallback onTogglePlayback;
     TabCallback onTabChanged;
     DeleteCallback onDelete;
     ConfirmDeleteCallback onConfirmDelete;
@@ -99,20 +95,18 @@ private:
     juce::TextButton presets { "PRESETS" };
     juce::TextButton patterns { "PATTERNS" };
     std::unique_ptr<PatternBrowser> patternBrowser;
-    PresetSearchField search { "Search presets..." };
-    juce::TextButton all { "ALL" };
-    juce::TextButton factory { "FACTORY" };
-    juce::TextButton user { "USER" };
+    LibrarySearchField search { "Search presets..." };
+    juce::TextButton create { "+ NEW" };
+    juce::ComboBox typeFilter;
+    juce::TextButton remove { "DELETE" };
     juce::Viewport viewport;
-    std::unique_ptr<SelectedPresetCard> selectedPreview;
     std::unique_ptr<CompactList> list;
-    juce::Label status;
     juce::TextButton browse { "BROWSE FILES..." };
     std::unique_ptr<PresetLibraryIndex> index;
     std::vector<PresetLibraryRecord> library;
     std::vector<int> searchResults;
+    std::map<std::string, juce::String> patternTypes;
     WorkspaceSidebarTab tab { WorkspaceSidebarTab::Presets };
-    PackFilter packFilter { PackFilter::All };
 };
 
 }

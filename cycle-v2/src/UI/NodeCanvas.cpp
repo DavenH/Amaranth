@@ -257,7 +257,8 @@ NodeCanvas::~NodeCanvas() {
 void NodeCanvas::configurePresetSidebar(
         std::vector<File> directories,
         InlinePresetBrowser::OpenCallback openCallback,
-        InlinePresetBrowser::ActionCallback browseCallback) {
+        InlinePresetBrowser::ActionCallback browseCallback,
+        InlinePresetBrowser::ActionCallback createCallback) {
     presetSidebar = std::make_unique<InlinePresetBrowser>(
             std::move(directories),
             std::move(openCallback),
@@ -267,7 +268,10 @@ void NodeCanvas::configurePresetSidebar(
                 guideShelfState.hoveredGuideId.clear();
                 requestCanvasRepaint();
                 openGLContext.triggerRepaint();
-            });
+            },
+            InlinePresetBrowser::DeleteCallback {},
+            InlinePresetBrowser::ConfirmDeleteCallback {},
+            std::move(createCallback));
     presetSidebar->setPlaybackToggleCallback([this] {
         if (previewPlaybackToggle) {
             previewPlaybackToggle();
@@ -277,6 +281,12 @@ void NodeCanvas::configurePresetSidebar(
             != WorkspaceSidebarTab::Curves;
     addAndMakeVisible(*presetSidebar);
     resized();
+}
+
+void NodeCanvas::refreshPresetSidebarIndex() {
+    if (presetSidebar != nullptr) {
+        presetSidebar->refreshIndex();
+    }
 }
 
 void NodeCanvas::configurePatternSidebar(

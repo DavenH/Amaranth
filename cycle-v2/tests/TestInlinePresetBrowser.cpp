@@ -1,8 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "UI/CanvasChromePalette.h"
 #include "UI/InlinePresetBrowser.h"
-#include "UI/PresetSearchField.h"
+#include "UI/LibrarySearchField.h"
 #include "UI/SidebarMediaRow.h"
 
 using namespace CycleV2;
@@ -28,7 +27,7 @@ Component* findDescendantWithID(Component& parent, const String& id) {
 TEST_CASE("Preset search fields reserve Space for playback when empty",
         "[cycle-v2][preset][browser][search][regression]") {
     ScopedJuceInitialiser_GUI juce;
-    PresetSearchField search("Search presets...");
+    LibrarySearchField search("Search presets...");
     int playbackToggles {};
     search.setPlaybackToggleCallback([&] { ++playbackToggles; });
 
@@ -46,6 +45,11 @@ TEST_CASE("Preset search fields reserve Space for playback when empty",
     REQUIRE(search.keyPressed(KeyPress(' ', ModifierKeys::noModifiers, ' ')));
     REQUIRE(search.getText().isEmpty());
     REQUIRE(playbackToggles == 2);
+
+    search.setText("   ", false);
+    REQUIRE(search.keyPressed(KeyPress(' ', ModifierKeys::noModifiers, ' ')));
+    REQUIRE(search.getText().isEmpty());
+    REQUIRE(playbackToggles == 3);
 }
 
 TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
@@ -57,6 +61,7 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
             .getChildFile("presets");
     File opened;
     int browseCount {};
+    int createCount {};
     String deleteConfirmationName;
     File deleted;
     std::function<void(bool)> finishDeleteConfirmation;
@@ -76,7 +81,8 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
             [&](const String& name, std::function<void(bool)> completion) {
                 deleteConfirmationName = name;
                 finishDeleteConfirmation = std::move(completion);
-            });
+            },
+            [&] { ++createCount; });
     browser.setBounds(0, 0, 272, 760);
 
     auto* curves = dynamic_cast<Button*>(
@@ -89,10 +95,11 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
             browser.findChildWithID("workspace.sidebar.search"));
     auto* browse = dynamic_cast<Button*>(
             browser.findChildWithID("workspace.sidebar.browse"));
-    auto* all = dynamic_cast<Button*>(
-            browser.findChildWithID("workspace.sidebar.all"));
+    auto* create = dynamic_cast<Button*>(
+            browser.findChildWithID("workspace.sidebar.presetNew"));
+    auto* typeFilter = dynamic_cast<ComboBox*>(
+            browser.findChildWithID("workspace.sidebar.presetType"));
     auto* list = findDescendantWithID(browser, "workspace.sidebar.list");
-    auto* hero = findDescendantWithID(browser, "workspace.sidebar.hero");
     auto* viewport = dynamic_cast<Viewport*>(
             findDescendantWithID(browser, "workspace.sidebar.viewport"));
     auto* remove = dynamic_cast<Button*>(
@@ -101,22 +108,29 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(presets != nullptr);
     REQUIRE(patterns != nullptr);
     REQUIRE(search != nullptr);
-    REQUIRE(dynamic_cast<PresetSearchField*>(search) != nullptr);
+    REQUIRE(dynamic_cast<LibrarySearchField*>(search) != nullptr);
     int playbackToggles {};
     browser.setPlaybackToggleCallback([&] { ++playbackToggles; });
     REQUIRE(search->keyPressed(KeyPress(' ', ModifierKeys::noModifiers, ' ')));
     REQUIRE(search->getText().isEmpty());
     REQUIRE(playbackToggles == 1);
     REQUIRE(browse != nullptr);
-    REQUIRE(all != nullptr);
+    REQUIRE(create != nullptr);
+    REQUIRE(typeFilter != nullptr);
     REQUIRE(list != nullptr);
-    REQUIRE(hero != nullptr);
     REQUIRE(viewport != nullptr);
     REQUIRE(remove != nullptr);
     REQUIRE(search->getFont().getHeight() >= 14.f);
-    REQUIRE(all->getToggleState());
-    REQUIRE(all->findColour(TextButton::textColourOnId)
-            == CanvasChromePalette::canvasBackground);
+    REQUIRE(search->getHeight() == 30);
+    REQUIRE(create->getHeight() == search->getHeight());
+    REQUIRE(create->getButtonText() == "+ NEW");
+    REQUIRE(typeFilter->getHeight() == 30);
+    REQUIRE(typeFilter->getText() == "All types");
+    REQUIRE(typeFilter->getY() > search->getY());
+    REQUIRE_FALSE(findDescendantWithID(browser, "workspace.sidebar.hero"));
+    create->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(createCount == 1);
     REQUIRE(browser.activeTab() == WorkspaceSidebarTab::Presets);
     REQUIRE(browser.hitTest(20, 300));
 
@@ -139,25 +153,40 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(browser.visiblePresetCount() > 1);
     REQUIRE(list->getHeight()
             == 20 + browser.visiblePresetCount() * SidebarMediaRow::height);
+    const int unfilteredCount = browser.visiblePresetCount();
+    PatternRecord keys;
+    keys.id = "factory-basic-keys";
+    keys.tag = "Keys";
+    browser.setPatterns({ keys }, {});
+    typeFilter->setSelectedId(6, sendNotificationSync);
+    REQUIRE(typeFilter->getText() == "Keys");
+    for (int attempt = 0; attempt < 30 && browser.visiblePresetCount() == 0; ++attempt) {
+        MessageManager::getInstance()->runDispatchLoopUntil(100);
+    }
+    REQUIRE(browser.visiblePresetCount() > 0);
+    REQUIRE(browser.visiblePresetCount() < unfilteredCount);
+    typeFilter->setSelectedId(1, sendNotificationSync);
 
-    const Rectangle<int> pinnedHeroBounds = hero->getBounds();
     viewport->setViewPosition(0, 100);
     MessageManager::getInstance()->runDispatchLoopUntil(40);
     REQUIRE(viewport->getViewPositionY() == 100);
-    REQUIRE(hero->getBounds() == pinnedHeroBounds);
-    REQUIRE(hero->isVisible());
-    const String firstHeroName = hero->getName();
     REQUIRE(browser.keyPressed(KeyPress(KeyPress::downKey)));
-    REQUIRE(hero->getName() != firstHeroName);
-    REQUIRE(hero->getBounds() == pinnedHeroBounds);
+    REQUIRE(viewport->getViewPositionY() == 100);
 
     search->setText("kicker", true);
     for (int attempt = 0; attempt < 12 && browser.visiblePresetCount() != 1; ++attempt) {
         MessageManager::getInstance()->runDispatchLoopUntil(100);
     }
     REQUIRE(browser.visiblePresetCount() == 1);
-    REQUIRE(browser.keyPressed(KeyPress(KeyPress::returnKey)));
+    const Time now = Time::getCurrentTime();
+    const Point<float> rowPosition { 40.f, 50.f };
+    MouseEvent click(Desktop::getInstance().getMainMouseSource(),
+            rowPosition, ModifierKeys::leftButtonModifier,
+            1.f, 0.f, 0.f, 0.f, 0.f, list, list,
+            now, rowPosition, now, 1, false);
+    list->mouseUp(click);
     REQUIRE(opened.getFileNameWithoutExtension() == "kicker");
+    REQUIRE(browser.keyPressed(KeyPress(KeyPress::returnKey)));
 
     remove->triggerClick();
     MessageManager::getInstance()->runDispatchLoopUntil(40);

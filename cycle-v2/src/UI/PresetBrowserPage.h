@@ -9,7 +9,7 @@
 #include "UI/PresetBrowserComponents.h"
 #include "UI/PresetBrowserLookAndFeel.h"
 #include "UI/PresetThumbnailCache.h"
-#include "UI/PresetSearchField.h"
+#include "UI/LibrarySearchField.h"
 
 namespace CycleV2 {
 
@@ -50,7 +50,7 @@ private:
     PresetThumbnailCache thumbnails;
     juce::Label title;
     juce::Label subtitle;
-    PresetSearchField search { "Search presets, authors, packs, or tags" };
+    LibrarySearchField search { "Search presets, authors, packs, or tags" };
     PresetBrowserSidebar sidebar;
     juce::Viewport viewport;
     PresetCardGrid grid;

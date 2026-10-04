@@ -1,0 +1,14 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/sitar-pad-2.cyclegraph" },
+    { "command": "pointer", "targetId": "workspace.sidebar.presets", "event": "click" },
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    { "command": "pointer", "targetId": "workspace.sidebar.preset.24-h", "event": "click" },
+    { "command": "assertState", "path": "performance.previewPatternId", "equals": "factory-basic-keys" },
+    { "command": "waitForIdle", "idleDelayMs": 300 },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-sidebar-presets-aligned.png" },
+    { "command": "pointer", "targetId": "workspace.sidebar.patterns", "event": "click" },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-sidebar-patterns-aligned.png" }
+  ],
+  "quit": true
+}

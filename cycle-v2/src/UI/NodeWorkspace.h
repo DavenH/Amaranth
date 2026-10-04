@@ -42,7 +42,9 @@ public:
     void configurePresetSidebar(
             std::vector<File> directories,
             InlinePresetBrowser::OpenCallback openCallback,
-            InlinePresetBrowser::ActionCallback browseCallback);
+            InlinePresetBrowser::ActionCallback browseCallback,
+            InlinePresetBrowser::ActionCallback createCallback);
+    void refreshPresetSidebarIndex();
     void configurePatternLibrary(File factoryDirectory, File userDirectory);
     var exportAutomationState() const;
     String exportGraphJson() const;

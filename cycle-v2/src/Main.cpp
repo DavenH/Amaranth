@@ -84,9 +84,11 @@ public:
                 updateDocumentPresentation();
             });
             workspace->configurePresetSidebar(
-                    { repositoryPresetDirectory(), defaultGraphDirectory() },
+                    { repositoryPresetDirectory(), defaultGraphDirectory(),
+                            userPresetDirectory() },
                     [this](const File& file) { return requestOpenGraphFile(file); },
-                    [this] { chooseOpenGraph(); });
+                    [this] { chooseOpenGraph(); },
+                    [this] { createPresetFromCurrent(); });
             workspace->configurePatternLibrary(
                     repositoryPresetDirectory().getSiblingFile("patterns"),
                     agentPatternDirectory != File()
@@ -297,6 +299,11 @@ public:
           #endif
         }
 
+        File userPresetDirectory() const {
+            return File::getSpecialLocation(File::userApplicationDataDirectory)
+                    .getChildFile("Amaranth Audio/Cycle V2/Presets");
+        }
+
         File defaultGraphDirectory() const {
             File fallback = repositoryPresetDirectory();
 
@@ -434,7 +441,8 @@ public:
             }
 
             auto* page = new CycleV2::PresetBrowserPage(
-                    std::vector<File> { repositoryPresetDirectory(), defaultGraphDirectory() },
+                    std::vector<File> { repositoryPresetDirectory(), defaultGraphDirectory(),
+                            userPresetDirectory() },
                     [safeThis = SafePointer<MainWindow>(this)](const File& file) {
                         return safeThis != nullptr && safeThis->requestOpenGraphFile(file);
                     },
@@ -508,10 +516,32 @@ public:
             completion(saveGraphFile(currentGraphFile));
         }
 
-        void chooseSaveGraphAs(std::function<void(bool)> completion = {}) {
-            const File initialFile = currentGraphFile == File()
-                    ? defaultGraphDirectory().getChildFile("Untitled.cyclegraph")
-                    : currentGraphFile;
+        void createPresetFromCurrent() {
+            const File directory = userPresetDirectory();
+            if (directory.createDirectory().failed()) {
+                AlertWindow::showMessageBoxAsync(
+                        MessageBoxIconType::WarningIcon,
+                        "Preset not created",
+                        "The user preset folder could not be created.");
+                return;
+            }
+            chooseSaveGraphAs(
+                    [safeThis = SafePointer<MainWindow>(this)](bool saved) {
+                        if (saved && safeThis != nullptr && safeThis->workspace != nullptr) {
+                            safeThis->workspace->refreshPresetSidebarIndex();
+                        }
+                    },
+                    directory.getChildFile("New Preset.cyclegraph"));
+        }
+
+        void chooseSaveGraphAs(
+                std::function<void(bool)> completion = {},
+                File suggestedFile = {}) {
+            const File initialFile = suggestedFile != File()
+                    ? suggestedFile
+                    : currentGraphFile == File()
+                            ? defaultGraphDirectory().getChildFile("Untitled.cyclegraph")
+                            : currentGraphFile;
             fileChooser = std::make_unique<FileChooser>(
                     "Save Cycle V2 preset",
                     initialFile,

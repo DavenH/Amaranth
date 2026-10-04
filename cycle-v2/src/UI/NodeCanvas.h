@@ -72,7 +72,9 @@ public:
     void configurePresetSidebar(
             std::vector<File> directories,
             InlinePresetBrowser::OpenCallback openCallback,
-            InlinePresetBrowser::ActionCallback browseCallback);
+            InlinePresetBrowser::ActionCallback browseCallback,
+            InlinePresetBrowser::ActionCallback createCallback);
+    void refreshPresetSidebarIndex();
     void configurePatternSidebar(
             InlinePresetBrowser::PatternSelectCallback select,
             InlinePresetBrowser::PatternEditCallback edit,
