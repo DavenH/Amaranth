@@ -48,3 +48,14 @@ wiring. The sidebar-host extraction plan in
 `docs/TDD/cycle-v2-pattern-library.md` remains the deletion target for that
 wiring and other sidebar orchestration. The architecture audit finds no new
 size trigger.
+
+## Native macOS Space route (2026-10-04)
+
+JUCE's macOS peer sends printable text to the focused `TextInputTarget` through
+the input context before `keyPressed`. This bypassed the earlier key override
+and let Space enter an empty search. `LibrarySearchField::insertTextAtCaret`
+now consumes a single Space when the field contains only whitespace and invokes
+the existing transport callback. Text with a nonempty query still uses JUCE's
+normal insertion. A focused test covers both routes. An isolated running Cycle
+instance received native macOS text and key events: Space started preview
+playback from the empty focused field, and the next Space stopped it.

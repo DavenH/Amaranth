@@ -50,6 +50,21 @@ TEST_CASE("Preset search fields reserve Space for playback when empty",
     REQUIRE(search.keyPressed(KeyPress(' ', ModifierKeys::noModifiers, ' ')));
     REQUIRE(search.getText().isEmpty());
     REQUIRE(playbackToggles == 3);
+
+    search.insertTextAtCaret(" ");
+    REQUIRE(search.getText().isEmpty());
+    REQUIRE(playbackToggles == 4);
+
+    search.setText("  ", false);
+    search.insertTextAtCaret(" ");
+    REQUIRE(search.getText().isEmpty());
+    REQUIRE(playbackToggles == 5);
+
+    search.setText("bass", false);
+    search.setCaretPosition(search.getText().length());
+    search.insertTextAtCaret(" ");
+    REQUIRE(search.getText() == "bass ");
+    REQUIRE(playbackToggles == 5);
 }
 
 TEST_CASE("Inline preset sidebar switches views filters and loads with Return",

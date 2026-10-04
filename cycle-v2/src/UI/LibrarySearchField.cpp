@@ -39,6 +39,15 @@ bool LibrarySearchField::keyPressed(const juce::KeyPress& key, juce::Component*)
     return handlePlaybackSpace(key);
 }
 
+void LibrarySearchField::insertTextAtCaret(const juce::String& text) {
+    // macOS commits printable keys through TextInputTarget before keyPressed.
+    if (text == " " && getText().trim().isEmpty()) {
+        handlePlaybackSpace(juce::KeyPress(' ', juce::ModifierKeys::noModifiers, ' '));
+        return;
+    }
+    juce::TextEditor::insertTextAtCaret(text);
+}
+
 bool LibrarySearchField::handlePlaybackSpace(const juce::KeyPress& key) {
     const auto modifiers = key.getModifiers();
     if ((key.getKeyCode() == juce::KeyPress::spaceKey

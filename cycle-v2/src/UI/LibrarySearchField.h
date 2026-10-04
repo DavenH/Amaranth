@@ -14,6 +14,7 @@ public:
     void setPlaybackToggleCallback(std::function<void()> callback);
     bool handlePlaybackSpace(const juce::KeyPress& key);
     bool keyPressed(const juce::KeyPress& key) override;
+    void insertTextAtCaret(const juce::String& text) override;
     void paintOverChildren(juce::Graphics& graphics) override;
 
 private:
