@@ -1772,6 +1772,7 @@
     ],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Pad", "Ambient"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

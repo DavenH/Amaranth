@@ -949,6 +949,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Percussion", "Rhythmic", "Distorted"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

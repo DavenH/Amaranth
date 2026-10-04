@@ -865,6 +865,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Lead", "Analog", "Bright"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

@@ -2,6 +2,10 @@
 
 Status: Complete (2026-10-04).
 
+The later tag-cloud design in `cycle-v2-library-tag-cloud.md` replaces the
+type dropdowns described below while retaining the shared search and row
+geometry.
+
 ## Design
 
 The Presets and Patterns tabs share a two-row toolbar geometry: a search field

@@ -16,6 +16,7 @@ struct PatternRecord {
     juce::File file;
     bool factory {};
     juce::String tag;
+    juce::StringArray tags;
 };
 
 class PatternLibrary {
@@ -29,7 +30,8 @@ public:
             const juce::String& id,
             const juce::String& name,
             const PresetMidiSequence& sequence,
-            const juce::String& tag = {});
+            const juce::String& tag = {},
+            const juce::StringArray& tags = {});
     juce::String newUserId() const;
 
 private:

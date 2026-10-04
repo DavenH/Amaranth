@@ -3,6 +3,10 @@
   "id": "factory-basic-keys",
   "name": "Basic Keys",
   "tag": "Keys",
+  "tags": [
+    "Keys",
+    "Chords"
+  ],
   "sequence": {
     "durationSeconds": 4,
     "notes": [

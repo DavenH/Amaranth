@@ -358,3 +358,13 @@ scratch-buffer repair noted above did not cover this fixed-array bound.
 Current status: open. Size the renderer's scratch storage for the actual
 individual voice count without truncating authored voices, then regression-test
 loading and rasterizing a preset with more than ten voices.
+
+## P3: Direct Cycle V2 agent launch with a relative script path asserted
+
+On 2026-10-04, launching the Cycle V2 executable directly with a relative
+`--agent-script` path emitted `JUCE Assertion failure in juce_File.cpp:219` and
+exited with code 134 after leaked-object assertions. This occurred while
+capturing the sidebar tag cloud; a LaunchServices run through
+`scripts/run_cycle_v2_agent.sh` with an absolute fixture path passed all
+commands. The direct invocation's stdout was not saved. Current status:
+open as a direct-launch harness issue; the product UI capture and tests pass.

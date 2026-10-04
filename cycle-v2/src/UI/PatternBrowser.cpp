@@ -3,9 +3,19 @@
 #include "UI/CanvasChromePalette.h"
 #include "UI/MidiPatternMiniMap.h"
 #include "UI/SidebarMediaRow.h"
-#include "UI/SidebarTypeFilter.h"
 
 namespace CycleV2 {
+
+namespace {
+
+juce::StringArray tagsFor(const PatternRecord& record) {
+    if (!record.tags.isEmpty()) {
+        return record.tags;
+    }
+    return { record.tag.isNotEmpty() ? record.tag : "Other" };
+}
+
+}
 
 class PatternBrowser::List final : public juce::Component {
 public:
@@ -51,14 +61,18 @@ public:
                     .withY(index * SidebarMediaRow::height)
                     .withHeight(SidebarMediaRow::height).toFloat();
             const bool selected = record.id == selectedId;
-            const auto preview = SidebarMediaRow::paintFrame(graphics, row,
-                    selected, SidebarMediaRow::PreviewPosition::BelowLabels);
+            const auto preview = SidebarMediaRow::paintFrame(graphics, row, selected);
+            {
+                juce::Graphics::ScopedSaveState save(graphics);
+                juce::Path clip;
+                clip.addRoundedRectangle(preview, 3.f);
+                graphics.reduceClipRegion(clip);
+                MidiPatternMiniMap::paintNotes(graphics, record.sequence,
+                        preview,
+                        MidiPatternMiniMap::pitchRange(record.sequence, 12, 0));
+            }
             SidebarMediaRow::paintLabels(graphics, row, record.name,
-                    record.tag.isNotEmpty() ? record.tag
-                            : (record.factory ? "Factory" : "User"), false);
-            MidiPatternMiniMap::paintNotes(graphics, record.sequence,
-                    preview,
-                    MidiPatternMiniMap::pitchRange(record.sequence, 12, 0));
+                    tagsFor(record));
         }
     }
 
@@ -95,14 +109,14 @@ PatternBrowser::PatternBrowser(
     search.setComponentID("workspace.sidebar.patternSearch");
     search.onTextChange = [this] { applyFilter(); };
     addAndMakeVisible(search);
-    createButton.setTooltip("Save the current MIDI phrase with the selected type");
-    typeFilter.setTooltip("Filter patterns and choose the type for a new pattern");
+    createButton.setTooltip("Save the current MIDI phrase as a new pattern");
     createButton.onClick = [this] { createPattern(); };
     editButton.onClick = [this] { editSelected(); };
-    typeFilter.setComponentID("workspace.sidebar.patternType");
-    SidebarTypeFilter::configure(typeFilter);
-    typeFilter.onChange = [this] { applyFilter(); };
-    addAndMakeVisible(typeFilter);
+    SidebarTagCloud::styleHeading(tagHeading);
+    addAndMakeVisible(tagHeading);
+    tagCloud.setComponentID("workspace.sidebar.patternTags");
+    tagCloud.setChangeCallback([this] { applyFilter(); });
+    addAndMakeVisible(tagCloud);
     for (auto* button : { &createButton, &editButton }) {
         button->setColour(juce::TextButton::buttonColourId,
                 CanvasChromePalette::restingControlSurface);
@@ -123,6 +137,13 @@ void PatternBrowser::setRecords(
         const juce::String& selectedId) {
     allRecords = std::move(records);
     this->selectedId = selectedId;
+    juce::StringArray available;
+    for (const auto& record : allRecords) {
+        for (const auto& tag : tagsFor(record)) {
+            available.addIfNotAlreadyThere(tag);
+        }
+    }
+    tagCloud.setTags(std::move(available));
     applyFilter();
 }
 
@@ -137,6 +158,11 @@ void PatternBrowser::createPattern() {
             juce::MessageBoxIconType::QuestionIcon,
             getTopLevelComponent());
     prompt->addTextEditor("name", {}, "Pattern name");
+    prompt->addTextEditor("tags",
+            tagCloud.selectedTags().isEmpty()
+                    ? juce::String("Other")
+                    : tagCloud.selectedTags().joinIntoString(", "),
+            "Tags (comma separated)");
     prompt->addButton("Create", 1, juce::KeyPress(juce::KeyPress::returnKey));
     prompt->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
     prompt->enterModalState(true,
@@ -150,24 +176,29 @@ void PatternBrowser::createPattern() {
                 if (name.isEmpty()) {
                     return;
                 }
-                const auto type = SidebarTypeFilter::selectedType(safeThis->typeFilter);
-                safeThis->onCreate(name,
-                        type.isNotEmpty() ? type : juce::String("Other"));
+                juce::StringArray tags;
+                tags.addTokens(prompt->getTextEditorContents("tags"), ",", "\"");
+                tags.trim();
+                tags.removeEmptyStrings();
+                tags.removeDuplicates(true);
+                if (tags.isEmpty()) {
+                    tags.add("Other");
+                }
+                safeThis->onCreate(name, tags);
             }), true);
 }
 
 void PatternBrowser::applyFilter() {
     const int previousScroll = viewport.getViewPositionY();
     std::vector<PatternRecord> visible;
-    const auto tag = SidebarTypeFilter::selectedType(typeFilter);
     const auto query = search.getText().trim();
     for (const auto& record : allRecords) {
-        const bool matchesType = tag.isEmpty() || record.tag.equalsIgnoreCase(tag)
-                || (tag == "Other" && record.tag.isEmpty());
+        const auto tags = tagsFor(record);
+        const bool matchesTags = tagCloud.matches(tags);
         const bool matchesQuery = query.isEmpty()
                 || record.name.containsIgnoreCase(query)
-                || record.tag.containsIgnoreCase(query);
-        if (matchesType && matchesQuery) {
+                || tags.joinIntoString(" ").containsIgnoreCase(query);
+        if (matchesTags && matchesQuery) {
             visible.push_back(record);
         }
     }
@@ -181,9 +212,12 @@ PatternBrowser::pointerTargetsForAutomation() const {
     std::vector<std::pair<juce::String, juce::Rectangle<float>>> targets {
             { "workspace.sidebar.patternSearch", search.getBounds().toFloat() },
             { "workspace.sidebar.patternNew", createButton.getBounds().toFloat() },
-            { "workspace.sidebar.patternType", typeFilter.getBounds().toFloat() },
             { "workspace.sidebar.patternEdit", editButton.getBounds().toFloat() }
     };
+    for (const auto& [id, bounds] : tagCloud.pointerTargetsForAutomation()) {
+        targets.push_back({ id, bounds.translated(
+                (float) tagCloud.getX(), (float) tagCloud.getY()) });
+    }
     for (const auto& target : list->pointerTargetsForAutomation(
             viewport.getBounds(), viewport.getViewPositionY())) {
         targets.push_back(target);
@@ -204,11 +238,13 @@ void PatternBrowser::resized() {
     createRow.removeFromRight(5);
     search.setBounds(createRow);
     bounds.removeFromTop(6);
-    auto filterRow = bounds.removeFromTop(30);
-    editButton.setBounds(filterRow.removeFromRight(69));
-    filterRow.removeFromRight(5);
-    typeFilter.setBounds(filterRow);
-    bounds.removeFromTop(7);
+    auto headingRow = bounds.removeFromTop(24);
+    editButton.setBounds(headingRow.removeFromRight(69));
+    tagHeading.setBounds(headingRow);
+    bounds.removeFromTop(4);
+    const int cloudHeight = tagCloud.preferredHeightForWidth(bounds.getWidth());
+    tagCloud.setBounds(bounds.removeFromTop(cloudHeight));
+    bounds.removeFromTop(8);
     viewport.setBounds(bounds);
     list->setSize(juce::jmax(1, viewport.getMaximumVisibleWidth()),
             list->getHeight());

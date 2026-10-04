@@ -3,7 +3,6 @@
 #include "UI/CanvasChromePalette.h"
 #include "UI/PresetBrowserComponents.h"
 #include "UI/SidebarMediaRow.h"
-#include "UI/SidebarTypeFilter.h"
 
 namespace CycleV2 {
 
@@ -25,14 +24,14 @@ public:
     void setResults(
             const std::vector<PresetLibraryRecord>& records,
             const std::vector<int>& visibleIndices,
-            std::vector<juce::String> visibleTypes) {
+            std::vector<juce::StringArray> visibleTags) {
         juce::File selectedFile;
         if (const auto* current = selectedRecord()) {
             selectedFile = current->file;
         }
         library = records;
         indices = visibleIndices;
-        types = std::move(visibleTypes);
+        tags = std::move(visibleTags);
         selected = indices.empty() ? -1 : 0;
         for (int index = 0; index < (int) indices.size(); ++index) {
             if (library[(size_t) indices[(size_t) index]].file == selectedFile) {
@@ -149,7 +148,7 @@ private:
         const auto& record = library[(size_t) indices[(size_t) visibleIndex]];
         const bool isSelected = visibleIndex == selected;
         const auto preview = SidebarMediaRow::paintFrame(graphics, bounds,
-                isSelected, SidebarMediaRow::PreviewPosition::BehindLabels);
+                isSelected);
         {
             juce::Graphics::ScopedSaveState save(graphics);
             juce::Path clip;
@@ -159,13 +158,13 @@ private:
                     graphics, record, thumbnails, preview, false);
         }
         SidebarMediaRow::paintLabels(graphics, bounds, record.name,
-                types[(size_t) visibleIndex], true);
+                tags[(size_t) visibleIndex]);
     }
 
     PresetThumbnailCache& thumbnails;
     std::vector<PresetLibraryRecord> library;
     std::vector<int> indices;
-    std::vector<juce::String> types;
+    std::vector<juce::StringArray> tags;
     Callback onOpen;
     int selected { -1 };
 };
@@ -214,9 +213,11 @@ InlinePresetBrowser::InlinePresetBrowser(
             onCreate();
         }
     };
-    typeFilter.setComponentID("workspace.sidebar.presetType");
-    SidebarTypeFilter::configure(typeFilter);
-    typeFilter.onChange = [this] { applyTypeFilter(); };
+    SidebarTagCloud::styleHeading(tagHeading);
+    addAndMakeVisible(tagHeading);
+    tagCloud.setComponentID("workspace.sidebar.presetTags");
+    tagCloud.setChangeCallback([this] { applyTagFilter(); });
+    addAndMakeVisible(tagCloud);
     remove.setComponentID("workspace.sidebar.delete");
     remove.setTooltip("Move the selected preset to Trash");
     remove.onClick = [this] { requestDeleteSelected(); };
@@ -227,7 +228,6 @@ InlinePresetBrowser::InlinePresetBrowser(
                 CanvasChromePalette::text);
         addAndMakeVisible(*button);
     }
-    addAndMakeVisible(typeFilter);
 
     list->setCallbacks([this] { openSelected(); });
     viewport.setComponentID("workspace.sidebar.viewport");
@@ -283,14 +283,16 @@ void InlinePresetBrowser::configurePatterns(
 void InlinePresetBrowser::setPatterns(
         std::vector<PatternRecord> records,
         const juce::String& selectedId) {
-    patternTypes.clear();
+    patternTags.clear();
     for (const auto& record : records) {
-        patternTypes[record.id.toStdString()] = record.tag;
+        patternTags[record.id.toStdString()] = record.tags.isEmpty()
+                ? juce::StringArray { record.tag } : record.tags;
     }
     if (patternBrowser != nullptr) {
         patternBrowser->setRecords(std::move(records), selectedId);
     }
-    applyTypeFilter();
+    updateAvailableTags();
+    applyTagFilter();
 }
 
 void InlinePresetBrowser::setActiveTab(WorkspaceSidebarTab nextTab) {
@@ -343,9 +345,12 @@ InlinePresetBrowser::pointerTargetsForAutomation() const {
     if (tab == WorkspaceSidebarTab::Presets) {
         targets.push_back({ "workspace.sidebar.search", search.getBounds().toFloat() });
         targets.push_back({ "workspace.sidebar.presetNew", create.getBounds().toFloat() });
-        targets.push_back({ "workspace.sidebar.presetType", typeFilter.getBounds().toFloat() });
         targets.push_back({ "workspace.sidebar.delete", remove.getBounds().toFloat() });
         targets.push_back({ "workspace.sidebar.browse", browse.getBounds().toFloat() });
+        for (const auto& [id, bounds] : tagCloud.pointerTargetsForAutomation()) {
+            targets.push_back({ id, bounds.translated(
+                    (float) tagCloud.getX(), (float) tagCloud.getY()) });
+        }
         for (const auto& target : list->pointerTargetsForAutomation(
                 viewport.getBounds(), viewport.getViewPositionY())) {
             targets.push_back(target);
@@ -407,11 +412,13 @@ void InlinePresetBrowser::resized() {
     searchRow.removeFromRight(5);
     search.setBounds(searchRow);
     bounds.removeFromTop(6);
-    auto filterRow = bounds.removeFromTop(30);
-    remove.setBounds(filterRow.removeFromRight(69));
-    filterRow.removeFromRight(5);
-    typeFilter.setBounds(filterRow);
-    bounds.removeFromTop(7);
+    auto headingRow = bounds.removeFromTop(24);
+    remove.setBounds(headingRow.removeFromRight(69));
+    tagHeading.setBounds(headingRow);
+    bounds.removeFromTop(4);
+    const int cloudHeight = tagCloud.preferredHeightForWidth(bounds.getWidth());
+    tagCloud.setBounds(bounds.removeFromTop(cloudHeight));
+    bounds.removeFromTop(8);
     viewport.setBounds(bounds);
     list->setSize(
             juce::jmax(1, viewport.getMaximumVisibleWidth()),
@@ -463,43 +470,49 @@ void InlinePresetBrowser::receiveResults(
         const std::vector<int>& visibleIndices) {
     library = records;
     searchResults = visibleIndices;
-    applyTypeFilter();
+    updateAvailableTags();
+    applyTagFilter();
 }
 
-void InlinePresetBrowser::applyTypeFilter() {
-    std::vector<int> filtered;
-    std::vector<juce::String> types;
-    filtered.reserve(searchResults.size());
-    types.reserve(searchResults.size());
-    const auto selectedType = SidebarTypeFilter::selectedType(typeFilter);
-    for (const int indexToCheck : searchResults) {
-        const auto type = typeFor(library[(size_t) indexToCheck]);
-        if (selectedType.isEmpty() || type.equalsIgnoreCase(selectedType)) {
-            filtered.push_back(indexToCheck);
-            types.push_back(type);
+void InlinePresetBrowser::updateAvailableTags() {
+    juce::StringArray available;
+    for (const auto& record : library) {
+        for (const auto& tag : tagsFor(record)) {
+            available.addIfNotAlreadyThere(tag);
         }
     }
-    list->setResults(library, filtered, std::move(types));
+    tagCloud.setTags(std::move(available));
+    resized();
+}
+
+void InlinePresetBrowser::applyTagFilter() {
+    std::vector<int> filtered;
+    std::vector<juce::StringArray> tags;
+    filtered.reserve(searchResults.size());
+    tags.reserve(searchResults.size());
+    for (const int indexToCheck : searchResults) {
+        auto recordTags = tagsFor(library[(size_t) indexToCheck]);
+        if (tagCloud.matches(recordTags)) {
+            filtered.push_back(indexToCheck);
+            tags.push_back(std::move(recordTags));
+        }
+    }
+    list->setResults(library, filtered, std::move(tags));
     remove.setEnabled(!filtered.empty());
     const int width = juce::jmax(1, viewport.getMaximumVisibleWidth());
     list->setSize(width, list->getHeight());
 }
 
-juce::String InlinePresetBrowser::typeFor(const PresetLibraryRecord& record) const {
-    for (const auto& tag : record.presentation.tags) {
-        const auto type = SidebarTypeFilter::canonicalType(tag);
-        if (type.isNotEmpty()) {
-            return type;
-        }
+juce::StringArray InlinePresetBrowser::tagsFor(
+        const PresetLibraryRecord& record) const {
+    if (!record.presentation.tags.isEmpty()) {
+        return record.presentation.tags;
     }
-    const auto found = patternTypes.find(record.presentation.patternId.toStdString());
-    if (found != patternTypes.end()) {
-        const auto type = SidebarTypeFilter::canonicalType(found->second);
-        if (type.isNotEmpty()) {
-            return type;
-        }
+    const auto found = patternTags.find(record.presentation.patternId.toStdString());
+    if (found != patternTags.end() && !found->second.isEmpty()) {
+        return found->second;
     }
-    return "Other";
+    return { "Other" };
 }
 
 void InlinePresetBrowser::openSelected() {
@@ -580,7 +593,8 @@ void InlinePresetBrowser::updateVisibility() {
     patterns.setColour(juce::TextButton::textColourOnId, CanvasChromePalette::text);
     search.setVisible(showingPresets);
     create.setVisible(showingPresets);
-    typeFilter.setVisible(showingPresets);
+    tagHeading.setVisible(showingPresets);
+    tagCloud.setVisible(showingPresets);
     remove.setVisible(showingPresets);
     viewport.setVisible(showingPresets);
     browse.setVisible(showingPresets);

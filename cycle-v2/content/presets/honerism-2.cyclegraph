@@ -1562,6 +1562,7 @@
     ],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Pad"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

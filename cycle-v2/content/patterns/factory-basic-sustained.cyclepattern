@@ -3,6 +3,10 @@
   "id": "factory-basic-sustained",
   "name": "Basic Sustained",
   "tag": "Sustained",
+  "tags": [
+    "Sustained",
+    "Legato"
+  ],
   "sequence": {
     "durationSeconds": 6,
     "notes": [

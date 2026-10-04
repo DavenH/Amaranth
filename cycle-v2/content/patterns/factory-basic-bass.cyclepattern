@@ -3,6 +3,10 @@
   "id": "factory-basic-bass",
   "name": "Basic Bass",
   "tag": "Bass",
+  "tags": [
+    "Bass",
+    "Rhythmic"
+  ],
   "sequence": {
     "durationSeconds": 4,
     "notes": [

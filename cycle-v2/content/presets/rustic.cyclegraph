@@ -574,6 +574,7 @@
     ],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Bass"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

@@ -3,6 +3,10 @@
   "id": "factory-basic-pad",
   "name": "Basic Pad",
   "tag": "Pad",
+  "tags": [
+    "Pad",
+    "Ambient"
+  ],
   "sequence": {
     "durationSeconds": 8,
     "notes": [

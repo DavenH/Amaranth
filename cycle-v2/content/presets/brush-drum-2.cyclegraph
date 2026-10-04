@@ -750,6 +750,7 @@
     ],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Percussion", "Rhythmic"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

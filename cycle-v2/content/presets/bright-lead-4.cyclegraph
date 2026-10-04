@@ -870,6 +870,7 @@
     ],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Lead", "Bright"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

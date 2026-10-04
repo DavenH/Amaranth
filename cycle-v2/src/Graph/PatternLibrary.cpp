@@ -58,6 +58,18 @@ std::optional<PatternRecord> readPattern(const juce::File& file, bool factory) {
     result.file = file;
     result.factory = factory;
     result.tag = object->getProperty("tag").toString();
+    const auto tagsValue = object->getProperty("tags");
+    if (const auto* tags = tagsValue.getArray()) {
+        for (const auto& tag : *tags) {
+            const auto value = tag.toString().trim();
+            if (value.isNotEmpty()) {
+                result.tags.addIfNotAlreadyThere(value);
+            }
+        }
+    }
+    if (result.tag.isNotEmpty() && !result.tags.contains(result.tag, true)) {
+        result.tags.insert(0, result.tag);
+    }
     if (!validId(result.id) || result.name.isEmpty()) {
         return std::nullopt;
     }
@@ -76,6 +88,11 @@ juce::var writePattern(const PatternRecord& pattern) {
     object->setProperty("id", pattern.id);
     object->setProperty("name", pattern.name);
     object->setProperty("tag", pattern.tag);
+    juce::Array<juce::var> tags;
+    for (const auto& tag : pattern.tags) {
+        tags.add(tag);
+    }
+    object->setProperty("tags", std::move(tags));
     object->setProperty("sequence",
             PresetPresentationCodec::writeSequenceJSON(pattern.sequence));
     return juce::var(object.release());
@@ -128,15 +145,23 @@ std::optional<PatternRecord> PatternLibrary::saveUserPattern(
         const juce::String& id,
         const juce::String& name,
         const PresetMidiSequence& sequence,
-        const juce::String& tag) {
+        const juce::String& tag,
+        const juce::StringArray& tags) {
     const auto* existing = find(id);
     if (!validId(id) || name.trim().isEmpty()
             || (existing != nullptr && existing->factory)) {
         return std::nullopt;
     }
+    auto tagsToSave = !tags.isEmpty() ? tags
+            : existing != nullptr ? existing->tags : juce::StringArray { tag };
+    const auto primaryTag = tag.isNotEmpty()
+            ? tag : (existing != nullptr ? existing->tag : juce::String());
+    if (primaryTag.isNotEmpty() && !tagsToSave.contains(primaryTag, true)) {
+        tagsToSave.insert(0, primaryTag);
+    }
     PatternRecord record { id, name.trim(), sequence,
             userDirectory.getChildFile(id + ".cyclepattern"), false,
-            tag.isNotEmpty() ? tag : (existing != nullptr ? existing->tag : juce::String()) };
+            primaryTag, tagsToSave };
     if (!PresetPresentationCodec::readSequenceJSON(
             PresetPresentationCodec::writeSequenceJSON(sequence)).has_value()
             || userDirectory.createDirectory().failed()) {

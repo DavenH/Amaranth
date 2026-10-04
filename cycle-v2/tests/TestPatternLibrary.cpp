@@ -4,6 +4,7 @@
 #include "Graph/GraphSerializer.h"
 #include "UI/PatternBrowser.h"
 #include "Graph/PatternLibrary.h"
+#include "UI/SidebarTagCloud.h"
 
 using namespace CycleV2;
 using namespace juce;
@@ -21,6 +22,23 @@ Component* findChild(Component& parent, const String& id) {
         }
     }
     return nullptr;
+}
+
+bool clickTag(SidebarTagCloud& cloud, const String& tag) {
+    for (const auto& [id, bounds] : cloud.pointerTargetsForAutomation()) {
+        if (id != "workspace.sidebar.tag." + tag.toLowerCase()) {
+            continue;
+        }
+        const auto position = bounds.getCentre();
+        const Time now = Time::getCurrentTime();
+        const MouseEvent click(Desktop::getInstance().getMainMouseSource(),
+                position, ModifierKeys::leftButtonModifier,
+                1.f, 0.f, 0.f, 0.f, 0.f, &cloud, &cloud,
+                now, position, now, 1, false);
+        cloud.mouseUp(click);
+        return true;
+    }
+    return false;
 }
 
 }
@@ -56,11 +74,14 @@ TEST_CASE("Pattern library validates and updates a stable user ID",
     phrase.notes.push_back({ 55, 72, 0.0, 1.0 });
     phrase.controls.push_back({ 1, 95, 2.0 });
     const String id = library.newUserId();
-    const auto created = library.saveUserPattern(id, "Jazz Phrase", phrase, "Keys");
+    const auto created = library.saveUserPattern(id, "Jazz Phrase", phrase,
+            "Keys", { "Keys", "Chords" });
     REQUIRE(created.has_value());
     REQUIRE(created->name == "Jazz Phrase");
     REQUIRE(created->sequence.controls.size() == 1);
     REQUIRE(created->tag == "Keys");
+    REQUIRE(created->tags.contains("Keys"));
+    REQUIRE(created->tags.contains("Chords"));
 
     phrase.notes[0].velocity = 109;
     const auto updated = library.saveUserPattern(id, "Jazz Phrase", phrase);
@@ -69,6 +90,8 @@ TEST_CASE("Pattern library validates and updates a stable user ID",
     REQUIRE(library.records().size() == 1);
     REQUIRE(library.find(id)->sequence.notes[0].velocity == 109);
     REQUIRE(library.find(id)->tag == "Keys");
+    REQUIRE(library.find(id)->tags.contains("Keys"));
+    REQUIRE(library.find(id)->tags.contains("Chords"));
 
     user.getChildFile("invalid.cyclepattern").replaceWithText("{ bad json");
     library.reload();
@@ -81,8 +104,7 @@ TEST_CASE("Factory preset references resolve through the curated pattern library
   #if defined(CYCLE_V2_SOURCE_DIR)
     const File content = File(CYCLE_V2_SOURCE_DIR).getChildFile("content");
     PatternLibrary library(content.getChildFile("patterns"), {});
-    REQUIRE(library.records().size() >= 5);
-    REQUIRE(library.records().size() <= 8);
+    REQUIRE(library.records().size() >= 6);
     REQUIRE(library.find("factory-sax-blue-hour") != nullptr);
     REQUIRE(library.find("factory-sax-blue-hour")->id == "factory-basic-sustained");
     REQUIRE(library.find("factory-acid-turn")->id == "factory-basic-bass");
@@ -90,10 +112,8 @@ TEST_CASE("Factory preset references resolve through the curated pattern library
     REQUIRE(library.find("factory-suspended-cloud")->id == "factory-basic-pad");
     REQUIRE(library.find("factory-swing-comp")->id == "factory-basic-keys");
     REQUIRE(library.find("factory-tom-steps")->id == "factory-basic-rhythm");
-    for (const auto& record : library.records()) {
-        REQUIRE(record.tag.isNotEmpty());
-        REQUIRE(record.sequence.notes.size() >= 4);
-    }
+    int curatedCount = 0;
+    StringArray referencedIds;
     int references = 0;
     for (const auto& file : content.getChildFile("presets").findChildFiles(
             File::findFiles, false, "*.cyclegraph")) {
@@ -105,10 +125,25 @@ TEST_CASE("Factory preset references resolve through the curated pattern library
         if (presentation.patternId.startsWith("factory-")) {
             REQUIRE(library.find(presentation.patternId) != nullptr);
             REQUIRE_FALSE(presentation.sequence.has_value());
+        }
+        if (library.find(presentation.patternId) != nullptr) {
+            referencedIds.addIfNotAlreadyThere(presentation.patternId);
             ++references;
         }
+        REQUIRE_FALSE(presentation.tags.isEmpty());
     }
     REQUIRE(references > 0);
+    for (const auto& record : library.records()) {
+        REQUIRE(record.tag.isNotEmpty());
+        REQUIRE_FALSE(record.tags.isEmpty());
+        if (record.id.startsWith("factory-basic-")) {
+            REQUIRE(record.sequence.notes.size() >= 4);
+            ++curatedCount;
+        } else {
+            REQUIRE(referencedIds.contains(record.id));
+        }
+    }
+    REQUIRE(curatedCount == 6);
   #endif
 }
 
@@ -124,8 +159,8 @@ TEST_CASE("Pattern browser rows show notes and assign their stable ID",
     PatternBrowser browser(
             [&](const String& id) { selected = id; },
             [](const String&) {},
-            [&](const String& name, const String& tag) {
-                createdName = name + ":" + tag;
+            [&](const String& name, const StringArray& tags) {
+                createdName = name + ":" + tags.joinIntoString(",");
             });
     browser.setSize(310, 240);
     std::vector<PatternRecord> records;
@@ -156,10 +191,10 @@ TEST_CASE("Pattern browser rows show notes and assign their stable ID",
     REQUIRE(selected == "factory-3");
     browser.setRecords(records, selected);
     REQUIRE(viewport->getViewPositionY() == scrollBeforeSelection);
-    auto* filter = dynamic_cast<ComboBox*>(
-            findChild(browser, "workspace.sidebar.patternType"));
+    auto* filter = dynamic_cast<SidebarTagCloud*>(
+            findChild(browser, "workspace.sidebar.patternTags"));
     REQUIRE(filter != nullptr);
-    filter->setSelectedId(3, sendNotificationSync);
+    REQUIRE(clickTag(*filter, "Bass"));
     REQUIRE(list->getHeight() == 4 * rowHeight);
     auto* search = dynamic_cast<LibrarySearchField*>(
             findChild(browser, "workspace.sidebar.patternSearch"));
@@ -178,7 +213,8 @@ TEST_CASE("Pattern browser rows show notes and assign their stable ID",
             ModalComponentManager::getInstance()->getModalComponent(0));
     REQUIRE(prompt != nullptr);
     prompt->getTextEditor("name")->setText("Swing Variations");
+    prompt->getTextEditor("tags")->setText("Bass, Acid");
     prompt->exitModalState(1);
     MessageManager::getInstance()->runDispatchLoopUntil(40);
-    REQUIRE(createdName == "Swing Variations:Bass");
+    REQUIRE(createdName == "Swing Variations:Bass,Acid");
 }

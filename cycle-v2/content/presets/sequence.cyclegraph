@@ -1949,6 +1949,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Lead", "Rhythmic"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

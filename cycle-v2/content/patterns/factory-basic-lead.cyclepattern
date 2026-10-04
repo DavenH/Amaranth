@@ -3,6 +3,10 @@
   "id": "factory-basic-lead",
   "name": "Basic Lead",
   "tag": "Lead",
+  "tags": [
+    "Lead",
+    "Melody"
+  ],
   "sequence": {
     "durationSeconds": 4,
     "notes": [

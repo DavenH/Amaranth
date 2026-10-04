@@ -1013,6 +1013,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Lead", "Stab"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

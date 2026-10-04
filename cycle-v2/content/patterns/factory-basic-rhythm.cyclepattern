@@ -2,7 +2,11 @@
   "version": 1,
   "id": "factory-basic-rhythm",
   "name": "Basic Rhythm",
-  "tag": "Rhythm",
+  "tag": "Percussion",
+  "tags": [
+    "Percussion",
+    "Rhythmic"
+  ],
   "sequence": {
     "durationSeconds": 4,
     "notes": [

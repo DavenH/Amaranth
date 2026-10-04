@@ -925,6 +925,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Keys"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

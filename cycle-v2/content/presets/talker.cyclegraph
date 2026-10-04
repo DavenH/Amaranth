@@ -1718,6 +1718,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Vocal"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

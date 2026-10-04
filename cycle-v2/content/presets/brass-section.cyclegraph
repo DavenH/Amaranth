@@ -1115,6 +1115,7 @@
     ],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Brass", "Sustained"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

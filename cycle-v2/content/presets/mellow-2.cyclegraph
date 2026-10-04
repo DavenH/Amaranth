@@ -1159,6 +1159,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Pad", "Soft"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

@@ -3,6 +3,7 @@
 #include "UI/InlinePresetBrowser.h"
 #include "UI/LibrarySearchField.h"
 #include "UI/SidebarMediaRow.h"
+#include "UI/SidebarTagCloud.h"
 
 using namespace CycleV2;
 using namespace juce;
@@ -20,6 +21,23 @@ Component* findDescendantWithID(Component& parent, const String& id) {
         }
     }
     return nullptr;
+}
+
+bool clickTag(SidebarTagCloud& cloud, const String& tag) {
+    for (const auto& [id, bounds] : cloud.pointerTargetsForAutomation()) {
+        if (id != "workspace.sidebar.tag." + tag.toLowerCase()) {
+            continue;
+        }
+        const auto position = bounds.getCentre();
+        const Time now = Time::getCurrentTime();
+        const MouseEvent click(Desktop::getInstance().getMainMouseSource(),
+                position, ModifierKeys::leftButtonModifier,
+                1.f, 0.f, 0.f, 0.f, 0.f, &cloud, &cloud,
+                now, position, now, 1, false);
+        cloud.mouseUp(click);
+        return true;
+    }
+    return false;
 }
 
 }
@@ -67,6 +85,31 @@ TEST_CASE("Preset search fields reserve Space for playback when empty",
     REQUIRE(playbackToggles == 5);
 }
 
+TEST_CASE("Sidebar tag chips toggle an inclusive filter",
+        "[cycle-v2][preset][browser][tags]") {
+    ScopedJuceInitialiser_GUI juce;
+    SidebarTagCloud cloud;
+    cloud.setBounds(0, 0, 240, 60);
+    cloud.setTags({ "Bass", "Keys", "Pad" });
+    int changes {};
+    cloud.setChangeCallback([&] { ++changes; });
+
+    REQUIRE(cloud.matches({ "Bass" }));
+    REQUIRE(clickTag(cloud, "Bass"));
+    REQUIRE(cloud.matches({ "Bass", "Acid" }));
+    REQUIRE_FALSE(cloud.matches({ "Pad" }));
+    REQUIRE(clickTag(cloud, "Pad"));
+    REQUIRE(cloud.matches({ "Pad" }));
+    REQUIRE_FALSE(cloud.matches({ "Keys" }));
+    REQUIRE(changes == 2);
+
+    cloud.setTags({ "Bass", "Pad", "Texture" });
+    REQUIRE(cloud.selectedTags().size() == 2);
+    REQUIRE(clickTag(cloud, "Bass"));
+    REQUIRE(clickTag(cloud, "Pad"));
+    REQUIRE(cloud.matches({ "Keys" }));
+}
+
 TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
         "[cycle-v2][preset][browser][inline]") {
     ScopedJuceInitialiser_GUI juce;
@@ -112,8 +155,8 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
             browser.findChildWithID("workspace.sidebar.browse"));
     auto* create = dynamic_cast<Button*>(
             browser.findChildWithID("workspace.sidebar.presetNew"));
-    auto* typeFilter = dynamic_cast<ComboBox*>(
-            browser.findChildWithID("workspace.sidebar.presetType"));
+    auto* tagCloud = dynamic_cast<SidebarTagCloud*>(
+            browser.findChildWithID("workspace.sidebar.presetTags"));
     auto* list = findDescendantWithID(browser, "workspace.sidebar.list");
     auto* viewport = dynamic_cast<Viewport*>(
             findDescendantWithID(browser, "workspace.sidebar.viewport"));
@@ -131,7 +174,7 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(playbackToggles == 1);
     REQUIRE(browse != nullptr);
     REQUIRE(create != nullptr);
-    REQUIRE(typeFilter != nullptr);
+    REQUIRE(tagCloud != nullptr);
     REQUIRE(list != nullptr);
     REQUIRE(viewport != nullptr);
     REQUIRE(remove != nullptr);
@@ -139,9 +182,7 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(search->getHeight() == 30);
     REQUIRE(create->getHeight() == search->getHeight());
     REQUIRE(create->getButtonText() == "+ NEW");
-    REQUIRE(typeFilter->getHeight() == 30);
-    REQUIRE(typeFilter->getText() == "All types");
-    REQUIRE(typeFilter->getY() > search->getY());
+    REQUIRE(tagCloud->getY() > search->getY());
     REQUIRE_FALSE(findDescendantWithID(browser, "workspace.sidebar.hero"));
     create->triggerClick();
     MessageManager::getInstance()->runDispatchLoopUntil(40);
@@ -169,18 +210,17 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(list->getHeight()
             == 20 + browser.visiblePresetCount() * SidebarMediaRow::height);
     const int unfilteredCount = browser.visiblePresetCount();
-    PatternRecord keys;
-    keys.id = "factory-basic-keys";
-    keys.tag = "Keys";
-    browser.setPatterns({ keys }, {});
-    typeFilter->setSelectedId(6, sendNotificationSync);
-    REQUIRE(typeFilter->getText() == "Keys");
+    for (int attempt = 0; attempt < 30 && !clickTag(*tagCloud, "Keys"); ++attempt) {
+        MessageManager::getInstance()->runDispatchLoopUntil(100);
+    }
+    REQUIRE(tagCloud->selectedTags().contains("Keys"));
     for (int attempt = 0; attempt < 30 && browser.visiblePresetCount() == 0; ++attempt) {
         MessageManager::getInstance()->runDispatchLoopUntil(100);
     }
     REQUIRE(browser.visiblePresetCount() > 0);
     REQUIRE(browser.visiblePresetCount() < unfilteredCount);
-    typeFilter->setSelectedId(1, sendNotificationSync);
+    REQUIRE(clickTag(*tagCloud, "Keys"));
+    REQUIRE(tagCloud->selectedTags().isEmpty());
 
     viewport->setViewPosition(0, 100);
     MessageManager::getInstance()->runDispatchLoopUntil(40);

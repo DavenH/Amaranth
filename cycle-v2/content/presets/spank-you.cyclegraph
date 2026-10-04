@@ -993,6 +993,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Bass", "Distorted"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

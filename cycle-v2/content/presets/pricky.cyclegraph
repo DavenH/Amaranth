@@ -995,6 +995,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Lead"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

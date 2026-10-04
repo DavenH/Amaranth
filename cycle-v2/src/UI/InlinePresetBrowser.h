@@ -12,6 +12,7 @@
 #include "UI/PresetThumbnailCache.h"
 #include "UI/PatternBrowser.h"
 #include "UI/LibrarySearchField.h"
+#include "UI/SidebarTagCloud.h"
 
 namespace CycleV2 {
 
@@ -74,8 +75,9 @@ private:
     void receiveResults(
             const std::vector<PresetLibraryRecord>& records,
             const std::vector<int>& visibleIndices);
-    void applyTypeFilter();
-    juce::String typeFor(const PresetLibraryRecord& record) const;
+    void applyTagFilter();
+    juce::StringArray tagsFor(const PresetLibraryRecord& record) const;
+    void updateAvailableTags();
     void openSelected();
     void requestDeleteSelected();
     void deletePreset(const juce::File& file);
@@ -97,7 +99,8 @@ private:
     std::unique_ptr<PatternBrowser> patternBrowser;
     LibrarySearchField search { "Search presets..." };
     juce::TextButton create { "+ NEW" };
-    juce::ComboBox typeFilter;
+    juce::Label tagHeading;
+    SidebarTagCloud tagCloud;
     juce::TextButton remove { "DELETE" };
     juce::Viewport viewport;
     std::unique_ptr<CompactList> list;
@@ -105,7 +108,7 @@ private:
     std::unique_ptr<PresetLibraryIndex> index;
     std::vector<PresetLibraryRecord> library;
     std::vector<int> searchResults;
-    std::map<std::string, juce::String> patternTypes;
+    std::map<std::string, juce::StringArray> patternTags;
     WorkspaceSidebarTab tab { WorkspaceSidebarTab::Presets };
 };
 

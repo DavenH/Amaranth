@@ -1516,6 +1516,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Pad", "Ambient", "Soft"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

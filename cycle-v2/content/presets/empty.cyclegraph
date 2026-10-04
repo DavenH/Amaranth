@@ -63,6 +63,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Keys"],
         "patternId": "factory-basic-keys"
     }
 }

@@ -721,6 +721,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Pluck", "Pluck"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

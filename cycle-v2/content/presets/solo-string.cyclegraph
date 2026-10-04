@@ -2706,6 +2706,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Strings", "Sustained"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

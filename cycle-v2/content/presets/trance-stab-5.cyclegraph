@@ -929,6 +929,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "tags": ["Bass", "Stab"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,
