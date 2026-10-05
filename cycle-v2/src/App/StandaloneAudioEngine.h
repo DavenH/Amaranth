@@ -46,6 +46,10 @@ public:
     bool enqueueMidiMessage(
             const juce::MidiMessage& message,
             MidiEventSource source) override;
+    bool enqueueMidiMessageAt(
+            const juce::MidiMessage& message,
+            MidiEventSource source,
+            double timestampSeconds) override;
     void releaseMidiSource(MidiEventSource source) override;
     void setMidiRecordingEnabled(bool enabled) { midiRecordingEnabled.store(enabled); }
     bool dequeueRecordedMidi(RealtimeMidiEvent& event) {

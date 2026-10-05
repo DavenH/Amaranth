@@ -46,7 +46,7 @@ PATTERN_FAMILIES = {
     "Pad": "Pad",
     "Keys": "Keys",
     "Rhythm": "Percussion",
-    "Sustained": "Sustained",
+    "Sustained": "Texture",
     "Other": "Texture",
 }
 
@@ -98,9 +98,6 @@ def tags_for(name, presentation, families):
         family = families.get(presentation.get("patternId"), "Texture")
 
     tags = [family]
-    if (family in {"Wind", "Brass", "Strings"}
-            or lowered == "satisfaction") and "Sustained" not in tags:
-        tags.append("Sustained")
     if (family == "Guitar" or "pluck" in lowered
             or "pick" in lowered) and "Pluck" not in tags:
         tags.append("Pluck")

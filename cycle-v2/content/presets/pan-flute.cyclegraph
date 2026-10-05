@@ -1030,7 +1030,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Wind", "Sustained"],
+        "tags": ["Wind"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

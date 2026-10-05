@@ -149,6 +149,30 @@ TEST_CASE("Trackpad deltas accumulate and the minimap navigates the snapped view
     REQUIRE(changed.notes.back().pitch > changed.notes.front().pitch);
 }
 
+TEST_CASE("Major piano-roll beat lines stay tied to absolute beats while panning",
+        "[cycle-v2][preset][sequence][editor][ui]") {
+    ScopedJuceInitialiser_GUI gui;
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    PresetMidiEditor editor(phrase, [](PresetMidiSequence) {});
+    const auto grid = editor.noteGrid();
+    const int y = roundToInt(grid.getY() + grid.getHeight() / 48.f);
+    const auto lineX = [&](int step) {
+        return roundToInt(grid.getX() + grid.getWidth() * step / 16.f);
+    };
+    const Image before = editor.createComponentSnapshot(editor.getLocalBounds());
+    REQUIRE(before.getPixelAt(lineX(4), y).getBrightness()
+            > before.getPixelAt(lineX(3), y).getBrightness());
+
+    MouseWheelDetails wheel {};
+    wheel.deltaX = -0.0625f;
+    editor.mouseWheelMove(pointer(editor, { grid.getCentreX(), grid.getCentreY() }),
+            wheel);
+    const Image after = editor.createComponentSnapshot(editor.getLocalBounds());
+    REQUIRE(after.getPixelAt(lineX(3), y).getBrightness()
+            > after.getPixelAt(lineX(4), y).getBrightness());
+}
+
 TEST_CASE("A note with its start offscreen exposes a distinct resize gesture",
         "[cycle-v2][preset][sequence][editor]") {
     ScopedJuceInitialiser_GUI gui;

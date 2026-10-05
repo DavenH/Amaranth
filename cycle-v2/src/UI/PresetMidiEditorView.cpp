@@ -209,7 +209,8 @@ void PresetMidiEditor::paintNoteGrid(Graphics& graphics) const {
     }
     for (int step = 0; step <= 16; ++step) {
         const float x = xForTime(timeOffset() + step * gridStep());
-        graphics.setColour(Colours::white.withAlpha(step % 4 == 0 ? 0.24f : 0.09f));
+        graphics.setColour(Colours::white.withAlpha(
+                (timeOffsetSteps + step) % 4 == 0 ? 0.24f : 0.09f));
         graphics.drawVerticalLine(roundToInt(x), grid.getY(), grid.getBottom());
     }
 }

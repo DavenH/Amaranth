@@ -15,6 +15,17 @@ public:
     bool enqueueMidiMessage(const MidiMessage& message, MidiEventSource source) override {
         messages.push_back(message);
         sources.push_back(source);
+        timestamps.push_back(-1.0);
+        return true;
+    }
+
+    bool enqueueMidiMessageAt(
+            const MidiMessage& message,
+            MidiEventSource source,
+            double timestampSeconds) override {
+        messages.push_back(message);
+        sources.push_back(source);
+        timestamps.push_back(timestampSeconds);
         return true;
     }
 
@@ -24,6 +35,7 @@ public:
 
     std::vector<MidiMessage> messages;
     std::vector<MidiEventSource> sources;
+    std::vector<double> timestamps;
     std::vector<MidiEventSource> releasedSources;
 };
 
@@ -177,17 +189,21 @@ TEST_CASE("Preset phrase playback sends notes and CC through the performance MID
     REQUIRE(panel.startPlayback(startedAt));
     REQUIRE(sink.messages[1].isNoteOn());
     REQUIRE(sink.messages[1].getNoteNumber() == 67);
-    REQUIRE(sink.messages[2].isController());
-    REQUIRE(sink.messages[2].getControllerValue() == 15);
+    REQUIRE(sink.messages[2].isNoteOff());
+    REQUIRE(sink.messages[3].isNoteOn());
+    REQUIRE(sink.sources[1] == MidiEventSource::PatternPlayback);
+    REQUIRE(sink.sources[2] == MidiEventSource::PatternPlayback);
+    REQUIRE(sink.sources[3] == MidiEventSource::PatternPlayback);
+    REQUIRE(sink.timestamps[1] == Catch::Approx(startedAt / 1000.0));
+    REQUIRE(sink.timestamps[2] == Catch::Approx(startedAt / 1000.0 + 0.5));
+    REQUIRE(sink.timestamps[3] == Catch::Approx(startedAt / 1000.0 + 0.5));
+    const size_t scheduledCount = sink.messages.size();
     panel.updatePlayback(startedAt + 800.0);
-    REQUIRE(sink.messages.size() >= 6);
-    REQUIRE(sink.messages[3].isNoteOff());
-    REQUIRE(sink.messages[4].isNoteOn());
-    REQUIRE(sink.messages[5].isController());
-    REQUIRE(sink.messages[5].getControllerValue() == 95);
+    REQUIRE(sink.messages.size() == scheduledCount + 1);
+    REQUIRE(sink.messages.back().isController());
+    REQUIRE(sink.messages.back().getControllerValue() == 95);
     panel.stopPlayback();
-    REQUIRE(sink.messages.back().isNoteOff());
-    REQUIRE(sink.messages.back().getNoteNumber() == 72);
+    REQUIRE(sink.releasedSources.back() == MidiEventSource::PatternPlayback);
 }
 
 TEST_CASE("Preset automation interpolates the configured MIDI controller",
@@ -210,6 +226,32 @@ TEST_CASE("Preset automation interpolates the configured MIDI controller",
     panel.updatePlayback(startedAt + 500.0);
     REQUIRE(sink.messages.back().getControllerNumber() == 3);
     REQUIRE(sink.messages.back().getControllerValue() == 60);
+}
+
+TEST_CASE("Sequence notes retain fractional timing when the UI transport updates late",
+        "[cycle-v2][keyboard][sequence][transport]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 1.0;
+    phrase.notes.push_back({ 48, 100, 0.137, 0.123 });
+    phrase.notes.push_back({ 50, 80, 0.319, 0.157 });
+    panel.setSequence(phrase);
+
+    REQUIRE(panel.startPlayback(1000.0));
+    REQUIRE(sink.timestamps[1] == Catch::Approx(1.137));
+    REQUIRE(sink.timestamps[2] == Catch::Approx(1.260));
+    REQUIRE(sink.timestamps[3] == Catch::Approx(1.319));
+    REQUIRE(sink.timestamps[4] == Catch::Approx(1.476));
+    REQUIRE(sink.sources[1] == MidiEventSource::PatternPlayback);
+    const size_t eventCount = sink.messages.size();
+
+    panel.updatePlayback(1700.0);
+    REQUIRE(sink.messages.size() == eventCount);
+    panel.stopPlayback();
+    REQUIRE(sink.releasedSources.back() == MidiEventSource::PatternPlayback);
 }
 
 TEST_CASE("Record button captures MIDI note and controller gestures into the preset phrase",

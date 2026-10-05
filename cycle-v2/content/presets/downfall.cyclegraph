@@ -933,7 +933,7 @@
     ],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Sustained"],
+        "tags": ["Texture"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

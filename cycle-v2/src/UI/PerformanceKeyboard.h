@@ -33,6 +33,7 @@ public:
     void revealNote(int midiNote);
     void revealRange(int lowest, int highest);
     void releaseAllNotes();
+    void mirrorSequenceNote(int noteNumber, float velocity, bool noteOn);
     bool mouseDownOnKey(int midiNoteNumber, const MouseEvent& event) override;
     void resized() override;
 
@@ -86,6 +87,7 @@ private:
 
     MidiKeyboardState& keyboardState;
     MidiEventSink& eventSink;
+    bool mirroringSequenceNote {};
     StateListener stateListener;
 };
 
@@ -193,6 +195,7 @@ private:
     void auditionSequenceNote(int pitch, int velocity, bool noteOn);
     void releaseEditorAudition();
     void dispatchSequenceEvents(double elapsedSeconds);
+    bool scheduleSequenceEvents(double startSeconds);
     void rebuildPlaybackEvents();
     bool hasSequenceNotes() const;
 

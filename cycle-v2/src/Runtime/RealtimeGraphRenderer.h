@@ -143,6 +143,7 @@ private:
     MidiControlState midiControls;
     std::array<RealtimeMidiEvent, maximumScheduledEvents> scheduledEvents;
     size_t scheduledEventCount {};
+    uint32_t patternPlaybackGeneration {};
     uint64_t nextVoiceOrder {};
     std::atomic<float> voiceDurationOverrideSeconds {};
     double volumeEnvelopeClockSampleRate {};

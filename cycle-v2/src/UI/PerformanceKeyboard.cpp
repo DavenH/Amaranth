@@ -103,6 +103,16 @@ void PerformanceKeyboard::releaseAllNotes() {
     currentVelocity = 0.f;
 }
 
+void PerformanceKeyboard::mirrorSequenceNote(
+        int noteNumber, float velocity, bool noteOn) {
+    const ScopedValueSetter<bool> visualOnly(mirroringSequenceNote, true);
+    if (noteOn) {
+        keyboardState.noteOn(1, noteNumber, velocity);
+    } else {
+        keyboardState.noteOff(1, noteNumber, velocity);
+    }
+}
+
 void PerformanceKeyboard::resized() {
     constexpr int whiteKeyCount = 15;
     if (getWidth() <= 0) {
@@ -179,6 +189,9 @@ void PerformanceKeyboard::handleNoteOn(
         float velocity) {
     currentHeldNote = midiNoteNumber;
     currentVelocity = velocity;
+    if (mirroringSequenceNote) {
+        return;
+    }
     eventSink.enqueueMidiMessage(
             MidiMessage::noteOn(midiChannel, midiNoteNumber, velocity),
             MidiEventSource::PerformanceKeyboard);
@@ -188,9 +201,11 @@ void PerformanceKeyboard::handleNoteOff(
         int midiChannel,
         int midiNoteNumber,
         float velocity) {
-    eventSink.enqueueMidiMessage(
-            MidiMessage::noteOff(midiChannel, midiNoteNumber, velocity),
-            MidiEventSource::PerformanceKeyboard);
+    if (!mirroringSequenceNote) {
+        eventSink.enqueueMidiMessage(
+                MidiMessage::noteOff(midiChannel, midiNoteNumber, velocity),
+                MidiEventSource::PerformanceKeyboard);
+    }
     if (currentHeldNote == midiNoteNumber) {
         currentHeldNote = -1;
         currentVelocity = 0.f;
@@ -473,6 +488,11 @@ bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
     playing = true;
     playButton.setButtonText("STOP");
     sendModWheelValue();
+    if (hasSequenceNotes()
+            && !scheduleSequenceEvents(nowMilliseconds / 1000.0)) {
+        stopPlayback();
+        return false;
+    }
     if (!hasSequenceNotes()) {
         keyboardState.noteOn(1, playbackNote, 0.8f);
     }
@@ -494,12 +514,15 @@ void PerformanceKeyboardPanel::togglePlayback() {
 
 void PerformanceKeyboardPanel::stopPlayback(bool resetProgress) {
     stopTimer();
+    if (playing && hasSequenceNotes()) {
+        eventSink.releaseMidiSource(MidiEventSource::PatternPlayback);
+    }
     if (playing && !hasSequenceNotes() && playbackNote >= 0) {
         keyboardState.noteOff(1, playbackNote, 0.f);
     }
     for (int note = 0; note < 128; ++note) {
         if (activePlaybackNoteCounts[(size_t) note] > 0) {
-            keyboardState.noteOff(1, note, 0.f);
+            keyboard.mirrorSequenceNote(note, 0.f, false);
             activePlaybackNoteCounts[(size_t) note] = 0;
         }
     }
@@ -540,16 +563,14 @@ void PerformanceKeyboardPanel::dispatchSequenceEvents(double elapsedSeconds) {
         if (message.isNoteOn()) {
             const int note = message.getNoteNumber();
             if (activePlaybackNoteCounts[(size_t) note]++ == 0) {
-                keyboardState.noteOn(1, note, message.getFloatVelocity());
+                keyboard.mirrorSequenceNote(note, message.getFloatVelocity(), true);
             }
         } else if (message.isNoteOff()) {
             const int note = message.getNoteNumber();
             if (activePlaybackNoteCounts[(size_t) note] > 0
                     && --activePlaybackNoteCounts[(size_t) note] == 0) {
-                keyboardState.noteOff(1, note, 0.f);
+                keyboard.mirrorSequenceNote(note, 0.f, false);
             }
-        } else {
-            eventSink.enqueueMidiMessage(message, MidiEventSource::PerformanceKeyboard);
         }
     }
     if (modulationEnvelope.empty()) {
@@ -573,9 +594,22 @@ void PerformanceKeyboardPanel::dispatchSequenceEvents(double elapsedSeconds) {
     if (value != lastSentModulation) {
         eventSink.enqueueMidiMessage(
                 MidiMessage::controllerEvent(1, first.controller, value),
-                MidiEventSource::PerformanceKeyboard);
+                MidiEventSource::PatternPlayback);
         lastSentModulation = value;
     }
+}
+
+bool PerformanceKeyboardPanel::scheduleSequenceEvents(double startSeconds) {
+    for (const auto& event : playbackEvents) {
+        if (!eventSink.enqueueMidiMessageAt(
+                event.message,
+                MidiEventSource::PatternPlayback,
+                startSeconds + event.timeSeconds)) {
+            eventSink.releaseMidiSource(MidiEventSource::PatternPlayback);
+            return false;
+        }
+    }
+    return true;
 }
 
 void PerformanceKeyboardPanel::recordMidiMessage(

@@ -1603,7 +1603,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Vocal", "Sustained"],
+        "tags": ["Vocal"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

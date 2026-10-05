@@ -82,3 +82,28 @@ TEST_CASE("Realtime MIDI queue overflow requests source-scoped recovery",
     REQUIRE(queue.consumeRecoveryRequest(MidiEventSource::PerformanceKeyboard));
     REQUIRE_FALSE(queue.consumeRecoveryRequest(MidiEventSource::PerformanceKeyboard));
 }
+
+TEST_CASE("Canceling pattern playback invalidates queued notes without touching the keyboard",
+        "[cycle-v2][midi][realtime][sequence]") {
+    RealtimeMidiEventQueue queue;
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 60, (uint8) 100),
+            MidiEventSource::PatternPlayback, 42.137));
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 64, (uint8) 100),
+            MidiEventSource::PerformanceKeyboard, 42.0));
+
+    RealtimeMidiEvent pattern;
+    RealtimeMidiEvent keyboard;
+    REQUIRE(queue.dequeue(pattern));
+    REQUIRE(queue.dequeue(keyboard));
+    REQUIRE(queue.isCurrent(pattern));
+    REQUIRE(queue.isCurrent(keyboard));
+
+    queue.cancelSource(MidiEventSource::PatternPlayback);
+    REQUIRE_FALSE(queue.isCurrent(pattern));
+    REQUIRE(queue.isCurrent(keyboard));
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 67, (uint8) 100),
+            MidiEventSource::PatternPlayback, 42.319));
+    REQUIRE(queue.dequeue(pattern));
+    REQUIRE(queue.isCurrent(pattern));
+    REQUIRE(pattern.timestampSeconds == 42.319);
+}

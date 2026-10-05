@@ -154,6 +154,7 @@ TEST_CASE("Curated preset families and distorted trait match saved metadata",
         auto uniqueTags = rawTags;
         uniqueTags.removeDuplicates(true);
         REQUIRE(rawTags == uniqueTags);
+        REQUIRE_FALSE(tags.contains("Sustained"));
         if (tags.contains("Distorted")) {
             distortedNames.add(name);
         }
@@ -161,7 +162,7 @@ TEST_CASE("Curated preset families and distorted trait match saved metadata",
             REQUIRE(tags == StringArray { "Vocal" });
         }
         if (name == "satisfaction") {
-            REQUIRE(tags == StringArray { "Vocal", "Sustained" });
+            REQUIRE(tags == StringArray { "Vocal" });
         }
         if (!name.containsIgnoreCase("sax")
                 && name != "kicker" && name != "stomper") {

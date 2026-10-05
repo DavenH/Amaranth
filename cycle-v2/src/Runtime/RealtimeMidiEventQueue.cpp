@@ -56,6 +56,8 @@ bool RealtimeMidiEventQueue::enqueue(
     if (!convert(message, source, timestampSeconds, sequence, converted)) {
         return false;
     }
+    converted.sourceGeneration = sourceGenerations[sourceIndex(source)].load(
+            std::memory_order_acquire);
 
     size_t position = enqueuePosition.load(std::memory_order_relaxed);
     for (;;) {
@@ -98,6 +100,18 @@ bool RealtimeMidiEventQueue::dequeue(RealtimeMidiEvent& event) {
 
 bool RealtimeMidiEventQueue::consumeRecoveryRequest(MidiEventSource source) {
     return recoveryRequested[sourceIndex(source)].exchange(false, std::memory_order_acq_rel);
+}
+
+void RealtimeMidiEventQueue::cancelSource(MidiEventSource source) {
+    sourceGenerations[sourceIndex(source)].fetch_add(1, std::memory_order_acq_rel);
+}
+
+bool RealtimeMidiEventQueue::isCurrent(const RealtimeMidiEvent& event) const {
+    return event.sourceGeneration == generation(event.source);
+}
+
+uint32_t RealtimeMidiEventQueue::generation(MidiEventSource source) const {
+    return sourceGenerations[sourceIndex(source)].load(std::memory_order_acquire);
 }
 
 bool RealtimeMidiEventQueue::convert(
@@ -144,7 +158,12 @@ bool RealtimeMidiEventQueue::convert(
 }
 
 size_t RealtimeMidiEventQueue::sourceIndex(MidiEventSource source) {
-    return source == MidiEventSource::PerformanceKeyboard ? 0u : 1u;
+    switch (source) {
+        case MidiEventSource::PerformanceKeyboard: return 0u;
+        case MidiEventSource::Hardware: return 1u;
+        case MidiEventSource::PatternPlayback: return 2u;
+    }
+    return 0u;
 }
 
 }

@@ -1,5 +1,13 @@
 # Cycle V2 UI Bug Notes
 
+## P3: Astral realtime test references an absent factory fixture
+
+On 2026-10-05, the broader realtime test filter failed at
+`TestRealtimeGraphRenderer.cpp:67` because
+`cycle-v2/content/presets/astral.cyclegraph` is absent. This is unrelated to
+the MIDI scheduler change; the focused timestamp and cancellation tests pass.
+Status: open; restore the fixture or update the test to a current preset.
+
 ## P2: Canvas navigation slows at high zoom
 
 Reported 2026-10-02: when zoomed in a lot, navigating the Cycle V2 canvas
