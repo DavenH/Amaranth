@@ -10,6 +10,12 @@
 
 namespace CycleV2 {
 
+namespace {
+
+constexpr double automationLookaheadSeconds = 0.5;
+
+}
+
 PerformanceKeyboard::PerformanceKeyboard(
         MidiKeyboardState& state,
         MidiEventSink& sink) :
@@ -433,8 +439,8 @@ void PerformanceKeyboardPanel::releaseEditorAudition() {
 
 void PerformanceKeyboardPanel::rebuildPlaybackEvents() {
     playbackEvents.clear();
-    modulationEnvelope.clear();
     if (!sequence.has_value()) {
+        controlScheduler.reset({}, 1, 0.0);
         return;
     }
     for (const auto& note : sequence->notes) {
@@ -449,6 +455,7 @@ void PerformanceKeyboardPanel::rebuildPlaybackEvents() {
             : (std::any_of(sequence->controls.begin(), sequence->controls.end(),
                     [](const PresetMidiControl& control) { return control.controller == 1; })
                     ? 1 : sequence->controls.front().controller);
+    std::vector<PresetMidiControl> modulationEnvelope;
     for (const auto& control : sequence->controls) {
         if (control.controller == envelopeController) {
             modulationEnvelope.push_back(control);
@@ -468,10 +475,8 @@ void PerformanceKeyboardPanel::rebuildPlaybackEvents() {
                 };
                 return priority(first.message) < priority(second.message);
             });
-    std::stable_sort(modulationEnvelope.begin(), modulationEnvelope.end(),
-            [](const PresetMidiControl& first, const PresetMidiControl& second) {
-                return first.timeSeconds < second.timeSeconds;
-            });
+    controlScheduler.reset(std::move(modulationEnvelope), envelopeController,
+            sequence->durationSeconds);
 }
 
 bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
@@ -479,8 +484,7 @@ bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
     stopPlayback();
     stopRecording();
     nextPlaybackEvent = 0;
-    nextModulationSegment = 0;
-    lastSentModulation = -1;
+    rebuildPlaybackEvents();
     activePlaybackNoteCounts.fill(0);
     playbackNote = selectedPreviewNote;
     progress = 0.f;
@@ -495,6 +499,11 @@ bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
     }
     if (!hasSequenceNotes()) {
         keyboardState.noteOn(1, playbackNote, 0.8f);
+    }
+    if (!controlScheduler.scheduleUntil(automationLookaheadSeconds,
+            nowMilliseconds / 1000.0, eventSink)) {
+        stopPlayback();
+        return false;
     }
     if (sequence.has_value()) {
         dispatchSequenceEvents(0.0);
@@ -514,7 +523,7 @@ void PerformanceKeyboardPanel::togglePlayback() {
 
 void PerformanceKeyboardPanel::stopPlayback(bool resetProgress) {
     stopTimer();
-    if (playing && hasSequenceNotes()) {
+    if (playing && sequence.has_value()) {
         eventSink.releaseMidiSource(MidiEventSource::PatternPlayback);
     }
     if (playing && !hasSequenceNotes() && playbackNote >= 0) {
@@ -544,6 +553,13 @@ void PerformanceKeyboardPanel::updatePlayback(double nowMilliseconds) {
             (nowMilliseconds - playbackStartedAtMilliseconds) / 1000.0);
     if (sequence.has_value()) {
         dispatchSequenceEvents(elapsedSeconds);
+        if (!controlScheduler.scheduleUntil(
+                elapsedSeconds + automationLookaheadSeconds,
+                playbackStartedAtMilliseconds / 1000.0,
+                eventSink)) {
+            stopPlayback();
+            return;
+        }
     }
     progress = jlimit(
             0.f,
@@ -572,30 +588,6 @@ void PerformanceKeyboardPanel::dispatchSequenceEvents(double elapsedSeconds) {
                 keyboard.mirrorSequenceNote(note, 0.f, false);
             }
         }
-    }
-    if (modulationEnvelope.empty()) {
-        return;
-    }
-    while (nextModulationSegment + 1 < modulationEnvelope.size()
-            && modulationEnvelope[nextModulationSegment + 1].timeSeconds <= elapsedSeconds) {
-        ++nextModulationSegment;
-    }
-    const auto& first = modulationEnvelope[nextModulationSegment];
-    int value = first.value;
-    if (nextModulationSegment + 1 < modulationEnvelope.size()) {
-        const auto& second = modulationEnvelope[nextModulationSegment + 1];
-        const double span = second.timeSeconds - first.timeSeconds;
-        if (span > 0.0 && elapsedSeconds > first.timeSeconds) {
-            const double fraction = jlimit(0.0, 1.0,
-                    (elapsedSeconds - first.timeSeconds) / span);
-            value = roundToInt(first.value + (second.value - first.value) * fraction);
-        }
-    }
-    if (value != lastSentModulation) {
-        eventSink.enqueueMidiMessage(
-                MidiMessage::controllerEvent(1, first.controller, value),
-                MidiEventSource::PatternPlayback);
-        lastSentModulation = value;
     }
 }
 

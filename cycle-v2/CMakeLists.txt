@@ -236,6 +236,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteEntryIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PerformanceKeyboard.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PatternControlScheduler.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetMidiEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetMidiEditorView.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/MidiPatternMiniMap.cpp"

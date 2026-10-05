@@ -1,6 +1,8 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+
 #include "Graph/GraphCompiler.h"
 #include "Runtime/RealtimeGraphRenderer.h"
 #include "UI/CanvasUtilityDock.h"
@@ -198,10 +200,18 @@ TEST_CASE("Preset phrase playback sends notes and CC through the performance MID
     REQUIRE(sink.timestamps[2] == Catch::Approx(startedAt / 1000.0 + 0.5));
     REQUIRE(sink.timestamps[3] == Catch::Approx(startedAt / 1000.0 + 0.5));
     const size_t scheduledCount = sink.messages.size();
+    REQUIRE(scheduledCount > 30);
     panel.updatePlayback(startedAt + 800.0);
-    REQUIRE(sink.messages.size() == scheduledCount + 1);
-    REQUIRE(sink.messages.back().isController());
-    REQUIRE(sink.messages.back().getControllerValue() == 95);
+    REQUIRE(sink.messages.size() > scheduledCount);
+    const auto matching = std::find_if(sink.messages.begin(), sink.messages.end(),
+            [](const MidiMessage& message) {
+                return message.isController()
+                        && message.getControllerValue() == 95;
+            });
+    REQUIRE(matching != sink.messages.end());
+    const size_t matchingIndex = (size_t) std::distance(sink.messages.begin(), matching);
+    REQUIRE(sink.timestamps[matchingIndex]
+            == Catch::Approx(startedAt / 1000.0 + 0.8));
     panel.stopPlayback();
     REQUIRE(sink.releasedSources.back() == MidiEventSource::PatternPlayback);
 }
@@ -221,11 +231,50 @@ TEST_CASE("Preset automation interpolates the configured MIDI controller",
 
     const double startedAt = Time::getMillisecondCounterHiRes();
     REQUIRE(panel.startPlayback(startedAt));
-    REQUIRE(sink.messages.back().isController());
-    REQUIRE(sink.messages.back().getControllerNumber() == 3);
+    const auto initialCount = sink.messages.size();
+    REQUIRE(initialCount > 40);
+    const auto atHalfSecond = std::find_if(sink.messages.begin(), sink.messages.end(),
+            [](const MidiMessage& message) {
+                return message.isController()
+                        && message.getControllerNumber() == 3
+                        && message.getControllerValue() == 60;
+            });
+    REQUIRE(atHalfSecond != sink.messages.end());
+    const size_t index = (size_t) std::distance(sink.messages.begin(), atHalfSecond);
+    REQUIRE(sink.timestamps[index] == Catch::Approx(startedAt / 1000.0 + 0.5));
     panel.updatePlayback(startedAt + 500.0);
-    REQUIRE(sink.messages.back().getControllerNumber() == 3);
-    REQUIRE(sink.messages.back().getControllerValue() == 60);
+    REQUIRE(sink.messages.size() > initialCount);
+}
+
+TEST_CASE("Pattern automation schedules dense timestamped values ahead of UI ticks",
+        "[cycle-v2][keyboard][sequence][automation][timing]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 2.0;
+    phrase.notes.push_back({ 60, 100, 0.0, 1.5 });
+    phrase.controls.push_back({ 1, 0, 0.0 });
+    phrase.controls.push_back({ 1, 127, 1.0 });
+    panel.setSequence(phrase);
+
+    REQUIRE(panel.startPlayback(1000.0));
+    std::vector<double> controlTimes;
+    for (size_t index = 0; index < sink.messages.size(); ++index) {
+        if (sink.messages[index].isController()
+                && sink.sources[index] == MidiEventSource::PatternPlayback) {
+            REQUIRE(sink.timestamps[index] >= 1.0);
+            REQUIRE(sink.timestamps[index] <= 1.5);
+            controlTimes.push_back(sink.timestamps[index]);
+        }
+    }
+    REQUIRE(controlTimes.size() >= 50);
+    for (size_t index = 1; index < controlTimes.size(); ++index) {
+        REQUIRE(controlTimes[index] - controlTimes[index - 1] <= 0.011);
+    }
+    panel.stopPlayback();
+    REQUIRE(sink.releasedSources.back() == MidiEventSource::PatternPlayback);
 }
 
 TEST_CASE("Sequence notes retain fractional timing when the UI transport updates late",

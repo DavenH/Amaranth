@@ -7,8 +7,9 @@
 
 #include <UI/Widgets/AmaranthMidiKeyboard.h>
 
-#include "Runtime/RealtimeMidiEventQueue.h"
 #include "Graph/PresetPresentation.h"
+#include "Runtime/RealtimeMidiEventQueue.h"
+#include "UI/PatternControlScheduler.h"
 
 namespace CycleV2 {
 
@@ -214,14 +215,12 @@ private:
     double playbackStartedAtMilliseconds {};
     double recordingStartedAtSeconds {};
     size_t nextPlaybackEvent {};
-    size_t nextModulationSegment {};
-    int lastSentModulation { -1 };
     std::array<double, 128> recordedNoteStarts {};
     std::array<int, 128> recordedVelocities {};
     std::array<int, 128> activePlaybackNoteCounts {};
     std::optional<PresetMidiSequence> sequence;
     std::vector<PlaybackEvent> playbackEvents;
-    std::vector<PresetMidiControl> modulationEnvelope;
+    PatternControlScheduler controlScheduler;
 
     std::function<void(PresetMidiSequence)> sequenceChanged;
     std::function<void(bool)> recordingChanged;
