@@ -164,6 +164,8 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
             findDescendantWithID(browser, "workspace.sidebar.viewport"));
     auto* remove = dynamic_cast<Button*>(
             findDescendantWithID(browser, "workspace.sidebar.delete"));
+    auto* favorites = dynamic_cast<Button*>(
+            findDescendantWithID(browser, "workspace.sidebar.presetFavoritesOnly"));
     REQUIRE(curves != nullptr);
     REQUIRE(presets != nullptr);
     REQUIRE(patterns != nullptr);
@@ -180,6 +182,8 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(list != nullptr);
     REQUIRE(viewport != nullptr);
     REQUIRE(remove != nullptr);
+    REQUIRE(favorites != nullptr);
+    REQUIRE(favorites->isVisible());
     REQUIRE(search->getFont().getHeight() >= 14.f);
     REQUIRE(search->getHeight() == 30);
     REQUIRE(create->getHeight() == search->getHeight());
@@ -196,9 +200,11 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     MessageManager::getInstance()->runDispatchLoopUntil(40);
     REQUIRE(browser.activeTab() == WorkspaceSidebarTab::Curves);
     REQUIRE_FALSE(browser.hitTest(20, 300));
+    REQUIRE_FALSE(favorites->isVisible());
     presets->triggerClick();
     MessageManager::getInstance()->runDispatchLoopUntil(40);
     REQUIRE(browser.activeTab() == WorkspaceSidebarTab::Presets);
+    REQUIRE(favorites->isVisible());
     const std::vector<WorkspaceSidebarTab> expectedTabs {
             WorkspaceSidebarTab::Curves,
             WorkspaceSidebarTab::Presets

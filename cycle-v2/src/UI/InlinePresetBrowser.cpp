@@ -651,6 +651,7 @@ void InlinePresetBrowser::updateVisibility() {
     create.setVisible(showingPresets);
     tagHeading.setVisible(showingPresets);
     tagCloud.setVisible(showingPresets);
+    favoritesOnly.setVisible(showingPresets);
     remove.setVisible(showingPresets);
     viewport.setVisible(showingPresets);
     browse.setVisible(showingPresets);
