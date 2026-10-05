@@ -42,6 +42,9 @@ MidiMessage RealtimeMidiEvent::toMidiMessage() const {
 
         case Kind::AllNotesOff:
             return MidiMessage::allNotesOff((int) channel);
+
+        case Kind::AllSoundOff:
+            return MidiMessage::allSoundOff((int) channel);
     }
 
     return {};
@@ -138,6 +141,14 @@ bool RealtimeMidiEventQueue::convert(
         event.data2 = (uint8_t) roundToInt(message.getFloatVelocity() * 127.f);
         return true;
     }
+    if (message.isAllSoundOff()) {
+        event.kind = RealtimeMidiEvent::Kind::AllSoundOff;
+        return true;
+    }
+    if (message.isAllNotesOff()) {
+        event.kind = RealtimeMidiEvent::Kind::AllNotesOff;
+        return true;
+    }
     if (message.isController()) {
         event.kind = RealtimeMidiEvent::Kind::Controller;
         event.data1 = (uint8_t) message.getControllerNumber();
@@ -147,10 +158,6 @@ bool RealtimeMidiEventQueue::convert(
     if (message.isChannelPressure()) {
         event.kind = RealtimeMidiEvent::Kind::ChannelPressure;
         event.data1 = (uint8_t) message.getChannelPressureValue();
-        return true;
-    }
-    if (message.isAllNotesOff() || message.isAllSoundOff()) {
-        event.kind = RealtimeMidiEvent::Kind::AllNotesOff;
         return true;
     }
 

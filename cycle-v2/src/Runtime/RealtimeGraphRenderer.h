@@ -121,6 +121,7 @@ private:
             double callbackStartSeconds);
     void applyEvent(const RealtimeMidiEvent& event, size_t sampleOffset);
     void releaseSource(MidiEventSource source, size_t sampleOffset);
+    void resetSource(MidiEventSource source, size_t sampleOffset);
     Voice& allocateVoice(const RealtimeMidiEvent& event, size_t sampleOffset);
     void renderVoices(
             float* const* outputChannels,

@@ -163,7 +163,9 @@ void StandaloneAudioEngine::releaseMidiSource(MidiEventSource source) {
         midiEvents.cancelSource(source);
     }
     midiEvents.enqueue(
-            MidiMessage::allNotesOff(1),
+            source == MidiEventSource::PatternPlayback
+                    ? MidiMessage::allSoundOff(1)
+                    : MidiMessage::allNotesOff(1),
             source,
             currentTimeSeconds());
 }

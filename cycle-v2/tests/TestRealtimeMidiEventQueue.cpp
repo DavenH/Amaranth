@@ -107,3 +107,18 @@ TEST_CASE("Canceling pattern playback invalidates queued notes without touching 
     REQUIRE(queue.isCurrent(pattern));
     REQUIRE(pattern.timestampSeconds == 42.319);
 }
+
+TEST_CASE("All Sound Off retains its hard-stop event type in the realtime queue",
+        "[cycle-v2][midi][realtime][sequence][stop]") {
+    RealtimeMidiEventQueue queue;
+    REQUIRE(queue.enqueue(MidiMessage::allSoundOff(1),
+            MidiEventSource::PatternPlayback, 4.0));
+    REQUIRE(queue.enqueue(MidiMessage::allNotesOff(1),
+            MidiEventSource::PerformanceKeyboard, 4.0));
+    RealtimeMidiEvent event;
+    REQUIRE(queue.dequeue(event));
+    REQUIRE(event.kind == RealtimeMidiEvent::Kind::AllSoundOff);
+    REQUIRE(event.toMidiMessage().isAllSoundOff());
+    REQUIRE(queue.dequeue(event));
+    REQUIRE(event.kind == RealtimeMidiEvent::Kind::AllNotesOff);
+}

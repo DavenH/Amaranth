@@ -39,6 +39,14 @@ The new mod-wheel test and all six neighboring performance-keyboard/layout
 tests pass in the same CTest discovery. Full output is in
 `build/tests/Testing/Temporary/LastTest.log`.
 
+On 2026-10-05, a broader `[browser],[sequence],[realtime],[favorites]` run
+passed 61 of 68 tests. Seven existing realtime/executor tests failed in
+telemetry, global delay, spectral output, or factory preset load assertions;
+the same telemetry test fails alone. Several factory preset files are currently
+deleted or edited in the workspace. The focused preview Stop tests and 34
+browser/sequence/favorites cases pass. Log:
+`/private/tmp/cycle-v2-focused-tests.txt`. Current status: open.
+
 Current status: open; reconcile the active preset/audio work independently of
 the presentation-only keyboard control.
 

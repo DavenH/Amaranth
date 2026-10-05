@@ -20,7 +20,8 @@ struct RealtimeMidiEvent {
         NoteOff,
         Controller,
         ChannelPressure,
-        AllNotesOff
+        AllNotesOff,
+        AllSoundOff
     };
 
     Kind kind { Kind::NoteOn };

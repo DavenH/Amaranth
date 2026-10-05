@@ -254,6 +254,24 @@ TEST_CASE("Sequence notes retain fractional timing when the UI transport updates
     REQUIRE(sink.releasedSources.back() == MidiEventSource::PatternPlayback);
 }
 
+TEST_CASE("Preview transport toggle stops an active sequence source",
+        "[cycle-v2][keyboard][sequence][transport][stop]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    phrase.notes.push_back({ 60, 100, 0.0, 3.0 });
+    panel.setSequence(phrase);
+
+    panel.togglePlayback();
+    REQUIRE(panel.isPlaying());
+    panel.togglePlayback();
+    REQUIRE_FALSE(panel.isPlaying());
+    REQUIRE(sink.releasedSources.back() == MidiEventSource::PatternPlayback);
+}
+
 TEST_CASE("Record button captures MIDI note and controller gestures into the preset phrase",
         "[cycle-v2][keyboard][sequence][record]") {
     ScopedJuceInitialiser_GUI gui;

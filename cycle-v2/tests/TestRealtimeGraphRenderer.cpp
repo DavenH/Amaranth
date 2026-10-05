@@ -1019,6 +1019,34 @@ TEST_CASE("Pattern timestamps reach sample offsets and canceled notes leave manu
     REQUIRE(performance.scheduledMidiEventCount == 0);
 }
 
+TEST_CASE("Stopping a pattern resets its sounding voice without releasing the manual keyboard",
+        "[cycle-v2][audio-device][realtime][midi][sequence][stop]") {
+    const auto compiled = GraphCompiler().compile(NodeGraph::createDemoGraph());
+    REQUIRE(compiled.succeeded());
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 256;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    renderer.setPreparedGraph(prepared.get());
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 60, (uint8) 100),
+            MidiEventSource::PatternPlayback, 1.0));
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 64, (uint8) 100),
+            MidiEventSource::PerformanceKeyboard, 1.0));
+
+    AudioBuffer<float> output(2, 256);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    renderer.process(queue, channels, 2, 256, 44100.0, 1.0);
+    REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 2);
+
+    queue.cancelSource(MidiEventSource::PatternPlayback);
+    REQUIRE(queue.enqueue(MidiMessage::allSoundOff(1),
+            MidiEventSource::PatternPlayback, 1.01));
+    renderer.process(queue, channels, 2, 256, 44100.0, 1.01);
+    REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 1);
+    REQUIRE(renderer.diagnostics(queue).peak > 0.f);
+}
+
 TEST_CASE("Fully released spectral notes repeat on the same voice instance",
         "[cycle-v2][audio-device][realtime][midi][spectral-frame][repeat-note]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
