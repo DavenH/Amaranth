@@ -933,7 +933,7 @@
     ],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Sustained", "Sustained"],
+        "tags": ["Sustained"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

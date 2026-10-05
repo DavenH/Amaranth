@@ -823,7 +823,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Pluck", "Pluck"],
+        "tags": ["Pluck"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

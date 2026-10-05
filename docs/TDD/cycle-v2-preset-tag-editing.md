@@ -62,3 +62,14 @@ while Bass is still selected therefore narrows to Fuzz Bass, rather than adding
 every bass preset to the results. The focused sidebar test checks four results
 for Distorted alone and one result for Distorted plus Bass. The same shared
 matcher is used by the pattern browser.
+
+## Vocal tag audit (2026-10-04)
+
+Satisfaction is Vocal and Sustained. The current Cycle 2 `i` preset is Vocal.
+The older `eye` file lives only under `presets/old`, has no Cycle 2 presentation
+metadata, and is not indexed by the current browser. The saved files and
+curation script agree, and the factory metadata test covers both current files.
+The same audit found ten saved Pluck or Sustained tags duplicated by the
+curation rule. The rule now checks for an existing tag before adding it; all
+current preset metadata is deduplicated. The test checks raw JSON tag arrays,
+since the presentation reader silently deduplicates them.

@@ -55,7 +55,9 @@ OVERRIDES = {
     "bass-guitar": "Bass",
     "buddha": "Texture",
     "high-synth-2": "Lead",
+    "i": "Vocal",
     "organ-3": "Keys",
+    "satisfaction": "Vocal",
     "sitar-pad": "Pad",
     "sitar-pad-2": "Pad",
     "solo-string": "Strings",
@@ -96,9 +98,11 @@ def tags_for(name, presentation, families):
         family = families.get(presentation.get("patternId"), "Texture")
 
     tags = [family]
-    if family in {"Wind", "Brass", "Strings", "Sustained"}:
+    if (family in {"Wind", "Brass", "Strings"}
+            or lowered == "satisfaction") and "Sustained" not in tags:
         tags.append("Sustained")
-    if family == "Guitar" or "pluck" in lowered or "pick" in lowered:
+    if (family == "Guitar" or "pluck" in lowered
+            or "pick" in lowered) and "Pluck" not in tags:
         tags.append("Pluck")
     if family == "Percussion":
         tags.append("Rhythmic")

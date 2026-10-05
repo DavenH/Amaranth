@@ -143,8 +143,25 @@ TEST_CASE("Curated preset families and distorted trait match saved metadata",
                 ->getProperty("presetPresentation");
         const auto tags = PresetPresentationCodec::readMetadataJSON(metadata)
                 .presentation.tags;
+        StringArray rawTags;
+        const auto encodedTagsValue = metadata.getDynamicObject()
+                ->getProperty("tags");
+        const auto* encodedTags = encodedTagsValue.getArray();
+        REQUIRE(encodedTags != nullptr);
+        for (const auto& encoded : *encodedTags) {
+            rawTags.add(encoded.toString());
+        }
+        auto uniqueTags = rawTags;
+        uniqueTags.removeDuplicates(true);
+        REQUIRE(rawTags == uniqueTags);
         if (tags.contains("Distorted")) {
             distortedNames.add(name);
+        }
+        if (name == "i") {
+            REQUIRE(tags == StringArray { "Vocal" });
+        }
+        if (name == "satisfaction") {
+            REQUIRE(tags == StringArray { "Vocal", "Sustained" });
         }
         if (!name.containsIgnoreCase("sax")
                 && name != "kicker" && name != "stomper") {
