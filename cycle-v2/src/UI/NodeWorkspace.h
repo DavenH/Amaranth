@@ -43,7 +43,9 @@ public:
             std::vector<File> directories,
             InlinePresetBrowser::OpenCallback openCallback,
             InlinePresetBrowser::ActionCallback browseCallback,
-            InlinePresetBrowser::ActionCallback createCallback);
+            InlinePresetBrowser::ActionCallback createCallback,
+            LibraryFavorites* favorites = nullptr);
+    void refreshPresetSidebarFavorites();
     void refreshPresetSidebarIndex();
     void refreshPresetSidebarRecord(const File& file);
     void setCurrentPresetTags(StringArray tags);

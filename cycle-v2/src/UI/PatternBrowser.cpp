@@ -19,9 +19,13 @@ juce::StringArray tagsFor(const PatternRecord& record) {
 
 class PatternBrowser::List final : public juce::Component {
 public:
-    List(SelectCallback select, EditCallback edit) :
+    List(SelectCallback select, EditCallback edit,
+            std::function<void(const juce::String&)> favoriteCallback,
+            LibraryFavorites* favoriteStore) :
             onSelect(std::move(select))
-        ,   onEdit(std::move(edit)) {
+        ,   onEdit(std::move(edit))
+        ,   onFavorite(std::move(favoriteCallback))
+        ,   favorites(favoriteStore) {
         setComponentID("workspace.sidebar.patternList");
     }
 
@@ -49,6 +53,9 @@ public:
             if (row.intersects(viewportBounds.toFloat())) {
                 targets.push_back({ "workspace.sidebar.pattern." + records[(size_t) index].id,
                         row.getIntersection(viewportBounds.toFloat()) });
+                targets.push_back({ "workspace.sidebar.patternFavorite."
+                                + records[(size_t) index].id,
+                        SidebarMediaRow::favoriteBounds(row) });
             }
         }
         return targets;
@@ -72,13 +79,22 @@ public:
                         MidiPatternMiniMap::pitchRange(record.sequence, 12, 0));
             }
             SidebarMediaRow::paintLabels(graphics, row, record.name,
-                    tagsFor(record));
+                    tagsFor(record),
+                    favorites != nullptr && favorites->isPatternFavorite(record.id));
         }
     }
 
     void mouseUp(const juce::MouseEvent& event) override {
         const int index = event.y / SidebarMediaRow::height;
         if (index < 0 || index >= (int) records.size()) {
+            return;
+        }
+        const auto row = getLocalBounds()
+                .withY(index * SidebarMediaRow::height)
+                .withHeight(SidebarMediaRow::height).toFloat();
+        if (SidebarMediaRow::favoriteBounds(row).contains(event.position)
+                && onFavorite) {
+            onFavorite(records[(size_t) index].id);
             return;
         }
         selectedId = records[(size_t) index].id;
@@ -92,6 +108,8 @@ public:
 private:
     SelectCallback onSelect;
     EditCallback onEdit;
+    std::function<void(const juce::String&)> onFavorite;
+    LibraryFavorites* favorites {};
     std::vector<PatternRecord> records;
     juce::String selectedId;
 };
@@ -99,10 +117,14 @@ private:
 PatternBrowser::PatternBrowser(
         SelectCallback select,
         EditCallback edit,
-        CreateCallback create) :
+        CreateCallback create,
+        LibraryFavorites* favoriteStore) :
         onEdit(std::move(edit))
     ,   onCreate(std::move(create))
-    ,   list(std::make_unique<List>(std::move(select), onEdit)) {
+    ,   favorites(favoriteStore)
+    ,   list(std::make_unique<List>(std::move(select), onEdit,
+                [this](const juce::String& id) { toggleFavorite(id); },
+                favorites)) {
     setComponentID("workspace.sidebar.patternBrowser");
     createButton.setComponentID("workspace.sidebar.patternNew");
     editButton.setComponentID("workspace.sidebar.patternEdit");
@@ -117,6 +139,17 @@ PatternBrowser::PatternBrowser(
     tagCloud.setComponentID("workspace.sidebar.patternTags");
     tagCloud.setChangeCallback([this] { applyFilter(); });
     addAndMakeVisible(tagCloud);
+    favoritesOnly.setComponentID("workspace.sidebar.patternFavoritesOnly");
+    favoritesOnly.setClickingTogglesState(true);
+    favoritesOnly.setTooltip("Show only favorite patterns");
+    favoritesOnly.setColour(juce::TextButton::buttonColourId,
+            CanvasChromePalette::restingControlSurface);
+    favoritesOnly.setColour(juce::TextButton::buttonOnColourId,
+            CanvasChromePalette::navigationAccent.withAlpha(0.3f));
+    favoritesOnly.setColour(juce::TextButton::textColourOffId,
+            CanvasChromePalette::text);
+    favoritesOnly.onClick = [this] { applyFilter(); };
+    addAndMakeVisible(favoritesOnly);
     for (auto* button : { &createButton, &editButton }) {
         button->setColour(juce::TextButton::buttonColourId,
                 CanvasChromePalette::restingControlSurface);
@@ -198,7 +231,9 @@ void PatternBrowser::applyFilter() {
         const bool matchesQuery = query.isEmpty()
                 || record.name.containsIgnoreCase(query)
                 || tags.joinIntoString(" ").containsIgnoreCase(query);
-        if (matchesTags && matchesQuery) {
+        if (matchesTags && matchesQuery
+                && (!favoritesOnly.getToggleState()
+                        || (favorites != nullptr && favorites->isPatternFavorite(record.id)))) {
             visible.push_back(record);
         }
     }
@@ -207,12 +242,22 @@ void PatternBrowser::applyFilter() {
     viewport.setViewPosition(0, previousScroll);
 }
 
+void PatternBrowser::toggleFavorite(const juce::String& id) {
+    if (favorites == nullptr) {
+        return;
+    }
+    favorites->togglePattern(id);
+    applyFilter();
+}
+
 std::vector<std::pair<juce::String, juce::Rectangle<float>>>
 PatternBrowser::pointerTargetsForAutomation() const {
     std::vector<std::pair<juce::String, juce::Rectangle<float>>> targets {
             { "workspace.sidebar.patternSearch", search.getBounds().toFloat() },
             { "workspace.sidebar.patternNew", createButton.getBounds().toFloat() },
-            { "workspace.sidebar.patternEdit", editButton.getBounds().toFloat() }
+            { "workspace.sidebar.patternEdit", editButton.getBounds().toFloat() },
+            { "workspace.sidebar.patternFavoritesOnly",
+                    favoritesOnly.getBounds().toFloat() }
     };
     for (const auto& [id, bounds] : tagCloud.pointerTargetsForAutomation()) {
         targets.push_back({ id, bounds.translated(
@@ -240,6 +285,8 @@ void PatternBrowser::resized() {
     bounds.removeFromTop(6);
     auto headingRow = bounds.removeFromTop(24);
     editButton.setBounds(headingRow.removeFromRight(69));
+    headingRow.removeFromRight(4);
+    favoritesOnly.setBounds(headingRow.removeFromRight(82));
     tagHeading.setBounds(headingRow);
     bounds.removeFromTop(4);
     const int cloudHeight = tagCloud.preferredHeightForWidth(bounds.getWidth());

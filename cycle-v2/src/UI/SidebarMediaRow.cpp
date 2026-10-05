@@ -4,6 +4,36 @@
 
 namespace CycleV2::SidebarMediaRow {
 
+juce::Rectangle<float> favoriteBounds(juce::Rectangle<float> slot) {
+    return { slot.getX() + 17.f, slot.getY() + 3.f, 23.f, 23.f };
+}
+
+void paintFavorite(
+        juce::Graphics& graphics,
+        juce::Rectangle<float> slot,
+        bool favorite) {
+    paintStar(graphics, favoriteBounds(slot), favorite);
+}
+
+void paintStar(
+        juce::Graphics& graphics,
+        juce::Rectangle<float> bounds,
+        bool favorite) {
+    graphics.setColour(juce::Colour(0xff333333));
+    graphics.fillRoundedRectangle(bounds, 3.f);
+    juce::Path star;
+    star.addStar(bounds.getCentre(), 5, 3.5f, 7.f,
+            -juce::MathConstants<float>::halfPi);
+    graphics.setColour(favorite
+            ? CanvasChromePalette::navigationAccent
+            : CanvasChromePalette::mutedText.withAlpha(0.7f));
+    if (favorite) {
+        graphics.fillPath(star);
+    } else {
+        graphics.strokePath(star, juce::PathStrokeType(1.2f));
+    }
+}
+
 juce::Rectangle<float> paintFrame(
         juce::Graphics& graphics,
         juce::Rectangle<float> slot,
@@ -28,9 +58,10 @@ void paintLabels(
         juce::Graphics& graphics,
         juce::Rectangle<float> slot,
         const juce::String& title,
-        const juce::StringArray& tags) {
+        const juce::StringArray& tags,
+        bool favorite) {
     auto header = slot.reduced(10.f, 3.f).withHeight(23.f).reduced(8.f, 0.f);
-    const auto titleBounds = header.withTrimmedRight(74.f);
+    const auto titleBounds = header.withTrimmedLeft(23.f).withTrimmedRight(74.f);
     const auto tagBounds = header.removeFromRight(70.f);
     const juce::Font titleFont(juce::FontOptions(13.f, juce::Font::bold));
     const juce::Font tagFont(juce::FontOptions(9.f));
@@ -45,6 +76,7 @@ void paintLabels(
     graphics.setFont(titleFont);
     graphics.drawFittedText(title, titleBounds.toNearestInt(),
             juce::Justification::centredLeft, 1);
+    paintFavorite(graphics, slot, favorite);
 
     for (int index = 0; index < juce::jmin(2, tags.size()); ++index) {
         const auto label = tags[index].toUpperCase();

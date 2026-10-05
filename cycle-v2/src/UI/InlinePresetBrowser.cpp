@@ -43,8 +43,15 @@ public:
         repaint();
     }
 
-    void setCallbacks(Callback openCallback) {
+    void setCallbacks(Callback openCallback,
+            std::function<void(const juce::File&)> favoriteCallback) {
         onOpen = std::move(openCallback);
+        onFavorite = std::move(favoriteCallback);
+    }
+
+    void setFavorites(LibraryFavorites* store) {
+        favorites = store;
+        repaint();
     }
 
     const PresetLibraryRecord* selectedRecord() const {
@@ -73,6 +80,9 @@ public:
                 targets.push_back({ "workspace.sidebar.preset."
                                 + record.file.getFileNameWithoutExtension(),
                         row.getIntersection(viewportBounds.toFloat()) });
+                targets.push_back({ "workspace.sidebar.presetFavorite."
+                                + record.file.getFileNameWithoutExtension(),
+                        SidebarMediaRow::favoriteBounds(row) });
             }
         }
         return targets;
@@ -101,6 +111,11 @@ public:
         }
         const int hit = indexAt(event.getPosition());
         if (hit >= 0) {
+            if (SidebarMediaRow::favoriteBounds(rowBounds(hit).toFloat())
+                    .contains(event.position) && onFavorite) {
+                onFavorite(library[(size_t) indices[(size_t) hit]].file);
+                return;
+            }
             select(hit);
             if (onOpen) {
                 onOpen();
@@ -158,7 +173,8 @@ private:
                     graphics, record, thumbnails, preview, false);
         }
         SidebarMediaRow::paintLabels(graphics, bounds, record.name,
-                tags[(size_t) visibleIndex]);
+                tags[(size_t) visibleIndex],
+                favorites != nullptr && favorites->isPresetFavorite(record.file));
     }
 
     PresetThumbnailCache& thumbnails;
@@ -166,6 +182,8 @@ private:
     std::vector<int> indices;
     std::vector<juce::StringArray> tags;
     Callback onOpen;
+    std::function<void(const juce::File&)> onFavorite;
+    LibraryFavorites* favorites {};
     int selected { -1 };
 };
 
@@ -176,13 +194,15 @@ InlinePresetBrowser::InlinePresetBrowser(
         TabCallback tabCallback,
         DeleteCallback deleteCallback,
         ConfirmDeleteCallback confirmDeleteCallback,
-        ActionCallback createCallback) :
+        ActionCallback createCallback,
+        LibraryFavorites* favoriteStore) :
         onOpen(std::move(openCallback))
     ,   onBrowse(std::move(browseCallback))
     ,   onCreate(std::move(createCallback))
     ,   onTabChanged(std::move(tabCallback))
     ,   onDelete(std::move(deleteCallback))
     ,   onConfirmDelete(std::move(confirmDeleteCallback))
+    ,   favorites(favoriteStore)
     ,   list(std::make_unique<CompactList>(thumbnails)) {
     setComponentID("workspace.presetSidebar");
     setLookAndFeel(&lookAndFeel);
@@ -218,6 +238,17 @@ InlinePresetBrowser::InlinePresetBrowser(
     tagCloud.setComponentID("workspace.sidebar.presetTags");
     tagCloud.setChangeCallback([this] { applyTagFilter(); });
     addAndMakeVisible(tagCloud);
+    favoritesOnly.setComponentID("workspace.sidebar.presetFavoritesOnly");
+    favoritesOnly.setClickingTogglesState(true);
+    favoritesOnly.setTooltip("Show only favorite presets");
+    favoritesOnly.setColour(juce::TextButton::buttonColourId,
+            CanvasChromePalette::restingControlSurface);
+    favoritesOnly.setColour(juce::TextButton::buttonOnColourId,
+            CanvasChromePalette::navigationAccent.withAlpha(0.3f));
+    favoritesOnly.setColour(juce::TextButton::textColourOffId,
+            CanvasChromePalette::text);
+    favoritesOnly.onClick = [this] { applyTagFilter(); };
+    addAndMakeVisible(favoritesOnly);
     remove.setComponentID("workspace.sidebar.delete");
     remove.setTooltip("Move the selected preset to Trash");
     remove.onClick = [this] { requestDeleteSelected(); };
@@ -229,7 +260,9 @@ InlinePresetBrowser::InlinePresetBrowser(
         addAndMakeVisible(*button);
     }
 
-    list->setCallbacks([this] { openSelected(); });
+    list->setFavorites(favorites);
+    list->setCallbacks([this] { openSelected(); },
+            [this](const juce::File& file) { toggleFavorite(file); });
     viewport.setComponentID("workspace.sidebar.viewport");
     viewport.setViewedComponent(list.get(), false);
     viewport.setScrollBarsShown(true, false);
@@ -274,7 +307,7 @@ void InlinePresetBrowser::configurePatterns(
         PatternEditCallback edit,
         PatternCreateCallback create) {
     patternBrowser = std::make_unique<PatternBrowser>(
-            std::move(select), std::move(edit), std::move(create));
+            std::move(select), std::move(edit), std::move(create), favorites);
     patternBrowser->setPlaybackToggleCallback(onTogglePlayback);
     addAndMakeVisible(*patternBrowser);
     updateVisibility();
@@ -350,6 +383,8 @@ InlinePresetBrowser::pointerTargetsForAutomation() const {
         targets.push_back({ "workspace.sidebar.search", search.getBounds().toFloat() });
         targets.push_back({ "workspace.sidebar.presetNew", create.getBounds().toFloat() });
         targets.push_back({ "workspace.sidebar.delete", remove.getBounds().toFloat() });
+        targets.push_back({ "workspace.sidebar.presetFavoritesOnly",
+                favoritesOnly.getBounds().toFloat() });
         targets.push_back({ "workspace.sidebar.browse", browse.getBounds().toFloat() });
         for (const auto& [id, bounds] : tagCloud.pointerTargetsForAutomation()) {
             targets.push_back({ id, bounds.translated(
@@ -418,6 +453,8 @@ void InlinePresetBrowser::resized() {
     bounds.removeFromTop(6);
     auto headingRow = bounds.removeFromTop(24);
     remove.setBounds(headingRow.removeFromRight(69));
+    headingRow.removeFromRight(4);
+    favoritesOnly.setBounds(headingRow.removeFromRight(82));
     tagHeading.setBounds(headingRow);
     bounds.removeFromTop(4);
     const int cloudHeight = tagCloud.preferredHeightForWidth(bounds.getWidth());
@@ -496,7 +533,10 @@ void InlinePresetBrowser::applyTagFilter() {
     tags.reserve(searchResults.size());
     for (const int indexToCheck : searchResults) {
         auto recordTags = tagsFor(library[(size_t) indexToCheck]);
-        if (tagCloud.matches(recordTags)) {
+        if (tagCloud.matches(recordTags)
+                && (!favoritesOnly.getToggleState()
+                        || (favorites != nullptr && favorites->isPresetFavorite(
+                                library[(size_t) indexToCheck].file)))) {
             filtered.push_back(indexToCheck);
             tags.push_back(std::move(recordTags));
         }
@@ -505,6 +545,18 @@ void InlinePresetBrowser::applyTagFilter() {
     remove.setEnabled(!filtered.empty());
     const int width = juce::jmax(1, viewport.getMaximumVisibleWidth());
     list->setSize(width, list->getHeight());
+}
+
+void InlinePresetBrowser::toggleFavorite(const juce::File& file) {
+    if (favorites == nullptr) {
+        return;
+    }
+    favorites->togglePreset(file);
+    applyTagFilter();
+}
+
+void InlinePresetBrowser::refreshFavorites() {
+    applyTagFilter();
 }
 
 juce::StringArray InlinePresetBrowser::tagsFor(

@@ -90,6 +90,57 @@ TEST_CASE("Preset browser coalesces search and opens the highlighted card",
   #endif
 }
 
+TEST_CASE("Expanded preset browser shares favorites and filters its cards",
+        "[cycle-v2][preset][browser][favorites]") {
+    ScopedJuceInitialiser_GUI gui;
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    PropertiesFile::Options options;
+    options.applicationName = "CycleV2ExpandedFavoriteInteraction";
+    options.doNotSave = true;
+    options.osxLibrarySubFolder = "Application Support";
+    PropertiesFile properties(options);
+    const File directory = File(CYCLE_V2_SOURCE_DIR)
+            .getChildFile("content").getChildFile("presets");
+    LibraryFavorites favorites(properties, directory);
+    File opened;
+    PresetBrowserPage page(
+            { directory },
+            [&](const File& file) { opened = file; return true; },
+            [] {}, [] {}, [] {},
+            [](const File&, const StringArray&) {}, &favorites);
+    page.setBounds(0, 0, 1000, 700);
+    auto* search = dynamic_cast<TextEditor*>(page.findChildWithID("presetBrowser.search"));
+    auto* filter = dynamic_cast<Button*>(page.findChildWithID("presetBrowser.favoritesOnly"));
+    auto* viewport = dynamic_cast<Viewport*>(page.findChildWithID("presetBrowser.viewport"));
+    auto* grid = viewport == nullptr
+            ? nullptr : dynamic_cast<PresetCardGrid*>(viewport->getViewedComponent());
+    REQUIRE(search != nullptr);
+    REQUIRE(filter != nullptr);
+    REQUIRE(grid != nullptr);
+    search->setText("kicker", true);
+    for (int attempt = 0; attempt < 30 && grid->visibleCount() != 1; ++attempt) {
+        MessageManager::getInstance()->runDispatchLoopUntil(100);
+    }
+    REQUIRE(grid->visibleCount() == 1);
+    const Point<float> position { 34.f, 143.f };
+    const Time now = Time::getCurrentTime();
+    const MouseEvent click(Desktop::getInstance().getMainMouseSource(),
+            position, ModifierKeys::leftButtonModifier,
+            1.f, 0.f, 0.f, 0.f, 0.f, grid, grid,
+            now, position, now, 1, false);
+    grid->mouseDown(click);
+    REQUIRE(favorites.isPresetFavorite(directory.getChildFile("kicker.cyclegraph")));
+    REQUIRE(opened == File());
+    filter->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(grid->visibleCount() == 1);
+    grid->mouseDown(click);
+    REQUIRE(grid->visibleCount() == 0);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Preset tag edits preserve other JSON fields",
         "[cycle-v2][preset][tags]") {
     ScopedJuceInitialiser_GUI juce;

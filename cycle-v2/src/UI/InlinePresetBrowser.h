@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include "App/LibraryFavorites.h"
 #include "UI/PresetBrowserLookAndFeel.h"
 #include "UI/PresetLibraryIndex.h"
 #include "UI/PresetThumbnailCache.h"
@@ -45,7 +46,8 @@ public:
             TabCallback tabCallback,
             DeleteCallback deleteCallback = {},
             ConfirmDeleteCallback confirmDeleteCallback = {},
-            ActionCallback createCallback = {});
+            ActionCallback createCallback = {},
+            LibraryFavorites* favorites = nullptr);
     ~InlinePresetBrowser() override;
 
     void setActiveTab(WorkspaceSidebarTab tab);
@@ -57,6 +59,7 @@ public:
     int visiblePresetCount() const;
     void refreshIndex();
     void refreshRecord(const juce::File& file);
+    void refreshFavorites();
     void setPlaybackToggleCallback(ActionCallback callback);
     static juce::String deleteConfirmationMessage(const juce::String& presetName);
     std::vector<std::pair<juce::String, juce::Rectangle<float>>>
@@ -77,6 +80,7 @@ private:
             const std::vector<PresetLibraryRecord>& records,
             const std::vector<int>& visibleIndices);
     void applyTagFilter();
+    void toggleFavorite(const juce::File& file);
     juce::StringArray tagsFor(const PresetLibraryRecord& record) const;
     void updateAvailableTags();
     void openSelected();
@@ -92,6 +96,7 @@ private:
     TabCallback onTabChanged;
     DeleteCallback onDelete;
     ConfirmDeleteCallback onConfirmDelete;
+    LibraryFavorites* favorites {};
     PresetBrowserLookAndFeel lookAndFeel;
     PresetThumbnailCache thumbnails;
     juce::TextButton curves { "CURVES" };
@@ -102,6 +107,7 @@ private:
     juce::TextButton create { "+ NEW" };
     juce::Label tagHeading;
     SidebarTagCloud tagCloud;
+    juce::TextButton favoritesOnly { "Favorites" };
     juce::TextButton remove { "DELETE" };
     juce::Viewport viewport;
     std::unique_ptr<CompactList> list;

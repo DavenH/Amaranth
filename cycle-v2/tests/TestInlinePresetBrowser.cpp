@@ -297,3 +297,56 @@ TEST_CASE("Preset deletion confirmation uses compact ASCII-safe copy",
     REQUIRE(alert->getWidth() <= 600);
     REQUIRE(alert->getBounds().getCentre() == applicationWindow.getBounds().getCentre());
 }
+
+TEST_CASE("Preset row star and Favorites filter do not load the sound",
+        "[cycle-v2][preset][browser][inline][favorites]") {
+    ScopedJuceInitialiser_GUI gui;
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    PropertiesFile::Options options;
+    options.applicationName = "CycleV2InlineFavoriteInteraction";
+    options.doNotSave = true;
+    options.osxLibrarySubFolder = "Application Support";
+    PropertiesFile properties(options);
+    const File directory = File(CYCLE_V2_SOURCE_DIR)
+            .getChildFile("content").getChildFile("presets");
+    LibraryFavorites favorites(properties, directory);
+    File opened;
+    InlinePresetBrowser browser(
+            { directory },
+            [&](const File& file) { opened = file; return true; },
+            [] {}, [](WorkspaceSidebarTab) {}, {}, {}, {}, &favorites);
+    browser.setBounds(0, 0, 272, 760);
+    auto* search = dynamic_cast<TextEditor*>(
+            browser.findChildWithID("workspace.sidebar.search"));
+    auto* filter = dynamic_cast<Button*>(
+            browser.findChildWithID("workspace.sidebar.presetFavoritesOnly"));
+    auto* list = findDescendantWithID(browser, "workspace.sidebar.list");
+    REQUIRE(search != nullptr);
+    REQUIRE(filter != nullptr);
+    REQUIRE(list != nullptr);
+    search->setText("kicker", true);
+    for (int attempt = 0; attempt < 30 && browser.visiblePresetCount() != 1; ++attempt) {
+        MessageManager::getInstance()->runDispatchLoopUntil(100);
+    }
+    REQUIRE(browser.visiblePresetCount() == 1);
+
+    const Point<float> position { 28.f, 24.f };
+    const Time now = Time::getCurrentTime();
+    const MouseEvent click(Desktop::getInstance().getMainMouseSource(),
+            position, ModifierKeys::leftButtonModifier,
+            1.f, 0.f, 0.f, 0.f, 0.f, list, list,
+            now, position, now, 1, false);
+    list->mouseUp(click);
+    REQUIRE(favorites.isPresetFavorite(directory.getChildFile("kicker.cyclegraph")));
+    REQUIRE(opened == File());
+    filter->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(browser.visiblePresetCount() == 1);
+    list->mouseUp(click);
+    REQUIRE_FALSE(favorites.isPresetFavorite(directory.getChildFile("kicker.cyclegraph")));
+    REQUIRE(browser.visiblePresetCount() == 0);
+    REQUIRE(opened == File());
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}

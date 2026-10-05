@@ -10,6 +10,7 @@
 #include "App/CycleV2Automation.h"
 #include "App/GraphDocumentReplacement.h"
 #include "App/GraphFileHistory.h"
+#include "App/LibraryFavorites.h"
 #include "App/StandaloneAudioEngine.h"
 #include "UI/NodeWorkspace.h"
 #include "UI/PresetBrowserPage.h"
@@ -66,6 +67,7 @@ public:
                 DocumentWindow(name, Colour(0xff101318), allButtons)
             ,   applicationName(name)
             ,   properties(createProperties())
+            ,   favorites(*properties, repositoryPresetDirectory())
             ,   fileHistory(*properties)
             ,   graphReplacement([this](const File& file) {
                     return openGraphFileUnchecked(file);
@@ -88,7 +90,8 @@ public:
                             userPresetDirectory() },
                     [this](const File& file) { return requestOpenGraphFile(file); },
                     [this] { chooseOpenGraph(); },
-                    [this] { createPresetFromCurrent(); });
+                    [this] { createPresetFromCurrent(); },
+                    &favorites);
             workspace->configurePatternLibrary(
                     repositoryPresetDirectory().getSiblingFile("patterns"),
                     agentPatternDirectory != File()
@@ -470,7 +473,8 @@ public:
                                 safeThis->workspace->setCurrentPresetTags(tags);
                             }
                         }
-                    });
+                    },
+                    &favorites);
             page->setSize(1180, 760);
             DialogWindow::LaunchOptions options;
             options.dialogTitle = "Preset Browser";
@@ -484,6 +488,9 @@ public:
             if (presetBrowserWindow != nullptr) {
                 presetBrowserWindow->exitModalState(0);
                 presetBrowserWindow = nullptr;
+            }
+            if (workspace != nullptr) {
+                workspace->refreshPresetSidebarFavorites();
             }
         }
 
@@ -587,6 +594,7 @@ public:
         ApplicationCommandManager commandManager;
         AmaranthLookAndFeel presetChangeLookAndFeel { nullptr, false };
         std::unique_ptr<PropertiesFile> properties;
+        CycleV2::LibraryFavorites favorites;
         CycleV2::GraphFileHistory fileHistory;
         CycleV2::GraphDocumentReplacement graphReplacement;
         File agentPatternDirectory;

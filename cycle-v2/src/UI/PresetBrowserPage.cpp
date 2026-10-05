@@ -13,13 +13,15 @@ PresetBrowserPage::PresetBrowserPage(
         std::function<void()> browseCallback,
         std::function<void()> closeCallback,
         std::function<void()> playbackToggleCallback,
-        std::function<void(const File&, const StringArray&)> tagsChangedCallback) :
+        std::function<void(const File&, const StringArray&)> tagsChangedCallback,
+        LibraryFavorites* favoriteStore) :
         onOpen   (std::move(openCallback))
     ,   onBrowse (std::move(browseCallback))
     ,   onClose  (std::move(closeCallback))
     ,   onTogglePlayback (std::move(playbackToggleCallback))
     ,   onTagsChanged (std::move(tagsChangedCallback))
-    ,   grid     (thumbnails)
+    ,   favorites (favoriteStore)
+    ,   grid     (thumbnails, favorites)
     ,   detail   (thumbnails) {
     setLookAndFeel(&browserLookAndFeel);
     setComponentID("presetBrowser");
@@ -43,6 +45,11 @@ PresetBrowserPage::PresetBrowserPage(
     search.addListener(this);
     search.addKeyListener(this);
     addAndMakeVisible(search);
+    favoritesOnly.setComponentID("presetBrowser.favoritesOnly");
+    favoritesOnly.setClickingTogglesState(true);
+    favoritesOnly.setTooltip("Show only favorite presets");
+    favoritesOnly.onClick = [this] { applyFavoritesFilter(); };
+    addAndMakeVisible(favoritesOnly);
 
     sidebar.setComponentID("presetBrowser.sidebar");
     addAndMakeVisible(sidebar);
@@ -50,6 +57,7 @@ PresetBrowserPage::PresetBrowserPage(
     grid.setCallbacks(
             [this] { updateSelection(); },
             [this] { openSelected(); });
+    grid.setFavoriteCallback([this](const File& file) { toggleFavorite(file); });
     viewport.setComponentID("presetBrowser.viewport");
     viewport.setViewedComponent(&grid, false);
     viewport.setScrollBarsShown(true, false);
@@ -90,6 +98,9 @@ PresetBrowserPage::PresetBrowserPage(
     styleSecondaryButton(browse);
     styleSecondaryButton(close);
     styleSecondaryButton(editTags);
+    styleSecondaryButton(favoritesOnly);
+    favoritesOnly.setColour(TextButton::buttonOnColourId,
+            CanvasChromePalette::navigationAccent.withAlpha(0.3f));
     open.setColour(TextButton::buttonColourId,
             CanvasChromePalette::navigationAccent);
     open.setColour(TextButton::buttonOnColourId,
@@ -137,6 +148,7 @@ void PresetBrowserPage::resized() {
     auto titleArea = header.removeFromLeft(220);
     title.setBounds(titleArea.removeFromTop(25));
     subtitle.setBounds(titleArea);
+    favoritesOnly.setBounds(header.removeFromRight(110).withHeight(36));
     search.setBounds(header.withSizeKeepingCentre(jmin(620, header.getWidth()), 36));
 
     auto footer = bounds.removeFromBottom(54).reduced(18, 9);
@@ -226,17 +238,40 @@ void PresetBrowserPage::textEditorReturnKeyPressed(TextEditor&) {
 void PresetBrowserPage::receiveResults(
         const std::vector<PresetLibraryRecord>& records,
         const std::vector<int>& visibleIndices) {
-    sidebar.setRecords(records);
-    grid.setResults(records, visibleIndices);
+    library = records;
+    searchResults = visibleIndices;
+    sidebar.setRecords(library);
+    applyFavoritesFilter();
+}
+
+void PresetBrowserPage::applyFavoritesFilter() {
+    std::vector<int> visible;
+    visible.reserve(searchResults.size());
+    for (const int indexToCheck : searchResults) {
+        if (!favoritesOnly.getToggleState()
+                || (favorites != nullptr && favorites->isPresetFavorite(
+                        library[(size_t) indexToCheck].file))) {
+            visible.push_back(indexToCheck);
+        }
+    }
+    grid.setResults(library, visible);
     const int width = jmax(244, viewport.getMaximumVisibleWidth());
     grid.setSize(width, grid.contentHeightForWidth(width));
-    status.setText(String(visibleIndices.size()) + " OF " + String(records.size()) + " PRESETS",
+    status.setText(String(visible.size()) + " OF " + String(library.size()) + " PRESETS",
             dontSendNotification);
-    if (!records.empty() && !records.front().metadataReady) {
-        status.setText(String(records.size()) + " PRESETS  ·  LOADING DETAILS",
+    if (!library.empty() && !library.front().metadataReady) {
+        status.setText(String(library.size()) + " PRESETS  ·  LOADING DETAILS",
                 dontSendNotification);
     }
     updateSelection();
+}
+
+void PresetBrowserPage::toggleFavorite(const File& file) {
+    if (favorites == nullptr) {
+        return;
+    }
+    favorites->togglePreset(file);
+    applyFavoritesFilter();
 }
 
 void PresetBrowserPage::updateSelection() {

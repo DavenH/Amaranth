@@ -75,12 +75,13 @@ void NodeWorkspace::configurePresetSidebar(
         std::vector<File> directories,
         InlinePresetBrowser::OpenCallback openCallback,
         InlinePresetBrowser::ActionCallback browseCallback,
-        InlinePresetBrowser::ActionCallback createCallback) {
+        InlinePresetBrowser::ActionCallback createCallback,
+        LibraryFavorites* favorites) {
     canvas.configurePresetSidebar(
             std::move(directories),
             std::move(openCallback),
             std::move(browseCallback),
-            std::move(createCallback));
+            std::move(createCallback), favorites);
     canvas.configurePatternSidebar(
             [this](const String& id) { selectPattern(id); },
             [this](const String& id) { editPattern(id); },
@@ -88,6 +89,10 @@ void NodeWorkspace::configurePresetSidebar(
                 createPattern(name, tags);
             });
     refreshPatternSidebar();
+}
+
+void NodeWorkspace::refreshPresetSidebarFavorites() {
+    canvas.refreshPresetSidebarFavorites();
 }
 
 void NodeWorkspace::refreshPresetSidebarIndex() {

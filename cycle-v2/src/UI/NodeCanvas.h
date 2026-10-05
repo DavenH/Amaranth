@@ -73,7 +73,9 @@ public:
             std::vector<File> directories,
             InlinePresetBrowser::OpenCallback openCallback,
             InlinePresetBrowser::ActionCallback browseCallback,
-            InlinePresetBrowser::ActionCallback createCallback);
+            InlinePresetBrowser::ActionCallback createCallback,
+            LibraryFavorites* favorites = nullptr);
+    void refreshPresetSidebarFavorites();
     void refreshPresetSidebarIndex();
     void refreshPresetSidebarRecord(const juce::File& file);
     void setCurrentPresetTags(juce::StringArray tags);

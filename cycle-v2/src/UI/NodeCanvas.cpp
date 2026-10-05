@@ -258,7 +258,8 @@ void NodeCanvas::configurePresetSidebar(
         std::vector<File> directories,
         InlinePresetBrowser::OpenCallback openCallback,
         InlinePresetBrowser::ActionCallback browseCallback,
-        InlinePresetBrowser::ActionCallback createCallback) {
+        InlinePresetBrowser::ActionCallback createCallback,
+        LibraryFavorites* favorites) {
     presetSidebar = std::make_unique<InlinePresetBrowser>(
             std::move(directories),
             std::move(openCallback),
@@ -271,7 +272,7 @@ void NodeCanvas::configurePresetSidebar(
             },
             InlinePresetBrowser::DeleteCallback {},
             InlinePresetBrowser::ConfirmDeleteCallback {},
-            std::move(createCallback));
+            std::move(createCallback), favorites);
     presetSidebar->setPlaybackToggleCallback([this] {
         if (previewPlaybackToggle) {
             previewPlaybackToggle();
@@ -281,6 +282,12 @@ void NodeCanvas::configurePresetSidebar(
             != WorkspaceSidebarTab::Curves;
     addAndMakeVisible(*presetSidebar);
     resized();
+}
+
+void NodeCanvas::refreshPresetSidebarFavorites() {
+    if (presetSidebar != nullptr) {
+        presetSidebar->refreshFavorites();
+    }
 }
 
 void NodeCanvas::refreshPresetSidebarIndex() {

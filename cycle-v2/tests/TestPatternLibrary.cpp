@@ -3,6 +3,7 @@
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "UI/PatternBrowser.h"
+#include "UI/SidebarMediaRow.h"
 #include "Graph/PatternLibrary.h"
 #include "UI/SidebarTagCloud.h"
 
@@ -217,4 +218,55 @@ TEST_CASE("Pattern browser rows show notes and assign their stable ID",
     prompt->exitModalState(1);
     MessageManager::getInstance()->runDispatchLoopUntil(40);
     REQUIRE(createdName == "Swing Variations:Bass,Acid");
+}
+
+TEST_CASE("Pattern favorite star toggles without assigning and combines with the tag filter",
+        "[cycle-v2][pattern][ui][favorites]") {
+    ScopedJuceInitialiser_GUI gui;
+    PropertiesFile::Options options;
+    options.applicationName = "CycleV2PatternFavoriteInteraction";
+    options.doNotSave = true;
+    options.osxLibrarySubFolder = "Application Support";
+    PropertiesFile properties(options);
+    LibraryFavorites favorites(properties, File("/tmp/factory-presets"));
+    String selected;
+    PatternBrowser browser(
+            [&](const String& id) { selected = id; },
+            [](const String&) {},
+            [](const String&, const StringArray&) {},
+            &favorites);
+    browser.setBounds(0, 0, 310, 300);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 2.0;
+    phrase.notes.push_back({ 48, 90, 0.0, 0.5 });
+    std::vector<PatternRecord> records {
+            { "bass-one", "Bass One", phrase, {}, true, "Bass" },
+            { "lead-one", "Lead One", phrase, {}, true, "Lead" }
+    };
+    browser.setRecords(records, {});
+    auto* list = findChild(browser, "workspace.sidebar.patternList");
+    auto* filter = dynamic_cast<Button*>(
+            findChild(browser, "workspace.sidebar.patternFavoritesOnly"));
+    auto* tagCloud = dynamic_cast<SidebarTagCloud*>(
+            findChild(browser, "workspace.sidebar.patternTags"));
+    REQUIRE(list != nullptr);
+    REQUIRE(filter != nullptr);
+    REQUIRE(tagCloud != nullptr);
+
+    const Point<float> starPosition { 28.f, 14.f };
+    const Time now = Time::getCurrentTime();
+    const MouseEvent starClick(Desktop::getInstance().getMainMouseSource(),
+            starPosition, ModifierKeys::leftButtonModifier,
+            1.f, 0.f, 0.f, 0.f, 0.f, list, list,
+            now, starPosition, now, 1, false);
+    list->mouseUp(starClick);
+    REQUIRE(favorites.isPatternFavorite("bass-one"));
+    REQUIRE(selected.isEmpty());
+    filter->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(list->getHeight() == SidebarMediaRow::height);
+    REQUIRE(clickTag(*tagCloud, "Lead"));
+    REQUIRE(list->getHeight() == 0);
+    REQUIRE(clickTag(*tagCloud, "Lead"));
+    REQUIRE(list->getHeight() == SidebarMediaRow::height);
 }
