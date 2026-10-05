@@ -34,7 +34,6 @@ TRAIT_RULES = (
             r"coral|nordic|warmth|psi-storm|mellifluous"),
     ("Analog", r"pwm|juno|saw|square|syn-|synth"),
     ("Bright", r"bright|high-|shine|pearl|pierce|fire"),
-    ("Distorted", r"fuzz|thrash|violence|noisy|crash|spank"),
     ("Metallic", r"bell|vibra|ping|solenoid|cymbal"),
     ("Soft", r"mellow|warmth|mellifluous|soft|coral"),
     ("Stab", r"stab|trance"),
@@ -68,6 +67,13 @@ OVERRIDES = {
     "vibra-2": "Keys",
 }
 
+DISTORTED_PRESETS = {
+    "fuzz-bass",
+    "fuzz-square",
+    "thrash-guitar",
+    "thrash-guitar-3",
+}
+
 
 def pattern_families():
     result = {}
@@ -99,6 +105,8 @@ def tags_for(name, presentation, families):
     for tag, expression in TRAIT_RULES:
         if re.search(expression, lowered) and tag not in tags:
             tags.append(tag)
+    if lowered in DISTORTED_PRESETS:
+        tags.append("Distorted")
     return tags
 
 

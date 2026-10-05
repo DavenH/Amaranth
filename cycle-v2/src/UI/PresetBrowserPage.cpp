@@ -68,9 +68,11 @@ PresetBrowserPage::PresetBrowserPage(
     browse.onClick = [this] { onBrowse(); };
     addAndMakeVisible(browse);
     open.setComponentID("presetBrowser.open");
+    open.setEnabled(false);
     open.onClick = [this] { openSelected(); };
     addAndMakeVisible(open);
     editTags.setComponentID("presetBrowser.editTags");
+    editTags.setEnabled(false);
     editTags.onClick = [this] { editSelectedTags(); };
     addAndMakeVisible(editTags);
     close.setComponentID("presetBrowser.close");

@@ -1078,7 +1078,7 @@
     ],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Wind", "Sustained", "Distorted"],
+        "tags": ["Wind", "Sustained"],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

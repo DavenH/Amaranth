@@ -47,3 +47,18 @@ metadata change. `NodeCanvas.cpp` remains a large existing orchestration file
 (2,841 lines), but this change adds only a narrow command call and record
 refresh forwarder. The architecture audit reports the same 21 existing size
 triggers, with no new trigger.
+
+## Distorted tag audit (2026-10-04)
+
+The original `Distorted` filename regex also matched Crash, Noisy Flute, Noisy
+Saw, Spank You, and Violence. It inferred audible distortion from names alone.
+The curated factory list now contains Fuzz Bass, Fuzz Square, and both Thrash
+Guitar presets. This keeps the tag specific to sounds whose fuzz/thrash
+character is central. The other five retain their family and other trait tags.
+The factory metadata test checks the exact Distorted set.
+
+The shared chip cloud now requires every selected tag. Selecting Distorted
+while Bass is still selected therefore narrows to Fuzz Bass, rather than adding
+every bass preset to the results. The focused sidebar test checks four results
+for Distorted alone and one result for Distorted plus Bass. The same shared
+matcher is used by the pattern browser.

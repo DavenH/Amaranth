@@ -85,7 +85,7 @@ TEST_CASE("Preset search fields reserve Space for playback when empty",
     REQUIRE(playbackToggles == 5);
 }
 
-TEST_CASE("Sidebar tag chips toggle an inclusive filter",
+TEST_CASE("Sidebar tag chips narrow results across selected tags",
         "[cycle-v2][preset][browser][tags]") {
     ScopedJuceInitialiser_GUI juce;
     SidebarTagCloud cloud;
@@ -99,7 +99,9 @@ TEST_CASE("Sidebar tag chips toggle an inclusive filter",
     REQUIRE(cloud.matches({ "Bass", "Acid" }));
     REQUIRE_FALSE(cloud.matches({ "Pad" }));
     REQUIRE(clickTag(cloud, "Pad"));
-    REQUIRE(cloud.matches({ "Pad" }));
+    REQUIRE(cloud.matches({ "Bass", "Pad" }));
+    REQUIRE_FALSE(cloud.matches({ "Pad" }));
+    REQUIRE_FALSE(cloud.matches({ "Bass" }));
     REQUIRE_FALSE(cloud.matches({ "Keys" }));
     REQUIRE(changes == 2);
 
@@ -220,6 +222,14 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(browser.visiblePresetCount() > 0);
     REQUIRE(browser.visiblePresetCount() < unfilteredCount);
     REQUIRE(clickTag(*tagCloud, "Keys"));
+    REQUIRE(tagCloud->selectedTags().isEmpty());
+
+    REQUIRE(clickTag(*tagCloud, "Distorted"));
+    REQUIRE(browser.visiblePresetCount() == 4);
+    REQUIRE(clickTag(*tagCloud, "Bass"));
+    REQUIRE(browser.visiblePresetCount() == 1);
+    REQUIRE(clickTag(*tagCloud, "Distorted"));
+    REQUIRE(clickTag(*tagCloud, "Bass"));
     REQUIRE(tagCloud->selectedTags().isEmpty());
 
     viewport->setViewPosition(0, 100);

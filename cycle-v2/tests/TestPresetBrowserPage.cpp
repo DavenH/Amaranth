@@ -56,10 +56,7 @@ TEST_CASE("Preset browser coalesces search and opens the highlighted card",
     REQUIRE(editTags != nullptr);
     REQUIRE(browse != nullptr);
     REQUIRE(close != nullptr);
-    for (int attempt = 0; attempt < 20
-            && (grid->visibleCount() == 0
-                    || grid->selectedRecord() == nullptr
-                    || !grid->selectedRecord()->metadataReady); ++attempt) {
+    for (int attempt = 0; attempt < 100 && !editTags->isEnabled(); ++attempt) {
         MessageManager::getInstance()->runDispatchLoopUntil(100);
     }
     REQUIRE(grid->visibleCount() > 1);
@@ -129,7 +126,7 @@ TEST_CASE("Preset tag edits preserve other JSON fields",
     REQUIRE(error.isNotEmpty());
 }
 
-TEST_CASE("Saxophones and named bass presets have the intended families",
+TEST_CASE("Curated preset families and distorted trait match saved metadata",
         "[cycle-v2][preset][tags]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     const File directory = File(CYCLE_V2_SOURCE_DIR)
@@ -137,24 +134,31 @@ TEST_CASE("Saxophones and named bass presets have the intended families",
     Array<File> files;
     directory.findChildFiles(files, File::findFiles, false, "*.cyclegraph");
     int saxCount {};
+    StringArray distortedNames;
     for (const auto& file : files) {
         const auto name = file.getFileNameWithoutExtension();
-        if (!name.containsIgnoreCase("sax")
-                && name != "kicker" && name != "stomper") {
-            continue;
-        }
         juce::var root;
         REQUIRE(JSON::parse(file.loadFileAsString(), root).wasOk());
         const auto metadata = root.getDynamicObject()
                 ->getProperty("presetPresentation");
         const auto tags = PresetPresentationCodec::readMetadataJSON(metadata)
                 .presentation.tags;
+        if (tags.contains("Distorted")) {
+            distortedNames.add(name);
+        }
+        if (!name.containsIgnoreCase("sax")
+                && name != "kicker" && name != "stomper") {
+            continue;
+        }
         REQUIRE(tags[0] == (name.containsIgnoreCase("sax") ? "Brass" : "Bass"));
         if (name.containsIgnoreCase("sax")) {
             ++saxCount;
         }
     }
     REQUIRE(saxCount == 7);
+    distortedNames.sortNatural();
+    REQUIRE(distortedNames == StringArray {
+            "fuzz-bass", "fuzz-square", "thrash-guitar", "thrash-guitar-3" });
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

@@ -37,12 +37,12 @@ bool SidebarTagCloud::matches(const juce::StringArray& recordTags) const {
     if (selected.isEmpty()) {
         return true;
     }
-    for (const auto& tag : recordTags) {
-        if (selected.contains(tag, true)) {
-            return true;
+    for (const auto& tag : selected) {
+        if (!recordTags.contains(tag, true)) {
+            return false;
         }
     }
-    return false;
+    return true;
 }
 
 int SidebarTagCloud::preferredHeightForWidth(int width) const {

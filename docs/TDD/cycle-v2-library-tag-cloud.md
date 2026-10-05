@@ -12,7 +12,7 @@ additional searchable labels. The library reader supplies the primary tag for
 older files. Pattern editing keeps the tags attached to the stable pattern ID.
 
 Both sidebar browsers use one `SidebarTagCloud` component. It owns chip layout,
-hit testing, toggled state, and the OR match rule across selected tags. Search
+hit testing, toggled state, and the AND match rule across selected tags. Search
 and selected tags combine with AND. Available chips come from the full library,
 so selecting one does not make other chips disappear. Selection and scroll
 position remain stable when a filter changes. Pattern creation accepts tags in
@@ -56,7 +56,7 @@ relationship instead of counting all packaged pattern assets as templates.
 
 The standalone-debug app and test targets build. The focused browser and
 pattern tests pass (1,045 assertions in 14 cases), including chip toggling,
-inclusive multi-selection, search combinations, pattern tag round-tripping,
+intersection across selected chips, search combinations, pattern tag round-tripping,
 and stable list scrolling. The sidebar fixture passes all ten commands,
 including chip hover and selection in both tabs. Production-size screenshots
 show the notes filling each pattern row behind the title and tag chips, and
