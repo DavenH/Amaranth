@@ -1,5 +1,6 @@
 #include "UI/PresetBrowserPage.h"
 
+#include "UI/PresetMetadataEditor.h"
 #include "UI/CanvasChromePalette.h"
 
 namespace CycleV2 {
@@ -10,11 +11,17 @@ PresetBrowserPage::PresetBrowserPage(
         std::vector<File> directories,
         OpenCallback openCallback,
         std::function<void()> browseCallback,
-        std::function<void()> closeCallback) :
+        std::function<void()> closeCallback,
+        std::function<void()> playbackToggleCallback,
+        std::function<void(const File&, const StringArray&)> tagsChangedCallback,
+        LibraryFavorites* favoriteStore) :
         onOpen   (std::move(openCallback))
     ,   onBrowse (std::move(browseCallback))
     ,   onClose  (std::move(closeCallback))
-    ,   grid     (thumbnails)
+    ,   onTogglePlayback (std::move(playbackToggleCallback))
+    ,   onTagsChanged (std::move(tagsChangedCallback))
+    ,   favorites (favoriteStore)
+    ,   grid     (thumbnails, favorites)
     ,   detail   (thumbnails) {
     setLookAndFeel(&browserLookAndFeel);
     setComponentID("presetBrowser");
@@ -30,18 +37,19 @@ PresetBrowserPage::PresetBrowserPage(
     addAndMakeVisible(subtitle);
 
     search.setComponentID("presetBrowser.search");
-    search.setTextToShowWhenEmpty("Search presets, authors, packs, or tags",
-            CanvasChromePalette::mutedText);
-    search.setColour(TextEditor::backgroundColourId, CanvasChromePalette::restingControlSurface);
-    search.setColour(TextEditor::outlineColourId, CanvasChromePalette::border);
-    search.setColour(TextEditor::focusedOutlineColourId,
-            CanvasChromePalette::navigationAccent);
-    search.setColour(TextEditor::textColourId, CanvasChromePalette::text);
-    search.setFont(FontOptions(15.f));
-    search.setIndents(36, 8);
+    search.setPlaybackToggleCallback([this] {
+        if (onTogglePlayback) {
+            onTogglePlayback();
+        }
+    });
     search.addListener(this);
     search.addKeyListener(this);
     addAndMakeVisible(search);
+    favoritesOnly.setComponentID("presetBrowser.favoritesOnly");
+    favoritesOnly.setClickingTogglesState(true);
+    favoritesOnly.setTooltip("Show only favorite presets");
+    favoritesOnly.onClick = [this] { applyFavoritesFilter(); };
+    addAndMakeVisible(favoritesOnly);
 
     sidebar.setComponentID("presetBrowser.sidebar");
     addAndMakeVisible(sidebar);
@@ -49,6 +57,7 @@ PresetBrowserPage::PresetBrowserPage(
     grid.setCallbacks(
             [this] { updateSelection(); },
             [this] { openSelected(); });
+    grid.setFavoriteCallback([this](const File& file) { toggleFavorite(file); });
     viewport.setComponentID("presetBrowser.viewport");
     viewport.setViewedComponent(&grid, false);
     viewport.setScrollBarsShown(true, false);
@@ -67,8 +76,13 @@ PresetBrowserPage::PresetBrowserPage(
     browse.onClick = [this] { onBrowse(); };
     addAndMakeVisible(browse);
     open.setComponentID("presetBrowser.open");
+    open.setEnabled(false);
     open.onClick = [this] { openSelected(); };
     addAndMakeVisible(open);
+    editTags.setComponentID("presetBrowser.editTags");
+    editTags.setEnabled(false);
+    editTags.onClick = [this] { editSelectedTags(); };
+    addAndMakeVisible(editTags);
     close.setComponentID("presetBrowser.close");
     close.onClick = [this] { onClose(); };
     addAndMakeVisible(close);
@@ -83,6 +97,10 @@ PresetBrowserPage::PresetBrowserPage(
     };
     styleSecondaryButton(browse);
     styleSecondaryButton(close);
+    styleSecondaryButton(editTags);
+    styleSecondaryButton(favoritesOnly);
+    favoritesOnly.setColour(TextButton::buttonOnColourId,
+            CanvasChromePalette::navigationAccent.withAlpha(0.3f));
     open.setColour(TextButton::buttonColourId,
             CanvasChromePalette::navigationAccent);
     open.setColour(TextButton::buttonOnColourId,
@@ -130,6 +148,7 @@ void PresetBrowserPage::resized() {
     auto titleArea = header.removeFromLeft(220);
     title.setBounds(titleArea.removeFromTop(25));
     subtitle.setBounds(titleArea);
+    favoritesOnly.setBounds(header.removeFromRight(110).withHeight(36));
     search.setBounds(header.withSizeKeepingCentre(jmin(620, header.getWidth()), 36));
 
     auto footer = bounds.removeFromBottom(54).reduced(18, 9);
@@ -141,7 +160,10 @@ void PresetBrowserPage::resized() {
     sidebar.setBounds(bounds.removeFromLeft(174));
     const auto detailBounds = bounds.removeFromRight(258);
     detail.setBounds(detailBounds);
-    open.setBounds(detailBounds.reduced(20).removeFromBottom(40));
+    auto detailActions = detailBounds.reduced(20).removeFromBottom(40);
+    editTags.setBounds(detailActions.removeFromLeft(100));
+    detailActions.removeFromLeft(8);
+    open.setBounds(detailActions);
     viewport.setBounds(bounds);
     const int gridWidth = jmax(244, viewport.getMaximumVisibleWidth());
     grid.setSize(gridWidth, grid.contentHeightForWidth(gridWidth));
@@ -162,7 +184,21 @@ bool PresetBrowserPage::keyPressed(const KeyPress& key) {
     return keyPressed(key, this);
 }
 
-bool PresetBrowserPage::keyPressed(const KeyPress& key, Component*) {
+bool PresetBrowserPage::keyPressed(const KeyPress& key, Component* source) {
+    if (source == &search && search.handlePlaybackSpace(key)) {
+        return true;
+    }
+    if (key.getKeyCode() == KeyPress::spaceKey
+            && !key.getModifiers().isCommandDown()
+            && !key.getModifiers().isCtrlDown()
+            && !key.getModifiers().isAltDown()
+            && onTogglePlayback) {
+        if (source == &search || search.hasKeyboardFocus(true)) {
+            return false;
+        }
+        onTogglePlayback();
+        return true;
+    }
     if (key == KeyPress::escapeKey) {
         onClose();
         return true;
@@ -202,22 +238,47 @@ void PresetBrowserPage::textEditorReturnKeyPressed(TextEditor&) {
 void PresetBrowserPage::receiveResults(
         const std::vector<PresetLibraryRecord>& records,
         const std::vector<int>& visibleIndices) {
-    sidebar.setRecords(records);
-    grid.setResults(records, visibleIndices);
+    library = records;
+    searchResults = visibleIndices;
+    sidebar.setRecords(library);
+    applyFavoritesFilter();
+}
+
+void PresetBrowserPage::applyFavoritesFilter() {
+    std::vector<int> visible;
+    visible.reserve(searchResults.size());
+    for (const int indexToCheck : searchResults) {
+        if (!favoritesOnly.getToggleState()
+                || (favorites != nullptr && favorites->isPresetFavorite(
+                        library[(size_t) indexToCheck].file))) {
+            visible.push_back(indexToCheck);
+        }
+    }
+    grid.setResults(library, visible);
     const int width = jmax(244, viewport.getMaximumVisibleWidth());
     grid.setSize(width, grid.contentHeightForWidth(width));
-    status.setText(String(visibleIndices.size()) + " OF " + String(records.size()) + " PRESETS",
+    status.setText(String(visible.size()) + " OF " + String(library.size()) + " PRESETS",
             dontSendNotification);
-    if (!records.empty() && !records.front().metadataReady) {
-        status.setText(String(records.size()) + " PRESETS  ·  LOADING DETAILS",
+    if (!library.empty() && !library.front().metadataReady) {
+        status.setText(String(library.size()) + " PRESETS  ·  LOADING DETAILS",
                 dontSendNotification);
     }
     updateSelection();
 }
 
+void PresetBrowserPage::toggleFavorite(const File& file) {
+    if (favorites == nullptr) {
+        return;
+    }
+    favorites->togglePreset(file);
+    applyFavoritesFilter();
+}
+
 void PresetBrowserPage::updateSelection() {
-    detail.setRecord(grid.selectedRecord());
-    open.setEnabled(grid.selectedRecord() != nullptr);
+    const auto* record = grid.selectedRecord();
+    detail.setRecord(record);
+    open.setEnabled(record != nullptr);
+    editTags.setEnabled(record != nullptr && record->metadataReady);
 }
 
 void PresetBrowserPage::openSelected() {
@@ -233,6 +294,25 @@ void PresetBrowserPage::openSelected() {
             MessageBoxIconType::WarningIcon,
             "Unable to open preset",
             "The selected preset could not be loaded.");
+}
+
+void PresetBrowserPage::editSelectedTags() {
+    const auto* record = grid.selectedRecord();
+    if (record == nullptr) {
+        return;
+    }
+    const auto file = record->file;
+    PresetMetadataEditor::editTags(*this, file, record->presentation.tags,
+            [safeThis = SafePointer<PresetBrowserPage>(this), file](
+                    const StringArray& tags) {
+                if (safeThis == nullptr) {
+                    return;
+                }
+                safeThis->index->refreshRecord(file);
+                if (safeThis->onTagsChanged) {
+                    safeThis->onTagsChanged(file, tags);
+                }
+            });
 }
 
 }

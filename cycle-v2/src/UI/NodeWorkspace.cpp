@@ -33,11 +33,17 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
         layoutPerformanceKeyboard();
     });
     canvas.setPreviewPlaybackToggleCallback([this] {
-        if (keyboard.isVisible()) {
-            keyboard.togglePlayback();
-        }
+        togglePreviewPlayback();
     });
     keyboard.setPreviewNote(canvas.previewMidiNote());
+    keyboard.setSequence(canvas.presetSequence());
+    keyboard.setSequenceChangedCallback([this](PresetMidiSequence sequence) {
+        saveEditedSequence(std::move(sequence), canvas.presetPatternId());
+    });
+    keyboard.setRecordingChangedCallback([this](bool enabled) {
+        audioEngine.setMidiRecordingEnabled(enabled);
+    });
+    keyboard.setFlushRecordingInputCallback([this] { drainRecordedMidi(); });
     keyboard.setPreviewNoteSelectedCallback([this](int midiNote) {
         canvas.setPreviewMidiNote(midiNote);
     });
@@ -56,12 +62,191 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
 
 NodeWorkspace::~NodeWorkspace() {
     stopTimer();
+    audioEngine.setMidiRecordingEnabled(false);
     canvas.setOverlayOcclusionChangedCallback({});
     canvas.setPreviewPlaybackToggleCallback({});
     keyboard.setModWheelValueChangedCallback({});
     keyboard.setModWheelGestureStartedCallback({});
     keyboard.setModWheelGestureEndedCallback({});
     keyboard.releaseAllNotes();
+}
+
+void NodeWorkspace::configurePresetSidebar(
+        std::vector<File> directories,
+        InlinePresetBrowser::OpenCallback openCallback,
+        InlinePresetBrowser::ActionCallback browseCallback,
+        InlinePresetBrowser::ActionCallback createCallback,
+        LibraryFavorites* favorites) {
+    canvas.configurePresetSidebar(
+            std::move(directories),
+            std::move(openCallback),
+            std::move(browseCallback),
+            std::move(createCallback), favorites);
+    canvas.configurePatternSidebar(
+            [this](const String& id) { selectPattern(id); },
+            [this](const String& id) { editPattern(id); },
+            [this](const String& name, const StringArray& tags) {
+                createPattern(name, tags);
+            },
+            [this](const String& id, const String& name) {
+                renamePattern(id, name);
+            },
+            [this](const String& id) { deletePattern(id); });
+    refreshPatternSidebar();
+}
+
+void NodeWorkspace::refreshPresetSidebarFavorites() {
+    canvas.refreshPresetSidebarFavorites();
+}
+
+void NodeWorkspace::refreshPresetSidebarIndex() {
+    canvas.refreshPresetSidebarIndex();
+}
+
+void NodeWorkspace::refreshPresetSidebarRecord(const File& file) {
+    canvas.refreshPresetSidebarRecord(file);
+}
+
+void NodeWorkspace::setCurrentPresetTags(StringArray tags) {
+    canvas.setCurrentPresetTags(std::move(tags));
+}
+
+void NodeWorkspace::configurePatternLibrary(File factoryDirectory, File userDirectory) {
+    patternLibrary = std::make_unique<PatternLibrary>(
+            std::move(factoryDirectory), std::move(userDirectory));
+    keyboard.setSequence(resolvedPresetSequence());
+    refreshPatternSidebar();
+}
+
+std::optional<PresetMidiSequence> NodeWorkspace::resolvedPresetSequence() const {
+    if (patternLibrary != nullptr && canvas.presetPatternId().isNotEmpty()) {
+        if (const auto* pattern = patternLibrary->find(canvas.presetPatternId())) {
+            return pattern->sequence;
+        }
+    }
+    return canvas.presetSequence();
+}
+
+void NodeWorkspace::refreshPatternSidebar() {
+    if (patternLibrary != nullptr) {
+        canvas.setPatternSidebarRecords(
+                patternLibrary->records(), canvas.presetPatternId());
+    }
+}
+
+void NodeWorkspace::selectPattern(const String& id) {
+    if (patternLibrary == nullptr) {
+        return;
+    }
+    const auto* pattern = patternLibrary->find(id);
+    if (pattern == nullptr) {
+        return;
+    }
+    if (canvas.setPresetPatternId(id)) {
+        keyboard.setSequence(pattern->sequence);
+        refreshPatternSidebar();
+    }
+}
+
+void NodeWorkspace::createPattern(const String& name, const StringArray& tags) {
+    if (patternLibrary == nullptr) {
+        return;
+    }
+    const auto sequence = resolvedPresetSequence().value_or(PresetMidiSequence {});
+    const auto saved = patternLibrary->saveUserPattern(
+            patternLibrary->newUserId(), name, sequence,
+            tags.isEmpty() ? String("Other") : tags[0], tags);
+    if (saved.has_value()) {
+        selectPattern(saved->id);
+        editPattern(saved->id);
+    } else {
+        showPatternSaveError();
+    }
+}
+
+void NodeWorkspace::editPattern(const String& id) {
+    if (patternLibrary == nullptr) {
+        return;
+    }
+    const auto* pattern = patternLibrary->find(id);
+    if (pattern == nullptr) {
+        return;
+    }
+    selectPattern(id);
+    auto editingId = std::make_shared<String>(id);
+    keyboard.showSequenceEditor(pattern->sequence,
+            [safeThis = Component::SafePointer<NodeWorkspace>(this), editingId](
+                    PresetMidiSequence sequence) {
+                if (safeThis != nullptr) {
+                    safeThis->saveEditedSequence(std::move(sequence), *editingId);
+                    *editingId = safeThis->canvas.presetPatternId();
+                }
+    });
+}
+
+void NodeWorkspace::renamePattern(const String& id, const String& name) {
+    if (patternLibrary == nullptr) {
+        return;
+    }
+    if (patternLibrary->renameUserPattern(id, name).has_value()) {
+        refreshPatternSidebar();
+        return;
+    }
+    AlertWindow::showMessageBoxAsync(
+            MessageBoxIconType::WarningIcon,
+            "Pattern not renamed",
+            "The selected user pattern could not be renamed.",
+            "OK");
+}
+
+void NodeWorkspace::deletePattern(const String& id) {
+    if (patternLibrary == nullptr) {
+        return;
+    }
+    if (patternLibrary->deleteUserPattern(id)) {
+        keyboard.setSequence(resolvedPresetSequence());
+        refreshPatternSidebar();
+        return;
+    }
+    AlertWindow::showMessageBoxAsync(
+            MessageBoxIconType::WarningIcon,
+            "Pattern not deleted",
+            "The selected user pattern could not be moved to Trash.",
+            "OK");
+}
+
+void NodeWorkspace::saveEditedSequence(
+        PresetMidiSequence sequence, const String& sourceId) {
+    if (patternLibrary == nullptr) {
+        canvas.setPresetSequence(std::move(sequence));
+        return;
+    }
+    const auto* source = patternLibrary->find(sourceId);
+    const bool updateUserPattern = source != nullptr && !source->factory;
+    const String id = updateUserPattern
+            ? sourceId : patternLibrary->newUserId();
+    const String presetName = canvas.graphFile().getFileNameWithoutExtension();
+    const String name = source != nullptr
+            ? source->name + (updateUserPattern ? "" : " Variation")
+            : (presetName.isNotEmpty() ? presetName : "Untitled") + " Pattern";
+    const auto saved = patternLibrary->saveUserPattern(id, name, sequence,
+            source != nullptr ? source->tag : juce::String(),
+            source != nullptr ? source->tags : juce::StringArray());
+    if (saved.has_value()) {
+        canvas.setPresetPatternId(saved->id);
+        refreshPatternSidebar();
+    } else {
+        keyboard.setSequence(resolvedPresetSequence());
+        showPatternSaveError();
+    }
+}
+
+void NodeWorkspace::showPatternSaveError() {
+    AlertWindow::showMessageBoxAsync(
+            MessageBoxIconType::WarningIcon,
+            "Pattern not saved",
+            "The pattern library could not save this phrase.",
+            "OK");
 }
 
 bool NodeWorkspace::saveGraphToFile(const File& file) {
@@ -74,6 +259,8 @@ bool NodeWorkspace::loadGraphFromFile(const File& file) {
         return false;
     }
     keyboard.setPreviewNote(canvas.previewMidiNote());
+    keyboard.setSequence(resolvedPresetSequence());
+    refreshPatternSidebar();
     const auto status = audioEngine.status();
     audioEngine.setGraphOutputGain(canvas.graphOutputGain());
     publishAudioPlan(status, true);
@@ -240,6 +427,24 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
             keyboard.octaveUpBounds().translated(
                     keyboardBounds.getX(),
                     keyboardBounds.getY())));
+    targets->add(pointerTarget(
+            "PerformanceKeyboard.PlaySequence",
+            "performanceSequencePlay",
+            keyboard.playBounds().translated(
+                    keyboardBounds.getX(),
+                    keyboardBounds.getY())));
+    targets->add(pointerTarget(
+            "PerformanceKeyboard.EditSequence",
+            "performanceSequenceEdit",
+            keyboard.editBounds().translated(
+                    keyboardBounds.getX(),
+                    keyboardBounds.getY())));
+    targets->add(pointerTarget(
+            "PerformanceKeyboard.RecordSequence",
+            "performanceSequenceRecord",
+            keyboard.recordBounds().translated(
+                    keyboardBounds.getX(),
+                    keyboardBounds.getY())));
     for (int note = keyboard.baseNote(); note <= keyboard.baseNote() + 24; ++note) {
         targets->add(pointerTarget(
                 "PerformanceKeyboard.Note" + String(note),
@@ -307,6 +512,10 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("modWheelValue", keyboard.modWheelValue());
     object->setProperty("previewNote", keyboard.previewNote());
     object->setProperty("previewPlaying", keyboard.isPlaying());
+    object->setProperty("previewRecording", keyboard.isRecording());
+    object->setProperty("previewSequenceNoteCount", (int) keyboard.sequenceNoteCount());
+    object->setProperty("previewSequenceControlCount", (int) keyboard.sequenceControlCount());
+    object->setProperty("previewPatternId", canvas.presetPatternId());
     object->setProperty("previewProgress", keyboard.playbackProgress());
     object->setProperty("previewDurationSeconds", keyboard.playbackDurationSeconds());
     object->setProperty("audioDeviceReady", status.deviceReady);
@@ -438,12 +647,16 @@ bool NodeWorkspace::performanceEndModWheelGestureForAutomation() {
     return true;
 }
 
-bool NodeWorkspace::togglePreviewPlaybackForAutomation() {
+bool NodeWorkspace::togglePreviewPlayback() {
     if (!keyboard.isVisible()) {
         return false;
     }
     keyboard.togglePlayback();
     return true;
+}
+
+bool NodeWorkspace::togglePreviewPlaybackForAutomation() {
+    return togglePreviewPlayback();
 }
 
 bool NodeWorkspace::enqueueMidiForAutomation(const MidiMessage& message) {
@@ -463,6 +676,7 @@ void NodeWorkspace::resized() {
 }
 
 void NodeWorkspace::timerCallback() {
+    drainRecordedMidi();
     const auto status = audioEngine.status();
     updateOutputMeter(status);
     audioEngine.setGraphOutputGain(canvas.graphOutputGain());
@@ -473,6 +687,13 @@ void NodeWorkspace::timerCallback() {
     layoutPerformanceKeyboard();
 
     publishAudioPlan(status, false);
+}
+
+void NodeWorkspace::drainRecordedMidi() {
+    RealtimeMidiEvent recorded;
+    while (audioEngine.dequeueRecordedMidi(recorded)) {
+        keyboard.recordMidiMessage(recorded.toMidiMessage(), recorded.timestampSeconds);
+    }
 }
 
 bool NodeWorkspace::publishAudioPlan(

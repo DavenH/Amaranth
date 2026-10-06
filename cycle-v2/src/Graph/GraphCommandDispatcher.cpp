@@ -18,6 +18,46 @@ bool GraphCommandDispatcher::setTimeSurfaceStyle(const juce::String& styleId) {
     return true;
 }
 
+bool GraphCommandDispatcher::setPresetSequence(PresetMidiSequence sequence) {
+    if (hasTransientEdit()) {
+        return false;
+    }
+    document.presetPresentation.sequence = std::move(sequence);
+    document.presetPresentation.patternId.clear();
+    ++document.presentationRevision;
+    return true;
+}
+
+bool GraphCommandDispatcher::setPresetPatternId(const juce::String& id) {
+    if (hasTransientEdit() || id.isEmpty()
+            || (document.presetPresentation.patternId == id
+                    && !document.presetPresentation.sequence.has_value())) {
+        return false;
+    }
+    document.presetPresentation.patternId = id;
+    document.presetPresentation.sequence.reset();
+    ++document.presentationRevision;
+    return true;
+}
+
+bool GraphCommandDispatcher::setPresetTags(juce::StringArray tags) {
+    if (hasTransientEdit() || document.presetPresentation.tags == tags) {
+        return false;
+    }
+    document.presetPresentation.tags = std::move(tags);
+    ++document.presentationRevision;
+    return true;
+}
+
+bool GraphCommandDispatcher::setPresetTitle(const juce::String& title) {
+    if (hasTransientEdit() || document.presetPresentation.title == title) {
+        return false;
+    }
+    document.presetPresentation.title = title;
+    ++document.presentationRevision;
+    return true;
+}
+
 GraphEditResult GraphCommandDispatcher::addNode(NodeKind kind, juce::Point<float> position) {
     return apply([&](auto& graph) {
         return GraphEditor().addNode(graph, kind, position);

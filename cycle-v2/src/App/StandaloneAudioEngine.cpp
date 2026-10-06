@@ -62,6 +62,7 @@ bool StandaloneAudioEngine::start() {
 void StandaloneAudioEngine::stop() {
     releaseMidiSource(MidiEventSource::PerformanceKeyboard);
     releaseMidiSource(MidiEventSource::Hardware);
+    releaseMidiSource(MidiEventSource::PatternPlayback);
     deviceManager.removeMidiInputDeviceCallback({}, this);
     deviceManager.removeAudioCallback(this);
     if (deviceProperties != nullptr) {
@@ -144,12 +145,27 @@ StandaloneAudioEngine::LiveCapture StandaloneAudioEngine::captureLiveAudio(
 bool StandaloneAudioEngine::enqueueMidiMessage(
         const MidiMessage& message,
         MidiEventSource source) {
-    return midiEvents.enqueue(message, source, currentTimeSeconds());
+    return enqueueMidiMessageAt(message, source, currentTimeSeconds());
+}
+
+bool StandaloneAudioEngine::enqueueMidiMessageAt(
+        const MidiMessage& message,
+        MidiEventSource source,
+        double timestampSeconds) {
+    if (midiRecordingEnabled.load(std::memory_order_relaxed)) {
+        recordedMidiEvents.enqueue(message, source, timestampSeconds);
+    }
+    return midiEvents.enqueue(message, source, timestampSeconds);
 }
 
 void StandaloneAudioEngine::releaseMidiSource(MidiEventSource source) {
+    if (source == MidiEventSource::PatternPlayback) {
+        midiEvents.cancelSource(source);
+    }
     midiEvents.enqueue(
-            MidiMessage::allNotesOff(1),
+            source == MidiEventSource::PatternPlayback
+                    ? MidiMessage::allSoundOff(1)
+                    : MidiMessage::allNotesOff(1),
             source,
             currentTimeSeconds());
 }
@@ -217,10 +233,14 @@ void StandaloneAudioEngine::audioDeviceStopped() {
 void StandaloneAudioEngine::handleIncomingMidiMessage(
         MidiInput*,
         const MidiMessage& message) {
+    const double now = currentTimeSeconds();
+    if (midiRecordingEnabled.load(std::memory_order_relaxed)) {
+        recordedMidiEvents.enqueue(message, MidiEventSource::Hardware, now);
+    }
     midiEvents.enqueue(
             message,
             MidiEventSource::Hardware,
-            currentTimeSeconds());
+            now);
 }
 
 void StandaloneAudioEngine::timerCallback() {

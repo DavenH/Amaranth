@@ -10,7 +10,8 @@ namespace CycleV2 {
 
 enum class MidiEventSource : uint8_t {
     PerformanceKeyboard,
-    Hardware
+    Hardware,
+    PatternPlayback
 };
 
 struct RealtimeMidiEvent {
@@ -19,7 +20,8 @@ struct RealtimeMidiEvent {
         NoteOff,
         Controller,
         ChannelPressure,
-        AllNotesOff
+        AllNotesOff,
+        AllSoundOff
     };
 
     Kind kind { Kind::NoteOn };
@@ -30,6 +32,7 @@ struct RealtimeMidiEvent {
     double timestampSeconds {};
     uint64_t sequence {};
     uint32_t lifecycleSeed {};
+    uint32_t sourceGeneration {};
 
     juce::MidiMessage toMidiMessage() const;
 };
@@ -41,12 +44,19 @@ public:
     virtual bool enqueueMidiMessage(
             const juce::MidiMessage& message,
             MidiEventSource source) = 0;
+    virtual bool enqueueMidiMessageAt(
+            const juce::MidiMessage& message,
+            MidiEventSource source,
+            double timestampSeconds) {
+        (void) timestampSeconds;
+        return enqueueMidiMessage(message, source);
+    }
     virtual void releaseMidiSource(MidiEventSource source) = 0;
 };
 
 class RealtimeMidiEventQueue {
 public:
-    static constexpr size_t capacity = 512;
+    static constexpr size_t capacity = 2048;
 
     RealtimeMidiEventQueue();
 
@@ -56,6 +66,9 @@ public:
             double timestampSeconds);
     bool dequeue(RealtimeMidiEvent& event);
     bool consumeRecoveryRequest(MidiEventSource source);
+    void cancelSource(MidiEventSource source);
+    bool isCurrent(const RealtimeMidiEvent& event) const;
+    uint32_t generation(MidiEventSource source) const;
     size_t droppedEventCount() const { return droppedEvents.load(); }
 
 private:
@@ -73,7 +86,8 @@ private:
     static size_t sourceIndex(MidiEventSource source);
 
     std::array<Slot, capacity> slots;
-    std::array<std::atomic<bool>, 2> recoveryRequested {};
+    std::array<std::atomic<bool>, 3> recoveryRequested {};
+    std::array<std::atomic<uint32_t>, 3> sourceGenerations {};
     std::atomic<size_t> enqueuePosition {};
     std::atomic<size_t> dequeuePosition {};
     std::atomic<size_t> droppedEvents {};

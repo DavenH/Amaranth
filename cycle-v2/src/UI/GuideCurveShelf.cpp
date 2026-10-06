@@ -64,7 +64,8 @@ Rectangle<float> GuideCurveShelf::guideWorkspace(
     const WorkspaceDockLayout layout = WorkspaceDock::layout(
             workspace,
             { true, guidesMinimized, spiesMinimized, 190.f });
-    return layout.leftShelf.withY(workspace.getY()).withHeight(workspace.getHeight());
+    return layout.leftShelf.withRight(workspace.getRight())
+            .withY(workspace.getY()).withHeight(workspace.getHeight());
 }
 
 Rectangle<float> GuideCurveShelf::spyWorkspace(
@@ -141,7 +142,7 @@ String GuideCurveShelf::guideAt(
         Rectangle<float> workspace,
         const SignalProbeRailState& dockState,
         const GuideCurveShelfState& state) {
-    if (state.minimized) {
+    if (state.minimized || state.presetBrowserVisible) {
         return {};
     }
     const Rectangle<float> visibleTiles = visibleTileBounds(

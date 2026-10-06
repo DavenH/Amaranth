@@ -5,6 +5,7 @@
 #include <functional>
 #include <vector>
 
+#include "App/LibraryFavorites.h"
 #include "UI/PresetLibraryIndex.h"
 #include "UI/PresetThumbnailCache.h"
 
@@ -26,14 +27,17 @@ public:
     using SelectionCallback = std::function<void()>;
     using OpenCallback = std::function<void()>;
 
-    explicit PresetCardGrid(PresetThumbnailCache& thumbnailsToUse) :
-            thumbnails(thumbnailsToUse) {
+    explicit PresetCardGrid(PresetThumbnailCache& thumbnailsToUse,
+            LibraryFavorites* favoriteStore = nullptr) :
+            thumbnails(thumbnailsToUse)
+        ,   favorites(favoriteStore) {
     }
 
     void setResults(
             const std::vector<PresetLibraryRecord>& records,
             const std::vector<int>& visibleIndices);
     void setCallbacks(SelectionCallback selectionCallback, OpenCallback openCallback);
+    void setFavoriteCallback(std::function<void(const juce::File&)> callback);
     void moveSelection(int columnDelta, int rowDelta);
     const PresetLibraryRecord* selectedRecord() const;
     int visibleCount() const { return (int) indices.size(); }
@@ -50,13 +54,16 @@ private:
     int columnCount(int width) const;
     int indexAt(juce::Point<int> position) const;
     juce::Rectangle<int> cardBounds(int visibleIndex) const;
+    juce::Rectangle<float> favoriteBounds(int visibleIndex) const;
     void select(int visibleIndex);
 
     PresetThumbnailCache& thumbnails;
+    LibraryFavorites* favorites {};
     std::vector<PresetLibraryRecord> library;
     std::vector<int> indices;
     SelectionCallback onSelection;
     OpenCallback onOpen;
+    std::function<void(const juce::File&)> onFavorite;
     int selected {};
     int hovered { -1 };
 };

@@ -26,6 +26,9 @@ PresetLibraryRecord readRecord(const PresetLibraryRecord& skeleton) {
         if (const auto* object = root.getDynamicObject()) {
             record.presentation = PresetPresentationCodec::readMetadataJSON(
                     object->getProperty("presetPresentation")).presentation;
+            if (record.presentation.title.isNotEmpty()) {
+                record.name = record.presentation.title;
+            }
         }
     }
     if (record.presentation.pack.isEmpty()) {
@@ -67,11 +70,25 @@ std::vector<juce::String> searchTextsFor(
     return searchTexts;
 }
 
+bool isCheckoutFactoryDirectory(const juce::File& directory) {
+    return directory.getFileName() == "presets"
+            && directory.getParentDirectory().getFileName() == "content"
+            && directory.getParentDirectory().getParentDirectory().getFileName()
+                    == "cycle-v2";
+}
+
 std::vector<juce::File> removeCoveredDirectories(
         const std::vector<juce::File>& directories) {
     std::vector<juce::File> roots;
     roots.reserve(directories.size());
+    const juce::File currentFactory = directories.empty() ? juce::File()
+            : directories.front();
     for (const auto& directory : directories) {
+        if (directory != currentFactory
+                && isCheckoutFactoryDirectory(currentFactory)
+                && isCheckoutFactoryDirectory(directory)) {
+            continue;
+        }
         const bool nested = std::any_of(
                 directories.begin(),
                 directories.end(),
@@ -219,6 +236,21 @@ void PresetLibraryIndex::setQuery(const juce::String& query) {
     pendingQuery = query;
     ++requested;
     startTimer(70);
+}
+
+void PresetLibraryIndex::refreshRecord(const juce::File& file) {
+    const auto found = std::find_if(records.begin(), records.end(),
+            [&](const PresetLibraryRecord& record) {
+                return record.file == file;
+            });
+    if (found == records.end()) {
+        return;
+    }
+    *found = readRecord(*found);
+    published = ++requested;
+    if (callback) {
+        callback(records, matchingIndices(searchTextsFor(records), pendingQuery));
+    }
 }
 
 void PresetLibraryIndex::timerCallback() {

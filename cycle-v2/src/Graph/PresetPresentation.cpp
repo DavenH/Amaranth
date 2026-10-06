@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "Graph/PresetPresentation.h"
 
 namespace CycleV2 {
@@ -8,6 +10,95 @@ constexpr int kPresentationVersion = 1;
 constexpr int kMaximumPreviewWidth = 1024;
 constexpr int kMaximumPreviewHeight = 1024;
 constexpr size_t kMaximumPreviewBytes = 512 * 1024;
+
+std::optional<PresetMidiSequence> readSequence(const juce::var& value) {
+    const auto* object = value.getDynamicObject();
+    if (object == nullptr) {
+        return std::nullopt;
+    }
+    const double duration = (double) object->getProperty("durationSeconds");
+    if (!std::isfinite(duration) || duration <= 0.0
+            || duration > PresetMidiSequence::maximumDurationSeconds) {
+        return std::nullopt;
+    }
+    PresetMidiSequence sequence;
+    sequence.durationSeconds = duration;
+    const juce::var notesValue = object->getProperty("notes");
+    if (const auto* notes = notesValue.getArray()) {
+        if (notes->size() > (int) PresetMidiSequence::maximumEventsPerLane) {
+            return std::nullopt;
+        }
+        for (const auto& item : *notes) {
+            const auto* note = item.getDynamicObject();
+            if (note == nullptr) {
+                return std::nullopt;
+            }
+            PresetMidiNote decoded;
+            decoded.pitch = (int) note->getProperty("pitch");
+            decoded.velocity = (int) note->getProperty("velocity");
+            decoded.startSeconds = (double) note->getProperty("startSeconds");
+            decoded.durationSeconds = (double) note->getProperty("durationSeconds");
+            if (decoded.pitch < 0 || decoded.pitch > 127
+                    || decoded.velocity < 1 || decoded.velocity > 127
+                    || !std::isfinite(decoded.startSeconds)
+                    || !std::isfinite(decoded.durationSeconds)
+                    || decoded.startSeconds < 0.0 || decoded.durationSeconds <= 0.0
+                    || decoded.startSeconds + decoded.durationSeconds > duration + 0.001) {
+                return std::nullopt;
+            }
+            sequence.notes.push_back(decoded);
+        }
+    }
+    const juce::var controlsValue = object->getProperty("controls");
+    if (const auto* controls = controlsValue.getArray()) {
+        if (controls->size() > (int) PresetMidiSequence::maximumEventsPerLane) {
+            return std::nullopt;
+        }
+        for (const auto& item : *controls) {
+            const auto* control = item.getDynamicObject();
+            if (control == nullptr) {
+                return std::nullopt;
+            }
+            PresetMidiControl decoded;
+            decoded.controller = (int) control->getProperty("controller");
+            decoded.value = (int) control->getProperty("value");
+            decoded.timeSeconds = (double) control->getProperty("timeSeconds");
+            if (decoded.controller < 0 || decoded.controller > 127
+                    || decoded.value < 0 || decoded.value > 127
+                    || !std::isfinite(decoded.timeSeconds)
+                    || decoded.timeSeconds < 0.0 || decoded.timeSeconds > duration) {
+                return std::nullopt;
+            }
+            sequence.controls.push_back(decoded);
+        }
+    }
+    return sequence;
+}
+
+juce::var writeSequence(const PresetMidiSequence& sequence) {
+    auto result = std::make_unique<juce::DynamicObject>();
+    result->setProperty("durationSeconds", sequence.durationSeconds);
+    juce::Array<juce::var> notes;
+    for (const auto& note : sequence.notes) {
+        auto item = std::make_unique<juce::DynamicObject>();
+        item->setProperty("pitch", note.pitch);
+        item->setProperty("velocity", note.velocity);
+        item->setProperty("startSeconds", note.startSeconds);
+        item->setProperty("durationSeconds", note.durationSeconds);
+        notes.add(juce::var(item.release()));
+    }
+    result->setProperty("notes", std::move(notes));
+    juce::Array<juce::var> controls;
+    for (const auto& control : sequence.controls) {
+        auto item = std::make_unique<juce::DynamicObject>();
+        item->setProperty("controller", control.controller);
+        item->setProperty("value", control.value);
+        item->setProperty("timeSeconds", control.timeSeconds);
+        controls.add(juce::var(item.release()));
+    }
+    result->setProperty("controls", std::move(controls));
+    return juce::var(result.release());
+}
 
 bool isValidDimension(int value, int maximum) {
     return value > 0 && value <= maximum;
@@ -81,10 +172,12 @@ PresetPresentationDecodeResult readPresentation(
         return result;
     }
 
+    result.presentation.title = object->getProperty("title").toString();
     result.presentation.author = object->getProperty("author").toString();
     result.presentation.pack = object->getProperty("pack").toString();
     result.presentation.description = object->getProperty("description").toString();
     result.presentation.timeSurfaceStyle = object->getProperty("timeSurfaceStyle").toString();
+    result.presentation.patternId = object->getProperty("patternId").toString();
     result.presentation.rating = juce::jlimit(0, 5, (int) object->getProperty("rating"));
 
     readTags(object->getProperty("tags"), result);
@@ -92,6 +185,13 @@ PresetPresentationDecodeResult readPresentation(
     const juce::var previewValue = object->getProperty("preview");
     if (includePreview && !previewValue.isVoid()) {
         result.presentation.preview = readPreview(previewValue, result.warning);
+    }
+    const juce::var sequenceValue = object->getProperty("sequence");
+    if (!sequenceValue.isVoid()) {
+        result.presentation.sequence = readSequence(sequenceValue);
+        if (!result.presentation.sequence.has_value()) {
+            result.warning = "Preset MIDI sequence is invalid";
+        }
     }
     return result;
 }
@@ -103,18 +203,24 @@ bool PresetPreviewImage::isValid() const {
 }
 
 bool PresetPresentation::empty() const {
-    return author.isEmpty()
+    return title.isEmpty()
+            && author.isEmpty()
             && pack.isEmpty()
             && description.isEmpty()
             && timeSurfaceStyle.isEmpty()
             && tags.isEmpty()
             && rating == 0
-            && !preview.has_value();
+            && !preview.has_value()
+            && patternId.isEmpty()
+            && !sequence.has_value();
 }
 
 juce::var PresetPresentationCodec::writeJSON(const PresetPresentation& presentation) {
     auto result = std::make_unique<juce::DynamicObject>();
     result->setProperty("version", kPresentationVersion);
+    if (presentation.title.isNotEmpty()) {
+        result->setProperty("title", presentation.title);
+    }
     if (presentation.timeSurfaceStyle.isNotEmpty()) {
         result->setProperty("timeSurfaceStyle", presentation.timeSurfaceStyle);
     }
@@ -148,6 +254,11 @@ juce::var PresetPresentationCodec::writeJSON(const PresetPresentation& presentat
                 preview.jpegData.getData(), preview.jpegData.getSize()));
         result->setProperty("preview", juce::var(encoded.release()));
     }
+    if (presentation.patternId.isNotEmpty()) {
+        result->setProperty("patternId", presentation.patternId);
+    } else if (presentation.sequence.has_value()) {
+        result->setProperty("sequence", writeSequence(*presentation.sequence));
+    }
     return juce::var(result.release());
 }
 
@@ -158,6 +269,16 @@ PresetPresentationDecodeResult PresetPresentationCodec::readJSON(const juce::var
 PresetPresentationDecodeResult PresetPresentationCodec::readMetadataJSON(
         const juce::var& value) {
     return readPresentation(value, false);
+}
+
+juce::var PresetPresentationCodec::writeSequenceJSON(
+        const PresetMidiSequence& sequence) {
+    return writeSequence(sequence);
+}
+
+std::optional<PresetMidiSequence> PresetPresentationCodec::readSequenceJSON(
+        const juce::var& value) {
+    return readSequence(value);
 }
 
 juce::String idForPresetPreviewView(PresetPreviewView view) {

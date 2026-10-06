@@ -1,5 +1,17 @@
 # Refactor Notes
 
+## Cycle V2 performance keyboard phrase transport
+
+Review date: 2026-10-01. `PerformanceKeyboard.cpp` is 804 lines after adding
+preset MIDI phrases. It still owns one cohesive note lifecycle, keyboard
+presentation, play/record controls, and MIDI sink. If another transport mode or
+recording feature is needed, extract note/CC scheduling and recording state into
+a keyboard-owned phrase transport. Keep key geometry in the shared JUCE keyboard,
+the piano roll in `PresetMidiEditor`, serialization in
+`PresetPresentationCodec`, and hardware capture in `StandaloneAudioEngine`.
+The extraction must remove those transport methods and fields from the panel;
+a facade that leaves duplicate note-release decisions does not count.
+
 ## Cycle V2 duplicated model and policy queue
 
 Review date: 2026-09-19. These findings come from tracing repeated state and

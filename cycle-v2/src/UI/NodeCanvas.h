@@ -72,7 +72,21 @@ public:
     void configurePresetSidebar(
             std::vector<File> directories,
             InlinePresetBrowser::OpenCallback openCallback,
-            InlinePresetBrowser::ActionCallback browseCallback);
+            InlinePresetBrowser::ActionCallback browseCallback,
+            InlinePresetBrowser::ActionCallback createCallback,
+            LibraryFavorites* favorites = nullptr);
+    void refreshPresetSidebarFavorites();
+    void refreshPresetSidebarIndex();
+    void refreshPresetSidebarRecord(const juce::File& file);
+    void setCurrentPresetTags(juce::StringArray tags);
+    void configurePatternSidebar(
+            InlinePresetBrowser::PatternSelectCallback select,
+            InlinePresetBrowser::PatternEditCallback edit,
+            InlinePresetBrowser::PatternCreateCallback create,
+            InlinePresetBrowser::PatternRenameCallback rename,
+            InlinePresetBrowser::PatternDeleteCallback remove);
+    void setPatternSidebarRecords(
+            std::vector<PatternRecord> records, const String& selectedId);
     var exportAutomationState() const;
     String exportGraphJson() const;
     bool openNodeEditorForAutomation(const String& nodeId);
@@ -118,6 +132,14 @@ public:
     uint64_t audioPlanRevision() const { return presentation.audioPlanRevision(); }
     float graphOutputGain() const;
     int previewMidiNote() const { return presentation.previewMidiNote(); }
+    const std::optional<PresetMidiSequence>& presetSequence() const {
+        return document.presentation().sequence;
+    }
+    bool setPresetSequence(PresetMidiSequence sequence);
+    const String& presetPatternId() const {
+        return document.presentation().patternId;
+    }
+    bool setPresetPatternId(const String& id);
     ProbeRefreshMode probeRefreshMode() const override { return probeRailState.refreshMode; }
     void setProbeRefreshMode(ProbeRefreshMode mode);
     bool setPreviewMidiNote(int midiNote);

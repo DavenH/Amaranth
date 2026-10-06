@@ -39,6 +39,14 @@ The new mod-wheel test and all six neighboring performance-keyboard/layout
 tests pass in the same CTest discovery. Full output is in
 `build/tests/Testing/Temporary/LastTest.log`.
 
+On 2026-10-05, a broader `[browser],[sequence],[realtime],[favorites]` run
+passed 61 of 68 tests. Seven existing realtime/executor tests failed in
+telemetry, global delay, spectral output, or factory preset load assertions;
+the same telemetry test fails alone. Several factory preset files are currently
+deleted or edited in the workspace. The focused preview Stop tests and 34
+browser/sequence/favorites cases pass. Log:
+`/private/tmp/cycle-v2-focused-tests.txt`. Current status: open.
+
 Current status: open; reconcile the active preset/audio work independently of
 the presentation-only keyboard control.
 
@@ -903,6 +911,14 @@ layer where the test expected a difference. Log:
 
 Current status: open; the exact presentation, preview, async-browser, and probe
 suites pass and none of these broad-suite cases were changed.
+
+Update 2026-10-01: `[cycle-v2][preset]` passed 31 of 39 cases after adding MIDI
+preview phrase tests. Eight failures remain in the same missing archived preset,
+deserialization, spectral frontier, pan edit, and traversal/probe parity areas;
+the detailed run is `/tmp/cycle-v2-all-preset-tests.txt`. A JSON comparison
+against `HEAD` confirmed that the 249 edited factory files changed only their
+new presentation sequence (plus the presentation wrapper for `empty`), leaving
+all node, edge, and DSP content intact. Status: open.
 
 ## P2: Stengah probe test expects absent probe identifiers
 

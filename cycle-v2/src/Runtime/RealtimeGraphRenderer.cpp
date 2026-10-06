@@ -231,10 +231,28 @@ RealtimeGraphRenderer::consumeEvents(
     if (queue.consumeRecoveryRequest(MidiEventSource::Hardware)) {
         releaseSource(MidiEventSource::Hardware, 0);
     }
+    if (queue.consumeRecoveryRequest(MidiEventSource::PatternPlayback)) {
+        releaseSource(MidiEventSource::PatternPlayback, 0);
+    }
+
+    const uint32_t currentPatternGeneration = queue.generation(
+            MidiEventSource::PatternPlayback);
+    if (currentPatternGeneration != patternPlaybackGeneration) {
+        size_t retainedCount {};
+        for (size_t index = 0; index < scheduledEventCount; ++index) {
+            if (queue.isCurrent(scheduledEvents[index])) {
+                scheduledEvents[retainedCount++] = scheduledEvents[index];
+            }
+        }
+        scheduledEventCount = retainedCount;
+        patternPlaybackGeneration = currentPatternGeneration;
+    }
 
     RealtimeMidiEvent event;
     while (scheduledEventCount < scheduledEvents.size() && queue.dequeue(event)) {
-        scheduledEvents[scheduledEventCount++] = event;
+        if (queue.isCurrent(event)) {
+            scheduledEvents[scheduledEventCount++] = event;
+        }
         ++counts.dequeuedEvents;
     }
 
@@ -262,7 +280,9 @@ RealtimeGraphRenderer::consumeEvents(
                 0,
                 frameCount - 1,
                 roundToInt(relativeSamples));
-        applyEvent(scheduled, sampleOffset);
+        if (queue.isCurrent(scheduled)) {
+            applyEvent(scheduled, sampleOffset);
+        }
         ++consumedCount;
     }
 
@@ -320,6 +340,10 @@ void RealtimeGraphRenderer::applyEvent(
         case RealtimeMidiEvent::Kind::AllNotesOff:
             releaseSource(event.source, sampleOffset);
             return;
+
+        case RealtimeMidiEvent::Kind::AllSoundOff:
+            resetSource(event.source, sampleOffset);
+            return;
     }
 }
 
@@ -334,6 +358,22 @@ void RealtimeGraphRenderer::releaseSource(
                 && preparedGraph->executor.hasVoiceTailProcessor(voice.context.voiceIndex);
         voice.context.events.push_back({
                 hasTail ? NoteLifecycleType::NoteOff : NoteLifecycleType::Reset,
+                sampleOffset,
+                voice.context.voiceIndex
+        });
+        voice.released = true;
+    }
+}
+
+void RealtimeGraphRenderer::resetSource(
+        MidiEventSource source,
+        size_t sampleOffset) {
+    for (auto& voice : voices) {
+        if (!voice.active || voice.source != source) {
+            continue;
+        }
+        voice.context.events.push_back({
+                NoteLifecycleType::Reset,
                 sampleOffset,
                 voice.context.voiceIndex
         });

@@ -2,9 +2,14 @@
 
 #include <JuceHeader.h>
 
+#include <array>
+#include <vector>
+
 #include <UI/Widgets/AmaranthMidiKeyboard.h>
 
+#include "Graph/PresetPresentation.h"
 #include "Runtime/RealtimeMidiEventQueue.h"
+#include "UI/PatternControlScheduler.h"
 
 namespace CycleV2 {
 
@@ -27,7 +32,9 @@ public:
     }
     void shiftOctave(int octaveDelta);
     void revealNote(int midiNote);
+    void revealRange(int lowest, int highest);
     void releaseAllNotes();
+    void mirrorSequenceNote(int noteNumber, float velocity, bool noteOn);
     bool mouseDownOnKey(int midiNoteNumber, const MouseEvent& event) override;
     void resized() override;
 
@@ -81,6 +88,7 @@ private:
 
     MidiKeyboardState& keyboardState;
     MidiEventSink& eventSink;
+    bool mirroringSequenceNote {};
     StateListener stateListener;
 };
 
@@ -100,12 +108,33 @@ public:
     Rectangle<float> octaveUpBounds() const;
     Rectangle<float> modWheelBounds() const;
     Rectangle<float> progressBounds() const;
+    Rectangle<float> editBounds() const { return editButton.getBounds().toFloat(); }
+    Rectangle<float> recordBounds() const { return recordButton.getBounds().toFloat(); }
+    Rectangle<float> playBounds() const { return playButton.getBounds().toFloat(); }
+    size_t sequenceNoteCount() const {
+        return sequence.has_value() ? sequence->notes.size() : 0;
+    }
+    size_t sequenceControlCount() const {
+        return sequence.has_value() ? sequence->controls.size() : 0;
+    }
 
     int modWheelValue() const { return modWheel.value(); }
     int previewNote() const { return selectedPreviewNote; }
     float playbackProgress() const { return progress; }
     float playbackDurationSeconds() const { return playbackDuration; }
     bool isPlaying() const { return playing; }
+    bool isRecording() const { return recording; }
+    void setSequence(std::optional<PresetMidiSequence> sequence);
+    void setSequenceChangedCallback(std::function<void(PresetMidiSequence)> callback);
+    void showSequenceEditor(PresetMidiSequence sequence,
+            std::function<void(PresetMidiSequence)> onEdit);
+    void setRecordingChangedCallback(std::function<void(bool)> callback) {
+        recordingChanged = std::move(callback);
+    }
+    void setFlushRecordingInputCallback(std::function<void()> callback) {
+        flushRecordingInput = std::move(callback);
+    }
+    void recordMidiMessage(const MidiMessage& message, double nowSeconds);
     void setPreviewNote(int midiNote);
     void setPreviewNoteSelectedCallback(std::function<void(int)> callback);
     void setModWheelValueChangedCallback(std::function<void(int)> callback);
@@ -162,13 +191,40 @@ private:
 
     void timerCallback() override;
     void sendModWheelValue();
+    void openSequenceEditor();
+    void stopRecording();
+    void auditionSequenceNote(int pitch, int velocity, bool noteOn);
+    void releaseEditorAudition();
+    void dispatchSequenceEvents(double elapsedSeconds);
+    bool scheduleSequenceEvents(double startSeconds);
+    void rebuildPlaybackEvents();
+    bool hasSequenceNotes() const;
+
+    struct PlaybackEvent {
+        double timeSeconds {};
+        MidiMessage message;
+    };
 
     bool playing {};
+    bool recording {};
     int selectedPreviewNote { 48 };
     int playbackNote { -1 };
+    int editorAuditionPitch { -1 };
     float playbackDuration { 1.f };
     float progress {};
     double playbackStartedAtMilliseconds {};
+    double recordingStartedAtSeconds {};
+    size_t nextPlaybackEvent {};
+    std::array<double, 128> recordedNoteStarts {};
+    std::array<int, 128> recordedVelocities {};
+    std::array<int, 128> activePlaybackNoteCounts {};
+    std::optional<PresetMidiSequence> sequence;
+    std::vector<PlaybackEvent> playbackEvents;
+    PatternControlScheduler controlScheduler;
+
+    std::function<void(PresetMidiSequence)> sequenceChanged;
+    std::function<void(bool)> recordingChanged;
+    std::function<void()> flushRecordingInput;
 
     std::function<void(int)> modWheelValueChanged;
     std::function<void()> modWheelGestureStarted;
@@ -180,6 +236,9 @@ private:
     OctaveButton octaveDown { false };
     OctaveButton octaveUp { true };
     ModWheel modWheel;
+    TextButton playButton { "PLAY" };
+    TextButton editButton { "EDIT" };
+    TextButton recordButton { "REC" };
 };
 
 }

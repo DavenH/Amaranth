@@ -33,6 +33,7 @@ public:
 
     void start();
     void setQuery(const juce::String& query);
+    void refreshRecord(const juce::File& file);
     uint64_t publishedGeneration() const { return published; }
 
 private:
