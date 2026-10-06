@@ -33,6 +33,15 @@ void SidebarTagCloud::setTags(juce::StringArray tags) {
     repaint();
 }
 
+void SidebarTagCloud::setFavoritesAvailable(bool available) {
+    showFavorites = available;
+    if (!available) {
+        favoriteSelected = false;
+    }
+    resized();
+    repaint();
+}
+
 bool SidebarTagCloud::matches(const juce::StringArray& recordTags) const {
     if (selected.isEmpty()) {
         return true;
@@ -59,7 +68,8 @@ std::vector<std::pair<juce::String, juce::Rectangle<float>>>
 SidebarTagCloud::pointerTargetsForAutomation() const {
     std::vector<std::pair<juce::String, juce::Rectangle<float>>> targets;
     for (const auto& chip : chips) {
-        targets.push_back({ "workspace.sidebar.tag." + chip.tag.toLowerCase(),
+        targets.push_back({ chip.favorite ? "workspace.sidebar.favoriteFilter"
+                : "workspace.sidebar.tag." + chip.tag.toLowerCase(),
                 chip.bounds.toFloat() });
     }
     return targets;
@@ -70,7 +80,8 @@ void SidebarTagCloud::paint(juce::Graphics& graphics) {
     graphics.setFont(chipFont);
     for (int index = 0; index < (int) chips.size(); ++index) {
         const auto& chip = chips[(size_t) index];
-        const bool active = selected.contains(chip.tag, true);
+        const bool active = chip.favorite ? favoriteSelected
+                : selected.contains(chip.tag, true);
         const auto bounds = chip.bounds.toFloat();
         graphics.setColour(active
                 ? CanvasChromePalette::navigationAccent.withAlpha(0.25f)
@@ -85,7 +96,19 @@ void SidebarTagCloud::paint(juce::Graphics& graphics) {
         graphics.setColour(active
                 ? CanvasChromePalette::text
                 : CanvasChromePalette::mutedText);
-        graphics.drawFittedText(chip.tag, chip.bounds.reduced(7, 0),
+        if (chip.favorite) {
+            juce::Path star;
+            star.addStar({ bounds.getX() + 12.f, bounds.getCentreY() },
+                    5, 3.f, 6.f, -juce::MathConstants<float>::halfPi);
+            if (active) {
+                graphics.fillPath(star);
+            } else {
+                graphics.strokePath(star, juce::PathStrokeType(1.f));
+            }
+        }
+        graphics.drawFittedText(chip.tag,
+                chip.favorite ? chip.bounds.withTrimmedLeft(22).withTrimmedRight(6)
+                        : chip.bounds.reduced(7, 0),
                 juce::Justification::centred, 1);
     }
 }
@@ -122,11 +145,15 @@ void SidebarTagCloud::mouseUp(const juce::MouseEvent& event) {
         if (!chip.bounds.contains(event.getPosition())) {
             continue;
         }
-        const int selectedIndex = selected.indexOf(chip.tag, true);
-        if (selectedIndex >= 0) {
-            selected.remove(selectedIndex);
+        if (chip.favorite) {
+            favoriteSelected = !favoriteSelected;
         } else {
-            selected.add(chip.tag);
+            const int selectedIndex = selected.indexOf(chip.tag, true);
+            if (selectedIndex >= 0) {
+                selected.remove(selectedIndex);
+            } else {
+                selected.add(chip.tag);
+            }
         }
         repaint();
         if (onChange) {
@@ -141,15 +168,21 @@ std::vector<SidebarTagCloud::Chip> SidebarTagCloud::layoutForWidth(int width) co
     std::vector<Chip> result;
     int x = horizontalInset;
     int y = 0;
-    for (const auto& tag : available) {
+    juce::StringArray labels = available;
+    if (showFavorites) {
+        labels.insert(0, "Favorites");
+    }
+    for (int index = 0; index < labels.size(); ++index) {
+        const auto& tag = labels[index];
+        const bool favorite = showFavorites && index == 0;
         const int chipWidth = juce::jmin(juce::jmax(36,
-                (int) chipFont.getStringWidthFloat(tag) + 16),
+                (int) chipFont.getStringWidthFloat(tag) + (favorite ? 31 : 16)),
                 juce::jmax(36, width - 2 * horizontalInset));
         if (x > horizontalInset && x + chipWidth > width - horizontalInset) {
             x = horizontalInset;
             y += chipHeight + chipGap;
         }
-        result.push_back({ tag, { x, y, chipWidth, chipHeight } });
+        result.push_back({ tag, { x, y, chipWidth, chipHeight }, favorite });
         x += chipWidth + chipGap;
     }
     return result;

@@ -40,6 +40,23 @@ bool clickTag(SidebarTagCloud& cloud, const String& tag) {
     return false;
 }
 
+bool clickFavoriteFilter(SidebarTagCloud& cloud) {
+    for (const auto& [id, bounds] : cloud.pointerTargetsForAutomation()) {
+        if (id != "workspace.sidebar.favoriteFilter") {
+            continue;
+        }
+        const auto position = bounds.getCentre();
+        const Time now = Time::getCurrentTime();
+        const MouseEvent click(Desktop::getInstance().getMainMouseSource(),
+                position, ModifierKeys::leftButtonModifier,
+                1.f, 0.f, 0.f, 0.f, 0.f, &cloud, &cloud,
+                now, position, now, 1, false);
+        cloud.mouseUp(click);
+        return true;
+    }
+    return false;
+}
+
 }
 
 TEST_CASE("Preset search fields reserve Space for playback when empty",
@@ -164,8 +181,6 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
             findDescendantWithID(browser, "workspace.sidebar.viewport"));
     auto* remove = dynamic_cast<Button*>(
             findDescendantWithID(browser, "workspace.sidebar.delete"));
-    auto* favorites = dynamic_cast<Button*>(
-            findDescendantWithID(browser, "workspace.sidebar.presetFavoritesOnly"));
     REQUIRE(curves != nullptr);
     REQUIRE(presets != nullptr);
     REQUIRE(patterns != nullptr);
@@ -182,8 +197,6 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(list != nullptr);
     REQUIRE(viewport != nullptr);
     REQUIRE(remove != nullptr);
-    REQUIRE(favorites != nullptr);
-    REQUIRE(favorites->isVisible());
     REQUIRE(search->getFont().getHeight() >= 14.f);
     REQUIRE(search->getHeight() == 30);
     REQUIRE(create->getHeight() == search->getHeight());
@@ -200,11 +213,11 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     MessageManager::getInstance()->runDispatchLoopUntil(40);
     REQUIRE(browser.activeTab() == WorkspaceSidebarTab::Curves);
     REQUIRE_FALSE(browser.hitTest(20, 300));
-    REQUIRE_FALSE(favorites->isVisible());
+    REQUIRE_FALSE(tagCloud->isVisible());
     presets->triggerClick();
     MessageManager::getInstance()->runDispatchLoopUntil(40);
     REQUIRE(browser.activeTab() == WorkspaceSidebarTab::Presets);
-    REQUIRE(favorites->isVisible());
+    REQUIRE(tagCloud->isVisible());
     const std::vector<WorkspaceSidebarTab> expectedTabs {
             WorkspaceSidebarTab::Curves,
             WorkspaceSidebarTab::Presets
@@ -324,8 +337,8 @@ TEST_CASE("Preset row star and Favorites filter do not load the sound",
     browser.setBounds(0, 0, 272, 760);
     auto* search = dynamic_cast<TextEditor*>(
             browser.findChildWithID("workspace.sidebar.search"));
-    auto* filter = dynamic_cast<Button*>(
-            browser.findChildWithID("workspace.sidebar.presetFavoritesOnly"));
+    auto* filter = dynamic_cast<SidebarTagCloud*>(
+            browser.findChildWithID("workspace.sidebar.presetTags"));
     auto* list = findDescendantWithID(browser, "workspace.sidebar.list");
     REQUIRE(search != nullptr);
     REQUIRE(filter != nullptr);
@@ -345,7 +358,7 @@ TEST_CASE("Preset row star and Favorites filter do not load the sound",
     list->mouseUp(click);
     REQUIRE(favorites.isPresetFavorite(directory.getChildFile("kicker.cyclegraph")));
     REQUIRE(opened == File());
-    filter->triggerClick();
+    REQUIRE(clickFavoriteFilter(*filter));
     MessageManager::getInstance()->runDispatchLoopUntil(40);
     REQUIRE(browser.visiblePresetCount() == 1);
     list->mouseUp(click);

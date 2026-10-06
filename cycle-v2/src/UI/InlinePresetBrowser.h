@@ -110,7 +110,6 @@ private:
     juce::TextButton create { "+ NEW" };
     juce::Label tagHeading;
     SidebarTagCloud tagCloud;
-    juce::TextButton favoritesOnly { "Favorites" };
     juce::TextButton remove { "DELETE" };
     juce::Viewport viewport;
     std::unique_ptr<CompactList> list;

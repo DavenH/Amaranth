@@ -64,7 +64,7 @@ public:
                         row.getIntersection(viewportBounds.toFloat()) });
                 targets.push_back({ "workspace.sidebar.patternFavorite."
                                 + records[(size_t) index].id,
-                        SidebarMediaRow::favoriteBounds(row) });
+                        SidebarMediaRow::patternFavoriteBounds(row) });
             }
         }
         return targets;
@@ -77,7 +77,8 @@ public:
                     .withY(index * SidebarMediaRow::height)
                     .withHeight(SidebarMediaRow::height).toFloat();
             const bool selected = record.id == selectedId;
-            const auto preview = SidebarMediaRow::paintFrame(graphics, row, selected);
+            const auto preview = SidebarMediaRow::paintPatternFrame(
+                    graphics, row, selected);
             {
                 juce::Graphics::ScopedSaveState save(graphics);
                 juce::Path clip;
@@ -87,7 +88,7 @@ public:
                         preview,
                         MidiPatternMiniMap::pitchRange(record.sequence, 12, 0));
             }
-            SidebarMediaRow::paintLabels(graphics, row, record.name,
+            SidebarMediaRow::paintPatternLabels(graphics, row, record.name,
                     tagsFor(record),
                     favorites != nullptr && favorites->isPatternFavorite(record.id));
         }
@@ -101,7 +102,7 @@ public:
         const auto row = getLocalBounds()
                 .withY(index * SidebarMediaRow::height)
                 .withHeight(SidebarMediaRow::height).toFloat();
-        if (SidebarMediaRow::favoriteBounds(row).contains(event.position)
+        if (SidebarMediaRow::patternFavoriteBounds(row).contains(event.position)
                 && onFavorite) {
             onFavorite(records[(size_t) index].id);
             return;
@@ -164,19 +165,9 @@ PatternBrowser::PatternBrowser(
     SidebarTagCloud::styleHeading(tagHeading);
     addAndMakeVisible(tagHeading);
     tagCloud.setComponentID("workspace.sidebar.patternTags");
+    tagCloud.setFavoritesAvailable(favorites != nullptr);
     tagCloud.setChangeCallback([this] { applyFilter(); });
     addAndMakeVisible(tagCloud);
-    favoritesOnly.setComponentID("workspace.sidebar.patternFavoritesOnly");
-    favoritesOnly.setClickingTogglesState(true);
-    favoritesOnly.setTooltip("Show only favorite patterns");
-    favoritesOnly.setColour(juce::TextButton::buttonColourId,
-            CanvasChromePalette::restingControlSurface);
-    favoritesOnly.setColour(juce::TextButton::buttonOnColourId,
-            CanvasChromePalette::navigationAccent.withAlpha(0.3f));
-    favoritesOnly.setColour(juce::TextButton::textColourOffId,
-            CanvasChromePalette::text);
-    favoritesOnly.onClick = [this] { applyFilter(); };
-    addAndMakeVisible(favoritesOnly);
     for (auto* button : { &createButton, &editButton,
             &renameButton, &deleteButton }) {
         button->setColour(juce::TextButton::buttonColourId,
@@ -185,6 +176,8 @@ PatternBrowser::PatternBrowser(
                 CanvasChromePalette::text);
         addAndMakeVisible(*button);
     }
+    createButton.setColour(juce::TextButton::buttonColourId,
+            CanvasChromePalette::navigationAccent.withAlpha(0.18f));
     viewport.setViewedComponent(list.get(), false);
     viewport.setComponentID("workspace.sidebar.patternViewport");
     viewport.setScrollBarsShown(true, false);
@@ -332,7 +325,7 @@ void PatternBrowser::applyFilter() {
                 || record.name.containsIgnoreCase(query)
                 || tags.joinIntoString(" ").containsIgnoreCase(query);
         if (matchesTags && matchesQuery
-                && (!favoritesOnly.getToggleState()
+                && (!tagCloud.favoritesOnly()
                         || (favorites != nullptr && favorites->isPatternFavorite(record.id)))) {
             visible.push_back(record);
         }
@@ -358,9 +351,7 @@ PatternBrowser::pointerTargetsForAutomation() const {
             { "workspace.sidebar.patternNew", createButton.getBounds().toFloat() },
             { "workspace.sidebar.patternEdit", editButton.getBounds().toFloat() },
             { "workspace.sidebar.patternRename", renameButton.getBounds().toFloat() },
-            { "workspace.sidebar.patternDelete", deleteButton.getBounds().toFloat() },
-            { "workspace.sidebar.patternFavoritesOnly",
-                    favoritesOnly.getBounds().toFloat() }
+            { "workspace.sidebar.patternDelete", deleteButton.getBounds().toFloat() }
     };
     for (const auto& [id, bounds] : tagCloud.pointerTargetsForAutomation()) {
         targets.push_back({ id, bounds.translated(
@@ -386,23 +377,20 @@ void PatternBrowser::editSelected() {
 }
 
 void PatternBrowser::resized() {
-    auto bounds = getLocalBounds().reduced(10, 7);
-    auto createRow = bounds.removeFromTop(30);
-    createButton.setBounds(createRow.removeFromRight(69));
-    createRow.removeFromRight(5);
-    search.setBounds(createRow);
+    auto bounds = getLocalBounds().reduced(6, 7);
+    search.setBounds(bounds.removeFromTop(30));
     bounds.removeFromTop(6);
-    auto actions = bounds.removeFromTop(24);
-    const int actionWidth = (actions.getWidth() - 8) / 3;
+    auto actions = bounds.removeFromTop(28);
+    const int actionWidth = (actions.getWidth() - 12) / 4;
+    createButton.setBounds(actions.removeFromLeft(actionWidth));
+    actions.removeFromLeft(4);
     editButton.setBounds(actions.removeFromLeft(actionWidth));
     actions.removeFromLeft(4);
     renameButton.setBounds(actions.removeFromLeft(actionWidth));
     actions.removeFromLeft(4);
     deleteButton.setBounds(actions);
-    bounds.removeFromTop(4);
-    auto headingRow = bounds.removeFromTop(24);
-    favoritesOnly.setBounds(headingRow.removeFromRight(82));
-    tagHeading.setBounds(headingRow);
+    bounds.removeFromTop(8);
+    tagHeading.setBounds(bounds.removeFromTop(16));
     bounds.removeFromTop(4);
     const int cloudHeight = tagCloud.preferredHeightForWidth(bounds.getWidth());
     tagCloud.setBounds(bounds.removeFromTop(cloudHeight));
@@ -410,6 +398,15 @@ void PatternBrowser::resized() {
     viewport.setBounds(bounds);
     list->setSize(juce::jmax(1, viewport.getMaximumVisibleWidth()),
             list->getHeight());
+}
+
+void PatternBrowser::paint(juce::Graphics& graphics) {
+    const auto actionBounds = createButton.getBounds()
+            .getUnion(deleteButton.getBounds()).expanded(2, 2).toFloat();
+    graphics.setColour(CanvasChromePalette::raisedSurface);
+    graphics.fillRoundedRectangle(actionBounds, 5.f);
+    graphics.setColour(CanvasChromePalette::border.withAlpha(0.5f));
+    graphics.drawRoundedRectangle(actionBounds.reduced(0.5f), 5.f, 1.f);
 }
 
 }

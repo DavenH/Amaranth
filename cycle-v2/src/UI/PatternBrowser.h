@@ -32,6 +32,7 @@ public:
     std::vector<std::pair<juce::String, juce::Rectangle<float>>>
             pointerTargetsForAutomation() const;
     void resized() override;
+    void paint(juce::Graphics& graphics) override;
 
 private:
     class List;
@@ -56,7 +57,6 @@ private:
     juce::TextButton deleteButton { "DELETE" };
     juce::Label tagHeading;
     SidebarTagCloud tagCloud;
-    juce::TextButton favoritesOnly { "Favorites" };
     juce::Viewport viewport;
     std::unique_ptr<List> list;
     std::vector<PatternRecord> allRecords;

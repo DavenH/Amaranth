@@ -13,6 +13,8 @@ public:
 
     static void styleHeading(juce::Label& heading);
     void setTags(juce::StringArray tags);
+    void setFavoritesAvailable(bool available);
+    bool favoritesOnly() const { return favoriteSelected; }
     const juce::StringArray& selectedTags() const { return selected; }
     bool matches(const juce::StringArray& recordTags) const;
     int preferredHeightForWidth(int width) const;
@@ -30,12 +32,15 @@ private:
     struct Chip {
         juce::String tag;
         juce::Rectangle<int> bounds;
+        bool favorite {};
     };
 
     std::vector<Chip> layoutForWidth(int width) const;
 
     juce::StringArray available;
     juce::StringArray selected;
+    bool showFavorites {};
+    bool favoriteSelected {};
     std::vector<Chip> chips;
     ChangeCallback onChange;
     int hovered { -1 };

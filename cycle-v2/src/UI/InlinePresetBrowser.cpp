@@ -236,19 +236,9 @@ InlinePresetBrowser::InlinePresetBrowser(
     SidebarTagCloud::styleHeading(tagHeading);
     addAndMakeVisible(tagHeading);
     tagCloud.setComponentID("workspace.sidebar.presetTags");
+    tagCloud.setFavoritesAvailable(favorites != nullptr);
     tagCloud.setChangeCallback([this] { applyTagFilter(); });
     addAndMakeVisible(tagCloud);
-    favoritesOnly.setComponentID("workspace.sidebar.presetFavoritesOnly");
-    favoritesOnly.setClickingTogglesState(true);
-    favoritesOnly.setTooltip("Show only favorite presets");
-    favoritesOnly.setColour(juce::TextButton::buttonColourId,
-            CanvasChromePalette::restingControlSurface);
-    favoritesOnly.setColour(juce::TextButton::buttonOnColourId,
-            CanvasChromePalette::navigationAccent.withAlpha(0.3f));
-    favoritesOnly.setColour(juce::TextButton::textColourOffId,
-            CanvasChromePalette::text);
-    favoritesOnly.onClick = [this] { applyTagFilter(); };
-    addAndMakeVisible(favoritesOnly);
     remove.setComponentID("workspace.sidebar.delete");
     remove.setTooltip("Move the selected preset to Trash");
     remove.onClick = [this] { requestDeleteSelected(); };
@@ -386,8 +376,6 @@ InlinePresetBrowser::pointerTargetsForAutomation() const {
         targets.push_back({ "workspace.sidebar.search", search.getBounds().toFloat() });
         targets.push_back({ "workspace.sidebar.presetNew", create.getBounds().toFloat() });
         targets.push_back({ "workspace.sidebar.delete", remove.getBounds().toFloat() });
-        targets.push_back({ "workspace.sidebar.presetFavoritesOnly",
-                favoritesOnly.getBounds().toFloat() });
         targets.push_back({ "workspace.sidebar.browse", browse.getBounds().toFloat() });
         for (const auto& [id, bounds] : tagCloud.pointerTargetsForAutomation()) {
             targets.push_back({ id, bounds.translated(
@@ -456,8 +444,6 @@ void InlinePresetBrowser::resized() {
     bounds.removeFromTop(6);
     auto headingRow = bounds.removeFromTop(24);
     remove.setBounds(headingRow.removeFromRight(69));
-    headingRow.removeFromRight(4);
-    favoritesOnly.setBounds(headingRow.removeFromRight(82));
     tagHeading.setBounds(headingRow);
     bounds.removeFromTop(4);
     const int cloudHeight = tagCloud.preferredHeightForWidth(bounds.getWidth());
@@ -537,7 +523,7 @@ void InlinePresetBrowser::applyTagFilter() {
     for (const int indexToCheck : searchResults) {
         auto recordTags = tagsFor(library[(size_t) indexToCheck]);
         if (tagCloud.matches(recordTags)
-                && (!favoritesOnly.getToggleState()
+                && (!tagCloud.favoritesOnly()
                         || (favorites != nullptr && favorites->isPresetFavorite(
                                 library[(size_t) indexToCheck].file)))) {
             filtered.push_back(indexToCheck);
@@ -654,7 +640,6 @@ void InlinePresetBrowser::updateVisibility() {
     create.setVisible(showingPresets);
     tagHeading.setVisible(showingPresets);
     tagCloud.setVisible(showingPresets);
-    favoritesOnly.setVisible(showingPresets);
     remove.setVisible(showingPresets);
     viewport.setVisible(showingPresets);
     browse.setVisible(showingPresets);

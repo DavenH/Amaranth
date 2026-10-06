@@ -25,9 +25,9 @@ Component* findChild(Component& parent, const String& id) {
     return nullptr;
 }
 
-bool clickTag(SidebarTagCloud& cloud, const String& tag) {
+bool clickTarget(SidebarTagCloud& cloud, const String& target) {
     for (const auto& [id, bounds] : cloud.pointerTargetsForAutomation()) {
-        if (id != "workspace.sidebar.tag." + tag.toLowerCase()) {
+        if (id != target) {
             continue;
         }
         const auto position = bounds.getCentre();
@@ -212,7 +212,7 @@ TEST_CASE("Pattern browser rows show notes and assign their stable ID",
     auto* filter = dynamic_cast<SidebarTagCloud*>(
             findChild(browser, "workspace.sidebar.patternTags"));
     REQUIRE(filter != nullptr);
-    REQUIRE(clickTag(*filter, "Bass"));
+    REQUIRE(clickTarget(*filter, "workspace.sidebar.tag.bass"));
     REQUIRE(list->getHeight() == 4 * rowHeight);
     auto* search = dynamic_cast<LibrarySearchField*>(
             findChild(browser, "workspace.sidebar.patternSearch"));
@@ -262,15 +262,14 @@ TEST_CASE("Pattern favorite star toggles without assigning and combines with the
     };
     browser.setRecords(records, {});
     auto* list = findChild(browser, "workspace.sidebar.patternList");
-    auto* filter = dynamic_cast<Button*>(
-            findChild(browser, "workspace.sidebar.patternFavoritesOnly"));
     auto* tagCloud = dynamic_cast<SidebarTagCloud*>(
             findChild(browser, "workspace.sidebar.patternTags"));
     REQUIRE(list != nullptr);
-    REQUIRE(filter != nullptr);
     REQUIRE(tagCloud != nullptr);
 
-    const Point<float> starPosition { 28.f, 14.f };
+    const Point<float> starPosition = SidebarMediaRow::patternFavoriteBounds(
+            { 0.f, 0.f, (float) list->getWidth(),
+                    (float) SidebarMediaRow::height }).getCentre();
     const Time now = Time::getCurrentTime();
     const MouseEvent starClick(Desktop::getInstance().getMainMouseSource(),
             starPosition, ModifierKeys::leftButtonModifier,
@@ -279,13 +278,26 @@ TEST_CASE("Pattern favorite star toggles without assigning and combines with the
     list->mouseUp(starClick);
     REQUIRE(favorites.isPatternFavorite("bass-one"));
     REQUIRE(selected.isEmpty());
-    filter->triggerClick();
+    REQUIRE(clickTarget(*tagCloud, "workspace.sidebar.favoriteFilter"));
     MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(tagCloud->favoritesOnly());
     REQUIRE(list->getHeight() == SidebarMediaRow::height);
-    REQUIRE(clickTag(*tagCloud, "Lead"));
+    REQUIRE(clickTarget(*tagCloud, "workspace.sidebar.tag.lead"));
     REQUIRE(list->getHeight() == 0);
-    REQUIRE(clickTag(*tagCloud, "Lead"));
+    REQUIRE(clickTarget(*tagCloud, "workspace.sidebar.tag.lead"));
     REQUIRE(list->getHeight() == SidebarMediaRow::height);
+}
+
+TEST_CASE("Pattern card uses the available row width and keeps notes below its header",
+        "[cycle-v2][pattern][ui][layout]") {
+    const juce::Rectangle<float> row { 0.f, 0.f, 250.f,
+            (float) SidebarMediaRow::height };
+    const auto card = SidebarMediaRow::patternCardBounds(row);
+    const auto notes = SidebarMediaRow::patternPreviewBounds(row);
+    REQUIRE(card.getX() == 2.f);
+    REQUIRE(row.getRight() - card.getRight() == 2.f);
+    REQUIRE(notes.getY() >= card.getY() + 31.f);
+    REQUIRE(notes.getBottom() <= card.getBottom());
 }
 
 TEST_CASE("Pattern browser renames and deletes only selected user patterns",
