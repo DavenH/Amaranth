@@ -2,7 +2,8 @@
 
 ## Status and starting point
 
-Planned; no new implementation or performance measurements completed.
+In progress; the Live-preview model and graph ownership boundaries need an
+architecture decision. No production change completed.
 Rewritten on 2026-10-05 after the user rejected the larger mesh-storage rewrite.
 Start from master at `97bf9107` (PR #158), on `cycle2/point-drag-refactor`.
 The old implementation remains on `cycle2/refactors-001`; its design notes remain
@@ -107,3 +108,37 @@ architecture audit and applicable style checks. Tests must not bless approximati
 Do not label the broader mesh refactor complete from this result. If solving this
 one interaction requires a storage rewrite or another excluded feature, document
 the concrete blocker and reassess scope before adding that work.
+
+## 2026-10-05 implementation investigation
+
+The hosted point-drag and movement-notification tests pass (30 assertions in
+two cases). They do not exercise downstream Live feedback. The source trace
+shows the following costs and missing data path; runtime operation counts for
+the complete hosted sequence remain to be collected.
+
+| Phase | Cycle 1 | Cycle 2 hosted Waveshaper |
+| --- | --- | --- |
+| Press | `VertexTransformUndo::start` copies every mesh vertex; the hosted Cycle 2 panel suspends that undo path. | `beginCurveTransaction` opens a graph edit; the durable model remains unchanged. |
+| Movement | `Interactor::mouseDrag` changes the selected mesh point and refreshes the local rasterizer. | The same interactor changes the panel mesh. `publishCurrentState` sends a fingerprint; `NodeCanvas::recordNodeEditorMovement` requests a refresh against a graph whose curve model still has the old point. |
+| Release | `VertexTransformUndo::commitIfPending` copies and compares every mesh vertex. | `FlatCurvePanelAdapter::modelPublication` synchronizes every vertex from the mesh, then `CurveNodeModelState::copyOf` copies the complete curve model once. The dispatcher commits one graph edit. |
+| Undo/redo | The Cycle 1 action restores the captured vertex values. | The graph delta restores the prior model; downstream refresh follows document publication. |
+
+The existing worker path accepts a stable `NodeGraph` and prepares the
+Waveshaper from its immutable `CurveNodeModelState`. It has no input for the
+panel's mutable mesh or a single-point delta. Publishing a complete model on
+each movement would violate this plan's movement cost and copy rules; handing
+the mutable mesh to a worker would violate its lifetime rule. Passing the
+current editing overlay to `GraphPresentationModel::refreshAsync` copies its
+changed nodes but leaves a non-owning pointer to the mutable durable graph.
+The existing presentation gesture session can make an owned changed-node
+snapshot, but first copies the whole graph to own its stable base. The current
+`NodeEditorCommandService` curve transaction opens a dispatcher edit directly,
+so that gesture session is not used for these movements anyway.
+
+The smallest plausible design needs a stable point-delta preview representation
+shared by the graph preview and curve preparation paths, plus a stable graph
+base shared with workers. One full model publication can then occur at release.
+That changes model and graph ownership across subsystems, substantially beyond
+the narrow point-drag correction. Architectural direction is needed before
+implementing it. Do not substitute whole-curve or whole-graph copies on
+movement or mark this TDD implemented.
