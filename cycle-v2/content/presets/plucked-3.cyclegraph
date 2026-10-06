@@ -8,7 +8,7 @@
             "definitionVersion": 1,
             "position": { "x": 481.20001, "y": 696.0 },
             "parameters": {
-                "octave": 2,
+                "octave": 1,
                 "voiceLength": 0.419847328,
                 "pitch": 0.0,
                 "portamento": false,

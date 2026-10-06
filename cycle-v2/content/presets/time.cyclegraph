@@ -12,7 +12,7 @@
                 "voiceLength": 0.27480916,
                 "pitch": 0.0,
                 "portamento": false,
-                "pitchIndependentSpectralControl": false,
+                "pitchIndependentSpectralControl": true,
                 "oversampling": "1x",
                 "controlInterval": "64"
             }
@@ -1363,7 +1363,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Texture"],
+        "tags": [ "Texture" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

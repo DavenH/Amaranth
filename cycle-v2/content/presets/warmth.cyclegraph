@@ -417,7 +417,7 @@
             "kind": "reverb",
             "definitionVersion": 1,
             "position": { "x": 1010.0, "y": 1541.0 },
-            "parameters": { "enabled": true, "size": 0.824000003, "damp": 0.300000003, "width": 1.0, "wet": 0.268000012, "highPass": 0.0 }
+            "parameters": { "enabled": true, "size": 0.824000003, "damp": 0.98813, "width": 1.0, "wet": 0.268000012, "highPass": 0.0 }
         },
         {
             "id": "output",
@@ -490,7 +490,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Pad", "Ambient", "Soft"],
+        "tags": [ "Pad", "Ambient", "Soft" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

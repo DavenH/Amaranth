@@ -1320,7 +1320,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 874.80499, "y": 1123.02283 },
-            "parameters": { "gain": 0.496183206 }
+            "parameters": { "gain": 0.604517 }
         },
         {
             "id": "globalInput",
@@ -1674,7 +1674,7 @@
     ],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Guitar", "Pluck", "Distorted"],
+        "tags": [ "Guitar", "Pluck", "Distorted" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

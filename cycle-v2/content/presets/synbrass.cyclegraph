@@ -53,7 +53,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1325.59998, "y": 886.0 },
+            "position": { "x": 2202.1062, "y": 760.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -349,7 +349,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 898.5 },
+            "position": { "x": 1796.79956, "y": 792.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -557,7 +557,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Brass"],
+        "tags": [ "Brass" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

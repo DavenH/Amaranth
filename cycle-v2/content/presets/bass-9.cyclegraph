@@ -347,7 +347,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1100.80005, "y": 399.5 },
+            "position": { "x": 1188.27966, "y": 421.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -533,7 +533,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Bass"],
+        "tags": [ "Bass" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

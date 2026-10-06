@@ -381,8 +381,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6 ]
                 }
             }
@@ -534,8 +532,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
                 }
             }
@@ -609,8 +605,6 @@
                     "logarithmic": false,
                     "red": 0.848,
                     "blue": 0.104,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3 ]
                 }
             },
@@ -914,7 +908,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Lead", "Bright"],
+        "tags": [ "Lead", "Bright" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

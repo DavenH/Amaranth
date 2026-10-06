@@ -14,7 +14,7 @@
                 "portamento": false,
                 "pitchIndependentSpectralControl": false,
                 "oversampling": "1x",
-                "controlInterval": "256"
+                "controlInterval": "64"
             }
         },
         {
@@ -725,7 +725,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Lead", "Analog"],
+        "tags": [ "Lead", "Analog" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,
