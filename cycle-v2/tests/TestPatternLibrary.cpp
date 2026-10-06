@@ -296,7 +296,8 @@ TEST_CASE("Pattern card uses the available row width and keeps notes below its h
     const auto notes = SidebarMediaRow::patternPreviewBounds(row);
     REQUIRE(card.getX() == 2.f);
     REQUIRE(row.getRight() - card.getRight() == 2.f);
-    REQUIRE(notes.getY() >= card.getY() + 31.f);
+    REQUIRE(notes.getY() >= card.getY() + 26.f);
+    REQUIRE(notes.getHeight() >= 45.f);
     REQUIRE(notes.getBottom() <= card.getBottom());
 }
 

@@ -19,9 +19,9 @@ special chip and its interaction state, so both preset and pattern sidebars
 use the same filter behavior.
 
 Keep the 84-pixel media-row rhythm. Pattern cards use a 2-pixel horizontal
-inset. A 31-pixel header contains the star, a title spanning the remaining
-width, and a small grouped tag line below. The MIDI minimap starts below the
-header and uses the rest of the card. `SidebarMediaRow` owns the card geometry;
+inset. A 26-pixel header contains the star and title on the left, with the
+tags grouped at the top right. The MIDI minimap starts below the header and
+uses the rest of the card. `SidebarMediaRow` owns the card geometry;
 `PatternBrowser` supplies the sequence and record labels. Preset row visuals
 keep their existing overlay treatment.
 
