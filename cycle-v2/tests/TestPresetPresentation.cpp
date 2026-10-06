@@ -94,6 +94,21 @@ TEST_CASE("Editing loaded preset tags keeps the graph and later saves in sync",
     REQUIRE(saved.presentation.tags == document.presentation().tags);
 }
 
+TEST_CASE("Renaming an open preset retains its title on the next graph save",
+        "[cycle-v2][preset][title]") {
+    GraphDocument document(graphWithOutput());
+    GraphCommandDispatcher commands(document);
+    const auto revision = document.revision();
+    REQUIRE(commands.setPresetTitle("Copper Horn"));
+    REQUIRE(document.presentation().title == "Copper Horn");
+    REQUIRE(document.revision() == revision);
+    REQUIRE(document.isDirty());
+    REQUIRE_FALSE(document.canUndo());
+    const auto saved = GraphSerializer().loadJsonString(document.toJson());
+    REQUIRE(saved.succeeded());
+    REQUIRE(saved.presentation.title == "Copper Horn");
+}
+
 TEST_CASE("Invalid preset MIDI is ignored without rejecting the graph",
         "[cycle-v2][preset][sequence][serialization]") {
     var encoded = GraphSerializer().writeJSON(graphWithOutput());

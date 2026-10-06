@@ -8,7 +8,7 @@
 
 #include "App/LibraryFavorites.h"
 #include "Graph/PatternLibrary.h"
-#include "UI/LibrarySearchField.h"
+#include "UI/SidebarLibraryToolbar.h"
 #include "UI/SidebarTagCloud.h"
 
 namespace CycleV2 {
@@ -32,7 +32,6 @@ public:
     std::vector<std::pair<juce::String, juce::Rectangle<float>>>
             pointerTargetsForAutomation() const;
     void resized() override;
-    void paint(juce::Graphics& graphics) override;
 
 private:
     class List;
@@ -50,11 +49,7 @@ private:
     RenameCallback onRename;
     DeleteCallback onDelete;
     LibraryFavorites* favorites {};
-    LibrarySearchField search { "Search patterns..." };
-    juce::TextButton createButton { "+ NEW" };
-    juce::TextButton editButton { "EDIT" };
-    juce::TextButton renameButton { "RENAME" };
-    juce::TextButton deleteButton { "DELETE" };
+    SidebarLibraryToolbar toolbar { "Search patterns..." };
     juce::Label tagHeading;
     SidebarTagCloud tagCloud;
     juce::Viewport viewport;

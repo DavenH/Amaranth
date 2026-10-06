@@ -12,7 +12,7 @@
 #include "UI/PresetLibraryIndex.h"
 #include "UI/PresetThumbnailCache.h"
 #include "UI/PatternBrowser.h"
-#include "UI/LibrarySearchField.h"
+#include "UI/SidebarLibraryToolbar.h"
 #include "UI/SidebarTagCloud.h"
 
 namespace CycleV2 {
@@ -40,6 +40,10 @@ public:
     using PatternCreateCallback = PatternBrowser::CreateCallback;
     using PatternRenameCallback = PatternBrowser::RenameCallback;
     using PatternDeleteCallback = PatternBrowser::DeleteCallback;
+    using TitleChangedCallback = std::function<void(
+            const juce::File&, const juce::String&)>;
+    using TagsChangedCallback = std::function<void(
+            const juce::File&, const juce::StringArray&)>;
 
     InlinePresetBrowser(
             std::vector<juce::File> directories,
@@ -64,6 +68,9 @@ public:
     void refreshRecord(const juce::File& file);
     void refreshFavorites();
     void setPlaybackToggleCallback(ActionCallback callback);
+    void setMetadataChangedCallbacks(
+            TitleChangedCallback titleCallback,
+            TagsChangedCallback tagsCallback);
     static juce::String deleteConfirmationMessage(const juce::String& presetName);
     std::vector<std::pair<juce::String, juce::Rectangle<float>>>
             pointerTargetsForAutomation() const;
@@ -87,6 +94,8 @@ private:
     juce::StringArray tagsFor(const PresetLibraryRecord& record) const;
     void updateAvailableTags();
     void openSelected();
+    void editSelectedTags();
+    void renameSelected();
     void requestDeleteSelected();
     void deletePreset(const juce::File& file);
     void updateVisibility();
@@ -96,6 +105,8 @@ private:
     ActionCallback onBrowse;
     ActionCallback onCreate;
     ActionCallback onTogglePlayback;
+    TitleChangedCallback onTitleChanged;
+    TagsChangedCallback onTagsChanged;
     TabCallback onTabChanged;
     DeleteCallback onDelete;
     ConfirmDeleteCallback onConfirmDelete;
@@ -106,11 +117,9 @@ private:
     juce::TextButton presets { "PRESETS" };
     juce::TextButton patterns { "PATTERNS" };
     std::unique_ptr<PatternBrowser> patternBrowser;
-    LibrarySearchField search { "Search presets..." };
-    juce::TextButton create { "+ NEW" };
+    SidebarLibraryToolbar toolbar { "Search presets..." };
     juce::Label tagHeading;
     SidebarTagCloud tagCloud;
-    juce::TextButton remove { "DELETE" };
     juce::Viewport viewport;
     std::unique_ptr<CompactList> list;
     juce::TextButton browse { "BROWSE FILES..." };

@@ -1,6 +1,6 @@
 #include "UI/PresetBrowserPage.h"
 
-#include "Graph/PresetTagStore.h"
+#include "UI/PresetMetadataEditor.h"
 #include "UI/CanvasChromePalette.h"
 
 namespace CycleV2 {
@@ -302,37 +302,17 @@ void PresetBrowserPage::editSelectedTags() {
         return;
     }
     const auto file = record->file;
-    auto* prompt = new AlertWindow(
-            "Edit preset tags",
-            "Separate tags with commas.",
-            MessageBoxIconType::QuestionIcon,
-            getTopLevelComponent());
-    prompt->addTextEditor("tags",
-            record->presentation.tags.joinIntoString(", "), "Tags");
-    prompt->addButton("Save", 1, KeyPress(KeyPress::returnKey));
-    prompt->addButton("Cancel", 0, KeyPress(KeyPress::escapeKey));
-    prompt->enterModalState(true,
-            ModalCallbackFunction::create([
-                    safeThis = SafePointer<PresetBrowserPage>(this),
-                    prompt, file](int result) {
-                if (result != 1 || safeThis == nullptr) {
-                    return;
-                }
-                StringArray tags;
-                tags.addTokens(prompt->getTextEditorContents("tags"), ",", "\"");
-                tags = PresetTagStore::normalize(std::move(tags));
-                String error;
-                if (!PresetTagStore::save(file, tags, error)) {
-                    AlertWindow::showMessageBoxAsync(
-                            MessageBoxIconType::WarningIcon,
-                            "Unable to save tags", error);
+    PresetMetadataEditor::editTags(*this, file, record->presentation.tags,
+            [safeThis = SafePointer<PresetBrowserPage>(this), file](
+                    const StringArray& tags) {
+                if (safeThis == nullptr) {
                     return;
                 }
                 safeThis->index->refreshRecord(file);
                 if (safeThis->onTagsChanged) {
                     safeThis->onTagsChanged(file, tags);
                 }
-            }), true);
+            });
 }
 
 }

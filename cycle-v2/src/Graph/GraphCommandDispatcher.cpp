@@ -49,6 +49,15 @@ bool GraphCommandDispatcher::setPresetTags(juce::StringArray tags) {
     return true;
 }
 
+bool GraphCommandDispatcher::setPresetTitle(const juce::String& title) {
+    if (hasTransientEdit() || document.presetPresentation.title == title) {
+        return false;
+    }
+    document.presetPresentation.title = title;
+    ++document.presentationRevision;
+    return true;
+}
+
 GraphEditResult GraphCommandDispatcher::addNode(NodeKind kind, juce::Point<float> position) {
     return apply([&](auto& graph) {
         return GraphEditor().addNode(graph, kind, position);

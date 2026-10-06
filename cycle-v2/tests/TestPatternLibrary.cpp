@@ -218,8 +218,24 @@ TEST_CASE("Pattern browser rows show notes and assign their stable ID",
             findChild(browser, "workspace.sidebar.patternSearch"));
     auto* create = dynamic_cast<Button*>(
             findChild(browser, "workspace.sidebar.patternNew"));
+    auto* edit = dynamic_cast<Button*>(
+            findChild(browser, "workspace.sidebar.patternEdit"));
+    auto* rename = dynamic_cast<Button*>(
+            findChild(browser, "workspace.sidebar.patternRename"));
+    auto* remove = dynamic_cast<Button*>(
+            findChild(browser, "workspace.sidebar.patternDelete"));
     REQUIRE(search != nullptr);
     REQUIRE(create != nullptr);
+    REQUIRE(edit != nullptr);
+    REQUIRE(rename != nullptr);
+    REQUIRE(remove != nullptr);
+    REQUIRE(search->getX() == create->getX());
+    REQUIRE(create->getHeight() == 28);
+    REQUIRE(create->getY() > search->getBottom());
+    REQUIRE(create->getX() < edit->getX());
+    REQUIRE(edit->getX() < rename->getX());
+    REQUIRE(rename->getX() < remove->getX());
+    REQUIRE(remove->getRight() == search->getRight());
     search->setText("Pattern 1", true);
     MessageManager::getInstance()->runDispatchLoopUntil(40);
     REQUIRE(list->getHeight() == rowHeight);

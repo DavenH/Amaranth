@@ -278,6 +278,17 @@ void NodeCanvas::configurePresetSidebar(
             previewPlaybackToggle();
         }
     });
+    presetSidebar->setMetadataChangedCallbacks(
+            [this](const File& file, const String& title) {
+                if (document.file() == file) {
+                    commands.setPresetTitle(title);
+                }
+            },
+            [this](const File& file, const StringArray& tags) {
+                if (document.file() == file) {
+                    commands.setPresetTags(tags);
+                }
+            });
     guideShelfState.presetBrowserVisible = presetSidebar->activeTab()
             != WorkspaceSidebarTab::Curves;
     addAndMakeVisible(*presetSidebar);

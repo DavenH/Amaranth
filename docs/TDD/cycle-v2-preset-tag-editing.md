@@ -73,3 +73,9 @@ The same audit found ten saved Pluck or Sustained tags duplicated by the
 curation rule. The rule now checks for an existing tag before adding it; all
 current preset metadata is deduplicated. The test checks raw JSON tag arrays,
 since the presentation reader silently deduplicates them.
+
+## Metadata store rename (2026-10-05)
+
+`PresetTagStore` became `PresetMetadataStore` when the same atomic JSON edit
+boundary gained display-title persistence. The expanded browser and inline
+sidebar now share `PresetMetadataEditor` for the tag prompt.

@@ -33,6 +33,7 @@ public:
     bool setPresetSequence(PresetMidiSequence sequence);
     bool setPresetPatternId(const juce::String& id);
     bool setPresetTags(juce::StringArray tags);
+    bool setPresetTitle(const juce::String& title);
     GraphEditResult removeNode(const juce::String& nodeId);
     GraphEditResult removeEdgeAt(size_t edgeIndex);
     GraphEditResult connect(const PortAddress& first, const PortAddress& second);

@@ -26,6 +26,9 @@ PresetLibraryRecord readRecord(const PresetLibraryRecord& skeleton) {
         if (const auto* object = root.getDynamicObject()) {
             record.presentation = PresetPresentationCodec::readMetadataJSON(
                     object->getProperty("presetPresentation")).presentation;
+            if (record.presentation.title.isNotEmpty()) {
+                record.name = record.presentation.title;
+            }
         }
     }
     if (record.presentation.pack.isEmpty()) {

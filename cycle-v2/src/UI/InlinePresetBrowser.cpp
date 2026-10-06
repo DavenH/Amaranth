@@ -2,6 +2,7 @@
 
 #include "UI/CanvasChromePalette.h"
 #include "UI/PresetBrowserComponents.h"
+#include "UI/PresetMetadataEditor.h"
 #include "UI/SidebarMediaRow.h"
 
 namespace CycleV2 {
@@ -221,11 +222,14 @@ InlinePresetBrowser::InlinePresetBrowser(
     addAndMakeVisible(presets);
     addAndMakeVisible(patterns);
 
+    auto& search = toolbar.searchField();
+    auto& create = toolbar.newButton();
+    auto& edit = toolbar.editButton();
+    auto& rename = toolbar.renameButton();
+    auto& remove = toolbar.deleteButton();
     search.setComponentID("workspace.sidebar.search");
     search.addListener(this);
     search.addKeyListener(this);
-    addAndMakeVisible(search);
-
     create.setComponentID("workspace.sidebar.presetNew");
     create.setTooltip("Save the current sound as a new preset");
     create.onClick = [this] {
@@ -233,6 +237,12 @@ InlinePresetBrowser::InlinePresetBrowser(
             onCreate();
         }
     };
+    edit.setComponentID("workspace.sidebar.presetEdit");
+    edit.setTooltip("Edit the selected preset's tags");
+    edit.onClick = [this] { editSelectedTags(); };
+    rename.setComponentID("workspace.sidebar.presetRename");
+    rename.setTooltip("Rename the selected preset's display title");
+    rename.onClick = [this] { renameSelected(); };
     SidebarTagCloud::styleHeading(tagHeading);
     addAndMakeVisible(tagHeading);
     tagCloud.setComponentID("workspace.sidebar.presetTags");
@@ -242,13 +252,7 @@ InlinePresetBrowser::InlinePresetBrowser(
     remove.setComponentID("workspace.sidebar.delete");
     remove.setTooltip("Move the selected preset to Trash");
     remove.onClick = [this] { requestDeleteSelected(); };
-    for (auto* button : { &create, &remove }) {
-        button->setColour(juce::TextButton::buttonColourId,
-                CanvasChromePalette::restingControlSurface);
-        button->setColour(juce::TextButton::textColourOffId,
-                CanvasChromePalette::text);
-        addAndMakeVisible(*button);
-    }
+    addAndMakeVisible(toolbar);
 
     list->setFavorites(favorites);
     list->setCallbacks([this] { openSelected(); },
@@ -330,7 +334,8 @@ void InlinePresetBrowser::setActiveTab(WorkspaceSidebarTab nextTab) {
     if (tab == WorkspaceSidebarTab::Presets) {
         juce::Timer::callAfterDelay(
                 0,
-                [safeSearch = juce::Component::SafePointer<juce::TextEditor>(&search)] {
+                [safeSearch = juce::Component::SafePointer<juce::TextEditor>(
+                        &toolbar.searchField())] {
                     if (safeSearch != nullptr && safeSearch->isShowing()) {
                         safeSearch->grabKeyboardFocus();
                     }
@@ -354,10 +359,17 @@ void InlinePresetBrowser::refreshRecord(const juce::File& file) {
 
 void InlinePresetBrowser::setPlaybackToggleCallback(ActionCallback callback) {
     onTogglePlayback = std::move(callback);
-    search.setPlaybackToggleCallback(onTogglePlayback);
+    toolbar.searchField().setPlaybackToggleCallback(onTogglePlayback);
     if (patternBrowser != nullptr) {
         patternBrowser->setPlaybackToggleCallback(onTogglePlayback);
     }
+}
+
+void InlinePresetBrowser::setMetadataChangedCallbacks(
+        TitleChangedCallback titleCallback,
+        TagsChangedCallback tagsCallback) {
+    onTitleChanged = std::move(titleCallback);
+    onTagsChanged = std::move(tagsCallback);
 }
 
 juce::String InlinePresetBrowser::deleteConfirmationMessage(
@@ -373,9 +385,10 @@ InlinePresetBrowser::pointerTargetsForAutomation() const {
             { "workspace.sidebar.patterns", patterns.getBounds().toFloat() }
     };
     if (tab == WorkspaceSidebarTab::Presets) {
-        targets.push_back({ "workspace.sidebar.search", search.getBounds().toFloat() });
-        targets.push_back({ "workspace.sidebar.presetNew", create.getBounds().toFloat() });
-        targets.push_back({ "workspace.sidebar.delete", remove.getBounds().toFloat() });
+        for (const auto& [id, bounds] : toolbar.pointerTargetsForAutomation()) {
+            targets.push_back({ id, bounds.translated(
+                    (float) toolbar.getX(), (float) toolbar.getY()) });
+        }
         targets.push_back({ "workspace.sidebar.browse", browse.getBounds().toFloat() });
         for (const auto& [id, bounds] : tagCloud.pointerTargetsForAutomation()) {
             targets.push_back({ id, bounds.translated(
@@ -436,15 +449,9 @@ void InlinePresetBrowser::resized() {
 
     auto footer = bounds.removeFromBottom(54).reduced(10, 8);
     browse.setBounds(footer);
-    bounds.reduce(10, 7);
-    auto searchRow = bounds.removeFromTop(30);
-    create.setBounds(searchRow.removeFromRight(69));
-    searchRow.removeFromRight(5);
-    search.setBounds(searchRow);
-    bounds.removeFromTop(6);
-    auto headingRow = bounds.removeFromTop(24);
-    remove.setBounds(headingRow.removeFromRight(69));
-    tagHeading.setBounds(headingRow);
+    toolbar.setBounds(bounds.removeFromTop(SidebarLibraryToolbar::height));
+    bounds.reduce(6, 0);
+    tagHeading.setBounds(bounds.removeFromTop(16));
     bounds.removeFromTop(4);
     const int cloudHeight = tagCloud.preferredHeightForWidth(bounds.getWidth());
     tagCloud.setBounds(bounds.removeFromTop(cloudHeight));
@@ -465,7 +472,8 @@ bool InlinePresetBrowser::keyPressed(
     if (tab != WorkspaceSidebarTab::Presets) {
         return false;
     }
-    if (source == &search && search.handlePlaybackSpace(key)) {
+    if (source == &toolbar.searchField()
+            && toolbar.searchField().handlePlaybackSpace(key)) {
         return true;
     }
     if (key == juce::KeyPress::returnKey) {
@@ -488,7 +496,7 @@ bool InlinePresetBrowser::keyPressed(
 }
 
 void InlinePresetBrowser::textEditorTextChanged(juce::TextEditor&) {
-    index->setQuery(search.getText());
+    index->setQuery(toolbar.searchField().getText());
 }
 
 void InlinePresetBrowser::textEditorReturnKeyPressed(juce::TextEditor&) {
@@ -531,7 +539,12 @@ void InlinePresetBrowser::applyTagFilter() {
         }
     }
     list->setResults(library, filtered, std::move(tags));
-    remove.setEnabled(!filtered.empty());
+    const auto* selectedRecord = list->selectedRecord();
+    const bool canEditMetadata = selectedRecord != nullptr
+            && selectedRecord->metadataReady;
+    toolbar.editButton().setEnabled(canEditMetadata);
+    toolbar.renameButton().setEnabled(canEditMetadata);
+    toolbar.deleteButton().setEnabled(selectedRecord != nullptr);
     const int width = juce::jmax(1, viewport.getMaximumVisibleWidth());
     list->setSize(width, list->getHeight());
 }
@@ -571,6 +584,44 @@ void InlinePresetBrowser::openSelected() {
                 "Preset not loaded",
                 "The selected preset could not be opened.");
     }
+}
+
+void InlinePresetBrowser::editSelectedTags() {
+    const auto* record = list->selectedRecord();
+    if (record == nullptr || !record->metadataReady) {
+        return;
+    }
+    const auto file = record->file;
+    PresetMetadataEditor::editTags(*this, file, record->presentation.tags,
+            [safeThis = juce::Component::SafePointer<InlinePresetBrowser>(this),
+                    file](const juce::StringArray& tags) {
+                if (safeThis == nullptr) {
+                    return;
+                }
+                safeThis->index->refreshRecord(file);
+                if (safeThis->onTagsChanged) {
+                    safeThis->onTagsChanged(file, tags);
+                }
+            });
+}
+
+void InlinePresetBrowser::renameSelected() {
+    const auto* record = list->selectedRecord();
+    if (record == nullptr || !record->metadataReady) {
+        return;
+    }
+    const auto file = record->file;
+    PresetMetadataEditor::rename(*this, file, record->name,
+            [safeThis = juce::Component::SafePointer<InlinePresetBrowser>(this),
+                    file](const juce::String& title) {
+                if (safeThis == nullptr) {
+                    return;
+                }
+                safeThis->index->refreshRecord(file);
+                if (safeThis->onTitleChanged) {
+                    safeThis->onTitleChanged(file, title);
+                }
+            });
 }
 
 void InlinePresetBrowser::requestDeleteSelected() {
@@ -636,11 +687,9 @@ void InlinePresetBrowser::updateVisibility() {
             tab == WorkspaceSidebarTab::Patterns
                     ? CanvasChromePalette::text : CanvasChromePalette::mutedText);
     patterns.setColour(juce::TextButton::textColourOnId, CanvasChromePalette::text);
-    search.setVisible(showingPresets);
-    create.setVisible(showingPresets);
+    toolbar.setVisible(showingPresets);
     tagHeading.setVisible(showingPresets);
     tagCloud.setVisible(showingPresets);
-    remove.setVisible(showingPresets);
     viewport.setVisible(showingPresets);
     browse.setVisible(showingPresets);
     if (patternBrowser != nullptr) {

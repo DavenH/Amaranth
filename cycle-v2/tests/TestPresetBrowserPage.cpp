@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "Graph/PresetTagStore.h"
+#include "Graph/PresetMetadataStore.h"
 #include "UI/LibrarySearchField.h"
 #include "UI/PresetBrowserPage.h"
 
@@ -159,7 +159,7 @@ TEST_CASE("Preset tag edits preserve other JSON fields",
     })"));
 
     String error;
-    REQUIRE(PresetTagStore::save(file,
+    REQUIRE(PresetMetadataStore::save(file,
             { " Brass ", "Sustained", "brass", "" }, error));
     juce::var root;
     REQUIRE(JSON::parse(file.loadFileAsString(), root).wasOk());
@@ -173,8 +173,22 @@ TEST_CASE("Preset tag edits preserve other JSON fields",
     REQUIRE(PresetPresentationCodec::readMetadataJSON(metadata).presentation.tags
             == StringArray { "Brass", "Sustained" });
 
-    REQUIRE_FALSE(PresetTagStore::save(file, { "  " }, error));
+    REQUIRE(PresetMetadataStore::saveTitle(file, "Copper Horn", error));
+    REQUIRE(JSON::parse(file.loadFileAsString(), root).wasOk());
+    const auto renamedMetadata = root.getDynamicObject()
+            ->getProperty("presetPresentation");
+    REQUIRE(PresetPresentationCodec::readMetadataJSON(renamedMetadata)
+            .presentation.title == "Copper Horn");
+    REQUIRE(PresetPresentationCodec::readMetadataJSON(renamedMetadata)
+            .presentation.tags == StringArray { "Brass", "Sustained" });
+    REQUIRE(PresetPresentationCodec::readJSON(
+            PresetPresentationCodec::writeJSON(
+                    PresetPresentationCodec::readJSON(renamedMetadata).presentation))
+            .presentation.title == "Copper Horn");
+
+    REQUIRE_FALSE(PresetMetadataStore::save(file, { "  " }, error));
     REQUIRE(error.isNotEmpty());
+    REQUIRE_FALSE(PresetMetadataStore::saveTitle(file, "  ", error));
 }
 
 TEST_CASE("Curated preset families and distorted trait match saved metadata",
@@ -260,7 +274,7 @@ TEST_CASE("A tag edit refreshes indexed search metadata",
         REQUIRE(records.front().presentation.tags == StringArray { "Lead" });
 
         String error;
-        REQUIRE(PresetTagStore::save(file, { "Brass" }, error));
+        REQUIRE(PresetMetadataStore::save(file, { "Brass" }, error));
         index.refreshRecord(file);
         REQUIRE(records.front().presentation.tags == StringArray { "Brass" });
         REQUIRE(records.front().searchText.contains("brass"));

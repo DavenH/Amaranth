@@ -1,7 +1,6 @@
 #include <algorithm>
 
 #include "UI/PatternBrowser.h"
-#include "UI/CanvasChromePalette.h"
 #include "UI/MidiPatternMiniMap.h"
 #include "UI/SidebarMediaRow.h"
 
@@ -148,11 +147,15 @@ PatternBrowser::PatternBrowser(
                 [this](const juce::String& id) { toggleFavorite(id); },
                 favorites)) {
     setComponentID("workspace.sidebar.patternBrowser");
-    createButton.setComponentID("workspace.sidebar.patternNew");
-    editButton.setComponentID("workspace.sidebar.patternEdit");
+    auto& search = toolbar.searchField();
+    auto& createButton = toolbar.newButton();
+    auto& editButton = toolbar.editButton();
+    auto& renameButton = toolbar.renameButton();
+    auto& deleteButton = toolbar.deleteButton();
     search.setComponentID("workspace.sidebar.patternSearch");
     search.onTextChange = [this] { applyFilter(); };
-    addAndMakeVisible(search);
+    createButton.setComponentID("workspace.sidebar.patternNew");
+    editButton.setComponentID("workspace.sidebar.patternEdit");
     createButton.setTooltip("Save the current MIDI phrase as a new pattern");
     createButton.onClick = [this] { createPattern(); };
     editButton.onClick = [this] { editSelected(); };
@@ -168,16 +171,7 @@ PatternBrowser::PatternBrowser(
     tagCloud.setFavoritesAvailable(favorites != nullptr);
     tagCloud.setChangeCallback([this] { applyFilter(); });
     addAndMakeVisible(tagCloud);
-    for (auto* button : { &createButton, &editButton,
-            &renameButton, &deleteButton }) {
-        button->setColour(juce::TextButton::buttonColourId,
-                CanvasChromePalette::restingControlSurface);
-        button->setColour(juce::TextButton::textColourOffId,
-                CanvasChromePalette::text);
-        addAndMakeVisible(*button);
-    }
-    createButton.setColour(juce::TextButton::buttonColourId,
-            CanvasChromePalette::navigationAccent.withAlpha(0.18f));
+    addAndMakeVisible(toolbar);
     viewport.setViewedComponent(list.get(), false);
     viewport.setComponentID("workspace.sidebar.patternViewport");
     viewport.setScrollBarsShown(true, false);
@@ -204,7 +198,7 @@ void PatternBrowser::setRecords(
 }
 
 void PatternBrowser::setPlaybackToggleCallback(std::function<void()> callback) {
-    search.setPlaybackToggleCallback(std::move(callback));
+    toolbar.searchField().setPlaybackToggleCallback(std::move(callback));
 }
 
 void PatternBrowser::createPattern(const PatternRecord* source) {
@@ -258,10 +252,10 @@ const PatternRecord* PatternBrowser::selectedRecord() const {
 
 void PatternBrowser::updateActions() {
     const auto* record = selectedRecord();
-    editButton.setEnabled(record != nullptr);
+    toolbar.editButton().setEnabled(record != nullptr);
     const bool userPattern = record != nullptr && !record->factory;
-    renameButton.setEnabled(userPattern);
-    deleteButton.setEnabled(userPattern);
+    toolbar.renameButton().setEnabled(userPattern);
+    toolbar.deleteButton().setEnabled(userPattern);
 }
 
 void PatternBrowser::renameSelected() {
@@ -317,7 +311,7 @@ void PatternBrowser::deleteSelected() {
 void PatternBrowser::applyFilter() {
     const int previousScroll = viewport.getViewPositionY();
     std::vector<PatternRecord> visible;
-    const auto query = search.getText().trim();
+    const auto query = toolbar.searchField().getText().trim();
     for (const auto& record : allRecords) {
         const auto tags = tagsFor(record);
         const bool matchesTags = tagCloud.matches(tags);
@@ -346,13 +340,11 @@ void PatternBrowser::toggleFavorite(const juce::String& id) {
 
 std::vector<std::pair<juce::String, juce::Rectangle<float>>>
 PatternBrowser::pointerTargetsForAutomation() const {
-    std::vector<std::pair<juce::String, juce::Rectangle<float>>> targets {
-            { "workspace.sidebar.patternSearch", search.getBounds().toFloat() },
-            { "workspace.sidebar.patternNew", createButton.getBounds().toFloat() },
-            { "workspace.sidebar.patternEdit", editButton.getBounds().toFloat() },
-            { "workspace.sidebar.patternRename", renameButton.getBounds().toFloat() },
-            { "workspace.sidebar.patternDelete", deleteButton.getBounds().toFloat() }
-    };
+    std::vector<std::pair<juce::String, juce::Rectangle<float>>> targets;
+    for (const auto& [id, bounds] : toolbar.pointerTargetsForAutomation()) {
+        targets.push_back({ id, bounds.translated(
+                (float) toolbar.getX(), (float) toolbar.getY()) });
+    }
     for (const auto& [id, bounds] : tagCloud.pointerTargetsForAutomation()) {
         targets.push_back({ id, bounds.translated(
                 (float) tagCloud.getX(), (float) tagCloud.getY()) });
@@ -377,19 +369,10 @@ void PatternBrowser::editSelected() {
 }
 
 void PatternBrowser::resized() {
-    auto bounds = getLocalBounds().reduced(6, 7);
-    search.setBounds(bounds.removeFromTop(30));
-    bounds.removeFromTop(6);
-    auto actions = bounds.removeFromTop(28);
-    const int actionWidth = (actions.getWidth() - 12) / 4;
-    createButton.setBounds(actions.removeFromLeft(actionWidth));
-    actions.removeFromLeft(4);
-    editButton.setBounds(actions.removeFromLeft(actionWidth));
-    actions.removeFromLeft(4);
-    renameButton.setBounds(actions.removeFromLeft(actionWidth));
-    actions.removeFromLeft(4);
-    deleteButton.setBounds(actions);
-    bounds.removeFromTop(8);
+    auto bounds = getLocalBounds();
+    toolbar.setBounds(bounds.removeFromTop(SidebarLibraryToolbar::height));
+    bounds.reduce(6, 0);
+    bounds.removeFromBottom(7);
     tagHeading.setBounds(bounds.removeFromTop(16));
     bounds.removeFromTop(4);
     const int cloudHeight = tagCloud.preferredHeightForWidth(bounds.getWidth());
@@ -398,15 +381,6 @@ void PatternBrowser::resized() {
     viewport.setBounds(bounds);
     list->setSize(juce::jmax(1, viewport.getMaximumVisibleWidth()),
             list->getHeight());
-}
-
-void PatternBrowser::paint(juce::Graphics& graphics) {
-    const auto actionBounds = createButton.getBounds()
-            .getUnion(deleteButton.getBounds()).expanded(2, 2).toFloat();
-    graphics.setColour(CanvasChromePalette::raisedSurface);
-    graphics.fillRoundedRectangle(actionBounds, 5.f);
-    graphics.setColour(CanvasChromePalette::border.withAlpha(0.5f));
-    graphics.drawRoundedRectangle(actionBounds.reduced(0.5f), 5.f, 1.f);
 }
 
 }

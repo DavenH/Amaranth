@@ -47,6 +47,7 @@ struct PresetMidiSequence {
 };
 
 struct PresetPresentation {
+    juce::String title;
     juce::String author;
     juce::String pack;
     juce::String description;

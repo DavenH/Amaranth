@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <array>
+
 #include "UI/InlinePresetBrowser.h"
 #include "UI/LibrarySearchField.h"
 #include "UI/SidebarMediaRow.h"
@@ -55,6 +57,17 @@ bool clickFavoriteFilter(SidebarTagCloud& cloud) {
         return true;
     }
     return false;
+}
+
+Rectangle<float> targetBounds(
+        const InlinePresetBrowser& browser,
+        const String& id) {
+    for (const auto& [targetId, bounds] : browser.pointerTargetsForAutomation()) {
+        if (targetId == id) {
+            return bounds;
+        }
+    }
+    return {};
 }
 
 }
@@ -129,6 +142,39 @@ TEST_CASE("Sidebar tag chips narrow results across selected tags",
     REQUIRE(cloud.matches({ "Keys" }));
 }
 
+TEST_CASE("Preset and pattern actions occupy the same sidebar positions",
+        "[cycle-v2][preset][browser][inline][layout]") {
+    ScopedJuceInitialiser_GUI gui;
+    InlinePresetBrowser browser({},
+            [](const File&) { return true; },
+            [] {}, [](WorkspaceSidebarTab) {});
+    browser.configurePatterns({}, {}, {}, {}, {});
+    browser.setBounds(0, 0, 272, 600);
+    const std::array<String, 5> presetIds {
+            "workspace.sidebar.search",
+            "workspace.sidebar.presetNew",
+            "workspace.sidebar.presetEdit",
+            "workspace.sidebar.presetRename",
+            "workspace.sidebar.delete"
+    };
+    const std::array<String, 5> patternIds {
+            "workspace.sidebar.patternSearch",
+            "workspace.sidebar.patternNew",
+            "workspace.sidebar.patternEdit",
+            "workspace.sidebar.patternRename",
+            "workspace.sidebar.patternDelete"
+    };
+    std::array<Rectangle<float>, 5> presetBounds;
+    for (size_t index = 0; index < presetBounds.size(); ++index) {
+        presetBounds[index] = targetBounds(browser, presetIds[index]);
+        REQUIRE_FALSE(presetBounds[index].isEmpty());
+    }
+    browser.setActiveTab(WorkspaceSidebarTab::Patterns);
+    for (size_t index = 0; index < patternIds.size(); ++index) {
+        REQUIRE(targetBounds(browser, patternIds[index]) == presetBounds[index]);
+    }
+}
+
 TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
         "[cycle-v2][preset][browser][inline]") {
     ScopedJuceInitialiser_GUI juce;
@@ -169,11 +215,15 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     auto* patterns = dynamic_cast<Button*>(
             browser.findChildWithID("workspace.sidebar.patterns"));
     auto* search = dynamic_cast<TextEditor*>(
-            browser.findChildWithID("workspace.sidebar.search"));
+            findDescendantWithID(browser, "workspace.sidebar.search"));
     auto* browse = dynamic_cast<Button*>(
             browser.findChildWithID("workspace.sidebar.browse"));
     auto* create = dynamic_cast<Button*>(
-            browser.findChildWithID("workspace.sidebar.presetNew"));
+            findDescendantWithID(browser, "workspace.sidebar.presetNew"));
+    auto* edit = dynamic_cast<Button*>(
+            findDescendantWithID(browser, "workspace.sidebar.presetEdit"));
+    auto* rename = dynamic_cast<Button*>(
+            findDescendantWithID(browser, "workspace.sidebar.presetRename"));
     auto* tagCloud = dynamic_cast<SidebarTagCloud*>(
             browser.findChildWithID("workspace.sidebar.presetTags"));
     auto* list = findDescendantWithID(browser, "workspace.sidebar.list");
@@ -193,13 +243,21 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(playbackToggles == 1);
     REQUIRE(browse != nullptr);
     REQUIRE(create != nullptr);
+    REQUIRE(edit != nullptr);
+    REQUIRE(rename != nullptr);
     REQUIRE(tagCloud != nullptr);
     REQUIRE(list != nullptr);
     REQUIRE(viewport != nullptr);
     REQUIRE(remove != nullptr);
     REQUIRE(search->getFont().getHeight() >= 14.f);
     REQUIRE(search->getHeight() == 30);
-    REQUIRE(create->getHeight() == search->getHeight());
+    REQUIRE(create->getHeight() == 28);
+    REQUIRE(search->getX() == create->getX());
+    REQUIRE(create->getY() > search->getBottom());
+    REQUIRE(create->getX() < edit->getX());
+    REQUIRE(edit->getX() < rename->getX());
+    REQUIRE(rename->getX() < remove->getX());
+    REQUIRE(remove->getRight() == search->getRight());
     REQUIRE(create->getButtonText() == "+ NEW");
     REQUIRE(tagCloud->getY() > search->getY());
     REQUIRE_FALSE(findDescendantWithID(browser, "workspace.sidebar.hero"));
@@ -336,7 +394,7 @@ TEST_CASE("Preset row star and Favorites filter do not load the sound",
             [] {}, [](WorkspaceSidebarTab) {}, {}, {}, {}, &favorites);
     browser.setBounds(0, 0, 272, 760);
     auto* search = dynamic_cast<TextEditor*>(
-            browser.findChildWithID("workspace.sidebar.search"));
+            findDescendantWithID(browser, "workspace.sidebar.search"));
     auto* filter = dynamic_cast<SidebarTagCloud*>(
             browser.findChildWithID("workspace.sidebar.presetTags"));
     auto* list = findDescendantWithID(browser, "workspace.sidebar.list");
@@ -368,4 +426,79 @@ TEST_CASE("Preset row star and Favorites filter do not load the sound",
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
+}
+
+TEST_CASE("Preset sidebar edits tags and title through its grouped actions",
+        "[cycle-v2][preset][browser][inline][actions]") {
+    ScopedJuceInitialiser_GUI gui;
+    const File directory = File::getSpecialLocation(File::tempDirectory)
+            .getChildFile("cycle-v2-sidebar-actions-" + Uuid().toString());
+    REQUIRE(directory.createDirectory().wasOk());
+    const File file = directory.getChildFile("seed.cyclegraph");
+    REQUIRE(file.replaceWithText(R"({
+        "presetPresentation": { "version": 1, "tags": ["Lead"] },
+        "other": "keep"
+    })"));
+
+    int opened {};
+    String savedTitle;
+    StringArray savedTags;
+    InlinePresetBrowser browser({ directory },
+            [&](const File&) { ++opened; return true; },
+            [] {}, [](WorkspaceSidebarTab) {});
+    browser.setMetadataChangedCallbacks(
+            [&](const File& changedFile, const String& title) {
+                REQUIRE(changedFile == file);
+                savedTitle = title;
+            },
+            [&](const File& changedFile, const StringArray& tags) {
+                REQUIRE(changedFile == file);
+                savedTags = tags;
+            });
+    browser.setBounds(0, 0, 272, 600);
+    for (int attempt = 0; attempt < 30 && browser.visiblePresetCount() != 1; ++attempt) {
+        MessageManager::getInstance()->runDispatchLoopUntil(100);
+    }
+    REQUIRE(browser.visiblePresetCount() == 1);
+    auto* edit = dynamic_cast<Button*>(
+            findDescendantWithID(browser, "workspace.sidebar.presetEdit"));
+    auto* rename = dynamic_cast<Button*>(
+            findDescendantWithID(browser, "workspace.sidebar.presetRename"));
+    auto* search = dynamic_cast<TextEditor*>(
+            findDescendantWithID(browser, "workspace.sidebar.search"));
+    REQUIRE(edit != nullptr);
+    REQUIRE(rename != nullptr);
+    REQUIRE(search != nullptr);
+    REQUIRE(edit->isEnabled());
+    REQUIRE(rename->isEnabled());
+
+    edit->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    auto* prompt = dynamic_cast<AlertWindow*>(
+            ModalComponentManager::getInstance()->getModalComponent(0));
+    REQUIRE(prompt != nullptr);
+    prompt->getTextEditor("tags")->setText("Brass, Expressive");
+    prompt->exitModalState(1);
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(savedTags == StringArray { "Brass", "Expressive" });
+
+    rename->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    prompt = dynamic_cast<AlertWindow*>(
+            ModalComponentManager::getInstance()->getModalComponent(0));
+    REQUIRE(prompt != nullptr);
+    prompt->getTextEditor("title")->setText("Brass Hall");
+    prompt->exitModalState(1);
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(savedTitle == "Brass Hall");
+    REQUIRE(file.existsAsFile());
+    REQUIRE(JSON::parse(file.loadFileAsString()).getDynamicObject()
+            ->getProperty("other").toString() == "keep");
+    search->setText("Brass Hall", true);
+    for (int attempt = 0; attempt < 30 && browser.visiblePresetCount() != 1; ++attempt) {
+        MessageManager::getInstance()->runDispatchLoopUntil(100);
+    }
+    REQUIRE(browser.visiblePresetCount() == 1);
+    REQUIRE(opened == 0);
+    REQUIRE(directory.deleteRecursively());
 }
