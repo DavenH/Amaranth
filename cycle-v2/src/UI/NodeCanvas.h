@@ -304,6 +304,7 @@ private:
             const String& nodeId,
             GraphCommandDispatcher& commands) override;
     void scheduleNodeEditorRefresh() override;
+    void settleNodeEditorPreviewWork() override;
     void flushNodeEditorRefresh() override;
     void refreshNodeEditorPresentation() override;
     void notifyGraphDocumentStateChanged();

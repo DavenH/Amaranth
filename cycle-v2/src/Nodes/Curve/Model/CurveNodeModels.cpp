@@ -157,6 +157,23 @@ Vertex* FlatCurveModel::vertexForIdentity(CurveVertexId vertexId) const {
     return found != verticesByIdentity.end() ? found->second : nullptr;
 }
 
+std::optional<FlatCurveVertex> FlatCurveModel::pointForMeshVertex(
+        Vertex* meshVertex) const {
+    if (meshVertex == nullptr) {
+        return std::nullopt;
+    }
+    const auto identity = identitiesByVertex.find(meshVertex);
+    if (identity == identitiesByVertex.end()) {
+        return std::nullopt;
+    }
+    return FlatCurveVertex {
+            identity->second,
+            meshVertex->values[Vertex::Phase],
+            meshVertex->values[Vertex::Amp],
+            meshVertex->values[Vertex::Curve]
+    };
+}
+
 Vertex* FlatCurveModel::selectedMeshVertex() const {
     return selection.has_value() ? vertexForIdentity(*selection) : nullptr;
 }
@@ -672,6 +689,18 @@ std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::withEnvelopeMorp
             schema, version, revision, envelopeState, red, blue, editorState));
 }
 
+std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::withPointPreview(
+        FlatCurveVertex point,
+        uint64_t revisionToUse) const {
+    if (flatCurveState == nullptr || flatCurveState->vertexForIdentity(point.id) == nullptr) {
+        return nullptr;
+    }
+    auto preview = std::shared_ptr<CurveNodeModelState>(new CurveNodeModelState(
+            schema, version, revisionToUse, flatCurveState));
+    preview->previewPoint = point;
+    return preview;
+}
+
 String CurveNodeModelState::schemaId() const {
     return schema;
 }
@@ -685,9 +714,18 @@ uint64_t CurveNodeModelState::revision() const {
 }
 
 var CurveNodeModelState::writeJSON() const {
-    var state = flatCurveState != nullptr
-            ? flatCurveState->writeJSON()
-            : envelopeState->writeJSON();
+    var state;
+    if (previewPoint.has_value()) {
+        FlatCurveModel previewModel;
+        previewModel.copyFrom(*flatCurveState);
+        previewModel.moveVertex(previewPoint->id, { previewPoint->x, previewPoint->y });
+        previewModel.setCurve(previewPoint->id, previewPoint->curve);
+        state = previewModel.writeJSON();
+    } else {
+        state = flatCurveState != nullptr
+                ? flatCurveState->writeJSON()
+                : envelopeState->writeJSON();
+    }
     if (envelopeState != nullptr) {
         auto* object = state.getDynamicObject();
         object->setProperty("red", envelopeRedValue);
@@ -700,6 +738,13 @@ var CurveNodeModelState::writeJSON() const {
 
 bool CurveNodeModelState::equals(const NodeModelState& other) const {
     const auto* typed = dynamic_cast<const CurveNodeModelState*>(&other);
+    if (typed != nullptr && (previewPoint.has_value() || typed->previewPoint.has_value())) {
+        return schema == typed->schema
+                && version == typed->version
+                && modelRevision == typed->modelRevision
+                && flatCurveState == typed->flatCurveState
+                && previewPoint == typed->previewPoint;
+    }
     return typed != nullptr
             && schema == typed->schema
             && version == typed->version

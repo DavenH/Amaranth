@@ -20,6 +20,7 @@ protected:
     virtual void pointerGesturePressed() {}
     virtual void pointerGestureUpdated() {}
     virtual void pointerGestureEnded() {}
+    virtual bool cancelPointerGesture() { return false; }
     virtual bool deleteKeyPressed() { return false; }
 
 private:

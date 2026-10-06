@@ -2,8 +2,8 @@
 
 ## Status and starting point
 
-In progress; the Live-preview model and graph ownership boundaries need an
-architecture decision. No production change completed.
+Implemented for the scoped Waveshaper point drag on 2026-10-06. The wider mesh
+storage refactor remains excluded.
 Rewritten on 2026-10-05 after the user rejected the larger mesh-storage rewrite.
 Start from master at `97bf9107` (PR #158), on `cycle2/point-drag-refactor`.
 The old implementation remains on `cycle2/refactors-001`; its design notes remain
@@ -135,10 +135,63 @@ snapshot, but first copies the whole graph to own its stable base. The current
 `NodeEditorCommandService` curve transaction opens a dispatcher edit directly,
 so that gesture session is not used for these movements anyway.
 
-The smallest plausible design needs a stable point-delta preview representation
-shared by the graph preview and curve preparation paths, plus a stable graph
-base shared with workers. One full model publication can then occur at release.
-That changes model and graph ownership across subsystems, substantially beyond
-the narrow point-drag correction. Architectural direction is needed before
-implementing it. Do not substitute whole-curve or whole-graph copies on
-movement or mark this TDD implemented.
+The user authorized the stable point-delta preview and worker snapshot path.
+The completed path keeps the mutable panel mesh on the UI thread. Each movement
+publishes one immutable point value and identity in a curve model state that
+shares its unchanged flat curve. `FlatCurvePreparation` substitutes that value
+while producing the required local transfer. Release still converts the panel
+mesh and publishes one complete model through the existing dispatcher undo path.
+
+For Live feedback, `GraphCommandDispatcher` snapshots only edited overlay nodes
+and borrows the durable graph as its unchanged base. The command service waits
+for pending preview work before committing or cancelling the transient edit.
+Canvas document load, undo and redo also settle preview work before replacing
+or changing that base.
+The scheduler's generation check rejects an older result after a newer request.
+On Release movements use the panel's local rasterization and defer downstream
+graph refresh until commit. The former On Release movement refresh changed the
+probe prematurely and copied the graph; that scheduling path was removed for
+this curve gesture.
+
+| Phase | Before | After |
+| --- | --- | --- |
+| Press | Cycle 1 captures all selected mesh vertex values; Cycle 2 starts a transient edit. | Same transient edit; no graph or mesh copy added. |
+| Each movement | Panel mesh changed, downstream Live read old model; asynchronous refresh copied the whole editing graph. | One selected point value, shared curve base, edited-node snapshot; zero graph, mesh and model copies or serialization in scaled operation-count tests. Required curve preparation still traverses the local curve. |
+| Release | One complete curve model publication and graph commit. | Same single complete model publication and one undo entry; pending workers settle first. |
+| Undo/redo/cancel | Graph delta restores committed state; cancel had no hosted Escape path. | Delta undo/redo and save/reload retain point identity; Escape cancels the hosted gesture, restores the panel and creates no undo entry. |
+
+The operation-count test holds the edited point constant with 0 and 128 unrelated
+nodes and a 16,384-sample unrelated resource. In both sizes, two movement
+publications plus their worker graph snapshots record zero graph copies, mesh
+copies, model serializations, audio-sample copies, node scans and validation
+visits; parameter lookup remains two for the two movements at either size.
+The hosted panel test also
+records zero mesh and graph copies during two movements. The Live app fixture
+observed downstream probe absolute sum change from 9150.68 to 5279.29 before
+release; On Release retained 9150.68 until release, then changed to 5279.29.
+The Live and On Release fixtures verified undo and saved-graph reload. The unit
+sequence verifies redo and Escape cancellation. A third Live fixture releases
+immediately after two movements, then verifies the final probe and undo after
+the worker settles.
+
+Policy owners: the legacy interactor owns point movement and constraints;
+`CurveNodeModelState` owns the point preview value; `FlatCurvePreparation` owns
+curve evaluation; `GraphCommandDispatcher` owns transient edits and undo;
+`GraphPresentationModel` and its scheduler own refresh generations and worker
+completion. `NodeCanvas` routes movement according to the existing refresh
+policy. No interaction or DSP algorithm was copied into that orchestration.
+
+The touched size triggers are `NodeCanvas.cpp` 2807 lines, `CurveNodeModels.cpp`
+859 lines, `NodeCanvasAuthoring.cpp` 959 lines and `NodeEditorCommandService.cpp`
+826 lines. Their added code is
+limited to orchestration, typed preview state and curve transaction cleanup,
+respectively. The old full-graph movement refresh and premature On Release
+probe refresh were removed for this gesture. The broader class-size extraction
+plans remain in `docs/TDD/refactors.md`; this change did not add a new switchboard.
+
+Validation: `standalone-debug` and `tests` CycleV2 targets built with
+`--parallel 10`; three focused Catch2 cases passed with 220 assertions and
+`ctest --test-dir build/tests -R` passed 3/3; all
+three hosted app fixtures passed after the On Release correction. The architecture
+audit and `git diff --check` passed. `clang-tidy` was unavailable in this
+environment. The modified curve preparation loop has no scalar standard math.

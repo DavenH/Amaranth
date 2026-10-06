@@ -102,6 +102,10 @@ void PanelInputHostComponent::mouseWheelMove(
 }
 
 bool PanelInputHostComponent::keyPressed(const KeyPress& key) {
+    if (key == KeyPress::escapeKey && pointerActive && cancelPointerGesture()) {
+        pointerActive = false;
+        return true;
+    }
     if (key != KeyPress::deleteKey && key != KeyPress::backspaceKey) {
         return false;
     }

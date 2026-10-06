@@ -29,6 +29,7 @@ public:
             const String& value) = 0;
     virtual void beginCurveTransaction() = 0;
     virtual void commitCurveTransaction() = 0;
+    virtual bool cancelCurveTransaction() { return false; }
     virtual void curveTransientStateChanged(uint64_t) {}
     virtual void setCurveEditorStatus(const String&) {}
     virtual bool setAudioResource(NodeAudioResourceEdit) { return false; }
@@ -79,9 +80,10 @@ protected:
     virtual void syncInteractionControls() {}
 
     Rectangle<float> contentBounds() const;
-    void publishCurrentState();
+    void publishCurrentState(bool meshEdited = false);
     void beginTransaction();
     void commitTransaction();
+    bool cancelTransaction();
     void setStatusMessage(const String& message);
     void requestRepaint();
     void refreshEditorSubject();
@@ -130,6 +132,7 @@ private:
     void beginCurvePanelControllerEdit() override;
     void curvePanelControllerEdited() override;
     void commitCurvePanelControllerEdit() override;
+    bool cancelCurvePanelControllerEdit() override;
     void setCurvePanelCursor(const MouseCursor& cursor) override;
 
     bool transactionActive {};

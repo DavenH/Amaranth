@@ -83,6 +83,7 @@ public:
     virtual void beginEdit() = 0;
     virtual void publishIntermediateRevision() = 0;
     virtual void commitEdit() = 0;
+    virtual bool cancelEdit() { return false; }
 };
 
 class CurvePanelHostDelegate : public CurvePanelInteractionAdapter {

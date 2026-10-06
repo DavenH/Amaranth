@@ -885,6 +885,44 @@ TEST_CASE("Typed curve snapshots build deterministic immutable DSP data",
     REQUIRE(firstIr->impulse == secondIr->impulse);
 }
 
+TEST_CASE("Waveshaper point preview renders the edited value without copying its model",
+        "[cycle-v2][curve-model][waveshaper][preview]") {
+    FlatCurveModel model;
+    REQUIRE(model.replaceVertices({
+            { 1, 0.f, 0.1f, 1.f },
+            { 2, 0.5f, 0.8f, 0.5f },
+            { 3, 1.f, 0.9f, 1.f }
+    }));
+    const auto base = CurveNodeModelState::copyOf(model, model.revision());
+    const FlatCurveVertex moved { 2, 0.55f, 0.2f, 0.5f };
+
+    InteractionComplexityDiagnostics::reset();
+    const auto preview = base->withPointPreview(moved, base->revision() + 1);
+    REQUIRE(preview != nullptr);
+    REQUIRE(preview->flatCurve() == base->flatCurve());
+    REQUIRE(preview->pointPreview() == moved);
+    REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
+
+    FlatCurveModel expectedModel;
+    REQUIRE(expectedModel.copyFrom(model));
+    REQUIRE(expectedModel.moveVertex(moved.id, { moved.x, moved.y }).succeeded());
+    const auto expected = CurveNodeModelState::copyOf(expectedModel, preview->revision());
+    const std::vector<NodeParameter> controls;
+    const auto baseConfiguration = WaveshaperSignalProcessor::buildConfiguration(controls, base);
+    const auto previewConfiguration = WaveshaperSignalProcessor::buildConfiguration(
+            controls, preview);
+    const auto expectedConfiguration = WaveshaperSignalProcessor::buildConfiguration(
+            controls, expected);
+    REQUIRE(baseConfiguration != nullptr);
+    REQUIRE(previewConfiguration != nullptr);
+    REQUIRE(expectedConfiguration != nullptr);
+    REQUIRE(previewConfiguration->transfer->lookup(moved.x)
+            == Catch::Approx(expectedConfiguration->transfer->lookup(moved.x)));
+    REQUIRE(previewConfiguration->transfer->lookup(moved.x)
+            != Catch::Approx(baseConfiguration->transfer->lookup(moved.x)));
+    REQUIRE(base->flatCurve()->getVertices()[1] == FlatCurveVertex { 2, 0.5f, 0.8f, 0.5f });
+}
+
 TEST_CASE("Direct IR resources reach configuration preparation and its cache key",
         "[cycle-v2][curve-model][dsp][audio-resource]") {
     NodeGraph graph;

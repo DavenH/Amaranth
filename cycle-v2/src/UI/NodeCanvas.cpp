@@ -2599,6 +2599,10 @@ void NodeCanvas::scheduleNodeEditorRefresh() {
     scheduleCompiledStateRefresh();
 }
 
+void NodeCanvas::settleNodeEditorPreviewWork() {
+    presentation.cancelPendingRefreshes();
+}
+
 void NodeCanvas::flushNodeEditorRefresh() {
     flushScheduledCompiledStateRefresh();
 }
@@ -2685,10 +2689,17 @@ void NodeCanvas::recordNodeEditorMovement(
         return;
     }
     if (!primaryTrimeshMorph) {
-        scheduleCompiledStateRefresh(
-                probesDeferred
-                        ? PresentationRefreshScope::LocalEditor
-                        : PresentationRefreshScope::Downstream);
+        if (field == "curve" && commands.hasTransientEdit() && !probesDeferred) {
+            refreshCompiledStateAsync(
+                    PresentationRefreshScope::PreviewOnly,
+                    &commands.transientChanges(),
+                    commands.snapshotTransientEditForWorker());
+        } else if (field != "curve" || !commands.hasTransientEdit()) {
+            scheduleCompiledStateRefresh(
+                    probesDeferred
+                            ? PresentationRefreshScope::LocalEditor
+                            : PresentationRefreshScope::Downstream);
+        }
     }
 }
 

@@ -33,17 +33,19 @@ bool FlatCurvePanelAdapter::needsNodeSync(const Node& node) const {
     if (!guideResource && node.kind != nodeKind) {
         return false;
     }
-    return node.model != nullptr
+    const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
+    return typed != nullptr
             && node.model->schemaId() == "flatCurve"
+            && !typed->pointPreview().has_value()
             && (syncedNodeId != node.id || syncedModel != node.model);
 }
 
-bool FlatCurvePanelAdapter::syncFromNode(const Node& node) {
+bool FlatCurvePanelAdapter::syncFromNode(const Node& node, bool force) {
     if (!guideResource && node.kind != nodeKind) {
         return false;
     }
     const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
-    if (!needsNodeSync(node) || typed == nullptr || typed->flatCurve() == nullptr
+    if ((!force && !needsNodeSync(node)) || typed == nullptr || typed->flatCurve() == nullptr
             || !model.copyFrom(*typed->flatCurve())) {
         return false;
     }
@@ -131,6 +133,11 @@ NodeModelStatePtr FlatCurvePanelAdapter::modelPublication(
     }
     return CurveNodeModelState::copyOf(
             model, publicationRevision, var(editor.release()));
+}
+
+std::optional<FlatCurveVertex> FlatCurvePanelAdapter::pointPreview(
+        Vertex* selectedVertex) const {
+    return model.pointForMeshVertex(selectedVertex);
 }
 
 std::vector<CurvePreviewVertex> FlatCurvePanelAdapter::previewVertices() {

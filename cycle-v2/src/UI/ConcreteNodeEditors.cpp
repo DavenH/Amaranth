@@ -79,6 +79,10 @@ private:
         commands.commitCurveTransaction();
     }
 
+    bool cancelCurveTransaction() override {
+        return commands.cancelCurveTransaction();
+    }
+
     void curveTransientStateChanged(uint64_t fingerprint) override {
         presentation.recordNodeEditorMovement(nodeId, "curve", fingerprint);
     }

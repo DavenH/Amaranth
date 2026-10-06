@@ -338,6 +338,7 @@ GraphEditResult GraphNodeStateEditor::replaceTransientNodeModel(
         reconcileTrimeshGuideAssignments(graph, nodeId, result);
     }
     result.changes.nodeIds.push_back(nodeId);
+    result.changes.modelChanged = result.changed;
     result.changes.parameterImpacts = ParameterImpact::Presentation
             | ParameterImpact::Preview
             | ParameterImpact::DspConfiguration;

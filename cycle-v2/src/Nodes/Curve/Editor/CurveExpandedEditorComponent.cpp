@@ -248,7 +248,7 @@ Rectangle<float> CurveExpandedEditorComponent::contentBounds() const {
     return bounds.reduced(12.f, 10.f);
 }
 
-void CurveExpandedEditorComponent::publishCurrentState() {
+void CurveExpandedEditorComponent::publishCurrentState(bool meshEdited) {
     if (syncingControls || delegate == nullptr) {
         return;
     }
@@ -256,6 +256,18 @@ void CurveExpandedEditorComponent::publishCurrentState() {
     requestRepaint();
     if (transactionActive) {
         transientStateChanged = true;
+        if (meshEdited && node.kind == NodeKind::Waveshaper) {
+            const auto point = widget.pointPreview();
+            const auto base = std::dynamic_pointer_cast<const CurveNodeModelState>(
+                    editorModel);
+            if (point.has_value() && base != nullptr) {
+                const auto preview = base->withPointPreview(
+                        *point, transactionBaseRevision + 1);
+                if (preview != nullptr) {
+                    delegate->publishCurveState(preview, editorControls());
+                }
+            }
+        }
         FingerprintBuilder fingerprint(widget.contentRevision());
         for (const auto& control : editorControls()) {
             fingerprint.add(control.id).add(control.value);
@@ -306,6 +318,19 @@ void CurveExpandedEditorComponent::commitTransaction() {
     }
     transactionActive = false;
     transientStateChanged = false;
+}
+
+bool CurveExpandedEditorComponent::cancelTransaction() {
+    if (!transactionActive || node.kind != NodeKind::Waveshaper
+            || delegate == nullptr || !delegate->cancelCurveTransaction()) {
+        return false;
+    }
+    transactionActive = false;
+    transientStateChanged = false;
+    widget.restoreFromNode(node);
+    syncInteractionControls();
+    requestRepaint();
+    return true;
 }
 
 void CurveExpandedEditorComponent::requestRepaint() {
@@ -383,7 +408,7 @@ void CurveExpandedEditorComponent::updatePanelHost() {
 }
 
 void CurveExpandedEditorComponent::persistEffectMeshState() {
-    publishCurrentState();
+    publishCurrentState(true);
 }
 
 void CurveExpandedEditorComponent::repaintCurvePanelController() {
@@ -402,6 +427,10 @@ void CurveExpandedEditorComponent::curvePanelControllerEdited() {
 void CurveExpandedEditorComponent::commitCurvePanelControllerEdit() {
     syncInteractionControls();
     commitTransaction();
+}
+
+bool CurveExpandedEditorComponent::cancelCurvePanelControllerEdit() {
+    return cancelTransaction();
 }
 
 void CurveExpandedEditorComponent::setCurvePanelCursor(const MouseCursor& cursor) {

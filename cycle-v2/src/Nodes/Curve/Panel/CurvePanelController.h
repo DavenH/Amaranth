@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "Graph/NodeGraph.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Panel/CurvePanelAdapterTypes.h"
 #include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
 
@@ -18,6 +19,7 @@ public:
     virtual void beginCurvePanelControllerEdit() = 0;
     virtual void curvePanelControllerEdited() = 0;
     virtual void commitCurvePanelControllerEdit() = 0;
+    virtual bool cancelCurvePanelControllerEdit() { return false; }
     virtual void setCurvePanelCursor(const MouseCursor& cursor) = 0;
 };
 
@@ -26,6 +28,7 @@ public:
     virtual ~CurvePanelController() = default;
 
     virtual void syncFromNode(const Node& node) = 0;
+    virtual void restoreFromNode(const Node& node) { syncFromNode(node); }
     virtual void syncGuideContext(const NodeGraph&, const Node&) {}
     virtual bool syncFromGuideResource(
             const GuideCurveResource&,
@@ -53,6 +56,7 @@ public:
     virtual var automationState() const = 0;
     virtual std::vector<CurvePanelGridLine> verticalMajorGridLines() const = 0;
     virtual std::vector<CurvePreviewVertex> previewVertices() = 0;
+    virtual std::optional<FlatCurveVertex> pointPreview() { return std::nullopt; }
     virtual String serializedMeshState() = 0;
     virtual NodeModelStatePtr modelPublication() = 0;
     virtual NodeModelStatePtr prepareModelPublication(uint64_t currentRevision) = 0;

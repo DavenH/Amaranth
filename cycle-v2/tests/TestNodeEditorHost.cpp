@@ -26,6 +26,7 @@
 #include "Nodes/Unison/UnisonNode.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Waveshaper/Editor/WaveshaperEditorComponent.h"
+#include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 #include "Runtime/PresentationGestureSession.h"
 #include "UI/EffectEnableButton.h"
 #include "UI/EditorChromeLayout.h"
@@ -926,8 +927,9 @@ public:
     void repaintCurveEditorOpenGL() override { events.add("repaint"); }
 
     bool publishCurveState(
-            NodeModelStatePtr,
+            NodeModelStatePtr model,
             const std::vector<NodeParameter>&) override {
+        publications.push_back(std::move(model));
         events.add("publish");
         return true;
     }
@@ -944,6 +946,13 @@ public:
 
     void beginCurveTransaction() override { events.add("begin"); }
     void commitCurveTransaction() override { events.add("commit"); }
+    bool cancelCurveTransaction() override {
+        if (!allowCancel) {
+            return false;
+        }
+        events.add("cancel");
+        return true;
+    }
     void setCurveEditorStatus(const String& message) override { status = message; }
     bool setAudioResource(NodeAudioResourceEdit edit) override {
         appliedResource = std::move(edit);
@@ -969,6 +978,7 @@ public:
     }
 
     StringArray events;
+    std::vector<NodeModelStatePtr> publications;
     String status;
     String textParameterId;
     String textValue;
@@ -977,6 +987,7 @@ public:
     NodeAudioResourceEdit appliedResource;
     std::optional<NodeAudioResourceSummary> resource;
     bool resourceRemovalSucceeds { true };
+    bool allowCancel {};
     int resourceRemovals {};
 };
 
@@ -2740,6 +2751,105 @@ TEST_CASE("Waveshaper point drag retains the hovered vertex identity",
     }
 }
 
+TEST_CASE("Hosted Waveshaper movements publish stable point previews before release",
+        "[cycle-v2][node-editor-host][waveshaper][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Node node = GraphNodeFactory().createNode(NodeKind::Waveshaper, "waveshaper", {});
+    const auto original = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
+    REQUIRE(original != nullptr);
+    REQUIRE(original->flatCurve() != nullptr);
+    const FlatCurveVertex point = original->flatCurve()->getVertices()[1];
+
+    CurveEditorWidget widget(NodeKind::Waveshaper);
+    WaveshaperEditorComponent editor(widget);
+    RecordingCurveDelegate delegate;
+    editor.setDelegate(&delegate);
+    editor.setBounds(0, 0, 766, 464);
+    editor.setNode(node);
+    Component* panel = widget.getExpandedPanelComponentIfCreated();
+    REQUIRE(panel != nullptr);
+    panel->addToDesktop(ComponentPeer::windowIsTemporary);
+
+    const var zoom = widget.automationState().getProperty("zoom", {});
+    const auto panelPoint = [&](float x, float y) {
+        return Point<float>(
+                panel->getWidth() * (x - (float) zoom.getProperty("x", {}))
+                        / (float) zoom.getProperty("w", {}),
+                panel->getHeight() * (1.f - (y - (float) zoom.getProperty("y", {}))
+                        / (float) zoom.getProperty("h", {})));
+    };
+    const Point<float> source = panelPoint(point.x, point.y);
+    panel->mouseMove(curvePanelMouseEvent(*panel, source, {}, source, false));
+    panel->mouseDown(curvePanelMouseEvent(
+            *panel, source, ModifierKeys::leftButtonModifier, source, false));
+
+    InteractionComplexityDiagnostics::reset();
+    size_t movementCount {};
+    for (const Point<float> destination : {
+            panelPoint(0.18f, 0.25f), panelPoint(0.22f, 0.33f) }) {
+        panel->mouseDrag(curvePanelMouseEvent(
+                *panel,
+                destination,
+                ModifierKeys::leftButtonModifier,
+                source,
+                true));
+        ++movementCount;
+        REQUIRE(delegate.publications.size() == movementCount);
+        const auto preview = std::dynamic_pointer_cast<const CurveNodeModelState>(
+                delegate.publications.back());
+        REQUIRE(preview != nullptr);
+        REQUIRE(preview->pointPreview().has_value());
+        REQUIRE(preview->pointPreview()->id == point.id);
+        REQUIRE(preview->flatCurve() == original->flatCurve());
+    }
+    REQUIRE(delegate.publications.size() == 2);
+    const auto movementCounts = InteractionComplexityDiagnostics::counts();
+    REQUIRE(movementCounts.meshCopies == 0);
+    REQUIRE(movementCounts.graphCopies == 0);
+    REQUIRE(movementCounts.modelSerializations == 0);
+    REQUIRE(original->flatCurve()->getVertices()[1] == point);
+
+    const Point<float> destination = panelPoint(0.22f, 0.33f);
+    panel->mouseUp(curvePanelMouseEvent(*panel, destination, {}, source, true));
+    REQUIRE(delegate.publications.size() == 3);
+    const auto committed = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            delegate.publications.back());
+    REQUIRE(committed != nullptr);
+    REQUIRE_FALSE(committed->pointPreview().has_value());
+    REQUIRE(committed->flatCurve()->getVertices()[1].id == point.id);
+    REQUIRE(committed->flatCurve()->getVertices()[1].y != point.y);
+
+    delegate.allowCancel = true;
+    const FlatCurveVertex committedPoint = committed->flatCurve()->getVertices()[1];
+    const Point<float> cancelSource = panelPoint(committedPoint.x, committedPoint.y);
+    panel->mouseMove(curvePanelMouseEvent(
+            *panel, cancelSource, {}, cancelSource, false));
+    panel->mouseDown(curvePanelMouseEvent(
+            *panel,
+            cancelSource,
+            ModifierKeys::leftButtonModifier,
+            cancelSource,
+            false));
+    const Point<float> cancelledDestination = panelPoint(0.28f, 0.42f);
+    panel->mouseDrag(curvePanelMouseEvent(
+            *panel,
+            cancelledDestination,
+            ModifierKeys::leftButtonModifier,
+            cancelSource,
+            true));
+    REQUIRE(delegate.publications.size() == 4);
+    REQUIRE(panel->keyPressed(KeyPress(KeyPress::escapeKey)));
+    panel->mouseUp(curvePanelMouseEvent(
+            *panel, cancelledDestination, {}, cancelSource, true));
+    REQUIRE(delegate.publications.size() == 4);
+    REQUIRE(delegate.events.contains("cancel"));
+    REQUIRE(widget.pointPreview().has_value());
+    REQUIRE(widget.pointPreview()->id == committedPoint.id);
+    REQUIRE(widget.pointPreview()->x == Catch::Approx(committedPoint.x));
+    REQUIRE(widget.pointPreview()->y == Catch::Approx(committedPoint.y));
+}
+
 TEST_CASE("Flat curve editors highlight the closest vertex across the panel",
         "[cycle-v2][node-editor-host][curve][hover][regression]") {
     ScopedJuceInitialiser_GUI juce;
@@ -3325,6 +3435,107 @@ TEST_CASE("Node editor command service publishes a curve drag as one transaction
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("shape"), "post") == "0.5");
     REQUIRE_FALSE(document.canUndo());
+}
+
+TEST_CASE("Waveshaper point previews commit once and cancel without undo",
+        "[cycle-v2][node-editor-host][waveshaper][gesture][complexity]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    for (const ProbeRefreshMode mode : {
+            ProbeRefreshMode::LiveLatest,
+            ProbeRefreshMode::OnGestureCommit }) {
+        for (const bool scaled : { false, true }) {
+            CAPTURE((int) mode, scaled);
+            NodeGraph graph;
+            graph.addNode(GraphNodeFactory().createNode(NodeKind::Waveshaper, "shape", {}));
+            if (scaled) {
+                addUnrelatedInteractionState(graph);
+            }
+            GraphDocument document(std::move(graph));
+            GraphCommandDispatcher dispatcher(document);
+            Component owner;
+            RecordingPresentation presentation;
+            presentation.refreshMode = mode;
+            NullResources resources;
+            NodeEditorCommandService commands(
+                    owner, document, dispatcher, presentation, resources);
+            const Node* originalNode = document.graph().findNode("shape");
+            REQUIRE(originalNode != nullptr);
+            const auto original = std::dynamic_pointer_cast<const CurveNodeModelState>(
+                    originalNode->model);
+            REQUIRE(original != nullptr);
+            const FlatCurveVertex point = original->flatCurve()->getVertices()[1];
+            const auto controls = curveControls(*originalNode);
+            const auto originalConfiguration = WaveshaperSignalProcessor::buildConfiguration(
+                    controls, original);
+            REQUIRE(originalConfiguration != nullptr);
+
+            commands.beginCurveTransaction();
+            InteractionComplexityDiagnostics::reset();
+            for (const float y : { 0.25f, 0.35f }) {
+                const FlatCurveVertex moved { point.id, 0.2f, y, point.curve };
+                const auto preview = original->withPointPreview(
+                        moved, original->revision() + 1);
+                REQUIRE(commands.publishCurveState("shape", preview, controls));
+                const auto visible = std::dynamic_pointer_cast<const CurveNodeModelState>(
+                        dispatcher.editingGraph().findNode("shape")->model);
+                REQUIRE(visible != nullptr);
+                REQUIRE(visible->pointPreview() == moved);
+                REQUIRE(document.graph().findNode("shape")->model == original);
+                const auto workerSnapshot = dispatcher.snapshotTransientEditForWorker();
+                REQUIRE(workerSnapshot != nullptr);
+                const auto workerModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
+                        workerSnapshot->findNode("shape")->model);
+                REQUIRE(workerModel != nullptr);
+                REQUIRE(workerModel->pointPreview() == moved);
+            }
+            const auto movementCounts = InteractionComplexityDiagnostics::counts();
+            REQUIRE(movementCounts.graphCopies == 0);
+            REQUIRE(movementCounts.meshCopies == 0);
+            REQUIRE(movementCounts.modelSerializations == 0);
+            REQUIRE(movementCounts.audioSamplesCopied == 0);
+            REQUIRE(movementCounts.nodeLinearScans == 0);
+            REQUIRE(movementCounts.parameterLinearScans == 2);
+            REQUIRE(movementCounts.validationNodeVisits == 0);
+            REQUIRE(movementCounts.validationEdgeVisits == 0);
+            const auto previewConfiguration = WaveshaperSignalProcessor::buildConfiguration(
+                    controls,
+                    dispatcher.editingGraph().findNode("shape")->model);
+            REQUIRE(previewConfiguration != nullptr);
+            REQUIRE(previewConfiguration->transfer->lookup(0.2f)
+                    != Catch::Approx(originalConfiguration->transfer->lookup(0.2f)));
+
+            FlatCurveModel finalCurve;
+            REQUIRE(finalCurve.copyFrom(*original->flatCurve()));
+            REQUIRE(finalCurve.moveVertex(point.id, { 0.2f, 0.35f }).succeeded());
+            const auto finalModel = CurveNodeModelState::copyOf(
+                    finalCurve, original->revision() + 1);
+            REQUIRE(commands.publishCurveState("shape", finalModel, controls));
+            commands.commitCurveTransaction();
+            REQUIRE(document.graph().findNode("shape")->model->equals(*finalModel));
+            REQUIRE(document.canUndo());
+            const NodeGraph loaded = GraphSerializer().fromJsonString(document.toJson());
+            REQUIRE(loaded.findNode("shape") != nullptr);
+            REQUIRE(loaded.findNode("shape")->model->equals(*finalModel));
+            REQUIRE(document.undo());
+            REQUIRE(document.graph().findNode("shape")->model->equals(*original));
+            REQUIRE_FALSE(document.canUndo());
+            REQUIRE(document.redo());
+
+            commands.beginCurveTransaction();
+            const auto committed = std::dynamic_pointer_cast<const CurveNodeModelState>(
+                    document.graph().findNode("shape")->model);
+            REQUIRE(committed != nullptr);
+            const auto cancelled = committed->withPointPreview(
+                    { point.id, 0.3f, 0.45f, point.curve },
+                    finalModel->revision() + 1);
+            REQUIRE(commands.publishCurveState("shape", cancelled, controls));
+            REQUIRE(commands.cancelCurveTransaction());
+            REQUIRE(document.graph().findNode("shape")->model->equals(*finalModel));
+            REQUIRE(document.undo());
+            REQUIRE_FALSE(document.canUndo());
+        }
+    }
 }
 
 TEST_CASE("Node editor resource commands use the atomic dispatcher boundary",

@@ -425,6 +425,16 @@ const GraphChangeSet& GraphCommandDispatcher::transientChanges() const {
     return transientEdit.has_value() ? transientEdit->changes : noChanges;
 }
 
+std::shared_ptr<const NodeGraph> GraphCommandDispatcher::snapshotTransientEditForWorker() const {
+    if (!transientEdit.has_value()) {
+        return {};
+    }
+    auto stableBase = std::shared_ptr<const NodeGraph>(
+            &document.graph(), [](const NodeGraph*) {});
+    return std::make_shared<const NodeGraph>(
+            transientEdit->graph.snapshotNodeEdits(std::move(stableBase)));
+}
+
 GraphEditResult GraphCommandDispatcher::apply(
         const std::function<GraphEditResult(NodeGraph&)>& command) {
     if (transientEdit.has_value()) {

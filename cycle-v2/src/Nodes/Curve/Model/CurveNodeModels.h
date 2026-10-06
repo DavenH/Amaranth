@@ -75,6 +75,7 @@ public:
     const std::vector<FlatCurveVertex>& getVertices() const { return vertices; }
     std::optional<CurveVertexId> selectedVertexId() const { return selection; }
     Vertex* vertexForIdentity(CurveVertexId vertexId) const;
+    std::optional<FlatCurveVertex> pointForMeshVertex(Vertex* vertex) const;
     Vertex* selectedMeshVertex() const;
     uint64_t revision() const { return modelRevision; }
     void setPublicationRevision(uint64_t revisionToUse) { modelRevision = juce::jmax<uint64_t>(1, revisionToUse); }
@@ -175,6 +176,9 @@ public:
             float red,
             float blue,
             uint64_t revision) const;
+    std::shared_ptr<const CurveNodeModelState> withPointPreview(
+            FlatCurveVertex point,
+            uint64_t revision) const;
 
     String schemaId() const override;
     int schemaVersion() const override;
@@ -183,6 +187,7 @@ public:
     bool equals(const NodeModelState& other) const override;
 
     const FlatCurveModel* flatCurve() const { return flatCurveState.get(); }
+    const std::optional<FlatCurveVertex>& pointPreview() const { return previewPoint; }
     const EnvelopeNodeModel* envelope() const { return envelopeState.get(); }
     float envelopeRed() const { return envelopeRedValue; }
     float envelopeBlue() const { return envelopeBlueValue; }
@@ -212,6 +217,7 @@ private:
     float envelopeRedValue {};
     float envelopeBlueValue {};
     std::shared_ptr<const FlatCurveModel> flatCurveState;
+    std::optional<FlatCurveVertex> previewPoint;
     std::shared_ptr<const EnvelopeNodeModel> envelopeState;
     var editorState;
 };
