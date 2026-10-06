@@ -162,14 +162,20 @@ GraphAudioResultView GraphAudioExecutor::processIncrementalIndexed(
         size_t frameCount,
         const std::vector<uint8_t>& dirtyNodes,
         AudioVoiceContext voice,
-        CancellationCheck cancellationCheck) const {
+        CancellationCheck cancellationCheck,
+        size_t traversalColumnCount) const {
     GraphAudioResultView result;
     processInternal(
             plan,
             frameCount,
             {},
             voice,
-            IncrementalDiagnosticExecution { dirtyNodes, cancellationCheck, result });
+            IncrementalDiagnosticExecution {
+                    dirtyNodes,
+                    cancellationCheck,
+                    result,
+                    traversalColumnCount
+            });
     return result;
 }
 
@@ -319,7 +325,9 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         executionSpec.beatsPerMeasure = timing.beatsPerMeasure;
         executionSpec.traversalColumnCount = completeDiagnostics != nullptr
                 ? completeDiagnostics->traversalColumnCount
-                : 0;
+                : incrementalDiagnostics != nullptr
+                        ? incrementalDiagnostics->traversalColumnCount
+                        : 0;
         prepareExecution(plan, executionSpec, voice.voiceIndex);
     }
 

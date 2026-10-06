@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 466.0, "y": 468.88885 },
+            "position": { "x": 472.67337, "y": 341.16827 },
             "parameters": {
                 "octave": -1,
                 "voiceLength": 0.404580153,
@@ -21,7 +21,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 106.0, "y": 468.88885 },
+            "position": { "x": 112.67337, "y": 341.16827 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -46,7 +46,7 @@
                 "signalType": "time",
                 "polarity": "bipolar",
                 "yellow": 0.5,
-                "red": 0.5,
+                "red": 0.149532706,
                 "blue": 0.5,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
@@ -450,15 +450,15 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 1154.09253, "y": 734.88885 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.149532706, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 2,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 2,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
@@ -577,7 +577,7 @@
                         "sustainIndices": [ 1 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
+                    "red": 0.14953,
                     "blue": 0.5,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7, 8 ]
                 }
@@ -594,7 +594,7 @@
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 130.0, "y": 887.49835 },
+            "position": { "x": 136.67337, "y": 759.77783 },
             "parameters": { "processingScope": "global", "enabled": true, "size": 0.714285714, "post": 0.516, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
@@ -703,21 +703,21 @@
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 434.00003, "y": 887.49835 },
+            "position": { "x": 440.6734, "y": 759.77783 },
             "parameters": { "enabled": true, "time": 0.5, "feedback": 0.34, "wet": 0.22, "spin": 0.5, "spinIters": 0.5 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 698.00006, "y": 887.49835 },
+            "position": { "x": 704.67346, "y": 759.77783 },
             "parameters": { "gain": 0.529517 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": -108.0, "y": 887.49835 },
+            "position": { "x": -101.32663, "y": 759.77783 },
             "parameters": {}
         },
         {

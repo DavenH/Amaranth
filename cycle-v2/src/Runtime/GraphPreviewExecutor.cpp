@@ -2,6 +2,9 @@
 #include <cstring>
 #include <functional>
 
+#include <Audio/CycleDsp/OscillatorLaneCore.h>
+#include <Util/Arithmetic.h>
+
 #include "Runtime/GraphPreviewExecutor.h"
 
 #include "Runtime/DefaultOutputPreview.h"
@@ -24,6 +27,17 @@ uint64_t nextPreviewContentRevision() {
     return nextRevision.fetch_add(1, std::memory_order_relaxed);
 }
 
+}
+
+size_t GraphPreviewExecutor::periodRowsForMidiNote(int midiNote, double sampleRate) {
+    const double angleDelta = CycleDsp::OscillatorLaneCore::angleDelta(
+            jlimit(0, 127, midiNote),
+            0.f,
+            sampleRate);
+    if (angleDelta <= 0.0) {
+        return 0;
+    }
+    return (size_t) Arithmetic::getNextPow2((float) (1.0 / angleDelta));
 }
 
 void GraphPreviewExecutor::reduceProbeRows(

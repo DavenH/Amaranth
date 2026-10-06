@@ -26,6 +26,11 @@ struct TrimeshRenderData {
 
 class TrimeshGridRenderService {
 public:
+    static std::vector<float> renderSlice(
+            TrimeshNodeModel& model,
+            int rows,
+            const TrimeshRenderProfile& renderProfile,
+            int midiNote = 48);
     static TrimeshRenderData renderGrid(
             TrimeshNodeModel& model,
             int rows,

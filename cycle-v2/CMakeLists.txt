@@ -263,6 +263,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/VoiceContextCompactEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorHost.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorCommandService.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorModelCommands.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeViewModule.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/RenderInvalidationAccumulator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeDetailView.cpp"

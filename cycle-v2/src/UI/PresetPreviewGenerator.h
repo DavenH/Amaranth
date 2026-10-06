@@ -7,6 +7,9 @@ namespace CycleV2 {
 
 class PresetPreviewGenerator {
 public:
+    static size_t sourceRowCountForView(
+            size_t requestedRows,
+            PresetPreviewView view);
     static GraphPreviewResult::SignalProbePreview forView(
             const GraphPreviewResult::SignalProbePreview& timePreview,
             PresetPreviewView view);

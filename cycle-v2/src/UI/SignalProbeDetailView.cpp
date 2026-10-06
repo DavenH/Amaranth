@@ -1,6 +1,3 @@
-#include <Audio/CycleDsp/OscillatorLaneCore.h>
-#include <Util/Arithmetic.h>
-
 #include <utility>
 
 #include "UI/SignalProbeDetailView.h"
@@ -42,15 +39,7 @@ void SignalProbeDetailState::open(
 }
 
 size_t SignalProbeDetailView::resolutionForMidiNote(int midiNote, double sampleRate) {
-    const double angleDelta = CycleDsp::OscillatorLaneCore::angleDelta(
-            jlimit(0, 127, midiNote),
-            0.f,
-            sampleRate);
-    if (angleDelta <= 0.0) {
-        return 0;
-    }
-
-    return (size_t) Arithmetic::getNextPow2((float) (1.0 / angleDelta));
+    return GraphPreviewExecutor::periodRowsForMidiNote(midiNote, sampleRate);
 }
 
 Rectangle<float> SignalProbeDetailView::boundsFor(Rectangle<float> availableContent) {

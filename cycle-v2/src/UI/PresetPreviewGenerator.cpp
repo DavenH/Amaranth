@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "UI/PresetPreviewGenerator.h"
 
 #include "Runtime/DefaultOutputPreview.h"
@@ -7,6 +9,8 @@
 namespace CycleV2 {
 
 namespace {
+
+constexpr size_t kMinimumSpectrumSourceRows = 512;
 
 Image renderPreview(
         const GraphPreviewResult::SignalProbePreview& preview,
@@ -46,6 +50,14 @@ Image renderPreview(
     return result;
 }
 
+}
+
+size_t PresetPreviewGenerator::sourceRowCountForView(
+        size_t requestedRows,
+        PresetPreviewView view) {
+    return view == PresetPreviewView::Spectrum
+            ? std::max(requestedRows, kMinimumSpectrumSourceRows)
+            : requestedRows;
 }
 
 GraphPreviewResult::SignalProbePreview PresetPreviewGenerator::forView(

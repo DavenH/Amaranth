@@ -656,3 +656,22 @@ The stable deletion target is the broader canvas pointer/hover coordination
 extraction: modifier refresh and cursor application can move with hover routing
 when `NodeCanvas` no longer owns top-level pointer dispatch. This slice does not
 add graph, selection mutation, or rendering policy to the canvas.
+
+## Cycle V2 Guide Preview And Document Notification Size Review
+
+Status: reviewed 2026-09-30.
+
+The live Guide synchronization and enable-history repair grows `NodeCanvas.cpp`
+from 2,738 to 2,748 lines and `NodeCanvas.h` from 347 to 348. The canvas only
+announces dispatcher-owned durable changes through one helper; command creation,
+undo ownership, and graph mutation remain in `GraphCommandDispatcher` and
+`GraphDocument`. The stable deletion target remains the broader editor-overlay
+and gesture coordination extraction already tracked above.
+
+`GraphAudioExecutor.cpp` grows from 1,150 to 1,158 lines solely to carry the
+existing traversal-column preparation fact through incremental diagnostic
+execution. It does not acquire note-period or Spy presentation policy;
+`GraphPreviewExecutor` owns period sizing and `PresentationPreviewRenderer`
+owns compact capture sizing. `NodePreviewRenderer.cpp` remains at 1,031 lines:
+Guide preparation and cache lookup stay in `NodePreviewResources`, while the
+renderer continues to choose only the authoritative paint path.

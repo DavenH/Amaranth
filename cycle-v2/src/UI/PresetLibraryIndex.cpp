@@ -89,13 +89,20 @@ std::vector<juce::File> removeCoveredDirectories(
                 && isCheckoutFactoryDirectory(directory)) {
             continue;
         }
-        const bool alreadyCovered = std::any_of(
+        const bool nested = std::any_of(
+                directories.begin(),
+                directories.end(),
+                [&](const auto& candidateRoot) {
+                    return directory != candidateRoot
+                            && directory.isAChildOf(candidateRoot);
+                });
+        const bool duplicate = std::any_of(
                 roots.begin(),
                 roots.end(),
                 [&](const auto& root) {
-                    return directory == root || directory.isAChildOf(root);
+                    return directory == root;
                 });
-        if (!alreadyCovered) {
+        if (!nested && !duplicate) {
             roots.push_back(directory);
         }
     }
@@ -129,8 +136,7 @@ public:
             for (const auto& file : files) {
                 const auto duplicate = std::find_if(found.begin(), found.end(), [&](const auto& record) {
                     return record.file == file
-                            || (record.file.getFileName().equalsIgnoreCase(file.getFileName())
-                                    && record.file.hasIdenticalContentTo(file));
+                            || record.file.getFileName().equalsIgnoreCase(file.getFileName());
                 });
                 if (duplicate == found.end()) {
                     found.push_back(skeletonRecord(file, fallbackPack));

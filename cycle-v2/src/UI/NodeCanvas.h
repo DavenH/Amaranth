@@ -328,6 +328,7 @@ private:
     void scheduleNodeEditorRefresh() override;
     void flushNodeEditorRefresh() override;
     void refreshNodeEditorPresentation() override;
+    void notifyGraphDocumentStateChanged();
     Point<float> nodeEditorCreationPosition() const override;
     void rebindNodeEditor() override;
     void rebindNodeEditorTransient() override;

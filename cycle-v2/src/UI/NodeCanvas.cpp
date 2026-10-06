@@ -1484,10 +1484,15 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
     const int midiNote = presentation.previewMidiNote();
     const size_t resolution = SignalProbeDetailView::resolutionForMidiNote(
             midiNote);
+    const size_t captureResolution = probeId == DefaultOutputProbeResolver::probeId
+            ? PresetPreviewGenerator::sourceRowCountForView(
+                    resolution,
+                    probeRailState.defaultOutputView)
+            : resolution;
     auto preview = presentation.captureProbePreview(
             commands.editingGraph(),
             probeId,
-            resolution,
+            captureResolution,
             midiNote);
     if (!preview.has_value()) {
         probeDetailState.close();
@@ -1520,7 +1525,7 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
             semantic.scalePolicy,
             SignalProbeRail::ordinalForProbe(graph, probeId),
             midiNote,
-            resolution);
+            captureResolution);
     notifyOverlayOcclusionChanged();
 }
 
@@ -2597,6 +2602,7 @@ void NodeCanvas::beginCurveTransaction() {
 
 void NodeCanvas::commitCurveTransaction() {
     guideEditorCoordinator.commitTransaction();
+    notifyGraphDocumentStateChanged();
 }
 
 void NodeCanvas::repaintNodeEditor(bool openGl) {
@@ -2641,6 +2647,7 @@ void NodeCanvas::finishNodeEditorGesture(
     if (!finished.changed || !finished.durableChanged) {
         return;
     }
+    notifyGraphDocumentStateChanged();
     if (localField.isNotEmpty()) {
         presentation.commitLocalEditorState(
                 nodeId,
@@ -2672,6 +2679,7 @@ void NodeCanvas::cancelNodeEditorGesture(
 }
 
 void NodeCanvas::scheduleNodeEditorRefresh() {
+    notifyGraphDocumentStateChanged();
     scheduleCompiledStateRefresh();
 }
 
@@ -2682,7 +2690,14 @@ void NodeCanvas::flushNodeEditorRefresh() {
 void NodeCanvas::refreshNodeEditorPresentation() {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PreviewRuntime);
+    notifyGraphDocumentStateChanged();
     refreshCompiledStateAsync();
+}
+
+void NodeCanvas::notifyGraphDocumentStateChanged() {
+    if (graphDocumentStateChangedCallback) {
+        graphDocumentStateChangedCallback();
+    }
 }
 
 Point<float> NodeCanvas::nodeEditorCreationPosition() const {
@@ -2711,17 +2726,20 @@ void NodeCanvas::recordNodeEditorMovement(
     const bool primaryTrimeshMorph = node != nullptr
             && node->kind == NodeKind::TrilinearMesh
             && NodeParameterMap(*node).stringValue("primaryAxis", "yellow") == field;
+    const String stream = "editor:" + nodeId;
+    const bool activeGesture = presentation.editSession().graphGestureIsActive(stream);
+    const bool downstreamFeedback = !primaryTrimeshMorph
+            && (!activeGesture || presentation.editSession().graphGestureIsLive(stream));
     const auto decision = PresentationRefreshPolicy::decide({
             EditPhase::Movement,
             probeRailState.refreshMode,
             localProduct,
-            !primaryTrimeshMorph,
+            downstreamFeedback,
             false
     });
     const bool probesDeferred = decision.downstream != DownstreamRefresh::LatestAsync;
     presentation.recordEditorMovement(nodeId, field, effectiveFingerprint, probesDeferred);
-    const String stream = "editor:" + nodeId;
-    if (presentation.editSession().graphGestureIsActive(stream)) {
+    if (activeGesture) {
         if (!primaryTrimeshMorph) {
             if (decision.downstream == DownstreamRefresh::LatestAsync) {
                 auto snapshot = presentation.editSession().snapshotGraphGesture(stream, commands);

@@ -124,7 +124,7 @@ private:
     Vertex* vertexAtIndex(int vertexIndex);
     Vertex* selectedVertex();
     void bumpMeshContentRevision();
-    void bumpMorphRevision();
+    void bumpMorphRevision(bool affectsSurface);
     void bumpPrimaryAxisRevision();
     void bumpSelectedControlRevision();
     void advanceDerivedRevisions(TrimeshDerivedProduct products);

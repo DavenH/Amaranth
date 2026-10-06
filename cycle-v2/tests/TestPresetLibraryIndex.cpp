@@ -86,7 +86,7 @@ TEST_CASE("Preset library prefers the factory copy of duplicate preset names",
     REQUIRE(root.deleteRecursively());
 }
 
-TEST_CASE("Preset library retains differently authored presets with the same name",
+TEST_CASE("Preset library gives the first directory precedence for duplicate names",
         "[cycle-v2][preset][browser][deduplication]") {
     ScopedJuceInitialiser_GUI juce;
     const File root = File::getSpecialLocation(File::tempDirectory)
@@ -104,11 +104,12 @@ TEST_CASE("Preset library retains differently authored presets with the same nam
     });
     index.start();
     for (int attempt = 0; attempt < 20
-            && (published.size() < 2 || !published.front().metadataReady); ++attempt) {
+            && (published.empty() || !published.front().metadataReady); ++attempt) {
         MessageManager::getInstance()->runDispatchLoopUntil(25);
     }
 
-    REQUIRE(published.size() == 2);
+    REQUIRE(published.size() == 1);
+    REQUIRE(published.front().file.getParentDirectory() == factory);
     REQUIRE(root.deleteRecursively());
 }
 
@@ -156,7 +157,7 @@ TEST_CASE("Preset library does not rescan a nested history directory",
     REQUIRE(old.getChildFile("Archived.cyclegraph").replaceWithText("{}"));
 
     std::vector<PresetLibraryRecord> published;
-    PresetLibraryIndex index({ root, old }, [&](const auto& records, const auto&) {
+    PresetLibraryIndex index({ old, root }, [&](const auto& records, const auto&) {
         published = records;
     });
     index.start();

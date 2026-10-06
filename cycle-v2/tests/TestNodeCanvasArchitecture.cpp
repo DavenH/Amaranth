@@ -6,6 +6,7 @@
 #include <set>
 
 #include <App/AppConstants.h>
+#include <Curve/Mesh/Mesh.h>
 #include <Util/Arithmetic.h>
 
 #include "Graph/DefaultOutputProbeResolver.h"
@@ -17,6 +18,8 @@
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Graph/NodeDefinition.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasUtilityDock.h"
@@ -708,10 +711,32 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
         "[cycle-v2][canvas][probe][detail]") {
     GraphNodeFactory factory;
     NodeGraph graph;
+    Node triple = factory.createNode(NodeKind::ModulationTriple, "triple", {});
+    for (auto& parameter : triple.parameters) {
+        if (parameter.id == "redConstant") {
+            parameter.value = String(Arithmetic::getUnitValueForGraphicNote(
+                    24,
+                    {
+                            Constants::LowestMidiNote,
+                            Constants::HighestMidiNote
+                    }), 9);
+        }
+    }
+    graph.addNode(std::move(triple));
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    Node meshNode = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("ProbePeriodMesh");
+    REQUIRE(mesh != nullptr);
+    meshNode.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    mesh->destroy();
+    graph.addNode(std::move(meshNode));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 400.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Output, "output", { 800.f, 0.f }));
+    graph.addEdge({
+            "triple", "modulation", "voice", "modulation",
+            PortDomain::VoiceControlSignal, ConnectionKind::ConfigurationAttachment,
+            AttachmentType::ModulationTriple
+    });
     graph.addEdge({
             "voice", "context", "mesh", "context",
             PortDomain::DomainContext, ConnectionKind::Signal
@@ -724,16 +749,41 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
             "mesh", "out", "output", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
-    REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 2, 0.5f).succeeded());
 
     GraphPresentationModel presentation;
     REQUIRE(presentation.refresh(graph, 1));
     REQUIRE(presentation.previewResult().probes.size() == 1);
     const GraphPreviewResult::SignalProbePreview compactBefore =
             presentation.previewResult().probes.front();
+    REQUIRE(presentation.previewMidiNote() == 24);
     REQUIRE(compactBefore.gridColumns == 256);
     REQUIRE(compactBefore.gridRows == 512);
     REQUIRE(compactBefore.values.size() == 256 * 512);
+    const size_t previewNoteResolution = SignalProbeDetailView::resolutionForMidiNote(24);
+    const auto previewNoteDetail = presentation.captureProbePreview(
+            graph,
+            graph.getSignalProbes().front().id,
+            previewNoteResolution,
+            24);
+    REQUIRE(previewNoteResolution == 2048);
+    REQUIRE(previewNoteDetail.has_value());
+    REQUIRE(previewNoteDetail->gridColumns == 512);
+    REQUIRE(previewNoteDetail->gridRows == 512);
+    double meanDifference {};
+    for (size_t column = 0; column < compactBefore.gridColumns; ++column) {
+        const size_t detailColumn = (size_t) std::round(
+                (double) column * (double) (previewNoteDetail->gridColumns - 1)
+                / (double) (compactBefore.gridColumns - 1));
+        for (size_t row = 0; row < compactBefore.gridRows; ++row) {
+            meanDifference += std::abs(
+                    compactBefore.values[column * compactBefore.gridRows + row]
+                    - previewNoteDetail->values[
+                            detailColumn * previewNoteDetail->gridRows + row]);
+        }
+    }
+    meanDifference /= (double) compactBefore.values.size();
+    REQUIRE(meanDifference < 0.02);
     const size_t resolution = SignalProbeDetailView::resolutionForMidiNote(72);
     const auto detail = presentation.captureProbePreview(
             graph,

@@ -1,5 +1,14 @@
 # Cycle V2 UI Bug Notes
 
+## P3: Trimesh primary morph test has no selected vertex parameters
+
+During the 2026-10-06 master merge, the focused
+`Trimesh primary morph commits refresh graph presentation` test failed at
+`TestNodeEditorHost.cpp:3497`: selected vertex index 2 returned zero parameters
+where the test expects six. The isolated rerun had the same result; log:
+`/private/tmp/cycle-v2-merge-trimesh-test.log`. Status: open; the failure
+occurs before the morph gesture begins.
+
 ## P3: Astral realtime test references an absent factory fixture
 
 On 2026-10-05, the broader realtime test filter failed at
@@ -24,6 +33,15 @@ at `/private/tmp/cycle-v2-pattern-isolation-logs.txt`. JUCE requires an
 absolute path in that constructor. The run was repeated with an absolute
 script path at `/private/tmp/cycle-v2-pattern-isolation-logs-2.txt`; it passed
 24/24 commands without the assertion. No product failure remains.
+## P3: File assertion during Unison automation startup
+
+On 2026-10-05, both recovered Unison gesture fixtures passed all 33 commands
+but logged `JUCE Assertion failure in juce_File.cpp:219`. The Live run also
+reported the already documented CoreMIDI startup assertion. The Guide gain
+fixture passed all 20 commands without assertions. Logs:
+`/private/tmp/salvage-unison-live.log` and
+`/private/tmp/salvage-unison-release.log` (complete logs have `.raw` suffixes).
+Status: open; the source of the File assertion has not been diagnosed.
 
 ## P2: Broader Trimesh tests retain a stale control-region expectation
 
@@ -85,7 +103,7 @@ let's just hide it along with the rest of the elements that get hidden/dimmed on
 
 ## P2: envelope component curves with randomness do not get randomness reseeded based on unison voice
 
-## P2: a graph update causes the playing audio note to stop 
+## P2: a graph update causes the playing audio note to stop
 
 ## P3: Cycle2's expanded 'out' spy node at C1 takes about 20x longer to render than Cycle 1's comparable DSP grids
 
@@ -263,6 +281,19 @@ the canonical preset set rather than weakening the assertions.
   passed. Report: `/private/tmp/causal-probe-extract-native.json`. Keep the
   fixture assertion until the intended archived graph and resolution contract
   are reconciled.
+## P3: Primary-morph editor test still assumes a populated new Trimesh
+
+Context:
+
+- On 2026-09-30, the focused `Trimesh primary morph commits refresh graph
+  presentation` case failed before its gesture assertions because it selects
+  vertex 2 from a newly created Trimesh, whose correct default is now empty.
+- The live primary- and non-primary-morph gesture cases pass independently.
+
+Current status: open fixture maintenance; explicitly author the mesh topology
+needed by the selection-preservation assertions rather than restoring implicit
+content to newly added Trimesh nodes.
+
 ## P3: Opening an Envelope editor marks the document dirty
 
 The 2026-09-17 `cycle-v2-agent-envelope-link-toggle.json` run opens the saved

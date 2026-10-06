@@ -1,0 +1,173 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "cycle-v2-unison-model-gesture.cyclegraph"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "unison",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "file.spyRefreshOnRelease"
+    },
+    {
+      "command": "assertState",
+      "path": "probeRefreshMode",
+      "equals": "On Release"
+    },
+    {
+      "command": "saveGraph",
+      "path": "/private/tmp/unison-model-release.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "previewRenderCount",
+      "equals": 2
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.absoluteSum",
+      "op": "greaterThan",
+      "value": 11000
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.0.model.voices.0.pan",
+      "equals": 0.5
+    },
+    {
+      "command": "resetCanvasPerformance"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "unison.voicePan.slider",
+      "targetX": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "unison.voicePan.slider",
+      "downTargetId": "unison.voicePan.slider",
+      "targetX": 0.65,
+      "downTargetX": 0.5
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 500
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "unison.voicePan.slider",
+      "downTargetId": "unison.voicePan.slider",
+      "targetX": 0.85,
+      "downTargetX": 0.5
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.0.model.voices.0.pan",
+      "equals": 0.5
+    },
+    {
+      "command": "assertState",
+      "path": "documentDirty",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effectParameters.controls.6.value",
+      "op": "greaterThan",
+      "value": 0.7
+    },
+    {
+      "command": "assertState",
+      "path": "previewRenderCount",
+      "equals": 2
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.absoluteSum",
+      "op": "greaterThan",
+      "value": 11000
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "unison.voicePan.slider",
+      "downTargetId": "unison.voicePan.slider",
+      "targetX": 0.85,
+      "downTargetX": 0.5
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.0.model.voices.0.pan",
+      "op": "greaterThan",
+      "value": 0.7
+    },
+    {
+      "command": "assertState",
+      "path": "documentDirty",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "previewRenderCount",
+      "equals": 3
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.absoluteSum",
+      "op": "lessThan",
+      "value": 10000
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.0.model.voices.0.pan",
+      "equals": 0.5
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effectParameters.controls.6.value",
+      "equals": 0.5
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.absoluteSum",
+      "op": "greaterThan",
+      "value": 11000
+    },
+    {
+      "command": "inspectCanvasPerformance"
+    }
+  ],
+  "quit": true
+}

@@ -1493,6 +1493,42 @@ TEST_CASE("Trimesh morph gesture ignores stale selection snapshots",
     REQUIRE(bridge.selectedVertexIndexForPanel() == -1);
 }
 
+TEST_CASE("Primary Trimesh morph rebuilds only the displayed slice",
+        "[cycle-v2][nodes][trimesh][morph][complexity]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {});
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(node, 128, 64);
+    const auto initial = bridge.getDataSource().getRenderCounters();
+    const std::vector<float> initialSurface = bridge.getRenderData().surface;
+
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == "yellow") {
+            parameter.value = "0.73";
+        }
+    }
+    bridge.syncFromNode(node, 128, 64);
+    const auto primaryMorph = bridge.getDataSource().getRenderCounters();
+
+    REQUIRE(primaryMorph.sliceRebuilds == initial.sliceRebuilds + 1);
+    REQUIRE(primaryMorph.surfaceRebuilds == initial.surfaceRebuilds);
+    REQUIRE(bridge.getRenderData().surface == initialSurface);
+
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == "red") {
+            parameter.value = "0.27";
+        }
+    }
+    bridge.syncFromNode(node, 128, 64);
+    const auto depthMorph = bridge.getDataSource().getRenderCounters();
+
+    REQUIRE(depthMorph.sliceRebuilds == primaryMorph.sliceRebuilds + 1);
+    REQUIRE(depthMorph.surfaceRebuilds == primaryMorph.surfaceRebuilds + 1);
+}
+
 TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",
@@ -1530,9 +1566,19 @@ TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][n
     REQUIRE(morphed.selectedControl == selected.selectedControl);
     REQUIRE(morphed.sliceRasterization > selected.sliceRasterization);
     REQUIRE(morphed.interceptsRails > selected.interceptsRails);
-    REQUIRE(morphed.columns3D > selected.columns3D);
-    REQUIRE(morphed.compactPreview > selected.compactPreview);
-    REQUIRE(morphed.dspPrep > selected.dspPrep);
+    REQUIRE(morphed.columns3D == selected.columns3D);
+    REQUIRE(morphed.compactPreview == selected.compactPreview);
+    REQUIRE(morphed.dspPrep == selected.dspPrep);
+
+    node.parameters.push_back({ "red", "Red", "0.31" });
+    model.syncFromNode(node);
+    const TrimeshDerivedRevisions depthMorphed = model.getDerivedRevisions();
+
+    REQUIRE(depthMorphed.sliceRasterization > morphed.sliceRasterization);
+    REQUIRE(depthMorphed.interceptsRails > morphed.interceptsRails);
+    REQUIRE(depthMorphed.columns3D > morphed.columns3D);
+    REQUIRE(depthMorphed.compactPreview > morphed.compactPreview);
+    REQUIRE(depthMorphed.dspPrep > morphed.dspPrep);
 
     auto editedMesh = TrimeshMeshFactory::createDefaultMesh("RevisionMesh");
     editedMesh->getVerts()[2]->values[Vertex::Amp] = 0.17f;
@@ -1541,14 +1587,14 @@ TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][n
     model.syncFromNode(node);
     const TrimeshDerivedRevisions edited = model.getDerivedRevisions();
 
-    REQUIRE(edited.aggregate > morphed.aggregate);
-    REQUIRE(edited.meshContent > morphed.meshContent);
-    REQUIRE(edited.selectedControl > morphed.selectedControl);
-    REQUIRE(edited.sliceRasterization > morphed.sliceRasterization);
-    REQUIRE(edited.interceptsRails > morphed.interceptsRails);
-    REQUIRE(edited.columns3D > morphed.columns3D);
-    REQUIRE(edited.compactPreview > morphed.compactPreview);
-    REQUIRE(edited.dspPrep > morphed.dspPrep);
+    REQUIRE(edited.aggregate > depthMorphed.aggregate);
+    REQUIRE(edited.meshContent > depthMorphed.meshContent);
+    REQUIRE(edited.selectedControl > depthMorphed.selectedControl);
+    REQUIRE(edited.sliceRasterization > depthMorphed.sliceRasterization);
+    REQUIRE(edited.interceptsRails > depthMorphed.interceptsRails);
+    REQUIRE(edited.columns3D > depthMorphed.columns3D);
+    REQUIRE(edited.compactPreview > depthMorphed.compactPreview);
+    REQUIRE(edited.dspPrep > depthMorphed.dspPrep);
 }
 
 TEST_CASE("Trimesh node model applies one complete topology snapshot", "[cycle-v2][nodes][trimesh]") {
