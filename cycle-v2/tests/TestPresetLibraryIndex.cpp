@@ -112,6 +112,39 @@ TEST_CASE("Preset library retains differently authored presets with the same nam
     REQUIRE(root.deleteRecursively());
 }
 
+TEST_CASE("Preset library ignores a second checkout's factory catalog",
+        "[cycle-v2][preset][browser][deduplication]") {
+    ScopedJuceInitialiser_GUI juce;
+    const File root = File::getSpecialLocation(File::tempDirectory)
+            .getNonexistentChildFile("cycle-v2-preset-checkouts", {}, false);
+    const File factory = root.getChildFile("current/cycle-v2/content/presets");
+    const File otherCheckout = root.getChildFile("other/cycle-v2/content/presets");
+    const File user = root.getChildFile("user");
+    REQUIRE(factory.createDirectory().wasOk());
+    REQUIRE(otherCheckout.createDirectory().wasOk());
+    REQUIRE(user.createDirectory().wasOk());
+    REQUIRE(factory.getChildFile("Lead.cyclegraph").replaceWithText("{}"));
+    REQUIRE(otherCheckout.getChildFile("Lead.cyclegraph")
+            .replaceWithText("{\"edited\":true}"));
+    REQUIRE(otherCheckout.getChildFile("Other.cyclegraph")
+            .replaceWithText("{}"));
+    REQUIRE(user.getChildFile("Personal.cyclegraph").replaceWithText("{}"));
+
+    std::vector<PresetLibraryRecord> published;
+    PresetLibraryIndex index({ factory, otherCheckout, user },
+            [&](const auto& records, const auto&) { published = records; });
+    index.start();
+    for (int attempt = 0; attempt < 20
+            && (published.size() < 2 || !published.front().metadataReady); ++attempt) {
+        MessageManager::getInstance()->runDispatchLoopUntil(25);
+    }
+
+    REQUIRE(published.size() == 2);
+    REQUIRE(published[0].file.getParentDirectory() == factory);
+    REQUIRE(published[1].file.getParentDirectory() == user);
+    REQUIRE(root.deleteRecursively());
+}
+
 TEST_CASE("Preset library does not rescan a nested history directory",
         "[cycle-v2][preset][browser][directories]") {
     ScopedJuceInitialiser_GUI juce;

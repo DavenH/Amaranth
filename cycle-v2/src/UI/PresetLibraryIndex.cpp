@@ -67,11 +67,25 @@ std::vector<juce::String> searchTextsFor(
     return searchTexts;
 }
 
+bool isCheckoutFactoryDirectory(const juce::File& directory) {
+    return directory.getFileName() == "presets"
+            && directory.getParentDirectory().getFileName() == "content"
+            && directory.getParentDirectory().getParentDirectory().getFileName()
+                    == "cycle-v2";
+}
+
 std::vector<juce::File> removeCoveredDirectories(
         const std::vector<juce::File>& directories) {
     std::vector<juce::File> roots;
     roots.reserve(directories.size());
+    const juce::File currentFactory = directories.empty() ? juce::File()
+            : directories.front();
     for (const auto& directory : directories) {
+        if (directory != currentFactory
+                && isCheckoutFactoryDirectory(currentFactory)
+                && isCheckoutFactoryDirectory(directory)) {
+            continue;
+        }
         const bool alreadyCovered = std::any_of(
                 roots.begin(),
                 roots.end(),
