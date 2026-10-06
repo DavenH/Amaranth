@@ -91,7 +91,6 @@ public:
     void associateTo(Panel* panel, bool registerMouseListener = true);
     void clearSelectedAndCurrent();
     void clearSelectedAndRepaint();
-    void copyVertexPositions();
     void deselectAll(bool forceDeselect = false);
     void doGlobalUIUpdate(bool force) override;
     void eraseSelected();

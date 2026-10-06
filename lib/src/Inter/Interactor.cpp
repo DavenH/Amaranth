@@ -502,16 +502,6 @@ void Interactor::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wh
     }
 }
 
-void Interactor::copyVertexPositions() {
-    if (Mesh* mesh = getMesh()) {
-        state.positions.clear();
-
-        for(auto vert : mesh->getVerts()) {
-            state.positions.push_back(*vert);
-        }
-    }
-}
-
 void Interactor::addToArray(const Array<Vertex*>& src, vector<VertexFrame>& dst) {
     for(auto vert : src) {
         if (vert == nullptr) {
@@ -526,8 +516,6 @@ void Interactor::addToArray(const Array<Vertex*>& src, vector<VertexFrame>& dst)
 }
 
 void Interactor::updateSelectionFrames() {
-    copyVertexPositions();
-
     state.singleHorz.clear();
     state.singleXY.clear();
     state.singleAll.clear();
