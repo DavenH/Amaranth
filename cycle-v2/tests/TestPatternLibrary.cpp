@@ -94,9 +94,23 @@ TEST_CASE("Pattern library validates and updates a stable user ID",
     REQUIRE(library.find(id)->tags.contains("Keys"));
     REQUIRE(library.find(id)->tags.contains("Chords"));
 
+    const auto renamed = library.renameUserPattern(id, "Blue Keys");
+    REQUIRE(renamed.has_value());
+    REQUIRE(renamed->id == id);
+    REQUIRE(renamed->name == "Blue Keys");
+    REQUIRE(renamed->sequence.notes[0].velocity == 109);
+    REQUIRE(renamed->tags.contains("Chords"));
+    library.reload();
+    REQUIRE(library.find(id)->name == "Blue Keys");
+
     user.getChildFile("invalid.cyclepattern").replaceWithText("{ bad json");
     library.reload();
     REQUIRE(library.records().size() == 1);
+    REQUIRE_FALSE(library.renameUserPattern("missing", "Unknown").has_value());
+    REQUIRE_FALSE(library.deleteUserPattern("missing"));
+    REQUIRE(library.deleteUserPattern(id));
+    REQUIRE(library.find(id) == nullptr);
+    REQUIRE_FALSE(user.getChildFile(id + ".cyclepattern").existsAsFile());
     REQUIRE(temporary.deleteRecursively());
 }
 
@@ -113,6 +127,9 @@ TEST_CASE("Factory preset references resolve through the curated pattern library
     REQUIRE(library.find("factory-suspended-cloud")->id == "factory-basic-pad");
     REQUIRE(library.find("factory-swing-comp")->id == "factory-basic-keys");
     REQUIRE(library.find("factory-tom-steps")->id == "factory-basic-rhythm");
+    REQUIRE_FALSE(library.renameUserPattern(
+            "factory-basic-rhythm", "Renamed").has_value());
+    REQUIRE_FALSE(library.deleteUserPattern("factory-basic-rhythm"));
     int curatedCount = 0;
     StringArray referencedIds;
     int references = 0;
@@ -269,4 +286,100 @@ TEST_CASE("Pattern favorite star toggles without assigning and combines with the
     REQUIRE(list->getHeight() == 0);
     REQUIRE(clickTag(*tagCloud, "Lead"));
     REQUIRE(list->getHeight() == SidebarMediaRow::height);
+}
+
+TEST_CASE("Pattern browser renames and deletes only selected user patterns",
+        "[cycle-v2][pattern][ui][management]") {
+    ScopedJuceInitialiser_GUI gui;
+    String renamedId;
+    String renamedTitle;
+    String deletedId;
+    String editedId;
+    String createdTitle;
+    int created {};
+    PatternBrowser browser(
+            [](const String&) {},
+            [&](const String& id) { editedId = id; },
+            [&](const String& name, const StringArray&) {
+                ++created;
+                createdTitle = name;
+            },
+            nullptr,
+            [&](const String& id, const String& name) {
+                renamedId = id;
+                renamedTitle = name;
+            },
+            [&](const String& id) { deletedId = id; });
+    browser.setBounds(0, 0, 310, 300);
+    PresetMidiSequence phrase;
+    phrase.notes.push_back({ 60, 90, 0.0, 1.0 });
+    std::vector<PatternRecord> records {
+            { "factory-pad", "Factory Pad", phrase, {}, true, "Pad" },
+            { "user-pad", "My Pad", phrase, {}, false, "Pad" }
+    };
+    auto* edit = dynamic_cast<Button*>(
+            findChild(browser, "workspace.sidebar.patternEdit"));
+    auto* rename = dynamic_cast<Button*>(
+            findChild(browser, "workspace.sidebar.patternRename"));
+    auto* remove = dynamic_cast<Button*>(
+            findChild(browser, "workspace.sidebar.patternDelete"));
+    REQUIRE(edit != nullptr);
+    REQUIRE(rename != nullptr);
+    REQUIRE(remove != nullptr);
+
+    browser.setRecords(records, "factory-pad");
+    REQUIRE(edit->isEnabled());
+    REQUIRE_FALSE(rename->isEnabled());
+    REQUIRE_FALSE(remove->isEnabled());
+    edit->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    auto* copyPrompt = dynamic_cast<AlertWindow*>(
+            ModalComponentManager::getInstance()->getModalComponent(0));
+    REQUIRE(copyPrompt != nullptr);
+    REQUIRE(copyPrompt->getTextEditorContents("name") == "Factory Pad Variation");
+    copyPrompt->exitModalState(0);
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(created == 0);
+
+    edit->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    copyPrompt = dynamic_cast<AlertWindow*>(
+            ModalComponentManager::getInstance()->getModalComponent(0));
+    REQUIRE(copyPrompt != nullptr);
+    copyPrompt->getTextEditor("name")->setText("Custom Pad");
+    copyPrompt->exitModalState(1);
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(created == 1);
+    REQUIRE(createdTitle == "Custom Pad");
+
+    browser.setRecords(records, "user-pad");
+    REQUIRE(rename->isEnabled());
+    REQUIRE(remove->isEnabled());
+    edit->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(editedId == "user-pad");
+    REQUIRE(created == 1);
+    rename->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    auto* renamePrompt = dynamic_cast<AlertWindow*>(
+            ModalComponentManager::getInstance()->getModalComponent(0));
+    REQUIRE(renamePrompt != nullptr);
+    renamePrompt->getTextEditor("name")->setText("Evening Pad");
+    renamePrompt->exitModalState(1);
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(renamedId == "user-pad");
+    REQUIRE(renamedTitle == "Evening Pad");
+
+    remove->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    auto* deletePrompt = dynamic_cast<AlertWindow*>(
+            ModalComponentManager::getInstance()->getModalComponent(0));
+    REQUIRE(deletePrompt != nullptr);
+    deletePrompt->exitModalState(1);
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(deletedId == "user-pad");
+    browser.setRecords({ records.front() }, "user-pad");
+    REQUIRE_FALSE(edit->isEnabled());
+    REQUIRE_FALSE(rename->isEnabled());
+    REQUIRE_FALSE(remove->isEnabled());
 }

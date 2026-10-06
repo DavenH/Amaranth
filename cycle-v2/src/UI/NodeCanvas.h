@@ -82,7 +82,9 @@ public:
     void configurePatternSidebar(
             InlinePresetBrowser::PatternSelectCallback select,
             InlinePresetBrowser::PatternEditCallback edit,
-            InlinePresetBrowser::PatternCreateCallback create);
+            InlinePresetBrowser::PatternCreateCallback create,
+            InlinePresetBrowser::PatternRenameCallback rename,
+            InlinePresetBrowser::PatternDeleteCallback remove);
     void setPatternSidebarRecords(
             std::vector<PatternRecord> records, const String& selectedId);
     var exportAutomationState() const;

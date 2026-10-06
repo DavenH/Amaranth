@@ -305,9 +305,12 @@ InlinePresetBrowser::~InlinePresetBrowser() {
 void InlinePresetBrowser::configurePatterns(
         PatternSelectCallback select,
         PatternEditCallback edit,
-        PatternCreateCallback create) {
+        PatternCreateCallback create,
+        PatternRenameCallback rename,
+        PatternDeleteCallback remove) {
     patternBrowser = std::make_unique<PatternBrowser>(
-            std::move(select), std::move(edit), std::move(create), favorites);
+            std::move(select), std::move(edit), std::move(create), favorites,
+            std::move(rename), std::move(remove));
     patternBrowser->setPlaybackToggleCallback(onTogglePlayback);
     addAndMakeVisible(*patternBrowser);
     updateVisibility();

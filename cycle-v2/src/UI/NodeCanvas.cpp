@@ -309,10 +309,13 @@ void NodeCanvas::setCurrentPresetTags(juce::StringArray tags) {
 void NodeCanvas::configurePatternSidebar(
         InlinePresetBrowser::PatternSelectCallback select,
         InlinePresetBrowser::PatternEditCallback edit,
-        InlinePresetBrowser::PatternCreateCallback create) {
+        InlinePresetBrowser::PatternCreateCallback create,
+        InlinePresetBrowser::PatternRenameCallback rename,
+        InlinePresetBrowser::PatternDeleteCallback remove) {
     if (presetSidebar != nullptr) {
         presetSidebar->configurePatterns(
-                std::move(select), std::move(edit), std::move(create));
+                std::move(select), std::move(edit), std::move(create),
+                std::move(rename), std::move(remove));
     }
 }
 

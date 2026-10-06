@@ -38,6 +38,8 @@ public:
     using PatternSelectCallback = PatternBrowser::SelectCallback;
     using PatternEditCallback = PatternBrowser::EditCallback;
     using PatternCreateCallback = PatternBrowser::CreateCallback;
+    using PatternRenameCallback = PatternBrowser::RenameCallback;
+    using PatternDeleteCallback = PatternBrowser::DeleteCallback;
 
     InlinePresetBrowser(
             std::vector<juce::File> directories,
@@ -52,7 +54,8 @@ public:
 
     void setActiveTab(WorkspaceSidebarTab tab);
     void configurePatterns(PatternSelectCallback select,
-            PatternEditCallback edit, PatternCreateCallback create);
+            PatternEditCallback edit, PatternCreateCallback create,
+            PatternRenameCallback rename, PatternDeleteCallback remove);
     void setPatterns(std::vector<PatternRecord> records,
             const juce::String& selectedId);
     WorkspaceSidebarTab activeTab() const { return tab; }

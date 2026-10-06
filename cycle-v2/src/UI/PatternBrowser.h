@@ -19,9 +19,13 @@ public:
     using EditCallback = std::function<void(const juce::String&)>;
     using CreateCallback = std::function<void(
             const juce::String&, const juce::StringArray&)>;
+    using RenameCallback = std::function<void(
+            const juce::String&, const juce::String&)>;
+    using DeleteCallback = std::function<void(const juce::String&)>;
 
     PatternBrowser(SelectCallback select, EditCallback edit, CreateCallback create,
-            LibraryFavorites* favorites = nullptr);
+            LibraryFavorites* favorites = nullptr,
+            RenameCallback rename = {}, DeleteCallback remove = {});
     ~PatternBrowser() override;
     void setRecords(std::vector<PatternRecord> records, const juce::String& selectedId);
     void setPlaybackToggleCallback(std::function<void()> callback);
@@ -32,16 +36,24 @@ public:
 private:
     class List;
     void editSelected();
+    void renameSelected();
+    void deleteSelected();
+    const PatternRecord* selectedRecord() const;
+    void updateActions();
     void applyFilter();
-    void createPattern();
+    void createPattern(const PatternRecord* source = nullptr);
     void toggleFavorite(const juce::String& id);
 
     EditCallback onEdit;
     CreateCallback onCreate;
+    RenameCallback onRename;
+    DeleteCallback onDelete;
     LibraryFavorites* favorites {};
     LibrarySearchField search { "Search patterns..." };
     juce::TextButton createButton { "+ NEW" };
     juce::TextButton editButton { "EDIT" };
+    juce::TextButton renameButton { "RENAME" };
+    juce::TextButton deleteButton { "DELETE" };
     juce::Label tagHeading;
     SidebarTagCloud tagCloud;
     juce::TextButton favoritesOnly { "Favorites" };

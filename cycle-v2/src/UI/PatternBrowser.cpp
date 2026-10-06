@@ -1,5 +1,6 @@
-#include "UI/PatternBrowser.h"
+#include <algorithm>
 
+#include "UI/PatternBrowser.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/MidiPatternMiniMap.h"
 #include "UI/SidebarMediaRow.h"
@@ -37,6 +38,14 @@ public:
     }
 
     const juce::String& selection() const { return selectedId; }
+
+    const PatternRecord* selectedRecord() const {
+        const auto found = std::find_if(records.begin(), records.end(),
+                [this](const PatternRecord& record) {
+                    return record.id == selectedId;
+                });
+        return found == records.end() ? nullptr : &*found;
+    }
 
     std::vector<std::pair<juce::String, juce::Rectangle<float>>>
             pointerTargetsForAutomation(
@@ -118,11 +127,23 @@ PatternBrowser::PatternBrowser(
         SelectCallback select,
         EditCallback edit,
         CreateCallback create,
-        LibraryFavorites* favoriteStore) :
+        LibraryFavorites* favoriteStore,
+        RenameCallback rename,
+        DeleteCallback remove) :
         onEdit(std::move(edit))
     ,   onCreate(std::move(create))
+    ,   onRename(std::move(rename))
+    ,   onDelete(std::move(remove))
     ,   favorites(favoriteStore)
-    ,   list(std::make_unique<List>(std::move(select), onEdit,
+    ,   list(std::make_unique<List>(
+                [this, select = std::move(select)](const juce::String& id) {
+                    selectedId = id;
+                    if (select) {
+                        select(id);
+                    }
+                    updateActions();
+                },
+                [this](const juce::String&) { editSelected(); },
                 [this](const juce::String& id) { toggleFavorite(id); },
                 favorites)) {
     setComponentID("workspace.sidebar.patternBrowser");
@@ -134,6 +155,12 @@ PatternBrowser::PatternBrowser(
     createButton.setTooltip("Save the current MIDI phrase as a new pattern");
     createButton.onClick = [this] { createPattern(); };
     editButton.onClick = [this] { editSelected(); };
+    renameButton.setComponentID("workspace.sidebar.patternRename");
+    renameButton.setTooltip("Rename the selected user pattern");
+    renameButton.onClick = [this] { renameSelected(); };
+    deleteButton.setComponentID("workspace.sidebar.patternDelete");
+    deleteButton.setTooltip("Move the selected user pattern to Trash");
+    deleteButton.onClick = [this] { deleteSelected(); };
     SidebarTagCloud::styleHeading(tagHeading);
     addAndMakeVisible(tagHeading);
     tagCloud.setComponentID("workspace.sidebar.patternTags");
@@ -150,7 +177,8 @@ PatternBrowser::PatternBrowser(
             CanvasChromePalette::text);
     favoritesOnly.onClick = [this] { applyFilter(); };
     addAndMakeVisible(favoritesOnly);
-    for (auto* button : { &createButton, &editButton }) {
+    for (auto* button : { &createButton, &editButton,
+            &renameButton, &deleteButton }) {
         button->setColour(juce::TextButton::buttonColourId,
                 CanvasChromePalette::restingControlSurface);
         button->setColour(juce::TextButton::textColourOffId,
@@ -161,6 +189,7 @@ PatternBrowser::PatternBrowser(
     viewport.setComponentID("workspace.sidebar.patternViewport");
     viewport.setScrollBarsShown(true, false);
     addAndMakeVisible(viewport);
+    updateActions();
 }
 
 PatternBrowser::~PatternBrowser() = default;
@@ -178,25 +207,34 @@ void PatternBrowser::setRecords(
     }
     tagCloud.setTags(std::move(available));
     applyFilter();
+    updateActions();
 }
 
 void PatternBrowser::setPlaybackToggleCallback(std::function<void()> callback) {
     search.setPlaybackToggleCallback(std::move(callback));
 }
 
-void PatternBrowser::createPattern() {
+void PatternBrowser::createPattern(const PatternRecord* source) {
+    const juce::String sourceName = source == nullptr
+            ? juce::String() : source->name;
+    const juce::StringArray initialTags = source == nullptr
+            ? tagCloud.selectedTags() : tagsFor(*source);
     auto* prompt = new juce::AlertWindow(
-            "New pattern",
-            "Name the MIDI phrase to save in the pattern library.",
+            source == nullptr ? "New pattern" : "Edit a copy",
+            source == nullptr
+                    ? "Name the MIDI phrase to save in the pattern library."
+                    : "Factory patterns are read-only. Name a user copy to edit.",
             juce::MessageBoxIconType::QuestionIcon,
             getTopLevelComponent());
-    prompt->addTextEditor("name", {}, "Pattern name");
+    prompt->addTextEditor("name",
+            sourceName.isEmpty() ? juce::String() : sourceName + " Variation",
+            "Pattern name");
     prompt->addTextEditor("tags",
-            tagCloud.selectedTags().isEmpty()
-                    ? juce::String("Other")
-                    : tagCloud.selectedTags().joinIntoString(", "),
+            initialTags.isEmpty() ? juce::String("Other")
+                    : initialTags.joinIntoString(", "),
             "Tags (comma separated)");
-    prompt->addButton("Create", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    prompt->addButton(source == nullptr ? "Create" : "Create copy", 1,
+            juce::KeyPress(juce::KeyPress::returnKey));
     prompt->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
     prompt->enterModalState(true,
             juce::ModalCallbackFunction::create([
@@ -221,6 +259,68 @@ void PatternBrowser::createPattern() {
             }), true);
 }
 
+const PatternRecord* PatternBrowser::selectedRecord() const {
+    return list->selectedRecord();
+}
+
+void PatternBrowser::updateActions() {
+    const auto* record = selectedRecord();
+    editButton.setEnabled(record != nullptr);
+    const bool userPattern = record != nullptr && !record->factory;
+    renameButton.setEnabled(userPattern);
+    deleteButton.setEnabled(userPattern);
+}
+
+void PatternBrowser::renameSelected() {
+    const auto* record = selectedRecord();
+    if (record == nullptr || record->factory || !onRename) {
+        return;
+    }
+    const juce::String id = record->id;
+    const juce::String oldName = record->name;
+    auto* prompt = new juce::AlertWindow(
+            "Rename pattern", "Choose a new title for this pattern.",
+            juce::MessageBoxIconType::QuestionIcon, getTopLevelComponent());
+    prompt->addTextEditor("name", oldName, "Pattern name");
+    prompt->addButton("Rename", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    prompt->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    prompt->enterModalState(true,
+            juce::ModalCallbackFunction::create([
+                    safeThis = juce::Component::SafePointer<PatternBrowser>(this),
+                    prompt, id, oldName](int result) {
+                if (result != 1 || safeThis == nullptr) {
+                    return;
+                }
+                const auto name = prompt->getTextEditorContents("name").trim();
+                if (name.isNotEmpty() && name != oldName) {
+                    safeThis->onRename(id, name);
+                }
+            }), true);
+}
+
+void PatternBrowser::deleteSelected() {
+    const auto* record = selectedRecord();
+    if (record == nullptr || record->factory || !onDelete) {
+        return;
+    }
+    const juce::String id = record->id;
+    const juce::String name = record->name;
+    juce::AlertWindow::showOkCancelBox(
+            juce::MessageBoxIconType::WarningIcon,
+            "Move pattern to Trash?",
+            "Move '" + name + "' to Trash? Presets referencing it will use "
+                    "their embedded MIDI sequence or audition note until "
+                    "another pattern is assigned.",
+            "Move to Trash", "Cancel", getTopLevelComponent(),
+            juce::ModalCallbackFunction::create([
+                    safeThis = juce::Component::SafePointer<PatternBrowser>(this),
+                    id](int result) {
+                if (result != 0 && safeThis != nullptr) {
+                    safeThis->onDelete(id);
+                }
+            }));
+}
+
 void PatternBrowser::applyFilter() {
     const int previousScroll = viewport.getViewPositionY();
     std::vector<PatternRecord> visible;
@@ -240,6 +340,7 @@ void PatternBrowser::applyFilter() {
     list->setRecords(std::move(visible), selectedId);
     resized();
     viewport.setViewPosition(0, previousScroll);
+    updateActions();
 }
 
 void PatternBrowser::toggleFavorite(const juce::String& id) {
@@ -256,6 +357,8 @@ PatternBrowser::pointerTargetsForAutomation() const {
             { "workspace.sidebar.patternSearch", search.getBounds().toFloat() },
             { "workspace.sidebar.patternNew", createButton.getBounds().toFloat() },
             { "workspace.sidebar.patternEdit", editButton.getBounds().toFloat() },
+            { "workspace.sidebar.patternRename", renameButton.getBounds().toFloat() },
+            { "workspace.sidebar.patternDelete", deleteButton.getBounds().toFloat() },
             { "workspace.sidebar.patternFavoritesOnly",
                     favoritesOnly.getBounds().toFloat() }
     };
@@ -271,8 +374,14 @@ PatternBrowser::pointerTargetsForAutomation() const {
 }
 
 void PatternBrowser::editSelected() {
-    if (list->selection().isNotEmpty()) {
-        onEdit(list->selection());
+    const auto* record = selectedRecord();
+    if (record == nullptr) {
+        return;
+    }
+    if (record->factory) {
+        createPattern(record);
+    } else if (onEdit) {
+        onEdit(record->id);
     }
 }
 
@@ -283,9 +392,15 @@ void PatternBrowser::resized() {
     createRow.removeFromRight(5);
     search.setBounds(createRow);
     bounds.removeFromTop(6);
+    auto actions = bounds.removeFromTop(24);
+    const int actionWidth = (actions.getWidth() - 8) / 3;
+    editButton.setBounds(actions.removeFromLeft(actionWidth));
+    actions.removeFromLeft(4);
+    renameButton.setBounds(actions.removeFromLeft(actionWidth));
+    actions.removeFromLeft(4);
+    deleteButton.setBounds(actions);
+    bounds.removeFromTop(4);
     auto headingRow = bounds.removeFromTop(24);
-    editButton.setBounds(headingRow.removeFromRight(69));
-    headingRow.removeFromRight(4);
     favoritesOnly.setBounds(headingRow.removeFromRight(82));
     tagHeading.setBounds(headingRow);
     bounds.removeFromTop(4);

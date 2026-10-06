@@ -116,6 +116,8 @@ private:
     void selectPattern(const String& id);
     void createPattern(const String& name, const StringArray& tags);
     void editPattern(const String& id);
+    void renamePattern(const String& id, const String& name);
+    void deletePattern(const String& id);
     void saveEditedSequence(PresetMidiSequence sequence, const String& sourceId);
     void showPatternSaveError();
     void timerCallback() override;

@@ -177,4 +177,23 @@ std::optional<PatternRecord> PatternLibrary::saveUserPattern(
     return *find(id);
 }
 
+std::optional<PatternRecord> PatternLibrary::renameUserPattern(
+        const juce::String& id,
+        const juce::String& name) {
+    const auto* pattern = find(id);
+    if (pattern == nullptr || pattern->factory) {
+        return std::nullopt;
+    }
+    return saveUserPattern(id, name, pattern->sequence, pattern->tag, pattern->tags);
+}
+
+bool PatternLibrary::deleteUserPattern(const juce::String& id) {
+    const auto* pattern = find(id);
+    if (pattern == nullptr || pattern->factory || !pattern->file.moveToTrash()) {
+        return false;
+    }
+    reload();
+    return true;
+}
+
 }

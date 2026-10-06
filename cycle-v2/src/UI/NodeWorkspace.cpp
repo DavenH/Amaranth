@@ -87,7 +87,11 @@ void NodeWorkspace::configurePresetSidebar(
             [this](const String& id) { editPattern(id); },
             [this](const String& name, const StringArray& tags) {
                 createPattern(name, tags);
-            });
+            },
+            [this](const String& id, const String& name) {
+                renamePattern(id, name);
+            },
+            [this](const String& id) { deletePattern(id); });
     refreshPatternSidebar();
 }
 
@@ -177,7 +181,38 @@ void NodeWorkspace::editPattern(const String& id) {
                     safeThis->saveEditedSequence(std::move(sequence), *editingId);
                     *editingId = safeThis->canvas.presetPatternId();
                 }
-            });
+    });
+}
+
+void NodeWorkspace::renamePattern(const String& id, const String& name) {
+    if (patternLibrary == nullptr) {
+        return;
+    }
+    if (patternLibrary->renameUserPattern(id, name).has_value()) {
+        refreshPatternSidebar();
+        return;
+    }
+    AlertWindow::showMessageBoxAsync(
+            MessageBoxIconType::WarningIcon,
+            "Pattern not renamed",
+            "The selected user pattern could not be renamed.",
+            "OK");
+}
+
+void NodeWorkspace::deletePattern(const String& id) {
+    if (patternLibrary == nullptr) {
+        return;
+    }
+    if (patternLibrary->deleteUserPattern(id)) {
+        keyboard.setSequence(resolvedPresetSequence());
+        refreshPatternSidebar();
+        return;
+    }
+    AlertWindow::showMessageBoxAsync(
+            MessageBoxIconType::WarningIcon,
+            "Pattern not deleted",
+            "The selected user pattern could not be moved to Trash.",
+            "OK");
 }
 
 void NodeWorkspace::saveEditedSequence(

@@ -32,6 +32,9 @@ public:
             const PresetMidiSequence& sequence,
             const juce::String& tag = {},
             const juce::StringArray& tags = {});
+    std::optional<PatternRecord> renameUserPattern(
+            const juce::String& id, const juce::String& name);
+    bool deleteUserPattern(const juce::String& id);
     juce::String newUserId() const;
 
 private:
