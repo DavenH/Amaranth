@@ -81,11 +81,7 @@ bool GraphPresentationModel::refresh(
     requestedGraphRevision = documentRevision;
     const bool compile = current.graphRevision == 0 || requiresCompilation(change);
     const bool preview = compile || requiresPreview(change);
-    if (compile) {
-        scheduler.cancelAndWait();
-    } else {
-        scheduler.invalidateAsyncRequests();
-    }
+    scheduler.cancelAndWait();
 
     GraphPresentationSnapshot next = current;
     next.graphRevision = documentRevision;
