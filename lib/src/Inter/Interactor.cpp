@@ -21,6 +21,7 @@
 #include "../Obj/CurveLine.h"
 #include "../UI/Panels/Panel.h"
 #include "../UI/Panels/PanelHostContext.h"
+#include "../UI/Panels/PanelInputHostComponent.h"
 #include "../UI/Panels/Texture.h"
 #include "../UI/Panels/ZoomRect.h"
 #include "../Util/CommonEnums.h"
@@ -217,6 +218,11 @@ void Interactor::mouseMove(const MouseEvent& e) {
 
 void Interactor::timerCallback() {
     if (display == nullptr || panel == nullptr || !display->isShowing()) {
+        return;
+    }
+
+    const auto* inputHost = dynamic_cast<const PanelInputHostComponent*>(display.get());
+    if (inputHost != nullptr && inputHost->isPointerGestureActive()) {
         return;
     }
 
