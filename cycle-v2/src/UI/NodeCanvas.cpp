@@ -2642,17 +2642,20 @@ void NodeCanvas::recordNodeEditorMovement(
     const bool primaryTrimeshMorph = node != nullptr
             && node->kind == NodeKind::TrilinearMesh
             && NodeParameterMap(*node).stringValue("primaryAxis", "yellow") == field;
+    const String stream = "editor:" + nodeId;
+    const bool activeGesture = presentation.editSession().graphGestureIsActive(stream);
+    const bool downstreamFeedback = !primaryTrimeshMorph
+            && (!activeGesture || presentation.editSession().graphGestureIsLive(stream));
     const auto decision = PresentationRefreshPolicy::decide({
             EditPhase::Movement,
             probeRailState.refreshMode,
             localProduct,
-            !primaryTrimeshMorph,
+            downstreamFeedback,
             false
     });
     const bool probesDeferred = decision.downstream != DownstreamRefresh::LatestAsync;
     presentation.recordEditorMovement(nodeId, field, effectiveFingerprint, probesDeferred);
-    const String stream = "editor:" + nodeId;
-    if (presentation.editSession().graphGestureIsActive(stream)) {
+    if (activeGesture) {
         if (!primaryTrimeshMorph) {
             if (decision.downstream == DownstreamRefresh::LatestAsync) {
                 auto snapshot = presentation.editSession().snapshotGraphGesture(stream, commands);

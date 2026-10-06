@@ -15,6 +15,7 @@
 #include "Runtime/NodeUpdateGraph.h"
 #include "Runtime/PresentationRefreshPolicy.h"
 #include "UI/NodeEditorPerformanceObserver.h"
+#include "UI/NodeEditorModelCommands.h"
 
 namespace CycleV2 {
 
@@ -30,7 +31,7 @@ public:
             NodeModelStatePtr model,
             const std::vector<NodeParameter>& controls) = 0;
     virtual bool publishNodeModel(const String&, NodeModelStatePtr) { return false; }
-    virtual void beginNodeModelEdit() {}
+    virtual bool beginNodeModelEdit(const String&) { return false; }
     virtual void endNodeModelEdit() {}
     virtual bool beginNodeParameterEdit(
             const String& nodeId,
@@ -215,7 +216,7 @@ public:
             NodeModelStatePtr model,
             const std::vector<NodeParameter>& controls) override;
     bool publishNodeModel(const String& nodeId, NodeModelStatePtr model) override;
-    void beginNodeModelEdit() override;
+    bool beginNodeModelEdit(const String& nodeId) override;
     void endNodeModelEdit() override;
     bool beginNodeParameterEdit(
             const String& nodeId,
@@ -280,6 +281,7 @@ private:
     NodeEditorPresentation& presentation;
     NodeEditorResources& resources;
     NodeEditorPerformanceObserver* performanceObserver {};
+    NodeEditorModelCommands modelCommands;
     String activeMorphNodeId;
     String activeMorphParameterId;
     bool activeMorphIsPrimary {};

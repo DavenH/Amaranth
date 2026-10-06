@@ -276,7 +276,7 @@ private:
         control->slider.onDragStart = [this, raw] {
             raw->editing = true;
             if (isIndividualVoiceControl(*raw)) {
-                commands.beginNodeModelEdit();
+                raw->editing = commands.beginNodeModelEdit(node.id);
             } else {
                 commands.beginNodeParameterEdit(
                         node.id,
@@ -439,7 +439,12 @@ private:
 
     void publishIndividualVoices(std::vector<UnisonIndividualVoice> voices) {
         const auto current = individualModel();
-        const uint64_t revision = current != nullptr ? current->revision() + 1 : 1;
+        const uint64_t currentRevision = current != nullptr ? current->revision() : 0;
+        const auto candidate = UnisonNodeModelState::create(voices, currentRevision);
+        if (current != nullptr && current->equals(*candidate)) {
+            return;
+        }
+        const uint64_t revision = currentRevision + 1;
         const auto next = UnisonNodeModelState::create(std::move(voices), revision);
         if (!commands.publishNodeModel(node.id, next)) {
             return;
