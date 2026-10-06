@@ -417,8 +417,6 @@ void InlinePresetBrowser::paint(juce::Graphics& graphics) {
     if (tab != WorkspaceSidebarTab::Curves) {
         graphics.setColour(CanvasChromePalette::dockSurface);
         graphics.fillRect(bounds);
-        graphics.setColour(CanvasChromePalette::border.withAlpha(0.78f));
-        graphics.drawVerticalLine(0, bounds.getY(), bounds.getBottom());
     }
     graphics.setColour(CanvasChromePalette::dockSurface);
     graphics.fillRect(bounds.withHeight(46.f));
@@ -431,6 +429,10 @@ void InlinePresetBrowser::paint(juce::Graphics& graphics) {
     graphics.fillRoundedRectangle(
             selectedTab.withY(43.f).withHeight(3.f).reduced(8.f, 0.f),
             1.5f);
+    if (tab != WorkspaceSidebarTab::Curves) {
+        graphics.setColour(CanvasChromePalette::border.withAlpha(0.78f));
+        graphics.drawVerticalLine(0, bounds.getY(), bounds.getBottom());
+    }
 }
 
 void InlinePresetBrowser::resized() {

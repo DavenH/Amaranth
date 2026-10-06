@@ -175,6 +175,32 @@ TEST_CASE("Preset and pattern actions occupy the same sidebar positions",
     }
 }
 
+TEST_CASE("Preset and pattern row tags share a compact top-right header",
+        "[cycle-v2][preset][browser][inline][layout]") {
+    ScopedJuceInitialiser_GUI gui;
+    const Rectangle<float> row { 0.f, 0.f, 250.f,
+            (float) SidebarMediaRow::height };
+    const StringArray tags { "Bass", "Rhythmic" };
+    const auto presetCard = SidebarMediaRow::cardBounds(row);
+    const auto preset = SidebarMediaRow::headerLabelsLayout(
+            presetCard, SidebarMediaRow::favoriteBounds(row), tags);
+    const auto patternCard = SidebarMediaRow::cardBounds(row);
+    const auto pattern = SidebarMediaRow::headerLabelsLayout(
+            patternCard, SidebarMediaRow::patternFavoriteBounds(row), tags);
+
+    REQUIRE(preset.tagCount == 2);
+    REQUIRE(pattern.tagCount == 2);
+    REQUIRE(presetCard.getX() == 2.f);
+    REQUIRE(row.getRight() - presetCard.getRight() == 2.f);
+    REQUIRE(SidebarMediaRow::favoriteBounds(row)
+            == SidebarMediaRow::patternFavoriteBounds(row));
+    REQUIRE(preset.tags[0].getY() == pattern.tags[0].getY());
+    REQUIRE(preset.tags[0].getY() == preset.tags[1].getY());
+    REQUIRE(preset.tags[1].getRight() <= presetCard.getRight());
+    REQUIRE(preset.title.getRight() < preset.tags[0].getX());
+    REQUIRE(preset.tags[1].getBottom() < row.getCentreY());
+}
+
 TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
         "[cycle-v2][preset][browser][inline]") {
     ScopedJuceInitialiser_GUI juce;
@@ -407,7 +433,10 @@ TEST_CASE("Preset row star and Favorites filter do not load the sound",
     }
     REQUIRE(browser.visiblePresetCount() == 1);
 
-    const Point<float> position { 28.f, 24.f };
+    const auto firstRow = Rectangle<float>(0.f, 0.f,
+            (float) list->getWidth(), (float) SidebarMediaRow::height);
+    const Point<float> position = SidebarMediaRow::favoriteBounds(firstRow)
+            .getCentre();
     const Time now = Time::getCurrentTime();
     const MouseEvent click(Desktop::getInstance().getMainMouseSource(),
             position, ModifierKeys::leftButtonModifier,

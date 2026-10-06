@@ -308,7 +308,7 @@ TEST_CASE("Pattern card uses the available row width and keeps notes below its h
         "[cycle-v2][pattern][ui][layout]") {
     const juce::Rectangle<float> row { 0.f, 0.f, 250.f,
             (float) SidebarMediaRow::height };
-    const auto card = SidebarMediaRow::patternCardBounds(row);
+    const auto card = SidebarMediaRow::cardBounds(row);
     const auto notes = SidebarMediaRow::patternPreviewBounds(row);
     REQUIRE(card.getX() == 2.f);
     REQUIRE(row.getRight() - card.getRight() == 2.f);

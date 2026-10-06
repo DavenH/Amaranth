@@ -41,3 +41,29 @@ keep their existing overlay treatment.
   architecture audit and `git diff --check` pass. No touched production file
   crosses an architecture size trigger; `InlinePresetBrowser` remains below
   800 lines and only delegates Favorites state to the shared tag cloud.
+
+## Preset row tag alignment (2026-10-05)
+
+Preset rows now use the same `SidebarMediaRow::headerLabelsLayout` as pattern
+rows. Up to two tags sit together at the top right, with the title width
+limited to the remaining header space. The second preset tag no longer floats
+at the bottom of the spectrogram. The preset spectrogram still fills the row
+behind the title and tags. A geometry regression checks both row variants,
+and the shared browser screenshot fixture captures the result at app size.
+
+## Sidebar edge alignment (2026-10-05)
+
+`WorkspaceDock::layout` remains the authority for shelf placement and width.
+`GuideCurveShelf::guideWorkspace` adapts its shelf rectangle for the full-height
+library browser by extending only its right edge to the canvas edge. Preset and
+pattern cards share the same 2-pixel row inset and header geometry. The
+browser paints its left border after the tab background so the border reaches
+the top of the sidebar. Remove the preset-only 10-pixel card inset and the
+outer right gutter; do not add a second layout policy in the browser.
+
+The 1728 × 969 preset and pattern captures at
+`/private/tmp/cycle-v2-preset-toolbar.png` and
+`/private/tmp/cycle-v2-pattern-toolbar.png` were inspected. The sidebar now
+reaches the canvas edge, and the preset cards align with pattern cards. Focused
+browser, pattern UI, and guide dock tests pass; the architecture audit and
+`git diff --check` pass. No changed production file crosses a size trigger.

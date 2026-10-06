@@ -2,13 +2,26 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
+#include <array>
+
 namespace CycleV2::SidebarMediaRow {
 
 constexpr int height = 84;
 
+struct HeaderLabelsLayout {
+    juce::Rectangle<float> title;
+    std::array<juce::Rectangle<float>, 2> tags;
+    int tagCount {};
+};
+
+HeaderLabelsLayout headerLabelsLayout(
+        juce::Rectangle<float> card,
+        juce::Rectangle<float> favorite,
+        const juce::StringArray& tags);
+
 juce::Rectangle<float> favoriteBounds(juce::Rectangle<float> slot);
 juce::Rectangle<float> patternFavoriteBounds(juce::Rectangle<float> slot);
-juce::Rectangle<float> patternCardBounds(juce::Rectangle<float> slot);
+juce::Rectangle<float> cardBounds(juce::Rectangle<float> slot);
 juce::Rectangle<float> patternPreviewBounds(juce::Rectangle<float> slot);
 void paintStar(juce::Graphics& graphics, juce::Rectangle<float> bounds, bool favorite);
 void paintFavorite(juce::Graphics& graphics, juce::Rectangle<float> slot, bool favorite);

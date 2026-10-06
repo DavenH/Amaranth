@@ -4,21 +4,75 @@
 
 namespace CycleV2::SidebarMediaRow {
 
-juce::Rectangle<float> favoriteBounds(juce::Rectangle<float> slot) {
-    return { slot.getX() + 17.f, slot.getY() + 3.f, 23.f, 23.f };
+HeaderLabelsLayout headerLabelsLayout(
+        juce::Rectangle<float> card,
+        juce::Rectangle<float> favorite,
+        const juce::StringArray& tags) {
+    HeaderLabelsLayout layout;
+    const float labelLeft = favorite.getRight() + 5.f;
+    const juce::Font tagFont(juce::FontOptions(8.5f));
+    float totalTagWidth = 0.f;
+    const float tagBudget = card.getRight() - labelLeft - 77.f;
+    for (int index = 0; index < juce::jmin(2, tags.size()); ++index) {
+        const float width = juce::jmin(70.f,
+                tagFont.getStringWidthFloat(tags[index].toUpperCase()) + 11.f);
+        const float nextWidth = totalTagWidth + width
+                + (layout.tagCount == 0 ? 0.f : 3.f);
+        if (nextWidth > tagBudget) {
+            break;
+        }
+        layout.tags[(size_t) layout.tagCount].setWidth(width);
+        ++layout.tagCount;
+        totalTagWidth = nextWidth;
+    }
+    const float tagStart = card.getRight() - totalTagWidth - 5.f;
+    layout.title = { labelLeft, card.getY() + 3.f,
+            juce::jmax(1.f, tagStart - labelLeft - 5.f), 20.f };
+    float tagX = tagStart;
+    for (int index = 0; index < layout.tagCount; ++index) {
+        auto& chip = layout.tags[(size_t) index];
+        chip.setPosition(tagX, card.getY() + 6.f);
+        chip.setHeight(15.f);
+        tagX += chip.getWidth() + 3.f;
+    }
+    return layout;
 }
 
-juce::Rectangle<float> patternCardBounds(juce::Rectangle<float> slot) {
+namespace {
+
+void paintHeaderTags(
+        juce::Graphics& graphics,
+        const juce::StringArray& tags,
+        const HeaderLabelsLayout& layout) {
+    const juce::Font tagFont(juce::FontOptions(8.5f));
+    graphics.setFont(tagFont);
+    for (int index = 0; index < layout.tagCount; ++index) {
+        const auto chip = layout.tags[(size_t) index];
+        graphics.setColour(juce::Colour(0xff333333));
+        graphics.fillRoundedRectangle(chip, 3.f);
+        graphics.setColour(CanvasChromePalette::text.withAlpha(0.9f));
+        graphics.drawFittedText(tags[index].toUpperCase(), chip.toNearestInt(),
+                juce::Justification::centred, 1);
+    }
+}
+
+}
+
+juce::Rectangle<float> favoriteBounds(juce::Rectangle<float> slot) {
+    return patternFavoriteBounds(slot);
+}
+
+juce::Rectangle<float> cardBounds(juce::Rectangle<float> slot) {
     return slot.reduced(2.f, 3.f);
 }
 
 juce::Rectangle<float> patternFavoriteBounds(juce::Rectangle<float> slot) {
-    const auto card = patternCardBounds(slot);
+    const auto card = cardBounds(slot);
     return { card.getX() + 4.f, card.getY() + 3.f, 22.f, 22.f };
 }
 
 juce::Rectangle<float> patternPreviewBounds(juce::Rectangle<float> slot) {
-    const auto card = patternCardBounds(slot);
+    const auto card = cardBounds(slot);
     return { card.getX() + 5.f, card.getY() + 28.f,
             card.getWidth() - 10.f, card.getHeight() - 33.f };
 }
@@ -53,7 +107,7 @@ juce::Rectangle<float> paintFrame(
         juce::Graphics& graphics,
         juce::Rectangle<float> slot,
         bool selected) {
-    const auto card = slot.reduced(10.f, 3.f);
+    const auto card = cardBounds(slot);
     graphics.setColour(selected
             ? CanvasChromePalette::raisedSurface
             : CanvasChromePalette::surface);
@@ -63,7 +117,7 @@ juce::Rectangle<float> paintFrame(
             : CanvasChromePalette::border.withAlpha(0.55f));
     graphics.drawRoundedRectangle(card, 5.f, selected ? 1.2f : 0.8f);
 
-    const auto preview = card.reduced(8.f, 5.f);
+    const auto preview = card.reduced(5.f, 5.f);
     graphics.setColour(CanvasChromePalette::insetBackground);
     graphics.fillRoundedRectangle(preview, 3.f);
     return preview;
@@ -75,46 +129,29 @@ void paintLabels(
         const juce::String& title,
         const juce::StringArray& tags,
         bool favorite) {
-    auto header = slot.reduced(10.f, 3.f).withHeight(23.f).reduced(8.f, 0.f);
-    const auto titleBounds = header.withTrimmedLeft(23.f).withTrimmedRight(74.f);
-    const auto tagBounds = header.removeFromRight(70.f);
+    const auto card = cardBounds(slot);
+    const auto layout = headerLabelsLayout(card, favoriteBounds(slot), tags);
     const juce::Font titleFont(juce::FontOptions(13.f, juce::Font::bold));
-    const juce::Font tagFont(juce::FontOptions(9.f));
     graphics.setColour(juce::Colour(0xff333333));
     const float titleWidth = juce::jmin(
-            titleBounds.getWidth() + 8.f,
+            layout.title.getWidth() + 8.f,
             titleFont.getStringWidthFloat(title) + 12.f);
     graphics.fillRoundedRectangle(
-            titleBounds.getX() - 4.f, header.getY() + 2.f,
-            titleWidth, 19.f, 3.f);
+            layout.title.getX() - 4.f, layout.title.getY(),
+            titleWidth, layout.title.getHeight(), 3.f);
     graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(titleFont);
-    graphics.drawFittedText(title, titleBounds.toNearestInt(),
+    graphics.drawFittedText(title, layout.title.toNearestInt(),
             juce::Justification::centredLeft, 1);
     paintFavorite(graphics, slot, favorite);
-
-    for (int index = 0; index < juce::jmin(2, tags.size()); ++index) {
-        const auto label = tags[index].toUpperCase();
-        const float width = juce::jmin(tagBounds.getWidth(),
-                tagFont.getStringWidthFloat(label) + 12.f);
-        const juce::Rectangle<float> chip(
-                tagBounds.getRight() - width,
-                index == 0 ? header.getY() + 2.f : slot.getBottom() - 28.f,
-                width, 19.f);
-        graphics.setColour(juce::Colour(0xff333333));
-        graphics.fillRoundedRectangle(chip, 3.f);
-        graphics.setColour(CanvasChromePalette::text.withAlpha(0.9f));
-        graphics.setFont(tagFont);
-        graphics.drawFittedText(label, chip.toNearestInt().reduced(5, 0),
-                juce::Justification::centred, 1);
-    }
+    paintHeaderTags(graphics, tags, layout);
 }
 
 juce::Rectangle<float> paintPatternFrame(
         juce::Graphics& graphics,
         juce::Rectangle<float> slot,
         bool selected) {
-    const auto card = patternCardBounds(slot);
+    const auto card = cardBounds(slot);
     graphics.setColour(selected
             ? CanvasChromePalette::raisedSurface
             : CanvasChromePalette::surface);
@@ -138,47 +175,15 @@ void paintPatternLabels(
         const juce::String& title,
         const juce::StringArray& tags,
         bool favorite) {
-    const auto card = patternCardBounds(slot);
+    const auto card = cardBounds(slot);
     const auto star = patternFavoriteBounds(slot);
+    const auto layout = headerLabelsLayout(card, star, tags);
     paintStar(graphics, star, favorite);
-    const auto labelLeft = star.getRight() + 5.f;
-    const juce::Font tagFont(juce::FontOptions(8.5f));
-    float tagWidths[2] {};
-    float totalTagWidth = 0.f;
-    int visibleTagCount = 0;
-    const float tagBudget = card.getRight() - labelLeft - 77.f;
-    for (int index = 0; index < juce::jmin(2, tags.size()); ++index) {
-        const float width = juce::jmin(70.f,
-                tagFont.getStringWidthFloat(tags[index].toUpperCase()) + 11.f);
-        const float nextWidth = totalTagWidth + width
-                + (visibleTagCount == 0 ? 0.f : 3.f);
-        if (nextWidth > tagBudget) {
-            break;
-        }
-        tagWidths[visibleTagCount++] = width;
-        totalTagWidth = nextWidth;
-    }
-    const float tagStart = card.getRight() - totalTagWidth - 5.f;
     graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(juce::FontOptions(13.f).withStyle("Bold"));
-    graphics.drawFittedText(title,
-            juce::Rectangle<float>(labelLeft, card.getY() + 3.f,
-                    tagStart - labelLeft - 5.f, 20.f).toNearestInt(),
+    graphics.drawFittedText(title, layout.title.toNearestInt(),
             juce::Justification::centredLeft, 1);
-
-    float tagX = tagStart;
-    for (int index = 0; index < visibleTagCount; ++index) {
-        const auto label = tags[index].toUpperCase();
-        const juce::Rectangle<float> chip(
-                tagX, card.getY() + 6.f, tagWidths[index], 15.f);
-        graphics.setColour(juce::Colour(0xff333333));
-        graphics.fillRoundedRectangle(chip, 3.f);
-        graphics.setColour(CanvasChromePalette::text.withAlpha(0.9f));
-        graphics.setFont(tagFont);
-        graphics.drawFittedText(label, chip.toNearestInt(),
-                juce::Justification::centred, 1);
-        tagX += tagWidths[index] + 3.f;
-    }
+    paintHeaderTags(graphics, tags, layout);
 }
 
 }
