@@ -21,6 +21,7 @@
 #include "../Obj/CurveLine.h"
 #include "../UI/Panels/Panel.h"
 #include "../UI/Panels/PanelHostContext.h"
+#include "../UI/Panels/PanelInputHostComponent.h"
 #include "../UI/Panels/Texture.h"
 #include "../UI/Panels/ZoomRect.h"
 #include "../Util/CommonEnums.h"
@@ -217,6 +218,11 @@ void Interactor::mouseMove(const MouseEvent& e) {
 
 void Interactor::timerCallback() {
     if (display == nullptr || panel == nullptr || !display->isShowing()) {
+        return;
+    }
+
+    const auto* inputHost = dynamic_cast<const PanelInputHostComponent*>(display.get());
+    if (inputHost != nullptr && inputHost->isPointerGestureActive()) {
         return;
     }
 
@@ -496,16 +502,6 @@ void Interactor::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wh
     }
 }
 
-void Interactor::copyVertexPositions() {
-    if (Mesh* mesh = getMesh()) {
-        state.positions.clear();
-
-        for(auto vert : mesh->getVerts()) {
-            state.positions.push_back(*vert);
-        }
-    }
-}
-
 void Interactor::addToArray(const Array<Vertex*>& src, vector<VertexFrame>& dst) {
     for(auto vert : src) {
         if (vert == nullptr) {
@@ -520,8 +516,6 @@ void Interactor::addToArray(const Array<Vertex*>& src, vector<VertexFrame>& dst)
 }
 
 void Interactor::updateSelectionFrames() {
-    copyVertexPositions();
-
     state.singleHorz.clear();
     state.singleXY.clear();
     state.singleAll.clear();

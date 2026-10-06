@@ -225,8 +225,29 @@ GraphEditResult GraphCommandDispatcher::replaceNodeModel(
                 delta.captureNodeModel(graph, nodeId);
             },
             [&](auto& graph) {
+                if (!transientEdit.has_value()) {
+                    return GraphNodeStateEditor().replaceNodeModel(
+                            graph, nodeId, expectedRevision, std::move(model));
+                }
+                const Node* durableNode = document.graph().findNode(nodeId);
+                const Node* transientNode = graph.findNode(nodeId);
+                if (durableNode == nullptr || transientNode == nullptr) {
+                    return GraphEditResult { GraphEditCode::MissingNode, nodeId, {} };
+                }
+                const uint64_t durableRevision = durableNode->model != nullptr
+                        ? durableNode->model->revision() : 0;
+                if (expectedRevision != durableRevision) {
+                    return GraphEditResult { GraphEditCode::StaleRevision, nodeId, {} };
+                }
+                const uint64_t transientRevision = transientNode->model != nullptr
+                        ? transientNode->model->revision() : 0;
+                if (model != nullptr && transientRevision > durableRevision
+                        && model->revision() == transientRevision) {
+                    return GraphNodeStateEditor().replaceTransientNodeModel(
+                            graph, nodeId, transientRevision, std::move(model));
+                }
                 return GraphNodeStateEditor().replaceNodeModel(
-                        graph, nodeId, expectedRevision, std::move(model));
+                        graph, nodeId, transientRevision, std::move(model));
             });
 }
 

@@ -79,6 +79,7 @@ public:
             const std::vector<PreviewMorphTarget>& targets,
             float keyScale,
             float modWheel);
+    // During a gesture, expectedRevision is the captured durable model revision.
     GraphEditResult replaceNodeModel(
             const juce::String& nodeId,
             uint64_t expectedRevision,

@@ -29,8 +29,6 @@ public:
     vector<VertexFrame> singleHorz, singleXY, singleAll;
     vector<VertexFrame> selectedFrame;
 
-    vector<Vertex> positions;
-
 //  vector<CoordFrame> selectionCorners;
     vector<Vertex2> cornersStart;
     vector<Vertex2> pivots;

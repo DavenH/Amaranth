@@ -61,7 +61,8 @@ NodeEditorCommandService::NodeEditorCommandService(
     ,   commands            (commandsToUse)
     ,   presentation        (presentationToUse)
     ,   resources           (resourcesToUse)
-    ,   performanceObserver (performanceObserverToUse) {
+    ,   performanceObserver (performanceObserverToUse)
+    ,   modelCommands       (documentToUse, commandsToUse, presentationToUse) {
 }
 
 const Node* NodeEditorCommandService::findNode(const String& nodeId) const {
@@ -311,32 +312,15 @@ bool NodeEditorCommandService::publishCurveState(
 bool NodeEditorCommandService::publishNodeModel(
         const String& nodeId,
         NodeModelStatePtr model) {
-    const Node* node = findNode(nodeId);
-    if (node == nullptr || model == nullptr) {
-        return false;
-    }
-    const uint64_t currentRevision = node->model != nullptr ? node->model->revision() : 0;
-    const auto result = commands.replaceNodeModel(nodeId, currentRevision, std::move(model));
-    if (!result.succeeded()) {
-        return false;
-    }
-    if (result.changed) {
-        presentation.recordNodeEditorMovement(
-                nodeId,
-                "model",
-                FingerprintBuilder().add(currentRevision + 1).value());
-        presentation.repaintNodeEditor(false);
-    }
-    return true;
+    return modelCommands.publish(nodeId, std::move(model));
 }
 
-void NodeEditorCommandService::beginNodeModelEdit() {
-    commands.beginTransientEdit();
+bool NodeEditorCommandService::beginNodeModelEdit(const String& nodeId) {
+    return modelCommands.begin(nodeId);
 }
 
 void NodeEditorCommandService::endNodeModelEdit() {
-    commands.commitTransientEdit();
-    presentation.flushNodeEditorRefresh();
+    modelCommands.finish();
 }
 
 void NodeEditorCommandService::beginCurveTransaction() {

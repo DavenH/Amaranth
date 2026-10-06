@@ -9,6 +9,8 @@ class PanelInputHostComponent : public juce::Component {
 public:
     explicit PanelInputHostComponent(Panel& panel);
 
+    bool isPointerGestureActive() const { return pointerActive; }
+
 protected:
     Interactor* panelInteractor() const;
 

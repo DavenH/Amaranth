@@ -12,6 +12,7 @@
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Nodes/Unison/UnisonNode.h"
 
 #include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/Mesh.h>
@@ -1053,4 +1054,35 @@ TEST_CASE("Graph editor reports missing node parameter updates", "[cycle-v2][gra
 
     REQUIRE_FALSE(result.succeeded());
     REQUIRE(result.code == GraphEditCode::MissingNode);
+}
+
+TEST_CASE("Transient typed model replacement uses one durable concurrency token",
+        "[cycle-v2][graph][model][transient]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Unison, "unison", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    const auto initial = document.graph().findNode("unison")->model;
+    const uint64_t base = initial->revision();
+    commands.beginTransientEdit();
+    REQUIRE(commands.replaceNodeModel(
+            "unison", base, UnisonNodeModelState::create({ { 0.5f, 0.2f, 0.f } }, base + 1))
+            .changed);
+    REQUIRE(commands.replaceNodeModel(
+            "unison", base, UnisonNodeModelState::create({ { 0.5f, 0.8f, 0.f } }, base + 1))
+            .changed);
+    REQUIRE(commands.replaceNodeModel(
+            "unison", base + 1, UnisonNodeModelState::create({ {}, {} }, base + 2))
+            .code == GraphEditCode::StaleRevision);
+    REQUIRE(document.graph().findNode("unison")->model == initial);
+    commands.commitTransientEdit();
+    const auto final = std::dynamic_pointer_cast<const UnisonNodeModelState>(
+            document.graph().findNode("unison")->model);
+    REQUIRE(final->voices().front().pan == 0.8f);
+    REQUIRE(commands.replaceNodeModel(
+            "unison", base + 1, UnisonNodeModelState::create({ {}, {} }, base + 1))
+            .code == GraphEditCode::ConflictingRevision);
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findNode("unison")->model == initial);
+    REQUIRE_FALSE(document.canUndo());
 }

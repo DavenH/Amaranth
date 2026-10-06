@@ -1,5 +1,15 @@
 # Cycle V2 UI Bug Notes
 
+## P3: File assertion during Unison automation startup
+
+On 2026-10-05, both recovered Unison gesture fixtures passed all 33 commands
+but logged `JUCE Assertion failure in juce_File.cpp:219`. The Live run also
+reported the already documented CoreMIDI startup assertion. The Guide gain
+fixture passed all 20 commands without assertions. Logs:
+`/private/tmp/salvage-unison-live.log` and
+`/private/tmp/salvage-unison-release.log` (complete logs have `.raw` suffixes).
+Status: open; the source of the File assertion has not been diagnosed.
+
 ## P2: Broader Trimesh tests retain a stale control-region expectation
 
 The 2026-09-18 `CycleV2_tests '[trimesh]'` run passed the mapped pitch tests but

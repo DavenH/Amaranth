@@ -3360,42 +3360,107 @@ TEST_CASE("Node editor resource commands use the atomic dispatcher boundary",
     REQUIRE(presentation.rebinds == 2);
 }
 
-TEST_CASE("Node editor command service publishes model edits as one transaction",
-        "[cycle-v2][editor][model]") {
+TEST_CASE("Typed model gestures retain a durable base across updates, commit, and undo",
+        "[cycle-v2][editor][model][causal]") {
+    ScopedJuceInitialiser_GUI juce;
+    for (const auto mode : { ProbeRefreshMode::OnGestureCommit, ProbeRefreshMode::LiveLatest }) {
+        for (const int unrelatedNodes : { 0, 128 }) {
+            CAPTURE(mode, unrelatedNodes);
+            Component owner;
+            NodeGraph graph;
+            GraphNodeFactory factory;
+            Node unison = factory.createNode(NodeKind::Unison, "unison", {});
+            for (auto& parameter : unison.parameters) {
+                if (parameter.id == "mode") {
+                    parameter.value = "individual";
+                }
+            }
+            graph.addNode(std::move(unison));
+            for (int index = 0; index < unrelatedNodes; ++index) {
+                graph.addNode(factory.createNode(NodeKind::Delay, "other" + String(index), {}));
+            }
+            REQUIRE(graph.addAudioResource({
+                    "unrelated", "unrelated.wav", 48000.0,
+                    std::vector<float>((size_t) unrelatedNodes * 128, 0.5f)
+            }));
+            GraphDocument document(std::move(graph));
+            GraphCommandDispatcher dispatcher(document);
+            RecordingPresentation presentation;
+            presentation.refreshMode = mode;
+            NullResources resources;
+            NodeEditorCommandService commands(
+                    owner, document, dispatcher, presentation, resources);
+            const auto initial = document.graph().findNode("unison")->model;
+            const uint64_t durableRevision = document.revision();
+            REQUIRE(commands.beginNodeModelEdit("unison"));
+            InteractionComplexityDiagnostics::reset();
+
+            REQUIRE(commands.publishNodeModel(
+                    "unison", UnisonNodeModelState::create({ { 0.5f, 0.2f, 0.f } }, 2)));
+            REQUIRE(document.revision() == durableRevision);
+            REQUIRE(document.graph().findNode("unison")->model == initial);
+            REQUIRE(commands.publishNodeModel(
+                    "unison", dispatcher.editingGraph().findNode("unison")->model));
+            REQUIRE(presentation.recordedMovements == 1);
+            REQUIRE(commands.publishNodeModel(
+                    "unison", UnisonNodeModelState::create({ { 0.5f, 0.8f, 0.f } }, 2)));
+            REQUIRE(document.graph().findNode("unison")->model == initial);
+            const Node* transient = dispatcher.editingGraph().findNode("unison");
+            const auto transientConfiguration = buildUnisonNodeConfiguration(
+                    transient->parameters, transient->model);
+            REQUIRE(transientConfiguration->layout.voices.front().pan == Catch::Approx(0.8f));
+            commands.endNodeModelEdit();
+
+            REQUIRE(document.revision() == durableRevision + 1);
+            REQUIRE(presentation.recordedMovements == 2);
+            REQUIRE(presentation.gestureCommits == 1);
+            REQUIRE(presentation.scheduledRefreshes == 0);
+            REQUIRE(presentation.immediateRefreshes == 0);
+            REQUIRE_FALSE(dispatcher.hasTransientEdit());
+            const Node* committed = document.graph().findNode("unison");
+            REQUIRE(buildUnisonNodeConfiguration(committed->parameters, committed->model)
+                    ->layout.voices.front().pan == Catch::Approx(0.8f));
+            REQUIRE(document.undo());
+            REQUIRE(document.graph().findNode("unison")->model == initial);
+            REQUIRE_FALSE(document.canUndo());
+            REQUIRE(document.redo());
+            REQUIRE(document.graph().findNode("unison")->model->revision() == 2);
+            const auto counts = InteractionComplexityDiagnostics::counts();
+            REQUIRE(counts.graphCopies == 0);
+            REQUIRE(counts.meshCopies == 0);
+            REQUIRE(counts.audioSamplesCopied == 0);
+            REQUIRE(counts.modelSerializations == 0);
+            REQUIRE(counts.nodeLinearScans == 0);
+        }
+    }
+}
+
+TEST_CASE("Discrete typed model commands use one gesture and reject unrelated publications",
+        "[cycle-v2][editor][model][causal]") {
     ScopedJuceInitialiser_GUI juce;
     Component owner;
     NodeGraph graph;
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::Unison, "unison", {}));
+    GraphNodeFactory factory;
+    graph.addNode(factory.createNode(NodeKind::Unison, "unison", {}));
+    graph.addNode(factory.createNode(NodeKind::Unison, "other", {}));
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher dispatcher(document);
     RecordingPresentation presentation;
     NullResources resources;
-    NodeEditorCommandService commands(
-            owner,
-            document,
-            dispatcher,
-            presentation,
-            resources);
-
-    commands.beginNodeModelEdit();
-    REQUIRE(commands.publishNodeModel(
-            "unison",
-            UnisonNodeModelState::create({ {}, {} }, 2)));
-    REQUIRE(commands.publishNodeModel(
-            "unison",
-            UnisonNodeModelState::create({ {}, {}, {} }, 3)));
-    commands.endNodeModelEdit();
-
-    const auto current = std::dynamic_pointer_cast<const UnisonNodeModelState>(
-            document.graph().findNode("unison")->model);
-    REQUIRE(current != nullptr);
-    REQUIRE(current->voices().size() == 3);
-    REQUIRE(document.canUndo());
+    NodeEditorCommandService commands(owner, document, dispatcher, presentation, resources);
+    REQUIRE(commands.publishNodeModel("unison", UnisonNodeModelState::create({ {}, {} }, 2)));
+    REQUIRE_FALSE(dispatcher.hasTransientEdit());
+    REQUIRE(presentation.gestureCommits == 1);
     REQUIRE(document.undo());
-    const auto restored = std::dynamic_pointer_cast<const UnisonNodeModelState>(
-            document.graph().findNode("unison")->model);
-    REQUIRE(restored != nullptr);
-    REQUIRE(restored->voices().size() == 1);
+    REQUIRE_FALSE(document.canUndo());
+
+    REQUIRE(commands.beginNodeModelEdit("unison"));
+    REQUIRE_FALSE(commands.publishNodeModel("other", UnisonNodeModelState::create({ {}, {} }, 2)));
+    REQUIRE(commands.publishNodeModel("unison", UnisonNodeModelState::create({ {}, {} }, 2)));
+    REQUIRE_FALSE(commands.publishNodeModel("unison", UnisonNodeModelState::create({ {}, {}, {} }, 1)));
+    REQUIRE_FALSE(dispatcher.hasTransientEdit());
+    REQUIRE(document.graph().findNode("unison")->model->revision() == 1);
+    commands.endNodeModelEdit();
     REQUIRE_FALSE(document.canUndo());
 }
 
