@@ -23,6 +23,15 @@ its sampled velocity for `frameCount / sampleRate / (columns - 1)` seconds.
 The diagnostic traversal uses a separate accumulator; it must not advance the
 realtime voice state or replace the Trimesh editor's authored-rate surface.
 
+## Audio prediction
+
+The first prepared spectral frame after note-on has zero added phase. Later
+frames rotate each affected harmonic by its accumulated phase, changing the
+rendered waveform while the Trimesh phase layer leaves spectral magnitudes
+alone. The complete onset audio block may already differ from a zero-phase
+render because the oscillator renders subsequent frames within that block.
+The phase source resets on note-on, so the rotation starts again from zero.
+
 ## Ownership and complexity
 
 The existing Trimesh rasterizer owns mesh sampling and guide behavior. A small
@@ -63,3 +72,11 @@ prepared source, note cadence, toggle, and Spy contracts. The runtime file is
 audio rendering, traversal rendering, and their timing translation. The
 Trimesh rasterizers remain the sole mesh sampling owners, with no copied
 policy or deletion target. The architecture audit and diff check pass.
+
+The audio regression renders the preset in Velocity, Absolute, and zero-phase
+control modes. Velocity has nonzero output and differs from both controls; its
+first 256-sample block and later blocks differ from the zero-phase control.
+The separate prepared-source assertions verify zero phase on the first frame,
+elapsed-time accumulation, and reset. An initial prediction that the *whole*
+first audio block would equal zero phase failed; frame rendering within that
+block explains the difference. All five focused phase tests pass.

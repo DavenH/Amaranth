@@ -145,35 +145,71 @@ TEST_CASE("Prepared Trimesh phase velocity reaches the spectral graph and resets
 
     const auto absolutePlan = GraphCompiler().compile(loaded.graph);
     REQUIRE(absolutePlan.succeeded());
+    NodeGraph zeroPhaseGraph = loaded.graph;
+    Node* zeroPhaseNode = NodeGraphTestAccess::findNodeForEditing(
+            zeroPhaseGraph, "phaseLayer1");
+    REQUIRE(zeroPhaseNode != nullptr);
+    auto zeroPhaseGain = std::find_if(
+            zeroPhaseNode->parameters.begin(),
+            zeroPhaseNode->parameters.end(),
+            [](const NodeParameter& parameter) {
+                return parameter.id == "gain";
+            });
+    REQUIRE(zeroPhaseGain != zeroPhaseNode->parameters.end());
+    zeroPhaseGain->value = "0";
+    const auto zeroPhasePlan = GraphCompiler().compile(zeroPhaseGraph);
+    REQUIRE(zeroPhasePlan.succeeded());
+
     AudioExecutionSpec spec;
     spec.maximumFrameCount = 256;
     spec.sampleRate = 44100.0;
     GraphAudioExecutor velocityExecutor;
     GraphAudioExecutor absoluteExecutor;
+    GraphAudioExecutor zeroPhaseExecutor;
     velocityExecutor.prepareExecution(compiled.plan, spec);
     absoluteExecutor.prepareExecution(absolutePlan.plan, spec);
+    zeroPhaseExecutor.prepareExecution(zeroPhasePlan.plan, spec);
     AudioVoiceContext voice;
     voice.controls.noteNumber = 60;
     voice.controls.velocity = 1.f;
     voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     double audioDifference = 0.0;
+    double onsetDifferenceFromZeroPhase = 0.0;
+    double laterDifferenceFromZeroPhase = 0.0;
+    double velocityEnergy = 0.0;
     for (int block = 0; block < 16; ++block) {
         const auto velocityOutput = velocityExecutor.processRealtime(
                 compiled.plan, 256, {}, voice);
         const auto absoluteOutput = absoluteExecutor.processRealtime(
                 absolutePlan.plan, 256, {}, voice);
+        const auto zeroPhaseOutput = zeroPhaseExecutor.processRealtime(
+                zeroPhasePlan.plan, 256, {}, voice);
         REQUIRE(velocityOutput.isValid());
         REQUIRE(absoluteOutput.isValid());
+        REQUIRE(zeroPhaseOutput.isValid());
         const auto& velocitySamples = velocityOutput.payload->block.samples;
         const auto& absoluteSamples = absoluteOutput.payload->block.samples;
+        const auto& zeroPhaseSamples = zeroPhaseOutput.payload->block.samples;
         REQUIRE(velocitySamples.size() == absoluteSamples.size());
+        REQUIRE(velocitySamples.size() == zeroPhaseSamples.size());
         for (size_t sample = 0; sample < velocitySamples.size(); ++sample) {
             audioDifference += std::abs(
                     velocitySamples[sample] - absoluteSamples[sample]);
+            const double zeroPhaseDifference = std::abs(
+                    velocitySamples[sample] - zeroPhaseSamples[sample]);
+            if (block == 0) {
+                onsetDifferenceFromZeroPhase += zeroPhaseDifference;
+            } else {
+                laterDifferenceFromZeroPhase += zeroPhaseDifference;
+            }
+            velocityEnergy += std::abs(velocitySamples[sample]);
         }
         voice.events.clear();
     }
     REQUIRE(audioDifference > 0.01);
+    REQUIRE(velocityEnergy > 0.01);
+    REQUIRE(onsetDifferenceFromZeroPhase > 0.01);
+    REQUIRE(laterDifferenceFromZeroPhase > 0.01);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
