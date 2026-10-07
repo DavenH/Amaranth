@@ -1,4 +1,5 @@
 #include "Runtime/GraphPresentationFacts.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 
 namespace CycleV2 {
 
@@ -10,6 +11,7 @@ void indexItems(
         Index& index,
         Id id) {
     index.reserve(items.size());
+    InteractionComplexityDiagnostics::recordPresentationIndexRebuildVisits(items.size());
     for (size_t itemIndex = 0; itemIndex < items.size(); ++itemIndex) {
         index.emplace(id(items[itemIndex]), itemIndex);
     }
@@ -29,29 +31,53 @@ GraphPresentationFacts::Structure::Structure(const NodeGraph& graph) :
 GraphPresentationFacts::GraphPresentationFacts(
         const NodeGraph& graph,
         const GraphPresentationSnapshot& snapshot,
-        const GraphPresentationFacts* previous) :
+        const GraphPresentationFacts* previous,
+        bool probeIdsStable) :
         structure(previous != nullptr
                 ? previous->structure
                 : std::make_shared<const Structure>(graph)) {
-    indexItems(snapshot.previewResult.nodes, previewIndices, [](const auto& preview) {
-        return preview.nodeId;
-    });
-    indexItems(snapshot.runtimeTrace.nodes, runtimeTraceIndices, [](const auto& trace) {
-        return trace.nodeId;
-    });
-    indexItems(snapshot.previewResult.probes, probePreviewIndices, [](const auto& preview) {
+    if (previous != nullptr
+            && previous->previewIndices->size() == snapshot.previewResult.nodes.size()
+            && previous->runtimeTraceIndices->size() == snapshot.runtimeTrace.nodes.size()
+            && previous->executionIndices->size() == snapshot.compileResult.plan.nodeOrder.size()) {
+        previewIndices = previous->previewIndices;
+        runtimeTraceIndices = previous->runtimeTraceIndices;
+        executionIndices = previous->executionIndices;
+        if (probeIdsStable
+                && previous->probePreviewIndices->size() == snapshot.previewResult.probes.size()) {
+            probePreviewIndices = previous->probePreviewIndices;
+            return;
+        }
+    }
+    if (previewIndices == nullptr) {
+        auto previews = std::make_shared<Index>();
+        indexItems(snapshot.previewResult.nodes, *previews, [](const auto& preview) {
+            return preview.nodeId;
+        });
+        previewIndices = std::move(previews);
+        auto traces = std::make_shared<Index>();
+        indexItems(snapshot.runtimeTrace.nodes, *traces, [](const auto& trace) {
+            return trace.nodeId;
+        });
+        runtimeTraceIndices = std::move(traces);
+        auto execution = std::make_shared<Index>();
+        indexItems(snapshot.compileResult.plan.nodeOrder, *execution, [](const auto& nodeId) {
+            return nodeId;
+        });
+        executionIndices = std::move(execution);
+    }
+    auto probes = std::make_shared<Index>();
+    indexItems(snapshot.previewResult.probes, *probes, [](const auto& preview) {
         return preview.probeId;
     });
-    indexItems(snapshot.compileResult.plan.nodeOrder, executionIndices, [](const auto& nodeId) {
-        return nodeId;
-    });
+    probePreviewIndices = std::move(probes);
 }
 
 const NodePreviewResult* GraphPresentationFacts::previewFor(
         const GraphPresentationSnapshot& snapshot,
         const String& nodeId) const {
-    const auto found = previewIndices.find(nodeId);
-    return found == previewIndices.end()
+    const auto found = previewIndices->find(nodeId);
+    return found == previewIndices->end()
             ? nullptr
             : &snapshot.previewResult.nodes[found->second];
 }
@@ -59,8 +85,8 @@ const NodePreviewResult* GraphPresentationFacts::previewFor(
 const RuntimeNodeTrace* GraphPresentationFacts::runtimeTraceFor(
         const GraphPresentationSnapshot& snapshot,
         const String& nodeId) const {
-    const auto found = runtimeTraceIndices.find(nodeId);
-    return found == runtimeTraceIndices.end()
+    const auto found = runtimeTraceIndices->find(nodeId);
+    return found == runtimeTraceIndices->end()
             ? nullptr
             : &snapshot.runtimeTrace.nodes[found->second];
 }
@@ -68,15 +94,15 @@ const RuntimeNodeTrace* GraphPresentationFacts::runtimeTraceFor(
 const GraphPreviewResult::SignalProbePreview* GraphPresentationFacts::probePreviewFor(
         const GraphPresentationSnapshot& snapshot,
         const String& probeId) const {
-    const auto found = probePreviewIndices.find(probeId);
-    return found == probePreviewIndices.end()
+    const auto found = probePreviewIndices->find(probeId);
+    return found == probePreviewIndices->end()
             ? nullptr
             : &snapshot.previewResult.probes[found->second];
 }
 
 int GraphPresentationFacts::executionIndexFor(const String& nodeId) const {
-    const auto found = executionIndices.find(nodeId);
-    return found == executionIndices.end() ? -1 : (int) found->second;
+    const auto found = executionIndices->find(nodeId);
+    return found == executionIndices->end() ? -1 : (int) found->second;
 }
 
 PortDomain GraphPresentationFacts::domainForEdge(

@@ -97,7 +97,6 @@ struct PlannedNodeProduct {
 
 struct CausalUpdateResult {
     std::vector<PlannedNodeProduct> executed;
-    std::array<std::vector<uint8_t>, updateProductCount> affected;
     bool invariantViolation {};
 };
 
@@ -224,8 +223,10 @@ private:
     std::vector<FingerprintSlots> productFingerprints;
     std::vector<EditStampSlots> lastExecutedEdit;
     std::vector<PlanningSlots> planningSlots;
+    std::vector<int> touchedPlanningNodes;
     std::vector<uint8_t> observedNodes;
     std::vector<uint8_t> leadsToObservation;
+    std::vector<int> observationTargets;
     std::vector<int> traversalPending;
     std::vector<int> traversalTargets;
     std::vector<uint64_t> closureVisitGeneration;

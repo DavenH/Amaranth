@@ -527,6 +527,13 @@ void GraphCommandDispatcher::accumulateChange(
             || change.guidePresentationChanged;
     destination.parameterImpacts = destination.parameterImpacts | change.parameterImpacts;
     destination.modelChanged = destination.modelChanged || change.modelChanged;
+    const ModelEditScope scope = change.modelChanged
+            && change.modelEditScope == ModelEditScope::None
+            ? ModelEditScope::WholeModel
+            : change.modelEditScope;
+    destination.modelEditScope = static_cast<ModelEditScope>(std::max(
+            static_cast<int>(destination.modelEditScope),
+            static_cast<int>(scope)));
     destination.editorStateChanged = destination.editorStateChanged || change.editorStateChanged;
     destination.resourcesChanged = destination.resourcesChanged || change.resourcesChanged;
 }

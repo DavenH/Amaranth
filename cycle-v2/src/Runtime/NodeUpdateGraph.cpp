@@ -1,4 +1,5 @@
 #include "Runtime/NodeUpdateGraph.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Runtime/FingerprintBuilder.h"
 
 #include <algorithm>
@@ -169,18 +170,15 @@ CausalUpdateResult NodeUpdateGraph::executeDeferredPublication(
     }
     std::unique_lock<std::mutex> productLock(productMutex);
 
-    for (auto& affected : result.affected) {
-        affected.assign(plan.dependencyIndex.nodeIds.size(), 0);
-    }
-
     planningSlots.resize(plan.dependencyIndex.nodeIds.size());
     productFingerprints.resize(plan.dependencyIndex.nodeIds.size());
     lastExecutedEdit.resize(plan.dependencyIndex.nodeIds.size());
-    for (auto& nodeProducts : planningSlots) {
-        for (auto& product : nodeProducts) {
+    for (const int nodeIndex : touchedPlanningNodes) {
+        for (auto& product : planningSlots[static_cast<size_t>(nodeIndex)]) {
             product.reset();
         }
     }
+    touchedPlanningNodes.clear();
     prepareObservationMask(plan.dependencyIndex, request.observedNodeIds);
     for (const auto& invalidation : request.invalidations) {
         const auto root = plan.dependencyIndex.nodeIndexById.find(invalidation.sourceNodeId);
@@ -211,12 +209,17 @@ CausalUpdateResult NodeUpdateGraph::executeDeferredPublication(
                 continue;
             }
 
-            result.affected[static_cast<size_t>(invalidation.product)]
-                    [static_cast<size_t>(target)] = 1;
-
             auto& productSlot = planningSlots[static_cast<size_t>(target)]
                     [static_cast<size_t>(invalidation.product)];
             if (!productSlot.has_value()) {
+                const auto& nodeSlots = planningSlots[static_cast<size_t>(target)];
+                const bool firstForNode = std::none_of(
+                        nodeSlots.begin(), nodeSlots.end(), [](const auto& slot) {
+                            return slot.has_value();
+                        });
+                if (firstForNode) {
+                    touchedPlanningNodes.push_back(target);
+                }
                 productSlot = PlannedNodeProduct {
                         nodeId, invalidation.product, 0, {}, target };
             }
@@ -230,7 +233,10 @@ CausalUpdateResult NodeUpdateGraph::executeDeferredPublication(
         }
     }
 
-    for (size_t nodeIndex = 0; nodeIndex < planningSlots.size(); ++nodeIndex) {
+    std::sort(touchedPlanningNodes.begin(), touchedPlanningNodes.end());
+    for (const int touchedNode : touchedPlanningNodes) {
+        const auto nodeIndex = static_cast<size_t>(touchedNode);
+        InteractionComplexityDiagnostics::recordPreviewPlanningSlotVisits(1);
         for (auto& productSlot : planningSlots[nodeIndex]) {
             if (!productSlot.has_value()) {
                 continue;
@@ -430,17 +436,26 @@ uint64_t NodeUpdateGraph::targetFingerprint(
 void NodeUpdateGraph::prepareObservationMask(
         const GraphDependencyIndex& index,
         const std::vector<String>& observedNodeIds) {
-    observedNodes.assign(index.nodeIds.size(), 0);
-    leadsToObservation.assign(index.nodeIds.size(), 0);
+    observedNodes.resize(index.nodeIds.size());
+    leadsToObservation.resize(index.nodeIds.size());
+    for (const int target : observationTargets) {
+        observedNodes[static_cast<size_t>(target)] = 0;
+        leadsToObservation[static_cast<size_t>(target)] = 0;
+    }
+    observationTargets.clear();
     traversalPending.clear();
     for (const auto& nodeId : observedNodeIds) {
         const auto found = index.nodeIndexById.find(nodeId);
         if (found == index.nodeIndexById.end()) {
             continue;
         }
-        observedNodes[static_cast<size_t>(found->second)] = 1;
-        leadsToObservation[static_cast<size_t>(found->second)] = 1;
-        traversalPending.push_back(found->second);
+        const auto target = static_cast<size_t>(found->second);
+        observedNodes[target] = 1;
+        if (leadsToObservation[target] == 0) {
+            leadsToObservation[target] = 1;
+            observationTargets.push_back(found->second);
+            traversalPending.push_back(found->second);
+        }
     }
     while (!traversalPending.empty()) {
         const int current = traversalPending.back();
@@ -448,6 +463,7 @@ void NodeUpdateGraph::prepareObservationMask(
         for (const int dependency : index.dependencies[static_cast<size_t>(current)]) {
             if (leadsToObservation[static_cast<size_t>(dependency)] == 0) {
                 leadsToObservation[static_cast<size_t>(dependency)] = 1;
+                observationTargets.push_back(dependency);
                 traversalPending.push_back(dependency);
             }
         }
@@ -467,6 +483,7 @@ const std::vector<int>& NodeUpdateGraph::downstreamClosure(
     traversalPending.clear();
     traversalTargets.clear();
     traversalPending.push_back(sourceIndex);
+    traversalTargets.push_back(sourceIndex);
     closureVisitGeneration[static_cast<size_t>(sourceIndex)] = currentClosureGeneration;
     while (!traversalPending.empty()) {
         const int current = traversalPending.back();
@@ -476,15 +493,12 @@ const std::vector<int>& NodeUpdateGraph::downstreamClosure(
                     != currentClosureGeneration) {
                 closureVisitGeneration[static_cast<size_t>(dependent)] = currentClosureGeneration;
                 traversalPending.push_back(dependent);
+                traversalTargets.push_back(dependent);
             }
         }
     }
 
-    for (int nodeIndex = 0; nodeIndex < static_cast<int>(index.nodeIds.size()); ++nodeIndex) {
-        if (closureVisitGeneration[static_cast<size_t>(nodeIndex)] == currentClosureGeneration) {
-            traversalTargets.push_back(nodeIndex);
-        }
-    }
+    std::sort(traversalTargets.begin(), traversalTargets.end());
     return traversalTargets;
 }
 

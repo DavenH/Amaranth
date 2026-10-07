@@ -1,4 +1,5 @@
 #include "Runtime/GraphAudioExecutor.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Runtime/AudioProcessContextUtils.h"
 #include "Runtime/AudioPerformanceMetrics.h"
 #include "Nodes/Control/ModulationTriple.h"
@@ -732,6 +733,9 @@ void GraphAudioExecutor::prepareExecutionInternal(
     }
 
     for (size_t stepIndex = 0; stepIndex < plan.steps.size(); ++stepIndex) {
+        if (pass == ProcessingPass::Complete) {
+            InteractionComplexityDiagnostics::recordPreviewPreparationStepVisit();
+        }
         const auto& step = plan.steps[stepIndex];
         const bool globalStep = step.ownershipScope == RuntimeOwnershipScope::Global;
         if ((pass == ProcessingPass::Voice && globalStep)

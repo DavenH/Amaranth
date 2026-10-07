@@ -6,6 +6,7 @@
 #include <Util/Arithmetic.h>
 
 #include "Runtime/GraphPreviewExecutor.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 
 #include "Runtime/DefaultOutputPreview.h"
 #include "Runtime/FingerprintBuilder.h"
@@ -270,6 +271,7 @@ GraphPreviewResult renderPreview(
     std::vector<size_t> stepIndices;
     stepIndices.reserve(plan.steps.size());
     for (size_t stepIndex = 0; stepIndex < plan.steps.size(); ++stepIndex) {
+        InteractionComplexityDiagnostics::recordPreviewRenderStepVisit();
         const int cachedIndex = result.previewResultIndexByStep[stepIndex];
         if (cachedIndex >= 0 && static_cast<size_t>(cachedIndex) < result.nodes.size()) {
             workspace[stepIndex] = viewOf(result.nodes[static_cast<size_t>(cachedIndex)]);

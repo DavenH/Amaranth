@@ -364,3 +364,12 @@ scratch-buffer repair noted above did not cover this fixed-array bound.
 Current status: open. Size the renderer's scratch storage for the actual
 individual voice count without truncating authored voices, then regression-test
 loading and rasterizing a preset with more than ten voices.
+
+## P2: Trimesh primary morph test starts without selected vertex parameters
+
+On 2026-10-06, `CycleV2_tests 'Trimesh primary morph commits refresh graph
+presentation'` failed before its morph gesture: `selectedParameters.size() == 6`
+at `TestNodeEditorHost.cpp:3708` observed `0 == 6`, although the selected
+vertex index was 2. The focused test reproduces the failure. Current status:
+open; this arose during the Waveshaper point-preview complexity audit, outside
+the changed code path.

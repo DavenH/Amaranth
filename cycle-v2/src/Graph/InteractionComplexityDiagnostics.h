@@ -21,6 +21,12 @@ struct InteractionComplexityCounts {
     uint64_t validationNodeVisits {};
     uint64_t validationEdgeVisits {};
     uint64_t domainTransfers {};
+    uint64_t presentationSnapshotCopies {};
+    uint64_t overlayNodesMaterialized {};
+    uint64_t previewPreparationStepVisits {};
+    uint64_t previewPlanningSlotVisits {};
+    uint64_t previewRenderStepVisits {};
+    uint64_t presentationIndexRebuildVisits {};
 };
 
 class InteractionComplexityDiagnostics {
@@ -40,6 +46,12 @@ public:
         validationNodeVisits.store(0, std::memory_order_relaxed);
         validationEdgeVisits.store(0, std::memory_order_relaxed);
         domainTransfers.store(0, std::memory_order_relaxed);
+        presentationSnapshotCopies.store(0, std::memory_order_relaxed);
+        overlayNodesMaterialized.store(0, std::memory_order_relaxed);
+        previewPreparationStepVisits.store(0, std::memory_order_relaxed);
+        previewPlanningSlotVisits.store(0, std::memory_order_relaxed);
+        previewRenderStepVisits.store(0, std::memory_order_relaxed);
+        presentationIndexRebuildVisits.store(0, std::memory_order_relaxed);
     }
 
     static InteractionComplexityCounts counts() {
@@ -57,7 +69,13 @@ public:
                 meshEditOwnerVisits.load(std::memory_order_relaxed),
                 validationNodeVisits.load(std::memory_order_relaxed),
                 validationEdgeVisits.load(std::memory_order_relaxed),
-                domainTransfers.load(std::memory_order_relaxed)
+                domainTransfers.load(std::memory_order_relaxed),
+                presentationSnapshotCopies.load(std::memory_order_relaxed),
+                overlayNodesMaterialized.load(std::memory_order_relaxed),
+                previewPreparationStepVisits.load(std::memory_order_relaxed),
+                previewPlanningSlotVisits.load(std::memory_order_relaxed),
+                previewRenderStepVisits.load(std::memory_order_relaxed),
+                presentationIndexRebuildVisits.load(std::memory_order_relaxed)
         };
     }
 
@@ -77,6 +95,18 @@ public:
     static void recordValidationNodeVisits(size_t count) { validationNodeVisits += count; }
     static void recordValidationEdgeVisits(size_t count) { validationEdgeVisits += count; }
     static void recordDomainTransfer() { ++domainTransfers; }
+    static void recordPresentationSnapshotCopy() { ++presentationSnapshotCopies; }
+    static void recordOverlayNodeMaterialization(size_t count) {
+        overlayNodesMaterialized += count;
+    }
+    static void recordPreviewPreparationStepVisit() { ++previewPreparationStepVisits; }
+    static void recordPreviewPlanningSlotVisits(size_t count) {
+        previewPlanningSlotVisits += count;
+    }
+    static void recordPreviewRenderStepVisit() { ++previewRenderStepVisits; }
+    static void recordPresentationIndexRebuildVisits(size_t count) {
+        presentationIndexRebuildVisits += count;
+    }
 
 private:
     static inline std::atomic<uint64_t> graphCopies {};
@@ -93,6 +123,12 @@ private:
     static inline std::atomic<uint64_t> validationNodeVisits {};
     static inline std::atomic<uint64_t> validationEdgeVisits {};
     static inline std::atomic<uint64_t> domainTransfers {};
+    static inline std::atomic<uint64_t> presentationSnapshotCopies {};
+    static inline std::atomic<uint64_t> overlayNodesMaterialized {};
+    static inline std::atomic<uint64_t> previewPreparationStepVisits {};
+    static inline std::atomic<uint64_t> previewPlanningSlotVisits {};
+    static inline std::atomic<uint64_t> previewRenderStepVisits {};
+    static inline std::atomic<uint64_t> presentationIndexRebuildVisits {};
 };
 
 }

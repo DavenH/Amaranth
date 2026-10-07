@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "Runtime/GraphPresentationModel.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Runtime/GraphPresentationFacts.h"
 #include "Runtime/PreviewMorphBinding.h"
 #include "Runtime/PreviewPitchResolver.h"
@@ -83,6 +84,7 @@ bool GraphPresentationModel::refresh(
     const bool preview = compile || requiresPreview(change);
     scheduler.cancelAndWait();
 
+    InteractionComplexityDiagnostics::recordPresentationSnapshotCopy();
     GraphPresentationSnapshot next = current;
     next.graphRevision = documentRevision;
     if (!hasExplicitPreviewMidiNote) {
@@ -99,7 +101,7 @@ bool GraphPresentationModel::refresh(
         previewRenderer.resetExecutionState();
     } else if (change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
-        refreshConfigurations(graph, next.compileResult.plan, change.nodeIds);
+        refreshConfigurations(graph, next.compileResult.plan, change);
     }
     if (!compile && change.probesChanged) {
         compiler.refreshSignalProbes(graph, next.compileResult.plan);
@@ -140,7 +142,8 @@ bool GraphPresentationModel::refresh(
         ++previewRenders;
     }
 
-    const bool accepted = acceptSnapshot(std::move(next), graph, !compile);
+    const bool accepted = acceptSnapshot(
+            std::move(next), graph, !compile, !change.probesChanged);
     if (accepted && (compile
             || change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration))) {
@@ -176,7 +179,8 @@ bool GraphPresentationModel::canAcceptSnapshot(
 bool GraphPresentationModel::acceptSnapshot(
         GraphPresentationSnapshot snapshotToAccept,
         const NodeGraph& graph,
-        bool reuseStructure) {
+        bool reuseStructure,
+        bool probeIdsStable) {
     if (!canAcceptSnapshot(snapshotToAccept)) {
         return false;
     }
@@ -184,7 +188,7 @@ bool GraphPresentationModel::acceptSnapshot(
             ? snapshotToAccept.facts.get()
             : nullptr;
     snapshotToAccept.facts = std::make_shared<const GraphPresentationFacts>(
-            graph, snapshotToAccept, previous);
+            graph, snapshotToAccept, previous, probeIdsStable);
     current = std::move(snapshotToAccept);
     ++presentationRevision;
     return true;
@@ -303,6 +307,7 @@ void GraphPresentationModel::refreshAsync(
     requestedGraphRevision = documentRevision;
     const uint64_t generation = scheduler.beginAsyncRequest();
     const bool preview = requiresPreview(change);
+    InteractionComplexityDiagnostics::recordPresentationSnapshotCopy();
     GraphPresentationSnapshot next = current;
     next.graphRevision = documentRevision;
     const auto request = scheduler.request(
@@ -316,7 +321,7 @@ void GraphPresentationModel::refreshAsync(
             preview,
             scope);
     if (!request.edit.isValid() || request.invalidations.empty()) {
-        acceptSnapshot(std::move(next), *graph, true);
+        acceptSnapshot(std::move(next), *graph, true, !change.probesChanged);
         performance.record(
                 Performance::Stage::EndToEnd,
                 performance.timestamp() - requestedAt);
@@ -343,7 +348,11 @@ void GraphPresentationModel::refreshAsync(
                 return executeAsyncProducts(job, products);
             },
             [this](AsyncRefresh& job) {
-                if (!acceptSnapshot(std::move(job.snapshot), *job.graph, true)) {
+                if (!acceptSnapshot(
+                            std::move(job.snapshot),
+                            *job.graph,
+                            true,
+                            !job.change.probesChanged)) {
                     return false;
                 }
                 if (job.scope == PresentationRefreshScope::Downstream
@@ -374,7 +383,7 @@ bool GraphPresentationModel::executeAsyncProducts(
                     && hasImpact(refresh.change.parameterImpacts,
                             ParameterImpact::DspConfiguration))) {
         const uint64_t startedAt = performance.timestamp();
-        refreshConfigurations(*refresh.graph, next.compileResult.plan, refresh.change.nodeIds);
+        refreshConfigurations(*refresh.graph, next.compileResult.plan, refresh.change);
         performance.record(
                 GraphPresentationPerformanceMetrics::Stage::Configuration,
                 performance.timestamp() - startedAt);
@@ -456,6 +465,7 @@ void GraphPresentationModel::commitLocalEditorState(
         return;
     }
     requestedGraphRevision = documentRevision;
+    InteractionComplexityDiagnostics::recordPresentationSnapshotCopy();
     GraphPresentationSnapshot next = current;
     next.graphRevision = documentRevision;
     acceptSnapshot(std::move(next));
@@ -522,19 +532,16 @@ void GraphPresentationModel::refreshPreviewMorphBindings() {
 void GraphPresentationModel::refreshConfigurations(
         const NodeGraph& graph,
         GraphExecutionPlan& plan,
-        const std::vector<String>& nodeIds) {
-    plan.outputGain = GraphCompiler::outputGainFor(graph);
-    compiler.refreshVoiceContexts(graph, plan);
+        const GraphChangeSet& change) {
+    if (change.modelEditScope != ModelEditScope::SingleCurvePoint) {
+        plan.outputGain = GraphCompiler::outputGainFor(graph);
+        compiler.refreshVoiceContexts(graph, plan);
+    }
     AudioExecutionSpec spec;
-    for (auto& step : plan.steps) {
-        const bool directlyChanged = nodeIds.empty()
-                || std::find(nodeIds.begin(), nodeIds.end(), step.nodeId) != nodeIds.end();
-        if (!directlyChanged) {
-            continue;
-        }
+    const auto prepareStep = [&](GraphExecutionStep& step) {
         const Node* node = graph.findNode(step.nodeId);
         if (node == nullptr) {
-            continue;
+            return;
         }
         step.parameters = node->parameters;
         const String key = configurationFactory.keyFor(
@@ -546,7 +553,7 @@ void GraphPresentationModel::refreshConfigurations(
                 step.nodeId,
                 effectiveScratchSourceNodeId(step));
         if (step.configuration.key == key) {
-            continue;
+            return;
         }
         auto value = configurationFactory.create(
                 step.audioRole,
@@ -563,6 +570,18 @@ void GraphPresentationModel::refreshConfigurations(
                     key,
                     std::move(value)
             };
+        }
+    };
+    if (change.nodeIds.empty()) {
+        for (auto& step : plan.steps) {
+            prepareStep(step);
+        }
+        return;
+    }
+    for (const auto& nodeId : change.nodeIds) {
+        const auto found = plan.dependencyIndex.stepIndexById.find(nodeId);
+        if (found != plan.dependencyIndex.stepIndexById.end()) {
+            prepareStep(plan.steps[static_cast<size_t>(found->second)]);
         }
     }
 }

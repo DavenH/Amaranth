@@ -132,7 +132,9 @@ const std::vector<Node>& NodeGraph::getNodes() const {
         return overlayNodeView;
     }
 
-    overlayNodeView = overlayBase->getNodes();
+    const auto& baseNodes = overlayBase->getNodes();
+    InteractionComplexityDiagnostics::recordOverlayNodeMaterialization(baseNodes.size());
+    overlayNodeView = baseNodes;
     for (const auto& node : nodes) {
         const auto baseNode = overlayBase->nodeIndex.find(node.id);
         if (baseNode != overlayBase->nodeIndex.end()

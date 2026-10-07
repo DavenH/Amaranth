@@ -228,3 +228,85 @@ scale unrelated nodes, unedited curve points and probes, and count copied
 snapshot bytes, node materializations, configuration preparations, plan-step
 visits and local curve rendering separately. A Live movement can scale with its
 affected downstream render product, but not with disconnected graph content.
+
+## 2026-10-06 corrective implementation design
+
+The first full-presentation sequence test uses two point values with 17 graph
+nodes, then adds 128 disconnected `Add` nodes while keeping the edited point
+and downstream probes fixed. Before correction, the measured movement counts
+are:
+
+| Two Live movements | 17 nodes | 145 nodes |
+| --- | ---: | ---: |
+| Presentation snapshot copies | 2 | 2 |
+| Overlay nodes materialized | 17 | 145 |
+| Preview processor preparation step visits | 34 | 290 |
+| Causal planning slot visits | 68 | 580 |
+| Preview render step visits | 17 | 145 |
+
+The authoritative graph renderer remains `GraphAudioExecutor` plus
+`GraphPreviewExecutor`; the fix must reuse their processors and preview
+semantics. `GraphCommandDispatcher` retains the existing edited-node worker
+snapshot. The presentation layer should carry an immutable compiled plan and
+unchanged preview products across movements, prepare only changed
+configurations, and publish changed preview products back into the current
+presentation on the message thread. Workers must own their changed
+configuration and result while borrowing the stable plan until cancellation or
+completion. The scheduler remains the sole stale-result gate. Local curve
+rasterization remains with `FlatCurvePreparation`.
+
+The implementation order is: remove full voice-context/node materialization
+for a point-only change; give processor preparation a stable plan and changed
+configuration path; make causal planning and preview rendering sparse; then
+remove the full presentation snapshot copy and merge changed products at
+publication. Remove the old full-copy path for this gesture rather than
+retaining an alternate renderer. The operation-count test above must reach
+zero unrelated-copy and unrelated-step visits at both scales, while both Live
+and On Release app fixtures, rapid commit, undo/redo and save/reload continue
+to pass. Baseline touched sizes: `GraphPresentationModel.cpp` 574 lines,
+`GraphAudioExecutor.cpp` 1162, `NodeUpdateGraph.cpp` 518,
+`GraphPreviewExecutor.cpp` 602, `PresentationPreviewRenderer.cpp` 224,
+`GraphCompiler.cpp` 1535 and `NodeGraphEditing.cpp` 414. Growth in these
+already-large files should be offset by moving responsibility to focused
+modules, not another orchestration switchboard.
+
+### Planner and presentation-index slice
+
+Point-only curve publications now carry an explicit edit scope. The
+presentation configuration refresh looks up the changed step by ID and keeps
+unchanged voice contexts; it no longer calls editing `getNodes()` for this
+gesture. `NodeUpdateGraph` clears previously touched slots and observations
+only, traverses downstream nodes into a sparse list, and visits those slots
+in plan order. `GraphPresentationFacts` shares stable lookup indexes between
+same-structure snapshots, rebuilding probe indexes only when probe IDs may
+have changed. These are local changes to the existing owners; the old full
+slot reset and unconditional index rebuild paths are deleted.
+
+| Two Live movements | 17 nodes | 145 nodes |
+| --- | ---: | ---: |
+| Overlay nodes materialized, after | 0 | 0 |
+| Causal planning slot visits, after | 8 | 8 |
+| Presentation index rebuild visits, after | 0 | 0 |
+| Presentation snapshot copies, still open | 2 | 2 |
+| Preview preparation step visits, still open | 34 | 290 |
+| Preview render step visits, still open | 17 | 145 |
+
+The test for this slice checks the first three properties while measuring the
+remaining costs. Completion still requires the stable preview-owner and
+sparse runtime/extraction work described above. In particular, the current
+snapshot value copy makes every per-movement worker job own all unchanged
+plan, trace, preview and probe arrays. Moving only the causal planner's work
+does not satisfy the interaction complexity criterion.
+
+Architecture review for this slice: `NodeUpdateGraph` alone decides causal
+invalidation, observed-node filtering and publication; its clients supply
+invalidation facts. `GraphPresentationModel` owns configuration refresh, while
+`GraphPresentationFacts` owns presentation lookup indexes. No UI caller gained
+those decisions. `NodeUpdateGraph.cpp` moved from 516 to 530 lines,
+`GraphPresentationModel.cpp` from 570 to 589, and
+`GraphPresentationFacts.cpp` from 114 to 140. Their collaborators remain the
+dependency index, graph compiler/configuration factory, and presentation
+snapshot respectively. The full movement-slot reset and full index rebuild
+decision sites are removed. The still-open snapshot and preview-execution
+sites remain single-owner runtime work, so moving them into UI glue would be
+the wrong extraction.

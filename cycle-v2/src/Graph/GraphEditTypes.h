@@ -29,6 +29,12 @@ enum class GraphEditCode {
     InvalidControlValue
 };
 
+enum class ModelEditScope {
+    None,
+    SingleCurvePoint,
+    WholeModel
+};
+
 struct GraphChangeSet {
     std::vector<String> nodeIds;
     std::vector<Edge> removedEdges;
@@ -40,6 +46,7 @@ struct GraphChangeSet {
     bool guidePresentationChanged {};
     ParameterImpact parameterImpacts { ParameterImpact::None };
     bool modelChanged {};
+    ModelEditScope modelEditScope { ModelEditScope::None };
     bool editorStateChanged {};
     bool resourcesChanged {};
 };

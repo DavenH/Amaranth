@@ -320,6 +320,12 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
                 }
                 modelResult.changed = modelResult.changed || parameterResult.changed;
                 accumulateChange(modelResult.changes, parameterResult.changes);
+                if (modelResult.changed) {
+                    modelResult.changes.modelEditScope = typedModel->pointPreview().has_value()
+                            && !parameterResult.changed
+                            ? ModelEditScope::SingleCurvePoint
+                            : ModelEditScope::WholeModel;
+                }
                 if (typedModel->editorJSON().getDynamicObject() != nullptr) {
                     auto editorResult = GraphNodeStateEditor().setNodeEditorState(
                             graph, publication.nodeId, typedModel->editorJSON());

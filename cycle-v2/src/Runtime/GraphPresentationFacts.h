@@ -15,7 +15,8 @@ public:
     GraphPresentationFacts(
             const NodeGraph& graph,
             const GraphPresentationSnapshot& snapshot,
-            const GraphPresentationFacts* previous = nullptr);
+            const GraphPresentationFacts* previous = nullptr,
+            bool probeIdsStable = false);
 
     const NodePreviewResult* previewFor(
             const GraphPresentationSnapshot& snapshot,
@@ -61,10 +62,10 @@ private:
     };
 
     std::shared_ptr<const Structure> structure;
-    Index previewIndices;
-    Index runtimeTraceIndices;
-    Index probePreviewIndices;
-    Index executionIndices;
+    std::shared_ptr<const Index> previewIndices;
+    std::shared_ptr<const Index> runtimeTraceIndices;
+    std::shared_ptr<const Index> probePreviewIndices;
+    std::shared_ptr<const Index> executionIndices;
 };
 
 }

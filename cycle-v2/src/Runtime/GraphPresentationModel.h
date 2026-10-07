@@ -111,7 +111,8 @@ private:
     bool acceptSnapshot(
             GraphPresentationSnapshot snapshot,
             const NodeGraph& graph,
-            bool reuseStructure);
+            bool reuseStructure,
+            bool probeIdsStable);
     bool refreshPreviewControls(
             const NodeGraph& graph,
             uint64_t documentRevision,
@@ -119,7 +120,7 @@ private:
     void refreshConfigurations(
             const NodeGraph& graph,
             GraphExecutionPlan& plan,
-            const std::vector<String>& nodeIds);
+            const GraphChangeSet& change);
     void refreshPreviewMorphBindings();
     bool executeAsyncProducts(
             AsyncRefresh& refresh,

@@ -1072,6 +1072,87 @@ TEST_CASE("Stengah probes reflect an asynchronous Waveshaper curve edit at the c
   #endif
 }
 
+TEST_CASE("Live point previews avoid unrelated planner and index work",
+        "[cycle-v2][runtime][waveshaper][complexity]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    ScopedJuceInitialiser_GUI juce;
+    const File fixture = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("resources")
+            .getChildFile("with-spies.cyclegraph");
+    REQUIRE(fixture.existsAsFile());
+
+    std::vector<InteractionComplexityCounts> countsByScale;
+    for (const int unrelatedNodes : { 0, 128 }) {
+        NodeGraph graph = GraphSerializer().fromJsonString(fixture.loadFileAsString());
+        for (int index = 0; index < unrelatedNodes; ++index) {
+            graph.addNode(GraphNodeFactory().createNode(
+                    NodeKind::Add, "unrelated" + String(index), {}));
+        }
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher commands(document);
+        GraphPresentationModel presentation;
+        GraphChangeSet topology;
+        topology.topologyChanged = true;
+        REQUIRE(presentation.refresh(document.graph(), document.revision(), topology));
+
+        const Node* shape = document.graph().findNode("waveshaper");
+        REQUIRE(shape != nullptr);
+        const auto base = std::dynamic_pointer_cast<const CurveNodeModelState>(shape->model);
+        REQUIRE(base != nullptr);
+        const FlatCurveVertex point = base->flatCurve()->getVertices()[1];
+        const auto originalProbe = findProbePreview(
+                presentation.previewResult(), "probe5").values;
+        commands.beginTransientEdit();
+        InteractionComplexityDiagnostics::reset();
+        for (const float y : { 0.22f, 0.32f }) {
+            const auto preview = base->withPointPreview(
+                    { point.id, 0.2f, y, point.curve }, base->revision() + 1);
+            REQUIRE(preview != nullptr);
+            REQUIRE(commands.publishCurveState({
+                    "waveshaper", base->revision(), preview, shape->parameters
+            }).succeeded());
+            presentation.recordEditorMovement(
+                    "waveshaper", "curve", static_cast<uint64_t>(y * 1000.f), false);
+            bool completed {};
+            presentation.refreshAsync(
+                    commands.snapshotTransientEditForWorker(),
+                    document.revision(),
+                    commands.transientChanges(),
+                    PresentationRefreshScope::PreviewOnly,
+                    [&] { completed = true; });
+            REQUIRE(waitForAsyncRefresh(completed));
+        }
+        REQUIRE(findProbePreview(presentation.previewResult(), "probe5").values
+                != originalProbe);
+        countsByScale.push_back(InteractionComplexityDiagnostics::counts());
+        presentation.cancelPendingRefreshes();
+        commands.cancelTransientEdit();
+    }
+    REQUIRE(countsByScale.size() == 2);
+    CAPTURE(countsByScale[0].presentationSnapshotCopies,
+            countsByScale[0].overlayNodesMaterialized,
+            countsByScale[0].previewPreparationStepVisits,
+            countsByScale[0].previewPlanningSlotVisits,
+            countsByScale[0].previewRenderStepVisits,
+            countsByScale[0].presentationIndexRebuildVisits,
+            countsByScale[1].presentationSnapshotCopies,
+            countsByScale[1].overlayNodesMaterialized,
+            countsByScale[1].previewPreparationStepVisits,
+            countsByScale[1].previewPlanningSlotVisits,
+            countsByScale[1].previewRenderStepVisits,
+            countsByScale[1].presentationIndexRebuildVisits);
+    for (const auto& counts : countsByScale) {
+        CAPTURE(counts.presentationSnapshotCopies, counts.overlayNodesMaterialized,
+                counts.previewPreparationStepVisits, counts.previewPlanningSlotVisits,
+                counts.previewRenderStepVisits, counts.presentationIndexRebuildVisits);
+        REQUIRE(counts.overlayNodesMaterialized == 0);
+        REQUIRE(counts.presentationIndexRebuildVisits == 0);
+    }
+    REQUIRE(countsByScale[0].previewPlanningSlotVisits
+            == countsByScale[1].previewPlanningSlotVisits);
+  #endif
+}
+
 TEST_CASE("Preset transitions replace equal-revision Trimesh DSP content",
         "[cycle-v2][runtime][presets][configuration]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
