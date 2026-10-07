@@ -86,6 +86,9 @@ const char* GraphPresentationPerformanceMetrics::label(Stage stage) {
         case Stage::Configuration:      return "configuration";
         case Stage::PreviewAudio:       return "previewAudio";
         case Stage::PreviewExtraction:  return "previewExtraction";
+        case Stage::ExpandedProbeExecution:  return "expandedProbeExecution";
+        case Stage::ExpandedProbeExtraction: return "expandedProbeExtraction";
+        case Stage::ExpandedProbeTotal:      return "expandedProbeTotal";
         case Stage::PublicationDelay:   return "publicationDelay";
         case Stage::EndToEnd:           return "endToEnd";
         case Stage::Count:              break;

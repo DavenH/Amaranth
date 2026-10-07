@@ -17,6 +17,9 @@ public:
         Configuration,
         PreviewAudio,
         PreviewExtraction,
+        ExpandedProbeExecution,
+        ExpandedProbeExtraction,
+        ExpandedProbeTotal,
         PublicationDelay,
         EndToEnd,
         Count

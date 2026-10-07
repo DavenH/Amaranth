@@ -11,6 +11,12 @@ Artifacts: `/private/tmp/cycle1-grid-organ-log.txt` and its `.ips` file.
 Status: open. This occurred during a grid-timing investigation; no visual DSP
 behavior was changed.
 
+The same investigation's repeated BaroqueFlute morph-control fixture logged
+`JUCE Assertion failure in EnvRasterizer.cpp:217` and
+`EnvelopePlaybackEngine.cpp:263`, then did not produce its report within 20 s.
+Artifact: `/private/tmp/cycle1-expanded-grid-edits-v2-log.txt.raw`. Status:
+open; the earlier single-update timing run completed.
+
 ## P2: Existing Trimesh editor tests fail in isolation
 
 During the 2026-10-06 phase-velocity work, isolated reruns of `Clicking an

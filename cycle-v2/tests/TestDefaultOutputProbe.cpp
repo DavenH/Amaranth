@@ -206,6 +206,13 @@ TEST_CASE("Expanded output spectrum retains the compact FFT resolution",
     REQUIRE(detail.gridColumns == 512);
     REQUIRE(detail.gridRows == compact.gridRows);
     REQUIRE(detail.values.size() == detail.gridColumns * detail.gridRows);
+    const auto captureStages = presentation.performanceMetrics()
+            .getDynamicObject()->getProperty("stages");
+    for (const char* stage : { "expandedProbeExecution",
+                 "expandedProbeExtraction", "expandedProbeTotal" }) {
+        const auto distribution = captureStages.getDynamicObject()->getProperty(stage);
+        REQUIRE((int64) distribution.getDynamicObject()->getProperty("count") == 1);
+    }
 
     double meanDifference {};
     for (size_t column = 0; column < compact.gridColumns; ++column) {

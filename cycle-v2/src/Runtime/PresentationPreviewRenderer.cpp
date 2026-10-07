@@ -36,13 +36,15 @@ GraphPreviewResult captureProbePreviews(
         const GraphExecutionPlan& plan,
         size_t frameCount,
         int midiNote,
-        int modWheelValue) {
+        int modWheelValue,
+        GraphPresentationPerformanceMetrics& performance) {
     GraphAudioExecutor captureExecutor;
 
     AudioVoiceContext voice;
     voice.controls.noteNumber = jlimit(0, 127, midiNote);
     voice.controls.controllers[1] = (float) jlimit(0, 127, modWheelValue) / 127.f;
     voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    const uint64_t executionStartedAt = performance.timestamp();
     const GraphAudioResult audio = captureExecutor.process(
             graph,
             plan,
@@ -50,11 +52,19 @@ GraphPreviewResult captureProbePreviews(
             {},
             voice,
             kExpandedProbeColumnCount);
-    return GraphPreviewExecutor().render(
+    performance.record(
+            GraphPresentationPerformanceMetrics::Stage::ExpandedProbeExecution,
+            performance.timestamp() - executionStartedAt);
+    const uint64_t extractionStartedAt = performance.timestamp();
+    auto result = GraphPreviewExecutor().render(
             plan,
             audio,
             graph.getSignalProbes(),
             frameCount);
+    performance.record(
+            GraphPresentationPerformanceMetrics::Stage::ExpandedProbeExtraction,
+            performance.timestamp() - extractionStartedAt);
+    return result;
 }
 
 }
@@ -182,21 +192,31 @@ PresentationPreviewRenderer::captureProbePreview(
         const String& probeId,
         size_t rasterRowCount,
         int midiNote,
-        int modWheelValue) const {
+        int modWheelValue,
+        GraphPresentationPerformanceMetrics& performance) const {
+    const uint64_t startedAt = performance.timestamp();
     GraphPreviewResult previews = captureProbePreviews(
             graph,
             plan,
             rasterRowCount,
             midiNote,
-            modWheelValue);
+            modWheelValue,
+            performance);
+    const auto recordTotal = [&] {
+        performance.record(
+                GraphPresentationPerformanceMetrics::Stage::ExpandedProbeTotal,
+                performance.timestamp() - startedAt);
+    };
     if (probeId == DefaultOutputProbeResolver::probeId) {
         if (!previews.defaultOutput.has_value()
                 || !previews.defaultOutput->connected) {
+            recordTotal();
             return std::nullopt;
         }
         GraphPreviewExecutor::reduceProbeRows(
                 *previews.defaultOutput,
                 std::min(rasterRowCount, kMaximumExpandedProbeRows));
+        recordTotal();
         return previews.defaultOutput;
     }
     auto found = std::find_if(
@@ -206,12 +226,14 @@ PresentationPreviewRenderer::captureProbePreview(
                 return preview.probeId == probeId;
             });
     if (found == previews.probes.end() || !found->connected) {
+        recordTotal();
         return std::nullopt;
     }
 
     GraphPreviewExecutor::reduceProbeRows(
             *found,
             std::min(rasterRowCount, kMaximumExpandedProbeRows));
+    recordTotal();
     return *found;
 }
 

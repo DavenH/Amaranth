@@ -2,13 +2,66 @@
 
 ## Status
 
-In progress (2026-10-07). Duplicate diagnostic preparation has been removed;
-the remaining preview computation is still too slow for continuous feedback.
+In progress (2026-10-07). Expanded Spy rendering remains too slow for
+continuous feedback. The measurements below distinguish it from compact
+preview updates.
+
+## Expanded Spy: comparable grid measurement
+
+The expanded Spy is opened through `NodeCanvas::openProbeDetail`, which calls
+`PresentationPreviewRenderer::captureProbePreview`. This creates a 512-column
+diagnostic grid. It creates a fresh
+`GraphAudioExecutor`, executes the entire graph, renders all node/probe
+previews, and then selected one Spy result. These costs were absent from the
+compact `previewAudio` telemetry reported earlier.
+The Baroque Flute capture visited the compiled 20-step graph even though the
+selected Spy taps `volumeMultiply` upstream of the output effects.
+
+Temporary timing in Cycle 1's existing `VisualDsp::GraphicProcessor` measured
+the BaroqueFlute expanded visual grid at 435 columns and 512 time rows. Two
+settled preset-load grid updates took about 33 ms each across the time,
+envelope, FFT, and effects stages. One morph-edit grid update took about 51 ms.
+Cycle 2's corresponding Baroque Flute expanded Spy at 512 columns and 512
+displayed rows took 334.63 ms mean over three opens with a fresh executor:
+242.24 ms graph execution, 23.67 ms preview extraction, and about 69 ms other
+capture work. The shapes and preset are close; the triggered work differs, so
+these figures establish the observed gap without claiming identical DSP.
+The final fixture with permanent telemetry measured 329.32 ms total, 238.45 ms
+execution, and 23.46 ms extraction over three opens. `expandedProbeTotal`
+measures synchronous capture through row reduction; it does not measure the
+subsequent JUCE paint. The fixture's paint counter recorded no paint frame
+before inspection, so it cannot establish a displayed-frame latency.
+
+Internal temporary timing split Cycle 2's 512-row graph execution into about
+73 ms processor/workspace preparation and 169 ms execution and result capture
+per open. An experiment retaining a dedicated executor reduced preparation on
+the next two opens to under 0.1 ms and graph execution to 128-134 ms. A
+semantic test found different grid values on repeated capture, however:
+processors retain state, and no general per-capture reset contract exists.
+The experiment was removed. Retaining preparation requires an explicit reset
+boundary and numerical parity proof, not an executor cache alone.
+
+At a lower preview note, the expanded Spy displayed 512 by 512 values but
+processed 512 by 1,024 values before reducing rows. Three opens averaged
+606.88 ms total, including 417.66 ms execution and 44.46 ms extraction.
+This is a concrete source of the reported roughly 500 ms delay. The 512-row
+cap is a candidate for earlier application if signal and display semantics
+can be preserved; the current post-processing reduction computes twice as
+many rows as the detail displays in this case.
+
+Expanded Spy artifacts: `/private/tmp/cycle-v2-expanded-spy-final-report.json`
+(final fresh-executor fixture),
+`/private/tmp/cycle-v2-expanded-spy-reuse-report.json` (discarded reuse experiment),
+`/private/tmp/cycle-v2-expanded-spy-512-report.json` (1,024 source rows),
+`/private/tmp/cycle1-expanded-grid-edits-log.txt.raw` (Cycle 1 timing), and
+`/private/tmp/cycle1-expanded-grid-edits-v2-log.txt.raw` (Cycle 1 dimensions).
+The temporary timing code was removed from both products.
 
 ## Measured behavior
 
-Cycle V2's `GraphPresentationModel` is the update owner. It refreshes DSP
-configurations, then `PresentationPreviewRenderer` asks `GraphAudioExecutor` to
+The compact Cycle V2 graph preview path is separate. Its
+`GraphPresentationModel` refreshes DSP configurations, then
+`PresentationPreviewRenderer` asks `GraphAudioExecutor` to
 execute a 256-column diagnostic traversal grid and `GraphPreviewExecutor` to
 extract node and probe previews. `GraphAudioExecutor::processInternal` already
 prepares the diagnostic executor for the requested frame and column shape.
@@ -48,7 +101,7 @@ grids were 256 by 512 or 256 by 257. Artifacts:
 `/private/tmp/cycle-grid-reverb-report.json`, and
 `/private/tmp/cycle-grid-shape-report.json`.
 
-Full preset loads explain the reported roughly 500 ms delay. With telemetry
+Full compact-preview preset loads also incur substantial work. With telemetry
 reset before opening, Baroque Flute took 260.41 ms synchronous refresh,
 including 132.14 ms preview audio and 15.39 ms extraction. Organ 4 took
 462.59 ms synchronous refresh, including 339.28 ms preview audio and
@@ -76,17 +129,19 @@ product shapes, so 33 versus 86 ms is an indication, not a controlled speed
 ratio. A Cycle 1 Organ4 load crashed while collecting the second comparison;
 it is recorded in `docs/TDD/ui-bugs.md`.
 
-Next, measure executor preparation, node processing by domain, and grid value
-copies separately on equivalent Cycle 1 and Cycle V2 edit events. Count columns,
-rows, raster bakes, FFTs, and copied grid values, then vary unrelated graph
-size while holding the edited delta fixed. Preserve the mature rasterizers and
-FFT implementations. Any optimization must keep complete diagnostic results,
-probe previews, cancellation, and incremental cache semantics unchanged.
+Next, measure expanded Spy node processing by domain, result copying, and
+destruction separately. Capture only the selected probe and its graph
+ancestors, reusing the existing dependency index and extraction semantics;
+avoid rendering unrelated node previews and probes. Count columns, rows,
+raster bakes, FFTs, and copied grid values, then vary unrelated graph size
+while holding the selected Spy fixed. Preserve the mature rasterizers and FFT
+implementations. Any optimization must keep diagnostic results, probe
+previews, cancellation, and stateful capture semantics unchanged.
 
 ## Completion criteria
 
 - Equivalent presets have comparable product dimensions and measured stage
   durations in both versions.
 - The remaining Cycle V2 hot stage has operation-count and duration evidence.
-- A representative graphwise update reaches a continuous-feedback budget
-  without losing probe or preview content.
+- A representative expanded Spy capture reaches a continuous-feedback budget
+  without losing probe content.

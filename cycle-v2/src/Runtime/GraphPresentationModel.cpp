@@ -484,7 +484,7 @@ GraphPresentationModel::captureProbePreview(
         const NodeGraph& graph,
         const String& probeId,
         size_t rasterRowCount,
-        int midiNote) const {
+        int midiNote) {
     if (!current.compileResult.succeeded() || rasterRowCount == 0) {
         return std::nullopt;
     }
@@ -494,7 +494,8 @@ GraphPresentationModel::captureProbePreview(
             probeId,
             rasterRowCount,
             midiNote,
-            current.previewModWheelValue);
+            current.previewModWheelValue,
+            performance);
 }
 
 bool GraphPresentationModel::requiresCompilation(const GraphChangeSet& change) const {

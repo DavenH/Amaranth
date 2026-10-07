@@ -1,0 +1,19 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "pointer", "event": "click", "targetId": "PerformanceKeyboard.Note48", "button": "right", "waitForIdle": true, "idleDelayMs": 200 },
+    { "command": "assertState", "path": "performance.previewNote", "equals": 48 },
+    { "command": "resetCanvasPerformance" },
+    { "command": "pointer", "event": "doubleClick", "targetId": "spy:probe" },
+    { "command": "assertState", "path": "probeDetailOpen", "equals": true },
+    { "command": "assertState", "path": "probeDetailColumns", "equals": 512 },
+    { "command": "assertState", "path": "probeDetailRows", "equals": 512 },
+    { "command": "pointer", "event": "doubleClick", "targetId": "probeDetail:probe" },
+    { "command": "pointer", "event": "doubleClick", "targetId": "spy:probe" },
+    { "command": "pointer", "event": "doubleClick", "targetId": "probeDetail:probe" },
+    { "command": "pointer", "event": "doubleClick", "targetId": "spy:probe" },
+    { "command": "snapshotState" },
+    { "command": "inspectCanvasPerformance" }
+  ],
+  "quit": true
+}
