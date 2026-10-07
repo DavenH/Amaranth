@@ -235,6 +235,11 @@ void SpectralOscillatorFrameRenderer::applyLifecycleEvent(
         const NoteLifecycleEvent& event) {
     if (event.type == NoteLifecycleType::NoteOn) {
         lifecycleSeedReady = false;
+        for (auto& operation : operations) {
+            if (operation.source != nullptr) {
+                operation.source->reset();
+            }
+        }
     }
     cycleEnvelopes.applyLifecycleEvent(event);
 }

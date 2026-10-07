@@ -3883,6 +3883,26 @@ TEST_CASE("Trimesh signal type and polarity use shared segmented selectors",
     REQUIRE(parameterValueForNode(
             *document.graph().findNode("mesh"),
             "signalType") == "time");
+    auto* phase = dynamic_cast<TextButton*>(typeSelector->findChildWithID(
+            "trimeshEditor.signalType.spectralPhase"));
+    REQUIRE(phase != nullptr);
+    phase->onClick();
+    auto* phaseModeSelector = dynamic_cast<PropertySegmentedSelector*>(
+            host.component()->findChildWithID("trimeshEditor.phaseMode"));
+    REQUIRE(phaseModeSelector != nullptr);
+    REQUIRE(phaseModeSelector->isVisible());
+    REQUIRE(phaseModeSelector->selectedValue() == "absolute");
+    auto* velocity = dynamic_cast<TextButton*>(phaseModeSelector->findChildWithID(
+            "trimeshEditor.phaseMode.velocity"));
+    REQUIRE(velocity != nullptr);
+    velocity->onClick();
+    REQUIRE(parameterValueForNode(
+            *document.graph().findNode("mesh"),
+            "phaseMode") == "velocity");
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(
+            *document.graph().findNode("mesh"),
+            "phaseMode") == "absolute");
 }
 
 TEST_CASE("Live Trimesh morph commits reuse movement refresh",

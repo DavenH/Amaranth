@@ -178,6 +178,8 @@ public:
         state.setProperty("signalType", editor->signalTypeValue());
         state.setProperty("polarity", editor->polarityValue());
         state.setProperty("polarityVisible", editor->polarityVisible());
+        state.setProperty("phaseMode", editor->phaseModeValue());
+        state.setProperty("phaseModeVisible", editor->phaseModeVisible());
         for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
             auto* slider = new DynamicObject();
             slider->setProperty("id", axis);
@@ -330,6 +332,14 @@ private:
                 "polarity",
                 "Polarity",
                 polarity);
+    }
+
+    bool setTrimeshPhaseModeValue(const String& phaseMode) override {
+        return commands.setNodeParameterText(
+                nodeId,
+                "phaseMode",
+                "Phase Mode",
+                phaseMode);
     }
 
     void setTrimeshPrimaryAxisValue(const String& axis) override {

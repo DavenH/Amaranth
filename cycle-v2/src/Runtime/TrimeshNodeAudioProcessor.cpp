@@ -11,6 +11,7 @@
 #include "Nodes/Trimesh/Model/PreparedTrimeshTopology.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGridwiseDsp.h"
+#include "Nodes/Trimesh/Dsp/TrimeshPhaseAccumulator.h"
 
 namespace CycleV2 {
 
@@ -85,11 +86,19 @@ public:
     AudioModuleRole role() const override { return processorRole; }
 
     void adoptConfiguration(const PublishedNodeConfiguration& published) override {
-        configuration = std::dynamic_pointer_cast<const TrimeshConfiguration>(published.value);
+        auto next = std::dynamic_pointer_cast<const TrimeshConfiguration>(published.value);
+        if (configuration != nullptr && next != nullptr
+                && configuration->phaseVelocity != next->phaseVelocity) {
+            phaseAccumulator.reset();
+            hasRenderedPhase = false;
+        }
+        configuration = std::move(next);
     }
 
     void prepareExecution(const AudioExecutionSpec& spec) override {
         trimeshDsp.prepareSampling(spec.maximumFrameCount);
+        phaseAccumulator.prepare(spec.maximumFrameCount);
+        hasRenderedPhase = false;
         trimeshGridDsp.prepareSampling(traversalRowsForDomain(
                 spec.domain,
                 spec.maximumFrameCount));
@@ -200,6 +209,32 @@ public:
                 output);
         applyGain(output, context.frameCount);
         applyPhaseRange(outputPort.domain, output, context.frameCount);
+        if (outputPort.domain == PortDomain::SpectralPhaseSignal
+                && configuration != nullptr && configuration->phaseVelocity) {
+            const auto& events = voice.events;
+            for (const auto& event : events) {
+                if (event.type == NoteLifecycleType::NoteOn
+                        || event.type == NoteLifecycleType::Reset) {
+                    phaseAccumulator.reset();
+                    hasRenderedPhase = false;
+                    break;
+                }
+            }
+            const double elapsedSeconds = hasRenderedPhase
+                    && context.timing.sampleRate > 0.0
+                    ? (double) context.frameCount / context.timing.sampleRate
+                    : 0.0;
+            if (configuration->enabled) {
+                phaseAccumulator.integrate(
+                        payloadBuffer(output, context.frameCount),
+                        elapsedSeconds);
+                if (output.isStereo()) {
+                    phaseAccumulator.copyCurrent(
+                            payloadBuffer(output, 1, context.frameCount));
+                }
+            }
+            hasRenderedPhase = true;
+        }
         applyEnabledIdentity(outputPort.domain, output, context.frameCount);
 
         if (context.captureTraversalGrid) {
@@ -214,6 +249,11 @@ public:
             applyTraversalGain(output);
             applyPhaseRange(outputPort.domain, output.traversalGrid);
             applyPhaseRange(outputPort.domain, output.secondaryTraversalGrid);
+            if (outputPort.domain == PortDomain::SpectralPhaseSignal
+                    && configuration != nullptr && configuration->phaseVelocity) {
+                copyAccumulatedPhaseToGrid(output.traversalGrid);
+                copyAccumulatedPhaseToGrid(output.secondaryTraversalGrid);
+            }
             applyEnabledIdentity(outputPort.domain, output.traversalGrid);
             applyEnabledIdentity(outputPort.domain, output.secondaryTraversalGrid);
         }
@@ -222,6 +262,17 @@ public:
     }
 
 private:
+    void copyAccumulatedPhaseToGrid(SignalTraversalGrid& grid) {
+        if (!grid.isValid()) {
+            return;
+        }
+        for (size_t column = 0; column < grid.columns; ++column) {
+            phaseAccumulator.copyCurrent(Buffer<float>(
+                    grid.values.data() + column * grid.rows,
+                    (int) grid.rows));
+        }
+    }
+
     void shapePhaseValues(PortDomain domain, Buffer<float> values) const {
         if (configuration == nullptr || domain != PortDomain::SpectralPhaseSignal) {
             return;
@@ -433,6 +484,8 @@ private:
     TrimeshMorphResolver morphResolver;
     TrimeshBlockwiseDsp trimeshDsp;
     TrimeshGridwiseDsp trimeshGridDsp;
+    TrimeshPhaseAccumulator phaseAccumulator;
+    bool hasRenderedPhase {};
     std::vector<MorphPosition> traversalMorphs;
     PreparedTrimeshTopology fallbackTopology { "CycleV2AudioMesh" };
     std::shared_ptr<const TrimeshConfiguration> configuration;

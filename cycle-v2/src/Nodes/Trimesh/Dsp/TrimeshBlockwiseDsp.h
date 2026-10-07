@@ -25,6 +25,7 @@ struct TrimeshConfiguration final : public INodeDspConfiguration {
     int primaryViewAxis { Vertex::Time };
     float gain { 1.f };
     float range { 0.5f };
+    bool phaseVelocity {};
     bool enabled { true };
     bool bipolar {};
     bool scratchSourceEnabled { true };
