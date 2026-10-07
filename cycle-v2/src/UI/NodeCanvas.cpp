@@ -257,20 +257,84 @@ NodeCanvas::~NodeCanvas() {
 void NodeCanvas::configurePresetSidebar(
         std::vector<File> directories,
         InlinePresetBrowser::OpenCallback openCallback,
-        InlinePresetBrowser::ActionCallback browseCallback) {
+        InlinePresetBrowser::ActionCallback browseCallback,
+        InlinePresetBrowser::ActionCallback createCallback,
+        LibraryFavorites* favorites) {
     presetSidebar = std::make_unique<InlinePresetBrowser>(
             std::move(directories),
             std::move(openCallback),
             std::move(browseCallback),
             [this](WorkspaceSidebarTab tab) {
-                guideShelfState.presetBrowserVisible = tab == WorkspaceSidebarTab::Presets;
+                guideShelfState.presetBrowserVisible = tab != WorkspaceSidebarTab::Curves;
+                guideShelfState.hoveredGuideId.clear();
                 requestCanvasRepaint();
                 openGLContext.triggerRepaint();
+            },
+            InlinePresetBrowser::DeleteCallback {},
+            InlinePresetBrowser::ConfirmDeleteCallback {},
+            std::move(createCallback), favorites);
+    presetSidebar->setPlaybackToggleCallback([this] {
+        if (previewPlaybackToggle) {
+            previewPlaybackToggle();
+        }
+    });
+    presetSidebar->setMetadataChangedCallbacks(
+            [this](const File& file, const String& title) {
+                if (document.file() == file) {
+                    commands.setPresetTitle(title);
+                }
+            },
+            [this](const File& file, const StringArray& tags) {
+                if (document.file() == file) {
+                    commands.setPresetTags(tags);
+                }
             });
     guideShelfState.presetBrowserVisible = presetSidebar->activeTab()
-            == WorkspaceSidebarTab::Presets;
+            != WorkspaceSidebarTab::Curves;
     addAndMakeVisible(*presetSidebar);
     resized();
+}
+
+void NodeCanvas::refreshPresetSidebarFavorites() {
+    if (presetSidebar != nullptr) {
+        presetSidebar->refreshFavorites();
+    }
+}
+
+void NodeCanvas::refreshPresetSidebarIndex() {
+    if (presetSidebar != nullptr) {
+        presetSidebar->refreshIndex();
+    }
+}
+
+void NodeCanvas::refreshPresetSidebarRecord(const juce::File& file) {
+    if (presetSidebar != nullptr) {
+        presetSidebar->refreshRecord(file);
+    }
+}
+
+void NodeCanvas::setCurrentPresetTags(juce::StringArray tags) {
+    commands.setPresetTags(std::move(tags));
+}
+
+void NodeCanvas::configurePatternSidebar(
+        InlinePresetBrowser::PatternSelectCallback select,
+        InlinePresetBrowser::PatternEditCallback edit,
+        InlinePresetBrowser::PatternCreateCallback create,
+        InlinePresetBrowser::PatternRenameCallback rename,
+        InlinePresetBrowser::PatternDeleteCallback remove) {
+    if (presetSidebar != nullptr) {
+        presetSidebar->configurePatterns(
+                std::move(select), std::move(edit), std::move(create),
+                std::move(rename), std::move(remove));
+    }
+}
+
+void NodeCanvas::setPatternSidebarRecords(
+        std::vector<PatternRecord> records, const String& selectedId) {
+    if (presetSidebar != nullptr) {
+        presetSidebar->setPatterns(std::move(records), selectedId);
+    }
 }
 
 std::vector<std::pair<String, Rectangle<float>>>
@@ -2202,6 +2266,26 @@ void NodeCanvas::setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
             graphDocumentStateChangedCallback();
         }
     }
+}
+
+bool NodeCanvas::setPresetSequence(PresetMidiSequence sequence) {
+    if (!commands.setPresetSequence(std::move(sequence))) {
+        return false;
+    }
+    if (graphDocumentStateChangedCallback) {
+        graphDocumentStateChangedCallback();
+    }
+    return true;
+}
+
+bool NodeCanvas::setPresetPatternId(const String& id) {
+    if (!commands.setPresetPatternId(id)) {
+        return false;
+    }
+    if (graphDocumentStateChangedCallback) {
+        graphDocumentStateChangedCallback();
+    }
+    return true;
 }
 
 void NodeCanvas::synchronizeTimeSurfaceStyle() {

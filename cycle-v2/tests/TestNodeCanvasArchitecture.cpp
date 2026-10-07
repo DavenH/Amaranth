@@ -283,6 +283,9 @@ TEST_CASE("Guide shelf keeps actions in the footer and exposes per-tile deletion
             remove.getCentre(), graph, workspace, dockState, guideState) == "guide1");
     REQUIRE(GuideCurveShelf::guideDeleteAt(
             tile.getCentre(), graph, workspace, dockState, guideState).isEmpty());
+    guideState.presetBrowserVisible = true;
+    REQUIRE(GuideCurveShelf::guideAt(
+            tile.getCentre(), graph, workspace, dockState, guideState).isEmpty());
 }
 
 TEST_CASE("Guide relationship selection highlights without drawing a persistent tether",
@@ -296,6 +299,10 @@ TEST_CASE("Guide relationship selection highlights without drawing a persistent 
     state.hoveredGuideId = "guide2";
     REQUIRE(GuideRelationshipPresentation::highlightGuideId(state) == "guide2");
     REQUIRE(GuideRelationshipPresentation::tetherGuideId(state) == "guide2");
+
+    state.presetBrowserVisible = true;
+    REQUIRE(GuideRelationshipPresentation::highlightGuideId(state).isEmpty());
+    REQUIRE(GuideRelationshipPresentation::tetherGuideId(state).isEmpty());
 }
 
 TEST_CASE("Expanded Trimesh editor occludes intersecting workspace sidebar content",

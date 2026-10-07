@@ -2,6 +2,7 @@
 
 #include "Graph/GraphCompiler.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
+#include "Nodes/Trimesh/Dsp/TrimeshPhaseAccumulator.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshDeltaOverlay.h"
 #include "Runtime/PreparedCycleEnvelopeBank.h"
 #include "Runtime/PreparedOscillatorRegion.h"
@@ -234,10 +235,17 @@ public:
                 false,
                 core.outputDomain);
         rasterizer.prepareSampling((size_t) maximumFrameSize);
+        phaseAccumulator.prepare((size_t) maximumFrameSize / 2 + 1);
+        reset();
         return true;
     }
 
-    void reset() override { core.reset(); }
+    void reset() override {
+        core.reset();
+        phaseAccumulator.reset();
+        previousVoiceSamplePosition = 0.0;
+        hasPreviousFrame = false;
+    }
 
     void setVoiceLifecycleSeeds(
             uint32_t,
@@ -258,6 +266,11 @@ public:
         if (!core.configuration->enabled) {
             left.zero();
             right.zero();
+            if (core.configuration->phaseVelocity
+                    && core.outputDomain == PortDomain::SpectralPhaseSignal) {
+                previousVoiceSamplePosition = request.voiceSamplePosition;
+                hasPreviousFrame = true;
+            }
             return;
         }
         rasterize(request, morph, left);
@@ -296,7 +309,7 @@ private:
 
     void applyGainAndPhase(
             const SpectralFrameSourceRenderRequest& request,
-            Buffer<float> output) const {
+            Buffer<float> output) {
         CycleDsp::ScopedSourceRenderStage gainStage(
                 request.performance, CycleDsp::SourceRenderStage::Gain);
         output.mul(core.configuration->gain);
@@ -313,11 +326,26 @@ private:
         }
         output.section(1, output.size() - 1).mul(
                 request.phaseHarmonicScale.withSize(output.size() - 1));
+        if (core.configuration->phaseVelocity) {
+            const double sampleRate = request.context != nullptr
+                    ? request.context->timing.sampleRate
+                    : 44100.0;
+            const double elapsedSeconds = hasPreviousFrame && sampleRate > 0.0
+                    ? std::max(0.0, request.voiceSamplePosition
+                            - previousVoiceSamplePosition) / sampleRate
+                    : 0.0;
+            phaseAccumulator.integrate(output, elapsedSeconds);
+            previousVoiceSamplePosition = request.voiceSamplePosition;
+            hasPreviousFrame = true;
+        }
     }
 
     bool activeMesh {};
+    bool hasPreviousFrame {};
+    double previousVoiceSamplePosition {};
     PreparedSourceCore core;
     TrimeshBlockwiseDsp rasterizer;
+    TrimeshPhaseAccumulator phaseAccumulator;
 };
 
 }

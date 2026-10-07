@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "UI/CanvasChromePalette.h"
+#include "UI/SidebarMediaRow.h"
 
 namespace CycleV2 {
 
@@ -129,6 +130,11 @@ void PresetCardGrid::setCallbacks(
     onOpen = std::move(openCallback);
 }
 
+void PresetCardGrid::setFavoriteCallback(
+        std::function<void(const juce::File&)> callback) {
+    onFavorite = std::move(callback);
+}
+
 void PresetCardGrid::moveSelection(int columnDelta, int rowDelta) {
     if (indices.empty()) {
         return;
@@ -185,6 +191,10 @@ void PresetCardGrid::paint(juce::Graphics& graphics) {
 
         inner.removeFromTop(7.f);
         auto nameRow = inner.removeFromTop(17.f);
+        const auto starBounds = favoriteBounds(visibleIndex);
+        SidebarMediaRow::paintStar(graphics, starBounds,
+                favorites != nullptr && favorites->isPresetFavorite(record.file));
+        nameRow.removeFromLeft(25.f);
         graphics.setColour(CanvasChromePalette::text);
         graphics.setFont(juce::FontOptions(13.f).withStyle("Bold"));
         graphics.drawFittedText(record.name, nameRow.toNearestInt(),
@@ -204,12 +214,20 @@ void PresetCardGrid::paint(juce::Graphics& graphics) {
 }
 
 void PresetCardGrid::mouseDown(const juce::MouseEvent& event) {
-    select(indexAt(event.getPosition()));
+    const int hit = indexAt(event.getPosition());
+    if (hit >= 0 && favoriteBounds(hit).contains(event.position) && onFavorite) {
+        onFavorite(library[(size_t) indices[(size_t) hit]].file);
+        return;
+    }
+    select(hit);
 }
 
 void PresetCardGrid::mouseDoubleClick(const juce::MouseEvent& event) {
     const int hit = indexAt(event.getPosition());
     if (hit < 0) {
+        return;
+    }
+    if (favoriteBounds(hit).contains(event.position)) {
         return;
     }
     select(hit);
@@ -256,6 +274,12 @@ juce::Rectangle<int> PresetCardGrid::cardBounds(int visibleIndex) const {
             cardWidth,
             cardHeight
     };
+}
+
+juce::Rectangle<float> PresetCardGrid::favoriteBounds(int visibleIndex) const {
+    const auto card = cardBounds(visibleIndex).toFloat();
+    return { card.getX() + (float) cardInset,
+            card.getY() + (float) cardInset + 109.f, 20.f, 20.f };
 }
 
 void PresetCardGrid::select(int visibleIndex) {

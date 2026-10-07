@@ -1,4 +1,7 @@
+#include <algorithm>
+
 #include "UI/PerformanceKeyboard.h"
+#include "UI/PresetMidiEditor.h"
 
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
@@ -6,6 +9,12 @@
 #include "UI/WorkspaceDock.h"
 
 namespace CycleV2 {
+
+namespace {
+
+constexpr double automationLookaheadSeconds = 0.5;
+
+}
 
 PerformanceKeyboard::PerformanceKeyboard(
         MidiKeyboardState& state,
@@ -60,6 +69,25 @@ void PerformanceKeyboard::revealNote(int midiNote) {
     setRangeStart(nextStart);
 }
 
+void PerformanceKeyboard::revealRange(int lowest, int highest) {
+    int bestStart = rangeStart;
+    int bestOverlap = -1;
+    int bestOffset = 128;
+    for (int candidate = 0; candidate <= 103; candidate = candidate == 96 ? 103 : candidate + 12) {
+        const int overlap = jmax(0,
+                jmin(highest, candidate + visibleSemitones)
+                        - jmax(lowest, candidate) + 1);
+        const int centresDelta = lowest + highest - 2 * (candidate + 12);
+        const int offset = centresDelta < 0 ? -centresDelta : centresDelta;
+        if (overlap > bestOverlap || (overlap == bestOverlap && offset < bestOffset)) {
+            bestStart = candidate;
+            bestOverlap = overlap;
+            bestOffset = offset;
+        }
+    }
+    setRangeStart(bestStart);
+}
+
 void PerformanceKeyboard::setRangeStart(int noteNumber) {
     const int nextStart = jlimit(0, 127 - visibleSemitones, noteNumber);
     if (nextStart == rangeStart) {
@@ -79,6 +107,16 @@ void PerformanceKeyboard::releaseAllNotes() {
     eventSink.releaseMidiSource(MidiEventSource::PerformanceKeyboard);
     currentHeldNote = -1;
     currentVelocity = 0.f;
+}
+
+void PerformanceKeyboard::mirrorSequenceNote(
+        int noteNumber, float velocity, bool noteOn) {
+    const ScopedValueSetter<bool> visualOnly(mirroringSequenceNote, true);
+    if (noteOn) {
+        keyboardState.noteOn(1, noteNumber, velocity);
+    } else {
+        keyboardState.noteOff(1, noteNumber, velocity);
+    }
 }
 
 void PerformanceKeyboard::resized() {
@@ -157,6 +195,9 @@ void PerformanceKeyboard::handleNoteOn(
         float velocity) {
     currentHeldNote = midiNoteNumber;
     currentVelocity = velocity;
+    if (mirroringSequenceNote) {
+        return;
+    }
     eventSink.enqueueMidiMessage(
             MidiMessage::noteOn(midiChannel, midiNoteNumber, velocity),
             MidiEventSource::PerformanceKeyboard);
@@ -166,9 +207,11 @@ void PerformanceKeyboard::handleNoteOff(
         int midiChannel,
         int midiNoteNumber,
         float velocity) {
-    eventSink.enqueueMidiMessage(
-            MidiMessage::noteOff(midiChannel, midiNoteNumber, velocity),
-            MidiEventSource::PerformanceKeyboard);
+    if (!mirroringSequenceNote) {
+        eventSink.enqueueMidiMessage(
+                MidiMessage::noteOff(midiChannel, midiNoteNumber, velocity),
+                MidiEventSource::PerformanceKeyboard);
+    }
     if (currentHeldNote == midiNoteNumber) {
         currentHeldNote = -1;
         currentVelocity = 0.f;
@@ -188,6 +231,43 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
     addAndMakeVisible(octaveDown);
     addAndMakeVisible(octaveUp);
     addAndMakeVisible(modWheel);
+    addAndMakeVisible(playButton);
+    addAndMakeVisible(editButton);
+    addAndMakeVisible(recordButton);
+    playButton.setName("PerformanceKeyboard.PlaySequence");
+    editButton.setName("PerformanceKeyboard.EditSequence");
+    recordButton.setName("PerformanceKeyboard.RecordSequence");
+    playButton.setTooltip("Play or stop this preset preview phrase");
+    editButton.setTooltip("Edit preset preview notes and modulation");
+    recordButton.setTooltip("Record MIDI input into this preset preview");
+    for (auto* button : { &playButton, &editButton, &recordButton }) {
+        button->setColour(TextButton::buttonColourId,
+                CanvasChromePalette::restingControlSurface);
+        button->setColour(TextButton::buttonOnColourId,
+                CanvasChromePalette::raisedSurface);
+        button->setColour(TextButton::textColourOffId,
+                CanvasChromePalette::text);
+        button->setMouseCursor(MouseCursor::PointingHandCursor);
+    }
+    playButton.onClick = [this] { togglePlayback(); };
+    editButton.onClick = [this] { openSequenceEditor(); };
+    recordButton.onClick = [this] {
+        if (recording) {
+            stopRecording();
+            return;
+        }
+        stopPlayback();
+        if (!sequence.has_value()) {
+            sequence = PresetMidiSequence {};
+        }
+        recordingStartedAtSeconds = Time::getMillisecondCounterHiRes() / 1000.0;
+        recordedNoteStarts.fill(-1.0);
+        recording = true;
+        recordButton.setButtonText("STOP");
+        if (recordingChanged) {
+            recordingChanged(true);
+        }
+    };
 
     octaveDown.setTooltip("Lower keyboard by one octave");
     octaveUp.setTooltip("Raise keyboard by one octave");
@@ -311,14 +391,123 @@ void PerformanceKeyboardPanel::setPlaybackDurationSeconds(float seconds) {
     playbackDuration = jmax(0.001f, seconds);
 }
 
-bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
+void PerformanceKeyboardPanel::setSequence(std::optional<PresetMidiSequence> nextSequence) {
     stopPlayback();
+    stopRecording();
+    releaseEditorAudition();
+    sequence = std::move(nextSequence);
+    rebuildPlaybackEvents();
+    if (sequence.has_value() && !sequence->notes.empty()) {
+        int lowest = 127;
+        int highest = 0;
+        for (const auto& note : sequence->notes) {
+            lowest = jmin(lowest, note.pitch);
+            highest = jmax(highest, note.pitch);
+        }
+        keyboard.revealRange(lowest, highest);
+    }
+}
+
+void PerformanceKeyboardPanel::setSequenceChangedCallback(
+        std::function<void(PresetMidiSequence)> callback) {
+    sequenceChanged = std::move(callback);
+}
+
+bool PerformanceKeyboardPanel::hasSequenceNotes() const {
+    return sequence.has_value() && !sequence->notes.empty();
+}
+
+void PerformanceKeyboardPanel::auditionSequenceNote(
+        int pitch, int velocity, bool noteOn) {
+    if (noteOn) {
+        stopPlayback();
+        releaseEditorAudition();
+        editorAuditionPitch = pitch;
+        setPreviewNote(pitch);
+        keyboardState.noteOn(1, pitch, (float) velocity / 127.f);
+    } else if (editorAuditionPitch == pitch) {
+        releaseEditorAudition();
+    }
+}
+
+void PerformanceKeyboardPanel::releaseEditorAudition() {
+    if (editorAuditionPitch >= 0) {
+        keyboardState.noteOff(1, editorAuditionPitch, 0.f);
+        editorAuditionPitch = -1;
+    }
+}
+
+void PerformanceKeyboardPanel::rebuildPlaybackEvents() {
+    playbackEvents.clear();
+    if (!sequence.has_value()) {
+        controlScheduler.reset({}, 1, 0.0);
+        return;
+    }
+    for (const auto& note : sequence->notes) {
+        playbackEvents.push_back({
+                note.startSeconds,
+                MidiMessage::noteOn(1, note.pitch, (uint8) note.velocity) });
+        playbackEvents.push_back({
+                note.startSeconds + note.durationSeconds,
+                MidiMessage::noteOff(1, note.pitch) });
+    }
+    const int envelopeController = sequence->controls.empty() ? 1
+            : (std::any_of(sequence->controls.begin(), sequence->controls.end(),
+                    [](const PresetMidiControl& control) { return control.controller == 1; })
+                    ? 1 : sequence->controls.front().controller);
+    std::vector<PresetMidiControl> modulationEnvelope;
+    for (const auto& control : sequence->controls) {
+        if (control.controller == envelopeController) {
+            modulationEnvelope.push_back(control);
+            continue;
+        }
+        playbackEvents.push_back({
+                control.timeSeconds,
+                MidiMessage::controllerEvent(1, control.controller, control.value) });
+    }
+    std::stable_sort(playbackEvents.begin(), playbackEvents.end(),
+            [](const PlaybackEvent& first, const PlaybackEvent& second) {
+                if (first.timeSeconds != second.timeSeconds) {
+                    return first.timeSeconds < second.timeSeconds;
+                }
+                const auto priority = [](const MidiMessage& message) {
+                    return message.isNoteOff() ? 0 : (message.isNoteOn() ? 2 : 1);
+                };
+                return priority(first.message) < priority(second.message);
+            });
+    controlScheduler.reset(std::move(modulationEnvelope), envelopeController,
+            sequence->durationSeconds);
+}
+
+bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
+    releaseEditorAudition();
+    stopPlayback();
+    stopRecording();
+    nextPlaybackEvent = 0;
+    rebuildPlaybackEvents();
+    activePlaybackNoteCounts.fill(0);
     playbackNote = selectedPreviewNote;
     progress = 0.f;
     playbackStartedAtMilliseconds = nowMilliseconds;
     playing = true;
+    playButton.setButtonText("STOP");
     sendModWheelValue();
-    keyboardState.noteOn(1, playbackNote, 0.8f);
+    if (hasSequenceNotes()
+            && !scheduleSequenceEvents(nowMilliseconds / 1000.0)) {
+        stopPlayback();
+        return false;
+    }
+    if (!hasSequenceNotes()) {
+        keyboardState.noteOn(1, playbackNote, 0.8f);
+    }
+    if (!controlScheduler.scheduleUntil(automationLookaheadSeconds,
+            nowMilliseconds / 1000.0, eventSink)) {
+        stopPlayback();
+        return false;
+    }
+    if (sequence.has_value()) {
+        dispatchSequenceEvents(0.0);
+    }
     startTimerHz(60);
     repaint();
     return true;
@@ -334,11 +523,21 @@ void PerformanceKeyboardPanel::togglePlayback() {
 
 void PerformanceKeyboardPanel::stopPlayback(bool resetProgress) {
     stopTimer();
-    if (playbackNote >= 0) {
+    if (playing && sequence.has_value()) {
+        eventSink.releaseMidiSource(MidiEventSource::PatternPlayback);
+    }
+    if (playing && !hasSequenceNotes() && playbackNote >= 0) {
         keyboardState.noteOff(1, playbackNote, 0.f);
+    }
+    for (int note = 0; note < 128; ++note) {
+        if (activePlaybackNoteCounts[(size_t) note] > 0) {
+            keyboard.mirrorSequenceNote(note, 0.f, false);
+            activePlaybackNoteCounts[(size_t) note] = 0;
+        }
     }
     playbackNote = -1;
     playing = false;
+    playButton.setButtonText("PLAY");
     if (resetProgress) {
         progress = 0.f;
     }
@@ -352,18 +551,124 @@ void PerformanceKeyboardPanel::updatePlayback(double nowMilliseconds) {
     const double elapsedSeconds = jmax(
             0.0,
             (nowMilliseconds - playbackStartedAtMilliseconds) / 1000.0);
+    if (sequence.has_value()) {
+        dispatchSequenceEvents(elapsedSeconds);
+        if (!controlScheduler.scheduleUntil(
+                elapsedSeconds + automationLookaheadSeconds,
+                playbackStartedAtMilliseconds / 1000.0,
+                eventSink)) {
+            stopPlayback();
+            return;
+        }
+    }
     progress = jlimit(
             0.f,
             1.f,
-            (float) (elapsedSeconds / (double) playbackDuration));
+            (float) (elapsedSeconds / (hasSequenceNotes()
+                    ? sequence->durationSeconds : (double) playbackDuration)));
     if (progress >= 1.f) {
         stopPlayback(false);
     }
     repaint(progressBounds().getSmallestIntegerContainer().expanded(2));
 }
 
+void PerformanceKeyboardPanel::dispatchSequenceEvents(double elapsedSeconds) {
+    while (nextPlaybackEvent < playbackEvents.size()
+            && playbackEvents[nextPlaybackEvent].timeSeconds <= elapsedSeconds) {
+        const MidiMessage& message = playbackEvents[nextPlaybackEvent++].message;
+        if (message.isNoteOn()) {
+            const int note = message.getNoteNumber();
+            if (activePlaybackNoteCounts[(size_t) note]++ == 0) {
+                keyboard.mirrorSequenceNote(note, message.getFloatVelocity(), true);
+            }
+        } else if (message.isNoteOff()) {
+            const int note = message.getNoteNumber();
+            if (activePlaybackNoteCounts[(size_t) note] > 0
+                    && --activePlaybackNoteCounts[(size_t) note] == 0) {
+                keyboard.mirrorSequenceNote(note, 0.f, false);
+            }
+        }
+    }
+}
+
+bool PerformanceKeyboardPanel::scheduleSequenceEvents(double startSeconds) {
+    for (const auto& event : playbackEvents) {
+        if (!eventSink.enqueueMidiMessageAt(
+                event.message,
+                MidiEventSource::PatternPlayback,
+                startSeconds + event.timeSeconds)) {
+            eventSink.releaseMidiSource(MidiEventSource::PatternPlayback);
+            return false;
+        }
+    }
+    return true;
+}
+
+void PerformanceKeyboardPanel::recordMidiMessage(
+        const MidiMessage& message,
+        double nowSeconds) {
+    if (!recording || !sequence.has_value()) {
+        return;
+    }
+    const double time = jlimit(0.0,
+            PresetMidiSequence::maximumDurationSeconds - 0.2,
+            nowSeconds - recordingStartedAtSeconds);
+    if (message.isNoteOn()) {
+        const int note = message.getNoteNumber();
+        recordedNoteStarts[(size_t) note] = time;
+        recordedVelocities[(size_t) note] = message.getVelocity();
+    } else if (message.isNoteOff()) {
+        const int note = message.getNoteNumber();
+        const double start = recordedNoteStarts[(size_t) note];
+        if (start >= 0.0
+                && sequence->notes.size() < PresetMidiSequence::maximumEventsPerLane) {
+            sequence->notes.push_back({ note, recordedVelocities[(size_t) note],
+                    start, jmax(0.05, time - start) });
+            recordedNoteStarts[(size_t) note] = -1.0;
+        }
+    } else if (message.isController()
+            && sequence->controls.size() < PresetMidiSequence::maximumEventsPerLane) {
+        sequence->controls.push_back({
+                message.getControllerNumber(), message.getControllerValue(), time });
+    }
+    sequence->durationSeconds = jmax(sequence->durationSeconds, time + 0.1);
+}
+
+void PerformanceKeyboardPanel::stopRecording() {
+    if (!recording) {
+        return;
+    }
+    if (recordingChanged) {
+        recordingChanged(false);
+    }
+    if (flushRecordingInput) {
+        flushRecordingInput();
+    }
+    const double now = Time::getMillisecondCounterHiRes() / 1000.0;
+    const double end = jlimit(0.0,
+            PresetMidiSequence::maximumDurationSeconds - 0.2,
+            now - recordingStartedAtSeconds);
+    for (int note = 0; note < 128; ++note) {
+        const double start = recordedNoteStarts[(size_t) note];
+        if (start >= 0.0
+                && sequence->notes.size() < PresetMidiSequence::maximumEventsPerLane) {
+            sequence->notes.push_back({ note, recordedVelocities[(size_t) note],
+                    start, jmax(0.05, end - start) });
+        }
+    }
+    sequence->durationSeconds = jmax(sequence->durationSeconds, end + 0.1);
+    recording = false;
+    recordButton.setButtonText("REC");
+    setSequence(*sequence);
+    if (sequenceChanged) {
+        sequenceChanged(*sequence);
+    }
+}
+
 void PerformanceKeyboardPanel::releaseAllNotes() {
     stopPlayback();
+    stopRecording();
+    releaseEditorAudition();
     keyboard.releaseAllNotes();
 }
 
@@ -377,7 +682,6 @@ void PerformanceKeyboardPanel::paint(Graphics& graphics) {
     const Rectangle<float> bounds = getLocalBounds().toFloat().reduced(0.75f);
     graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.96f));
     graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::panelCornerRadius);
-
     const Rectangle<float> track = progressBounds();
     const float trackCornerRadius = track.getHeight() * 0.5f;
     graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.22f));
@@ -398,6 +702,15 @@ void PerformanceKeyboardPanel::resized() {
     const int wheelGap = compact ? 3 : 6;
     const int wheelWidth = compact ? 24 : 32;
     Rectangle<int> content = getLocalBounds().reduced(panelInset);
+    Rectangle<int> actions = content.removeFromRight(compact ? 37 : 44);
+    content.removeFromRight(compact ? 2 : 4);
+    const int actionGap = 3;
+    const int actionHeight = (actions.getHeight() - 2 * actionGap) / 3;
+    playButton.setBounds(actions.removeFromTop(actionHeight));
+    actions.removeFromTop(actionGap);
+    recordButton.setBounds(actions.removeFromTop(actionHeight));
+    actions.removeFromTop(actionGap);
+    editButton.setBounds(actions);
     modWheel.setBounds(content.removeFromLeft(wheelWidth));
     content.removeFromLeft(wheelGap);
     octaveDown.setBounds(content.removeFromLeft(buttonWidth));
@@ -405,6 +718,59 @@ void PerformanceKeyboardPanel::resized() {
     octaveUp.setBounds(content.removeFromRight(buttonWidth));
     content.removeFromRight(controlGap);
     keyboard.setBounds(content);
+}
+
+void PerformanceKeyboardPanel::openSequenceEditor() {
+    showSequenceEditor(sequence.value_or(PresetMidiSequence {}),
+            [safeThis = Component::SafePointer<PerformanceKeyboardPanel>(this)](
+                    PresetMidiSequence edited) {
+                if (safeThis != nullptr && safeThis->sequenceChanged) {
+                    safeThis->sequenceChanged(std::move(edited));
+                }
+            });
+}
+
+void PerformanceKeyboardPanel::showSequenceEditor(
+        PresetMidiSequence initial,
+        std::function<void(PresetMidiSequence)> onEdit) {
+    if (recording) {
+        stopRecording();
+    }
+    Component::SafePointer<PerformanceKeyboardPanel> safeThis(this);
+    auto editor = std::make_unique<PresetMidiEditor>(
+            std::move(initial),
+            [safeThis, onEdit = std::move(onEdit)](PresetMidiSequence edited) {
+                if (safeThis == nullptr) {
+                    return;
+                }
+                safeThis->setSequence(edited);
+                if (onEdit) {
+                    onEdit(std::move(edited));
+                }
+            },
+            [safeThis] {
+                if (safeThis != nullptr) {
+                    safeThis->togglePlayback();
+                }
+            },
+            [safeThis](int pitch, int velocity, bool noteOn) {
+                if (safeThis != nullptr) {
+                    safeThis->auditionSequenceNote(pitch, velocity, noteOn);
+                }
+            },
+            [safeThis]() -> std::optional<double> {
+                if (safeThis == nullptr || !safeThis->playing) {
+                    return std::nullopt;
+                }
+                const double duration = safeThis->hasSequenceNotes()
+                        ? safeThis->sequence->durationSeconds
+                        : (double) safeThis->playbackDuration;
+                return duration * safeThis->progress;
+            });
+    auto* editorContent = editor.get();
+    CallOutBox::launchAsynchronously(
+            std::move(editor), editButton.getScreenBounds(), nullptr);
+    editorContent->grabKeyboardFocus();
 }
 
 PerformanceKeyboardPanel::ModWheel::ModWheel() {

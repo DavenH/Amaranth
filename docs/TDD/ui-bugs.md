@@ -1,5 +1,48 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Existing Trimesh editor tests fail in isolation
+
+During the 2026-10-06 phase-velocity work, isolated reruns of `Clicking an
+open Trimesh Guide selector dismisses its popup` failed at
+`TestNodeEditorHost.cpp:3638` (`showTrimeshGuideAttachmentMenu` returned false),
+and `Trimesh drag keeps movement local and publishes one commit snapshot`
+crashed with SIGSEGV at `TestNodeEditorHost.cpp:4171`, before the gesture.
+Neither test uses the new phase mode. Status: open; reproduce and diagnose
+their fixture setup separately.
+
+## P3: Trimesh primary morph test has no selected vertex parameters
+
+During the 2026-10-06 master merge, the focused
+`Trimesh primary morph commits refresh graph presentation` test failed at
+`TestNodeEditorHost.cpp:3497`: selected vertex index 2 returned zero parameters
+where the test expects six. The isolated rerun had the same result; log:
+`/private/tmp/cycle-v2-merge-trimesh-test.log`. Status: open; the failure
+occurs before the morph gesture begins.
+
+## P3: Astral realtime test references an absent factory fixture
+
+On 2026-10-05, the broader realtime test filter failed at
+`TestRealtimeGraphRenderer.cpp:67` because
+`cycle-v2/content/presets/astral.cyclegraph` is absent. This is unrelated to
+the MIDI scheduler change; the focused timestamp and cancellation tests pass.
+Status: open; restore the fixture or update the test to a current preset.
+
+## P2: Canvas navigation slows at high zoom
+
+Reported 2026-10-02: when zoomed in a lot, navigating the Cycle V2 canvas
+becomes sluggish. The zoom level, graph size, and affected pan input have not
+yet been measured. Reproduce with canvas performance counters and compare
+per-move work across zoom levels before changing rendering or interaction code.
+Status: open.
+
+## Resolved: Relative agent script path asserted in JUCE File
+
+On 2026-10-01, a direct Cycle V2 automation launch passed a relative
+`--agent-script` path and logged `JUCE Assertion failure in juce_File.cpp:219`
+at `/private/tmp/cycle-v2-pattern-isolation-logs.txt`. JUCE requires an
+absolute path in that constructor. The run was repeated with an absolute
+script path at `/private/tmp/cycle-v2-pattern-isolation-logs-2.txt`; it passed
+24/24 commands without the assertion. No product failure remains.
 ## P3: File assertion during Unison automation startup
 
 On 2026-10-05, both recovered Unison gesture fixtures passed all 33 commands
@@ -384,3 +427,13 @@ lower/higher probe arrays at `TestGraphRuntime.cpp:461`. The latter persisted
 with the old observation-request builder and full probe-extraction path
 restored temporarily, so the new sparse probe index is not the cause.
 Current status: open; probe fixture/content and empty mesh output need review.
+
+## P3: Direct Cycle V2 agent launch with a relative script path asserted
+
+On 2026-10-04, launching the Cycle V2 executable directly with a relative
+`--agent-script` path emitted `JUCE Assertion failure in juce_File.cpp:219` and
+exited with code 134 after leaked-object assertions. This occurred while
+capturing the sidebar tag cloud; a LaunchServices run through
+`scripts/run_cycle_v2_agent.sh` with an absolute fixture path passed all
+commands. The direct invocation's stdout was not saved. Current status:
+open as a direct-launch harness issue; the product UI capture and tests pass.

@@ -1,0 +1,66 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/phase-velocity-test.cyclegraph"
+    },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "phaseLayer1",
+      "parameterId": "phaseMode",
+      "equals": "velocity"
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.probeId",
+      "equals": "phaseVelocitySpy"
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.absoluteSum",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "captureAudio",
+      "sampleRate": 48000,
+      "blockSize": 256,
+      "channels": 2,
+      "durationMs": 1200,
+      "path": "/private/tmp/cycle-v2-phase-velocity-test.wav",
+      "events": [
+        { "type": "noteOn", "sample": 1, "channel": 1, "note": 60, "velocity": 0.8 },
+        { "type": "noteOff", "sample": 48001, "channel": 1, "note": 60 }
+      ],
+      "peakGreaterThan": 0.001,
+      "rmsGreaterThan": 0.0001
+    },
+    {
+      "command": "pointer",
+      "event": "doubleClick",
+      "targetId": "spy:probe",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    { "command": "assertState", "path": "probeDetailId", "equals": "probe" },
+    { "command": "assertState", "path": "probeDetailColumns", "equals": 512 },
+    { "command": "assertState", "path": "probeDetailRows", "equals": 128 },
+    {
+      "command": "pointer",
+      "event": "doubleClick",
+      "targetId": "probeDetail:probe",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    { "command": "assertState", "path": "probeDetailOpen", "equals": false },
+    { "command": "openMeshPopup", "nodeId": "phaseLayer1" },
+    { "command": "waitForIdle", "idleDelayMs": 300 },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.phaseMode",
+      "equals": "velocity"
+    }
+  ],
+  "quit": true
+}

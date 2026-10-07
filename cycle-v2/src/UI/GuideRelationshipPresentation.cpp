@@ -90,6 +90,9 @@ bool hasVisibleTarget(
 
 String GuideRelationshipPresentation::highlightGuideId(
         const GuideCurveShelfState& state) {
+    if (state.presetBrowserVisible) {
+        return {};
+    }
     return state.hoveredGuideId.isNotEmpty()
             ? state.hoveredGuideId
             : state.selectedGuideId;
@@ -97,7 +100,7 @@ String GuideRelationshipPresentation::highlightGuideId(
 
 String GuideRelationshipPresentation::tetherGuideId(
         const GuideCurveShelfState& state) {
-    return state.hoveredGuideId;
+    return state.presetBrowserVisible ? String() : state.hoveredGuideId;
 }
 
 void GuideRelationshipPresentation::paintHighlights(

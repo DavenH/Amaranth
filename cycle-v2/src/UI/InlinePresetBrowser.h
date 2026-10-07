@@ -3,18 +3,24 @@
 #include <JuceHeader.h>
 
 #include <functional>
+#include <map>
 #include <memory>
 #include <vector>
 
+#include "App/LibraryFavorites.h"
 #include "UI/PresetBrowserLookAndFeel.h"
 #include "UI/PresetLibraryIndex.h"
 #include "UI/PresetThumbnailCache.h"
+#include "UI/PatternBrowser.h"
+#include "UI/SidebarLibraryToolbar.h"
+#include "UI/SidebarTagCloud.h"
 
 namespace CycleV2 {
 
 enum class WorkspaceSidebarTab {
     Curves,
-    Presets
+    Presets,
+    Patterns
 };
 
 class InlinePresetBrowser final :
@@ -29,6 +35,15 @@ public:
     using ConfirmDeleteCallback = std::function<void(
             const juce::String&,
             std::function<void(bool)>)>;
+    using PatternSelectCallback = PatternBrowser::SelectCallback;
+    using PatternEditCallback = PatternBrowser::EditCallback;
+    using PatternCreateCallback = PatternBrowser::CreateCallback;
+    using PatternRenameCallback = PatternBrowser::RenameCallback;
+    using PatternDeleteCallback = PatternBrowser::DeleteCallback;
+    using TitleChangedCallback = std::function<void(
+            const juce::File&, const juce::String&)>;
+    using TagsChangedCallback = std::function<void(
+            const juce::File&, const juce::StringArray&)>;
 
     InlinePresetBrowser(
             std::vector<juce::File> directories,
@@ -36,12 +51,26 @@ public:
             ActionCallback browseCallback,
             TabCallback tabCallback,
             DeleteCallback deleteCallback = {},
-            ConfirmDeleteCallback confirmDeleteCallback = {});
+            ConfirmDeleteCallback confirmDeleteCallback = {},
+            ActionCallback createCallback = {},
+            LibraryFavorites* favorites = nullptr);
     ~InlinePresetBrowser() override;
 
     void setActiveTab(WorkspaceSidebarTab tab);
+    void configurePatterns(PatternSelectCallback select,
+            PatternEditCallback edit, PatternCreateCallback create,
+            PatternRenameCallback rename, PatternDeleteCallback remove);
+    void setPatterns(std::vector<PatternRecord> records,
+            const juce::String& selectedId);
     WorkspaceSidebarTab activeTab() const { return tab; }
     int visiblePresetCount() const;
+    void refreshIndex();
+    void refreshRecord(const juce::File& file);
+    void refreshFavorites();
+    void setPlaybackToggleCallback(ActionCallback callback);
+    void setMetadataChangedCallbacks(
+            TitleChangedCallback titleCallback,
+            TagsChangedCallback tagsCallback);
     static juce::String deleteConfirmationMessage(const juce::String& presetName);
     std::vector<std::pair<juce::String, juce::Rectangle<float>>>
             pointerTargetsForAutomation() const;
@@ -53,13 +82,6 @@ public:
 
 private:
     class CompactList;
-    class SelectedPresetCard;
-
-    enum class PackFilter {
-        All,
-        Factory,
-        User
-    };
 
     bool keyPressed(const juce::KeyPress& key, juce::Component*) override;
     void textEditorTextChanged(juce::TextEditor&) override;
@@ -67,39 +89,45 @@ private:
     void receiveResults(
             const std::vector<PresetLibraryRecord>& records,
             const std::vector<int>& visibleIndices);
-    void applyPackFilter();
-    void setPackFilter(PackFilter filter);
-    void updateSelectedPreview();
+    void applyTagFilter();
+    void toggleFavorite(const juce::File& file);
+    juce::StringArray tagsFor(const PresetLibraryRecord& record) const;
+    void updateAvailableTags();
     void openSelected();
+    void editSelectedTags();
+    void renameSelected();
     void requestDeleteSelected();
     void deletePreset(const juce::File& file);
     void updateVisibility();
     void styleTabButton(juce::TextButton& button);
-    void styleFilterButton(juce::TextButton& button);
 
     OpenCallback onOpen;
     ActionCallback onBrowse;
+    ActionCallback onCreate;
+    ActionCallback onTogglePlayback;
+    TitleChangedCallback onTitleChanged;
+    TagsChangedCallback onTagsChanged;
     TabCallback onTabChanged;
     DeleteCallback onDelete;
     ConfirmDeleteCallback onConfirmDelete;
+    LibraryFavorites* favorites {};
     PresetBrowserLookAndFeel lookAndFeel;
     PresetThumbnailCache thumbnails;
     juce::TextButton curves { "CURVES" };
     juce::TextButton presets { "PRESETS" };
-    juce::TextEditor search;
-    juce::TextButton all { "ALL" };
-    juce::TextButton factory { "FACTORY" };
-    juce::TextButton user { "USER" };
+    juce::TextButton patterns { "PATTERNS" };
+    std::unique_ptr<PatternBrowser> patternBrowser;
+    SidebarLibraryToolbar toolbar { "Search presets..." };
+    juce::Label tagHeading;
+    SidebarTagCloud tagCloud;
     juce::Viewport viewport;
-    std::unique_ptr<SelectedPresetCard> selectedPreview;
     std::unique_ptr<CompactList> list;
-    juce::Label status;
     juce::TextButton browse { "BROWSE FILES..." };
     std::unique_ptr<PresetLibraryIndex> index;
     std::vector<PresetLibraryRecord> library;
     std::vector<int> searchResults;
+    std::map<std::string, juce::StringArray> patternTags;
     WorkspaceSidebarTab tab { WorkspaceSidebarTab::Presets };
-    PackFilter packFilter { PackFilter::All };
 };
 
 }

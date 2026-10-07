@@ -1,0 +1,71 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/bright-lead-6-c.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "phaseLayer1"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.phaseMode",
+      "equals": "absolute"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.phaseModeVisible",
+      "equals": true
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "trimeshEditor.phaseMode.velocity",
+      "targetX": 0.5,
+      "targetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "phaseLayer1",
+      "parameterId": "phaseMode",
+      "equals": "velocity"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-trimesh-phase-velocity.png"
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "phaseLayer1",
+      "parameterId": "phaseMode",
+      "equals": "absolute"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "trimeshEditor.phaseMode.velocity",
+      "targetX": 0.5,
+      "targetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

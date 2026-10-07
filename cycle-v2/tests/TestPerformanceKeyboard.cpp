@@ -1,6 +1,8 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+
 #include "Graph/GraphCompiler.h"
 #include "Runtime/RealtimeGraphRenderer.h"
 #include "UI/CanvasUtilityDock.h"
@@ -15,6 +17,17 @@ public:
     bool enqueueMidiMessage(const MidiMessage& message, MidiEventSource source) override {
         messages.push_back(message);
         sources.push_back(source);
+        timestamps.push_back(-1.0);
+        return true;
+    }
+
+    bool enqueueMidiMessageAt(
+            const MidiMessage& message,
+            MidiEventSource source,
+            double timestampSeconds) override {
+        messages.push_back(message);
+        sources.push_back(source);
+        timestamps.push_back(timestampSeconds);
         return true;
     }
 
@@ -24,6 +37,7 @@ public:
 
     std::vector<MidiMessage> messages;
     std::vector<MidiEventSource> sources;
+    std::vector<double> timestamps;
     std::vector<MidiEventSource> releasedSources;
 };
 
@@ -108,6 +122,13 @@ TEST_CASE("Performance keyboard octave changes release its owned notes",
     keyboard.shiftOctave(20);
     REQUIRE(keyboard.baseNote() == 103);
     REQUIRE_FALSE(keyboard.noteBounds(127).isEmpty());
+
+    keyboard.revealRange(24, 96);
+    REQUIRE(keyboard.baseNote() == 48);
+    REQUIRE_FALSE(keyboard.noteBounds(60).isEmpty());
+    keyboard.revealRange(20, 42);
+    REQUIRE(keyboard.baseNote() == 24);
+    REQUIRE_FALSE(keyboard.noteBounds(42).isEmpty());
 }
 
 TEST_CASE("Performance keyboard right click selects preview note without sounding it",
@@ -149,13 +170,211 @@ TEST_CASE("Performance keyboard keeps a loaded preview note visible",
     REQUIRE(sink.messages.empty());
 }
 
+TEST_CASE("Preset phrase playback sends notes and CC through the performance MIDI path",
+        "[cycle-v2][keyboard][sequence][transport]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    panel.setBounds(0, 0, 489, 135);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 2.0;
+    phrase.notes.push_back({ 67, 110, 0.0, 0.5 });
+    phrase.notes.push_back({ 72, 90, 0.5, 0.5 });
+    phrase.controls.push_back({ 1, 15, 0.0 });
+    phrase.controls.push_back({ 1, 115, 1.0 });
+    panel.setSequence(phrase);
+
+    REQUIRE_FALSE(panel.noteBounds(67).isEmpty());
+    REQUIRE_FALSE(panel.noteBounds(72).isEmpty());
+    const double startedAt = Time::getMillisecondCounterHiRes();
+    REQUIRE(panel.startPlayback(startedAt));
+    REQUIRE(sink.messages[1].isNoteOn());
+    REQUIRE(sink.messages[1].getNoteNumber() == 67);
+    REQUIRE(sink.messages[2].isNoteOff());
+    REQUIRE(sink.messages[3].isNoteOn());
+    REQUIRE(sink.sources[1] == MidiEventSource::PatternPlayback);
+    REQUIRE(sink.sources[2] == MidiEventSource::PatternPlayback);
+    REQUIRE(sink.sources[3] == MidiEventSource::PatternPlayback);
+    REQUIRE(sink.timestamps[1] == Catch::Approx(startedAt / 1000.0));
+    REQUIRE(sink.timestamps[2] == Catch::Approx(startedAt / 1000.0 + 0.5));
+    REQUIRE(sink.timestamps[3] == Catch::Approx(startedAt / 1000.0 + 0.5));
+    const size_t scheduledCount = sink.messages.size();
+    REQUIRE(scheduledCount > 30);
+    panel.updatePlayback(startedAt + 800.0);
+    REQUIRE(sink.messages.size() > scheduledCount);
+    const auto matching = std::find_if(sink.messages.begin(), sink.messages.end(),
+            [](const MidiMessage& message) {
+                return message.isController()
+                        && message.getControllerValue() == 95;
+            });
+    REQUIRE(matching != sink.messages.end());
+    const size_t matchingIndex = (size_t) std::distance(sink.messages.begin(), matching);
+    REQUIRE(sink.timestamps[matchingIndex]
+            == Catch::Approx(startedAt / 1000.0 + 0.8));
+    panel.stopPlayback();
+    REQUIRE(sink.releasedSources.back() == MidiEventSource::PatternPlayback);
+}
+
+TEST_CASE("Preset automation interpolates the configured MIDI controller",
+        "[cycle-v2][keyboard][sequence][transport]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 2.0;
+    phrase.notes.push_back({ 60, 100, 0.0, 1.5 });
+    phrase.controls.push_back({ 3, 10, 0.0 });
+    phrase.controls.push_back({ 3, 110, 1.0 });
+    panel.setSequence(phrase);
+
+    const double startedAt = Time::getMillisecondCounterHiRes();
+    REQUIRE(panel.startPlayback(startedAt));
+    const auto initialCount = sink.messages.size();
+    REQUIRE(initialCount > 40);
+    const auto atHalfSecond = std::find_if(sink.messages.begin(), sink.messages.end(),
+            [](const MidiMessage& message) {
+                return message.isController()
+                        && message.getControllerNumber() == 3
+                        && message.getControllerValue() == 60;
+            });
+    REQUIRE(atHalfSecond != sink.messages.end());
+    const size_t index = (size_t) std::distance(sink.messages.begin(), atHalfSecond);
+    REQUIRE(sink.timestamps[index] == Catch::Approx(startedAt / 1000.0 + 0.5));
+    panel.updatePlayback(startedAt + 500.0);
+    REQUIRE(sink.messages.size() > initialCount);
+}
+
+TEST_CASE("Pattern automation schedules dense timestamped values ahead of UI ticks",
+        "[cycle-v2][keyboard][sequence][automation][timing]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 2.0;
+    phrase.notes.push_back({ 60, 100, 0.0, 1.5 });
+    phrase.controls.push_back({ 1, 0, 0.0 });
+    phrase.controls.push_back({ 1, 127, 1.0 });
+    panel.setSequence(phrase);
+
+    REQUIRE(panel.startPlayback(1000.0));
+    std::vector<double> controlTimes;
+    for (size_t index = 0; index < sink.messages.size(); ++index) {
+        if (sink.messages[index].isController()
+                && sink.sources[index] == MidiEventSource::PatternPlayback) {
+            REQUIRE(sink.timestamps[index] >= 1.0);
+            REQUIRE(sink.timestamps[index] <= 1.5);
+            controlTimes.push_back(sink.timestamps[index]);
+        }
+    }
+    REQUIRE(controlTimes.size() >= 50);
+    for (size_t index = 1; index < controlTimes.size(); ++index) {
+        REQUIRE(controlTimes[index] - controlTimes[index - 1] <= 0.011);
+    }
+    panel.stopPlayback();
+    REQUIRE(sink.releasedSources.back() == MidiEventSource::PatternPlayback);
+}
+
+TEST_CASE("Sequence notes retain fractional timing when the UI transport updates late",
+        "[cycle-v2][keyboard][sequence][transport]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 1.0;
+    phrase.notes.push_back({ 48, 100, 0.137, 0.123 });
+    phrase.notes.push_back({ 50, 80, 0.319, 0.157 });
+    panel.setSequence(phrase);
+
+    REQUIRE(panel.startPlayback(1000.0));
+    REQUIRE(sink.timestamps[1] == Catch::Approx(1.137));
+    REQUIRE(sink.timestamps[2] == Catch::Approx(1.260));
+    REQUIRE(sink.timestamps[3] == Catch::Approx(1.319));
+    REQUIRE(sink.timestamps[4] == Catch::Approx(1.476));
+    REQUIRE(sink.sources[1] == MidiEventSource::PatternPlayback);
+    const size_t eventCount = sink.messages.size();
+
+    panel.updatePlayback(1700.0);
+    REQUIRE(sink.messages.size() == eventCount);
+    panel.stopPlayback();
+    REQUIRE(sink.releasedSources.back() == MidiEventSource::PatternPlayback);
+}
+
+TEST_CASE("Preview transport toggle stops an active sequence source",
+        "[cycle-v2][keyboard][sequence][transport][stop]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    phrase.notes.push_back({ 60, 100, 0.0, 3.0 });
+    panel.setSequence(phrase);
+
+    panel.togglePlayback();
+    REQUIRE(panel.isPlaying());
+    panel.togglePlayback();
+    REQUIRE_FALSE(panel.isPlaying());
+    REQUIRE(sink.releasedSources.back() == MidiEventSource::PatternPlayback);
+}
+
+TEST_CASE("Record button captures MIDI note and controller gestures into the preset phrase",
+        "[cycle-v2][keyboard][sequence][record]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    panel.setBounds(0, 0, 489, 135);
+    PresetMidiSequence saved;
+    int saveCount = 0;
+    panel.setSequenceChangedCallback([&](PresetMidiSequence sequence) {
+        saved = std::move(sequence);
+        ++saveCount;
+    });
+    Button* record = nullptr;
+    for (int index = 0; index < panel.getNumChildComponents(); ++index) {
+        if (auto* button = dynamic_cast<Button*>(panel.getChildComponent(index))) {
+            if (button->getName() == "PerformanceKeyboard.RecordSequence") {
+                record = button;
+            }
+        }
+    }
+    REQUIRE(record != nullptr);
+    record->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(panel.isRecording());
+    const double now = Time::getMillisecondCounterHiRes() / 1000.0;
+    panel.recordMidiMessage(MidiMessage::noteOn(1, 72, (uint8) 101), now + 0.1);
+    panel.recordMidiMessage(MidiMessage::controllerEvent(1, 1, 75), now + 0.2);
+    panel.recordMidiMessage(MidiMessage::noteOff(1, 72), now + 0.6);
+    record->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+
+    REQUIRE_FALSE(panel.isRecording());
+    REQUIRE(saveCount == 1);
+    REQUIRE(saved.notes.size() == 1);
+    REQUIRE(saved.notes[0].pitch == 72);
+    REQUIRE(panel.baseNote() == 60);
+    REQUIRE_FALSE(panel.noteBounds(72).isEmpty());
+    REQUIRE(saved.notes[0].velocity == 101);
+    REQUIRE(saved.notes[0].durationSeconds == Catch::Approx(0.5).margin(0.01));
+    REQUIRE(saved.controls.size() == 1);
+    REQUIRE(saved.controls[0].controller == 1);
+    REQUIRE(saved.controls[0].value == 75);
+}
+
 TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
         "[cycle-v2][keyboard][ui]") {
     ScopedJuceInitialiser_GUI gui;
     MidiKeyboardState state;
     RecordingMidiSink sink;
     PerformanceKeyboardPanel panel(state, sink);
-    panel.setBounds(0, 0, 489, 112);
+    panel.setBounds(0, 0,
+            (int) CanvasUtilityDock::preferredKeyboardWidth,
+            (int) CanvasUtilityDock::preferredKeyboardHeight);
 
     const Rectangle<float> whiteKey = panel.noteBounds(60);
     const Rectangle<float> blackKey = panel.noteBounds(61);
@@ -182,6 +401,10 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     REQUIRE(progress.getWidth() == Catch::Approx(
             panel.noteBounds(72).getRight() - panel.noteBounds(48).getX()).margin(1.f));
     REQUIRE(progress.getHeight() == 3.f);
+    REQUIRE(panel.playBounds().getX() > octaveUp.getRight());
+    REQUIRE(panel.playBounds().getBottom() < panel.recordBounds().getY());
+    REQUIRE(panel.recordBounds().getBottom() < panel.editBounds().getY());
+    REQUIRE(panel.editBounds().getBottom() <= whiteKey.getBottom());
     REQUIRE(whiteKey.getWidth() >= 25.f);
     REQUIRE(whiteAspect == Catch::Approx(4.f).margin(0.03f));
     REQUIRE(blackAspect == Catch::Approx(4.f).margin(0.03f));
@@ -191,14 +414,14 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     REQUIRE(panel.getLocalBounds().toFloat().contains(whiteKey));
     REQUIRE(panel.getLocalBounds().toFloat().contains(panel.noteBounds(72)));
 
-    panel.setBounds(0, 0, 464, 117);
+    panel.setBounds(0, 0, 464, 140);
     const Rectangle<float> compactWhiteKey = panel.noteBounds(48);
     REQUIRE(panel.modWheelBounds().getWidth() == 24.f);
     REQUIRE(panel.modWheelBounds().getHeight() == compactWhiteKey.getHeight());
     REQUIRE(panel.octaveDownBounds().getHeight() == compactWhiteKey.getHeight());
     REQUIRE(panel.octaveUpBounds().getHeight() == compactWhiteKey.getHeight());
-    REQUIRE(compactWhiteKey.getWidth() >= 23.f);
-    REQUIRE(compactWhiteKey.getHeight() == 109.f);
+    REQUIRE(compactWhiteKey.getWidth() >= 22.f);
+    REQUIRE(compactWhiteKey.getHeight() == 132.f);
 }
 
 TEST_CASE("Performance mod wheel drag controls preview CC 1 and audition start",
@@ -338,6 +561,52 @@ TEST_CASE("Occluding the keyboard releases held keys but preserves preview playb
     REQUIRE(panel.playbackProgress() == Catch::Approx(0.5f));
     panel.stopPlayback();
     REQUIRE_FALSE(panel.isPlaying());
+}
+
+TEST_CASE("Preset playback lasts for the roll length after its last note ends",
+        "[cycle-v2][keyboard][sequence][transport]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    phrase.notes.push_back({ 60, 100, 0.0, 0.5 });
+    panel.setSequence(phrase);
+
+    REQUIRE(panel.startPlayback(1'000.0));
+    panel.updatePlayback(2'000.0);
+    REQUIRE(panel.isPlaying());
+    REQUIRE(panel.playbackProgress() == Catch::Approx(0.25f));
+    REQUIRE(sink.messages.back().isNoteOff());
+    panel.updatePlayback(5'000.0);
+    REQUIRE_FALSE(panel.isPlaying());
+    REQUIRE(panel.playbackProgress() == 1.f);
+}
+
+TEST_CASE("A roll without notes auditions the selected key for audition length",
+        "[cycle-v2][keyboard][sequence][transport]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    panel.setPreviewNote(55);
+    panel.setPlaybackDurationSeconds(2.f);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 10.0;
+    phrase.controls.push_back({ 1, 20, 0.0 });
+    panel.setSequence(phrase);
+
+    REQUIRE(panel.startPlayback(1'000.0));
+    REQUIRE(sink.messages.back().isController());
+    REQUIRE(panel.heldNote() == 55);
+    panel.updatePlayback(2'000.0);
+    REQUIRE(panel.isPlaying());
+    REQUIRE(panel.playbackProgress() == Catch::Approx(0.5f));
+    panel.updatePlayback(3'000.0);
+    REQUIRE_FALSE(panel.isPlaying());
+    REQUIRE(panel.playbackProgress() == 1.f);
+    REQUIRE(sink.messages.back().isNoteOff());
 }
 
 TEST_CASE("Preview transport duration uses the longest Voice Context",

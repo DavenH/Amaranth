@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "id": "factory-basic-keys",
+  "name": "Basic Keys",
+  "tag": "Keys",
+  "tags": [
+    "Keys",
+    "Chords"
+  ],
+  "sequence": {
+    "durationSeconds": 4,
+    "notes": [
+      {
+        "pitch": 57,
+        "velocity": 92,
+        "startSeconds": 0,
+        "durationSeconds": 0.7
+      },
+      {
+        "pitch": 61,
+        "velocity": 78,
+        "startSeconds": 0,
+        "durationSeconds": 0.7
+      },
+      {
+        "pitch": 64,
+        "velocity": 84,
+        "startSeconds": 0,
+        "durationSeconds": 0.7
+      },
+      {
+        "pitch": 60,
+        "velocity": 87,
+        "startSeconds": 2,
+        "durationSeconds": 0.7
+      },
+      {
+        "pitch": 64,
+        "velocity": 73,
+        "startSeconds": 2,
+        "durationSeconds": 0.7
+      },
+      {
+        "pitch": 67,
+        "velocity": 81,
+        "startSeconds": 2,
+        "durationSeconds": 0.7
+      }
+    ],
+    "controls": [
+      {
+        "controller": 1,
+        "value": 25,
+        "timeSeconds": 0
+      },
+      {
+        "controller": 1,
+        "value": 60,
+        "timeSeconds": 2
+      },
+      {
+        "controller": 1,
+        "value": 25,
+        "timeSeconds": 4
+      }
+    ]
+  }
+}

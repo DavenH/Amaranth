@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "id": "factory-basic-rhythm",
+  "name": "Basic Rhythm",
+  "tag": "Percussion",
+  "tags": [
+    "Percussion",
+    "Rhythmic"
+  ],
+  "sequence": {
+    "durationSeconds": 4,
+    "notes": [
+      {
+        "pitch": 48,
+        "velocity": 113,
+        "startSeconds": 0,
+        "durationSeconds": 0.17
+      },
+      {
+        "pitch": 55,
+        "velocity": 72,
+        "startSeconds": 0.5,
+        "durationSeconds": 0.13
+      },
+      {
+        "pitch": 51,
+        "velocity": 98,
+        "startSeconds": 1,
+        "durationSeconds": 0.18
+      },
+      {
+        "pitch": 48,
+        "velocity": 110,
+        "startSeconds": 2,
+        "durationSeconds": 0.17
+      },
+      {
+        "pitch": 55,
+        "velocity": 68,
+        "startSeconds": 2.5,
+        "durationSeconds": 0.13
+      },
+      {
+        "pitch": 51,
+        "velocity": 94,
+        "startSeconds": 3,
+        "durationSeconds": 0.18
+      }
+    ],
+    "controls": [
+      {
+        "controller": 1,
+        "value": 20,
+        "timeSeconds": 0
+      },
+      {
+        "controller": 1,
+        "value": 76,
+        "timeSeconds": 2
+      },
+      {
+        "controller": 1,
+        "value": 20,
+        "timeSeconds": 4
+      }
+    ]
+  }
+}

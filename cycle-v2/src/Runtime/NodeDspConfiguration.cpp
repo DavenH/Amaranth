@@ -118,6 +118,8 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
     configuration->enabled = parameterMap.boolValue("enabled", true);
     configuration->gain = CycleDsp::outputGain(parameterMap.floatValue("gain", 0.5f));
     configuration->range = parameterMap.floatValue("range", 0.5f);
+    configuration->phaseVelocity = parameterMap.stringValue("phaseMode", "absolute")
+            == "velocity";
     configuration->bipolar = TrimeshSignalSemantics::isBipolar(parameters);
     configuration->scratchSourceEnabled = scratchSourceEnabled(
             graph,

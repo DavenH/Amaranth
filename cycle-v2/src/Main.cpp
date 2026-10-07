@@ -10,6 +10,7 @@
 #include "App/CycleV2Automation.h"
 #include "App/GraphDocumentReplacement.h"
 #include "App/GraphFileHistory.h"
+#include "App/LibraryFavorites.h"
 #include "App/StandaloneAudioEngine.h"
 #include "UI/NodeWorkspace.h"
 #include "UI/PresetBrowserPage.h"
@@ -30,7 +31,8 @@ public:
         automationOptions = CycleV2::CycleV2Automation::parseCommandLine(commandLine);
         audioEngine = std::make_unique<CycleV2::StandaloneAudioEngine>();
         audioEngine->start();
-        mainWindow = std::make_unique<MainWindow>(getApplicationName(), *audioEngine);
+        mainWindow = std::make_unique<MainWindow>(
+                getApplicationName(), *audioEngine, automationOptions);
         mainWindow->setVisible(true);
         mainWindow->toFront(true);
 
@@ -60,14 +62,21 @@ public:
 
         MainWindow(
                 const String& name,
-                CycleV2::StandaloneAudioEngine& audioEngine) :
+                CycleV2::StandaloneAudioEngine& audioEngine,
+                const CycleV2::CycleV2Automation::Options& options) :
                 DocumentWindow(name, Colour(0xff101318), allButtons)
             ,   applicationName(name)
             ,   properties(createProperties())
+            ,   favorites(*properties, repositoryPresetDirectory())
             ,   fileHistory(*properties)
             ,   graphReplacement([this](const File& file) {
                     return openGraphFileUnchecked(file);
-                }) {
+                })
+            ,   agentPatternDirectory(CycleV2::CycleV2Automation::hasAutomation(options)
+                        ? File::getSpecialLocation(File::tempDirectory).getChildFile(
+                                "cycle-v2-agent-patterns-"
+                                        + Uuid().toString().removeCharacters("{}"))
+                        : File()) {
             setUsingNativeTitleBar(true);
             setResizable(true, true);
             workspace = new CycleV2::NodeWorkspace(audioEngine);
@@ -77,9 +86,18 @@ public:
                 updateDocumentPresentation();
             });
             workspace->configurePresetSidebar(
-                    { repositoryPresetDirectory(), defaultGraphDirectory() },
+                    { repositoryPresetDirectory(), defaultGraphDirectory(),
+                            userPresetDirectory() },
                     [this](const File& file) { return requestOpenGraphFile(file); },
-                    [this] { chooseOpenGraph(); });
+                    [this] { chooseOpenGraph(); },
+                    [this] { createPresetFromCurrent(); },
+                    &favorites);
+            workspace->configurePatternLibrary(
+                    repositoryPresetDirectory().getSiblingFile("patterns"),
+                    agentPatternDirectory != File()
+                            ? agentPatternDirectory
+                            : File::getSpecialLocation(File::userApplicationDataDirectory)
+                                    .getChildFile("Amaranth Audio/Cycle V2/Patterns"));
 
             commandManager.registerAllCommandsForTarget(this);
             addKeyListener(commandManager.getKeyMappings());
@@ -115,6 +133,9 @@ public:
             setMenuBar(nullptr);
           #endif
             removeKeyListener(commandManager.getKeyMappings());
+            if (agentPatternDirectory != File()) {
+                agentPatternDirectory.deleteRecursively();
+            }
         }
 
         void closeButtonPressed() override {
@@ -281,6 +302,11 @@ public:
           #endif
         }
 
+        File userPresetDirectory() const {
+            return File::getSpecialLocation(File::userApplicationDataDirectory)
+                    .getChildFile("Amaranth Audio/Cycle V2/Presets");
+        }
+
         File defaultGraphDirectory() const {
             File fallback = repositoryPresetDirectory();
 
@@ -418,7 +444,8 @@ public:
             }
 
             auto* page = new CycleV2::PresetBrowserPage(
-                    std::vector<File> { repositoryPresetDirectory(), defaultGraphDirectory() },
+                    std::vector<File> { repositoryPresetDirectory(), defaultGraphDirectory(),
+                            userPresetDirectory() },
                     [safeThis = SafePointer<MainWindow>(this)](const File& file) {
                         return safeThis != nullptr && safeThis->requestOpenGraphFile(file);
                     },
@@ -432,7 +459,22 @@ public:
                         if (safeThis != nullptr) {
                             safeThis->closePresetBrowser();
                         }
-                    });
+                    },
+                    [safeThis = SafePointer<MainWindow>(this)] {
+                        if (safeThis != nullptr && safeThis->workspace != nullptr) {
+                            safeThis->workspace->togglePreviewPlayback();
+                        }
+                    },
+                    [safeThis = SafePointer<MainWindow>(this)](
+                            const File& file, const StringArray& tags) {
+                        if (safeThis != nullptr && safeThis->workspace != nullptr) {
+                            safeThis->workspace->refreshPresetSidebarRecord(file);
+                            if (safeThis->currentGraphFile == file) {
+                                safeThis->workspace->setCurrentPresetTags(tags);
+                            }
+                        }
+                    },
+                    &favorites);
             page->setSize(1180, 760);
             DialogWindow::LaunchOptions options;
             options.dialogTitle = "Preset Browser";
@@ -446,6 +488,9 @@ public:
             if (presetBrowserWindow != nullptr) {
                 presetBrowserWindow->exitModalState(0);
                 presetBrowserWindow = nullptr;
+            }
+            if (workspace != nullptr) {
+                workspace->refreshPresetSidebarFavorites();
             }
         }
 
@@ -487,10 +532,32 @@ public:
             completion(saveGraphFile(currentGraphFile));
         }
 
-        void chooseSaveGraphAs(std::function<void(bool)> completion = {}) {
-            const File initialFile = currentGraphFile == File()
-                    ? defaultGraphDirectory().getChildFile("Untitled.cyclegraph")
-                    : currentGraphFile;
+        void createPresetFromCurrent() {
+            const File directory = userPresetDirectory();
+            if (directory.createDirectory().failed()) {
+                AlertWindow::showMessageBoxAsync(
+                        MessageBoxIconType::WarningIcon,
+                        "Preset not created",
+                        "The user preset folder could not be created.");
+                return;
+            }
+            chooseSaveGraphAs(
+                    [safeThis = SafePointer<MainWindow>(this)](bool saved) {
+                        if (saved && safeThis != nullptr && safeThis->workspace != nullptr) {
+                            safeThis->workspace->refreshPresetSidebarIndex();
+                        }
+                    },
+                    directory.getChildFile("New Preset.cyclegraph"));
+        }
+
+        void chooseSaveGraphAs(
+                std::function<void(bool)> completion = {},
+                File suggestedFile = {}) {
+            const File initialFile = suggestedFile != File()
+                    ? suggestedFile
+                    : currentGraphFile == File()
+                            ? defaultGraphDirectory().getChildFile("Untitled.cyclegraph")
+                            : currentGraphFile;
             fileChooser = std::make_unique<FileChooser>(
                     "Save Cycle V2 preset",
                     initialFile,
@@ -527,8 +594,10 @@ public:
         ApplicationCommandManager commandManager;
         AmaranthLookAndFeel presetChangeLookAndFeel { nullptr, false };
         std::unique_ptr<PropertiesFile> properties;
+        CycleV2::LibraryFavorites favorites;
         CycleV2::GraphFileHistory fileHistory;
         CycleV2::GraphDocumentReplacement graphReplacement;
+        File agentPatternDirectory;
         CycleV2::NodeWorkspace* workspace {};
         std::unique_ptr<CycleV2::CycleV2Automation> automation;
         std::unique_ptr<FileChooser> fileChooser;

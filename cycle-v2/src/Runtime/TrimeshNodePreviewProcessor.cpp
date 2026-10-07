@@ -81,7 +81,12 @@ public:
         const bool bipolar = configuration != nullptr
                 ? configuration->bipolar
                 : TrimeshSignalSemantics::isBipolar(context.parameters);
-        if (reuseCapturedTraversal(context, outputDomain, bipolar)) {
+        const bool phaseVelocity = configuration != nullptr
+                ? configuration->phaseVelocity
+                : NodeParameterMap(context.parameters).stringValue(
+                        "phaseMode", "absolute") == "velocity";
+        if (!phaseVelocity
+                && reuseCapturedTraversal(context, outputDomain, bipolar)) {
             return;
         }
 
