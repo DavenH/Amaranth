@@ -48,6 +48,15 @@ grids were 256 by 512 or 256 by 257. Artifacts:
 `/private/tmp/cycle-grid-reverb-report.json`, and
 `/private/tmp/cycle-grid-shape-report.json`.
 
+Full preset loads explain the reported roughly 500 ms delay. With telemetry
+reset before opening, Baroque Flute took 260.41 ms synchronous refresh,
+including 132.14 ms preview audio and 15.39 ms extraction. Organ 4 took
+462.59 ms synchronous refresh, including 339.28 ms preview audio and
+17.57 ms extraction. The remainder includes compilation and graph setup;
+those phases are not separately timed yet. Artifacts:
+`/private/tmp/cycle-grid-load-report.json` and
+`/private/tmp/cycle-grid-organ-load-report.json`.
+
 ## Architecture and next measurements
 
 Cycle 1's `VisualDsp` owns staged time, envelope, FFT, and effects columns,
