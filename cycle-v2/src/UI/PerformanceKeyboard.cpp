@@ -367,6 +367,12 @@ void PerformanceKeyboardPanel::releaseAllNotes() {
     keyboard.releaseAllNotes();
 }
 
+void PerformanceKeyboardPanel::releaseHeldNotesForOcclusion() {
+    if (!playing && keyboard.heldNote() >= 0) {
+        keyboard.releaseAllNotes();
+    }
+}
+
 void PerformanceKeyboardPanel::paint(Graphics& graphics) {
     const Rectangle<float> bounds = getLocalBounds().toFloat().reduced(0.75f);
     graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.96f));

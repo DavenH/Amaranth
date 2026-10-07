@@ -118,6 +118,7 @@ public:
     void stopPlayback(bool resetProgress = true);
     void updatePlayback(double nowMilliseconds);
     void releaseAllNotes();
+    void releaseHeldNotesForOcclusion();
     void paint(Graphics& graphics) override;
     void resized() override;
 

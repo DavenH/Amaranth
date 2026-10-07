@@ -33,7 +33,7 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
         layoutPerformanceKeyboard();
     });
     canvas.setPreviewPlaybackToggleCallback([this] {
-        if (keyboard.isVisible()) {
+        if (keyboard.isVisible() || keyboard.isPlaying()) {
             keyboard.togglePlayback();
         }
     });
@@ -439,7 +439,7 @@ bool NodeWorkspace::performanceEndModWheelGestureForAutomation() {
 }
 
 bool NodeWorkspace::togglePreviewPlaybackForAutomation() {
-    if (!keyboard.isVisible()) {
+    if (!keyboard.isVisible() && !keyboard.isPlaying()) {
         return false;
     }
     keyboard.togglePlayback();
@@ -542,7 +542,7 @@ void NodeWorkspace::layoutPerformanceKeyboard() {
             && expandedBounds.intersects(screenBounds.toFloat());
 
     if (occluded && keyboard.isVisible()) {
-        keyboard.releaseAllNotes();
+        keyboard.releaseHeldNotesForOcclusion();
     }
     keyboard.setBounds(screenBounds);
     keyboard.setVisible(!occluded);

@@ -309,6 +309,37 @@ TEST_CASE("Performance keyboard preview transport follows its configured duratio
     REQUIRE(sink.messages.size() == messageCount);
 }
 
+TEST_CASE("Occluding the keyboard releases held keys but preserves preview playback",
+        "[cycle-v2][keyboard][transport][occlusion]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    panel.setBounds(0, 0, 489, 140);
+
+    state.noteOn(1, 60, 0.8f);
+    REQUIRE(panel.heldNote() == 60);
+    panel.releaseHeldNotesForOcclusion();
+    REQUIRE(panel.heldNote() == -1);
+    REQUIRE(sink.releasedSources.size() == 1);
+
+    panel.setPreviewNote(55);
+    panel.setPlaybackDurationSeconds(2.f);
+    REQUIRE(panel.startPlayback(1'000.0));
+    const size_t messageCount = sink.messages.size();
+    panel.releaseHeldNotesForOcclusion();
+    REQUIRE(panel.isPlaying());
+    REQUIRE(panel.heldNote() == 55);
+    REQUIRE(sink.messages.size() == messageCount);
+    REQUIRE(sink.releasedSources.size() == 1);
+
+    panel.updatePlayback(2'000.0);
+    REQUIRE(panel.isPlaying());
+    REQUIRE(panel.playbackProgress() == Catch::Approx(0.5f));
+    panel.stopPlayback();
+    REQUIRE_FALSE(panel.isPlaying());
+}
+
 TEST_CASE("Preview transport duration uses the longest Voice Context",
         "[cycle-v2][keyboard][transport][voice-context]") {
     GraphExecutionPlan plan;

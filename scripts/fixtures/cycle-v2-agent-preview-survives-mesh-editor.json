@@ -1,0 +1,14 @@
+{
+  "commands": [
+    { "command": "key", "area": "canvas", "key": "space" },
+    { "command": "assertState", "path": "performance.previewPlaying", "equals": true },
+    { "command": "openNodeEditor", "nodeId": "waveMesh" },
+    { "command": "assertState", "path": "performance.occludedByExpandedEditor", "equals": true },
+    { "command": "assertState", "path": "performance.visible", "equals": false },
+    { "command": "assertState", "path": "performance.previewPlaying", "equals": true },
+    { "command": "assertState", "path": "performance.heldNote", "equals": 48 },
+    { "command": "key", "area": "canvas", "key": "space" },
+    { "command": "assertState", "path": "performance.previewPlaying", "equals": false }
+  ],
+  "quit": true
+}
