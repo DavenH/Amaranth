@@ -55,11 +55,20 @@ using `TimeColumnRasterizer` for the time stage. Cycle V2's diagnostic executor
 materializes traversal grids at graph nodes and retains full `SignalPayload`
 copies in `nodeOutputs`, `NodeAudioResult::output`, probe grids, and the
 diagnostic cache. The latter is a likely copy cost, but no per-node timing or
-copy-count telemetry has isolated its share yet. Cycle 1 has no equivalent
-stage-timing telemetry, so a direct measured speed ratio is still open.
+copy-count telemetry has isolated its share yet.
+
+Temporary stage timing in an otherwise unchanged Cycle 1 standalone Debug
+build measured two settled BaroqueFlute preset-load grid updates at 435 columns:
+time 0.04-0.06 ms, envelope 0.03 ms, FFT 28.27-28.93 ms, and effects
+4.57-4.69 ms. The sum is approximately 33 ms per staged product. The trace is
+`/private/tmp/cycle1-grid-log.txt.raw`; the temporary timing code was removed.
+This and the Cycle V2 source-edit measurements are different trigger paths and
+product shapes, so 33 versus 86 ms is an indication, not a controlled speed
+ratio. A Cycle 1 Organ4 load crashed while collecting the second comparison;
+it is recorded in `docs/TDD/ui-bugs.md`.
 
 Next, measure executor preparation, node processing by domain, and grid value
-copies separately on equivalent Cycle 1 and Cycle V2 presets. Count columns,
+copies separately on equivalent Cycle 1 and Cycle V2 edit events. Count columns,
 rows, raster bakes, FFTs, and copied grid values, then vary unrelated graph
 size while holding the edited delta fixed. Preserve the mature rasterizers and
 FFT implementations. Any optimization must keep complete diagnostic results,

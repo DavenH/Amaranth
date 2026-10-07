@@ -1,5 +1,16 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Cycle 1 Organ4 preset crashes during visual DSP update
+
+On 2026-10-07, a Cycle 1 `openPreset` automation run for
+`cycle/content/presets/Organ4.cyc` crashed with `EXC_BAD_ACCESS` in
+`EnvRasterizer::renderWaveformOnly` (`EnvRasterizer.cpp:212`). The stack runs
+through `UnisonPhaseColumnRenderer::render`,
+`VisualDsp::processFrequency`, and `VisualDsp::calcSpectrogram`.
+Artifacts: `/private/tmp/cycle1-grid-organ-log.txt` and its `.ips` file.
+Status: open. This occurred during a grid-timing investigation; no visual DSP
+behavior was changed.
+
 ## P2: Existing Trimesh editor tests fail in isolation
 
 During the 2026-10-06 phase-velocity work, isolated reruns of `Clicking an
