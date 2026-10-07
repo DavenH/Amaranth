@@ -1,0 +1,101 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/resources/with-spies.cyclegraph"
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "file.spyRefreshLive"
+    },
+    {
+      "command": "assertState",
+      "path": "probeRefreshMode",
+      "equals": "Live"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveshaper",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.4.absoluteSum",
+      "op": "greaterThan",
+      "value": 9000
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "expanded:waveshaper.panel2D",
+      "targetX": 0.0714,
+      "targetY": 0.9286
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:waveshaper.panel2D",
+      "targetX": 0.0714,
+      "targetY": 0.9286
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:waveshaper.panel2D",
+      "downTargetId": "expanded:waveshaper.panel2D",
+      "targetX": 0.18,
+      "targetY": 0.82,
+      "downTargetX": 0.0714,
+      "downTargetY": 0.9286
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:waveshaper.panel2D",
+      "downTargetId": "expanded:waveshaper.panel2D",
+      "targetX": 0.24,
+      "targetY": 0.76,
+      "downTargetX": 0.0714,
+      "downTargetY": 0.9286
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:waveshaper.panel2D",
+      "downTargetId": "expanded:waveshaper.panel2D",
+      "targetX": 0.24,
+      "targetY": 0.76,
+      "downTargetX": 0.0714,
+      "downTargetY": 0.9286
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 800
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.model.state.vertices.1.x",
+      "op": "greaterThan",
+      "value": 0.25
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.4.absoluteSum",
+      "op": "lessThan",
+      "value": 6000
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.4.absoluteSum",
+      "op": "greaterThan",
+      "value": 9000
+    }
+  ],
+  "quit": true
+}

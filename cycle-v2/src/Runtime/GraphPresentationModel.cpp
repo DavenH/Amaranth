@@ -273,6 +273,10 @@ void GraphPresentationModel::refreshAsync(
             std::move(completion));
 }
 
+void GraphPresentationModel::cancelPendingRefreshes() {
+    scheduler.cancelAndWait();
+}
+
 void GraphPresentationModel::refreshAsync(
         std::shared_ptr<const NodeGraph> graph,
         uint64_t documentRevision,

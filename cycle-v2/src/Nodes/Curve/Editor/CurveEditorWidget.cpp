@@ -112,6 +112,10 @@ void CurveEditorWidget::syncFromNode(const Node& node) {
     controller->syncFromNode(node);
 }
 
+void CurveEditorWidget::restoreFromNode(const Node& node) {
+    controller->restoreFromNode(node);
+}
+
 void CurveEditorWidget::syncGuideContext(const NodeGraph& graph, const Node& node) {
     controller->syncGuideContext(graph, node);
 }
@@ -214,6 +218,10 @@ std::vector<CurvePanelGridLine> CurveEditorWidget::verticalMajorGridLines() cons
 
 std::vector<CurvePreviewVertex> CurveEditorWidget::previewVertices() {
     return controller->previewVertices();
+}
+
+std::optional<FlatCurveVertex> CurveEditorWidget::pointPreview() {
+    return controller->pointPreview();
 }
 
 String CurveEditorWidget::serializedMeshState() {

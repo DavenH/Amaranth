@@ -154,6 +154,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::saveGraph(const File& file) {
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::loadGraph(const File& file) {
+    presentation.cancelPendingRefreshes();
     if (!document.load(file)) {
         return handledResult(false, "Open failed", { true });
     }
@@ -172,6 +173,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::loadSnapshot(const File& file) {
     if (!file.existsAsFile()) {
         return handledResult(false, "No snapshot", { true });
     }
+    presentation.cancelPendingRefreshes();
     if (!document.load(file)) {
         return handledResult(false, "Load failed", { true });
     }
@@ -182,6 +184,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::loadSnapshot(const File& file) {
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::undo() {
+    presentation.cancelPendingRefreshes();
     if (!document.undo()) {
         return handledResult(false, "Nothing to undo", { true });
     }
@@ -190,6 +193,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::undo() {
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::redo() {
+    presentation.cancelPendingRefreshes();
     if (!document.redo()) {
         return handledResult(false, "Nothing to redo", { true });
     }

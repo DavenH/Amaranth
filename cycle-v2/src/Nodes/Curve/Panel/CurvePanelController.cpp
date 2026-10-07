@@ -248,6 +248,11 @@ private:
         }
     }
 
+    bool cancelEdit() override {
+        return controllerDelegate != nullptr
+                && controllerDelegate->cancelCurvePanelControllerEdit();
+    }
+
     void synchronizeCurvePanelSelection() override {
         synchronizeSelection();
     }
@@ -287,13 +292,21 @@ public:
     }
 
     void syncFromNode(const Node& node) override {
+        bindNode(node, false);
+    }
+
+    void restoreFromNode(const Node& node) override {
+        bindNode(node, true);
+    }
+
+    void bindNode(const Node& node, bool force) {
         beforeNodeSync(node);
-        if (!adapter.needsNodeSync(node)) {
+        if (!force && !adapter.needsNodeSync(node)) {
             return;
         }
         auto& flatPanel = static_cast<FlatCurvePanelContract&>(*panel);
         panel->clearInteractionState();
-        if (adapter.syncFromNode(node)) {
+        if (adapter.syncFromNode(node, force)) {
             finishNodeSync(node);
             flatPanel.restoreFlatSelection(adapter.selectedMeshVertex());
         } else {
@@ -319,6 +332,11 @@ public:
 
     std::vector<CurvePreviewVertex> previewVertices() override {
         return adapter.previewVertices();
+    }
+
+    std::optional<FlatCurveVertex> pointPreview() override {
+        auto& flatPanel = static_cast<FlatCurvePanelContract&>(*panel);
+        return adapter.pointPreview(flatPanel.selectedFlatVertexForModel());
     }
 
     String serializedMeshState() override {

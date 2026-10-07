@@ -334,6 +334,7 @@ void NodeEditorCommandService::beginCurveTransaction() {
 }
 
 void NodeEditorCommandService::commitCurveTransaction() {
+    presentation.settleNodeEditorPreviewWork();
     commands.commitTransientEdit();
     curveTransactionActive = false;
     curveTransactionBaseRevision.reset();
@@ -355,6 +356,22 @@ void NodeEditorCommandService::commitCurveTransaction() {
     curvePublicationNodeId = {};
     curvePublicationFingerprint = 0;
     presentation.repaintNodeEditor(true);
+}
+
+bool NodeEditorCommandService::cancelCurveTransaction() {
+    if (!curveTransactionActive) {
+        return false;
+    }
+    presentation.settleNodeEditorPreviewWork();
+    commands.cancelTransientEdit();
+    curveTransactionActive = false;
+    curveTransactionBaseRevision.reset();
+    curveTransactionNodeId = {};
+    curvePublicationPending = false;
+    curvePublicationNodeId = {};
+    curvePublicationFingerprint = 0;
+    presentation.scheduleNodeEditorRefresh();
+    return true;
 }
 
 bool NodeEditorCommandService::setTrimeshPrimaryAxisValue(

@@ -65,6 +65,7 @@ public:
     virtual bool removeNodeAudioResource(const String&) { return false; }
     virtual void beginCurveTransaction() = 0;
     virtual void commitCurveTransaction() = 0;
+    virtual bool cancelCurveTransaction() { return false; }
     virtual bool setTrimeshPrimaryAxisValue(const String& nodeId, const String& axis) = 0;
     virtual bool toggleTrimeshLinkAxisValue(const String& nodeId, const String& axis) = 0;
     virtual bool beginTrimeshMorphEdit(
@@ -111,6 +112,7 @@ public:
             const String& nodeId,
             GraphCommandDispatcher& commands) = 0;
     virtual void scheduleNodeEditorRefresh() = 0;
+    virtual void settleNodeEditorPreviewWork() {}
     virtual void flushNodeEditorRefresh() = 0;
     virtual void refreshNodeEditorPresentation() = 0;
     virtual Point<float> nodeEditorCreationPosition() const = 0;
@@ -248,6 +250,7 @@ public:
     bool removeNodeAudioResource(const String& nodeId) override;
     void beginCurveTransaction() override;
     void commitCurveTransaction() override;
+    bool cancelCurveTransaction() override;
     bool setTrimeshPrimaryAxisValue(const String& nodeId, const String& axis) override;
     bool toggleTrimeshLinkAxisValue(const String& nodeId, const String& axis) override;
     bool beginTrimeshMorphEdit(

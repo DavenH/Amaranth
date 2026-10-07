@@ -48,6 +48,7 @@ public:
             GraphChangeSet change,
             PresentationRefreshScope scope,
             std::function<void()> completion = {});
+    void cancelPendingRefreshes();
     void recordEditorMovement(
             const String& nodeId,
             const String& field,

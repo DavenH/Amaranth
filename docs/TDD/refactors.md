@@ -362,20 +362,17 @@ source and audio before changing them. A graph-format version or a blanket
 0.0125 subtraction would also alter later-authored curves and hand-corrected
 presets.
 
-## Cycle V2 presentation gesture and refresh-policy ownership
+## Cycle 2 point dragging, previews and undo
 
-Status: active in
-[`cycle-v2-causal-update-graph.md`](cycle-v2-causal-update-graph.md), reopened
-2026-09-15.
+Status: planned in
+[`cycle-v2-causal-update-graph.md`](cycle-v2-causal-update-graph.md), rewritten
+2026-10-05 from master after PR #158.
 
-The causal planner, pure refresh policy, shared gesture session, scheduler,
-request builder, and preview renderer are in production. `GraphPresentationModel`
-is smaller, but some editor families and canvas paths still choose refresh
-behavior, the broad editor refresh host API remains, and the mod-wheel-specific
-model entry point remains. Finish the caller migration and deletion targets in
-the active TDD. Do not add another adapter or copy domain rendering behavior
-into the shared session. Other architecture concerns from the 2026-09-18
-review are tracked in [`cycle-v2-architecture-quality.md`](cycle-v2-architecture-quality.md).
+Start with one Waveshaper point drag. Measure Cycle 1 and Cycle 2 work separately
+at press, movement and release before choosing a change. Reuse existing interaction,
+undo and preview services; verify repeated movement, release, undo/redo and cancel.
+The larger storage rewrite is excluded. Other gesture migrations and editor
+families remain deferred until this interaction provides measured evidence.
 
 ## Share immutable guide products across prepared providers
 

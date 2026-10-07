@@ -32,8 +32,12 @@ bool FlatCurvePreparation::prepare() {
     }
     std::vector<FlatCurveVertexState> vertices;
     vertices.reserve(curve->getVertices().size());
+    const auto& pointPreview = typedModel->pointPreview();
     for (const auto& vertex : curve->getVertices()) {
-        vertices.push_back({ vertex.x, vertex.y, vertex.curve });
+        const FlatCurveVertex& value = pointPreview.has_value() && vertex.id == pointPreview->id
+                ? *pointPreview
+                : vertex;
+        vertices.push_back({ value.x, value.y, value.curve });
     }
     if (vertices.empty()) {
         return false;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <optional>
 
 #include "Graph/GraphDocument.h"
@@ -108,6 +109,8 @@ public:
 
     const NodeGraph& editingGraph() const;
     const GraphChangeSet& transientChanges() const;
+    // The caller must settle worker reads before mutating the durable graph.
+    std::shared_ptr<const NodeGraph> snapshotTransientEditForWorker() const;
     bool hasTransientEdit() const { return transientEdit.has_value(); }
 
 private:
