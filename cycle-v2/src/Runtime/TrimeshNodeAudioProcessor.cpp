@@ -270,10 +270,13 @@ private:
             return;
         }
         previewPhaseAccumulator.reset();
+        const double traversalSeconds = context.traversalDurationSeconds > 0.0
+                ? context.traversalDurationSeconds
+                : context.timing.sampleRate > 0.0
+                        ? (double) context.frameCount / context.timing.sampleRate
+                        : 0.0;
         const double columnSeconds = grid.columns > 1
-                && context.timing.sampleRate > 0.0
-                ? (double) context.frameCount / context.timing.sampleRate
-                        / (double) (grid.columns - 1)
+                ? traversalSeconds / (double) (grid.columns - 1)
                 : 0.0;
         for (size_t column = 0; column < grid.columns; ++column) {
             previewPhaseAccumulator.integrate(Buffer<float>(

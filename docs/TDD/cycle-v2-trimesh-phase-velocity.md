@@ -19,7 +19,9 @@ A Spy attached directly to a Velocity Trimesh shows the integrated phase over
 the traversal window, starting at zero in its first column. A constant
 positive or negative authored rate therefore produces a phase ramp with the
 corresponding direction, modulo one turn. Each following column integrates
-its sampled velocity for `frameCount / sampleRate / (columns - 1)` seconds.
+its sampled velocity for the same voice-time step used by the oscillator
+traversal, `voiceDurationSeconds / (columns - 1)` when inside a voice. The
+diagnostic frame count controls vertical resolution, not traversal duration.
 The diagnostic traversal uses a separate accumulator; it must not advance the
 realtime voice state or replace the Trimesh editor's authored-rate surface.
 
@@ -47,6 +49,8 @@ allocation on the audio path. Existing Phase remains the compatibility default.
 - [x] Static editor presents authored rate; live downstream phase reflects state.
 - [x] Focused semantic and interaction tests, UI capture, architecture and style review.
 - [x] Spy traversal integrates rate across columns and matches its sampled operands.
+- [x] Compact and detailed downstream time-domain Spies retain phase drift
+      when their row counts differ.
 
 ## Verification and architecture review
 
@@ -86,3 +90,26 @@ Spy fixture. It routes a stronger Velocity Phase Trimesh into the established
 bright lead graph, with Phase Velocity and Audio Output probes. The focused
 agent fixture opens and compiles it, verifies the selected mode and live Spy,
 and captures a C4 note with peak 0.183 and RMS 0.037 at 48 kHz.
+
+The traversal-time regression initially failed: the first Spy step contained
+0.0003 radians where voice-time integration predicted 0.094 radians. The
+oscillator traversal renderer already uses the compiled voice duration, so
+`GraphAudioExecutor` now passes that duration into the prepared Trimesh
+diagnostic context. This is one preparation-time lookup; the realtime block
+path still performs no graph search. The Trimesh processor integrates its
+sampled rate across that duration with its separate preview accumulator.
+For nodes outside a voice region, diagnostic traversal retains block duration
+as a fallback. There is no parallel lifecycle or mesh-sampling implementation.
+
+The phase-grid regression, downstream inverse-FFT test at 512-row compact and
+128-row detail resolutions, and all five focused phase tests pass. The
+15-command agent fixture opens and closes the detail view at 512 columns and
+128 rows. An OS screenshot at
+`/private/tmp/cycle-v2-phase-velocity-after-screen.png` shows distinct
+time-domain drift in the expanded view at a wide Width setting. The production
+diff changes 1 context field, 10 lines of preparation-time translation, and
+the Trimesh diagnostic time step. `GraphAudioExecutor.cpp` has 1,168 lines;
+its existing responsibilities are processor preparation, buffer binding, and
+graph execution. The new lookup is confined to its preparation boundary,
+reusing the compiled context and leaving traversal rendering in its existing
+owners.

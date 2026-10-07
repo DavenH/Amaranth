@@ -36,6 +36,24 @@
       "peakGreaterThan": 0.001,
       "rmsGreaterThan": 0.0001
     },
+    {
+      "command": "pointer",
+      "event": "doubleClick",
+      "targetId": "spy:probe",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    { "command": "assertState", "path": "probeDetailId", "equals": "probe" },
+    { "command": "assertState", "path": "probeDetailColumns", "equals": 512 },
+    { "command": "assertState", "path": "probeDetailRows", "equals": 128 },
+    {
+      "command": "pointer",
+      "event": "doubleClick",
+      "targetId": "probeDetail:probe",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    { "command": "assertState", "path": "probeDetailOpen", "equals": false },
     { "command": "openMeshPopup", "nodeId": "phaseLayer1" },
     { "command": "waitForIdle", "idleDelayMs": 300 },
     {

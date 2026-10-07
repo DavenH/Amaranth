@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <utility>
 
 using namespace CycleV2;
 
@@ -279,8 +280,9 @@ TEST_CASE("A Phase Velocity Spy shows accumulated phase across traversal time",
     REQUIRE(spy.gridColumns == columnCount);
     REQUIRE(spy.gridRows == rate.gridRows);
 
-    const float columnSeconds = (float) frameCount / 44100.f
-            / (float) (columnCount - 1);
+    REQUIRE_FALSE(velocityPlan.plan.voiceContexts.empty());
+    const float columnSeconds = velocityPlan.plan.voiceContexts.front()
+            .voiceDurationSeconds / (float) (columnCount - 1);
     bool moved = false;
     for (size_t row = 0; row < spy.gridRows; ++row) {
         float expected = 0.f;
@@ -295,6 +297,96 @@ TEST_CASE("A Phase Velocity Spy shows accumulated phase across traversal time",
         }
     }
     REQUIRE(moved);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Phase velocity remains visible after inverse FFT in both Spy sizes",
+        "[cycle-v2][trimesh][phase-velocity][spy]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content/presets/phase-velocity-test.cyclegraph");
+    const auto loaded = GraphSerializer().loadJsonString(preset.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+
+    NodeGraph velocityGraph = loaded.graph;
+    Node* velocityPhase = NodeGraphTestAccess::findNodeForEditing(
+            velocityGraph, "phaseLayer1");
+    REQUIRE(velocityPhase != nullptr);
+    auto width = std::find_if(
+            velocityPhase->parameters.begin(), velocityPhase->parameters.end(),
+            [](const NodeParameter& parameter) {
+                return parameter.id == "range";
+            });
+    REQUIRE(width != velocityPhase->parameters.end());
+    width->value = "0.92";
+
+    NodeGraph zeroPhaseGraph = velocityGraph;
+    Node* zeroPhase = NodeGraphTestAccess::findNodeForEditing(
+            zeroPhaseGraph, "phaseLayer1");
+    REQUIRE(zeroPhase != nullptr);
+    auto gain = std::find_if(
+            zeroPhase->parameters.begin(), zeroPhase->parameters.end(),
+            [](const NodeParameter& parameter) {
+                return parameter.id == "gain";
+            });
+    REQUIRE(gain != zeroPhase->parameters.end());
+    gain->value = "0";
+
+    const auto velocityPlan = GraphCompiler().compile(velocityGraph);
+    const auto zeroPhasePlan = GraphCompiler().compile(zeroPhaseGraph);
+    REQUIRE(velocityPlan.succeeded());
+    REQUIRE(zeroPhasePlan.succeeded());
+
+    for (const auto [rowCount, columnCount] :
+            { std::pair<size_t, size_t> { 512, 256 }, { 128, 512 } }) {
+        const auto velocityAudio = GraphAudioExecutor().process(
+                velocityGraph, velocityPlan.plan, rowCount, {}, {}, columnCount);
+        const auto zeroPhaseAudio = GraphAudioExecutor().process(
+                zeroPhaseGraph, zeroPhasePlan.plan, rowCount, {}, {}, columnCount);
+        const auto velocityPreview = GraphPreviewExecutor().render(
+                velocityPlan.plan, velocityAudio,
+                velocityGraph.getSignalProbes(), rowCount);
+        const auto zeroPhasePreview = GraphPreviewExecutor().render(
+                zeroPhasePlan.plan, zeroPhaseAudio,
+                zeroPhaseGraph.getSignalProbes(), rowCount);
+        const auto findOutputSpy = [](const auto& previews) {
+            return std::find_if(
+                    previews.probes.begin(), previews.probes.end(),
+                    [](const auto& preview) {
+                        return preview.probeId == "probe";
+                    });
+        };
+        const auto velocitySpy = findOutputSpy(velocityPreview);
+        const auto zeroPhaseSpy = findOutputSpy(zeroPhasePreview);
+        REQUIRE(velocitySpy != velocityPreview.probes.end());
+        REQUIRE(zeroPhaseSpy != zeroPhasePreview.probes.end());
+        REQUIRE(velocitySpy->connected);
+        REQUIRE(velocitySpy->domain == PortDomain::TimeSignal);
+        REQUIRE(velocitySpy->gridColumns == columnCount);
+        REQUIRE(velocitySpy->gridRows == rowCount);
+        REQUIRE(velocitySpy->values.size() == zeroPhaseSpy->values.size());
+
+        double firstColumnDifference = 0.0;
+        double laterColumnDifference = 0.0;
+        for (size_t column = 0; column < columnCount; ++column) {
+            for (size_t row = 0; row < rowCount; ++row) {
+                const size_t index = column * rowCount + row;
+                const double difference = std::abs(
+                        velocitySpy->values[index] - zeroPhaseSpy->values[index]);
+                if (column == 0) {
+                    firstColumnDifference += difference;
+                } else {
+                    laterColumnDifference += difference;
+                }
+            }
+        }
+        INFO("rows=" << rowCount << " columns=" << columnCount
+                << " first=" << firstColumnDifference
+                << " later=" << laterColumnDifference);
+        REQUIRE(laterColumnDifference > firstColumnDifference * 2.0 + 1.0);
+    }
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
