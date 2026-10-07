@@ -8,6 +8,43 @@ preview updates.
 
 ## Expanded Spy: comparable grid measurement
 
+### Selected-probe capture design
+
+`GraphCompiler` owns compiled probe addresses and the dependency index.
+`GraphAudioExecutor` owns diagnostic processing and captured audio results;
+`GraphPreviewExecutor` owns conversion of a captured traversal grid into a
+probe preview. The expanded Spy request should identify one compiled probe
+address. Execution should use its upstream dependency closure and capture only
+its source output, then extract only that probe preview. Compact graph
+previews retain the full diagnostic path. The default-output resolver already
+places its tap before the wet delay/reverb suffix; an explicit Spy after an
+effect must still include that effect. No node-kind check is needed in the
+executor. The existing full-capture call and redundant expanded preview
+rendering were deletion targets for this path. The dependency closure is now
+owned by `ProbeExecutionScope`; the executor still owns preparation and
+processing decisions, and the preview executor reuses the existing probe-grid
+conversion. Exact grid parity and skipped downstream work are tested. Compact
+preview calls retain their existing complete execution and extraction policy.
+
+The three-open Baroque Flute fixture at note 48 measured 329.32 ms before
+selection and 161.49 ms in the final build for the same displayed 512 by 512
+grid. Execution fell from 238.45 to 152.73 ms; extraction fell from 23.46 to
+0.77 ms. The selected capture produces one node result and does not prepare
+or process `reverb`. A test with a Spy after reverb confirms that it still
+processes that effect and matches the full-capture grid. Artifact:
+`/private/tmp/cycle-v2-spy-selected-final-report.json`.
+
+`GraphAudioExecutor.cpp` was 1,168 lines before this slice and is 1,217
+afterward. Its added code conditions its existing preparation, execution, and
+diagnostic capture loops; the dependency-closure algorithm lives in the new
+40-line `ProbeExecutionScope.cpp`. `GraphPreviewExecutor.cpp` grew from 600
+to 628 lines to share the existing probe conversion with the selected path.
+The result still takes about 160 ms, so this TDD remains in progress. The
+remaining preparation, upstream processing, and capture costs need separate
+measurement before another reduction. Reusing prepared processors requires a
+reset contract and parity proof because the earlier reuse experiment changed
+grid values.
+
 The expanded Spy is opened through `NodeCanvas::openProbeDetail`, which calls
 `PresentationPreviewRenderer::captureProbePreview`. This creates a 512-column
 diagnostic grid. It creates a fresh

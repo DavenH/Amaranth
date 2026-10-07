@@ -89,6 +89,13 @@ public:
             AudioProcessTiming timing,
             AudioVoiceContext voice,
             size_t traversalColumnCount = 0) const;
+    GraphAudioResult processProbe(
+            const GraphExecutionPlan& plan,
+            const CompiledSignalProbe& probe,
+            size_t frameCount,
+            AudioProcessTiming timing,
+            const AudioVoiceContext& voice,
+            size_t traversalColumnCount) const;
     GraphAudioResultView processIncremental(
             const NodeGraph& graph,
             const GraphExecutionPlan& plan,
@@ -143,6 +150,8 @@ private:
 
     struct CompleteDiagnosticExecution {
         size_t traversalColumnCount {};
+        const std::vector<uint8_t>* activeSteps {};
+        int capturedStepIndex { -1 };
     };
 
     struct IncrementalDiagnosticExecution {
@@ -234,7 +243,8 @@ private:
             const GraphExecutionPlan& plan,
             const AudioExecutionSpec& spec,
             int voiceIndex,
-            ProcessingPass pass) const;
+            ProcessingPass pass,
+            const std::vector<uint8_t>* activeSteps = nullptr) const;
     void prepareStepContext(
             const GraphExecutionPlan& plan,
             const GraphExecutionStep& step,

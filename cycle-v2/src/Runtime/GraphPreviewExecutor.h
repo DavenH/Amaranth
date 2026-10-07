@@ -64,6 +64,10 @@ public:
     static void reduceProbeRows(
             GraphPreviewResult::SignalProbePreview& preview,
             size_t timeRows);
+    GraphPreviewResult::SignalProbePreview captureProbe(
+            const GraphExecutionPlan& plan,
+            const GraphAudioResult& audioResult,
+            const CompiledSignalProbe& address) const;
 
     GraphPreviewResult render(const GraphExecutionPlan& plan, size_t pointCount) const;
     GraphPreviewResult render(

@@ -31,9 +31,30 @@ void reduceCompactProbeRows(GraphPreviewResult& result) {
     }
 }
 
-GraphPreviewResult captureProbePreviews(
+std::optional<CompiledSignalProbe> probeAddressFor(
         const NodeGraph& graph,
         const GraphExecutionPlan& plan,
+        const String& probeId) {
+    if (probeId == DefaultOutputProbeResolver::probeId) {
+        return plan.defaultOutputProbe;
+    }
+    if (graph.findSignalProbe(probeId) == nullptr) {
+        return std::nullopt;
+    }
+    const auto found = std::find_if(
+            plan.signalProbes.begin(),
+            plan.signalProbes.end(),
+            [&](const auto& address) {
+                return address.probeId == probeId;
+            });
+    return found != plan.signalProbes.end()
+            ? std::optional<CompiledSignalProbe>(*found)
+            : std::nullopt;
+}
+
+GraphPreviewResult::SignalProbePreview captureSelectedProbe(
+        const GraphExecutionPlan& plan,
+        const CompiledSignalProbe& address,
         size_t frameCount,
         int midiNote,
         int modWheelValue,
@@ -45,9 +66,9 @@ GraphPreviewResult captureProbePreviews(
     voice.controls.controllers[1] = (float) jlimit(0, 127, modWheelValue) / 127.f;
     voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     const uint64_t executionStartedAt = performance.timestamp();
-    const GraphAudioResult audio = captureExecutor.process(
-            graph,
+    const GraphAudioResult audio = captureExecutor.processProbe(
             plan,
+            address,
             frameCount,
             {},
             voice,
@@ -56,11 +77,7 @@ GraphPreviewResult captureProbePreviews(
             GraphPresentationPerformanceMetrics::Stage::ExpandedProbeExecution,
             performance.timestamp() - executionStartedAt);
     const uint64_t extractionStartedAt = performance.timestamp();
-    auto result = GraphPreviewExecutor().render(
-            plan,
-            audio,
-            graph.getSignalProbes(),
-            frameCount);
+    auto result = GraphPreviewExecutor().captureProbe(plan, audio, address);
     performance.record(
             GraphPresentationPerformanceMetrics::Stage::ExpandedProbeExtraction,
             performance.timestamp() - extractionStartedAt);
@@ -195,46 +212,26 @@ PresentationPreviewRenderer::captureProbePreview(
         int modWheelValue,
         GraphPresentationPerformanceMetrics& performance) const {
     const uint64_t startedAt = performance.timestamp();
-    GraphPreviewResult previews = captureProbePreviews(
-            graph,
-            plan,
-            rasterRowCount,
-            midiNote,
-            modWheelValue,
-            performance);
+    const auto address = probeAddressFor(graph, plan, probeId);
+    if (!address.has_value()) {
+        return std::nullopt;
+    }
+    auto preview = captureSelectedProbe(
+            plan, *address, rasterRowCount, midiNote, modWheelValue, performance);
     const auto recordTotal = [&] {
         performance.record(
                 GraphPresentationPerformanceMetrics::Stage::ExpandedProbeTotal,
                 performance.timestamp() - startedAt);
     };
-    if (probeId == DefaultOutputProbeResolver::probeId) {
-        if (!previews.defaultOutput.has_value()
-                || !previews.defaultOutput->connected) {
-            recordTotal();
-            return std::nullopt;
-        }
-        GraphPreviewExecutor::reduceProbeRows(
-                *previews.defaultOutput,
-                std::min(rasterRowCount, kMaximumExpandedProbeRows));
-        recordTotal();
-        return previews.defaultOutput;
-    }
-    auto found = std::find_if(
-            previews.probes.begin(),
-            previews.probes.end(),
-            [&](const auto& preview) {
-                return preview.probeId == probeId;
-            });
-    if (found == previews.probes.end() || !found->connected) {
+    if (!preview.connected) {
         recordTotal();
         return std::nullopt;
     }
-
     GraphPreviewExecutor::reduceProbeRows(
-            *found,
+            preview,
             std::min(rasterRowCount, kMaximumExpandedProbeRows));
     recordTotal();
-    return *found;
+    return preview;
 }
 
 }

@@ -9,6 +9,7 @@
 
 #include "Runtime/DefaultOutputPreview.h"
 #include "Runtime/FingerprintBuilder.h"
+#include "Graph/DefaultOutputProbeResolver.h"
 
 namespace CycleV2 {
 
@@ -394,44 +395,51 @@ GraphPreviewResult renderPreview(
     return result;
 }
 
+GraphPreviewResult::SignalProbePreview captureCompiledProbe(
+        const GraphExecutionPlan& plan,
+        const NodeAudioResult* node,
+        const CompiledSignalProbe& address) {
+    GraphPreviewResult::SignalProbePreview preview;
+    preview.probeId = address.probeId;
+    if (address.sourceStepIndex < 0
+            || (size_t) address.sourceStepIndex >= plan.steps.size()
+            || node == nullptr || address.sourceOutputIndex < 0
+            || (size_t) address.sourceOutputIndex >= node->outputs.size()) {
+        return preview;
+    }
+    const size_t outputIndex = (size_t) address.sourceOutputIndex;
+    const SignalPayload& payload = node->outputs[outputIndex].second;
+    const SignalTraversalGrid* grid = &payload.traversalGrid;
+    if (outputIndex < node->probeTraversalGrids.size()) {
+        grid = &node->probeTraversalGrids[outputIndex];
+    }
+    preview.connected = grid->isValid();
+    preview.sourceRole = plan.steps[(size_t) address.sourceStepIndex].previewRole;
+    if (!preview.connected) {
+        return preview;
+    }
+    preview.values.assign(grid->values.begin(), grid->values.end());
+    preview.gridColumns = grid->columns;
+    preview.gridRows = grid->rows;
+    preview.domain = grid->metadata.valueDomain;
+    preview.channelLayout = payload.channelLayout;
+    preview.frequencySampling = grid->metadata.frequencySampling;
+    preview.frequencyMidiNote = grid->metadata.frequencyMidiNote;
+    return preview;
+}
+
 void appendProbePreviews(
         GraphPreviewResult& result,
         const GraphExecutionPlan& plan,
         const std::vector<const NodeAudioResult*>& audioNodes,
         const std::vector<SignalProbe>& probes) {
     const auto audioIndex = indexAudioResults(plan, audioNodes, result);
-
     const auto capture = [&](const CompiledSignalProbe& address) {
-        GraphPreviewResult::SignalProbePreview preview;
-        preview.probeId = address.probeId;
-        if (address.sourceStepIndex < 0
-                || (size_t) address.sourceStepIndex >= audioIndex.size()) {
-            return preview;
-        }
-        const NodeAudioResult* node = audioIndex[(size_t) address.sourceStepIndex];
-        if (node == nullptr || address.sourceOutputIndex < 0
-                || (size_t) address.sourceOutputIndex >= node->outputs.size()) {
-            return preview;
-        }
-        const size_t outputIndex = (size_t) address.sourceOutputIndex;
-        const SignalPayload& payload = node->outputs[outputIndex].second;
-        const SignalTraversalGrid* grid = &payload.traversalGrid;
-        if (outputIndex < node->probeTraversalGrids.size()) {
-            grid = &node->probeTraversalGrids[outputIndex];
-        }
-        preview.connected = grid->isValid();
-        preview.sourceRole = plan.steps[(size_t) address.sourceStepIndex].previewRole;
-        if (!preview.connected) {
-            return preview;
-        }
-        preview.values.assign(grid->values.begin(), grid->values.end());
-        preview.gridColumns = grid->columns;
-        preview.gridRows = grid->rows;
-        preview.domain = grid->metadata.valueDomain;
-        preview.channelLayout = payload.channelLayout;
-        preview.frequencySampling = grid->metadata.frequencySampling;
-        preview.frequencyMidiNote = grid->metadata.frequencyMidiNote;
-        return preview;
+        const NodeAudioResult* node = address.sourceStepIndex >= 0
+                && (size_t) address.sourceStepIndex < audioIndex.size()
+                ? audioIndex[(size_t) address.sourceStepIndex]
+                : nullptr;
+        return captureCompiledProbe(plan, node, address);
     };
 
     result.defaultOutput = plan.defaultOutputProbe.has_value()
@@ -465,6 +473,26 @@ void appendProbePreviews(
     }
 }
 
+}
+
+GraphPreviewResult::SignalProbePreview GraphPreviewExecutor::captureProbe(
+        const GraphExecutionPlan& plan,
+        const GraphAudioResult& audioResult,
+        const CompiledSignalProbe& address) const {
+    const NodeAudioResult* source {};
+    for (const auto& node : audioResult.nodes) {
+        if (address.sourceStepIndex >= 0
+                && (size_t) address.sourceStepIndex < plan.steps.size()
+                && node.nodeId == plan.steps[(size_t) address.sourceStepIndex].nodeId) {
+            source = &node;
+            break;
+        }
+    }
+    auto preview = captureCompiledProbe(plan, source, address);
+    if (address.probeId == DefaultOutputProbeResolver::probeId && preview.connected) {
+        preview = DefaultOutputPreview::normalizedTime(preview);
+    }
+    return preview;
 }
 
 GraphPreviewResult GraphPreviewExecutor::render(const GraphExecutionPlan& plan, size_t pointCount) const {
