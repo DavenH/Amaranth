@@ -80,3 +80,9 @@ The separate prepared-source assertions verify zero phase on the first frame,
 elapsed-time accumulation, and reset. An initial prediction that the *whole*
 first audio block would equal zero phase failed; frame rendering within that
 block explains the difference. All five focused phase tests pass.
+
+`content/presets/phase-velocity-test.cyclegraph` is the manual listening and
+Spy fixture. It routes a stronger Velocity Phase Trimesh into the established
+bright lead graph, with Phase Velocity and Audio Output probes. The focused
+agent fixture opens and compiles it, verifies the selected mode and live Spy,
+and captures a C4 note with peak 0.183 and RMS 0.037 at 48 kHz.
