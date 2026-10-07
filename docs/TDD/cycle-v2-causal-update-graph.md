@@ -2,7 +2,9 @@
 
 ## Status and starting point
 
-Implemented for the scoped Waveshaper point drag on 2026-10-06. The wider mesh
+Functional interaction implemented for the scoped Waveshaper point drag on
+2026-10-06. The movement complexity criterion remains in progress: the Live
+presentation path still copies and scans unrelated graph state. The wider mesh
 storage refactor remains excluded.
 Rewritten on 2026-10-05 after the user rejected the larger mesh-storage rewrite.
 Start from master at `97bf9107` (PR #158), on `cycle2/point-drag-refactor`.
@@ -203,3 +205,26 @@ Follow-up: Homebrew `llvm@21` provides `clang-tidy` on `PATH`. A focused run on
 `CurveNodeModels.cpp` with the `tests` compilation database exits successfully;
 it reports existing style diagnostics but no parser errors. The disabled
 `readability-isolate-declaration` check is absent from the enabled-check list.
+
+## 2026-10-06 Live movement complexity follow-up
+
+A source trace after the functional commit found work that the earlier
+`InteractionComplexityDiagnostics` counters do not observe. These are pending
+complexity defects, not new interaction requirements:
+
+| Live movement site | Cost tied to unrelated data | Required correction |
+| --- | --- | --- |
+| `GraphPresentationModel::refreshAsync`: `GraphPresentationSnapshot next = current` | Copies the execution plan, runtime trace, node previews and probe sample arrays per movement. | Share immutable plan and unchanged preview products; publish changed products without copying the whole snapshot. |
+| `GraphPresentationModel::refreshConfigurations` → `GraphCompiler::refreshVoiceContexts` → editing `NodeGraph::getNodes` | Rebuilds all voice contexts and materializes a full vector of graph nodes for one Waveshaper point. | Keep unchanged voice contexts; update only the edited node's configuration. |
+| `GraphAudioExecutor::prepareExecutionInternal` | Clears and prepares processors and step contexts for every compiled step. | Reuse unchanged prepared steps and update affected configuration only. |
+| `NodeUpdateGraph::executeDeferredPublication` and `PresentationPreviewRenderer` | Reset plan-sized slots/masks and iterate all steps before processing affected products. | Use sparse affected-step work or generation-stamped state; retain required downstream traversal. |
+| `GraphPreviewExecutor::renderPreview` and probe extraction | Build plan-sized workspaces and revisit unrelated previews/probes. | Preserve unchanged preview products and visit only affected steps/probes. |
+
+`NodeGraph::snapshotNodeEdits` itself copies only changed overlay nodes; the
+full-node materialization occurs later through `getNodes()`. The existing
+`graphCopies == 0` assertion counts `NodeGraph` copy operations, not this
+materialization or `GraphPresentationSnapshot` copies. The corrected proof must
+scale unrelated nodes, unedited curve points and probes, and count copied
+snapshot bytes, node materializations, configuration preparations, plan-step
+visits and local curve rendering separately. A Live movement can scale with its
+affected downstream render product, but not with disconnected graph content.

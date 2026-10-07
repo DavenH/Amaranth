@@ -352,9 +352,10 @@ presets.
 
 ## Cycle 2 point dragging, previews and undo
 
-Status: planned in
-[`cycle-v2-causal-update-graph.md`](cycle-v2-causal-update-graph.md), rewritten
-2026-10-05 from master after PR #158.
+Status: functional Waveshaper gesture committed; Live movement complexity remains
+in progress in [`cycle-v2-causal-update-graph.md`](cycle-v2-causal-update-graph.md).
+The presentation snapshot copy, full-node materialization through voice-context
+refresh, and plan-wide preview preparation still scale with unrelated content.
 
 Start with one Waveshaper point drag. Measure Cycle 1 and Cycle 2 work separately
 at press, movement and release before choosing a change. Reuse existing interaction,
