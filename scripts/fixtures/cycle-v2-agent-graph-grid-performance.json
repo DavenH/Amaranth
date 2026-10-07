@@ -1,0 +1,18 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    { "command": "resetCanvasPerformance" },
+    { "command": "setNodeParameter", "nodeId": "timeLayer1", "parameterId": "red", "label": "Red", "value": "0.200", "waitForIdle": true, "idleDelayMs": 100 },
+    { "command": "setNodeParameter", "nodeId": "timeLayer1", "parameterId": "red", "label": "Red", "value": "0.250", "waitForIdle": true, "idleDelayMs": 100 },
+    { "command": "setNodeParameter", "nodeId": "timeLayer1", "parameterId": "red", "label": "Red", "value": "0.300", "waitForIdle": true, "idleDelayMs": 100 },
+    { "command": "setNodeParameter", "nodeId": "timeLayer1", "parameterId": "red", "label": "Red", "value": "0.350", "waitForIdle": true, "idleDelayMs": 100 },
+    { "command": "setNodeParameter", "nodeId": "timeLayer1", "parameterId": "red", "label": "Red", "value": "0.400", "waitForIdle": true, "idleDelayMs": 100 },
+    { "command": "inspectCanvasPerformance" }
+  ],
+  "quit": true
+}

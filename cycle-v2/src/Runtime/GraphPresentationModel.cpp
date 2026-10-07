@@ -99,7 +99,11 @@ bool GraphPresentationModel::refresh(
         previewRenderer.resetExecutionState();
     } else if (change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
+        const uint64_t configurationStartedAt = performance.timestamp();
         refreshConfigurations(graph, next.compileResult.plan, change.nodeIds);
+        performance.record(
+                Performance::Stage::Configuration,
+                performance.timestamp() - configurationStartedAt);
     }
     if (!compile && change.probesChanged) {
         compiler.refreshSignalProbes(graph, next.compileResult.plan);

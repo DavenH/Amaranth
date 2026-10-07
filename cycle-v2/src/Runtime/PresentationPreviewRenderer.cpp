@@ -82,12 +82,6 @@ bool PresentationPreviewRenderer::render(
     const size_t sourceFrameCount = jmax(
             kCompactPreviewFrameCount,
             GraphPreviewExecutor::periodRowsForMidiNote(snapshot.previewMidiNote));
-    const AudioExecutionSpec spec {
-            sourceFrameCount,
-            44100.0,
-            ChannelLayout::LinkedStereo
-    };
-    audioExecutor.prepareExecution(snapshot.compileResult.plan, spec);
     AudioVoiceContext previewVoice;
     previewVoice.controls.noteNumber = snapshot.previewMidiNote;
     previewVoice.controls.controllers[1]
