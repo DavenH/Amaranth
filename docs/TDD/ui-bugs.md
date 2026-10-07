@@ -124,6 +124,14 @@ muted appearance but do not isolate whether it comes from probe data, domain
 mapping, or tile compositing. Compare the same signal and domain in both views
 before changing the shared surface renderer.
 
+A same-grid role experiment on `with-spies.cyclegraph` did not change the
+visible first Spy tile: its sampled mean RGB remained 0.1584 before and after,
+while the source Trimesh node region measured 0.2417. The experiment was
+reverted. `NodePreviewRenderer` paints Trimesh nodes through their authoritative
+model path, while Spies paint runtime traversal grids, so matching the runtime
+role alone does not establish visual parity. A specific current graph and Spy
+label would help isolate the remaining case.
+
 ## Resolved: The 'out' Spy cannot be expanded
 
 Checked 2026-10-07 on the default graph. Double-clicking
