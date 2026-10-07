@@ -37,7 +37,7 @@ TEST_CASE("Trimesh phase velocity accumulates by elapsed time per bin and resets
     std::array<float, 3> third { 0.f, MathConstants<float>::twoPi,
             -MathConstants<float>::twoPi };
     accumulator.integrate({ third.data(), 3 }, 0.25);
-    REQUIRE(third[1] == Catch::Approx(MathConstants<float>::pi));
+    REQUIRE(third[1] == Catch::Approx(-MathConstants<float>::pi));
     REQUIRE(third[2] == Catch::Approx(-MathConstants<float>::pi));
 
     accumulator.reset();

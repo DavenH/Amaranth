@@ -1,9 +1,8 @@
 #pragma once
 
-#include <Array/Buffer.h>
+#include <Array/VecOps.h>
 
 #include <algorithm>
-#include <cmath>
 #include <vector>
 
 namespace CycleV2 {
@@ -12,6 +11,8 @@ class TrimeshPhaseAccumulator {
 public:
     void prepare(size_t maximumBinCount) {
         phase.resize(maximumBinCount);
+        wholeTurns.resize(maximumBinCount);
+        fractionalTurns.resize(maximumBinCount);
         reset();
     }
 
@@ -24,12 +25,13 @@ public:
         Buffer<float> running(phase.data(), count);
         running.addProduct(radiansPerSecond.withSize(count), (float) elapsedSeconds);
 
-        // VecOps has no phase-modulo operation. Keep each bin bounded before
-        // exposing the accumulated phase to the graph.
+        // Split turns around the half-turn boundary to keep phase in [-pi, pi).
         constexpr float turn = MathConstants<float>::twoPi;
-        for (int bin = 0; bin < count; ++bin) {
-            phase[(size_t) bin] = std::remainder(phase[(size_t) bin], turn);
-        }
+        running.add(MathConstants<float>::pi).div(turn);
+        Buffer<float> whole(wholeTurns.data(), count);
+        Buffer<float> fraction(fractionalTurns.data(), count);
+        VecOps::splitFrac(running, whole, fraction);
+        fraction.sub(0.5f).mul(turn).copyTo(running);
         running.copyTo(radiansPerSecond.withSize(count));
         if (count < radiansPerSecond.size()) {
             radiansPerSecond.offset(count).zero();
@@ -47,6 +49,8 @@ public:
 
 private:
     std::vector<float> phase;
+    std::vector<float> wholeTurns;
+    std::vector<float> fractionalTurns;
 };
 
 }
