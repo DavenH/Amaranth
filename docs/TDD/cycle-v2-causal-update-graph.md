@@ -193,5 +193,8 @@ Validation: `standalone-debug` and `tests` CycleV2 targets built with
 `--parallel 10`; three focused Catch2 cases passed with 220 assertions and
 `ctest --test-dir build/tests -R` passed 3/3; all
 three hosted app fixtures passed after the On Release correction. The architecture
-audit and `git diff --check` passed. `clang-tidy` was unavailable in this
-environment. The modified curve preparation loop has no scalar standard math.
+audit and `git diff --check` passed. CLion's bundled `clang-tidy` was found
+outside `PATH` afterward, but its LLVM 23 parser fails on the Apple/JUCE
+toolchain (`AudioProcessor` constructor diagnostic), so no reliable tidy
+result is available. The modified curve preparation loop has no scalar
+standard math.
