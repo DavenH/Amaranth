@@ -129,7 +129,8 @@ public:
                         spec.maximumFrameCount,
                         spec.traversalColumnCount),
                 traversalRowsForDomain(preparedDomain, spec.maximumFrameCount),
-                preparedDomain);
+                preparedDomain,
+                spec.prewarmTraversalGrid);
         traversalMorphs.resize(traversalColumnsFor(
                 spec.maximumFrameCount,
                 spec.traversalColumnCount));

@@ -27,7 +27,7 @@ conversion. Exact grid parity and skipped downstream work are tested. Compact
 preview calls retain their existing complete execution and extraction policy.
 
 The three-open Baroque Flute fixture at note 48 measured 329.32 ms before
-selection and 161.49 ms in the final build for the same displayed 512 by 512
+selection and 161.49 ms after selection for the same displayed 512 by 512
 grid. Execution fell from 238.45 to 152.73 ms; extraction fell from 23.46 to
 0.77 ms. The selected capture produces one node result and does not prepare
 or process `reverb`. A test with a Spy after reverb confirms that it still
@@ -39,11 +39,44 @@ afterward. Its added code conditions its existing preparation, execution, and
 diagnostic capture loops; the dependency-closure algorithm lives in the new
 40-line `ProbeExecutionScope.cpp`. `GraphPreviewExecutor.cpp` grew from 600
 to 628 lines to share the existing probe conversion with the selected path.
-The result still takes about 160 ms, so this TDD remains in progress. The
-remaining preparation, upstream processing, and capture costs need separate
-measurement before another reduction. Reusing prepared processors requires a
-reset contract and parity proof because the earlier reuse experiment changed
-grid values.
+That slice still took about 160 ms, prompting the preparation measurement
+below. Reusing prepared processors requires a reset contract and parity proof
+because the earlier reuse experiment changed grid values.
+
+### Diagnostic mesh preparation
+
+Three selected-probe captures split the remaining 159 ms into approximately
+70 ms preparation, 72 ms node processing, 8 ms selected-result capture, and
+8 ms extraction/cleanup. Workspace allocation was under 0.01 ms.
+`TrimeshAudioProcessor::prepareExecution` accounted for nearly all preparation:
+the time mesh took about 22 ms and the four spectral meshes about 11-12 ms
+each. `TrimeshGridwiseDsp::prepare` renders every column into a temporary
+scratch buffer, then `process` renders the columns again into the actual grid.
+The preparation render is authoritative for realtime prewarming. Diagnostic
+captures are nonrealtime and can allocate during actual rendering. The
+implemented slice passes an explicit `prewarmTraversalGrid` policy through
+`AudioExecutionSpec` and its preparation-cache signature. Complete and
+incremental diagnostic requests disable the warmup; realtime preparation
+retains it. Sampling setup is preserved in both paths.
+At 512 columns, five mesh nodes avoid 2,560 preparation bakes. A direct test
+compares prewarmed and diagnostic values exactly for time, magnitude, and
+phase domains and checks 64 warmup bakes versus zero at a 64-column shape.
+The final three-open Spy fixture fell from 161.49 to 92.93 ms total, including
+an execution decrease from 152.73 to 84.20 ms. All 14 fixture commands
+passed. Artifact: `/private/tmp/cycle-v2-spy-skipwarm-final-report.json`.
+The remaining gap to Cycle 1's ~52 ms is mainly the approximately 72 ms of
+upstream node processing at Cycle 2's larger 512-column, 257-spectral-row
+shape, plus selected-result capture and cleanup. Controlled product-size
+measurements are still needed to attribute that processing difference.
+Artifacts: `/private/tmp/cycle-v2-spy-selected-breakdown-log.txt.raw` and
+`/private/tmp/cycle-v2-spy-prep-log.txt.raw`.
+The warmup decision now has one owner in `GraphAudioExecutor::processInternal`:
+diagnostic requests set the preparation policy, and `TrimeshAudioProcessor`
+passes it to the existing gridwise DSP. The processor cache keys the policy;
+no UI or node-kind branch decides it. The modified files are under the size
+review thresholds except `GraphAudioExecutor.cpp`, which was already at 1,217
+lines and gains one assignment inside its existing diagnostic setup. No DSP
+or rasterization behavior was copied into the executor.
 
 The expanded Spy is opened through `NodeCanvas::openProbeDetail`, which calls
 `PresentationPreviewRenderer::captureProbePreview`. It creates a 512-column

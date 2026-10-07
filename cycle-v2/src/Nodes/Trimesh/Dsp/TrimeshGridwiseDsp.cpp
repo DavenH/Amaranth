@@ -54,23 +54,27 @@ void TrimeshGridwiseDsp::prepare(
         int primaryViewAxis,
         size_t maximumColumnCount,
         size_t maximumRowCount,
-        PortDomain domain) {
-    preparationScratch.resize(maximumRowCount);
+        PortDomain domain,
+        bool prewarmColumns) {
     prepareSampling(maximumRowCount);
-    renderColumnRange(
-            mesh,
-            center,
-            primaryViewAxis,
-            maximumColumnCount,
-            [this, domain](size_t index, const MorphPosition&) {
-                blockwiseDsp.renderCycleWithNoiseSeedOffsetInto(
-                        Buffer<float>(
-                                preparationScratch.data(),
-                                (int) preparationScratch.size()),
-                        domain,
-                        noiseSeedOffsetForColumn(index, domain));
-            });
     resetCounters();
+    if (prewarmColumns) {
+        preparationScratch.resize(maximumRowCount);
+        renderColumnRange(
+                mesh,
+                center,
+                primaryViewAxis,
+                maximumColumnCount,
+                [this, domain](size_t index, const MorphPosition&) {
+                    blockwiseDsp.renderCycleWithNoiseSeedOffsetInto(
+                            Buffer<float>(
+                                    preparationScratch.data(),
+                                    (int) preparationScratch.size()),
+                            domain,
+                            noiseSeedOffsetForColumn(index, domain));
+                    ++renderCounters.warmupBakeCount;
+                });
+    }
 }
 
 std::vector<TrimeshGridColumn> TrimeshGridwiseDsp::renderColumns(

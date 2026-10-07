@@ -14,6 +14,7 @@ struct TrimeshGridColumn {
 class TrimeshGridwiseDsp {
 public:
     struct RenderCounters {
+        size_t warmupBakeCount {};
         size_t sliceCount {};
         size_t bakeCount {};
     };
@@ -31,7 +32,8 @@ public:
             int primaryViewAxis,
             size_t maximumColumnCount,
             size_t maximumRowCount,
-            PortDomain domain);
+            PortDomain domain,
+            bool prewarmColumns = true);
 
     std::vector<TrimeshGridColumn> renderColumns(
             Mesh& mesh,

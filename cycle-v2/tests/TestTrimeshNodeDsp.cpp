@@ -1928,6 +1928,51 @@ TEST_CASE(
     mesh->destroy();
 }
 
+TEST_CASE("Diagnostic trimesh grids match prewarmed grids without preparation bakes",
+        "[cycle-v2][nodes][trimesh][complexity][parity]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh();
+    const MorphPosition center(0.37f, 0.42f, 0.63f);
+    constexpr size_t columnCount = 64;
+    constexpr size_t rowCount = 128;
+
+    for (const PortDomain domain : {
+            PortDomain::TimeSignal,
+            PortDomain::SpectralMagnitudeSignal,
+            PortDomain::SpectralPhaseSignal
+    }) {
+        TrimeshGridwiseDsp prewarmed;
+        TrimeshGridwiseDsp diagnostic;
+        prewarmed.prepare(
+                *mesh, center, Vertex::Red, columnCount, rowCount, domain);
+        diagnostic.prepare(
+                *mesh, center, Vertex::Red, columnCount, rowCount, domain, false);
+        REQUIRE(prewarmed.counters().warmupBakeCount == columnCount);
+        REQUIRE(diagnostic.counters().warmupBakeCount == 0);
+
+        std::vector<float> expected(columnCount * rowCount);
+        std::vector<float> actual(columnCount * rowCount);
+        REQUIRE(prewarmed.renderColumnsInto(
+                *mesh,
+                center,
+                Vertex::Red,
+                columnCount,
+                { expected.data(), (int) expected.size() },
+                domain));
+        REQUIRE(diagnostic.renderColumnsInto(
+                *mesh,
+                center,
+                Vertex::Red,
+                columnCount,
+                { actual.data(), (int) actual.size() },
+                domain));
+        REQUIRE(actual == expected);
+        REQUIRE(prewarmed.counters().bakeCount == columnCount);
+        REQUIRE(diagnostic.counters().bakeCount == columnCount);
+    }
+
+    mesh->destroy();
+}
+
 TEST_CASE("Trimesh panel data source adapts node grid data to Panel3D columns", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",

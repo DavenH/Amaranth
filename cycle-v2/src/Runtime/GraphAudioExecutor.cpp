@@ -356,6 +356,7 @@ GraphAudioResult GraphAudioExecutor::processInternal(
                 : incrementalDiagnostics != nullptr
                         ? incrementalDiagnostics->traversalColumnCount
                         : 0;
+        executionSpec.prewarmTraversalGrid = false;
         prepareExecutionInternal(
                 plan,
                 executionSpec,
