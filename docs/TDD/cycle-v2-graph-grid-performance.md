@@ -12,7 +12,7 @@ The expanded Spy is opened through `NodeCanvas::openProbeDetail`, which calls
 `PresentationPreviewRenderer::captureProbePreview`. This creates a 512-column
 diagnostic grid. It creates a fresh
 `GraphAudioExecutor`, executes the entire graph, renders all node/probe
-previews, and then selected one Spy result. These costs were absent from the
+previews, and then selects one Spy result. These costs were absent from the
 compact `previewAudio` telemetry reported earlier.
 The Baroque Flute capture visited the compiled 20-step graph even though the
 selected Spy taps `volumeMultiply` upstream of the output effects.
@@ -41,6 +41,29 @@ processors retain state, and no general per-capture reset contract exists.
 The experiment was removed. Retaining preparation requires an explicit reset
 boundary and numerical parity proof, not an executor cache alone.
 
+Follow-up timing explains why similar node counts do not imply similar
+latency. Cycle 1's 51.8 ms morph update comprised about 12.1 ms time, 0.8 ms
+envelope, 37.1 ms spectral, and 1.8 ms visual-effects work over 435 columns.
+At 512 columns and 512 rows, temporary per-step Cycle 2 timing measured about
+91 ms inside node processors and oscillator rendering, plus about 72 ms of
+per-node diagnostic result and traversal-grid capture. The approximately
+73 ms preparation above precedes those steps. Extraction added about 24 ms.
+Destruction after extraction added about 67 ms: roughly 34 ms to release the
+full `GraphAudioResult` and 33 ms to release the fresh executor and its
+diagnostic cache. These are rounded means from separate three-open Debug runs,
+so their sums are an explanation of scale rather than one exact trace.
+
+The Spy taps `volumeMultiply` before the wet effects. Nonetheless the full
+Cycle 2 diagnostic traversal spent about 28 ms processing and capturing
+`reverb`, and another 16 ms capturing or processing `globalInput` and
+`output`. Cycle 1's
+visual-effects stage processes its enabled waveshaper, tube model, EQ, and
+unison; it does not run the wet delay or reverb processors. Cycle 2 also
+materializes result grids for each upstream node and retains two large
+diagnostic result sets while selecting this one Spy. The 512 versus 435 column
+count and differing spectral row counts increase DSP work, but most of the
+observed gap is preparation, broad diagnostic capture, and cleanup.
+
 At a lower preview note, the expanded Spy displayed 512 by 512 values but
 processed 512 by 1,024 values before reducing rows. Three opens averaged
 606.88 ms total, including 417.66 ms execution and 44.46 ms extraction.
@@ -55,6 +78,9 @@ Expanded Spy artifacts: `/private/tmp/cycle-v2-expanded-spy-final-report.json`
 `/private/tmp/cycle-v2-expanded-spy-512-report.json` (1,024 source rows),
 `/private/tmp/cycle1-expanded-grid-edits-log.txt.raw` (Cycle 1 timing), and
 `/private/tmp/cycle1-expanded-grid-edits-v2-log.txt.raw` (Cycle 1 dimensions).
+Follow-up Cycle 2 breakdowns are in
+`/private/tmp/cycle-v2-spy-process-log.txt.raw` (per-step processing and capture)
+and `/private/tmp/cycle-v2-spy-release-log.txt.raw` (result and executor release).
 The temporary timing code was removed from both products.
 
 ## Measured behavior
