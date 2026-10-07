@@ -1,5 +1,15 @@
 # Audio Bug Notes
 
+## Open: broad Cycle V2 spectral test filter has unrelated fixture failures
+
+During the 2026-10-06 phase-velocity work, the broad
+`[cycle-v2][runtime][oscillator-region][spectral-frame]` filter failed in 15
+of 25 cases. Several fail at `TestSpectralAudioRegression.cpp:45` because a
+named preset file is absent; `TestChainedOscillatorRegionRuntime.cpp:754`
+also reports failed fixed-frame rasterization. The new focused velocity
+runtime test passes. Status: open; identify current preset fixtures and
+recheck the broader spectral baseline separately.
+
 ## Open: repeated in-process Brass graph renders can differ with one seed
 
 During the 2026-09-17 Envelope guide parity audit, an experimental focused

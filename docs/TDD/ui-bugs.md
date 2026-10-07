@@ -1,5 +1,15 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Existing Trimesh editor tests fail in isolation
+
+During the 2026-10-06 phase-velocity work, isolated reruns of `Clicking an
+open Trimesh Guide selector dismisses its popup` failed at
+`TestNodeEditorHost.cpp:3638` (`showTrimeshGuideAttachmentMenu` returned false),
+and `Trimesh drag keeps movement local and publishes one commit snapshot`
+crashed with SIGSEGV at `TestNodeEditorHost.cpp:4171`, before the gesture.
+Neither test uses the new phase mode. Status: open; reproduce and diagnose
+their fixture setup separately.
+
 ## P3: Trimesh primary morph test has no selected vertex parameters
 
 During the 2026-10-06 master merge, the focused

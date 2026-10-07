@@ -15,6 +15,7 @@ const Colour kText      { 0xffe2e8ef };
 constexpr int kControlLabelWidth = 56;
 constexpr int kSignalTypeSelectorWidth = 198;
 constexpr int kPolaritySelectorWidth = 142;
+constexpr int kPhaseModeSelectorWidth = 150;
 constexpr int kControlGap = 8;
 constexpr int kControlGroupGap = 14;
 constexpr int kControlHeight = 26;
@@ -39,13 +40,23 @@ std::vector<PropertySegmentOption> polarityOptions() {
     };
 }
 
+std::vector<PropertySegmentOption> phaseModeOptions() {
+    return {
+            { "Absolute", "absolute", "trimeshEditor.phaseMode.absolute",
+                    "Use the curve as a phase offset" },
+            { "Velocity", "velocity", "trimeshEditor.phaseMode.velocity",
+                    "Accumulate the curve as phase turns per second" }
+    };
+}
+
 }
 
 TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& targetWidget) :
         widget      (targetWidget)
     ,   controls    (targetWidget)
     ,   signalTypeSelector(signalTypeOptions())
-    ,   polaritySelector(polarityOptions()) {
+    ,   polaritySelector(polarityOptions())
+    ,   phaseModeSelector(phaseModeOptions()) {
     setOpaque(false);
     setName("TrimeshExpandedEditor");
     setInterceptsMouseClicks(true, true);
@@ -77,10 +88,21 @@ TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& ta
                     NodeParameterMap(node).stringValue("polarity", "unipolar"));
         }
     };
+    stylePropertyLabel(phaseModeLabel, "Mode");
+    phaseModeLabel.setJustificationType(Justification::centredRight);
+    phaseModeSelector.setComponentID("trimeshEditor.phaseMode");
+    phaseModeSelector.onChange = [this](const String& phaseMode) {
+        if (delegate == nullptr || !delegate->setTrimeshPhaseModeValue(phaseMode)) {
+            phaseModeSelector.setSelectedValue(
+                    NodeParameterMap(node).stringValue("phaseMode", "absolute"));
+        }
+    };
     addAndMakeVisible(signalTypeLabel);
     addAndMakeVisible(signalTypeSelector);
     addAndMakeVisible(polarityLabel);
     addAndMakeVisible(polaritySelector);
+    addAndMakeVisible(phaseModeLabel);
+    addAndMakeVisible(phaseModeSelector);
     widget.setExpandedPanelHostDelegate(this);
 }
 
@@ -103,6 +125,8 @@ void TrimeshExpandedEditorComponent::setNode(const Node& nextNode) {
             NodeParameterMap(node).stringValue("signalType", "time"));
     polaritySelector.setSelectedValue(
             NodeParameterMap(node).stringValue("polarity", "unipolar"));
+    phaseModeSelector.setSelectedValue(
+            NodeParameterMap(node).stringValue("phaseMode", "absolute"));
     if (!widget.isMeshEditGestureActive()) {
         updatePanelHosts();
     }
@@ -185,7 +209,9 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
     Rectangle<float> titleBounds = headerLayout.title;
     const int controlsLeft = polarityLabel.isVisible()
             ? polarityLabel.getX()
-            : signalTypeLabel.getX();
+            : phaseModeLabel.isVisible()
+                    ? phaseModeLabel.getX()
+                    : signalTypeLabel.getX();
     titleBounds.setRight((float) controlsLeft - kControlGap);
     g.drawText(labelForNodeKind(node.kind), titleBounds, Justification::centredLeft);
 
@@ -495,16 +521,31 @@ void TrimeshExpandedEditorComponent::updateSignalControls() {
     signalTypeLabel.setBounds(signalTypeLabelBounds());
     signalTypeSelector.setBounds(signalTypeSelectorBounds());
     const bool showPolarity = signalTypeSelector.selectedValue() == "spectralMagnitude";
+    const bool showPhaseMode = signalTypeSelector.selectedValue() == "spectralPhase";
     polarityLabel.setVisible(showPolarity);
     polaritySelector.setVisible(showPolarity);
     if (showPolarity) {
         polarityLabel.setBounds(polarityLabelBounds());
         polaritySelector.setBounds(polaritySelectorBounds());
     }
+    phaseModeLabel.setVisible(showPhaseMode);
+    phaseModeSelector.setVisible(showPhaseMode);
+    if (showPhaseMode) {
+        const Rectangle<int> selector = phaseModeSelectorBounds();
+        phaseModeSelector.setBounds(selector);
+        phaseModeLabel.setBounds({
+                selector.getX() - kControlGap - kControlLabelWidth,
+                selector.getY(),
+                kControlLabelWidth,
+                selector.getHeight()
+        });
+    }
     signalTypeLabel.toFront(false);
     signalTypeSelector.toFront(false);
     polarityLabel.toFront(false);
     polaritySelector.toFront(false);
+    phaseModeLabel.toFront(false);
+    phaseModeSelector.toFront(false);
     enabled.toFront(false);
 }
 
@@ -514,6 +555,16 @@ Rectangle<int> TrimeshExpandedEditorComponent::polaritySelectorBounds() const {
             typeLabel.getX() - kControlGroupGap - kPolaritySelectorWidth,
             typeLabel.getY(),
             kPolaritySelectorWidth,
+            typeLabel.getHeight()
+    };
+}
+
+Rectangle<int> TrimeshExpandedEditorComponent::phaseModeSelectorBounds() const {
+    const Rectangle<int> typeLabel = signalTypeLabelBounds();
+    return {
+            typeLabel.getX() - kControlGroupGap - kPhaseModeSelectorWidth,
+            typeLabel.getY(),
+            kPhaseModeSelectorWidth,
             typeLabel.getHeight()
     };
 }
