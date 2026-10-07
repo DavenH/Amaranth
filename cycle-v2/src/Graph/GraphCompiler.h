@@ -1,15 +1,17 @@
 #pragma once
 
+#include <cstdint>
+#include <memory>
+#include <unordered_map>
+#include <vector>
+
+#include <Audio/CycleDsp/UnisonCore.h>
+
 #include "Graph/GraphDomainResolver.h"
 #include "Graph/GraphValidator.h"
 #include "Runtime/NodeDspConfiguration.h"
 #include "Runtime/NodeModuleRegistry.h"
 #include "Runtime/SpectralMagnitudeTransfer.h"
-
-#include <Audio/CycleDsp/UnisonCore.h>
-
-#include <unordered_map>
-#include <vector>
 
 namespace CycleV2 {
 
@@ -114,6 +116,13 @@ struct CompiledSignalProbe {
     int sourceOutputIndex { -1 };
 };
 
+struct GraphObservationIndex {
+    std::vector<uint8_t> observedNodes;
+    std::vector<uint8_t> leadsToObservation;
+    std::vector<std::vector<size_t>> probeIndicesByStep;
+    bool hasProbes {};
+};
+
 struct CompiledVoiceContext {
     String nodeId;
     int octave {};
@@ -190,6 +199,7 @@ struct GraphExecutionPlan {
     std::vector<CompiledVoiceContext> voiceContexts;
     std::vector<OscillatorRegionPlan> oscillatorRegions;
     std::vector<CompiledSignalProbe> signalProbes;
+    std::shared_ptr<const GraphObservationIndex> observationIndex;
     std::optional<CompiledSignalProbe> defaultOutputProbe;
     std::vector<int> voiceMixBufferIndices;
     int globalInputBufferIndex { -1 };

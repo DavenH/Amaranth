@@ -127,6 +127,7 @@ set(GRAPH_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphValidator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphVoiceContextAssignments.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCompiler.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/CompiledProbeIndexBuilder.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCommandDispatcher.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCurveStateCommands.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDocument.cpp"

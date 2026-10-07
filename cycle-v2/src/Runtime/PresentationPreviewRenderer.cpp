@@ -67,6 +67,7 @@ bool PresentationPreviewRenderer::render(
         PresentationRefreshScope scope,
         bool& previewRendered,
         GraphPresentationPerformanceMetrics& performance,
+        bool stableProbeAddresses,
         GraphAudioExecutor::CancellationCheck cancellationCheck) {
     previewRendered = false;
     const bool hasPreviewWork = std::any_of(
@@ -128,6 +129,7 @@ bool PresentationPreviewRenderer::render(
     }
 
     std::vector<uint8_t> dirtyNodes(snapshot.compileResult.plan.steps.size());
+    std::vector<size_t> dirtyStepIndices;
     for (const auto& product : products) {
         if (product.product != UpdateProduct::PreviewTraversal
                 && product.product != UpdateProduct::CompactPreview) {
@@ -136,7 +138,11 @@ bool PresentationPreviewRenderer::render(
         const auto step = snapshot.compileResult.plan.dependencyIndex.stepIndexById.find(
                 product.nodeId);
         if (step != snapshot.compileResult.plan.dependencyIndex.stepIndexById.end()) {
-            dirtyNodes[static_cast<size_t>(step->second)] = 1;
+            const auto index = static_cast<size_t>(step->second);
+            if (dirtyNodes[index] == 0) {
+                dirtyNodes[index] = 1;
+                dirtyStepIndices.push_back(index);
+            }
         }
     }
     const uint64_t audioStartedAt = performance.timestamp();
@@ -171,7 +177,8 @@ bool PresentationPreviewRenderer::render(
                 dirtyNodes,
                 40,
                 snapshot.previewResult,
-                &previewControls);
+                &previewControls,
+                stableProbeAddresses ? &dirtyStepIndices : nullptr);
         reduceCompactProbeRows(snapshot.previewResult);
     }
     performance.record(

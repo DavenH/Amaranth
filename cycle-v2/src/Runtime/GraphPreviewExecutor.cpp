@@ -400,7 +400,9 @@ void appendProbePreviews(
         GraphPreviewResult& result,
         const GraphExecutionPlan& plan,
         const std::vector<const NodeAudioResult*>& audioNodes,
-        const std::vector<SignalProbe>& probes) {
+        const std::vector<SignalProbe>& probes,
+        const std::vector<uint8_t>* dirtyNodes = nullptr,
+        const std::vector<size_t>* dirtyStepIndices = nullptr) {
     const auto audioIndex = indexAudioResults(plan, audioNodes, result);
 
     const auto capture = [&](const CompiledSignalProbe& address) {
@@ -436,34 +438,63 @@ void appendProbePreviews(
         return preview;
     };
 
-    result.defaultOutput = plan.defaultOutputProbe.has_value()
-            ? std::optional<GraphPreviewResult::SignalProbePreview>(
-                    capture(*plan.defaultOutputProbe))
-            : std::nullopt;
-    result.defaultOutputSpectrum = result.defaultOutput.has_value()
-            && result.defaultOutput->connected
-            ? std::optional<GraphPreviewResult::SignalProbePreview>(
-                    DefaultOutputPreview::spectrum(*result.defaultOutput))
-            : std::nullopt;
-    if (result.defaultOutput.has_value() && result.defaultOutput->connected) {
-        result.defaultOutput = DefaultOutputPreview::normalizedTime(
-                *result.defaultOutput);
-    }
-
-    result.probes.clear();
-    result.probes.reserve(probes.size());
-    for (size_t probeIndex = 0; probeIndex < probes.size(); ++probeIndex) {
+    const auto refreshDefaultOutput = [&] {
+        result.defaultOutput = plan.defaultOutputProbe.has_value()
+                ? std::optional<GraphPreviewResult::SignalProbePreview>(
+                        capture(*plan.defaultOutputProbe))
+                : std::nullopt;
+        result.defaultOutputSpectrum = result.defaultOutput.has_value()
+                && result.defaultOutput->connected
+                ? std::optional<GraphPreviewResult::SignalProbePreview>(
+                        DefaultOutputPreview::spectrum(*result.defaultOutput))
+                : std::nullopt;
+        if (result.defaultOutput.has_value() && result.defaultOutput->connected) {
+            result.defaultOutput = DefaultOutputPreview::normalizedTime(
+                    *result.defaultOutput);
+        }
+    };
+    const auto refreshProbe = [&](size_t probeIndex) {
+        InteractionComplexityDiagnostics::recordPreviewProbeVisit();
         const auto& probe = probes[probeIndex];
         if (probeIndex < plan.signalProbes.size()) {
             const auto& address = plan.signalProbes[probeIndex];
             if (address.probeId == probe.id) {
-                result.probes.push_back(capture(address));
-                continue;
+                result.probes[probeIndex] = capture(address);
+                return;
             }
         }
         GraphPreviewResult::SignalProbePreview preview;
         preview.probeId = probe.id;
-        result.probes.push_back(std::move(preview));
+        result.probes[probeIndex] = std::move(preview);
+    };
+    const bool incremental = dirtyNodes != nullptr
+            && dirtyStepIndices != nullptr
+            && result.probes.size() == probes.size()
+            && plan.observationIndex != nullptr;
+    if (incremental) {
+        const auto& indicesByStep = plan.observationIndex->probeIndicesByStep;
+        for (const size_t stepIndex : *dirtyStepIndices) {
+            if (stepIndex >= indicesByStep.size()) {
+                continue;
+            }
+            for (const size_t probeIndex : indicesByStep[stepIndex]) {
+                refreshProbe(probeIndex);
+            }
+        }
+        if (plan.defaultOutputProbe.has_value()
+                && plan.defaultOutputProbe->sourceStepIndex >= 0
+                && static_cast<size_t>(plan.defaultOutputProbe->sourceStepIndex)
+                        < dirtyNodes->size()
+                && (*dirtyNodes)[static_cast<size_t>(
+                        plan.defaultOutputProbe->sourceStepIndex)] != 0) {
+            refreshDefaultOutput();
+        }
+        return;
+    }
+    refreshDefaultOutput();
+    result.probes.resize(probes.size());
+    for (size_t probeIndex = 0; probeIndex < probes.size(); ++probeIndex) {
+        refreshProbe(probeIndex);
     }
 }
 
@@ -543,7 +574,8 @@ void GraphPreviewExecutor::renderIncremental(
         const std::vector<uint8_t>& dirtyNodes,
         size_t pointCount,
         GraphPreviewResult& result,
-        const PreviewControlContext* controlContext) const {
+        const PreviewControlContext* controlContext,
+        const std::vector<size_t>* dirtyStepIndices) const {
     result = renderPreview(
             plan,
             audioResult.nodes,
@@ -551,7 +583,13 @@ void GraphPreviewExecutor::renderIncremental(
             std::move(result),
             &dirtyNodes,
             controlContext);
-    appendProbePreviews(result, plan, audioResult.nodes, probes);
+    appendProbePreviews(
+            result,
+            plan,
+            audioResult.nodes,
+            probes,
+            dirtyStepIndices != nullptr ? &dirtyNodes : nullptr,
+            dirtyStepIndices);
 }
 
 void GraphPreviewExecutor::publishLocalNodePreview(

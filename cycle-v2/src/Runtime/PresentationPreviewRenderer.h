@@ -21,6 +21,7 @@ public:
             PresentationRefreshScope scope,
             bool& previewRendered,
             GraphPresentationPerformanceMetrics& performance,
+            bool stableProbeAddresses,
             GraphAudioExecutor::CancellationCheck cancellationCheck = {});
     std::optional<GraphPreviewResult::SignalProbePreview> captureProbePreview(
             const NodeGraph& graph,

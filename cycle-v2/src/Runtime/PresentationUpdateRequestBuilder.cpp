@@ -102,21 +102,15 @@ CausalUpdateRequest PresentationUpdateRequestBuilder::build(
                     effectiveFingerprint, causes, true });
         }
     }
-    std::vector<String> observedNodeIds;
-    observedNodeIds.reserve(graph.getSignalProbes().size());
-    for (const auto& probe : graph.getSignalProbes()) {
-        if (std::find(observedNodeIds.begin(), observedNodeIds.end(), probe.sourceNodeId)
-                == observedNodeIds.end()) {
-            observedNodeIds.push_back(probe.sourceNodeId);
-        }
-    }
     const bool filterToActiveProbes = scope != PresentationRefreshScope::LocalEditor
-            && !observedNodeIds.empty();
+            && plan.observationIndex != nullptr
+            && plan.observationIndex->hasProbes;
     return {
             identity,
             std::move(invalidations),
-            std::move(observedNodeIds),
-            filterToActiveProbes
+            {},
+            filterToActiveProbes,
+            plan.observationIndex
     };
 }
 

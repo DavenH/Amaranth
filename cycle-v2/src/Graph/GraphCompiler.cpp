@@ -1,6 +1,6 @@
 #include "Graph/GraphCompiler.h"
 
-#include "Graph/DefaultOutputProbeResolver.h"
+#include "Graph/CompiledProbeIndexBuilder.h"
 
 #include "Graph/GraphAudioScopeCompiler.h"
 #include "Graph/GraphEdgeView.h"
@@ -1449,50 +1449,7 @@ float GraphCompiler::outputGainFor(const NodeGraph& graph) {
 void GraphCompiler::refreshSignalProbes(
         const NodeGraph& graph,
         GraphExecutionPlan& plan) const {
-    plan.signalProbes.clear();
-    plan.signalProbes.reserve(graph.getSignalProbes().size());
-    for (const auto& probe : graph.getSignalProbes()) {
-        CompiledSignalProbe compiled;
-        compiled.probeId = probe.id;
-        const auto source = plan.dependencyIndex.stepIndexById.find(probe.sourceNodeId);
-        if (source != plan.dependencyIndex.stepIndexById.end()) {
-            compiled.sourceStepIndex = source->second;
-            const auto& outputs = plan.steps[static_cast<size_t>(source->second)].outputs;
-            const auto output = std::find_if(
-                    outputs.begin(),
-                    outputs.end(),
-                    [&](const auto& candidate) {
-                        return candidate.portId == probe.sourcePortId;
-                    });
-            if (output != outputs.end()) {
-                compiled.sourceOutputIndex = static_cast<int>(
-                        std::distance(outputs.begin(), output));
-            }
-        }
-        plan.signalProbes.push_back(std::move(compiled));
-    }
-
-    plan.defaultOutputProbe.reset();
-    const auto address = DefaultOutputProbeResolver().resolve(graph);
-    if (!address.has_value()) {
-        return;
-    }
-    CompiledSignalProbe compiled;
-    compiled.probeId = DefaultOutputProbeResolver::probeId;
-    const auto source = plan.dependencyIndex.stepIndexById.find(address->sourceNodeId);
-    if (source == plan.dependencyIndex.stepIndexById.end()) {
-        return;
-    }
-    compiled.sourceStepIndex = source->second;
-    const auto& outputs = plan.steps[(size_t) source->second].outputs;
-    const auto output = std::find_if(outputs.begin(), outputs.end(), [&](const auto& candidate) {
-        return candidate.portId == address->sourcePortId;
-    });
-    if (output == outputs.end()) {
-        return;
-    }
-    compiled.sourceOutputIndex = (int) std::distance(outputs.begin(), output);
-    plan.defaultOutputProbe = std::move(compiled);
+    CompiledProbeIndexBuilder::refresh(graph, plan);
 }
 
 void GraphCompiler::publishConfigurations(

@@ -85,6 +85,7 @@ struct CausalUpdateRequest {
     std::vector<ProductInvalidation> invalidations;
     std::vector<String> observedNodeIds;
     bool filterObservedNodes {};
+    std::shared_ptr<const GraphObservationIndex> observationIndex;
 };
 
 struct PlannedNodeProduct {

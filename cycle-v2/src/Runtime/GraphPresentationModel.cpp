@@ -136,7 +136,8 @@ bool GraphPresentationModel::refresh(
                         compile,
                         PresentationRefreshScope::Downstream,
                         previewRendered,
-                        performance);
+                        performance,
+                        false);
             });
     if (previewRendered) {
         ++previewRenders;
@@ -401,6 +402,8 @@ bool GraphPresentationModel::executeAsyncProducts(
             refresh.scope,
             refresh.previewRendered,
             performance,
+            !refresh.change.probesChanged
+                    && refresh.change.modelEditScope == ModelEditScope::SingleCurvePoint,
             [&] { return scheduler.isCurrent(refresh); });
 }
 

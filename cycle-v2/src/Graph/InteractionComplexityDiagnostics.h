@@ -27,6 +27,7 @@ struct InteractionComplexityCounts {
     uint64_t previewPlanningSlotVisits {};
     uint64_t previewRenderStepVisits {};
     uint64_t presentationIndexRebuildVisits {};
+    uint64_t previewProbeVisits {};
 };
 
 class InteractionComplexityDiagnostics {
@@ -52,6 +53,7 @@ public:
         previewPlanningSlotVisits.store(0, std::memory_order_relaxed);
         previewRenderStepVisits.store(0, std::memory_order_relaxed);
         presentationIndexRebuildVisits.store(0, std::memory_order_relaxed);
+        previewProbeVisits.store(0, std::memory_order_relaxed);
     }
 
     static InteractionComplexityCounts counts() {
@@ -75,7 +77,8 @@ public:
                 previewPreparationStepVisits.load(std::memory_order_relaxed),
                 previewPlanningSlotVisits.load(std::memory_order_relaxed),
                 previewRenderStepVisits.load(std::memory_order_relaxed),
-                presentationIndexRebuildVisits.load(std::memory_order_relaxed)
+                presentationIndexRebuildVisits.load(std::memory_order_relaxed),
+                previewProbeVisits.load(std::memory_order_relaxed)
         };
     }
 
@@ -107,6 +110,7 @@ public:
     static void recordPresentationIndexRebuildVisits(size_t count) {
         presentationIndexRebuildVisits += count;
     }
+    static void recordPreviewProbeVisit() { ++previewProbeVisits; }
 
 private:
     static inline std::atomic<uint64_t> graphCopies {};
@@ -129,6 +133,7 @@ private:
     static inline std::atomic<uint64_t> previewPlanningSlotVisits {};
     static inline std::atomic<uint64_t> previewRenderStepVisits {};
     static inline std::atomic<uint64_t> presentationIndexRebuildVisits {};
+    static inline std::atomic<uint64_t> previewProbeVisits {};
 };
 
 }

@@ -99,7 +99,8 @@ public:
             const std::vector<uint8_t>& dirtyNodes,
             size_t pointCount,
             GraphPreviewResult& result,
-            const PreviewControlContext* controlContext = nullptr) const;
+            const PreviewControlContext* controlContext = nullptr,
+            const std::vector<size_t>* dirtyStepIndices = nullptr) const;
     void renderNodePreviewsIncremental(
             const GraphExecutionPlan& plan,
             const GraphAudioResultView& audioResult,

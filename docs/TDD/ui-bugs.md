@@ -373,3 +373,14 @@ at `TestNodeEditorHost.cpp:3708` observed `0 == 6`, although the selected
 vertex index was 2. The focused test reproduces the failure. Current status:
 open; this arose during the Waveshaper point-preview complexity audit, outside
 the changed code path.
+
+## P2: Existing probe preview fixtures fail before point-drag assertions
+
+On 2026-10-06, the focused `Honerism attached modulation refreshes mesh spies
+from loaded state` test found no `probe` in `honerism-3.cyclegraph` at
+`TestGraphRuntime.cpp:501`. The focused `Preview mod wheel refreshes modulation
+previews and spies without publishing audio` test found identical all-zero
+lower/higher probe arrays at `TestGraphRuntime.cpp:461`. The latter persisted
+with the old observation-request builder and full probe-extraction path
+restored temporarily, so the new sparse probe index is not the cause.
+Current status: open; probe fixture/content and empty mesh output need review.

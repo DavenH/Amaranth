@@ -1085,8 +1085,13 @@ TEST_CASE("Live point previews avoid unrelated planner and index work",
     for (const int unrelatedNodes : { 0, 128 }) {
         NodeGraph graph = GraphSerializer().fromJsonString(fixture.loadFileAsString());
         for (int index = 0; index < unrelatedNodes; ++index) {
+            const String nodeId = "unrelated" + String(index);
             graph.addNode(GraphNodeFactory().createNode(
-                    NodeKind::Add, "unrelated" + String(index), {}));
+                    NodeKind::Add, nodeId, {}));
+            graph.addSignalProbe({
+                    "unrelatedProbe" + String(index), nodeId, "out", nodeId, "out",
+                    "Unrelated", 0.5f, index
+            });
         }
         GraphDocument document(std::move(graph));
         GraphCommandDispatcher commands(document);
@@ -1135,21 +1140,27 @@ TEST_CASE("Live point previews avoid unrelated planner and index work",
             countsByScale[0].previewPlanningSlotVisits,
             countsByScale[0].previewRenderStepVisits,
             countsByScale[0].presentationIndexRebuildVisits,
+            countsByScale[0].previewProbeVisits,
             countsByScale[1].presentationSnapshotCopies,
             countsByScale[1].overlayNodesMaterialized,
             countsByScale[1].previewPreparationStepVisits,
             countsByScale[1].previewPlanningSlotVisits,
             countsByScale[1].previewRenderStepVisits,
-            countsByScale[1].presentationIndexRebuildVisits);
+            countsByScale[1].presentationIndexRebuildVisits,
+            countsByScale[1].previewProbeVisits);
     for (const auto& counts : countsByScale) {
         CAPTURE(counts.presentationSnapshotCopies, counts.overlayNodesMaterialized,
                 counts.previewPreparationStepVisits, counts.previewPlanningSlotVisits,
-                counts.previewRenderStepVisits, counts.presentationIndexRebuildVisits);
+                counts.previewRenderStepVisits, counts.presentationIndexRebuildVisits,
+                counts.previewProbeVisits);
         REQUIRE(counts.overlayNodesMaterialized == 0);
         REQUIRE(counts.presentationIndexRebuildVisits == 0);
     }
     REQUIRE(countsByScale[0].previewPlanningSlotVisits
             == countsByScale[1].previewPlanningSlotVisits);
+    REQUIRE(countsByScale[0].previewProbeVisits
+            == countsByScale[1].previewProbeVisits);
+    REQUIRE(countsByScale[0].previewProbeVisits > 0);
   #endif
 }
 

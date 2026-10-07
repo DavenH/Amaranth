@@ -179,7 +179,15 @@ CausalUpdateResult NodeUpdateGraph::executeDeferredPublication(
         }
     }
     touchedPlanningNodes.clear();
-    prepareObservationMask(plan.dependencyIndex, request.observedNodeIds);
+    if (request.observationIndex == nullptr) {
+        prepareObservationMask(plan.dependencyIndex, request.observedNodeIds);
+    }
+    const auto& observed = request.observationIndex != nullptr
+            ? request.observationIndex->observedNodes
+            : observedNodes;
+    const auto& leadsToObserved = request.observationIndex != nullptr
+            ? request.observationIndex->leadsToObservation
+            : leadsToObservation;
     for (const auto& invalidation : request.invalidations) {
         const auto root = plan.dependencyIndex.nodeIndexById.find(invalidation.sourceNodeId);
         if (root == plan.dependencyIndex.nodeIndexById.end()) {
@@ -198,8 +206,8 @@ CausalUpdateResult NodeUpdateGraph::executeDeferredPublication(
                     && !isObservedProductTarget(
                             invalidation.product,
                             target,
-                            observedNodes,
-                            leadsToObservation)) {
+                            observed,
+                            leadsToObserved)) {
                 PlannedNodeProduct skipped {
                         nodeId, invalidation.product,
                         targetFingerprint(invalidation.inputFingerprint, nodeId, invalidation.product),
@@ -356,27 +364,38 @@ std::vector<String> NodeUpdateGraph::affectedNodeIds(
         const CausalUpdateRequest& request,
         UpdateProduct product) const {
     std::vector<uint8_t> affected(plan.dependencyIndex.nodeIds.size());
-    std::vector<uint8_t> observed(plan.dependencyIndex.nodeIds.size());
-    std::vector<uint8_t> leadsToObserved(plan.dependencyIndex.nodeIds.size());
+    std::vector<uint8_t> observedLocal;
+    std::vector<uint8_t> leadsToObservedLocal;
     std::vector<int> observationPending;
-    for (const auto& nodeId : request.observedNodeIds) {
-        const auto found = plan.dependencyIndex.nodeIndexById.find(nodeId);
-        if (found != plan.dependencyIndex.nodeIndexById.end()) {
-            observed[static_cast<size_t>(found->second)] = 1;
-            leadsToObserved[static_cast<size_t>(found->second)] = 1;
-            observationPending.push_back(found->second);
+    if (request.observationIndex == nullptr) {
+        observedLocal.resize(plan.dependencyIndex.nodeIds.size());
+        leadsToObservedLocal.resize(plan.dependencyIndex.nodeIds.size());
+        for (const auto& nodeId : request.observedNodeIds) {
+            const auto found = plan.dependencyIndex.nodeIndexById.find(nodeId);
+            if (found != plan.dependencyIndex.nodeIndexById.end()) {
+                observedLocal[static_cast<size_t>(found->second)] = 1;
+                leadsToObservedLocal[static_cast<size_t>(found->second)] = 1;
+                observationPending.push_back(found->second);
+            }
         }
-    }
-    while (!observationPending.empty()) {
-        const int current = observationPending.back();
-        observationPending.pop_back();
-        for (const int dependency : plan.dependencyIndex.dependencies[static_cast<size_t>(current)]) {
-            if (leadsToObserved[static_cast<size_t>(dependency)] == 0) {
-                leadsToObserved[static_cast<size_t>(dependency)] = 1;
-                observationPending.push_back(dependency);
+        while (!observationPending.empty()) {
+            const int current = observationPending.back();
+            observationPending.pop_back();
+            for (const int dependency :
+                    plan.dependencyIndex.dependencies[static_cast<size_t>(current)]) {
+                if (leadsToObservedLocal[static_cast<size_t>(dependency)] == 0) {
+                    leadsToObservedLocal[static_cast<size_t>(dependency)] = 1;
+                    observationPending.push_back(dependency);
+                }
             }
         }
     }
+    const auto& observed = request.observationIndex != nullptr
+            ? request.observationIndex->observedNodes
+            : observedLocal;
+    const auto& leadsToObserved = request.observationIndex != nullptr
+            ? request.observationIndex->leadsToObservation
+            : leadsToObservedLocal;
     for (const auto& invalidation : request.invalidations) {
         if (invalidation.product != product) {
             continue;

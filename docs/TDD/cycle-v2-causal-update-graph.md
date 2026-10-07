@@ -310,3 +310,36 @@ snapshot respectively. The full movement-slot reset and full index rebuild
 decision sites are removed. The still-open snapshot and preview-execution
 sites remain single-owner runtime work, so moving them into UI glue would be
 the wrong extraction.
+
+The next slice moves observation membership into the compiled plan. The
+compiler already owns probe addresses and the dependency index; it can prepare
+the observed and upstream-reachable bitsets when probes or topology change.
+Causal requests then share that immutable index, while direct callers that
+supply ad hoc observations keep the existing local mask path. This removes a
+per-movement scan and copy of all probe roots without changing which causal
+products are eligible.
+
+The compiler's probe-address and observation work now lives in
+`CompiledProbeIndexBuilder`; `GraphCompiler::refreshSignalProbes` delegates to
+it. The plan owns one immutable observation index, rebuilt only on compile or
+probe-address changes. A Live preview request shares this index rather than
+scanning every probe. Incremental extraction uses the same source-step index
+to refresh affected probe products and the default output when its source is
+dirty. The expanded two-movement fixture adds 128 disconnected nodes and
+128 probes. Its causal planning and probe-extraction visit counts are unchanged
+from the 17-node fixture; point-preview values still change downstream. This
+does not yet remove plan-sized audio/result indexing or the full snapshot copy.
+
+The extracted probe builder preserves the compiler's existing address
+resolution and default-output policy; it adds only observation membership and
+reverse indexes. The remaining compiler responsibilities (topology, voice
+contexts, preparation) need their own later extraction; no new responsibility
+was added to the large compiler file.
+
+After this slice, `GraphCompiler.cpp` is 1,492 lines (1,535 before), with a
+91-line focused probe builder. `GraphPreviewExecutor.cpp` is 640 lines (602
+before), `NodeUpdateGraph.cpp` 549 (530 before), and
+`PresentationPreviewRenderer.cpp` 231 (224 before). Probe-address eligibility
+is decided by the compiler-owned observation index and consumed by the causal
+planner and existing preview extractor. The old per-request probe-root scan
+and full incremental probe replacement for stable addresses are deleted.
