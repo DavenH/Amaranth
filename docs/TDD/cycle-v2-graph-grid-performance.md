@@ -46,13 +46,13 @@ reset contract and parity proof because the earlier reuse experiment changed
 grid values.
 
 The expanded Spy is opened through `NodeCanvas::openProbeDetail`, which calls
-`PresentationPreviewRenderer::captureProbePreview`. This creates a 512-column
-diagnostic grid. It creates a fresh
-`GraphAudioExecutor`, executes the entire graph, renders all node/probe
-previews, and then selects one Spy result. These costs were absent from the
-compact `previewAudio` telemetry reported earlier.
-The Baroque Flute capture visited the compiled 20-step graph even though the
-selected Spy taps `volumeMultiply` upstream of the output effects.
+`PresentationPreviewRenderer::captureProbePreview`. It creates a 512-column
+diagnostic grid. Before selected-probe capture, it created a fresh
+`GraphAudioExecutor`, executed the entire graph, rendered all node/probe
+previews, and then selected one Spy result. These costs were absent from the
+compact `previewAudio` telemetry reported earlier. That Baroque Flute capture
+visited the compiled 20-step graph even though the selected Spy taps
+`volumeMultiply` upstream of the output effects.
 
 Temporary timing in Cycle 1's existing `VisualDsp::GraphicProcessor` measured
 the BaroqueFlute expanded visual grid at 435 columns and 512 time rows. Two
@@ -176,11 +176,13 @@ those phases are not separately timed yet. Artifacts:
 ## Architecture and next measurements
 
 Cycle 1's `VisualDsp` owns staged time, envelope, FFT, and effects columns,
-using `TimeColumnRasterizer` for the time stage. Cycle V2's diagnostic executor
-materializes traversal grids at graph nodes and retains full `SignalPayload`
-copies in `nodeOutputs`, `NodeAudioResult::output`, probe grids, and the
-diagnostic cache. The latter is a likely copy cost, but no per-node timing or
-copy-count telemetry has isolated its share yet.
+using `TimeColumnRasterizer` for the time stage. Cycle V2's full diagnostic
+executor materializes traversal grids at graph nodes and retains full
+`SignalPayload` copies in `nodeOutputs`, `NodeAudioResult::output`, probe
+grids, and the diagnostic cache. The selected-probe path now retains only its
+source node result; temporary per-node timing measured the earlier complete
+path's processing and capture costs. Direct copy counts for the remaining
+selected path have not been measured.
 
 Temporary stage timing in an otherwise unchanged Cycle 1 standalone Debug
 build measured two settled BaroqueFlute preset-load grid updates at 435 columns:
@@ -192,14 +194,13 @@ product shapes, so 33 versus 86 ms is an indication, not a controlled speed
 ratio. A Cycle 1 Organ4 load crashed while collecting the second comparison;
 it is recorded in `docs/TDD/ui-bugs.md`.
 
-Next, measure expanded Spy node processing by domain, result copying, and
-destruction separately. Capture only the selected probe and its graph
-ancestors, reusing the existing dependency index and extraction semantics;
-avoid rendering unrelated node previews and probes. Count columns, rows,
-raster bakes, FFTs, and copied grid values, then vary unrelated graph size
-while holding the selected Spy fixed. Preserve the mature rasterizers and FFT
-implementations. Any optimization must keep diagnostic results, probe
-previews, cancellation, and stateful capture semantics unchanged.
+Next, split the selected path's remaining ~160 ms into preparation, upstream
+node processing, selected-result copying, and cleanup. Count raster bakes,
+FFTs, and copied grid values; then vary unrelated graph size while holding
+the selected Spy fixed. Preparation still uses the full plan's workspace
+shape. Preserve the mature rasterizers and FFT implementations. Reuse across
+opens needs a processor reset contract and exact grid parity before it can
+replace fresh capture.
 
 ## Completion criteria
 
