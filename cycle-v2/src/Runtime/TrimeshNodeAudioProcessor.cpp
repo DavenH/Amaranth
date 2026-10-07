@@ -98,6 +98,7 @@ public:
     void prepareExecution(const AudioExecutionSpec& spec) override {
         trimeshDsp.prepareSampling(spec.maximumFrameCount);
         phaseAccumulator.prepare(spec.maximumFrameCount);
+        previewPhaseAccumulator.prepare(spec.maximumFrameCount);
         hasRenderedPhase = false;
         trimeshGridDsp.prepareSampling(traversalRowsForDomain(
                 spec.domain,
@@ -251,8 +252,8 @@ public:
             applyPhaseRange(outputPort.domain, output.secondaryTraversalGrid);
             if (outputPort.domain == PortDomain::SpectralPhaseSignal
                     && configuration != nullptr && configuration->phaseVelocity) {
-                copyAccumulatedPhaseToGrid(output.traversalGrid);
-                copyAccumulatedPhaseToGrid(output.secondaryTraversalGrid);
+                integrateVelocityTraversal(output.traversalGrid, context);
+                integrateVelocityTraversal(output.secondaryTraversalGrid, context);
             }
             applyEnabledIdentity(outputPort.domain, output.traversalGrid);
             applyEnabledIdentity(outputPort.domain, output.secondaryTraversalGrid);
@@ -262,14 +263,23 @@ public:
     }
 
 private:
-    void copyAccumulatedPhaseToGrid(SignalTraversalGrid& grid) {
+    void integrateVelocityTraversal(
+            SignalTraversalGrid& grid,
+            const AudioProcessContext& context) {
         if (!grid.isValid()) {
             return;
         }
+        previewPhaseAccumulator.reset();
+        const double columnSeconds = grid.columns > 1
+                && context.timing.sampleRate > 0.0
+                ? (double) context.frameCount / context.timing.sampleRate
+                        / (double) (grid.columns - 1)
+                : 0.0;
         for (size_t column = 0; column < grid.columns; ++column) {
-            phaseAccumulator.copyCurrent(Buffer<float>(
+            previewPhaseAccumulator.integrate(Buffer<float>(
                     grid.values.data() + column * grid.rows,
-                    (int) grid.rows));
+                    (int) grid.rows),
+                    column == 0 ? 0.0 : columnSeconds);
         }
     }
 
@@ -485,6 +495,7 @@ private:
     TrimeshBlockwiseDsp trimeshDsp;
     TrimeshGridwiseDsp trimeshGridDsp;
     TrimeshPhaseAccumulator phaseAccumulator;
+    TrimeshPhaseAccumulator previewPhaseAccumulator;
     bool hasRenderedPhase {};
     std::vector<MorphPosition> traversalMorphs;
     PreparedTrimeshTopology fallbackTopology { "CycleV2AudioMesh" };

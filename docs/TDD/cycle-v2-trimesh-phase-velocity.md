@@ -13,6 +13,16 @@ note contributes zero. A note-on or processor reset clears the integrator.
 The authored Trimesh editor surface shows velocity; downstream live capture
 shows the accumulated phase.
 
+## Spy traversal contract
+
+A Spy attached directly to a Velocity Trimesh shows the integrated phase over
+the traversal window, starting at zero in its first column. A constant
+positive or negative authored rate therefore produces a phase ramp with the
+corresponding direction, modulo one turn. Each following column integrates
+its sampled velocity for `frameCount / sampleRate / (columns - 1)` seconds.
+The diagnostic traversal uses a separate accumulator; it must not advance the
+realtime voice state or replace the Trimesh editor's authored-rate surface.
+
 ## Ownership and complexity
 
 The existing Trimesh rasterizer owns mesh sampling and guide behavior. A small
@@ -27,6 +37,7 @@ allocation on the audio path. Existing Phase remains the compatibility default.
 - [x] Both Trimesh audio paths integrate and reset with voice lifecycle.
 - [x] Static editor presents authored rate; live downstream phase reflects state.
 - [x] Focused semantic and interaction tests, UI capture, architecture and style review.
+- [x] Spy traversal integrates rate across columns and matches its sampled operands.
 
 ## Verification and architecture review
 
@@ -41,3 +52,14 @@ renderers own only timing adaptation. `NodeDefinition.cpp` remains a cohesive
 definition registry despite its 819 lines; this change adds one parameter
 declaration there. The broad Trimesh and spectral filters include unrelated
 open failures recorded in `ui-bugs.md` and `audio-bugs.md`.
+
+The Spy regression compares every phase bin and column with the Absolute
+mode's sampled rate integrated over the diagnostic window. It failed with a
+flat zero grid before the fix and passes after it. The traversal integration
+uses a separate prepared accumulator in `TrimeshNodeAudioProcessor.cpp`; it
+does not alter the voice accumulator. Five focused tests pass, including the
+prepared source, note cadence, toggle, and Spy contracts. The runtime file is
+515 lines, below the architecture size trigger; it still owns only Trimesh
+audio rendering, traversal rendering, and their timing translation. The
+Trimesh rasterizers remain the sole mesh sampling owners, with no copied
+policy or deletion target. The architecture audit and diff check pass.

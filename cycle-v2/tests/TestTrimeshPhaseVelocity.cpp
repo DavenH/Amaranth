@@ -6,6 +6,7 @@
 #include "Graph/GraphSerializer.h"
 #include "Graph/NodeParameterMap.h"
 #include "Runtime/GraphAudioExecutor.h"
+#include "Runtime/GraphPreviewExecutor.h"
 #include "Runtime/SpectralFrameSourceRenderer.h"
 
 #include "NodeGraphTestAccess.h"
@@ -173,6 +174,91 @@ TEST_CASE("Prepared Trimesh phase velocity reaches the spectral graph and resets
         voice.events.clear();
     }
     REQUIRE(audioDifference > 0.01);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("A Phase Velocity Spy shows accumulated phase across traversal time",
+        "[cycle-v2][trimesh][phase-velocity][spy]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content/presets/bright-lead-6-c.cyclegraph");
+    const auto loaded = GraphSerializer().loadJsonString(preset.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+
+    NodeGraph velocityGraph = loaded.graph;
+    Node* phase = NodeGraphTestAccess::findNodeForEditing(
+            velocityGraph, "phaseLayer1");
+    REQUIRE(phase != nullptr);
+    auto mode = std::find_if(phase->parameters.begin(), phase->parameters.end(),
+            [](const NodeParameter& parameter) {
+                return parameter.id == "phaseMode";
+            });
+    REQUIRE(mode != phase->parameters.end());
+    mode->value = "velocity";
+    velocityGraph.addSignalProbe({
+            "phaseVelocitySpy", "phaseLayer1", "out", "phaseOp1", "right",
+            "Phase Velocity", 0.5f, 0
+    });
+
+    NodeGraph absoluteGraph = loaded.graph;
+    absoluteGraph.addSignalProbe({
+            "phaseVelocitySpy", "phaseLayer1", "out", "phaseOp1", "right",
+            "Phase Velocity", 0.5f, 0
+    });
+    const auto velocityPlan = GraphCompiler().compile(velocityGraph);
+    const auto absolutePlan = GraphCompiler().compile(absoluteGraph);
+    REQUIRE(velocityPlan.succeeded());
+    REQUIRE(absolutePlan.succeeded());
+
+    constexpr size_t frameCount = 512;
+    constexpr size_t columnCount = 16;
+    const auto velocityAudio = GraphAudioExecutor().process(
+            velocityGraph, velocityPlan.plan, frameCount, {}, {}, columnCount);
+    const auto absoluteAudio = GraphAudioExecutor().process(
+            absoluteGraph, absolutePlan.plan, frameCount, {}, {}, columnCount);
+    const auto velocityPreview = GraphPreviewExecutor().render(
+            velocityPlan.plan, velocityAudio,
+            velocityGraph.getSignalProbes(), frameCount);
+    const auto absolutePreview = GraphPreviewExecutor().render(
+            absolutePlan.plan, absoluteAudio,
+            absoluteGraph.getSignalProbes(), frameCount);
+    const auto spyIt = std::find_if(
+            velocityPreview.probes.begin(), velocityPreview.probes.end(),
+            [](const auto& preview) {
+                return preview.probeId == "phaseVelocitySpy";
+            });
+    const auto rateIt = std::find_if(
+            absolutePreview.probes.begin(), absolutePreview.probes.end(),
+            [](const auto& preview) {
+                return preview.probeId == "phaseVelocitySpy";
+            });
+    REQUIRE(spyIt != velocityPreview.probes.end());
+    REQUIRE(rateIt != absolutePreview.probes.end());
+    const auto& spy = *spyIt;
+    const auto& rate = *rateIt;
+    REQUIRE(spy.connected);
+    REQUIRE(spy.domain == PortDomain::SpectralPhaseSignal);
+    REQUIRE(spy.gridColumns == columnCount);
+    REQUIRE(spy.gridRows == rate.gridRows);
+
+    const float columnSeconds = (float) frameCount / 44100.f
+            / (float) (columnCount - 1);
+    bool moved = false;
+    for (size_t row = 0; row < spy.gridRows; ++row) {
+        float expected = 0.f;
+        REQUIRE(spy.values[row] == Catch::Approx(0.f).margin(1.0e-6f));
+        for (size_t column = 1; column < columnCount; ++column) {
+            const size_t index = column * spy.gridRows + row;
+            expected = std::remainder(
+                    expected + rate.values[index] * columnSeconds,
+                    MathConstants<float>::twoPi);
+            REQUIRE(spy.values[index] == Catch::Approx(expected).margin(1.0e-4f));
+            moved |= std::abs(spy.values[index]) > 1.0e-4f;
+        }
+    }
+    REQUIRE(moved);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
