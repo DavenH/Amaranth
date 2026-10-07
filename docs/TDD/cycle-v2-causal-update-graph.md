@@ -196,5 +196,10 @@ three hosted app fixtures passed after the On Release correction. The architectu
 audit and `git diff --check` passed. CLion's bundled `clang-tidy` was found
 outside `PATH` afterward, but its LLVM 23 parser fails on the Apple/JUCE
 toolchain (`AudioProcessor` constructor diagnostic), so no reliable tidy
-result is available. The modified curve preparation loop has no scalar
-standard math.
+result was available at that time. The modified curve preparation loop has no
+scalar standard math.
+
+Follow-up: Homebrew `llvm@21` provides `clang-tidy` on `PATH`. A focused run on
+`CurveNodeModels.cpp` with the `tests` compilation database exits successfully;
+it reports existing style diagnostics but no parser errors. The disabled
+`readability-isolate-declaration` check is absent from the enabled-check list.
