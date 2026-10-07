@@ -67,7 +67,18 @@ passed. Artifact: `/private/tmp/cycle-v2-spy-skipwarm-final-report.json`.
 The remaining gap to Cycle 1's ~52 ms is mainly the approximately 72 ms of
 upstream node processing at Cycle 2's larger 512-column, 257-spectral-row
 shape, plus selected-result capture and cleanup. Controlled product-size
-measurements are still needed to attribute that processing difference.
+measurements beyond column width are still needed to attribute that processing
+difference.
+With only Cycle 2's expanded column count temporarily changed from 512 to
+435, the same note-48, three-open fixture measured 79.70 ms total and
+72.19 ms execution at 435 by 512 displayed values; all 14 commands passed.
+Thus 13.23 ms of the 92.93 ms capture is attributable to Cycle 2's wider
+column count in this experiment. The 435-column result remains about 28 ms
+above Cycle 1's 51.8 ms morph update. Cycle 2 still captures and releases a
+selected result, and its spectral grids have 257 rows versus Cycle 1's 169
+harmonic rows. These differences and the distinct DSP paths have not been
+isolated further. The temporary column change was reverted and the 512-column
+app rebuilt. Artifact: `/private/tmp/cycle-v2-spy-435-report.json`.
 Artifacts: `/private/tmp/cycle-v2-spy-selected-breakdown-log.txt.raw` and
 `/private/tmp/cycle-v2-spy-prep-log.txt.raw`.
 The warmup decision now has one owner in `GraphAudioExecutor::processInternal`:
@@ -227,13 +238,11 @@ product shapes, so 33 versus 86 ms is an indication, not a controlled speed
 ratio. A Cycle 1 Organ4 load crashed while collecting the second comparison;
 it is recorded in `docs/TDD/ui-bugs.md`.
 
-Next, split the selected path's remaining ~160 ms into preparation, upstream
-node processing, selected-result copying, and cleanup. Count raster bakes,
-FFTs, and copied grid values; then vary unrelated graph size while holding
-the selected Spy fixed. Preparation still uses the full plan's workspace
-shape. Preserve the mature rasterizers and FFT implementations. Reuse across
-opens needs a processor reset contract and exact grid parity before it can
-replace fresh capture.
+Next, measure the remaining selected-result copies and cleanup with operation
+counts, then vary unrelated graph size while holding the selected Spy fixed.
+Preparation still uses the full plan's workspace shape. Preserve the mature
+rasterizers and FFT implementations. Reuse across opens needs a processor
+reset contract and exact grid parity before it can replace fresh capture.
 
 ## Completion criteria
 
