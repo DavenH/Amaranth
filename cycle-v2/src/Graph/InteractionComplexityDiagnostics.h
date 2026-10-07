@@ -28,6 +28,9 @@ struct InteractionComplexityCounts {
     uint64_t previewRenderStepVisits {};
     uint64_t presentationIndexRebuildVisits {};
     uint64_t previewProbeVisits {};
+    uint64_t previewAudioIndexVisits {};
+    uint64_t previewAudioExecutionStepVisits {};
+    uint64_t previewDirtyMaskSlots {};
 };
 
 class InteractionComplexityDiagnostics {
@@ -54,6 +57,9 @@ public:
         previewRenderStepVisits.store(0, std::memory_order_relaxed);
         presentationIndexRebuildVisits.store(0, std::memory_order_relaxed);
         previewProbeVisits.store(0, std::memory_order_relaxed);
+        previewAudioIndexVisits.store(0, std::memory_order_relaxed);
+        previewAudioExecutionStepVisits.store(0, std::memory_order_relaxed);
+        previewDirtyMaskSlots.store(0, std::memory_order_relaxed);
     }
 
     static InteractionComplexityCounts counts() {
@@ -78,7 +84,10 @@ public:
                 previewPlanningSlotVisits.load(std::memory_order_relaxed),
                 previewRenderStepVisits.load(std::memory_order_relaxed),
                 presentationIndexRebuildVisits.load(std::memory_order_relaxed),
-                previewProbeVisits.load(std::memory_order_relaxed)
+                previewProbeVisits.load(std::memory_order_relaxed),
+                previewAudioIndexVisits.load(std::memory_order_relaxed),
+                previewAudioExecutionStepVisits.load(std::memory_order_relaxed),
+                previewDirtyMaskSlots.load(std::memory_order_relaxed)
         };
     }
 
@@ -107,10 +116,22 @@ public:
         previewPlanningSlotVisits += count;
     }
     static void recordPreviewRenderStepVisit() { ++previewRenderStepVisits; }
+    static void recordPreviewRenderStepVisits(size_t count) {
+        previewRenderStepVisits += count;
+    }
     static void recordPresentationIndexRebuildVisits(size_t count) {
         presentationIndexRebuildVisits += count;
     }
     static void recordPreviewProbeVisit() { ++previewProbeVisits; }
+    static void recordPreviewAudioIndexVisits(size_t count) {
+        previewAudioIndexVisits += count;
+    }
+    static void recordPreviewAudioExecutionStepVisit() {
+        ++previewAudioExecutionStepVisits;
+    }
+    static void recordPreviewDirtyMaskSlots(size_t count) {
+        previewDirtyMaskSlots += count;
+    }
 
 private:
     static inline std::atomic<uint64_t> graphCopies {};
@@ -134,6 +155,9 @@ private:
     static inline std::atomic<uint64_t> previewRenderStepVisits {};
     static inline std::atomic<uint64_t> presentationIndexRebuildVisits {};
     static inline std::atomic<uint64_t> previewProbeVisits {};
+    static inline std::atomic<uint64_t> previewAudioIndexVisits {};
+    static inline std::atomic<uint64_t> previewAudioExecutionStepVisits {};
+    static inline std::atomic<uint64_t> previewDirtyMaskSlots {};
 };
 
 }

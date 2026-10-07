@@ -32,6 +32,7 @@ public:
             int modWheelValue) const;
 
     void resetExecutionState() { audioExecutor.resetExecutionState(); }
+    void preparePointPreviewPlan(const GraphPresentationSnapshot& snapshot);
     size_t diagnosticProcessCount(const String& nodeId) const {
         return audioExecutor.diagnosticProcessCount(nodeId);
     }

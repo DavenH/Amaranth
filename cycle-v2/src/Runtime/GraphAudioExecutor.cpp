@@ -172,7 +172,8 @@ GraphAudioResultView GraphAudioExecutor::processIncrementalIndexed(
             {},
             voice,
             IncrementalDiagnosticExecution {
-                    dirtyNodes,
+                    &dirtyNodes,
+                    nullptr,
                     cancellationCheck,
                     result,
                     traversalColumnCount
@@ -180,10 +181,48 @@ GraphAudioResultView GraphAudioExecutor::processIncrementalIndexed(
     return result;
 }
 
+GraphAudioResultView GraphAudioExecutor::processIncrementalSteps(
+        const NodeGraph& graph,
+        const GraphExecutionPlan& plan,
+        size_t frameCount,
+        const std::vector<size_t>& dirtyStepIndices,
+        const AudioVoiceContext& voice,
+        const CancellationCheck& cancellationCheck,
+        size_t traversalColumnCount) const {
+    std::vector<size_t> orderedSteps = dirtyStepIndices;
+    std::sort(orderedSteps.begin(), orderedSteps.end());
+    orderedSteps.erase(std::unique(orderedSteps.begin(), orderedSteps.end()),
+            orderedSteps.end());
+    GraphAudioResultView result;
+    processInternal(
+            plan,
+            frameCount,
+            {},
+            voice,
+            IncrementalDiagnosticExecution {
+                    nullptr,
+                    &orderedSteps,
+                    cancellationCheck,
+                    result,
+                    traversalColumnCount
+            });
+    return result;
+}
+
+void GraphAudioExecutor::preparePointPreviewPlan(
+        const GraphExecutionPlan& plan,
+        const AudioExecutionSpec& spec) const {
+    prepareExecution(plan, spec);
+    if (diagnosticCache.size() == plan.steps.size()) {
+        diagnosticPlan = &plan;
+    }
+}
+
 void GraphAudioExecutor::clearIncrementalCache() const {
     diagnosticNodeIds.clear();
     diagnosticCache.clear();
     diagnosticProcessCounts.clear();
+    diagnosticPlan = nullptr;
 }
 
 void GraphAudioExecutor::resetExecutionState() const {
@@ -303,7 +342,10 @@ GraphAudioResult GraphAudioExecutor::processInternal(
     const auto* realtime = std::get_if<RealtimeExecution>(&mode);
     const bool captureDiagnostics = realtime == nullptr;
     const auto* dirtyNodes = incrementalDiagnostics != nullptr
-            ? &incrementalDiagnostics->dirtyNodes
+            ? incrementalDiagnostics->dirtyNodes
+            : nullptr;
+    const auto* dirtyStepIndices = incrementalDiagnostics != nullptr
+            ? incrementalDiagnostics->dirtyStepIndices
             : nullptr;
     const CancellationCheck* cancellationCheck = incrementalDiagnostics != nullptr
             ? &incrementalDiagnostics->cancellationCheck
@@ -329,7 +371,15 @@ GraphAudioResult GraphAudioExecutor::processInternal(
                 : incrementalDiagnostics != nullptr
                         ? incrementalDiagnostics->traversalColumnCount
                         : 0;
-        prepareExecution(plan, executionSpec, voice.voiceIndex);
+        if (incrementalDiagnostics == nullptr
+                || incrementalDiagnostics->dirtyStepIndices == nullptr
+                || !prepareIncrementalExecution(
+                        plan,
+                        executionSpec,
+                        voice.voiceIndex,
+                        *incrementalDiagnostics->dirtyStepIndices)) {
+            prepareExecution(plan, executionSpec, voice.voiceIndex);
+        }
     }
 
     const auto preparedVoice = preparedVoices.find(voice.voiceIndex);
@@ -345,9 +395,14 @@ GraphAudioResult GraphAudioExecutor::processInternal(
 
     GraphAudioResult result;
     bool cacheMatchesPlan = !captureDiagnostics
-            || diagnosticNodeIds.size() == plan.steps.size();
-    if (captureDiagnostics && cacheMatchesPlan) {
+            || diagnosticPlan == &plan;
+    if (captureDiagnostics && !cacheMatchesPlan
+            && diagnosticNodeIds.size() == plan.steps.size()) {
+        cacheMatchesPlan = true;
         for (size_t stepIndex = 0; stepIndex < plan.steps.size(); ++stepIndex) {
+            if (incrementalDiagnostics != nullptr) {
+                InteractionComplexityDiagnostics::recordPreviewAudioExecutionStepVisit();
+            }
             if (diagnosticNodeIds[stepIndex] != plan.steps[stepIndex].nodeId) {
                 cacheMatchesPlan = false;
                 break;
@@ -365,18 +420,17 @@ GraphAudioResult GraphAudioExecutor::processInternal(
     } else if (captureDiagnostics && diagnosticProcessCounts.size() != plan.steps.size()) {
         diagnosticProcessCounts.resize(plan.steps.size());
     }
-    std::vector<std::optional<NodeAudioResult>> stagedDiagnosticResults;
-    if (incrementalResult != nullptr) {
-        stagedDiagnosticResults.resize(plan.steps.size());
+    if (captureDiagnostics) {
+        diagnosticPlan = &plan;
+    }
+    std::vector<std::pair<size_t, NodeAudioResult>> stagedDiagnosticResults;
+    if (incrementalResult != nullptr && dirtyStepIndices != nullptr) {
+        stagedDiagnosticResults.reserve(dirtyStepIndices->size());
     }
     realtimeOutput = nullptr;
 
     if (pass != ProcessingPass::Global) {
-        if (operationCounts != nullptr) {
-            operationCounts->modulationBindingVisits += (uint32_t)
-                    preparedVoice->second.modulationBindings.size();
-        }
-        for (const auto& binding : preparedVoice->second.modulationBindings) {
+        const auto renderBinding = [&](const PreparedVoice::ModulationBinding& binding) {
             SignalPayload& payload = bufferSlots[binding.bufferIndex];
             payload.domain = PortDomain::ControlSignal;
             payload.channelLayout = ChannelLayout::Mono;
@@ -386,14 +440,61 @@ GraphAudioResult GraphAudioExecutor::processInternal(
                     voice,
                     { payload.block.samples.data(), (int) frameCount },
                     binding.noteOffset);
+        };
+        const auto& bindings = preparedVoice->second.modulationBindings;
+        if (dirtyStepIndices == nullptr) {
+            if (operationCounts != nullptr) {
+                operationCounts->modulationBindingVisits += (uint32_t) bindings.size();
+            }
+            for (const auto& binding : bindings) {
+                renderBinding(binding);
+            }
+        } else {
+            std::vector<size_t> selectedBindings;
+            const auto selectBuffer = [&](int bufferIndex) {
+                if (bufferIndex < 0) {
+                    return;
+                }
+                const auto found = preparedVoice->second.modulationBindingByBuffer.find(
+                        static_cast<size_t>(bufferIndex));
+                if (found != preparedVoice->second.modulationBindingByBuffer.end()
+                        && std::find(selectedBindings.begin(), selectedBindings.end(),
+                                found->second) == selectedBindings.end()) {
+                    selectedBindings.push_back(found->second);
+                }
+            };
+            for (const size_t stepIndex : *dirtyStepIndices) {
+                const auto& step = plan.steps[stepIndex];
+                for (const auto& input : step.inputs) {
+                    selectBuffer(input.magnitudeTransfer.isActive()
+                            ? input.magnitudeTransfer.sourceBufferIndex
+                            : input.sourceBufferIndex);
+                }
+                for (const auto& attachment : step.attachments) {
+                    selectBuffer(attachment.sourceBufferIndex);
+                }
+            }
+            if (operationCounts != nullptr) {
+                operationCounts->modulationBindingVisits += (uint32_t)
+                        selectedBindings.size();
+            }
+            for (const size_t bindingIndex : selectedBindings) {
+                renderBinding(bindings[bindingIndex]);
+            }
         }
     }
 
+    const auto& processingIndices = dirtyStepIndices != nullptr
+            ? *dirtyStepIndices
+            : preparedVoice->second.stepIndices;
     if (operationCounts != nullptr) {
-        operationCounts->stepVisits += (uint32_t) preparedVoice->second.stepIndices.size();
+        operationCounts->stepVisits += (uint32_t) processingIndices.size();
     }
-    for (const size_t stepIndex : preparedVoice->second.stepIndices) {
-        if (dirtyNodes != nullptr
+    for (const size_t stepIndex : processingIndices) {
+        if (incrementalDiagnostics != nullptr) {
+            InteractionComplexityDiagnostics::recordPreviewAudioExecutionStepVisit();
+        }
+        if (incrementalDiagnostics != nullptr
                 && cancellationCheck != nullptr
                 && *cancellationCheck
                 && !(*cancellationCheck)()) {
@@ -401,6 +502,10 @@ GraphAudioResult GraphAudioExecutor::processInternal(
                 incrementalResult->cancelled = true;
             }
             return result;
+        }
+        if (dirtyStepIndices != nullptr) {
+            restoreCachedInputBuffers(
+                    plan, plan.steps[stepIndex], *dirtyStepIndices);
         }
         const auto& step = plan.steps[stepIndex];
         if (pass == ProcessingPass::Complete && step.kind == NodeKind::GlobalInput) {
@@ -585,7 +690,7 @@ GraphAudioResult GraphAudioExecutor::processInternal(
                 std::move(probeTraversalGrids)
         };
         if (incrementalResult != nullptr) {
-            stagedDiagnosticResults[stepIndex] = std::move(nodeResult);
+            stagedDiagnosticResults.emplace_back(stepIndex, std::move(nodeResult));
         } else {
             result.nodes.push_back(std::move(nodeResult));
             diagnosticCache[stepIndex] = result.nodes.back();
@@ -595,19 +700,22 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         }
     }
 
-    if (captureDiagnostics && dirtyNodes != nullptr) {
-        for (size_t stepIndex = 0; stepIndex < stagedDiagnosticResults.size(); ++stepIndex) {
-            if (stagedDiagnosticResults[stepIndex].has_value()) {
-                diagnosticCache[stepIndex] = std::move(stagedDiagnosticResults[stepIndex]);
-            }
+    if (incrementalResult != nullptr) {
+        for (auto& [stepIndex, node] : stagedDiagnosticResults) {
+            diagnosticCache[stepIndex] = std::move(node);
         }
-        for (size_t stepIndex = 0; stepIndex < plan.steps.size(); ++stepIndex) {
-            if (!diagnosticCache[stepIndex].has_value()) {
-                continue;
-            }
-            incrementalResult->nodes.push_back(&*diagnosticCache[stepIndex]);
-            if (plan.steps[stepIndex].outputSink) {
-                incrementalResult->output = &diagnosticCache[stepIndex]->output;
+        if (dirtyStepIndices != nullptr) {
+            incrementalResult->indexedNodes = &diagnosticCache;
+        } else {
+            for (size_t stepIndex = 0; stepIndex < plan.steps.size(); ++stepIndex) {
+                InteractionComplexityDiagnostics::recordPreviewAudioExecutionStepVisit();
+                if (!diagnosticCache[stepIndex].has_value()) {
+                    continue;
+                }
+                incrementalResult->nodes.push_back(&*diagnosticCache[stepIndex]);
+                if (plan.steps[stepIndex].outputSink) {
+                    incrementalResult->output = &diagnosticCache[stepIndex]->output;
+                }
             }
         }
     }
@@ -709,6 +817,7 @@ void GraphAudioExecutor::prepareExecutionInternal(
     preparedVoice.stepIndices.reserve(plan.steps.size());
     preparedVoice.tailProcessors.clear();
     preparedVoice.modulationBindings.clear();
+    preparedVoice.modulationBindingByBuffer.clear();
     preparedVoice.steps.clear();
     preparedVoice.steps.resize(plan.steps.size());
     if (pass != ProcessingPass::Global) {
@@ -729,6 +838,8 @@ void GraphAudioExecutor::prepareExecutionInternal(
                     &configuration->sources[(size_t) sourceIndex],
                     buffer.defaultModulationNoteOffset
             });
+            preparedVoice.modulationBindingByBuffer.emplace(
+                    bufferIndex, preparedVoice.modulationBindings.size() - 1);
         }
     }
 
@@ -813,13 +924,110 @@ void GraphAudioExecutor::prepareExecutionInternal(
     removeUnreferencedProcessors();
 }
 
+bool GraphAudioExecutor::prepareIncrementalExecution(
+        const GraphExecutionPlan& plan,
+        const AudioExecutionSpec& spec,
+        int voiceIndex,
+        const std::vector<size_t>& dirtyStepIndices) const {
+    const auto found = preparedVoices.find(voiceIndex);
+    if (found == preparedVoices.end()) {
+        return false;
+    }
+    PreparedVoice& voice = found->second;
+    if (voice.plan != &plan
+            || voice.maximumFrameCount != spec.maximumFrameCount
+            || voice.traversalColumnCount != spec.traversalColumnCount
+            || voice.sampleRate != spec.sampleRate
+            || voice.steps.size() != plan.steps.size()
+            || bufferSlots.size() != plan.buffers.size()) {
+        return false;
+    }
+    for (const size_t stepIndex : dirtyStepIndices) {
+        if (stepIndex >= plan.steps.size()
+                || plan.steps[stepIndex].ownsVoiceTail
+                || plan.steps[stepIndex].oscillatorRegionIndex >= 0) {
+            return false;
+        }
+    }
+    NodeAudioProcessorFactory factory;
+    for (const size_t stepIndex : dirtyStepIndices) {
+        const auto& step = plan.steps[stepIndex];
+        auto& preparedStep = voice.steps[stepIndex];
+        if (preparedStep.configuration.key == step.configuration.key
+                && preparedStep.configuration.revision == step.configuration.revision) {
+            continue;
+        }
+        preparedStep.spectralTransferBindingCount = 0;
+        preparedStep.hasBufferOutput = false;
+        prepareStepContext(plan, step, preparedStep);
+        AudioExecutionSpec stepSpec = spec;
+        if (!step.outputs.empty()) {
+            stepSpec.domain = step.outputs.front().domain;
+            stepSpec.channelLayout = step.outputs.front().channelLayout;
+        }
+        voice.processors[stepIndex] = processorCache.preparedProcessorFor(
+                step.nodeId,
+                voiceIndex,
+                step.audioRole,
+                factory,
+                step.configuration,
+                stepSpec);
+        InteractionComplexityDiagnostics::recordPreviewPreparationStepVisit();
+    }
+    return true;
+}
+
+void GraphAudioExecutor::restoreCachedInputBuffers(
+        const GraphExecutionPlan& plan,
+        const GraphExecutionStep& step,
+        const std::vector<size_t>& dirtyStepIndices) const {
+    const auto restore = [&](int bufferIndex) {
+        if (bufferIndex < 0
+                || static_cast<size_t>(bufferIndex) >= plan.buffers.size()) {
+            return;
+        }
+        const int producer = plan.buffers[static_cast<size_t>(bufferIndex)]
+                .firstProducerStep;
+        if (producer < 0
+                || static_cast<size_t>(producer) >= diagnosticCache.size()
+                || std::binary_search(
+                        dirtyStepIndices.begin(),
+                        dirtyStepIndices.end(),
+                        static_cast<size_t>(producer))) {
+            return;
+        }
+        const auto& cached = diagnosticCache[static_cast<size_t>(producer)];
+        if (!cached.has_value()) {
+            return;
+        }
+        const auto& outputs = plan.steps[static_cast<size_t>(producer)].outputs;
+        for (size_t outputIndex = 0; outputIndex < outputs.size(); ++outputIndex) {
+            if (outputs[outputIndex].bufferIndex == bufferIndex
+                    && outputIndex < cached->outputs.size()) {
+                bufferSlots[static_cast<size_t>(bufferIndex)]
+                        = cached->outputs[outputIndex].second;
+                return;
+            }
+        }
+    };
+    for (const auto& input : step.inputs) {
+        restore(input.magnitudeTransfer.isActive()
+                ? input.magnitudeTransfer.sourceBufferIndex
+                : input.sourceBufferIndex);
+    }
+    for (const auto& attachment : step.attachments) {
+        restore(attachment.sourceBufferIndex);
+    }
+}
+
 void GraphAudioExecutor::prepareStepContext(
         const GraphExecutionPlan& plan,
         const GraphExecutionStep& step,
         PreparedVoice::Step& preparedStep) const {
     AudioProcessContext& context = preparedStep.context;
     context.workArena = &workArena;
-    context.configuration = &step.configuration;
+    preparedStep.configuration = step.configuration;
+    context.configuration = &preparedStep.configuration;
     context.parameterView = nullptr;
     context.parameters.clear();
     context.inputs.clear();

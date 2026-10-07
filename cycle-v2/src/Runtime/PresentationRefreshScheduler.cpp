@@ -237,7 +237,7 @@ bool PresentationRefreshScheduler::executeAsyncRefresh(
         return false;
     }
     refresh.updateResult = updateGraph.executeDeferredPublication(
-            refresh.snapshot.compileResult.plan,
+            refresh.mutableSnapshot().compileResult.plan,
             refresh.request,
             [&](const auto& products) {
                 return executeProducts(refresh, products);

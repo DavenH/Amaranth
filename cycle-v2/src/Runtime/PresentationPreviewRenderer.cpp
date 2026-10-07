@@ -6,6 +6,7 @@
 #include "Runtime/GraphPresentationSnapshot.h"
 #include "Runtime/GraphPreviewExecutor.h"
 #include "Graph/DefaultOutputProbeResolver.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Nodes/Control/ModulationSource.h"
 
 namespace CycleV2 {
@@ -17,15 +18,46 @@ constexpr size_t kCompactPreviewColumnCount = 256;
 constexpr size_t kExpandedProbeColumnCount = 512;
 constexpr size_t kMaximumExpandedProbeRows = 512;
 
-void reduceCompactProbeRows(GraphPreviewResult& result) {
-    for (auto& probe : result.probes) {
-        GraphPreviewExecutor::reduceProbeRows(probe, kCompactPreviewFrameCount);
+void reduceCompactProbeRows(
+        GraphPreviewResult& result,
+        const GraphExecutionPlan* plan = nullptr,
+        const std::vector<size_t>* dirtyStepIndices = nullptr) {
+    const bool incremental = plan != nullptr
+            && dirtyStepIndices != nullptr
+            && plan->observationIndex != nullptr
+            && result.probes.size() == plan->signalProbes.size();
+    if (incremental) {
+        for (const size_t stepIndex : *dirtyStepIndices) {
+            if (stepIndex >= plan->observationIndex->probeIndicesByStep.size()) {
+                continue;
+            }
+            for (const size_t probeIndex :
+                    plan->observationIndex->probeIndicesByStep[stepIndex]) {
+                InteractionComplexityDiagnostics::recordPreviewProbeVisit();
+                GraphPreviewExecutor::reduceProbeRows(
+                        result.probes[probeIndex], kCompactPreviewFrameCount);
+            }
+        }
+    } else {
+        for (auto& probe : result.probes) {
+            InteractionComplexityDiagnostics::recordPreviewProbeVisit();
+            GraphPreviewExecutor::reduceProbeRows(probe, kCompactPreviewFrameCount);
+        }
     }
-    if (result.defaultOutput.has_value()) {
+    const bool refreshDefault = !incremental
+            || (plan->defaultOutputProbe.has_value()
+                    && plan->defaultOutputProbe->sourceStepIndex >= 0
+                    && std::find(
+                            dirtyStepIndices->begin(),
+                            dirtyStepIndices->end(),
+                            static_cast<size_t>(
+                                    plan->defaultOutputProbe->sourceStepIndex))
+                            != dirtyStepIndices->end());
+    if (refreshDefault && result.defaultOutput.has_value()) {
         GraphPreviewExecutor::reduceProbeRows(
                 *result.defaultOutput, kCompactPreviewFrameCount);
     }
-    if (result.defaultOutputSpectrum.has_value()) {
+    if (refreshDefault && result.defaultOutputSpectrum.has_value()) {
         GraphPreviewExecutor::reduceProbeRows(
                 *result.defaultOutputSpectrum, kCompactPreviewFrameCount);
     }
@@ -59,6 +91,16 @@ GraphPreviewResult captureProbePreviews(
 
 }
 
+void PresentationPreviewRenderer::preparePointPreviewPlan(
+        const GraphPresentationSnapshot& snapshot) {
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = jmax(
+            kCompactPreviewFrameCount,
+            GraphPreviewExecutor::periodRowsForMidiNote(snapshot.previewMidiNote));
+    spec.traversalColumnCount = kCompactPreviewColumnCount;
+    audioExecutor.preparePointPreviewPlan(snapshot.compileResult.plan, spec);
+}
+
 bool PresentationPreviewRenderer::render(
         const NodeGraph& graph,
         GraphPresentationSnapshot& snapshot,
@@ -83,12 +125,6 @@ bool PresentationPreviewRenderer::render(
     const size_t sourceFrameCount = jmax(
             kCompactPreviewFrameCount,
             GraphPreviewExecutor::periodRowsForMidiNote(snapshot.previewMidiNote));
-    const AudioExecutionSpec spec {
-            sourceFrameCount,
-            44100.0,
-            ChannelLayout::LinkedStereo
-    };
-    audioExecutor.prepareExecution(snapshot.compileResult.plan, spec);
     AudioVoiceContext previewVoice;
     previewVoice.controls.noteNumber = snapshot.previewMidiNote;
     previewVoice.controls.controllers[1]
@@ -128,7 +164,13 @@ bool PresentationPreviewRenderer::render(
         return true;
     }
 
-    std::vector<uint8_t> dirtyNodes(snapshot.compileResult.plan.steps.size());
+    const bool sparse = stableProbeAddresses
+            && scope != PresentationRefreshScope::LocalEditor;
+    std::vector<uint8_t> dirtyNodes;
+    if (!sparse) {
+        dirtyNodes.resize(snapshot.compileResult.plan.steps.size());
+    }
+    InteractionComplexityDiagnostics::recordPreviewDirtyMaskSlots(dirtyNodes.size());
     std::vector<size_t> dirtyStepIndices;
     for (const auto& product : products) {
         if (product.product != UpdateProduct::PreviewTraversal
@@ -139,21 +181,35 @@ bool PresentationPreviewRenderer::render(
                 product.nodeId);
         if (step != snapshot.compileResult.plan.dependencyIndex.stepIndexById.end()) {
             const auto index = static_cast<size_t>(step->second);
-            if (dirtyNodes[index] == 0) {
+            if (sparse) {
+                if (std::find(dirtyStepIndices.begin(), dirtyStepIndices.end(), index)
+                        == dirtyStepIndices.end()) {
+                    dirtyStepIndices.push_back(index);
+                }
+            } else if (dirtyNodes[index] == 0) {
                 dirtyNodes[index] = 1;
                 dirtyStepIndices.push_back(index);
             }
         }
     }
     const uint64_t audioStartedAt = performance.timestamp();
-    const GraphAudioResultView audio = audioExecutor.processIncrementalIndexed(
-            graph,
-            snapshot.compileResult.plan,
-            sourceFrameCount,
-            dirtyNodes,
-            previewVoice,
-            cancellationCheck,
-            kCompactPreviewColumnCount);
+    const GraphAudioResultView audio = sparse
+            ? audioExecutor.processIncrementalSteps(
+                    graph,
+                    snapshot.compileResult.plan,
+                    sourceFrameCount,
+                    dirtyStepIndices,
+                    previewVoice,
+                    cancellationCheck,
+                    kCompactPreviewColumnCount)
+            : audioExecutor.processIncrementalIndexed(
+                    graph,
+                    snapshot.compileResult.plan,
+                    sourceFrameCount,
+                    dirtyNodes,
+                    previewVoice,
+                    cancellationCheck,
+                    kCompactPreviewColumnCount);
     performance.record(
             GraphPresentationPerformanceMetrics::Stage::PreviewAudio,
             performance.timestamp() - audioStartedAt);
@@ -179,7 +235,10 @@ bool PresentationPreviewRenderer::render(
                 snapshot.previewResult,
                 &previewControls,
                 stableProbeAddresses ? &dirtyStepIndices : nullptr);
-        reduceCompactProbeRows(snapshot.previewResult);
+        reduceCompactProbeRows(
+                snapshot.previewResult,
+                stableProbeAddresses ? &snapshot.compileResult.plan : nullptr,
+                stableProbeAddresses ? &dirtyStepIndices : nullptr);
     }
     performance.record(
             GraphPresentationPerformanceMetrics::Stage::PreviewExtraction,

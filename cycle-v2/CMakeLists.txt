@@ -165,6 +165,7 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PerformanceDistribution.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphRuntime.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeUpdateGraph.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PointPreviewSnapshotPair.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PresentationRefreshPolicy.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PresentationGestureSession.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PresentationPreviewRenderer.cpp"

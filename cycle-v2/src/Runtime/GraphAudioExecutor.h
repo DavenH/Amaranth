@@ -31,6 +31,7 @@ struct GraphAudioResult {
 struct GraphAudioResultView {
     const SignalPayload* output {};
     std::vector<const NodeAudioResult*> nodes;
+    const std::vector<std::optional<NodeAudioResult>>* indexedNodes {};
     bool cancelled {};
 };
 
@@ -109,6 +110,17 @@ public:
             AudioVoiceContext voice,
             CancellationCheck cancellationCheck = {},
             size_t traversalColumnCount = 0) const;
+    GraphAudioResultView processIncrementalSteps(
+            const NodeGraph& graph,
+            const GraphExecutionPlan& plan,
+            size_t frameCount,
+            const std::vector<size_t>& dirtyStepIndices,
+            const AudioVoiceContext& voice,
+            const CancellationCheck& cancellationCheck = {},
+            size_t traversalColumnCount = 0) const;
+    void preparePointPreviewPlan(
+            const GraphExecutionPlan& plan,
+            const AudioExecutionSpec& spec) const;
     void clearIncrementalCache() const;
     void resetExecutionState() const;
     size_t diagnosticProcessCount(const String& nodeId) const;
@@ -146,7 +158,8 @@ private:
     };
 
     struct IncrementalDiagnosticExecution {
-        const std::vector<uint8_t>& dirtyNodes;
+        const std::vector<uint8_t>* dirtyNodes {};
+        const std::vector<size_t>* dirtyStepIndices {};
         const CancellationCheck& cancellationCheck;
         GraphAudioResultView& result;
         size_t traversalColumnCount {};
@@ -183,6 +196,7 @@ private:
 
         struct Step {
             AudioProcessContext context;
+            PublishedNodeConfiguration configuration;
             uint32_t spectralTransferBindingCount {};
             bool hasBufferOutput {};
         };
@@ -196,6 +210,7 @@ private:
         std::vector<size_t> stepIndices;
         std::vector<NodeAudioProcessor*> tailProcessors;
         std::vector<ModulationBinding> modulationBindings;
+        std::unordered_map<size_t, size_t> modulationBindingByBuffer;
         std::vector<Step> steps;
         std::vector<std::unique_ptr<OscillatorRegion>> oscillatorRegions;
         std::vector<OscillatorRegion*> oscillatorRegionByStep;
@@ -235,6 +250,15 @@ private:
             const AudioExecutionSpec& spec,
             int voiceIndex,
             ProcessingPass pass) const;
+    bool prepareIncrementalExecution(
+            const GraphExecutionPlan& plan,
+            const AudioExecutionSpec& spec,
+            int voiceIndex,
+            const std::vector<size_t>& dirtyStepIndices) const;
+    void restoreCachedInputBuffers(
+            const GraphExecutionPlan& plan,
+            const GraphExecutionStep& step,
+            const std::vector<size_t>& dirtyStepIndices) const;
     void prepareStepContext(
             const GraphExecutionPlan& plan,
             const GraphExecutionStep& step,
@@ -251,6 +275,7 @@ private:
     mutable std::unordered_map<int, PreparedVoice> preparedVoices;
     mutable std::vector<String> diagnosticNodeIds;
     mutable std::vector<std::optional<NodeAudioResult>> diagnosticCache;
+    mutable const GraphExecutionPlan* diagnosticPlan {};
     mutable std::vector<size_t> diagnosticProcessCounts;
 };
 

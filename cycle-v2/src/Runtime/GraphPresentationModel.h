@@ -8,6 +8,7 @@
 #include "Runtime/GraphPresentationPerformanceMetrics.h"
 #include "Runtime/GraphPresentationSnapshot.h"
 #include "Runtime/NodeUpdateGraph.h"
+#include "Runtime/PointPreviewSnapshotPair.h"
 #include "Runtime/PresentationPreviewRenderer.h"
 #include "Runtime/PresentationRefreshScheduler.h"
 #include "Graph/GraphCompiler.h"
@@ -125,6 +126,7 @@ private:
     bool executeAsyncProducts(
             AsyncRefresh& refresh,
             const std::vector<PlannedNodeProduct>& products);
+    bool acceptPointPreviewSnapshot(AsyncRefresh& refresh);
 
     bool hasExplicitPreviewMidiNote {};
 
@@ -132,12 +134,14 @@ private:
     GraphCompiler compiler;
     NodeDspConfigurationFactory configurationFactory;
     PresentationRefreshScheduler scheduler;
+    PointPreviewSnapshotPair pointSnapshots;
     PresentationPreviewRenderer previewRenderer;
     uint64_t requestedGraphRevision {};
     uint64_t presentationRevision { 1 };
     uint64_t audioRevision { 1 };
     size_t compilations {};
     size_t previewRenders {};
+    bool pointPreviewPending {};
     std::vector<String> modWheelPreviewRootNodeIds;
     std::vector<PreviewMorphTarget> allMorphTargets;
     std::vector<PreviewMorphTarget> keyScaleTargets;

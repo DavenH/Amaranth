@@ -8,6 +8,7 @@
 #include <Curve/Mesh/Mesh.h>
 
 #include <algorithm>
+#include <array>
 
 #include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphEditor.h"
@@ -1082,6 +1083,8 @@ TEST_CASE("Live point previews avoid unrelated planner and index work",
     REQUIRE(fixture.existsAsFile());
 
     std::vector<InteractionComplexityCounts> countsByScale;
+    std::vector<InteractionComplexityCounts> commitCountsByScale;
+    std::vector<InteractionComplexityCounts> releaseCountsByScale;
     for (const int unrelatedNodes : { 0, 128 }) {
         NodeGraph graph = GraphSerializer().fromJsonString(fixture.loadFileAsString());
         for (int index = 0; index < unrelatedNodes; ++index) {
@@ -1130,8 +1133,45 @@ TEST_CASE("Live point previews avoid unrelated planner and index work",
         REQUIRE(findProbePreview(presentation.previewResult(), "probe5").values
                 != originalProbe);
         countsByScale.push_back(InteractionComplexityDiagnostics::counts());
-        presentation.cancelPendingRefreshes();
-        commands.cancelTransientEdit();
+        const auto committedSnapshot = commands.snapshotTransientEditForWorker();
+        commands.commitTransientEdit();
+        InteractionComplexityDiagnostics::reset();
+        bool commitCompleted {};
+        presentation.refreshAsync(
+                committedSnapshot,
+                document.revision(),
+                document.lastChange(),
+                PresentationRefreshScope::Downstream,
+                [&] { commitCompleted = true; });
+        REQUIRE(waitForAsyncRefresh(commitCompleted));
+        commitCountsByScale.push_back(InteractionComplexityDiagnostics::counts());
+
+        const Node* committedShape = document.graph().findNode("waveshaper");
+        REQUIRE(committedShape != nullptr);
+        const auto committedModel = std::dynamic_pointer_cast<
+                const CurveNodeModelState>(committedShape->model);
+        REQUIRE(committedModel != nullptr);
+        commands.beginTransientEdit();
+        const auto releasePreview = committedModel->withPointPreview(
+                { point.id, 0.2f, 0.44f, point.curve },
+                committedModel->revision() + 1);
+        REQUIRE(releasePreview != nullptr);
+        REQUIRE(commands.publishCurveState({
+                "waveshaper", committedModel->revision(), releasePreview,
+                committedShape->parameters
+        }).succeeded());
+        const auto releaseSnapshot = commands.snapshotTransientEditForWorker();
+        commands.commitTransientEdit();
+        InteractionComplexityDiagnostics::reset();
+        bool releaseCompleted {};
+        presentation.refreshAsync(
+                releaseSnapshot,
+                document.revision(),
+                document.lastChange(),
+                PresentationRefreshScope::Downstream,
+                [&] { releaseCompleted = true; });
+        REQUIRE(waitForAsyncRefresh(releaseCompleted));
+        releaseCountsByScale.push_back(InteractionComplexityDiagnostics::counts());
     }
     REQUIRE(countsByScale.size() == 2);
     CAPTURE(countsByScale[0].presentationSnapshotCopies,
@@ -1141,26 +1181,139 @@ TEST_CASE("Live point previews avoid unrelated planner and index work",
             countsByScale[0].previewRenderStepVisits,
             countsByScale[0].presentationIndexRebuildVisits,
             countsByScale[0].previewProbeVisits,
+            countsByScale[0].previewAudioIndexVisits,
+            countsByScale[0].previewAudioExecutionStepVisits,
+            countsByScale[0].previewDirtyMaskSlots,
             countsByScale[1].presentationSnapshotCopies,
             countsByScale[1].overlayNodesMaterialized,
             countsByScale[1].previewPreparationStepVisits,
             countsByScale[1].previewPlanningSlotVisits,
             countsByScale[1].previewRenderStepVisits,
             countsByScale[1].presentationIndexRebuildVisits,
-            countsByScale[1].previewProbeVisits);
+            countsByScale[1].previewProbeVisits,
+            countsByScale[1].previewAudioIndexVisits,
+            countsByScale[1].previewAudioExecutionStepVisits,
+            countsByScale[1].previewDirtyMaskSlots);
     for (const auto& counts : countsByScale) {
         CAPTURE(counts.presentationSnapshotCopies, counts.overlayNodesMaterialized,
                 counts.previewPreparationStepVisits, counts.previewPlanningSlotVisits,
                 counts.previewRenderStepVisits, counts.presentationIndexRebuildVisits,
-                counts.previewProbeVisits);
+                counts.previewProbeVisits, counts.previewAudioIndexVisits,
+                counts.previewAudioExecutionStepVisits, counts.previewDirtyMaskSlots);
         REQUIRE(counts.overlayNodesMaterialized == 0);
+        REQUIRE(counts.presentationSnapshotCopies == 0);
+        REQUIRE(counts.previewAudioIndexVisits == 0);
+        REQUIRE(counts.previewDirtyMaskSlots == 0);
+        REQUIRE(counts.previewPreparationStepVisits <= 2);
         REQUIRE(counts.presentationIndexRebuildVisits == 0);
     }
     REQUIRE(countsByScale[0].previewPlanningSlotVisits
             == countsByScale[1].previewPlanningSlotVisits);
+    REQUIRE(countsByScale[0].previewRenderStepVisits
+            == countsByScale[1].previewRenderStepVisits);
     REQUIRE(countsByScale[0].previewProbeVisits
             == countsByScale[1].previewProbeVisits);
     REQUIRE(countsByScale[0].previewProbeVisits > 0);
+    REQUIRE(countsByScale[0].previewPreparationStepVisits
+            == countsByScale[1].previewPreparationStepVisits);
+    REQUIRE(countsByScale[0].previewAudioExecutionStepVisits
+            == countsByScale[1].previewAudioExecutionStepVisits);
+    REQUIRE(countsByScale[0].previewAudioIndexVisits
+            == countsByScale[1].previewAudioIndexVisits);
+    REQUIRE(countsByScale[0].previewDirtyMaskSlots
+            == countsByScale[1].previewDirtyMaskSlots);
+    REQUIRE(commitCountsByScale.size() == 2);
+    for (const auto& counts : commitCountsByScale) {
+        REQUIRE(counts.presentationSnapshotCopies == 0);
+        REQUIRE(counts.previewDirtyMaskSlots == 0);
+        REQUIRE(counts.previewAudioIndexVisits == 0);
+    }
+    REQUIRE(commitCountsByScale[0].previewAudioExecutionStepVisits
+            == commitCountsByScale[1].previewAudioExecutionStepVisits);
+    REQUIRE(releaseCountsByScale.size() == 2);
+    for (const auto& counts : releaseCountsByScale) {
+        REQUIRE(counts.presentationSnapshotCopies == 0);
+        REQUIRE(counts.previewDirtyMaskSlots == 0);
+        REQUIRE(counts.previewAudioIndexVisits == 0);
+    }
+    REQUIRE(releaseCountsByScale[0].previewPreparationStepVisits
+            == releaseCountsByScale[1].previewPreparationStepVisits);
+    REQUIRE(releaseCountsByScale[0].previewAudioExecutionStepVisits
+            == releaseCountsByScale[1].previewAudioExecutionStepVisits);
+  #endif
+}
+
+TEST_CASE("Rapid point previews publish the latest curve and survive undo",
+        "[cycle-v2][runtime][waveshaper][causal]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    ScopedJuceInitialiser_GUI juce;
+    const File fixture = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("resources")
+            .getChildFile("with-spies.cyclegraph");
+    REQUIRE(fixture.existsAsFile());
+    GraphDocument document(GraphSerializer().fromJsonString(
+            fixture.loadFileAsString()));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    GraphChangeSet topology;
+    topology.topologyChanged = true;
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), topology));
+    const auto originalProbe = findProbePreview(
+            presentation.previewResult(), "probe5").values;
+    const Node* shape = document.graph().findNode("waveshaper");
+    REQUIRE(shape != nullptr);
+    const auto base = std::dynamic_pointer_cast<const CurveNodeModelState>(shape->model);
+    REQUIRE(base != nullptr);
+    const FlatCurveVertex point = base->flatCurve()->getVertices()[1];
+
+    commands.beginTransientEdit();
+    bool finalCompleted {};
+    const std::array<float, 2> movements { 0.21f, 0.37f };
+    for (size_t movement = 0; movement < movements.size(); ++movement) {
+        const float y = movements[movement];
+        const auto preview = base->withPointPreview(
+                { point.id, 0.2f, y, point.curve }, base->revision() + 1);
+        REQUIRE(preview != nullptr);
+        REQUIRE(commands.publishCurveState({
+                "waveshaper", base->revision(), preview, shape->parameters
+        }).succeeded());
+        presentation.recordEditorMovement(
+                "waveshaper", "curve", static_cast<uint64_t>(y * 1000.f), false);
+        const bool finalMovement = movement + 1 == movements.size();
+        presentation.refreshAsync(
+                commands.snapshotTransientEditForWorker(),
+                document.revision(),
+                commands.transientChanges(),
+                PresentationRefreshScope::PreviewOnly,
+                finalMovement ? std::function<void()>([&] { finalCompleted = true; })
+                              : std::function<void()>());
+    }
+    REQUIRE(waitForAsyncRefresh(finalCompleted));
+    const auto workerGraph = commands.snapshotTransientEditForWorker();
+    GraphPresentationModel expected;
+    REQUIRE(expected.refresh(*workerGraph, document.revision(), topology));
+    const auto finalProbe = findProbePreview(presentation.previewResult(), "probe5").values;
+    REQUIRE(finalProbe == findProbePreview(expected.previewResult(), "probe5").values);
+    REQUIRE(finalProbe != originalProbe);
+
+    const auto finalSnapshot = commands.snapshotTransientEditForWorker();
+    commands.commitTransientEdit();
+    REQUIRE(document.canUndo());
+    InteractionComplexityDiagnostics::reset();
+    bool commitCompleted {};
+    presentation.refreshAsync(
+            finalSnapshot,
+            document.revision(),
+            document.lastChange(),
+            PresentationRefreshScope::Downstream,
+            [&] { commitCompleted = true; });
+    REQUIRE(waitForAsyncRefresh(commitCompleted));
+    REQUIRE(InteractionComplexityDiagnostics::counts().presentationSnapshotCopies == 0);
+    REQUIRE(document.undo());
+    REQUIRE(presentation.refresh(
+            document.graph(), document.revision(), document.lastChange()));
+    REQUIRE(findProbePreview(presentation.previewResult(), "probe5").values
+            == originalProbe);
   #endif
 }
 

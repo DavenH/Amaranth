@@ -2,10 +2,8 @@
 
 ## Status and starting point
 
-Functional interaction implemented for the scoped Waveshaper point drag on
-2026-10-06. The movement complexity criterion remains in progress: the Live
-presentation path still copies and scans unrelated graph state. The wider mesh
-storage refactor remains excluded.
+Complete for the scoped Waveshaper point drag and its Live and On Release
+preview costs on 2026-10-06. The wider mesh storage refactor remains excluded.
 Rewritten on 2026-10-05 after the user rejected the larger mesh-storage rewrite.
 Start from master at `97bf9107` (PR #158), on `cycle2/point-drag-refactor`.
 The old implementation remains on `cycle2/refactors-001`; its design notes remain
@@ -336,6 +334,32 @@ reverse indexes. The remaining compiler responsibilities (topology, voice
 contexts, preparation) need their own later extraction; no new responsibility
 was added to the large compiler file.
 
+### Stable point-preview publication design
+
+The next correction uses two presentation snapshots after a structural
+refresh. One remains published for UI reads; a worker owns the other during a
+point preview. On publication, the message thread swaps them and reconciles
+only changed plan steps, node previews and affected probes into the spare.
+The scheduler still rejects stale generations. Before reusing a spare after a
+superseded job, wait for its worker to stop and restore only the products it
+could have touched. No worker may read an editor mesh or a published snapshot
+while it is being changed. The point-only path reuses the existing compiler,
+audio executor and preview extractor, so it adds no DSP or interaction logic.
+Full snapshot duplication is moved to structural/non-point refresh where
+building the whole presentation is already required; Live point movement and
+commit must use the changed-product reconciliation. The paired snapshot owner
+belongs below `GraphPresentationModel`, leaving that class to route lifecycle.
+
+The paired owner now publishes sequential and rapidly superseded point
+movements without copying a full presentation snapshot during movement. The
+rapid sequence renders the final point against a fresh full presentation and
+checks commit and undo. Probe-row reduction and preview-node rendering also
+visit only affected products. Remaining plan-sized work is in
+`GraphAudioExecutor` preparation/diagnostic processing, its plan-sized dirty
+mask, and the preview extractor's audio-result index. These must share stable
+prepared step state and indexed cached audio outputs; copying or replaying the
+existing DSP pipeline in a second renderer is not an acceptable fix.
+
 After this slice, `GraphCompiler.cpp` is 1,492 lines (1,535 before), with a
 91-line focused probe builder. `GraphPreviewExecutor.cpp` is 640 lines (602
 before), `NodeUpdateGraph.cpp` 549 (530 before), and
@@ -343,3 +367,54 @@ before), `NodeUpdateGraph.cpp` 549 (530 before), and
 is decided by the compiler-owned observation index and consumed by the causal
 planner and existing preview extractor. The old per-request probe-root scan
 and full incremental probe replacement for stable addresses are deleted.
+
+### Sparse presentation and audio route
+
+The paired snapshot owner keeps a published presentation and a worker-owned
+spare. Movement and downstream commit update the spare and publish by swapping;
+only touched steps, node previews and probes are copied back into the spare.
+Superseding a worker waits for it before reusing the spare. A point-only commit
+with no new products advances the durable presentation revision in place.
+The existing audio executor retains per-step prepared configuration and
+diagnostic outputs. Point updates prepare and execute only dirty steps, restore
+their unchanged inputs from indexed cached outputs, and render only modulation
+bindings used by those steps. The preview extractor consumes the indexed audio
+cache directly, without reconstructing a plan-sized lookup or workspace.
+The full diagnostic and presentation routes remain for structural changes.
+
+In the 17- and 145-node fixture, two movements and a downstream commit have
+zero presentation snapshot copies, zero full audio-result index visits and
+zero plan-sized dirty-mask slots. Movement processor-preparation visits are at
+most two at both scales; audio execution, preview traversal, planner slot, and
+probe visits are equal at both scales. The edited probe changes before release,
+and rapid supersession matches a fresh full render after the final movement.
+The same scaled fixture checks an On Release commit with no preceding Live
+preview: its snapshot-copy, audio-index and dirty-mask counts are zero, and
+preparation and execution visits match across both graph sizes.
+
+Architecture review: `GraphAudioExecutor.cpp` grew from 1,162 to 1,370 lines.
+Its responsibilities now include processor preparation, graph buffer routing,
+modulation input production, diagnostic output caching and realtime execution.
+The graph compiler owns step topology and buffer addresses; the presentation
+renderer owns preview scheduling and product extraction. The executor remains
+the sole owner of process-state and cache validity decisions. A later extraction
+should move diagnostic cache indexing, staging and sparse input restoration into
+an executor-owned diagnostic session, leaving processor preparation and DSP
+execution in `GraphAudioExecutor`. This needs a private interface to buffer
+slots and prepared voices, and must delete the corresponding methods and cache
+fields from the executor rather than duplicate their decisions. The current
+slice keeps the code together because the sparse route uses the same prepared
+processors and buffers as full execution; a separate DSP pipeline would risk
+preview parity. No policy decision has been added to the UI or graph layers.
+
+Final verification: the `tests` and `standalone-debug` CycleV2 targets built
+with `--parallel 10`. Focused Waveshaper runtime tests passed with 99
+assertions, causal runtime tests with 277, and audio tests with 345. The
+expanded movement/commit complexity test passed with 75 assertions. The
+flat-curve movement test also passed with 0 and 128 additional unedited
+vertices and zero model serializations or mesh copies. The
+hosted Live, On Release and rapid-commit fixtures passed all 28, 27 and 15
+steps respectively. The architecture audit found the documented executor
+size trigger; `git diff --check` passed. Homebrew `clang-tidy` completed on
+the touched runtime files with existing style warnings and no parser errors.
+The modified DSP and visualization loops contain no scalar `std::` math calls.

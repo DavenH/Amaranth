@@ -29,10 +29,15 @@ public:
         CausalUpdateRequest request;
         CausalUpdateResult updateResult;
         GraphPresentationSnapshot snapshot;
+        std::shared_ptr<GraphPresentationSnapshot> pointSnapshot;
         std::function<void()> completion;
         uint64_t requestedAtMicroseconds {};
         uint64_t workerFinishedAtMicroseconds {};
         bool previewRendered {};
+
+        GraphPresentationSnapshot& mutableSnapshot() {
+            return pointSnapshot != nullptr ? *pointSnapshot : snapshot;
+        }
     };
 
     using ExecuteProducts = std::function<bool(

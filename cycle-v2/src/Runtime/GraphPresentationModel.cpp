@@ -83,6 +83,7 @@ bool GraphPresentationModel::refresh(
     const bool compile = current.graphRevision == 0 || requiresCompilation(change);
     const bool preview = compile || requiresPreview(change);
     scheduler.cancelAndWait();
+    pointPreviewPending = false;
 
     InteractionComplexityDiagnostics::recordPresentationSnapshotCopy();
     GraphPresentationSnapshot next = current;
@@ -162,11 +163,20 @@ bool GraphPresentationModel::refresh(
 }
 
 bool GraphPresentationModel::acceptSnapshot(GraphPresentationSnapshot snapshotToAccept) {
+    if (pointPreviewPending) {
+        scheduler.invalidateAsyncRequests();
+        scheduler.cancelAndWait();
+        pointPreviewPending = false;
+    }
     if (!canAcceptSnapshot(snapshotToAccept)) {
         return false;
     }
 
     current = std::move(snapshotToAccept);
+    pointSnapshots.reset(current);
+    if (current.compileResult.succeeded()) {
+        previewRenderer.preparePointPreviewPlan(pointSnapshots.stagingSnapshot());
+    }
     ++presentationRevision;
     return true;
 }
@@ -182,6 +192,11 @@ bool GraphPresentationModel::acceptSnapshot(
         const NodeGraph& graph,
         bool reuseStructure,
         bool probeIdsStable) {
+    if (pointPreviewPending) {
+        scheduler.invalidateAsyncRequests();
+        scheduler.cancelAndWait();
+        pointPreviewPending = false;
+    }
     if (!canAcceptSnapshot(snapshotToAccept)) {
         return false;
     }
@@ -191,6 +206,10 @@ bool GraphPresentationModel::acceptSnapshot(
     snapshotToAccept.facts = std::make_shared<const GraphPresentationFacts>(
             graph, snapshotToAccept, previous, probeIdsStable);
     current = std::move(snapshotToAccept);
+    pointSnapshots.reset(current);
+    if (current.compileResult.succeeded()) {
+        previewRenderer.preparePointPreviewPlan(pointSnapshots.stagingSnapshot());
+    }
     ++presentationRevision;
     return true;
 }
@@ -306,14 +325,28 @@ void GraphPresentationModel::refreshAsync(
     performance.record(Performance::Outcome::Requested);
 
     requestedGraphRevision = documentRevision;
+    const bool pointPreview = scope != PresentationRefreshScope::LocalEditor
+            && change.modelEditScope == ModelEditScope::SingleCurvePoint;
+    if (pointPreview || pointPreviewPending) {
+        scheduler.cancelAndWait();
+        pointPreviewPending = false;
+    }
     const uint64_t generation = scheduler.beginAsyncRequest();
     const bool preview = requiresPreview(change);
-    InteractionComplexityDiagnostics::recordPresentationSnapshotCopy();
-    GraphPresentationSnapshot next = current;
-    next.graphRevision = documentRevision;
+    GraphPresentationSnapshot next;
+    std::shared_ptr<GraphPresentationSnapshot> pointStage;
+    if (pointPreview) {
+        pointStage = pointSnapshots.prepare(current);
+        pointStage->graphRevision = documentRevision;
+    } else {
+        InteractionComplexityDiagnostics::recordPresentationSnapshotCopy();
+        next = current;
+        next.graphRevision = documentRevision;
+    }
+    const auto& requestSnapshot = pointStage != nullptr ? *pointStage : next;
     const auto request = scheduler.request(
             *graph,
-            next.compileResult.plan,
+            requestSnapshot.compileResult.plan,
             documentRevision,
             change,
             { current.graphRevision, current.previewMidiNote,
@@ -322,7 +355,12 @@ void GraphPresentationModel::refreshAsync(
             preview,
             scope);
     if (!request.edit.isValid() || request.invalidations.empty()) {
-        acceptSnapshot(std::move(next), *graph, true, !change.probesChanged);
+        if (pointPreview) {
+            current.graphRevision = documentRevision;
+            ++presentationRevision;
+        } else {
+            acceptSnapshot(std::move(next), *graph, true, !change.probesChanged);
+        }
         performance.record(
                 Performance::Stage::EndToEnd,
                 performance.timestamp() - requestedAt);
@@ -339,8 +377,10 @@ void GraphPresentationModel::refreshAsync(
     refresh.scope = scope;
     refresh.request = request;
     refresh.snapshot = std::move(next);
+    refresh.pointSnapshot = std::move(pointStage);
     refresh.completion = std::move(completion);
     refresh.requestedAtMicroseconds = requestedAt;
+    pointPreviewPending = pointPreview;
     scheduler.enqueue(
             generation,
             std::move(refresh),
@@ -349,11 +389,14 @@ void GraphPresentationModel::refreshAsync(
                 return executeAsyncProducts(job, products);
             },
             [this](AsyncRefresh& job) {
-                if (!acceptSnapshot(
-                            std::move(job.snapshot),
-                            *job.graph,
-                            true,
-                            !job.change.probesChanged)) {
+                const bool accepted = job.pointSnapshot != nullptr
+                        ? acceptPointPreviewSnapshot(job)
+                        : acceptSnapshot(
+                                std::move(job.snapshot),
+                                *job.graph,
+                                true,
+                                !job.change.probesChanged);
+                if (!accepted) {
                     return false;
                 }
                 if (job.scope == PresentationRefreshScope::Downstream
@@ -374,7 +417,11 @@ void GraphPresentationModel::refreshAsync(
 bool GraphPresentationModel::executeAsyncProducts(
         AsyncRefresh& refresh,
         const std::vector<PlannedNodeProduct>& products) {
-    auto& next = refresh.snapshot;
+    auto& next = refresh.mutableSnapshot();
+    if (refresh.pointSnapshot != nullptr) {
+        pointSnapshots.recordTouchedSteps(
+                next.compileResult.plan, refresh.change, products);
+    }
     const bool preparesConfiguration = std::any_of(
             products.begin(), products.end(), [](const auto& product) {
                 return product.product == UpdateProduct::AudioConfiguration;
@@ -407,6 +454,19 @@ bool GraphPresentationModel::executeAsyncProducts(
             [&] { return scheduler.isCurrent(refresh); });
 }
 
+bool GraphPresentationModel::acceptPointPreviewSnapshot(AsyncRefresh& refresh) {
+    auto& next = refresh.mutableSnapshot();
+    if (!canAcceptSnapshot(next)) {
+        return false;
+    }
+    next.facts = std::make_shared<const GraphPresentationFacts>(
+            *refresh.graph, next, next.facts.get(), true);
+    pointSnapshots.publish(current);
+    pointPreviewPending = false;
+    ++presentationRevision;
+    return true;
+}
+
 bool GraphPresentationModel::refreshLocalNodePreview(
         const Node& node,
         std::function<void()> completion) {
@@ -433,6 +493,9 @@ bool GraphPresentationModel::refreshLocalNodePreview(
                 scheduler.invalidateLocalPreview(
                         current.compileResult.plan,
                         current.compileResult.plan.steps[stepIndex].nodeId);
+                pointSnapshots.reset(current);
+                previewRenderer.preparePointPreviewPlan(
+                        pointSnapshots.stagingSnapshot());
                 ++previewRenders;
                 ++presentationRevision;
                 if (completion) {
