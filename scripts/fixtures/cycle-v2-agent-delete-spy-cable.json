@@ -1,0 +1,14 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/resources/with-spies.cyclegraph" },
+    { "command": "assertState", "path": "edgeCount", "equals": 16 },
+    { "command": "assertState", "path": "probeCount", "equals": 9 },
+    { "command": "deleteEdge", "edgeIndex": 10 },
+    { "command": "assertState", "path": "edgeCount", "equals": 15 },
+    { "command": "assertState", "path": "probeCount", "equals": 8 },
+    { "command": "undo" },
+    { "command": "assertState", "path": "edgeCount", "equals": 16 },
+    { "command": "assertState", "path": "probeCount", "equals": 9 }
+  ],
+  "quit": true
+}

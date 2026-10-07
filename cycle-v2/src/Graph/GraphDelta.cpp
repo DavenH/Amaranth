@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "Graph/GraphEditor.h"
+
 namespace CycleV2 {
 
 namespace {
@@ -61,10 +63,16 @@ bool GraphDelta::empty() const {
         && editorStates.empty()
         && bounds.empty()
         && guides.empty()
-        && edgeInputs.empty();
+        && edgeInputs.empty()
+        && cableDeletions.empty();
 }
 
 void GraphDelta::apply(NodeGraph& graph, bool forward) const {
+    if (!forward) {
+        for (auto deletion = cableDeletions.rbegin(); deletion != cableDeletions.rend(); ++deletion) {
+            applyCableDeletion(graph, *deletion, false);
+        }
+    }
     for (const auto& delta : parameters) {
         graph.applyNodeParameterState(
                 delta.nodeId,
@@ -98,6 +106,46 @@ void GraphDelta::apply(NodeGraph& graph, bool forward) const {
         for (const auto& assignment : changes.removedGuideAssignments) {
             graph.assignGuideCurve(assignment);
         }
+    }
+    if (forward) {
+        for (const auto& deletion : cableDeletions) {
+            applyCableDeletion(graph, deletion, true);
+        }
+    }
+}
+
+void GraphDelta::applyCableDeletion(
+        NodeGraph& graph,
+        const CableDeletionDelta& deletion,
+        bool forward) {
+    if (forward) {
+        for (const auto& state : deletion.probes) {
+            graph.removeSignalProbe(state.probe.id);
+        }
+        for (auto edge = deletion.edges.rbegin(); edge != deletion.edges.rend(); ++edge) {
+            graph.removeEdgeAt(edge->index);
+        }
+        if (deletion.pan.has_value()) {
+            graph.removeNode(deletion.pan->node.id);
+        }
+        return;
+    }
+
+    if (deletion.pan.has_value()) {
+        const size_t index = std::min(deletion.pan->index, graph.nodes.size());
+        graph.nodes.insert(graph.nodes.begin() + (int) index, deletion.pan->node);
+        graph.rebuildNodeIndex();
+        ++graph.revision;
+    }
+    for (const auto& state : deletion.edges) {
+        const size_t index = std::min(state.index, graph.edges.size());
+        graph.edges.insert(graph.edges.begin() + (int) index, state.edge);
+        ++graph.revision;
+    }
+    for (const auto& state : deletion.probes) {
+        const size_t index = std::min(state.index, graph.signalProbes.size());
+        graph.signalProbes.insert(graph.signalProbes.begin() + (int) index, state.probe);
+        ++graph.revision;
     }
 }
 
@@ -205,6 +253,42 @@ void GraphDeltaBuilder::captureEdgesToInput(
     }
 }
 
+void GraphDeltaBuilder::captureCableDeletion(
+        const NodeGraph& graph,
+        const CableDeletionPlan& plan) {
+    CableDeletionDelta state;
+    if (plan.panNodeId.isNotEmpty()) {
+        const auto& nodes = graph.getNodes();
+        const auto found = std::find_if(nodes.begin(), nodes.end(), [&](const Node& node) {
+            return node.id == plan.panNodeId;
+        });
+        if (found != nodes.end()) {
+            state.pan = { (size_t) std::distance(nodes.begin(), found), *found };
+        }
+    }
+    for (const size_t index : plan.edgeIndices) {
+        state.edges.push_back({ index, graph.getEdges()[index] });
+    }
+    std::sort(state.edges.begin(), state.edges.end(), [](const auto& left, const auto& right) {
+        return left.index < right.index;
+    });
+    state.edges.erase(
+            std::unique(state.edges.begin(), state.edges.end(),
+                    [](const auto& left, const auto& right) {
+                        return left.index == right.index;
+                    }),
+            state.edges.end());
+
+    const auto& probes = graph.getSignalProbes();
+    for (size_t index = 0; index < probes.size(); ++index) {
+        if (std::find(plan.probeIds.begin(), plan.probeIds.end(), probes[index].id)
+                != plan.probeIds.end()) {
+            state.probes.push_back({ index, probes[index] });
+        }
+    }
+    cableDeletions.push_back(std::move(state));
+}
+
 GraphDelta GraphDeltaBuilder::finish(
         const NodeGraph& graph,
         GraphChangeSet changes) const {
@@ -215,6 +299,7 @@ GraphDelta GraphDeltaBuilder::finish(
     result.bounds = bounds;
     result.guides = guides;
     result.edgeInputs = edgeInputs;
+    result.cableDeletions = cableDeletions;
     result.changes = std::move(changes);
 
     for (auto& delta : result.parameters) {
@@ -258,7 +343,8 @@ bool GraphDeltaBuilder::empty() const {
         && editorStates.empty()
         && bounds.empty()
         && guides.empty()
-        && edgeInputs.empty();
+        && edgeInputs.empty()
+        && cableDeletions.empty();
 }
 
 NodeModelStatePtr GraphDeltaBuilder::originalNodeModel(const String& nodeId) const {

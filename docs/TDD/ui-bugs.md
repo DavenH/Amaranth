@@ -1,5 +1,16 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Scratch cable deletion test keeps an unchanged zero spectral Spy preview
+
+On 2026-10-07, `Deleting a scratch cable refreshes an observed spectral
+Trimesh` failed at `TestNodeCanvasAuthoring.cpp:231`: the Spy preview values
+were zero before and after removing the attachment. The untouched
+`build/standalone-debug/cycle-v2/CycleV2_tests` binary fails at the same
+assertion, so this predates the cable cascade repair. Logs:
+`/tmp/cycle-v2-scratch-preview-baseline.log` and
+`/tmp/cycle-v2-scratch-preview-test.log`. Status: open; investigate the
+preview fixture and actual scratch effect separately.
+
 ## P2: Existing Trimesh editor tests fail in isolation
 
 During the 2026-10-06 phase-velocity work, isolated reruns of `Clicking an
@@ -101,9 +112,23 @@ Adding vertices to an empty trimesh node adds them at phase=0 regardless of wher
 
 let's just hide it along with the rest of the elements that get hidden/dimmed on expand
 
-## P2: The spy nodes get deeply dimmed when clicked for some reason
+## P2: Spy tiles remain muted compared with node previews
 
-## P2: the 'out' spy node cannot be expanded
+User clarified 2026-10-07 that the severe click dimming has been fixed, but
+the Spy previews are still somewhat dim compared with regular node previews.
+With `with-spies.cyclegraph`, a single click on `spy:probe` did not cause any
+further brightness drop and left `probeDetailId` empty. Captures:
+`/tmp/cycle-v2-spy-before-os.png`, `/tmp/cycle-v2-spy-click-os.png`.
+Status: remaining appearance issue open. The current captures establish the
+muted appearance but do not isolate whether it comes from probe data, domain
+mapping, or tile compositing. Compare the same signal and domain in both views
+before changing the shared surface renderer.
+
+## Resolved: The 'out' Spy cannot be expanded
+
+Checked 2026-10-07 on the default graph. Double-clicking
+`spy:default-output` opened `probeDetailId=default-output`; double-clicking
+the detail closed it. Status: no longer reproducible.
 
 ## P3: vertex selection rect doesn't have appropriate hover cursors on edges or center
 
