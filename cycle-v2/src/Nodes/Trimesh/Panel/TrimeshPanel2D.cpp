@@ -146,9 +146,9 @@ void TrimeshPanel2D::drawSpectralPartials() {
             continue;
         }
 
-        const float gap = spacing >= 12.f ? 3.f : 1.5f;
-        const float left = positions[i] + 0.5f;
-        const float right = positions[i + 1] - gap;
+        const float inset = spacing * 0.2f;
+        const float left = positions[i] + inset;
+        const float right = positions[i + 1] - inset;
         const float top = jmin(heights[i], baseline);
         const float bottom = jmax(heights[i], baseline);
         if (right <= left || bottom - top < 1.f) {
@@ -156,17 +156,29 @@ void TrimeshPanel2D::drawSpectralPartials() {
         }
 
         gfx->setCurrentColour(body);
-        if (spacing >= 12.f && bottom - top >= 10.f) {
-            gfx->fillRect(left + 4.f, top, right - 4.f, top + 4.f, false);
-            gfx->fillRect(left, top + 4.f, right, bottom - 4.f, false);
-            gfx->fillRect(left + 4.f, bottom - 4.f, right - 4.f, bottom, false);
+        if (spacing >= 12.f && bottom - top >= 8.f) {
+            const float corner = jmin(3.f, jmin(
+                    (right - left) * 0.25f,
+                    (bottom - top) * 0.25f));
+            if (heights[i] < baseline) {
+                gfx->fillRect(left + corner, top, right - corner, top + corner * 0.5f, false);
+                gfx->fillRect(left + corner * 0.4f, top + corner * 0.5f,
+                        right - corner * 0.4f, top + corner, false);
+                gfx->fillRect(left, top + corner, right, bottom, false);
+            } else {
+                gfx->fillRect(left, top, right, bottom - corner, false);
+                gfx->fillRect(left + corner * 0.4f, bottom - corner,
+                        right - corner * 0.4f, bottom - corner * 0.5f, false);
+                gfx->fillRect(left + corner, bottom - corner * 0.5f,
+                        right - corner, bottom, false);
+            }
         } else {
             gfx->fillRect(left, top, right, bottom, false);
         }
 
         if (spacing >= 12.f) {
             gfx->setCurrentColour(cap);
-            gfx->drawLine(left + 4.f, heights[i], right - 4.f, heights[i], false);
+            gfx->drawLine(left + 2.f, heights[i], right - 2.f, heights[i], false);
         }
     }
 
