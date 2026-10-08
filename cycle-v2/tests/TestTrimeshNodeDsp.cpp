@@ -6,6 +6,7 @@
 #include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
 #include "Graph/NodeParameterMap.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
@@ -25,6 +26,9 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanelBridge.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanel3D.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
+#include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
+#include "Nodes/Trimesh/Panel/TrimeshInteractor3D.h"
+#include "Nodes/Trimesh/Rendering/TrimeshGuideRailRenderService.h"
 #include "Nodes/Trimesh/Rendering/TrimeshGridRenderService.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
@@ -50,6 +54,108 @@
 #include <limits>
 
 using namespace CycleV2;
+
+TEST_CASE("Snarky blue guides agree across Trimesh view axes at an interior morph",
+        "[cycle-v2][nodes][trimesh][guide][axis]") {
+    ScopedJuceInitialiser_GUI juce;
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content/presets/snarky.cyclegraph");
+    const auto loaded = GraphSerializer().readJSON(JSON::parse(preset.loadFileAsString()));
+    REQUIRE(loaded.succeeded());
+    const Node* node = loaded.graph.findNode("timeLayer1");
+    REQUIRE(node != nullptr);
+    const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(node->model);
+    REQUIRE(model != nullptr);
+    const auto prepared = TrimeshGuidePreparation::prepare(loaded.graph, *node, model->mesh());
+    REQUIRE(prepared.assignmentCount > 0);
+
+    Rasterization::TrilinearMeshRasterizer rasterizer;
+    rasterizer.setGuideCurveProvider(prepared.provider.get());
+    Rasterization::RasterizationRequest request;
+    request.cyclic = false;
+    request.calcDepthDimensions = false;
+    for (float time : { 0.2f, 0.5f, 0.8f }) {
+        for (float blue : { 0.2f, 0.5f, 0.8f }) {
+            request.morph = MorphPosition(time, 0.5f, blue);
+            request.primaryViewDimension = Vertex::Time;
+            const auto timeIntercepts = rasterizer.renderGeometry({ *prepared.mesh, request, 0.f }).intercepts;
+            request.primaryViewDimension = Vertex::Blue;
+            const auto blueIntercepts = rasterizer.renderGeometry({ *prepared.mesh, request, 0.f }).intercepts;
+            REQUIRE(timeIntercepts.size() == blueIntercepts.size());
+            for (size_t index = 0; index < timeIntercepts.size(); ++index) {
+                REQUIRE(timeIntercepts[index].x == Catch::Approx(blueIntercepts[index].x).margin(0.002f));
+                REQUIRE(timeIntercepts[index].y == Catch::Approx(blueIntercepts[index].y).margin(0.002f));
+            }
+        }
+    }
+
+    class RailPanel final : public TrimeshPanel3D {
+    public:
+        RailPanel(SingletonRepo* repo, TrimeshPanelDataSource& source) :
+                SingletonAccessor(repo, "SnarkyRailPanel")
+            ,   TrimeshPanel3D(repo, source) {}
+
+        bool sampleMidpoint(Vertex2 first, Vertex2 second, VertCube* cube, float& result) {
+            if (!createLinePath(first, second, cube, Vertex::Time, false)) {
+                return false;
+            }
+            result = xy.y[linestripRes / 2];
+            return true;
+        }
+    };
+
+    TrimeshPanelEnvironment environment;
+    TrimeshPanelDataSource source;
+    TrimeshInteractor3D interactor(&environment.getRepo(), "SnarkyRailInteractor");
+    RailPanel panel(&environment.getRepo(), source);
+    interactor.init();
+    panel.setInteractor(&interactor);
+    panel.setLineGuideTables(TrimeshGuideRailRenderService::prepareTables(
+            *prepared.provider,
+            GuideCurveSnapshotProvider::visualizationSeed(PortDomain::TimeSignal)));
+    const MorphPosition morph(0.5f, 0.5f, 0.5f);
+    environment.setMorphPosition(morph, Vertex::Time);
+
+    bool sampled = false;
+    for (VertCube* cube : prepared.mesh->getCubes()) {
+        if (cube->guideCurveAt(Vertex::Blue) < 0
+                || cube->guideCurveAt(Vertex::Phase) >= 0) {
+            continue;
+        }
+        VertCube::ReductionData reduction;
+        Rasterization::TrilinearMeshSlicer().slice(*cube, Vertex::Time, reduction, morph);
+        if (!reduction.lineOverlaps) {
+            continue;
+        }
+
+        const Vertex2 first(reduction.v0.values[Vertex::Time], reduction.v0.values[Vertex::Phase]);
+        const Vertex2 second(reduction.v1.values[Vertex::Time], reduction.v1.values[Vertex::Phase]);
+        float midpoint {};
+        REQUIRE(panel.sampleMidpoint(first, second, cube, midpoint));
+        const float progress = (float) (Panel::linestripRes / 2)
+                / (float) (Panel::linestripRes - 0.5f);
+        const float base = first.y + progress * (second.y - first.y);
+        REQUIRE(std::abs(midpoint - base) > 0.001f);
+
+        request.morph = MorphPosition(
+                first.x + (second.x - first.x) * 0.5f,
+                0.5f,
+                0.5f);
+        request.primaryViewDimension = Vertex::Time;
+        request.xMinimum = -100.f;
+        request.xMaximum = 100.f;
+        const auto& guided = rasterizer.renderGeometry({ *prepared.mesh, request, 0.f }).intercepts;
+        const auto matching = std::find_if(guided.begin(), guided.end(),
+                [cube](const Intercept& intercept) { return intercept.cube == cube; });
+        REQUIRE(matching != guided.end());
+        REQUIRE(midpoint == Catch::Approx(matching->x).margin(0.01f));
+        sampled = true;
+        break;
+    }
+    REQUIRE(sampled);
+    panel.setInteractor(nullptr);
+    interactor.stopTimer();
+}
 
 namespace {
 
