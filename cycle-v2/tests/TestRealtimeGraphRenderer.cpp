@@ -36,6 +36,8 @@ std::vector<float> renderOutputGain(float gainUnitValue, float& compiledGain) {
     AudioExecutionSpec spec;
     spec.maximumFrameCount = 256;
     auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+    REQUIRE(spec.prewarmTraversalGrid);
+    REQUIRE_FALSE(prepared->spec.prewarmTraversalGrid);
     RealtimeGraphRenderer renderer;
     RealtimeMidiEventQueue queue;
     renderer.setPreparedGraph(prepared.get());

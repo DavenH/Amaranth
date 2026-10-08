@@ -1,5 +1,7 @@
 #include "UI/CanvasPerformanceMetrics.h"
 
+#include <algorithm>
+
 namespace CycleV2 {
 
 using namespace juce;
@@ -165,6 +167,9 @@ void CanvasPerformanceMetrics::presentationStageCompleted(
         uint64_t elapsedMicroseconds) {
     const juce::ScopedLock scopedLock(lock);
     record(presentationStageData[indexFor(stage)], elapsedMicroseconds);
+    if (presetLoad.collectingFirstPaintStages) {
+        presetLoad.firstPaintStageMicroseconds[indexFor(stage)] += elapsedMicroseconds;
+    }
 }
 
 void CanvasPerformanceMetrics::nodeLayerCacheCompleted(
@@ -222,6 +227,102 @@ void CanvasPerformanceMetrics::spyPreviewTileCacheCompleted(
     }
 }
 
+void CanvasPerformanceMetrics::nodeTileCompleted(
+        const String& nodeId,
+        uint64_t elapsedMicroseconds) {
+    const ScopedLock scopedLock(lock);
+    if (presetLoad.generation == 0 || presetLoad.firstPaintCompletedAt != 0) {
+        return;
+    }
+    auto slowest = std::min_element(
+            slowNodeTiles.begin(), slowNodeTiles.end(), [](const auto& left, const auto& right) {
+                return left.elapsedMicroseconds < right.elapsedMicroseconds;
+            });
+    if (slowest != slowNodeTiles.end()
+            && elapsedMicroseconds > slowest->elapsedMicroseconds) {
+        *slowest = { nodeId, elapsedMicroseconds };
+    }
+}
+
+void CanvasPerformanceMetrics::beginPresetLoad(const String& fileName) {
+    const uint64_t startedAt = now();
+    const ScopedLock scopedLock(lock);
+    const uint64_t generation = ++nextPresetLoadGeneration;
+    presetLoad = { fileName, generation, startedAt };
+    slowNodeTiles = {};
+}
+
+uint64_t CanvasPerformanceMetrics::presetLoadReturned() {
+    const uint64_t completedAt = now();
+    const ScopedLock scopedLock(lock);
+    if (presetLoad.generation != 0) {
+        presetLoad.loadReturnedAt = completedAt;
+    }
+    return presetLoad.generation;
+}
+
+void CanvasPerformanceMetrics::presetLoadWorkspaceStageCompleted(
+        PresetLoadWorkspaceStage stage) {
+    const uint64_t completedAt = now();
+    const ScopedLock scopedLock(lock);
+    const auto index = static_cast<size_t>(stage);
+    if (presetLoad.loadReturnedAt == 0
+            || presetLoad.firstPaintCompletedAt != 0
+            || index != presetLoad.completedWorkspaceStages) {
+        return;
+    }
+    const uint64_t startedAt = presetLoad.lastWorkspaceStageAt != 0
+            ? presetLoad.lastWorkspaceStageAt
+            : presetLoad.loadReturnedAt;
+    presetLoad.workspaceStageMicroseconds[index] = completedAt - startedAt;
+    presetLoad.lastWorkspaceStageAt = completedAt;
+    ++presetLoad.completedWorkspaceStages;
+}
+
+void CanvasPerformanceMetrics::presetLoadPostReturnMessageTurn(uint64_t generation) {
+    const uint64_t completedAt = now();
+    const ScopedLock scopedLock(lock);
+    if (presetLoad.generation == generation
+            && presetLoad.loadReturnedAt != 0
+            && presetLoad.postReturnMessageTurnAt == 0) {
+        presetLoad.postReturnMessageTurnAt = completedAt;
+    }
+}
+
+void CanvasPerformanceMetrics::beginPresetLoadPaint(uint64_t paintStartedAt) {
+    const ScopedLock scopedLock(lock);
+    if (presetLoad.loadReturnedAt != 0
+            && paintStartedAt >= presetLoad.loadReturnedAt
+            && presetLoad.firstPaintCompletedAt == 0) {
+        presetLoad.collectingFirstPaintStages = true;
+        presetLoad.firstPaintStageMicroseconds = {};
+    }
+}
+
+uint64_t CanvasPerformanceMetrics::presetLoadPaintCompleted(uint64_t paintStartedAt) {
+    const uint64_t completedAt = now();
+    const ScopedLock scopedLock(lock);
+    presetLoad.collectingFirstPaintStages = false;
+    if (presetLoad.loadReturnedAt == 0
+            || paintStartedAt < presetLoad.loadReturnedAt
+            || presetLoad.firstPaintCompletedAt != 0) {
+        return 0;
+    }
+    presetLoad.firstPaintStartedAt = paintStartedAt;
+    presetLoad.firstPaintCompletedAt = completedAt;
+    return presetLoad.generation;
+}
+
+void CanvasPerformanceMetrics::presetLoadPostPaintMessageTurn(uint64_t generation) {
+    const uint64_t completedAt = now();
+    const ScopedLock scopedLock(lock);
+    if (presetLoad.generation == generation
+            && presetLoad.firstPaintCompletedAt != 0
+            && presetLoad.postPaintMessageTurnAt == 0) {
+        presetLoad.postPaintMessageTurnAt = completedAt;
+    }
+}
+
 void CanvasPerformanceMetrics::reset() {
     const uint64_t timestamp = now();
     const juce::ScopedLock scopedLock(lock);
@@ -250,6 +351,8 @@ void CanvasPerformanceMetrics::reset() {
     hoverStateChanges = 0;
     hoverStateUnchanged = 0;
     occludedHoverResolutions = 0;
+    presetLoad = {};
+    slowNodeTiles = {};
 }
 
 CanvasPerformanceMetrics::Snapshot CanvasPerformanceMetrics::snapshot() const {
@@ -295,9 +398,65 @@ CanvasPerformanceMetrics::Snapshot CanvasPerformanceMetrics::snapshot() const {
 var CanvasPerformanceMetrics::toVar(
         const RenderInvalidationAccumulator::Diagnostics& invalidation) const {
     const Snapshot current = snapshot();
+    PresetLoadSnapshot load;
+    std::array<SlowNodeTile, 8> nodeTiles;
+    {
+        const ScopedLock scopedLock(lock);
+        load = presetLoad;
+        nodeTiles = slowNodeTiles;
+    }
     auto* root = new DynamicObject();
     root->setProperty("schema", "cycle-v2-canvas-performance.v2");
     root->setProperty("elapsedMs", (double) current.elapsedMicroseconds / 1000.0);
+
+    auto* presetLoadObject = new DynamicObject();
+    presetLoadObject->setProperty("fileName", load.fileName);
+    const auto elapsedOrNull = [&load](uint64_t timestamp) -> var {
+        return timestamp == 0 || load.startedAt == 0
+                ? var()
+                : var((double) (timestamp - load.startedAt) / 1000.0);
+    };
+    presetLoadObject->setProperty("loadReturnMs", elapsedOrNull(load.loadReturnedAt));
+    presetLoadObject->setProperty(
+            "postReturnMessageTurnMs",
+            elapsedOrNull(load.postReturnMessageTurnAt));
+    presetLoadObject->setProperty("firstPaintStartMs", elapsedOrNull(load.firstPaintStartedAt));
+    presetLoadObject->setProperty("firstPaintEndMs", elapsedOrNull(load.firstPaintCompletedAt));
+    presetLoadObject->setProperty(
+            "postPaintMessageTurnMs",
+            elapsedOrNull(load.postPaintMessageTurnAt));
+    auto* workspaceStages = new DynamicObject();
+    for (size_t index = 0; index < presetLoadWorkspaceStageCount; ++index) {
+        const auto stage = static_cast<PresetLoadWorkspaceStage>(index);
+        workspaceStages->setProperty(label(stage), index < load.completedWorkspaceStages
+                ? var((double) load.workspaceStageMicroseconds[index] / 1000.0)
+                : var());
+    }
+    presetLoadObject->setProperty("workspaceStages", var(workspaceStages));
+    auto* firstPaintStages = new DynamicObject();
+    for (size_t index = 0; index < presentationStageCount; ++index) {
+        const auto stage = static_cast<NodeCanvasPresentationStage>(index);
+        firstPaintStages->setProperty(label(stage), load.firstPaintCompletedAt != 0
+                ? var((double) load.firstPaintStageMicroseconds[index] / 1000.0)
+                : var());
+    }
+    presetLoadObject->setProperty("firstPaintStages", var(firstPaintStages));
+    root->setProperty("presetLoad", var(presetLoadObject));
+
+    Array<var> slowestTiles;
+    std::sort(nodeTiles.begin(), nodeTiles.end(), [](const auto& left, const auto& right) {
+        return left.elapsedMicroseconds > right.elapsedMicroseconds;
+    });
+    for (const auto& tile : nodeTiles) {
+        if (tile.elapsedMicroseconds == 0) {
+            break;
+        }
+        auto* object = new DynamicObject();
+        object->setProperty("nodeId", tile.nodeId);
+        object->setProperty("durationMs", (double) tile.elapsedMicroseconds / 1000.0);
+        slowestTiles.add(var(object));
+    }
+    root->setProperty("slowestNodeTiles", slowestTiles);
 
     uint64_t totalInvocations {};
     uint64_t totalRequests {};
@@ -470,6 +629,18 @@ const char* CanvasPerformanceMetrics::label(Operation operation) {
         case Operation::TrimeshVertexCommit:     return "trimeshVertexCommit";
         case Operation::TrimeshVertexSelection:  return "trimeshVertexSelection";
         case Operation::Count:                   break;
+    }
+    return "unknown";
+}
+
+const char* CanvasPerformanceMetrics::label(PresetLoadWorkspaceStage stage) {
+    switch (stage) {
+        case PresetLoadWorkspaceStage::KeyboardAndSidebar:    return "keyboardAndSidebar";
+        case PresetLoadWorkspaceStage::AudioPlanCopy:         return "audioPlanCopy";
+        case PresetLoadWorkspaceStage::VoiceDuration:         return "voiceDuration";
+        case PresetLoadWorkspaceStage::AudioGraphPreparation: return "audioGraphPreparation";
+        case PresetLoadWorkspaceStage::Layout:                return "layout";
+        case PresetLoadWorkspaceStage::Count:                 break;
     }
     return "unknown";
 }

@@ -424,7 +424,9 @@ var CycleV2Automation::openGraph(const var& commandValue) {
         return failedResult("openGraph", "Could not open graph: " + path.getFullPathName());
     }
 
-    return okResult("openGraph", snapshotState());
+    return boolProperty(commandValue, "includeSnapshot", true)
+            ? okResult("openGraph", snapshotState())
+            : okResult("openGraph");
 }
 
 var CycleV2Automation::saveGraph(const var& commandValue) {

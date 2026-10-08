@@ -51,6 +51,8 @@ RealtimeGraphRenderer::prepareGraph(
     prepared->revision = revision;
     prepared->plan = std::move(plan);
     prepared->spec = spec;
+    // Realtime execution never captures traversal grids.
+    prepared->spec.prewarmTraversalGrid = false;
     prepared->outputGainRamp.resize((int) spec.maximumFrameCount);
     for (size_t voiceIndex = 0; voiceIndex < voiceCount; ++voiceIndex) {
         prepared->executor.prepareRealtimeVoiceExecution(

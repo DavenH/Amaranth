@@ -81,6 +81,10 @@ var GraphPresentationPerformanceMetrics::toVar() const {
 const char* GraphPresentationPerformanceMetrics::label(Stage stage) {
     switch (stage) {
         case Stage::SynchronousRefresh: return "synchronousRefresh";
+        case Stage::CancellationWait:   return "cancellationWait";
+        case Stage::Compilation:        return "compilation";
+        case Stage::RuntimeTrace:       return "runtimeTrace";
+        case Stage::SnapshotFacts:      return "snapshotFacts";
         case Stage::QueueDelay:         return "queueDelay";
         case Stage::Worker:             return "worker";
         case Stage::Configuration:      return "configuration";

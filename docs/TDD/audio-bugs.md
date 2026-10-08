@@ -1,5 +1,19 @@
 # Audio Bug Notes
 
+## Open: five broad realtime test failures reproduce with original grid warmup
+
+During the 2026-10-08 preset-load optimization, the broad
+`[cycle-v2][audio-device][realtime]` filter failed in five cases: mixed voice
+terminal peak, legacy volume-envelope clock, Astral preset load, audio
+telemetry waveform segments, and global Delay tail. An isolated mixed-terminal
+run also failed. Rebuilding the test binary with the original realtime
+`prewarmTraversalGrid = true` behavior reproduced the same five failures; the
+new preparation policy assertion then failed as expected. The two focused
+Output-gain tests and the Trimesh diagnostic-grid parity test pass with the
+optimized policy. Logs: `/tmp/cycle-realtime-tests.log` and
+`/tmp/cycle-realtime-baseline-full.log`. Status: open; these failures predate
+the warmup removal and should be diagnosed separately.
+
 ## Open: broad Cycle V2 spectral test filter has unrelated fixture failures
 
 During the 2026-10-06 phase-velocity work, the broad

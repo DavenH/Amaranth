@@ -27,7 +27,7 @@ a broad automation change.
 Build the standalone app first if the touched code has not been built:
 
 ```sh
-cmake --build --preset standalone-debug
+cmake --build --preset standalone-debug --parallel 10
 ```
 
 Run one fixture through the LaunchServices-aware wrapper:
@@ -142,7 +142,11 @@ Common command families:
   canvas measurement window containing trigger frequency/cost, repaint latency
   and coalescing, and JUCE/OpenGL frame-duration distributions. Use
   `cycle-v2-agent-canvas-performance.json` as the stable before/after baseline
-  for canvas optimization work.
+  for canvas optimization work. For preset loading, use
+  `cycle-v2-agent-preset-load-latency.json`: its `presetLoad` object reports
+  synchronous return, first full canvas paint, and posted message turns
+  relative to load entry; `slowestNodeTiles` identifies cold node paint costs.
+  These posted turns are queue markers, not proof that the entire queue is idle.
 - `resetAudioPerformance`, `inspectAudioPerformance`: start an opt-in audio
   measurement generation and inspect callback/deadline distributions, phase
   durations, workload, overruns, and telemetry drops. Use `sendMidi` with
@@ -170,6 +174,91 @@ Common command families:
   whether its real component interaction path handled the event.
 - `waitForIdle`: fixed message-loop drain/delay when a command needs UI updates
   to settle.
+
+## Cycle V2 Performance Regression Loop
+
+Use this loop after changing graph preparation, grid capture, node previews,
+canvas invalidation, or expanded editor gestures. The contracts and baseline
+interpretation are in `docs/TDD/cycle-v2-preset-load-latency.md` and
+`docs/TDD/cycle-v2-graph-grid-performance.md`.
+
+First, build and run the focused semantic checks. Run these individually;
+the broad realtime test filter has separately recorded baseline failures in
+`docs/TDD/audio-bugs.md`.
+
+```sh
+cmake --build --preset tests --target CycleV2_tests --parallel 10
+build/tests/cycle-v2/CycleV2_tests '[preset-load]'
+build/tests/cycle-v2/CycleV2_tests 'Selected Spy capture matches full diagnostics without downstream work'
+build/tests/cycle-v2/CycleV2_tests 'A Spy after reverb includes the selected wet effect'
+build/tests/cycle-v2/CycleV2_tests 'Diagnostic trimesh grids match prewarmed grids without preparation bakes'
+build/tests/cycle-v2/CycleV2_tests 'Realtime graph renderer applies Output gain separately from safety headroom'
+```
+
+The Spy tests assert the selected upstream graph produces the same grid as
+full diagnostics, skips a downstream Reverb, and includes Reverb when the Spy
+is placed after it. The Trimesh test asserts identical diagnostic values with
+zero preparation bakes. The realtime test asserts that prepared audio graphs
+omit unused traversal warmup while remaining audible. These tests protect
+semantics and operation scope; they do not measure end-to-end UI latency.
+
+Then run the same warm-app preset fixture in Debug and Release, sequentially.
+It opens Baroque Flute and Organ 4 twice each, starting each timing window
+before `openGraph` and skipping `openGraph`'s expensive state snapshot. Use
+the exact app path so another Cycle instance cannot receive the fixture.
+
+```sh
+cmake --build --preset standalone-debug --target CycleV2 --parallel 10
+CYCLE_APP_PATH="$PWD/build/standalone-debug/cycle-v2/CycleV2.app" \
+CYCLE_WAIT_SECONDS=120 scripts/run_cycle_agent.sh \
+    scripts/fixtures/cycle-v2-agent-preset-load-latency.json \
+    /private/tmp/cycle-v2-load-debug-report.json \
+    /private/tmp/cycle-v2-load-debug-log.txt
+
+cmake --build --preset standalone-release --target CycleV2 --parallel 10
+CYCLE_APP_PATH="$PWD/build/standalone-release/cycle-v2/CycleV2.app" \
+CYCLE_WAIT_SECONDS=120 scripts/run_cycle_agent.sh \
+    scripts/fixtures/cycle-v2-agent-preset-load-latency.json \
+    /private/tmp/cycle-v2-load-release-report.json \
+    /private/tmp/cycle-v2-load-release-log.txt
+
+python3 scripts/summarize_cycle_v2_preset_load.py \
+    /private/tmp/cycle-v2-load-debug-report.json \
+    /private/tmp/cycle-v2-load-release-report.json
+```
+
+Check every agent command succeeded and inspect the filtered logs for an
+assertion or crash. Compare each preset and stage with an earlier run of the
+same build, preset contents, window size, cache state, and power source. Do
+not use a fixed millisecond gate across Debug and Release or different
+machines. For a larger change, repeat a representative multi-preset sweep in
+forward and reverse order, as documented in the preset-load TDD. A stage
+increase tells you which owner to inspect: realtime audio preparation,
+preview execution, cold node tiles, or Spy rail painting. The first-paint
+endpoint is the end of the first full JUCE canvas paint, measured from
+`NodeCanvas::loadGraphFromFile` entry. It excludes sidebar dispatch before
+that entry and OS composition afterward. `waitForIdle` and posted message
+turns are queue markers, not visibility endpoints.
+
+For expanded Trimesh morph gestures, run the focused live and on-release
+fixtures against the corresponding standalone build. Their performance
+assertions require zero canvas repaint and compact preview requests during
+movement; the editor's local surface still updates at high density. The
+broader refresh occurs when the gesture commits.
+
+```sh
+CYCLE_APP_PATH="$PWD/build/standalone-debug/cycle-v2/CycleV2.app" \
+CYCLE_WAIT_SECONDS=120 scripts/run_cycle_agent.sh \
+    scripts/fixtures/cycle-v2-agent-trimesh-editor-canvas-isolation-live.json \
+    /private/tmp/cycle-v2-morph-live-report.json \
+    /private/tmp/cycle-v2-morph-live-log.txt
+
+CYCLE_APP_PATH="$PWD/build/standalone-release/cycle-v2/CycleV2.app" \
+CYCLE_WAIT_SECONDS=120 scripts/run_cycle_agent.sh \
+    scripts/fixtures/cycle-v2-agent-trimesh-editor-canvas-isolation-release.json \
+    /private/tmp/cycle-v2-morph-release-report.json \
+    /private/tmp/cycle-v2-morph-release-log.txt
+```
 
 When the goal is e2e test coverage, prefer commands that drive the actual UI
 or interactor path. Direct state mutation is acceptable for fixture setup or

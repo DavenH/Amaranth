@@ -360,11 +360,22 @@ void NodeCanvas::paint(Graphics& g) {
         return;
     }
 
+    performanceMetrics.beginPresetLoadPaint(framePreparationStartedAt);
     performanceMetrics.presentationStageCompleted(
             NodeCanvasPresentationStage::FramePreparation,
             performanceMetrics.timestamp() - framePreparationStartedAt);
 
     canvasPresentation.paint(g, frame);
+    const uint64_t paintGeneration = performanceMetrics.presetLoadPaintCompleted(
+            framePreparationStartedAt);
+    if (paintGeneration != 0) {
+        Component::SafePointer<NodeCanvas> safeThis(this);
+        MessageManager::callAsync([safeThis, paintGeneration] {
+            if (safeThis != nullptr) {
+                safeThis->performanceMetrics.presetLoadPostPaintMessageTurn(paintGeneration);
+            }
+        });
+    }
     if (frame.canvasOcclusion.isEmpty()
             && !guideShelfState.presetBrowserVisible
             && canvasPresentation.guideShelfNeedsOpenGLPreviewRender()) {
@@ -2329,6 +2340,7 @@ bool NodeCanvas::saveGraphToFile(const File& file) {
 }
 
 bool NodeCanvas::loadGraphFromFile(const File& file) {
+    performanceMetrics.beginPresetLoad(file.getFileName());
     const bool loaded = applyAuthoringResult(authoring.loadGraph(file));
     if (loaded) {
         closeGuideEditor();
@@ -2338,7 +2350,19 @@ bool NodeCanvas::loadGraphFromFile(const File& file) {
         documentViewportFitted = false;
         resized();
     }
+    const uint64_t loadGeneration = performanceMetrics.presetLoadReturned();
+    Component::SafePointer<NodeCanvas> safeThis(this);
+    MessageManager::callAsync([safeThis, loadGeneration] {
+        if (safeThis != nullptr) {
+            safeThis->performanceMetrics.presetLoadPostReturnMessageTurn(loadGeneration);
+        }
+    });
     return loaded;
+}
+
+void NodeCanvas::presetLoadWorkspaceStageCompleted(
+        CanvasPerformanceMetrics::PresetLoadWorkspaceStage stage) {
+    performanceMetrics.presetLoadWorkspaceStageCompleted(stage);
 }
 
 bool NodeCanvas::capturePresetPreviewForAutomation(

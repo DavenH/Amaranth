@@ -111,12 +111,14 @@ Three selected-probe captures split the remaining 159 ms into approximately
 the time mesh took about 22 ms and the four spectral meshes about 11-12 ms
 each. `TrimeshGridwiseDsp::prepare` renders every column into a temporary
 scratch buffer, then `process` renders the columns again into the actual grid.
-The preparation render is authoritative for realtime prewarming. Diagnostic
-captures are nonrealtime and can allocate during actual rendering. The
-implemented slice passes an explicit `prewarmTraversalGrid` policy through
+The preparation render was retained for realtime prewarming in this slice.
+Diagnostic captures are nonrealtime and can allocate during actual rendering.
+The implemented slice passes an explicit `prewarmTraversalGrid` policy through
 `AudioExecutionSpec` and its preparation-cache signature. Complete and
-incremental diagnostic requests disable the warmup; realtime preparation
-retains it. Sampling setup is preserved in both paths.
+incremental diagnostic requests disable the warmup. A later preset-load audit
+also found that realtime execution sets `captureTraversalGrid = false`, so
+realtime graph preparation now disables this unused warmup too. Sampling setup
+is preserved in both paths. See `cycle-v2-preset-load-latency.md`.
 At 512 columns, five mesh nodes avoid 2,560 preparation bakes. A direct test
 compares prewarmed and diagnostic values exactly for time, magnitude, and
 phase domains and checks 64 warmup bakes versus zero at a 64-column shape.

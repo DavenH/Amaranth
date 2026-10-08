@@ -53,12 +53,23 @@ public:
         Count
     };
 
+    enum class PresetLoadWorkspaceStage : uint8_t {
+        KeyboardAndSidebar,
+        AudioPlanCopy,
+        VoiceDuration,
+        AudioGraphPreparation,
+        Layout,
+        Count
+    };
+
     static constexpr size_t triggerCount = static_cast<size_t>(Trigger::Count);
     static constexpr size_t frameCount = static_cast<size_t>(Frame::Count);
     static constexpr size_t repaintScopeCount = static_cast<size_t>(RepaintScope::Count);
     static constexpr size_t operationCount = static_cast<size_t>(Operation::Count);
     static constexpr size_t presentationStageCount = static_cast<size_t>(
             NodeCanvasPresentationStage::Count);
+    static constexpr size_t presetLoadWorkspaceStageCount = static_cast<size_t>(
+            PresetLoadWorkspaceStage::Count);
     using Distribution = PerformanceDistribution;
 
     struct TriggerSnapshot {
@@ -95,6 +106,27 @@ public:
         uint64_t hoverStateChanges {};
         uint64_t hoverStateUnchanged {};
         uint64_t occludedHoverResolutions {};
+    };
+
+    struct PresetLoadSnapshot {
+        juce::String fileName;
+        uint64_t generation {};
+        uint64_t startedAt {};
+        uint64_t loadReturnedAt {};
+        uint64_t postReturnMessageTurnAt {};
+        uint64_t firstPaintStartedAt {};
+        uint64_t firstPaintCompletedAt {};
+        uint64_t postPaintMessageTurnAt {};
+        uint64_t lastWorkspaceStageAt {};
+        size_t completedWorkspaceStages {};
+        std::array<uint64_t, presetLoadWorkspaceStageCount> workspaceStageMicroseconds {};
+        std::array<uint64_t, presentationStageCount> firstPaintStageMicroseconds {};
+        bool collectingFirstPaintStages {};
+    };
+
+    struct SlowNodeTile {
+        juce::String nodeId;
+        uint64_t elapsedMicroseconds {};
     };
 
     using Clock = uint64_t (*)();
@@ -164,6 +196,16 @@ public:
             uint64_t hits,
             uint64_t misses,
             uint64_t elapsedMicroseconds) override;
+    void nodeTileCompleted(
+            const juce::String& nodeId,
+            uint64_t elapsedMicroseconds) override;
+    void beginPresetLoad(const juce::String& fileName);
+    uint64_t presetLoadReturned();
+    void presetLoadWorkspaceStageCompleted(PresetLoadWorkspaceStage stage);
+    void presetLoadPostReturnMessageTurn(uint64_t generation);
+    void beginPresetLoadPaint(uint64_t paintStartedAt);
+    uint64_t presetLoadPaintCompleted(uint64_t paintStartedAt);
+    void presetLoadPostPaintMessageTurn(uint64_t generation);
     void reset();
 
     Snapshot snapshot() const;
@@ -174,6 +216,7 @@ public:
     static const char* label(RepaintScope scope);
     static const char* label(Operation operation);
     static const char* label(NodeCanvasPresentationStage stage);
+    static const char* label(PresetLoadWorkspaceStage stage);
     static double percentileMilliseconds(const Distribution& distribution, double percentile);
 
 private:
@@ -221,6 +264,9 @@ private:
     uint64_t hoverStateChanges {};
     uint64_t hoverStateUnchanged {};
     uint64_t occludedHoverResolutions {};
+    PresetLoadSnapshot presetLoad;
+    uint64_t nextPresetLoadGeneration {};
+    std::array<SlowNodeTile, 8> slowNodeTiles;
 
     static thread_local CanvasPerformanceMetrics* activeMetrics;
     static thread_local Trigger activeTrigger;

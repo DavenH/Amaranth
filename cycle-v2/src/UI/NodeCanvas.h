@@ -56,6 +56,8 @@ public:
 
     bool saveGraphToFile(const File& file);
     bool loadGraphFromFile(const File& file);
+    void presetLoadWorkspaceStageCompleted(
+            CanvasPerformanceMetrics::PresetLoadWorkspaceStage stage);
     bool capturePresetPreviewForAutomation(
             PresetPreviewView view,
             PresetPreviewImage& image,
