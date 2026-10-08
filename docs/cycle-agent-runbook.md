@@ -206,6 +206,28 @@ On macOS, the wrapper preflights Accessibility permission by default and
 preflights Screen Recording when OS screenshots are requested. If permission is
 missing, it opens the relevant System Settings pane and exits with instructions.
 
+## UI Video
+
+Set `CYCLE_OS_VIDEO_PATH` to record the Cycle window for the duration of a
+fixture. The recorder captures that window directly, including OpenGL panels,
+even when another application is in front. The runner writes an MP4 alongside
+its report and logs, then stops the recording when the report is ready.
+
+```sh
+CYCLE_OS_VIDEO_PATH=/private/tmp/trimesh-gesture.mp4 \
+    scripts/run_cycle_v2_agent.sh \
+    scripts/fixtures/cycle-v2-agent-trimesh-guided-vertex-insertion.json \
+    /private/tmp/trimesh-gesture-report.json \
+    /private/tmp/trimesh-gesture-log.txt
+```
+
+The default capture rate is 30 fps. Set `CYCLE_OS_VIDEO_FPS=60` for short
+flicker investigations. Video capture requires macOS, `swiftc`, and Screen
+Recording permission for the calling terminal. The recorder's diagnostic log
+is written at `<log.txt>.video`. The Cycle V2 runner delays fixture execution
+by three seconds when recording so the window stream can start; override with
+`CYCLE_AGENT_START_DELAY_MS` when needed.
+
 ## Audio Capture
 
 Use `captureAudio` when a bug or regression needs proof from the rendered

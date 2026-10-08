@@ -492,6 +492,22 @@ OpenGL-backed panel capture works through runner-side OS crop capture.
   `CYCLE_OS_SCREENSHOT_PATH`. The runner crops the target's reported
   `screenBounds` with `screencapture -R`.
 
+### Cycle window video capture (2026-10-07)
+
+The runner owns optional macOS video recording for a fixture. It starts a
+ScreenCaptureKit stream for the Cycle window, while the app's automation runner
+only delays the first script command long enough for the stream to attach. The
+Swift helper translates a bundle identifier into a window capture and writes
+an MP4; it does not duplicate editor interaction, graph, or rendering behavior.
+The stable boundary is `CYCLE_OS_VIDEO_PATH` on `run_cycle_agent.sh`. There is
+no in-app recording path to retire.
+
+An empty-preset Time Trimesh fixture produced a 1728×994, 151-frame MP4 and
+an ordinary report. The selected inserted intercept remained at X `0.6404`
+after a 1.5 second settle. This video proves the capture workflow; it does not
+reproduce the separately reported x=0 vertex jump. The relevant artifacts are
+`/private/tmp/empty-trimesh-video.mp4` and its sibling report and log.
+
 ### Phase 6: Scoped State Export
 
 Supports milestones: 1, 5, and 6.
