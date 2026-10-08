@@ -261,7 +261,7 @@ var CycleV2Automation::runCommand(const var& commandValue) {
         case Command::InspectOpenGLDiagnostics:
             return inspectOpenGLDiagnostics();
         case Command::InspectCanvasPerformance:
-            return inspectCanvasPerformance();
+            return inspectCanvasPerformance(commandValue);
         case Command::ResetCanvasPerformance:
             return resetCanvasPerformance();
         case Command::InspectAudioPerformance:
@@ -762,10 +762,29 @@ var CycleV2Automation::inspectOpenGLDiagnostics() const {
     return okResult("inspectOpenGLDiagnostics", workspace.inspectOpenGLDiagnosticsForAutomation());
 }
 
-var CycleV2Automation::inspectCanvasPerformance() const {
-    return okResult(
-            "inspectCanvasPerformance",
-            workspace.inspectCanvasPerformanceForAutomation());
+var CycleV2Automation::inspectCanvasPerformance(const var& commandValue) const {
+    const var metrics = workspace.inspectCanvasPerformanceForAutomation();
+    const auto* expected = commandValue.getDynamicObject();
+    const auto* measured = metrics.getDynamicObject();
+    if (expected != nullptr && measured != nullptr) {
+        const int repaintRequests = (int) measured->getProperty("repaintRequests");
+        if (expected->hasProperty("maxRepaintRequests")
+                && repaintRequests > (int) expected->getProperty("maxRepaintRequests")) {
+            return failedResult(
+                    "inspectCanvasPerformance",
+                    "Canvas repaint requests during gesture: " + String(repaintRequests));
+        }
+        const var pipeline = measured->getProperty("previewPipeline");
+        const var outcomes = pipeline.getProperty("outcomes", var());
+        const int previewRequests = (int) outcomes.getProperty("requested", var(0));
+        if (expected->hasProperty("maxPreviewRequests")
+                && previewRequests > (int) expected->getProperty("maxPreviewRequests")) {
+            return failedResult(
+                    "inspectCanvasPerformance",
+                    "Graph preview requests during gesture: " + String(previewRequests));
+        }
+    }
+    return okResult("inspectCanvasPerformance", metrics);
 }
 
 var CycleV2Automation::resetCanvasPerformance() {

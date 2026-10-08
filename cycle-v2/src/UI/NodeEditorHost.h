@@ -128,7 +128,7 @@ public:
             const String&,
             const String&,
             uint64_t,
-            std::optional<UpdateProduct> = UpdateProduct::LocalSlice) {
+            std::optional<UpdateProduct>) {
     }
     virtual void commitNodeEditorLocalState(
             const String&,

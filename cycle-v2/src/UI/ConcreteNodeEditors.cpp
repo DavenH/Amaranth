@@ -84,7 +84,8 @@ private:
     }
 
     void curveTransientStateChanged(uint64_t fingerprint) override {
-        presentation.recordNodeEditorMovement(nodeId, "curve", fingerprint);
+        presentation.recordNodeEditorMovement(
+                nodeId, "curve", fingerprint, std::nullopt);
     }
 
     void setCurveEditorStatus(const String& message) override {

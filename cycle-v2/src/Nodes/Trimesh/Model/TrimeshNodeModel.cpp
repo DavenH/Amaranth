@@ -5,6 +5,7 @@
 
 #include "Graph/NodeParameterMap.h"
 
+#include <Curve/Mesh/CollisionDetector.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
 #include <Curve/Mesh/VertCube.h>
@@ -424,7 +425,8 @@ bool TrimeshNodeModel::selectVertex(Vertex* vertex) {
 bool TrimeshNodeModel::setVertexParameter(
         int vertexIndex,
         const String& parameterId,
-        float value) {
+        float value,
+        CollisionDetector& collisionDetector) {
     if (parameterId == "vertex.curve") {
         if (VertCube* cube = cubeForVertex(vertexIndex)) {
             const auto edit = TrimeshVertexEditCore::prepareCubeCurve(*cube, value);
@@ -441,6 +443,16 @@ bool TrimeshNodeModel::setVertexParameter(
             mesh(), vertexIndex, parameterId, value);
     if (!delta.has_value() || !TrimeshVertexEditCore::apply(mesh(), *delta)) {
         return false;
+    }
+    if (delta->changed()
+            && delta->valueIndex != Vertex::Amp
+            && delta->valueIndex != Vertex::Curve) {
+        collisionDetector.setCurrentSelection(&mesh(), vertexAtIndex(vertexIndex));
+        if (!collisionDetector.validate()) {
+            const bool restored = TrimeshVertexEditCore::apply(mesh(), delta->inverse());
+            jassert(restored);
+            return false;
+        }
     }
     if (delta->changed()) {
         bumpMeshContentRevision();

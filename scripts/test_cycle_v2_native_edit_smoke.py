@@ -1717,7 +1717,10 @@ class NativeEditSmoke:
         self.drag(curve_source, curve_destination, steps=12, step_wait_ms=6)
         curve_after = self.inspect_until(
             "waveMesh",
-            lambda inspected: self.model_revision(inspected) > curve_revision,
+            lambda inspected: (
+                self.model_revision(inspected) > curve_revision
+                and self.trimesh_model(inspected) != curve_before
+            ),
         )
         assert self.trimesh_model(curve_after) != curve_before
         curve_after_model = self.trimesh_model(curve_after)
@@ -2090,11 +2093,16 @@ class NativeEditSmoke:
                 self.model_revision(inspected) > revision_before
                 and inspected["trimesh"]["selectedVertexIndex"]
                 == expected_selected_index
+                and self.trimesh_model(inspected) != model_before
             ),
         )
 
         self.assert_trimesh_slice(moved_state, "Trimesh slice after focused point drag")
-        assert self.trimesh_model(moved_state) != model_before
+        assert self.trimesh_model(moved_state) != model_before, (
+            source_hover["panelHoveredVertexIndex"],
+            source_hover["selectedVertexParameters"],
+            moved_state["trimesh"]["selectedVertexParameters"],
+        )
         assert moved_state["trimesh"]["selectedVertexIndex"] == expected_selected_index, (
             expected_selected_index,
             moved_state["trimesh"]["selectedVertexIndex"],

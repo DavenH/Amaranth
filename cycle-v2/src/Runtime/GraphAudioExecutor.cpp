@@ -1,6 +1,7 @@
 #include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/AudioProcessContextUtils.h"
 #include "Runtime/AudioPerformanceMetrics.h"
+#include "Runtime/ProbeExecutionScope.h"
 #include "Nodes/Control/ModulationTriple.h"
 
 #include <algorithm>
@@ -118,6 +119,30 @@ GraphAudioResult GraphAudioExecutor::process(
             timing,
             std::move(voice),
             CompleteDiagnosticExecution { traversalColumnCount });
+}
+
+GraphAudioResult GraphAudioExecutor::processProbe(
+        const GraphExecutionPlan& plan,
+        const CompiledSignalProbe& probe,
+        size_t frameCount,
+        AudioProcessTiming timing,
+        const AudioVoiceContext& voice,
+        size_t traversalColumnCount) const {
+    if (probe.sourceStepIndex < 0
+            || (size_t) probe.sourceStepIndex >= plan.steps.size()) {
+        return {};
+    }
+    const auto activeSteps = probeExecutionSteps(plan, probe.sourceStepIndex);
+    return processInternal(
+            plan,
+            frameCount,
+            timing,
+            voice,
+            CompleteDiagnosticExecution {
+                    traversalColumnCount,
+                    &activeSteps,
+                    probe.sourceStepIndex
+            });
 }
 
 GraphAudioResultView GraphAudioExecutor::processIncremental(
@@ -298,6 +323,9 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         const AudioVoiceContext& voice,
         const ProcessingMode& mode) const {
     const auto* completeDiagnostics = std::get_if<CompleteDiagnosticExecution>(&mode);
+    const auto* activeSteps = completeDiagnostics != nullptr
+            ? completeDiagnostics->activeSteps
+            : nullptr;
     const auto* incrementalDiagnostics = std::get_if<IncrementalDiagnosticExecution>(&mode);
     const auto* realtime = std::get_if<RealtimeExecution>(&mode);
     const bool captureDiagnostics = realtime == nullptr;
@@ -328,7 +356,13 @@ GraphAudioResult GraphAudioExecutor::processInternal(
                 : incrementalDiagnostics != nullptr
                         ? incrementalDiagnostics->traversalColumnCount
                         : 0;
-        prepareExecution(plan, executionSpec, voice.voiceIndex);
+        executionSpec.prewarmTraversalGrid = false;
+        prepareExecutionInternal(
+                plan,
+                executionSpec,
+                voice.voiceIndex,
+                ProcessingPass::Complete,
+                activeSteps);
     }
 
     const auto preparedVoice = preparedVoices.find(voice.voiceIndex);
@@ -392,6 +426,9 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         operationCounts->stepVisits += (uint32_t) preparedVoice->second.stepIndices.size();
     }
     for (const size_t stepIndex : preparedVoice->second.stepIndices) {
+        if (activeSteps != nullptr && (*activeSteps)[stepIndex] == 0) {
+            continue;
+        }
         if (dirtyNodes != nullptr
                 && cancellationCheck != nullptr
                 && *cancellationCheck
@@ -402,6 +439,9 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             return result;
         }
         const auto& step = plan.steps[stepIndex];
+        const bool captureNodeResult = completeDiagnostics == nullptr
+                || completeDiagnostics->capturedStepIndex < 0
+                || completeDiagnostics->capturedStepIndex == (int) stepIndex;
         if (pass == ProcessingPass::Complete && step.kind == NodeKind::GlobalInput) {
             loadCompleteVoiceBoundary(plan, frameCount);
         }
@@ -524,15 +564,15 @@ GraphAudioResult GraphAudioExecutor::processInternal(
 
             if (i < step.outputs.size() && step.outputs[i].bufferIndex >= 0) {
                 bufferSlots[(size_t) step.outputs[i].bufferIndex] = std::move(context.outputs[i]);
-                if (captureDiagnostics) {
+                if (captureDiagnostics && captureNodeResult) {
                     nodeOutputs.push_back({ portId, bufferSlots[(size_t) step.outputs[i].bufferIndex] });
                 }
-            } else if (captureDiagnostics) {
+            } else if (captureDiagnostics && captureNodeResult) {
                 nodeOutputs.push_back({ portId, std::move(context.outputs[i]) });
             }
         }
 
-        if (captureDiagnostics
+        if (captureDiagnostics && captureNodeResult
                 && step.kind == NodeKind::GlobalInput
                 && nodeOutputs.empty()) {
             for (const auto& output : step.outputs) {
@@ -551,6 +591,9 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             if (outputNode) {
                 realtimeOutput = outputInput;
             }
+            continue;
+        }
+        if (!captureNodeResult) {
             continue;
         }
 
@@ -646,7 +689,8 @@ void GraphAudioExecutor::prepareExecutionInternal(
         const GraphExecutionPlan& plan,
         const AudioExecutionSpec& spec,
         int voiceIndex,
-        ProcessingPass pass) const {
+        ProcessingPass pass,
+        const std::vector<uint8_t>* activeSteps) const {
     NodeAudioProcessorFactory factory;
     const size_t traversalColumnCapacity = spec.traversalColumnCount > 0
             ? std::max(spec.traversalColumnCount, plan.maximumTraversalColumns)
@@ -734,7 +778,8 @@ void GraphAudioExecutor::prepareExecutionInternal(
     for (size_t stepIndex = 0; stepIndex < plan.steps.size(); ++stepIndex) {
         const auto& step = plan.steps[stepIndex];
         const bool globalStep = step.ownershipScope == RuntimeOwnershipScope::Global;
-        if ((pass == ProcessingPass::Voice && globalStep)
+        if ((activeSteps != nullptr && (*activeSteps)[stepIndex] == 0)
+                || (pass == ProcessingPass::Voice && globalStep)
                 || (pass == ProcessingPass::Global && !globalStep)) {
             preparedVoice.processors.push_back(nullptr);
             continue;
@@ -768,6 +813,11 @@ void GraphAudioExecutor::prepareExecutionInternal(
         preparedVoice.oscillatorRegionByStep.assign(plan.steps.size(), nullptr);
         for (int regionIndex = 0; regionIndex < (int) plan.oscillatorRegions.size(); ++regionIndex) {
             const auto& region = plan.oscillatorRegions[(size_t) regionIndex];
+            if (activeSteps != nullptr
+                    && (region.materializationStepIndex < 0
+                    || (*activeSteps)[(size_t) region.materializationStepIndex] == 0)) {
+                continue;
+            }
             const auto* compiledContext = voiceContextForRegion(plan, region);
             if (compiledContext == nullptr) {
                 continue;

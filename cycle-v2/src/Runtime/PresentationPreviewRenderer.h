@@ -28,7 +28,8 @@ public:
             const String& probeId,
             size_t rasterRowCount,
             int midiNote,
-            int modWheelValue) const;
+            int modWheelValue,
+            GraphPresentationPerformanceMetrics& performance) const;
 
     void resetExecutionState() { audioExecutor.resetExecutionState(); }
     size_t diagnosticProcessCount(const String& nodeId) const {

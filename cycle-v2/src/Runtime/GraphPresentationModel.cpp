@@ -99,7 +99,11 @@ bool GraphPresentationModel::refresh(
         previewRenderer.resetExecutionState();
     } else if (change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
+        const uint64_t configurationStartedAt = performance.timestamp();
         refreshConfigurations(graph, next.compileResult.plan, change.nodeIds);
+        performance.record(
+                Performance::Stage::Configuration,
+                performance.timestamp() - configurationStartedAt);
     }
     if (!compile && change.probesChanged) {
         compiler.refreshSignalProbes(graph, next.compileResult.plan);
@@ -480,7 +484,7 @@ GraphPresentationModel::captureProbePreview(
         const NodeGraph& graph,
         const String& probeId,
         size_t rasterRowCount,
-        int midiNote) const {
+        int midiNote) {
     if (!current.compileResult.succeeded() || rasterRowCount == 0) {
         return std::nullopt;
     }
@@ -490,7 +494,8 @@ GraphPresentationModel::captureProbePreview(
             probeId,
             rasterRowCount,
             midiNote,
-            current.previewModWheelValue);
+            current.previewModWheelValue,
+            performance);
 }
 
 bool GraphPresentationModel::requiresCompilation(const GraphChangeSet& change) const {

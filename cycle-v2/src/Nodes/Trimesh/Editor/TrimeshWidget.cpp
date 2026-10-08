@@ -296,7 +296,11 @@ bool TrimeshWidget::setVertexParameter(
         int vertexIndex,
         const String& parameterId,
         float value) {
-    return bridge.getModel().setVertexParameter(vertexIndex, parameterId, value);
+    return bridge.getModel().setVertexParameter(
+            vertexIndex,
+            parameterId,
+            value,
+            bridge.getInteractor2D().getCollisionDetector());
 }
 
 std::optional<std::array<float, 8>> TrimeshWidget::cubeCurveValuesForVertex(

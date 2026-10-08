@@ -14,6 +14,7 @@ bool GraphAudioProcessorCache::PreparationSignature::operator==(
             && configurationKey == other.configurationKey
             && maximumFrameCount == other.maximumFrameCount
             && traversalColumnCount == other.traversalColumnCount
+            && prewarmTraversalGrid == other.prewarmTraversalGrid
             && sampleRate == other.sampleRate
             && domain == other.domain
             && channelLayout == other.channelLayout
@@ -39,6 +40,7 @@ NodeAudioProcessor* GraphAudioProcessorCache::preparedProcessorFor(
             configuration.key,
             spec.maximumFrameCount,
             spec.traversalColumnCount,
+            spec.prewarmTraversalGrid,
             spec.sampleRate,
             spec.domain,
             spec.channelLayout,

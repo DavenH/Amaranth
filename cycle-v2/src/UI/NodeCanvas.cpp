@@ -2732,7 +2732,8 @@ void NodeCanvas::recordNodeEditorMovement(
             && NodeParameterMap(*node).stringValue("primaryAxis", "yellow") == field;
     const String stream = "editor:" + nodeId;
     const bool activeGesture = presentation.editSession().graphGestureIsActive(stream);
-    const bool downstreamFeedback = !primaryTrimeshMorph
+    const bool downstreamFeedback = localProduct.has_value()
+            && !primaryTrimeshMorph
             && (!activeGesture || presentation.editSession().graphGestureIsLive(stream));
     const auto decision = PresentationRefreshPolicy::decide({
             EditPhase::Movement,
@@ -2772,7 +2773,7 @@ void NodeCanvas::recordNodeEditorMovement(
         }
         return;
     }
-    if (!primaryTrimeshMorph) {
+    if (!primaryTrimeshMorph && localProduct.has_value()) {
         if (field == "curve" && commands.hasTransientEdit() && !probesDeferred) {
             refreshCompiledStateAsync(
                     PresentationRefreshScope::PreviewOnly,

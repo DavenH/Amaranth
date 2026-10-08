@@ -44,6 +44,7 @@ private:
         String configurationKey;
         size_t maximumFrameCount {};
         size_t traversalColumnCount {};
+        bool prewarmTraversalGrid {};
         double sampleRate {};
         PortDomain domain { PortDomain::ControlSignal };
         ChannelLayout channelLayout { ChannelLayout::Mono };

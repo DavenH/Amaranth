@@ -515,12 +515,19 @@ float Interactor2D::getVertexClickProximityThres() {
 
 Range<float> Interactor2D::getVertexPhaseLimits(Vertex* vert) {
     vector<Vertex*>& selected   = getSelected();
-    auto snapshot               = rasterizerSnapshot();
     ModifierKeys keys           = ModifierKeys::getCurrentModifiers();
 
-    bool testAdjacent = keys.isAltDown() && selected.size() == 1 && ! snapshot.intercepts().empty();
+    if (keys.isAltDown() && selected.size() == 1) {
+        return adjacentVertexPhaseLimits(vert);
+    }
 
-    if (testAdjacent) {
+    return Interactor::getVertexPhaseLimits(vert);
+}
+
+Range<float> Interactor2D::adjacentVertexPhaseLimits(Vertex* vert) {
+    auto snapshot = rasterizerSnapshot();
+
+    if (vert != nullptr && !snapshot.intercepts().empty()) {
         float maximum = panel->getZoomPanel()->rect.xMaximum;
 
         const vector<Intercept>& icpts = snapshot.intercepts();

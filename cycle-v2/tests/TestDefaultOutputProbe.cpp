@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <cmath>
 
 #include "Graph/DefaultOutputProbeResolver.h"
@@ -139,6 +140,86 @@ TEST_CASE("Compiled presets publish an implicit default output grid",
   #endif
 }
 
+TEST_CASE("Selected Spy capture matches full diagnostics without downstream work",
+        "[cycle-v2][preset][preview][detail][regression]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(CYCLE_V2_SOURCE_DIR)
+            .getChildFile("content/presets/baroque-flute.cyclegraph");
+    const NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    const GraphCompileResult compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    const auto found = std::find_if(
+            compiled.plan.signalProbes.begin(),
+            compiled.plan.signalProbes.end(),
+            [](const auto& probe) {
+                return probe.probeId == "probe";
+            });
+    REQUIRE(found != compiled.plan.signalProbes.end());
+
+    AudioVoiceContext voice;
+    voice.controls.noteNumber = 48;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    GraphAudioExecutor fullExecutor;
+    const auto fullAudio = fullExecutor.process(graph, compiled.plan, 512, {}, voice, 512);
+    const auto fullPreview = GraphPreviewExecutor().render(
+            compiled.plan, fullAudio, graph.getSignalProbes(), 512);
+    REQUIRE(fullPreview.probes.size() == 1);
+    REQUIRE(fullPreview.probes.front().connected);
+
+    GraphAudioExecutor selectedExecutor;
+    const auto selectedAudio = selectedExecutor.processProbe(
+            compiled.plan, *found, 512, {}, voice, 512);
+    const auto selectedPreview = GraphPreviewExecutor().captureProbe(
+            compiled.plan, selectedAudio, *found);
+    REQUIRE(selectedPreview.connected);
+    REQUIRE(selectedPreview.gridColumns == fullPreview.probes.front().gridColumns);
+    REQUIRE(selectedPreview.gridRows == fullPreview.probes.front().gridRows);
+    REQUIRE(selectedPreview.values == fullPreview.probes.front().values);
+    REQUIRE(selectedAudio.nodes.size() == 1);
+    REQUIRE(selectedAudio.nodes.front().nodeId == "volumeMultiply");
+    REQUIRE(selectedExecutor.diagnosticProcessCount("reverb") == 0);
+    REQUIRE(selectedExecutor.preparationCount("reverb") == 0);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("A Spy after reverb includes the selected wet effect",
+        "[cycle-v2][preset][preview][detail][regression]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(CYCLE_V2_SOURCE_DIR)
+            .getChildFile("content/presets/baroque-flute.cyclegraph");
+    NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    graph.addSignalProbe({
+            "wet", "reverb", "time", "output", "time", "Wet", 0.5f, 2
+    });
+    const GraphCompileResult compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    const auto& wet = compiled.plan.signalProbes.back();
+    REQUIRE(wet.probeId == "wet");
+
+    AudioVoiceContext voice;
+    voice.controls.noteNumber = 48;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    GraphAudioExecutor fullExecutor;
+    const auto fullAudio = fullExecutor.process(graph, compiled.plan, 512, {}, voice, 128);
+    const auto fullPreview = GraphPreviewExecutor().render(
+            compiled.plan, fullAudio, graph.getSignalProbes(), 512);
+    GraphAudioExecutor selectedExecutor;
+    const auto selectedAudio = selectedExecutor.processProbe(
+            compiled.plan, wet, 512, {}, voice, 128);
+    const auto selectedPreview = GraphPreviewExecutor().captureProbe(
+            compiled.plan, selectedAudio, wet);
+
+    REQUIRE(selectedPreview.connected);
+    REQUIRE(selectedPreview.values == fullPreview.probes.back().values);
+    REQUIRE(selectedExecutor.diagnosticProcessCount("reverb") == 1);
+    REQUIRE(selectedExecutor.diagnosticProcessCount("output") == 0);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Preset preview generator produces normalized time and spectral JPEGs",
         "[cycle-v2][preset][preview][image]") {
     GraphPreviewResult::SignalProbePreview time;
@@ -200,12 +281,32 @@ TEST_CASE("Expanded output spectrum retains the compact FFT resolution",
     REQUIRE(noteRows < 512);
     REQUIRE(sourceRows == 512);
     REQUIRE(detailTime.has_value());
+    AudioVoiceContext voice;
+    voice.controls.noteNumber = presentation.previewMidiNote();
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    GraphAudioExecutor fullExecutor;
+    const auto fullAudio = fullExecutor.process(
+            graph, presentation.compileResult().plan, sourceRows, {}, voice, 512);
+    const auto fullPreview = GraphPreviewExecutor().render(
+            presentation.compileResult().plan,
+            fullAudio,
+            graph.getSignalProbes(),
+            sourceRows);
+    REQUIRE(fullPreview.defaultOutput.has_value());
+    REQUIRE(detailTime->values == fullPreview.defaultOutput->values);
     const auto detail = PresetPreviewGenerator::forView(
             *detailTime,
             PresetPreviewView::Spectrum);
     REQUIRE(detail.gridColumns == 512);
     REQUIRE(detail.gridRows == compact.gridRows);
     REQUIRE(detail.values.size() == detail.gridColumns * detail.gridRows);
+    const auto captureStages = presentation.performanceMetrics()
+            .getDynamicObject()->getProperty("stages");
+    for (const char* stage : { "expandedProbeExecution",
+                 "expandedProbeExtraction", "expandedProbeTotal" }) {
+        const auto distribution = captureStages.getDynamicObject()->getProperty(stage);
+        REQUIRE((int64) distribution.getDynamicObject()->getProperty("count") == 1);
+    }
 
     double meanDifference {};
     for (size_t column = 0; column < compact.gridColumns; ++column) {

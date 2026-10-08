@@ -1,5 +1,34 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Full native Trimesh smoke misses an amplitude rail click
+
+On 2026-10-07, the full `trimesh` native edit smoke passed curve reshape,
+point collision rejection, and the following point move. It then failed at
+`scripts/test_cycle_v2_native_edit_smoke.py:1955`: an amplitude rail click
+left the value at `0.558` instead of the requested `0.638`. The focused
+`trimesh-curve-drag` and `trimesh-point-drag` sequences pass. The earlier
+curve and point failures were inspection races; the smoke now waits for mesh
+content as well as revision. Log: the runner's
+`cycle-v2-native-edit-smoke.log` in its temporary directory. Status: open;
+inspect the rail's native hit and settle sequence separately.
+
+## P2: Cycle 1 Organ4 preset crashes during visual DSP update
+
+On 2026-10-07, a Cycle 1 `openPreset` automation run for
+`cycle/content/presets/Organ4.cyc` crashed with `EXC_BAD_ACCESS` in
+`EnvRasterizer::renderWaveformOnly` (`EnvRasterizer.cpp:212`). The stack runs
+through `UnisonPhaseColumnRenderer::render`,
+`VisualDsp::processFrequency`, and `VisualDsp::calcSpectrogram`.
+Artifacts: `/private/tmp/cycle1-grid-organ-log.txt` and its `.ips` file.
+Status: open. This occurred during a grid-timing investigation; no visual DSP
+behavior was changed.
+
+The same investigation's repeated BaroqueFlute morph-control fixture logged
+`JUCE Assertion failure in EnvRasterizer.cpp:217` and
+`EnvelopePlaybackEngine.cpp:263`, then did not produce its report within 20 s.
+Artifact: `/private/tmp/cycle1-expanded-grid-edits-v2-log.txt.raw`. Status:
+open; the earlier single-update timing run completed.
+
 ## P2: Native-input video fixture stalled before writing an agent report
 
 On 2026-10-07, an empty-preset Time Trimesh fixture with a concurrent native
@@ -20,9 +49,10 @@ the mesh before the script reached its vertex-add step. The isolated
 test also failed at `TestTrimeshNodeDsp.cpp:1470` (`model.selectVertex(selected)`
 returned false). The broader `[cycle-v2][nodes][trimesh]` filter reported nine
 failures and ended with SIGSEGV during the linked-vertex interaction test.
-These failures are outside the four current reported actions. Status: open;
-capture an isolated baseline and distinguish fixture assumptions from product
-regressions before changing mature interaction code.
+The later focused `trimesh-curve-drag` sequence passed after the smoke waited
+for mesh content as well as revision. The broader Trimesh test-filter failures
+remain open; capture an isolated baseline and distinguish fixture assumptions
+from product regressions before changing mature interaction code.
 
 ## P2: Scratch cable deletion test keeps an unchanged zero spectral Spy preview
 
@@ -44,6 +74,12 @@ and `Trimesh drag keeps movement local and publishes one commit snapshot`
 crashed with SIGSEGV at `TestNodeEditorHost.cpp:4171`, before the gesture.
 Neither test uses the new phase mode. Status: open; reproduce and diagnose
 their fixture setup separately.
+
+The 2026-10-07 focused `Hosted Trimesh point drag defers mesh replacement
+across publications` test also initially failed before its drag because a
+factory node with an empty default mesh produced zero intercepts
+(`TestTrimeshNodeDsp.cpp:2145`). Its fixture now seeds the intended default
+voice mesh; the hosted test and collision tests pass together (73 assertions).
 
 ## P3: Trimesh primary morph test has no selected vertex parameters
 

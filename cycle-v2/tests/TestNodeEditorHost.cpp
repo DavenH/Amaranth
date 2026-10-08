@@ -22,6 +22,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshExpandedEditorComponent.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Unison/UnisonNode.h"
@@ -363,6 +364,7 @@ public:
             GraphCommandDispatcher& commands,
             const GraphDocument& document,
             bool downstreamFeedback = true) override {
+        gestureDownstreamFeedback.push_back(downstreamFeedback);
         return session.beginGraphGesture(
                 "editor:" + nodeId, commands, document, refreshMode, 0, true,
                 downstreamFeedback);
@@ -396,8 +398,9 @@ public:
             const String& nodeId,
             const String&,
             uint64_t fingerprint,
-            std::optional<UpdateProduct> = UpdateProduct::LocalSlice) override {
+            std::optional<UpdateProduct> localProduct) override {
         session.recordGraphMovement("editor:" + nodeId, fingerprint);
+        movementLocalProducts.push_back(localProduct);
         ++recordedMovements;
     }
     void commitNodeEditorLocalState(
@@ -418,6 +421,8 @@ public:
     int transientRebinds {};
     int recordedMovements {};
     int gestureCommits {};
+    std::vector<bool> gestureDownstreamFeedback;
+    std::vector<std::optional<UpdateProduct>> movementLocalProducts;
 
 private:
     PresentationGestureSession session;
@@ -3438,6 +3443,39 @@ TEST_CASE("Node editor command service publishes a curve drag as one transaction
     REQUIRE_FALSE(document.canUndo());
 }
 
+TEST_CASE("Live curve point commit refreshes the graph after local movement",
+        "[cycle-v2][editor][curve][gesture]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Waveshaper, "shape", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    presentation.refreshMode = ProbeRefreshMode::LiveLatest;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner, document, dispatcher, presentation, resources);
+    FlatCurveModel model;
+    REQUIRE(model.replaceVertices({
+            { 1, 0.f, 0.f, 1.f },
+            { 2, 1.f, 0.75f, 1.f }
+    }));
+    model.setPublicationRevision(document.graph().findNode("shape")->model->revision() + 1);
+
+    commands.beginCurveTransaction();
+    REQUIRE(commands.publishCurveState(
+            "shape",
+            CurveNodeModelState::copyOf(model, model.revision()),
+            curveControls(*document.graph().findNode("shape"))));
+    REQUIRE(presentation.scheduledRefreshes == 0);
+    commands.commitCurveTransaction();
+
+    REQUIRE(presentation.localCommits == 1);
+    REQUIRE(presentation.scheduledRefreshes == 1);
+    REQUIRE(document.canUndo());
+}
+
 TEST_CASE("Waveshaper point previews commit once and cancel without undo",
         "[cycle-v2][node-editor-host][waveshaper][gesture][complexity]") {
     ScopedJuceInitialiser_GUI juce;
@@ -3729,6 +3767,55 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0");
+}
+
+TEST_CASE("Rejected Trimesh vertex collision leaves no undoable edit",
+        "[cycle-v2][editor][trimesh][collision]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("collision-test");
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    mesh->destroy();
+    auto editorState = std::make_unique<DynamicObject>();
+    editorState->setProperty("selectedVertexId", 0);
+    node.editorState = var(editorState.release());
+    graph.addNode(std::move(node));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    widget.syncFromNode(*document.graph().findNode("mesh"));
+    resources.activeTrimesh = &widget;
+    NodeEditorCommandService commands(
+            owner, document, dispatcher, presentation, resources);
+    const uint64_t initialRevision = document.graph().findNode("mesh")->model->revision();
+    const float initialPhase = widget.currentMesh().getVerts().front()->values[Vertex::Phase];
+
+    REQUIRE_FALSE(commands.beginTrimeshVertexParameterEdit(
+            "mesh", "vertex.phase", 0.5f));
+    commands.endTrimeshVertexParameterEdit();
+
+    REQUIRE(widget.currentMesh().getVerts().front()->values[Vertex::Phase]
+            == initialPhase);
+    REQUIRE(document.graph().findNode("mesh")->model->revision() == initialRevision);
+    REQUIRE_FALSE(document.canUndo());
+    REQUIRE(presentation.recordedMovements == 0);
+
+    REQUIRE(commands.beginTrimeshVertexParameterEdit(
+            "mesh", "vertex.phase", initialPhase));
+    REQUIRE_FALSE(commands.updateTrimeshVertexParameterEditValue(0.5f));
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(initialPhase + 0.01f));
+    commands.endTrimeshVertexParameterEdit();
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    const auto restored = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            document.graph().findNode("mesh")->model);
+    REQUIRE(restored != nullptr);
+    REQUIRE(restored->mesh().getVerts().front()->values[Vertex::Phase]
+            == initialPhase);
 }
 
 TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one edit",
@@ -4178,7 +4265,7 @@ TEST_CASE("Trimesh signal type and polarity use shared segmented selectors",
             "phaseMode") == "absolute");
 }
 
-TEST_CASE("Live Trimesh morph commits reuse movement refresh",
+TEST_CASE("Live primary Trimesh morph keeps graph previews deferred",
         "[cycle-v2][editor][trimesh][causal]") {
     ScopedJuceInitialiser_GUI juce;
     Component owner;
@@ -4203,6 +4290,9 @@ TEST_CASE("Live Trimesh morph commits reuse movement refresh",
     commands.endTrimeshMorphEdit();
 
     REQUIRE(presentation.recordedMovements == 1);
+    REQUIRE(presentation.gestureDownstreamFeedback == std::vector<bool> { false });
+    REQUIRE(presentation.movementLocalProducts
+            == std::vector<std::optional<UpdateProduct>> { std::nullopt });
     REQUIRE(presentation.immediateRefreshes == 0);
     REQUIRE(presentation.localCommits == 1);
 }
@@ -4232,6 +4322,9 @@ TEST_CASE("Live non-primary Trimesh morph commits one undoable gesture",
 
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "red") == "0.800");
     REQUIRE(presentation.recordedMovements == 3);
+    REQUIRE(presentation.gestureDownstreamFeedback == std::vector<bool> { false });
+    REQUIRE(presentation.movementLocalProducts
+            == std::vector<std::optional<UpdateProduct>>(3, std::nullopt));
     REQUIRE(presentation.gestureCommits == 1);
     REQUIRE(presentation.localCommits == 0);
     REQUIRE(document.undo());
@@ -4266,6 +4359,9 @@ TEST_CASE("Effect parameter drag publishes continuously as one undo transaction"
     REQUIRE_FALSE(document.canUndo());
     REQUIRE(presentation.gestureCommits == 1);
     REQUIRE(presentation.recordedMovements == 2);
+    REQUIRE(presentation.movementLocalProducts
+            == std::vector<std::optional<UpdateProduct>>(
+                    2, UpdateProduct::LocalSlice));
     REQUIRE(presentation.rebinds == 0);
     REQUIRE(presentation.transientRebinds == 0);
 }
@@ -4475,6 +4571,8 @@ TEST_CASE("Trimesh drag keeps movement local and publishes one commit snapshot",
             "selectedVertexId", -1) == transientSelection);
     REQUIRE(resources.synchronizingTrimeshLookups == 0);
     REQUIRE(presentation.recordedMovements == 2);
+    REQUIRE(presentation.movementLocalProducts
+            == std::vector<std::optional<UpdateProduct>>(2, std::nullopt));
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
 
