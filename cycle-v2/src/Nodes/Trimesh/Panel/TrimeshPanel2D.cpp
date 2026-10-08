@@ -133,7 +133,6 @@ void TrimeshPanel2D::drawSpectralPartials() {
 
     const float baseline = sy(renderProfile.getCurveStyle().bipolar ? 0.5f : 0.f);
     const Color body(0.72f, 0.75f, 0.82f, 0.20f);
-    const Color cap(0.88f, 0.90f, 0.94f, 0.30f);
     partialContour.clear();
     partialContour.reserve((size_t) getWidth() + 2);
 
@@ -173,11 +172,6 @@ void TrimeshPanel2D::drawSpectralPartials() {
             }
         } else {
             gfx->fillRect(left, top, right, bottom, false);
-        }
-
-        if (spacing >= 12.f) {
-            gfx->setCurrentColour(cap);
-            gfx->drawLine(left + 2.f, heights[i], right - 2.f, heights[i], false);
         }
     }
 
