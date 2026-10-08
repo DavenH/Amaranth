@@ -2382,6 +2382,14 @@ void Interactor::addNewCubeForMultipleIntercepts(
             vert->values[Vertex::Amp] = amp;
         }
     }
+
+    addedCube->getFinalIntercept(reduceData, getModPosition());
+    if (reduceData.pointOverlaps) {
+        const float phaseOffset = phase - reduceData.v.values[Vertex::Phase];
+        for (int index = 0; index < VertCube::numVerts; ++index) {
+            addedCube->getVertex(index)->values[Vertex::Phase] += phaseOffset;
+        }
+    }
 }
 
 
