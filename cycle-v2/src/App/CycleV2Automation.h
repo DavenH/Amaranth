@@ -57,7 +57,7 @@ private:
     var inspectPointerTargets() const;
     var inspectPointerCursor() const;
     var inspectOpenGLDiagnostics() const;
-    var inspectCanvasPerformance() const;
+    var inspectCanvasPerformance(const var& commandValue) const;
     var resetCanvasPerformance();
     var inspectAudioPerformance() const;
     var resetAudioPerformance();

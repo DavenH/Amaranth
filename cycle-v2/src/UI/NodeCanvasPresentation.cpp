@@ -1029,7 +1029,8 @@ void NodeCanvasPresentation::paintCachedNodes(
         const Rectangle<float> nodeBounds = frame.viewport.toScreen(
                 NodeCanvasScene::presentationWorldBounds(
                         frame.graph, node, frame.facts.edgeIndex()));
-        if (!nodeBounds.intersects(visibleArea)) {
+        if (!nodeBounds.intersects(visibleArea)
+                || frame.canvasOcclusion.contains(nodeBounds)) {
             continue;
         }
         if (frame.nodeDragActive) {

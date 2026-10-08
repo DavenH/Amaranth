@@ -109,7 +109,8 @@ bool NodeEditorCommandService::updateNodeParameterEditValue(float value) {
     presentation.recordNodeEditorMovement(
             activeParameterNodeId,
             activeParameterId,
-            static_cast<uint64_t>(String(value, 9).hashCode64()));
+            static_cast<uint64_t>(String(value, 9).hashCode64()),
+            UpdateProduct::LocalSlice);
     presentation.repaintNodeEditor(false);
     return true;
 }
@@ -171,7 +172,8 @@ bool NodeEditorCommandService::updateNodeParameterPairEditValues(
     presentation.recordNodeEditorMovement(
             activeParameterNodeId,
             activeParameterField,
-            fingerprint);
+            fingerprint,
+            UpdateProduct::LocalSlice);
     presentation.repaintNodeEditor(false);
     return true;
 }
@@ -350,9 +352,8 @@ void NodeEditorCommandService::commitCurveTransaction() {
                 "curve",
                 curvePublicationFingerprint,
                 document.revision());
-    } else {
-        presentation.scheduleNodeEditorRefresh();
     }
+    presentation.scheduleNodeEditorRefresh();
     curvePublicationNodeId = {};
     curvePublicationFingerprint = 0;
     presentation.repaintNodeEditor(true);
@@ -427,15 +428,14 @@ bool NodeEditorCommandService::beginTrimeshMorphEdit(
     if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
         return false;
     }
-    const bool primaryMorph = NodeParameterMap(*node).stringValue(
-            "primaryAxis", "yellow") == parameterId;
     if (!presentation.beginNodeEditorGesture(
-                nodeId, commands, document, !primaryMorph)) {
+                nodeId, commands, document, false)) {
         return false;
     }
     activeMorphNodeId = nodeId;
     activeMorphParameterId = parameterId;
-    activeMorphIsPrimary = primaryMorph;
+    activeMorphIsPrimary = NodeParameterMap(*node).stringValue(
+            "primaryAxis", "yellow") == parameterId;
     presentation.selectEditedNode(nodeId);
     return updateTrimeshMorphEditValue(value);
 }
@@ -458,7 +458,8 @@ bool NodeEditorCommandService::updateTrimeshMorphEditValue(float value) {
     presentation.recordNodeEditorMovement(
             activeMorphNodeId,
             activeMorphParameterId,
-            static_cast<uint64_t>(String(value, 9).hashCode64()));
+            static_cast<uint64_t>(String(value, 9).hashCode64()),
+            std::nullopt);
     presentation.setNodeEditorStatus("Morph " + label + " = " + String(value, 2));
     presentation.repaintNodeEditor(false);
     return true;
@@ -657,7 +658,8 @@ void NodeEditorCommandService::persistTrimeshMeshEdits(
                 .add(static_cast<uint64_t>(selectedVertex))
                 .add(++activeMeshUpdateSequence)
                 .value();
-        presentation.recordNodeEditorMovement(nodeId, "mesh", fingerprint);
+        presentation.recordNodeEditorMovement(
+                nodeId, "mesh", fingerprint, std::nullopt);
         presentation.repaintNodeEditor(true);
         return;
     }
@@ -683,7 +685,8 @@ void NodeEditorCommandService::persistTrimeshMeshEdits(
                 .add(modelRevision + 1)
                 .add(static_cast<uint64_t>(selectedVertex))
                 .value();
-        presentation.recordNodeEditorMovement(nodeId, "mesh", fingerprint);
+        presentation.recordNodeEditorMovement(
+                nodeId, "mesh", fingerprint, std::nullopt);
         presentation.repaintNodeEditor(true);
     }
 
@@ -693,12 +696,7 @@ void NodeEditorCommandService::persistTrimeshMeshEdits(
 
     commands.commitTransientEdit();
     if (activeMeshChanged) {
-        if (PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
-                    presentation.probeRefreshMode())) {
-            presentation.flushNodeEditorRefresh();
-        } else {
-            presentation.refreshNodeEditorPresentation();
-        }
+        presentation.refreshNodeEditorPresentation();
     }
     activeMeshNodeId = {};
     activeMeshUpdateSequence = 0;

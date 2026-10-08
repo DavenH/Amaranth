@@ -6,6 +6,65 @@ In progress (2026-10-07). Expanded Spy rendering remains too slow for
 continuous feedback. The measurements below distinguish it from compact
 preview updates.
 
+## Expanded vertex editor movement and canvas paint
+
+The editor owns its local surface and interaction rendering. A morph or vertex
+movement must update that editor without requesting a compact canvas node
+preview, compiled graph preview, or canvas paint. The committed edit may
+refresh downstream graph products. `NodeCanvas::recordNodeEditorMovement` owns
+the scheduling decision; editor commands supply whether a local preview
+product is actually required. The prior `LocalSlice` default caused Trimesh
+morph and mesh movements to request an unsupported local preview, then fall
+back to a compiled `LocalEditor` refresh. The fallback repainted the canvas.
+The interface now requires an explicit local-product choice; mesh, morph,
+vertex, and curve gestures pass no product, while ordinary node parameter
+edits retain `LocalSlice`. Non-primary Trimesh morph gestures defer downstream
+work to commit even when Spy refresh mode is Live. This preserves local editor
+feedback without scheduling compact graph tiles during movement. Mesh edits
+have their own transaction rather than a graph gesture, so the no-gesture
+fallback also honors the explicit absence of a local product.
+
+The 722 ms JUCE paint observed in an initial paced Baroque Flute drag was a
+cold canvas-cache fill, including 322 ms for the Reverb tile. After warming
+the canvas before the drag, paints peaked around 30 ms, but the old morph
+path still issued four preview requests and four canvas repaint requests
+before mouse-up. Baseline artifacts:
+`/private/tmp/trimesh-red-drag-frames-report2.json` and
+`/private/tmp/trimesh-red-drag-warm-during-report.json`. The canvas painter
+now skips compact nodes fully covered by the expanded editor. In a forced
+cold-frame fixture this reduced the maximum canvas paint from 722 to 87 ms
+and node-layer cache misses from 33 to 3. The remaining paints are OS or
+child-component exposure callbacks, not editor-requested canvas invalidations.
+The movement contract is zero preview requests and zero canvas repaint
+requests between mouse-down and mouse-up, with the local surface updating and
+one downstream refresh after commit. Measure both On Release and Live modes;
+the assertion must distinguish movement from commit. Curve and Trimesh mesh
+commits schedule a graph refresh even in Live mode, since their movement work
+is now editor-local.
+
+Final automation evidence: the Baroque Flute non-primary morph fixtures in
+On Release and Live modes each recorded 0 preview requests and 0 canvas
+repaint requests before mouse-up, then 1 preview request after commit. The
+Trimesh point-drag fixture recorded the same result after pointer-down
+selection. The Live curve fixture recorded 0 requests during point movement;
+its model revision advanced on commit. Reports are in `/private/tmp/` under
+`trimesh-isolation-release-final-report.json`,
+`trimesh-isolation-live-final2-report.json`,
+`trimesh-vertex-isolation-final4-report.json`, and
+`curve-isolation-final2-report.json`.
+
+Architecture review: `NodeEditorCommandService` owns edit transactions and
+commit publication; `NodeCanvas` coordinates refresh scheduling through the
+existing presentation policy and scheduler; `NodeCanvasPresentation` owns
+canvas visibility and paint caching. Their stable collaborators are the
+dispatcher, graph presentation model, and editor coordinator respectively.
+The same refresh decision is not repeated in editor widgets: they state the
+requested local product, and the canvas interprets it. The three affected
+files already exceed the size review triggers, but this slice adds no new
+responsibility to them; it removes a refresh branch at mesh commit and adds
+one visibility predicate to the existing painter. The broader extraction plan
+for `NodeCanvas` remains in `docs/TDD/refactors.md`.
+
 ## Expanded Spy: comparable grid measurement
 
 ### Selected-probe capture design

@@ -337,7 +337,7 @@ private:
             const String& nodeId,
             const String& field,
             uint64_t effectiveFingerprint,
-            std::optional<UpdateProduct> localProduct = UpdateProduct::LocalSlice) override;
+            std::optional<UpdateProduct> localProduct) override;
     void commitNodeEditorLocalState(
             const String& nodeId,
             const String& field,
