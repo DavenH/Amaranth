@@ -6,12 +6,15 @@
 
 #include <Obj/MorphPosition.h>
 
+#include <array>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 
 class Mesh;
 class Vertex;
+class VertCube;
 
 namespace CycleV2 {
 
@@ -103,6 +106,7 @@ public:
     int getResolvedSelectedVertexIndex();
     bool selectVertex(Vertex* vertex);
     bool setVertexParameter(int vertexIndex, const String& parameterId, float value);
+    std::optional<std::array<float, 8>> cubeCurveValuesForVertex(int vertexIndex);
     bool setVertexGuideGain(int vertexIndex, const String& parameterId, float value);
     float vertexGuideGain(int vertexIndex, const String& parameterId);
     void markMeshEdited();
@@ -123,6 +127,7 @@ private:
     int resolvedSelectedVertexIndex();
     Vertex* vertexAtIndex(int vertexIndex);
     Vertex* selectedVertex();
+    VertCube* cubeForVertex(int vertexIndex);
     void bumpMeshContentRevision();
     void bumpMorphRevision(bool affectsSurface);
     void bumpPrimaryAxisRevision();

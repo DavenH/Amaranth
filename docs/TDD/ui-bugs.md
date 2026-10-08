@@ -1,5 +1,18 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Trimesh native curve drag and broader test filter fail during editor investigation
+
+On 2026-10-07, `scripts/test_cycle_v2_native_edit_smoke.py trimesh` stopped at
+`scripts/test_cycle_v2_native_edit_smoke.py:1722`: the curve drag did not change
+the mesh before the script reached its vertex-add step. The isolated
+`Trimesh selection remains empty or explicit while morph position changes`
+test also failed at `TestTrimeshNodeDsp.cpp:1470` (`model.selectVertex(selected)`
+returned false). The broader `[cycle-v2][nodes][trimesh]` filter reported nine
+failures and ended with SIGSEGV during the linked-vertex interaction test.
+These failures are outside the four current reported actions. Status: open;
+capture an isolated baseline and distinguish fixture assumptions from product
+regressions before changing mature interaction code.
+
 ## P2: Scratch cable deletion test keeps an unchanged zero spectral Spy preview
 
 On 2026-10-07, `Deleting a scratch cable refreshes an observed spectral

@@ -254,6 +254,40 @@ TEST_CASE("Trimesh vertex edit deltas apply and invert across matching meshes",
     REQUIRE(verify(0) == verify(128));
 }
 
+TEST_CASE("Trimesh Curve control edits the displayed cube average",
+        "[cycle-v2][nodes][trimesh][curve-average]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("curve-average");
+    VertCube* cube = mesh->getCubes().front();
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        cube->getVertex(index)->values[Vertex::Curve] = index < 4 ? 0.f : 1.f;
+    }
+
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 1);
+    node.editorState = selectedVertexEditorState(0);
+    TrimeshNodeModel model;
+    REQUIRE(model.syncFromNode(node));
+    REQUIRE(model.getSelectedVertexParameters()[5].value == Catch::Approx(0.5f));
+
+    const auto zeroEdit = TrimeshVertexEditCore::prepareCubeCurve(
+            *model.getMeshForPanel().getCubes().front(), 0.f);
+    REQUIRE(zeroEdit.has_value());
+    REQUIRE(zeroEdit->changed());
+    REQUIRE(model.setVertexParameter(0, "vertex.curve", 0.f));
+    REQUIRE(model.getSelectedVertexParameters()[5].value == 0.f);
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        REQUIRE(model.getMeshForPanel().getCubes().front()
+                ->getVertex(index)->values[Vertex::Curve] == 0.f);
+    }
+
+    REQUIRE(TrimeshVertexEditCore::apply(
+            *model.getMeshForPanel().getCubes().front(), zeroEdit->inverse()));
+    REQUIRE(model.getSelectedVertexParameters()[5].value == Catch::Approx(0.5f));
+    REQUIRE(model.setVertexParameter(0, "vertex.curve", 1.f));
+    REQUIRE(model.getSelectedVertexParameters()[5].value == 1.f);
+    mesh->destroy();
+}
+
 TEST_CASE("Trimesh delta overlay reuses mature waveform slicing",
         "[cycle-v2][nodes][trimesh][gesture][delta]") {
     struct CurveTableLease {

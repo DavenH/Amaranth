@@ -1,11 +1,13 @@
 #pragma once
 
+#include <array>
 #include <optional>
 #include <vector>
 
 #include <JuceHeader.h>
 
 class Mesh;
+class VertCube;
 
 namespace CycleV2 {
 
@@ -30,6 +32,14 @@ struct TrimeshVertexEditDelta {
     TrimeshVertexEditDelta inverse() const;
 };
 
+struct TrimeshCubeCurveEdit {
+    std::array<float, 8> before {};
+    std::array<float, 8> after {};
+
+    bool changed() const { return before != after; }
+    TrimeshCubeCurveEdit inverse() const;
+};
+
 class TrimeshVertexEditCore final {
 public:
     static std::optional<TrimeshVertexEditDelta> prepareVertexValue(
@@ -42,7 +52,11 @@ public:
             int vertexIndex,
             const juce::String& parameterId,
             float value);
+    static std::optional<TrimeshCubeCurveEdit> prepareCubeCurve(
+            const VertCube& cube,
+            float averageValue);
     static bool apply(Mesh& mesh, const TrimeshVertexEditDelta& delta);
+    static bool apply(VertCube& cube, const TrimeshCubeCurveEdit& edit);
     static bool canApply(const Mesh& mesh, const TrimeshVertexEditDelta& delta);
     static std::optional<TrimeshVertexEditDelta> compose(
             const TrimeshVertexEditDelta& accumulated,

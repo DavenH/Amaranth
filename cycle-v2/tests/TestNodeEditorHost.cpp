@@ -23,6 +23,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Unison/UnisonNode.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Waveshaper/Editor/WaveshaperEditorComponent.h"
@@ -3819,6 +3820,67 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
     REQUIRE(presentation.gestureCommits == 2);
     REQUIRE(document.graph().findNode("mesh")->model == restored);
     REQUIRE(document.canUndo());
+}
+
+TEST_CASE("Trimesh Curve gesture edits every selected cube corner and undoes",
+        "[cycle-v2][editor][trimesh][curve-average]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("curve-average-gesture");
+    VertCube* sourceCube = mesh->getCubes().front();
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        sourceCube->getVertex(index)->values[Vertex::Curve] = index < 4 ? 0.f : 1.f;
+    }
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    auto selectedState = std::make_unique<DynamicObject>();
+    selectedState->setProperty("selectedVertexId", 0);
+    node.editorState = var(selectedState.release());
+    mesh->destroy();
+
+    NodeGraph graph;
+    graph.addNode(std::move(node));
+    addUnrelatedInteractionState(graph);
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    widget.syncFromNode(*document.graph().findNode("mesh"));
+    resources.activeTrimesh = &widget;
+    NodeEditorCommandService commands(
+            owner, document, dispatcher, presentation, resources);
+
+    REQUIRE(commands.beginTrimeshVertexParameterEdit("mesh", "vertex.curve", 0.5f));
+    InteractionComplexityDiagnostics::reset();
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.25f));
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.f));
+    REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        REQUIRE(widget.currentMesh().getCubes().front()
+                ->getVertex(index)->values[Vertex::Curve] == 0.f);
+    }
+    commands.endTrimeshVertexParameterEdit();
+
+    const auto committed = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            document.graph().findNode("mesh")->model);
+    REQUIRE(committed != nullptr);
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        REQUIRE(committed->mesh().getCubes().front()
+                ->getVertex(index)->values[Vertex::Curve] == 0.f);
+    }
+    REQUIRE(presentation.recordedMovements == 2);
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    const auto restored = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            document.graph().findNode("mesh")->model);
+    REQUIRE(restored != nullptr);
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        REQUIRE(restored->mesh().getCubes().front()
+                ->getVertex(index)->values[Vertex::Curve] == (index < 4 ? 0.f : 1.f));
+    }
 }
 
 TEST_CASE("Clicking an open Trimesh Guide selector dismisses its popup",
