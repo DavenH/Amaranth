@@ -2248,7 +2248,7 @@ void Interactor::addNewCubeForOneIntercept(
         const MorphPosition& box) {
     Mesh* mesh = getMesh();
 
-    jassert(!(mesh->getNumCubes() > 0));
+    jassert(mesh->getNumCubes() > 0);
 
     VertCube* meshLine = *mesh->getCubes().begin();
 
