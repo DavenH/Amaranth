@@ -127,9 +127,9 @@ TEST_CASE("Unison laser colour communicates each voice pan",
     const Colour centre = UnisonPreviewPainter().laserColourForPan(0.5f);
     const Colour right = UnisonPreviewPainter().laserColourForPan(1.f);
 
-    REQUIRE(left == Colour(0xffff9f43));
+    REQUIRE(left == Colour(0xff709ae0));
     REQUIRE(centre == Colour(0xffc7c7c7));
-    REQUIRE(right == Colour(0xffa56cff));
+    REQUIRE(right == Colour(0xffd9ad3b));
     REQUIRE(centre.getSaturation() == Catch::Approx(0.f));
 
     Node node = GraphNodeFactory().createNode(NodeKind::Unison, "unison", {});
