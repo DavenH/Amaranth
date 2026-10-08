@@ -289,6 +289,66 @@ TEST_CASE("Trimesh Curve control edits the displayed cube average",
     mesh->destroy();
 }
 
+TEST_CASE("Zero Curve average removes the rendered component Guide contribution",
+        "[cycle-v2][nodes][trimesh][curve-average][guide]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("zero-component-guide");
+    VertCube* cube = mesh->getCubes().front();
+    cube->guideCurveAt(Vertex::Time) = 0;
+    cube->guideCurveGainAt(Vertex::Time) = 1.f;
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        cube->getVertex(index)->values[Vertex::Curve] = index < 4 ? 0.f : 1.f;
+    }
+
+    GuideCurveResource guide;
+    guide.id = "componentGuide";
+    FlatCurveModel curve;
+    REQUIRE(curve.replaceVertices({
+            { 1, 0.05f, 0.1f, 1.f },
+            { 2, 0.95f, 0.9f, 1.f }
+    }));
+    guide.model = CurveNodeModelState::copyOf(curve, 2);
+    GuideCurveSnapshotProvider provider;
+    REQUIRE(provider.addGuide(guide));
+
+    constexpr int sampleCount = 256;
+    std::vector<float> plainSamples(sampleCount);
+    std::vector<float> guidedSamples(sampleCount);
+    TrimeshBlockwiseDsp plain;
+    plain.setMesh(mesh.get());
+    plain.setCyclic(true);
+    TrimeshBlockwiseDsp guided;
+    guided.setMesh(mesh.get());
+    guided.setCyclic(true);
+    guided.setGuideCurveProvider(&provider);
+    guided.renderCycleInto(
+            Buffer<float>(guidedSamples.data(), sampleCount),
+            PortDomain::TimeSignal);
+    plain.renderCycleInto(
+            Buffer<float>(plainSamples.data(), sampleCount),
+            PortDomain::TimeSignal);
+    REQUIRE(guidedSamples != plainSamples);
+
+    TrimeshNodeModel model;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    node.editorState = selectedVertexEditorState(0);
+    REQUIRE(model.syncFromNode(node));
+    REQUIRE(model.setVertexParameter(0, "vertex.curve", 0.f));
+    REQUIRE(model.getSelectedVertexParameters()[5].value == 0.f);
+    Mesh& zeroed = model.getMeshForPanel();
+    guided.setMesh(&zeroed);
+    plain.setMesh(&zeroed);
+    guided.renderCycleInto(
+            Buffer<float>(guidedSamples.data(), sampleCount),
+            PortDomain::TimeSignal);
+    plain.renderCycleInto(
+            Buffer<float>(plainSamples.data(), sampleCount),
+            PortDomain::TimeSignal);
+    REQUIRE(Buffer<float>(guidedSamples.data(), sampleCount).normDiffL2(
+            Buffer<float>(plainSamples.data(), sampleCount)) < 0.0001f);
+    mesh->destroy();
+}
+
 TEST_CASE("Trimesh delta overlay reuses mature waveform slicing",
         "[cycle-v2][nodes][trimesh][gesture][delta]") {
     struct CurveTableLease {
