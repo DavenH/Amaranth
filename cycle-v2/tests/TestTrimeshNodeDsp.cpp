@@ -989,6 +989,28 @@ TEST_CASE("Bipolar spectral magnitude has a signed surface gradient", "[cycle-v2
     REQUIRE(negative.getFloatAlpha() == Catch::Approx(positive.getFloatAlpha()));
 }
 
+TEST_CASE("Bipolar spectral curves use blue for high values and yellow for low values",
+        "[cycle-v2][nodes][trimesh][surface]") {
+    const TrimeshRenderProfile bipolar = TrimeshRenderProfile::fromSemantic({
+            PortDomain::SpectralMagnitudeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::SpectralMagnitudeBipolar
+    });
+    const TrimeshRenderProfile unipolar = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+    const auto& bipolarCurve = bipolar.getCurveStyle();
+    const auto& unipolarCurve = unipolar.getCurveStyle();
+
+    REQUIRE(bipolarCurve.bipolar);
+    REQUIRE(bipolarCurve.positiveColour.toColour().getFloatBlue()
+            > bipolarCurve.positiveColour.toColour().getFloatRed());
+    REQUIRE(bipolarCurve.negativeColour.toColour().getFloatRed()
+            > bipolarCurve.negativeColour.toColour().getFloatBlue());
+    REQUIRE_FALSE(unipolarCurve.bipolar);
+    REQUIRE(unipolarCurve.positiveColour == unipolarCurve.negativeColour);
+    REQUIRE(unipolarCurve.positiveColour == bipolarCurve.negativeColour);
+}
+
 TEST_CASE("Bipolar spectral magnitude can use time surface shaders without recolouring unipolar magnitude",
         "[cycle-v2][nodes][trimesh][surface]") {
     const int previousStyle = ScalarSurfaceMaterial::bipolarMagnitudeStyleIndex();

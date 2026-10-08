@@ -83,7 +83,8 @@ void TrimeshPanel2D::applyRenderProfile() {
     const auto& curveStyle = renderProfile.getCurveStyle();
 
     setCurveBipolar(curveStyle.bipolar);
-    setColors(curveStyle.negativeColour, curveStyle.positiveColour);
+    // Panel2D uses its first colour above the centre line.
+    setColors(curveStyle.positiveColour, curveStyle.negativeColour);
 }
 
 void TrimeshPanel2D::drawWaveformBackground(bool fillBackground) {
