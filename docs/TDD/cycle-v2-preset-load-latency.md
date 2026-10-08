@@ -1,6 +1,6 @@
 # Cycle V2 preset-load latency telemetry
 
-Status: Measurement complete; worker change deferred pending a reproducible slow Release load (2026-10-08)
+Status: Measurement and realtime traversal warmup optimization complete (2026-10-08)
 
 ## Problem and baseline
 
@@ -186,6 +186,85 @@ added, and there is no deletion target for this instrumentation. Any future
 paint optimization should extract rendering responsibility from `NodeCanvas`
 instead of expanding it. This change adds fewer than 20 lines to that class
 and makes no behavior change.
+
+## Realtime preparation root cause and optimization
+
+`RealtimeGraphRenderer::prepareGraph` prepares eight voice executions and one
+global execution before publishing the graph. Each voice prepares its
+processors through `GraphAudioExecutor`; a Trimesh processor called
+`TrimeshGridwiseDsp::prepare` with the default `prewarmTraversalGrid = true`.
+That method rendered every traversal column into a scratch buffer for each
+Trimesh node and voice. Organ 4 has nine Trimesh nodes. The rendered columns
+were discarded. Realtime execution sets `captureTraversalGrid = false` in
+`GraphAudioExecutor`, so it never consumes these prepared grid columns.
+Diagnostic execution sets the flag true and already disables warmup before
+rendering its requested grid. The Trimesh grid DSP and rasterizer remain the
+authoritative implementations; no rendering algorithm is copied.
+
+The realtime renderer now sets `prewarmTraversalGrid = false` on its prepared
+spec before preparing any voice or global executor. This boundary expresses
+the execution mode once and leaves diagnostic preparation unchanged. The
+processor cache signature includes the flag, so a later diagnostic request
+cannot accidentally reuse an incompatible preparation. Sampling buffers and
+blockwise rasterizer preparation remain in place. Expected preparation cost
+falls by the discarded `O(voice count × mesh nodes × traversal columns)`
+bakes; audio execution and published graph ownership remain unchanged.
+
+A temporary Debug experiment changed only this flag in the standalone audio
+publisher. Its four-load fixture measured graph preparation with and without
+warmup: Organ 4 932 → 37 ms, Alto Sax 2 390 → 40 ms, Baroque Flute 277 →
+35 ms, and Subbass 83 → 1 ms. The temporary publisher edit was reverted;
+the final location is `RealtimeGraphRenderer::prepareGraph`, shared by
+standalone and offline realtime rendering. Existing Trimesh parity tests
+compare prewarmed and non-prewarmed diagnostic grids exactly. The targeted
+realtime audio test now asserts the prepared realtime spec omits warmup while
+still rendering an audible graph.
+
+The 16-preset sweep was repeated twice in each build before and after the
+change while macOS reported AC power. All 128 load inspections succeeded.
+The matched means were:
+
+| Build | Mean audio graph prepare | Mean first paint | Organ 4 prepare | Organ 4 first paint |
+| --- | ---: | ---: | ---: | ---: |
+| Debug before | 298 ms | 879 ms | 968 ms | 1,992 ms |
+| Debug after | 27 ms | 600 ms | 32 ms | 1,020 ms |
+| Release before | 42 ms | 135 ms | 154 ms | 316 ms |
+| Release after | 16 ms | 108 ms | 24 ms | 187 ms |
+
+The optimization removes 270 ms of mean Debug preparation and 26 ms of mean
+Release preparation. Organ 4 preparation fell by 936 ms in Debug and 130 ms
+in Release. The first-paint reduction is similar but not identical because
+preview and painting costs vary between runs. Mean cold node painting stayed
+near 250 ms in Debug and 38 ms in Release. Matching reports, CSV tables, and
+interactive charts are under `output/preset-load-ac-2026-10-08/` and
+`output/preset-load-ac-optimized-2026-10-08/`. The latter includes a paired
+before/after plot. The `workspace-stage-scales.html` chart gives each of the
+five workspace stages its own horizontal scale, since plan copy, voice
+duration, and layout are too small to see on the full-load scale. The earlier
+battery-powered samples remain separate.
+
+This change has no adapter or deletion target. `GraphAudioExecutor` remains the
+owner of processor preparation and the sole setter of traversal capture per
+execution mode. `RealtimeGraphRenderer` owns only the realtime spec policy.
+Cold node painting remains a separate first-paint cost. Reverb preview tiles
+create a full-resolution heatmap on a cache miss, through the existing
+`NodePreviewRenderer` and `ScalarSurfaceMaterialEvaluator`; any paint change
+should preserve that mature surface material behavior and benchmark the
+visible tile size before reducing its raster workload.
+
+Architecture review: `RealtimeGraphRenderer.cpp` is 619 lines. The two added
+lines state an execution-mode fact at its existing preparation boundary;
+voice and global preparation, processor ownership, and graph publication
+remain with their existing collaborators. `TrimeshGridwiseDsp` already owns
+the warmup decision and its operation counter. The change removes a repeated
+render operation without moving a domain algorithm or adding a second policy
+site. No extraction is warranted for this narrow change. Before and after
+operation count for each realtime Trimesh grid is `traversalColumnsFor(...)`
+warmup bakes versus zero; the existing grid DSP test asserts zero bakes when
+the flag is false, and the realtime test asserts that the flag is false.
+The broader realtime test filter has five existing failures; all five
+reproduced when the original warmup setting was restored temporarily. They
+are recorded in `docs/TDD/audio-bugs.md` and do not show a new regression.
 
 ## Completion criteria
 
