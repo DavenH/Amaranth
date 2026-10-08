@@ -5,6 +5,7 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanel2D.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanel3D.h"
 
+#include <UI/AmaranthLookAndFeel.h>
 #include <UI/Panels/CommonGL.h>
 #include <UI/Panels/GLPanelRenderer.h>
 #include <UI/Panels/PanelInputHostComponent.h>
@@ -14,6 +15,20 @@
 #include "UI/NativeCursorRefresh.h"
 
 namespace CycleV2 {
+
+namespace {
+
+AmaranthLookAndFeel& trimeshScrollbarLookAndFeel() {
+    static AmaranthLookAndFeel lookAndFeel(nullptr, false);
+    return lookAndFeel;
+}
+
+void styleZoomScrollbars(ZoomPanel& zoomPanel) {
+    zoomPanel.getComponent(true)->setLookAndFeel(&trimeshScrollbarLookAndFeel());
+    zoomPanel.getComponent(false)->setLookAndFeel(&trimeshScrollbarLookAndFeel());
+}
+
+}
 
 namespace TrimeshPanelInvalidation {
 
@@ -135,6 +150,7 @@ void TrimeshPanelHosts::initialisePanel3DHost() {
     panel3D.setInteractorMouseListenerEnabled(false);
     panel3D.initWithExternalComponent(panel3DHost.get());
     panel3D.configureViewport(interactor3D.vertexLimits[Vertex::Phase]);
+    styleZoomScrollbars(*panel3D.getZoomPanel());
     interactor3D.updateIntercepts();
     panel3DHostInitialised = true;
 }
@@ -148,6 +164,7 @@ void TrimeshPanelHosts::initialisePanel2DHost() {
     panel2D.setInteractorMouseListenerEnabled(false);
     panel2D.initWithExternalComponent(panel2DHost.get());
     panel2D.configureViewport(interactor2D.vertexLimits[Vertex::Phase]);
+    styleZoomScrollbars(*panel2D.getZoomPanel());
     panel2DHostInitialised = true;
 }
 

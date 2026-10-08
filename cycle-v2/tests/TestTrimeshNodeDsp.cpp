@@ -44,6 +44,7 @@
 #include <Curve/Curve.h>
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
 #include <Curve/Rasterization/GuideCurveOffsetSeeds.h>
+#include <UI/AmaranthLookAndFeel.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 #include <Util/LogRegions.h>
@@ -2882,6 +2883,10 @@ TEST_CASE("Spectral Trimesh viewports expose the full editable frequency range",
             == Range<float>(-0.5f, 1.5f));
     REQUIRE(grid->getComponent(false)->isVisible());
     REQUIRE(grid->getComponent(true)->isVisible());
+    REQUIRE(dynamic_cast<AmaranthLookAndFeel*>(
+            &grid->getComponent(false)->getLookAndFeel()) != nullptr);
+    REQUIRE(dynamic_cast<AmaranthLookAndFeel*>(
+            &slice->getComponent(true)->getLookAndFeel()) != nullptr);
     REQUIRE(bridge.getPanel3D().getComponent()->getWidth() == 632);
     REQUIRE(bridge.getPanel3D().getComponent()->getHeight() == 312);
     REQUIRE(grid->rect.yMinimum == Catch::Approx(-0.5f));
