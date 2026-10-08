@@ -97,7 +97,11 @@ void ZoomPanel::setBounds(int x, int y, int width, int height) {
     jassert(context.panel != nullptr);
 
     Component::setBounds(x, y, width, height);
+}
 
+void ZoomPanel::resized() {
+    const int width = getWidth();
+    const int height = getHeight();
     int panelWidth  = width  - (context.haveVert ? scrollbarWidth : 0);
     int panelHeight = height - (context.haveHorz ? scrollbarWidth : 0);
     context.bounded->setBounds(0, 0, panelWidth, panelHeight);

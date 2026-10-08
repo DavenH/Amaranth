@@ -47,6 +47,7 @@
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 #include <Util/LogRegions.h>
+#include <UI/Panels/ZoomPanel.h>
 
 #include <algorithm>
 #include <array>
@@ -2856,10 +2857,56 @@ TEST_CASE("Trimesh panel bridge hosts panel cores without legacy OpenGL leaves",
 
     REQUIRE(panel3DHost != nullptr);
     REQUIRE(panel2DHost != nullptr);
-    REQUIRE(bridge.getPanel3D().getComponent() == panel3DHost);
-    REQUIRE(bridge.getPanel2D().getComponent() == panel2DHost);
+    REQUIRE(bridge.getPanel3D().getComponent()->getParentComponent() == panel3DHost);
+    REQUIRE(bridge.getPanel2D().getComponent()->getParentComponent() == panel2DHost);
     REQUIRE(bridge.getPanel3D().getOpenglPanel() == nullptr);
     REQUIRE(bridge.getPanel2D().getOpenglPanel() == nullptr);
+}
+
+TEST_CASE("Spectral Trimesh viewports expose the full editable frequency range",
+        "[cycle-v2][nodes][trimesh][spectral][viewport]") {
+    ScopedJuceInitialiser_GUI juce;
+    TrimeshPanelBridge bridge;
+    auto* grid = dynamic_cast<ZoomPanel*>(bridge.getPanel3DHostComponent());
+    auto* slice = dynamic_cast<ZoomPanel*>(bridge.getPanel2DHostComponent());
+    REQUIRE(grid != nullptr);
+    REQUIRE(slice != nullptr);
+    grid->setBounds(0, 0, 640, 320);
+    slice->setBounds(0, 0, 640, 180);
+
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal));
+    REQUIRE(bridge.getInteractor3D().vertexLimits[Vertex::Phase]
+            == Range<float>(-0.5f, 1.5f));
+    REQUIRE(bridge.getInteractor2D().vertexLimits[Vertex::Phase]
+            == Range<float>(-0.5f, 1.5f));
+    REQUIRE(grid->getComponent(false)->isVisible());
+    REQUIRE(grid->getComponent(true)->isVisible());
+    REQUIRE(bridge.getPanel3D().getComponent()->getWidth() == 632);
+    REQUIRE(bridge.getPanel3D().getComponent()->getHeight() == 312);
+    REQUIRE(grid->rect.yMinimum == Catch::Approx(-0.5f));
+    REQUIRE(grid->rect.yMaximum == Catch::Approx(1.5f));
+
+    auto* vertical = dynamic_cast<ScrollBar*>(grid->getComponent(false));
+    REQUIRE(vertical != nullptr);
+    vertical->setCurrentRangeStart(-0.5);
+    MessageManager::getInstance()->runDispatchLoopUntil(50);
+    REQUIRE(grid->rect.y == Catch::Approx(-0.5f));
+    REQUIRE(bridge.getPanel3D().sy(1.5f) == Catch::Approx(3.f));
+
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralPhaseSignal));
+    REQUIRE(bridge.getInteractor3D().vertexLimits[Vertex::Phase]
+            == Range<float>(-0.5f, 1.5f));
+    REQUIRE(grid->rect.y == Catch::Approx(-0.5f));
+
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal));
+    REQUIRE(bridge.getInteractor3D().vertexLimits[Vertex::Phase]
+            == Range<float>(0.f, 1.f));
+    REQUIRE(bridge.getInteractor2D().vertexLimits[Vertex::Phase]
+            == Range<float>(0.f, 1.f));
+    REQUIRE(grid->rect.yMinimum == Catch::Approx(0.f));
+    REQUIRE(grid->rect.yMaximum == Catch::Approx(1.f));
 }
 
 TEST_CASE("Trimesh link parameters drive mature linked-vertex interaction",

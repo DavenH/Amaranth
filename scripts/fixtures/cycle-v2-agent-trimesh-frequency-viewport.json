@@ -1,0 +1,18 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/snarky.cyclegraph",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "magnitudeLayer1",
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
+    { "command": "inspectPointerTargets" }
+  ],
+  "quit": false
+}

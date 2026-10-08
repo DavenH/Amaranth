@@ -28,6 +28,7 @@ public:
     void setSharedCanvasMode(bool shouldUseSharedCanvas) { sharedCanvasMode = shouldUseSharedCanvas; }
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
+    void configureViewport(Range<float> frequencyLimits);
     void setPrimaryViewAxis(int axis) { primaryViewAxis = axis; }
     void setPitchSpansColumns(bool shouldSpan);
     void setPreviewMidiNote(int midiNote);

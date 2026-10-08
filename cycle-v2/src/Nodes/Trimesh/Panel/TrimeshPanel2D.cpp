@@ -1,6 +1,7 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanel2D.h"
 
 #include <UI/Panels/CommonGfx.h>
+#include <UI/Panels/ZoomPanel.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 #include <Util/LogRegions.h>
@@ -64,6 +65,23 @@ void TrimeshPanel2D::setRenderProfile(TrimeshRenderProfile profile) {
 
     updateBackground();
     requestRepaint();
+}
+
+void TrimeshPanel2D::configureViewport(Range<float> frequencyLimits) {
+    if (getZoomPanel() == nullptr) {
+        return;
+    }
+
+    ZoomRect& rect = getZoomPanel()->rect;
+    if (rect.xMinimum == frequencyLimits.getStart()
+            && rect.xMaximum == frequencyLimits.getEnd()) {
+        return;
+    }
+    rect.xMinimum = frequencyLimits.getStart();
+    rect.xMaximum = frequencyLimits.getEnd();
+    rect.x = 0.f;
+    rect.w = 1.f;
+    getZoomPanel()->panelZoomChanged(false);
 }
 
 void TrimeshPanel2D::setPreviewMidiNote(int midiNote) {

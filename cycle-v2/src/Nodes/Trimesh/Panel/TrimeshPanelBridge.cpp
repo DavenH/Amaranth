@@ -386,9 +386,16 @@ void TrimeshPanelBridge::setDisplayDomain(PortDomain domain) {
 
 void TrimeshPanelBridge::setRenderProfile(TrimeshRenderProfile profile) {
     renderProfile = profile;
+    const Range<float> frequencyLimits = profile.getSliceStyle().isSpectral()
+            ? Range<float>(-0.5f, 1.5f)
+            : Range<float>(0.f, 1.f);
+    interactor2D.vertexLimits[Vertex::Phase] = frequencyLimits;
+    interactor3D.vertexLimits[Vertex::Phase] = frequencyLimits;
     updateGuideCurveSeeds();
     panel3D.setRenderProfile(profile);
     panel2D.setRenderProfile(profile);
+    panel3D.configureViewport(frequencyLimits);
+    panel2D.configureViewport(frequencyLimits);
 }
 
 void TrimeshPanelBridge::setPreviewMidiNote(int midiNote) {

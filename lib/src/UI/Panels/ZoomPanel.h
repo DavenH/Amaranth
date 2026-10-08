@@ -66,6 +66,7 @@ public:
     void panelZoomChanged(bool cmdDown);
     void scrollBarMoved (ScrollBar* bar, double newRangeStart) override;
     void setBounds(int x, int y, int width, int height) override;
+    void resized() override;
     void updateRange(double newLimit);
     void contractToRange(Buffer<float> y);
     void zoomOut(bool cmdDown, int mouseX, int mouseY);

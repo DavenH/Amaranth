@@ -9,6 +9,7 @@
 #include <UI/Panels/GLPanelRenderer.h>
 #include <UI/Panels/PanelInputHostComponent.h>
 #include <UI/Panels/ScopedGLScissor.h>
+#include <UI/Panels/ZoomPanel.h>
 
 #include "UI/NativeCursorRefresh.h"
 
@@ -61,20 +62,20 @@ TrimeshPanelHosts::~TrimeshPanelHosts() {
 
 Component* TrimeshPanelHosts::getPanel3DHostComponent() {
     initialisePanel3DHost();
-    return panel3DHost.get();
+    return panel3D.getZoomPanel();
 }
 
 Component* TrimeshPanelHosts::getPanel3DHostComponentIfCreated() const {
-    return panel3DHostInitialised ? panel3DHost.get() : nullptr;
+    return panel3DHostInitialised ? panel3D.getZoomPanel() : nullptr;
 }
 
 Component* TrimeshPanelHosts::getPanel2DHostComponent() {
     initialisePanel2DHost();
-    return panel2DHost.get();
+    return panel2D.getZoomPanel();
 }
 
 Component* TrimeshPanelHosts::getPanel2DHostComponentIfCreated() const {
-    return panel2DHostInitialised ? panel2DHost.get() : nullptr;
+    return panel2DHostInitialised ? panel2D.getZoomPanel() : nullptr;
 }
 
 void TrimeshPanelHosts::setDelegate(TrimeshPanelHostDelegate* nextDelegate) {
@@ -102,11 +103,13 @@ PanelHostCallbacks TrimeshPanelHosts::createPanelHostCallbacks() {
     callbacks.setCursorCallback([this](Panel* panel, const MouseCursor& cursor) {
         if (panel == &panel3D && panel3DHost != nullptr) {
             panel3DHost->setMouseCursor(cursor);
+            panel3D.getZoomPanel()->setMouseCursor(cursor);
             showNativeCursorForPanel(*panel3DHost, cursor);
         }
 
         if (panel == &panel2D && panel2DHost != nullptr) {
             panel2DHost->setMouseCursor(cursor);
+            panel2D.getZoomPanel()->setMouseCursor(cursor);
             showNativeCursorForPanel(*panel2DHost, cursor);
         }
 
@@ -131,6 +134,7 @@ void TrimeshPanelHosts::initialisePanel3DHost() {
     panel3D.setSharedCanvasMode(true);
     panel3D.setInteractorMouseListenerEnabled(false);
     panel3D.initWithExternalComponent(panel3DHost.get());
+    panel3D.configureViewport(interactor3D.vertexLimits[Vertex::Phase]);
     interactor3D.updateIntercepts();
     panel3DHostInitialised = true;
 }
@@ -143,6 +147,7 @@ void TrimeshPanelHosts::initialisePanel2DHost() {
     panel2DHost = std::make_unique<PanelHostComponent>(panel2D);
     panel2D.setInteractorMouseListenerEnabled(false);
     panel2D.initWithExternalComponent(panel2DHost.get());
+    panel2D.configureViewport(interactor2D.vertexLimits[Vertex::Phase]);
     panel2DHostInitialised = true;
 }
 
@@ -195,14 +200,16 @@ void TrimeshPanelHosts::renderPanel3D(Rectangle<float> bounds, float scaleFactor
     panel3DVisible = !bounds.isEmpty();
     invalidation.notifyAvailabilityChanged();
     initialiseSharedGlResources();
-    renderPanel(panel3D, bounds, scaleFactor);
+    renderPanel(panel3D, bounds.withWidth((float) panel3DHost->getWidth())
+            .withHeight((float) panel3DHost->getHeight()), scaleFactor);
 }
 
 void TrimeshPanelHosts::renderPanel2D(Rectangle<float> bounds, float scaleFactor) {
     panel2DVisible = !bounds.isEmpty();
     invalidation.notifyAvailabilityChanged();
     initialiseSharedGlResources();
-    renderPanel(panel2D, bounds, scaleFactor);
+    renderPanel(panel2D, bounds.withWidth((float) panel2DHost->getWidth())
+            .withHeight((float) panel2DHost->getHeight()), scaleFactor);
 }
 
 void TrimeshPanelHosts::renderPanel(
