@@ -959,10 +959,8 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     Buffer<float> speedEnv  = scratchContext.panelBuffer;
     Buffer<float> ramp      = cBuffer.withSize(linestripRes);
 
-    if(GuideCurveProvider* guideCurveProvider = interactor->getGuideCurveProvider()) {
-        phaseTable = guideCurveProvider->getTable(phaseChan);
-        ampTable = guideCurveProvider->getTable(ampChan);
-    }
+    phaseTable = getLineGuideTable(phaseChan);
+    ampTable = getLineGuideTable(ampChan);
 
     if ((adjustPhase && phaseTable.empty()) || (adjustAmp && ampTable.empty())) {
         if (lockedPathRepo) {
@@ -1094,6 +1092,13 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     }
 
     return true;
+}
+
+Buffer<Float32> Panel::getLineGuideTable(int channel) {
+    if (GuideCurveProvider* provider = interactor->getGuideCurveProvider()) {
+        return provider->getTable(channel);
+    }
+    return {};
 }
 
 int Panel::getLinePathPhaseGuideChannel(const VertCube& cube, int pointDim) {

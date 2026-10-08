@@ -1,0 +1,82 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/empty.cyclegraph" },
+    { "command": "addNode", "kind": "trilinearMesh", "x": 550, "y": 300 },
+    { "command": "openMeshPopup", "nodeId": "mesh" },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:mesh.panel2D",
+      "targetX": 0.488,
+      "targetY": 0.57,
+      "button": "right"
+    },
+    {
+      "command": "pointer",
+      "event": "wheel",
+      "targetId": "expanded:mesh.panel2D",
+      "targetX": 0.488,
+      "targetY": 0.57,
+      "deltaY": 0
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:mesh.panel2D",
+      "downTargetId": "expanded:mesh.panel2D",
+      "targetX": 0.488,
+      "targetY": 0.57,
+      "downTargetX": 0.488,
+      "downTargetY": 0.57,
+      "button": "right"
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:mesh.panel2D",
+      "downTargetId": "expanded:mesh.panel2D",
+      "targetX": 0.488,
+      "targetY": 0.57,
+      "downTargetX": 0.488,
+      "downTargetY": 0.57,
+      "button": "right",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelIntercepts.0.x",
+      "op": "greaterThan",
+      "value": 0.47
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelIntercepts.0.x",
+      "op": "lessThan",
+      "value": 0.51
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:mesh.panel2D",
+      "targetX": 0.72,
+      "targetY": 0.35,
+      "button": "right",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelIntercepts.1.x",
+      "op": "greaterThan",
+      "value": 0.70
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelIntercepts.1.x",
+      "op": "lessThan",
+      "value": 0.74
+    }
+  ],
+  "quit": true
+}

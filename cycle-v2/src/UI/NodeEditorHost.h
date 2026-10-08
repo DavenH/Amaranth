@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 
+#include <array>
 #include <memory>
 #include <optional>
 
@@ -293,6 +294,7 @@ private:
     TrimeshWidget* activeVertexWidget {};
     int activeVertexIndex { -1 };
     std::optional<TrimeshVertexEditDelta> activeVertexDelta;
+    std::optional<std::array<float, 8>> activeCubeCurveBefore;
     String activeGuideMenuNodeId;
     String activeGuideMenuParameterField;
     uint64_t activeGuideMenuGeneration {};

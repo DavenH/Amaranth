@@ -1,5 +1,40 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Native-input video fixture stalled before writing an agent report
+
+On 2026-10-07, an empty-preset Time Trimesh fixture with a concurrent native
+`cliclick` right click left the Cycle process alive but wrote no automation
+report within 40 seconds. The window video is
+`/private/tmp/empty-trimesh-native-video.mp4`; filtered and raw logs share its
+stem. No assertion or crash appeared in the log, and the recording shows no
+vertex addition. A normal scripted-pointer video fixture completed just before
+this attempt. Status: open; isolate native click timing and automation-runner
+progress before treating this recording as vertex-interaction evidence.
+
+## P2: Trimesh native curve drag and broader test filter fail during editor investigation
+
+On 2026-10-07, `scripts/test_cycle_v2_native_edit_smoke.py trimesh` stopped at
+`scripts/test_cycle_v2_native_edit_smoke.py:1722`: the curve drag did not change
+the mesh before the script reached its vertex-add step. The isolated
+`Trimesh selection remains empty or explicit while morph position changes`
+test also failed at `TestTrimeshNodeDsp.cpp:1470` (`model.selectVertex(selected)`
+returned false). The broader `[cycle-v2][nodes][trimesh]` filter reported nine
+failures and ended with SIGSEGV during the linked-vertex interaction test.
+These failures are outside the four current reported actions. Status: open;
+capture an isolated baseline and distinguish fixture assumptions from product
+regressions before changing mature interaction code.
+
+## P2: Scratch cable deletion test keeps an unchanged zero spectral Spy preview
+
+On 2026-10-07, `Deleting a scratch cable refreshes an observed spectral
+Trimesh` failed at `TestNodeCanvasAuthoring.cpp:231`: the Spy preview values
+were zero before and after removing the attachment. The untouched
+`build/standalone-debug/cycle-v2/CycleV2_tests` binary fails at the same
+assertion, so this predates the cable cascade repair. Logs:
+`/tmp/cycle-v2-scratch-preview-baseline.log` and
+`/tmp/cycle-v2-scratch-preview-test.log`. Status: open; investigate the
+preview fixture and actual scratch effect separately.
+
 ## P2: Existing Trimesh editor tests fail in isolation
 
 During the 2026-10-06 phase-velocity work, isolated reruns of `Clicking an
@@ -101,9 +136,31 @@ Adding vertices to an empty trimesh node adds them at phase=0 regardless of wher
 
 let's just hide it along with the rest of the elements that get hidden/dimmed on expand
 
-## P2: The spy nodes get deeply dimmed when clicked for some reason
+## P2: Spy tiles remain muted compared with node previews
 
-## P2: the 'out' spy node cannot be expanded
+User clarified 2026-10-07 that the severe click dimming has been fixed, but
+the Spy previews are still somewhat dim compared with regular node previews.
+With `with-spies.cyclegraph`, a single click on `spy:probe` did not cause any
+further brightness drop and left `probeDetailId` empty. Captures:
+`/tmp/cycle-v2-spy-before-os.png`, `/tmp/cycle-v2-spy-click-os.png`.
+Status: remaining appearance issue open. The current captures establish the
+muted appearance but do not isolate whether it comes from probe data, domain
+mapping, or tile compositing. Compare the same signal and domain in both views
+before changing the shared surface renderer.
+
+A same-grid role experiment on `with-spies.cyclegraph` did not change the
+visible first Spy tile: its sampled mean RGB remained 0.1584 before and after,
+while the source Trimesh node region measured 0.2417. The experiment was
+reverted. `NodePreviewRenderer` paints Trimesh nodes through their authoritative
+model path, while Spies paint runtime traversal grids, so matching the runtime
+role alone does not establish visual parity. A specific current graph and Spy
+label would help isolate the remaining case.
+
+## Resolved: The 'out' Spy cannot be expanded
+
+Checked 2026-10-07 on the default graph. Double-clicking
+`spy:default-output` opened `probeDetailId=default-output`; double-clicking
+the detail closed it. Status: no longer reproducible.
 
 ## P3: vertex selection rect doesn't have appropriate hover cursors on edges or center
 

@@ -99,7 +99,7 @@ Point<float> getPointerPosition(const var& command, Component& component, const 
 }
 
 ModifierKeys pointerModifiers(const var& command, bool buttonDown) {
-    ModifierKeys modifiers = ModifierKeys::currentModifiers.withoutMouseButtons();
+    ModifierKeys modifiers;
 
     if (buttonDown) {
         const String button = stringProperty(command, "button", stringProperty(command, "mouseButton")).toLowerCase();

@@ -507,6 +507,9 @@ bool NodeEditorCommandService::beginTrimeshVertexParameterEdit(
     activeVertexWidget = widget;
     activeVertexIndex = vertexIndex;
     activeVertexDelta.reset();
+    activeCubeCurveBefore = parameterId == "vertex.curve"
+            ? widget->cubeCurveValuesForVertex(vertexIndex)
+            : std::nullopt;
     presentation.selectEditedNode(nodeId);
     return updateTrimeshVertexParameterEditValue(value);
 }
@@ -525,42 +528,54 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
         label = activeVertexParameterId;
     }
     const bool editingGuideGain = activeVertexParameterId.startsWith("guideGain.");
-    const auto movement = editingGuideGain
-            ? TrimeshVertexEditCore::prepareGuideGain(
-                    activeVertexWidget->currentMesh(),
-                    activeVertexIndex,
-                    activeVertexParameterId,
-                    value)
-            : TrimeshVertexEditCore::prepareVertexValue(
-                    activeVertexWidget->currentMesh(),
-                    activeVertexIndex,
-                    activeVertexParameterId,
-                    value);
-    if (!movement.has_value()) {
-        return false;
+    if (activeCubeCurveBefore.has_value()) {
+        const auto before = activeVertexWidget->cubeCurveValuesForVertex(activeVertexIndex);
+        if (!before.has_value()
+                || !activeVertexWidget->setVertexParameter(
+                        activeVertexIndex, activeVertexParameterId, value)) {
+            return false;
+        }
+        if (before == activeVertexWidget->cubeCurveValuesForVertex(activeVertexIndex)) {
+            return true;
+        }
+    } else {
+        const auto movement = editingGuideGain
+                ? TrimeshVertexEditCore::prepareGuideGain(
+                        activeVertexWidget->currentMesh(),
+                        activeVertexIndex,
+                        activeVertexParameterId,
+                        value)
+                : TrimeshVertexEditCore::prepareVertexValue(
+                        activeVertexWidget->currentMesh(),
+                        activeVertexIndex,
+                        activeVertexParameterId,
+                        value);
+        if (!movement.has_value()) {
+            return false;
+        }
+        const auto accumulated = activeVertexDelta.has_value()
+                ? TrimeshVertexEditCore::compose(*activeVertexDelta, *movement)
+                : movement;
+        if (!accumulated.has_value()) {
+            return false;
+        }
+        if (!movement->changed()) {
+            return true;
+        }
+        const bool modelUpdated = editingGuideGain
+                ? activeVertexWidget->setVertexGuideGain(
+                        activeVertexIndex,
+                        activeVertexParameterId,
+                        value)
+                : activeVertexWidget->setVertexParameter(
+                        activeVertexIndex,
+                        activeVertexParameterId,
+                        value);
+        if (!modelUpdated) {
+            return false;
+        }
+        activeVertexDelta = *accumulated;
     }
-    const auto accumulated = activeVertexDelta.has_value()
-            ? TrimeshVertexEditCore::compose(*activeVertexDelta, *movement)
-            : movement;
-    if (!accumulated.has_value()) {
-        return false;
-    }
-    if (!movement->changed()) {
-        return true;
-    }
-    const bool modelUpdated = editingGuideGain
-            ? activeVertexWidget->setVertexGuideGain(
-                    activeVertexIndex,
-                    activeVertexParameterId,
-                    value)
-            : activeVertexWidget->setVertexParameter(
-                    activeVertexIndex,
-                    activeVertexParameterId,
-                    value);
-    if (!modelUpdated) {
-        return false;
-    }
-    activeVertexDelta = *accumulated;
     const uint64_t fingerprint = FingerprintBuilder()
             .add(activeVertexParameterId)
             .add(String(value, 9))
@@ -586,8 +601,11 @@ void NodeEditorCommandService::endTrimeshVertexParameterEdit() {
     if (activeVertexNodeId.isEmpty()) {
         return;
     }
-    const bool changed = activeVertexDelta.has_value()
-            && activeVertexDelta->changed();
+    const bool changed = activeCubeCurveBefore.has_value()
+            ? activeVertexWidget != nullptr
+                    && activeCubeCurveBefore
+                            != activeVertexWidget->cubeCurveValuesForVertex(activeVertexIndex)
+            : activeVertexDelta.has_value() && activeVertexDelta->changed();
     bool published = !changed;
     if (findNode(activeVertexNodeId) != nullptr && activeVertexWidget != nullptr) {
         const Node* node = findNode(activeVertexNodeId);
@@ -623,6 +641,7 @@ void NodeEditorCommandService::endTrimeshVertexParameterEdit() {
     activeVertexWidget = nullptr;
     activeVertexIndex = -1;
     activeVertexDelta.reset();
+    activeCubeCurveBefore.reset();
 }
 
 void NodeEditorCommandService::persistTrimeshMeshEdits(
@@ -817,8 +836,10 @@ bool NodeEditorCommandService::selectTrimeshVertexIndex(
     if (!result.succeeded()) {
         return false;
     }
-    presentation.refreshNodeEditorPresentation();
     presentation.selectEditedNode(nodeId);
+    presentation.refreshNodeEditorPresentation();
+    presentation.rebindNodeEditorTransient();
+    presentation.repaintNodeEditor(false);
     presentation.setNodeEditorStatus("Selected vertex #" + String(vertexIndex));
     return true;
 }

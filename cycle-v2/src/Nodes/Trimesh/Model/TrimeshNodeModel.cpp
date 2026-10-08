@@ -178,6 +178,13 @@ std::vector<TrimeshVertexParameter> TrimeshNodeModel::getVertexParametersForInde
 std::vector<TrimeshVertexParameter> TrimeshNodeModel::getSelectedVertexParameters() {
     auto parameters = getVertexParametersForIndex(selectedVertexIndex);
     if (!parameters.empty()) {
+        if (VertCube* cube = cubeForVertex(selectedVertexIndex)) {
+            float sum {};
+            for (int index = 0; index < VertCube::numVerts; ++index) {
+                sum += cube->getVertex(index)->values[Vertex::Curve];
+            }
+            parameters[5].value = sum / (float) VertCube::numVerts;
+        }
         return parameters;
     }
 
@@ -418,6 +425,18 @@ bool TrimeshNodeModel::setVertexParameter(
         int vertexIndex,
         const String& parameterId,
         float value) {
+    if (parameterId == "vertex.curve") {
+        if (VertCube* cube = cubeForVertex(vertexIndex)) {
+            const auto edit = TrimeshVertexEditCore::prepareCubeCurve(*cube, value);
+            if (!edit.has_value() || !TrimeshVertexEditCore::apply(*cube, *edit)) {
+                return false;
+            }
+            if (edit->changed()) {
+                bumpMeshContentRevision();
+            }
+            return true;
+        }
+    }
     const auto delta = TrimeshVertexEditCore::prepareVertexValue(
             mesh(), vertexIndex, parameterId, value);
     if (!delta.has_value() || !TrimeshVertexEditCore::apply(mesh(), *delta)) {
@@ -427,6 +446,19 @@ bool TrimeshNodeModel::setVertexParameter(
         bumpMeshContentRevision();
     }
     return true;
+}
+
+std::optional<std::array<float, 8>> TrimeshNodeModel::cubeCurveValuesForVertex(
+        int vertexIndex) {
+    VertCube* cube = cubeForVertex(vertexIndex);
+    if (cube == nullptr) {
+        return std::nullopt;
+    }
+    std::array<float, 8> values {};
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        values[(size_t) index] = cube->getVertex(index)->values[Vertex::Curve];
+    }
+    return values;
 }
 
 bool TrimeshNodeModel::setVertexGuideGain(
@@ -459,6 +491,12 @@ Vertex* TrimeshNodeModel::vertexAtIndex(int vertexIndex) {
     }
 
     return nullptr;
+}
+
+VertCube* TrimeshNodeModel::cubeForVertex(int vertexIndex) {
+    Vertex* vertex = vertexAtIndex(vertexIndex);
+    return vertex != nullptr && !vertex->owners.isEmpty()
+            ? vertex->owners.getFirst() : nullptr;
 }
 
 void TrimeshNodeModel::clearMesh() {

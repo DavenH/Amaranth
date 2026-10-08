@@ -233,6 +233,136 @@ TEST_CASE("Deleting a scratch cable refreshes an observed spectral Trimesh",
     REQUIRE(presentation.previewResult().probes.front().values == attachedValues);
 }
 
+TEST_CASE("A newly authored Scratch envelope connects to Voice Context after publication",
+        "[cycle-v2][canvas][authoring][envelope][scratch]") {
+    NodeGraph graph;
+    GraphNodeFactory factory;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    const auto added = authoring.addNode(NodeKind::Envelope, { 20.f, 20.f });
+    REQUIRE(added.succeeded);
+    commands.beginTransientEdit();
+    REQUIRE(commands.setNodeParameter(added.nodeId, "purpose", "Purpose", "pitch").succeeded());
+    REQUIRE(commands.setNodeParameter(added.nodeId, "purpose", "Purpose", "scratch").succeeded());
+    commands.commitTransientEdit();
+    const Node* envelope = document.graph().findNode(added.nodeId);
+    REQUIRE(envelope != nullptr);
+    REQUIRE(envelope->outputs.front().connectionKind == ConnectionKind::ProcessingAttachment);
+    REQUIRE(authoring.connectPorts(
+            { added.nodeId, "env", false },
+            { "voice", "scratch", true }).succeeded);
+    REQUIRE(document.graph().getEdges().size() == 1);
+    REQUIRE(document.graph().getEdges().front().isProcessingAttachment());
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().findNode(added.nodeId)->outputs.front().connectionKind
+            == ConnectionKind::Signal);
+}
+
+TEST_CASE("Deleting a cable removes its Spy and restores both with undo",
+        "[cycle-v2][canvas][authoring][probe][cable]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addEdge({
+            "wave", "out", "output", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal });
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    REQUIRE(authoring.toggleSignalProbe(0, 0.5f).succeeded);
+    REQUIRE(document.graph().getSignalProbes().size() == 1);
+    REQUIRE(authoring.deleteEdge(0).succeeded);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(document.graph().getSignalProbes().empty());
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().getEdges().size() == 1);
+    REQUIRE(document.graph().getSignalProbes().size() == 1);
+}
+
+TEST_CASE("Deleting another branch leaves a Spy anchored to its surviving cable",
+        "[cycle-v2][canvas][authoring][probe][cable]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "first", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "second", {}));
+    graph.addEdge({
+            "wave", "out", "first", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({
+            "wave", "out", "second", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal });
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    REQUIRE(authoring.toggleSignalProbe(0, 0.5f).succeeded);
+    REQUIRE(authoring.deleteEdge(1).succeeded);
+    REQUIRE(document.graph().getEdges().size() == 1);
+    REQUIRE(document.graph().getSignalProbes().size() == 1);
+    REQUIRE(document.graph().getSignalProbes().front().anchorDestNodeId == "first");
+}
+
+TEST_CASE("Deleting an inline panning cable removes the pan and its Spy",
+        "[cycle-v2][canvas][authoring][pan][probe][cable]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::SpectralLayer, "pan", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addEdge({
+            "wave", "out", "pan", "in",
+            PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({
+            "pan", "out", "output", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal });
+    for (int index = 0; index < 64; ++index) {
+        graph.addNode(factory.createNode(
+                NodeKind::Delay,
+                "unrelated-" + String(index),
+                {}));
+    }
+    AudioSampleResource audio { "unrelated-audio", "Unrelated.wav", 48000.0, {} };
+    audio.samples.resize(16384);
+    graph.addAudioResource(std::move(audio));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    REQUIRE(authoring.toggleSignalProbe(0, 0.5f).succeeded);
+    REQUIRE(authoring.toggleSignalProbe(1, 0.5f).succeeded);
+    REQUIRE(document.graph().getSignalProbes().size() == 2);
+    InteractionComplexityDiagnostics::reset();
+    REQUIRE(authoring.deleteEdge(0).succeeded);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().audioSamplesCopied == 0);
+    REQUIRE(document.graph().findNode("pan") == nullptr);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(document.graph().getSignalProbes().empty());
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().findNode("pan") != nullptr);
+    REQUIRE(document.graph().getEdges().size() == 2);
+    REQUIRE(document.graph().getSignalProbes().size() == 2);
+    REQUIRE(authoring.redo().succeeded);
+    REQUIRE(document.graph().findNode("pan") == nullptr);
+    REQUIRE(document.graph().getSignalProbes().empty());
+}
+
 TEST_CASE("Node port layout cycling survives document serialization",
         "[cycle-v2][canvas][authoring][layout]") {
     NodeGraph graph;

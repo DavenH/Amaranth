@@ -37,6 +37,7 @@ public:
     bool setPresetTitle(const juce::String& title);
     GraphEditResult removeNode(const juce::String& nodeId);
     GraphEditResult removeEdgeAt(size_t edgeIndex);
+    GraphEditResult removeCable(const std::vector<size_t>& edgeIndices);
     GraphEditResult connect(const PortAddress& first, const PortAddress& second);
     GraphEditResult toggleSignalProbe(size_t edgeIndex, float tapPosition = 0.5f);
     GraphEditResult removeSignalProbe(const juce::String& probeId);

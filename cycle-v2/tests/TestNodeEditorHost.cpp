@@ -23,6 +23,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Unison/UnisonNode.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Waveshaper/Editor/WaveshaperEditorComponent.h"
@@ -3821,6 +3822,67 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
     REQUIRE(document.canUndo());
 }
 
+TEST_CASE("Trimesh Curve gesture edits every selected cube corner and undoes",
+        "[cycle-v2][editor][trimesh][curve-average]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("curve-average-gesture");
+    VertCube* sourceCube = mesh->getCubes().front();
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        sourceCube->getVertex(index)->values[Vertex::Curve] = index < 4 ? 0.f : 1.f;
+    }
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    auto selectedState = std::make_unique<DynamicObject>();
+    selectedState->setProperty("selectedVertexId", 0);
+    node.editorState = var(selectedState.release());
+    mesh->destroy();
+
+    NodeGraph graph;
+    graph.addNode(std::move(node));
+    addUnrelatedInteractionState(graph);
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    widget.syncFromNode(*document.graph().findNode("mesh"));
+    resources.activeTrimesh = &widget;
+    NodeEditorCommandService commands(
+            owner, document, dispatcher, presentation, resources);
+
+    REQUIRE(commands.beginTrimeshVertexParameterEdit("mesh", "vertex.curve", 0.5f));
+    InteractionComplexityDiagnostics::reset();
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.25f));
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.f));
+    REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        REQUIRE(widget.currentMesh().getCubes().front()
+                ->getVertex(index)->values[Vertex::Curve] == 0.f);
+    }
+    commands.endTrimeshVertexParameterEdit();
+
+    const auto committed = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            document.graph().findNode("mesh")->model);
+    REQUIRE(committed != nullptr);
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        REQUIRE(committed->mesh().getCubes().front()
+                ->getVertex(index)->values[Vertex::Curve] == 0.f);
+    }
+    REQUIRE(presentation.recordedMovements == 2);
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    const auto restored = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            document.graph().findNode("mesh")->model);
+    REQUIRE(restored != nullptr);
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        REQUIRE(restored->mesh().getCubes().front()
+                ->getVertex(index)->values[Vertex::Curve] == (index < 4 ? 0.f : 1.f));
+    }
+}
+
 TEST_CASE("Clicking an open Trimesh Guide selector dismisses its popup",
         "[cycle-v2][editor][trimesh][guide][menu]") {
     ScopedJuceInitialiser_GUI juce;
@@ -4423,6 +4485,42 @@ TEST_CASE("Trimesh drag keeps movement local and publishes one commit snapshot",
             == Catch::Approx(originalAmp));
     REQUIRE((int) document.graph().findNode("mesh")->editorState.getProperty(
             "selectedVertexId", -1) == 0);
+}
+
+TEST_CASE("Trimesh vertex selection rebinds the committed editor state",
+        "[cycle-v2][editor][trimesh][selection]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("SelectionCommand");
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    mesh->destroy();
+    graph.addNode(std::move(node));
+    addUnrelatedInteractionState(graph);
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner, document, dispatcher, presentation, resources);
+
+    InteractionComplexityDiagnostics::reset();
+    REQUIRE(commands.selectTrimeshVertexIndex("mesh", 1));
+    REQUIRE((int) document.graph().findNode("mesh")->editorState.getProperty(
+            "selectedVertexId", -1) == 1);
+    REQUIRE(presentation.rebinds == 0);
+    REQUIRE(presentation.transientRebinds == 1);
+    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().audioSamplesCopied == 0);
+    REQUIRE(commands.selectTrimeshVertexIndex("mesh", 1));
+    REQUIRE(presentation.transientRebinds == 1);
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    REQUIRE((int) document.graph().findNode("mesh")->editorState.getProperty(
+            "selectedVertexId", -1) == -1);
 }
 
 TEST_CASE("Equalizer graph drag publishes frequency and gain as one undo transaction",

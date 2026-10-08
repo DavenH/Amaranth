@@ -1,6 +1,7 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanelBridge.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "Nodes/Trimesh/Rendering/TrimeshGuideRailRenderService.h"
 
 #include <App/AppConstants.h>
 #include <Curve/Mesh/Vertex.h>
@@ -414,6 +415,10 @@ void TrimeshPanelBridge::updateGuideCurveSeeds() {
             Rasterization::GuideCurveSeed::visualization(stableSeed));
     panelRasterizer.getRasterizer().setNoiseSeed(
             (int) (stableSeed % GuideCurveProvider::tableSize));
+
+    panel3D.setLineGuideTables(TrimeshGuideRailRenderService::prepareTables(
+            *guideCurveProvider,
+            stableSeed));
 }
 
 void TrimeshPanelBridge::renderPanel3D(Rectangle<float> bounds, float scaleFactor) {

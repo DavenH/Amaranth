@@ -96,6 +96,10 @@ void PanelInputHostComponent::mouseExit(const MouseEvent& event) {
 void PanelInputHostComponent::mouseWheelMove(
         const MouseEvent& event,
         const MouseWheelDetails& wheel) {
+    if (pointerActive) {
+        return;
+    }
+
     if (Interactor* interactor = panelInteractor()) {
         interactor->mouseWheelMove(event, wheel);
     }

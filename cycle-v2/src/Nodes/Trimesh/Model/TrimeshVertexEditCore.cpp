@@ -6,6 +6,7 @@
 #include <Curve/Mesh/Vertex.h>
 #include <Curve/Mesh/VertCube.h>
 
+#include <cmath>
 #include <utility>
 
 namespace CycleV2 {
@@ -43,6 +44,12 @@ TrimeshVertexEditDelta TrimeshVertexEditDelta::inverse() const {
     for (auto& change : result.changes) {
         std::swap(change.before, change.after);
     }
+    return result;
+}
+
+TrimeshCubeCurveEdit TrimeshCubeCurveEdit::inverse() const {
+    TrimeshCubeCurveEdit result = *this;
+    std::swap(result.before, result.after);
     return result;
 }
 
@@ -99,6 +106,57 @@ std::optional<TrimeshVertexEditDelta> TrimeshVertexEditCore::prepareGuideGain(
     return delta;
 }
 
+std::optional<TrimeshCubeCurveEdit> TrimeshVertexEditCore::prepareCubeCurve(
+        const VertCube& cube,
+        float averageValue) {
+    static_assert(VertCube::numVerts == 8, "Cube Curve edit needs eight corners");
+    TrimeshCubeCurveEdit edit;
+    for (int index = 0; index < (int) edit.before.size(); ++index) {
+        const Vertex* vertex = cube.getVertex(index);
+        if (vertex == nullptr) {
+            return std::nullopt;
+        }
+        edit.before[(size_t) index] = vertex->values[Vertex::Curve];
+    }
+
+    const float target = jlimit(0.f, 1.f, averageValue);
+    float sum {};
+    for (float value : edit.before) {
+        sum += value;
+    }
+    const float currentAverage = sum / (float) edit.before.size();
+    const bool alreadyAtTarget = target == 0.f || target == 1.f
+            ? currentAverage == target
+            : std::abs(currentAverage - target) < 0.000001f;
+    if (alreadyAtTarget) {
+        edit.after = edit.before;
+        return edit;
+    }
+    float lowerOffset = -1.f;
+    float upperOffset = 1.f;
+    for (int iteration = 0; iteration < 28; ++iteration) {
+        const float midpoint = (lowerOffset + upperOffset) * 0.5f;
+        sum = 0.f;
+        for (float value : edit.before) {
+            sum += jlimit(0.f, 1.f, value + midpoint);
+        }
+        if (sum / (float) edit.before.size() < target) {
+            lowerOffset = midpoint;
+        } else {
+            upperOffset = midpoint;
+        }
+    }
+    const float offset = target == 0.f
+            ? -1.f
+            : target == 1.f
+                    ? 1.f
+                    : (lowerOffset + upperOffset) * 0.5f;
+    for (size_t index = 0; index < edit.after.size(); ++index) {
+        edit.after[index] = jlimit(0.f, 1.f, edit.before[index] + offset);
+    }
+    return edit;
+}
+
 bool TrimeshVertexEditCore::apply(
         Mesh& mesh,
         const TrimeshVertexEditDelta& delta) {
@@ -114,6 +172,22 @@ bool TrimeshVertexEditCore::apply(
             vertex->owners[change.ownerOrdinal]
                     ->guideCurveGainAt(delta.valueIndex) = change.after;
         }
+    }
+    return true;
+}
+
+bool TrimeshVertexEditCore::apply(
+        VertCube& cube,
+        const TrimeshCubeCurveEdit& edit) {
+    for (int index = 0; index < (int) edit.before.size(); ++index) {
+        const Vertex* vertex = cube.getVertex(index);
+        if (vertex == nullptr
+                || vertex->values[Vertex::Curve] != edit.before[(size_t) index]) {
+            return false;
+        }
+    }
+    for (int index = 0; index < (int) edit.after.size(); ++index) {
+        cube.getVertex(index)->values[Vertex::Curve] = edit.after[(size_t) index];
     }
     return true;
 }

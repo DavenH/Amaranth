@@ -1,0 +1,60 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/organ-3.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "magnitudeLayer3"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:magnitudeLayer3.panel2D",
+      "targetX": 0.106,
+      "targetY": 0.51,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexIndex",
+      "equals": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.3.value",
+      "op": "greaterThan",
+      "value": 0.105
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.3.value",
+      "op": "lessThan",
+      "value": 0.107
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexIndex",
+      "equals": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.3.value",
+      "op": "greaterThan",
+      "value": 0.105
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.3.value",
+      "op": "lessThan",
+      "value": 0.107
+    }
+  ],
+  "quit": true
+}

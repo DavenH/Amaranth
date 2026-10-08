@@ -83,6 +83,21 @@ GraphEditResult GraphCommandDispatcher::removeEdgeAt(size_t edgeIndex) {
             });
 }
 
+GraphEditResult GraphCommandDispatcher::removeCable(
+        const std::vector<size_t>& edgeIndices) {
+    const auto plan = GraphEditor().planCableDeletion(editingGraph(), edgeIndices);
+    if (!plan.has_value()) {
+        return { GraphEditCode::MissingEdge, {}, {} };
+    }
+    return applyIncremental(
+            [&](GraphDeltaBuilder& delta, const NodeGraph& graph) {
+                delta.captureCableDeletion(graph, *plan);
+            },
+            [&](NodeGraph& graph) {
+                return GraphEditor().removeCable(graph, *plan);
+            });
+}
+
 GraphEditResult GraphCommandDispatcher::connect(const PortAddress& first, const PortAddress& second) {
     const PortAddress& destination = first.input ? first : second;
     return applyIncremental(

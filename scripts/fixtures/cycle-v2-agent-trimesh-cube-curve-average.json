@@ -1,0 +1,85 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/organ-3.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "magnitudeLayer3"
+    },
+    {
+      "command": "selectVertex",
+      "nodeId": "magnitudeLayer3",
+      "vertexIndex": 2
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.5.value",
+      "op": "greaterThan",
+      "value": 0.36
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:magnitudeLayer3.trimeshVertexParameter.vertex.curve",
+      "targetX": 0.4,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:magnitudeLayer3.trimeshVertexParameter.vertex.curve",
+      "downTargetId": "expanded:magnitudeLayer3.trimeshVertexParameter.vertex.curve",
+      "targetX": 0,
+      "targetY": 0.5,
+      "downTargetX": 0.4,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:magnitudeLayer3.trimeshVertexParameter.vertex.curve",
+      "downTargetId": "expanded:magnitudeLayer3.trimeshVertexParameter.vertex.curve",
+      "targetX": 0,
+      "targetY": 0.5,
+      "downTargetX": 0.4,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.5.value",
+      "op": "lessThan",
+      "value": 0.01
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.model.mesh.vertices.4.weight",
+      "op": "lessThan",
+      "value": 0.01
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "magnitudeLayer3"
+    },
+    {
+      "command": "selectVertex",
+      "nodeId": "magnitudeLayer3",
+      "vertexIndex": 2
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.5.value",
+      "op": "greaterThan",
+      "value": 0.36
+    }
+  ],
+  "quit": true
+}

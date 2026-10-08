@@ -443,19 +443,20 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::deleteNode(const String& nodeId) 
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::deleteEdge(int edgeIndex) {
-    if (edgeIndex < 0) {
+    if (edgeIndex < 0 || edgeIndex >= (int) document.graph().getEdges().size()) {
         return {};
     }
 
-    auto indices = ModulationCableBundle::edgeIndices(document.graph(), edgeIndex);
-    std::sort(indices.begin(), indices.end(), std::greater<int>());
-    commands.beginCompoundEdit();
-    GraphEditResult edit;
-    for (const int index : indices) {
-        edit = commands.removeEdgeAt((size_t) index);
+    const auto bundleIndices = ModulationCableBundle::edgeIndices(document.graph(), edgeIndex);
+    std::vector<size_t> indices(bundleIndices.begin(), bundleIndices.end());
+    const auto edit = commands.removeCable(indices);
+    if (!edit.succeeded()) {
+        return graphEditResult(edit, {}, {});
     }
-    commands.commitCompoundEdit();
-    return graphEditResult(edit, "Edge deleted: " + String(edgeIndex), {}, { true });
+    const bool editorClosed = authoringSession.expandedNodeId.isNotEmpty()
+            && document.graph().findNode(authoringSession.expandedNodeId) == nullptr;
+    reconcileDocumentSelection();
+    return graphEditResult(edit, "Edge deleted: " + String(edgeIndex), {}, { true, editorClosed, true });
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::setNodeParameter(
