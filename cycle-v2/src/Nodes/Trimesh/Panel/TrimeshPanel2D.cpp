@@ -139,17 +139,17 @@ void TrimeshPanel2D::drawSpectralPartials() {
     int denseStart = count - 1;
     for (int i = 0; i < count - 1; ++i) {
         const float spacing = positions[i + 1] - positions[i];
-        const float gap = jmin(3.5f, spacing * 0.25f);
-        if (gap <= 1.f) {
+        const float gap = jmax(1.f, jmin(3.5f, spacing * 0.25f));
+        const float left = positions[i] + gap * 0.5f;
+        const float right = positions[i + 1] - gap * 0.5f;
+        if (right - left < 2.f) {
             denseStart = i;
             break;
         }
 
-        const float left = positions[i] + gap * 0.5f;
-        const float right = positions[i + 1] - gap * 0.5f;
         const float top = jmin(heights[i], baseline);
         const float bottom = jmax(heights[i], baseline);
-        if (right <= left || bottom - top < 1.f) {
+        if (bottom - top < 1.f) {
             continue;
         }
 
