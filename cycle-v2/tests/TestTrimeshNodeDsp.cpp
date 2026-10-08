@@ -35,6 +35,7 @@
 #include <App/SingletonRepo.h>
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Audio/CycleDsp/SpectralLayerCore.h>
+#include <Curve/Mesh/CollisionDetector.h>
 #include <Curve/Mesh/Intercept.h>
 #include <Curve/Curve.h>
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
@@ -199,6 +200,38 @@ TEST_CASE("First Trimesh point is created at the requested phase",
     const auto parameters = bridge.getModel().getVertexParametersForIndex(selected);
     REQUIRE(parameters[3].id == "vertex.phase");
     REQUIRE(parameters[3].value == Catch::Approx(0.65f).margin(0.002f));
+}
+
+TEST_CASE("Trimesh vertex controls reject a line collision",
+        "[cycle-v2][nodes][trimesh][collision]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto sourceMesh = TrimeshMeshFactory::createDefaultMesh("collision-test");
+    node.model = TrimeshNodeModelState::copyOf(*sourceMesh, 2);
+    sourceMesh->destroy();
+    TrimeshWidget widget;
+    widget.syncFromNode(node);
+    Mesh& mesh = widget.currentMesh();
+    Vertex* vertex = mesh.getVerts().front();
+    const float original = vertex->values[Vertex::Phase];
+    const float crossingPhase = 0.5f;
+    CollisionDetector detector(nullptr, CollisionDetector::Time);
+
+    vertex->values[Vertex::Phase] = crossingPhase;
+    detector.setCurrentSelection(&mesh, vertex);
+    REQUIRE_FALSE(detector.validate());
+    vertex->values[Vertex::Phase] = original;
+
+    REQUIRE_FALSE(widget.setVertexParameter(0, "vertex.phase", crossingPhase));
+    REQUIRE(vertex->values[Vertex::Phase] == original);
+
+    const float safePhase = original + 0.01f;
+    vertex->values[Vertex::Phase] = safePhase;
+    detector.setCurrentSelection(&mesh, vertex);
+    REQUIRE(detector.validate());
+    vertex->values[Vertex::Phase] = original;
+    REQUIRE(widget.setVertexParameter(0, "vertex.phase", safePhase));
+    REQUIRE(vertex->values[Vertex::Phase] == safePhase);
 }
 
 TEST_CASE("Trimesh vertex edit deltas apply and invert across matching meshes",
@@ -2082,6 +2115,9 @@ TEST_CASE("Hosted Trimesh point drag defers mesh replacement across publications
         "[cycle-v2][nodes][trimesh][interaction]") {
     ScopedJuceInitialiser_GUI juce;
     Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto sourceMesh = TrimeshMeshFactory::createDefaultMesh("hosted-drag-test");
+    node.model = TrimeshNodeModelState::copyOf(*sourceMesh, 2);
+    sourceMesh->destroy();
     TrimeshPanelBridge bridge;
     bridge.syncFromNode(node, 320, 96);
 
@@ -2154,6 +2190,56 @@ TEST_CASE("Hosted Trimesh point drag defers mesh replacement across publications
     REQUIRE(selected.front() == gestureVertex);
     REQUIRE(gestureVertex->values[Vertex::Phase] != Catch::Approx(initialPhase));
     REQUIRE(bridge.applyPreparedGuides(preparedGuides()));
+}
+
+TEST_CASE("Hosted Trimesh 2D point drag stops before the next line",
+        "[cycle-v2][nodes][trimesh][collision][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto sourceMesh = TrimeshMeshFactory::createDefaultMesh("point-collision-test");
+    node.model = TrimeshNodeModelState::copyOf(*sourceMesh, 2);
+    sourceMesh->destroy();
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(node, 320, 96);
+
+    Component* host = bridge.getPanel2DHostComponent();
+    host->setBounds(0, 0, 640, 280);
+    host->addToDesktop(ComponentPeer::windowIsTemporary);
+    host->setVisible(true);
+    bridge.syncFromNode(node, 320, 96);
+    const auto snapshot = bridge.getInteractor2D().rasterizerSnapshot();
+    REQUIRE(snapshot.intercepts().size() >= 4);
+    const Intercept& intercept = snapshot.intercepts()[snapshot.intercepts().size() / 2];
+    const Point<float> source(
+            bridge.getPanel2D().sx(intercept.x),
+            bridge.getPanel2D().sy(intercept.y));
+    host->mouseMove(panelMouseEvent(*host, source, {}, source, false));
+    host->mouseDown(panelMouseEvent(
+            *host, source, ModifierKeys::leftButtonModifier, source, false));
+    const auto& selected = bridge.getInteractor2D().getSelected();
+    REQUIRE(selected.size() == 1);
+    Vertex* movedVertex = selected.front();
+    const float startingPhase = movedVertex->values[Vertex::Phase];
+    const auto next = std::find_if(
+            snapshot.intercepts().begin(),
+            snapshot.intercepts().end(),
+            [startingPhase](const Intercept& candidate) {
+                return candidate.x > startingPhase + 0.02f;
+            });
+    REQUIRE(next != snapshot.intercepts().end());
+    const float nextLinePhase = next->x;
+    Point<float> destination = source;
+    for (int step = 1; step <= 12; ++step) {
+        const float phase = startingPhase
+                + (nextLinePhase + 0.08f - startingPhase) * (float) step / 12.f;
+        destination.x = bridge.getPanel2D().sx(phase);
+        host->mouseDrag(panelMouseEvent(
+                *host, destination, ModifierKeys::leftButtonModifier, source, true));
+    }
+    host->mouseUp(panelMouseEvent(*host, destination, {}, source, true));
+
+    REQUIRE(movedVertex->values[Vertex::Phase] > startingPhase);
+    REQUIRE(movedVertex->values[Vertex::Phase] < nextLinePhase);
 }
 
 TEST_CASE("Trimesh hover follows the closest intercept without changing selection",

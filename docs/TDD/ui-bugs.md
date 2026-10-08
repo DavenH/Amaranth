@@ -1,5 +1,17 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Full native Trimesh smoke misses an amplitude rail click
+
+On 2026-10-07, the full `trimesh` native edit smoke passed curve reshape,
+point collision rejection, and the following point move. It then failed at
+`scripts/test_cycle_v2_native_edit_smoke.py:1955`: an amplitude rail click
+left the value at `0.558` instead of the requested `0.638`. The focused
+`trimesh-curve-drag` and `trimesh-point-drag` sequences pass. The earlier
+curve and point failures were inspection races; the smoke now waits for mesh
+content as well as revision. Log: the runner's
+`cycle-v2-native-edit-smoke.log` in its temporary directory. Status: open;
+inspect the rail's native hit and settle sequence separately.
+
 ## P2: Cycle 1 Organ4 preset crashes during visual DSP update
 
 On 2026-10-07, a Cycle 1 `openPreset` automation run for
@@ -26,6 +38,12 @@ and `Trimesh drag keeps movement local and publishes one commit snapshot`
 crashed with SIGSEGV at `TestNodeEditorHost.cpp:4171`, before the gesture.
 Neither test uses the new phase mode. Status: open; reproduce and diagnose
 their fixture setup separately.
+
+The 2026-10-07 focused `Hosted Trimesh point drag defers mesh replacement
+across publications` test also initially failed before its drag because a
+factory node with an empty default mesh produced zero intercepts
+(`TestTrimeshNodeDsp.cpp:2145`). Its fixture now seeds the intended default
+voice mesh; the hosted test and collision tests pass together (73 assertions).
 
 ## P3: Trimesh primary morph test has no selected vertex parameters
 

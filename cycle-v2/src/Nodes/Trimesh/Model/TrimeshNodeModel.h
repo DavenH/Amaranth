@@ -12,6 +12,7 @@
 
 class Mesh;
 class Vertex;
+class CollisionDetector;
 
 namespace CycleV2 {
 
@@ -102,7 +103,11 @@ public:
     int findNearestVertexIndexForPhaseAmp(float phase, float amp);
     int getResolvedSelectedVertexIndex();
     bool selectVertex(Vertex* vertex);
-    bool setVertexParameter(int vertexIndex, const String& parameterId, float value);
+    bool setVertexParameter(
+            int vertexIndex,
+            const String& parameterId,
+            float value,
+            CollisionDetector& collisionDetector);
     bool setVertexGuideGain(int vertexIndex, const String& parameterId, float value);
     float vertexGuideGain(int vertexIndex, const String& parameterId);
     void markMeshEdited();

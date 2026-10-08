@@ -565,6 +565,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::setTrimeshVertexParameter(
             nodeId,
             parameterId,
             jlimit(0.f, 1.f, value))) {
+        editorCommands.endTrimeshVertexParameterEdit();
         return handledResult(false, {}, { false, true, false });
     }
 

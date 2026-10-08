@@ -22,6 +22,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshExpandedEditorComponent.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Unison/UnisonNode.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
@@ -3765,6 +3766,55 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0");
+}
+
+TEST_CASE("Rejected Trimesh vertex collision leaves no undoable edit",
+        "[cycle-v2][editor][trimesh][collision]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("collision-test");
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    mesh->destroy();
+    auto editorState = std::make_unique<DynamicObject>();
+    editorState->setProperty("selectedVertexId", 0);
+    node.editorState = var(editorState.release());
+    graph.addNode(std::move(node));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    widget.syncFromNode(*document.graph().findNode("mesh"));
+    resources.activeTrimesh = &widget;
+    NodeEditorCommandService commands(
+            owner, document, dispatcher, presentation, resources);
+    const uint64_t initialRevision = document.graph().findNode("mesh")->model->revision();
+    const float initialPhase = widget.currentMesh().getVerts().front()->values[Vertex::Phase];
+
+    REQUIRE_FALSE(commands.beginTrimeshVertexParameterEdit(
+            "mesh", "vertex.phase", 0.5f));
+    commands.endTrimeshVertexParameterEdit();
+
+    REQUIRE(widget.currentMesh().getVerts().front()->values[Vertex::Phase]
+            == initialPhase);
+    REQUIRE(document.graph().findNode("mesh")->model->revision() == initialRevision);
+    REQUIRE_FALSE(document.canUndo());
+    REQUIRE(presentation.recordedMovements == 0);
+
+    REQUIRE(commands.beginTrimeshVertexParameterEdit(
+            "mesh", "vertex.phase", initialPhase));
+    REQUIRE_FALSE(commands.updateTrimeshVertexParameterEditValue(0.5f));
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(initialPhase + 0.01f));
+    commands.endTrimeshVertexParameterEdit();
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    const auto restored = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            document.graph().findNode("mesh")->model);
+    REQUIRE(restored != nullptr);
+    REQUIRE(restored->mesh().getVerts().front()->values[Vertex::Phase]
+            == initialPhase);
 }
 
 TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one edit",
