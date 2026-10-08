@@ -16,25 +16,25 @@ const Color kPhasePurple(0.70f, 0.52f, 1.0f, 0.84f);
 const Color kPhaseOrange(1.0f, 0.48f, 0.18f, 0.78f);
 const Color kWaveformGrey(0.86f, 0.86f, 0.94f, 0.74f);
 
-Color positiveCurveColourFor(bool spectral, bool phase, bool bipolar) {
+Color positiveCurveColourFor(bool spectral, bool phase) {
     if (phase) {
         return kPhaseOrange;
     }
 
     if (spectral) {
-        return bipolar ? kSpectralBlue : kSpectralYellow;
+        return kSpectralYellow;
     }
 
     return kWaveformGrey;
 }
 
-Color negativeCurveColourFor(bool spectral, bool phase) {
+Color negativeCurveColourFor(bool spectral, bool phase, bool bipolar) {
     if (phase) {
         return kPhasePurple;
     }
 
     if (spectral) {
-        return kSpectralYellow;
+        return bipolar ? kSpectralBlue : kSpectralYellow;
     }
 
     return kWaveformGrey;
@@ -390,8 +390,8 @@ TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :
     curveStyle.cyclic = !spectral;
     curveStyle.xMinimum = curveStyle.cyclic ? -0.05f : 0.f;
     curveStyle.xMaximum = curveStyle.cyclic ? 1.05f : 1.f;
-    curveStyle.positiveColour = positiveCurveColourFor(spectral, phase, curveStyle.bipolar);
-    curveStyle.negativeColour = negativeCurveColourFor(spectral, phase);
+    curveStyle.positiveColour = positiveCurveColourFor(spectral, phase);
+    curveStyle.negativeColour = negativeCurveColourFor(spectral, phase, curveStyle.bipolar);
 }
 
 }
