@@ -81,7 +81,11 @@ bool GraphPresentationModel::refresh(
     requestedGraphRevision = documentRevision;
     const bool compile = current.graphRevision == 0 || requiresCompilation(change);
     const bool preview = compile || requiresPreview(change);
+    const uint64_t cancellationStartedAt = performance.timestamp();
     scheduler.cancelAndWait();
+    performance.record(
+            Performance::Stage::CancellationWait,
+            performance.timestamp() - cancellationStartedAt);
 
     GraphPresentationSnapshot next = current;
     next.graphRevision = documentRevision;
@@ -89,11 +93,19 @@ bool GraphPresentationModel::refresh(
         next.previewMidiNote = PreviewPitchResolver::forGraph(graph);
     }
     if (compile) {
+        const uint64_t compilationStartedAt = performance.timestamp();
         next.compileResult = compiler.compile(graph);
+        performance.record(
+                Performance::Stage::Compilation,
+                performance.timestamp() - compilationStartedAt);
         next.runtimeTrace = {};
         ++compilations;
         if (next.compileResult.succeeded()) {
+            const uint64_t runtimeStartedAt = performance.timestamp();
             next.runtimeTrace = GraphRuntime().process(graph, next.compileResult.plan);
+            performance.record(
+                    Performance::Stage::RuntimeTrace,
+                    performance.timestamp() - runtimeStartedAt);
         }
         scheduler.clearProductCache();
         previewRenderer.resetExecutionState();
@@ -187,8 +199,12 @@ bool GraphPresentationModel::acceptSnapshot(
     const GraphPresentationFacts* previous = reuseStructure
             ? snapshotToAccept.facts.get()
             : nullptr;
+    const uint64_t factsStartedAt = performance.timestamp();
     snapshotToAccept.facts = std::make_shared<const GraphPresentationFacts>(
             graph, snapshotToAccept, previous);
+    performance.record(
+            GraphPresentationPerformanceMetrics::Stage::SnapshotFacts,
+            performance.timestamp() - factsStartedAt);
     current = std::move(snapshotToAccept);
     ++presentationRevision;
     return true;

@@ -97,6 +97,22 @@ public:
         uint64_t occludedHoverResolutions {};
     };
 
+    struct PresetLoadSnapshot {
+        juce::String fileName;
+        uint64_t generation {};
+        uint64_t startedAt {};
+        uint64_t loadReturnedAt {};
+        uint64_t postReturnMessageTurnAt {};
+        uint64_t firstPaintStartedAt {};
+        uint64_t firstPaintCompletedAt {};
+        uint64_t postPaintMessageTurnAt {};
+    };
+
+    struct SlowNodeTile {
+        juce::String nodeId;
+        uint64_t elapsedMicroseconds {};
+    };
+
     using Clock = uint64_t (*)();
 
     class ScopedTrigger final {
@@ -164,6 +180,14 @@ public:
             uint64_t hits,
             uint64_t misses,
             uint64_t elapsedMicroseconds) override;
+    void nodeTileCompleted(
+            const juce::String& nodeId,
+            uint64_t elapsedMicroseconds) override;
+    void beginPresetLoad(const juce::String& fileName);
+    uint64_t presetLoadReturned();
+    void presetLoadPostReturnMessageTurn(uint64_t generation);
+    uint64_t presetLoadPaintCompleted(uint64_t paintStartedAt);
+    void presetLoadPostPaintMessageTurn(uint64_t generation);
     void reset();
 
     Snapshot snapshot() const;
@@ -221,6 +245,9 @@ private:
     uint64_t hoverStateChanges {};
     uint64_t hoverStateUnchanged {};
     uint64_t occludedHoverResolutions {};
+    PresetLoadSnapshot presetLoad;
+    uint64_t nextPresetLoadGeneration {};
+    std::array<SlowNodeTile, 8> slowNodeTiles;
 
     static thread_local CanvasPerformanceMetrics* activeMetrics;
     static thread_local Trigger activeTrigger;

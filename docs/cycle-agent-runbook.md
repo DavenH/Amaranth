@@ -142,7 +142,11 @@ Common command families:
   canvas measurement window containing trigger frequency/cost, repaint latency
   and coalescing, and JUCE/OpenGL frame-duration distributions. Use
   `cycle-v2-agent-canvas-performance.json` as the stable before/after baseline
-  for canvas optimization work.
+  for canvas optimization work. For preset loading, use
+  `cycle-v2-agent-preset-load-latency.json`: its `presetLoad` object reports
+  synchronous return, first full canvas paint, and posted message turns
+  relative to load entry; `slowestNodeTiles` identifies cold node paint costs.
+  These posted turns are queue markers, not proof that the entire queue is idle.
 - `resetAudioPerformance`, `inspectAudioPerformance`: start an opt-in audio
   measurement generation and inspect callback/deadline distributions, phase
   durations, workload, overruns, and telemetry drops. Use `sendMidi` with

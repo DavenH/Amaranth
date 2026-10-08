@@ -1,5 +1,7 @@
 #include "UI/CanvasPerformanceMetrics.h"
 
+#include <algorithm>
+
 namespace CycleV2 {
 
 using namespace juce;
@@ -222,6 +224,73 @@ void CanvasPerformanceMetrics::spyPreviewTileCacheCompleted(
     }
 }
 
+void CanvasPerformanceMetrics::nodeTileCompleted(
+        const String& nodeId,
+        uint64_t elapsedMicroseconds) {
+    const ScopedLock scopedLock(lock);
+    if (presetLoad.generation == 0 || presetLoad.firstPaintCompletedAt != 0) {
+        return;
+    }
+    auto slowest = std::min_element(
+            slowNodeTiles.begin(), slowNodeTiles.end(), [](const auto& left, const auto& right) {
+                return left.elapsedMicroseconds < right.elapsedMicroseconds;
+            });
+    if (slowest != slowNodeTiles.end()
+            && elapsedMicroseconds > slowest->elapsedMicroseconds) {
+        *slowest = { nodeId, elapsedMicroseconds };
+    }
+}
+
+void CanvasPerformanceMetrics::beginPresetLoad(const String& fileName) {
+    const uint64_t startedAt = now();
+    const ScopedLock scopedLock(lock);
+    const uint64_t generation = ++nextPresetLoadGeneration;
+    presetLoad = { fileName, generation, startedAt };
+    slowNodeTiles = {};
+}
+
+uint64_t CanvasPerformanceMetrics::presetLoadReturned() {
+    const uint64_t completedAt = now();
+    const ScopedLock scopedLock(lock);
+    if (presetLoad.generation != 0) {
+        presetLoad.loadReturnedAt = completedAt;
+    }
+    return presetLoad.generation;
+}
+
+void CanvasPerformanceMetrics::presetLoadPostReturnMessageTurn(uint64_t generation) {
+    const uint64_t completedAt = now();
+    const ScopedLock scopedLock(lock);
+    if (presetLoad.generation == generation
+            && presetLoad.loadReturnedAt != 0
+            && presetLoad.postReturnMessageTurnAt == 0) {
+        presetLoad.postReturnMessageTurnAt = completedAt;
+    }
+}
+
+uint64_t CanvasPerformanceMetrics::presetLoadPaintCompleted(uint64_t paintStartedAt) {
+    const uint64_t completedAt = now();
+    const ScopedLock scopedLock(lock);
+    if (presetLoad.loadReturnedAt == 0
+            || paintStartedAt < presetLoad.loadReturnedAt
+            || presetLoad.firstPaintCompletedAt != 0) {
+        return 0;
+    }
+    presetLoad.firstPaintStartedAt = paintStartedAt;
+    presetLoad.firstPaintCompletedAt = completedAt;
+    return presetLoad.generation;
+}
+
+void CanvasPerformanceMetrics::presetLoadPostPaintMessageTurn(uint64_t generation) {
+    const uint64_t completedAt = now();
+    const ScopedLock scopedLock(lock);
+    if (presetLoad.generation == generation
+            && presetLoad.firstPaintCompletedAt != 0
+            && presetLoad.postPaintMessageTurnAt == 0) {
+        presetLoad.postPaintMessageTurnAt = completedAt;
+    }
+}
+
 void CanvasPerformanceMetrics::reset() {
     const uint64_t timestamp = now();
     const juce::ScopedLock scopedLock(lock);
@@ -250,6 +319,8 @@ void CanvasPerformanceMetrics::reset() {
     hoverStateChanges = 0;
     hoverStateUnchanged = 0;
     occludedHoverResolutions = 0;
+    presetLoad = {};
+    slowNodeTiles = {};
 }
 
 CanvasPerformanceMetrics::Snapshot CanvasPerformanceMetrics::snapshot() const {
@@ -295,9 +366,49 @@ CanvasPerformanceMetrics::Snapshot CanvasPerformanceMetrics::snapshot() const {
 var CanvasPerformanceMetrics::toVar(
         const RenderInvalidationAccumulator::Diagnostics& invalidation) const {
     const Snapshot current = snapshot();
+    PresetLoadSnapshot load;
+    std::array<SlowNodeTile, 8> nodeTiles;
+    {
+        const ScopedLock scopedLock(lock);
+        load = presetLoad;
+        nodeTiles = slowNodeTiles;
+    }
     auto* root = new DynamicObject();
     root->setProperty("schema", "cycle-v2-canvas-performance.v2");
     root->setProperty("elapsedMs", (double) current.elapsedMicroseconds / 1000.0);
+
+    auto* presetLoadObject = new DynamicObject();
+    presetLoadObject->setProperty("fileName", load.fileName);
+    const auto elapsedOrNull = [&load](uint64_t timestamp) -> var {
+        return timestamp == 0 || load.startedAt == 0
+                ? var()
+                : var((double) (timestamp - load.startedAt) / 1000.0);
+    };
+    presetLoadObject->setProperty("loadReturnMs", elapsedOrNull(load.loadReturnedAt));
+    presetLoadObject->setProperty(
+            "postReturnMessageTurnMs",
+            elapsedOrNull(load.postReturnMessageTurnAt));
+    presetLoadObject->setProperty("firstPaintStartMs", elapsedOrNull(load.firstPaintStartedAt));
+    presetLoadObject->setProperty("firstPaintEndMs", elapsedOrNull(load.firstPaintCompletedAt));
+    presetLoadObject->setProperty(
+            "postPaintMessageTurnMs",
+            elapsedOrNull(load.postPaintMessageTurnAt));
+    root->setProperty("presetLoad", var(presetLoadObject));
+
+    Array<var> slowestTiles;
+    std::sort(nodeTiles.begin(), nodeTiles.end(), [](const auto& left, const auto& right) {
+        return left.elapsedMicroseconds > right.elapsedMicroseconds;
+    });
+    for (const auto& tile : nodeTiles) {
+        if (tile.elapsedMicroseconds == 0) {
+            break;
+        }
+        auto* object = new DynamicObject();
+        object->setProperty("nodeId", tile.nodeId);
+        object->setProperty("durationMs", (double) tile.elapsedMicroseconds / 1000.0);
+        slowestTiles.add(var(object));
+    }
+    root->setProperty("slowestNodeTiles", slowestTiles);
 
     uint64_t totalInvocations {};
     uint64_t totalRequests {};

@@ -1095,6 +1095,9 @@ void NodeCanvasPresentation::paintCachedNode(
             isNodeSelected(frame, node.id),
             physicalScale);
     if (!cache.hit) {
+        const uint64_t tileStartedAt = performanceObserver != nullptr
+                ? performanceObserver->presentationTimestamp()
+                : 0;
         Graphics imageGraphics(*cache.image);
         imageGraphics.addTransform(AffineTransform(
                 physicalScale,
@@ -1104,6 +1107,11 @@ void NodeCanvasPresentation::paintCachedNode(
                 physicalScale,
                 -logicalBounds.getY() * physicalScale));
         paintNode(imageGraphics, frame, node);
+        if (performanceObserver != nullptr) {
+            performanceObserver->nodeTileCompleted(
+                    node.id,
+                    performanceObserver->presentationTimestamp() - tileStartedAt);
+        }
     }
     nodeLayerCache.draw(graphics, cache);
 }

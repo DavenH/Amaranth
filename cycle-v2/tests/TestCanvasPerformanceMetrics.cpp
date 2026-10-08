@@ -128,6 +128,50 @@ TEST_CASE("Canvas metrics reset starts an empty independent observation window",
     }
 }
 
+TEST_CASE("Preset load telemetry spans return, first paint and a later message turn",
+        "[cycle-v2][canvas][performance][preset-load]") {
+    fakeNow = 1000;
+    CanvasPerformanceMetrics metrics(fakeClock);
+
+    fakeNow = 2000;
+    metrics.beginPresetLoad("first.cyclegraph");
+    fakeNow = 12000;
+    metrics.presetLoadReturned();
+    fakeNow = 14000;
+    const uint64_t oldGeneration = metrics.presetLoadPaintCompleted(13000);
+    fakeNow = 15000;
+    metrics.beginPresetLoad("second.cyclegraph");
+    metrics.presetLoadPostPaintMessageTurn(oldGeneration);
+    fakeNow = 25000;
+    const uint64_t currentGeneration = metrics.presetLoadReturned();
+    fakeNow = 25500;
+    metrics.presetLoadPostReturnMessageTurn(oldGeneration);
+    metrics.presetLoadPostReturnMessageTurn(currentGeneration);
+    REQUIRE(metrics.presetLoadPaintCompleted(24000) == 0);
+    metrics.nodeTileCompleted("slow", 7000);
+    metrics.nodeTileCompleted("fast", 2000);
+    fakeNow = 30000;
+    REQUIRE(metrics.presetLoadPaintCompleted(26000) == currentGeneration);
+    metrics.nodeTileCompleted("later", 9000);
+    fakeNow = 32000;
+    metrics.presetLoadPostPaintMessageTurn(currentGeneration);
+
+    const var exported = metrics.toVar({});
+    const var& load = property(exported, "presetLoad");
+    REQUIRE(property(load, "fileName").toString() == "second.cyclegraph");
+    REQUIRE((double) property(load, "loadReturnMs") == Catch::Approx(10.0));
+    REQUIRE((double) property(load, "postReturnMessageTurnMs") == Catch::Approx(10.5));
+    REQUIRE((double) property(load, "firstPaintStartMs") == Catch::Approx(11.0));
+    REQUIRE((double) property(load, "firstPaintEndMs") == Catch::Approx(15.0));
+    REQUIRE((double) property(load, "postPaintMessageTurnMs") == Catch::Approx(17.0));
+    const Array<var>* tiles = property(exported, "slowestNodeTiles").getArray();
+    REQUIRE(tiles != nullptr);
+    REQUIRE(tiles->size() == 2);
+    REQUIRE(property(tiles->getReference(0), "nodeId").toString() == "slow");
+    REQUIRE((double) property(tiles->getReference(0), "durationMs")
+            == Catch::Approx(7.0));
+}
+
 TEST_CASE("Canvas metrics distinguish full and status-region repaint requests",
         "[cycle-v2][canvas][performance]") {
     fakeNow = 100;
