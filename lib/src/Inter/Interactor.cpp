@@ -2248,7 +2248,7 @@ void Interactor::addNewCubeForOneIntercept(
         const MorphPosition& box) {
     Mesh* mesh = getMesh();
 
-    jassert(!(mesh->getNumCubes() > 0));
+    jassert(mesh->getNumCubes() > 0);
 
     VertCube* meshLine = *mesh->getCubes().begin();
 
@@ -2380,6 +2380,14 @@ void Interactor::addNewCubeForMultipleIntercepts(
 
             vert->owners.clear(); // why?? xxx
             vert->values[Vertex::Amp] = amp;
+        }
+    }
+
+    addedCube->getFinalIntercept(reduceData, getModPosition());
+    if (reduceData.pointOverlaps) {
+        const float phaseOffset = phase - reduceData.v.values[Vertex::Phase];
+        for (int index = 0; index < VertCube::numVerts; ++index) {
+            addedCube->getVertex(index)->values[Vertex::Phase] += phaseOffset;
         }
     }
 }

@@ -7,6 +7,8 @@
 
 namespace CycleV2 {
 
+struct CableDeletionPlan;
+
 struct NodeParameterDelta {
     juce::String nodeId;
     juce::String parameterId;
@@ -43,6 +45,22 @@ struct IndexedEdgeState {
     Edge edge;
 };
 
+struct IndexedNodeState {
+    size_t index {};
+    Node node;
+};
+
+struct IndexedProbeState {
+    size_t index {};
+    SignalProbe probe;
+};
+
+struct CableDeletionDelta {
+    std::optional<IndexedNodeState> pan;
+    std::vector<IndexedEdgeState> edges;
+    std::vector<IndexedProbeState> probes;
+};
+
 struct EdgeInputDelta {
     juce::String nodeId;
     juce::String portId;
@@ -63,6 +81,10 @@ private:
 
     void apply(NodeGraph& graph, bool forward) const;
     void applyEdgeInputs(NodeGraph& graph, bool forward) const;
+    static void applyCableDeletion(
+            NodeGraph& graph,
+            const CableDeletionDelta& deletion,
+            bool forward);
 
     std::vector<NodeParameterDelta> parameters;
     std::vector<NodeModelDelta> models;
@@ -70,6 +92,7 @@ private:
     std::vector<NodeBoundsDelta> bounds;
     std::vector<GuideCurveDelta> guides;
     std::vector<EdgeInputDelta> edgeInputs;
+    std::vector<CableDeletionDelta> cableDeletions;
     GraphChangeSet changes;
 };
 
@@ -87,6 +110,7 @@ public:
             const NodeGraph& graph,
             const juce::String& nodeId,
             const juce::String& portId);
+    void captureCableDeletion(const NodeGraph& graph, const CableDeletionPlan& plan);
 
     GraphDelta finish(const NodeGraph& graph, GraphChangeSet changes) const;
     void restore(NodeGraph& graph) const;
@@ -101,6 +125,7 @@ private:
     std::vector<NodeBoundsDelta> bounds;
     std::vector<GuideCurveDelta> guides;
     std::vector<EdgeInputDelta> edgeInputs;
+    std::vector<CableDeletionDelta> cableDeletions;
 };
 
 }

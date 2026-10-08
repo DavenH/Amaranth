@@ -39,6 +39,7 @@
 #include <Curve/Mesh/Intercept.h>
 #include <Curve/Curve.h>
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
+#include <Curve/Rasterization/GuideCurveOffsetSeeds.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 #include <Util/LogRegions.h>
@@ -285,6 +286,102 @@ TEST_CASE("Trimesh vertex edit deltas apply and invert across matching meshes",
     };
 
     REQUIRE(verify(0) == verify(128));
+}
+
+TEST_CASE("Trimesh Curve control edits the displayed cube average",
+        "[cycle-v2][nodes][trimesh][curve-average]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("curve-average");
+    VertCube* cube = mesh->getCubes().front();
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        cube->getVertex(index)->values[Vertex::Curve] = index < 4 ? 0.f : 1.f;
+    }
+
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 1);
+    node.editorState = selectedVertexEditorState(0);
+    TrimeshNodeModel model;
+    REQUIRE(model.syncFromNode(node));
+    REQUIRE(model.getSelectedVertexParameters()[5].value == Catch::Approx(0.5f));
+    CollisionDetector detector(nullptr, CollisionDetector::Time);
+
+    const auto zeroEdit = TrimeshVertexEditCore::prepareCubeCurve(
+            *model.getMeshForPanel().getCubes().front(), 0.f);
+    REQUIRE(zeroEdit.has_value());
+    REQUIRE(zeroEdit->changed());
+    REQUIRE(model.setVertexParameter(0, "vertex.curve", 0.f, detector));
+    REQUIRE(model.getSelectedVertexParameters()[5].value == 0.f);
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        REQUIRE(model.getMeshForPanel().getCubes().front()
+                ->getVertex(index)->values[Vertex::Curve] == 0.f);
+    }
+
+    REQUIRE(TrimeshVertexEditCore::apply(
+            *model.getMeshForPanel().getCubes().front(), zeroEdit->inverse()));
+    REQUIRE(model.getSelectedVertexParameters()[5].value == Catch::Approx(0.5f));
+    REQUIRE(model.setVertexParameter(0, "vertex.curve", 1.f, detector));
+    REQUIRE(model.getSelectedVertexParameters()[5].value == 1.f);
+    mesh->destroy();
+}
+
+TEST_CASE("Zero Curve average removes the rendered component Guide contribution",
+        "[cycle-v2][nodes][trimesh][curve-average][guide]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("zero-component-guide");
+    VertCube* cube = mesh->getCubes().front();
+    cube->guideCurveAt(Vertex::Time) = 0;
+    cube->guideCurveGainAt(Vertex::Time) = 1.f;
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        cube->getVertex(index)->values[Vertex::Curve] = index < 4 ? 0.f : 1.f;
+    }
+
+    GuideCurveResource guide;
+    guide.id = "componentGuide";
+    FlatCurveModel curve;
+    REQUIRE(curve.replaceVertices({
+            { 1, 0.05f, 0.1f, 1.f },
+            { 2, 0.95f, 0.9f, 1.f }
+    }));
+    guide.model = CurveNodeModelState::copyOf(curve, 2);
+    GuideCurveSnapshotProvider provider;
+    REQUIRE(provider.addGuide(guide));
+
+    constexpr int sampleCount = 256;
+    std::vector<float> plainSamples(sampleCount);
+    std::vector<float> guidedSamples(sampleCount);
+    TrimeshBlockwiseDsp plain;
+    plain.setMesh(mesh.get());
+    plain.setCyclic(true);
+    TrimeshBlockwiseDsp guided;
+    guided.setMesh(mesh.get());
+    guided.setCyclic(true);
+    guided.setGuideCurveProvider(&provider);
+    guided.renderCycleInto(
+            Buffer<float>(guidedSamples.data(), sampleCount),
+            PortDomain::TimeSignal);
+    plain.renderCycleInto(
+            Buffer<float>(plainSamples.data(), sampleCount),
+            PortDomain::TimeSignal);
+    REQUIRE(guidedSamples != plainSamples);
+
+    TrimeshNodeModel model;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    node.editorState = selectedVertexEditorState(0);
+    REQUIRE(model.syncFromNode(node));
+    CollisionDetector detector(nullptr, CollisionDetector::Time);
+    REQUIRE(model.setVertexParameter(0, "vertex.curve", 0.f, detector));
+    REQUIRE(model.getSelectedVertexParameters()[5].value == 0.f);
+    Mesh& zeroed = model.getMeshForPanel();
+    guided.setMesh(&zeroed);
+    plain.setMesh(&zeroed);
+    guided.renderCycleInto(
+            Buffer<float>(guidedSamples.data(), sampleCount),
+            PortDomain::TimeSignal);
+    plain.renderCycleInto(
+            Buffer<float>(plainSamples.data(), sampleCount),
+            PortDomain::TimeSignal);
+    REQUIRE(Buffer<float>(guidedSamples.data(), sampleCount).normDiffL2(
+            Buffer<float>(plainSamples.data(), sampleCount)) < 0.0001f);
+    mesh->destroy();
 }
 
 TEST_CASE("Trimesh delta overlay reuses mature waveform slicing",
@@ -711,6 +808,58 @@ TEST_CASE("Prepared Trimesh guides retain graph Guide slot identity",
     REQUIRE(prepared.provider != nullptr);
     REQUIRE(prepared.provider->size() == 2);
     REQUIRE(prepared.mesh->getCubes().front()->guideCurveAt(Vertex::Amp) == 1);
+    mesh->destroy();
+}
+
+TEST_CASE("Trimesh phase rail samples the same offset Guide as the grid",
+        "[cycle-v2][nodes][trimesh][guide][rail]") {
+    ScopedJuceInitialiser_GUI juce;
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("OffsetGuideRail");
+    FlatCurveModel curve;
+    REQUIRE(curve.replaceVertices({
+            { 1, 0.05f, 0.15f, 1.f },
+            { 2, 0.95f, 0.85f, 1.f }
+    }));
+
+    NodeGraph graph;
+    GuideCurveResource guide;
+    guide.id = "phaseGuide";
+    guide.model = CurveNodeModelState::copyOf(curve, 2);
+    guide.phase = 0.49f;
+    REQUIRE(graph.addGuideCurve(std::move(guide)));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    REQUIRE(graph.assignGuideCurve({
+            "phaseGuide", "mesh", { 0, GuideCurveField::Phase }
+    }));
+    const Node* node = graph.findNode("mesh");
+    REQUIRE(node != nullptr);
+
+    auto prepared = TrimeshGuidePreparation::prepare(graph, *node, *mesh);
+    auto provider = prepared.provider;
+    TrimeshPanelBridge bridge;
+    bridge.setDisplayDomain(PortDomain::SpectralMagnitudeSignal);
+    bridge.syncFromNode(*node, 64, 8);
+    REQUIRE(bridge.applyPreparedGuides(std::move(prepared)));
+
+    const auto rail = bridge.getPanel3D().getLineGuideTable(0);
+    const auto raw = provider->getTable(0);
+    REQUIRE(rail.size() == GuideCurveProvider::tableSize);
+    constexpr int sampleIndex = GuideCurveProvider::tableSize / 4;
+    Rasterization::GuideCurveOffsetSeeds offsets;
+    const uint32_t seed = GuideCurveSnapshotProvider::visualizationSeed(
+            PortDomain::SpectralMagnitudeSignal);
+    offsets.derive(1, GuideCurveProvider::tableSize,
+            Rasterization::GuideCurveSeed::visualization(seed));
+    GuideCurveProvider::NoiseContext context;
+    context.noiseSeed = (int) (seed % GuideCurveProvider::tableSize);
+    context.phaseOffset = offsets.phaseAt(0);
+    context.vertOffset = offsets.verticalAt(0);
+    const float expected = provider->getTableValue(
+            0,
+            (float) sampleIndex / (float) (GuideCurveProvider::tableSize - 1),
+            context);
+    REQUIRE(rail[sampleIndex] == Catch::Approx(expected).margin(0.001f));
+    REQUIRE(rail[sampleIndex] != Catch::Approx(raw[sampleIndex]).margin(0.01f));
     mesh->destroy();
 }
 
@@ -1524,6 +1673,54 @@ TEST_CASE("Trimesh morph gesture ignores stale selection snapshots",
     bridge.setMorphEditGestureActive(false);
     bridge.syncFromNode(stalePresentation, 32, 8);
     REQUIRE(bridge.selectedVertexIndexForPanel() == -1);
+}
+
+TEST_CASE("Trimesh click selection survives a repaint before pointer up",
+        "[cycle-v2][nodes][trimesh][selection][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto authoredMesh = TrimeshMeshFactory::createDefaultMesh("SelectionRepaint");
+    node.model = TrimeshNodeModelState::copyOf(*authoredMesh, 2);
+    authoredMesh->destroy();
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(node, 320, 96);
+
+    Component* host = bridge.getPanel2DHostComponent();
+    host->setBounds(0, 0, 640, 280);
+    host->addToDesktop(ComponentPeer::windowIsTemporary);
+    host->setVisible(true);
+    bridge.syncFromNode(node, 320, 96);
+    const auto snapshot = bridge.getInteractor2D().rasterizerSnapshot();
+    REQUIRE(snapshot.intercepts().size() >= 2);
+    const Intercept& intercept = snapshot.intercepts()[snapshot.intercepts().size() / 2];
+    const Point<float> position(
+            bridge.getPanel2D().sx(intercept.x),
+            bridge.getPanel2D().sy(intercept.y));
+
+    int completedSelections {};
+    bridge.setMeshEditedCallback([&](TrimeshMeshEditEvent event) {
+        if (event.selectionOnly && event.gestureComplete) {
+            ++completedSelections;
+        }
+    });
+    auto move = panelMouseEvent(*host, position, {}, position, false);
+    host->mouseMove(move);
+    auto down = panelMouseEvent(
+            *host, position, ModifierKeys::leftButtonModifier, position, false);
+    host->mouseDown(down);
+    const int selected = bridge.selectedVertexIndexForPanel();
+    REQUIRE(selected >= 0);
+    const auto parameters = bridge.getModel().getSelectedVertexParameters();
+
+    bridge.syncFromNode(node, 320, 96);
+    REQUIRE(bridge.selectedVertexIndexForPanel() == selected);
+    REQUIRE(bridge.getModel().getSelectedVertexParameters()[3].value
+            == Catch::Approx(parameters[3].value));
+
+    auto up = panelMouseEvent(*host, position, {}, position, false);
+    host->mouseUp(up);
+    REQUIRE(completedSelections == 1);
+    REQUIRE(bridge.selectedVertexIndexForPanel() == selected);
 }
 
 TEST_CASE("Primary Trimesh morph rebuilds only the displayed slice",

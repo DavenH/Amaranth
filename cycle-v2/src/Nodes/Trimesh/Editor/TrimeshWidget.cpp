@@ -303,6 +303,11 @@ bool TrimeshWidget::setVertexParameter(
             bridge.getInteractor2D().getCollisionDetector());
 }
 
+std::optional<std::array<float, 8>> TrimeshWidget::cubeCurveValuesForVertex(
+        int vertexIndex) {
+    return bridge.getModel().cubeCurveValuesForVertex(vertexIndex);
+}
+
 bool TrimeshWidget::setVertexGuideGain(
         int vertexIndex,
         const String& parameterId,
@@ -331,6 +336,10 @@ bool TrimeshWidget::hasGuideAttachmentForParameter(const String& parameterId) co
 
 std::vector<TrimeshVertexParameter> TrimeshWidget::vertexParametersForIndex(int vertexIndex) {
     return bridge.getModel().getVertexParametersForIndex(vertexIndex);
+}
+
+std::vector<TrimeshVertexParameter> TrimeshWidget::selectedVertexParameters() {
+    return bridge.getModel().getSelectedVertexParameters();
 }
 
 int TrimeshWidget::selectedVertexIndexForPanel() const {

@@ -79,6 +79,7 @@ public:
 
     static int getLinePathPhaseGuideChannel(const VertCube& cube, int pointDim);
     static int getLinePathPhaseGuideDimension(int pointDim);
+    virtual Buffer<Float32> getLineGuideTable(int channel);
 
     bool createLinePath(const Vertex2& start, const Vertex2& end, VertCube* cube, int pointDim, bool haveSpeed);
     void createNameImage(const String& displayName, bool isSecondImage = false, bool dark = false);

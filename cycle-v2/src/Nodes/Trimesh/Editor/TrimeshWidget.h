@@ -12,6 +12,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <vector>
 
 namespace CycleV2 {
@@ -107,10 +108,12 @@ public:
     void setMeshEditedCallback(std::function<void(TrimeshMeshEditEvent)> callback);
     Mesh& currentMesh();
     bool setVertexParameter(int vertexIndex, const juce::String& parameterId, float value);
+    std::optional<std::array<float, 8>> cubeCurveValuesForVertex(int vertexIndex);
     bool setVertexGuideGain(int vertexIndex, const juce::String& parameterId, float value);
     bool guideGainValueForParameter(const juce::String& parameterId, float& value);
     bool hasGuideAttachmentForParameter(const juce::String& parameterId) const;
     std::vector<TrimeshVertexParameter> vertexParametersForIndex(int vertexIndex);
+    std::vector<TrimeshVertexParameter> selectedVertexParameters();
     int selectedVertexIndexForPanel() const;
     std::vector<TrimeshVertexMarker> vertexMarkers();
     const TrimeshRenderData& renderDataForAutomation() const;

@@ -4,6 +4,7 @@
 
 #include "Graph/GraphGuideIndex.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
 
 namespace CycleV2 {
 
@@ -377,6 +378,9 @@ void NodeGraph::applyNodeParameterState(
         node->parameters.erase(node->parameters.begin() + (int) found->second);
     }
     rebuildParameterIndex(nodeId);
+    if (node->kind == NodeKind::Envelope && parameterId == "purpose") {
+        applyEnvelopePurpose(*node);
+    }
     ++revision;
 }
 

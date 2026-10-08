@@ -7,6 +7,7 @@
 #include <Util/Arithmetic.h>
 #include <Util/LogRegions.h>
 
+#include <utility>
 #include <vector>
 
 namespace CycleV2 {
@@ -117,6 +118,20 @@ void TrimeshPanel3D::setDisplayDomain(PortDomain domain) {
 bool TrimeshPanel3D::getScalarSurfaceMaterial(ScalarSurfaceMaterial& material) const {
     material = renderProfile.getSurfaceStyle().surfaceMaterial();
     return true;
+}
+
+Buffer<Float32> TrimeshPanel3D::getLineGuideTable(int channel) {
+    if (isPositiveAndBelow(channel, (int) lineGuideTables.size())) {
+        auto& table = lineGuideTables[(size_t) channel];
+        return { table.data(), (int) table.size() };
+    }
+    return Panel3D::getLineGuideTable(channel);
+}
+
+void TrimeshPanel3D::setLineGuideTables(std::vector<std::vector<float>> tables) {
+    const ScopedLock lock(getRenderLock());
+    lineGuideTables = std::move(tables);
+    requestRepaint();
 }
 
 void TrimeshPanel3D::setRenderProfile(TrimeshRenderProfile profile) {

@@ -217,7 +217,7 @@ public:
         meshState->setProperty("vertexCount", vertexCount);
         meshState->setProperty("selectedVertexIndex", selectedVertexIndex);
         Array<var> selectedParameters;
-        for (const auto& parameter : boundWidget->vertexParametersForIndex(selectedVertexIndex)) {
+        for (const auto& parameter : boundWidget->selectedVertexParameters()) {
             auto* encoded = new DynamicObject();
             encoded->setProperty("id", parameter.id);
             encoded->setProperty("value", parameter.value);

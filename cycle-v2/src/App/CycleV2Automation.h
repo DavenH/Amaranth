@@ -19,6 +19,7 @@ public:
         File reportFile;
         String sessionPath;
         bool hasSession { false };
+        int startDelayMs {};
     };
 
     static Options parseCommandLine(const String& commandLine);

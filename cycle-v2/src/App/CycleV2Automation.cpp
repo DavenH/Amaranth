@@ -99,6 +99,9 @@ CycleV2Automation::Options CycleV2Automation::parseCommandLine(const String& com
         } else if (token.startsWith("--agent-session=")) {
             options.hasSession = true;
             options.sessionPath = token.fromFirstOccurrenceOf("=", false, false).unquoted();
+        } else if (token.startsWith("--agent-start-delay-ms=")) {
+            options.startDelayMs = jlimit(
+                    0, 5000, token.fromFirstOccurrenceOf("=", false, false).getIntValue());
         }
     }
 
@@ -154,7 +157,7 @@ File CycleV2Automation::resolveCommandPath(const String& path) const {
 }
 
 void CycleV2Automation::runScriptAsync() {
-    MessageManager::callAsync([safeThis = Component::SafePointer<Component>(&window), this]() {
+    auto run = [safeThis = Component::SafePointer<Component>(&window), this]() {
         if (safeThis == nullptr) {
             return;
         }
@@ -209,7 +212,12 @@ void CycleV2Automation::runScriptAsync() {
         if (shouldQuit) {
             JUCEApplicationBase::quit();
         }
-    });
+    };
+    if (options.startDelayMs > 0) {
+        Timer::callAfterDelay(options.startDelayMs, std::move(run));
+    } else {
+        MessageManager::callAsync(std::move(run));
+    }
 }
 
 void CycleV2Automation::startSessionServer() {

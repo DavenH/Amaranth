@@ -26,6 +26,10 @@ OS_SCREENSHOT_PATH="${CYCLE_OS_SCREENSHOT_PATH:-}"
 OS_SCREENSHOT_PARK_MOUSE_POINT="${CYCLE_OS_SCREENSHOT_PARK_MOUSE_POINT:-}"
 OS_SCREENSHOT_PARK_MOUSE_SETTLE_SECONDS="${CYCLE_OS_SCREENSHOT_PARK_MOUSE_SETTLE_SECONDS:-0.2}"
 OS_SCREENSHOT_QUIT_AFTER="${CYCLE_OS_SCREENSHOT_QUIT_AFTER:-1}"
+OS_VIDEO_PATH="${CYCLE_OS_VIDEO_PATH:-}"
+OS_VIDEO_FPS="${CYCLE_OS_VIDEO_FPS:-30}"
+OS_VIDEO_PID=""
+AGENT_START_DELAY_MS="${CYCLE_AGENT_START_DELAY_MS:-}"
 CAPTURE_CRASH_REPORTS="${CYCLE_CAPTURE_CRASH_REPORTS:-1}"
 DISMISS_CRASH_DIALOG="${CYCLE_DISMISS_CRASH_DIALOG:-1}"
 SUPPRESS_CRASH_DIALOG="${CYCLE_SUPPRESS_CRASH_DIALOG:-1}"
@@ -59,6 +63,9 @@ CRASH_REPORT_PATH="${CRASH_REPORT_PATH:A}"
 if [[ -n "$OS_SCREENSHOT_PATH" ]]; then
     OS_SCREENSHOT_PATH="${OS_SCREENSHOT_PATH:A}"
 fi
+if [[ -n "$OS_VIDEO_PATH" ]]; then
+    OS_VIDEO_PATH="${OS_VIDEO_PATH:A}"
+fi
 
 mkdir -p "$(dirname "$REPORT_PATH")"
 mkdir -p "$(dirname "$LOG_PATH")"
@@ -80,7 +87,50 @@ restore_crash_reporter_dialog_type() {
     fi
 }
 
-trap restore_crash_reporter_dialog_type EXIT
+stop_os_video() {
+    if [[ -z "$OS_VIDEO_PID" ]]; then
+        return 0
+    fi
+
+    kill -INT "$OS_VIDEO_PID" 2>/dev/null || true
+    wait "$OS_VIDEO_PID" 2>/dev/null || true
+    OS_VIDEO_PID=""
+
+    if [[ ! -s "$OS_VIDEO_PATH" ]]; then
+        echo "Cycle agent video was not written: $OS_VIDEO_PATH" >&2
+        return 1
+    fi
+}
+
+finish_runner() {
+    stop_os_video || true
+    restore_crash_reporter_dialog_type
+}
+
+trap finish_runner EXIT
+
+start_os_video() {
+    [[ -n "$OS_VIDEO_PATH" ]] || return 0
+
+    if [[ "$(uname -s)" != "Darwin" ]] || ! command -v swiftc >/dev/null 2>&1; then
+        echo "Cycle agent video capture requires macOS and swiftc." >&2
+        return 1
+    fi
+    if [[ "$OS_VIDEO_FPS" != <-> ]] || (( OS_VIDEO_FPS < 1 || OS_VIDEO_FPS > 120 )); then
+        echo "CYCLE_OS_VIDEO_FPS must be an integer from 1 to 120." >&2
+        return 1
+    fi
+
+    mkdir -p "$(dirname "$OS_VIDEO_PATH")"
+    rm -f "$OS_VIDEO_PATH"
+    local recorder="${TMPDIR:-/tmp}/cycle-agent-window-recorder"
+    if [[ ! -x "$recorder" || "$SCRIPT_DIR/capture_cycle_window.swift" -nt "$recorder" ]]; then
+        swiftc -parse-as-library "$SCRIPT_DIR/capture_cycle_window.swift" -o "$recorder"
+    fi
+    "$recorder" "$APP_BUNDLE_ID" "$OS_VIDEO_PATH" "$OS_VIDEO_FPS" \
+        > "$LOG_PATH.video" 2>&1 &
+    OS_VIDEO_PID=$!
+}
 
 suppress_crash_reporter_dialog_type() {
     [[ "$SUPPRESS_CRASH_DIALOG" == "1" && "$DISMISS_CRASH_DIALOG" == "1" ]] || return 0
@@ -384,7 +434,7 @@ PY
 if [[ "$PREFLIGHT_PERMISSIONS" == "1" ]]; then
     preflight_accessibility_permission
 
-    if [[ "$PREFLIGHT_SCREEN_CAPTURE" == "1" || -n "$OS_SCREENSHOT_AREA" || -n "$OS_SCREENSHOT_PATH" ]]; then
+    if [[ "$PREFLIGHT_SCREEN_CAPTURE" == "1" || -n "$OS_SCREENSHOT_AREA" || -n "$OS_SCREENSHOT_PATH" || -n "$OS_VIDEO_PATH" ]]; then
         preflight_screen_capture_permission
     fi
 fi
@@ -398,12 +448,17 @@ fi
 LAUNCH_TIME="$(date +%s)"
 APP_BUNDLE_ID="$(plutil -extract CFBundleIdentifier raw -o - "$APP_PATH/Contents/Info.plist")"
 APP_EXECUTABLE_NAME="$(plutil -extract CFBundleExecutable raw -o - "$APP_PATH/Contents/Info.plist")"
+start_os_video
 
 launch_args=(
     ${(z)APP_ARGS}
     --agent-script "$SCRIPT_PATH"
     --agent-report "$REPORT_PATH"
 )
+
+if [[ -n "$OS_VIDEO_PATH" ]]; then
+    launch_args+=(--agent-start-delay-ms="${AGENT_START_DELAY_MS:-3000}")
+fi
 
 if ! open -n \
         --stdout "$RAW_LOG_PATH" \
@@ -452,6 +507,10 @@ while (( SECONDS < deadline )); do
     sleep 0.25
 done
 
+if [[ -n "$OS_VIDEO_PID" ]]; then
+    stop_os_video
+fi
+
 if [[ ! -s "$REPORT_PATH" ]]; then
     finalize_logs
     echo "Cycle agent report was not written within ${WAIT_SECONDS}s: $REPORT_PATH" >&2
@@ -487,6 +546,10 @@ echo "$RAW_LOG_PATH"
 
 if [[ -n "$OS_SCREENSHOT_PATH" ]]; then
     echo "$OS_SCREENSHOT_PATH"
+fi
+
+if [[ -n "$OS_VIDEO_PATH" ]]; then
+    echo "$OS_VIDEO_PATH"
 fi
 
 if [[ -s "$CRASH_REPORT_PATH" ]]; then
