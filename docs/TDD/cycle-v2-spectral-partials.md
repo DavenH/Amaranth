@@ -20,8 +20,10 @@ column matches Cycle 1's selection and keeps the overlay exactly on sampled
 3D grid values.
 
 The new drawing uses separated bars with rounded value tips and square ends at
-the baseline, slim bars as spacing narrows, and one filled contour at subpixel
-spacing.
+the baseline. Bar width follows the logarithmic harmonic spacing until the
+available width reaches one pixel. The remaining partials become one filled
+contour sampled at display-pixel spacing.
+
 This replaces Cycle 1's individual cap and side stroke styling while keeping
 its data and frequency placement. No compatibility adapter or duplicate DSP
 path is introduced.
@@ -32,9 +34,9 @@ path is introduced.
   grid column at the primary axis morph position.
 - Horizontal placement follows the selected column's log harmonic ramp,
   including key scale columns with different MIDI notes.
-- Wide partials occupy about 60% of each harmonic slot, have rounded value
-  tips and square ends at the baseline; dense partials resolve to one filled
-  contour.
+- Wide partials retain their slot width, have rounded value tips and square
+  ends at the baseline. Individual bars continue through one-pixel width;
+  denser partials resolve to one display-pixel contour.
 - Time 2D panels remain unchanged.
 - A focused semantic test proves selected column values and note, while a
   focused UI fixture and screenshot prove the overlay appears in the editor.

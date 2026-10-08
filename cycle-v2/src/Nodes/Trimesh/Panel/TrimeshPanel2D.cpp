@@ -5,6 +5,8 @@
 #include <Util/LogRegionMapping.h>
 #include <Util/LogRegions.h>
 
+#include <cmath>
+
 #include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
 #include "UI/MeshEditorPresentation.h"
 
@@ -133,22 +135,19 @@ void TrimeshPanel2D::drawSpectralPartials() {
     const Color body(0.72f, 0.75f, 0.82f, 0.20f);
     const Color cap(0.88f, 0.90f, 0.94f, 0.30f);
     partialContour.clear();
-    partialContour.reserve((size_t) count);
+    partialContour.reserve((size_t) getWidth() + 2);
 
+    int denseStart = count - 1;
     for (int i = 0; i < count - 1; ++i) {
         const float spacing = positions[i + 1] - positions[i];
-        if (spacing < 8.f || !partialContour.empty()) {
-            ColorPos point;
-            point.x = positions[i];
-            point.y = heights[i];
-            point.c = body;
-            partialContour.push_back(point);
-            continue;
+        if (spacing < 3.f) {
+            denseStart = i;
+            break;
         }
 
-        const float inset = spacing * 0.2f;
-        const float left = positions[i] + inset;
-        const float right = positions[i + 1] - inset;
+        const float gap = spacing >= 12.f ? 3.f : 1.5f;
+        const float left = positions[i] + 0.5f;
+        const float right = positions[i + 1] - gap;
         const float top = jmin(heights[i], baseline);
         const float bottom = jmax(heights[i], baseline);
         if (right <= left || bottom - top < 1.f) {
@@ -182,12 +181,34 @@ void TrimeshPanel2D::drawSpectralPartials() {
         }
     }
 
-    if (!partialContour.empty()) {
-        ColorPos end;
-        end.x = positions[count - 1];
-        end.y = heights[count - 1];
-        end.c = body;
-        partialContour.push_back(end);
+    if (denseStart < count - 1 && positions[denseStart] < (float) getWidth()) {
+        ColorPos point;
+        point.update(positions[denseStart], heights[denseStart], body);
+        partialContour.push_back(point);
+
+        int source = denseStart;
+        const int firstPixel = jmax(0, (int) std::ceil(positions[denseStart]));
+        const int lastPixel = jmin(getWidth(), (int) positions[count - 1]);
+        for (int pixel = firstPixel; pixel <= lastPixel; ++pixel) {
+            while (source + 1 < count - 1 && positions[source + 1] < (float) pixel) {
+                ++source;
+            }
+
+            const float width = positions[source + 1] - positions[source];
+            const float mix = width > 0.f
+                    ? ((float) pixel - positions[source]) / width
+                    : 0.f;
+            const float height = heights[source]
+                    + mix * (heights[source + 1] - heights[source]);
+            point.update((float) pixel, height, body);
+            partialContour.push_back(point);
+        }
+
+        if (positions[count - 1] <= (float) getWidth()) {
+            point.update(positions[count - 1], heights[count - 1], body);
+            partialContour.push_back(point);
+        }
+
         gfx->fillAndOutlineColoured(partialContour, baseline, 0.08f, true, false);
     }
 }
