@@ -167,6 +167,9 @@ void CanvasPerformanceMetrics::presentationStageCompleted(
         uint64_t elapsedMicroseconds) {
     const juce::ScopedLock scopedLock(lock);
     record(presentationStageData[indexFor(stage)], elapsedMicroseconds);
+    if (presetLoad.collectingFirstPaintStages) {
+        presetLoad.firstPaintStageMicroseconds[indexFor(stage)] += elapsedMicroseconds;
+    }
 }
 
 void CanvasPerformanceMetrics::nodeLayerCacheCompleted(
@@ -258,6 +261,24 @@ uint64_t CanvasPerformanceMetrics::presetLoadReturned() {
     return presetLoad.generation;
 }
 
+void CanvasPerformanceMetrics::presetLoadWorkspaceStageCompleted(
+        PresetLoadWorkspaceStage stage) {
+    const uint64_t completedAt = now();
+    const ScopedLock scopedLock(lock);
+    const auto index = static_cast<size_t>(stage);
+    if (presetLoad.loadReturnedAt == 0
+            || presetLoad.firstPaintCompletedAt != 0
+            || index != presetLoad.completedWorkspaceStages) {
+        return;
+    }
+    const uint64_t startedAt = presetLoad.lastWorkspaceStageAt != 0
+            ? presetLoad.lastWorkspaceStageAt
+            : presetLoad.loadReturnedAt;
+    presetLoad.workspaceStageMicroseconds[index] = completedAt - startedAt;
+    presetLoad.lastWorkspaceStageAt = completedAt;
+    ++presetLoad.completedWorkspaceStages;
+}
+
 void CanvasPerformanceMetrics::presetLoadPostReturnMessageTurn(uint64_t generation) {
     const uint64_t completedAt = now();
     const ScopedLock scopedLock(lock);
@@ -268,9 +289,20 @@ void CanvasPerformanceMetrics::presetLoadPostReturnMessageTurn(uint64_t generati
     }
 }
 
+void CanvasPerformanceMetrics::beginPresetLoadPaint(uint64_t paintStartedAt) {
+    const ScopedLock scopedLock(lock);
+    if (presetLoad.loadReturnedAt != 0
+            && paintStartedAt >= presetLoad.loadReturnedAt
+            && presetLoad.firstPaintCompletedAt == 0) {
+        presetLoad.collectingFirstPaintStages = true;
+        presetLoad.firstPaintStageMicroseconds = {};
+    }
+}
+
 uint64_t CanvasPerformanceMetrics::presetLoadPaintCompleted(uint64_t paintStartedAt) {
     const uint64_t completedAt = now();
     const ScopedLock scopedLock(lock);
+    presetLoad.collectingFirstPaintStages = false;
     if (presetLoad.loadReturnedAt == 0
             || paintStartedAt < presetLoad.loadReturnedAt
             || presetLoad.firstPaintCompletedAt != 0) {
@@ -393,6 +425,22 @@ var CanvasPerformanceMetrics::toVar(
     presetLoadObject->setProperty(
             "postPaintMessageTurnMs",
             elapsedOrNull(load.postPaintMessageTurnAt));
+    auto* workspaceStages = new DynamicObject();
+    for (size_t index = 0; index < presetLoadWorkspaceStageCount; ++index) {
+        const auto stage = static_cast<PresetLoadWorkspaceStage>(index);
+        workspaceStages->setProperty(label(stage), index < load.completedWorkspaceStages
+                ? var((double) load.workspaceStageMicroseconds[index] / 1000.0)
+                : var());
+    }
+    presetLoadObject->setProperty("workspaceStages", var(workspaceStages));
+    auto* firstPaintStages = new DynamicObject();
+    for (size_t index = 0; index < presentationStageCount; ++index) {
+        const auto stage = static_cast<NodeCanvasPresentationStage>(index);
+        firstPaintStages->setProperty(label(stage), load.firstPaintCompletedAt != 0
+                ? var((double) load.firstPaintStageMicroseconds[index] / 1000.0)
+                : var());
+    }
+    presetLoadObject->setProperty("firstPaintStages", var(firstPaintStages));
     root->setProperty("presetLoad", var(presetLoadObject));
 
     Array<var> slowestTiles;
@@ -581,6 +629,18 @@ const char* CanvasPerformanceMetrics::label(Operation operation) {
         case Operation::TrimeshVertexCommit:     return "trimeshVertexCommit";
         case Operation::TrimeshVertexSelection:  return "trimeshVertexSelection";
         case Operation::Count:                   break;
+    }
+    return "unknown";
+}
+
+const char* CanvasPerformanceMetrics::label(PresetLoadWorkspaceStage stage) {
+    switch (stage) {
+        case PresetLoadWorkspaceStage::KeyboardAndSidebar:    return "keyboardAndSidebar";
+        case PresetLoadWorkspaceStage::AudioPlanCopy:         return "audioPlanCopy";
+        case PresetLoadWorkspaceStage::VoiceDuration:         return "voiceDuration";
+        case PresetLoadWorkspaceStage::AudioGraphPreparation: return "audioGraphPreparation";
+        case PresetLoadWorkspaceStage::Layout:                return "layout";
+        case PresetLoadWorkspaceStage::Count:                 break;
     }
     return "unknown";
 }

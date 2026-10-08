@@ -150,6 +150,25 @@ TEST_CASE("Preset load telemetry spans return, first paint and a later message t
     REQUIRE(metrics.presetLoadPaintCompleted(24000) == 0);
     metrics.nodeTileCompleted("slow", 7000);
     metrics.nodeTileCompleted("fast", 2000);
+    fakeNow = 25600;
+    metrics.presetLoadWorkspaceStageCompleted(
+            CanvasPerformanceMetrics::PresetLoadWorkspaceStage::KeyboardAndSidebar);
+    fakeNow = 25700;
+    metrics.presetLoadWorkspaceStageCompleted(
+            CanvasPerformanceMetrics::PresetLoadWorkspaceStage::AudioPlanCopy);
+    fakeNow = 25800;
+    metrics.presetLoadWorkspaceStageCompleted(
+            CanvasPerformanceMetrics::PresetLoadWorkspaceStage::VoiceDuration);
+    fakeNow = 25900;
+    metrics.presetLoadWorkspaceStageCompleted(
+            CanvasPerformanceMetrics::PresetLoadWorkspaceStage::AudioGraphPreparation);
+    fakeNow = 25950;
+    metrics.presetLoadWorkspaceStageCompleted(
+            CanvasPerformanceMetrics::PresetLoadWorkspaceStage::Layout);
+    metrics.beginPresetLoadPaint(26000);
+    metrics.presentationStageCompleted(NodeCanvasPresentationStage::Nodes, 2000);
+    metrics.presentationStageCompleted(NodeCanvasPresentationStage::SpyRailPreviews, 800);
+    metrics.presentationStageCompleted(NodeCanvasPresentationStage::SpyRail, 1000);
     fakeNow = 30000;
     REQUIRE(metrics.presetLoadPaintCompleted(26000) == currentGeneration);
     metrics.nodeTileCompleted("later", 9000);
@@ -164,6 +183,16 @@ TEST_CASE("Preset load telemetry spans return, first paint and a later message t
     REQUIRE((double) property(load, "firstPaintStartMs") == Catch::Approx(11.0));
     REQUIRE((double) property(load, "firstPaintEndMs") == Catch::Approx(15.0));
     REQUIRE((double) property(load, "postPaintMessageTurnMs") == Catch::Approx(17.0));
+    const var& workspace = property(load, "workspaceStages");
+    REQUIRE((double) property(workspace, "keyboardAndSidebar") == Catch::Approx(0.6));
+    REQUIRE((double) property(workspace, "audioPlanCopy") == Catch::Approx(0.1));
+    REQUIRE((double) property(workspace, "voiceDuration") == Catch::Approx(0.1));
+    REQUIRE((double) property(workspace, "audioGraphPreparation") == Catch::Approx(0.1));
+    REQUIRE((double) property(workspace, "layout") == Catch::Approx(0.05));
+    const var& paintStages = property(load, "firstPaintStages");
+    REQUIRE((double) property(paintStages, "nodes") == Catch::Approx(2.0));
+    REQUIRE((double) property(paintStages, "spyRail") == Catch::Approx(1.0));
+    REQUIRE((double) property(paintStages, "spyRailPreviews") == Catch::Approx(0.8));
     const Array<var>* tiles = property(exported, "slowestNodeTiles").getArray();
     REQUIRE(tiles != nullptr);
     REQUIRE(tiles->size() == 2);

@@ -261,10 +261,14 @@ bool NodeWorkspace::loadGraphFromFile(const File& file) {
     keyboard.setPreviewNote(canvas.previewMidiNote());
     keyboard.setSequence(resolvedPresetSequence());
     refreshPatternSidebar();
+    canvas.presetLoadWorkspaceStageCompleted(
+            CanvasPerformanceMetrics::PresetLoadWorkspaceStage::KeyboardAndSidebar);
     const auto status = audioEngine.status();
     audioEngine.setGraphOutputGain(canvas.graphOutputGain());
     publishAudioPlan(status, true);
     layoutPerformanceKeyboard();
+    canvas.presetLoadWorkspaceStageCompleted(
+            CanvasPerformanceMetrics::PresetLoadWorkspaceStage::Layout);
     return true;
 }
 
@@ -726,15 +730,28 @@ bool NodeWorkspace::publishAudioPlan(
         return false;
     }
     ++audioPlanCopyCount;
+    if (forcePublication) {
+        canvas.presetLoadWorkspaceStageCompleted(
+                CanvasPerformanceMetrics::PresetLoadWorkspaceStage::AudioPlanCopy);
+    }
     keyboard.setPlaybackDurationSeconds(
             RealtimeGraphRenderer::maximumVoiceDurationSeconds(plan));
+    if (forcePublication) {
+        canvas.presetLoadWorkspaceStageCompleted(
+                CanvasPerformanceMetrics::PresetLoadWorkspaceStage::VoiceDuration);
+    }
     if (!forcePublication
             && publishedPlanRevision != 0
             && copiedRevision != publishedPlanRevision
             && activeAudition) {
         keyboard.releaseAllNotes();
     }
-    if (!audioEngine.publishGraph(std::move(plan), copiedRevision)) {
+    const bool published = audioEngine.publishGraph(std::move(plan), copiedRevision);
+    if (forcePublication) {
+        canvas.presetLoadWorkspaceStageCompleted(
+                CanvasPerformanceMetrics::PresetLoadWorkspaceStage::AudioGraphPreparation);
+    }
+    if (!published) {
         return false;
     }
     publishedPlanRevision = copiedRevision;

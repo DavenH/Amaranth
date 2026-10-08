@@ -360,6 +360,7 @@ void NodeCanvas::paint(Graphics& g) {
         return;
     }
 
+    performanceMetrics.beginPresetLoadPaint(framePreparationStartedAt);
     performanceMetrics.presentationStageCompleted(
             NodeCanvasPresentationStage::FramePreparation,
             performanceMetrics.timestamp() - framePreparationStartedAt);
@@ -2357,6 +2358,11 @@ bool NodeCanvas::loadGraphFromFile(const File& file) {
         }
     });
     return loaded;
+}
+
+void NodeCanvas::presetLoadWorkspaceStageCompleted(
+        CanvasPerformanceMetrics::PresetLoadWorkspaceStage stage) {
+    performanceMetrics.presetLoadWorkspaceStageCompleted(stage);
 }
 
 bool NodeCanvas::capturePresetPreviewForAutomation(

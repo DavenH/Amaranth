@@ -53,12 +53,23 @@ public:
         Count
     };
 
+    enum class PresetLoadWorkspaceStage : uint8_t {
+        KeyboardAndSidebar,
+        AudioPlanCopy,
+        VoiceDuration,
+        AudioGraphPreparation,
+        Layout,
+        Count
+    };
+
     static constexpr size_t triggerCount = static_cast<size_t>(Trigger::Count);
     static constexpr size_t frameCount = static_cast<size_t>(Frame::Count);
     static constexpr size_t repaintScopeCount = static_cast<size_t>(RepaintScope::Count);
     static constexpr size_t operationCount = static_cast<size_t>(Operation::Count);
     static constexpr size_t presentationStageCount = static_cast<size_t>(
             NodeCanvasPresentationStage::Count);
+    static constexpr size_t presetLoadWorkspaceStageCount = static_cast<size_t>(
+            PresetLoadWorkspaceStage::Count);
     using Distribution = PerformanceDistribution;
 
     struct TriggerSnapshot {
@@ -106,6 +117,11 @@ public:
         uint64_t firstPaintStartedAt {};
         uint64_t firstPaintCompletedAt {};
         uint64_t postPaintMessageTurnAt {};
+        uint64_t lastWorkspaceStageAt {};
+        size_t completedWorkspaceStages {};
+        std::array<uint64_t, presetLoadWorkspaceStageCount> workspaceStageMicroseconds {};
+        std::array<uint64_t, presentationStageCount> firstPaintStageMicroseconds {};
+        bool collectingFirstPaintStages {};
     };
 
     struct SlowNodeTile {
@@ -185,7 +201,9 @@ public:
             uint64_t elapsedMicroseconds) override;
     void beginPresetLoad(const juce::String& fileName);
     uint64_t presetLoadReturned();
+    void presetLoadWorkspaceStageCompleted(PresetLoadWorkspaceStage stage);
     void presetLoadPostReturnMessageTurn(uint64_t generation);
+    void beginPresetLoadPaint(uint64_t paintStartedAt);
     uint64_t presetLoadPaintCompleted(uint64_t paintStartedAt);
     void presetLoadPostPaintMessageTurn(uint64_t generation);
     void reset();
@@ -198,6 +216,7 @@ public:
     static const char* label(RepaintScope scope);
     static const char* label(Operation operation);
     static const char* label(NodeCanvasPresentationStage stage);
+    static const char* label(PresetLoadWorkspaceStage stage);
     static double percentileMilliseconds(const Distribution& distribution, double percentile);
 
 private:

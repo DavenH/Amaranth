@@ -123,6 +123,70 @@ target its actual dominating stage. The existing presentation worker, local
 Reverb preview worker, and node-layer cache are the authoritative starting
 points for such a change.
 
+## Debug preset-load composition measurement
+
+The first-paint timeline is authoritative for user-visible preset replacement.
+`CanvasPerformanceMetrics` owns that timeline. `GraphPresentationPerformanceMetrics`
+owns nested graph-refresh measurements; `NodeCanvasPresentation` owns paint-stage
+measurements. `NodeWorkspace` is the existing owner of keyboard/sidebar setup
+and audio-plan publication after `NodeCanvas::loadGraphFromFile` returns.
+
+This measurement adds narrow timing reports from `NodeWorkspace` to the
+existing canvas telemetry and records paint stages only for the first complete
+canvas paint. It does not move work or copy graph, rendering, or audio behavior.
+The timing categories must form non-overlapping intervals from canvas load
+entry through first paint. Nested graph-refresh and paint stages are selected
+only as children of their containing interval. The temporary fixture and chart
+may be deleted after the diagnosis; production telemetry remains at the
+existing owner boundary.
+
+Sixteen distinct, unmodified repository presets were loaded twice each in one
+warm Standalone Debug app, first in forward order and then in reverse. The
+chart and its per-run/mean CSV files are in
+`output/preset-load-debug-2026-10-08/`. The chart's segments sum to each
+load's first complete canvas paint endpoint; the individual run totals are
+shown as white ticks. All 32 automation inspections succeeded. The total
+range of preset means was 272–1,914 ms; seven of 16 means exceeded 750 ms.
+
+| Stage | Mean across presets | Share of mean total |
+| --- | ---: | ---: |
+| Realtime audio graph preparation | 285 ms | 34% |
+| Cold node painting | 243 ms | 29% |
+| Graph preview audio | 97 ms | 11% |
+| Spy rail painting | 68 ms | 8% |
+| Remaining graph refresh | 79 ms | 9% |
+| Canvas setup, scheduling, cables and other paint | 72 ms | 9% |
+
+The audio graph is prepared synchronously on the message thread during
+`StandaloneAudioEngine::publishGraph`. `RealtimeGraphRenderer::prepareGraph`
+prepares eight realtime voices and one global execution, including each
+processor's preparation. The measured graph-preparation range was 88 ms for
+Subbass to 930 ms for Organ 4. Organ 4 also spent 500 ms painting node tiles;
+its slowest tile was Reverb at 319 ms. Baroque Flute spent 586 ms painting
+nodes, with a 295 ms Reverb tile. These are distinct costs. In contrast, the
+residual interval between workspace setup and paint start averaged 17 ms, so
+message-queue delay was not the major factor in this Debug sample.
+
+This is a diagnosis, not an optimization. A worker design should account for
+the full audio graph publication lifecycle and stale graphs before moving
+preparation off the message thread. Cold tile painting also needs attention
+for the larger presets. These Debug measurements do not imply the same costs
+in Release. The chart starts at canvas load entry and ends after its first
+full JUCE paint, before macOS composition; sidebar click dispatch preceding
+load entry is outside the interval.
+
+Architecture review: the touched `NodeCanvas.cpp` (2,916 lines) and
+`NodeCanvas.h` (379 lines) are already above size review thresholds. Their
+added code only forwards timestamps at the existing load and paint lifecycle
+boundaries. `NodeWorkspace.cpp` (790 lines) remains the sole owner of audio
+publication; the new markers supply timing facts, not a second publication
+decision. `CanvasPerformanceMetrics.cpp` (725 lines) owns the measurement
+state and JSON export. No existing behavior was copied, no policy site was
+added, and there is no deletion target for this instrumentation. Any future
+paint optimization should extract rendering responsibility from `NodeCanvas`
+instead of expanding it. This change adds fewer than 20 lines to that class
+and makes no behavior change.
+
 ## Completion criteria
 
 - Telemetry reports load-start to synchronous return, first paint start/end,
