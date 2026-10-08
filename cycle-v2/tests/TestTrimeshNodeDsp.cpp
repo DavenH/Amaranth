@@ -962,6 +962,33 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
     }
 }
 
+TEST_CASE("Bipolar spectral magnitude has a signed surface gradient", "[cycle-v2][nodes][trimesh][surface]") {
+    const TrimeshRenderProfile unipolar = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+    const TrimeshRenderProfile bipolar = TrimeshRenderProfile::fromSemantic({
+            PortDomain::SpectralMagnitudeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::SpectralMagnitudeBipolar
+    });
+    const auto& unipolarStyle = unipolar.getSurfaceStyle();
+    const auto& bipolarStyle = bipolar.getSurfaceStyle();
+    const Colour negative = bipolarStyle.colourForValue(0.f);
+    const Colour neutral = bipolarStyle.colourForValue(0.5f);
+    const Colour positive = bipolarStyle.colourForValue(1.f);
+
+    REQUIRE(unipolarStyle.surfaceMaterial().palette
+            == ScalarSurfacePalette::UnipolarMagnitude);
+    REQUIRE(bipolarStyle.surfaceMaterial().palette
+            == ScalarSurfacePalette::BipolarMagnitude);
+    REQUIRE(unipolarStyle.colourForValue(0.f)
+            != bipolarStyle.colourForValue(0.f));
+    REQUIRE(negative.getFloatBlue() > negative.getFloatRed());
+    REQUIRE(positive.getFloatRed() > positive.getFloatBlue());
+    REQUIRE(neutral.getBrightness() < negative.getBrightness());
+    REQUIRE(neutral.getBrightness() < positive.getBrightness());
+    REQUIRE(negative.getFloatAlpha() == Catch::Approx(positive.getFloatAlpha()));
+}
+
 TEST_CASE("Expanded Trimesh panel preserves compact spectral RGBA mapping",
         "[cycle-v2][nodes][trimesh][compact][expanded][spectral]") {
     ScopedJuceInitialiser_GUI juce;

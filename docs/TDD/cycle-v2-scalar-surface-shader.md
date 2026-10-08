@@ -952,3 +952,26 @@ Completion requires:
   callers use the scalar renderer or documented fallback; and
 - retention of the CPU reference only for headless/offline output and genuine
   capability fallback.
+
+## Bipolar Spectral Magnitude Palette (2026-10-08)
+
+`TrimeshRenderProfile` owns the domain and scale policy for compact and expanded
+spectral surfaces. Bipolar magnitude selects a dedicated blue, dark-neutral,
+amber material; unipolar magnitude continues to use the Burnt Alum image
+unchanged. The shared scalar material evaluator and GL shader render both
+profiles, with no separate surface renderer or mesh rasterization path.
+
+The canonical magnitude grid stays in `[0, 1]`. The midpoint is the visual
+neutral of the bipolar palette, matching the source value used by the existing
+consumer transfer. No audio transfer or display normalization changes. The
+focused profile test checks palette selection and both colour branches.
+Production-size captures are `/private/tmp/cycle-v2-spectrum-unipolar.png` and
+`/private/tmp/cycle-v2-spectrum-bipolar.png`; the polarity control and both the
+surface and slice visibly change in the same editor layout.
+
+Architecture review: `ScalarSurfaceMaterial.cpp` is 1,034 lines and owns CPU
+palette/material evaluation; `GLScalarSurfaceRenderer.cpp` is 901 lines and owns
+the matching shader and GL lifecycle. Each grew only in its existing role.
+`TrimeshRenderProfile.cpp` is 385 lines and remains the sole policy site for
+selecting a material from the magnitude scale policy. The profile passes that
+policy to the existing compact and expanded rendering paths.

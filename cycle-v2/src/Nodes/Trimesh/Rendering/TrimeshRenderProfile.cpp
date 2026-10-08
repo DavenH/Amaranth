@@ -336,7 +336,9 @@ ScalarSurfaceMaterial TrimeshSurfaceStyle::surfaceMaterial() const {
         return ScalarSurfaceMaterial::bipolarPhase();
     }
     if (domain == PortDomain::SpectralMagnitudeSignal) {
-        return ScalarSurfaceMaterial::unipolarMagnitude();
+        return scalePolicy == RenderScalePolicy::Bipolar
+                ? ScalarSurfaceMaterial::bipolarMagnitude()
+                : ScalarSurfaceMaterial::unipolarMagnitude();
     }
     return ScalarSurfaceMaterial::timeDomain();
 }
@@ -349,6 +351,7 @@ TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :
     const bool phase = semantic.domain == PortDomain::SpectralPhaseSignal;
 
     surfaceStyle.domain = domain;
+    surfaceStyle.scalePolicy = scalePolicy;
     surfaceStyle.textureUsesAlpha = spectral;
 
     if (phase) {

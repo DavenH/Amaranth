@@ -510,3 +510,13 @@ capturing the sidebar tag cloud; a LaunchServices run through
 `scripts/run_cycle_v2_agent.sh` with an absolute fixture path passed all
 commands. The direct invocation's stdout was not saved. Current status:
 open as a direct-launch harness issue; the product UI capture and tests pass.
+
+## P3: Unipolar magnitude heatmap edge-pixel assertion
+
+On 2026-10-08, `CycleV2_tests` case "Magnitude mesh heatmaps consume the full
+unipolar colour scale" failed reproducibly at columns 1, 3, and 4, row 1
+(`TestNodePreviewProcessor.cpp:397`). The generated pixel differs from a
+per-pixel reference built with `mapGridToDisplay` and `derivativesAt`. The
+unipolar material and value mapping were untouched by the concurrent bipolar
+palette change. Current status: open; reconcile the heatmap's actual mapping
+and derivative sampling with this reference assertion.

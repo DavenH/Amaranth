@@ -11,7 +11,8 @@ enum class ScalarSurfacePalette {
     UnipolarMagnitude,
     BipolarPhase,
     LegacyBlue,
-    Greyscale
+    Greyscale,
+    BipolarMagnitude
 };
 
 enum class ScalarSurfaceRelief {
@@ -65,6 +66,7 @@ struct ScalarSurfaceMaterial {
     static ScalarSurfaceMaterial blueDepthDirectionalDetail();
     static ScalarSurfaceMaterial timeDomain();
     static ScalarSurfaceMaterial unipolarMagnitude();
+    static ScalarSurfaceMaterial bipolarMagnitude();
     static ScalarSurfaceMaterial bipolarPhase();
     static ScalarSurfaceTimeStyle timeSurfaceStyle();
     static ScalarSurfaceTimeStyle timeSurfaceStyleFromIndex(int index);

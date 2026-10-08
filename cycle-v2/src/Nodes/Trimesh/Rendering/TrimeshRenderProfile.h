@@ -21,6 +21,7 @@ enum class TrimeshSliceBackground {
 
 struct TrimeshSurfaceStyle {
     PortDomain domain { PortDomain::TimeSignal };
+    RenderScalePolicy scalePolicy { RenderScalePolicy::Unipolar };
     juce::Colour minorGridColour;
     juce::Colour majorGridColour;
     bool textureUsesAlpha {};

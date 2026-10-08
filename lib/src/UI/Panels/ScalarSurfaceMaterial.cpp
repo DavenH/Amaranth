@@ -819,6 +819,26 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::unipolarMagnitude() {
     return material;
 }
 
+ScalarSurfaceMaterial ScalarSurfaceMaterial::bipolarMagnitude() {
+    ScalarSurfaceMaterial material;
+    material.palette = ScalarSurfacePalette::BipolarMagnitude;
+    material.negativeAnchor = juce::Colour(0xff4d9fd8);
+    material.neutralAnchor = juce::Colour(0xff17151c);
+    material.positiveAnchor = juce::Colour(0xffffb45f);
+    material.negativePearlTint = juce::Colour(0xffb1dfff);
+    material.neutralPearlTint = juce::Colour(0xff706c7b);
+    material.positivePearlTint = juce::Colour(0xffffd6a5);
+    material.negativeEdgeTint = material.negativePearlTint;
+    material.positiveEdgeTint = material.positivePearlTint;
+    material.directionalDetailColours.fill(material.positivePearlTint);
+    material.reliefScale = 0.65f;
+    material.diffuseStrength = 0.24f;
+    material.specularStrength = 0.035f;
+    material.obscuranceStrength = 0.10f;
+    material.exposureStrength = 0.035f;
+    return material;
+}
+
 ScalarSurfaceMaterial ScalarSurfaceMaterial::bipolarPhase() {
     ScalarSurfaceMaterial material;
     material.palette = ScalarSurfacePalette::BipolarPhase;
