@@ -4487,6 +4487,42 @@ TEST_CASE("Trimesh drag keeps movement local and publishes one commit snapshot",
             "selectedVertexId", -1) == 0);
 }
 
+TEST_CASE("Trimesh vertex selection rebinds the committed editor state",
+        "[cycle-v2][editor][trimesh][selection]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("SelectionCommand");
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    mesh->destroy();
+    graph.addNode(std::move(node));
+    addUnrelatedInteractionState(graph);
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner, document, dispatcher, presentation, resources);
+
+    InteractionComplexityDiagnostics::reset();
+    REQUIRE(commands.selectTrimeshVertexIndex("mesh", 1));
+    REQUIRE((int) document.graph().findNode("mesh")->editorState.getProperty(
+            "selectedVertexId", -1) == 1);
+    REQUIRE(presentation.rebinds == 0);
+    REQUIRE(presentation.transientRebinds == 1);
+    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().audioSamplesCopied == 0);
+    REQUIRE(commands.selectTrimeshVertexIndex("mesh", 1));
+    REQUIRE(presentation.transientRebinds == 1);
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    REQUIRE((int) document.graph().findNode("mesh")->editorState.getProperty(
+            "selectedVertexId", -1) == -1);
+}
+
 TEST_CASE("Equalizer graph drag publishes frequency and gain as one undo transaction",
         "[cycle-v2][editor][effects][equalizer]") {
     ScopedJuceInitialiser_GUI juce;

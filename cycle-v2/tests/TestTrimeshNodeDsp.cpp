@@ -1580,6 +1580,54 @@ TEST_CASE("Trimesh morph gesture ignores stale selection snapshots",
     REQUIRE(bridge.selectedVertexIndexForPanel() == -1);
 }
 
+TEST_CASE("Trimesh click selection survives a repaint before pointer up",
+        "[cycle-v2][nodes][trimesh][selection][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto authoredMesh = TrimeshMeshFactory::createDefaultMesh("SelectionRepaint");
+    node.model = TrimeshNodeModelState::copyOf(*authoredMesh, 2);
+    authoredMesh->destroy();
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(node, 320, 96);
+
+    Component* host = bridge.getPanel2DHostComponent();
+    host->setBounds(0, 0, 640, 280);
+    host->addToDesktop(ComponentPeer::windowIsTemporary);
+    host->setVisible(true);
+    bridge.syncFromNode(node, 320, 96);
+    const auto snapshot = bridge.getInteractor2D().rasterizerSnapshot();
+    REQUIRE(snapshot.intercepts().size() >= 2);
+    const Intercept& intercept = snapshot.intercepts()[snapshot.intercepts().size() / 2];
+    const Point<float> position(
+            bridge.getPanel2D().sx(intercept.x),
+            bridge.getPanel2D().sy(intercept.y));
+
+    int completedSelections {};
+    bridge.setMeshEditedCallback([&](TrimeshMeshEditEvent event) {
+        if (event.selectionOnly && event.gestureComplete) {
+            ++completedSelections;
+        }
+    });
+    auto move = panelMouseEvent(*host, position, {}, position, false);
+    host->mouseMove(move);
+    auto down = panelMouseEvent(
+            *host, position, ModifierKeys::leftButtonModifier, position, false);
+    host->mouseDown(down);
+    const int selected = bridge.selectedVertexIndexForPanel();
+    REQUIRE(selected >= 0);
+    const auto parameters = bridge.getModel().getSelectedVertexParameters();
+
+    bridge.syncFromNode(node, 320, 96);
+    REQUIRE(bridge.selectedVertexIndexForPanel() == selected);
+    REQUIRE(bridge.getModel().getSelectedVertexParameters()[3].value
+            == Catch::Approx(parameters[3].value));
+
+    auto up = panelMouseEvent(*host, position, {}, position, false);
+    host->mouseUp(up);
+    REQUIRE(completedSelections == 1);
+    REQUIRE(bridge.selectedVertexIndexForPanel() == selected);
+}
+
 TEST_CASE("Primary Trimesh morph rebuilds only the displayed slice",
         "[cycle-v2][nodes][trimesh][morph][complexity]") {
     ScopedJuceInitialiser_GUI juce;
@@ -2124,6 +2172,9 @@ TEST_CASE("Hosted Trimesh point drag defers mesh replacement across publications
         "[cycle-v2][nodes][trimesh][interaction]") {
     ScopedJuceInitialiser_GUI juce;
     Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto authoredMesh = TrimeshMeshFactory::createDefaultMesh("HostedPointDrag");
+    node.model = TrimeshNodeModelState::copyOf(*authoredMesh, 2);
+    authoredMesh->destroy();
     TrimeshPanelBridge bridge;
     bridge.syncFromNode(node, 320, 96);
 

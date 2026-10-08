@@ -836,8 +836,10 @@ bool NodeEditorCommandService::selectTrimeshVertexIndex(
     if (!result.succeeded()) {
         return false;
     }
-    presentation.refreshNodeEditorPresentation();
     presentation.selectEditedNode(nodeId);
+    presentation.refreshNodeEditorPresentation();
+    presentation.rebindNodeEditorTransient();
+    presentation.repaintNodeEditor(false);
     presentation.setNodeEditorStatus("Selected vertex #" + String(vertexIndex));
     return true;
 }
