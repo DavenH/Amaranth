@@ -86,15 +86,6 @@ String runtimeSignature(const NodePreviewResult& preview) {
     return String::toHexString((int64) nodePreviewResultFingerprint(preview));
 }
 
-int timeSurfaceStyleSignature(PortDomain domain) {
-    const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
-            || domain == PortDomain::SpectralPhaseSignal;
-    return spectral
-            ? -1
-            : ScalarSurfaceMaterial::timeSurfaceStyleIndex(
-                    ScalarSurfaceMaterial::timeSurfaceStyle());
-}
-
 void drawTrace(
         Graphics& graphics,
         Rectangle<float> area,
@@ -675,8 +666,8 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
     const int height = roundToInt(request.area.getHeight());
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
     String signature = nodeSignature(request.node, request.profile.getDomain())
-            + "|timeSurfaceStyle:"
-            + String(timeSurfaceStyleSignature(request.profile.getDomain()));
+            + "|surfaceStyle:"
+            + String(request.profile.getSurfaceStyle().materialStyleSignature());
     if (request.node.kind == NodeKind::TrilinearMesh) {
         signature += "|guide:"
                 + resources.trimeshWidget(request.node, request.graph).guideContextKey();
@@ -848,8 +839,8 @@ bool NodePreviewRenderer::paintRuntimeHeatmap(
             + "|desaturated:" + String(desaturated ? 1 : 0)
             + "|domain:" + String((int) result.domain)
             + "|scale:" + String((int) heatmapProfile.getScalePolicy())
-            + "|timeSurfaceStyle:"
-            + String(timeSurfaceStyleSignature(result.domain))
+            + "|surfaceStyle:"
+            + String(heatmapProfile.getSurfaceStyle().materialStyleSignature())
             + "|aspect:" + String(surfaceAspectRatio, 4);
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
     if (!cached.runtimeHeatmap.isValid()
@@ -887,8 +878,8 @@ bool NodePreviewRenderer::paintCachedHeatmap(
     const int height = roundToInt(request.area.getHeight());
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
     const String signature = runtimeSignature(result)
-            + "|timeSurfaceStyle:"
-            + String(timeSurfaceStyleSignature(result.domain));
+            + "|surfaceStyle:"
+            + String(request.profile.getSurfaceStyle().materialStyleSignature());
 
     if (!cached.image.isValid()
             || cached.width != width

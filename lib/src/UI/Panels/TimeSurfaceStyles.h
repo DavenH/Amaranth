@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "ScalarSurfaceMaterial.h"
 
 namespace TimeSurfaceStyles {
@@ -31,8 +33,13 @@ inline constexpr std::array<Entry, 14> entries {{
 }};
 
 const Entry* find(int index);
+const Entry* find(const juce::String& id);
 const char* id(ScalarSurfaceTimeStyle style);
 ScalarSurfaceTimeStyle fromId(const juce::String& id);
-juce::PopupMenu menu(ScalarSurfaceTimeStyle selected, int firstItemId);
+juce::PopupMenu menu(
+        std::optional<ScalarSurfaceTimeStyle> selected,
+        int firstItemId,
+        int defaultItemId = 0,
+        const char* defaultLabel = nullptr);
 
 }

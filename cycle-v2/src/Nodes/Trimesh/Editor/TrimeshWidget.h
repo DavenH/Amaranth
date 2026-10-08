@@ -186,6 +186,7 @@ private:
         uint64_t revision {};
         PortDomain domain { PortDomain::ControlSignal };
         RenderScalePolicy scalePolicy { RenderScalePolicy::Unipolar };
+        int materialStyleSignature { -2 };
         int midiNote { 48 };
         bool pitchSpansColumns {};
         float surfaceAspectRatio {};

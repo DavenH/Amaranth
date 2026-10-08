@@ -21,6 +21,7 @@
 #include "Graph/GraphValidator.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Guide/GuideCurveMeshPreparation.h"
+#include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
 namespace CycleV2 {
@@ -1400,6 +1401,9 @@ uint64_t NodeCanvasPresentation::renderContextFingerprintFor(
             .add((uint64_t) semantic.role);
     if (node.kind == NodeKind::TrilinearMesh) {
         fingerprint.add(GuideCurveMeshPreparation::configurationKey(frame.graph, node.id));
+        const int styleSignature = TrimeshRenderProfile::fromSemantic(semantic)
+                .getSurfaceStyle().materialStyleSignature();
+        fingerprint.add((uint64_t) (styleSignature + 1));
     }
     if (node.kind == NodeKind::Output && frame.liveOutputMeterLevels.has_value()) {
         uint32_t leftBits {};

@@ -31,6 +31,7 @@ public:
 
     GraphEditResult addNode(NodeKind kind, juce::Point<float> position);
     bool setTimeSurfaceStyle(const juce::String& styleId);
+    bool setBipolarSpectralSurfaceStyle(const juce::String& styleId);
     bool setPresetSequence(PresetMidiSequence sequence);
     bool setPresetPatternId(const juce::String& id);
     bool setPresetTags(juce::StringArray tags);
@@ -123,6 +124,7 @@ private:
         bool changed {};
     };
 
+    bool setPresentationStyle(juce::String& currentStyleId, const juce::String& styleId);
     GraphEditResult apply(const std::function<GraphEditResult(NodeGraph&)>& command);
     GraphEditResult applyIncremental(
             const std::function<void(GraphDeltaBuilder&, const NodeGraph&)>& capture,

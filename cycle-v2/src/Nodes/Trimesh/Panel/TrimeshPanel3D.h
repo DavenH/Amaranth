@@ -47,6 +47,7 @@ private:
     std::vector<std::vector<float>> lineGuideTables;
     int primaryViewAxis { Vertex::Time };
     int previewMidiNote { 48 };
+    int appliedMaterialStyleSignature { -2 };
     bool pitchSpansColumns {};
     bool sharedCanvasMode {};
 };

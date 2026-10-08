@@ -5,6 +5,7 @@
 #include <array>
 #include <functional>
 #include <memory>
+#include <optional>
 
 #include <App/Settings.h>
 
@@ -70,6 +71,8 @@ public:
     const File& graphFile() const { return document.file(); }
     ScalarSurfaceTimeStyle timeSurfaceStyle() const;
     void setTimeSurfaceStyle(ScalarSurfaceTimeStyle style);
+    std::optional<ScalarSurfaceTimeStyle> bipolarSpectralSurfaceStyle() const;
+    void setBipolarSpectralSurfaceStyle(std::optional<ScalarSurfaceTimeStyle> style);
     void setGraphDocumentStateChangedCallback(std::function<void()> callback);
     void configurePresetSidebar(
             std::vector<File> directories,
@@ -175,7 +178,7 @@ public:
     bool keyPressed(const KeyPress& key) override;
 
 private:
-    void synchronizeTimeSurfaceStyle();
+    void synchronizeSurfaceStyles();
     enum class HoverRepaint {
         None,
         Status,
