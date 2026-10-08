@@ -116,6 +116,7 @@ void TrimeshWidget::paintCompact(
     const Rectangle<float> previewArea = meshPreviewContentArea(area);
     const float surfaceAspectRatio = previewArea.getWidth()
             / jmax(1.f, previewArea.getHeight());
+    const int materialStyleSignature = profile.getSurfaceStyle().materialStyleSignature();
 
     if (!renderData.canDrawSurface()) {
         return;
@@ -128,6 +129,7 @@ void TrimeshWidget::paintCompact(
             || compactHeatmap.revision != compactRevision
             || compactHeatmap.domain != profile.getDomain()
             || compactHeatmap.scalePolicy != profile.getScalePolicy()
+            || compactHeatmap.materialStyleSignature != materialStyleSignature
             || compactHeatmap.midiNote != renderData.midiNote
             || compactHeatmap.pitchSpansColumns != renderData.pitchSpansColumns
             || compactHeatmap.surfaceAspectRatio != surfaceAspectRatio) {
@@ -142,6 +144,7 @@ void TrimeshWidget::paintCompact(
         compactHeatmap.revision = compactRevision;
         compactHeatmap.domain = profile.getDomain();
         compactHeatmap.scalePolicy = profile.getScalePolicy();
+        compactHeatmap.materialStyleSignature = materialStyleSignature;
         compactHeatmap.midiNote = renderData.midiNote;
         compactHeatmap.pitchSpansColumns = renderData.pitchSpansColumns;
         compactHeatmap.surfaceAspectRatio = surfaceAspectRatio;

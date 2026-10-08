@@ -172,6 +172,32 @@ TEST_CASE("Time surface styles belong to each preset without changing graph or a
     REQUIRE(temporary.deleteFile());
 }
 
+TEST_CASE("Bipolar spectral surface styles persist independently of the audio graph",
+        "[cycle-v2][preset][surface-program]") {
+    GraphDocument document(graphWithOutput());
+    GraphCommandDispatcher commands(document);
+    const auto revision = document.revision();
+    const auto graphJson = GraphSerializer().toJsonString(document.graph());
+    const auto original = document.toJson();
+
+    REQUIRE(commands.setBipolarSpectralSurfaceStyle("icy-hot"));
+    REQUIRE(document.isDirty());
+    REQUIRE(document.revision() == revision);
+    REQUIRE(GraphSerializer().toJsonString(document.graph()) == graphJson);
+    REQUIRE_FALSE(document.canUndo());
+    REQUIRE(document.presentation().timeSurfaceStyle.isEmpty());
+
+    const File temporary = File::getSpecialLocation(File::tempDirectory)
+            .getNonexistentChildFile("spectral-surface-style-preset", ".cyclegraph");
+    REQUIRE(document.save(temporary));
+    REQUIRE(commands.setBipolarSpectralSurfaceStyle("greyscale"));
+    REQUIRE(document.load(temporary));
+    REQUIRE(document.presentation().bipolarSpectralSurfaceStyle == "icy-hot");
+    REQUIRE(document.loadJson(original, false));
+    REQUIRE(document.presentation().bipolarSpectralSurfaceStyle.isEmpty());
+    REQUIRE(temporary.deleteFile());
+}
+
 TEST_CASE("Malformed optional preset preview does not invalidate its graph",
         "[cycle-v2][preset][presentation][serialization]") {
     var encoded = GraphSerializer().writeJSON(graphWithOutput());

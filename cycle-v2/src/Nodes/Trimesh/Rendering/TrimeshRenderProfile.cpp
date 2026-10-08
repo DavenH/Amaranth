@@ -343,6 +343,18 @@ ScalarSurfaceMaterial TrimeshSurfaceStyle::surfaceMaterial() const {
     return ScalarSurfaceMaterial::timeDomain();
 }
 
+int TrimeshSurfaceStyle::materialStyleSignature() const {
+    if (domain == PortDomain::TimeSignal) {
+        return ScalarSurfaceMaterial::timeSurfaceStyleIndex(
+                ScalarSurfaceMaterial::timeSurfaceStyle());
+    }
+    if (domain == PortDomain::SpectralMagnitudeSignal
+            && scalePolicy == RenderScalePolicy::Bipolar) {
+        return ScalarSurfaceMaterial::bipolarMagnitudeStyleIndex();
+    }
+    return -1;
+}
+
 TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :
         domain      (semantic.domain)
     ,   scalePolicy (semantic.scalePolicy) {

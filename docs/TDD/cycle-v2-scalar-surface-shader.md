@@ -975,3 +975,48 @@ the matching shader and GL lifecycle. Each grew only in its existing role.
 `TrimeshRenderProfile.cpp` is 385 lines and remains the sole policy site for
 selecting a material from the magnitude scale policy. The profile passes that
 policy to the existing compact and expanded rendering paths.
+
+## Configurable Bipolar Spectral Surface (2026-10-08, implemented)
+
+The bipolar magnitude style is an independent preset presentation choice in
+the View menu. Its default remains the signed blue/amber material above; the
+other choices reuse the existing time-surface material recipes and shader.
+Unipolar magnitude always selects Burnt Alum. `PresetPresentation` owns the
+saved ID; the command dispatcher publishes a presentation revision without
+changing the graph or audio revision. `TrimeshRenderProfile` remains the sole
+domain/polarity-to-material selector. Compact sprite keys and the expanded
+OpenGL gradient cache must include the selected material style, so a style
+change updates both views without rebuilding the mesh or DSP grid.
+
+Completion proof: save/load and no-audio-revision tests; distinct per-mode
+material selection and unchanged Burnt Alum tests; a live menu selection that
+updates compact and expanded rendering, including restore of a saved style.
+
+The preset and profile tests pass. The focused agent fixture
+`scripts/fixtures/cycle-v2-agent-bipolar-spectral-surface-shader.json` selects
+Icy Hot through the View-menu command and verifies the bipolar selection. Its
+expanded-panel capture, `/private/tmp/cycle-v2-bipolar-shader-final.png`, shows the
+new shader immediately, with no new assertion in the filtered launch log.
+The profile's material-style signature feeds the canvas node tile, compact
+Trimesh heatmap, and expanded 3D panel caches. Changing only the style refreshes
+their colour products without invalidating the sampled mesh or scalar surface
+cache. The compact-image test checks changed pixels and identical surface data;
+the canvas capture `/private/tmp/cycle-v2-spectral-compact-shader-proof.png`
+shows the same configured shader on a bipolar mesh node.
+The two-preset automation run also confirms that opening a preset without a
+saved spectral style restores the default after selecting Icy Hot in another
+preset.
+
+Architecture review: the durable choice belongs to `PresetPresentation` and
+`GraphCommandDispatcher`; `NodeCanvas` only synchronizes it to the shared
+material evaluator. `TrimeshRenderProfile` alone chooses the material by
+domain and polarity. `NodeCanvas.cpp` grows from 2,916 to 2,937 lines through
+presentation routing, while `NodePreviewRenderer.cpp` moves from 1,075 to
+1,066 lines by deleting its duplicate style-signature policy.
+`NodeCanvasPresentation.cpp` grows from 1,443 to 1,447 lines solely to pass
+the profile's style signature into its existing tile fingerprint;
+`TrimeshWidget.cpp` grows from 852 to 855 lines to use it for its own image
+cache. The existing `NodeCanvas` extraction plan in `docs/TDD/refactors.md`
+remains the path to reduce the large orchestrators; this slice adds no domain
+algorithm to them. No new shader, rasterizer, or audio transfer path is
+introduced.

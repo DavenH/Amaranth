@@ -29,6 +29,7 @@ struct TrimeshSurfaceStyle {
     juce::Image gradientImage() const;
     juce::Colour colourForValue(float value) const;
     ScalarSurfaceMaterial surfaceMaterial() const;
+    int materialStyleSignature() const;
 };
 
 struct TrimeshCurveStyle {

@@ -205,6 +205,7 @@ NodeCanvas::NodeCanvas() :
     settings.initialiseSettings();
     ScalarSurfaceMaterial::setTimeSurfaceStyle(
             TimeSurfaceStyles::fromId(document.presentation().timeSurfaceStyle));
+    ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(-1);
     probeRailState.refreshMode = settings.getGlobalSettingValue(
             AppSettings::ProbeEditRefreshPolicy) == 1
             ? ProbeRefreshMode::LiveLatest
@@ -1585,7 +1586,7 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     if (!result.handled) {
         return false;
     }
-    synchronizeTimeSurfaceStyle();
+    synchronizeSurfaceStyles();
 
     if (result.graphChanged) {
         compiledStateRefreshPending = false;
@@ -2272,10 +2273,25 @@ ScalarSurfaceTimeStyle NodeCanvas::timeSurfaceStyle() const {
 
 void NodeCanvas::setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
     if (commands.setTimeSurfaceStyle(TimeSurfaceStyles::id(style))) {
-        synchronizeTimeSurfaceStyle();
-        if (graphDocumentStateChangedCallback) {
-            graphDocumentStateChangedCallback();
-        }
+        synchronizeSurfaceStyles();
+        notifyGraphDocumentStateChanged();
+    }
+}
+
+std::optional<ScalarSurfaceTimeStyle> NodeCanvas::bipolarSpectralSurfaceStyle() const {
+    const auto* entry = TimeSurfaceStyles::find(
+            document.presentation().bipolarSpectralSurfaceStyle);
+    return entry != nullptr
+            ? std::optional<ScalarSurfaceTimeStyle>(entry->style)
+            : std::nullopt;
+}
+
+void NodeCanvas::setBipolarSpectralSurfaceStyle(
+        std::optional<ScalarSurfaceTimeStyle> style) {
+    const String styleId = style.has_value() ? TimeSurfaceStyles::id(*style) : String();
+    if (commands.setBipolarSpectralSurfaceStyle(styleId)) {
+        synchronizeSurfaceStyles();
+        notifyGraphDocumentStateChanged();
     }
 }
 
@@ -2299,10 +2315,15 @@ bool NodeCanvas::setPresetPatternId(const String& id) {
     return true;
 }
 
-void NodeCanvas::synchronizeTimeSurfaceStyle() {
-    const auto style = timeSurfaceStyle();
-    if (ScalarSurfaceMaterial::timeSurfaceStyle() != style) {
-        ScalarSurfaceMaterial::setTimeSurfaceStyle(style);
+void NodeCanvas::synchronizeSurfaceStyles() {
+    const auto timeStyle = timeSurfaceStyle();
+    const auto spectralStyle = bipolarSpectralSurfaceStyle();
+    const int spectralStyleIndex = spectralStyle.has_value() ? (int) *spectralStyle : -1;
+    const bool changed = ScalarSurfaceMaterial::timeSurfaceStyle() != timeStyle
+            || ScalarSurfaceMaterial::bipolarMagnitudeStyleIndex() != spectralStyleIndex;
+    if (changed) {
+        ScalarSurfaceMaterial::setTimeSurfaceStyle(timeStyle);
+        ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(spectralStyleIndex);
         repaintNodeEditor(true);
         repaint();
     }

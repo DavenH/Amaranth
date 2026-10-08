@@ -1,10 +1,10 @@
 #include <JuceHeader.h>
-
-#include <UI/AmaranthLookAndFeel.h>
-
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
+
+#include <UI/AmaranthLookAndFeel.h>
 #include <UI/Panels/TimeSurfaceStyles.h>
 
 #include "App/CycleV2Automation.h"
@@ -57,7 +57,9 @@ public:
             CommandSaveGraphAs,
             CommandSpyRefreshOnRelease,
             CommandSpyRefreshLive,
-            TimeSurfaceFirst = 0x3100
+            TimeSurfaceFirst = 0x3100,
+            SpectralSurfaceFirst = 0x3200,
+            SpectralSurfaceDefault = 0x32ff
         };
 
         MainWindow(
@@ -182,14 +184,28 @@ public:
             } else if (menuIndex == 1) {
                 auto timeSurfaceMenu = TimeSurfaceStyles::menu(workspace->timeSurfaceStyle(), TimeSurfaceFirst);
                 menu.addSubMenu("Time Surface Colour", timeSurfaceMenu);
+                auto spectralSurfaceMenu = TimeSurfaceStyles::menu(
+                        workspace->bipolarSpectralSurfaceStyle(),
+                        SpectralSurfaceFirst,
+                        SpectralSurfaceDefault,
+                        "Blue / Amber");
+                menu.addSubMenu("Bipolar Spectral Surface", spectralSurfaceMenu);
             }
 
             return menu;
         }
 
         void menuItemSelected(int menuItemId, int) override {
+            if (menuItemId == SpectralSurfaceDefault) {
+                setBipolarSpectralSurfaceStyle(std::nullopt);
+                return;
+            }
             if (const auto* entry = TimeSurfaceStyles::find(menuItemId - TimeSurfaceFirst)) {
                 setTimeSurfaceStyle(entry->style);
+                return;
+            }
+            if (const auto* entry = TimeSurfaceStyles::find(menuItemId - SpectralSurfaceFirst)) {
+                setBipolarSpectralSurfaceStyle(entry->style);
                 return;
             }
             if (fileHistory.isRecentMenuItem(menuItemId)) {
@@ -433,6 +449,16 @@ public:
                 return;
             }
             workspace->setTimeSurfaceStyle(style);
+            commandManager.commandStatusChanged();
+            menuItemsChanged();
+        }
+
+        void setBipolarSpectralSurfaceStyle(
+                std::optional<ScalarSurfaceTimeStyle> style) {
+            if (workspace == nullptr) {
+                return;
+            }
+            workspace->setBipolarSpectralSurfaceStyle(style);
             commandManager.commandStatusChanged();
             menuItemsChanged();
         }

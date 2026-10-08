@@ -15,6 +15,7 @@ constexpr float minimumIllumination = 0.16f;
 constexpr int linearTransferTableSize = 4096;
 std::atomic<ScalarSurfaceTimeStyle> selectedTimeSurfaceStyle {
         ScalarSurfaceTimeStyle::BlueDepth };
+std::atomic<int> selectedBipolarMagnitudeStyle { -1 };
 
 float smoothUnit(float value) {
     const float unit = juce::jlimit(0.f, 1.f, value);
@@ -740,8 +741,8 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::greyscale() {
     return material;
 }
 
-ScalarSurfaceMaterial ScalarSurfaceMaterial::timeDomain() {
-    switch (timeSurfaceStyle()) {
+ScalarSurfaceMaterial ScalarSurfaceMaterial::forTimeStyle(ScalarSurfaceTimeStyle style) {
+    switch (style) {
         case ScalarSurfaceTimeStyle::Bipolar:
             return signedAmplitude();
 
@@ -778,6 +779,10 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::timeDomain() {
     return blueDepthDirectionalDetail();
 }
 
+ScalarSurfaceMaterial ScalarSurfaceMaterial::timeDomain() {
+    return forTimeStyle(timeSurfaceStyle());
+}
+
 ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyle() {
     return selectedTimeSurfaceStyle.load(std::memory_order_relaxed);
 }
@@ -795,6 +800,14 @@ int ScalarSurfaceMaterial::timeSurfaceStyleIndex(ScalarSurfaceTimeStyle style) {
 
 void ScalarSurfaceMaterial::setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
     selectedTimeSurfaceStyle.store(style, std::memory_order_relaxed);
+}
+
+int ScalarSurfaceMaterial::bipolarMagnitudeStyleIndex() {
+    return selectedBipolarMagnitudeStyle.load(std::memory_order_relaxed);
+}
+
+void ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(int styleIndex) {
+    selectedBipolarMagnitudeStyle.store(styleIndex, std::memory_order_relaxed);
 }
 
 ScalarSurfaceMaterial ScalarSurfaceMaterial::unipolarMagnitude() {
@@ -820,6 +833,11 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::unipolarMagnitude() {
 }
 
 ScalarSurfaceMaterial ScalarSurfaceMaterial::bipolarMagnitude() {
+    const int styleIndex = bipolarMagnitudeStyleIndex();
+    if (styleIndex >= 0) {
+        return forTimeStyle(timeSurfaceStyleFromIndex(styleIndex));
+    }
+
     ScalarSurfaceMaterial material;
     material.palette = ScalarSurfacePalette::BipolarMagnitude;
     material.negativeAnchor = juce::Colour(0xff4d9fd8);
