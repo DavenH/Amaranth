@@ -18,6 +18,7 @@ public:
     bool shouldDrawGrid() override { return true; }
     bool willAdjustSurfaceColumns() override { return pitchSpansColumns; }
     bool getScalarSurfaceMaterial(ScalarSurfaceMaterial& material) const override;
+    Buffer<Float32> getLineGuideTable(int channel) override;
     int interceptLinePrimaryDimension() override { return primaryViewAxis; }
     void drawBackground(bool fillBackground = true) override;
     void panelResized() override;
@@ -30,6 +31,7 @@ public:
     void setPrimaryViewAxis(int axis) { primaryViewAxis = axis; }
     void setPitchSpansColumns(bool shouldSpan);
     void setPreviewMidiNote(int midiNote);
+    void setLineGuideTables(std::vector<std::vector<float>> tables);
 
 private:
     void applyGradientForProfile();
@@ -42,6 +44,7 @@ private:
 
     TrimeshPanelDataSource& dataSource;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
+    std::vector<std::vector<float>> lineGuideTables;
     int primaryViewAxis { Vertex::Time };
     int previewMidiNote { 48 };
     bool pitchSpansColumns {};

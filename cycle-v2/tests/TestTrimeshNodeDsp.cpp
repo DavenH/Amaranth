@@ -38,6 +38,7 @@
 #include <Curve/Mesh/Intercept.h>
 #include <Curve/Curve.h>
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
+#include <Curve/Rasterization/GuideCurveOffsetSeeds.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 #include <Util/LogRegions.h>
@@ -712,6 +713,58 @@ TEST_CASE("Prepared Trimesh guides retain graph Guide slot identity",
     REQUIRE(prepared.provider != nullptr);
     REQUIRE(prepared.provider->size() == 2);
     REQUIRE(prepared.mesh->getCubes().front()->guideCurveAt(Vertex::Amp) == 1);
+    mesh->destroy();
+}
+
+TEST_CASE("Trimesh phase rail samples the same offset Guide as the grid",
+        "[cycle-v2][nodes][trimesh][guide][rail]") {
+    ScopedJuceInitialiser_GUI juce;
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("OffsetGuideRail");
+    FlatCurveModel curve;
+    REQUIRE(curve.replaceVertices({
+            { 1, 0.05f, 0.15f, 1.f },
+            { 2, 0.95f, 0.85f, 1.f }
+    }));
+
+    NodeGraph graph;
+    GuideCurveResource guide;
+    guide.id = "phaseGuide";
+    guide.model = CurveNodeModelState::copyOf(curve, 2);
+    guide.phase = 0.49f;
+    REQUIRE(graph.addGuideCurve(std::move(guide)));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    REQUIRE(graph.assignGuideCurve({
+            "phaseGuide", "mesh", { 0, GuideCurveField::Phase }
+    }));
+    const Node* node = graph.findNode("mesh");
+    REQUIRE(node != nullptr);
+
+    auto prepared = TrimeshGuidePreparation::prepare(graph, *node, *mesh);
+    auto provider = prepared.provider;
+    TrimeshPanelBridge bridge;
+    bridge.setDisplayDomain(PortDomain::SpectralMagnitudeSignal);
+    bridge.syncFromNode(*node, 64, 8);
+    REQUIRE(bridge.applyPreparedGuides(std::move(prepared)));
+
+    const auto rail = bridge.getPanel3D().getLineGuideTable(0);
+    const auto raw = provider->getTable(0);
+    REQUIRE(rail.size() == GuideCurveProvider::tableSize);
+    constexpr int sampleIndex = GuideCurveProvider::tableSize / 4;
+    Rasterization::GuideCurveOffsetSeeds offsets;
+    const uint32_t seed = GuideCurveSnapshotProvider::visualizationSeed(
+            PortDomain::SpectralMagnitudeSignal);
+    offsets.derive(1, GuideCurveProvider::tableSize,
+            Rasterization::GuideCurveSeed::visualization(seed));
+    GuideCurveProvider::NoiseContext context;
+    context.noiseSeed = (int) (seed % GuideCurveProvider::tableSize);
+    context.phaseOffset = offsets.phaseAt(0);
+    context.vertOffset = offsets.verticalAt(0);
+    const float expected = provider->getTableValue(
+            0,
+            (float) sampleIndex / (float) (GuideCurveProvider::tableSize - 1),
+            context);
+    REQUIRE(rail[sampleIndex] == Catch::Approx(expected).margin(0.001f));
+    REQUIRE(rail[sampleIndex] != Catch::Approx(raw[sampleIndex]).margin(0.01f));
     mesh->destroy();
 }
 
