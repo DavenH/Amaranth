@@ -1,5 +1,16 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Native-input video fixture stalled before writing an agent report
+
+On 2026-10-07, an empty-preset Time Trimesh fixture with a concurrent native
+`cliclick` right click left the Cycle process alive but wrote no automation
+report within 40 seconds. The window video is
+`/private/tmp/empty-trimesh-native-video.mp4`; filtered and raw logs share its
+stem. No assertion or crash appeared in the log, and the recording shows no
+vertex addition. A normal scripted-pointer video fixture completed just before
+this attempt. Status: open; isolate native click timing and automation-runner
+progress before treating this recording as vertex-interaction evidence.
+
 ## P2: Trimesh native curve drag and broader test filter fail during editor investigation
 
 On 2026-10-07, `scripts/test_cycle_v2_native_edit_smoke.py trimesh` stopped at
