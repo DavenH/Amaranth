@@ -41,6 +41,7 @@ public:
     Buffer<float> getScalarSurfaceArray() override;
     const std::vector<Column>& getColumns() override;
     CriticalSection& getGridLock() override;
+    bool copyColumnAtMorph(float morphPosition, std::vector<float>& values, int& midiNote);
     uint64_t getScalarSurfaceRevision() const override { return scalarSurfaceRevision; }
     bool hasStableScalarSurfaceRevision() const override { return true; }
 

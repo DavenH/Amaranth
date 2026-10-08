@@ -1,12 +1,13 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
 
-#include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
-
 #include <App/AppConstants.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 
+#include <algorithm>
 #include <array>
+
+#include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 
 namespace CycleV2 {
 
@@ -145,6 +146,27 @@ Buffer<float> TrimeshPanelDataSource::getScalarSurfaceArray() {
 
 const std::vector<Column>& TrimeshPanelDataSource::getColumns() {
     return panelColumns;
+}
+
+bool TrimeshPanelDataSource::copyColumnAtMorph(
+        float morphPosition,
+        std::vector<float>& values,
+        int& midiNote) {
+    const ScopedLock lock(gridLock);
+    if (panelColumns.empty()) {
+        values.clear();
+        return false;
+    }
+
+    const int index = jlimit(
+            0,
+            (int) panelColumns.size() - 1,
+            roundToInt(morphPosition * (float) (panelColumns.size() - 1)));
+    const Column& column = panelColumns[(size_t) index];
+    midiNote = static_cast<unsigned char>(column.midiKey);
+    values.resize((size_t) column.size());
+    std::copy_n(column.get(), column.size(), values.data());
+    return true;
 }
 
 CriticalSection& TrimeshPanelDataSource::getGridLock() {

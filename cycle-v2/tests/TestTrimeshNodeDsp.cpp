@@ -2309,6 +2309,40 @@ TEST_CASE("Trimesh panel data source adapts node grid data to Panel3D columns", 
     REQUIRE(columns.back().get() == columnArray.get() + 64);
 }
 
+TEST_CASE("Spectral partials sample the 3D grid column at the morph position",
+        "[cycle-v2][nodes][trimesh][expanded][spectral]") {
+    Node node { "mesh", NodeKind::TrilinearMesh, {}, {}, {}, {}, {} };
+    TrimeshNodeModel model;
+    TrimeshPanelDataSource source;
+    model.syncFromNode(node);
+    for (const PortDomain domain : {
+            PortDomain::SpectralMagnitudeSignal,
+            PortDomain::SpectralPhaseSignal }) {
+        source.rebuild(
+                model,
+                16,
+                5,
+                TrimeshRenderProfile::fromDomain(domain),
+                48,
+                model.getPrimaryViewAxis());
+
+        std::vector<float> partials;
+        int midiNote {};
+        REQUIRE(source.copyColumnAtMorph(0.49f, partials, midiNote));
+        const Column& middle = source.getColumns()[2];
+        REQUIRE(midiNote == middle.midiKey);
+        REQUIRE(partials.size() == (size_t) middle.size());
+        REQUIRE(std::equal(partials.begin(), partials.end(), middle.get()));
+
+        REQUIRE(source.copyColumnAtMorph(1.f, partials, midiNote));
+        const Column& last = source.getColumns().back();
+        REQUIRE(midiNote == last.midiKey);
+        REQUIRE(midiNote != middle.midiKey);
+        REQUIRE(std::equal(partials.begin(), partials.end(), last.get()));
+    }
+    REQUIRE(source.getRenderCounters().surfaceRebuilds == 2);
+}
+
 TEST_CASE("Trimesh Panel3D reads node-backed columns through lib data retriever", "[cycle-v2][nodes][trimesh]") {
     ScopedJuceInitialiser_GUI juce;
     Node node {
