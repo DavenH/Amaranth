@@ -82,7 +82,7 @@ void paintHeaderTags(
     graphics.setFont(tagFont);
     for (int index = 0; index < layout.tagCount; ++index) {
         const auto chip = layout.tags[(size_t) index];
-        graphics.setColour(juce::Colour(0xff333333));
+        graphics.setColour(CanvasChromePalette::insetBackground);
         graphics.fillRoundedRectangle(chip, 3.f);
         graphics.setColour(CanvasChromePalette::text.withAlpha(0.9f));
         graphics.drawFittedText(tags[index].toLowerCase(), chip.toNearestInt(),

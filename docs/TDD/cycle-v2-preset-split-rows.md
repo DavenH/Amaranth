@@ -84,3 +84,9 @@ inline tests pass (215 assertions). Architecture/style/diff review passes;
 SidebarMediaRow/SidebarTagCloud stay 220/225 lines with unchanged responsibilities.
 Native capture `/private/tmp/lowercase-preset-tags.png` reviewed for title clarity,
 shorter lowercase chips, three-tag rows and cloud selection state.
+
+Row-chip contrast refinement: replace the light grey chip fill with the shared
+inset background (#11171d), darker than both resting (#171d24) and selected
+(#202833) rows. Preserve text and geometry. Standalone build and diff check pass.
+Native capture `/private/tmp/dark-row-tags.png` confirms subdued chip backgrounds
+on selected and resting rows with legible labels.
