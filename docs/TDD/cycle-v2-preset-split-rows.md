@@ -28,3 +28,10 @@ and unchanged. No DSP, hot-loop math or interaction implementation introduced.
 Architecture audit and whitespace checks pass. SidebarMediaRow.cpp is 206 lines,
 header 62; InlinePresetBrowser stays 724 and changes only preset row-height uses.
 All completion criteria above are satisfied.
+
+Tag readability follow-up: preset chip text is 10.5px instead of 8.5px, with 15px
+chips and room for two wrapped lines. Preserve authored tag capitalization in
+both sidebar row renderers instead of forcing uppercase. Measurement and painting
+use the same text/font. Both builds, seven browser cases / 144 assertions, visual
+review, architecture audit and whitespace/style checks pass. SidebarMediaRow is
+207 lines; no new ownership or interaction behavior.

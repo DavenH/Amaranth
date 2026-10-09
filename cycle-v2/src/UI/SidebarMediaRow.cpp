@@ -11,19 +11,19 @@ PresetLayout presetLayout(juce::Rectangle<float> slot, const juce::StringArray& 
     layout.preview = content.withLeft(metadata.getRight());
     metadata = metadata.withTrimmedRight(6.f);
     layout.favorite = { metadata.getX(), metadata.getY(), 22.f, 22.f };
-    layout.labels.title = metadata.withTrimmedLeft(25.f).withHeight(30.f);
+    layout.labels.title = metadata.withTrimmedLeft(25.f).withHeight(28.f);
 
-    const juce::Font tagFont(juce::FontOptions(8.5f));
+    const juce::Font tagFont(juce::FontOptions(10.5f));
     float x = metadata.getX();
-    float y = metadata.getY() + 34.f;
+    float y = metadata.getY() + 31.f;
     for (int index = 0; index < juce::jmin(2, tags.size()); ++index) {
         const float width = juce::jmin(metadata.getWidth(),
-                tagFont.getStringWidthFloat(tags[index].toUpperCase()) + 11.f);
+                tagFont.getStringWidthFloat(tags[index]) + 11.f);
         if (x + width > metadata.getRight()) {
             x = metadata.getX();
-            y += 15.f;
+            y += 16.f;
         }
-        layout.labels.tags[(size_t) index] = { x, y, width, 13.f };
+        layout.labels.tags[(size_t) index] = { x, y, width, 15.f };
         ++layout.labels.tagCount;
         x += width + 3.f;
     }
@@ -41,7 +41,7 @@ HeaderLabelsLayout headerLabelsLayout(
     const float tagBudget = card.getRight() - labelLeft - 77.f;
     for (int index = 0; index < juce::jmin(2, tags.size()); ++index) {
         const float width = juce::jmin(70.f,
-                tagFont.getStringWidthFloat(tags[index].toUpperCase()) + 11.f);
+                tagFont.getStringWidthFloat(tags[index]) + 11.f);
         const float nextWidth = totalTagWidth + width
                 + (layout.tagCount == 0 ? 0.f : 3.f);
         if (nextWidth > tagBudget) {
@@ -69,15 +69,16 @@ namespace {
 void paintHeaderTags(
         juce::Graphics& graphics,
         const juce::StringArray& tags,
-        const HeaderLabelsLayout& layout) {
-    const juce::Font tagFont(juce::FontOptions(8.5f));
+        const HeaderLabelsLayout& layout,
+        float fontSize) {
+    const juce::Font tagFont { juce::FontOptions(fontSize) };
     graphics.setFont(tagFont);
     for (int index = 0; index < layout.tagCount; ++index) {
         const auto chip = layout.tags[(size_t) index];
         graphics.setColour(juce::Colour(0xff333333));
         graphics.fillRoundedRectangle(chip, 3.f);
         graphics.setColour(CanvasChromePalette::text.withAlpha(0.9f));
-        graphics.drawFittedText(tags[index].toUpperCase(), chip.toNearestInt(),
+        graphics.drawFittedText(tags[index], chip.toNearestInt(),
                 juce::Justification::centred, 1);
     }
 }
@@ -161,7 +162,7 @@ void paintLabels(
     graphics.drawFittedText(title, layout.title.toNearestInt(),
             juce::Justification::topLeft, 2, 0.9f);
     paintFavorite(graphics, slot, favorite);
-    paintHeaderTags(graphics, tags, layout);
+    paintHeaderTags(graphics, tags, layout, 10.5f);
 }
 
 juce::Rectangle<float> paintPatternFrame(
@@ -200,7 +201,7 @@ void paintPatternLabels(
     graphics.setFont(juce::FontOptions(13.f).withStyle("Bold"));
     graphics.drawFittedText(title, layout.title.toNearestInt(),
             juce::Justification::centredLeft, 1);
-    paintHeaderTags(graphics, tags, layout);
+    paintHeaderTags(graphics, tags, layout, 8.5f);
 }
 
 }
