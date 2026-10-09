@@ -17,6 +17,7 @@ public:
         const char* title;
         const Entry* entries {};
         int entryCount {};
+        uint32 accentColour {};
     };
 
     void setWorkspaceBounds(Rectangle<float> bounds);

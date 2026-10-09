@@ -210,6 +210,9 @@ void NodeCanvasPresentation::paintPaletteContent(
     for (int sectionIndex = 0; sectionIndex < frame.palette.sectionCount(); ++sectionIndex) {
         const auto& section = frame.palette.section(sectionIndex);
         const auto group = frame.palette.groupBounds(sectionIndex);
+        graphics.setColour(Colour(section.accentColour));
+        graphics.fillRoundedRectangle(
+                group.withX(group.getX() - 10.f).withWidth(3.f), 1.5f);
         graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
         graphics.setColour(CanvasChromePalette::mutedText);
         graphics.drawText(section.title, group.withHeight(20.f), Justification::centredLeft);

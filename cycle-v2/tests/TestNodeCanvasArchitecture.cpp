@@ -1234,6 +1234,10 @@ TEST_CASE("Node palette has aligned ragged rows and two directly accessible FX r
         const auto& section = palette.section(sectionIndex);
         const auto group = palette.groupBounds(sectionIndex);
         REQUIRE(group.getX() == first.getX());
+        if (sectionIndex > 0) {
+            REQUIRE(group.getY() - palette.groupBounds(sectionIndex - 1).getBottom()
+                    == Catch::Approx(24.f));
+        }
         for (int index = 0; index < section.entryCount; ++index) {
             const auto tile = palette.entryBounds(sectionIndex, index);
             REQUIRE(tile.getWidth() == Catch::Approx(83.f * 0.8f));

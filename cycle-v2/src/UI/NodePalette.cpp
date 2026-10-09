@@ -10,7 +10,7 @@ namespace {
 constexpr float kY = 64.f;
 constexpr float kGap = 6.f;
 constexpr float kHeadingHeight = 20.f;
-constexpr float kGroupGap = 12.f;
+constexpr float kGroupGap = 24.f;
 constexpr int kColumns = 3;
 
 const NodePalette::Entry kContextEntries[] = {
@@ -50,12 +50,12 @@ const NodePalette::Entry kFxEntries[] = {
 };
 
 const NodePalette::Section kSections[] = {
-        { "Context", kContextEntries, (int) std::size(kContextEntries) },
-        { "Transform", kTransformEntries, (int) std::size(kTransformEntries) },
-        { "Math", kMathEntries, (int) std::size(kMathEntries) },
-        { "Source", kSourceEntries, (int) std::size(kSourceEntries) },
-        { "Control", kControlEntries, (int) std::size(kControlEntries) },
-        { "FX", kFxEntries, (int) std::size(kFxEntries) }
+        { "Context", kContextEntries, (int) std::size(kContextEntries), 0xffb7a16f },
+        { "Transform", kTransformEntries, (int) std::size(kTransformEntries), 0xff778fad },
+        { "Math", kMathEntries, (int) std::size(kMathEntries), 0xff9b86ae },
+        { "Source", kSourceEntries, (int) std::size(kSourceEntries), 0xff7b9e8a },
+        { "Control", kControlEntries, (int) std::size(kControlEntries), 0xffb1818c },
+        { "FX", kFxEntries, (int) std::size(kFxEntries), 0xffb38d6f }
 };
 
 }
@@ -118,7 +118,7 @@ std::vector<std::pair<String, Rectangle<float>>> NodePalette::pointerTargets() c
 Rectangle<float> NodePalette::railBounds() const {
     const auto first = groupBounds(0);
     const float width = kColumns * (tileWidth() + kGap) - kGap;
-    return { first.getX(), first.getY(), width,
+    return { first.getX() - 10.f, first.getY(), width + 10.f,
             groupBounds(sectionCount() - 1).getBottom() - first.getY() };
 }
 
@@ -129,7 +129,7 @@ Rectangle<float> NodePalette::groupBounds(int sectionIndex) const {
     }
 
     const float width = kColumns * (tileWidth() + kGap) - kGap;
-    const float x = workspace.getX() + 14.f;
+    const float x = workspace.getX() + 24.f;
     return { x, y, width,
             groupHeight(sectionIndex) };
 }

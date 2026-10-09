@@ -88,3 +88,15 @@ Reviewed the rendered sidebar; updated geometry/hit assertions for fractional
 sizes and left-aligned partial rows. Both builds and palette tests pass. Diff/style
 and architecture checks pass; layout and paint ownership are unchanged, with no
 new domain logic. NodePalette is 209 lines and chrome presentation 244 lines.
+
+## Group identity and spacing
+
+Increased group separation from 12px to 24px. Each group now carries a muted
+3px vertical accent beside its heading and cards: gold Context, blue Transform,
+lavender Math, sage Source, rose Control and copper FX. The section catalog owns
+these presentation accents; the cached palette rail includes their bounds.
+Icons remain monochrome at rest and labels remain visible. Tile/hit geometry
+continues to share NodePalette layout. Existing resize and hit tests plus explicit
+24px group-gap assertions pass (12 cases, 437 assertions). Both builds, architecture
+audit and diff/style checks pass. NodePalette remains 209 lines, header 53,
+chrome presentation 247. No new gesture, domain policy or hot-loop math.
