@@ -3,8 +3,9 @@
 Status: implemented.
 
 SidebarTagCloud owns independent filter and selected-record tag states. Magenta
-means filter, blue means selected-record membership, purple means both. Left click
-retains AND filtering; right click emits a tag edit intent, never a filter edit.
+means filter, blue means selected-record membership, purple means both. Right click
+retains AND filtering; left click emits a tag edit intent, never a filter edit.
+Filter-only clouds retain left-click filtering; Favorites remains left-click filtered.
 Favorites remains a filter, not an editable tag. InlinePresetBrowser owns selected
 row synchronization and delegates atomic file writes to PresetMetadataStore and
 loaded-document updates to its existing metadata callback. List selection changes
@@ -15,10 +16,10 @@ An explicitly empty tag array differs from missing tags (legacy pattern fallback
 PresetPresentation codec preserves this distinction through save/reload, and the
 existing dispatcher metadata command sets it. This is metadata-only, not a new graph
 mutation path. No audio or gesture algorithms change. UI callbacks run on the message
-thread; metadata writes use the established temporary-file store. Right click does
+thread; metadata writes use the established temporary-file store. Left click does
 one existing metadata write/index refresh, no preset load or favorite/filter mutation.
 
-Prove rendered states and complete selection/filter/right-click/save/reload sequence,
+Prove rendered states and complete selection/filter/left-click/save/reload sequence,
 including removing the final tag and removing a currently filtered tag. Use temporary
 preset copies only. Build, focused tests, style/diff and architecture review required.
 
@@ -43,3 +44,10 @@ preset copies only. Build, focused tests, style/diff and architecture review req
   Existing metadata dialogs use the same persistence boundary. No new kind
   branches, adapters, hot loops, or deletion targets remain.
 - Production diff reviewed against the style guide; `git diff --check` passes.
+
+## Click mapping revision
+
+Per user feedback, preset tags now edit on left click and filter on right click.
+The complete interaction/save sequence passes with this mapping (9 inline cases,
+199 assertions). Both builds pass. Diff/style and architecture audit reviewed;
+SidebarTagCloud is 225 lines, with unchanged ownership and no new dependencies.

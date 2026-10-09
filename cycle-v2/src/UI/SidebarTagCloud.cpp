@@ -171,11 +171,12 @@ void SidebarTagCloud::mouseUp(const juce::MouseEvent& event) {
         if (!chip.bounds.contains(event.getPosition())) {
             continue;
         }
-        if (event.mods.isPopupMenu()) {
-            if (!chip.favorite && onEdit) {
-                const auto tag = chip.tag;
-                onEdit(tag);
-            }
+        if (!event.mods.isPopupMenu() && !chip.favorite && onEdit) {
+            const auto tag = chip.tag;
+            onEdit(tag);
+            return;
+        }
+        if (event.mods.isPopupMenu() && chip.favorite) {
             return;
         }
         if (chip.favorite) {

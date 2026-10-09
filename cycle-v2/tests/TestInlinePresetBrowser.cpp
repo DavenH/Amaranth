@@ -27,7 +27,7 @@ Component* findDescendantWithID(Component& parent, const String& id) {
     return nullptr;
 }
 
-bool clickTag(SidebarTagCloud& cloud, const String& tag, bool rightClick = false) {
+bool clickTag(SidebarTagCloud& cloud, const String& tag, bool rightClick = true) {
     for (const auto& [id, bounds] : cloud.pointerTargetsForAutomation()) {
         if (id != "workspace.sidebar.tag." + tag.toLowerCase()) {
             continue;
@@ -557,7 +557,7 @@ TEST_CASE("Nodes tab exposes palette hits while consuming empty sidebar space",
     REQUIRE_FALSE(targetBounds(browser, "workspace.sidebar.search").isEmpty());
 }
 
-TEST_CASE("Preset tag cloud separates filtering from selected membership and right-click edits",
+TEST_CASE("Preset tag cloud separates filtering from selected membership and left-click edits",
         "[cycle-v2][preset][browser][inline][tag-edit]") {
     ScopedJuceInitialiser_GUI gui;
     const auto directory = File::getSpecialLocation(File::tempDirectory)
@@ -593,7 +593,7 @@ TEST_CASE("Preset tag cloud separates filtering from selected membership and rig
         REQUIRE(clickTag(*cloud, "Bass"));
         REQUIRE(browser.visiblePresetCount() == 1);
         REQUIRE(cloud->tagAccent("Bass") == Colour(0xffad83da));
-        REQUIRE(clickTag(*cloud, "Bass", true));
+        REQUIRE(clickTag(*cloud, "Bass", false));
         REQUIRE(browser.visiblePresetCount() == 0);
         REQUIRE(cloud->selectedTags() == StringArray { "Bass" });
         REQUIRE(cloud->tagAccent("Bass") == Colour(0xffd16fab));
@@ -608,9 +608,9 @@ TEST_CASE("Preset tag cloud separates filtering from selected membership and rig
         REQUIRE(roundTrip.tags.isEmpty());
         REQUIRE(clickTag(*cloud, "Bass"));
         REQUIRE(browser.visiblePresetCount() == 2);
-        REQUIRE(clickTag(*cloud, "Pad", true));
+        REQUIRE(clickTag(*cloud, "Pad", false));
         REQUIRE(cloud->tagAccent("Pad") == blue);
-        REQUIRE(clickTag(*cloud, "Pad", true));
+        REQUIRE(clickTag(*cloud, "Pad", false));
         REQUIRE(cloud->tagAccent("Pad").isTransparent());
         REQUIRE(cloud->selectedTags().isEmpty());
         REQUIRE(saves == 3);
