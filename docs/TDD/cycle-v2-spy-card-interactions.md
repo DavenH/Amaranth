@@ -75,6 +75,14 @@ display-domain serialization, and output visibility passed (23 assertions).
 `git diff --check` passed. The broader `[cycle-v2][probe]` filter retains
 three unrelated failures tracked in `audio-bugs.md` and `ui-bugs.md`.
 
+The selected-card paint check captures the same Spy before and after a click
+with `cycle-v2-agent-spy-selected-contrast.json`. Run
+`swift scripts/check_cycle_v2_spy_selection_contrast.swift
+/tmp/spy-unselected.png /tmp/spy-selected.png
+/private/tmp/cycle-agent-report.json` to assert the preview brightness is
+unchanged. The regression was caused by the tile border colour's alpha being
+left as the graphics opacity for the cached preview image.
+
 - One area-selection gesture includes graph nodes and Spy cards; dragging
   either selected kind moves the complete group. Undo restores ordinary Spies
   and graph nodes.

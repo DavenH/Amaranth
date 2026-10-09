@@ -431,6 +431,7 @@ void SignalProbeCanvas::paintCards(
         const uint64_t startedAt = performanceObserver != nullptr
                 ? performanceObserver->presentationTimestamp()
                 : 0;
+        graphics.setOpacity(1.f);
         paintCachedPreview(graphics, graph, *probe, *preview,
                 facts, previewBounds, physicalScale);
         if (performanceObserver != nullptr) {
