@@ -186,8 +186,12 @@ TEST_CASE("Preset tag edits preserve other JSON fields",
                     PresetPresentationCodec::readJSON(renamedMetadata).presentation))
             .presentation.title == "Copper Horn");
 
-    REQUIRE_FALSE(PresetMetadataStore::save(file, { "  " }, error));
-    REQUIRE(error.isNotEmpty());
+    REQUIRE(PresetMetadataStore::save(file, { "  " }, error));
+    REQUIRE(error.isEmpty());
+    const auto emptyMetadata = PresetPresentationCodec::readMetadataJSON(
+            JSON::parse(file.loadFileAsString())["presetPresentation"]).presentation;
+    REQUIRE(emptyMetadata.tagsSpecified);
+    REQUIRE(emptyMetadata.tags.isEmpty());
     REQUIRE_FALSE(PresetMetadataStore::saveTitle(file, "  ", error));
 }
 

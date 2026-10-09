@@ -98,6 +98,8 @@ private:
     void updateAvailableTags();
     void openSelected();
     void editSelectedTags();
+    void toggleSelectedTag(const juce::String& tag);
+    void updateSelectedTags();
     void renameSelected();
     void requestDeleteSelected();
     void deletePreset(const juce::File& file);
@@ -131,6 +133,7 @@ private:
     std::vector<PresetLibraryRecord> library;
     std::vector<int> searchResults;
     std::map<std::string, juce::StringArray> patternTags;
+    juce::StringArray knownTags;
     WorkspaceSidebarTab tab { WorkspaceSidebarTab::Presets };
 };
 

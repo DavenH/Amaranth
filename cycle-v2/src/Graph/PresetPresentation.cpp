@@ -148,6 +148,7 @@ void readTags(
         const juce::var& value,
         PresetPresentationDecodeResult& result) {
     if (const auto* tags = value.getArray()) {
+        result.presentation.tagsSpecified = true;
         for (const auto& tag : *tags) {
             if (tag.isString() && tag.toString().isNotEmpty()) {
                 result.presentation.tags.addIfNotAlreadyThere(tag.toString());
@@ -212,6 +213,7 @@ bool PresetPresentation::empty() const {
             && timeSurfaceStyle.isEmpty()
             && bipolarSpectralSurfaceStyle.isEmpty()
             && tags.isEmpty()
+            && !tagsSpecified
             && rating == 0
             && !preview.has_value()
             && patternId.isEmpty()
@@ -241,7 +243,7 @@ juce::var PresetPresentationCodec::writeJSON(const PresetPresentation& presentat
     if (presentation.description.isNotEmpty()) {
         result->setProperty("description", presentation.description);
     }
-    if (!presentation.tags.isEmpty()) {
+    if (presentation.tagsSpecified || !presentation.tags.isEmpty()) {
         juce::Array<juce::var> tags;
         for (const auto& tag : presentation.tags) {
             tags.add(tag);

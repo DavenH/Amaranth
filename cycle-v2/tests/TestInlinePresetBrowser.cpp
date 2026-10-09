@@ -4,6 +4,7 @@
 #include <array>
 
 #include "UI/InlinePresetBrowser.h"
+#include "Graph/PresetPresentation.h"
 #include "UI/LibrarySearchField.h"
 #include "UI/SidebarMediaRow.h"
 #include "UI/SidebarTagCloud.h"
@@ -26,7 +27,7 @@ Component* findDescendantWithID(Component& parent, const String& id) {
     return nullptr;
 }
 
-bool clickTag(SidebarTagCloud& cloud, const String& tag) {
+bool clickTag(SidebarTagCloud& cloud, const String& tag, bool rightClick = false) {
     for (const auto& [id, bounds] : cloud.pointerTargetsForAutomation()) {
         if (id != "workspace.sidebar.tag." + tag.toLowerCase()) {
             continue;
@@ -34,7 +35,7 @@ bool clickTag(SidebarTagCloud& cloud, const String& tag) {
         const auto position = bounds.getCentre();
         const Time now = Time::getCurrentTime();
         const MouseEvent click(Desktop::getInstance().getMainMouseSource(),
-                position, ModifierKeys::leftButtonModifier,
+                position, rightClick ? ModifierKeys::rightButtonModifier : ModifierKeys::leftButtonModifier,
                 1.f, 0.f, 0.f, 0.f, 0.f, &cloud, &cloud,
                 now, position, now, 1, false);
         cloud.mouseUp(click);
@@ -554,4 +555,93 @@ TEST_CASE("Nodes tab exposes palette hits while consuming empty sidebar space",
     browser.setActiveTab(WorkspaceSidebarTab::Presets);
     REQUIRE(browser.hitTest(100, 100));
     REQUIRE_FALSE(targetBounds(browser, "workspace.sidebar.search").isEmpty());
+}
+
+TEST_CASE("Preset tag cloud separates filtering from selected membership and right-click edits",
+        "[cycle-v2][preset][browser][inline][tag-edit]") {
+    ScopedJuceInitialiser_GUI gui;
+    const auto directory = File::getSpecialLocation(File::tempDirectory)
+            .getChildFile("cycle-v2-tag-edit-" + Uuid().toString());
+    REQUIRE(directory.createDirectory().wasOk());
+    const auto bass = directory.getChildFile("a-bass.cyclegraph");
+    const auto pad = directory.getChildFile("b-pad.cyclegraph");
+    REQUIRE(bass.replaceWithText(R"({"presetPresentation":{"version":1,"tags":["Bass"]},"other":"keep"})"));
+    REQUIRE(pad.replaceWithText(R"({"presetPresentation":{"version":1,"tags":["Pad"]}})"));
+    {
+        int opens = 0;
+        int saves = 0;
+        InlinePresetBrowser browser({ directory }, [&](const File&) { ++opens; return true; },
+                [] {}, [](WorkspaceSidebarTab) {});
+        browser.setMetadataChangedCallbacks({}, [&](const File& file, const StringArray&) {
+            REQUIRE(file == bass);
+            ++saves;
+        });
+        browser.setBounds(0, 0, 290, 700);
+        for (int attempt = 0; attempt < 40 && browser.visiblePresetCount() != 2; ++attempt) {
+            MessageManager::getInstance()->runDispatchLoopUntil(50);
+        }
+        REQUIRE(browser.visiblePresetCount() == 2);
+        auto* cloud = dynamic_cast<SidebarTagCloud*>(findDescendantWithID(browser, "workspace.sidebar.presetTags"));
+        REQUIRE(cloud != nullptr);
+        const auto blue = cloud->tagAccent("Bass");
+        REQUIRE(blue == Colour(0xff6d9ed8));
+        REQUIRE(cloud->tagAccent("Pad").isTransparent());
+        REQUIRE(browser.keyPressed(KeyPress(KeyPress::downKey)));
+        REQUIRE(cloud->tagAccent("Bass").isTransparent());
+        REQUIRE(cloud->tagAccent("Pad") == blue);
+        REQUIRE(browser.keyPressed(KeyPress(KeyPress::upKey)));
+        REQUIRE(clickTag(*cloud, "Bass"));
+        REQUIRE(browser.visiblePresetCount() == 1);
+        REQUIRE(cloud->tagAccent("Bass") == Colour(0xffad83da));
+        REQUIRE(clickTag(*cloud, "Bass", true));
+        REQUIRE(browser.visiblePresetCount() == 0);
+        REQUIRE(cloud->selectedTags() == StringArray { "Bass" });
+        REQUIRE(cloud->tagAccent("Bass") == Colour(0xffd16fab));
+        auto root = JSON::parse(bass.loadFileAsString());
+        auto metadata = PresetPresentationCodec::readMetadataJSON(root["presetPresentation"]).presentation;
+        REQUIRE(metadata.tagsSpecified);
+        REQUIRE(metadata.tags.isEmpty());
+        REQUIRE(root["other"].toString() == "keep");
+        const auto roundTrip = PresetPresentationCodec::readMetadataJSON(
+                PresetPresentationCodec::writeJSON(metadata)).presentation;
+        REQUIRE(roundTrip.tagsSpecified);
+        REQUIRE(roundTrip.tags.isEmpty());
+        REQUIRE(clickTag(*cloud, "Bass"));
+        REQUIRE(browser.visiblePresetCount() == 2);
+        REQUIRE(clickTag(*cloud, "Pad", true));
+        REQUIRE(cloud->tagAccent("Pad") == blue);
+        REQUIRE(clickTag(*cloud, "Pad", true));
+        REQUIRE(cloud->tagAccent("Pad").isTransparent());
+        REQUIRE(cloud->selectedTags().isEmpty());
+        REQUIRE(saves == 3);
+        REQUIRE(opens == 0);
+        browser.refreshRecord(bass);
+        MessageManager::getInstance()->runDispatchLoopUntil(300);
+        REQUIRE(cloud->tagAccent("Pad").isTransparent());
+        REQUIRE(cloud->tagAccent("Bass").isTransparent());
+    }
+    REQUIRE(directory.deleteRecursively());
+}
+
+TEST_CASE("Tag cloud paints distinct membership filter and combined colours",
+        "[cycle-v2][preset][browser][inline][tag-edit]") {
+    ScopedJuceInitialiser_GUI gui;
+    SidebarTagCloud cloud;
+    cloud.setBounds(0, 0, 290, 54);
+    cloud.setTags({ "Bass", "Lead", "Pad" });
+    cloud.setRecordTags({ "Bass", "Lead" });
+    REQUIRE(clickTag(cloud, "Lead"));
+    REQUIRE(clickTag(cloud, "Pad"));
+    const auto rendered = cloud.createComponentSnapshot(cloud.getLocalBounds());
+    for (const auto& [id, bounds] : cloud.pointerTargetsForAutomation()) {
+        const auto tag = id.fromLastOccurrenceOf(".", false, false);
+        REQUIRE(rendered.getPixelAt(roundToInt(bounds.getCentreX()), roundToInt(bounds.getY()))
+                == cloud.tagAccent(tag));
+    }
+    const auto reviewPath = SystemStats::getEnvironmentVariable("CYCLE_TAG_CLOUD_REVIEW_PATH", {});
+    if (reviewPath.isNotEmpty()) {
+        FileOutputStream stream { File(reviewPath) };
+        REQUIRE(stream.openedOk());
+        REQUIRE(PNGImageFormat().writeImageToStream(rendered, stream));
+    }
 }

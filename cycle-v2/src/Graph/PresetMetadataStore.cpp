@@ -49,11 +49,6 @@ bool PresetMetadataStore::save(
         juce::StringArray tags,
         juce::String& error) {
     tags = normalize(std::move(tags));
-    if (tags.isEmpty()) {
-        error = "Enter at least one tag.";
-        return false;
-    }
-
     return saveMetadata(file, error,
             [&tags](juce::DynamicObject& metadata,
                     const juce::var& presentation,

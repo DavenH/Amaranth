@@ -53,10 +53,12 @@ bool GraphCommandDispatcher::setPresetPatternId(const juce::String& id) {
 }
 
 bool GraphCommandDispatcher::setPresetTags(juce::StringArray tags) {
-    if (hasTransientEdit() || document.presetPresentation.tags == tags) {
+    if (hasTransientEdit() || (document.presetPresentation.tagsSpecified
+            && document.presetPresentation.tags == tags)) {
         return false;
     }
     document.presetPresentation.tags = std::move(tags);
+    document.presetPresentation.tagsSpecified = true;
     ++document.presentationRevision;
     return true;
 }

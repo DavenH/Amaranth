@@ -9,6 +9,9 @@ namespace {
 constexpr int chipHeight = 21;
 constexpr int chipGap = 4;
 constexpr int horizontalInset = 1;
+const juce::Colour filterAccent { 0xffd16fab };
+const juce::Colour recordAccent { 0xff6d9ed8 };
+const juce::Colour combinedAccent { 0xffad83da };
 
 }
 
@@ -31,6 +34,27 @@ void SidebarTagCloud::setTags(juce::StringArray tags) {
     }
     resized();
     repaint();
+}
+
+void SidebarTagCloud::setRecordTags(juce::StringArray tags) {
+    recordTags = std::move(tags);
+    repaint();
+}
+
+void SidebarTagCloud::setEditCallback(std::function<void(const juce::String&)> callback) {
+    onEdit = std::move(callback);
+}
+
+juce::Colour SidebarTagCloud::tagAccent(const juce::String& tag) const {
+    const bool filtering = selected.contains(tag, true);
+    const bool assigned = recordTags.contains(tag, true);
+    if (filtering && assigned) {
+        return combinedAccent;
+    }
+    if (filtering) {
+        return filterAccent;
+    }
+    return assigned ? recordAccent : juce::Colours::transparentBlack;
 }
 
 void SidebarTagCloud::setFavoritesAvailable(bool available) {
@@ -80,17 +104,19 @@ void SidebarTagCloud::paint(juce::Graphics& graphics) {
     graphics.setFont(chipFont);
     for (int index = 0; index < (int) chips.size(); ++index) {
         const auto& chip = chips[(size_t) index];
-        const bool active = chip.favorite ? favoriteSelected
-                : selected.contains(chip.tag, true);
+        const auto accent = chip.favorite
+                ? (favoriteSelected ? filterAccent : juce::Colours::transparentBlack)
+                : tagAccent(chip.tag);
+        const bool active = !accent.isTransparent();
         const auto bounds = chip.bounds.toFloat();
         graphics.setColour(active
-                ? CanvasChromePalette::navigationAccent.withAlpha(0.25f)
+                ? accent.withAlpha(0.25f)
                 : index == hovered
                         ? CanvasChromePalette::raisedSurface
                         : CanvasChromePalette::restingControlSurface);
         graphics.fillRoundedRectangle(bounds, 4.f);
         graphics.setColour(active
-                ? CanvasChromePalette::navigationAccent
+                ? accent
                 : CanvasChromePalette::border);
         graphics.drawRoundedRectangle(bounds.reduced(0.5f), 4.f, 1.f);
         graphics.setColour(active
@@ -144,6 +170,13 @@ void SidebarTagCloud::mouseUp(const juce::MouseEvent& event) {
     for (const auto& chip : chips) {
         if (!chip.bounds.contains(event.getPosition())) {
             continue;
+        }
+        if (event.mods.isPopupMenu()) {
+            if (!chip.favorite && onEdit) {
+                const auto tag = chip.tag;
+                onEdit(tag);
+            }
+            return;
         }
         if (chip.favorite) {
             favoriteSelected = !favoriteSelected;

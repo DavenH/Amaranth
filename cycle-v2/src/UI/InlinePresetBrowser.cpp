@@ -4,6 +4,7 @@
 #include "UI/PresetBrowserComponents.h"
 #include "UI/PresetMetadataEditor.h"
 #include "UI/SidebarMediaRow.h"
+#include "Graph/PresetMetadataStore.h"
 
 namespace CycleV2 {
 
@@ -43,6 +44,8 @@ public:
         updateHeight();
         repaint();
     }
+
+    Callback onSelectionChanged;
 
     void setCallbacks(Callback openCallback,
             std::function<void(const juce::File&)> favoriteCallback) {
@@ -149,6 +152,9 @@ private:
         }
         selected = index;
         repaint();
+        if (onSelectionChanged) {
+            onSelectionChanged();
+        }
     }
 
     void updateHeight() {
@@ -252,6 +258,7 @@ InlinePresetBrowser::InlinePresetBrowser(
     tagCloud.setComponentID("workspace.sidebar.presetTags");
     tagCloud.setFavoritesAvailable(favorites != nullptr);
     tagCloud.setChangeCallback([this] { applyTagFilter(); });
+    tagCloud.setEditCallback([this](const juce::String& tag) { toggleSelectedTag(tag); });
     addAndMakeVisible(tagCloud);
     remove.setComponentID("workspace.sidebar.delete");
     remove.setTooltip("Move the selected preset to Trash");
@@ -259,6 +266,7 @@ InlinePresetBrowser::InlinePresetBrowser(
     addAndMakeVisible(toolbar);
 
     list->setFavorites(favorites);
+    list->onSelectionChanged = [this] { updateSelectedTags(); };
     list->setCallbacks([this] { openSelected(); },
             [this](const juce::File& file) { toggleFavorite(file); });
     viewport.setComponentID("workspace.sidebar.viewport");
@@ -526,13 +534,12 @@ void InlinePresetBrowser::receiveResults(
 }
 
 void InlinePresetBrowser::updateAvailableTags() {
-    juce::StringArray available;
     for (const auto& record : library) {
         for (const auto& tag : tagsFor(record)) {
-            available.addIfNotAlreadyThere(tag);
+            knownTags.addIfNotAlreadyThere(tag, true);
         }
     }
-    tagCloud.setTags(std::move(available));
+    tagCloud.setTags(knownTags);
     resized();
 }
 
@@ -552,14 +559,43 @@ void InlinePresetBrowser::applyTagFilter() {
         }
     }
     list->setResults(library, filtered, std::move(tags));
-    const auto* selectedRecord = list->selectedRecord();
-    const bool canEditMetadata = selectedRecord != nullptr
-            && selectedRecord->metadataReady;
-    toolbar.editButton().setEnabled(canEditMetadata);
-    toolbar.renameButton().setEnabled(canEditMetadata);
-    toolbar.deleteButton().setEnabled(selectedRecord != nullptr);
+    updateSelectedTags();
     const int width = juce::jmax(1, viewport.getMaximumVisibleWidth());
     list->setSize(width, list->getHeight());
+}
+
+void InlinePresetBrowser::updateSelectedTags() {
+    const auto* record = list->selectedRecord();
+    const bool editable = record != nullptr && record->metadataReady;
+    tagCloud.setRecordTags(record != nullptr ? tagsFor(*record) : juce::StringArray {});
+    toolbar.editButton().setEnabled(editable);
+    toolbar.renameButton().setEnabled(editable);
+    toolbar.deleteButton().setEnabled(record != nullptr);
+}
+
+void InlinePresetBrowser::toggleSelectedTag(const juce::String& tag) {
+    const auto* record = list->selectedRecord();
+    if (record == nullptr || !record->metadataReady) {
+        return;
+    }
+    const auto file = record->file;
+    auto tags = tagsFor(*record);
+    const int indexOfTag = tags.indexOf(tag, true);
+    if (indexOfTag >= 0) {
+        tags.remove(indexOfTag);
+    } else {
+        tags.add(tag);
+    }
+    juce::String error;
+    if (!PresetMetadataStore::save(file, tags, error)) {
+        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                "Unable to save tags", error);
+        return;
+    }
+    index->refreshRecord(file);
+    if (onTagsChanged) {
+        onTagsChanged(file, tags);
+    }
 }
 
 void InlinePresetBrowser::toggleFavorite(const juce::File& file) {
@@ -576,7 +612,7 @@ void InlinePresetBrowser::refreshFavorites() {
 
 juce::StringArray InlinePresetBrowser::tagsFor(
         const PresetLibraryRecord& record) const {
-    if (!record.presentation.tags.isEmpty()) {
+    if (record.presentation.tagsSpecified || !record.presentation.tags.isEmpty()) {
         return record.presentation.tags;
     }
     const auto found = patternTags.find(record.presentation.patternId.toStdString());
