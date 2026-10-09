@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "Graph/GraphEdgeIndex.h"
+#include "UI/NodeCanvasScene.h"
 
 namespace CycleV2 {
 
@@ -18,13 +19,13 @@ juce::Rectangle<float> mapBounds(juce::Rectangle<float> card) {
 }
 
 juce::Point<float> mappedCentre(
-        const Node& node,
+        juce::Rectangle<float> nodeBounds,
         juce::Rectangle<float> source,
         juce::Rectangle<float> destination) {
     return {
-            juce::jmap(node.bounds.getCentreX(), source.getX(), source.getRight(),
+            juce::jmap(nodeBounds.getCentreX(), source.getX(), source.getRight(),
                     destination.getX(), destination.getRight()),
-            juce::jmap(node.bounds.getCentreY(), source.getY(), source.getBottom(),
+            juce::jmap(nodeBounds.getCentreY(), source.getY(), source.getBottom(),
                     destination.getY(), destination.getBottom())
     };
 }
@@ -76,8 +77,10 @@ void paintMapEdges(
             const Node* to = graph.findNode(edge.destNodeId);
             if (from != nullptr && to != nullptr) {
                 graphics.drawLine(juce::Line<float>(
-                        mappedCentre(*from, source, mapped),
-                        mappedCentre(*to, source, mapped)), 1.2f);
+                        mappedCentre(NodeCanvasScene::presentationWorldBounds(
+                                graph, *from, edgeIndex), source, mapped),
+                        mappedCentre(NodeCanvasScene::presentationWorldBounds(
+                                graph, *to, edgeIndex), source, mapped)), 1.2f);
             }
         }
     }
@@ -90,13 +93,16 @@ void paintMapNodes(
         juce::Rectangle<float> source,
         juce::Rectangle<float> mapped,
         juce::Rectangle<float> map,
-        float scale) {
+        float scale,
+        const GraphEdgeIndex& edgeIndex) {
     for (const auto& id : group.nodeIds) {
         if (const Node* node = graph.findNode(id)) {
+            const auto presented = NodeCanvasScene::presentationWorldBounds(
+                    graph, *node, edgeIndex);
             auto miniature = juce::Rectangle<float>(
-                    juce::jmax(8.f, node->bounds.getWidth() * scale),
-                    juce::jmax(5.f, node->bounds.getHeight() * scale))
-                    .withCentre(mappedCentre(*node, source, mapped));
+                    juce::jmax(8.f, presented.getWidth() * scale),
+                    juce::jmax(5.f, presented.getHeight() * scale))
+                    .withCentre(mappedCentre(presented, source, mapped));
             miniature = miniature.getIntersection(map.reduced(2.f));
             graphics.setColour(juce::Colour(0xff41627b));
             graphics.fillRoundedRectangle(miniature, 2.f);
@@ -110,11 +116,14 @@ void paintMapNodes(
 
 juce::Rectangle<float> NodeGroupPresentation::memberWorldBounds(
         const NodeGraph& graph,
-        const NodeGroup& group) {
+        const NodeGroup& group,
+        const GraphEdgeIndex& edgeIndex) {
     juce::Rectangle<float> result;
     for (const auto& id : group.nodeIds) {
         if (const Node* node = graph.findNode(id)) {
-            result = result.isEmpty() ? node->bounds : result.getUnion(node->bounds);
+            const auto presented = NodeCanvasScene::presentationWorldBounds(
+                    graph, *node, edgeIndex);
+            result = result.isEmpty() ? presented : result.getUnion(presented);
         }
     }
     return result;
@@ -122,8 +131,9 @@ juce::Rectangle<float> NodeGroupPresentation::memberWorldBounds(
 
 juce::Rectangle<float> NodeGroupPresentation::worldBounds(
         const NodeGraph& graph,
-        const NodeGroup& group) {
-    const auto members = memberWorldBounds(graph, group);
+        const NodeGroup& group,
+        const GraphEdgeIndex& edgeIndex) {
+    const auto members = memberWorldBounds(graph, group, edgeIndex);
     if (group.collapsed) {
         return { members.getX() - kPadding, members.getY() - kTitleHeight,
                 kCardWidth, kCardHeight };
@@ -134,8 +144,9 @@ juce::Rectangle<float> NodeGroupPresentation::worldBounds(
 juce::Rectangle<float> NodeGroupPresentation::toggleBounds(
         const NodeGraph& graph,
         const NodeGroup& group,
-        const NodeCanvasViewport& viewport) {
-    const auto bounds = viewport.toScreen(worldBounds(graph, group));
+        const NodeCanvasViewport& viewport,
+        const GraphEdgeIndex& edgeIndex) {
+    const auto bounds = viewport.toScreen(worldBounds(graph, group, edgeIndex));
     const float size = juce::jlimit(17.f, 26.f, 22.f * viewport.getZoom());
     return { bounds.getRight() - size - 7.f, bounds.getY() + 5.f, size, size };
 }
@@ -143,8 +154,9 @@ juce::Rectangle<float> NodeGroupPresentation::toggleBounds(
 juce::Point<float> NodeGroupPresentation::boundaryPoint(
         const NodeGraph& graph,
         const NodeGroup& group,
-        juce::Point<float> other) {
-    const auto bounds = worldBounds(graph, group);
+        juce::Point<float> other,
+        const GraphEdgeIndex& edgeIndex) {
+    const auto bounds = worldBounds(graph, group, edgeIndex);
     const auto centre = bounds.getCentre();
     const auto delta = other - centre;
     if (std::abs(delta.x) * bounds.getHeight()
@@ -162,15 +174,15 @@ void NodeGroupPresentation::paint(
         const NodeGroup& group,
         const NodeCanvasViewport& viewport,
         const GraphEdgeIndex& edgeIndex) {
-    const auto bounds = viewport.toScreen(worldBounds(graph, group));
-    const auto toggle = toggleBounds(graph, group, viewport);
+    const auto bounds = viewport.toScreen(worldBounds(graph, group, edgeIndex));
+    const auto toggle = toggleBounds(graph, group, viewport, edgeIndex);
     paintGroupChrome(graphics, group, bounds, toggle);
     if (!group.collapsed) {
         return;
     }
 
     const auto map = mapBounds(bounds);
-    const auto source = memberWorldBounds(graph, group).expanded(8.f);
+    const auto source = memberWorldBounds(graph, group, edgeIndex).expanded(8.f);
     graphics.setColour(juce::Colour(0xff09151e));
     graphics.fillRoundedRectangle(map, 5.f);
     graphics.setColour(juce::Colour(0xff355066));
@@ -184,7 +196,7 @@ void NodeGroupPresentation::paint(
     const auto mapped = juce::Rectangle<float>(
             source.getWidth() * scale, source.getHeight() * scale).withCentre(map.getCentre());
     paintMapEdges(graphics, graph, group, edgeIndex, source, mapped);
-    paintMapNodes(graphics, graph, group, source, mapped, map, scale);
+    paintMapNodes(graphics, graph, group, source, mapped, map, scale, edgeIndex);
 }
 
 }

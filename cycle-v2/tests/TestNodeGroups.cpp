@@ -1,5 +1,6 @@
 #include <algorithm>
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "Graph/GraphCommandDispatcher.h"
@@ -8,6 +9,7 @@
 #include "Graph/GraphSerializer.h"
 #include "UI/NodeCanvasInteraction.h"
 #include "UI/NodeCanvasScene.h"
+#include "UI/NodeGroupPresentation.h"
 
 using namespace CycleV2;
 
@@ -116,6 +118,39 @@ TEST_CASE("Collapsed groups hide member targets and internal cables",
             [](const NodeSceneTarget& target) {
                 return target.kind == NodeSceneTargetKind::NodeGroupToggle;
             }));
+}
+
+TEST_CASE("Collapsed group geometry follows an inline pan on its cable",
+        "[cycle-v2][ui][groups][pan]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 0.f, 80.f }));
+    graph.addNode(factory.createNode(NodeKind::SpectralLayer, "pan", { 2000.f, 800.f }));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", { 520.f, 80.f }));
+    graph.addEdge({
+            "mesh", "out", "pan", "in",
+            PortDomain::ControlSignal, ConnectionKind::Signal });
+    graph.addEdge({
+            "pan", "out", "ifft", "mag",
+            PortDomain::ControlSignal, ConnectionKind::Signal });
+    REQUIRE(graph.addNodeGroup({ "group", "Timbre", { "mesh", "pan" }, true }));
+    const GraphEdgeIndex edgeIndex(graph.getEdges());
+    const NodeGroup& group = *graph.findNodeGroup("group");
+    const auto panBounds = NodeCanvasScene::presentationWorldBounds(
+            graph, *graph.findNode("pan"), edgeIndex);
+    const auto groupBounds = NodeGroupPresentation::worldBounds(graph, group, edgeIndex);
+
+    REQUIRE(panBounds.getCentreX() < 520.f);
+    REQUIRE(groupBounds.getRight() < 1000.f);
+    REQUIRE(groupBounds.getBottom() < 500.f);
+
+    NodeCanvasViewport viewport;
+    viewport.setBounds({ 0.f, 0.f, 1000.f, 600.f });
+    viewport.setTransform({}, 1.f);
+    NodeCanvasScene scene;
+    const auto& snapshot = scene.build(graph, viewport);
+    REQUIRE(snapshot.edges.size() == 1);
+    REQUIRE(snapshot.edges.front().source.x == Catch::Approx(groupBounds.getRight()));
 }
 
 TEST_CASE("Deleting a group member clears the remaining membership",

@@ -342,7 +342,8 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                 group.id,
                 {},
                 {},
-                NodeGroupPresentation::toggleBounds(graph, group, viewport),
+                NodeGroupPresentation::toggleBounds(
+                        graph, group, viewport, indexedEdges),
                 -1,
                 30000 + zOrder++
         });
@@ -503,13 +504,13 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         PortSide destinationSide = destinationPort != nullptr ? destinationPort->side : PortSide::Top;
         if (sourceCollapsed) {
             const auto world = NodeGroupPresentation::boundaryPoint(
-                    graph, *sourceGroup, viewport.toWorld(destination));
+                    graph, *sourceGroup, viewport.toWorld(destination), indexedEdges);
             source = viewport.toScreen(world);
             sourceSide = source.x <= destination.x ? PortSide::Right : PortSide::Left;
         }
         if (destinationCollapsed) {
             const auto world = NodeGroupPresentation::boundaryPoint(
-                    graph, *destinationGroup, viewport.toWorld(source));
+                    graph, *destinationGroup, viewport.toWorld(source), indexedEdges);
             destination = viewport.toScreen(world);
             destinationSide = destination.x >= source.x ? PortSide::Left : PortSide::Right;
         }

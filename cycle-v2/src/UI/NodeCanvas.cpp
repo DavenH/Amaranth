@@ -672,11 +672,12 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         return;
     }
 
+    const GraphEdgeIndex& groupEdgeIndex = queries.presentationFacts().edgeIndex();
     for (const auto& group : graph.getNodeGroups()) {
         const auto bounds = viewport.toScreen(
-                NodeGroupPresentation::worldBounds(graph, group));
+                NodeGroupPresentation::worldBounds(graph, group, groupEdgeIndex));
         const bool onToggle = NodeGroupPresentation::toggleBounds(
-                graph, group, viewport).contains(event.position);
+                graph, group, viewport, groupEdgeIndex).contains(event.position);
         const bool onCard = group.collapsed && bounds.contains(event.position);
         const bool onHeader = !group.collapsed
                 && bounds.withHeight(31.f * viewport.getZoom()).contains(event.position);

@@ -11,7 +11,7 @@ Implemented (2026-10-09).
 - Creating, removing, and collapsing a group are dispatcher commands with invertible deltas and one undo step each. These commands affect layout only; they do not compile or prepare audio.
 - Expanded groups frame their member nodes. A collapsed group shows a compact card with a diagram of its member nodes and internal connections. Member nodes and internal cables are hidden; external cables terminate on the card.
 - The card has an accessible toggle target. A selection of two or more nodes can be grouped from a context menu or keyboard shortcut. Ungroup is available from the group menu.
-- Group geometry is derived from member bounds. Moving a member uses the existing node movement delta, with no aggregate graph copy on movement updates.
+- Group geometry is derived from each member's presented bounds, including inline pan nodes whose displayed position follows a cable. Moving a member uses the existing node movement delta, with no aggregate graph copy on movement updates.
 
 ## Ownership and reuse
 
@@ -50,9 +50,9 @@ group/card geometry, and `NodeCanvasScene` alone decides which member targets
 and cables are visible. Canvas input reads shared geometry and delegates to the
 dispatcher. Group edits do not add DSP or compiler branches.
 
-After sizes: `NodeCanvas.cpp` 3,276 lines, `NodeCanvasPresentation.cpp`
+After sizes: `NodeCanvas.cpp` 3,277 lines, `NodeCanvasPresentation.cpp`
 1,472 lines, `GraphSerializer.cpp` 1,322 lines. The new
-`NodeGroupPresentation.cpp` is 190 lines. The canvas increase is gesture/menu
+`NodeGroupPresentation.cpp` is 202 lines. The canvas increase is gesture/menu
 routing and status publication; minimap geometry and rendering are delegated.
 `NodeGraph::isNodeVisible` owns the collapsed visibility decision used by the
 scene, painting, hit queries, selection, and snapping. No separate layer stores
@@ -60,7 +60,7 @@ group state.
 
 ## Verification
 
-- `cmake --build --preset tests --target CycleV2_tests --parallel 10` and four
+- `cmake --build --preset tests --target CycleV2_tests --parallel 10` and five
   focused CTest cases passed. They cover persistence and undo/redo, membership
   cleanup and restoration, hidden targets/internal cables, external cable
   continuity, and hidden-node box selection.
@@ -74,3 +74,7 @@ group state.
   boundary cables were visible. The filtered launch log contained no errors.
 - `python3 scripts/cycle_v2_architecture_audit.py`, touched-file line counts,
   `git diff --check`, and clang-tidy on the new presentation source were run.
+- Follow-up: collapsed card bounds and miniatures use the canvas's authoritative
+  presented node bounds. A focused inline pan test places the stored node far
+  from its cable and verifies the card and external cable stay on the canvas.
+  The 14 matching CTest cases and the group UI fixture passed after this change.
