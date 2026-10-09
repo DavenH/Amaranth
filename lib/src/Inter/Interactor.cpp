@@ -493,7 +493,7 @@ void Interactor::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wh
     } else {
         state.currentMouse = Vertex2(-1, 0);
         const float ratio = wheel.isSmooth
-                ? std::pow(ZoomPanel::zoomRatio, 0.5f * std::abs(yInc))
+                ? std::pow(ZoomPanel::zoomRatio, 1.f / 3.f)
                 : ZoomPanel::zoomRatio;
 
         if(yInc > 0) {

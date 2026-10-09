@@ -3093,7 +3093,7 @@ TEST_CASE("Trimesh trackpad scroll pans horizontally and zooms vertically",
     REQUIRE(gridViewport->rect.w == Catch::Approx(gridZoomedWidth));
 }
 
-TEST_CASE("Smooth trackpad zoom follows vertical distance instead of event count",
+TEST_CASE("Smooth trackpad zoom uses one third of a wheel step per event",
         "[cycle-v2][nodes][trimesh][viewport][trackpad]") {
     ScopedJuceInitialiser_GUI juce;
     TrimeshPanelBridge bridge;
@@ -3107,20 +3107,21 @@ TEST_CASE("Smooth trackpad zoom follows vertical distance instead of event count
     const float originalWidth = viewport->rect.w;
 
     MouseWheelDetails wheel {};
-    wheel.deltaY = 0.2f;
+    wheel.deltaY = 0.03f;
     wheel.isSmooth = true;
     panel->mouseWheelMove(event, wheel);
     const float firstWidth = viewport->rect.w;
-    REQUIRE(firstWidth < originalWidth);
-    REQUIRE(firstWidth > originalWidth * 0.95f);
+    REQUIRE(firstWidth < originalWidth * 0.94f);
+    REQUIRE(firstWidth > originalWidth * 0.92f);
 
+    wheel.deltaY = 0.2f;
     for (int index = 0; index < 4; ++index) {
         panel->mouseWheelMove(event, wheel);
     }
-    REQUIRE(viewport->rect.w < firstWidth);
-    REQUIRE(viewport->rect.w > originalWidth * 0.8f);
+    REQUIRE(viewport->rect.w < originalWidth * 0.75f);
+    REQUIRE(viewport->rect.w > originalWidth * 0.6f);
 
-    wheel.deltaY = -0.2f;
+    wheel.deltaY = -0.03f;
     for (int index = 0; index < 5; ++index) {
         panel->mouseWheelMove(event, wheel);
     }
