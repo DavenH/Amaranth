@@ -15,13 +15,6 @@ namespace CycleV2 {
 
 namespace {
 
-bool operationLayoutSupported(NodeKind kind) {
-    return NodeViewModuleRegistry::instance()
-            .moduleFor(kind)
-            .capabilities()
-            .operationLayoutControl;
-}
-
 bool outputSideControlSupported(NodeKind kind) {
     return NodeViewModuleRegistry::instance()
             .moduleFor(kind)
@@ -608,8 +601,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::spliceSelectedNodeIntoEdge(int ed
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleOperationPortLayout(const String& nodeId) {
     const Node* node = findNode(nodeId);
-    if (node == nullptr || !operationLayoutSupported(node->kind)
-            || !supportsOperationPortLayout(*node)) {
+    if (node == nullptr || !supportsOperationPortLayout(*node)) {
         return {};
     }
 

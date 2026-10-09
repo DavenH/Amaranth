@@ -4,8 +4,10 @@
 #include <algorithm>
 #include <array>
 
-#include "Graph/GraphNodeStateEditor.h"
+#include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphDocument.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "UI/NodeCanvasPresentation.h"
 #include "UI/NodePortLayout.h"
 
@@ -17,12 +19,14 @@ TEST_CASE("Operation port layouts share authored, painted, and hit geometry",
         OperationPortLayout layout;
         PortSide firstInput;
         PortSide secondInput;
+        bool reversed;
     };
-    const std::array<LayoutExpectation, 4> expectations {{
-            { OperationPortLayout::Side, PortSide::Left, PortSide::Left },
-            { OperationPortLayout::Uptack, PortSide::Left, PortSide::Top },
-            { OperationPortLayout::Vertical, PortSide::Top, PortSide::Bottom },
-            { OperationPortLayout::Tee, PortSide::Left, PortSide::Bottom }
+    const std::array<LayoutExpectation, 5> expectations {{
+            { OperationPortLayout::Side, PortSide::Left, PortSide::Left, false },
+            { OperationPortLayout::SideReversed, PortSide::Left, PortSide::Left, true },
+            { OperationPortLayout::Uptack, PortSide::Left, PortSide::Top, false },
+            { OperationPortLayout::Vertical, PortSide::Top, PortSide::Bottom, false },
+            { OperationPortLayout::Tee, PortSide::Left, PortSide::Bottom, false }
     }};
 
     NodeCanvasViewport viewport;
@@ -38,6 +42,13 @@ TEST_CASE("Operation port layouts share authored, painted, and hit geometry",
         REQUIRE(node.inputs[0].side == expectation.firstInput);
         REQUIRE(node.inputs[1].side == expectation.secondInput);
         REQUIRE(node.outputs[0].side == PortSide::Right);
+        REQUIRE(node.reverseInputPortOrder == expectation.reversed);
+        if (expectation.layout == OperationPortLayout::Side
+                || expectation.layout == OperationPortLayout::SideReversed) {
+            const float firstY = NodeCanvasScene::portWorldCentre(node, node.inputs[0]).y;
+            const float secondY = NodeCanvasScene::portWorldCentre(node, node.inputs[1]).y;
+            REQUIRE((firstY > secondY) == expectation.reversed);
+        }
 
         NodeGraph graph;
         graph.addNode(node);
@@ -64,6 +75,49 @@ TEST_CASE("Operation port layouts share authored, painted, and hit geometry",
         checkPort(stored.inputs[1]);
         checkPort(stored.outputs[0]);
     }
+}
+
+TEST_CASE("Reversed side layout moves cable endpoints without changing input identities",
+        "[cycle-v2][canvas][presentation][layout]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "upper", { 20.f, 20.f }));
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "lower", { 20.f, 240.f }));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", { 320.f, 100.f }));
+    const Node* multiply = graph.findNode("multiply");
+    REQUIRE(multiply != nullptr);
+    const String firstId = multiply->inputs[0].id;
+    const String secondId = multiply->inputs[1].id;
+    const String sourcePort = graph.findNode("upper")->outputs[0].id;
+    graph.addEdge({ "upper", sourcePort, "multiply", firstId,
+            PortDomain::ControlSignal, ConnectionKind::Signal });
+    graph.addEdge({ "lower", sourcePort, "multiply", secondId,
+            PortDomain::ControlSignal, ConnectionKind::Signal });
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+
+    NodeCanvasViewport viewport;
+    viewport.setTransform({}, 1.f);
+    NodeCanvasScene sceneBuilder;
+    const auto& before = sceneBuilder.build(document.graph(), viewport);
+    REQUIRE(before.edges.size() == 2);
+    const float firstBeforeY = before.edges[0].destination.y;
+    const float secondBeforeY = before.edges[1].destination.y;
+    REQUIRE(firstBeforeY < secondBeforeY);
+
+    REQUIRE(commands.editNodePresentation("multiply", [](Node& edited) {
+        applyOperationPortLayout(edited, OperationPortLayout::SideReversed);
+    }).succeeded());
+    const auto& after = sceneBuilder.build(document.graph(), viewport);
+    REQUIRE(after.edges.size() == 2);
+    REQUIRE(after.edges[0].destination.y == Catch::Approx(secondBeforeY));
+    REQUIRE(after.edges[1].destination.y == Catch::Approx(firstBeforeY));
+    REQUIRE(document.graph().getEdges()[0].destPortId == firstId);
+    REQUIRE(document.graph().getEdges()[1].destPortId == secondId);
+    const Node* edited = document.graph().findNode("multiply");
+    REQUIRE(edited != nullptr);
+    REQUIRE(edited->inputs[0].id == firstId);
+    REQUIRE(edited->inputs[1].id == secondId);
 }
 
 TEST_CASE("Node canvas presentation shares port centres with the scene model",

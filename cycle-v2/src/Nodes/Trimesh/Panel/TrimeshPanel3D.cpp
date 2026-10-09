@@ -4,6 +4,7 @@
 
 #include <App/AppConstants.h>
 #include <UI/Panels/CommonGfx.h>
+#include <UI/Panels/ZoomPanel.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegions.h>
 
@@ -155,6 +156,23 @@ void TrimeshPanel3D::setRenderProfile(TrimeshRenderProfile profile) {
         updateBackground();
         requestRepaint();
     }
+}
+
+void TrimeshPanel3D::configureViewport(Range<float> frequencyLimits) {
+    if (getZoomPanel() == nullptr) {
+        return;
+    }
+
+    ZoomRect& rect = getZoomPanel()->rect;
+    if (rect.yMinimum == frequencyLimits.getStart()
+            && rect.yMaximum == frequencyLimits.getEnd()) {
+        return;
+    }
+    rect.yMinimum = frequencyLimits.getStart();
+    rect.yMaximum = frequencyLimits.getEnd();
+    rect.y = 0.f;
+    rect.h = 1.f;
+    getZoomPanel()->panelZoomChanged(false);
 }
 
 void TrimeshPanel3D::setPitchSpansColumns(bool shouldSpan) {

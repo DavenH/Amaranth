@@ -216,6 +216,7 @@ struct Node {
     std::vector<Port> outputs;
     NodeModelStatePtr model;
     var editorState;
+    bool reverseInputPortOrder {};
 };
 
 struct Edge {

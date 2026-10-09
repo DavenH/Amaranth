@@ -511,6 +511,16 @@ capturing the sidebar tag cloud; a LaunchServices run through
 commands. The direct invocation's stdout was not saved. Current status:
 open as a direct-launch harness issue; the product UI capture and tests pass.
 
+## P2: Broad Cycle V2 Trimesh test selection fails in model and guide tests
+
+On 2026-10-08, `CycleV2_tests '[cycle-v2][nodes][trimesh]' --reporter compact`
+reported a selected-vertex value mismatch at `TestTrimeshNodeDsp.cpp:1984`
+(`0.32` versus `0.88`), zero guide attachment targets at line 2069, then a
+`SIGSEGV` in the live-mesh-pointer test at line 2007. The four focused panel
+viewport, host, cursor, and box-selection tests passed individually. Current
+status: open; the broad failures occur in model/guide paths outside the
+frequency viewport change.
+
 ## P3: Unipolar magnitude heatmap edge-pixel assertion
 
 On 2026-10-08, `CycleV2_tests` case "Magnitude mesh heatmaps consume the full

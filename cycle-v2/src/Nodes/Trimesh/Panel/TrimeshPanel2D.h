@@ -20,6 +20,7 @@ public:
     void panelResized() override;
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
+    void configureViewport(Range<float> frequencyLimits);
     void setPreviewMidiNote(int midiNote);
     void setPrimaryMorphPosition(float position);
 

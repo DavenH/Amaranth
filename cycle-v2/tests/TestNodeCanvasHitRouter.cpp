@@ -16,6 +16,7 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", { 40.f, 520.f }));
     graph.addNode(factory.createNode(NodeKind::Output, "output", { 500.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", { 620.f, 520.f }));
+    graph.addNode(factory.createNode(NodeKind::StereoJoin, "join", { 710.f, 320.f }));
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 500.f, 300.f }));
     graph.addNode(factory.createNode(NodeKind::Envelope, "envelope", { 200.f, 300.f }));
     graph.addEdge({
@@ -45,6 +46,17 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
     const String actionHelp = router.hoverTextFor(viewport, {}, actionPoint);
     REQUIRE(actionHelp.contains("port arrangement"));
     REQUIRE_FALSE(actionHelp.contains(" / "));
+
+    const Node* stereoJoin = graph.findNode("join");
+    REQUIRE(stereoJoin != nullptr);
+    REQUIRE(stereoJoin->inputs.size() == 2);
+    const Point<float> joinActionPoint {
+            stereoJoin->bounds.getRight() - 21.f,
+            stereoJoin->bounds.getY() + 21.f
+    };
+    const auto joinAction = router.nodeActionAt(viewport, joinActionPoint);
+    REQUIRE(joinAction.has_value());
+    REQUIRE(joinAction->kind == CanvasNodeActionKind::CycleOperationLayout);
 
     const Node* envelope = graph.findNode("envelope");
     REQUIRE(envelope != nullptr);

@@ -24,6 +24,8 @@ protected:
     virtual bool deleteKeyPressed() { return false; }
 
 private:
+    enum class WheelAxis { None, Horizontal, Vertical };
+
     void mouseEnter(const juce::MouseEvent& event) override;
     void mouseMove(const juce::MouseEvent& event) override;
     void mouseDown(const juce::MouseEvent& event) override;
@@ -39,4 +41,8 @@ private:
 
     Panel& panel;
     bool pointerActive {};
+    WheelAxis wheelAxis { WheelAxis::None };
+    double lastWheelTimeMs {};
+    float pendingWheelX {};
+    float pendingWheelY {};
 };
