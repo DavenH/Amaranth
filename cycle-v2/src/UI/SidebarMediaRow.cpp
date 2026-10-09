@@ -7,14 +7,12 @@ namespace CycleV2::SidebarMediaRow {
 PresetLayout presetLayout(juce::Rectangle<float> slot, const juce::StringArray& tags) {
     PresetLayout layout;
     const auto content = cardBounds(slot).reduced(5.f);
-    auto metadata = content.withWidth(content.getWidth() * 0.4f);
-    layout.preview = content.withLeft(metadata.getRight());
-    metadata = metadata.withTrimmedRight(6.f);
-    layout.favorite = { metadata.getX(), metadata.getY(), 22.f, 22.f };
-    layout.labels.title = metadata.withTrimmedLeft(26.f).withHeight(28.f);
+    const auto metadata = content.withHeight(22.f);
+    layout.preview = content.withTrimmedTop(26.f);
+    layout.favorite = metadata.withLeft(metadata.getRight() - 22.f);
 
     const juce::Font tagFont(juce::FontOptions(10.5f));
-    float remaining = metadata.getWidth();
+    float remaining = metadata.getWidth() - 126.f;
     float totalWidth = 0.f;
     for (int index = 0; index < juce::jmin(4, tags.size()); ++index) {
         const float gap = index == 0 ? 0.f : 3.f;
@@ -28,10 +26,11 @@ PresetLayout presetLayout(juce::Rectangle<float> slot, const juce::StringArray& 
         totalWidth += width + gap;
         remaining -= width + gap;
     }
-    float x = metadata.getRight() - totalWidth;
+    float x = layout.favorite.getX() - 4.f - totalWidth;
+    layout.labels.title = metadata.withRight(x - 6.f);
     for (int index = 0; index < layout.labels.tagCount; ++index) {
         auto& chip = layout.labels.tags[(size_t) index];
-        chip.setPosition(x, metadata.getBottom() - 18.f);
+        chip.setPosition(x, metadata.getY() + 2.f);
         x += chip.getWidth() + 3.f;
     }
     return layout;
@@ -171,7 +170,7 @@ void paintLabels(
             12.5f, juce::Font::plain));
   #endif
     graphics.drawFittedText(title, layout.title.toNearestInt(),
-            juce::Justification::topRight, 2, 0.9f);
+            juce::Justification::centredLeft, 1, 0.9f);
     paintFavorite(graphics, slot, favorite);
     paintHeaderTags(graphics, tags, layout, 10.5f);
 }

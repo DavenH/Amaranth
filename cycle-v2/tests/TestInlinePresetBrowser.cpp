@@ -177,31 +177,31 @@ TEST_CASE("Preset and pattern actions occupy the same sidebar positions",
     }
 }
 
-TEST_CASE("Preset metadata stays left of the spectrogram at sidebar widths",
+TEST_CASE("Preset header sits above a full-width spectrogram at sidebar widths",
         "[cycle-v2][preset][browser][inline][layout]") {
     ScopedJuceInitialiser_GUI gui;
     for (const float width : { 250.f, 290.f }) {
         const Rectangle<float> row { 0.f, 0.f, width, (float) SidebarMediaRow::presetHeight };
         const auto card = SidebarMediaRow::cardBounds(row);
         const auto layout = SidebarMediaRow::presetLayout(row, { "Bass", "Phase Velocity" });
-        REQUIRE(layout.preview.getWidth() == Catch::Approx(card.reduced(5.f).getWidth() * 0.6f));
+        REQUIRE(layout.preview.getWidth() == Catch::Approx(card.reduced(5.f).getWidth()));
         REQUIRE(card.contains(layout.preview));
         REQUIRE(card.contains(layout.favorite));
         REQUIRE_FALSE(layout.labels.title.intersects(layout.favorite));
-        REQUIRE(layout.labels.title.getRight() < layout.preview.getX());
+        REQUIRE(layout.labels.title.getX() == layout.preview.getX());
         REQUIRE(layout.labels.tagCount == 2);
-        REQUIRE(layout.labels.title.getRight() == Catch::Approx(layout.preview.getX() - 6.f));
+        REQUIRE(layout.favorite.getRight() == layout.preview.getRight());
         REQUIRE(layout.favorite.getY() == layout.labels.title.getY());
-        REQUIRE(layout.labels.title.getX() - layout.favorite.getRight() == 4.f);
+        REQUIRE(layout.preview.getY() - layout.favorite.getBottom() == 4.f);
         for (int index = 0; index < layout.labels.tagCount; ++index) {
             const auto& tag = layout.labels.tags[(size_t) index];
             REQUIRE(card.contains(tag));
-            REQUIRE(tag.getY() > layout.labels.title.getBottom());
+            REQUIRE(tag.getX() > layout.labels.title.getRight());
             REQUIRE(tag.getHeight() < layout.favorite.getHeight());
-            REQUIRE(tag.getY() == layout.preview.getBottom() - tag.getHeight());
-            REQUIRE(tag.getY() - layout.labels.title.getBottom() <= 6.f);
+            REQUIRE(tag.getCentreY() == layout.favorite.getCentreY());
+            REQUIRE(tag.getBottom() < layout.preview.getY());
             REQUIRE_FALSE(tag.intersects(layout.favorite));
-            REQUIRE(tag.getRight() < layout.preview.getX());
+            REQUIRE(tag.getRight() < layout.favorite.getX());
         }
         REQUIRE_FALSE(layout.labels.tags[0].intersects(layout.labels.tags[1]));
         REQUIRE(SidebarMediaRow::favoriteBounds(row) == layout.favorite);

@@ -7,7 +7,7 @@
 namespace CycleV2::SidebarMediaRow {
 
 constexpr int height = 84;
-constexpr int presetHeight = 68;
+constexpr int presetHeight = 82;
 
 struct HeaderLabelsLayout {
     juce::Rectangle<float> title;

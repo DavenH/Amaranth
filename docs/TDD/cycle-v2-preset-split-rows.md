@@ -96,3 +96,17 @@ painter. Preserve outlined/filled states, colour, position and 22px hit area.
 Standalone build and whitespace review pass; no interaction logic changed.
 Visual review `/private/tmp/bare-favorites.png` confirms background-free stars in
 selected, resting and favorite rows.
+
+Full-width revision: supersede the 40/60 split with a full-width spectrogram below
+a 22px metadata header and 4px gap. Increase rows from 68 to 82px (21%). Keep
+Helvetica Neue Medium 12.5px, lowercase 18px dark chips and the background-free
+22px favorite. Title is left-aligned; tags occupy the right side before the star
+at the far right. Reserve at least 94px for the title, admitting tags within the
+remaining header budget. Favorite drawing/hit/automation still share presetLayout.
+Patterns retain their existing geometry. Review confirms the shared row painter
+owns geometry; no new lifecycle, graph or persistence behavior. Architecture
+review: SidebarMediaRow 217/62 lines, no new dependencies or extraction targets.
+Both builds and nine inline tests pass (215 assertions), covering full-width
+geometry, shared header baselines, separation and favorite interaction. Native
+capture `/private/tmp/full-width-presets.png` reviewed with selected rows,
+favorites and multiple tags. Diff/style checks pass; no remaining work.
