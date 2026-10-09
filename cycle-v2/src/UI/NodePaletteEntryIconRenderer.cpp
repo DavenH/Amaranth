@@ -27,10 +27,11 @@ void NodePaletteEntryIconRenderer::paint(
         Rectangle<float> area,
         bool hover) {
     const float opacity = hover ? 1.f : 0.88f;
+    const auto colour = hover ? NodeIconColour::Semantic : NodeIconColour::Monochrome;
     if (const char* iconId = transformIconId(kind)) {
-        NodeIconRenderer::paint(graphics, iconId, area, opacity);
+        NodeIconRenderer::paint(graphics, iconId, area, opacity, colour);
     } else {
-        NodeIconRenderer::paint(graphics, kind, area, opacity);
+        NodeIconRenderer::paint(graphics, kind, area, opacity, colour);
     }
 }
 

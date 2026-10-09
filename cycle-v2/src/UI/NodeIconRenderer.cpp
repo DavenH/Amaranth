@@ -11,10 +11,24 @@ namespace {
 
 struct Icon {
     std::unique_ptr<Drawable> drawable;
+    std::unique_ptr<Drawable> monochrome;
     Rectangle<float> canvas;
 };
 
 using IconMap = std::map<String, Icon>;
+
+void desaturateSvg(XmlElement& element) {
+    for (const auto* attribute : { "fill", "stroke" }) {
+        const String value = element.getStringAttribute(attribute);
+        if (value.startsWithChar('#') && value.length() == 7) {
+            const auto colour = Colour::fromString("ff" + value.substring(1)).withSaturation(0.f);
+            element.setAttribute(attribute, "#" + colour.toDisplayString(false));
+        }
+    }
+    for (auto* child = element.getFirstChildElement(); child != nullptr; child = child->getNextElement()) {
+        desaturateSvg(*child);
+    }
+}
 
 Icon createIcon(const char* svg) {
     const std::unique_ptr<XmlElement> document = parseXML(String::fromUTF8(svg));
@@ -31,16 +45,24 @@ Icon createIcon(const char* svg) {
             coordinates[2].getFloatValue(), coordinates[3].getFloatValue());
     document->setAttribute("width", canvas.getWidth());
     document->setAttribute("height", canvas.getHeight());
-    return { Drawable::createFromSVG(*document), canvas };
+    auto drawable = Drawable::createFromSVG(*document);
+    desaturateSvg(*document);
+    return { std::move(drawable), Drawable::createFromSVG(*document), canvas };
 }
 
-void paintIcon(Graphics& graphics, const Icon* icon, Rectangle<float> area, float opacity) {
-    if (icon == nullptr || icon->drawable == nullptr) {
+void paintIcon(Graphics& graphics, const Icon* icon, Rectangle<float> area,
+        float opacity, NodeIconColour colour) {
+    if (icon == nullptr) {
+        return;
+    }
+    const auto* drawable = colour == NodeIconColour::Monochrome
+            ? icon->monochrome.get() : icon->drawable.get();
+    if (drawable == nullptr) {
         return;
     }
     const auto transform = RectanglePlacement(RectanglePlacement::centred)
             .getTransformToFit(icon->canvas, area);
-    icon->drawable->draw(graphics, jlimit(0.f, 1.f, opacity), transform);
+    drawable->draw(graphics, jlimit(0.f, 1.f, opacity), transform);
 }
 
 const Icon* iconFor(const String& semanticId) {
@@ -81,16 +103,18 @@ void NodeIconRenderer::paint(
         Graphics& graphics,
         NodeKind kind,
         Rectangle<float> area,
-        float opacity) {
-    paintIcon(graphics, iconFor(kind), area, opacity);
+        float opacity,
+        NodeIconColour colour) {
+    paintIcon(graphics, iconFor(kind), area, opacity, colour);
 }
 
 void NodeIconRenderer::paint(
         Graphics& graphics,
         const String& semanticId,
         Rectangle<float> area,
-        float opacity) {
-    paintIcon(graphics, iconFor(semanticId), area, opacity);
+        float opacity,
+        NodeIconColour colour) {
+    paintIcon(graphics, iconFor(semanticId), area, opacity, colour);
 }
 
 }

@@ -992,14 +992,19 @@ TEST_CASE("Authored palette icons remain legible inside their production canvas"
             NodePaletteEntryIconRenderer::paint(graphics, entry.kind, { 0.f, 0.f, 32.f, 32.f }, false);
             Rectangle<int> occupied;
             int pixels {};
+            bool monochrome = true;
             for (int y = 0; y < 32; ++y) {
                 for (int x = 0; x < 32; ++x) {
-                    if (icon.getPixelAt(x, y).getAlpha() > 64) {
+                    const auto pixel = icon.getPixelAt(x, y);
+                    if (pixel.getAlpha() > 64) {
+                        monochrome = monochrome && pixel.getRed() == pixel.getGreen()
+                                && pixel.getGreen() == pixel.getBlue();
                         occupied = occupied.getUnion({ x, y, 1, 1 });
                         ++pixels;
                     }
                 }
             }
+            REQUIRE(monochrome);
             REQUIRE(pixels > 35);
             REQUIRE(occupied.getWidth() >= 15);
             REQUIRE(occupied.getHeight() >= 12);
@@ -1022,6 +1027,32 @@ TEST_CASE("Authored palette icons remain legible inside their production canvas"
         REQUIRE(stream.openedOk());
         REQUIRE(PNGImageFormat().writeImageToStream(sheet, stream));
     }
+}
+
+TEST_CASE("Palette semantic colours appear only on hover without mutating the resting icon",
+        "[cycle-v2][canvas][palette][icons]") {
+    ScopedJuceInitialiser_GUI juce;
+    MessageManagerLock messageLock;
+    const auto render = [](bool hover) {
+        Image image(Image::ARGB, 32, 32, true);
+        Graphics graphics(image);
+        NodePaletteEntryIconRenderer::paint(graphics, NodeKind::ModulationTriple,
+                { 0.f, 0.f, 32.f, 32.f }, hover);
+        return image;
+    };
+    const Image resting = render(false);
+    const Image hovered = render(true);
+    bool hasSemanticColour = false;
+    for (int y = 0; y < 32; ++y) {
+        for (int x = 0; x < 32; ++x) {
+            const auto pixel = hovered.getPixelAt(x, y);
+            if (pixel.getAlpha() > 64 && pixel.getSaturation() > 0.3f) {
+                hasSemanticColour = true;
+            }
+        }
+    }
+    REQUIRE(hasSemanticColour);
+    REQUIRE(imageChecksum(resting) == imageChecksum(render(false)));
 }
 
 TEST_CASE("Ignore Scratch is a compact single-output utility",

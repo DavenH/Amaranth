@@ -159,3 +159,30 @@ Verified neutral accents with the 96px/32px sheet
 specific PID at /private/tmp/sidebar-grey-exact.png. Both targets build and all
 9 palette tests / 295 assertions pass. SVG XML and diff checks pass. The first
 screenshot helper focused an older Release instance; that capture was rejected.
+
+## Monochrome resting palette (implemented and verified)
+
+All palette entries must be neutral at rest. Reveal the original semantic hues
+only on hover, including Mod Triple's axes. NodeIconRenderer remains the SVG
+parser/cache owner: cache a desaturated vector variant once beside the semantic
+variant, retaining brightness and alpha. Palette renderer selects the variant
+from hover state. Shared non-palette consumers keep semantic colour by default.
+No SVG geometry duplication, per-pixel paint transforms or runtime reparsing.
+Verify every resting icon has equal RGB components and that hover/rest round
+trips preserve the cached monochrome variant. Native hover and contact-sheet
+reviews must confirm the family remains visually balanced.
+
+Verified: standalone-debug and tests builds, 10 palette cases / 315 assertions,
+and 3 focused CTest cases pass. Raster tests check every authored entry for
+neutral RGB at rest and Mod Triple for semantic hover colour followed by an
+unchanged resting render. Visual passes: 96px/native contact sheet
+/private/tmp/sidebar-mono-icons.png, native resting capture sidebar-mono-rest.png,
+and native Mod Triple hover capture sidebar-mono-hover.png (all in /private/tmp).
+A dedicated preview process was targeted by PID and closed after capture.
+
+Production review: NodeIconRenderer 96 -> 120 lines, header 25 -> 29,
+palette renderer 37 -> 38. Colour variant ownership stays in the existing cache;
+only palette presentation selects the variant. Architecture and whitespace
+checks pass. Clang-tidy's recursion advisory applies to the shallow, trusted SVG
+resource tree during one-time cache creation; it is outside the paint/hot path.
+No per-sample/per-pixel production math or duplicated interaction logic added.
