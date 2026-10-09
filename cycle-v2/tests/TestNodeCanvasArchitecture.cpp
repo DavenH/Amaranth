@@ -1242,7 +1242,7 @@ TEST_CASE("Node palette has aligned ragged rows and two directly accessible FX r
             const auto tile = palette.entryBounds(sectionIndex, index);
             REQUIRE(tile.getWidth() == Catch::Approx(83.f * 0.8f));
             REQUIRE(tile.getHeight() == Catch::Approx(78.f * 0.8f));
-            REQUIRE(tile.getY() == Catch::Approx(group.getY() + 20.f + (index / 3) * 68.4f));
+            REQUIRE(tile.getY() == Catch::Approx(group.getY() + 25.f + (index / 3) * 68.4f));
             if (index % 3 == 0) {
                 REQUIRE(tile.getX() == first.getX());
             }

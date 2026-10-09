@@ -9,7 +9,7 @@ namespace {
 
 constexpr float kY = 64.f;
 constexpr float kGap = 6.f;
-constexpr float kHeadingHeight = 20.f;
+constexpr float kHeadingHeight = 25.f;
 constexpr float kGroupGap = 24.f;
 constexpr int kColumns = 3;
 
@@ -71,7 +71,7 @@ float NodePalette::tileHeight() const {
     }
     const float fixedHeight = kY + 16.f + sectionCount() * kHeadingHeight
             + (sectionCount() - 1) * kGroupGap + (totalRows - sectionCount()) * kGap;
-    return 0.8f * (float) jlimit(52, 78, (int) ((workspace.getHeight() - fixedHeight) / totalRows));
+    return jlimit(41.6f, 62.4f, (workspace.getHeight() - fixedHeight) / totalRows);
 }
 
 float NodePalette::groupHeight(int sectionIndex) const {

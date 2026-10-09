@@ -113,3 +113,9 @@ sizes remain 209 and 247 lines, with existing layout/render ownership unchanged.
 Typography clarification: the requested enlargement applies to group headings,
 now 14px. Icon labels return to 10.5px. Centered grid geometry is unchanged.
 Standalone build and whitespace check pass; no behavior change or new tests.
+
+Heading polish: retain the 14px size, use bold weight, and add 5px below the
+20px heading text band before the cards. Shared group layout includes the added
+space; responsive sizing and hit bounds follow it. Updated the existing geometry
+assertion. File sizes and ownership unchanged; style/diff and architecture checks
+pass. Rendered sidebar reviewed with the new heading weight and spacing.

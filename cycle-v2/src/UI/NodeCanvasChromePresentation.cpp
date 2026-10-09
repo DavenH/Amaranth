@@ -213,7 +213,7 @@ void NodeCanvasPresentation::paintPaletteContent(
         graphics.setColour(Colour(section.accentColour));
         graphics.fillRoundedRectangle(
                 group.withX(group.getX() - 10.f).withWidth(3.f), 1.5f);
-        graphics.setFont(FontOptions(14.f));
+        graphics.setFont(FontOptions(14.f).withStyle("Bold"));
         graphics.setColour(CanvasChromePalette::mutedText);
         graphics.drawText(section.title, group.withHeight(20.f), Justification::centredLeft);
 
