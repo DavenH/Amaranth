@@ -58,6 +58,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.0,
                 "red": 0.261682242,
@@ -146,10 +147,11 @@
                 "gain": 0.5,
                 "range": 0.75,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
-                "yellow": 0.0,
-                "red": 0.261682242,
-                "blue": 0.0,
+                "yellow": 0.311,
+                "red": 0.237,
+                "blue": 1.0,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
                 "link.red": true,
@@ -257,6 +259,7 @@
                 "gain": 0.5,
                 "range": 0.35,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.0,
                 "red": 0.261682242,
@@ -474,8 +477,6 @@
                     "logarithmic": false,
                     "red": 0.26168,
                     "blue": 0.0,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7 ]
                 }
             }
@@ -562,8 +563,6 @@
                     "logarithmic": false,
                     "red": 0.26168,
                     "blue": 0.0,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4 ]
                 }
             }
@@ -676,8 +675,6 @@
                     "logarithmic": false,
                     "red": 0.26168,
                     "blue": 0.0,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6 ]
                 }
             },
@@ -887,7 +884,7 @@
     ],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Bass", "Acid", "Stab"],
+        "tags": [ "Bass", "Acid", "Stab" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

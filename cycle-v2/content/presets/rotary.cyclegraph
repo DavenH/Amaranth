@@ -6,14 +6,22 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 960.0, "y": 826.0 },
-            "parameters": { "octave": 0, "voiceLength": 0.442748092, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "position": { "x": 797.00732, "y": 634.0 },
+            "parameters": {
+                "octave": 0,
+                "voiceLength": 0.442748092,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 584.79999, "y": 556.0 },
+            "position": { "x": 415.80737, "y": 488.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -44,7 +52,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 584.79999, "y": 1014.0 },
+            "position": { "x": 415.80737, "y": 946.0 },
             "parameters": { "enabled": true, "mode": "group", "order": 4, "width": 14.0, "panSpread": 0.0, "phase": 0.872, "jitter": 0.5 },
             "model": {
                 "schema": "unisonVoices",
@@ -65,6 +73,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -205,6 +214,7 @@
                 "gain": 0.5,
                 "range": 0.675,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -286,6 +296,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -358,6 +369,7 @@
                 "gain": 0.5,
                 "range": 0.575,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -430,6 +442,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -493,7 +506,7 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 2076.0, "y": 1254.0 },
+            "position": { "x": 2808.0, "y": 1220.20154 },
             "portSides": {
                 "outputs": { "out": "top" }
             },
@@ -502,6 +515,7 @@
                 "gain": 0.5,
                 "range": 0.325,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -594,7 +608,7 @@
             "id": "phaseOp1",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 2144.0, "y": 1056.0 },
+            "position": { "x": 2876.0, "y": 1022.20154 },
             "portSides": {
                 "inputs": { "right": "bottom" }
             },
@@ -719,8 +733,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5 ]
                 }
             }
@@ -729,7 +741,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 584.79999, "y": 726.0 },
+            "position": { "x": 415.80737, "y": 658.0 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -846,8 +858,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7 ]
                 }
             }
@@ -856,7 +866,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 833.0 },
+            "position": { "x": 2442.0, "y": 40.20819 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -934,8 +944,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4 ]
                 }
             }
@@ -944,7 +952,7 @@
             "id": "scratchEnvelope2",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1573.19995, "y": 399.5 },
+            "position": { "x": 2808.0, "y": 24.64369 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1009,8 +1017,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3 ]
                 }
             }
@@ -1318,7 +1324,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Keys"],
+        "tags": [ "Keys" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

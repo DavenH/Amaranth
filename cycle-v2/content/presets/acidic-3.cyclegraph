@@ -777,7 +777,7 @@
     ],
     "presetPresentation": {
         "version": 1,
-        "tags": [ "Bass", "Acid" ],
+        "tags": [ "Acid" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

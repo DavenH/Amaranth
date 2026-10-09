@@ -58,6 +58,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.0,
                 "red": 0.5,
@@ -458,6 +459,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.0,
                 "red": 0.0,
@@ -543,6 +545,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.0,
                 "red": 0.274,
@@ -854,7 +857,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": [ "Bass" ],
+        "tags": [ "Bass", "Pluck" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

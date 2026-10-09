@@ -44,6 +44,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -728,7 +729,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Bass", "Acid", "Stab"],
+        "tags": [ "Acid", "Stab" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

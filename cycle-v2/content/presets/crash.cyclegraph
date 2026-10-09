@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 460.0, "y": 826.0 },
+            "position": { "x": 1254.65625, "y": 1531.1969 },
             "parameters": {
                 "octave": 0,
                 "voiceLength": 0.480916031,
@@ -21,7 +21,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 837.0 },
+            "position": { "x": 896.98663, "y": 1533.1969 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -38,7 +38,7 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "position": { "x": 1476.0, "y": 886.0 },
+            "position": { "x": 1597.1792, "y": 886.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
         {
@@ -52,12 +52,13 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 840.0, "y": 886.0 },
+            "position": { "x": 951.85779, "y": 644.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -118,15 +119,13 @@
             "id": "timeLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1138.0, "y": 537.0 },
-            "portSides": {
-                "outputs": { "out": "bottom" }
-            },
+            "position": { "x": 951.85773, "y": 962.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -187,10 +186,7 @@
             "id": "timeOp1",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 1206.0, "y": 886.0 },
-            "portSides": {
-                "inputs": { "right": "top" }
-            },
+            "position": { "x": 1364.46521, "y": 886.0 },
             "parameters": {}
         },
         {
@@ -206,6 +202,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -304,6 +301,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -406,7 +404,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2482.80005, "y": 1084.0 },
+            "position": { "x": 2562.80005, "y": 536.36298 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -532,13 +530,16 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 2858.0, "y": 886.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 746.0, "y": 1424.0 },
+            "position": { "x": 2104.60596, "y": 1531.19702 },
             "parameters": { "processingScope": "global", "enabled": true, "size": 0.142857143, "post": 0.488, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
@@ -639,14 +640,14 @@
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 1050.0, "y": 1424.0 },
+            "position": { "x": 2408.60596, "y": 1531.19702 },
             "parameters": { "gain": 0.61285 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 508.0, "y": 1424.0 },
+            "position": { "x": 1866.60596, "y": 1531.19702 },
             "parameters": {}
         },
         {
@@ -949,7 +950,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Percussion", "Rhythmic"],
+        "tags": [ "Percussion", "Rhythmic" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

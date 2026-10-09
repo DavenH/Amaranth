@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 466.0, "y": 818.0 },
+            "position": { "x": 466.0, "y": 837.0 },
             "parameters": {
                 "octave": -1,
                 "voiceLength": 0.482691288,
@@ -38,26 +38,27 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "position": { "x": 1246.0, "y": 886.0 },
+            "position": { "x": 1321.67297, "y": 886.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
         {
             "id": "ifft",
             "kind": "ifft",
             "definitionVersion": 1,
-            "position": { "x": 1904.0, "y": 886.0 },
+            "position": { "x": 1930.01257, "y": 886.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
         },
         {
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 840.0, "y": 886.0 },
+            "position": { "x": 927.49683, "y": 886.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -198,6 +199,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -673,6 +675,7 @@
                 "gain": 0.5,
                 "range": 0.325,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -736,7 +739,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1886.80005, "y": 1084.0 },
+            "position": { "x": 1992.8125, "y": 549.55975 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -840,8 +843,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6 ]
                 }
             }
@@ -850,7 +851,10 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2262.0, "y": 886.0 },
+            "position": { "x": 2288.01221, "y": 886.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
@@ -871,7 +875,7 @@
             "id": "voiceOutput",
             "kind": "voiceOutput",
             "definitionVersion": 1,
-            "position": { "x": 2460.0, "y": 886.0 },
+            "position": { "x": 2486.01221, "y": 886.0 },
             "parameters": {}
         }
     ],
@@ -1156,7 +1160,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Bass"],
+        "tags": [ "Bass" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

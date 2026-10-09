@@ -58,6 +58,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -127,6 +128,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -206,6 +208,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -291,6 +294,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -510,8 +514,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7 ]
                 }
             }
@@ -908,7 +910,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Percussion", "Rhythmic", "Metallic"],
+        "tags": [ "Percussion", "Rhythmic" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

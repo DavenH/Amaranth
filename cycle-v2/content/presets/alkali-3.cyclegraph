@@ -73,6 +73,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.0,
                 "red": 0.037383176,
@@ -135,6 +136,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.0,
                 "red": 0.037383176,
@@ -220,6 +222,7 @@
                 "gain": 0.5,
                 "range": 0.3,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.0,
                 "red": 0.037383176,
@@ -307,7 +310,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2531.35693, "y": 1126.0 },
+            "position": { "x": 2597.72168, "y": 598.0 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.037383176, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -935,6 +938,9 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 2906.55664, "y": 928.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
@@ -1083,7 +1089,7 @@
     ],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Bass", "Acid"],
+        "tags": [ "Acid" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

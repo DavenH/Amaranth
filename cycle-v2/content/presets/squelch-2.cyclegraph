@@ -6,14 +6,22 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 475.20001, "y": 826.0 },
-            "parameters": { "octave": -1, "voiceLength": 0.374807119, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "256" }
+            "position": { "x": 444.92798, "y": 668.0 },
+            "parameters": {
+                "octave": -1,
+                "voiceLength": 0.374807119,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": true,
+                "oversampling": "1x",
+                "controlInterval": "256"
+            }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 556.0 },
+            "position": { "x": 76.0, "y": 553.86633 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -30,7 +38,7 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "position": { "x": 1261.19995, "y": 886.0 },
+            "position": { "x": 1350.81311, "y": 886.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
         {
@@ -59,12 +67,13 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 855.20001, "y": 886.0 },
+            "position": { "x": 940.5459, "y": 886.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -196,7 +205,7 @@
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1591.19995, "y": 387.0 },
+            "position": { "x": 1574.13074, "y": 417.86633 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -205,6 +214,7 @@
                 "gain": 0.5,
                 "range": 0.725,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -271,7 +281,7 @@
             "id": "magnitudeOp1",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 1659.19995, "y": 736.0 },
+            "position": { "x": 1642.13074, "y": 770.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -281,7 +291,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1902.0, "y": 1084.0 },
+            "position": { "x": 1959.60852, "y": 553.86633 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -372,8 +382,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5 ]
                 }
             }
@@ -382,7 +390,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 1000.0 },
+            "position": { "x": 60.8, "y": 988.00006 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -460,8 +468,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4 ]
                 }
             }
@@ -471,6 +477,9 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 2277.19995, "y": 886.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
@@ -560,7 +569,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Bass", "Acid"],
+        "tags": [ "Bass", "Acid" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

@@ -7,7 +7,15 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 945.59998, "y": 826.0 },
-            "parameters": { "octave": -1, "voiceLength": 0.374045802, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "64" }
+            "parameters": {
+                "octave": -1,
+                "voiceLength": 0.374045802,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "1x",
+                "controlInterval": "64"
+            }
         },
         {
             "id": "morph",
@@ -30,15 +38,16 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1325.59998, "y": 886.0 },
+            "position": { "x": 2210.51733, "y": 758.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
-                "red": 0.5,
+                "red": 0.205607474,
                 "blue": 0.5,
                 "primaryAxis": "yellow",
                 "link.yellow": true,
@@ -179,15 +188,15 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 2222.3999, "y": 1084.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.205607474, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 5,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 5,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
@@ -267,10 +276,8 @@
                         "sustainIndices": [ 3 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
+                    "red": 0.20561,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5 ]
                 }
             }
@@ -279,16 +286,16 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 898.5 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "position": { "x": 1846.96716, "y": 792.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.205607474, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 5,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 5,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
@@ -355,10 +362,8 @@
                         "sustainIndices": [ 1 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
+                    "red": 0.20561,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4 ]
                 }
             }
@@ -533,7 +538,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Bass"],
+        "tags": [ "Bass" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

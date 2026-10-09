@@ -66,6 +66,7 @@
                 "gain": 0.5,
                 "range": 0.725,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -437,6 +438,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -503,6 +505,7 @@
                 "gain": 0.5,
                 "range": 0.525,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -1361,7 +1364,7 @@
     ],
     "presetPresentation": {
         "version": 1,
-        "tags": [ "Percussion", "Rhythmic" ],
+        "tags": [ "Percussion", "Rhythmic", "Metallic" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

@@ -12,7 +12,7 @@
                 "voiceLength": 0.496183206,
                 "pitch": 0.0,
                 "portamento": false,
-                "pitchIndependentSpectralControl": false,
+                "pitchIndependentSpectralControl": true,
                 "oversampling": "2x",
                 "controlInterval": "64"
             }
@@ -73,6 +73,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -161,6 +162,7 @@
                 "gain": 0.5,
                 "range": 0.75,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -255,10 +257,11 @@
                 "outputs": { "out": "top" }
             },
             "parameters": {
-                "enabled": false,
+                "enabled": true,
                 "gain": 0.5,
                 "range": 0.125,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,

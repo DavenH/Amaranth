@@ -12,7 +12,7 @@
                 "voiceLength": 0.267175573,
                 "pitch": 0.0,
                 "portamento": false,
-                "pitchIndependentSpectralControl": false,
+                "pitchIndependentSpectralControl": true,
                 "oversampling": "1x",
                 "controlInterval": "64"
             }
@@ -58,6 +58,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.037383176,
@@ -172,6 +173,7 @@
                 "gain": 0.5,
                 "range": 0.65,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.037383176,
@@ -361,6 +363,7 @@
                 "gain": 0.5,
                 "range": 0.175,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.037383176,
@@ -750,7 +753,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Bass"],
+        "tags": [ "Bass" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,
