@@ -70,8 +70,8 @@ public:
     void resized() override;
     void updateRange(double newLimit);
     void contractToRange(Buffer<float> y);
-    void zoomOut(bool cmdDown, int mouseX, int mouseY);
-    void zoomIn (bool cmdDown, int mouseX, int mouseY);
+    void zoomOut(bool cmdDown, int mouseX, int mouseY, float ratio = zoomRatio);
+    void zoomIn (bool cmdDown, int mouseX, int mouseY, float ratio = zoomRatio);
     void doZoomAction(int action);
     void zoomToAttack();
     void zoomToFull();

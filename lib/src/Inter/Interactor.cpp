@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstdint>
 #include <iterator>
 #include "Interactor.h"
@@ -491,13 +492,16 @@ void Interactor::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wh
         showConsoleMsg(String("Axe size: ") + String(realValue(PencilRadius), 1));
     } else {
         state.currentMouse = Vertex2(-1, 0);
+        const float ratio = wheel.isSmooth
+                ? std::pow(ZoomPanel::zoomRatio, 0.5f * std::abs(yInc))
+                : ZoomPanel::zoomRatio;
 
         if(yInc > 0) {
-            panel->zoomPanel->zoomIn(e.mods.isCommandDown(), e.x, e.y);
+            panel->zoomPanel->zoomIn(e.mods.isCommandDown(), e.x, e.y, ratio);
         }
 
         if(yInc < 0) {
-            panel->zoomPanel->zoomOut(e.mods.isCommandDown(), e.x, e.y);
+            panel->zoomPanel->zoomOut(e.mods.isCommandDown(), e.x, e.y, ratio);
         }
     }
 }

@@ -3037,24 +3037,35 @@ TEST_CASE("Trimesh trackpad scroll pans horizontally and zooms vertically",
     const float originalWidth = viewport->rect.w;
     const float originalX = viewport->rect.x;
 
+    MouseWheelDetails initialDrift {};
+    initialDrift.deltaY = 0.01f;
+    initialDrift.isSmooth = true;
+    panel->mouseWheelMove(event, initialDrift);
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth));
+
     MouseWheelDetails sideways {};
     sideways.deltaX = 0.2f;
+    sideways.deltaY = 0.03f;
     sideways.isSmooth = true;
     panel->mouseWheelMove(event, sideways);
     REQUIRE(viewport->rect.x < originalX);
     REQUIRE(viewport->rect.w == Catch::Approx(originalWidth));
 
+    MouseWheelDetails verticalDrift {};
+    verticalDrift.deltaY = 0.03f;
+    verticalDrift.isSmooth = true;
+    panel->mouseWheelMove(event, verticalDrift);
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth));
+
     const float pannedX = viewport->rect.x;
     MouseWheelDetails upward {};
     upward.deltaY = 0.2f;
-    upward.isSmooth = true;
     panel->mouseWheelMove(event, upward);
-    REQUIRE(viewport->rect.w < originalWidth);
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth / ZoomPanel::zoomRatio));
 
     const float zoomedWidth = viewport->rect.w;
     MouseWheelDetails downward {};
     downward.deltaY = -0.2f;
-    downward.isSmooth = true;
     panel->mouseWheelMove(event, downward);
     REQUIRE(viewport->rect.w > zoomedWidth);
 
@@ -3080,6 +3091,40 @@ TEST_CASE("Trimesh trackpad scroll pans horizontally and zooms vertically",
     gridPanel->mouseWheelMove(gridEvent, sideways);
     REQUIRE(gridViewport->rect.x > gridX);
     REQUIRE(gridViewport->rect.w == Catch::Approx(gridZoomedWidth));
+}
+
+TEST_CASE("Smooth trackpad zoom follows vertical distance instead of event count",
+        "[cycle-v2][nodes][trimesh][viewport][trackpad]") {
+    ScopedJuceInitialiser_GUI juce;
+    TrimeshPanelBridge bridge;
+    auto* viewport = dynamic_cast<ZoomPanel*>(bridge.getPanel2DHostComponent());
+    REQUIRE(viewport != nullptr);
+    viewport->setBounds(0, 0, 640, 180);
+
+    Component* panel = bridge.getPanel2D().getComponent();
+    REQUIRE(panel != nullptr);
+    const auto event = panelMouseEvent(*panel, { 320.f, 80.f }, {}, { 320.f, 80.f }, false);
+    const float originalWidth = viewport->rect.w;
+
+    MouseWheelDetails wheel {};
+    wheel.deltaY = 0.2f;
+    wheel.isSmooth = true;
+    panel->mouseWheelMove(event, wheel);
+    const float firstWidth = viewport->rect.w;
+    REQUIRE(firstWidth < originalWidth);
+    REQUIRE(firstWidth > originalWidth * 0.95f);
+
+    for (int index = 0; index < 4; ++index) {
+        panel->mouseWheelMove(event, wheel);
+    }
+    REQUIRE(viewport->rect.w < firstWidth);
+    REQUIRE(viewport->rect.w > originalWidth * 0.8f);
+
+    wheel.deltaY = -0.2f;
+    for (int index = 0; index < 5; ++index) {
+        panel->mouseWheelMove(event, wheel);
+    }
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth).margin(0.001f));
 }
 
 TEST_CASE("Trimesh link parameters drive mature linked-vertex interaction",
