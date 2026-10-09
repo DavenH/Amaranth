@@ -196,6 +196,29 @@ void NodeCanvasPresentation::paintPalette(
                     imageToLogicalY,
                     paletteCacheBounds.getY()),
             false);
+    paintPaletteHoverLabel(graphics, frame);
+}
+
+void NodeCanvasPresentation::paintPaletteHoverLabel(
+        Graphics& graphics,
+        const NodeCanvasPresentationFrame& frame) {
+    const int sectionIndex = frame.palette.activeSection();
+    const int entryIndex = frame.palette.activeEntry();
+    if (sectionIndex < 0 || entryIndex < 0) {
+        return;
+    }
+
+    const auto& entry = frame.palette.section(sectionIndex).entries[entryIndex];
+    const String label = String::fromUTF8(entry.label);
+    const Font font { FontOptions(CanvasChromeMetrics::labelFontSize) };
+    const auto tile = frame.palette.entryBounds(sectionIndex, entryIndex);
+    const Rectangle<float> bounds(frame.palette.railBounds().getRight() + 6.f,
+            tile.getCentreY() - 12.f, GlyphArrangement::getStringWidth(font, label) + 16.f, 24.f);
+    graphics.setColour(CanvasChromePalette::raisedSurface);
+    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
+    graphics.setColour(CanvasChromePalette::text);
+    graphics.setFont(font);
+    graphics.drawText(label, bounds.reduced(8.f, 0.f), Justification::centred);
 }
 
 void NodeCanvasPresentation::paintPaletteContent(
@@ -223,12 +246,7 @@ void NodeCanvasPresentation::paintPaletteContent(
                     hover ? CanvasChromeMetrics::activeBorderWidth : CanvasChromeMetrics::restingBorderWidth);
 
             NodePaletteEntryIconRenderer::paint(graphics, entry.kind,
-                    { tile.getCentreX() - 16.f, tile.getY() + 5.f, 32.f, 32.f }, hover);
-            graphics.setColour(colours.text);
-            graphics.setFont(FontOptions(CanvasChromeMetrics::microFontSize));
-            graphics.drawText(String::fromUTF8(entry.label),
-                    tile.withTrimmedTop(tile.getHeight() - 17.f).reduced(2.f, 0.f),
-                    Justification::centred);
+                    tile.reduced(4.f), hover);
         }
     }
 }

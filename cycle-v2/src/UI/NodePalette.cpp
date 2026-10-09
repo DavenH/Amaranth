@@ -8,11 +8,11 @@ namespace {
 
 constexpr float kX = 18.f;
 constexpr float kY = 74.f;
-constexpr float kTileWidth = 72.f;
-constexpr float kTileHeight = 58.f;
-constexpr float kGap = 4.f;
-constexpr float kHeadingHeight = 18.f;
-constexpr float kGroupGap = 8.f;
+constexpr float kTileWidth = 40.f;
+constexpr float kTileHeight = 40.f;
+constexpr float kGap = 3.f;
+constexpr float kHeadingHeight = 16.f;
+constexpr float kGroupGap = 6.f;
 constexpr int kColumns = 3;
 
 const NodePalette::Entry kContextEntries[] = {

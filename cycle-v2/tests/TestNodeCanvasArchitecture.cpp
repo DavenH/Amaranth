@@ -1198,10 +1198,10 @@ TEST_CASE("Node palette has aligned ragged rows and two directly accessible FX r
         REQUIRE(palette.entryBounds(sectionIndex, 0).getX() == first.getX());
         for (int index = 0; index < section.entryCount; ++index) {
             const auto tile = palette.entryBounds(sectionIndex, index);
-            REQUIRE(tile.getWidth() == 72.f);
-            REQUIRE(tile.getHeight() == 58.f);
-            REQUIRE(tile.getY() == group.getY() + 18.f + (index / 3) * 62.f);
-            REQUIRE(tile.getCentreX() == group.getX() + 36.f + (index % 3) * 76.f);
+            REQUIRE(tile.getWidth() == 40.f);
+            REQUIRE(tile.getHeight() == 40.f);
+            REQUIRE(tile.getY() == group.getY() + 16.f + (index / 3) * 43.f);
+            REQUIRE(tile.getCentreX() == group.getX() + 20.f + (index % 3) * 43.f);
         }
     }
     const int fx = palette.sectionCount() - 1;

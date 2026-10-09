@@ -16,8 +16,8 @@
       "command": "pointer",
       "area": "canvas",
       "event": "down",
-      "x": 54,
-      "y": 289
+      "x": 38,
+      "y": 234
     },
     {
       "command": "pointer",
@@ -25,8 +25,8 @@
       "event": "drag",
       "x": 400,
       "y": 300,
-      "downX": 54,
-      "downY": 289
+      "downX": 38,
+      "downY": 234
     },
     {
       "command": "pointer",
@@ -34,8 +34,8 @@
       "event": "drag",
       "x": 450,
       "y": 320,
-      "downX": 54,
-      "downY": 289
+      "downX": 38,
+      "downY": 234
     },
     {
       "command": "pointer",
@@ -43,8 +43,8 @@
       "event": "up",
       "x": 450,
       "y": 320,
-      "downX": 54,
-      "downY": 289
+      "downX": 38,
+      "downY": 234
     },
     {
       "command": "assertState",
@@ -71,8 +71,8 @@
       "command": "pointer",
       "area": "canvas",
       "event": "click",
-      "x": 206,
-      "y": 665
+      "x": 124,
+      "y": 506
     },
     {
       "command": "assertState",

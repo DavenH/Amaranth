@@ -4,8 +4,21 @@
 
 namespace CycleV2 {
 
+namespace {
+
+const char* transformIconId(NodeKind kind) {
+    switch (kind) {
+        case NodeKind::Fft:  return "fourier";
+        case NodeKind::Ifft: return "inverseFourier";
+        default:            return nullptr;
+    }
+}
+
+}
+
 bool NodePaletteEntryIconRenderer::hasIcon(NodeKind kind) {
-    return NodeIconRenderer::hasIcon(kind);
+    const char* iconId = transformIconId(kind);
+    return iconId != nullptr ? NodeIconRenderer::hasIcon(iconId) : NodeIconRenderer::hasIcon(kind);
 }
 
 void NodePaletteEntryIconRenderer::paint(
@@ -13,7 +26,12 @@ void NodePaletteEntryIconRenderer::paint(
         NodeKind kind,
         Rectangle<float> area,
         bool hover) {
-    NodeIconRenderer::paint(graphics, kind, area, hover ? 1.f : 0.88f);
+    const float opacity = hover ? 1.f : 0.88f;
+    if (const char* iconId = transformIconId(kind)) {
+        NodeIconRenderer::paint(graphics, iconId, area, opacity);
+    } else {
+        NodeIconRenderer::paint(graphics, kind, area, opacity);
+    }
 }
 
 }

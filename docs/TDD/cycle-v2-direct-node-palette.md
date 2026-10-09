@@ -104,3 +104,43 @@ canvas exposed, and the hover border follows the actual tile. No DSP behavior
 changed. Reports: sidebar-ctest.log, sidebar-icon-metrics.log,
 sidebar-interaction-report.json, sidebar-audit.txt and sidebar-tidy-final.log in
 /private/tmp.
+
+## Compact tile refinement (implemented and verified)
+
+User feedback: reduce the large tile margins, show item labels only on hover,
+and try restrained calligraphic Fourier F / inverse F symbols while retaining
+fft.svg and ifft.svg. Reuse palette hit geometry, cached renderer and existing
+creation/undo path. No domain or interaction policy changes.
+
+New geometry: 40 x 40 tiles, 32 x 32 icon canvas centered with 4px insets,
+3px tile gaps, 16px headings, 6px group gaps. Rail width falls 224 -> 126px;
+height 620 -> 452px. A 24px hover label sits 6px beyond the rail, centered on
+the hovered tile; it overlays the canvas without shifting or covering tiles.
+FFT alternatives are palette presentation mappings to separate SVG resources;
+the existing transform diagrams stay registered. Math glyph live area remains
+unchanged. Verify the inverse superscript at 32px, direct hit targets and undo,
+plus native resting and hovered screenshots.
+
+The Fourier glyphs are vector outlines of a restrained Chancery F. Forward and
+inverse share the same letterform; inverse adds a manually drawn, readable -1
+superscript. Native 32px review confirms recognition without ornamental loops.
+The original fft.svg/ifft.svg have no diff in this refinement.
+
+Responsibility review: palette remains geometry/catalog (164 lines), palette
+entry renderer maps two presentation variants then delegates to the cached
+NodeIconRenderer (18 -> 37 lines); chrome owns drawing and hover-label sizing
+(236 -> 254), presentation header 164 -> 165. No threshold is crossed, no graph
+behavior or creation/undo policy changes, no unrelated kind switching introduced.
+Hover labels are painted after the cached rail so they are not clipped to it;
+icon tiles remain static and labels never affect hit geometry.
+
+Compact refinement verification: both build targets pass with --parallel 10;
+9 palette cases / 295 assertions pass, as does the 18-command direct-palette
+creation/drag/undo fixture at the new coordinates. SVG coverage includes the
+new pair. Visual reviews: native inverse-hover screenshot
+/private/tmp/sidebar-compact-a.png; final forward-hover screenshot
+/private/tmp/sidebar-compact-final.png; 96px and 32px family contact sheet
+/private/tmp/sidebar-compact-icons.png. The superscript is distinct, hover
+labels fit, and unhovered tiles have no labels. Style, scalar-math, diff and
+architecture audit checks pass; clang-tidy has only the existing stateless-method
+recommendations. No remaining work in this refinement.
