@@ -7,6 +7,7 @@
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
+#include "Runtime/GraphPresentationModel.h"
 #include "UI/SignalProbeCanvas.h"
 #include "UI/WorkspaceDockInteractionController.h"
 
@@ -96,6 +97,65 @@ TEST_CASE("Output Spy card position persists as preset presentation",
     REQUIRE(GraphSerializer().loadJsonString(document.toJson())
                     .presentation.outputSpyPosition
             == Point<float>(320.f, 180.f));
+}
+
+TEST_CASE("Removing the output Spy hides its card but preserves output capture",
+        "[cycle-v2][probe][canvas][default-output][preview]") {
+    GraphDocument document(probeGraph());
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+
+    REQUIRE(commands.setDefaultOutputSpyVisible(false));
+    REQUIRE_FALSE(document.presentation().outputSpyVisible);
+    REQUIRE_FALSE(GraphSerializer().loadJsonString(document.toJson())
+                    .presentation.outputSpyVisible);
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+    REQUIRE(presentation.previewResult().defaultOutput.has_value());
+
+    SignalProbeCanvasState state;
+    state.outputSpyVisible = document.presentation().outputSpyVisible;
+    NodeCanvasViewport viewport;
+    viewport.setBounds({ 0.f, 0.f, 800.f, 600.f });
+    NodeCanvasScene scene;
+    const auto& snapshot = scene.build(document.graph(), viewport, 1, 1);
+    REQUIRE(SignalProbeCanvas::cardBoundsFor(
+            DefaultOutputProbeResolver::probeId,
+            document.graph(), snapshot, viewport, state).isEmpty());
+}
+
+TEST_CASE("Spy display domains persist with the preset",
+        "[cycle-v2][probe][domain][serialization]") {
+    NodeGraph graph = probeGraph();
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+    const String probeId = graph.getSignalProbes().front().id;
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+
+    REQUIRE(commands.setSignalProbeFrequencyView(probeId, true).succeeded());
+    REQUIRE(commands.setDefaultOutputSpyFrequencyView(false));
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(document.toJson());
+    REQUIRE(loaded.succeeded());
+    REQUIRE(loaded.graph.findSignalProbe(probeId)->frequencyView);
+    REQUIRE_FALSE(loaded.presentation.outputSpyFrequencyView);
+    REQUIRE(document.undo());
+    REQUIRE_FALSE(document.graph().findSignalProbe(probeId)->frequencyView);
+}
+
+TEST_CASE("Time Spy capture publishes a matching frequency view",
+        "[cycle-v2][probe][preview][spectrum]") {
+    NodeGraph graph = probeGraph();
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+    GraphPresentationModel presentation;
+
+    REQUIRE(presentation.refresh(graph, 1));
+    const auto& preview = presentation.previewResult();
+    REQUIRE(preview.probes.size() == 1);
+    REQUIRE(preview.probes.front().connected);
+    REQUIRE(preview.probes.front().domain == PortDomain::TimeSignal);
+    REQUIRE(preview.probeSpectra.size() == 1);
+    REQUIRE(preview.probeSpectra.front().has_value());
+    REQUIRE(preview.probeSpectra.front()->domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(preview.probeSpectra.front()->gridColumns == preview.probes.front().gridColumns);
 }
 
 TEST_CASE("Signal probes toggle once per source output without changing execution", "[cycle-v2][probe]") {

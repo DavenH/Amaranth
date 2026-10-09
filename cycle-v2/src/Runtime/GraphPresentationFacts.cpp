@@ -74,6 +74,18 @@ const GraphPreviewResult::SignalProbePreview* GraphPresentationFacts::probePrevi
             : &snapshot.previewResult.probes[found->second];
 }
 
+const GraphPreviewResult::SignalProbePreview* GraphPresentationFacts::probeSpectrumFor(
+        const GraphPresentationSnapshot& snapshot,
+        const String& probeId) const {
+    const auto found = probePreviewIndices.find(probeId);
+    if (found == probePreviewIndices.end()
+            || found->second >= snapshot.previewResult.probeSpectra.size()) {
+        return nullptr;
+    }
+    const auto& spectrum = snapshot.previewResult.probeSpectra[found->second];
+    return spectrum.has_value() ? &*spectrum : nullptr;
+}
+
 int GraphPresentationFacts::executionIndexFor(const String& nodeId) const {
     const auto found = executionIndices.find(nodeId);
     return found == executionIndices.end() ? -1 : (int) found->second;

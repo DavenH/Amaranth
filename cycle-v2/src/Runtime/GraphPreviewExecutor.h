@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "Runtime/NodePreviewProcessor.h"
 #include "Runtime/GraphAudioExecutor.h"
 #include "Graph/GraphCompiler.h"
@@ -45,6 +47,7 @@ struct GraphPreviewResult {
     std::vector<NodePreviewResult> nodes;
     std::vector<int> previewResultIndexByStep;
     std::vector<SignalProbePreview> probes;
+    std::vector<std::optional<SignalProbePreview>> probeSpectra;
     std::optional<SignalProbePreview> defaultOutput;
     std::optional<SignalProbePreview> defaultOutputSpectrum;
     size_t indexedNodeCount {};

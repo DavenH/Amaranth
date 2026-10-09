@@ -35,6 +35,11 @@ const Edge* graphEdgeForProbe(
 
 }
 
+bool SignalProbeCanvasState::isSelected(const String& probeId) const {
+    return std::find(selectedProbeIds.begin(), selectedProbeIds.end(), probeId)
+            != selectedProbeIds.end();
+}
+
 int SignalProbeCanvas::ordinalForProbe(const NodeGraph& graph, const String& probeId) {
     const auto probes = orderedProbes(graph);
     if (probeId == DefaultOutputProbeResolver::probeId) {
@@ -163,7 +168,7 @@ void SignalProbeCanvas::paintCableAnnotations(
         }
 
         const Colour colour = colourForProbe(probe, graph, scene, facts);
-        const bool active = probe.id == state.hoveredProbeId || probe.id == state.selectedProbeId;
+        const bool active = probe.id == state.hoveredProbeId || state.isSelected(probe.id);
         const Rectangle<float> card = cardBoundsFor(
                 probe.id, graph, scene, viewport, state);
         if (!card.isEmpty()) {
@@ -187,7 +192,9 @@ void SignalProbeCanvas::paintCableAnnotations(
         graphics.drawText(String(index + 1), badge.withCentre(marker), Justification::centred);
     }
 
-    const auto outputAddress = DefaultOutputProbeResolver().resolve(graph);
+    const auto outputAddress = state.outputSpyVisible
+            ? DefaultOutputProbeResolver().resolve(graph)
+            : std::nullopt;
     if (outputAddress.has_value()) {
         SignalProbe outputProbe;
         outputProbe.sourceNodeId = outputAddress->sourceNodeId;
@@ -204,14 +211,6 @@ void SignalProbeCanvas::paintCableAnnotations(
                     card.getCentre().translated(0.f, 35.f), card.getCentre());
             graphics.setColour(CanvasChromePalette::text.withAlpha(0.27f));
             graphics.strokePath(tether, PathStrokeType(1.5f));
-            const float diameter = cableAnnotationDiameter(zoom);
-            const Rectangle<float> badge(diameter, diameter);
-            graphics.setColour(CanvasChromePalette::canvasBackground);
-            graphics.fillEllipse(badge.withCentre(marker));
-            graphics.setColour(CanvasChromePalette::text);
-            graphics.drawEllipse(badge.withCentre(marker), 1.5f);
-            graphics.setFont(FontOptions(9.f * diameter / 16.f));
-            graphics.drawText("out", badge.withCentre(marker), Justification::centred);
         }
     }
 }
@@ -228,12 +227,21 @@ Rectangle<float> SignalProbeCanvas::cardBoundsFor(
         const SignalProbeCanvasState& state) {
     const Rectangle<float> cardSize(0.f, 0.f, 300.f, 205.f);
     const bool defaultOutput = probeId == DefaultOutputProbeResolver::probeId;
+    if (defaultOutput && !state.outputSpyVisible) {
+        return {};
+    }
     const SignalProbe* probe = defaultOutput ? nullptr : graph.findSignalProbe(probeId);
     if (!defaultOutput && probe == nullptr) {
         return {};
     }
-    if (state.draggedProbeId == probeId && state.draggedCanvasPosition.has_value()) {
-        return viewport.toScreen(cardSize.withPosition(*state.draggedCanvasPosition));
+    const auto draggedPosition = std::find_if(
+            state.draggedCardWorldPositions.begin(),
+            state.draggedCardWorldPositions.end(),
+            [&](const auto& entry) { return entry.first == probeId; });
+    if (draggedPosition != state.draggedCardWorldPositions.end()) {
+        return viewport.toScreen(cardSize.withPosition(
+                draggedPosition->second
+                        + state.draggedScreenOffset / viewport.getZoom()));
     }
     if (defaultOutput && state.outputCanvasPosition.has_value()) {
         return viewport.toScreen(cardSize.withPosition(*state.outputCanvasPosition));
@@ -391,26 +399,29 @@ void SignalProbeCanvas::paintCards(
             continue;
         }
 
-        const bool active = state.hoveredProbeId == probeId
-                || state.selectedProbeId == probeId;
+        const bool active = state.hoveredProbeId == probeId || state.isSelected(probeId);
         WorkspaceDock::paintTileChrome(graphics, card, active, active, false);
-        const float headerHeight = 25.f * viewport.getZoom();
-        Rectangle<float> header = card.withHeight(headerHeight);
-        graphics.setColour(CanvasChromePalette::text);
-        graphics.setFont(FontOptions(jmax(10.f, 15.f * viewport.getZoom())));
-        graphics.drawText(defaultOutput ? "Output Spy" : "Spy " + String(index + 1),
-                header.reduced(7.f, 0.f), Justification::centredLeft);
-
-        const Rectangle<float> previewBounds = card.withTrimmedTop(headerHeight)
-                .reduced(5.f * viewport.getZoom());
-        const GraphPreviewResult::SignalProbePreview* preview {};
+        const GraphPreviewResult::SignalProbePreview* sourcePreview {};
         if (defaultOutput) {
-            const auto& selected = state.defaultOutputView == PresetPreviewView::Time
-                    ? snapshot.previewResult.defaultOutput
-                    : snapshot.previewResult.defaultOutputSpectrum;
-            preview = selected.has_value() ? &*selected : nullptr;
+            const auto& output = snapshot.previewResult.defaultOutput;
+            sourcePreview = output.has_value() ? &*output : nullptr;
         } else {
-            preview = facts.probePreviewFor(snapshot, probeId);
+            sourcePreview = facts.probePreviewFor(snapshot, probeId);
+        }
+        const float zoom = viewport.getZoom();
+        const Rectangle<float> previewBounds = card.reduced(5.f * zoom);
+        const GraphPreviewResult::SignalProbePreview* preview = sourcePreview;
+        if (sourcePreview != nullptr
+                && sourcePreview->domain == PortDomain::TimeSignal
+                && (defaultOutput
+                        ? state.defaultOutputView == PresetPreviewView::Spectrum
+                        : probe->frequencyView)) {
+            if (defaultOutput) {
+                const auto& spectrum = snapshot.previewResult.defaultOutputSpectrum;
+                preview = spectrum.has_value() ? &*spectrum : nullptr;
+            } else {
+                preview = facts.probeSpectrumFor(snapshot, probeId);
+            }
         }
         if (preview == nullptr || !preview->connected) {
             graphics.setColour(CanvasChromePalette::mutedText);

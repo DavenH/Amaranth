@@ -213,6 +213,9 @@ NodeCanvas::NodeCanvas() :
     guideShelfState.minimized = settings.getGlobalSettingValue(
             AppSettings::GuideShelfMinimized) != 0;
     probeCanvasState.outputCanvasPosition = document.presentation().outputSpyPosition;
+    probeCanvasState.outputSpyVisible = document.presentation().outputSpyVisible;
+    probeCanvasState.defaultOutputView = document.presentation().outputSpyFrequencyView
+            ? PresetPreviewView::Spectrum : PresetPreviewView::Time;
     dockInteraction = std::make_unique<WorkspaceDockInteractionController>(
             commands,
             graph,
@@ -577,8 +580,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     lastMousePosition = event.position;
     interaction.reset();
     probeCardGesture.reset();
-    probeCanvasState.draggedProbeId = {};
-    probeCanvasState.draggedCanvasPosition.reset();
+    probeCanvasState.draggedCardWorldPositions.clear();
+    probeCanvasState.draggedScreenOffset = {};
     spliceTargetEdgeIndex = -1;
 
     const Rectangle<float> workspace = getLocalBounds().toFloat();
@@ -698,32 +701,58 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             event.position, graph, scene, viewport, probeCanvasState);
     if (cardProbe.isNotEmpty()) {
         probeCanvasState.selectedProbeId = cardProbe;
-        if (event.mods.isPopupMenu()) {
-            if (cardProbe == DefaultOutputProbeResolver::probeId) {
-                probeCanvasState.defaultOutputView = probeCanvasState.defaultOutputView
-                                == PresetPreviewView::Time
-                        ? PresetPreviewView::Spectrum
-                        : PresetPreviewView::Time;
+        if (event.mods.isShiftDown()) {
+            auto& selected = probeCanvasState.selectedProbeIds;
+            const auto found = std::find(selected.begin(), selected.end(), cardProbe);
+            if (found == selected.end()) {
+                selected.push_back(cardProbe);
             } else {
-                PopupMenu menu;
-                menu.addItem(1, "Stop Spying");
-                menu.showMenuAsync(PopupMenu::Options().withTargetComponent(this),
-                        [safeThis = SafePointer<NodeCanvas>(this), cardProbe](int choice) {
-                            if (safeThis != nullptr && choice == 1) {
-                                safeThis->applyAuthoringResult(
-                                        safeThis->authoring.removeSignalProbe(cardProbe));
-                            }
-                        });
+                selected.erase(found);
             }
+            requestCanvasRepaint();
+            return;
+        }
+        if (!probeCanvasState.isSelected(cardProbe)) {
+            probeCanvasState.selectedProbeIds = { cardProbe };
+            authoring.selectNode({});
+        }
+        if (event.mods.isPopupMenu()) {
+            PopupMenu menu;
+            const auto& snapshot = presentation.snapshot();
+            const auto* preview = cardProbe == DefaultOutputProbeResolver::probeId
+                    ? (snapshot.previewResult.defaultOutput.has_value()
+                            ? &*snapshot.previewResult.defaultOutput : nullptr)
+                    : queries.presentationFacts().probePreviewFor(snapshot, cardProbe);
+            if (preview != nullptr && preview->domain == PortDomain::TimeSignal) {
+                const bool frequency = cardProbe == DefaultOutputProbeResolver::probeId
+                        ? probeCanvasState.defaultOutputView == PresetPreviewView::Spectrum
+                        : graph.findSignalProbe(cardProbe)->frequencyView;
+                menu.addItem(2, frequency ? "Show Time Domain" : "Show Frequency Domain");
+            }
+            menu.addItem(1, "Stop Spying");
+            menu.showMenuAsync(PopupMenu::Options().withTargetComponent(this),
+                    [safeThis = SafePointer<NodeCanvas>(this), cardProbe](int choice) {
+                        if (safeThis != nullptr && choice == 1) {
+                            safeThis->removeSpyCard(cardProbe);
+                        } else if (safeThis != nullptr && choice == 2) {
+                            safeThis->toggleSpyDomain(cardProbe);
+                        }
+                    });
         } else if (event.getNumberOfClicks() >= 2) {
             openProbeDetail(cardProbe);
         } else {
             const Rectangle<float> card = SignalProbeCanvas::cardBoundsFor(
                     cardProbe, graph, scene, viewport, probeCanvasState);
-            probeCardGesture = ProbeCardGesture {
-                    cardProbe,
-                    viewport.toWorld(card.getPosition())
-            };
+            ProbeCardGesture gesture;
+            for (const auto& id : probeCanvasState.selectedProbeIds) {
+                const auto bounds = SignalProbeCanvas::cardBoundsFor(
+                        id, graph, scene, viewport, probeCanvasState);
+                if (!bounds.isEmpty()) {
+                    gesture.startPositions.emplace_back(
+                            id, viewport.toWorld(bounds.getPosition()));
+                }
+            }
+            probeCardGesture = std::move(gesture);
         }
         requestCanvasRepaint();
         return;
@@ -741,6 +770,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         }
 
         probeCanvasState.selectedProbeId = markerProbe;
+        probeCanvasState.selectedProbeIds = { markerProbe };
+        authoring.selectNode({});
         interaction.beginProbeDrag(markerProbe);
         requestCanvasRepaint();
         return;
@@ -799,6 +830,9 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     }
 
     if (hitNode != nullptr) {
+        if (!event.mods.isShiftDown() && !authoring.isNodeSelected(hitNode->id)) {
+            probeCanvasState.selectedProbeIds.clear();
+        }
         if (event.mods.isShiftDown()) {
             if (!authoring.toggleNodeSelection(hitNode->id)) {
                 interaction.reset();
@@ -813,6 +847,14 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                 hitNode->id,
                 selectedNodeIds,
                 hitNode->bounds);
+        nodeDragSpyStarts.clear();
+        for (const auto& id : probeCanvasState.selectedProbeIds) {
+            const auto bounds = SignalProbeCanvas::cardBoundsFor(
+                    id, graph, scene, viewport, probeCanvasState);
+            if (!bounds.isEmpty()) {
+                nodeDragSpyStarts.emplace_back(id, viewport.toWorld(bounds.getPosition()));
+            }
+        }
 
         if (event.getNumberOfClicks() >= 2 && hasExpandedEditor(hitNode->kind)) {
             expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
@@ -856,6 +898,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     if (event.mods.isShiftDown()) {
         interaction.beginAreaSelection(event.position);
     } else {
+        probeCanvasState.selectedProbeIds.clear();
         authoring.selectNode({});
         interaction.beginPan(viewport.getPan());
         expandedNodeId = {};
@@ -870,9 +913,19 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
     lastMousePosition = event.position;
 
     if (probeCardGesture.has_value()) {
-        probeCanvasState.draggedProbeId = probeCardGesture->probeId;
-        probeCanvasState.draggedCanvasPosition = probeCardGesture->startWorldPosition
-                + event.getOffsetFromDragStart().toFloat() / viewport.getZoom();
+        const Point<float> offset = event.getOffsetFromDragStart().toFloat();
+        probeCanvasState.draggedCardWorldPositions = probeCardGesture->startPositions;
+        probeCanvasState.draggedScreenOffset = offset;
+        if (!selectedNodeIds.empty() && offset.getDistanceFromOrigin() > 3.f) {
+            if (!probeCardGesture->nodeTransactionStarted) {
+                authoring.beginNodeMoveGesture();
+                probeCardGesture->nodeTransactionStarted = true;
+            }
+            const Point<float> worldOffset = offset / viewport.getZoom();
+            commands.translateNodes(selectedNodeIds,
+                    worldOffset - probeCardGesture->appliedNodeOffset);
+            probeCardGesture->appliedNodeOffset = worldOffset;
+        }
         requestCanvasRepaint();
         return;
     }
@@ -932,6 +985,15 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
                 nodeDrag->nodeIds,
                 nodeDrag->nodeId,
                 nodeDrag->bounds);
+        if (!probeCanvasState.selectedProbeIds.empty()) {
+            const Node* primary = graph.findNode(nodeDrag->nodeId);
+            if (primary != nullptr) {
+                probeCanvasState.draggedCardWorldPositions = nodeDragSpyStarts;
+                probeCanvasState.draggedScreenOffset =
+                        (nodeDrag->bounds.getPosition() - primary->bounds.getPosition())
+                        * viewport.getZoom();
+            }
+        }
         const auto* validationContext = interaction.gestureValidationContext();
         spliceTargetEdgeIndex = nodeDrag->moved && validationContext != nullptr
                 ? hitRouter.spliceTargetEdgeAt(
@@ -949,25 +1011,40 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PointerGesture);
     lastMousePosition = event.position;
-    if (probeCardGesture.has_value()) {
-        const String probeId = probeCardGesture->probeId;
-        const auto position = probeCanvasState.draggedCanvasPosition;
-        probeCardGesture.reset();
-        probeCanvasState.draggedProbeId = {};
-        probeCanvasState.draggedCanvasPosition.reset();
-        if (position.has_value()
-                && event.getOffsetFromDragStart().getDistanceFromOrigin() > 3) {
-            if (probeId == DefaultOutputProbeResolver::probeId) {
-                if (commands.moveDefaultOutputSpy(*position)) {
-                    probeCanvasState.outputCanvasPosition = position;
-                    notifyGraphDocumentStateChanged();
-                }
+    const auto commitSpyPositions = [&](
+            const std::vector<std::pair<String, Point<float>>>& starts,
+            Point<float> worldOffset) {
+        std::optional<Point<float>> outputPosition;
+        for (const auto& entry : starts) {
+            const Point<float> position = entry.second + worldOffset;
+            if (entry.first == DefaultOutputProbeResolver::probeId) {
+                outputPosition = position;
             } else {
-                const auto result = commands.moveSignalProbe(probeId, *position);
-                if (result.succeeded()) {
-                    notifyGraphDocumentStateChanged();
-                }
+                commands.moveSignalProbe(entry.first, position);
             }
+        }
+        return outputPosition;
+    };
+    if (probeCardGesture.has_value()) {
+        const Point<float> worldOffset = probeCanvasState.draggedScreenOffset
+                / viewport.getZoom();
+        const bool moved = event.getOffsetFromDragStart().getDistanceFromOrigin() > 3;
+        if (moved && !probeCardGesture->nodeTransactionStarted) {
+            authoring.beginNodeMoveGesture();
+        }
+        const auto movedSpies = moved
+                ? commitSpyPositions(probeCardGesture->startPositions, worldOffset)
+                : std::optional<Point<float>> {};
+        if (moved) {
+            applyAuthoringResult(authoring.commitNodeMoveGesture());
+        }
+        probeCardGesture.reset();
+        probeCanvasState.draggedCardWorldPositions.clear();
+        probeCanvasState.draggedScreenOffset = {};
+        if (movedSpies.has_value()
+                && commands.moveDefaultOutputSpy(*movedSpies)) {
+            probeCanvasState.outputCanvasPosition = movedSpies;
+            notifyGraphDocumentStateChanged();
         }
         requestCanvasRepaint();
         return;
@@ -1020,17 +1097,36 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
                     viewport,
                     selection->bounds,
                     queries.presentationFacts().edgeIndex()));
+            for (const auto& id : SignalProbeCanvas::orderedProbeIds(graph)) {
+                if (SignalProbeCanvas::cardBoundsFor(
+                        id, graph, scene, viewport, probeCanvasState)
+                        .intersects(selection->bounds)
+                        && !probeCanvasState.isSelected(id)) {
+                    probeCanvasState.selectedProbeIds.push_back(id);
+                }
+            }
         }
     } else if (const auto* nodeDrag = std::get_if<NodeDragCompletion>(&completion)) {
-        if (nodeDrag->moved
+        const auto movedSpies = nodeDrag->moved
+                ? commitSpyPositions(nodeDragSpyStarts,
+                        probeCanvasState.draggedScreenOffset / viewport.getZoom())
+                : std::optional<Point<float>> {};
+        nodeDragSpyStarts.clear();
+        probeCanvasState.draggedCardWorldPositions.clear();
+        probeCanvasState.draggedScreenOffset = {};
+        const bool spliced = nodeDrag->moved
                 && nodeDrag->nodeIds.size() == 1
-                && spliceSelectedNodeIntoEdgeAt(event.position)) {
-            applyAuthoringResult(authoring.commitNodeMoveGesture());
+                && spliceSelectedNodeIntoEdgeAt(event.position);
+        applyAuthoringResult(authoring.commitNodeMoveGesture());
+        if (movedSpies.has_value()
+                && commands.moveDefaultOutputSpy(*movedSpies)) {
+            probeCanvasState.outputCanvasPosition = movedSpies;
+            notifyGraphDocumentStateChanged();
+        }
+        if (spliced) {
             requestCanvasRepaint();
             return;
         }
-
-        applyAuthoringResult(authoring.commitNodeMoveGesture());
     } else if (const auto* connection = std::get_if<ConnectionCompletion>(&completion);
             connection != nullptr && connection->target.has_value()) {
         const auto result = authoring.connectPorts(connection->source, *connection->target);
@@ -1142,19 +1238,20 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
     }
 
     if (key == KeyPress::escapeKey) {
+        if (probeDetailState.isOpen()) {
+            probeDetailState.close();
+            notifyOverlayOcclusionChanged();
+            requestCanvasRepaint();
+            return true;
+        }
         if (probeCanvasState.selectedProbeId.isNotEmpty()) {
             probeCanvasState.selectedProbeId = {};
+            probeCanvasState.selectedProbeIds.clear();
             requestCanvasRepaint();
             return true;
         }
         if (guideEditorCoordinator.isOpen()) {
             closeGuideEditor();
-            return true;
-        }
-        if (probeDetailState.isOpen()) {
-            probeDetailState.close();
-            notifyOverlayOcclusionChanged();
-            requestCanvasRepaint();
             return true;
         }
         if (expandedNodeId.isNotEmpty()) {
@@ -1174,11 +1271,9 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
     }
 
     if (key == KeyPress::deleteKey || key == KeyPress::backspaceKey) {
-        if (probeCanvasState.selectedProbeId.isNotEmpty()
-                && probeCanvasState.selectedProbeId != DefaultOutputProbeResolver::probeId) {
+        if (probeCanvasState.selectedProbeId.isNotEmpty()) {
             const String probeId = probeCanvasState.selectedProbeId;
-            probeCanvasState.selectedProbeId = {};
-            return applyAuthoringResult(authoring.removeSignalProbe(probeId));
+            return removeSpyCard(probeId);
         }
         if (selectedEdgeIndex >= 0) {
             if (!applyAuthoringResult(authoring.deleteEdge(selectedEdgeIndex))) {
@@ -1404,6 +1499,44 @@ WorkspaceDockLayout NodeCanvas::workspaceDockLayout() const {
             { guideShelfState.minimized });
 }
 
+bool NodeCanvas::removeSpyCard(const String& probeId) {
+    if (probeId == DefaultOutputProbeResolver::probeId) {
+        if (!commands.setDefaultOutputSpyVisible(false)) {
+            return false;
+        }
+        probeCanvasState.outputSpyVisible = false;
+        probeCanvasState.selectedProbeId = {};
+        probeCanvasState.selectedProbeIds.clear();
+        notifyGraphDocumentStateChanged();
+        requestCanvasRepaint();
+        return true;
+    }
+    probeCanvasState.selectedProbeId = {};
+    probeCanvasState.selectedProbeIds.clear();
+    return applyAuthoringResult(authoring.removeSignalProbe(probeId));
+}
+
+void NodeCanvas::toggleSpyDomain(const String& probeId) {
+    if (probeId == DefaultOutputProbeResolver::probeId) {
+        const bool frequency = probeCanvasState.defaultOutputView != PresetPreviewView::Spectrum;
+        if (commands.setDefaultOutputSpyFrequencyView(frequency)) {
+            probeCanvasState.defaultOutputView = frequency
+                    ? PresetPreviewView::Spectrum : PresetPreviewView::Time;
+            notifyGraphDocumentStateChanged();
+            requestCanvasRepaint();
+        }
+        return;
+    }
+
+    const SignalProbe* probe = graph.findSignalProbe(probeId);
+    if (probe != nullptr
+            && commands.setSignalProbeFrequencyView(probeId, !probe->frequencyView)
+                    .succeeded()) {
+        notifyGraphDocumentStateChanged();
+        requestCanvasRepaint();
+    }
+}
+
 void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
     if (edgeIndex < 0 || edgeIndex >= (int) graph.getEdges().size()) {
         return;
@@ -1554,11 +1687,13 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
     const int midiNote = presentation.previewMidiNote();
     const size_t resolution = SignalProbeDetailView::resolutionForMidiNote(
             midiNote);
-    const size_t captureResolution = probeId == DefaultOutputProbeResolver::probeId
-            ? PresetPreviewGenerator::sourceRowCountForView(
-                    resolution,
-                    probeCanvasState.defaultOutputView)
-            : resolution;
+    const SignalProbe* selectedProbe = graph.findSignalProbe(probeId);
+    const PresetPreviewView view = probeId == DefaultOutputProbeResolver::probeId
+            ? probeCanvasState.defaultOutputView
+            : selectedProbe != nullptr && selectedProbe->frequencyView
+                    ? PresetPreviewView::Spectrum : PresetPreviewView::Time;
+    const size_t captureResolution = PresetPreviewGenerator::sourceRowCountForView(
+            resolution, view);
     auto preview = presentation.captureProbePreview(
             commands.editingGraph(),
             probeId,
@@ -1570,10 +1705,10 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
         return;
     }
 
-    if (probeId == DefaultOutputProbeResolver::probeId) {
-        *preview = PresetPreviewGenerator::forView(
-                *preview,
-                probeCanvasState.defaultOutputView);
+    if (probeId == DefaultOutputProbeResolver::probeId
+            || preview->domain == PortDomain::TimeSignal
+                    && view == PresetPreviewView::Spectrum) {
+        *preview = PresetPreviewGenerator::forView(*preview, view);
     }
 
     const SignalProbe* probe = graph.findSignalProbe(probeId);
@@ -1767,11 +1902,11 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
             graph, viewport, presentation.revision(), document.revision(),
             &queries.presentationFacts().edgeIndex());
     for (const auto& probeId : SignalProbeCanvas::orderedProbeIds(graph)) {
-        result.spyCards.push_back({
-                probeId,
-                SignalProbeCanvas::cardBoundsFor(
-                        probeId, graph, automationScene, viewport, probeCanvasState)
-        });
+        const Rectangle<float> bounds = SignalProbeCanvas::cardBoundsFor(
+                probeId, graph, automationScene, viewport, probeCanvasState);
+        if (!bounds.isEmpty()) {
+            result.spyCards.push_back({ probeId, bounds });
+        }
     }
     return result;
 }
@@ -1802,7 +1937,14 @@ void NodeCanvas::flushScheduledCompiledStateRefresh() {
 }
 
 void NodeCanvas::resetDocumentPresentation() {
+    probeCanvasState.selectedProbeId = {};
+    probeCanvasState.selectedProbeIds.clear();
+    probeCanvasState.draggedCardWorldPositions.clear();
+    probeCanvasState.draggedScreenOffset = {};
     probeCanvasState.outputCanvasPosition = document.presentation().outputSpyPosition;
+    probeCanvasState.outputSpyVisible = document.presentation().outputSpyVisible;
+    probeCanvasState.defaultOutputView = document.presentation().outputSpyFrequencyView
+            ? PresetPreviewView::Spectrum : PresetPreviewView::Time;
     editorCoordinator.resetDocumentPreviews();
     canvasPresentation.clearDocumentCaches();
     openGLContext.triggerRepaint();

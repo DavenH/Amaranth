@@ -227,10 +227,12 @@ private:
             PresentationRefreshScope::Downstream };
     SignalProbeCanvasState probeCanvasState;
     struct ProbeCardGesture {
-        String probeId;
-        Point<float> startWorldPosition;
+        std::vector<std::pair<String, Point<float>>> startPositions;
+        Point<float> appliedNodeOffset;
+        bool nodeTransactionStarted {};
     };
     std::optional<ProbeCardGesture> probeCardGesture;
+    std::vector<std::pair<String, Point<float>>> nodeDragSpyStarts;
     GuideCurveShelfState guideShelfState;
     SignalProbeDetailState probeDetailState;
     OutputMeterBallistics outputMeterBallistics;
@@ -311,6 +313,8 @@ private:
     Rectangle<float> editorContentBounds() const;
     WorkspaceDockLayout workspaceDockLayout() const;
     void showEdgeMenu(int edgeIndex, Point<float> screenPosition);
+    bool removeSpyCard(const String& probeId);
+    void toggleSpyDomain(const String& probeId);
     void openGuideEditor(const String& guideId);
     void closeGuideEditor();
     void rebindGuideEditor();

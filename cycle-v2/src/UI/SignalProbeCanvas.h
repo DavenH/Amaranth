@@ -2,6 +2,8 @@
 
 #include <JuceHeader.h>
 
+#include <vector>
+
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeCanvasViewport.h"
 #include "UI/NodePreviewRenderer.h"
@@ -17,12 +19,16 @@ namespace CycleV2 {
 
 struct SignalProbeCanvasState {
     String selectedProbeId;
+    std::vector<String> selectedProbeIds;
     String hoveredProbeId;
     ProbeRefreshMode refreshMode { ProbeRefreshMode::OnGestureCommit };
     PresetPreviewView defaultOutputView { PresetPreviewView::Spectrum };
+    bool outputSpyVisible { true };
     std::optional<Point<float>> outputCanvasPosition;
-    std::optional<Point<float>> draggedCanvasPosition;
-    String draggedProbeId;
+    std::vector<std::pair<String, Point<float>>> draggedCardWorldPositions;
+    Point<float> draggedScreenOffset;
+
+    bool isSelected(const String& probeId) const;
 };
 
 class SignalProbeCanvas {

@@ -284,6 +284,7 @@ struct SignalProbe {
     float tapPosition { 0.5f };
     int railOrder {};
     std::optional<juce::Point<float>> canvasPosition;
+    bool frequencyView {};
 };
 
 struct NodeNaturalSize {

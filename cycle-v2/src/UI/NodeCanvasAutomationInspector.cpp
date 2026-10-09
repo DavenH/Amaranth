@@ -650,6 +650,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
         spyCards.add(var(item));
     }
     root->setProperty("spyCards", std::move(spyCards));
+    root->setProperty("spyCardCount", (int) state.spyCards.size());
 
     Array<var> causalUpdates;
     for (const auto& event : context.presentation.updateTrace().snapshot()) {
