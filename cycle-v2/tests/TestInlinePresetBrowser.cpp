@@ -196,6 +196,8 @@ TEST_CASE("Preset metadata stays left of the spectrogram at sidebar widths",
             REQUIRE(card.contains(tag));
             REQUIRE(tag.getY() > layout.labels.title.getBottom());
             REQUIRE(tag.getHeight() == layout.favorite.getHeight());
+            REQUIRE(tag.getY() == layout.favorite.getY());
+            REQUIRE(tag.getY() - layout.labels.title.getBottom() <= 4.f);
             REQUIRE_FALSE(tag.intersects(layout.favorite));
             REQUIRE(tag.getRight() < layout.preview.getX());
         }
@@ -331,9 +333,12 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(tagCloud->selectedTags().isEmpty());
 
     REQUIRE(clickTag(*tagCloud, "Distorted"));
-    REQUIRE(browser.visiblePresetCount() == 4);
+    const int distortedCount = browser.visiblePresetCount();
+    REQUIRE(distortedCount > 0);
+    REQUIRE(distortedCount < unfilteredCount);
     REQUIRE(clickTag(*tagCloud, "Bass"));
-    REQUIRE(browser.visiblePresetCount() == 1);
+    REQUIRE(browser.visiblePresetCount() > 0);
+    REQUIRE(browser.visiblePresetCount() < distortedCount);
     REQUIRE(clickTag(*tagCloud, "Distorted"));
     REQUIRE(clickTag(*tagCloud, "Bass"));
     REQUIRE(tagCloud->selectedTags().isEmpty());

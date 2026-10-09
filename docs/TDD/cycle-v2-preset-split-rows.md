@@ -45,3 +45,18 @@ overlap. Shared favorite hit/automation geometry follows the new position.
 Both builds and seven browser cases / 156 assertions pass, including title/tag/
 favorite containment and separation. Architecture audit and diff/style checks
 pass. SidebarMediaRow is 212 lines; no new behavior or policy boundary.
+
+Compact-row follow-up: reduce preset height from 90 to 68px (24%); preserve the
+40/60 split and title typography. Favorite and tags share one 22px line, 4px
+below the title region. Tag pairs share the available width instead of wrapping
+into the title; long labels use the existing fitted-text truncation. Pattern rows
+remain unchanged. Shared geometry still owns drawing, favorite hits and automation.
+Native capture `/private/tmp/compact-preset-rows.png` reviewed with one/two tags,
+selected rows and favorites. Geometry assertions cover the common control baseline
+and title-to-control gap at 250/290px widths. Architecture and style/diff review:
+SidebarMediaRow is 217/62 lines, with unchanged collaborators/ownership and fixed
+per-row work. No extraction or deletion targets. Standalone build passes.
+The browser integration test now checks filter narrowing rather than exact counts
+in the actively edited user preset library; temporary-file tag editing coverage
+continues to verify exact filter outcomes.
+Tests build passes; all nine inline cases pass (209 assertions).

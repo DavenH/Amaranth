@@ -23,13 +23,18 @@ PresetLayout presetLayout(juce::Rectangle<float> slot, const juce::StringArray& 
         layout.labels.tags[(size_t) index].setSize(width, 22.f);
         totalWidth += width + (index == 0 ? 0.f : 3.f);
     }
-    const bool wrap = totalWidth > tagWidth;
+    if (totalWidth > tagWidth) {
+        const float availableTextWidth = tagWidth - 3.f;
+        const float firstWidth = juce::jmin(layout.labels.tags[0].getWidth(),
+                availableTextWidth * 0.5f);
+        layout.labels.tags[0].setWidth(firstWidth);
+        layout.labels.tags[1].setWidth(availableTextWidth - firstWidth);
+        totalWidth = tagWidth;
+    }
     float x = metadata.getRight() - totalWidth;
     for (int index = 0; index < layout.labels.tagCount; ++index) {
         auto& chip = layout.labels.tags[(size_t) index];
-        chip.setPosition(wrap ? metadata.getRight() - chip.getWidth() : x,
-                metadata.getBottom() - 22.f
-                        - (wrap ? (layout.labels.tagCount - index - 1) * 24.f : 0.f));
+        chip.setPosition(x, metadata.getBottom() - 22.f);
         x += chip.getWidth() + 3.f;
     }
     return layout;
