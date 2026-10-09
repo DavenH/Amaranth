@@ -77,3 +77,14 @@ and Fourier symbols, in `/private/tmp/nodes-tab.png`. Both builds pass, as do
 Architecture audit, diff and style review pass. NodePalette 200 -> 210 lines,
 header 48 -> 52; chrome presentation 261 -> 244, presentation header 166 -> 165.
 No scalar math hot-loop changes or new policy boundaries.
+
+## Size and alignment adjustment
+
+User requested a 20% reduction and left alignment. Card width/height and icon
+canvas are now 0.8 times the previous values (66.4 x 62.4 cards, 41.6px icons at
+the reference size). Rows and headings start at the existing 14px left inset.
+Persistent labels retain readable type and fit their one-line label bands.
+Reviewed the rendered sidebar; updated geometry/hit assertions for fractional
+sizes and left-aligned partial rows. Both builds and palette tests pass. Diff/style
+and architecture checks pass; layout and paint ownership are unchanged, with no
+new domain logic. NodePalette is 209 lines and chrome presentation 244 lines.

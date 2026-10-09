@@ -61,7 +61,7 @@ const NodePalette::Section kSections[] = {
 }
 
 float NodePalette::tileWidth() const {
-    return (float) jmax(40, (int) ((workspace.getWidth() - 28.f - 2.f * kGap) / kColumns));
+    return 0.8f * (float) jmax(40, (int) ((workspace.getWidth() - 28.f - 2.f * kGap) / kColumns));
 }
 
 float NodePalette::tileHeight() const {
@@ -71,7 +71,7 @@ float NodePalette::tileHeight() const {
     }
     const float fixedHeight = kY + 16.f + sectionCount() * kHeadingHeight
             + (sectionCount() - 1) * kGroupGap + (totalRows - sectionCount()) * kGap;
-    return (float) jlimit(52, 78, (int) ((workspace.getHeight() - fixedHeight) / totalRows));
+    return 0.8f * (float) jlimit(52, 78, (int) ((workspace.getHeight() - fixedHeight) / totalRows));
 }
 
 float NodePalette::groupHeight(int sectionIndex) const {
@@ -118,7 +118,7 @@ std::vector<std::pair<String, Rectangle<float>>> NodePalette::pointerTargets() c
 Rectangle<float> NodePalette::railBounds() const {
     const auto first = groupBounds(0);
     const float width = kColumns * (tileWidth() + kGap) - kGap;
-    return { first.getRight() - width, first.getY(), width,
+    return { first.getX(), first.getY(), width,
             groupBounds(sectionCount() - 1).getBottom() - first.getY() };
 }
 
@@ -129,7 +129,7 @@ Rectangle<float> NodePalette::groupBounds(int sectionIndex) const {
     }
 
     const float width = kColumns * (tileWidth() + kGap) - kGap;
-    const float x = jmax(workspace.getX(), workspace.getCentreX() - width * 0.5f);
+    const float x = workspace.getX() + 14.f;
     return { x, y, width,
             groupHeight(sectionIndex) };
 }
@@ -138,8 +138,7 @@ Rectangle<float> NodePalette::entryBounds(int sectionIndex, int entryIndex) cons
     const auto group = groupBounds(sectionIndex);
     const int row = entryIndex / kColumns;
     const int column = entryIndex % kColumns;
-    const int rowColumns = jmin(kColumns, section(sectionIndex).entryCount - row * kColumns);
-    return { group.getRight() - (float) (rowColumns - column) * (tileWidth() + kGap) + kGap,
+    return { group.getX() + (float) column * (tileWidth() + kGap),
             group.getY() + kHeadingHeight + (float) row * (tileHeight() + kGap),
             tileWidth(), tileHeight() };
 }

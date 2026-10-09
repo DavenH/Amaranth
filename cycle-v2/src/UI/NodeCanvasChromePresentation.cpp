@@ -212,7 +212,7 @@ void NodeCanvasPresentation::paintPaletteContent(
         const auto group = frame.palette.groupBounds(sectionIndex);
         graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
         graphics.setColour(CanvasChromePalette::mutedText);
-        graphics.drawText(section.title, group.withHeight(20.f), Justification::centredRight);
+        graphics.drawText(section.title, group.withHeight(20.f), Justification::centredLeft);
 
         for (int entryIndex = 0; entryIndex < section.entryCount; ++entryIndex) {
             const auto& entry = section.entries[entryIndex];
@@ -228,15 +228,15 @@ void NodeCanvasPresentation::paintPaletteContent(
             graphics.drawRoundedRectangle(tile, CanvasChromeMetrics::controlCornerRadius,
                     hover ? CanvasChromeMetrics::activeBorderWidth : CanvasChromeMetrics::restingBorderWidth);
 
-            const float iconSize = jmin(52.f, tile.getHeight() - 26.f);
+            const float iconSize = jmin(41.6f, tile.getHeight() - 20.8f);
             const Rectangle<float> icon(tile.getCentreX() - iconSize * 0.5f,
-                    tile.getY() + 5.f, iconSize, iconSize);
+                    tile.getY() + 4.f, iconSize, iconSize);
             NodePaletteEntryIconRenderer::paint(graphics, entry.kind, icon, hover);
-            graphics.setFont(FontOptions(11.f));
+            graphics.setFont(FontOptions(10.5f));
             graphics.setColour(CanvasChromePalette::text);
-            graphics.drawText(String::fromUTF8(entry.label),
-                    tile.withTop(tile.getBottom() - 20.f).reduced(3.f, 0.f),
-                    Justification::centred);
+            graphics.drawFittedText(String::fromUTF8(entry.label),
+                    tile.withTop(tile.getBottom() - 16.f).reduced(3.f, 0.f).toNearestInt(),
+                    Justification::centred, 1, 0.8f);
         }
     }
 }

@@ -1233,24 +1233,24 @@ TEST_CASE("Node palette has aligned ragged rows and two directly accessible FX r
     for (int sectionIndex = 0; sectionIndex < palette.sectionCount(); ++sectionIndex) {
         const auto& section = palette.section(sectionIndex);
         const auto group = palette.groupBounds(sectionIndex);
-        REQUIRE(group.getRight() == first.getRight());
+        REQUIRE(group.getX() == first.getX());
         for (int index = 0; index < section.entryCount; ++index) {
             const auto tile = palette.entryBounds(sectionIndex, index);
-            REQUIRE(tile.getWidth() == 83.f);
-            REQUIRE(tile.getHeight() == 78.f);
-            REQUIRE(tile.getY() == group.getY() + 20.f + (index / 3) * 84.f);
-            if (index % 3 == 2 || index == section.entryCount - 1) {
-                REQUIRE(tile.getRight() == first.getRight());
+            REQUIRE(tile.getWidth() == Catch::Approx(83.f * 0.8f));
+            REQUIRE(tile.getHeight() == Catch::Approx(78.f * 0.8f));
+            REQUIRE(tile.getY() == Catch::Approx(group.getY() + 20.f + (index / 3) * 68.4f));
+            if (index % 3 == 0) {
+                REQUIRE(tile.getX() == first.getX());
             }
         }
     }
     const int fx = palette.sectionCount() - 1;
     REQUIRE(palette.section(fx).entryCount == 6);
-    REQUIRE(palette.entryBounds(fx, 5).getBottom() == palette.groupBounds(fx).getBottom());
+    REQUIRE(palette.entryBounds(fx, 5).getBottom() == Catch::Approx(palette.groupBounds(fx).getBottom()));
     NodeKind kind {};
     REQUIRE(palette.findKindAt(palette.entryBounds(fx, 5).getCentre(), kind));
     REQUIRE(kind == NodeKind::Equalizer);
-    const auto emptyCell = palette.entryBounds(4, 3).getCentre().translated(-90.f, 0.f);
+    const auto emptyCell = palette.entryBounds(4, 3).getCentre().translated(75.f, 0.f);
     REQUIRE_FALSE(palette.findKindAt(emptyCell, kind));
     REQUIRE(palette.findSectionAt(emptyCell) == -1);
 }
@@ -1265,7 +1265,7 @@ TEST_CASE("Nodes palette stays inside the unified sidebar through resizing",
         const auto browser = GuideCurveShelf::guideWorkspace(workspace);
         palette.setWorkspaceBounds(browser);
         REQUIRE(browser.getX() == workspace.getX());
-        REQUIRE(palette.railBounds().getCentreX() == browser.getCentreX());
+        REQUIRE(palette.railBounds().getX() == browser.getX() + 14.f);
         REQUIRE(browser.contains(palette.railBounds()));
         REQUIRE(dock.rightShelf.getX() == browser.getRight() + CanvasUtilityDock::gap);
         REQUIRE(WorkspaceDock::editorAvailableBounds(dock).getX() == dock.rightShelf.getX());
@@ -1273,7 +1273,7 @@ TEST_CASE("Nodes palette stays inside the unified sidebar through resizing",
             NodeKind kind {};
             REQUIRE(palette.findKindAt(bounds.getCentre(), kind));
             REQUIRE(id == "palette:" + NodeDefinitionRegistry::instance().find(kind)->typeId);
-            REQUIRE(palette.railBounds().contains(bounds));
+            REQUIRE(palette.railBounds().expanded(0.001f).contains(bounds));
         }
     }
 }
