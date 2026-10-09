@@ -59,3 +59,21 @@ preset and pattern presentation ownership. Chrome presentation 256 -> 261;
 hit router 238 -> 237; NodePalette 190 -> 200 and header 44 -> 48. No adapter,
 new mutation path or duplicated interaction implementation was introduced.
 All completion criteria above are satisfied.
+
+## Full-width labeled cards
+
+User review found the 40px toolbar grid too small within a dedicated browser.
+Replaced it with three columns spanning the sidebar, approximately 14px outer
+insets and 6px gaps. At 290 x 962 the cards are 83 x 78 with a 52px icon canvas,
+5px top inset and 20px persistent label band. Section headings are larger and
+remain right-aligned. Heights adapt to available vertical space (52–78px), keeping
+all eight rows visible at the tested 700px height. Existing ragged ordering and two
+FX rows remain. Removed hover-only label rendering and its declaration.
+
+NodePalette remains the sole layout owner; rendering uses those hit bounds.
+No gesture or mutation changes. Reviewed rendered cards, including long labels
+and Fourier symbols, in `/private/tmp/nodes-tab.png`. Both builds pass, as do
+31 focused cases / 663 assertions and all 19 native drag/create/undo commands.
+Architecture audit, diff and style review pass. NodePalette 200 -> 210 lines,
+header 48 -> 52; chrome presentation 261 -> 244, presentation header 166 -> 165.
+No scalar math hot-loop changes or new policy boundaries.

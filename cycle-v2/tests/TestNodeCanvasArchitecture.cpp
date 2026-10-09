@@ -1236,9 +1236,9 @@ TEST_CASE("Node palette has aligned ragged rows and two directly accessible FX r
         REQUIRE(group.getRight() == first.getRight());
         for (int index = 0; index < section.entryCount; ++index) {
             const auto tile = palette.entryBounds(sectionIndex, index);
-            REQUIRE(tile.getWidth() == 40.f);
-            REQUIRE(tile.getHeight() == 40.f);
-            REQUIRE(tile.getY() == group.getY() + 16.f + (index / 3) * 43.f);
+            REQUIRE(tile.getWidth() == 83.f);
+            REQUIRE(tile.getHeight() == 78.f);
+            REQUIRE(tile.getY() == group.getY() + 20.f + (index / 3) * 84.f);
             if (index % 3 == 2 || index == section.entryCount - 1) {
                 REQUIRE(tile.getRight() == first.getRight());
             }
@@ -1250,7 +1250,7 @@ TEST_CASE("Node palette has aligned ragged rows and two directly accessible FX r
     NodeKind kind {};
     REQUIRE(palette.findKindAt(palette.entryBounds(fx, 5).getCentre(), kind));
     REQUIRE(kind == NodeKind::Equalizer);
-    const auto emptyCell = palette.entryBounds(4, 3).getCentre().translated(-43.f, 0.f);
+    const auto emptyCell = palette.entryBounds(4, 3).getCentre().translated(-90.f, 0.f);
     REQUIRE_FALSE(palette.findKindAt(emptyCell, kind));
     REQUIRE(palette.findSectionAt(emptyCell) == -1);
 }

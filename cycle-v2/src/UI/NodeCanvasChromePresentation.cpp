@@ -202,30 +202,6 @@ void NodeCanvasPresentation::paintPalette(
                     imageToLogicalY,
                     paletteCacheBounds.getY()),
             false);
-    paintPaletteHoverLabel(graphics, frame);
-}
-
-void NodeCanvasPresentation::paintPaletteHoverLabel(
-        Graphics& graphics,
-        const NodeCanvasPresentationFrame& frame) {
-    const int sectionIndex = frame.palette.activeSection();
-    const int entryIndex = frame.palette.activeEntry();
-    if (sectionIndex < 0 || entryIndex < 0) {
-        return;
-    }
-
-    const auto& entry = frame.palette.section(sectionIndex).entries[entryIndex];
-    const String label = String::fromUTF8(entry.label);
-    const Font font { FontOptions(CanvasChromeMetrics::labelFontSize) };
-    const auto tile = frame.palette.entryBounds(sectionIndex, entryIndex);
-    const float width = GlyphArrangement::getStringWidth(font, label) + 16.f;
-    const Rectangle<float> bounds(frame.palette.railBounds().getRight() + 6.f,
-            tile.getCentreY() - 12.f, width, 24.f);
-    graphics.setColour(CanvasChromePalette::raisedSurface);
-    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
-    graphics.setColour(CanvasChromePalette::text);
-    graphics.setFont(font);
-    graphics.drawText(label, bounds.reduced(8.f, 0.f), Justification::centred);
 }
 
 void NodeCanvasPresentation::paintPaletteContent(
@@ -234,9 +210,9 @@ void NodeCanvasPresentation::paintPaletteContent(
     for (int sectionIndex = 0; sectionIndex < frame.palette.sectionCount(); ++sectionIndex) {
         const auto& section = frame.palette.section(sectionIndex);
         const auto group = frame.palette.groupBounds(sectionIndex);
-        graphics.setFont(FontOptions(CanvasChromeMetrics::microFontSize));
+        graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
         graphics.setColour(CanvasChromePalette::mutedText);
-        graphics.drawText(section.title, group.withHeight(16.f), Justification::centredRight);
+        graphics.drawText(section.title, group.withHeight(20.f), Justification::centredRight);
 
         for (int entryIndex = 0; entryIndex < section.entryCount; ++entryIndex) {
             const auto& entry = section.entries[entryIndex];
@@ -252,8 +228,15 @@ void NodeCanvasPresentation::paintPaletteContent(
             graphics.drawRoundedRectangle(tile, CanvasChromeMetrics::controlCornerRadius,
                     hover ? CanvasChromeMetrics::activeBorderWidth : CanvasChromeMetrics::restingBorderWidth);
 
-            NodePaletteEntryIconRenderer::paint(graphics, entry.kind,
-                    tile.reduced(4.f), hover);
+            const float iconSize = jmin(52.f, tile.getHeight() - 26.f);
+            const Rectangle<float> icon(tile.getCentreX() - iconSize * 0.5f,
+                    tile.getY() + 5.f, iconSize, iconSize);
+            NodePaletteEntryIconRenderer::paint(graphics, entry.kind, icon, hover);
+            graphics.setFont(FontOptions(11.f));
+            graphics.setColour(CanvasChromePalette::text);
+            graphics.drawText(String::fromUTF8(entry.label),
+                    tile.withTop(tile.getBottom() - 20.f).reduced(3.f, 0.f),
+                    Justification::centred);
         }
     }
 }

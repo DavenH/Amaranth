@@ -7,12 +7,10 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr float kY = 74.f;
-constexpr float kTileWidth = 40.f;
-constexpr float kTileHeight = 40.f;
-constexpr float kGap = 3.f;
-constexpr float kHeadingHeight = 16.f;
-constexpr float kGroupGap = 6.f;
+constexpr float kY = 64.f;
+constexpr float kGap = 6.f;
+constexpr float kHeadingHeight = 20.f;
+constexpr float kGroupGap = 12.f;
 constexpr int kColumns = 3;
 
 const NodePalette::Entry kContextEntries[] = {
@@ -60,11 +58,25 @@ const NodePalette::Section kSections[] = {
         { "FX", kFxEntries, (int) std::size(kFxEntries) }
 };
 
-float groupHeight(const NodePalette::Section& section) {
-    const int rows = (section.entryCount + kColumns - 1) / kColumns;
-    return kHeadingHeight + (float) rows * (kTileHeight + kGap) - kGap;
 }
 
+float NodePalette::tileWidth() const {
+    return (float) jmax(40, (int) ((workspace.getWidth() - 28.f - 2.f * kGap) / kColumns));
+}
+
+float NodePalette::tileHeight() const {
+    int totalRows = 0;
+    for (int index = 0; index < sectionCount(); ++index) {
+        totalRows += (section(index).entryCount + kColumns - 1) / kColumns;
+    }
+    const float fixedHeight = kY + 16.f + sectionCount() * kHeadingHeight
+            + (sectionCount() - 1) * kGroupGap + (totalRows - sectionCount()) * kGap;
+    return (float) jlimit(52, 78, (int) ((workspace.getHeight() - fixedHeight) / totalRows));
+}
+
+float NodePalette::groupHeight(int sectionIndex) const {
+    const int rows = (section(sectionIndex).entryCount + kColumns - 1) / kColumns;
+    return kHeadingHeight + (float) rows * (tileHeight() + kGap) - kGap;
 }
 
 void NodePalette::setWorkspaceBounds(Rectangle<float> bounds) {
@@ -105,7 +117,7 @@ std::vector<std::pair<String, Rectangle<float>>> NodePalette::pointerTargets() c
 
 Rectangle<float> NodePalette::railBounds() const {
     const auto first = groupBounds(0);
-    const float width = kColumns * (kTileWidth + kGap) - kGap;
+    const float width = kColumns * (tileWidth() + kGap) - kGap;
     return { first.getRight() - width, first.getY(), width,
             groupBounds(sectionCount() - 1).getBottom() - first.getY() };
 }
@@ -113,15 +125,13 @@ Rectangle<float> NodePalette::railBounds() const {
 Rectangle<float> NodePalette::groupBounds(int sectionIndex) const {
     float y = workspace.getY() + kY;
     for (int index = 0; index < sectionIndex; ++index) {
-        y += groupHeight(section(index)) + kGroupGap;
+        y += groupHeight(index) + kGroupGap;
     }
 
-    const int columns = jmin(kColumns, section(sectionIndex).entryCount);
-    const float width = kColumns * (kTileWidth + kGap) - kGap;
+    const float width = kColumns * (tileWidth() + kGap) - kGap;
     const float x = jmax(workspace.getX(), workspace.getCentreX() - width * 0.5f);
-    return { x + (kColumns - columns) * (kTileWidth + kGap), y,
-            (float) columns * (kTileWidth + kGap) - kGap,
-            groupHeight(section(sectionIndex)) };
+    return { x, y, width,
+            groupHeight(sectionIndex) };
 }
 
 Rectangle<float> NodePalette::entryBounds(int sectionIndex, int entryIndex) const {
@@ -129,9 +139,9 @@ Rectangle<float> NodePalette::entryBounds(int sectionIndex, int entryIndex) cons
     const int row = entryIndex / kColumns;
     const int column = entryIndex % kColumns;
     const int rowColumns = jmin(kColumns, section(sectionIndex).entryCount - row * kColumns);
-    return { group.getRight() - (float) (rowColumns - column) * (kTileWidth + kGap) + kGap,
-            group.getY() + kHeadingHeight + (float) row * (kTileHeight + kGap),
-            kTileWidth, kTileHeight };
+    return { group.getRight() - (float) (rowColumns - column) * (tileWidth() + kGap) + kGap,
+            group.getY() + kHeadingHeight + (float) row * (tileHeight() + kGap),
+            tileWidth(), tileHeight() };
 }
 
 int NodePalette::findSectionAt(Point<float> screenPosition) const {

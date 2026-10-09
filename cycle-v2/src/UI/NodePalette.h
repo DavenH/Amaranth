@@ -39,7 +39,11 @@ public:
     bool close();
 
 private:
-    Rectangle<float> workspace { 0.f, 0.f, 1000.f, 700.f };
+    float tileWidth() const;
+    float tileHeight() const;
+    float groupHeight(int sectionIndex) const;
+
+    Rectangle<float> workspace { 0.f, 0.f, 290.f, 962.f };
     bool visible { true };
     int activeSectionIndex { -1 };
     int activeEntryIndex { -1 };

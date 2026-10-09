@@ -145,6 +145,7 @@ TEST_CASE("Single input and output nodes expose a port layout action",
     snapshot.compileResult = compileResult;
     NodeCanvasQueryModel queries(graph, snapshot);
     NodePalette palette;
+    palette.setVisible(false);
     NodeCanvasHitRouter router(graph, palette, queries);
     NodeCanvasViewport viewport;
     viewport.setBounds({ 0.f, 0.f, 900.f, 700.f });

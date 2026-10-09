@@ -133,7 +133,6 @@ private:
     void paintMiniMap(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintLegend(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintPalette(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
-    static void paintPaletteHoverLabel(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintPaletteContent(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
 
     void renderOpenGLEffectPreviews(
