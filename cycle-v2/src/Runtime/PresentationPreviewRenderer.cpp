@@ -12,22 +12,22 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr size_t kCompactPreviewFrameCount = 512;
 constexpr size_t kCompactPreviewColumnCount = 256;
 constexpr size_t kExpandedProbeColumnCount = 512;
 constexpr size_t kMaximumExpandedProbeRows = 512;
 
 void reduceCompactProbeRows(GraphPreviewResult& result) {
     for (auto& probe : result.probes) {
-        GraphPreviewExecutor::reduceProbeRows(probe, kCompactPreviewFrameCount);
+        GraphPreviewExecutor::reduceProbeRows(
+                probe, GraphPreviewExecutor::kMinimumProbeSourceFrames);
     }
     if (result.defaultOutput.has_value()) {
         GraphPreviewExecutor::reduceProbeRows(
-                *result.defaultOutput, kCompactPreviewFrameCount);
+                *result.defaultOutput, GraphPreviewExecutor::kMinimumProbeSourceFrames);
     }
     if (result.defaultOutputSpectrum.has_value()) {
         GraphPreviewExecutor::reduceProbeRows(
-                *result.defaultOutputSpectrum, kCompactPreviewFrameCount);
+                *result.defaultOutputSpectrum, GraphPreviewExecutor::kMinimumProbeSourceFrames);
     }
 }
 
@@ -106,9 +106,8 @@ bool PresentationPreviewRenderer::render(
         return true;
     }
 
-    const size_t sourceFrameCount = jmax(
-            kCompactPreviewFrameCount,
-            GraphPreviewExecutor::periodRowsForMidiNote(snapshot.previewMidiNote));
+    const size_t sourceFrameCount = GraphPreviewExecutor::sourceFrameCountForMidiNote(
+            snapshot.previewMidiNote);
     AudioVoiceContext previewVoice;
     previewVoice.controls.noteNumber = snapshot.previewMidiNote;
     previewVoice.controls.controllers[1]

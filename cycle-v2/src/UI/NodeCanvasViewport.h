@@ -21,6 +21,7 @@ public:
 
     juce::Point<float> getPan() const { return pan; }
     float getZoom() const { return zoom; }
+    juce::Rectangle<float> getBounds() const { return bounds; }
     uint64_t getRevision() const { return revision; }
 
 private:

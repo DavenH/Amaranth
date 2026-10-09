@@ -956,3 +956,15 @@ pass; no probe behavior or preset was changed in that refactor.
 
 Current status: open; reconcile the test's `probe2`/`probe5` expectations with
 the maintained Stengah preset before changing runtime behavior.
+
+## P2: Broad Spy filter exposes preview and missing-preset expectations
+
+On 2026-10-09, `CycleV2_tests '[cycle-v2][probe]' -r compact` passed 43 of
+46 cases. `TestGraphRuntime.cpp:461` captured identical zero Spy values at
+different preview Mod Wheel settings, and `TestGraphRuntime.cpp:501` expected
+`probe` in `honerism-3.cyclegraph` but found none. The scratch-cable preview
+failure at `TestNodeCanvasAuthoring.cpp:232` is already tracked in
+`docs/TDD/ui-bugs.md`. Log: `/tmp/spy-broad-tests.log`. Focused Spy card
+capture, display-domain persistence, and output visibility tests pass.
+Status: open; reconcile these fixture and preview expectations independently
+of Spy card presentation.

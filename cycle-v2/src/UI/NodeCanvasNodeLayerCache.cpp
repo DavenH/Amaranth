@@ -177,6 +177,8 @@ void NodeCanvasNodeLayerCache::draw(
             / (float) access.image->getWidth();
     const float imageToLogicalY = access.logicalBounds.getHeight()
             / (float) access.image->getHeight();
+    Graphics::ScopedSaveState saved(graphics);
+    graphics.setOpacity(1.f);
     graphics.drawImageTransformed(
             *access.image,
             AffineTransform(

@@ -22,8 +22,8 @@ enum class NodeCanvasPresentationStage : uint8_t {
     Palette,
     Status,
     GuideShelf,
-    SpyRail,
-    SpyRailPreviews,
+    SpyCanvas,
+    SpyCanvasPreviews,
     DockAndDetail,
     Count
 };

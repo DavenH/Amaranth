@@ -59,7 +59,12 @@ std::optional<DefaultOutputProbeAddress> DefaultOutputProbeResolver::resolve(
     if (source == nullptr) {
         return std::nullopt;
     }
-    return DefaultOutputProbeAddress { input->sourceNodeId, input->sourcePortId };
+    return DefaultOutputProbeAddress {
+            input->sourceNodeId,
+            input->sourcePortId,
+            input->destNodeId,
+            input->destPortId
+    };
 }
 
 }

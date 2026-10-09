@@ -137,6 +137,61 @@ GraphEditResult GraphCommandDispatcher::removeSignalProbe(const juce::String& pr
     });
 }
 
+GraphEditResult GraphCommandDispatcher::moveSignalProbe(
+        const juce::String& probeId,
+        juce::Point<float> position) {
+    return applyIncremental(
+            [&](auto& delta, const auto& graph) {
+                delta.captureSignalProbePosition(graph, probeId);
+            },
+            [&](auto& graph) {
+                return GraphEditor().moveSignalProbe(graph, probeId, position);
+            });
+}
+
+bool GraphCommandDispatcher::moveDefaultOutputSpy(juce::Point<float> position) {
+    if (hasTransientEdit()
+            || document.presetPresentation.outputSpyPosition == position) {
+        return false;
+    }
+    document.setOutputSpyPosition(position);
+    return true;
+}
+
+bool GraphCommandDispatcher::setDefaultOutputSpyVisible(bool visible) {
+    if (hasTransientEdit() || document.presetPresentation.outputSpyVisible == visible) {
+        return false;
+    }
+    document.presetPresentation.outputSpyVisible = visible;
+    ++document.presentationRevision;
+    return true;
+}
+
+bool GraphCommandDispatcher::setDefaultOutputSpyFrequencyView(bool frequencyView) {
+    if (hasTransientEdit()
+            || document.presetPresentation.outputSpyFrequencyView == frequencyView) {
+        return false;
+    }
+    document.presetPresentation.outputSpyFrequencyView = frequencyView;
+    ++document.presentationRevision;
+    return true;
+}
+
+GraphEditResult GraphCommandDispatcher::setSignalProbeFrequencyView(
+        const juce::String& probeId, bool frequencyView) {
+    return apply([&](auto& graph) {
+        SignalProbe* probe = graph.findSignalProbeForEditing(probeId);
+        if (probe == nullptr) {
+            return GraphEditResult { GraphEditCode::MissingNode, probeId, {} };
+        }
+        probe->frequencyView = frequencyView;
+        graph.markChanged();
+        GraphEditResult result { GraphEditCode::Connected, probeId, {} };
+        result.changes.probesChanged = true;
+        return result;
+    });
+}
+
 GraphEditResult GraphCommandDispatcher::reattachSignalProbe(
         const juce::String& probeId,
         size_t edgeIndex,

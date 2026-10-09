@@ -47,6 +47,8 @@ public:
 private:
     friend class GraphCommandDispatcher;
 
+    void setOutputSpyPosition(std::optional<juce::Point<float>> position);
+
     NodeGraph& graphForCommand() { return currentGraph; }
     void recordBeforeChange(NodeGraph graph);
     void recordDelta(GraphDelta delta);

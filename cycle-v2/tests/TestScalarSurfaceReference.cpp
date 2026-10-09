@@ -5,8 +5,8 @@
 
 #include "Graph/GraphSerializer.h"
 #include "Runtime/GraphPresentationModel.h"
+#include "Runtime/GraphPreviewExecutor.h"
 #include "UI/NodePreviewRenderer.h"
-#include "UI/SignalProbeDetailView.h"
 
 using namespace CycleV2;
 
@@ -66,7 +66,7 @@ TEST_CASE("Render Stengah B0 Spy 1 material reference", "[.][surface-reference]"
     REQUIRE(presentation.refresh(graph, 1));
     // Match the UI's note naming and pitch-dependent capture length together.
     constexpr int note = 35;
-    const auto resolution = SignalProbeDetailView::resolutionForMidiNote(note, 44100.0);
+    const auto resolution = GraphPreviewExecutor::periodRowsForMidiNote(note, 44100.0);
     const auto probe = presentation.captureProbePreview(graph, "probe", resolution, note);
     REQUIRE(probe.has_value());
     REQUIRE(probe->connected);

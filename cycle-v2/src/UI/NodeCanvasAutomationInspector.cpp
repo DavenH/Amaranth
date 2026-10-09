@@ -176,6 +176,10 @@ public:
         object->setProperty("tapPosition", probe.tapPosition);
         object->setProperty("railOrder", probe.railOrder);
         object->setProperty("connected", probe.sourceNodeId.isNotEmpty());
+        if (probe.canvasPosition.has_value()) {
+            object->setProperty("canvasX", probe.canvasPosition->x);
+            object->setProperty("canvasY", probe.canvasPosition->y);
+        }
         return object;
     }
 
@@ -612,10 +616,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     auto* guideDock = new DynamicObject();
     guideDock->setProperty("expanded", state.guideDock.expanded);
     guideDock->setProperty("guidesMinimized", state.guideDock.guidesMinimized);
-    guideDock->setProperty("spiesMinimized", state.guideDock.spiesMinimized);
-    guideDock->setProperty("expandedHeight", state.guideDock.expandedHeight);
     guideDock->setProperty("guideVerticalOffset", state.guideDock.guideVerticalOffset);
-    guideDock->setProperty("spyHorizontalOffset", state.guideDock.spyHorizontalOffset);
     guideDock->setProperty("selectedGuideId", state.guideDock.selectedGuideId);
     guideDock->setProperty("hoveredGuideId", state.guideDock.hoveredGuideId);
     guideDock->setProperty("hoveredProbeId", state.guideDock.hoveredProbeId);
@@ -632,18 +633,31 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     guideDock->setProperty(
             "expandedGuideHeatmapFilename",
             state.guideDock.expandedGuideHeatmapFilename);
-    guideDock->setProperty("bounds", AutomationValueEncoder::rectangleToVar(state.guideDock.dockBounds));
     guideDock->setProperty(
             "guideShelfBounds",
             AutomationValueEncoder::rectangleToVar(state.guideDock.guideShelfBounds));
-    guideDock->setProperty(
-            "spyShelfBounds",
-            AutomationValueEncoder::rectangleToVar(state.guideDock.spyShelfBounds));
     guideDock->setProperty(
             "guideEditorBounds",
             AutomationValueEncoder::rectangleToVar(state.guideDock.guideEditorBounds));
     guideDock->setProperty("editor", state.guideDock.guideEditorState);
     root->setProperty("guideDock", guideDock);
+
+    Array<var> spyCards;
+    for (const auto& card : state.spyCards) {
+        auto* item = new DynamicObject();
+        item->setProperty("id", card.probeId);
+        item->setProperty("bounds", AutomationValueEncoder::rectangleToVar(card.bounds));
+        spyCards.add(var(item));
+    }
+    root->setProperty("spyCards", std::move(spyCards));
+    root->setProperty("spyCardCount", (int) state.spyCards.size());
+    Array<var> selectedSpyIds;
+    for (const auto& spyId : state.selectedSpyIds) {
+        selectedSpyIds.add(spyId);
+    }
+    root->setProperty("selectedSpyIds", std::move(selectedSpyIds));
+    root->setProperty("popupMenuTargetScreenX", state.popupMenuTargetScreenArea.getX());
+    root->setProperty("popupMenuTargetScreenY", state.popupMenuTargetScreenArea.getY());
 
     Array<var> causalUpdates;
     for (const auto& event : context.presentation.updateTrace().snapshot()) {
@@ -846,46 +860,16 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
     Array<var> targets;
     targets.add(
             AutomationValueEncoder::pointerTargetToVar("canvas", "canvas", context.canvas.getLocalBounds().toFloat()));
-    if (!state.guideDock.dockBounds.isEmpty()) {
-        targets.add(AutomationValueEncoder::pointerTargetToVar(
-                "guideDock",
-                "guideDock",
-                state.guideDock.dockBounds));
-    }
-    if (!state.guideDock.collapseBounds.isEmpty()) {
-        targets.add(AutomationValueEncoder::pointerTargetToVar(
-                "guideDock.collapse",
-                "guideDockCollapse",
-                state.guideDock.collapseBounds));
-    }
-    if (!state.guideDock.resizeBounds.isEmpty()) {
-        targets.add(AutomationValueEncoder::pointerTargetToVar(
-                "guideDock.resize",
-                "guideDockResize",
-                state.guideDock.resizeBounds));
-    }
     if (state.guideDock.expanded) {
         targets.add(AutomationValueEncoder::pointerTargetToVar(
                 "guideShelf",
                 "guideShelf",
                 state.guideDock.guideShelfBounds));
-        if (!state.guideDock.spyShelfBounds.isEmpty()) {
-            targets.add(AutomationValueEncoder::pointerTargetToVar(
-                    "spyShelf",
-                    "spyShelf",
-                    state.guideDock.spyShelfBounds));
-        }
         if (!state.guideDock.guideMinimizeBounds.isEmpty()) {
             targets.add(AutomationValueEncoder::pointerTargetToVar(
                     "guideShelf.minimize",
                     "guideShelfMinimize",
                     state.guideDock.guideMinimizeBounds));
-        }
-        if (!state.guideDock.spyMinimizeBounds.isEmpty()) {
-            targets.add(AutomationValueEncoder::pointerTargetToVar(
-                    "spyShelf.minimize",
-                    "spyShelfMinimize",
-                    state.guideDock.spyMinimizeBounds));
         }
         if (!state.guideDock.addGuideBounds.isEmpty()) {
             targets.add(AutomationValueEncoder::pointerTargetToVar(
@@ -905,14 +889,12 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                         tile.deleteBounds));
             }
         }
-        if (!state.guideDock.spiesMinimized) {
-            for (const auto& tile : state.guideDock.spyTiles) {
-                targets.add(AutomationValueEncoder::pointerTargetToVar(
-                        "spy:" + tile.probeId,
-                        "spy",
-                        tile.bounds));
-            }
-        }
+    }
+    for (const auto& card : state.spyCards) {
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "spy:" + card.probeId,
+                "spy",
+                card.bounds));
     }
     if (!state.guideDock.guideEditorBounds.isEmpty()) {
         targets.add(AutomationValueEncoder::pointerTargetToVar(

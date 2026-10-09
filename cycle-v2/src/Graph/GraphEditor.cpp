@@ -113,6 +113,18 @@ GraphEditResult GraphEditor::removeSignalProbe(NodeGraph& graph, const String& p
     return result;
 }
 
+GraphEditResult GraphEditor::moveSignalProbe(
+        NodeGraph& graph,
+        const String& probeId,
+        Point<float> position) const {
+    if (!graph.setSignalProbeCanvasPosition(probeId, position)) {
+        return { GraphEditCode::MissingNode, probeId, {} };
+    }
+    GraphEditResult result { GraphEditCode::Connected, probeId, {} };
+    result.changes.layoutChanged = true;
+    return result;
+}
+
 GraphEditResult GraphEditor::reattachSignalProbe(
         NodeGraph& graph,
         const String& probeId,

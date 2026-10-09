@@ -7,20 +7,47 @@
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
-#include "UI/SignalProbeRail.h"
+#include "Runtime/GraphPresentationModel.h"
+#include "UI/SignalProbeCanvas.h"
 #include "UI/WorkspaceDockInteractionController.h"
 
 using namespace CycleV2;
 
 TEST_CASE("Signal probe cable annotations scale with canvas zoom",
         "[cycle-v2][ui][signal-probe][zoom]") {
-    const float reference = SignalProbeRail::cableAnnotationDiameter(0.58f);
+    const float reference = SignalProbeCanvas::cableAnnotationDiameter(0.58f);
 
-    REQUIRE(reference == Catch::Approx(16.128f));
-    REQUIRE(SignalProbeRail::cableAnnotationDiameter(1.16f)
+    REQUIRE(reference == Catch::Approx(8.4f));
+    REQUIRE(SignalProbeCanvas::cableAnnotationDiameter(1.16f)
             == Catch::Approx(reference * 2.f));
-    REQUIRE(SignalProbeRail::cableAnnotationDiameter(0.29f)
+    REQUIRE(SignalProbeCanvas::cableAnnotationDiameter(0.29f)
             == Catch::Approx(reference * 0.5f));
+}
+
+TEST_CASE("Spy tethers leave cables perpendicularly toward the card",
+        "[cycle-v2][ui][signal-probe][tether]") {
+    const auto checkDeparture = [](Point<float> start,
+            Point<float> end, Point<float> target) {
+        Path cable;
+        cable.startNewSubPath(start);
+        cable.lineTo(end);
+        const Path tether = SignalProbeCanvas::tetherPath(cable, 0.5f, target);
+        const Point<float> anchor = cable.getPointAlongPath(cable.getLength() * 0.5f);
+        const Point<float> departure = tether.getPointAlongPath(1.f) - anchor;
+        const Point<float> tangent = end - start;
+        REQUIRE(tether.getLength() > 0.f);
+        const float parallelFraction = (departure.x * tangent.x
+                + departure.y * tangent.y)
+                / (departure.getDistanceFromOrigin() * tangent.getDistanceFromOrigin());
+        REQUIRE(parallelFraction == Catch::Approx(0.f).margin(0.05f));
+        REQUIRE(departure.x * (target.x - anchor.x)
+                        + departure.y * (target.y - anchor.y) > 0.f);
+    };
+
+    checkDeparture({ 0.f, 0.f }, { 100.f, 0.f }, { 50.f, -100.f });
+    checkDeparture({ 0.f, 0.f }, { 100.f, 0.f }, { 50.f, 100.f });
+    checkDeparture({ 0.f, 0.f }, { 0.f, 100.f }, { 100.f, 50.f });
+    checkDeparture({ 0.f, 0.f }, { 0.f, 100.f }, { -100.f, 50.f });
 }
 
 namespace {
@@ -36,45 +63,125 @@ NodeGraph probeGraph() {
 
 }
 
-TEST_CASE("Default output spy ends the rail without becoming graph state",
+TEST_CASE("Default output spy has a canvas card without becoming graph state",
         "[cycle-v2][ui][probe][default-output]") {
     NodeGraph graph = probeGraph();
     REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
 
-    const auto ids = SignalProbeRail::orderedProbeIds(graph);
+    const auto ids = SignalProbeCanvas::orderedProbeIds(graph);
     REQUIRE(ids.size() == 2);
     REQUIRE(ids.front() == graph.getSignalProbes().front().id);
     REQUIRE(ids.back() == DefaultOutputProbeResolver::probeId);
-    REQUIRE(SignalProbeRail::ordinalForProbe(
+    REQUIRE(SignalProbeCanvas::ordinalForProbe(
             graph, DefaultOutputProbeResolver::probeId) == 2);
-    REQUIRE(SignalProbeRail::ordinalForProbe(graph, ids.front()) == 1);
+    REQUIRE(SignalProbeCanvas::ordinalForProbe(graph, ids.front()) == 1);
 
-    SignalProbeRailState state;
-    const Rectangle<float> workspace(0.f, 0.f, 600.f, 400.f);
-    REQUIRE(SignalProbeRail::probeAt(
-            SignalProbeRail::tileBoundsFor(workspace, state, 1).getCentre(),
-            workspace,
-            graph,
-            state) == DefaultOutputProbeResolver::probeId);
+    SignalProbeCanvasState state;
+    NodeCanvasViewport viewport;
+    viewport.setBounds({ 0.f, 0.f, 800.f, 600.f });
+    NodeCanvasScene scene;
+    const auto& snapshot = scene.build(graph, viewport, 1, 1);
+    const auto card = SignalProbeCanvas::cardBoundsFor(
+            DefaultOutputProbeResolver::probeId, graph, snapshot, viewport, state);
+    REQUIRE_FALSE(card.isEmpty());
+    REQUIRE(SignalProbeCanvas::cardAt(
+            card.getCentre(), graph, snapshot, viewport, state)
+            == DefaultOutputProbeResolver::probeId);
     REQUIRE(graph.getSignalProbes().size() == 1);
 }
 
-TEST_CASE("Spy tiles reserve right click for output view and double click for detail",
-        "[cycle-v2][ui][probe][interaction]") {
-    using Action = SpyTilePointerAction;
+TEST_CASE("Canvas Spy positions serialize and undo as a small graph delta",
+        "[cycle-v2][probe][canvas][undo]") {
+    NodeGraph graph = probeGraph();
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+    const String probeId = graph.getSignalProbes().front().id;
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
 
-    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
-            false, 1, false) == Action::None);
-    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
-            false, 1, true) == Action::None);
-    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
-            true, 1, true) == Action::ToggleDefaultOutputView);
-    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
-            true, 1, false) == Action::None);
-    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
-            false, 2, false) == Action::OpenDetail);
-    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
-            false, 2, true) == Action::OpenDetail);
+    REQUIRE(commands.moveSignalProbe(probeId, { 125.f, -80.f }).succeeded());
+    REQUIRE(document.graph().findSignalProbe(probeId)->canvasPosition
+            == Point<float>(125.f, -80.f));
+    REQUIRE(GraphSerializer().fromJsonString(document.toJson())
+                    .findSignalProbe(probeId)->canvasPosition
+            == Point<float>(125.f, -80.f));
+
+    REQUIRE(document.undo());
+    REQUIRE_FALSE(document.graph().findSignalProbe(probeId)->canvasPosition.has_value());
+    REQUIRE(document.redo());
+    REQUIRE(document.graph().findSignalProbe(probeId)->canvasPosition
+            == Point<float>(125.f, -80.f));
+}
+
+TEST_CASE("Output Spy card position persists as preset presentation",
+        "[cycle-v2][probe][canvas][default-output]") {
+    GraphDocument document(probeGraph());
+    GraphCommandDispatcher commands(document);
+
+    REQUIRE(commands.moveDefaultOutputSpy({ 320.f, 180.f }));
+    REQUIRE(document.isDirty());
+    REQUIRE(document.presentation().outputSpyPosition == Point<float>(320.f, 180.f));
+    REQUIRE(GraphSerializer().loadJsonString(document.toJson())
+                    .presentation.outputSpyPosition
+            == Point<float>(320.f, 180.f));
+}
+
+TEST_CASE("Removing the output Spy hides its card but preserves output capture",
+        "[cycle-v2][probe][canvas][default-output][preview]") {
+    GraphDocument document(probeGraph());
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+
+    REQUIRE(commands.setDefaultOutputSpyVisible(false));
+    REQUIRE_FALSE(document.presentation().outputSpyVisible);
+    REQUIRE_FALSE(GraphSerializer().loadJsonString(document.toJson())
+                    .presentation.outputSpyVisible);
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+    REQUIRE(presentation.previewResult().defaultOutput.has_value());
+
+    SignalProbeCanvasState state;
+    state.outputSpyVisible = document.presentation().outputSpyVisible;
+    NodeCanvasViewport viewport;
+    viewport.setBounds({ 0.f, 0.f, 800.f, 600.f });
+    NodeCanvasScene scene;
+    const auto& snapshot = scene.build(document.graph(), viewport, 1, 1);
+    REQUIRE(SignalProbeCanvas::cardBoundsFor(
+            DefaultOutputProbeResolver::probeId,
+            document.graph(), snapshot, viewport, state).isEmpty());
+}
+
+TEST_CASE("Spy display domains persist with the preset",
+        "[cycle-v2][probe][domain][serialization]") {
+    NodeGraph graph = probeGraph();
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+    const String probeId = graph.getSignalProbes().front().id;
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+
+    REQUIRE(commands.setSignalProbeFrequencyView(probeId, true).succeeded());
+    REQUIRE(commands.setDefaultOutputSpyFrequencyView(false));
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(document.toJson());
+    REQUIRE(loaded.succeeded());
+    REQUIRE(loaded.graph.findSignalProbe(probeId)->frequencyView);
+    REQUIRE_FALSE(loaded.presentation.outputSpyFrequencyView);
+    REQUIRE(document.undo());
+    REQUIRE_FALSE(document.graph().findSignalProbe(probeId)->frequencyView);
+}
+
+TEST_CASE("Time Spy capture publishes a matching frequency view",
+        "[cycle-v2][probe][preview][spectrum]") {
+    NodeGraph graph = probeGraph();
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+    GraphPresentationModel presentation;
+
+    REQUIRE(presentation.refresh(graph, 1));
+    const auto& preview = presentation.previewResult();
+    REQUIRE(preview.probes.size() == 1);
+    REQUIRE(preview.probes.front().connected);
+    REQUIRE(preview.probes.front().domain == PortDomain::TimeSignal);
+    REQUIRE(preview.probeSpectra.size() == 1);
+    REQUIRE(preview.probeSpectra.front().has_value());
+    REQUIRE(preview.probeSpectra.front()->domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(preview.probeSpectra.front()->gridColumns == preview.probes.front().gridColumns);
 }
 
 TEST_CASE("Signal probes toggle once per source output without changing execution", "[cycle-v2][probe]") {

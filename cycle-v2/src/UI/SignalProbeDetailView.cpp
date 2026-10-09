@@ -38,10 +38,6 @@ void SignalProbeDetailState::open(
     };
 }
 
-size_t SignalProbeDetailView::resolutionForMidiNote(int midiNote, double sampleRate) {
-    return GraphPreviewExecutor::periodRowsForMidiNote(midiNote, sampleRate);
-}
-
 Rectangle<float> SignalProbeDetailView::boundsFor(Rectangle<float> availableContent) {
     const float width = jmin(920.f, availableContent.getWidth() * 0.82f);
     const float height = jmin(620.f, availableContent.getHeight() * 0.78f);

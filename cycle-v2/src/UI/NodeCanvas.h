@@ -146,7 +146,7 @@ public:
         return document.presentation().patternId;
     }
     bool setPresetPatternId(const String& id);
-    ProbeRefreshMode probeRefreshMode() const override { return probeRailState.refreshMode; }
+    ProbeRefreshMode probeRefreshMode() const override { return probeCanvasState.refreshMode; }
     void setProbeRefreshMode(ProbeRefreshMode mode);
     bool setPreviewMidiNote(int midiNote);
     bool setPreviewModWheelValue(int value);
@@ -216,6 +216,7 @@ private:
     NodeCanvasHitRouter hitRouter;
     int hoveredEdgeIndex { -1 };
     Point<float> lastMousePosition;
+    Rectangle<int> lastPopupMenuTargetScreenArea;
     MouseCursor addToSelectionCursor;
     String resolvedHoverText;
     bool pointerInsideCanvas {};
@@ -225,7 +226,14 @@ private:
     bool compiledStateRefreshPending {};
     PresentationRefreshScope compiledStateRefreshScope {
             PresentationRefreshScope::Downstream };
-    SignalProbeRailState probeRailState;
+    SignalProbeCanvasState probeCanvasState;
+    struct ProbeCardGesture {
+        std::vector<std::pair<String, Point<float>>> startPositions;
+        Point<float> appliedNodeOffset;
+        bool nodeTransactionStarted {};
+    };
+    std::optional<ProbeCardGesture> probeCardGesture;
+    std::vector<std::pair<String, Point<float>>> nodeDragSpyStarts;
     GuideCurveShelfState guideShelfState;
     SignalProbeDetailState probeDetailState;
     OutputMeterBallistics outputMeterBallistics;
@@ -305,7 +313,9 @@ private:
     Rectangle<float> canvasUtilityBounds() const;
     Rectangle<float> editorContentBounds() const;
     WorkspaceDockLayout workspaceDockLayout() const;
-    void showEdgeMenu(int edgeIndex, Point<float> screenPosition);
+    void showEdgeMenu(int edgeIndex, Point<float> canvasPosition);
+    bool removeSpyCard(const String& probeId);
+    void toggleSpyDomain(const String& probeId);
     void openGuideEditor(const String& guideId);
     void closeGuideEditor();
     void rebindGuideEditor();

@@ -1658,12 +1658,8 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
             "Opened editor: mesh",
             -1
     };
-    state.guideDock.dockBounds = { 0.f, 610.f, 1200.f, 190.f };
-    state.guideDock.guideShelfBounds = { 0.f, 610.f, 600.f, 190.f };
-    state.guideDock.spyShelfBounds = { 600.f, 610.f, 600.f, 190.f };
-    state.guideDock.resizeBounds = { 0.f, 610.f, 1200.f, 7.f };
+    state.guideDock.guideShelfBounds = { 0.f, 0.f, 260.f, 800.f };
     state.guideDock.guideMinimizeBounds = { 12.f, 620.f, 18.f, 18.f };
-    state.guideDock.spyMinimizeBounds = { 612.f, 620.f, 18.f, 18.f };
     state.guideDock.addGuideBounds = { 566.f, 618.f, 22.f, 22.f };
     state.guideDock.expandedGuideId = "guide1";
     state.guideDock.guideEditorBounds = { 36.f, 24.f, 1128.f, 562.f };
@@ -1694,12 +1690,12 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     };
 
     REQUIRE(targetWithId("node:mesh") != nullptr);
-    REQUIRE(targetWithId("guideDock") != nullptr);
+    REQUIRE(targetWithId("guideShelf") != nullptr);
     REQUIRE(targetWithId("guideDock.collapse") == nullptr);
-    REQUIRE(targetWithId("guideDock.resize") != nullptr);
+    REQUIRE(targetWithId("guideDock.resize") == nullptr);
     REQUIRE(targetWithId("guideShelf.minimize") != nullptr);
     REQUIRE(targetWithId("guideEditor.noise") != nullptr);
-    REQUIRE(targetWithId("spyShelf.minimize") != nullptr);
+    REQUIRE(targetWithId("spyShelf.minimize") == nullptr);
     REQUIRE(targetWithId("guideShelf.add") != nullptr);
     REQUIRE(targetWithId("guide:guide1") != nullptr);
     REQUIRE(targetWithId("guideEditor:guide1") != nullptr);

@@ -248,19 +248,16 @@ TEST_CASE("Signal and attachment sockets share one presentation diameter",
     REQUIRE(unison.bounds.getWidth() == Catch::Approx(8.4f));
 }
 
-TEST_CASE("Guide column and Spy row retain independent scroll room",
+TEST_CASE("Guide column retains its full-height scroll room",
         "[cycle-v2][canvas][presentation][guide-dock]") {
     const Rectangle<float> workspace(0.f, 0.f, 1000.f, 700.f);
-    SignalProbeRailState dockState;
+    SignalProbeCanvasState dockState;
     GuideCurveShelfState guideState;
     const Rectangle<float> guides = GuideCurveShelf::guideWorkspace(workspace);
-    const Rectangle<float> spies = GuideCurveShelf::spyWorkspace(workspace);
 
     REQUIRE(guides.getWidth() == Catch::Approx(274.f));
     REQUIRE(guides.getX() == Catch::Approx(workspace.getX()));
     REQUIRE(guides.getY() == Catch::Approx(workspace.getY()));
-    REQUIRE(spies.getWidth() > guides.getWidth());
-    REQUIRE(guides.getRight() < spies.getX());
     REQUIRE(GuideCurveShelf::maximumVerticalOffset(
             workspace,
             dockState,
@@ -275,14 +272,7 @@ TEST_CASE("Guide column and Spy row retain independent scroll room",
     guideState.minimized = true;
     REQUIRE(GuideCurveShelf::boundsFor(workspace, dockState, guideState).getWidth()
             == Catch::Approx(GuideCurveShelf::minimizedWidth));
-    REQUIRE(GuideCurveShelf::spyWorkspace(workspace, true, false).getWidth()
-            > spies.getWidth());
-
     guideState.minimized = false;
-    dockState.minimized = true;
-    REQUIRE(GuideCurveShelf::guideWorkspace(workspace, false, true).getWidth()
+    REQUIRE(GuideCurveShelf::guideWorkspace(workspace, false).getWidth()
             == Catch::Approx(guides.getWidth()));
-    REQUIRE(GuideCurveShelf::spyWorkspace(workspace, false, true).getWidth()
-            == Catch::Approx(GuideCurveShelf::minimizedWidth));
-    REQUIRE(SignalProbeRail::minimizeButtonBoundsFor(spies, dockState).isEmpty());
 }

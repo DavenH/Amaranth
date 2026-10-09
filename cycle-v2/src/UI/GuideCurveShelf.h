@@ -5,7 +5,7 @@
 #include <map>
 #include <memory>
 
-#include "UI/SignalProbeRail.h"
+#include "UI/SignalProbeCanvas.h"
 #include "UI/WorkspaceDock.h"
 #include "Graph/NodeGraph.h"
 #include "Nodes/Curve/Editor/CurveEditorWidget.h"
@@ -28,49 +28,44 @@ public:
 
     static Rectangle<float> guideWorkspace(
             Rectangle<float> workspace,
-            bool guidesMinimized = false,
-            bool spiesMinimized = false);
-    static Rectangle<float> spyWorkspace(
-            Rectangle<float> workspace,
-            bool guidesMinimized = false,
-            bool spiesMinimized = false);
+            bool guidesMinimized = false);
     static Rectangle<float> boundsFor(
             Rectangle<float> workspace,
-            const SignalProbeRailState& dockState,
+            const SignalProbeCanvasState& dockState,
             const GuideCurveShelfState& state);
     static Rectangle<float> addButtonBounds(
             Rectangle<float> workspace,
-            const SignalProbeRailState& dockState,
+            const SignalProbeCanvasState& dockState,
             const GuideCurveShelfState& state);
     static Rectangle<float> minimizeButtonBounds(
             Rectangle<float> workspace,
-            const SignalProbeRailState& dockState,
+            const SignalProbeCanvasState& dockState,
             const GuideCurveShelfState& state);
     static Rectangle<float> tileBoundsFor(
             Rectangle<float> workspace,
-            const SignalProbeRailState& dockState,
+            const SignalProbeCanvasState& dockState,
             const GuideCurveShelfState& state,
             int tileIndex);
     static Rectangle<float> deleteButtonBoundsFor(
             Rectangle<float> workspace,
-            const SignalProbeRailState& dockState,
+            const SignalProbeCanvasState& dockState,
             const GuideCurveShelfState& state,
             int tileIndex);
     static String guideAt(
             Point<float> position,
             const NodeGraph& graph,
             Rectangle<float> workspace,
-            const SignalProbeRailState& dockState,
+            const SignalProbeCanvasState& dockState,
             const GuideCurveShelfState& state);
     static String guideDeleteAt(
             Point<float> position,
             const NodeGraph& graph,
             Rectangle<float> workspace,
-            const SignalProbeRailState& dockState,
+            const SignalProbeCanvasState& dockState,
             const GuideCurveShelfState& state);
     static float maximumVerticalOffset(
             Rectangle<float> workspace,
-            const SignalProbeRailState& dockState,
+            const SignalProbeCanvasState& dockState,
             const GuideCurveShelfState& state,
             int guideCount);
 
@@ -78,7 +73,7 @@ public:
             Graphics& graphics,
             const NodeGraph& graph,
             Rectangle<float> workspace,
-            const SignalProbeRailState& dockState,
+            const SignalProbeCanvasState& dockState,
             const GuideCurveShelfState& state,
             const WorkspaceDockFocus& focus) const;
     bool needsOpenGLPreviewRender() const;
@@ -87,7 +82,7 @@ public:
             const NodeGraph& graph,
             Rectangle<float> workspace,
             Rectangle<float> captureWorkspace,
-            const SignalProbeRailState& dockState,
+            const SignalProbeCanvasState& dockState,
             const GuideCurveShelfState& state,
             float scaleFactor);
     void resetDocumentPreviews();

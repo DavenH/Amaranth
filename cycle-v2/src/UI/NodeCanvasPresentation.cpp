@@ -11,6 +11,7 @@
 #include "UI/NodeCableRenderer.h"
 #include "UI/NodeCanvasGlRenderer.h"
 #include "UI/EnvelopePurposeIconRenderer.h"
+#include "UI/GraphEndpointNodeRenderer.h"
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodePortLayout.h"
 #include "UI/NodePortGeometry.h"
@@ -587,7 +588,7 @@ NodeCanvasPresentation::NodeCanvasPresentation(
         NodeCanvasPresentationPerformanceObserver* performanceObserverToUse) :
         scene(sceneToUse)
     ,   previewRenderer(previewRendererToUse)
-    ,   signalProbeRail(previewRendererToUse, performanceObserverToUse)
+    ,   signalProbeCanvas(previewRendererToUse, performanceObserverToUse)
     ,   signalProbeDetailView(previewRendererToUse)
     ,   performanceObserver(performanceObserverToUse) {
 }
@@ -622,25 +623,16 @@ void NodeCanvasPresentation::paint(
         return;
     }
 
-    const WorkspaceDockLayout dock = WorkspaceDock::layout(
-            frame.workspaceBounds,
-            {
-                    frame.probeRailState.expanded,
-                    frame.guideShelfState.minimized,
-                    frame.probeRailState.minimized,
-                    frame.probeRailState.expandedHeight
-            });
     {
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::GuideShelf);
-        if (frame.probeRailState.expanded
-                && !frame.guideShelfState.presetBrowserVisible) {
+        if (!frame.guideShelfState.presetBrowserVisible) {
             guideCurveShelf.paint(
                     graphics,
                     frame.graph,
                     frame.workspaceBounds,
-                    frame.probeRailState,
+                    frame.probeCanvasState,
                     frame.guideShelfState,
                     frame.dockFocus);
         }
@@ -648,32 +640,7 @@ void NodeCanvasPresentation::paint(
     {
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
-                NodeCanvasPresentationStage::SpyRail);
-        signalProbeRail.paintRail(
-                graphics,
-                frame.graph,
-                frame.snapshot,
-                frame.facts,
-                frame.probeRailState.expanded
-                        ? GuideCurveShelf::spyWorkspace(
-                                frame.workspaceBounds,
-                                frame.guideShelfState.minimized,
-                                frame.probeRailState.minimized)
-                        : frame.workspaceBounds,
-                frame.probeRailState,
-                frame.dockFocus);
-    }
-    {
-        ScopedNodeCanvasPresentationStage measurement(
-                performanceObserver,
                 NodeCanvasPresentationStage::DockAndDetail);
-        WorkspaceDock::paintChrome(
-                graphics,
-                dock,
-                "Curve Guides",
-                "Spies",
-                frame.probeRailState.expanded,
-                frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
         GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
         signalProbeDetailView.paint(
                 graphics,
@@ -705,16 +672,13 @@ void NodeCanvasPresentation::paintContent(
             ScopedNodeCanvasPresentationStage childMeasurement(
                     performanceObserver,
                     NodeCanvasPresentationStage::CableAnnotations);
-            signalProbeRail.paintCableAnnotations(
+            signalProbeCanvas.paintCableAnnotations(
                     graphics,
                     frame.graph,
                     scene.snapshot(),
                     frame.facts,
-                    GuideCurveShelf::spyWorkspace(
-                            frame.workspaceBounds,
-                            frame.guideShelfState.minimized,
-                            frame.probeRailState.minimized),
-                    frame.probeRailState,
+                    frame.viewport,
+                    frame.probeCanvasState,
                     frame.viewport.getZoom());
         }
     }
@@ -729,6 +693,17 @@ void NodeCanvasPresentation::paintContent(
                 performanceObserver,
                 NodeCanvasPresentationStage::Nodes);
         paintCachedNodes(graphics, frame);
+        ScopedNodeCanvasPresentationStage spyMeasurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::SpyCanvas);
+        signalProbeCanvas.paintCards(
+                graphics,
+                frame.graph,
+                scene.snapshot(),
+                frame.viewport,
+                frame.snapshot,
+                frame.facts,
+                frame.probeCanvasState);
     }
     {
         ScopedNodeCanvasPresentationStage measurement(
@@ -791,7 +766,7 @@ bool NodeCanvasPresentation::renderOpenGL(
             frame.graph,
             frame.workspaceBounds,
             frame.canvasBounds,
-            frame.probeRailState,
+            frame.probeCanvasState,
             frame.guideShelfState,
             scaleFactor);
     if (guideSnapshotUpdated) {
@@ -815,7 +790,7 @@ int NodeCanvasPresentation::visibleGuidePreviewCount(const NodeGraph& graph) con
 
 void NodeCanvasPresentation::clearDocumentCaches() {
     nodeLayerCache.clear();
-    signalProbeRail.clearPreviewCache();
+    signalProbeCanvas.clearPreviewCache();
     guideCurveShelf.resetDocumentPreviews();
 }
 
@@ -1092,9 +1067,12 @@ void NodeCanvasPresentation::paintCachedNode(
         const NodeCanvasPresentationFrame& frame,
         const Node& node,
         float physicalScale) {
-    const Rectangle<float> logicalBounds = frame.viewport.toScreen(
+    const Rectangle<float> nodeBounds = frame.viewport.toScreen(
             NodeCanvasScene::presentationWorldBounds(
-                    frame.graph, node, frame.facts.edgeIndex()))
+                    frame.graph, node, frame.facts.edgeIndex()));
+    const Rectangle<float> logicalBounds = GraphEndpointNodeRenderer::visualBounds(
+            node.kind, nodeBounds, frame.viewport.getBounds(),
+            frame.viewport.getZoom())
             .expanded(32.f * portScale(frame.viewport.getZoom()));
     const NodePreviewResult* runtimePreview = frame.facts.previewFor(
             frame.snapshot, node.id);
@@ -1205,7 +1183,11 @@ void NodeCanvasPresentation::paintNode(
         return;
     }
 
-    if (node.kind == NodeKind::SpectralLayer) {
+    if (GraphEndpointNodeRenderer::isConnector(node.kind)) {
+        GraphEndpointNodeRenderer::paintConnector(
+                graphics, node.kind, nodeBounds, frame.viewport.getBounds(),
+                zoom, isNodeSelected(frame, node.id));
+    } else if (node.kind == NodeKind::SpectralLayer) {
         previewRenderer.paint(graphics, {
                 node,
                 nullptr,
@@ -1263,10 +1245,17 @@ void NodeCanvasPresentation::paintNode(
         const float titleRightReservation = globalProcessing
                 ? (reservesHeaderRight ? 65.f : 24.f)
                 : reservesHeaderRight ? 65.f : 0.f;
+        Rectangle<float> titleBounds = header.reduced(13.f * zoom, 4.f * zoom)
+                .withTrimmedRight(titleRightReservation * zoom);
+        if (node.kind == NodeKind::Output) {
+            const Rectangle<float> speaker = Rectangle<float>(28.f * zoom, 28.f * zoom)
+                    .withCentre({ header.getX() + 27.f * zoom, header.getCentreY() });
+            NodeIconRenderer::paint(graphics, node.kind, speaker, 1.f);
+            titleBounds = titleBounds.withTrimmedLeft(40.f * zoom);
+        }
         graphics.drawText(
                 labelForNodeKind(node.kind),
-                header.reduced(13.f * zoom, 4.f * zoom).withTrimmedRight(
-                        titleRightReservation * zoom),
+                titleBounds,
                 Justification::centredLeft);
         if (node.kind == NodeKind::Envelope) {
             paintEnvelopePurposeIcon(graphics, node, header, zoom);

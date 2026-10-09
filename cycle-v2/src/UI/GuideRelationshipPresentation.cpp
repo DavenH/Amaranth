@@ -60,17 +60,12 @@ Point<float> tetherStart(
     }
     const Rectangle<float> tile = GuideCurveShelf::tileBoundsFor(
             frame.workspaceBounds,
-            frame.probeRailState,
+            frame.probeCanvasState,
             frame.guideShelfState,
             tileIndex);
     const WorkspaceDockLayout dock = WorkspaceDock::layout(
             frame.workspaceBounds,
-            {
-                    frame.probeRailState.expanded,
-                    frame.guideShelfState.minimized,
-                    frame.probeRailState.minimized,
-                    frame.probeRailState.expandedHeight
-            });
+            { frame.guideShelfState.minimized });
     return { dock.leftShelf.getRight(), tile.getCentreY() };
 }
 
@@ -127,7 +122,7 @@ void GuideRelationshipPresentation::paintHighlights(
 void GuideRelationshipPresentation::paintTether(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    if (!frame.probeRailState.expanded || frame.guideShelfState.minimized) {
+    if (frame.guideShelfState.minimized) {
         return;
     }
 
@@ -171,7 +166,7 @@ void GuideRelationshipPresentation::paintTether(
 void GuideRelationshipPresentation::paintTetherTerminal(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    if (!frame.probeRailState.expanded || frame.guideShelfState.minimized) {
+    if (frame.guideShelfState.minimized) {
         return;
     }
 

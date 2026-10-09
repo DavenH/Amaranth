@@ -62,6 +62,7 @@ bool GraphDelta::empty() const {
         && models.empty()
         && editorStates.empty()
         && bounds.empty()
+        && probePositions.empty()
         && guides.empty()
         && edgeInputs.empty()
         && cableDeletions.empty();
@@ -87,6 +88,11 @@ void GraphDelta::apply(NodeGraph& graph, bool forward) const {
     }
     for (const auto& delta : bounds) {
         graph.applyNodeBounds(delta.nodeId, forward ? delta.after : delta.before);
+    }
+    for (const auto& delta : probePositions) {
+        graph.setSignalProbeCanvasPosition(
+                delta.probeId,
+                forward ? delta.after : delta.before);
     }
     for (const auto& delta : guides) {
         graph.applyGuideCurveState(forward ? delta.after : delta.before);
@@ -229,6 +235,19 @@ void GraphDeltaBuilder::captureNodeBounds(const NodeGraph& graph, const String& 
     }
 }
 
+void GraphDeltaBuilder::captureSignalProbePosition(
+        const NodeGraph& graph,
+        const String& probeId) {
+    const auto found = std::find_if(probePositions.begin(), probePositions.end(),
+            [&](const auto& delta) { return delta.probeId == probeId; });
+    if (found != probePositions.end()) {
+        return;
+    }
+    if (const SignalProbe* probe = graph.findSignalProbe(probeId)) {
+        probePositions.push_back({ probeId, probe->canvasPosition, {} });
+    }
+}
+
 void GraphDeltaBuilder::captureGuideCurve(const NodeGraph& graph, const String& guideId) {
     const bool alreadyCaptured = std::any_of(
             guides.begin(),
@@ -297,6 +316,7 @@ GraphDelta GraphDeltaBuilder::finish(
     result.models = models;
     result.editorStates = editorStates;
     result.bounds = bounds;
+    result.probePositions = probePositions;
     result.guides = guides;
     result.edgeInputs = edgeInputs;
     result.cableDeletions = cableDeletions;
@@ -318,6 +338,12 @@ GraphDelta GraphDeltaBuilder::finish(
         const Node* node = graph.findNode(delta.nodeId);
         if (node != nullptr) {
             delta.after = node->bounds;
+        }
+    }
+    for (auto& delta : result.probePositions) {
+        const SignalProbe* probe = graph.findSignalProbe(delta.probeId);
+        if (probe != nullptr) {
+            delta.after = probe->canvasPosition;
         }
     }
     for (auto& delta : result.guides) {
@@ -342,6 +368,7 @@ bool GraphDeltaBuilder::empty() const {
         && models.empty()
         && editorStates.empty()
         && bounds.empty()
+        && probePositions.empty()
         && guides.empty()
         && edgeInputs.empty()
         && cableDeletions.empty();
