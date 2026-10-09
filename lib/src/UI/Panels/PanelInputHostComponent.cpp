@@ -100,6 +100,14 @@ void PanelInputHostComponent::mouseWheelMove(
         return;
     }
 
+    if (auto* zoomPanel = panel.getZoomPanel()) {
+        zoomPanel->panHorizontal(wheel.deltaX);
+    }
+
+    if (wheel.deltaY == 0.f) {
+        return;
+    }
+
     if (Interactor* interactor = panelInteractor()) {
         interactor->mouseWheelMove(event, wheel);
     }

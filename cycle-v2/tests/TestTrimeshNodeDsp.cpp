@@ -3021,6 +3021,67 @@ TEST_CASE("Spectral Trimesh viewports expose the full editable frequency range",
     REQUIRE(grid->rect.yMaximum == Catch::Approx(1.f));
 }
 
+TEST_CASE("Trimesh trackpad scroll pans horizontally and zooms vertically",
+        "[cycle-v2][nodes][trimesh][viewport][trackpad]") {
+    ScopedJuceInitialiser_GUI juce;
+    TrimeshPanelBridge bridge;
+    auto* viewport = dynamic_cast<ZoomPanel*>(bridge.getPanel2DHostComponent());
+    REQUIRE(viewport != nullptr);
+    viewport->setBounds(0, 0, 640, 180);
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal));
+
+    Component* panel = bridge.getPanel2D().getComponent();
+    REQUIRE(panel != nullptr);
+    const auto event = panelMouseEvent(*panel, { 320.f, 80.f }, {}, { 320.f, 80.f }, false);
+    const float originalWidth = viewport->rect.w;
+    const float originalX = viewport->rect.x;
+
+    MouseWheelDetails sideways {};
+    sideways.deltaX = 0.2f;
+    sideways.isSmooth = true;
+    panel->mouseWheelMove(event, sideways);
+    REQUIRE(viewport->rect.x < originalX);
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth));
+
+    const float pannedX = viewport->rect.x;
+    MouseWheelDetails upward {};
+    upward.deltaY = 0.2f;
+    upward.isSmooth = true;
+    panel->mouseWheelMove(event, upward);
+    REQUIRE(viewport->rect.w < originalWidth);
+
+    const float zoomedWidth = viewport->rect.w;
+    MouseWheelDetails downward {};
+    downward.deltaY = -0.2f;
+    downward.isSmooth = true;
+    panel->mouseWheelMove(event, downward);
+    REQUIRE(viewport->rect.w > zoomedWidth);
+
+    sideways.deltaX = 10.f;
+    panel->mouseWheelMove(event, sideways);
+    REQUIRE(viewport->rect.x == Catch::Approx(viewport->rect.xMinimum));
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth));
+    REQUIRE(pannedX > viewport->rect.xMinimum);
+
+    auto* gridViewport = dynamic_cast<ZoomPanel*>(bridge.getPanel3DHostComponent());
+    REQUIRE(gridViewport != nullptr);
+    gridViewport->setBounds(0, 0, 640, 320);
+    Component* gridPanel = bridge.getPanel3D().getComponent();
+    REQUIRE(gridPanel != nullptr);
+    const auto gridEvent = panelMouseEvent(
+            *gridPanel, { 320.f, 150.f }, {}, { 320.f, 150.f }, false);
+    gridPanel->mouseWheelMove(gridEvent, upward);
+    const float gridZoomedWidth = gridViewport->rect.w;
+    REQUIRE(gridZoomedWidth < 1.f);
+
+    sideways.deltaX = -0.2f;
+    const float gridX = gridViewport->rect.x;
+    gridPanel->mouseWheelMove(gridEvent, sideways);
+    REQUIRE(gridViewport->rect.x > gridX);
+    REQUIRE(gridViewport->rect.w == Catch::Approx(gridZoomedWidth));
+}
+
 TEST_CASE("Trimesh link parameters drive mature linked-vertex interaction",
         "[cycle-v2][nodes][trimesh][links]") {
     ScopedJuceInitialiser_GUI juce;

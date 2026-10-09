@@ -152,6 +152,14 @@ void ZoomPanel::scrollBarMoved(ScrollBar* bar, double newRangeStart) {
     listeners.call(&ZoomListener::zoomUpdated, updateSource);
 }
 
+void ZoomPanel::panHorizontal(float wheelDelta) {
+    if (!context.haveHorz || wheelDelta == 0.f) {
+        return;
+    }
+
+    horz.setCurrentRangeStart(rect.x - rect.w * wheelDelta, sendNotificationSync);
+}
+
 int ZoomPanel::getX()       { return Component::getX();         }
 int ZoomPanel::getY()       { return Component::getY();         }
 int ZoomPanel::getWidth()   { return Component::getWidth();     }
