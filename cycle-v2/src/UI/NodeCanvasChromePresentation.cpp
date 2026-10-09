@@ -213,7 +213,7 @@ void NodeCanvasPresentation::paintPaletteContent(
         graphics.setColour(Colour(section.accentColour));
         graphics.fillRoundedRectangle(
                 group.withX(group.getX() - 10.f).withWidth(3.f), 1.5f);
-        graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
+        graphics.setFont(FontOptions(14.f));
         graphics.setColour(CanvasChromePalette::mutedText);
         graphics.drawText(section.title, group.withHeight(20.f), Justification::centredLeft);
 
@@ -235,7 +235,7 @@ void NodeCanvasPresentation::paintPaletteContent(
             const Rectangle<float> icon(tile.getCentreX() - iconSize * 0.5f,
                     tile.getY() + 4.f, iconSize, iconSize);
             NodePaletteEntryIconRenderer::paint(graphics, entry.kind, icon, hover);
-            graphics.setFont(FontOptions(12.f));
+            graphics.setFont(FontOptions(10.5f));
             graphics.setColour(CanvasChromePalette::text);
             graphics.drawFittedText(String::fromUTF8(entry.label),
                     tile.withTop(tile.getBottom() - 16.f).reduced(3.f, 0.f).toNearestInt(),

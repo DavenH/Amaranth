@@ -109,3 +109,7 @@ that origin. Labels increased from 10.5 to 12px. Geometry regression checks the
 shared grid center at both workspace sizes. Both builds and 12 palette cases / 437
 assertions pass; architecture audit and diff/style checks pass. Production file
 sizes remain 209 and 247 lines, with existing layout/render ownership unchanged.
+
+Typography clarification: the requested enlargement applies to group headings,
+now 14px. Icon labels return to 10.5px. Centered grid geometry is unchanged.
+Standalone build and whitespace check pass; no behavior change or new tests.
