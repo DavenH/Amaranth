@@ -43,6 +43,7 @@ TEST_CASE("Node layer cache reuses only complete presentation keys",
     cachedGraphics.fillAll(Colours::red);
     Image output(Image::ARGB, 220, 200, true);
     Graphics outputGraphics(output);
+    outputGraphics.setColour(Colours::white.withAlpha(0.2f));
     cache.draw(outputGraphics, first);
     REQUIRE(output.getPixelAt(
             roundToInt(bounds.getCentreX()),
