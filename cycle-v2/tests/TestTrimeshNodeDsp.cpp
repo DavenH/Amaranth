@@ -6,6 +6,7 @@
 #include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
 #include "Graph/NodeParameterMap.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
@@ -25,6 +26,9 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanelBridge.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanel3D.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
+#include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
+#include "Nodes/Trimesh/Panel/TrimeshInteractor3D.h"
+#include "Nodes/Trimesh/Rendering/TrimeshGuideRailRenderService.h"
 #include "Nodes/Trimesh/Rendering/TrimeshGridRenderService.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
@@ -40,9 +44,11 @@
 #include <Curve/Curve.h>
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
 #include <Curve/Rasterization/GuideCurveOffsetSeeds.h>
+#include <UI/AmaranthLookAndFeel.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 #include <Util/LogRegions.h>
+#include <UI/Panels/ZoomPanel.h>
 
 #include <algorithm>
 #include <array>
@@ -50,6 +56,108 @@
 #include <limits>
 
 using namespace CycleV2;
+
+TEST_CASE("Snarky blue guides agree across Trimesh view axes at an interior morph",
+        "[cycle-v2][nodes][trimesh][guide][axis]") {
+    ScopedJuceInitialiser_GUI juce;
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content/presets/snarky.cyclegraph");
+    const auto loaded = GraphSerializer().readJSON(JSON::parse(preset.loadFileAsString()));
+    REQUIRE(loaded.succeeded());
+    const Node* node = loaded.graph.findNode("timeLayer1");
+    REQUIRE(node != nullptr);
+    const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(node->model);
+    REQUIRE(model != nullptr);
+    const auto prepared = TrimeshGuidePreparation::prepare(loaded.graph, *node, model->mesh());
+    REQUIRE(prepared.assignmentCount > 0);
+
+    Rasterization::TrilinearMeshRasterizer rasterizer;
+    rasterizer.setGuideCurveProvider(prepared.provider.get());
+    Rasterization::RasterizationRequest request;
+    request.cyclic = false;
+    request.calcDepthDimensions = false;
+    for (float time : { 0.2f, 0.5f, 0.8f }) {
+        for (float blue : { 0.2f, 0.5f, 0.8f }) {
+            request.morph = MorphPosition(time, 0.5f, blue);
+            request.primaryViewDimension = Vertex::Time;
+            const auto timeIntercepts = rasterizer.renderGeometry({ *prepared.mesh, request, 0.f }).intercepts;
+            request.primaryViewDimension = Vertex::Blue;
+            const auto blueIntercepts = rasterizer.renderGeometry({ *prepared.mesh, request, 0.f }).intercepts;
+            REQUIRE(timeIntercepts.size() == blueIntercepts.size());
+            for (size_t index = 0; index < timeIntercepts.size(); ++index) {
+                REQUIRE(timeIntercepts[index].x == Catch::Approx(blueIntercepts[index].x).margin(0.002f));
+                REQUIRE(timeIntercepts[index].y == Catch::Approx(blueIntercepts[index].y).margin(0.002f));
+            }
+        }
+    }
+
+    class RailPanel final : public TrimeshPanel3D {
+    public:
+        RailPanel(SingletonRepo* repo, TrimeshPanelDataSource& source) :
+                SingletonAccessor(repo, "SnarkyRailPanel")
+            ,   TrimeshPanel3D(repo, source) {}
+
+        bool sampleMidpoint(Vertex2 first, Vertex2 second, VertCube* cube, float& result) {
+            if (!createLinePath(first, second, cube, Vertex::Time, false)) {
+                return false;
+            }
+            result = xy.y[linestripRes / 2];
+            return true;
+        }
+    };
+
+    TrimeshPanelEnvironment environment;
+    TrimeshPanelDataSource source;
+    TrimeshInteractor3D interactor(&environment.getRepo(), "SnarkyRailInteractor");
+    RailPanel panel(&environment.getRepo(), source);
+    interactor.init();
+    panel.setInteractor(&interactor);
+    panel.setLineGuideTables(TrimeshGuideRailRenderService::prepareTables(
+            *prepared.provider,
+            GuideCurveSnapshotProvider::visualizationSeed(PortDomain::TimeSignal)));
+    const MorphPosition morph(0.5f, 0.5f, 0.5f);
+    environment.setMorphPosition(morph, Vertex::Time);
+
+    bool sampled = false;
+    for (VertCube* cube : prepared.mesh->getCubes()) {
+        if (cube->guideCurveAt(Vertex::Blue) < 0
+                || cube->guideCurveAt(Vertex::Phase) >= 0) {
+            continue;
+        }
+        VertCube::ReductionData reduction;
+        Rasterization::TrilinearMeshSlicer().slice(*cube, Vertex::Time, reduction, morph);
+        if (!reduction.lineOverlaps) {
+            continue;
+        }
+
+        const Vertex2 first(reduction.v0.values[Vertex::Time], reduction.v0.values[Vertex::Phase]);
+        const Vertex2 second(reduction.v1.values[Vertex::Time], reduction.v1.values[Vertex::Phase]);
+        float midpoint {};
+        REQUIRE(panel.sampleMidpoint(first, second, cube, midpoint));
+        const float progress = (float) (Panel::linestripRes / 2)
+                / (float) (Panel::linestripRes - 0.5f);
+        const float base = first.y + progress * (second.y - first.y);
+        REQUIRE(std::abs(midpoint - base) > 0.001f);
+
+        request.morph = MorphPosition(
+                first.x + (second.x - first.x) * 0.5f,
+                0.5f,
+                0.5f);
+        request.primaryViewDimension = Vertex::Time;
+        request.xMinimum = -100.f;
+        request.xMaximum = 100.f;
+        const auto& guided = rasterizer.renderGeometry({ *prepared.mesh, request, 0.f }).intercepts;
+        const auto matching = std::find_if(guided.begin(), guided.end(),
+                [cube](const Intercept& intercept) { return intercept.cube == cube; });
+        REQUIRE(matching != guided.end());
+        REQUIRE(midpoint == Catch::Approx(matching->x).margin(0.01f));
+        sampled = true;
+        break;
+    }
+    REQUIRE(sampled);
+    panel.setInteractor(nullptr);
+    interactor.stopTimer();
+}
 
 namespace {
 
@@ -2857,10 +2965,167 @@ TEST_CASE("Trimesh panel bridge hosts panel cores without legacy OpenGL leaves",
 
     REQUIRE(panel3DHost != nullptr);
     REQUIRE(panel2DHost != nullptr);
-    REQUIRE(bridge.getPanel3D().getComponent() == panel3DHost);
-    REQUIRE(bridge.getPanel2D().getComponent() == panel2DHost);
+    REQUIRE(bridge.getPanel3D().getComponent()->getParentComponent() == panel3DHost);
+    REQUIRE(bridge.getPanel2D().getComponent()->getParentComponent() == panel2DHost);
     REQUIRE(bridge.getPanel3D().getOpenglPanel() == nullptr);
     REQUIRE(bridge.getPanel2D().getOpenglPanel() == nullptr);
+}
+
+TEST_CASE("Spectral Trimesh viewports expose the full editable frequency range",
+        "[cycle-v2][nodes][trimesh][spectral][viewport]") {
+    ScopedJuceInitialiser_GUI juce;
+    TrimeshPanelBridge bridge;
+    auto* grid = dynamic_cast<ZoomPanel*>(bridge.getPanel3DHostComponent());
+    auto* slice = dynamic_cast<ZoomPanel*>(bridge.getPanel2DHostComponent());
+    REQUIRE(grid != nullptr);
+    REQUIRE(slice != nullptr);
+    grid->setBounds(0, 0, 640, 320);
+    slice->setBounds(0, 0, 640, 180);
+
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal));
+    REQUIRE(bridge.getInteractor3D().vertexLimits[Vertex::Phase]
+            == Range<float>(-0.5f, 1.5f));
+    REQUIRE(bridge.getInteractor2D().vertexLimits[Vertex::Phase]
+            == Range<float>(-0.5f, 1.5f));
+    REQUIRE(grid->getComponent(false)->isVisible());
+    REQUIRE(grid->getComponent(true)->isVisible());
+    REQUIRE(dynamic_cast<AmaranthLookAndFeel*>(
+            &grid->getComponent(false)->getLookAndFeel()) != nullptr);
+    REQUIRE(dynamic_cast<AmaranthLookAndFeel*>(
+            &slice->getComponent(true)->getLookAndFeel()) != nullptr);
+    REQUIRE(bridge.getPanel3D().getComponent()->getWidth() == 632);
+    REQUIRE(bridge.getPanel3D().getComponent()->getHeight() == 312);
+    REQUIRE(grid->rect.yMinimum == Catch::Approx(-0.5f));
+    REQUIRE(grid->rect.yMaximum == Catch::Approx(1.5f));
+
+    auto* vertical = dynamic_cast<ScrollBar*>(grid->getComponent(false));
+    REQUIRE(vertical != nullptr);
+    vertical->setCurrentRangeStart(-0.5);
+    MessageManager::getInstance()->runDispatchLoopUntil(50);
+    REQUIRE(grid->rect.y == Catch::Approx(-0.5f));
+    REQUIRE(bridge.getPanel3D().sy(1.5f) == Catch::Approx(3.f));
+
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralPhaseSignal));
+    REQUIRE(bridge.getInteractor3D().vertexLimits[Vertex::Phase]
+            == Range<float>(-0.5f, 1.5f));
+    REQUIRE(grid->rect.y == Catch::Approx(-0.5f));
+
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal));
+    REQUIRE(bridge.getInteractor3D().vertexLimits[Vertex::Phase]
+            == Range<float>(0.f, 1.f));
+    REQUIRE(bridge.getInteractor2D().vertexLimits[Vertex::Phase]
+            == Range<float>(0.f, 1.f));
+    REQUIRE(grid->rect.yMinimum == Catch::Approx(0.f));
+    REQUIRE(grid->rect.yMaximum == Catch::Approx(1.f));
+}
+
+TEST_CASE("Trimesh trackpad scroll pans horizontally and zooms vertically",
+        "[cycle-v2][nodes][trimesh][viewport][trackpad]") {
+    ScopedJuceInitialiser_GUI juce;
+    TrimeshPanelBridge bridge;
+    auto* viewport = dynamic_cast<ZoomPanel*>(bridge.getPanel2DHostComponent());
+    REQUIRE(viewport != nullptr);
+    viewport->setBounds(0, 0, 640, 180);
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal));
+
+    Component* panel = bridge.getPanel2D().getComponent();
+    REQUIRE(panel != nullptr);
+    const auto event = panelMouseEvent(*panel, { 320.f, 80.f }, {}, { 320.f, 80.f }, false);
+    const float originalWidth = viewport->rect.w;
+    const float originalX = viewport->rect.x;
+
+    MouseWheelDetails initialDrift {};
+    initialDrift.deltaY = 0.01f;
+    initialDrift.isSmooth = true;
+    panel->mouseWheelMove(event, initialDrift);
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth));
+
+    MouseWheelDetails sideways {};
+    sideways.deltaX = 0.2f;
+    sideways.deltaY = 0.03f;
+    sideways.isSmooth = true;
+    panel->mouseWheelMove(event, sideways);
+    REQUIRE(viewport->rect.x < originalX);
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth));
+
+    MouseWheelDetails verticalDrift {};
+    verticalDrift.deltaY = 0.03f;
+    verticalDrift.isSmooth = true;
+    panel->mouseWheelMove(event, verticalDrift);
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth));
+
+    const float pannedX = viewport->rect.x;
+    MouseWheelDetails upward {};
+    upward.deltaY = 0.2f;
+    panel->mouseWheelMove(event, upward);
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth / ZoomPanel::zoomRatio));
+
+    const float zoomedWidth = viewport->rect.w;
+    MouseWheelDetails downward {};
+    downward.deltaY = -0.2f;
+    panel->mouseWheelMove(event, downward);
+    REQUIRE(viewport->rect.w > zoomedWidth);
+
+    sideways.deltaX = 10.f;
+    panel->mouseWheelMove(event, sideways);
+    REQUIRE(viewport->rect.x == Catch::Approx(viewport->rect.xMinimum));
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth));
+    REQUIRE(pannedX > viewport->rect.xMinimum);
+
+    auto* gridViewport = dynamic_cast<ZoomPanel*>(bridge.getPanel3DHostComponent());
+    REQUIRE(gridViewport != nullptr);
+    gridViewport->setBounds(0, 0, 640, 320);
+    Component* gridPanel = bridge.getPanel3D().getComponent();
+    REQUIRE(gridPanel != nullptr);
+    const auto gridEvent = panelMouseEvent(
+            *gridPanel, { 320.f, 150.f }, {}, { 320.f, 150.f }, false);
+    gridPanel->mouseWheelMove(gridEvent, upward);
+    const float gridZoomedWidth = gridViewport->rect.w;
+    REQUIRE(gridZoomedWidth < 1.f);
+
+    sideways.deltaX = -0.2f;
+    const float gridX = gridViewport->rect.x;
+    gridPanel->mouseWheelMove(gridEvent, sideways);
+    REQUIRE(gridViewport->rect.x > gridX);
+    REQUIRE(gridViewport->rect.w == Catch::Approx(gridZoomedWidth));
+}
+
+TEST_CASE("Smooth trackpad zoom uses one third of a wheel step per event",
+        "[cycle-v2][nodes][trimesh][viewport][trackpad]") {
+    ScopedJuceInitialiser_GUI juce;
+    TrimeshPanelBridge bridge;
+    auto* viewport = dynamic_cast<ZoomPanel*>(bridge.getPanel2DHostComponent());
+    REQUIRE(viewport != nullptr);
+    viewport->setBounds(0, 0, 640, 180);
+
+    Component* panel = bridge.getPanel2D().getComponent();
+    REQUIRE(panel != nullptr);
+    const auto event = panelMouseEvent(*panel, { 320.f, 80.f }, {}, { 320.f, 80.f }, false);
+    const float originalWidth = viewport->rect.w;
+
+    MouseWheelDetails wheel {};
+    wheel.deltaY = 0.03f;
+    wheel.isSmooth = true;
+    panel->mouseWheelMove(event, wheel);
+    const float firstWidth = viewport->rect.w;
+    REQUIRE(firstWidth < originalWidth * 0.94f);
+    REQUIRE(firstWidth > originalWidth * 0.92f);
+
+    wheel.deltaY = 0.2f;
+    for (int index = 0; index < 4; ++index) {
+        panel->mouseWheelMove(event, wheel);
+    }
+    REQUIRE(viewport->rect.w < originalWidth * 0.75f);
+    REQUIRE(viewport->rect.w > originalWidth * 0.6f);
+
+    wheel.deltaY = -0.03f;
+    for (int index = 0; index < 5; ++index) {
+        panel->mouseWheelMove(event, wheel);
+    }
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth).margin(0.001f));
 }
 
 TEST_CASE("Trimesh link parameters drive mature linked-vertex interaction",

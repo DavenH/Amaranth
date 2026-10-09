@@ -53,12 +53,13 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1030.59619, "y": 905.01886 },
+            "position": { "x": 1025.19995, "y": 680.60376 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.037383176,
@@ -203,15 +204,13 @@
             "id": "timeLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1328.59619, "y": 567.01886 },
-            "portSides": {
-                "outputs": { "out": "bottom" }
-            },
+            "position": { "x": 1025.19995, "y": 1001.01886 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.0,
                 "red": 0.037383176,
@@ -292,16 +291,13 @@
             "kind": "add",
             "definitionVersion": 1,
             "position": { "x": 1396.59619, "y": 905.01886 },
-            "portSides": {
-                "inputs": { "right": "top" }
-            },
             "parameters": {}
         },
         {
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1364.94336, "y": 1103.0188 },
+            "position": { "x": 1422.89685, "y": 578.60376 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.037383176, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -534,6 +530,9 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 1740.14331, "y": 905.01886 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
@@ -684,7 +683,7 @@
     ],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Brass"],
+        "tags": [ "Brass" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

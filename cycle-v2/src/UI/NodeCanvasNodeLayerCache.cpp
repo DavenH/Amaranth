@@ -53,6 +53,7 @@ bool nodesEqualForPresentation(const Node& first, const Node& second) {
             && nodeParametersEqual(first.parameters, second.parameters)
             && portsEqual(first.inputs, second.inputs)
             && portsEqual(first.outputs, second.outputs)
+            && first.reverseInputPortOrder == second.reverseInputPortOrder
             && first.model == second.model
             && first.editorState.equals(second.editorState);
 }

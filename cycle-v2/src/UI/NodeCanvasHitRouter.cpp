@@ -31,7 +31,7 @@ bool hasOutputSideControl(NodeKind kind) {
 }
 
 std::optional<CanvasNodeActionKind> actionKindForNode(const Node& node) {
-    if (isOperationNode(node.kind)) {
+    if (supportsOperationPortLayout(node)) {
         return CanvasNodeActionKind::CycleOperationLayout;
     }
 

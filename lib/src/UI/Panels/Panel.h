@@ -282,6 +282,11 @@ protected:
 
     /* ----------------------------------------------------------------------------- */
 
+private:
+
+    bool hasHiddenMorphGuide(const VertCube& cube, int pointDim);
+    void addHiddenMorphGuideOffsets(const VertCube& cube, int pointDim, float start, float end);
+
     friend class Interactor;
     friend class Interactor3D;
     friend class CommonGfx;
