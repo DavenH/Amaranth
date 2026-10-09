@@ -2,6 +2,8 @@
 
 #include "UI/SignalProbeCanvas.h"
 
+#include "Graph/GraphRenderSemanticResolver.h"
+
 #include "UI/CanvasChromePalette.h"
 #include "UI/NodeCableRenderer.h"
 #include "UI/WorkspaceDock.h"
@@ -10,7 +12,7 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr float kCableAnnotationBaseDiameter = 23.04f;
+constexpr float kCableAnnotationBaseDiameter = 12.f;
 
 const Edge* graphEdgeFor(const NodeGraph& graph, int edgeIndex) {
     return isPositiveAndBelow(edgeIndex, (int) graph.getEdges().size())
@@ -31,6 +33,40 @@ const Edge* graphEdgeForProbe(
         }
     }
     return nullptr;
+}
+
+float attachmentFraction(
+        const SignalProbe& probe,
+        const NodeGraph& graph,
+        const NodeSceneEdge& sceneEdge) {
+    if (!sceneEdge.inlinePan) {
+        return jlimit(0.f, 1.f, probe.tapPosition);
+    }
+    if (sceneEdge.edgeIndices.empty()) {
+        return 0.5f;
+    }
+    const Edge* edge = graphEdgeForProbe(probe, graph, sceneEdge);
+    return edge == graphEdgeFor(graph, sceneEdge.edgeIndices.front())
+            ? 1.f / 3.f
+            : 2.f / 3.f;
+}
+
+void paintConnectionDot(
+        Graphics& graphics,
+        Point<float> centre,
+        Colour colour,
+        float diameter,
+        bool active) {
+    const Rectangle<float> dot = Rectangle<float>(diameter, diameter)
+            .withCentre(centre);
+    graphics.setColour(CanvasChromePalette::canvasBackground);
+    graphics.fillEllipse(dot);
+    graphics.setColour(colour.withAlpha(active ? 1.f : 0.88f));
+    graphics.fillEllipse(dot.reduced(diameter * 0.21f));
+    if (active) {
+        graphics.drawEllipse(dot.expanded(diameter * 0.15f),
+                jmax(1.f, diameter * 0.12f));
+    }
 }
 
 }
@@ -117,15 +153,9 @@ Point<float> SignalProbeCanvas::markerCentre(
         const NodeCanvasSceneSnapshot& scene) {
     const NodeSceneEdge* anchor = anchorFor(probe, graph, scene);
     if (anchor != nullptr) {
-        float position = 0.5f;
-        if (anchor->inlinePan) {
-            const Edge* edge = graphEdgeForProbe(probe, graph, *anchor);
-            position = edge == graphEdgeFor(graph, anchor->edgeIndices.front())
-                    ? 1.f / 3.f
-                    : 2.f / 3.f;
-        }
         return anchor->cablePath.getPointAlongPath(
-                anchor->cablePath.getLength() * position);
+                anchor->cablePath.getLength()
+                        * attachmentFraction(probe, graph, *anchor));
     }
 
     const String sourceSemanticId = "output:" + probe.sourceNodeId + "." + probe.sourcePortId;
@@ -133,6 +163,33 @@ Point<float> SignalProbeCanvas::markerCentre(
         return target.semanticId == sourceSemanticId;
     });
     return source != scene.targets.end() ? source->bounds.getCentre() : Point<float>();
+}
+
+Path SignalProbeCanvas::tetherPath(
+        const Path& cable,
+        float attachmentFraction,
+        Point<float> target) {
+    const float cableLength = cable.getLength();
+    const float distance = cableLength * jlimit(0.f, 1.f, attachmentFraction);
+    const Point<float> marker = cable.getPointAlongPath(distance);
+    const float step = jmin(8.f, cableLength * 0.05f);
+    const Point<float> before = cable.getPointAlongPath(jmax(0.f, distance - step));
+    const Point<float> after = cable.getPointAlongPath(jmin(cableLength, distance + step));
+    const Point<float> tangent = after - before;
+    const float tangentLength = tangent.getDistanceFromOrigin();
+    Point<float> normal = tangentLength > 0.001f
+            ? Point<float>(-tangent.y, tangent.x) / tangentLength
+            : Point<float>(0.f, -1.f);
+    const Point<float> towardCard = target - marker;
+    if (normal.x * towardCard.x + normal.y * towardCard.y < 0.f) {
+        normal *= -1.f;
+    }
+    const float controlLength = jmin(35.f, towardCard.getDistanceFromOrigin() * 0.4f);
+    Path tether;
+    tether.startNewSubPath(marker);
+    tether.cubicTo(marker + normal * controlLength,
+            target.translated(0.f, 35.f), target);
+    return tether;
 }
 
 String SignalProbeCanvas::markerProbeAt(
@@ -159,37 +216,41 @@ void SignalProbeCanvas::paintCableAnnotations(
         const NodeCanvasViewport& viewport,
         const SignalProbeCanvasState& state,
         float zoom) const {
-    const auto probes = orderedProbes(graph);
-    for (int index = 0; index < (int) probes.size(); ++index) {
-        const SignalProbe& probe = *probes[(size_t) index];
-        const Point<float> marker = markerCentre(probe, graph, scene);
+    const float diameter = cableAnnotationDiameter(zoom);
+    const auto paintAnnotation = [&](const SignalProbe& probe,
+            Colour colour, bool active) {
+        const NodeSceneEdge* anchor = anchorFor(probe, graph, scene);
+        const float fraction = anchor != nullptr
+                ? attachmentFraction(probe, graph, *anchor) : 0.5f;
+        const Point<float> marker = anchor != nullptr
+                ? anchor->cablePath.getPointAlongPath(
+                        anchor->cablePath.getLength() * fraction)
+                : markerCentre(probe, graph, scene);
         if (marker == Point<float>()) {
-            continue;
+            return;
         }
 
-        const Colour colour = colourForProbe(probe, graph, scene, facts);
-        const bool active = probe.id == state.hoveredProbeId || state.isSelected(probe.id);
         const Rectangle<float> card = cardBoundsFor(
                 probe.id, graph, scene, viewport, state);
         if (!card.isEmpty()) {
             const Point<float> target = card.getCentre();
-            Path tether;
-            tether.startNewSubPath(marker);
-            tether.cubicTo(marker.translated(0.f, -35.f),
-                    target.translated(0.f, 35.f), target);
+            Path tether = anchor != nullptr
+                    ? tetherPath(anchor->cablePath, fraction, target)
+                    : Path {};
+            if (anchor == nullptr) {
+                tether.startNewSubPath(marker);
+                tether.lineTo(target);
+            }
             graphics.setColour(colour.withAlpha(active ? 0.54f : 0.24f));
             graphics.strokePath(tether, PathStrokeType(active ? 2.f : 1.5f));
         }
+        paintConnectionDot(graphics, marker, colour, diameter, active);
+    };
 
-        const float diameter = cableAnnotationDiameter(zoom);
-        const Rectangle<float> badge(diameter, diameter);
-        graphics.setColour(CanvasChromePalette::canvasBackground);
-        graphics.fillEllipse(badge.withCentre(marker));
-        graphics.setColour(colour);
-        const float scale = diameter / 16.f;
-        graphics.drawEllipse(badge.withCentre(marker), (active ? 2.5f : 1.8f) * scale);
-        graphics.setFont(FontOptions(9.f * scale));
-        graphics.drawText(String(index + 1), badge.withCentre(marker), Justification::centred);
+    for (const SignalProbe* probe : orderedProbes(graph)) {
+        const Colour colour = colourForProbe(*probe, graph, scene, facts);
+        const bool active = probe->id == state.hoveredProbeId || state.isSelected(probe->id);
+        paintAnnotation(*probe, colour, active);
     }
 
     const auto outputAddress = state.outputSpyVisible
@@ -201,17 +262,10 @@ void SignalProbeCanvas::paintCableAnnotations(
         outputProbe.sourcePortId = outputAddress->sourcePortId;
         outputProbe.anchorDestNodeId = outputAddress->destNodeId;
         outputProbe.anchorDestPortId = outputAddress->destPortId;
-        const Point<float> marker = markerCentre(outputProbe, graph, scene);
-        const Rectangle<float> card = cardBoundsFor(
-                DefaultOutputProbeResolver::probeId, graph, scene, viewport, state);
-        if (marker != Point<float>() && !card.isEmpty()) {
-            Path tether;
-            tether.startNewSubPath(marker);
-            tether.cubicTo(marker.translated(0.f, -35.f),
-                    card.getCentre().translated(0.f, 35.f), card.getCentre());
-            graphics.setColour(CanvasChromePalette::text.withAlpha(0.27f));
-            graphics.strokePath(tether, PathStrokeType(1.5f));
-        }
+        outputProbe.tapPosition = 0.5f;
+        outputProbe.id = DefaultOutputProbeResolver::probeId;
+        const bool active = state.isSelected(outputProbe.id);
+        paintAnnotation(outputProbe, colourForDomain(PortDomain::TimeSignal), active);
     }
 }
 
@@ -258,6 +312,7 @@ Rectangle<float> SignalProbeCanvas::cardBoundsFor(
             outputProbe.sourcePortId = address->sourcePortId;
             outputProbe.anchorDestNodeId = address->destNodeId;
             outputProbe.anchorDestPortId = address->destPortId;
+            outputProbe.tapPosition = 0.5f;
         }
     }
     const auto visibleDefaultCard = [&](Rectangle<float> candidate) {
@@ -315,12 +370,9 @@ void SignalProbeCanvas::paintCachedPreview(
         float physicalScale) {
     NodeRenderSemantic semantic = facts.renderSemanticForNodeOutput(
             graph, probe.sourceNodeId, probe.sourcePortId);
-    if (probe.id == DefaultOutputProbeResolver::probeId) {
-        const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(preview.domain);
-        semantic.domain = preview.domain;
-        semantic.scalePolicy = profile.getScalePolicy();
-    } else if (semantic.domain == PortDomain::ControlSignal) {
-        semantic.domain = preview.domain;
+    if (probe.id == DefaultOutputProbeResolver::probeId
+            || semantic.domain != preview.domain) {
+        semantic = GraphRenderSemanticResolver::defaultSemanticForDomain(preview.domain);
     }
 
     const Rectangle<int> logicalBounds = previewBounds.getSmallestIntegerContainer();

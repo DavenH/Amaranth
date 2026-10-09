@@ -1218,7 +1218,7 @@ TEST_CASE("Transform nodes compact legacy diagram widths when loading",
     for (const auto kind : { NodeKind::Fft, NodeKind::Ifft }) {
         const String id = kind == NodeKind::Fft ? "fft" : "ifft";
         auto node = GraphNodeFactory().createNode(kind, id, { 100.f, 200.f });
-        REQUIRE(node.bounds.getWidth() == 180.f);
+        REQUIRE(node.bounds.getWidth() == 144.f);
         node.bounds.setWidth(278.f);
         graph.addNode(std::move(node));
     }
@@ -1228,7 +1228,7 @@ TEST_CASE("Transform nodes compact legacy diagram widths when loading",
     for (const String id : { String("fft"), String("ifft") }) {
         const auto* node = loaded.graph.findNode(id);
         REQUIRE(node != nullptr);
-        REQUIRE(node->bounds == Rectangle<float>(100.f, 200.f, 180.f, 178.f));
+        REQUIRE(node->bounds == Rectangle<float>(100.f, 200.f, 144.f, 142.f));
     }
     const auto reloaded = serializer.loadJsonString(serializer.toJsonString(loaded.graph));
     REQUIRE(reloaded.succeeded());

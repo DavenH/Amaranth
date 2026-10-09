@@ -28,6 +28,8 @@ struct NodeRenderSemantic {
 
 class GraphRenderSemanticResolver {
 public:
+    static NodeRenderSemantic defaultSemanticForDomain(PortDomain domain);
+
     NodeRenderSemantic semanticForNodeOutput(
             const NodeGraph& graph,
             const String& nodeId,
@@ -51,7 +53,6 @@ private:
             const Edge& edge,
             PortDomain domain,
             const GraphEdgeIndex* edgeIndex = nullptr) const;
-    NodeRenderSemantic defaultSemanticForDomain(PortDomain domain) const;
 };
 
 }

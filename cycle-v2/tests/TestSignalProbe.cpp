@@ -17,11 +17,37 @@ TEST_CASE("Signal probe cable annotations scale with canvas zoom",
         "[cycle-v2][ui][signal-probe][zoom]") {
     const float reference = SignalProbeCanvas::cableAnnotationDiameter(0.58f);
 
-    REQUIRE(reference == Catch::Approx(16.128f));
+    REQUIRE(reference == Catch::Approx(8.4f));
     REQUIRE(SignalProbeCanvas::cableAnnotationDiameter(1.16f)
             == Catch::Approx(reference * 2.f));
     REQUIRE(SignalProbeCanvas::cableAnnotationDiameter(0.29f)
             == Catch::Approx(reference * 0.5f));
+}
+
+TEST_CASE("Spy tethers leave cables perpendicularly toward the card",
+        "[cycle-v2][ui][signal-probe][tether]") {
+    const auto checkDeparture = [](Point<float> start,
+            Point<float> end, Point<float> target) {
+        Path cable;
+        cable.startNewSubPath(start);
+        cable.lineTo(end);
+        const Path tether = SignalProbeCanvas::tetherPath(cable, 0.5f, target);
+        const Point<float> anchor = cable.getPointAlongPath(cable.getLength() * 0.5f);
+        const Point<float> departure = tether.getPointAlongPath(1.f) - anchor;
+        const Point<float> tangent = end - start;
+        REQUIRE(tether.getLength() > 0.f);
+        const float parallelFraction = (departure.x * tangent.x
+                + departure.y * tangent.y)
+                / (departure.getDistanceFromOrigin() * tangent.getDistanceFromOrigin());
+        REQUIRE(parallelFraction == Catch::Approx(0.f).margin(0.05f));
+        REQUIRE(departure.x * (target.x - anchor.x)
+                        + departure.y * (target.y - anchor.y) > 0.f);
+    };
+
+    checkDeparture({ 0.f, 0.f }, { 100.f, 0.f }, { 50.f, -100.f });
+    checkDeparture({ 0.f, 0.f }, { 100.f, 0.f }, { 50.f, 100.f });
+    checkDeparture({ 0.f, 0.f }, { 0.f, 100.f }, { 100.f, 50.f });
+    checkDeparture({ 0.f, 0.f }, { 0.f, 100.f }, { -100.f, 50.f });
 }
 
 namespace {

@@ -46,6 +46,10 @@ public:
             const SignalProbe& probe,
             const NodeGraph& graph,
             const NodeCanvasSceneSnapshot& scene);
+    static juce::Path tetherPath(
+            const juce::Path& cable,
+            float attachmentFraction,
+            juce::Point<float> target);
     static float cableAnnotationDiameter(float zoom);
     static Rectangle<float> cardBoundsFor(
             const String& probeId,

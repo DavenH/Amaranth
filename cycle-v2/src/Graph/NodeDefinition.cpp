@@ -515,7 +515,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .help("Opens a waveform into magnitude and phase for spectral editing.")
                     .execution(NodeExecutionTrait::SpectralTransform)
                     .runtime(AudioModuleRole::Fft, PreviewModuleRole::None)
-                    .presentation({}, { 180.f, 178.f })
+                    .presentation({}, { 144.f, 142.f })
                     .finish(),
             buildDefinition(definition("ifft", NodeKind::Ifft, String::fromUTF8("Freq → Time"), "cyclic overlap", "ifft",
                     { input("mag", "Mag", PortDomain::SpectralMagnitudeSignal, ChannelLayout::StereoPair),
@@ -527,7 +527,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .help("Rebuilds a waveform from its magnitude and phase.")
                     .execution(NodeExecutionTrait::OscillatorMaterializer)
                     .runtime(AudioModuleRole::Ifft, PreviewModuleRole::None)
-                    .presentation({}, { 180.f, 178.f })
+                    .presentation({}, { 144.f, 142.f })
                     .finish(),
             buildDefinition(definition("envelope", NodeKind::Envelope, "Envelope", "control curve", "env",
                     { input("red", "Red Morph", PortDomain::ControlSignal,

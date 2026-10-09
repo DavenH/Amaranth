@@ -145,7 +145,7 @@ NodeRenderSemantic GraphRenderSemanticResolver::semanticForEdge(
     return semantic;
 }
 
-NodeRenderSemantic GraphRenderSemanticResolver::defaultSemanticForDomain(PortDomain domain) const {
+NodeRenderSemantic GraphRenderSemanticResolver::defaultSemanticForDomain(PortDomain domain) {
     switch (domain) {
         case PortDomain::TimeSignal:
             return { domain, RenderScalePolicy::Bipolar, RenderSemanticRole::TimeWaveform };
