@@ -35,3 +35,13 @@ both sidebar row renderers instead of forcing uppercase. Measurement and paintin
 use the same text/font. Both builds, seven browser cases / 144 assertions, visual
 review, architecture audit and whitespace/style checks pass. SidebarMediaRow is
 207 lines; no new ownership or interaction behavior.
+
+Metadata alignment follow-up: right-align the two-line title against the image
+divider and give it the full metadata-column width. Move the 22px favorite button
+to the bottom-left; tags now have matching 22px height, bottom-align beside it,
+and align as a group to the divider. Long tag pairs wrap in the same right-hand
+column. Preset rows are 90px to accommodate two tag rows below the title without
+overlap. Shared favorite hit/automation geometry follows the new position.
+Both builds and seven browser cases / 156 assertions pass, including title/tag/
+favorite containment and separation. Architecture audit and diff/style checks
+pass. SidebarMediaRow is 212 lines; no new behavior or policy boundary.

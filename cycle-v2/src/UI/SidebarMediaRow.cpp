@@ -10,22 +10,27 @@ PresetLayout presetLayout(juce::Rectangle<float> slot, const juce::StringArray& 
     auto metadata = content.withWidth(content.getWidth() * 0.4f);
     layout.preview = content.withLeft(metadata.getRight());
     metadata = metadata.withTrimmedRight(6.f);
-    layout.favorite = { metadata.getX(), metadata.getY(), 22.f, 22.f };
-    layout.labels.title = metadata.withTrimmedLeft(25.f).withHeight(28.f);
+    layout.favorite = { metadata.getX(), metadata.getBottom() - 22.f, 22.f, 22.f };
+    layout.labels.title = metadata.withHeight(26.f);
 
     const juce::Font tagFont(juce::FontOptions(10.5f));
-    float x = metadata.getX();
-    float y = metadata.getY() + 31.f;
-    for (int index = 0; index < juce::jmin(2, tags.size()); ++index) {
-        const float width = juce::jmin(metadata.getWidth(),
+    const float tagWidth = metadata.getWidth() - 25.f;
+    layout.labels.tagCount = juce::jmin(2, tags.size());
+    float totalWidth = 0.f;
+    for (int index = 0; index < layout.labels.tagCount; ++index) {
+        const float width = juce::jmin(tagWidth,
                 tagFont.getStringWidthFloat(tags[index]) + 11.f);
-        if (x + width > metadata.getRight()) {
-            x = metadata.getX();
-            y += 16.f;
-        }
-        layout.labels.tags[(size_t) index] = { x, y, width, 15.f };
-        ++layout.labels.tagCount;
-        x += width + 3.f;
+        layout.labels.tags[(size_t) index].setSize(width, 22.f);
+        totalWidth += width + (index == 0 ? 0.f : 3.f);
+    }
+    const bool wrap = totalWidth > tagWidth;
+    float x = metadata.getRight() - totalWidth;
+    for (int index = 0; index < layout.labels.tagCount; ++index) {
+        auto& chip = layout.labels.tags[(size_t) index];
+        chip.setPosition(wrap ? metadata.getRight() - chip.getWidth() : x,
+                metadata.getBottom() - 22.f
+                        - (wrap ? (layout.labels.tagCount - index - 1) * 24.f : 0.f));
+        x += chip.getWidth() + 3.f;
     }
     return layout;
 }
@@ -160,7 +165,7 @@ void paintLabels(
     graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(juce::FontOptions(11.5f).withStyle("Bold"));
     graphics.drawFittedText(title, layout.title.toNearestInt(),
-            juce::Justification::topLeft, 2, 0.9f);
+            juce::Justification::topRight, 2, 0.9f);
     paintFavorite(graphics, slot, favorite);
     paintHeaderTags(graphics, tags, layout, 10.5f);
 }

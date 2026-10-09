@@ -189,9 +189,13 @@ TEST_CASE("Preset metadata stays left of the spectrogram at sidebar widths",
         REQUIRE_FALSE(layout.labels.title.intersects(layout.favorite));
         REQUIRE(layout.labels.title.getRight() < layout.preview.getX());
         REQUIRE(layout.labels.tagCount == 2);
+        REQUIRE(layout.labels.title.getRight() == Catch::Approx(layout.preview.getX() - 6.f));
+        REQUIRE(layout.favorite.getY() > layout.labels.title.getBottom());
         for (const auto& tag : layout.labels.tags) {
             REQUIRE(card.contains(tag));
             REQUIRE(tag.getY() > layout.labels.title.getBottom());
+            REQUIRE(tag.getHeight() == layout.favorite.getHeight());
+            REQUIRE_FALSE(tag.intersects(layout.favorite));
             REQUIRE(tag.getRight() < layout.preview.getX());
         }
         REQUIRE_FALSE(layout.labels.tags[0].intersects(layout.labels.tags[1]));
