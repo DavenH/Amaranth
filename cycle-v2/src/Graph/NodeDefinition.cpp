@@ -701,7 +701,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .help("Terminates each voice before the signals are mixed for global processing.")
                     .requiredSingleton()
                     .disablePreview()
-                    .presentation({}, { 190.f, 76.f })
+                    .presentation({}, { 116.f, 116.f })
                     .finish(),
             buildDefinition(definition("globalInput", NodeKind::GlobalInput, "Global Input", "voice mix", "globalIn", {},
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }))
@@ -710,7 +710,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .requiredSingleton()
                     .runtime(AudioModuleRole::GlobalInput, PreviewModuleRole::None)
                     .disablePreview()
-                    .presentation({}, { 190.f, 76.f })
+                    .presentation({}, { 116.f, 116.f })
                     .finish(),
             buildDefinition(definition("output", NodeKind::Output, "Output", "sink", "out",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}, {

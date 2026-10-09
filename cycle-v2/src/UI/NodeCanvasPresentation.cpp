@@ -11,6 +11,7 @@
 #include "UI/NodeCableRenderer.h"
 #include "UI/NodeCanvasGlRenderer.h"
 #include "UI/EnvelopePurposeIconRenderer.h"
+#include "UI/GraphEndpointNodeRenderer.h"
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodePortLayout.h"
 #include "UI/NodePortGeometry.h"
@@ -1066,9 +1067,12 @@ void NodeCanvasPresentation::paintCachedNode(
         const NodeCanvasPresentationFrame& frame,
         const Node& node,
         float physicalScale) {
-    const Rectangle<float> logicalBounds = frame.viewport.toScreen(
+    const Rectangle<float> nodeBounds = frame.viewport.toScreen(
             NodeCanvasScene::presentationWorldBounds(
-                    frame.graph, node, frame.facts.edgeIndex()))
+                    frame.graph, node, frame.facts.edgeIndex()));
+    const Rectangle<float> logicalBounds = GraphEndpointNodeRenderer::visualBounds(
+            node.kind, nodeBounds, frame.viewport.getBounds(),
+            frame.viewport.getZoom())
             .expanded(32.f * portScale(frame.viewport.getZoom()));
     const NodePreviewResult* runtimePreview = frame.facts.previewFor(
             frame.snapshot, node.id);
@@ -1179,7 +1183,11 @@ void NodeCanvasPresentation::paintNode(
         return;
     }
 
-    if (node.kind == NodeKind::SpectralLayer) {
+    if (GraphEndpointNodeRenderer::isConnector(node.kind)) {
+        GraphEndpointNodeRenderer::paintConnector(
+                graphics, node.kind, nodeBounds, frame.viewport.getBounds(),
+                zoom, isNodeSelected(frame, node.id));
+    } else if (node.kind == NodeKind::SpectralLayer) {
         previewRenderer.paint(graphics, {
                 node,
                 nullptr,
@@ -1237,10 +1245,17 @@ void NodeCanvasPresentation::paintNode(
         const float titleRightReservation = globalProcessing
                 ? (reservesHeaderRight ? 65.f : 24.f)
                 : reservesHeaderRight ? 65.f : 0.f;
+        Rectangle<float> titleBounds = header.reduced(13.f * zoom, 4.f * zoom)
+                .withTrimmedRight(titleRightReservation * zoom);
+        if (node.kind == NodeKind::Output) {
+            const Rectangle<float> speaker = Rectangle<float>(28.f * zoom, 28.f * zoom)
+                    .withCentre({ header.getX() + 27.f * zoom, header.getCentreY() });
+            NodeIconRenderer::paint(graphics, node.kind, speaker, 1.f);
+            titleBounds = titleBounds.withTrimmedLeft(40.f * zoom);
+        }
         graphics.drawText(
                 labelForNodeKind(node.kind),
-                header.reduced(13.f * zoom, 4.f * zoom).withTrimmedRight(
-                        titleRightReservation * zoom),
+                titleBounds,
                 Justification::centredLeft);
         if (node.kind == NodeKind::Envelope) {
             paintEnvelopePurposeIcon(graphics, node, header, zoom);
