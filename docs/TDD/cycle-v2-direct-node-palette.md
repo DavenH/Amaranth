@@ -144,3 +144,18 @@ new pair. Visual reviews: native inverse-hover screenshot
 labels fit, and unhovered tiles have no labels. Style, scalar-math, diff and
 architecture audit checks pass; clang-tidy has only the existing stateless-method
 recommendations. No remaining work in this refinement.
+
+## Neutral palette accents
+
+Replace cyan in the eight visible Mesh/Wave/FX icons with the same cool grey
+as the Fourier and math glyphs (#d2d9e2). Delay retains decreasing contrast in
+grey. Dark canvas blue would lose foreground contrast against the tile surface.
+This is SVG colour data only; layout, rendering and interaction are unchanged.
+The preserved FFT/IFFT diagram alternatives remain intact. No architecture or
+adapter change is required.
+
+Verified neutral accents with the 96px/32px sheet
+/private/tmp/sidebar-grey-icons.png and the running Debug app captured by its
+specific PID at /private/tmp/sidebar-grey-exact.png. Both targets build and all
+9 palette tests / 295 assertions pass. SVG XML and diff checks pass. The first
+screenshot helper focused an older Release instance; that capture was rejected.
