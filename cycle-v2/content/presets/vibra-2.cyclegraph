@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 962.0, "y": 954.21729 },
+            "position": { "x": 959.98236, "y": 685.87061 },
             "parameters": {
                 "octave": 1,
                 "voiceLength": 0.459897995,
@@ -21,7 +21,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 583.14569, "y": 852.0 },
+            "position": { "x": 581.12805, "y": 583.65332 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -45,12 +45,13 @@
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1644.0, "y": 568.0 },
+            "position": { "x": 1644.0, "y": 641.18866 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.0,
                 "red": 0.495327115,
@@ -358,6 +359,7 @@
                 "gain": 0.5,
                 "range": 0.575,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.0,
                 "red": 0.495327115,
@@ -424,7 +426,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2022.80005, "y": 1084.0 },
+            "position": { "x": 2128.51709, "y": 577.77832 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.495327115, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -590,34 +592,37 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 2398.0, "y": 886.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 746.0, "y": 1541.0 },
+            "position": { "x": 743.98236, "y": 1272.65332 },
             "parameters": { "enabled": true, "time": 0.5, "feedback": 0.5, "wet": 0.568, "spin": 0.688, "spinIters": 0.5 }
         },
         {
             "id": "reverb",
             "kind": "reverb",
             "definitionVersion": 1,
-            "position": { "x": 1010.0, "y": 1541.0 },
+            "position": { "x": 1007.98236, "y": 1272.65332 },
             "parameters": { "enabled": true, "size": 0.600000003, "damp": 0.7, "width": 0.8, "wet": 0.184000012, "highPass": 0.05 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 1274.0, "y": 1541.0 },
+            "position": { "x": 1271.98242, "y": 1272.65332 },
             "parameters": { "gain": 0.771354 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 508.0, "y": 1541.0 },
+            "position": { "x": 505.98236, "y": 1272.65332 },
             "parameters": {}
         },
         {
@@ -631,7 +636,7 @@
             "id": "env",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 581.50415, "y": 1084.0 },
+            "position": { "x": 579.48651, "y": 815.65332 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -902,7 +907,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": [ "Keys", "Metallic" ],
+        "tags": [ "Keys", "Metallic", "Percussion", "Bright" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

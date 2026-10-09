@@ -14,7 +14,7 @@
                 "portamento": false,
                 "pitchIndependentSpectralControl": true,
                 "oversampling": "1x",
-                "controlInterval": "64"
+                "controlInterval": "16"
             }
         },
         {
@@ -51,6 +51,7 @@
                 "gain": 0.5,
                 "range": 0.625,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -292,6 +293,7 @@
                 "gain": 0.5,
                 "range": 0.7,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -371,6 +373,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,

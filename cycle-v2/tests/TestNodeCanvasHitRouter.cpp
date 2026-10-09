@@ -66,9 +66,9 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
     };
     const auto envelopeAction = router.nodeActionAt(viewport, envelopeActionPoint);
     REQUIRE(envelopeAction.has_value());
-    REQUIRE(envelopeAction->kind == CanvasNodeActionKind::CycleOutputSide);
+    REQUIRE(envelopeAction->kind == CanvasNodeActionKind::CycleOperationLayout);
     REQUIRE(envelopeAction->nodeId == "envelope");
-    REQUIRE(router.hoverTextFor(viewport, {}, envelopeActionPoint).contains("output"));
+    REQUIRE(router.hoverTextFor(viewport, {}, envelopeActionPoint).contains("port arrangement"));
     Rectangle<float> envelopePreview = envelope->bounds.withTrimmedTop(42.f).reduced(8.f);
     const Point<float> formerPurposeSelector = envelopePreview
             .removeFromBottom(20.f)
@@ -91,13 +91,15 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
     REQUIRE(edgeHelp == queries.hoverTextForEdge(graph.getEdges().front()));
     REQUIRE(edgeHelp == "Audio flows from Wave to Output.");
 
-    const Point<float> paletteClick { 80.f, 420.f };
+    palette.setWorkspaceBounds({ 0.f, 0.f, 272.f, 700.f });
+    const Point<float> paletteClick = palette.entryBounds(2, 1).getCentre();
     const Point<float> creationPosition = router.paletteCreationWorldPosition(
             viewport,
             { 0.f, 0.f, 900.f, 700.f },
             NodeKind::Multiply,
             paletteClick);
     const Node created = factory.createNode(NodeKind::Multiply, "created", creationPosition);
+    REQUIRE(created.bounds.getX() == Catch::Approx(palette.workspaceBounds().getRight() + 32.f));
     REQUIRE(!created.inputs.empty());
     REQUIRE(NodeCanvasScene::portWorldCentre(created, created.inputs.front()).y
             == Catch::Approx(paletteClick.y));
@@ -155,6 +157,7 @@ TEST_CASE("Single input and output nodes expose a port layout action",
     snapshot.compileResult = compileResult;
     NodeCanvasQueryModel queries(graph, snapshot);
     NodePalette palette;
+    palette.setVisible(false);
     NodeCanvasHitRouter router(graph, palette, queries);
     NodeCanvasViewport viewport;
     viewport.setBounds({ 0.f, 0.f, 900.f, 700.f });

@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 460.0, "y": 826.0 },
+            "position": { "x": 294.19971, "y": 1022.0 },
             "parameters": {
                 "octave": -1,
                 "voiceLength": 0.34331,
@@ -21,7 +21,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 105.35708, "y": 826.0 },
+            "position": { "x": -66.44321, "y": 1022.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -38,7 +38,7 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "position": { "x": 1246.0, "y": 886.0 },
+            "position": { "x": 1293.57544, "y": 886.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
         {
@@ -52,12 +52,13 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 840.0, "y": 886.0 },
+            "position": { "x": 887.57544, "y": 886.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -146,6 +147,7 @@
                 "gain": 0.5,
                 "range": 0.65,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.872,
                 "red": 0.5,
@@ -868,6 +870,7 @@
                 "gain": 0.5,
                 "range": 0.7,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.0,
                 "red": 0.5,
@@ -1304,6 +1307,7 @@
                 "gain": 0.5,
                 "range": 0.825,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -1367,7 +1371,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2252.80005, "y": 1116.0 },
+            "position": { "x": 2332.80005, "y": 505.44812 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1631,27 +1635,30 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 2628.0, "y": 886.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 746.0, "y": 1571.0 },
+            "position": { "x": 500.19342, "y": 1481.13525 },
             "parameters": { "enabled": true, "time": 0.5, "feedback": 0.5, "wet": 0.5, "spin": 0.0, "spinIters": 0.5 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 1010.0, "y": 1571.0 },
+            "position": { "x": 764.19342, "y": 1481.13525 },
             "parameters": { "gain": 0.338028169 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 508.0, "y": 1571.0 },
+            "position": { "x": 262.19342, "y": 1481.13525 },
             "parameters": {}
         },
         {

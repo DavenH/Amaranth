@@ -51,6 +51,7 @@
                 "gain": 0.5,
                 "range": 0.6,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -123,6 +124,7 @@
                 "gain": 0.5,
                 "range": 0.475,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -195,6 +197,7 @@
                 "gain": 0.5,
                 "range": 0.325,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -398,8 +401,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6 ]
                 }
             }
@@ -473,8 +474,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3 ]
                 }
             }
@@ -638,7 +637,7 @@
     ],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Keys"],
+        "tags": [ "Guitar", "Distorted" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

@@ -66,6 +66,7 @@
                 "gain": 0.5,
                 "range": 0.675,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -151,6 +152,7 @@
                 "gain": 0.5,
                 "range": 0.7,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -217,6 +219,7 @@
                 "gain": 0.5,
                 "range": 0.35,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -296,6 +299,7 @@
                 "gain": 0.5,
                 "range": 0.325,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -790,7 +794,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 745.19995, "y": 1571.0 },
-            "parameters": { "gain": 0.305343511 }
+            "parameters": { "gain": 0.355344 }
         },
         {
             "id": "globalInput",

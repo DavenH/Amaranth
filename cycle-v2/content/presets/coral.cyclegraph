@@ -66,6 +66,7 @@
                 "gain": 0.5,
                 "range": 0.65,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -151,6 +152,7 @@
                 "gain": 0.5,
                 "range": 0.725,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -217,6 +219,7 @@
                 "gain": 0.5,
                 "range": 0.6,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -481,7 +484,7 @@
             "id": "scratchEnvelope2",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1168.80005, "y": 1236.5 },
+            "position": { "x": 1254.42676, "y": 1258.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1274,7 +1277,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Pad", "Ambient", "Soft"],
+        "tags": [ "Pad", "Ambient", "Soft" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

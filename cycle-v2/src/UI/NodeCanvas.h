@@ -127,6 +127,7 @@ public:
     var inspectPointerTargetsForAutomation() const;
     std::vector<std::pair<String, Rectangle<float>>>
             presetSidebarPointerTargetsForAutomation() const;
+    std::vector<std::pair<String, Rectangle<float>>> palettePointerTargetsForAutomation() const;
     var inspectOpenGLDiagnosticsForAutomation() const;
     var inspectPerformanceMetricsForAutomation() const;
     void resetPerformanceMetricsForAutomation();
@@ -301,6 +302,7 @@ private:
     bool cycleSinglePortLayout(const String& nodeId);
     bool cycleOutputSide(const String& nodeId);
     Rectangle<float> canvasContentBounds() const;
+    Rectangle<float> canvasUtilityBounds() const;
     Rectangle<float> editorContentBounds() const;
     WorkspaceDockLayout workspaceDockLayout() const;
     void showEdgeMenu(int edgeIndex, Point<float> screenPosition);

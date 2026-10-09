@@ -54,6 +54,7 @@ struct PresetPresentation {
     juce::String timeSurfaceStyle;
     juce::String bipolarSpectralSurfaceStyle;
     juce::StringArray tags;
+    bool tagsSpecified {};
     int rating {};
     std::optional<PresetPreviewImage> preview;
     juce::String patternId;

@@ -73,6 +73,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -161,6 +162,7 @@
                 "gain": 0.5,
                 "range": 0.75,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -246,6 +248,7 @@
                 "gain": 0.5,
                 "range": 0.3,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -849,7 +852,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": [ "Bass" ],
+        "tags": [ "Lead" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

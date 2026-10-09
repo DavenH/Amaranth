@@ -64,7 +64,7 @@ Rectangle<float> GuideCurveShelf::guideWorkspace(
     const WorkspaceDockLayout layout = WorkspaceDock::layout(
             workspace,
             { true, guidesMinimized, spiesMinimized, 190.f });
-    return layout.leftShelf.withRight(workspace.getRight())
+    return layout.leftShelf.withLeft(workspace.getX())
             .withY(workspace.getY()).withHeight(workspace.getHeight());
 }
 
@@ -262,7 +262,7 @@ void GuideCurveShelf::paint(
         WorkspaceDock::paintIconButton(
                 graphics,
                 drawerButton,
-                WorkspaceDockIcon::ChevronLeft,
+                WorkspaceDockIcon::ChevronRight,
                 focus.target == WorkspaceDockFocusTarget::GuideDrawer);
         Graphics::ScopedSaveState labelTransform(graphics);
         graphics.addTransform(AffineTransform::rotation(
@@ -282,7 +282,7 @@ void GuideCurveShelf::paint(
     WorkspaceDock::paintIconButton(
             graphics,
             minimize,
-            WorkspaceDockIcon::ChevronRight,
+            WorkspaceDockIcon::ChevronLeft,
             focus.target == WorkspaceDockFocusTarget::GuideMinimize);
     const Rectangle<float> add = addButtonBounds(workspace, dockState, state);
     const auto addColours = CanvasChromePalette::control(

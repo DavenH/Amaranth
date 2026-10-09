@@ -257,10 +257,10 @@ TEST_CASE("Guide column and Spy row retain independent scroll room",
     const Rectangle<float> spies = GuideCurveShelf::spyWorkspace(workspace);
 
     REQUIRE(guides.getWidth() == Catch::Approx(274.f));
-    REQUIRE(guides.getRight() == Catch::Approx(workspace.getRight()));
+    REQUIRE(guides.getX() == Catch::Approx(workspace.getX()));
     REQUIRE(guides.getY() == Catch::Approx(workspace.getY()));
     REQUIRE(spies.getWidth() > guides.getWidth());
-    REQUIRE(guides.getX() > spies.getRight());
+    REQUIRE(guides.getRight() < spies.getX());
     REQUIRE(GuideCurveShelf::maximumVerticalOffset(
             workspace,
             dockState,

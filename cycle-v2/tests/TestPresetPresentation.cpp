@@ -92,6 +92,12 @@ TEST_CASE("Editing loaded preset tags keeps the graph and later saves in sync",
     const auto saved = GraphSerializer().loadJsonString(document.toJson());
     REQUIRE(saved.succeeded());
     REQUIRE(saved.presentation.tags == document.presentation().tags);
+    REQUIRE(commands.setPresetTags({}));
+    const auto cleared = GraphSerializer().loadJsonString(document.toJson());
+    REQUIRE(cleared.succeeded());
+    REQUIRE(cleared.presentation.tagsSpecified);
+    REQUIRE(cleared.presentation.tags.isEmpty());
+    REQUIRE_FALSE(commands.setPresetTags({}));
 }
 
 TEST_CASE("Renaming an open preset retains its title on the next graph save",

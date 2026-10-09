@@ -20,6 +20,7 @@
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/OutputMeterPresentation.h"
+#include "UI/NodeIconRenderer.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
 namespace CycleV2 {
@@ -329,137 +330,6 @@ Rectangle<float> fitAspect(Rectangle<float> area, float aspectRatio) {
     return area.withSizeKeepingCentre(area.getWidth(), area.getWidth() / aspectRatio);
 }
 
-float previewStrokeScale(Rectangle<float> icon) {
-    return jmax(0.72f, jmin(icon.getWidth() / 150.f, icon.getHeight() / 82.f));
-}
-
-Rectangle<float> fftPreviewIconArea(Rectangle<float> area) {
-    Rectangle<float> icon = area.reduced(area.getWidth() * 0.04f, area.getHeight() * 0.09f);
-
-    if (icon.getWidth() / icon.getHeight() < 1.65f) {
-        return fitAspect(icon, 1.65f);
-    }
-
-    return icon;
-}
-
-void drawFftSquareCycle(Graphics& graphics, Rectangle<float> area, float strokeScale) {
-    Path path;
-    const float left = area.getX() + area.getWidth() * 0.10f;
-    const float middle = area.getCentreX();
-    const float right = area.getRight() - area.getWidth() * 0.10f;
-    const float top = area.getY() + area.getHeight() * 0.20f;
-    const float bottom = area.getY() + area.getHeight() * 0.80f;
-
-    path.startNewSubPath(left, bottom);
-    path.lineTo(left, top);
-    path.lineTo(middle, top);
-    path.lineTo(middle, bottom);
-    path.lineTo(right, bottom);
-    path.lineTo(right, top);
-
-    graphics.setColour(Colour(0xff58d4e8));
-    graphics.strokePath(
-            path,
-            PathStrokeType(2.55f * strokeScale, PathStrokeType::mitered, PathStrokeType::rounded));
-}
-
-void drawFftHarmonicStack(Graphics& graphics, Rectangle<float> area, float strokeScale) {
-    const struct Partial {
-        int harmonic;
-        float minimumWidth;
-        Colour colour;
-    } partials[] = {
-            { 7, 116.f, Colour(0xff9b6dff) },
-            { 5, 0.f, Colour(0xff6f8cff) },
-            { 3, 0.f, Colour(0xff49bde2) },
-            { 1, 0.f, Colour(0xff58d4e8) }
-    };
-
-    Rectangle<float> waveArea = area.reduced(area.getWidth() * 0.08f, area.getHeight() * 0.10f);
-    constexpr float sineControl = 0.3642f;
-
-    for (const auto& partial : partials) {
-        if (area.getWidth() < partial.minimumWidth) {
-            continue;
-        }
-
-        const int halfCycles = partial.harmonic * 2;
-        const float halfWidth = waveArea.getWidth() / (float) halfCycles;
-        const float amplitude = waveArea.getHeight() * 0.44f / (float) partial.harmonic;
-        Path path;
-
-        path.startNewSubPath(waveArea.getX(), waveArea.getCentreY());
-
-        for (int index = 0; index < halfCycles; ++index) {
-            const float x0 = waveArea.getX() + (float) index * halfWidth;
-            const float x1 = x0 + halfWidth;
-            const float controlY = waveArea.getCentreY()
-                    + (index % 2 == 0 ? -amplitude : amplitude);
-
-            path.cubicTo(
-                    x0 + halfWidth * sineControl,
-                    controlY,
-                    x1 - halfWidth * sineControl,
-                    controlY,
-                    x1,
-                    waveArea.getCentreY());
-        }
-
-        graphics.setColour(partial.colour.withAlpha(0.90f));
-        graphics.strokePath(
-                path,
-                PathStrokeType(1.45f * strokeScale, PathStrokeType::curved, PathStrokeType::rounded));
-    }
-}
-
-void drawFftChevron(Graphics& graphics, Rectangle<float> icon, float strokeScale) {
-    Path path;
-    const Point<float> top(
-            icon.getX() + icon.getWidth() * 0.476f,
-            icon.getY() + icon.getHeight() * 0.39f);
-    const Point<float> middle(
-            icon.getX() + icon.getWidth() * 0.512f,
-            icon.getY() + icon.getHeight() * 0.50f);
-    const Point<float> bottom(
-            icon.getX() + icon.getWidth() * 0.476f,
-            icon.getY() + icon.getHeight() * 0.61f);
-
-    path.startNewSubPath(top);
-    path.lineTo(middle);
-    path.lineTo(bottom);
-
-    graphics.setColour(Colour(0xff596a78));
-    graphics.strokePath(
-            path,
-            PathStrokeType(2.f * strokeScale, PathStrokeType::mitered, PathStrokeType::rounded));
-}
-
-void drawFftTransformPreview(Graphics& graphics, Rectangle<float> area, bool inverse) {
-    const Rectangle<float> icon = fftPreviewIconArea(area);
-    const float strokeScale = previewStrokeScale(icon);
-    const Rectangle<float> left(
-            icon.getX() + icon.getWidth() * 0.045f,
-            icon.getY() + icon.getHeight() * 0.14f,
-            icon.getWidth() * 0.405f,
-            icon.getHeight() * 0.72f);
-    const Rectangle<float> right(
-            icon.getX() + icon.getWidth() * 0.55f,
-            icon.getY() + icon.getHeight() * 0.14f,
-            icon.getWidth() * 0.405f,
-            icon.getHeight() * 0.72f);
-
-    if (inverse) {
-        drawFftHarmonicStack(graphics, left, strokeScale);
-        drawFftChevron(graphics, icon, strokeScale);
-        drawFftSquareCycle(graphics, right, strokeScale);
-    } else {
-        drawFftSquareCycle(graphics, left, strokeScale);
-        drawFftChevron(graphics, icon, strokeScale);
-        drawFftHarmonicStack(graphics, right, strokeScale);
-    }
-}
-
 void drawMathOperationPreview(
         Graphics& graphics,
         Rectangle<float> area,
@@ -608,7 +478,7 @@ Rectangle<float> NodePreviewRenderer::boundsFor(
     Rectangle<float> preview = nodeBounds.withTrimmedTop(42.f * zoom).reduced(8.f * zoom);
 
     if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
-        return nodeBounds.withTrimmedTop(40.f * zoom).reduced(3.f * zoom, 5.f * zoom);
+        return nodeBounds.withTrimmedTop(40.f * zoom).reduced(8.f * zoom);
     }
 
     if (node.kind == NodeKind::Unison) {
@@ -968,7 +838,7 @@ void NodePreviewRenderer::paintQualitative(
     }
 
     if (kind == NodeKind::Fft || kind == NodeKind::Ifft) {
-        drawFftTransformPreview(graphics, request.area, kind == NodeKind::Ifft);
+        NodeIconRenderer::paint(graphics, kind, request.area, 0.88f, NodeIconColour::Monochrome);
         return;
     }
 

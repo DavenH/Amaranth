@@ -40,21 +40,13 @@ function(generate_svg_data SET_NAME SOURCE_DIRECTORY DATA_NAMESPACE DATA_HEADER_
 endfunction()
 
 generate_svg_data(
-    PALETTE_ICON
-    palette-icons
-    PaletteIconData
-    NodePaletteIconData
-    context transform math source control fx channel
-)
-
-generate_svg_data(
     NODE_ICON
     node-icons
     NodeIconData
     NodeIconData
     genericProcessor voiceContext scratchDefaultOverride waveSource imageSource trilinearMesh
     modulationSource modulationTriple
-    fft ifft envelope add multiply guideCurve impulseResponse waveshaper
+    fft ifft fourier inverseFourier envelope add multiply guideCurve impulseResponse waveshaper
     spectralLayer unison reverb delay equalizer stereoSplit stereoJoin globalInput voiceOutput output
 )
 
@@ -81,11 +73,9 @@ file(GLOB_RECURSE APP_SOURCES
 )
 
 list(APPEND APP_SOURCES
-    ${PALETTE_ICON_FILES}
     ${NODE_ICON_FILES}
     ${ENVELOPE_PURPOSE_ICON_FILES}
     ${UI_ICON_FILES}
-    "${PALETTE_ICON_DATA_HEADER}"
     "${NODE_ICON_DATA_HEADER}"
     "${ENVELOPE_PURPOSE_ICON_DATA_HEADER}"
     "${UI_ICON_DATA_HEADER}"
@@ -253,7 +243,6 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetLibraryIndex.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetPreviewGenerator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetThumbnailCache.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewResources.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/OutputMeterPresentation.cpp"

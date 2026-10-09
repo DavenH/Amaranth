@@ -4,6 +4,7 @@
 #include "UI/PresetBrowserComponents.h"
 #include "UI/PresetMetadataEditor.h"
 #include "UI/SidebarMediaRow.h"
+#include "Graph/PresetMetadataStore.h"
 
 namespace CycleV2 {
 
@@ -43,6 +44,8 @@ public:
         updateHeight();
         repaint();
     }
+
+    Callback onSelectionChanged;
 
     void setCallbacks(Callback openCallback,
             std::function<void(const juce::File&)> favoriteCallback) {
@@ -128,9 +131,9 @@ private:
     juce::Rectangle<int> rowBounds(int index) const {
         return {
                 0,
-                contentInset + index * SidebarMediaRow::height,
+                contentInset + index * SidebarMediaRow::presetHeight,
                 getWidth(),
-                SidebarMediaRow::height
+                SidebarMediaRow::presetHeight
         };
     }
 
@@ -149,11 +152,14 @@ private:
         }
         selected = index;
         repaint();
+        if (onSelectionChanged) {
+            onSelectionChanged();
+        }
     }
 
     void updateHeight() {
         const int height = contentInset * 2
-                + (int) indices.size() * SidebarMediaRow::height;
+                + (int) indices.size() * SidebarMediaRow::presetHeight;
         setSize(juce::jmax(1, getWidth()), juce::jmax(1, height));
     }
 
@@ -212,15 +218,19 @@ InlinePresetBrowser::InlinePresetBrowser(
     styleTabButton(curves);
     styleTabButton(presets);
     styleTabButton(patterns);
+    styleTabButton(nodes);
     curves.setComponentID("workspace.sidebar.curves");
     presets.setComponentID("workspace.sidebar.presets");
     patterns.setComponentID("workspace.sidebar.patterns");
+    nodes.setComponentID("workspace.sidebar.nodes");
     curves.onClick = [this] { setActiveTab(WorkspaceSidebarTab::Curves); };
     presets.onClick = [this] { setActiveTab(WorkspaceSidebarTab::Presets); };
     patterns.onClick = [this] { setActiveTab(WorkspaceSidebarTab::Patterns); };
+    nodes.onClick = [this] { setActiveTab(WorkspaceSidebarTab::Nodes); };
     addAndMakeVisible(curves);
     addAndMakeVisible(presets);
     addAndMakeVisible(patterns);
+    addAndMakeVisible(nodes);
 
     auto& search = toolbar.searchField();
     auto& create = toolbar.newButton();
@@ -248,6 +258,7 @@ InlinePresetBrowser::InlinePresetBrowser(
     tagCloud.setComponentID("workspace.sidebar.presetTags");
     tagCloud.setFavoritesAvailable(favorites != nullptr);
     tagCloud.setChangeCallback([this] { applyTagFilter(); });
+    tagCloud.setEditCallback([this](const juce::String& tag) { toggleSelectedTag(tag); });
     addAndMakeVisible(tagCloud);
     remove.setComponentID("workspace.sidebar.delete");
     remove.setTooltip("Move the selected preset to Trash");
@@ -255,6 +266,7 @@ InlinePresetBrowser::InlinePresetBrowser(
     addAndMakeVisible(toolbar);
 
     list->setFavorites(favorites);
+    list->onSelectionChanged = [this] { updateSelectedTags(); };
     list->setCallbacks([this] { openSelected(); },
             [this](const juce::File& file) { toggleFavorite(file); });
     viewport.setComponentID("workspace.sidebar.viewport");
@@ -382,7 +394,8 @@ InlinePresetBrowser::pointerTargetsForAutomation() const {
     std::vector<std::pair<juce::String, juce::Rectangle<float>>> targets {
             { "workspace.sidebar.curves", curves.getBounds().toFloat() },
             { "workspace.sidebar.presets", presets.getBounds().toFloat() },
-            { "workspace.sidebar.patterns", patterns.getBounds().toFloat() }
+            { "workspace.sidebar.patterns", patterns.getBounds().toFloat() },
+            { "workspace.sidebar.nodes", nodes.getBounds().toFloat() }
     };
     if (tab == WorkspaceSidebarTab::Presets) {
         for (const auto& [id, bounds] : toolbar.pointerTargetsForAutomation()) {
@@ -408,13 +421,17 @@ InlinePresetBrowser::pointerTargetsForAutomation() const {
 }
 
 bool InlinePresetBrowser::hitTest(int x, int y) {
+    if (tab == WorkspaceSidebarTab::Nodes && nodePaletteHitTest != nullptr
+            && nodePaletteHitTest({ x, y })) {
+        return false;
+    }
     return tab != WorkspaceSidebarTab::Curves
             || juce::Rectangle<int>(0, 0, getWidth(), 46).contains(x, y);
 }
 
 void InlinePresetBrowser::paint(juce::Graphics& graphics) {
     const auto bounds = getLocalBounds().toFloat();
-    if (tab != WorkspaceSidebarTab::Curves) {
+    if (tab != WorkspaceSidebarTab::Curves && tab != WorkspaceSidebarTab::Nodes) {
         graphics.setColour(CanvasChromePalette::dockSurface);
         graphics.fillRect(bounds);
     }
@@ -424,7 +441,8 @@ void InlinePresetBrowser::paint(juce::Graphics& graphics) {
             ? curves.getBounds().toFloat()
             : tab == WorkspaceSidebarTab::Presets
                     ? presets.getBounds().toFloat()
-                    : patterns.getBounds().toFloat();
+                    : tab == WorkspaceSidebarTab::Patterns
+                            ? patterns.getBounds().toFloat() : nodes.getBounds().toFloat();
     graphics.setColour(CanvasChromePalette::navigationAccent);
     graphics.fillRoundedRectangle(
             selectedTab.withY(43.f).withHeight(3.f).reduced(8.f, 0.f),
@@ -438,10 +456,11 @@ void InlinePresetBrowser::paint(juce::Graphics& graphics) {
 void InlinePresetBrowser::resized() {
     auto bounds = getLocalBounds();
     auto tabs = bounds.removeFromTop(46).reduced(8, 0);
-    const int tabWidth = juce::jmin(100, tabs.getWidth() / 3);
+    const int tabWidth = juce::jmin(100, tabs.getWidth() / 4);
     curves.setBounds(tabs.removeFromLeft(tabWidth));
     presets.setBounds(tabs.removeFromLeft(tabWidth));
     patterns.setBounds(tabs.removeFromLeft(tabWidth));
+    nodes.setBounds(tabs);
     if (patternBrowser != nullptr) {
         patternBrowser->setBounds(bounds);
     }
@@ -515,13 +534,12 @@ void InlinePresetBrowser::receiveResults(
 }
 
 void InlinePresetBrowser::updateAvailableTags() {
-    juce::StringArray available;
     for (const auto& record : library) {
         for (const auto& tag : tagsFor(record)) {
-            available.addIfNotAlreadyThere(tag);
+            knownTags.addIfNotAlreadyThere(tag, true);
         }
     }
-    tagCloud.setTags(std::move(available));
+    tagCloud.setTags(knownTags);
     resized();
 }
 
@@ -541,14 +559,43 @@ void InlinePresetBrowser::applyTagFilter() {
         }
     }
     list->setResults(library, filtered, std::move(tags));
-    const auto* selectedRecord = list->selectedRecord();
-    const bool canEditMetadata = selectedRecord != nullptr
-            && selectedRecord->metadataReady;
-    toolbar.editButton().setEnabled(canEditMetadata);
-    toolbar.renameButton().setEnabled(canEditMetadata);
-    toolbar.deleteButton().setEnabled(selectedRecord != nullptr);
+    updateSelectedTags();
     const int width = juce::jmax(1, viewport.getMaximumVisibleWidth());
     list->setSize(width, list->getHeight());
+}
+
+void InlinePresetBrowser::updateSelectedTags() {
+    const auto* record = list->selectedRecord();
+    const bool editable = record != nullptr && record->metadataReady;
+    tagCloud.setRecordTags(record != nullptr ? tagsFor(*record) : juce::StringArray {});
+    toolbar.editButton().setEnabled(editable);
+    toolbar.renameButton().setEnabled(editable);
+    toolbar.deleteButton().setEnabled(record != nullptr);
+}
+
+void InlinePresetBrowser::toggleSelectedTag(const juce::String& tag) {
+    const auto* record = list->selectedRecord();
+    if (record == nullptr || !record->metadataReady) {
+        return;
+    }
+    const auto file = record->file;
+    auto tags = tagsFor(*record);
+    const int indexOfTag = tags.indexOf(tag, true);
+    if (indexOfTag >= 0) {
+        tags.remove(indexOfTag);
+    } else {
+        tags.add(tag);
+    }
+    juce::String error;
+    if (!PresetMetadataStore::save(file, tags, error)) {
+        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                "Unable to save tags", error);
+        return;
+    }
+    index->refreshRecord(file);
+    if (onTagsChanged) {
+        onTagsChanged(file, tags);
+    }
 }
 
 void InlinePresetBrowser::toggleFavorite(const juce::File& file) {
@@ -565,7 +612,7 @@ void InlinePresetBrowser::refreshFavorites() {
 
 juce::StringArray InlinePresetBrowser::tagsFor(
         const PresetLibraryRecord& record) const {
-    if (!record.presentation.tags.isEmpty()) {
+    if (record.presentation.tagsSpecified || !record.presentation.tags.isEmpty()) {
         return record.presentation.tags;
     }
     const auto found = patternTags.find(record.presentation.patternId.toStdString());
@@ -673,13 +720,13 @@ void InlinePresetBrowser::deletePreset(const juce::File& file) {
 
 void InlinePresetBrowser::updateVisibility() {
     const bool showingPresets = tab == WorkspaceSidebarTab::Presets;
-    curves.setToggleState(!showingPresets, juce::dontSendNotification);
+    curves.setToggleState(tab == WorkspaceSidebarTab::Curves, juce::dontSendNotification);
     presets.setToggleState(showingPresets, juce::dontSendNotification);
     patterns.setToggleState(tab == WorkspaceSidebarTab::Patterns,
             juce::dontSendNotification);
     curves.setColour(
             juce::TextButton::textColourOffId,
-            showingPresets ? CanvasChromePalette::mutedText : CanvasChromePalette::text);
+            tab == WorkspaceSidebarTab::Curves ? CanvasChromePalette::text : CanvasChromePalette::mutedText);
     curves.setColour(juce::TextButton::textColourOnId, CanvasChromePalette::text);
     presets.setColour(
             juce::TextButton::textColourOffId,
@@ -689,6 +736,9 @@ void InlinePresetBrowser::updateVisibility() {
             tab == WorkspaceSidebarTab::Patterns
                     ? CanvasChromePalette::text : CanvasChromePalette::mutedText);
     patterns.setColour(juce::TextButton::textColourOnId, CanvasChromePalette::text);
+    nodes.setToggleState(tab == WorkspaceSidebarTab::Nodes, juce::dontSendNotification);
+    nodes.setColour(juce::TextButton::textColourOffId, CanvasChromePalette::mutedText);
+    nodes.setColour(juce::TextButton::textColourOnId, CanvasChromePalette::text);
     toolbar.setVisible(showingPresets);
     tagHeading.setVisible(showingPresets);
     tagCloud.setVisible(showingPresets);

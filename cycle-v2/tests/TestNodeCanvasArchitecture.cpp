@@ -126,7 +126,7 @@ TEST_CASE("Signal probe rail overlays the full canvas", "[cycle-v2][canvas][prob
             { false, false, false, expanded.expandedHeight }).content == workspace);
 }
 
-TEST_CASE("Workspace dock gives the unified sidebar the former minimap region",
+TEST_CASE("Workspace dock places the unified sidebar left and Spies beside it",
         "[cycle-v2][canvas][guide-dock]") {
     const Rectangle<float> workspace { 0.f, 0.f, 1000.f, 700.f };
     WorkspaceDockState state;
@@ -135,10 +135,10 @@ TEST_CASE("Workspace dock gives the unified sidebar the former minimap region",
     const CanvasUtilityDockLayout utilities = CanvasUtilityDock::layout(workspace);
     REQUIRE(balanced.content == workspace);
     REQUIRE(balanced.leftShelf.getY() == workspace.getY() + CanvasUtilityDock::margin);
-    REQUIRE(balanced.leftShelf.getRight() == utilities.minimap.getRight());
+    REQUIRE(balanced.leftShelf.getX() == workspace.getX() + CanvasUtilityDock::margin);
     REQUIRE(balanced.leftShelf.getWidth() == Catch::Approx(256.f));
-    REQUIRE(balanced.leftShelf.intersects(utilities.minimap));
-    REQUIRE(balanced.leftShelf.getX() > balanced.rightShelf.getRight());
+    REQUIRE_FALSE(balanced.leftShelf.intersects(utilities.minimap));
+    REQUIRE(balanced.leftShelf.getRight() + CanvasUtilityDock::gap == balanced.rightShelf.getX());
     REQUIRE(balanced.leftShelf.getHeight() > WorkspaceDock::guideTileHeight);
     REQUIRE(balanced.rightShelf.getBottom() == workspace.getBottom());
     REQUIRE(balanced.collapseHandle.isEmpty());
@@ -175,7 +175,7 @@ TEST_CASE("Workspace dock gives the unified sidebar the former minimap region",
     const Rectangle<float> narrowWorkspace { 0.f, 0.f, 800.f, 600.f };
     const WorkspaceDockLayout narrow = WorkspaceDock::layout(narrowWorkspace, state);
     const CanvasUtilityDockLayout narrowUtilities = CanvasUtilityDock::layout(narrowWorkspace);
-    REQUIRE(narrow.leftShelf.intersects(narrowUtilities.minimap));
+    REQUIRE_FALSE(narrow.leftShelf.intersects(narrowUtilities.minimap));
     REQUIRE(narrow.leftShelf.getHeight()
             >= WorkspaceDock::headerHeight + WorkspaceDock::guideTileHeight);
     REQUIRE_FALSE(narrow.leftShelf.intersects(narrow.rightShelf));
@@ -438,8 +438,8 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
         }
         return count;
     };
-    REQUIRE(alphaCount({ 374, 44, 12, 12 }) > 0);
-    REQUIRE(alphaCount({ 74, 44, 12, 12 }) > 0);
+    REQUIRE(alphaCount({ 304, 44, 12, 12 }) > 0);
+    REQUIRE(alphaCount({ 4, 44, 12, 12 }) > 0);
     const auto dock = WorkspaceDock::layout(
             frame.workspaceBounds,
             {
@@ -456,7 +456,7 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
     WorkspaceDock::paintChrome(graphics, dock, "Curve Guides", "Spies", true, false);
     GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
     const Point<int> terminal {
-            roundToInt(dock.leftShelf.getX()),
+            roundToInt(dock.leftShelf.getRight()),
             roundToInt(guideTile.getCentreY())
     };
     REQUIRE(alphaCount(Rectangle<int>(12, 12).withCentre(terminal)) > 0);
@@ -951,8 +951,8 @@ TEST_CASE("Node palette resolves every authored node kind from its visible entry
 
     for (int sectionIndex = 0; sectionIndex < palette.sectionCount(); ++sectionIndex) {
         const auto& section = palette.section(sectionIndex);
-        REQUIRE(palette.updateHover(palette.groupBounds(sectionIndex).getCentre()));
-        REQUIRE(palette.activeSection() == sectionIndex);
+        REQUIRE(palette.activeSection() == -1);
+        REQUIRE(String(section.title) != "Channel");
 
         for (int entryIndex = 0; entryIndex < section.entryCount; ++entryIndex) {
             NodeKind resolvedKind {};
@@ -973,7 +973,89 @@ TEST_CASE("Every registered node kind has a parseable palette icon",
     }
 }
 
-TEST_CASE("Use Voice Time is a compact single-output utility",
+TEST_CASE("Authored palette icons remain legible inside their production canvas",
+        "[cycle-v2][canvas][palette][icons]") {
+    ScopedJuceInitialiser_GUI juce;
+    MessageManagerLock messageLock;
+    const NodePalette palette;
+    Image sheet(Image::RGB, 720, 540, true);
+    Graphics sheetGraphics(sheet);
+    sheetGraphics.fillAll(Colour(0xff171d24));
+    int itemIndex {};
+    for (int sectionIndex = 0; sectionIndex < palette.sectionCount(); ++sectionIndex) {
+        const auto& section = palette.section(sectionIndex);
+        for (int index = 0; index < section.entryCount; ++index) {
+            const auto& entry = section.entries[index];
+            INFO(entry.label);
+            Image icon(Image::ARGB, 32, 32, true);
+            Graphics graphics(icon);
+            NodePaletteEntryIconRenderer::paint(graphics, entry.kind, { 0.f, 0.f, 32.f, 32.f }, false);
+            Rectangle<int> occupied;
+            int pixels {};
+            bool monochrome = true;
+            for (int y = 0; y < 32; ++y) {
+                for (int x = 0; x < 32; ++x) {
+                    const auto pixel = icon.getPixelAt(x, y);
+                    if (pixel.getAlpha() > 64) {
+                        monochrome = monochrome && pixel.getRed() == pixel.getGreen()
+                                && pixel.getGreen() == pixel.getBlue();
+                        occupied = occupied.getUnion({ x, y, 1, 1 });
+                        ++pixels;
+                    }
+                }
+            }
+            REQUIRE(monochrome);
+            REQUIRE(pixels > 35);
+            REQUIRE(occupied.getWidth() >= 15);
+            REQUIRE(occupied.getHeight() >= 12);
+            REQUIRE(occupied.getWidth() <= 30);
+            REQUIRE(occupied.getHeight() <= 30);
+            const int x = (itemIndex % 6) * 120;
+            const int y = (itemIndex / 6) * 180;
+            NodePaletteEntryIconRenderer::paint(sheetGraphics, entry.kind,
+                    { (float) x + 12.f, (float) y + 4.f, 96.f, 96.f }, false);
+            sheetGraphics.drawImageAt(icon, x + 44, y + 106);
+            sheetGraphics.setColour(Colours::white);
+            sheetGraphics.setFont(FontOptions(12.f));
+            sheetGraphics.drawText(String::fromUTF8(entry.label), x, y + 144, 120, 20, Justification::centred);
+            ++itemIndex;
+        }
+    }
+    const String reviewPath = SystemStats::getEnvironmentVariable("CYCLE_PALETTE_REVIEW_PATH", {});
+    if (reviewPath.isNotEmpty()) {
+        FileOutputStream stream { File(reviewPath) };
+        REQUIRE(stream.openedOk());
+        REQUIRE(PNGImageFormat().writeImageToStream(sheet, stream));
+    }
+}
+
+TEST_CASE("Palette semantic colours appear only on hover without mutating the resting icon",
+        "[cycle-v2][canvas][palette][icons]") {
+    ScopedJuceInitialiser_GUI juce;
+    MessageManagerLock messageLock;
+    const auto render = [](bool hover) {
+        Image image(Image::ARGB, 32, 32, true);
+        Graphics graphics(image);
+        NodePaletteEntryIconRenderer::paint(graphics, NodeKind::ModulationTriple,
+                { 0.f, 0.f, 32.f, 32.f }, hover);
+        return image;
+    };
+    const Image resting = render(false);
+    const Image hovered = render(true);
+    bool hasSemanticColour = false;
+    for (int y = 0; y < 32; ++y) {
+        for (int x = 0; x < 32; ++x) {
+            const auto pixel = hovered.getPixelAt(x, y);
+            if (pixel.getAlpha() > 64 && pixel.getSaturation() > 0.3f) {
+                hasSemanticColour = true;
+            }
+        }
+    }
+    REQUIRE(hasSemanticColour);
+    REQUIRE(imageChecksum(resting) == imageChecksum(render(false)));
+}
+
+TEST_CASE("Ignore Scratch is a compact single-output utility",
         "[cycle-v2][canvas][voice-context][scratch]") {
     const Node node = GraphNodeFactory().createNode(
             NodeKind::ScratchDefaultOverride,
@@ -1116,22 +1198,88 @@ TEST_CASE("Envelope mode selector presents one contiguous highlighted choice",
     REQUIRE(changes == 3);
 }
 
-TEST_CASE("Node palette hover remains open across its pullout and closes outside",
+TEST_CASE("Node palette hover tracks direct entries without hiding other groups",
         "[cycle-v2][canvas][palette]") {
     NodePalette palette;
     const int sourceSection = 3;
     const int adjacentSection = 4;
 
-    REQUIRE(palette.updateHover(palette.groupBounds(sourceSection).getCentre()));
+    REQUIRE(palette.updateHover(palette.entryBounds(sourceSection, 0).getCentre()));
     REQUIRE_FALSE(palette.updateHover(palette.entryBounds(sourceSection, 0).getCentre()));
     REQUIRE(palette.activeSection() == sourceSection);
+    REQUIRE(palette.updateHover(palette.entryBounds(sourceSection, 1).getCentre()));
+    REQUIRE(palette.activeEntry() == 1);
+    REQUIRE_FALSE(palette.updateHover(palette.entryBounds(sourceSection, 1).getCentre()));
 
-    REQUIRE(palette.updateHover(palette.groupBounds(adjacentSection).getCentre()));
+    REQUIRE(palette.updateHover(palette.entryBounds(adjacentSection, 0).getCentre()));
     REQUIRE(palette.activeSection() == adjacentSection);
 
     REQUIRE(palette.updateHover({ 800.f, 700.f }));
     REQUIRE(palette.activeSection() == -1);
     REQUIRE_FALSE(palette.close());
+    palette.setVisible(false);
+    NodeKind kind {};
+    REQUIRE_FALSE(palette.findKindAt(palette.entryBounds(0, 0).getCentre(), kind));
+    REQUIRE(palette.pointerTargets().empty());
+    palette.setVisible(true);
+    REQUIRE(palette.findKindAt(palette.entryBounds(0, 0).getCentre(), kind));
+
+}
+
+TEST_CASE("Node palette has aligned ragged rows and two directly accessible FX rows",
+        "[cycle-v2][canvas][palette]") {
+    NodePalette palette;
+    const auto first = palette.entryBounds(0, 0);
+    for (int sectionIndex = 0; sectionIndex < palette.sectionCount(); ++sectionIndex) {
+        const auto& section = palette.section(sectionIndex);
+        const auto group = palette.groupBounds(sectionIndex);
+        REQUIRE(group.getX() == first.getX());
+        if (sectionIndex > 0) {
+            REQUIRE(group.getY() - palette.groupBounds(sectionIndex - 1).getBottom()
+                    == Catch::Approx(24.f));
+        }
+        for (int index = 0; index < section.entryCount; ++index) {
+            const auto tile = palette.entryBounds(sectionIndex, index);
+            REQUIRE(tile.getWidth() == Catch::Approx(83.f * 0.8f));
+            REQUIRE(tile.getHeight() == Catch::Approx(78.f * 0.8f));
+            REQUIRE(tile.getY() == Catch::Approx(group.getY() + 25.f + (index / 3) * 68.4f));
+            if (index % 3 == 0) {
+                REQUIRE(tile.getX() == first.getX());
+            }
+        }
+    }
+    const int fx = palette.sectionCount() - 1;
+    REQUIRE(palette.section(fx).entryCount == 6);
+    REQUIRE(palette.entryBounds(fx, 5).getBottom() == Catch::Approx(palette.groupBounds(fx).getBottom()));
+    NodeKind kind {};
+    REQUIRE(palette.findKindAt(palette.entryBounds(fx, 5).getCentre(), kind));
+    REQUIRE(kind == NodeKind::Equalizer);
+    const auto emptyCell = palette.entryBounds(4, 3).getCentre().translated(75.f, 0.f);
+    REQUIRE_FALSE(palette.findKindAt(emptyCell, kind));
+    REQUIRE(palette.findSectionAt(emptyCell) == -1);
+}
+
+TEST_CASE("Nodes palette stays inside the unified sidebar through resizing",
+        "[cycle-v2][canvas][palette][guide-dock]") {
+    NodePalette palette;
+    for (const Rectangle<float> workspace : {
+            Rectangle<float>(0.f, 0.f, 1000.f, 700.f),
+            Rectangle<float>(40.f, 20.f, 1400.f, 900.f) }) {
+        const auto dock = WorkspaceDock::layout(workspace, {});
+        const auto browser = GuideCurveShelf::guideWorkspace(workspace);
+        palette.setWorkspaceBounds(browser);
+        REQUIRE(browser.getX() == workspace.getX());
+        REQUIRE(palette.groupBounds(0).getCentreX() == Catch::Approx(browser.getCentreX()));
+        REQUIRE(browser.contains(palette.railBounds()));
+        REQUIRE(dock.rightShelf.getX() == browser.getRight() + CanvasUtilityDock::gap);
+        REQUIRE(WorkspaceDock::editorAvailableBounds(dock).getX() == dock.rightShelf.getX());
+        for (const auto& [id, bounds] : palette.pointerTargets()) {
+            NodeKind kind {};
+            REQUIRE(palette.findKindAt(bounds.getCentre(), kind));
+            REQUIRE(id == "palette:" + NodeDefinitionRegistry::instance().find(kind)->typeId);
+            REQUIRE(palette.railBounds().expanded(0.001f).contains(bounds));
+        }
+    }
 }
 
 TEST_CASE("Node canvas viewport transforms round trip and preserve zoom anchors", "[cycle-v2][canvas]") {

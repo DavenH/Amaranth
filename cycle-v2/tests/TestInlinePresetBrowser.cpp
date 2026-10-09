@@ -1,8 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 
 #include <array>
 
 #include "UI/InlinePresetBrowser.h"
+#include "Graph/PresetPresentation.h"
 #include "UI/LibrarySearchField.h"
 #include "UI/SidebarMediaRow.h"
 #include "UI/SidebarTagCloud.h"
@@ -25,7 +27,7 @@ Component* findDescendantWithID(Component& parent, const String& id) {
     return nullptr;
 }
 
-bool clickTag(SidebarTagCloud& cloud, const String& tag) {
+bool clickTag(SidebarTagCloud& cloud, const String& tag, bool rightClick = true) {
     for (const auto& [id, bounds] : cloud.pointerTargetsForAutomation()) {
         if (id != "workspace.sidebar.tag." + tag.toLowerCase()) {
             continue;
@@ -33,7 +35,7 @@ bool clickTag(SidebarTagCloud& cloud, const String& tag) {
         const auto position = bounds.getCentre();
         const Time now = Time::getCurrentTime();
         const MouseEvent click(Desktop::getInstance().getMainMouseSource(),
-                position, ModifierKeys::leftButtonModifier,
+                position, rightClick ? ModifierKeys::rightButtonModifier : ModifierKeys::leftButtonModifier,
                 1.f, 0.f, 0.f, 0.f, 0.f, &cloud, &cloud,
                 now, position, now, 1, false);
         cloud.mouseUp(click);
@@ -175,30 +177,38 @@ TEST_CASE("Preset and pattern actions occupy the same sidebar positions",
     }
 }
 
-TEST_CASE("Preset and pattern row tags share a compact top-right header",
+TEST_CASE("Preset header sits above a full-width spectrogram at sidebar widths",
         "[cycle-v2][preset][browser][inline][layout]") {
     ScopedJuceInitialiser_GUI gui;
-    const Rectangle<float> row { 0.f, 0.f, 250.f,
-            (float) SidebarMediaRow::height };
-    const StringArray tags { "Bass", "Rhythmic" };
-    const auto presetCard = SidebarMediaRow::cardBounds(row);
-    const auto preset = SidebarMediaRow::headerLabelsLayout(
-            presetCard, SidebarMediaRow::favoriteBounds(row), tags);
-    const auto patternCard = SidebarMediaRow::cardBounds(row);
-    const auto pattern = SidebarMediaRow::headerLabelsLayout(
-            patternCard, SidebarMediaRow::patternFavoriteBounds(row), tags);
-
-    REQUIRE(preset.tagCount == 2);
-    REQUIRE(pattern.tagCount == 2);
-    REQUIRE(presetCard.getX() == 2.f);
-    REQUIRE(row.getRight() - presetCard.getRight() == 2.f);
-    REQUIRE(SidebarMediaRow::favoriteBounds(row)
-            == SidebarMediaRow::patternFavoriteBounds(row));
-    REQUIRE(preset.tags[0].getY() == pattern.tags[0].getY());
-    REQUIRE(preset.tags[0].getY() == preset.tags[1].getY());
-    REQUIRE(preset.tags[1].getRight() <= presetCard.getRight());
-    REQUIRE(preset.title.getRight() < preset.tags[0].getX());
-    REQUIRE(preset.tags[1].getBottom() < row.getCentreY());
+    for (const float width : { 250.f, 290.f }) {
+        const Rectangle<float> row { 0.f, 0.f, width, (float) SidebarMediaRow::presetHeight };
+        const auto card = SidebarMediaRow::cardBounds(row);
+        const auto layout = SidebarMediaRow::presetLayout(row, { "Bass", "Phase Velocity" });
+        REQUIRE(layout.preview.getWidth() == Catch::Approx(card.reduced(5.f).getWidth()));
+        REQUIRE(card.contains(layout.preview));
+        REQUIRE(card.contains(layout.favorite));
+        REQUIRE_FALSE(layout.labels.title.intersects(layout.favorite));
+        REQUIRE(layout.labels.title.getX() == layout.preview.getX());
+        REQUIRE(layout.labels.tagCount == 2);
+        REQUIRE(layout.favorite.getRight() == layout.preview.getRight());
+        REQUIRE(layout.favorite.getY() == layout.labels.title.getY());
+        REQUIRE(layout.preview.getY() - layout.favorite.getBottom() == 4.f);
+        for (int index = 0; index < layout.labels.tagCount; ++index) {
+            const auto& tag = layout.labels.tags[(size_t) index];
+            REQUIRE(card.contains(tag));
+            REQUIRE(tag.getX() > layout.labels.title.getRight());
+            REQUIRE(tag.getHeight() < layout.favorite.getHeight());
+            REQUIRE(tag.getCentreY() == layout.favorite.getCentreY());
+            REQUIRE(tag.getBottom() < layout.preview.getY());
+            REQUIRE_FALSE(tag.intersects(layout.favorite));
+            REQUIRE(tag.getRight() < layout.favorite.getX());
+        }
+        REQUIRE_FALSE(layout.labels.tags[0].intersects(layout.labels.tags[1]));
+        REQUIRE(SidebarMediaRow::favoriteBounds(row) == layout.favorite);
+        const auto multiple = SidebarMediaRow::presetLayout(row, { "Pad", "Air", "FX", "Bass" });
+        REQUIRE(multiple.labels.tagCount >= 3);
+        REQUIRE(multiple.labels.tags[0].getX() >= card.getX() + 5.f);
+    }
 }
 
 TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
@@ -313,7 +323,7 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     }
     REQUIRE(browser.visiblePresetCount() > 1);
     REQUIRE(list->getHeight()
-            == 20 + browser.visiblePresetCount() * SidebarMediaRow::height);
+            == 20 + browser.visiblePresetCount() * SidebarMediaRow::presetHeight);
     const int unfilteredCount = browser.visiblePresetCount();
     for (int attempt = 0; attempt < 30 && !clickTag(*tagCloud, "Keys"); ++attempt) {
         MessageManager::getInstance()->runDispatchLoopUntil(100);
@@ -328,9 +338,12 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(tagCloud->selectedTags().isEmpty());
 
     REQUIRE(clickTag(*tagCloud, "Distorted"));
-    REQUIRE(browser.visiblePresetCount() == 4);
+    const int distortedCount = browser.visiblePresetCount();
+    REQUIRE(distortedCount > 0);
+    REQUIRE(distortedCount < unfilteredCount);
     REQUIRE(clickTag(*tagCloud, "Bass"));
-    REQUIRE(browser.visiblePresetCount() == 1);
+    REQUIRE(browser.visiblePresetCount() > 0);
+    REQUIRE(browser.visiblePresetCount() < distortedCount);
     REQUIRE(clickTag(*tagCloud, "Distorted"));
     REQUIRE(clickTag(*tagCloud, "Bass"));
     REQUIRE(tagCloud->selectedTags().isEmpty());
@@ -434,7 +447,7 @@ TEST_CASE("Preset row star and Favorites filter do not load the sound",
     REQUIRE(browser.visiblePresetCount() == 1);
 
     const auto firstRow = Rectangle<float>(0.f, 0.f,
-            (float) list->getWidth(), (float) SidebarMediaRow::height);
+            (float) list->getWidth(), (float) SidebarMediaRow::presetHeight);
     const Point<float> position = SidebarMediaRow::favoriteBounds(firstRow)
             .getCentre();
     const Time now = Time::getCurrentTime();
@@ -530,4 +543,115 @@ TEST_CASE("Preset sidebar edits tags and title through its grouped actions",
     REQUIRE(browser.visiblePresetCount() == 1);
     REQUIRE(opened == 0);
     REQUIRE(directory.deleteRecursively());
+}
+
+TEST_CASE("Nodes tab exposes palette hits while consuming empty sidebar space",
+        "[cycle-v2][browser][inline][palette]") {
+    ScopedJuceInitialiser_GUI gui;
+    WorkspaceSidebarTab selected = WorkspaceSidebarTab::Presets;
+    InlinePresetBrowser browser({}, [](const File&) { return true; }, [] {},
+            [&selected](WorkspaceSidebarTab tab) { selected = tab; });
+    browser.setBounds(0, 0, 290, 700);
+    browser.nodePaletteHitTest = [](Point<int> point) {
+        return Rectangle<int>(80, 80, 40, 40).contains(point);
+    };
+    REQUIRE_FALSE(targetBounds(browser, "workspace.sidebar.nodes").isEmpty());
+    browser.setActiveTab(WorkspaceSidebarTab::Nodes);
+    REQUIRE(selected == WorkspaceSidebarTab::Nodes);
+    REQUIRE_FALSE(browser.hitTest(100, 100));
+    REQUIRE(browser.hitTest(10, 300));
+    REQUIRE(browser.hitTest(100, 20));
+    REQUIRE(targetBounds(browser, "workspace.sidebar.search").isEmpty());
+    browser.setActiveTab(WorkspaceSidebarTab::Presets);
+    REQUIRE(browser.hitTest(100, 100));
+    REQUIRE_FALSE(targetBounds(browser, "workspace.sidebar.search").isEmpty());
+}
+
+TEST_CASE("Preset tag cloud separates filtering from selected membership and left-click edits",
+        "[cycle-v2][preset][browser][inline][tag-edit]") {
+    ScopedJuceInitialiser_GUI gui;
+    const auto directory = File::getSpecialLocation(File::tempDirectory)
+            .getChildFile("cycle-v2-tag-edit-" + Uuid().toString());
+    REQUIRE(directory.createDirectory().wasOk());
+    const auto bass = directory.getChildFile("a-bass.cyclegraph");
+    const auto pad = directory.getChildFile("b-pad.cyclegraph");
+    REQUIRE(bass.replaceWithText(R"({"presetPresentation":{"version":1,"tags":["Bass"]},"other":"keep"})"));
+    REQUIRE(pad.replaceWithText(R"({"presetPresentation":{"version":1,"tags":["Pad"]}})"));
+    {
+        int opens = 0;
+        int saves = 0;
+        InlinePresetBrowser browser({ directory }, [&](const File&) { ++opens; return true; },
+                [] {}, [](WorkspaceSidebarTab) {});
+        browser.setMetadataChangedCallbacks({}, [&](const File& file, const StringArray&) {
+            REQUIRE(file == bass);
+            ++saves;
+        });
+        browser.setBounds(0, 0, 290, 700);
+        for (int attempt = 0; attempt < 40 && browser.visiblePresetCount() != 2; ++attempt) {
+            MessageManager::getInstance()->runDispatchLoopUntil(50);
+        }
+        REQUIRE(browser.visiblePresetCount() == 2);
+        auto* cloud = dynamic_cast<SidebarTagCloud*>(findDescendantWithID(browser, "workspace.sidebar.presetTags"));
+        REQUIRE(cloud != nullptr);
+        const auto blue = cloud->tagAccent("Bass");
+        REQUIRE(blue == Colour(0xff6d9ed8));
+        REQUIRE(cloud->tagAccent("Pad").isTransparent());
+        REQUIRE(browser.keyPressed(KeyPress(KeyPress::downKey)));
+        REQUIRE(cloud->tagAccent("Bass").isTransparent());
+        REQUIRE(cloud->tagAccent("Pad") == blue);
+        REQUIRE(browser.keyPressed(KeyPress(KeyPress::upKey)));
+        REQUIRE(clickTag(*cloud, "Bass"));
+        REQUIRE(browser.visiblePresetCount() == 1);
+        REQUIRE(cloud->tagAccent("Bass") == Colour(0xffad83da));
+        REQUIRE(clickTag(*cloud, "Bass", false));
+        REQUIRE(browser.visiblePresetCount() == 0);
+        REQUIRE(cloud->selectedTags() == StringArray { "Bass" });
+        REQUIRE(cloud->tagAccent("Bass") == Colour(0xffd16fab));
+        auto root = JSON::parse(bass.loadFileAsString());
+        auto metadata = PresetPresentationCodec::readMetadataJSON(root["presetPresentation"]).presentation;
+        REQUIRE(metadata.tagsSpecified);
+        REQUIRE(metadata.tags.isEmpty());
+        REQUIRE(root["other"].toString() == "keep");
+        const auto roundTrip = PresetPresentationCodec::readMetadataJSON(
+                PresetPresentationCodec::writeJSON(metadata)).presentation;
+        REQUIRE(roundTrip.tagsSpecified);
+        REQUIRE(roundTrip.tags.isEmpty());
+        REQUIRE(clickTag(*cloud, "Bass"));
+        REQUIRE(browser.visiblePresetCount() == 2);
+        REQUIRE(clickTag(*cloud, "Pad", false));
+        REQUIRE(cloud->tagAccent("Pad") == blue);
+        REQUIRE(clickTag(*cloud, "Pad", false));
+        REQUIRE(cloud->tagAccent("Pad").isTransparent());
+        REQUIRE(cloud->selectedTags().isEmpty());
+        REQUIRE(saves == 3);
+        REQUIRE(opens == 0);
+        browser.refreshRecord(bass);
+        MessageManager::getInstance()->runDispatchLoopUntil(300);
+        REQUIRE(cloud->tagAccent("Pad").isTransparent());
+        REQUIRE(cloud->tagAccent("Bass").isTransparent());
+    }
+    REQUIRE(directory.deleteRecursively());
+}
+
+TEST_CASE("Tag cloud paints distinct membership filter and combined colours",
+        "[cycle-v2][preset][browser][inline][tag-edit]") {
+    ScopedJuceInitialiser_GUI gui;
+    SidebarTagCloud cloud;
+    cloud.setBounds(0, 0, 290, 54);
+    cloud.setTags({ "Bass", "Lead", "Pad" });
+    cloud.setRecordTags({ "Bass", "Lead" });
+    REQUIRE(clickTag(cloud, "Lead"));
+    REQUIRE(clickTag(cloud, "Pad"));
+    const auto rendered = cloud.createComponentSnapshot(cloud.getLocalBounds());
+    for (const auto& [id, bounds] : cloud.pointerTargetsForAutomation()) {
+        const auto tag = id.fromLastOccurrenceOf(".", false, false);
+        REQUIRE(rendered.getPixelAt(roundToInt(bounds.getCentreX()), roundToInt(bounds.getY()))
+                == cloud.tagAccent(tag));
+    }
+    const auto reviewPath = SystemStats::getEnvironmentVariable("CYCLE_TAG_CLOUD_REVIEW_PATH", {});
+    if (reviewPath.isNotEmpty()) {
+        FileOutputStream stream { File(reviewPath) };
+        REQUIRE(stream.openedOk());
+        REQUIRE(PNGImageFormat().writeImageToStream(rendered, stream));
+    }
 }

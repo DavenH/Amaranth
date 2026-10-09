@@ -1,4 +1,5 @@
 #include <optional>
+#include <utility>
 
 #include <UI/Panels/TimeSurfaceStyles.h>
 
@@ -11,9 +12,9 @@
 #include "App/CycleV2AutomationSessionTransport.h"
 #include "App/CycleV2AutomationWorkspaceCommands.h"
 #include "App/OfflineAudioCaptureAutomation.h"
+#include "Graph/NodeDefinition.h"
+#include "UI/NodePalette.h"
 #include "UI/NodeWorkspace.h"
-
-#include <utility>
 
 namespace CycleV2 {
 
@@ -565,22 +566,17 @@ var CycleV2Automation::invokeMenuItem(const var& commandValue) {
 
 var CycleV2Automation::listPaletteItems() const {
     Array<var> items;
-    items.add(paletteItemToVar("voiceContext", "Context", "Voice Context"));
-    items.add(paletteItemToVar("fft", "Transform", "Time -> Freq"));
-    items.add(paletteItemToVar("ifft", "Transform", "Freq -> Time"));
-    items.add(paletteItemToVar("add", "Math", "Add"));
-    items.add(paletteItemToVar("multiply", "Math", "Multiply"));
-    items.add(paletteItemToVar("waveSource", "Source", "Wave"));
-    items.add(paletteItemToVar("imageSource", "Source", "Image"));
-    items.add(paletteItemToVar("trilinearMesh", "Source", "Mesh"));
-    items.add(paletteItemToVar("envelope", "Control", "Envelope"));
-    items.add(paletteItemToVar("impulseResponse", "FX", "IR"));
-    items.add(paletteItemToVar("waveshaper", "FX", "Waveshaper"));
-    items.add(paletteItemToVar("reverb", "FX", "Reverb"));
-    items.add(paletteItemToVar("delay", "FX", "Delay"));
-    items.add(paletteItemToVar("stereoSplit", "Channel", "Split"));
-    items.add(paletteItemToVar("stereoJoin", "Channel", "Join"));
-    items.add(paletteItemToVar("output", "Channel", "Output"));
+    const NodePalette palette;
+    for (int sectionIndex = 0; sectionIndex < palette.sectionCount(); ++sectionIndex) {
+        const auto& section = palette.section(sectionIndex);
+        for (int entryIndex = 0; entryIndex < section.entryCount; ++entryIndex) {
+            const auto& entry = section.entries[entryIndex];
+            const auto* definition = NodeDefinitionRegistry::instance().find(entry.kind);
+            if (definition != nullptr) {
+                items.add(paletteItemToVar(definition->typeId, section.title, String::fromUTF8(entry.label)));
+            }
+        }
+    }
 
     var data = makeObject();
     objectFor(data)->setProperty("items", items);

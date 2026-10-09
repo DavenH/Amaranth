@@ -242,6 +242,7 @@ NodeCanvas::NodeCanvas() :
     setOpaque(true);
     setName("NodeCanvas");
     setWantsKeyboardFocus(true);
+    palette.setVisible(false);
     openGLContext.setRenderer(this);
     openGLContext.setContinuousRepainting(false);
     openGLContext.attachTo(*this);
@@ -267,6 +268,7 @@ void NodeCanvas::configurePresetSidebar(
             std::move(browseCallback),
             [this](WorkspaceSidebarTab tab) {
                 guideShelfState.presetBrowserVisible = tab != WorkspaceSidebarTab::Curves;
+                palette.setVisible(tab == WorkspaceSidebarTab::Nodes);
                 guideShelfState.hoveredGuideId.clear();
                 requestCanvasRepaint();
                 openGLContext.triggerRepaint();
@@ -292,6 +294,11 @@ void NodeCanvas::configurePresetSidebar(
             });
     guideShelfState.presetBrowserVisible = presetSidebar->activeTab()
             != WorkspaceSidebarTab::Curves;
+    palette.setVisible(presetSidebar->activeTab() == WorkspaceSidebarTab::Nodes);
+    presetSidebar->nodePaletteHitTest = [this](Point<int> position) {
+        return palette.findSectionAt(position.toFloat()
+                + presetSidebar->getPosition().toFloat()) >= 0;
+    };
     addAndMakeVisible(*presetSidebar);
     resized();
 }
@@ -384,9 +391,18 @@ void NodeCanvas::paint(Graphics& g) {
     }
 }
 
+std::vector<std::pair<String, Rectangle<float>>> NodeCanvas::palettePointerTargetsForAutomation() const {
+    if (!expandedEditorBoundsForOverlay().isEmpty()) {
+        return {};
+    }
+    return palette.pointerTargets();
+}
+
 void NodeCanvas::resized() {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::LayoutLifecycle);
+    palette.setWorkspaceBounds(GuideCurveShelf::guideWorkspace(
+            getLocalBounds().toFloat(), guideShelfState.minimized, probeRailState.minimized));
     viewport.setBounds(canvasContentBounds());
     if (!documentViewportFitted && !canvasContentBounds().isEmpty()) {
         fitDocumentInViewport();
@@ -453,6 +469,7 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
         ModifierKeys modifiers) {
     const uint64_t startedAt = performanceMetrics.timestamp();
     const int previousPaletteSection = palette.activeSection();
+    const int previousPaletteEntry = palette.activeEntry();
     const String previousGuideId = guideShelfState.hoveredGuideId;
     const String previousProbeId = probeRailState.hoveredProbeId;
     const int previousHoveredEdgeIndex = hoveredEdgeIndex;
@@ -541,6 +558,7 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
             CanvasPerformanceMetrics::Operation::HoverResolution,
             performanceMetrics.timestamp() - startedAt);
     const bool canvasChanged = previousPaletteSection != palette.activeSection()
+            || previousPaletteEntry != palette.activeEntry()
             || previousGuideId != guideShelfState.hoveredGuideId
             || previousProbeId != probeRailState.hoveredProbeId
             || previousHoveredEdgeIndex != hoveredEdgeIndex;
@@ -604,7 +622,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         }
     }
 
-    if (dockInteraction->mouseDown(event, workspace)) {
+    if (!(palette.isVisible() && palette.workspaceBounds().contains(event.position))
+            && dockInteraction->mouseDown(event, workspace)) {
         return;
     }
     guideShelfState.selectedGuideId = {};
@@ -1199,14 +1218,18 @@ void NodeCanvas::timerCallback() {
 
     const auto mouse = getMouseXYRelative().toFloat();
     const int previousPaletteSectionIndex = palette.activeSection();
+    const int previousPaletteEntryIndex = palette.activeEntry();
 
     if (getLocalBounds().toFloat().contains(mouse)) {
         palette.updateHover(mouse);
     }
 
     if (getLocalBounds().toFloat().contains(mouse)
-            && (mouse != lastMousePosition || previousPaletteSectionIndex != palette.activeSection())) {
-        const bool paletteChanged = previousPaletteSectionIndex != palette.activeSection();
+            && (mouse != lastMousePosition
+                    || previousPaletteSectionIndex != palette.activeSection()
+                    || previousPaletteEntryIndex != palette.activeEntry())) {
+        const bool paletteChanged = previousPaletteSectionIndex != palette.activeSection()
+                || previousPaletteEntryIndex != palette.activeEntry();
         HoverRepaint repaint = updateHoverAt(
                 mouse,
                 ModifierKeys::getCurrentModifiersRealtime());
@@ -1294,7 +1317,8 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
                     : String {},
             selectedNodeIds,
             hoveredEdgeIndex,
-            areaSelectionBounds
+            areaSelectionBounds,
+            canvasUtilityBounds()
     };
 }
 
@@ -1325,6 +1349,10 @@ Point<float> NodeCanvas::viewportCentreWorld() const {
 
 Rectangle<float> NodeCanvas::canvasContentBounds() const {
     return workspaceDockLayout().content;
+}
+
+Rectangle<float> NodeCanvas::canvasUtilityBounds() const {
+    return WorkspaceDock::editorAvailableBounds(workspaceDockLayout());
 }
 
 Rectangle<float> NodeCanvas::editorContentBounds() const {
@@ -1788,18 +1816,15 @@ void NodeCanvas::fitDocumentInViewport() {
 
     constexpr float visibleMargin = 40.f;
     constexpr float dockClearance = 12.f;
-    const Rectangle<float> content = canvasContentBounds();
+    const Rectangle<float> content = canvasUtilityBounds();
     const auto utilities = CanvasUtilityDock::layout(content);
     Rectangle<float> available = content.reduced(visibleMargin);
     const WorkspaceDockLayout dock = workspaceDockLayout();
-    if (!dock.leftShelf.isEmpty()) {
-        available.setRight(jmin(available.getRight(), dock.leftShelf.getX() - dockClearance));
-    }
     available.setTop(jmax(available.getY(), utilities.keyboard.getBottom() + dockClearance));
     available.setBottom(jmin(
             available.getBottom(),
             dock.dock.getY() - dockClearance));
-    viewport.setBounds(content);
+    viewport.setBounds(canvasContentBounds());
     viewport.fit(graphBounds, available);
 }
 
@@ -2241,7 +2266,7 @@ void NodeCanvas::finishPreviewModWheelRefresh() {
 }
 
 Rectangle<int> NodeCanvas::performanceKeyboardDockBounds() const {
-    return CanvasUtilityDock::layout(canvasContentBounds()).keyboard.toNearestInt();
+    return CanvasUtilityDock::layout(canvasUtilityBounds()).keyboard.toNearestInt();
 }
 
 Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
@@ -2930,7 +2955,7 @@ void NodeCanvas::flushRenderInvalidations(uint32_t categories) {
         return;
     }
     if ((categories & NodeCanvasInvalidation::StatusRepaint) != 0) {
-        Component::repaint(statusRepaintBounds(canvasContentBounds()));
+        Component::repaint(statusRepaintBounds(canvasUtilityBounds()));
     }
 }
 

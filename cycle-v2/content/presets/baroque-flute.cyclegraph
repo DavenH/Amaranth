@@ -712,7 +712,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2634.0, "y": 1084.0 },
+            "position": { "x": 2714.0, "y": 564.0 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.149532706, "blue": 0.098, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1686,6 +1686,9 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 3009.19995, "y": 886.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {

@@ -1211,3 +1211,26 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
 }
+
+TEST_CASE("Transform nodes compact legacy diagram widths when loading",
+        "[cycle-v2][serialization][transform-icons]") {
+    NodeGraph graph;
+    for (const auto kind : { NodeKind::Fft, NodeKind::Ifft }) {
+        const String id = kind == NodeKind::Fft ? "fft" : "ifft";
+        auto node = GraphNodeFactory().createNode(kind, id, { 100.f, 200.f });
+        REQUIRE(node.bounds.getWidth() == 180.f);
+        node.bounds.setWidth(278.f);
+        graph.addNode(std::move(node));
+    }
+    GraphSerializer serializer;
+    const auto loaded = serializer.loadJsonString(serializer.toJsonString(graph));
+    REQUIRE(loaded.succeeded());
+    for (const String id : { String("fft"), String("ifft") }) {
+        const auto* node = loaded.graph.findNode(id);
+        REQUIRE(node != nullptr);
+        REQUIRE(node->bounds == Rectangle<float>(100.f, 200.f, 180.f, 178.f));
+    }
+    const auto reloaded = serializer.loadJsonString(serializer.toJsonString(loaded.graph));
+    REQUIRE(reloaded.succeeded());
+    REQUIRE(serializer.toJsonString(reloaded.graph) == serializer.toJsonString(loaded.graph));
+}

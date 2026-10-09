@@ -66,6 +66,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.439252347,
@@ -180,6 +181,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.0,
                 "red": 0.439252347,
@@ -252,6 +254,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.439252347,
@@ -324,6 +327,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.439252347,
@@ -393,6 +397,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.439252347,
@@ -1154,7 +1159,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 1431.58813, "y": 1217.77649 },
-            "parameters": { "gain": 0.496183206 }
+            "parameters": { "gain": 0.646183 }
         },
         {
             "id": "globalInput",
@@ -1410,7 +1415,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Pad"],
+        "tags": [ "Pad", "Texture" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

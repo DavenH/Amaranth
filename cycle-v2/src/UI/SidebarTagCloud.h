@@ -13,6 +13,9 @@ public:
 
     static void styleHeading(juce::Label& heading);
     void setTags(juce::StringArray tags);
+    void setRecordTags(juce::StringArray tags);
+    void setEditCallback(std::function<void(const juce::String&)> callback);
+    juce::Colour tagAccent(const juce::String& tag) const;
     void setFavoritesAvailable(bool available);
     bool favoritesOnly() const { return favoriteSelected; }
     const juce::StringArray& selectedTags() const { return selected; }
@@ -39,6 +42,8 @@ private:
 
     juce::StringArray available;
     juce::StringArray selected;
+    juce::StringArray recordTags;
+    std::function<void(const juce::String&)> onEdit;
     bool showFavorites {};
     bool favoriteSelected {};
     std::vector<Chip> chips;

@@ -6,9 +6,12 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr int chipHeight = 21;
+constexpr int chipHeight = 18;
 constexpr int chipGap = 4;
 constexpr int horizontalInset = 1;
+const juce::Colour filterAccent { 0xffd16fab };
+const juce::Colour recordAccent { 0xff6d9ed8 };
+const juce::Colour combinedAccent { 0xffad83da };
 
 }
 
@@ -31,6 +34,27 @@ void SidebarTagCloud::setTags(juce::StringArray tags) {
     }
     resized();
     repaint();
+}
+
+void SidebarTagCloud::setRecordTags(juce::StringArray tags) {
+    recordTags = std::move(tags);
+    repaint();
+}
+
+void SidebarTagCloud::setEditCallback(std::function<void(const juce::String&)> callback) {
+    onEdit = std::move(callback);
+}
+
+juce::Colour SidebarTagCloud::tagAccent(const juce::String& tag) const {
+    const bool filtering = selected.contains(tag, true);
+    const bool assigned = recordTags.contains(tag, true);
+    if (filtering && assigned) {
+        return combinedAccent;
+    }
+    if (filtering) {
+        return filterAccent;
+    }
+    return assigned ? recordAccent : juce::Colours::transparentBlack;
 }
 
 void SidebarTagCloud::setFavoritesAvailable(bool available) {
@@ -80,17 +104,19 @@ void SidebarTagCloud::paint(juce::Graphics& graphics) {
     graphics.setFont(chipFont);
     for (int index = 0; index < (int) chips.size(); ++index) {
         const auto& chip = chips[(size_t) index];
-        const bool active = chip.favorite ? favoriteSelected
-                : selected.contains(chip.tag, true);
+        const auto accent = chip.favorite
+                ? (favoriteSelected ? filterAccent : juce::Colours::transparentBlack)
+                : tagAccent(chip.tag);
+        const bool active = !accent.isTransparent();
         const auto bounds = chip.bounds.toFloat();
         graphics.setColour(active
-                ? CanvasChromePalette::navigationAccent.withAlpha(0.25f)
+                ? accent.withAlpha(0.25f)
                 : index == hovered
                         ? CanvasChromePalette::raisedSurface
                         : CanvasChromePalette::restingControlSurface);
         graphics.fillRoundedRectangle(bounds, 4.f);
         graphics.setColour(active
-                ? CanvasChromePalette::navigationAccent
+                ? accent
                 : CanvasChromePalette::border);
         graphics.drawRoundedRectangle(bounds.reduced(0.5f), 4.f, 1.f);
         graphics.setColour(active
@@ -106,7 +132,7 @@ void SidebarTagCloud::paint(juce::Graphics& graphics) {
                 graphics.strokePath(star, juce::PathStrokeType(1.f));
             }
         }
-        graphics.drawFittedText(chip.tag,
+        graphics.drawFittedText(chip.tag.toLowerCase(),
                 chip.favorite ? chip.bounds.withTrimmedLeft(22).withTrimmedRight(6)
                         : chip.bounds.reduced(7, 0),
                 juce::Justification::centred, 1);
@@ -145,6 +171,14 @@ void SidebarTagCloud::mouseUp(const juce::MouseEvent& event) {
         if (!chip.bounds.contains(event.getPosition())) {
             continue;
         }
+        if (!event.mods.isPopupMenu() && !chip.favorite && onEdit) {
+            const auto tag = chip.tag;
+            onEdit(tag);
+            return;
+        }
+        if (event.mods.isPopupMenu() && chip.favorite) {
+            return;
+        }
         if (chip.favorite) {
             favoriteSelected = !favoriteSelected;
         } else {
@@ -176,7 +210,7 @@ std::vector<SidebarTagCloud::Chip> SidebarTagCloud::layoutForWidth(int width) co
         const auto& tag = labels[index];
         const bool favorite = showFavorites && index == 0;
         const int chipWidth = juce::jmin(juce::jmax(36,
-                (int) chipFont.getStringWidthFloat(tag) + (favorite ? 31 : 16)),
+                (int) chipFont.getStringWidthFloat(tag.toLowerCase()) + (favorite ? 31 : 16)),
                 juce::jmax(36, width - 2 * horizontalInset));
         if (x > horizontalInset && x + chipWidth > width - horizontalInset) {
             x = horizontalInset;

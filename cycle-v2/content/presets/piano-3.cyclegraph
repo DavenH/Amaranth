@@ -54,6 +54,7 @@
                 "gain": 0.5,
                 "range": 0.525,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -168,6 +169,7 @@
                 "gain": 0.5,
                 "range": 0.625,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.966,
                 "red": 0.5,
@@ -253,8 +255,9 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
-                "yellow": 0.5,
+                "yellow": 1.0,
                 "red": 0.5,
                 "blue": 0.5,
                 "primaryAxis": "yellow",
@@ -322,6 +325,7 @@
                 "gain": 0.5,
                 "range": 0.725,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -608,15 +612,15 @@
             "kind": "impulseResponse",
             "definitionVersion": 1,
             "position": { "x": 746.0, "y": 1541.0 },
-            "parameters": { "processingScope": "global", "enabled": true, "size": 0.285714286, "post": 0.408, "highPass": 0.0 },
+            "parameters": { "processingScope": "global", "enabled": true, "size": 0.285714286, "post": 0.18892, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 4,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 4,
                     "vertices": [
                         { "id": 1, "x": 0.03125, "y": 0.5, "curve": 0.0 },
                         { "id": 2, "x": 0.05599, "y": 0.50958, "curve": 0.0 },
@@ -684,7 +688,8 @@
                         { "id": 64, "x": 0.06771, "y": 0.5, "curve": 0.0 }
                     ]
                 }
-            }
+            },
+            "editor": { "selectedVertexId": 9 }
         },
         {
             "id": "reverb",

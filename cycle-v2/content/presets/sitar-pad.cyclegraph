@@ -51,6 +51,7 @@
                 "gain": 0.5,
                 "range": 0.65,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -1082,6 +1083,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -1148,6 +1150,7 @@
                 "gain": 0.5,
                 "range": 0.625,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -2195,7 +2198,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Pad", "Ambient"],
+        "tags": [ "Pad", "Texture" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

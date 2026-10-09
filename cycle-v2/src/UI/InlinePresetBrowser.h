@@ -20,7 +20,8 @@ namespace CycleV2 {
 enum class WorkspaceSidebarTab {
     Curves,
     Presets,
-    Patterns
+    Patterns,
+    Nodes
 };
 
 class InlinePresetBrowser final :
@@ -75,6 +76,8 @@ public:
     std::vector<std::pair<juce::String, juce::Rectangle<float>>>
             pointerTargetsForAutomation() const;
 
+    std::function<bool(juce::Point<int>)> nodePaletteHitTest;
+
     bool hitTest(int x, int y) override;
     void paint(juce::Graphics& graphics) override;
     void resized() override;
@@ -95,6 +98,8 @@ private:
     void updateAvailableTags();
     void openSelected();
     void editSelectedTags();
+    void toggleSelectedTag(const juce::String& tag);
+    void updateSelectedTags();
     void renameSelected();
     void requestDeleteSelected();
     void deletePreset(const juce::File& file);
@@ -116,6 +121,7 @@ private:
     juce::TextButton curves { "CURVES" };
     juce::TextButton presets { "PRESETS" };
     juce::TextButton patterns { "PATTERNS" };
+    juce::TextButton nodes { "NODES" };
     std::unique_ptr<PatternBrowser> patternBrowser;
     SidebarLibraryToolbar toolbar { "Search presets..." };
     juce::Label tagHeading;
@@ -127,6 +133,7 @@ private:
     std::vector<PresetLibraryRecord> library;
     std::vector<int> searchResults;
     std::map<std::string, juce::StringArray> patternTags;
+    juce::StringArray knownTags;
     WorkspaceSidebarTab tab { WorkspaceSidebarTab::Presets };
 };
 

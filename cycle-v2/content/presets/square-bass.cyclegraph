@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 475.20001, "y": 826.0 },
+            "position": { "x": 481.20001, "y": 693.0 },
             "parameters": {
                 "octave": 0,
                 "voiceLength": 0.448037952,
@@ -38,7 +38,7 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "position": { "x": 1261.19995, "y": 886.0 },
+            "position": { "x": 1354.56409, "y": 886.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
         {
@@ -52,12 +52,13 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 855.20001, "y": 886.0 },
+            "position": { "x": 981.13306, "y": 886.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -146,6 +147,7 @@
                 "gain": 0.5,
                 "range": 0.575,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -244,6 +246,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -724,7 +727,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Bass", "Analog"],
+        "tags": [ "Bass", "Analog" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

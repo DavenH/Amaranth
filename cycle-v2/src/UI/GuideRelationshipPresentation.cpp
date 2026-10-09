@@ -71,7 +71,7 @@ Point<float> tetherStart(
                     frame.probeRailState.minimized,
                     frame.probeRailState.expandedHeight
             });
-    return { dock.leftShelf.getX(), tile.getCentreY() };
+    return { dock.leftShelf.getRight(), tile.getCentreY() };
 }
 
 bool hasVisibleTarget(
@@ -147,12 +147,12 @@ void GuideRelationshipPresentation::paintTether(
         }
 
         const Rectangle<float> destination = frame.viewport.toScreen(target->bounds);
-        const Point<float> end { destination.getRight(), destination.getCentreY() };
-        const float controlDistance = jmax(48.f, (start.x - end.x) * 0.35f);
+        const Point<float> end { destination.getX(), destination.getCentreY() };
+        const float controlDistance = jmax(48.f, (end.x - start.x) * 0.35f);
         tethers.startNewSubPath(start);
         tethers.cubicTo(
-                start.x - controlDistance, start.y,
-                end.x + controlDistance, end.y,
+                start.x + controlDistance, start.y,
+                end.x - controlDistance, end.y,
                 end.x, end.y);
         ++visibleTargetCount;
     }
