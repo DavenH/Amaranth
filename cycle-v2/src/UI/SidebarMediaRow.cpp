@@ -10,26 +10,23 @@ PresetLayout presetLayout(juce::Rectangle<float> slot, const juce::StringArray& 
     auto metadata = content.withWidth(content.getWidth() * 0.4f);
     layout.preview = content.withLeft(metadata.getRight());
     metadata = metadata.withTrimmedRight(6.f);
-    layout.favorite = { metadata.getX(), metadata.getBottom() - 22.f, 22.f, 22.f };
-    layout.labels.title = metadata.withHeight(26.f);
+    layout.favorite = { metadata.getX(), metadata.getY(), 22.f, 22.f };
+    layout.labels.title = metadata.withTrimmedLeft(26.f).withHeight(26.f);
 
     const juce::Font tagFont(juce::FontOptions(10.5f));
-    const float tagWidth = metadata.getWidth() - 25.f;
-    layout.labels.tagCount = juce::jmin(2, tags.size());
+    float remaining = metadata.getWidth();
     float totalWidth = 0.f;
-    for (int index = 0; index < layout.labels.tagCount; ++index) {
-        const float width = juce::jmin(tagWidth,
+    for (int index = 0; index < juce::jmin(4, tags.size()); ++index) {
+        const float gap = index == 0 ? 0.f : 3.f;
+        if (remaining - gap < 26.f) {
+            break;
+        }
+        const float width = juce::jmin(remaining - gap,
                 tagFont.getStringWidthFloat(tags[index]) + 11.f);
         layout.labels.tags[(size_t) index].setSize(width, 22.f);
-        totalWidth += width + (index == 0 ? 0.f : 3.f);
-    }
-    if (totalWidth > tagWidth) {
-        const float availableTextWidth = tagWidth - 3.f;
-        const float firstWidth = juce::jmin(layout.labels.tags[0].getWidth(),
-                availableTextWidth * 0.5f);
-        layout.labels.tags[0].setWidth(firstWidth);
-        layout.labels.tags[1].setWidth(availableTextWidth - firstWidth);
-        totalWidth = tagWidth;
+        ++layout.labels.tagCount;
+        totalWidth += width + gap;
+        remaining -= width + gap;
     }
     float x = metadata.getRight() - totalWidth;
     for (int index = 0; index < layout.labels.tagCount; ++index) {
@@ -168,7 +165,13 @@ void paintLabels(
         bool favorite) {
     const auto layout = presetLayout(slot, tags).labels;
     graphics.setColour(CanvasChromePalette::text);
-    graphics.setFont(juce::FontOptions(11.5f).withStyle("Bold"));
+  #if JUCE_MAC
+    graphics.setFont(juce::FontOptions("Helvetica Neue", 11.5f, juce::Font::plain)
+            .withStyle("Medium"));
+  #else
+    graphics.setFont(juce::FontOptions(juce::Font::getDefaultSansSerifFontName(),
+            11.5f, juce::Font::plain));
+  #endif
     graphics.drawFittedText(title, layout.title.toNearestInt(),
             juce::Justification::topRight, 2, 0.9f);
     paintFavorite(graphics, slot, favorite);

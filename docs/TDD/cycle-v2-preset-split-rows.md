@@ -60,3 +60,16 @@ The browser integration test now checks filter narrowing rather than exact count
 in the actively edited user preset library; temporary-file tag editing coverage
 continues to verify exact filter outcomes.
 Tests build passes; all nine inline cases pass (209 assertions).
+
+Title/favorite follow-up: use Helvetica Neue Medium at 11.5px for macOS preset
+titles (default sans serif elsewhere). Move the shared 22px favorite hit/draw
+bounds to the metadata top-left; reserve a 4px gap before the title. The bottom
+22px tag line uses the entire metadata width and admits up to four chips, requiring
+26px minimum available space per additional chip. Existing fitted text handles
+long final labels. Pattern rows retain their two-chip limit and typography.
+Native screenshot `/private/tmp/title-preset-rows.png` reviewed: three-tag rows,
+single-tag rows, selected and favorite states. Both builds pass; nine inline
+browser tests pass 215 assertions, including title/favorite separation and three
+chips at 250/290px widths. Refactor/style/diff and architecture review pass:
+SidebarMediaRow 220/62 lines; same geometry/rendering ownership and collaborators,
+no domain behavior, new adapters or outstanding deletion targets.

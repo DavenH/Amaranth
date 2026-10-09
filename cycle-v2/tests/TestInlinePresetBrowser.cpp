@@ -191,18 +191,23 @@ TEST_CASE("Preset metadata stays left of the spectrogram at sidebar widths",
         REQUIRE(layout.labels.title.getRight() < layout.preview.getX());
         REQUIRE(layout.labels.tagCount == 2);
         REQUIRE(layout.labels.title.getRight() == Catch::Approx(layout.preview.getX() - 6.f));
-        REQUIRE(layout.favorite.getY() > layout.labels.title.getBottom());
-        for (const auto& tag : layout.labels.tags) {
+        REQUIRE(layout.favorite.getY() == layout.labels.title.getY());
+        REQUIRE(layout.labels.title.getX() - layout.favorite.getRight() == 4.f);
+        for (int index = 0; index < layout.labels.tagCount; ++index) {
+            const auto& tag = layout.labels.tags[(size_t) index];
             REQUIRE(card.contains(tag));
             REQUIRE(tag.getY() > layout.labels.title.getBottom());
             REQUIRE(tag.getHeight() == layout.favorite.getHeight());
-            REQUIRE(tag.getY() == layout.favorite.getY());
+            REQUIRE(tag.getY() == layout.preview.getBottom() - tag.getHeight());
             REQUIRE(tag.getY() - layout.labels.title.getBottom() <= 4.f);
             REQUIRE_FALSE(tag.intersects(layout.favorite));
             REQUIRE(tag.getRight() < layout.preview.getX());
         }
         REQUIRE_FALSE(layout.labels.tags[0].intersects(layout.labels.tags[1]));
         REQUIRE(SidebarMediaRow::favoriteBounds(row) == layout.favorite);
+        const auto multiple = SidebarMediaRow::presetLayout(row, { "Pad", "Air", "FX", "Bass" });
+        REQUIRE(multiple.labels.tagCount >= 3);
+        REQUIRE(multiple.labels.tags[0].getX() >= card.getX() + 5.f);
     }
 }
 

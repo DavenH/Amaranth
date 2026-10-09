@@ -11,7 +11,7 @@ constexpr int presetHeight = 68;
 
 struct HeaderLabelsLayout {
     juce::Rectangle<float> title;
-    std::array<juce::Rectangle<float>, 2> tags;
+    std::array<juce::Rectangle<float>, 4> tags;
     int tagCount {};
 };
 
