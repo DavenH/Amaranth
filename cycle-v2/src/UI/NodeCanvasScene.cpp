@@ -262,45 +262,17 @@ float corridorTop(
     return top;
 }
 
-float branchPosition(
-        const NodeCanvasSceneSnapshot& scene,
-        const Edge& edge,
-        const NodeSceneEdge& presented,
-        float zoom) {
-    float previousRight = presented.source.x;
-    for (const auto& target : scene.targets) {
-        if (target.kind == NodeSceneTargetKind::Node
-                && target.nodeId != edge.sourceNodeId
-                && target.nodeId != edge.destNodeId
-                && target.bounds.getRight() < presented.destination.x
-                && target.bounds.getY() <= presented.destination.y
-                && target.bounds.getBottom() >= presented.destination.y) {
-            previousRight = std::max(previousRight, target.bounds.getRight());
-        }
-    }
-    if (previousRight > presented.source.x) {
-        return (previousRight + presented.destination.x) * 0.5f;
-    }
-    return presented.destination.x - 40.f * zoom;
-}
-
 Path cableDetourPath(
         const NodeSceneEdge& presented,
-        float branchX,
         float laneY,
         float zoom) {
-    const float span = branchX - presented.source.x;
-    const float gap = presented.destination.x - branchX;
+    const float span = presented.destination.x - presented.source.x;
     Path routed;
     routed.startNewSubPath(presented.source);
     routed.cubicTo(
-            { presented.source.x + span * 0.30f,
-                    std::min(presented.source.y, laneY) - 18.f * zoom },
-            { branchX - span * 0.20f, laneY },
-            { branchX, laneY });
-    routed.cubicTo(
-            { branchX + gap * 0.60f, laneY },
-            { branchX, presented.destination.y },
+            { presented.source.x + span * 0.42f,
+                    std::min(presented.source.y, laneY) - 16.f * zoom },
+            { presented.destination.x - 30.f * zoom, laneY },
             presented.destination);
     return routed;
 }
@@ -337,8 +309,7 @@ void routeObstructedCables(
             continue;
         }
 
-        const float branchX = branchPosition(scene, edge, presented, zoom);
-        if (branchX <= presented.source.x + 36.f * zoom) {
+        if (presented.destination.x <= presented.source.x + 72.f * zoom) {
             continue;
         }
         const int lane = fanOutLane(
@@ -350,7 +321,7 @@ void routeObstructedCables(
         for (int attempt = 0; attempt < 3; ++attempt) {
             const float laneY = rowTop
                     - (30.f + (float) lane * 18.f + (float) attempt * 30.f) * zoom;
-            routed = cableDetourPath(presented, branchX, laneY, zoom);
+            routed = cableDetourPath(presented, laneY, zoom);
             if (!crossesNodeBody(routed, scene, edge.sourceNodeId, edge.destNodeId)) {
                 break;
             }
