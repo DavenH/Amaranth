@@ -730,7 +730,12 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                 menu.addItem(2, frequency ? "Show Time Domain" : "Show Frequency Domain");
             }
             menu.addItem(1, "Stop Spying");
-            menu.showMenuAsync(PopupMenu::Options().withTargetComponent(this),
+            const Point<int> click = event.getScreenPosition();
+            const PopupMenu::Options options = PopupMenu::Options()
+                    .withTargetComponent(this)
+                    .withTargetScreenArea({ click.x, click.y, 1, 1 });
+            lastPopupMenuTargetScreenArea = options.getTargetScreenArea();
+            menu.showMenuAsync(options,
                     [safeThis = SafePointer<NodeCanvas>(this), cardProbe](int choice) {
                         if (safeThis != nullptr && choice == 1) {
                             safeThis->removeSpyCard(cardProbe);
@@ -1537,7 +1542,7 @@ void NodeCanvas::toggleSpyDomain(const String& probeId) {
     }
 }
 
-void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
+void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> canvasPosition) {
     if (edgeIndex < 0 || edgeIndex >= (int) graph.getEdges().size()) {
         return;
     }
@@ -1561,7 +1566,7 @@ void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
             presentation.revision(),
             document.revision(),
             &queries.presentationFacts().edgeIndex());
-    Point<float> panPosition = viewport.toWorld(screenPosition) - Point<float>(40.f, 40.f);
+    Point<float> panPosition = viewport.toWorld(canvasPosition) - Point<float>(40.f, 40.f);
     for (const auto& sceneEdge : scene.edges) {
         if (sceneEdge.edgeIndex == edgeIndex) {
             panPosition = viewport.toWorld(sceneEdge.cablePath.getPointAlongPath(
@@ -1575,10 +1580,13 @@ void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
     menu.addItem(2, hasPan ? "Stop Panning" : "Add Panning");
     menu.addSeparator();
     menu.addItem(3, "Delete Cable");
+    const Point<int> click = localPointToGlobal(canvasPosition.roundToInt());
+    const PopupMenu::Options options = PopupMenu::Options()
+            .withTargetComponent(this)
+            .withTargetScreenArea({ click.x, click.y, 1, 1 });
+    lastPopupMenuTargetScreenArea = options.getTargetScreenArea();
     menu.showMenuAsync(
-            PopupMenu::Options()
-                    .withTargetComponent(this)
-                    .withMousePosition(),
+            options,
             [safeThis = SafePointer<NodeCanvas>(this), edge, panPosition, probeId, panNodeId](int result) {
                 if (safeThis == nullptr) {
                     return;
@@ -1838,6 +1846,7 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
             : Rectangle<float> {};
     result.canvasContentBounds = canvasContentBounds();
     result.editorContentBounds = editorContentBounds();
+    result.popupMenuTargetScreenArea = lastPopupMenuTargetScreenArea;
 
     const Rectangle<float> workspace = getLocalBounds().toFloat();
     const WorkspaceDockLayout workspaceDock = workspaceDockLayout();

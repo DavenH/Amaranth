@@ -651,6 +651,8 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     }
     root->setProperty("spyCards", std::move(spyCards));
     root->setProperty("spyCardCount", (int) state.spyCards.size());
+    root->setProperty("popupMenuTargetScreenX", state.popupMenuTargetScreenArea.getX());
+    root->setProperty("popupMenuTargetScreenY", state.popupMenuTargetScreenArea.getY());
 
     Array<var> causalUpdates;
     for (const auto& event : context.presentation.updateTrace().snapshot()) {

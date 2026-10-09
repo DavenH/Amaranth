@@ -81,7 +81,16 @@ with `cycle-v2-agent-spy-selected-contrast.json`. Run
 /tmp/spy-unselected.png /tmp/spy-selected.png
 /private/tmp/cycle-agent-report.json` to assert the preview brightness is
 unchanged. The regression was caused by the tile border colour's alpha being
-left as the graphics opacity for the cached preview image.
+left as the graphics opacity for the cached preview image. The final fix
+belongs in both cached-image draw paths: Spy and ordinary node previews each
+draw at full opacity within a scoped graphics state. Both cache tests render
+after a low-alpha caller colour to guard against inherited dimming.
+
+The Spy and cable context menus now use the click's screen rectangle after
+setting their target component. The focused
+`cycle-v2-agent-spy-popup-anchor.json` fixture verifies a non-origin Spy menu
+anchor (1649, 492 in the captured run). `AGENTS.md` records the JUCE ordering
+rule so future menus do not regress to the canvas origin.
 
 - One area-selection gesture includes graph nodes and Spy cards; dragging
   either selected kind moves the complete group. Undo restores ordinary Spies

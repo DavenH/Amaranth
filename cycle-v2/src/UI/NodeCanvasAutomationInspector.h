@@ -66,6 +66,7 @@ struct NodeCanvasAutomationPresentation {
     juce::Rectangle<float> probeDetailBounds;
     juce::Rectangle<float> canvasContentBounds;
     juce::Rectangle<float> editorContentBounds;
+    juce::Rectangle<int> popupMenuTargetScreenArea;
     GuideDockAutomationPresentation guideDock;
     std::vector<SpyCardAutomationPresentation> spyCards;
     uint64_t hoverRepaintRequestCount {};

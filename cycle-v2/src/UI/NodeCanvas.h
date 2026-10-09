@@ -216,6 +216,7 @@ private:
     NodeCanvasHitRouter hitRouter;
     int hoveredEdgeIndex { -1 };
     Point<float> lastMousePosition;
+    Rectangle<int> lastPopupMenuTargetScreenArea;
     MouseCursor addToSelectionCursor;
     String resolvedHoverText;
     bool pointerInsideCanvas {};
@@ -312,7 +313,7 @@ private:
     Rectangle<float> canvasUtilityBounds() const;
     Rectangle<float> editorContentBounds() const;
     WorkspaceDockLayout workspaceDockLayout() const;
-    void showEdgeMenu(int edgeIndex, Point<float> screenPosition);
+    void showEdgeMenu(int edgeIndex, Point<float> canvasPosition);
     bool removeSpyCard(const String& probeId);
     void toggleSpyDomain(const String& probeId);
     void openGuideEditor(const String& guideId);
