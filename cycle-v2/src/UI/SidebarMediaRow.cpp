@@ -122,8 +122,6 @@ void paintStar(
         juce::Graphics& graphics,
         juce::Rectangle<float> bounds,
         bool favorite) {
-    graphics.setColour(juce::Colour(0xff333333));
-    graphics.fillRoundedRectangle(bounds, 3.f);
     juce::Path star;
     star.addStar(bounds.getCentre(), 5, 3.5f, 7.f,
             -juce::MathConstants<float>::halfPi);

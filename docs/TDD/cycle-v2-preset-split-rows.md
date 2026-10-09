@@ -90,3 +90,9 @@ inset background (#11171d), darker than both resting (#171d24) and selected
 (#202833) rows. Preserve text and geometry. Standalone build and diff check pass.
 Native capture `/private/tmp/dark-row-tags.png` confirms subdued chip backgrounds
 on selected and resting rows with legible labels.
+
+Favorite refinement: remove the rounded background from the shared sidebar star
+painter. Preserve outlined/filled states, colour, position and 22px hit area.
+Standalone build and whitespace review pass; no interaction logic changed.
+Visual review `/private/tmp/bare-favorites.png` confirms background-free stars in
+selected, resting and favorite rows.
