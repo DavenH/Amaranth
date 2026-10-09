@@ -605,6 +605,9 @@ var GraphSerializer::writeJSON(
                 encoded->setProperty("portSides", portSides);
             }
         }
+        if (node.reverseInputPortOrder) {
+            encoded->setProperty("reverseInputPortOrder", true);
+        }
 
         auto parameters = std::make_unique<DynamicObject>();
         if (definition != nullptr) {
@@ -796,6 +799,15 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             continue;
         }
         node.bounds.setPosition((float) x, (float) y);
+
+        const var reverseInputPortOrder = encoded->getProperty("reverseInputPortOrder");
+        if (!reverseInputPortOrder.isVoid() && !reverseInputPortOrder.isBool()) {
+            result.issues.push_back({ GraphLoadCode::InvalidSchema,
+                    "Node '" + nodeId + "' has invalid input port order" });
+            continue;
+        }
+        node.reverseInputPortOrder = reverseInputPortOrder.isBool()
+                && (bool) reverseInputPortOrder;
 
         const var portSides = encoded->getProperty("portSides");
         const auto* portSideGroups = portSides.getDynamicObject();

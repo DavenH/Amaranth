@@ -2,6 +2,7 @@
 #include "Graph/GraphEdgeIndex.h"
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodePortGeometry.h"
+#include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"
 
 #include <algorithm>
@@ -11,6 +12,15 @@ namespace CycleV2 {
 namespace {
 
 int portIndexOnSide(const Node& node, const Port& port) {
+    if (port.input && operationPortLayout(node) == OperationPortLayout::SideReversed) {
+        if (port.id == node.inputs[0].id) {
+            return 1;
+        }
+        if (port.id == node.inputs[1].id) {
+            return 0;
+        }
+    }
+
     int index = 0;
     auto scan = [&](const std::vector<Port>& ports) {
         for (const auto& candidate : ports) {

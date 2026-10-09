@@ -467,6 +467,10 @@ void paintOperationAction(
     const Point<float> output(icon.getRight(), icon.getCentreY());
 
     switch (layout) {
+        case OperationPortLayout::SideReversed:
+            first = { icon.getX(), icon.getBottom() - icon.getHeight() * 0.30f };
+            second = { icon.getX(), icon.getY() + icon.getHeight() * 0.30f };
+            break;
         case OperationPortLayout::Vertical:
             first = { icon.getCentreX(), icon.getY() };
             second = { icon.getCentreX(), icon.getBottom() };
@@ -486,9 +490,16 @@ void paintOperationAction(
     }
 
     Path path;
-    path.startNewSubPath(first);
-    path.lineTo(icon.getCentre());
-    path.lineTo(second);
+    if (layout == OperationPortLayout::SideReversed) {
+        path.startNewSubPath(first);
+        path.lineTo({ icon.getCentreX(), icon.getY() });
+        path.startNewSubPath(second);
+        path.lineTo({ icon.getCentreX(), icon.getBottom() });
+    } else {
+        path.startNewSubPath(first);
+        path.lineTo(icon.getCentre());
+        path.lineTo(second);
+    }
     path.startNewSubPath(icon.getCentre());
     path.lineTo(output);
     graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.78f));
@@ -1234,7 +1245,7 @@ void NodeCanvasPresentation::paintNode(
 
         const auto& capabilities = NodeViewModuleRegistry::instance()
                 .moduleFor(node.kind).capabilities();
-        const bool hasAction = capabilities.operationLayoutControl
+        const bool hasAction = supportsOperationPortLayout(node)
                 || supportsSinglePortLayout(node)
                 || capabilities.outputSideControl;
         const bool reservesHeaderRight = hasAction || node.kind == NodeKind::Envelope;
@@ -1260,7 +1271,7 @@ void NodeCanvasPresentation::paintNode(
         if (node.kind == NodeKind::Envelope) {
             paintEnvelopePurposeIcon(graphics, node, header, zoom);
         }
-        if (capabilities.operationLayoutControl) {
+        if (supportsOperationPortLayout(node)) {
             paintOperationAction(
                     graphics,
                     actionButton(nodeBounds, zoom),

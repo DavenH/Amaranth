@@ -8,6 +8,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodeCanvasAuthoring.h"
+#include "UI/NodePortLayout.h"
 
 using namespace CycleV2;
 
@@ -376,6 +377,8 @@ TEST_CASE("Node port layout cycling survives document serialization",
     auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
 
     REQUIRE(authoring.cycleOperationPortLayout("add").succeeded);
+    REQUIRE(document.graph().findNode("add")->reverseInputPortOrder);
+    REQUIRE(authoring.cycleOperationPortLayout("add").succeeded);
     REQUIRE(authoring.cycleOutputSide("mesh").succeeded);
     REQUIRE(authoring.cycleOutputSide("envelope").succeeded);
     const Node* editedAdd = document.graph().findNode("add");
@@ -383,6 +386,7 @@ TEST_CASE("Node port layout cycling survives document serialization",
     const Node* editedEnvelope = document.graph().findNode("envelope");
     REQUIRE(editedAdd->inputs[0].side == PortSide::Left);
     REQUIRE(editedAdd->inputs[1].side == PortSide::Top);
+    REQUIRE_FALSE(editedAdd->reverseInputPortOrder);
     REQUIRE(editedMesh->outputs[0].side == PortSide::Bottom);
     REQUIRE(editedEnvelope->outputs[0].side == PortSide::Bottom);
     REQUIRE(authoring.cycleOutputSide("envelope").succeeded);
@@ -399,6 +403,42 @@ TEST_CASE("Node port layout cycling survives document serialization",
     REQUIRE(restoredAdd->inputs[1].side == PortSide::Top);
     REQUIRE(restoredMesh->outputs[0].side == PortSide::Bottom);
     REQUIRE(restoredEnvelope->outputs[0].side == PortSide::Bottom);
+}
+
+TEST_CASE("Two-input port order is undoable and survives serialization",
+        "[cycle-v2][canvas][authoring][layout]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::StereoJoin, "join", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    const Node* initial = document.graph().findNode("join");
+    REQUIRE(initial != nullptr);
+    const String firstId = initial->inputs[0].id;
+    const String secondId = initial->inputs[1].id;
+    REQUIRE(authoring.cycleOperationPortLayout("join").succeeded);
+    const Node* reversed = document.graph().findNode("join");
+    REQUIRE(operationPortLayout(*reversed) == OperationPortLayout::SideReversed);
+    REQUIRE(reversed->inputs[0].id == firstId);
+    REQUIRE(reversed->inputs[1].id == secondId);
+
+    GraphDocument restored;
+    REQUIRE(restored.loadJson(document.toJson(), false));
+    const Node* loaded = restored.graph().findNode("join");
+    REQUIRE(loaded != nullptr);
+    REQUIRE(operationPortLayout(*loaded) == OperationPortLayout::SideReversed);
+    REQUIRE(loaded->inputs[0].id == firstId);
+    REQUIRE(loaded->inputs[1].id == secondId);
+
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(operationPortLayout(*document.graph().findNode("join"))
+            == OperationPortLayout::Side);
+    REQUIRE(authoring.redo().succeeded);
+    REQUIRE(operationPortLayout(*document.graph().findNode("join"))
+            == OperationPortLayout::SideReversed);
 }
 
 TEST_CASE("Single input and output port layouts cycle forward and undo",

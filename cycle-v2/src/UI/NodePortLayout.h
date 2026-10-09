@@ -12,6 +12,7 @@ enum class SinglePortLayout {
 
 enum class OperationPortLayout {
     Side,
+    SideReversed,
     Uptack,
     Vertical,
     Tee

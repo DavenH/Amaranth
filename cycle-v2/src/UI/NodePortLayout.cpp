@@ -55,7 +55,7 @@ void applySinglePortLayout(Node& node, SinglePortLayout layout) {
 }
 
 bool supportsOperationPortLayout(const Node& node) {
-    return node.inputs.size() >= 2 && !node.outputs.empty();
+    return node.inputs.size() == 2 && !node.outputs.empty();
 }
 
 OperationPortLayout operationPortLayout(const Node& node) {
@@ -74,16 +74,21 @@ OperationPortLayout operationPortLayout(const Node& node) {
     if (first == PortSide::Left && second == PortSide::Top) {
         return OperationPortLayout::Uptack;
     }
+    if (first == PortSide::Left && second == PortSide::Left
+            && node.reverseInputPortOrder) {
+        return OperationPortLayout::SideReversed;
+    }
 
     return OperationPortLayout::Side;
 }
 
 OperationPortLayout nextOperationPortLayout(OperationPortLayout layout) {
     switch (layout) {
-        case OperationPortLayout::Side:     return OperationPortLayout::Uptack;
-        case OperationPortLayout::Uptack:   return OperationPortLayout::Vertical;
-        case OperationPortLayout::Vertical: return OperationPortLayout::Tee;
-        case OperationPortLayout::Tee:      return OperationPortLayout::Side;
+        case OperationPortLayout::Side:         return OperationPortLayout::SideReversed;
+        case OperationPortLayout::SideReversed: return OperationPortLayout::Uptack;
+        case OperationPortLayout::Uptack:       return OperationPortLayout::Vertical;
+        case OperationPortLayout::Vertical:     return OperationPortLayout::Tee;
+        case OperationPortLayout::Tee:          return OperationPortLayout::Side;
     }
 
     return OperationPortLayout::Side;
@@ -94,8 +99,10 @@ void applyOperationPortLayout(Node& node, OperationPortLayout layout) {
         return;
     }
 
+    node.reverseInputPortOrder = layout == OperationPortLayout::SideReversed;
     switch (layout) {
         case OperationPortLayout::Side:
+        case OperationPortLayout::SideReversed:
             node.inputs[0].side = PortSide::Left;
             node.inputs[1].side = PortSide::Left;
             break;
