@@ -56,7 +56,6 @@ struct NodeSceneEdge {
     bool sourceEndpointVisible { true };
     bool destinationEndpointVisible { true };
     bool inlinePan {};
-    float cableOpacity { 1.f };
 };
 
 struct NodeCanvasSceneSnapshot {

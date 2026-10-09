@@ -218,13 +218,12 @@ bool crossesNodeBody(
     return false;
 }
 
-std::pair<int, int> fanOutLane(
+int fanOutLane(
         const NodeGraph& graph,
         const GraphEdgeIndex& edgeIndex,
         const Edge& edge,
         const Node& sourceNode,
         const Node& destinationNode) {
-    int siblings = 0;
     int lane = 0;
     const auto& graphEdges = graph.getEdges();
     for (const size_t candidateIndex : edgeIndex.outgoingEdges(edge.sourceNodeId)) {
@@ -238,12 +237,11 @@ std::pair<int, int> fanOutLane(
                 || siblingDestination->bounds.getX() <= sourceNode.bounds.getRight()) {
             continue;
         }
-        ++siblings;
         if (siblingDestination->bounds.getX() < destinationNode.bounds.getX()) {
             ++lane;
         }
     }
-    return { siblings, lane };
+    return lane;
 }
 
 float corridorTop(
@@ -264,50 +262,50 @@ float corridorTop(
     return top;
 }
 
-bool cableDropsAreBlocked(
+float branchPosition(
         const NodeCanvasSceneSnapshot& scene,
         const Edge& edge,
         const NodeSceneEdge& presented,
-        float leadX,
-        float branchX,
-        float laneY) {
-    const Rectangle<float> leadSegment(
-            leadX - 1.f,
-            std::min(presented.source.y, laneY),
-            2.f,
-            std::abs(presented.source.y - laneY));
-    const Rectangle<float> branchSegment(
-            branchX - 1.f,
-            std::min(presented.destination.y, laneY),
-            2.f,
-            std::abs(presented.destination.y - laneY));
-    return std::any_of(scene.targets.begin(), scene.targets.end(),
-            [&](const NodeSceneTarget& target) {
-                return target.kind == NodeSceneTargetKind::Node
-                        && target.nodeId != edge.sourceNodeId
-                        && target.nodeId != edge.destNodeId
-                        && (target.bounds.intersects(leadSegment)
-                                || target.bounds.intersects(branchSegment));
-            });
+        float zoom) {
+    float previousRight = presented.source.x;
+    for (const auto& target : scene.targets) {
+        if (target.kind == NodeSceneTargetKind::Node
+                && target.nodeId != edge.sourceNodeId
+                && target.nodeId != edge.destNodeId
+                && target.bounds.getRight() < presented.destination.x
+                && target.bounds.getY() <= presented.destination.y
+                && target.bounds.getBottom() >= presented.destination.y) {
+            previousRight = std::max(previousRight, target.bounds.getRight());
+        }
+    }
+    if (previousRight > presented.source.x) {
+        return (previousRight + presented.destination.x) * 0.5f;
+    }
+    return presented.destination.x - 40.f * zoom;
 }
 
-Path cableLanePath(
+Path cableDetourPath(
         const NodeSceneEdge& presented,
-        float leadX,
         float branchX,
         float laneY,
         float zoom) {
+    const float span = branchX - presented.source.x;
+    const float gap = presented.destination.x - branchX;
     Path routed;
     routed.startNewSubPath(presented.source);
-    routed.lineTo(leadX, presented.source.y);
-    routed.lineTo(leadX, laneY);
-    routed.lineTo(branchX, laneY);
-    routed.lineTo(branchX, presented.destination.y);
-    routed.lineTo(presented.destination);
-    return routed.createPathWithRoundedCorners(10.f * zoom);
+    routed.cubicTo(
+            { presented.source.x + span * 0.30f,
+                    std::min(presented.source.y, laneY) - 18.f * zoom },
+            { branchX - span * 0.20f, laneY },
+            { branchX, laneY });
+    routed.cubicTo(
+            { branchX + gap * 0.60f, laneY },
+            { branchX, presented.destination.y },
+            presented.destination);
+    return routed;
 }
 
-void routeCableFanOuts(
+void routeObstructedCables(
         const NodeGraph& graph,
         const GraphEdgeIndex& edgeIndex,
         const NodeCanvasViewport& viewport,
@@ -334,29 +332,33 @@ void routeCableFanOuts(
         const Rectangle<float> destinationBounds = viewport.toScreen(destinationNode->bounds);
         const bool entersLeft = std::abs(presented.destination.x - destinationBounds.getX())
                 <= 4.f * zoom;
-        const float leadX = presented.source.x + 26.f * zoom;
-        const float branchX = presented.destination.x - 24.f * zoom;
-        if (!entersLeft || branchX <= leadX + 12.f * zoom) {
-            continue;
-        }
-
-        const auto [siblings, lane] = fanOutLane(
-                graph, edgeIndex, edge, *sourceNode, *destinationNode);
-        if (siblings < 2 && !crossesNodeBody(
+        if (!entersLeft || !crossesNodeBody(
                     presented.cablePath, scene, edge.sourceNodeId, edge.destNodeId)) {
             continue;
         }
 
-        const float rowTop = corridorTop(
-                scene, edge.sourceNodeId, leadX, presented.destination.x,
-                destinationBounds.getY());
-        const float laneY = rowTop - (24.f + (float) lane * 8.f) * zoom;
-        if (cableDropsAreBlocked(scene, edge, presented, leadX, branchX, laneY)) {
+        const float branchX = branchPosition(scene, edge, presented, zoom);
+        if (branchX <= presented.source.x + 36.f * zoom) {
             continue;
         }
-
-        presented.cablePath = cableLanePath(presented, leadX, branchX, laneY, zoom);
-        presented.cableOpacity = 1.f / (1.f + 0.45f * (float) (siblings - 1));
+        const int lane = fanOutLane(
+                graph, edgeIndex, edge, *sourceNode, *destinationNode);
+        const float rowTop = corridorTop(
+                scene, edge.sourceNodeId, presented.source.x, presented.destination.x,
+                destinationBounds.getY());
+        Path routed;
+        for (int attempt = 0; attempt < 3; ++attempt) {
+            const float laneY = rowTop
+                    - (30.f + (float) lane * 18.f + (float) attempt * 30.f) * zoom;
+            routed = cableDetourPath(presented, branchX, laneY, zoom);
+            if (!crossesNodeBody(routed, scene, edge.sourceNodeId, edge.destNodeId)) {
+                break;
+            }
+        }
+        if (crossesNodeBody(routed, scene, edge.sourceNodeId, edge.destNodeId)) {
+            continue;
+        }
+        presented.cablePath = std::move(routed);
         presented.hitPath.clear();
         PathStrokeType(22.f, PathStrokeType::curved, PathStrokeType::rounded)
                 .createStrokedPath(presented.hitPath, presented.cablePath);
@@ -672,7 +674,7 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         });
     }
 
-    routeCableFanOuts(graph, indexedEdges, viewport, current);
+    routeObstructedCables(graph, indexedEdges, viewport, current);
     return current;
 }
 

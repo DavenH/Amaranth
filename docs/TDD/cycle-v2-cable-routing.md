@@ -2,8 +2,9 @@
 
 ## Status
 
-Complete (2026-10-09). Right-to-left fan-outs and direct cables that cross an
-unrelated node body route through lanes above the affected row.
+Complete (revised 2026-10-09 after visual review). Right-to-left cables that
+cross an unrelated node body take a smooth detour above it. Clear cables keep
+their original curve even when their source has other destinations.
 
 ## Design
 
@@ -13,14 +14,12 @@ product; the graph's edges and their domains remain unchanged. The renderer and
 hit tester continue to consume the same path. `NodeCanvasScene::cablePath`
 remains the direct path used for pending gestures and inline Pan placement.
 
-For a right-side source feeding left-side destinations, the router uses a short
-lead from the source, a lane above the node row, and a drop in the gap before
-each destination. Fan-out lanes are ordered by destination position to keep
-individual edge paths selectable and prevent coincident strokes from becoming
-too bright. The renderer removes the broad glow on ordinary fan-out lanes and
-reduces their opacity; selection restores full emphasis. An isolated cable
-keeps its direct curve unless it crosses an
-unrelated node. Route computation occurs only when the scene snapshot changes;
+For a right-side source feeding a left-side destination, the router first checks
+the direct curve against unrelated node bodies. Only a collision triggers a
+detour. Two joined cubic segments bow above the affected row and descend through
+the gap before the destination. The scene checks the candidate against node
+bodies before using it. The renderer's original stroke, glow, and opacity are
+unchanged. Route computation occurs only when the scene snapshot changes;
 painting and hit testing reuse it.
 
 ## Completion criteria
@@ -30,19 +29,20 @@ painting and hit testing reuse it.
 - A far branch remains individually hittable, and moving a node updates the
   route in the same scene snapshot as its endpoint.
 - Direct unobstructed cables retain their original geometry.
+- A clear long fan-out is not diverted by a second target below it.
 - Screenshot review, focused semantic tests, build, architecture audit, and
   diff/style review pass.
 
 ## Verification and architecture review
 
 The checked-in baroque-flute fixture opened successfully and produced
-`/private/tmp/cycle-v2-baroque-cable-routing.png`. At fit zoom, all three
-scratch connections run above the mesh previews and remain visually separate.
-Five focused CTest cases passed; the standalone `CycleV2` build passed.
-`git diff --check` and the architecture audit passed. Clang-tidy reported only
-existing warnings in the touched files.
+`/private/tmp/cycle-v2-baroque-cable-routing.png`. At fit zoom, the near
+connection keeps its direct curve while the farther scratch connections clear
+the mesh previews with rounded paths. Focused scene tests and the standalone
+`CycleV2` build passed. `git diff --check` and the architecture audit passed.
+Clang-tidy reported only existing warnings in the touched files.
 
-`NodeCanvasScene.cpp` grew from 520 to 713 lines. Its responsibilities remain
+`NodeCanvasScene.cpp` grew from 520 to 720 lines. Its responsibilities remain
 port placement, scene target construction, cable geometry, and scene hit
 testing. `NodeCableRenderer` owns only stroke styling, while
 `NodeCanvasCableLayerCache` owns sprite invalidation. The route planner uses

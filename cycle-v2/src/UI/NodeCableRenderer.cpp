@@ -76,27 +76,20 @@ void paintSignalCable(
         Graphics& graphics,
         const Path& cable,
         const NodeCableStyle& style,
-        float scale,
-        float opacity) {
-    const float alpha = style.selected ? 1.f : opacity;
-    if (opacity >= 1.f || style.selected || style.spliceTarget) {
-        graphics.setColour(style.colour.withAlpha(
-                (style.spliceTarget ? 0.42f : (style.selected ? 0.28f : 0.18f)) * alpha));
-        graphics.strokePath(
-                cable,
-                PathStrokeType(
-                        (style.spliceTarget ? 15.f : (style.selected ? 12.f : 9.f)) * scale,
-                        PathStrokeType::curved,
-                        PathStrokeType::rounded));
-    }
-    graphics.setColour(style.colour.withAlpha(0.92f * alpha));
-    const float coreWidth = style.spliceTarget ? 5.2f
-            : style.selected ? 4.f
-            : opacity < 1.f ? 2.4f : 3.f;
+        float scale) {
+    graphics.setColour(style.colour.withAlpha(
+            style.spliceTarget ? 0.42f : (style.selected ? 0.28f : 0.18f)));
     graphics.strokePath(
             cable,
             PathStrokeType(
-                    coreWidth * scale,
+                    (style.spliceTarget ? 15.f : (style.selected ? 12.f : 9.f)) * scale,
+                    PathStrokeType::curved,
+                    PathStrokeType::rounded));
+    graphics.setColour(style.colour.withAlpha(0.92f));
+    graphics.strokePath(
+            cable,
+            PathStrokeType(
+                    (style.spliceTarget ? 5.2f : (style.selected ? 4.f : 3.f)) * scale,
                     PathStrokeType::curved,
                     PathStrokeType::rounded));
 
@@ -198,7 +191,7 @@ void NodeCableRenderer::paint(
         float zoom) {
     const float scale = scaleForZoom(zoom);
 
-    paintSignalCable(graphics, edge.cablePath, style, scale, edge.cableOpacity);
+    paintSignalCable(graphics, edge.cablePath, style, scale);
 
     if (style.spliceTarget) {
         paintSpliceMarker(graphics, edge.cablePath, style.colour, scale);
