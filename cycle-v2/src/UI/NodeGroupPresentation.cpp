@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "Graph/GraphEdgeIndex.h"
+#include "UI/GraphEndpointNodeRenderer.h"
 #include "UI/NodeCanvasScene.h"
 
 namespace CycleV2 {
@@ -11,11 +12,40 @@ namespace {
 
 constexpr float kPadding = 19.f;
 constexpr float kTitleHeight = 31.f;
+constexpr float kExpandedHeaderHeight = 39.f;
+constexpr float kExpandedScreenPadding = 16.f;
 constexpr float kCardWidth = 290.f;
 constexpr float kCardHeight = 190.f;
 
 juce::Rectangle<float> mapBounds(juce::Rectangle<float> card) {
     return card.reduced(13.f).withTrimmedTop(29.f).reduced(0.f, 4.f);
+}
+
+juce::Rectangle<float> expandedContentBounds(
+        const NodeGraph& graph,
+        const NodeGroup& group,
+        const NodeCanvasViewport& viewport,
+        const GraphEdgeIndex& edgeIndex) {
+    juce::Rectangle<float> result;
+    for (const auto& id : group.nodeIds) {
+        if (const Node* node = graph.findNode(id)) {
+            const auto presented = viewport.toScreen(
+                    NodeCanvasScene::presentationWorldBounds(graph, *node, edgeIndex));
+            const auto visible = GraphEndpointNodeRenderer::visualBounds(
+                    node->kind, presented, viewport.getBounds(), viewport.getZoom());
+            result = result.isEmpty() ? visible : result.getUnion(visible);
+        }
+    }
+    return result;
+}
+
+juce::Rectangle<float> collapsedWorldBounds(
+        const NodeGraph& graph,
+        const NodeGroup& group,
+        const GraphEdgeIndex& edgeIndex) {
+    const auto members = NodeGroupPresentation::memberWorldBounds(graph, group, edgeIndex);
+    return { members.getX() - kPadding, members.getY() - kTitleHeight,
+            kCardWidth, kCardHeight };
 }
 
 juce::Point<float> mappedCentre(
@@ -43,9 +73,10 @@ void paintGroupChrome(
 
     graphics.setColour(juce::Colour(0xffb9ccdd));
     graphics.setFont(juce::Font(juce::FontOptions(12.f, juce::Font::bold)));
+    const auto title = bounds.withHeight(29.f).reduced(12.f, 0.f)
+            .withTrimmedRight(bounds.getRight() - toggle.getX() + 8.f);
     graphics.drawFittedText(group.title + "  ·  " + juce::String((int) group.nodeIds.size()),
-            bounds.withHeight(29.f).reduced(12.f, 0.f).toNearestInt(),
-            juce::Justification::centredLeft, 1);
+            title.toNearestInt(), juce::Justification::centredLeft, 1);
 
     graphics.setColour(juce::Colour(0xff182d3d));
     graphics.fillRoundedRectangle(toggle, 4.f);
@@ -132,13 +163,18 @@ juce::Rectangle<float> NodeGroupPresentation::memberWorldBounds(
 juce::Rectangle<float> NodeGroupPresentation::worldBounds(
         const NodeGraph& graph,
         const NodeGroup& group,
+        const NodeCanvasViewport& viewport,
         const GraphEdgeIndex& edgeIndex) {
-    const auto members = memberWorldBounds(graph, group, edgeIndex);
     if (group.collapsed) {
-        return { members.getX() - kPadding, members.getY() - kTitleHeight,
-                kCardWidth, kCardHeight };
+        return collapsedWorldBounds(graph, group, edgeIndex);
     }
-    return members.expanded(kPadding).withTrimmedTop(-kTitleHeight + kPadding);
+    const auto content = expandedContentBounds(graph, group, viewport, edgeIndex);
+    const auto screen = juce::Rectangle<float>(
+            content.getX() - kExpandedScreenPadding,
+            content.getY() - kExpandedHeaderHeight,
+            content.getWidth() + 2.f * kExpandedScreenPadding,
+            content.getHeight() + kExpandedHeaderHeight + kExpandedScreenPadding);
+    return viewport.toWorld(screen);
 }
 
 juce::Rectangle<float> NodeGroupPresentation::toggleBounds(
@@ -146,7 +182,7 @@ juce::Rectangle<float> NodeGroupPresentation::toggleBounds(
         const NodeGroup& group,
         const NodeCanvasViewport& viewport,
         const GraphEdgeIndex& edgeIndex) {
-    const auto bounds = viewport.toScreen(worldBounds(graph, group, edgeIndex));
+    const auto bounds = viewport.toScreen(worldBounds(graph, group, viewport, edgeIndex));
     const float size = juce::jlimit(17.f, 26.f, 22.f * viewport.getZoom());
     return { bounds.getRight() - size - 7.f, bounds.getY() + 5.f, size, size };
 }
@@ -156,7 +192,7 @@ juce::Point<float> NodeGroupPresentation::boundaryPoint(
         const NodeGroup& group,
         juce::Point<float> other,
         const GraphEdgeIndex& edgeIndex) {
-    const auto bounds = worldBounds(graph, group, edgeIndex);
+    const auto bounds = collapsedWorldBounds(graph, group, edgeIndex);
     const auto centre = bounds.getCentre();
     const auto delta = other - centre;
     if (std::abs(delta.x) * bounds.getHeight()
@@ -174,7 +210,7 @@ void NodeGroupPresentation::paint(
         const NodeGroup& group,
         const NodeCanvasViewport& viewport,
         const GraphEdgeIndex& edgeIndex) {
-    const auto bounds = viewport.toScreen(worldBounds(graph, group, edgeIndex));
+    const auto bounds = viewport.toScreen(worldBounds(graph, group, viewport, edgeIndex));
     const auto toggle = toggleBounds(graph, group, viewport, edgeIndex);
     paintGroupChrome(graphics, group, bounds, toggle);
     if (!group.collapsed) {

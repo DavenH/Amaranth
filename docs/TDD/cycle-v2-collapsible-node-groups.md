@@ -12,6 +12,7 @@ Implemented (2026-10-09).
 - Expanded groups frame their member nodes. A collapsed group shows a compact card with a diagram of its member nodes and internal connections. Member nodes and internal cables are hidden; external cables terminate on the card.
 - The card has an accessible toggle target. A selection of two or more nodes can be grouped from a context menu or keyboard shortcut. Ungroup is available from the group menu.
 - Group geometry is derived from each member's presented bounds, including inline pan nodes whose displayed position follows a cable. Moving a member uses the existing node movement delta, with no aggregate graph copy on movement updates.
+- The expanded frame contains connector captions as well as node bodies. Its header reserves enough screen space for the title and collapse control at every zoom, and title text ends before the control.
 
 ## Ownership and reuse
 
@@ -52,7 +53,8 @@ dispatcher. Group edits do not add DSP or compiler branches.
 
 After sizes: `NodeCanvas.cpp` 3,277 lines, `NodeCanvasPresentation.cpp`
 1,472 lines, `GraphSerializer.cpp` 1,322 lines. The new
-`NodeGroupPresentation.cpp` is 202 lines. The canvas increase is gesture/menu
+`NodeGroupPresentation.cpp` is 238 lines after the expanded-frame follow-up.
+The canvas increase is gesture/menu
 routing and status publication; minimap geometry and rendering are delegated.
 `NodeGraph::isNodeVisible` owns the collapsed visibility decision used by the
 scene, painting, hit queries, selection, and snapping. No separate layer stores
@@ -78,3 +80,8 @@ group state.
   presented node bounds. A focused inline pan test places the stored node far
   from its cable and verifies the card and external cable stay on the canvas.
   The 14 matching CTest cases and the group UI fixture passed after this change.
+- Expanded-frame follow-up: the canvas's existing endpoint renderer supplies
+  caption bounds; the group adds a 39-pixel header above the visible content.
+  Geometry assertions cover normal, reduced, and minimum zoom. UI fixture and
+  OS compositor capture use a Global Input through Output group at
+  `/private/tmp/cycle-v2-global-group-expanded-os.png`.

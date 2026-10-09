@@ -7,6 +7,7 @@
 #include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
+#include "UI/GraphEndpointNodeRenderer.h"
 #include "UI/NodeCanvasInteraction.h"
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeGroupPresentation.h"
@@ -138,19 +139,51 @@ TEST_CASE("Collapsed group geometry follows an inline pan on its cable",
     const NodeGroup& group = *graph.findNodeGroup("group");
     const auto panBounds = NodeCanvasScene::presentationWorldBounds(
             graph, *graph.findNode("pan"), edgeIndex);
-    const auto groupBounds = NodeGroupPresentation::worldBounds(graph, group, edgeIndex);
+    NodeCanvasViewport viewport;
+    viewport.setBounds({ 0.f, 0.f, 1000.f, 600.f });
+    viewport.setTransform({}, 1.f);
+    const auto groupBounds = NodeGroupPresentation::worldBounds(
+            graph, group, viewport, edgeIndex);
 
     REQUIRE(panBounds.getCentreX() < 520.f);
     REQUIRE(groupBounds.getRight() < 1000.f);
     REQUIRE(groupBounds.getBottom() < 500.f);
 
-    NodeCanvasViewport viewport;
-    viewport.setBounds({ 0.f, 0.f, 1000.f, 600.f });
-    viewport.setTransform({}, 1.f);
     NodeCanvasScene scene;
     const auto& snapshot = scene.build(graph, viewport);
     REQUIRE(snapshot.edges.size() == 1);
     REQUIRE(snapshot.edges.front().source.x == Catch::Approx(groupBounds.getRight()));
+}
+
+TEST_CASE("Expanded group header clears endpoint nodes and their captions",
+        "[cycle-v2][ui][groups]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "input", { 200.f, 200.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", { 700.f, 200.f }));
+    REQUIRE(graph.addNodeGroup({ "group", "Global FX", { "input", "output" }, false }));
+    const GraphEdgeIndex edgeIndex(graph.getEdges());
+    const NodeGroup& group = *graph.findNodeGroup("group");
+
+    for (const float zoom : { 1.f, 0.4f, 0.18f }) {
+        NodeCanvasViewport viewport;
+        viewport.setBounds({ 0.f, 0.f, 1200.f, 800.f });
+        viewport.setTransform({}, zoom);
+        const auto frame = viewport.toScreen(NodeGroupPresentation::worldBounds(
+                graph, group, viewport, edgeIndex));
+        const auto toggle = NodeGroupPresentation::toggleBounds(
+                graph, group, viewport, edgeIndex);
+        const Node& input = *graph.findNode("input");
+        const auto inputVisual = GraphEndpointNodeRenderer::visualBounds(
+                input.kind, viewport.toScreen(input.bounds),
+                viewport.getBounds(), viewport.getZoom());
+        const auto outputVisual = viewport.toScreen(graph.findNode("output")->bounds);
+
+        REQUIRE(frame.contains(inputVisual));
+        REQUIRE(frame.contains(outputVisual));
+        REQUIRE(toggle.getBottom() + 6.f <= juce::jmin(
+                inputVisual.getY(), outputVisual.getY()));
+    }
 }
 
 TEST_CASE("Deleting a group member clears the remaining membership",

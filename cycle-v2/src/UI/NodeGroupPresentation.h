@@ -18,6 +18,7 @@ public:
     static juce::Rectangle<float> worldBounds(
             const NodeGraph& graph,
             const NodeGroup& group,
+            const NodeCanvasViewport& viewport,
             const GraphEdgeIndex& edgeIndex);
     static juce::Rectangle<float> toggleBounds(
             const NodeGraph& graph,
