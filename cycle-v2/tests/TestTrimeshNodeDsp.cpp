@@ -1070,6 +1070,79 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
     }
 }
 
+TEST_CASE("Bipolar spectral magnitude has a signed surface gradient", "[cycle-v2][nodes][trimesh][surface]") {
+    const TrimeshRenderProfile unipolar = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+    const TrimeshRenderProfile bipolar = TrimeshRenderProfile::fromSemantic({
+            PortDomain::SpectralMagnitudeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::SpectralMagnitudeBipolar
+    });
+    const auto& unipolarStyle = unipolar.getSurfaceStyle();
+    const auto& bipolarStyle = bipolar.getSurfaceStyle();
+    const Colour negative = bipolarStyle.colourForValue(0.f);
+    const Colour neutral = bipolarStyle.colourForValue(0.5f);
+    const Colour positive = bipolarStyle.colourForValue(1.f);
+
+    REQUIRE(unipolarStyle.surfaceMaterial().palette
+            == ScalarSurfacePalette::UnipolarMagnitude);
+    REQUIRE(bipolarStyle.surfaceMaterial().palette
+            == ScalarSurfacePalette::BipolarMagnitude);
+    REQUIRE(unipolarStyle.colourForValue(0.f)
+            != bipolarStyle.colourForValue(0.f));
+    REQUIRE(negative.getFloatBlue() > negative.getFloatRed());
+    REQUIRE(positive.getFloatRed() > positive.getFloatBlue());
+    REQUIRE(neutral.getBrightness() < negative.getBrightness());
+    REQUIRE(neutral.getBrightness() < positive.getBrightness());
+    REQUIRE(negative.getFloatAlpha() == Catch::Approx(positive.getFloatAlpha()));
+}
+
+TEST_CASE("Bipolar spectral curves use yellow for high values and blue for low values",
+        "[cycle-v2][nodes][trimesh][surface]") {
+    const TrimeshRenderProfile bipolar = TrimeshRenderProfile::fromSemantic({
+            PortDomain::SpectralMagnitudeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::SpectralMagnitudeBipolar
+    });
+    const TrimeshRenderProfile unipolar = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+    const auto& bipolarCurve = bipolar.getCurveStyle();
+    const auto& unipolarCurve = unipolar.getCurveStyle();
+
+    REQUIRE(bipolarCurve.bipolar);
+    REQUIRE(bipolarCurve.positiveColour.toColour().getFloatRed()
+            > bipolarCurve.positiveColour.toColour().getFloatBlue());
+    REQUIRE(bipolarCurve.negativeColour.toColour().getFloatBlue()
+            > bipolarCurve.negativeColour.toColour().getFloatRed());
+    REQUIRE_FALSE(unipolarCurve.bipolar);
+    REQUIRE(unipolarCurve.positiveColour == unipolarCurve.negativeColour);
+    REQUIRE(unipolarCurve.positiveColour == bipolarCurve.positiveColour);
+}
+
+TEST_CASE("Bipolar spectral magnitude can use time surface shaders without recolouring unipolar magnitude",
+        "[cycle-v2][nodes][trimesh][surface]") {
+    const int previousStyle = ScalarSurfaceMaterial::bipolarMagnitudeStyleIndex();
+    const TrimeshRenderProfile bipolar = TrimeshRenderProfile::fromSemantic({
+            PortDomain::SpectralMagnitudeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::SpectralMagnitudeBipolar
+    });
+    const TrimeshRenderProfile unipolar = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+
+    ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(-1);
+    const Colour defaultColour = bipolar.getSurfaceStyle().colourForValue(0.2f);
+    ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(
+            (int) ScalarSurfaceTimeStyle::IcyHot13);
+    REQUIRE(bipolar.getSurfaceStyle().materialStyleSignature()
+            == (int) ScalarSurfaceTimeStyle::IcyHot13);
+    REQUIRE(bipolar.getSurfaceStyle().colourForValue(0.2f) != defaultColour);
+    REQUIRE(unipolar.getSurfaceStyle().surfaceMaterial().palette
+            == ScalarSurfacePalette::UnipolarMagnitude);
+    REQUIRE(unipolar.getSurfaceStyle().materialStyleSignature() == -1);
+    ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(previousStyle);
+}
+
 TEST_CASE("Expanded Trimesh panel preserves compact spectral RGBA mapping",
         "[cycle-v2][nodes][trimesh][compact][expanded][spectral]") {
     ScopedJuceInitialiser_GUI juce;
@@ -2344,6 +2417,40 @@ TEST_CASE("Trimesh panel data source adapts node grid data to Panel3D columns", 
     REQUIRE(columns.back().get() == columnArray.get() + 64);
 }
 
+TEST_CASE("Spectral partials sample the 3D grid column at the morph position",
+        "[cycle-v2][nodes][trimesh][expanded][spectral]") {
+    Node node { "mesh", NodeKind::TrilinearMesh, {}, {}, {}, {}, {} };
+    TrimeshNodeModel model;
+    TrimeshPanelDataSource source;
+    model.syncFromNode(node);
+    for (const PortDomain domain : {
+            PortDomain::SpectralMagnitudeSignal,
+            PortDomain::SpectralPhaseSignal }) {
+        source.rebuild(
+                model,
+                16,
+                5,
+                TrimeshRenderProfile::fromDomain(domain),
+                48,
+                model.getPrimaryViewAxis());
+
+        std::vector<float> partials;
+        int midiNote {};
+        REQUIRE(source.copyColumnAtMorph(0.49f, partials, midiNote));
+        const Column& middle = source.getColumns()[2];
+        REQUIRE(midiNote == middle.midiKey);
+        REQUIRE(partials.size() == (size_t) middle.size());
+        REQUIRE(std::equal(partials.begin(), partials.end(), middle.get()));
+
+        REQUIRE(source.copyColumnAtMorph(1.f, partials, midiNote));
+        const Column& last = source.getColumns().back();
+        REQUIRE(midiNote == last.midiKey);
+        REQUIRE(midiNote != middle.midiKey);
+        REQUIRE(std::equal(partials.begin(), partials.end(), last.get()));
+    }
+    REQUIRE(source.getRenderCounters().surfaceRebuilds == 2);
+}
+
 TEST_CASE("Trimesh Panel3D reads node-backed columns through lib data retriever", "[cycle-v2][nodes][trimesh]") {
     ScopedJuceInitialiser_GUI juce;
     Node node {
@@ -3235,4 +3342,42 @@ TEST_CASE("Compact and expanded Trimesh views sample the same spectral source",
                 compact.surface.begin() + compact.rows,
                 expanded.surface.begin()));
     }
+}
+
+TEST_CASE("Compact bipolar spectral surface updates when its shader changes",
+        "[cycle-v2][nodes][trimesh][compact][surface]") {
+    ScopedJuceInitialiser_GUI juce;
+    const int previousStyle = ScalarSurfaceMaterial::bipolarMagnitudeStyleIndex();
+    const Node node { "mesh", NodeKind::TrilinearMesh, {}, {}, {}, {}, {} };
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromSemantic({
+            PortDomain::SpectralMagnitudeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::SpectralMagnitudeBipolar
+    });
+    TrimeshWidget widget;
+    Image original(Image::ARGB, 220, 180, true);
+    Image configured(Image::ARGB, 220, 180, true);
+
+    ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(-1);
+    Graphics originalGraphics(original);
+    widget.paintCompact(originalGraphics, node, original.getBounds().toFloat(), 1.f, profile);
+    const TrimeshRenderData originalData = widget.renderDataForAutomation();
+
+    ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex((int) ScalarSurfaceTimeStyle::IcyHot13);
+    Graphics configuredGraphics(configured);
+    widget.paintCompact(configuredGraphics, node, configured.getBounds().toFloat(), 1.f, profile);
+    const TrimeshRenderData configuredData = widget.renderDataForAutomation();
+    ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(previousStyle);
+
+    bool appearanceChanged = false;
+    for (int y = 0; y < original.getHeight() && !appearanceChanged; ++y) {
+        for (int x = 0; x < original.getWidth(); ++x) {
+            if (original.getPixelAt(x, y) != configured.getPixelAt(x, y)) {
+                appearanceChanged = true;
+                break;
+            }
+        }
+    }
+    REQUIRE(appearanceChanged);
+    REQUIRE(configuredData.surface == originalData.surface);
 }

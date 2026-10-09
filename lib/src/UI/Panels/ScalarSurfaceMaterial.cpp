@@ -15,6 +15,7 @@ constexpr float minimumIllumination = 0.16f;
 constexpr int linearTransferTableSize = 4096;
 std::atomic<ScalarSurfaceTimeStyle> selectedTimeSurfaceStyle {
         ScalarSurfaceTimeStyle::BlueDepth };
+std::atomic<int> selectedBipolarMagnitudeStyle { -1 };
 
 float smoothUnit(float value) {
     const float unit = juce::jlimit(0.f, 1.f, value);
@@ -740,8 +741,8 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::greyscale() {
     return material;
 }
 
-ScalarSurfaceMaterial ScalarSurfaceMaterial::timeDomain() {
-    switch (timeSurfaceStyle()) {
+ScalarSurfaceMaterial ScalarSurfaceMaterial::forTimeStyle(ScalarSurfaceTimeStyle style) {
+    switch (style) {
         case ScalarSurfaceTimeStyle::Bipolar:
             return signedAmplitude();
 
@@ -778,6 +779,10 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::timeDomain() {
     return blueDepthDirectionalDetail();
 }
 
+ScalarSurfaceMaterial ScalarSurfaceMaterial::timeDomain() {
+    return forTimeStyle(timeSurfaceStyle());
+}
+
 ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyle() {
     return selectedTimeSurfaceStyle.load(std::memory_order_relaxed);
 }
@@ -797,6 +802,14 @@ void ScalarSurfaceMaterial::setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
     selectedTimeSurfaceStyle.store(style, std::memory_order_relaxed);
 }
 
+int ScalarSurfaceMaterial::bipolarMagnitudeStyleIndex() {
+    return selectedBipolarMagnitudeStyle.load(std::memory_order_relaxed);
+}
+
+void ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(int styleIndex) {
+    selectedBipolarMagnitudeStyle.store(styleIndex, std::memory_order_relaxed);
+}
+
 ScalarSurfaceMaterial ScalarSurfaceMaterial::unipolarMagnitude() {
     ScalarSurfaceMaterial material;
     material.palette = ScalarSurfacePalette::UnipolarMagnitude;
@@ -811,6 +824,31 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::unipolarMagnitude() {
     material.directionalDetailColours.fill(material.positivePearlTint);
     material.opacityValueScale = 25.f;
     material.opacityPower = 2;
+    material.reliefScale = 0.65f;
+    material.diffuseStrength = 0.24f;
+    material.specularStrength = 0.035f;
+    material.obscuranceStrength = 0.10f;
+    material.exposureStrength = 0.035f;
+    return material;
+}
+
+ScalarSurfaceMaterial ScalarSurfaceMaterial::bipolarMagnitude() {
+    const int styleIndex = bipolarMagnitudeStyleIndex();
+    if (styleIndex >= 0) {
+        return forTimeStyle(timeSurfaceStyleFromIndex(styleIndex));
+    }
+
+    ScalarSurfaceMaterial material;
+    material.palette = ScalarSurfacePalette::BipolarMagnitude;
+    material.negativeAnchor = juce::Colour(0xff4d9fd8);
+    material.neutralAnchor = juce::Colour(0xff17151c);
+    material.positiveAnchor = juce::Colour(0xffffb45f);
+    material.negativePearlTint = juce::Colour(0xffb1dfff);
+    material.neutralPearlTint = juce::Colour(0xff706c7b);
+    material.positivePearlTint = juce::Colour(0xffffd6a5);
+    material.negativeEdgeTint = material.negativePearlTint;
+    material.positiveEdgeTint = material.positivePearlTint;
+    material.directionalDetailColours.fill(material.positivePearlTint);
     material.reliefScale = 0.65f;
     material.diffuseStrength = 0.24f;
     material.specularStrength = 0.035f;

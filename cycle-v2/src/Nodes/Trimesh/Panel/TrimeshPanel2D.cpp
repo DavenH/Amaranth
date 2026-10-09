@@ -6,18 +6,28 @@
 #include <Util/LogRegionMapping.h>
 #include <Util/LogRegions.h>
 
+#include <cmath>
+
+#include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
 #include "UI/MeshEditorPresentation.h"
 
 namespace CycleV2 {
 
-TrimeshPanel2D::TrimeshPanel2D(SingletonRepo* repo) :
+TrimeshPanel2D::TrimeshPanel2D(SingletonRepo* repo, TrimeshPanelDataSource& source) :
         SingletonAccessor  (repo, "CycleV2TrimeshPanel2D")
-    ,   Panel2D            (repo, "CycleV2TrimeshPanel2D", true, true) {
+    ,   Panel2D            (repo, "CycleV2TrimeshPanel2D", true, true)
+    ,   dataSource         (source) {
     guideCurveApplicable = true;
     speedApplicable = false;
     backgroundTimeRelevant = false;
     setInterceptPointScale(MeshEditorPresentation::interceptPointScale);
     applyRenderProfile();
+}
+
+void TrimeshPanel2D::preDraw() {
+    if (renderProfile.getSliceStyle().isSpectral()) {
+        drawSpectralPartials();
+    }
 }
 
 void TrimeshPanel2D::drawBackground(bool fillBackground) {
@@ -97,11 +107,122 @@ void TrimeshPanel2D::setPreviewMidiNote(int midiNote) {
     }
 }
 
+void TrimeshPanel2D::setPrimaryMorphPosition(float position) {
+    if (primaryMorphPosition == position) {
+        return;
+    }
+
+    primaryMorphPosition = position;
+    requestRepaint();
+}
+
 void TrimeshPanel2D::applyRenderProfile() {
     const auto& curveStyle = renderProfile.getCurveStyle();
 
     setCurveBipolar(curveStyle.bipolar);
-    setColors(curveStyle.negativeColour, curveStyle.positiveColour);
+    // Panel2D uses its first colour above the centre line.
+    setColors(curveStyle.positiveColour, curveStyle.negativeColour);
+}
+
+void TrimeshPanel2D::drawSpectralPartials() {
+    if (gfx == nullptr || getWidth() <= 0 || getHeight() <= 0) {
+        return;
+    }
+
+    int midiNote {};
+    if (!dataSource.copyColumnAtMorph(primaryMorphPosition, partialValues, midiNote)) {
+        return;
+    }
+
+    const Buffer<float> ramp = LogRegions::getDefaultRegion(midiNote);
+    const int count = jmin((int) partialValues.size(), ramp.size());
+    if (count < 2) {
+        return;
+    }
+
+    xBuffer.ensureSize(count);
+    yBuffer.ensureSize(count);
+    Buffer<float> positions = xBuffer.withSize(count);
+    Buffer<float> heights = yBuffer.withSize(count);
+    ramp.withSize(count).copyTo(positions);
+    Buffer<float>(partialValues.data(), count).copyTo(heights);
+    applyScaleX(positions);
+    applyScaleY(heights);
+
+    const float baseline = sy(renderProfile.getCurveStyle().bipolar ? 0.5f : 0.f);
+    const Color body(0.72f, 0.75f, 0.82f, 0.20f);
+    partialContour.clear();
+    partialContour.reserve((size_t) getWidth() + 2);
+
+    int denseStart = count - 1;
+    for (int i = 0; i < count - 1; ++i) {
+        const float spacing = positions[i + 1] - positions[i];
+        const float gap = jmax(1.f, jmin(3.5f, spacing * 0.25f));
+        const float left = positions[i] + gap * 0.5f;
+        const float right = positions[i + 1] - gap * 0.5f;
+        if (right - left < 2.f) {
+            denseStart = i;
+            break;
+        }
+
+        const float top = jmin(heights[i], baseline);
+        const float bottom = jmax(heights[i], baseline);
+        if (bottom - top < 1.f) {
+            continue;
+        }
+
+        gfx->setCurrentColour(body);
+        if (spacing >= 12.f && bottom - top >= 8.f) {
+            const float corner = jmin(3.f, jmin(
+                    (right - left) * 0.25f,
+                    (bottom - top) * 0.25f));
+            if (heights[i] < baseline) {
+                gfx->fillRect(left + corner, top, right - corner, top + corner * 0.5f, false);
+                gfx->fillRect(left + corner * 0.4f, top + corner * 0.5f,
+                        right - corner * 0.4f, top + corner, false);
+                gfx->fillRect(left, top + corner, right, bottom, false);
+            } else {
+                gfx->fillRect(left, top, right, bottom - corner, false);
+                gfx->fillRect(left + corner * 0.4f, bottom - corner,
+                        right - corner * 0.4f, bottom - corner * 0.5f, false);
+                gfx->fillRect(left + corner, bottom - corner * 0.5f,
+                        right - corner, bottom, false);
+            }
+        } else {
+            gfx->fillRect(left, top, right, bottom, false);
+        }
+    }
+
+    if (denseStart < count - 1 && positions[denseStart] < (float) getWidth()) {
+        ColorPos point;
+        point.update(positions[denseStart], heights[denseStart], body);
+        partialContour.push_back(point);
+
+        int source = denseStart;
+        const int firstPixel = jmax(0, (int) std::ceil(positions[denseStart]));
+        const int lastPixel = jmin(getWidth(), (int) positions[count - 1]);
+        for (int pixel = firstPixel; pixel <= lastPixel; ++pixel) {
+            while (source + 1 < count - 1 && positions[source + 1] < (float) pixel) {
+                ++source;
+            }
+
+            const float width = positions[source + 1] - positions[source];
+            const float mix = width > 0.f
+                    ? ((float) pixel - positions[source]) / width
+                    : 0.f;
+            const float height = heights[source]
+                    + mix * (heights[source + 1] - heights[source]);
+            point.update((float) pixel, height, body);
+            partialContour.push_back(point);
+        }
+
+        if (positions[count - 1] <= (float) getWidth()) {
+            point.update(positions[count - 1], heights[count - 1], body);
+            partialContour.push_back(point);
+        }
+
+        gfx->fillAndOutlineColoured(partialContour, baseline, 0.08f, true, false);
+    }
 }
 
 void TrimeshPanel2D::drawWaveformBackground(bool fillBackground) {

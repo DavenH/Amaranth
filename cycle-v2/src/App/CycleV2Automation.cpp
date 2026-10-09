@@ -1,3 +1,5 @@
+#include <optional>
+
 #include <UI/Panels/TimeSurfaceStyles.h>
 
 #include "App/CycleV2Automation.h"
@@ -357,6 +359,10 @@ var CycleV2Automation::snapshotState() const {
 
     if (auto* object = objectFor(state)) {
         object->setProperty("timeSurfaceStyleId", TimeSurfaceStyles::id(workspace.timeSurfaceStyle()));
+        const auto spectralStyle = workspace.bipolarSpectralSurfaceStyle();
+        object->setProperty(
+                "bipolarSpectralSurfaceStyleId",
+                spectralStyle.has_value() ? TimeSurfaceStyles::id(*spectralStyle) : "default");
         object->setProperty("windowTitle", window.getName());
         object->setProperty("windowBounds", rectangleToVar(window.getBounds()));
         object->setProperty("workspaceBounds", rectangleToVar(workspace.getBounds()));
@@ -490,7 +496,11 @@ var CycleV2Automation::listMenuItems() const {
     for (const auto& entry : TimeSurfaceStyles::entries) {
         items.add(menuItemToVar("view.surface." + String(entry.id),
                 "View > Time Surface Colour", entry.label, true));
+        items.add(menuItemToVar("view.spectralSurface." + String(entry.id),
+                "View > Bipolar Spectral Surface", entry.label, true));
     }
+    items.add(menuItemToVar("view.spectralSurface.default",
+            "View > Bipolar Spectral Surface", "Blue / Amber", true));
     items.add(menuItemToVar(
             "file.saveGraph",
             "File",
@@ -519,6 +529,10 @@ var CycleV2Automation::invokeMenuItem(const var& commandValue) {
     if (id == "file.openGraph") {
         return openGraph(commandValue);
     }
+    if (id == "view.spectralSurface.default") {
+        workspace.setBipolarSpectralSurfaceStyle(std::nullopt);
+        return okResult("invokeMenuItem", snapshotState());
+    }
     for (const auto& entry : TimeSurfaceStyles::entries) {
         const bool legacyAlias = (id == "view.icyHot13" && entry.style == ScalarSurfaceTimeStyle::IcyHot13)
                 || (id == "view.icyHot14" && entry.style == ScalarSurfaceTimeStyle::IcyHot14);
@@ -528,6 +542,10 @@ var CycleV2Automation::invokeMenuItem(const var& commandValue) {
             objectFor(data)->setProperty("timeSurfaceStyle", (int) workspace.timeSurfaceStyle());
             objectFor(data)->setProperty("timeSurfaceStyleId", TimeSurfaceStyles::id(workspace.timeSurfaceStyle()));
             return okResult("invokeMenuItem", data);
+        }
+        if (id == "view.spectralSurface." + String(entry.id)) {
+            workspace.setBipolarSpectralSurfaceStyle(entry.style);
+            return okResult("invokeMenuItem", snapshotState());
         }
     }
     if (id == "file.saveGraph" || id == "file.saveGraphAs") {

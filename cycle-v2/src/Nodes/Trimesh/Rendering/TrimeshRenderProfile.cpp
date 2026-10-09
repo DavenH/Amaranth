@@ -18,7 +18,7 @@ const Color kWaveformGrey(0.86f, 0.86f, 0.94f, 0.74f);
 
 Color positiveCurveColourFor(bool spectral, bool phase) {
     if (phase) {
-        return kPhasePurple;
+        return kPhaseOrange;
     }
 
     if (spectral) {
@@ -30,7 +30,7 @@ Color positiveCurveColourFor(bool spectral, bool phase) {
 
 Color negativeCurveColourFor(bool spectral, bool phase, bool bipolar) {
     if (phase) {
-        return kPhaseOrange;
+        return kPhasePurple;
     }
 
     if (spectral) {
@@ -336,9 +336,23 @@ ScalarSurfaceMaterial TrimeshSurfaceStyle::surfaceMaterial() const {
         return ScalarSurfaceMaterial::bipolarPhase();
     }
     if (domain == PortDomain::SpectralMagnitudeSignal) {
-        return ScalarSurfaceMaterial::unipolarMagnitude();
+        return scalePolicy == RenderScalePolicy::Bipolar
+                ? ScalarSurfaceMaterial::bipolarMagnitude()
+                : ScalarSurfaceMaterial::unipolarMagnitude();
     }
     return ScalarSurfaceMaterial::timeDomain();
+}
+
+int TrimeshSurfaceStyle::materialStyleSignature() const {
+    if (domain == PortDomain::TimeSignal) {
+        return ScalarSurfaceMaterial::timeSurfaceStyleIndex(
+                ScalarSurfaceMaterial::timeSurfaceStyle());
+    }
+    if (domain == PortDomain::SpectralMagnitudeSignal
+            && scalePolicy == RenderScalePolicy::Bipolar) {
+        return ScalarSurfaceMaterial::bipolarMagnitudeStyleIndex();
+    }
+    return -1;
 }
 
 TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :
@@ -349,6 +363,7 @@ TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :
     const bool phase = semantic.domain == PortDomain::SpectralPhaseSignal;
 
     surfaceStyle.domain = domain;
+    surfaceStyle.scalePolicy = scalePolicy;
     surfaceStyle.textureUsesAlpha = spectral;
 
     if (phase) {

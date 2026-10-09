@@ -177,6 +177,8 @@ PresetPresentationDecodeResult readPresentation(
     result.presentation.pack = object->getProperty("pack").toString();
     result.presentation.description = object->getProperty("description").toString();
     result.presentation.timeSurfaceStyle = object->getProperty("timeSurfaceStyle").toString();
+    result.presentation.bipolarSpectralSurfaceStyle =
+            object->getProperty("bipolarSpectralSurfaceStyle").toString();
     result.presentation.patternId = object->getProperty("patternId").toString();
     result.presentation.rating = juce::jlimit(0, 5, (int) object->getProperty("rating"));
 
@@ -208,6 +210,7 @@ bool PresetPresentation::empty() const {
             && pack.isEmpty()
             && description.isEmpty()
             && timeSurfaceStyle.isEmpty()
+            && bipolarSpectralSurfaceStyle.isEmpty()
             && tags.isEmpty()
             && rating == 0
             && !preview.has_value()
@@ -223,6 +226,11 @@ juce::var PresetPresentationCodec::writeJSON(const PresetPresentation& presentat
     }
     if (presentation.timeSurfaceStyle.isNotEmpty()) {
         result->setProperty("timeSurfaceStyle", presentation.timeSurfaceStyle);
+    }
+    if (presentation.bipolarSpectralSurfaceStyle.isNotEmpty()) {
+        result->setProperty(
+                "bipolarSpectralSurfaceStyle",
+                presentation.bipolarSpectralSurfaceStyle);
     }
     if (presentation.author.isNotEmpty()) {
         result->setProperty("author", presentation.author);

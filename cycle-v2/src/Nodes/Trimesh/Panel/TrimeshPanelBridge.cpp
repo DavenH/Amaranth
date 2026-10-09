@@ -53,7 +53,7 @@ TrimeshPanelBridge::TrimeshPanelBridge() :
         interactor2D    (&environment.getRepo(), "CycleV2TrimeshInteractor2D",
                          Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Time, Vertex::Red, Vertex::Blue))
     ,   interactor3D    (&environment.getRepo(), "CycleV2TrimeshInteractor3D")
-    ,   panel2D         (&environment.getRepo())
+    ,   panel2D         (&environment.getRepo(), dataSource)
     ,   panel3D         (&environment.getRepo(), dataSource)
     ,   panelHosts      (panel2D, panel3D, interactor2D, interactor3D) {
 
@@ -159,6 +159,8 @@ void TrimeshPanelBridge::syncFromNode(
     lastRedLink = redLinked ? 1 : 0;
     lastBlueLink = blueLinked ? 1 : 0;
     environment.setMorphPosition(model.getMorphPosition(), model.getPrimaryViewAxis());
+    panel2D.setPrimaryMorphPosition(
+            model.getMorphPosition()[model.getPrimaryViewAxis()].getTargetValue());
     syncPrimaryAxisContext();
     const bool pitchSpansColumns = spectral
             && model.getPrimaryViewAxis() == previewKeyScaleAxis;

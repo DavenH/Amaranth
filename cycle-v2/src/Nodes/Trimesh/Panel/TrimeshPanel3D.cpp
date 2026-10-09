@@ -136,8 +136,11 @@ void TrimeshPanel3D::setLineGuideTables(std::vector<std::vector<float>> tables) 
 }
 
 void TrimeshPanel3D::setRenderProfile(TrimeshRenderProfile profile) {
-    if (profile.getDomain() == renderProfile.getDomain()
-            && profile.getScalePolicy() == renderProfile.getScalePolicy()) {
+    const bool domainChanged = profile.getDomain() != renderProfile.getDomain()
+            || profile.getScalePolicy() != renderProfile.getScalePolicy();
+    if (!domainChanged
+            && profile.getSurfaceStyle().materialStyleSignature()
+                    == appliedMaterialStyleSignature) {
         return;
     }
 
@@ -145,7 +148,9 @@ void TrimeshPanel3D::setRenderProfile(TrimeshRenderProfile profile) {
     haveLogarithmicY = profile.getDomain() == PortDomain::SpectralMagnitudeSignal
             || profile.getDomain() == PortDomain::SpectralPhaseSignal;
     applyGradientForProfile();
-    dirtyState.mark(PanelDirtyState::Flag::SurfaceCache);
+    if (domainChanged) {
+        dirtyState.mark(PanelDirtyState::Flag::SurfaceCache);
+    }
     dirtyState.mark(PanelDirtyState::Flag::StaticVisual);
     if (getComponent() != nullptr) {
         updateBackground();
@@ -194,6 +199,7 @@ void TrimeshPanel3D::applyGradientForProfile() {
     const auto& surfaceStyle = renderProfile.getSurfaceStyle();
     Image image = surfaceStyle.gradientImage();
 
+    appliedMaterialStyleSignature = surfaceStyle.materialStyleSignature();
     isTransparent = surfaceStyle.textureUsesAlpha;
     gradient.read(image, true, isTransparent);
 }

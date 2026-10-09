@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <optional>
 
 #include "App/StandaloneAudioEngine.h"
 #include "UI/NodeCanvas.h"
@@ -35,6 +36,12 @@ public:
     ScalarSurfaceTimeStyle timeSurfaceStyle() const { return canvas.timeSurfaceStyle(); }
     void setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
         canvas.setTimeSurfaceStyle(style);
+    }
+    std::optional<ScalarSurfaceTimeStyle> bipolarSpectralSurfaceStyle() const {
+        return canvas.bipolarSpectralSurfaceStyle();
+    }
+    void setBipolarSpectralSurfaceStyle(std::optional<ScalarSurfaceTimeStyle> style) {
+        canvas.setBipolarSpectralSurfaceStyle(style);
     }
     void setGraphDocumentStateChangedCallback(std::function<void()> callback) {
         canvas.setGraphDocumentStateChangedCallback(std::move(callback));

@@ -8,12 +8,24 @@
 namespace CycleV2 {
 
 bool GraphCommandDispatcher::setTimeSurfaceStyle(const juce::String& styleId) {
-    if (hasTransientEdit() || document.presetPresentation.timeSurfaceStyle == styleId) {
+    return setPresentationStyle(document.presetPresentation.timeSurfaceStyle, styleId);
+}
+
+bool GraphCommandDispatcher::setBipolarSpectralSurfaceStyle(
+        const juce::String& styleId) {
+    return setPresentationStyle(
+            document.presetPresentation.bipolarSpectralSurfaceStyle,
+            styleId);
+}
+
+bool GraphCommandDispatcher::setPresentationStyle(
+        juce::String& currentStyleId,
+        const juce::String& styleId) {
+    if (hasTransientEdit() || currentStyleId == styleId) {
         return false;
     }
-    // Presentation metadata follows setPresentation: dirty, but no DSP revision,
-    // graph snapshot, or graph undo entry.
-    document.presetPresentation.timeSurfaceStyle = styleId;
+    // Presentation metadata is dirty without a DSP revision or graph undo entry.
+    currentStyleId = styleId;
     ++document.presentationRevision;
     return true;
 }
