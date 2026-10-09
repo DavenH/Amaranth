@@ -5,6 +5,13 @@
       "path": "../../cycle-v2/resources/default.cyclegraph"
     },
     {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "workspace.sidebar.nodes",
+      "targetX": 0.5,
+      "targetY": 0.5
+    },
+    {
       "command": "assertState",
       "path": "nodeCount",
       "equals": 16

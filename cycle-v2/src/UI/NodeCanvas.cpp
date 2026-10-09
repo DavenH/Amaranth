@@ -242,6 +242,7 @@ NodeCanvas::NodeCanvas() :
     setOpaque(true);
     setName("NodeCanvas");
     setWantsKeyboardFocus(true);
+    palette.setVisible(false);
     openGLContext.setRenderer(this);
     openGLContext.setContinuousRepainting(false);
     openGLContext.attachTo(*this);
@@ -267,6 +268,7 @@ void NodeCanvas::configurePresetSidebar(
             std::move(browseCallback),
             [this](WorkspaceSidebarTab tab) {
                 guideShelfState.presetBrowserVisible = tab != WorkspaceSidebarTab::Curves;
+                palette.setVisible(tab == WorkspaceSidebarTab::Nodes);
                 guideShelfState.hoveredGuideId.clear();
                 requestCanvasRepaint();
                 openGLContext.triggerRepaint();
@@ -292,6 +294,11 @@ void NodeCanvas::configurePresetSidebar(
             });
     guideShelfState.presetBrowserVisible = presetSidebar->activeTab()
             != WorkspaceSidebarTab::Curves;
+    palette.setVisible(presetSidebar->activeTab() == WorkspaceSidebarTab::Nodes);
+    presetSidebar->nodePaletteHitTest = [this](Point<int> position) {
+        return palette.findSectionAt(position.toFloat()
+                + presetSidebar->getPosition().toFloat()) >= 0;
+    };
     addAndMakeVisible(*presetSidebar);
     resized();
 }
@@ -394,7 +401,8 @@ std::vector<std::pair<String, Rectangle<float>>> NodeCanvas::palettePointerTarge
 void NodeCanvas::resized() {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::LayoutLifecycle);
-    palette.setWorkspaceBounds(getLocalBounds().toFloat());
+    palette.setWorkspaceBounds(GuideCurveShelf::guideWorkspace(
+            getLocalBounds().toFloat(), guideShelfState.minimized, probeRailState.minimized));
     viewport.setBounds(canvasContentBounds());
     if (!documentViewportFitted && !canvasContentBounds().isEmpty()) {
         fitDocumentInViewport();
@@ -614,7 +622,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         }
     }
 
-    if (dockInteraction->mouseDown(event, workspace)) {
+    if (!(palette.isVisible() && palette.workspaceBounds().contains(event.position))
+            && dockInteraction->mouseDown(event, workspace)) {
         return;
     }
     guideShelfState.selectedGuideId = {};
@@ -1343,9 +1352,7 @@ Rectangle<float> NodeCanvas::canvasContentBounds() const {
 }
 
 Rectangle<float> NodeCanvas::canvasUtilityBounds() const {
-    const auto available = WorkspaceDock::editorAvailableBounds(workspaceDockLayout());
-    return available.withRight(jmax(available.getX(),
-            palette.railBounds().getX() - CanvasUtilityDock::gap));
+    return WorkspaceDock::editorAvailableBounds(workspaceDockLayout());
 }
 
 Rectangle<float> NodeCanvas::editorContentBounds() const {

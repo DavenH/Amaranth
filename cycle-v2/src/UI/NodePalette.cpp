@@ -7,7 +7,6 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr float kRightMargin = 18.f;
 constexpr float kY = 74.f;
 constexpr float kTileWidth = 40.f;
 constexpr float kTileHeight = 40.f;
@@ -73,6 +72,11 @@ void NodePalette::setWorkspaceBounds(Rectangle<float> bounds) {
     close();
 }
 
+void NodePalette::setVisible(bool value) {
+    visible = value;
+    close();
+}
+
 int NodePalette::sectionCount() const {
     return (int) std::size(kSections);
 }
@@ -84,6 +88,9 @@ const NodePalette::Section& NodePalette::section(int sectionIndex) const {
 
 std::vector<std::pair<String, Rectangle<float>>> NodePalette::pointerTargets() const {
     std::vector<std::pair<String, Rectangle<float>>> targets;
+    if (!visible) {
+        return targets;
+    }
     for (int sectionIndex = 0; sectionIndex < sectionCount(); ++sectionIndex) {
         const auto& group = section(sectionIndex);
         for (int index = 0; index < group.entryCount; ++index) {
@@ -111,7 +118,7 @@ Rectangle<float> NodePalette::groupBounds(int sectionIndex) const {
 
     const int columns = jmin(kColumns, section(sectionIndex).entryCount);
     const float width = kColumns * (kTileWidth + kGap) - kGap;
-    const float x = jmax(workspace.getX(), workspace.getRight() - kRightMargin - width);
+    const float x = jmax(workspace.getX(), workspace.getCentreX() - width * 0.5f);
     return { x + (kColumns - columns) * (kTileWidth + kGap), y,
             (float) columns * (kTileWidth + kGap) - kGap,
             groupHeight(section(sectionIndex)) };
@@ -128,6 +135,9 @@ Rectangle<float> NodePalette::entryBounds(int sectionIndex, int entryIndex) cons
 }
 
 int NodePalette::findSectionAt(Point<float> screenPosition) const {
+    if (!visible) {
+        return -1;
+    }
     for (int sectionIndex = 0; sectionIndex < sectionCount(); ++sectionIndex) {
         const auto heading = groupBounds(sectionIndex).withHeight(kHeadingHeight);
         if (heading.contains(screenPosition)) {

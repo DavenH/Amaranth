@@ -20,7 +20,8 @@ namespace CycleV2 {
 enum class WorkspaceSidebarTab {
     Curves,
     Presets,
-    Patterns
+    Patterns,
+    Nodes
 };
 
 class InlinePresetBrowser final :
@@ -75,6 +76,8 @@ public:
     std::vector<std::pair<juce::String, juce::Rectangle<float>>>
             pointerTargetsForAutomation() const;
 
+    std::function<bool(juce::Point<int>)> nodePaletteHitTest;
+
     bool hitTest(int x, int y) override;
     void paint(juce::Graphics& graphics) override;
     void resized() override;
@@ -116,6 +119,7 @@ private:
     juce::TextButton curves { "CURVES" };
     juce::TextButton presets { "PRESETS" };
     juce::TextButton patterns { "PATTERNS" };
+    juce::TextButton nodes { "NODES" };
     std::unique_ptr<PatternBrowser> patternBrowser;
     SidebarLibraryToolbar toolbar { "Search presets..." };
     juce::Label tagHeading;

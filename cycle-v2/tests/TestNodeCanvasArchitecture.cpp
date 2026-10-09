@@ -1217,6 +1217,13 @@ TEST_CASE("Node palette hover tracks direct entries without hiding other groups"
     REQUIRE(palette.updateHover({ 800.f, 700.f }));
     REQUIRE(palette.activeSection() == -1);
     REQUIRE_FALSE(palette.close());
+    palette.setVisible(false);
+    NodeKind kind {};
+    REQUIRE_FALSE(palette.findKindAt(palette.entryBounds(0, 0).getCentre(), kind));
+    REQUIRE(palette.pointerTargets().empty());
+    palette.setVisible(true);
+    REQUIRE(palette.findKindAt(palette.entryBounds(0, 0).getCentre(), kind));
+
 }
 
 TEST_CASE("Node palette has aligned ragged rows and two directly accessible FX rows",
@@ -1248,17 +1255,18 @@ TEST_CASE("Node palette has aligned ragged rows and two directly accessible FX r
     REQUIRE(palette.findSectionAt(emptyCell) == -1);
 }
 
-TEST_CASE("Sidebars anchor to opposite workspace edges through resizing",
+TEST_CASE("Nodes palette stays inside the unified sidebar through resizing",
         "[cycle-v2][canvas][palette][guide-dock]") {
     NodePalette palette;
     for (const Rectangle<float> workspace : {
             Rectangle<float>(0.f, 0.f, 1000.f, 700.f),
             Rectangle<float>(40.f, 20.f, 1400.f, 900.f) }) {
-        palette.setWorkspaceBounds(workspace);
         const auto dock = WorkspaceDock::layout(workspace, {});
         const auto browser = GuideCurveShelf::guideWorkspace(workspace);
+        palette.setWorkspaceBounds(browser);
         REQUIRE(browser.getX() == workspace.getX());
-        REQUIRE(palette.railBounds().getRight() == workspace.getRight() - 18.f);
+        REQUIRE(palette.railBounds().getCentreX() == browser.getCentreX());
+        REQUIRE(browser.contains(palette.railBounds()));
         REQUIRE(dock.rightShelf.getX() == browser.getRight() + CanvasUtilityDock::gap);
         REQUIRE(WorkspaceDock::editorAvailableBounds(dock).getX() == dock.rightShelf.getX());
         for (const auto& [id, bounds] : palette.pointerTargets()) {

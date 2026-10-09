@@ -531,3 +531,25 @@ TEST_CASE("Preset sidebar edits tags and title through its grouped actions",
     REQUIRE(opened == 0);
     REQUIRE(directory.deleteRecursively());
 }
+
+TEST_CASE("Nodes tab exposes palette hits while consuming empty sidebar space",
+        "[cycle-v2][browser][inline][palette]") {
+    ScopedJuceInitialiser_GUI gui;
+    WorkspaceSidebarTab selected = WorkspaceSidebarTab::Presets;
+    InlinePresetBrowser browser({}, [](const File&) { return true; }, [] {},
+            [&selected](WorkspaceSidebarTab tab) { selected = tab; });
+    browser.setBounds(0, 0, 290, 700);
+    browser.nodePaletteHitTest = [](Point<int> point) {
+        return Rectangle<int>(80, 80, 40, 40).contains(point);
+    };
+    REQUIRE_FALSE(targetBounds(browser, "workspace.sidebar.nodes").isEmpty());
+    browser.setActiveTab(WorkspaceSidebarTab::Nodes);
+    REQUIRE(selected == WorkspaceSidebarTab::Nodes);
+    REQUIRE_FALSE(browser.hitTest(100, 100));
+    REQUIRE(browser.hitTest(10, 300));
+    REQUIRE(browser.hitTest(100, 20));
+    REQUIRE(targetBounds(browser, "workspace.sidebar.search").isEmpty());
+    browser.setActiveTab(WorkspaceSidebarTab::Presets);
+    REQUIRE(browser.hitTest(100, 100));
+    REQUIRE_FALSE(targetBounds(browser, "workspace.sidebar.search").isEmpty());
+}

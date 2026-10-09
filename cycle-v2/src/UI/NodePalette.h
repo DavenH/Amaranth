@@ -20,6 +20,9 @@ public:
     };
 
     void setWorkspaceBounds(Rectangle<float> bounds);
+    void setVisible(bool value);
+    bool isVisible() const { return visible; }
+    Rectangle<float> workspaceBounds() const { return workspace; }
     int sectionCount() const;
     const Section& section(int sectionIndex) const;
 
@@ -37,6 +40,7 @@ public:
 
 private:
     Rectangle<float> workspace { 0.f, 0.f, 1000.f, 700.f };
+    bool visible { true };
     int activeSectionIndex { -1 };
     int activeEntryIndex { -1 };
 };

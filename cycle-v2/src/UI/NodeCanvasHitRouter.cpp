@@ -204,8 +204,7 @@ Point<float> NodeCanvasHitRouter::paletteCreationWorldPosition(
         NodeKind kind,
         Point<float> paletteClickPosition) const {
     const Node node = GraphNodeFactory().createNode(kind, {}, {});
-    const float x = jmax(canvasBounds.getX(),
-            palette.railBounds().getX() - 32.f - node.bounds.getWidth() * viewport.getZoom());
+    const float x = jmax(canvasBounds.getX(), palette.workspaceBounds().getRight() + 32.f);
     Point<float> position = viewport.toWorld(Point<float> { x, paletteClickPosition.y });
 
     if (isOperationNode(kind)) {

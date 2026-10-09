@@ -212,15 +212,19 @@ InlinePresetBrowser::InlinePresetBrowser(
     styleTabButton(curves);
     styleTabButton(presets);
     styleTabButton(patterns);
+    styleTabButton(nodes);
     curves.setComponentID("workspace.sidebar.curves");
     presets.setComponentID("workspace.sidebar.presets");
     patterns.setComponentID("workspace.sidebar.patterns");
+    nodes.setComponentID("workspace.sidebar.nodes");
     curves.onClick = [this] { setActiveTab(WorkspaceSidebarTab::Curves); };
     presets.onClick = [this] { setActiveTab(WorkspaceSidebarTab::Presets); };
     patterns.onClick = [this] { setActiveTab(WorkspaceSidebarTab::Patterns); };
+    nodes.onClick = [this] { setActiveTab(WorkspaceSidebarTab::Nodes); };
     addAndMakeVisible(curves);
     addAndMakeVisible(presets);
     addAndMakeVisible(patterns);
+    addAndMakeVisible(nodes);
 
     auto& search = toolbar.searchField();
     auto& create = toolbar.newButton();
@@ -382,7 +386,8 @@ InlinePresetBrowser::pointerTargetsForAutomation() const {
     std::vector<std::pair<juce::String, juce::Rectangle<float>>> targets {
             { "workspace.sidebar.curves", curves.getBounds().toFloat() },
             { "workspace.sidebar.presets", presets.getBounds().toFloat() },
-            { "workspace.sidebar.patterns", patterns.getBounds().toFloat() }
+            { "workspace.sidebar.patterns", patterns.getBounds().toFloat() },
+            { "workspace.sidebar.nodes", nodes.getBounds().toFloat() }
     };
     if (tab == WorkspaceSidebarTab::Presets) {
         for (const auto& [id, bounds] : toolbar.pointerTargetsForAutomation()) {
@@ -408,13 +413,17 @@ InlinePresetBrowser::pointerTargetsForAutomation() const {
 }
 
 bool InlinePresetBrowser::hitTest(int x, int y) {
+    if (tab == WorkspaceSidebarTab::Nodes && nodePaletteHitTest != nullptr
+            && nodePaletteHitTest({ x, y })) {
+        return false;
+    }
     return tab != WorkspaceSidebarTab::Curves
             || juce::Rectangle<int>(0, 0, getWidth(), 46).contains(x, y);
 }
 
 void InlinePresetBrowser::paint(juce::Graphics& graphics) {
     const auto bounds = getLocalBounds().toFloat();
-    if (tab != WorkspaceSidebarTab::Curves) {
+    if (tab != WorkspaceSidebarTab::Curves && tab != WorkspaceSidebarTab::Nodes) {
         graphics.setColour(CanvasChromePalette::dockSurface);
         graphics.fillRect(bounds);
     }
@@ -424,7 +433,8 @@ void InlinePresetBrowser::paint(juce::Graphics& graphics) {
             ? curves.getBounds().toFloat()
             : tab == WorkspaceSidebarTab::Presets
                     ? presets.getBounds().toFloat()
-                    : patterns.getBounds().toFloat();
+                    : tab == WorkspaceSidebarTab::Patterns
+                            ? patterns.getBounds().toFloat() : nodes.getBounds().toFloat();
     graphics.setColour(CanvasChromePalette::navigationAccent);
     graphics.fillRoundedRectangle(
             selectedTab.withY(43.f).withHeight(3.f).reduced(8.f, 0.f),
@@ -438,10 +448,11 @@ void InlinePresetBrowser::paint(juce::Graphics& graphics) {
 void InlinePresetBrowser::resized() {
     auto bounds = getLocalBounds();
     auto tabs = bounds.removeFromTop(46).reduced(8, 0);
-    const int tabWidth = juce::jmin(100, tabs.getWidth() / 3);
+    const int tabWidth = juce::jmin(100, tabs.getWidth() / 4);
     curves.setBounds(tabs.removeFromLeft(tabWidth));
     presets.setBounds(tabs.removeFromLeft(tabWidth));
     patterns.setBounds(tabs.removeFromLeft(tabWidth));
+    nodes.setBounds(tabs);
     if (patternBrowser != nullptr) {
         patternBrowser->setBounds(bounds);
     }
@@ -673,13 +684,13 @@ void InlinePresetBrowser::deletePreset(const juce::File& file) {
 
 void InlinePresetBrowser::updateVisibility() {
     const bool showingPresets = tab == WorkspaceSidebarTab::Presets;
-    curves.setToggleState(!showingPresets, juce::dontSendNotification);
+    curves.setToggleState(tab == WorkspaceSidebarTab::Curves, juce::dontSendNotification);
     presets.setToggleState(showingPresets, juce::dontSendNotification);
     patterns.setToggleState(tab == WorkspaceSidebarTab::Patterns,
             juce::dontSendNotification);
     curves.setColour(
             juce::TextButton::textColourOffId,
-            showingPresets ? CanvasChromePalette::mutedText : CanvasChromePalette::text);
+            tab == WorkspaceSidebarTab::Curves ? CanvasChromePalette::text : CanvasChromePalette::mutedText);
     curves.setColour(juce::TextButton::textColourOnId, CanvasChromePalette::text);
     presets.setColour(
             juce::TextButton::textColourOffId,
@@ -689,6 +700,9 @@ void InlinePresetBrowser::updateVisibility() {
             tab == WorkspaceSidebarTab::Patterns
                     ? CanvasChromePalette::text : CanvasChromePalette::mutedText);
     patterns.setColour(juce::TextButton::textColourOnId, CanvasChromePalette::text);
+    nodes.setToggleState(tab == WorkspaceSidebarTab::Nodes, juce::dontSendNotification);
+    nodes.setColour(juce::TextButton::textColourOffId, CanvasChromePalette::mutedText);
+    nodes.setColour(juce::TextButton::textColourOnId, CanvasChromePalette::text);
     toolbar.setVisible(showingPresets);
     tagHeading.setVisible(showingPresets);
     tagCloud.setVisible(showingPresets);

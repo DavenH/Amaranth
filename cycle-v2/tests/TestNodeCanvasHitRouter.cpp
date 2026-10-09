@@ -79,7 +79,7 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
     REQUIRE(edgeHelp == queries.hoverTextForEdge(graph.getEdges().front()));
     REQUIRE(edgeHelp == "Audio flows from Wave to Output.");
 
-    palette.setWorkspaceBounds({ 0.f, 0.f, 900.f, 700.f });
+    palette.setWorkspaceBounds({ 0.f, 0.f, 272.f, 700.f });
     const Point<float> paletteClick = palette.entryBounds(2, 1).getCentre();
     const Point<float> creationPosition = router.paletteCreationWorldPosition(
             viewport,
@@ -87,7 +87,7 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
             NodeKind::Multiply,
             paletteClick);
     const Node created = factory.createNode(NodeKind::Multiply, "created", creationPosition);
-    REQUIRE(created.bounds.getRight() + 32.f == Catch::Approx(palette.railBounds().getX()));
+    REQUIRE(created.bounds.getX() == Catch::Approx(palette.workspaceBounds().getRight() + 32.f));
     REQUIRE(!created.inputs.empty());
     REQUIRE(NodeCanvasScene::portWorldCentre(created, created.inputs.front()).y
             == Catch::Approx(paletteClick.y));
