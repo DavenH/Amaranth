@@ -63,6 +63,7 @@ struct NodeCanvasPresentationFrame {
     std::vector<String> selectedNodeIds;
     int hoveredEdgeIndex { -1 };
     std::optional<Rectangle<float>> areaSelectionBounds;
+    Rectangle<float> utilityBounds;
 };
 
 struct NodePortPresentation {

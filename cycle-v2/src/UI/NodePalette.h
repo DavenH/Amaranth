@@ -19,9 +19,11 @@ public:
         int entryCount {};
     };
 
+    void setWorkspaceBounds(Rectangle<float> bounds);
     int sectionCount() const;
     const Section& section(int sectionIndex) const;
 
+    std::vector<std::pair<String, Rectangle<float>>> pointerTargets() const;
     Rectangle<float> railBounds() const;
     Rectangle<float> groupBounds(int sectionIndex) const;
     Rectangle<float> entryBounds(int sectionIndex, int entryIndex) const;
@@ -34,6 +36,7 @@ public:
     bool close();
 
 private:
+    Rectangle<float> workspace { 0.f, 0.f, 1000.f, 700.f };
     int activeSectionIndex { -1 };
     int activeEntryIndex { -1 };
 };

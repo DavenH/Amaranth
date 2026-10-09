@@ -126,7 +126,7 @@ TEST_CASE("Signal probe rail overlays the full canvas", "[cycle-v2][canvas][prob
             { false, false, false, expanded.expandedHeight }).content == workspace);
 }
 
-TEST_CASE("Workspace dock gives the unified sidebar the former minimap region",
+TEST_CASE("Workspace dock places the unified sidebar left and Spies beside it",
         "[cycle-v2][canvas][guide-dock]") {
     const Rectangle<float> workspace { 0.f, 0.f, 1000.f, 700.f };
     WorkspaceDockState state;
@@ -135,10 +135,10 @@ TEST_CASE("Workspace dock gives the unified sidebar the former minimap region",
     const CanvasUtilityDockLayout utilities = CanvasUtilityDock::layout(workspace);
     REQUIRE(balanced.content == workspace);
     REQUIRE(balanced.leftShelf.getY() == workspace.getY() + CanvasUtilityDock::margin);
-    REQUIRE(balanced.leftShelf.getRight() == utilities.minimap.getRight());
+    REQUIRE(balanced.leftShelf.getX() == workspace.getX() + CanvasUtilityDock::margin);
     REQUIRE(balanced.leftShelf.getWidth() == Catch::Approx(256.f));
-    REQUIRE(balanced.leftShelf.intersects(utilities.minimap));
-    REQUIRE(balanced.leftShelf.getX() > balanced.rightShelf.getRight());
+    REQUIRE_FALSE(balanced.leftShelf.intersects(utilities.minimap));
+    REQUIRE(balanced.leftShelf.getRight() + CanvasUtilityDock::gap == balanced.rightShelf.getX());
     REQUIRE(balanced.leftShelf.getHeight() > WorkspaceDock::guideTileHeight);
     REQUIRE(balanced.rightShelf.getBottom() == workspace.getBottom());
     REQUIRE(balanced.collapseHandle.isEmpty());
@@ -175,7 +175,7 @@ TEST_CASE("Workspace dock gives the unified sidebar the former minimap region",
     const Rectangle<float> narrowWorkspace { 0.f, 0.f, 800.f, 600.f };
     const WorkspaceDockLayout narrow = WorkspaceDock::layout(narrowWorkspace, state);
     const CanvasUtilityDockLayout narrowUtilities = CanvasUtilityDock::layout(narrowWorkspace);
-    REQUIRE(narrow.leftShelf.intersects(narrowUtilities.minimap));
+    REQUIRE_FALSE(narrow.leftShelf.intersects(narrowUtilities.minimap));
     REQUIRE(narrow.leftShelf.getHeight()
             >= WorkspaceDock::headerHeight + WorkspaceDock::guideTileHeight);
     REQUIRE_FALSE(narrow.leftShelf.intersects(narrow.rightShelf));
@@ -438,8 +438,8 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
         }
         return count;
     };
-    REQUIRE(alphaCount({ 374, 44, 12, 12 }) > 0);
-    REQUIRE(alphaCount({ 74, 44, 12, 12 }) > 0);
+    REQUIRE(alphaCount({ 304, 44, 12, 12 }) > 0);
+    REQUIRE(alphaCount({ 4, 44, 12, 12 }) > 0);
     const auto dock = WorkspaceDock::layout(
             frame.workspaceBounds,
             {
@@ -456,7 +456,7 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
     WorkspaceDock::paintChrome(graphics, dock, "Curve Guides", "Spies", true, false);
     GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
     const Point<int> terminal {
-            roundToInt(dock.leftShelf.getX()),
+            roundToInt(dock.leftShelf.getRight()),
             roundToInt(guideTile.getCentreY())
     };
     REQUIRE(alphaCount(Rectangle<int>(12, 12).withCentre(terminal)) > 0);
@@ -1244,6 +1244,28 @@ TEST_CASE("Node palette has aligned ragged rows and two directly accessible FX r
     const auto emptyCell = palette.entryBounds(4, 4).getCentre();
     REQUIRE_FALSE(palette.findKindAt(emptyCell, kind));
     REQUIRE(palette.findSectionAt(emptyCell) == -1);
+}
+
+TEST_CASE("Sidebars anchor to opposite workspace edges through resizing",
+        "[cycle-v2][canvas][palette][guide-dock]") {
+    NodePalette palette;
+    for (const Rectangle<float> workspace : {
+            Rectangle<float>(0.f, 0.f, 1000.f, 700.f),
+            Rectangle<float>(40.f, 20.f, 1400.f, 900.f) }) {
+        palette.setWorkspaceBounds(workspace);
+        const auto dock = WorkspaceDock::layout(workspace, {});
+        const auto browser = GuideCurveShelf::guideWorkspace(workspace);
+        REQUIRE(browser.getX() == workspace.getX());
+        REQUIRE(palette.railBounds().getRight() == workspace.getRight() - 18.f);
+        REQUIRE(dock.rightShelf.getX() == browser.getRight() + CanvasUtilityDock::gap);
+        REQUIRE(WorkspaceDock::editorAvailableBounds(dock).getX() == dock.rightShelf.getX());
+        for (const auto& [id, bounds] : palette.pointerTargets()) {
+            NodeKind kind {};
+            REQUIRE(palette.findKindAt(bounds.getCentre(), kind));
+            REQUIRE(id == "palette:" + NodeDefinitionRegistry::instance().find(kind)->typeId);
+            REQUIRE(palette.railBounds().contains(bounds));
+        }
+    }
 }
 
 TEST_CASE("Node canvas viewport transforms round trip and preserve zoom anchors", "[cycle-v2][canvas]") {

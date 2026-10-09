@@ -14,37 +14,40 @@
     },
     {
       "command": "pointer",
-      "area": "canvas",
       "event": "down",
-      "x": 38,
-      "y": 234
+      "targetId": "palette:add",
+      "targetX": 0.5,
+      "targetY": 0.5
     },
     {
       "command": "pointer",
       "area": "canvas",
       "event": "drag",
-      "x": 400,
-      "y": 300,
-      "downX": 38,
-      "downY": 234
+      "x": 650,
+      "y": 340,
+      "downTargetId": "palette:add",
+      "downTargetX": 0.5,
+      "downTargetY": 0.5
     },
     {
       "command": "pointer",
       "area": "canvas",
       "event": "drag",
-      "x": 450,
-      "y": 320,
-      "downX": 38,
-      "downY": 234
+      "x": 675,
+      "y": 350,
+      "downTargetId": "palette:add",
+      "downTargetX": 0.5,
+      "downTargetY": 0.5
     },
     {
       "command": "pointer",
       "area": "canvas",
       "event": "up",
-      "x": 450,
-      "y": 320,
-      "downX": 38,
-      "downY": 234
+      "x": 700,
+      "y": 340,
+      "downTargetId": "palette:add",
+      "downTargetX": 0.5,
+      "downTargetY": 0.5
     },
     {
       "command": "assertState",
@@ -69,10 +72,10 @@
     },
     {
       "command": "pointer",
-      "area": "canvas",
       "event": "click",
-      "x": 124,
-      "y": 506
+      "targetId": "palette:equalizer",
+      "targetX": 0.5,
+      "targetY": 0.5
     },
     {
       "command": "assertState",

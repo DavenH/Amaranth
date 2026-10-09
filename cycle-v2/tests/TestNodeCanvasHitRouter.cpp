@@ -79,13 +79,15 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
     REQUIRE(edgeHelp == queries.hoverTextForEdge(graph.getEdges().front()));
     REQUIRE(edgeHelp == "Audio flows from Wave to Output.");
 
-    const Point<float> paletteClick { 80.f, 420.f };
+    palette.setWorkspaceBounds({ 0.f, 0.f, 900.f, 700.f });
+    const Point<float> paletteClick = palette.entryBounds(2, 1).getCentre();
     const Point<float> creationPosition = router.paletteCreationWorldPosition(
             viewport,
             { 0.f, 0.f, 900.f, 700.f },
             NodeKind::Multiply,
             paletteClick);
     const Node created = factory.createNode(NodeKind::Multiply, "created", creationPosition);
+    REQUIRE(created.bounds.getRight() + 32.f == Catch::Approx(palette.railBounds().getX()));
     REQUIRE(!created.inputs.empty());
     REQUIRE(NodeCanvasScene::portWorldCentre(created, created.inputs.front()).y
             == Catch::Approx(paletteClick.y));

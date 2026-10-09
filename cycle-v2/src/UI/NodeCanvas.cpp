@@ -384,9 +384,17 @@ void NodeCanvas::paint(Graphics& g) {
     }
 }
 
+std::vector<std::pair<String, Rectangle<float>>> NodeCanvas::palettePointerTargetsForAutomation() const {
+    if (!expandedEditorBoundsForOverlay().isEmpty()) {
+        return {};
+    }
+    return palette.pointerTargets();
+}
+
 void NodeCanvas::resized() {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::LayoutLifecycle);
+    palette.setWorkspaceBounds(getLocalBounds().toFloat());
     viewport.setBounds(canvasContentBounds());
     if (!documentViewportFitted && !canvasContentBounds().isEmpty()) {
         fitDocumentInViewport();
@@ -1300,7 +1308,8 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
                     : String {},
             selectedNodeIds,
             hoveredEdgeIndex,
-            areaSelectionBounds
+            areaSelectionBounds,
+            canvasUtilityBounds()
     };
 }
 
@@ -1331,6 +1340,12 @@ Point<float> NodeCanvas::viewportCentreWorld() const {
 
 Rectangle<float> NodeCanvas::canvasContentBounds() const {
     return workspaceDockLayout().content;
+}
+
+Rectangle<float> NodeCanvas::canvasUtilityBounds() const {
+    const auto available = WorkspaceDock::editorAvailableBounds(workspaceDockLayout());
+    return available.withRight(jmax(available.getX(),
+            palette.railBounds().getX() - CanvasUtilityDock::gap));
 }
 
 Rectangle<float> NodeCanvas::editorContentBounds() const {
@@ -1794,19 +1809,15 @@ void NodeCanvas::fitDocumentInViewport() {
 
     constexpr float visibleMargin = 40.f;
     constexpr float dockClearance = 12.f;
-    const Rectangle<float> content = canvasContentBounds();
+    const Rectangle<float> content = canvasUtilityBounds();
     const auto utilities = CanvasUtilityDock::layout(content);
     Rectangle<float> available = content.reduced(visibleMargin);
-    available.setLeft(jmax(available.getX(), palette.railBounds().getRight() + dockClearance));
     const WorkspaceDockLayout dock = workspaceDockLayout();
-    if (!dock.leftShelf.isEmpty()) {
-        available.setRight(jmin(available.getRight(), dock.leftShelf.getX() - dockClearance));
-    }
     available.setTop(jmax(available.getY(), utilities.keyboard.getBottom() + dockClearance));
     available.setBottom(jmin(
             available.getBottom(),
             dock.dock.getY() - dockClearance));
-    viewport.setBounds(content);
+    viewport.setBounds(canvasContentBounds());
     viewport.fit(graphBounds, available);
 }
 
@@ -2248,7 +2259,7 @@ void NodeCanvas::finishPreviewModWheelRefresh() {
 }
 
 Rectangle<int> NodeCanvas::performanceKeyboardDockBounds() const {
-    return CanvasUtilityDock::layout(canvasContentBounds()).keyboard.toNearestInt();
+    return CanvasUtilityDock::layout(canvasUtilityBounds()).keyboard.toNearestInt();
 }
 
 Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
@@ -2937,7 +2948,7 @@ void NodeCanvas::flushRenderInvalidations(uint32_t categories) {
         return;
     }
     if ((categories & NodeCanvasInvalidation::StatusRepaint) != 0) {
-        Component::repaint(statusRepaintBounds(canvasContentBounds()));
+        Component::repaint(statusRepaintBounds(canvasUtilityBounds()));
     }
 }
 

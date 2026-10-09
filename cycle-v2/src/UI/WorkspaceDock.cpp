@@ -49,12 +49,12 @@ WorkspaceDockLayout WorkspaceDock::layout(
     const float guideWidth = juce::jmin(maximumGuideShelfWidth,
             juce::jmax(drawerWidth, workspace.getWidth() * guideShelfWidthFraction));
     const float activeGuideWidth = state.leftMinimized ? drawerWidth : guideWidth;
-    const float guideRight = workspace.getRight() - CanvasUtilityDock::margin;
+    const float guideLeft = workspace.getX() + CanvasUtilityDock::margin;
     const float guideTop = workspace.getY() + CanvasUtilityDock::margin;
-    const float spyRight = juce::jmax(workspace.getX(),
-            guideRight - activeGuideWidth - CanvasUtilityDock::gap);
+    const float spyLeft = juce::jmin(workspace.getRight(),
+            guideLeft + activeGuideWidth + CanvasUtilityDock::gap);
     result.dock = spyRowBounds(
-            workspace.withRight(spyRight), state.expanded, state.expandedHeight);
+            workspace.withLeft(spyLeft), state.expanded, state.expandedHeight);
 
     if (!state.expanded) {
         result.collapseHandle = juce::Rectangle<float>(
@@ -68,7 +68,7 @@ WorkspaceDockLayout WorkspaceDock::layout(
             result.dock.getY(), 100.f, 5.f };
     const float guideHeight = juce::jmax(0.f,
             workspace.getBottom() - CanvasUtilityDock::margin - guideTop);
-    result.leftShelf = { guideRight - activeGuideWidth,
+    result.leftShelf = { guideLeft,
             guideTop, activeGuideWidth, guideHeight };
     result.rightShelf = result.dock;
     if (state.rightMinimized) {
@@ -81,8 +81,8 @@ juce::Rectangle<float> WorkspaceDock::editorAvailableBounds(const WorkspaceDockL
     if (layout.leftShelf.isEmpty()) {
         return layout.content;
     }
-    return layout.content.withRight(juce::jmax(
-            layout.content.getX(), layout.leftShelf.getX() - CanvasUtilityDock::gap));
+    return layout.content.withLeft(juce::jmin(
+            layout.content.getRight(), layout.leftShelf.getRight() + CanvasUtilityDock::gap));
 }
 
 bool WorkspaceDock::isOverlayComponentVisible(

@@ -23,7 +23,7 @@ Rectangle<float> graphBounds(const NodeGraph& graph) {
 void NodeCanvasPresentation::paintMiniMap(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    const Rectangle<float> map = CanvasUtilityDock::layout(frame.canvasBounds).minimap;
+    const Rectangle<float> map = CanvasUtilityDock::layout(frame.utilityBounds).minimap;
     graphics.setColour(CanvasChromePalette::minimapBackground);
     graphics.fillRoundedRectangle(map, CanvasChromeMetrics::panelCornerRadius);
 
@@ -87,7 +87,7 @@ void NodeCanvasPresentation::paintLegend(
             { PortDomain::ControlSignal, "Control" }
     };
     constexpr int entryCount = 4;
-    const Rectangle<float> legend = CanvasUtilityDock::layout(frame.canvasBounds).legend;
+    const Rectangle<float> legend = CanvasUtilityDock::layout(frame.utilityBounds).legend;
     if (legend.isEmpty()) {
         return;
     }
@@ -137,7 +137,7 @@ void NodeCanvasPresentation::paintStatus(
         return;
     }
 
-    const Rectangle<float> status = CanvasUtilityDock::layout(frame.canvasBounds).status;
+    const Rectangle<float> status = CanvasUtilityDock::layout(frame.utilityBounds).status;
     if (status.getWidth() < 180.f) {
         return;
     }
@@ -161,6 +161,7 @@ void NodeCanvasPresentation::paintPalette(
     const bool cacheHit = paletteCacheImage.isValid()
             && paletteCacheImage.getWidth() == imageWidth
             && paletteCacheImage.getHeight() == imageHeight
+            && paletteCacheBounds == bounds
             && paletteCacheScale == physicalScale
             && paletteCacheActiveSection == activeSectionIndex
             && paletteCacheHoveredEntry == hoveredEntryIndex;
@@ -212,8 +213,9 @@ void NodeCanvasPresentation::paintPaletteHoverLabel(
     const String label = String::fromUTF8(entry.label);
     const Font font { FontOptions(CanvasChromeMetrics::labelFontSize) };
     const auto tile = frame.palette.entryBounds(sectionIndex, entryIndex);
-    const Rectangle<float> bounds(frame.palette.railBounds().getRight() + 6.f,
-            tile.getCentreY() - 12.f, GlyphArrangement::getStringWidth(font, label) + 16.f, 24.f);
+    const float width = GlyphArrangement::getStringWidth(font, label) + 16.f;
+    const Rectangle<float> bounds(frame.palette.railBounds().getX() - width - 6.f,
+            tile.getCentreY() - 12.f, width, 24.f);
     graphics.setColour(CanvasChromePalette::raisedSurface);
     graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
     graphics.setColour(CanvasChromePalette::text);

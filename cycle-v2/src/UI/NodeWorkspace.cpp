@@ -408,6 +408,9 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
     for (const auto& [id, bounds] : canvas.presetSidebarPointerTargetsForAutomation()) {
         targets->add(pointerTarget(id, "presetSidebar", bounds));
     }
+    for (const auto& [id, bounds] : canvas.palettePointerTargetsForAutomation()) {
+        targets->add(pointerTarget(id, "nodePalette", bounds));
+    }
     if (!keyboard.isVisible()) {
         return result;
     }

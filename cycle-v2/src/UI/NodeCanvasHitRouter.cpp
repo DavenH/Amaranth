@@ -203,13 +203,12 @@ Point<float> NodeCanvasHitRouter::paletteCreationWorldPosition(
         Rectangle<float> canvasBounds,
         NodeKind kind,
         Point<float> paletteClickPosition) const {
-    const float paletteRight = palette.railBounds().getRight();
-    const float x = jmin(canvasBounds.getRight() - 280.f, paletteRight + 32.f);
+    const Node node = GraphNodeFactory().createNode(kind, {}, {});
+    const float x = jmax(canvasBounds.getX(),
+            palette.railBounds().getX() - 32.f - node.bounds.getWidth() * viewport.getZoom());
     Point<float> position = viewport.toWorld(Point<float> { x, paletteClickPosition.y });
 
     if (isOperationNode(kind)) {
-        const Node node = GraphNodeFactory().createNode(kind, {}, position);
-
         if (!node.inputs.empty()) {
             const float inputOffset = NodeCanvasScene::portWorldCentre(
                     node,

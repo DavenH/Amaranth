@@ -1,12 +1,13 @@
 #include <iterator>
 
 #include "UI/NodePalette.h"
+#include "Graph/NodeDefinition.h"
 
 namespace CycleV2 {
 
 namespace {
 
-constexpr float kX = 18.f;
+constexpr float kRightMargin = 18.f;
 constexpr float kY = 74.f;
 constexpr float kTileWidth = 40.f;
 constexpr float kTileHeight = 40.f;
@@ -67,6 +68,11 @@ float groupHeight(const NodePalette::Section& section) {
 
 }
 
+void NodePalette::setWorkspaceBounds(Rectangle<float> bounds) {
+    workspace = bounds;
+    close();
+}
+
 int NodePalette::sectionCount() const {
     return (int) std::size(kSections);
 }
@@ -76,19 +82,36 @@ const NodePalette::Section& NodePalette::section(int sectionIndex) const {
     return kSections[(size_t) sectionIndex];
 }
 
+std::vector<std::pair<String, Rectangle<float>>> NodePalette::pointerTargets() const {
+    std::vector<std::pair<String, Rectangle<float>>> targets;
+    for (int sectionIndex = 0; sectionIndex < sectionCount(); ++sectionIndex) {
+        const auto& group = section(sectionIndex);
+        for (int index = 0; index < group.entryCount; ++index) {
+            const auto* definition = NodeDefinitionRegistry::instance().find(group.entries[index].kind);
+            if (definition != nullptr) {
+                targets.emplace_back("palette:" + definition->typeId, entryBounds(sectionIndex, index));
+            }
+        }
+    }
+    return targets;
+}
+
 Rectangle<float> NodePalette::railBounds() const {
-    return { kX, kY, kColumns * (kTileWidth + kGap) - kGap,
-            groupBounds(sectionCount() - 1).getBottom() - kY };
+    const auto first = groupBounds(0);
+    return { first.getX(), first.getY(), kColumns * (kTileWidth + kGap) - kGap,
+            groupBounds(sectionCount() - 1).getBottom() - first.getY() };
 }
 
 Rectangle<float> NodePalette::groupBounds(int sectionIndex) const {
-    float y = kY;
+    float y = workspace.getY() + kY;
     for (int index = 0; index < sectionIndex; ++index) {
         y += groupHeight(section(index)) + kGroupGap;
     }
 
     const int columns = jmin(kColumns, section(sectionIndex).entryCount);
-    return { kX, y, (float) columns * (kTileWidth + kGap) - kGap,
+    const float width = kColumns * (kTileWidth + kGap) - kGap;
+    const float x = jmax(workspace.getX(), workspace.getRight() - kRightMargin - width);
+    return { x, y, (float) columns * (kTileWidth + kGap) - kGap,
             groupHeight(section(sectionIndex)) };
 }
 
