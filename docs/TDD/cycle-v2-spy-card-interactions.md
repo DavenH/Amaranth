@@ -92,6 +92,16 @@ setting their target component. The focused
 anchor (1649, 492 in the captured run). `AGENTS.md` records the JUCE ordering
 rule so future menus do not regress to the canvas origin.
 
+The node-start group drag now offsets selected Spy cards from the node drag
+gesture's original bounds. The previous code read the node's graph bounds after
+the move command, making the offset zero. An ordinary Spy could appear to move
+because its default position followed its cable; the output Spy exposed the
+failure. The `cycle-v2-agent-spy-node-start-group-drag.json` fixture selects
+nodes and both Spy cards with a Shift-marquee, starts the drag on a regular
+node, checks the output Spy during and after the drag, checks the ordinary
+Spy's persisted position, and verifies node and ordinary Spy undo. Output Spy
+position undo remains the separate presentation-state limitation noted above.
+
 - One area-selection gesture includes graph nodes and Spy cards; dragging
   either selected kind moves the complete group. Undo restores ordinary Spies
   and graph nodes.

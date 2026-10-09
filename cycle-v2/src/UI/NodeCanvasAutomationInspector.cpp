@@ -651,6 +651,11 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     }
     root->setProperty("spyCards", std::move(spyCards));
     root->setProperty("spyCardCount", (int) state.spyCards.size());
+    Array<var> selectedSpyIds;
+    for (const auto& spyId : state.selectedSpyIds) {
+        selectedSpyIds.add(spyId);
+    }
+    root->setProperty("selectedSpyIds", std::move(selectedSpyIds));
     root->setProperty("popupMenuTargetScreenX", state.popupMenuTargetScreenArea.getX());
     root->setProperty("popupMenuTargetScreenY", state.popupMenuTargetScreenArea.getY());
 

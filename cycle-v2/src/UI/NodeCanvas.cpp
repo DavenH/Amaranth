@@ -990,14 +990,12 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
                 nodeDrag->nodeIds,
                 nodeDrag->nodeId,
                 nodeDrag->bounds);
-        if (!probeCanvasState.selectedProbeIds.empty()) {
-            const Node* primary = graph.findNode(nodeDrag->nodeId);
-            if (primary != nullptr) {
-                probeCanvasState.draggedCardWorldPositions = nodeDragSpyStarts;
-                probeCanvasState.draggedScreenOffset =
-                        (nodeDrag->bounds.getPosition() - primary->bounds.getPosition())
-                        * viewport.getZoom();
-            }
+        if (const auto* gesture = std::get_if<NodeDragGesture>(&interaction.gesture());
+                gesture != nullptr && !nodeDragSpyStarts.empty()) {
+            probeCanvasState.draggedCardWorldPositions = nodeDragSpyStarts;
+            probeCanvasState.draggedScreenOffset =
+                    (nodeDrag->bounds.getPosition() - gesture->startBounds.getPosition())
+                    * viewport.getZoom();
         }
         const auto* validationContext = interaction.gestureValidationContext();
         spliceTargetEdgeIndex = nodeDrag->moved && validationContext != nullptr
@@ -1917,6 +1915,7 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
             result.spyCards.push_back({ probeId, bounds });
         }
     }
+    result.selectedSpyIds = probeCanvasState.selectedProbeIds;
     return result;
 }
 
