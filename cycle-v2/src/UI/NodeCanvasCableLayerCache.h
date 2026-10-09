@@ -52,6 +52,7 @@ private:
         uint64_t imageRevision {};
         float zoom {};
         float physicalScale {};
+        float cableOpacity { 1.f };
         bool destinationPortLike { true };
         bool modulationBundle {};
         bool destinationBundleIncludesYellow { true };

@@ -1,0 +1,16 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-baroque-cable-routing.png"
+    }
+  ],
+  "quit": true
+}

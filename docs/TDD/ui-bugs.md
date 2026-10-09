@@ -1,5 +1,14 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Direct full Cycle V2 test binary reports failures from repository root
+
+On 2026-10-09, running `build/tests/cycle-v2/CycleV2_tests` directly from the
+repository root during cable-routing verification reported 26 failures in 222
+cases, including missing graph fixtures and a SIGSEGV at
+`TestNodeEditorHost.cpp:4540`. The focused cable scene and cache filters passed.
+Artifact: `/private/tmp/cycle-v2-cable-routing-suite.log`. Status: open;
+reproduce through CTest before treating these as product regressions.
+
 ## P2: Full native Trimesh smoke misses an amplitude rail click
 
 On 2026-10-07, the full `trimesh` native edit smoke passed curve reshape,

@@ -87,9 +87,11 @@ TEST_CASE("Cable layer cache reuses only complete presentation keys",
     REQUIRE_FALSE(access().hit);
     edge.destinationBundleIncludesYellow = false;
     REQUIRE_FALSE(access().hit);
+    edge.cableOpacity = 0.6f;
+    REQUIRE_FALSE(access().hit);
     REQUIRE_FALSE(access(0.72f).hit);
     const NodeCanvasCableLayerCacheFrame changedFrame = cache.endFrame();
-    REQUIRE(changedFrame.spriteStats.misses == 6);
+    REQUIRE(changedFrame.spriteStats.misses == 7);
     REQUIRE_FALSE(changedFrame.compositeHit);
 
     cache.beginFrame({ 0, 0, 220, 180 }, 2.f);

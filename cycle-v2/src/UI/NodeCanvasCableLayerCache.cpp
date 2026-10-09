@@ -67,6 +67,7 @@ bool NodeCanvasCableLayerCache::Entry::matches(
             && image.getHeight() == jmax(1, roundToInt(bounds.getHeight() * scale))
             && zoom == currentZoom
             && physicalScale == scale
+            && cableOpacity == edge.cableOpacity
             && image.isValid();
 }
 
@@ -135,6 +136,7 @@ void NodeCanvasCableLayerCache::replaceEntry(
     entry.logicalBounds = logicalBounds;
     entry.zoom = zoom;
     entry.physicalScale = physicalScale;
+    entry.cableOpacity = sceneEdge.cableOpacity;
     entry.destinationPortLike = sceneEdge.destinationPortLike;
     entry.modulationBundle = sceneEdge.modulationBundle;
     entry.destinationBundleIncludesYellow = sceneEdge.destinationBundleIncludesYellow;

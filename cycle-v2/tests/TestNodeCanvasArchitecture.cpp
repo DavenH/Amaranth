@@ -1655,6 +1655,80 @@ TEST_CASE("Cable endpoints follow node movement before a drag transaction commit
                     *graph.findNode("output"), graph.findNode("output")->inputs.front())));
 }
 
+TEST_CASE("Fan-out cables stay above intermediate node previews",
+        "[cycle-v2][canvas][scene][cables]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "envelope", { 40.f, 20.f }));
+    for (int index = 0; index < 3; ++index) {
+        const String id = "mesh" + String(index);
+        graph.addNode(factory.createNode(
+                NodeKind::TrilinearMesh, id, { 430.f + 340.f * (float) index, 260.f }));
+        graph.addEdge({
+                "envelope", "env", id, "scratch",
+                PortDomain::ControlSignal, ConnectionKind::ProcessingAttachment });
+    }
+
+    NodeCanvasViewport viewport;
+    viewport.setTransform({}, 1.f);
+    NodeCanvasScene sceneBuilder;
+    const auto& scene = sceneBuilder.build(graph, viewport);
+    REQUIRE(scene.edges.size() == 3);
+
+    const Rectangle<float> firstMesh = viewport.toScreen(graph.findNode("mesh0")->bounds);
+    const Rectangle<float> secondMesh = viewport.toScreen(graph.findNode("mesh1")->bounds);
+    const Path& farCable = scene.edges[2].cablePath;
+    REQUIRE(farCable.getBounds().getY() < firstMesh.getY());
+    for (int index = 1; index < 3; ++index) {
+        const auto hit = NodeCanvasHitTester().hitTest(
+                scene,
+                { firstMesh.getCentreX(), firstMesh.getY() - 24.f - 8.f * (float) index });
+        REQUIRE(hit.has_value());
+        REQUIRE(hit->kind == NodeSceneTargetKind::Edge);
+        REQUIRE(hit->edgeIndex == index);
+    }
+    for (int sample = 1; sample < 100; ++sample) {
+        const Point<float> point = farCable.getPointAlongPath(
+                farCable.getLength() * (float) sample / 100.f);
+        REQUIRE_FALSE(firstMesh.reduced(3.f).contains(point));
+        REQUIRE_FALSE(secondMesh.reduced(3.f).contains(point));
+    }
+}
+
+TEST_CASE("An isolated cable detours only while a node blocks its direct path",
+        "[cycle-v2][canvas][scene][cables]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "source", { 40.f, 20.f }));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "output", { 1000.f, 260.f }));
+    graph.addEdge({
+            "source", "env", "output", "scratch",
+            PortDomain::ControlSignal, ConnectionKind::ProcessingAttachment });
+
+    NodeCanvasViewport viewport;
+    viewport.setTransform({}, 1.f);
+    NodeCanvasScene sceneBuilder;
+    const Path direct = sceneBuilder.build(graph, viewport).edges.front().cablePath;
+    REQUIRE(sceneBuilder.build(graph, viewport).edges.front().cablePath == direct);
+
+    Node blockingNode = factory.createNode(NodeKind::TrilinearMesh, "blocker", {});
+    blockingNode.bounds = blockingNode.bounds.withCentre(
+            direct.getPointAlongPath(direct.getLength() * 0.5f));
+    graph.addNode(blockingNode);
+    const auto& blocked = sceneBuilder.build(graph, viewport);
+    REQUIRE(blocked.edges.front().cablePath != direct);
+    const Rectangle<float> blocker = graph.findNode("blocker")->bounds.reduced(3.f);
+    for (int sample = 1; sample < 100; ++sample) {
+        const Path& route = blocked.edges.front().cablePath;
+        REQUIRE_FALSE(blocker.contains(route.getPointAlongPath(
+                route.getLength() * (float) sample / 100.f)));
+    }
+
+    REQUIRE(graph.setNodeBounds(
+            "blocker", graph.findNode("blocker")->bounds.withY(700.f)));
+    REQUIRE(sceneBuilder.build(graph, viewport).edges.front().cablePath == direct);
+}
+
 TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
         "[cycle-v2][canvas][scene][pan][spy]") {
     GraphNodeFactory factory;
