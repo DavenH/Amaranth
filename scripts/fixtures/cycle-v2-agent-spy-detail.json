@@ -25,10 +25,8 @@
     },
     {
       "command": "pointer",
-      "area": "canvas",
       "event": "doubleClick",
-      "x": 980,
-      "y": 880,
+      "targetId": "spy:probe2",
       "waitForIdle": true,
       "idleDelayMs": 300
     },
@@ -39,8 +37,13 @@
     },
     {
       "command": "assertState",
+      "path": "probeDetailId",
+      "equals": "probe2"
+    },
+    {
+      "command": "assertState",
       "path": "probeDetailResolution",
-      "equals": 256
+      "equals": 512
     },
     {
       "command": "assertState",
@@ -50,7 +53,7 @@
     {
       "command": "assertState",
       "path": "probeDetailRows",
-      "equals": 256
+      "equals": 512
     },
     {
       "command": "inspectPointerTargets"

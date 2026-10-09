@@ -26,6 +26,9 @@ public:
     const GraphPreviewResult::SignalProbePreview* probePreviewFor(
             const GraphPresentationSnapshot& snapshot,
             const String& probeId) const;
+    const GraphPreviewResult::SignalProbePreview* probeSpectrumFor(
+            const GraphPresentationSnapshot& snapshot,
+            const String& probeId) const;
     int executionIndexFor(const String& nodeId) const;
     PortDomain domainForEdge(const NodeGraph& graph, const Edge& edge) const;
     NodeRenderSemantic renderSemanticForNodeOutput(

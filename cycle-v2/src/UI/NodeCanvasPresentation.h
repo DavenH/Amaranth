@@ -13,7 +13,7 @@
 #include "UI/GuideCurveShelf.h"
 #include "UI/GuideRelationshipPresentation.h"
 #include "UI/SignalProbeDetailView.h"
-#include "UI/SignalProbeRail.h"
+#include "UI/SignalProbeCanvas.h"
 #include "Graph/GraphCompiler.h"
 #include "Runtime/GraphPresentationFacts.h"
 #include "Runtime/GraphPresentationSnapshot.h"
@@ -54,7 +54,7 @@ struct NodeCanvasPresentationFrame {
     bool nodeDragActive {};
     Rectangle<float> workspaceBounds;
     GuideCurveShelfState guideShelfState;
-    SignalProbeRailState probeRailState;
+    SignalProbeCanvasState probeCanvasState;
     WorkspaceDockFocus dockFocus;
     SignalProbeDetailState probeDetailState;
     UnisonPreviewContext unisonPreviewContext;
@@ -103,7 +103,7 @@ public:
     bool guideShelfNeedsOpenGLPreviewRender() const;
     int visibleGuidePreviewCount(const NodeGraph& graph) const;
     void clearDocumentCaches();
-    SignalProbeRail& probeRail() { return signalProbeRail; }
+    SignalProbeCanvas& probeCanvas() { return signalProbeCanvas; }
 
 private:
     void paintGrid(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
@@ -149,7 +149,7 @@ private:
 
     NodeCanvasScene& scene;
     NodePreviewRenderer& previewRenderer;
-    SignalProbeRail signalProbeRail;
+    SignalProbeCanvas signalProbeCanvas;
     GuideCurveShelf guideCurveShelf;
     SignalProbeDetailView signalProbeDetailView;
     NodeCanvasPresentationPerformanceObserver* performanceObserver;

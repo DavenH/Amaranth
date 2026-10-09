@@ -1,0 +1,187 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "probeCount",
+      "equals": 1
+    },
+    {
+      "command": "assertState",
+      "path": "spyCards.0.id",
+      "equals": "probe"
+    },
+    {
+      "command": "assertState",
+      "path": "spyCards.1.id",
+      "equals": "default-output"
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 500
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "spy:probe",
+      "targetX": 0.5,
+      "targetY": 0.13
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "spy:probe",
+      "downTargetId": "spy:probe",
+      "targetX": -0.3,
+      "targetY": 0.13,
+      "downTargetX": 0.5,
+      "downTargetY": 0.13
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "spy:probe",
+      "downTargetId": "spy:probe",
+      "targetX": -0.3,
+      "targetY": 0.13,
+      "downTargetX": 0.5,
+      "downTargetY": 0.13
+    },
+    {
+      "command": "assertState",
+      "path": "documentDirty",
+      "equals": true
+    },
+    {
+      "command": "saveGraph",
+      "path": "/tmp/cycle-v2-canvas-spies-saved.cyclegraph"
+    },
+    {
+      "command": "openGraph",
+      "path": "/tmp/cycle-v2-canvas-spies-saved.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "probes.0.canvasX",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "spy:default-output",
+      "targetX": 0.5,
+      "targetY": 0.13
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "spy:default-output",
+      "downTargetId": "spy:default-output",
+      "targetX": 0.8,
+      "targetY": -0.4,
+      "downTargetX": 0.5,
+      "downTargetY": 0.13
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "spy:default-output",
+      "downTargetId": "spy:default-output",
+      "targetX": 0.8,
+      "targetY": -0.4,
+      "downTargetX": 0.5,
+      "downTargetY": 0.13
+    },
+    {
+      "command": "assertState",
+      "path": "documentDirty",
+      "equals": true
+    },
+    {
+      "command": "saveGraph",
+      "path": "/tmp/cycle-v2-canvas-spies-saved.cyclegraph"
+    },
+    {
+      "command": "openGraph",
+      "path": "/tmp/cycle-v2-canvas-spies-saved.cyclegraph"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/tmp/cycle-v2-canvas-spies-after.png"
+    },
+    {
+      "command": "pointer",
+      "event": "doubleClick",
+      "targetId": "spy:probe",
+      "targetX": 0.5,
+      "targetY": 0.13
+    },
+    {
+      "command": "assertState",
+      "path": "probeDetailOpen",
+      "equals": true
+    },
+    {
+      "command": "key",
+      "area": "canvas",
+      "key": "escape"
+    },
+    {
+      "command": "assertState",
+      "path": "probeDetailOpen",
+      "equals": false
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "spy:default-output",
+      "targetX": 0.5,
+      "targetY": 0.13
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "spy:default-output",
+      "targetX": 0.5,
+      "targetY": 0.13
+    },
+    {
+      "command": "key",
+      "area": "canvas",
+      "key": "delete"
+    },
+    {
+      "command": "assertState",
+      "path": "spyCardCount",
+      "equals": 1
+    },
+    {
+      "command": "saveGraph",
+      "path": "/tmp/cycle-v2-canvas-spies-saved.cyclegraph"
+    },
+    {
+      "command": "openGraph",
+      "path": "/tmp/cycle-v2-canvas-spies-saved.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "spyCardCount",
+      "equals": 1
+    }
+  ],
+  "quit": false
+}

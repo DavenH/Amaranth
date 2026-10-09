@@ -7,25 +7,13 @@
 namespace CycleV2 {
 
 struct WorkspaceDockState {
-    bool expanded { true };
     bool leftMinimized {};
-    bool rightMinimized {};
-    float expandedHeight { 190.f };
 };
 
 struct WorkspaceDockLayout {
     juce::Rectangle<float> workspace;
     juce::Rectangle<float> content;
-    juce::Rectangle<float> dock;
     juce::Rectangle<float> leftShelf;
-    juce::Rectangle<float> rightShelf;
-    juce::Rectangle<float> resizeHandle;
-    juce::Rectangle<float> collapseHandle;
-};
-
-struct WorkspaceDockSpyControls {
-    juce::Rectangle<float> label;
-    juce::Rectangle<float> minimize;
 };
 
 enum class WorkspaceDockIcon {
@@ -36,14 +24,10 @@ enum class WorkspaceDockIcon {
 
 enum class WorkspaceDockFocusTarget {
     None,
-    Collapse,
     GuideDrawer,
     GuideMinimize,
     GuideAdd,
-    GuideTile,
-    SpyDrawer,
-    SpyMinimize,
-    SpyTile
+    GuideTile
 };
 
 struct WorkspaceDockFocus {
@@ -61,8 +45,6 @@ struct WorkspaceDockFocus {
 
 class WorkspaceDock {
 public:
-    static constexpr float collapsedHeight = 34.f;
-    static constexpr float minimumExpandedHeight = 120.f;
     static constexpr float drawerWidth = 36.f;
     static constexpr float guideShelfWidthFraction = 0.256f;
     static constexpr float maximumGuideShelfWidth = 272.f;
@@ -82,16 +64,7 @@ public:
     static bool isOverlayComponentVisible(
             juce::Rectangle<float> componentBounds,
             juce::Rectangle<float> overlayBounds);
-    static WorkspaceDockSpyControls spyControls(juce::Rectangle<float> rail);
-    static juce::Rectangle<float> spyRowBounds(
-            juce::Rectangle<float> workspace,
-            bool expanded,
-            float expandedHeight);
     static juce::Rectangle<float> headerBounds(juce::Rectangle<float> shelf);
-    static juce::Rectangle<float> tileBounds(
-            juce::Rectangle<float> shelf,
-            int tileIndex,
-            float horizontalOffset);
     static juce::Rectangle<float> guideTileBounds(
             juce::Rectangle<float> shelf,
             int tileIndex,
@@ -111,11 +84,6 @@ public:
             const std::vector<WorkspaceDockFocus>& order,
             const WorkspaceDockFocus& current,
             int direction);
-    static float offsetToRevealTile(
-            float currentOffset,
-            float maximumOffset,
-            float shelfWidth,
-            int tileIndex);
     static void paintIconButton(
             juce::Graphics& graphics,
             juce::Rectangle<float> bounds,
@@ -126,18 +94,6 @@ public:
             juce::Rectangle<float> tile,
             bool selected,
             bool hovered,
-            bool focused);
-    static void paintOverflowFeedback(
-            juce::Graphics& graphics,
-            juce::Rectangle<float> shelf,
-            float horizontalOffset,
-            float maximumHorizontalOffset);
-    static void paintChrome(
-            juce::Graphics& graphics,
-            const WorkspaceDockLayout& layout,
-            const juce::String& leftSummary,
-            const juce::String& rightSummary,
-            bool expanded,
             bool focused);
 };
 

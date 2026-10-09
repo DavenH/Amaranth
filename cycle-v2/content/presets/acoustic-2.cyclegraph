@@ -1148,18 +1148,7 @@
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "impulseResponse", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": [
-        {
-            "id": "probe2",
-            "sourceNodeId": "impulseResponse",
-            "sourcePortId": "time",
-            "anchorDestNodeId": "reverb",
-            "anchorDestPortId": "time",
-            "label": "Spy 2",
-            "tapPosition": 0.5,
-            "railOrder": 1
-        }
-    ],
+    "probes": [],
     "presetPresentation": {
         "version": 1,
         "tags": [ "Guitar", "Pluck" ],

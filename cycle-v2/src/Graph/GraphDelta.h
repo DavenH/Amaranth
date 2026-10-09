@@ -34,6 +34,12 @@ struct NodeBoundsDelta {
     juce::Rectangle<float> after;
 };
 
+struct SignalProbePositionDelta {
+    juce::String probeId;
+    std::optional<juce::Point<float>> before;
+    std::optional<juce::Point<float>> after;
+};
+
 struct GuideCurveDelta {
     juce::String guideId;
     GuideCurveResource before;
@@ -90,6 +96,7 @@ private:
     std::vector<NodeModelDelta> models;
     std::vector<NodeEditorStateDelta> editorStates;
     std::vector<NodeBoundsDelta> bounds;
+    std::vector<SignalProbePositionDelta> probePositions;
     std::vector<GuideCurveDelta> guides;
     std::vector<EdgeInputDelta> edgeInputs;
     std::vector<CableDeletionDelta> cableDeletions;
@@ -105,6 +112,7 @@ public:
     void captureNodeModel(const NodeGraph& graph, const juce::String& nodeId);
     void captureNodeEditorState(const NodeGraph& graph, const juce::String& nodeId);
     void captureNodeBounds(const NodeGraph& graph, const juce::String& nodeId);
+    void captureSignalProbePosition(const NodeGraph& graph, const juce::String& probeId);
     void captureGuideCurve(const NodeGraph& graph, const juce::String& guideId);
     void captureEdgesToInput(
             const NodeGraph& graph,
@@ -123,6 +131,7 @@ private:
     std::vector<NodeModelDelta> models;
     std::vector<NodeEditorStateDelta> editorStates;
     std::vector<NodeBoundsDelta> bounds;
+    std::vector<SignalProbePositionDelta> probePositions;
     std::vector<GuideCurveDelta> guides;
     std::vector<EdgeInputDelta> edgeInputs;
     std::vector<CableDeletionDelta> cableDeletions;

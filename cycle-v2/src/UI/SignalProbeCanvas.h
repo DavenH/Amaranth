@@ -2,11 +2,13 @@
 
 #include <JuceHeader.h>
 
+#include <vector>
+
 #include "UI/NodeCanvasScene.h"
+#include "UI/NodeCanvasViewport.h"
 #include "UI/NodePreviewRenderer.h"
 #include "UI/NodeCanvasPresentationPerformanceObserver.h"
 #include "UI/SignalProbePreviewTileCache.h"
-#include "UI/WorkspaceDock.h"
 #include "Graph/DefaultOutputProbeResolver.h"
 #include "Graph/PresetPresentation.h"
 #include "Runtime/GraphPresentationFacts.h"
@@ -15,57 +17,53 @@
 
 namespace CycleV2 {
 
-struct SignalProbeRailState {
-    bool expanded { true };
-    bool minimized {};
-    float expandedHeight { 190.f };
-    float horizontalOffset {};
+struct SignalProbeCanvasState {
     String selectedProbeId;
+    std::vector<String> selectedProbeIds;
     String hoveredProbeId;
     ProbeRefreshMode refreshMode { ProbeRefreshMode::OnGestureCommit };
     PresetPreviewView defaultOutputView { PresetPreviewView::Spectrum };
+    bool outputSpyVisible { true };
+    std::optional<Point<float>> outputCanvasPosition;
+    std::vector<std::pair<String, Point<float>>> draggedCardWorldPositions;
+    Point<float> draggedScreenOffset;
+
+    bool isSelected(const String& probeId) const;
 };
 
-class SignalProbeRail {
+class SignalProbeCanvas {
 public:
-    explicit SignalProbeRail(
+    explicit SignalProbeCanvas(
             NodePreviewRenderer& rendererToUse,
             NodeCanvasPresentationPerformanceObserver* performanceObserverToUse = nullptr) :
             renderer(rendererToUse)
         ,   performanceObserver(performanceObserverToUse) {
     }
 
-    static constexpr float collapsedHeight = WorkspaceDock::collapsedHeight;
-    static constexpr float minimumExpandedHeight = WorkspaceDock::minimumExpandedHeight;
-
-    static Rectangle<float> boundsFor(
-            Rectangle<float> workspace,
-            const SignalProbeRailState& state);
-    static Rectangle<float> minimizeButtonBoundsFor(
-            Rectangle<float> workspace,
-            const SignalProbeRailState& state);
-    static Rectangle<float> tileBoundsFor(
-            Rectangle<float> workspace,
-            const SignalProbeRailState& state,
-            int tileIndex);
-    static Rectangle<float> scrollAreaFor(
-            Rectangle<float> workspace,
-            const SignalProbeRailState& state,
-            int probeCount);
-    static float maximumHorizontalOffset(Rectangle<float> workspace, int probeCount);
     static int ordinalForProbe(const NodeGraph& graph, const String& probeId);
     static std::vector<String> orderedProbeIds(const NodeGraph& graph);
     static Point<float> markerCentre(
             const SignalProbe& probe,
             const NodeGraph& graph,
             const NodeCanvasSceneSnapshot& scene);
+    static juce::Path tetherPath(
+            const juce::Path& cable,
+            float attachmentFraction,
+            juce::Point<float> target);
     static float cableAnnotationDiameter(float zoom);
-
-    static String probeAt(
-            Point<float> position,
-            Rectangle<float> workspace,
+    static Rectangle<float> cardBoundsFor(
+            const String& probeId,
             const NodeGraph& graph,
-            const SignalProbeRailState& state);
+            const NodeCanvasSceneSnapshot& scene,
+            const NodeCanvasViewport& viewport,
+            const SignalProbeCanvasState& state);
+    static String cardAt(
+            Point<float> position,
+            const NodeGraph& graph,
+            const NodeCanvasSceneSnapshot& scene,
+            const NodeCanvasViewport& viewport,
+            const SignalProbeCanvasState& state);
+
     String markerProbeAt(
             Point<float> position,
             const NodeGraph& graph,
@@ -76,17 +74,17 @@ public:
             const NodeGraph& graph,
             const NodeCanvasSceneSnapshot& scene,
             const GraphPresentationFacts& facts,
-            Rectangle<float> workspace,
-            const SignalProbeRailState& state,
+            const NodeCanvasViewport& viewport,
+            const SignalProbeCanvasState& state,
             float zoom) const;
-    void paintRail(
+    void paintCards(
             Graphics& graphics,
             const NodeGraph& graph,
+            const NodeCanvasSceneSnapshot& scene,
+            const NodeCanvasViewport& viewport,
             const GraphPresentationSnapshot& snapshot,
             const GraphPresentationFacts& facts,
-            Rectangle<float> workspace,
-            const SignalProbeRailState& state,
-            const WorkspaceDockFocus& focus);
+            const SignalProbeCanvasState& state);
     void clearPreviewCache() { previewTileCache.clear(); }
 
 private:

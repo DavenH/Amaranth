@@ -1,0 +1,16 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph" },
+    { "command": "assertState", "path": "nodes.19.bounds.width", "equals": 116 },
+    { "command": "assertState", "path": "nodes.19.bounds.height", "equals": 116 },
+    { "command": "assertState", "path": "nodes.20.bounds.width", "equals": 116 },
+    { "command": "assertState", "path": "nodes.20.bounds.height", "equals": 116 },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-graph-endpoint-visuals.png" },
+    { "command": "pointer", "event": "click", "targetId": "node:voiceOutput", "targetX": 0.5, "targetY": 0.5 },
+    { "command": "assertState", "path": "selectedNodeId", "equals": "voiceOutput" },
+    { "command": "pointer", "event": "click", "targetId": "node:globalInput", "targetX": 0.5, "targetY": 0.5 },
+    { "command": "assertState", "path": "selectedNodeId", "equals": "globalInput" },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-graph-endpoint-selected.png" }
+  ],
+  "quit": true
+}

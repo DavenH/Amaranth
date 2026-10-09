@@ -1,0 +1,38 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 300
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "spy:probe",
+      "targetX": 0.5,
+      "targetY": 0.5,
+      "button": "right"
+    },
+    {
+      "command": "assertState",
+      "path": "popupMenuTargetScreenX",
+      "op": "greaterThan",
+      "value": 100
+    },
+    {
+      "command": "assertState",
+      "path": "popupMenuTargetScreenY",
+      "op": "greaterThan",
+      "value": 100
+    },
+    {
+      "command": "key",
+      "area": "canvas",
+      "key": "escape"
+    }
+  ],
+  "quit": true
+}

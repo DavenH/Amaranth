@@ -42,6 +42,14 @@ public:
     GraphEditResult connect(const PortAddress& first, const PortAddress& second);
     GraphEditResult toggleSignalProbe(size_t edgeIndex, float tapPosition = 0.5f);
     GraphEditResult removeSignalProbe(const juce::String& probeId);
+    GraphEditResult moveSignalProbe(
+            const juce::String& probeId,
+            juce::Point<float> position);
+    bool moveDefaultOutputSpy(juce::Point<float> position);
+    bool setDefaultOutputSpyVisible(bool visible);
+    bool setDefaultOutputSpyFrequencyView(bool frequencyView);
+    GraphEditResult setSignalProbeFrequencyView(
+            const juce::String& probeId, bool frequencyView);
     GraphEditResult reattachSignalProbe(
             const juce::String& probeId,
             size_t edgeIndex,

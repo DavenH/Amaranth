@@ -515,7 +515,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .help("Opens a waveform into magnitude and phase for spectral editing.")
                     .execution(NodeExecutionTrait::SpectralTransform)
                     .runtime(AudioModuleRole::Fft, PreviewModuleRole::None)
-                    .presentation({}, { 180.f, 178.f })
+                    .presentation({}, { 144.f, 142.f })
                     .finish(),
             buildDefinition(definition("ifft", NodeKind::Ifft, String::fromUTF8("Freq → Time"), "cyclic overlap", "ifft",
                     { input("mag", "Mag", PortDomain::SpectralMagnitudeSignal, ChannelLayout::StereoPair),
@@ -527,7 +527,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .help("Rebuilds a waveform from its magnitude and phase.")
                     .execution(NodeExecutionTrait::OscillatorMaterializer)
                     .runtime(AudioModuleRole::Ifft, PreviewModuleRole::None)
-                    .presentation({}, { 180.f, 178.f })
+                    .presentation({}, { 144.f, 142.f })
                     .finish(),
             buildDefinition(definition("envelope", NodeKind::Envelope, "Envelope", "control curve", "env",
                     { input("red", "Red Morph", PortDomain::ControlSignal,
@@ -628,7 +628,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .execution(NodeExecutionTrait::ConfigurationOnly)
                     .runtime(AudioModuleRole::None, PreviewModuleRole::None,
                             "cycle/src/Audio/Effects/Unison.cpp")
-                    .presentation({ 230.f, 112.f })
+                    .presentation({ 230.f, 43.f })
                     .finish(),
             buildDefinition(definition("reverb", NodeKind::Reverb, "Reverb", "space", "reverb",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
@@ -701,7 +701,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .help("Terminates each voice before the signals are mixed for global processing.")
                     .requiredSingleton()
                     .disablePreview()
-                    .presentation({}, { 190.f, 76.f })
+                    .presentation({}, { 116.f, 116.f })
                     .finish(),
             buildDefinition(definition("globalInput", NodeKind::GlobalInput, "Global Input", "voice mix", "globalIn", {},
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }))
@@ -710,7 +710,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .requiredSingleton()
                     .runtime(AudioModuleRole::GlobalInput, PreviewModuleRole::None)
                     .disablePreview()
-                    .presentation({}, { 190.f, 76.f })
+                    .presentation({}, { 116.f, 116.f })
                     .finish(),
             buildDefinition(definition("output", NodeKind::Output, "Output", "sink", "out",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}, {

@@ -41,6 +41,10 @@ size_t GraphPreviewExecutor::periodRowsForMidiNote(int midiNote, double sampleRa
     return (size_t) Arithmetic::getNextPow2((float) (1.0 / angleDelta));
 }
 
+size_t GraphPreviewExecutor::sourceFrameCountForMidiNote(int midiNote, double sampleRate) {
+    return jmax(kMinimumProbeSourceFrames, periodRowsForMidiNote(midiNote, sampleRate));
+}
+
 void GraphPreviewExecutor::reduceProbeRows(
         GraphPreviewResult::SignalProbePreview& preview,
         size_t timeRows) {
@@ -471,6 +475,15 @@ void appendProbePreviews(
         preview.probeId = probe.id;
         result.probes.push_back(std::move(preview));
     }
+    result.probeSpectra.clear();
+    result.probeSpectra.reserve(result.probes.size());
+    for (const auto& preview : result.probes) {
+        result.probeSpectra.push_back(
+                preview.connected && preview.domain == PortDomain::TimeSignal
+                        ? std::optional<GraphPreviewResult::SignalProbePreview>(
+                                DefaultOutputPreview::spectrum(preview))
+                        : std::nullopt);
+    }
 }
 
 }
@@ -611,6 +624,7 @@ void GraphPreviewExecutor::renderNodePreviewsIncremental(
         GraphPreviewResult& result,
         const PreviewControlContext* controlContext) const {
     auto probes = std::move(result.probes);
+    auto probeSpectra = std::move(result.probeSpectra);
     auto defaultOutput = std::move(result.defaultOutput);
     auto defaultOutputSpectrum = std::move(result.defaultOutputSpectrum);
     result = renderPreview(
@@ -621,6 +635,7 @@ void GraphPreviewExecutor::renderNodePreviewsIncremental(
             &dirtyNodes,
             controlContext);
     result.probes = std::move(probes);
+    result.probeSpectra = std::move(probeSpectra);
     result.defaultOutput = std::move(defaultOutput);
     result.defaultOutputSpectrum = std::move(defaultOutputSpectrum);
 }

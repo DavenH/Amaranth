@@ -145,7 +145,7 @@ NodeRenderSemantic GraphRenderSemanticResolver::semanticForEdge(
     return semantic;
 }
 
-NodeRenderSemantic GraphRenderSemanticResolver::defaultSemanticForDomain(PortDomain domain) const {
+NodeRenderSemantic GraphRenderSemanticResolver::defaultSemanticForDomain(PortDomain domain) {
     switch (domain) {
         case PortDomain::TimeSignal:
             return { domain, RenderScalePolicy::Bipolar, RenderSemanticRole::TimeWaveform };
@@ -162,6 +162,15 @@ NodeRenderSemantic GraphRenderSemanticResolver::defaultSemanticForDomain(PortDom
         default:
             return { domain, RenderScalePolicy::Unipolar, RenderSemanticRole::Generic };
     }
+}
+
+NodeRenderSemantic GraphRenderSemanticResolver::semanticForDisplay(
+        NodeRenderSemantic source,
+        PortDomain displayedDomain,
+        bool useDomainDefault) {
+    return useDomainDefault || source.domain != displayedDomain
+            ? defaultSemanticForDomain(displayedDomain)
+            : source;
 }
 
 }

@@ -1,0 +1,10 @@
+{
+  "commands": [
+    { "command": "addNode", "kind": "unison", "x": 160, "y": 800 },
+    { "command": "assertState", "path": "nodes.16.id", "equals": "unison" },
+    { "command": "assertState", "path": "nodes.16.bounds.width", "equals": 256 },
+    { "command": "assertState", "path": "nodes.16.bounds.height", "equals": 161 },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-unison-compact-preview.png" }
+  ],
+  "quit": true
+}

@@ -51,29 +51,10 @@ WorkspaceDockLayout WorkspaceDock::layout(
     const float activeGuideWidth = state.leftMinimized ? drawerWidth : guideWidth;
     const float guideLeft = workspace.getX() + CanvasUtilityDock::margin;
     const float guideTop = workspace.getY() + CanvasUtilityDock::margin;
-    const float spyLeft = juce::jmin(workspace.getRight(),
-            guideLeft + activeGuideWidth + CanvasUtilityDock::gap);
-    result.dock = spyRowBounds(
-            workspace.withLeft(spyLeft), state.expanded, state.expandedHeight);
-
-    if (!state.expanded) {
-        result.collapseHandle = juce::Rectangle<float>(
-                juce::jmin(220.f, juce::jmax(40.f, result.dock.getWidth() - 24.f)),
-                28.f)
-                .withCentre({ result.dock.getCentreX(), workspace.getBottom() - 17.f });
-        return result;
-    }
-
-    result.resizeHandle = { result.dock.getX() + shelfPadding,
-            result.dock.getY(), 100.f, 5.f };
     const float guideHeight = juce::jmax(0.f,
             workspace.getBottom() - CanvasUtilityDock::margin - guideTop);
     result.leftShelf = { guideLeft,
             guideTop, activeGuideWidth, guideHeight };
-    result.rightShelf = result.dock;
-    if (state.rightMinimized) {
-        result.rightShelf = result.dock.withWidth(drawerWidth);
-    }
     return result;
 }
 
@@ -91,50 +72,12 @@ bool WorkspaceDock::isOverlayComponentVisible(
     return overlayBounds.isEmpty() || !overlayBounds.intersects(componentBounds);
 }
 
-WorkspaceDockSpyControls WorkspaceDock::spyControls(juce::Rectangle<float> rail) {
-    WorkspaceDockSpyControls controls;
-    const float usableWidth = juce::jmax(0.f, rail.getWidth() - shelfPadding * 2.f);
-    const float gap = 6.f;
-    const float width = juce::jmin(116.f, usableWidth);
-    const float labelWidth = juce::jmax(0.f, width - controlSize - gap);
-    const float x = rail.getX() + shelfPadding;
-    const float y = rail.getY() + 5.f;
-    controls.label = { x, y, labelWidth, controlSize };
-    controls.minimize = { controls.label.getRight() + gap, y, controlSize, controlSize };
-    return controls;
-}
-
-juce::Rectangle<float> WorkspaceDock::spyRowBounds(
-        juce::Rectangle<float> workspace,
-        bool expanded,
-        float expandedHeight) {
-    const float maximumHeight = juce::jmax(minimumExpandedHeight, workspace.getHeight() * 0.4f);
-    const float height = expanded
-            ? juce::jlimit(minimumExpandedHeight, maximumHeight, expandedHeight)
-            : collapsedHeight;
-    return workspace.removeFromBottom(height);
-}
-
 juce::Rectangle<float> WorkspaceDock::headerBounds(juce::Rectangle<float> shelf) {
     return {
             shelf.getX() + shelfPadding,
             shelf.getY() + 5.f,
             juce::jmax(0.f, shelf.getWidth() - shelfPadding * 2.f),
             controlSize
-    };
-}
-
-juce::Rectangle<float> WorkspaceDock::tileBounds(
-        juce::Rectangle<float> shelf,
-        int tileIndex,
-        float horizontalOffset) {
-    return {
-            shelf.getX() + shelfPadding
-                    + (float) tileIndex * (tileWidth + tileGap)
-                    - horizontalOffset,
-            shelf.getY() + headerHeight,
-            tileWidth,
-            juce::jmax(0.f, shelf.getHeight() - headerHeight - tileBottomPadding)
     };
 }
 
@@ -195,24 +138,6 @@ WorkspaceDockFocus WorkspaceDock::advanceFocus(
     return order[(size_t) nextIndex];
 }
 
-float WorkspaceDock::offsetToRevealTile(
-        float currentOffset,
-        float maximumOffset,
-        float shelfWidth,
-        int tileIndex) {
-    const float tileLeft = shelfPadding + (float) tileIndex * (tileWidth + tileGap);
-    const float tileRight = tileLeft + tileWidth;
-    const float visibleLeft = currentOffset + shelfPadding;
-    const float visibleRight = currentOffset + shelfWidth - shelfPadding;
-    float result = currentOffset;
-    if (tileLeft < visibleLeft) {
-        result = tileLeft - shelfPadding;
-    } else if (tileRight > visibleRight) {
-        result = tileRight - shelfWidth + shelfPadding;
-    }
-    return juce::jlimit(0.f, maximumOffset, result);
-}
-
 void WorkspaceDock::paintIconButton(
         juce::Graphics& graphics,
         juce::Rectangle<float> bounds,
@@ -271,42 +196,6 @@ void WorkspaceDock::paintTileChrome(
     }
 }
 
-void WorkspaceDock::paintOverflowFeedback(
-        juce::Graphics& graphics,
-        juce::Rectangle<float> shelf,
-        float horizontalOffset,
-        float maximumHorizontalOffset) {
-    if (maximumHorizontalOffset <= 0.f) {
-        return;
-    }
-
-    const juce::Rectangle<float> track = shelf.reduced(shelfPadding, 0.f)
-            .removeFromBottom(3.f);
-    const float visibleWidth = shelf.getWidth();
-    const float contentWidth = visibleWidth + maximumHorizontalOffset;
-    const float thumbWidth = juce::jmax(28.f, track.getWidth() * visibleWidth / contentWidth);
-    const float travel = juce::jmax(0.f, track.getWidth() - thumbWidth);
-    const float progress = horizontalOffset / maximumHorizontalOffset;
-    const float trackCornerRadius = track.getHeight() * 0.5f;
-
-    graphics.setColour(CanvasChromePalette::border.withAlpha(0.35f));
-    graphics.fillRoundedRectangle(track, trackCornerRadius);
-    graphics.setColour(CanvasChromePalette::text.withAlpha(0.62f));
-    graphics.fillRoundedRectangle(
-            { track.getX() + progress * travel, track.getY(), thumbWidth, track.getHeight() },
-            trackCornerRadius);
-
-    graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.8f));
-    if (horizontalOffset > 0.f) {
-        graphics.fillRect(shelf.getX(), shelf.getY() + headerHeight, 6.f,
-                shelf.getHeight() - headerHeight);
-    }
-    if (horizontalOffset < maximumHorizontalOffset) {
-        graphics.fillRect(shelf.getRight() - 6.f, shelf.getY() + headerHeight, 6.f,
-                shelf.getHeight() - headerHeight);
-    }
-}
-
 void WorkspaceDock::paintVerticalOverflowFeedback(
         juce::Graphics& graphics,
         juce::Rectangle<float> shelf,
@@ -328,49 +217,6 @@ void WorkspaceDock::paintVerticalOverflowFeedback(
     graphics.fillRoundedRectangle({ track.getX(),
             track.getY() + travel * verticalOffset / maximumOffset,
             track.getWidth(), thumbHeight }, 1.5f);
-}
-
-void WorkspaceDock::paintChrome(
-        juce::Graphics& graphics,
-        const WorkspaceDockLayout& layout,
-        const juce::String& leftSummary,
-        const juce::String& rightSummary,
-        bool expanded,
-        bool focused) {
-    if (expanded) {
-        return;
-    }
-    graphics.setColour(CanvasChromePalette::dockSurface);
-    const float handleCornerRadius = CanvasChromeMetrics::tileCornerRadius;
-    graphics.fillRoundedRectangle(layout.collapseHandle, handleCornerRadius);
-    graphics.setColour(focused
-            ? CanvasChromePalette::focus
-            : CanvasChromePalette::border);
-    graphics.drawRoundedRectangle(
-            layout.collapseHandle,
-            handleCornerRadius,
-            focused
-                    ? CanvasChromeMetrics::focusRingWidth
-                    : CanvasChromeMetrics::restingBorderWidth);
-    graphics.setColour(CanvasChromePalette::text);
-
-    graphics.setFont(juce::FontOptions(CanvasChromeMetrics::captionFontSize));
-    graphics.drawText(
-            leftSummary + "  ·  " + rightSummary,
-            layout.collapseHandle.withTrimmedLeft(28.f).withTrimmedRight(8.f),
-            juce::Justification::centred);
-
-    const float centreX = layout.collapseHandle.getX() + 14.f;
-    const float centreY = layout.collapseHandle.getCentreY();
-    const float direction = -1.f;
-    juce::Path chevron;
-    chevron.startNewSubPath(centreX - 5.f, centreY - 2.f * direction);
-    chevron.lineTo(centreX, centreY + 3.f * direction);
-    chevron.lineTo(centreX + 5.f, centreY - 2.f * direction);
-    graphics.strokePath(chevron, juce::PathStrokeType(
-            1.5f,
-            juce::PathStrokeType::curved,
-            juce::PathStrokeType::rounded));
 }
 
 }

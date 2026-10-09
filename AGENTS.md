@@ -120,6 +120,17 @@ the user to prompt the next slice or to act as the implementation scheduler.
 
 If confusing code patterns, reuse possibilities, or better abstractions are detected, check `docs/TDD/refactors.md` if a suggestion to fix it is already present. If not record refactor wishes there.
 
+## Popup Menu Placement
+
+- For JUCE canvas context menus, anchor `PopupMenu::Options` with an explicit
+  screen-space click rectangle via `withTargetScreenArea`, after
+  `withTargetComponent` when the component's display scale is needed. Using
+  `withTargetComponent(this)` alone anchors the menu at the component origin
+  and has repeatedly placed new menus at `(0, 0)`.
+- Convert local canvas coordinates with `localPointToGlobal`, or use the mouse
+  event's screen position. Verify a new menu at a non-origin click in a focused
+  UI fixture; `withMousePosition()` can miss synthesized automation events.
+
 ## Testing Guidelines
 - Framework: Catch2.
 - Locations: `lib/tests/*.cpp`, `cycle/tests/*.cpp`, `oscillo/tests/*.cpp`.

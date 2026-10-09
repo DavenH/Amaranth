@@ -167,8 +167,8 @@ TEST_CASE("Preset load telemetry spans return, first paint and a later message t
             CanvasPerformanceMetrics::PresetLoadWorkspaceStage::Layout);
     metrics.beginPresetLoadPaint(26000);
     metrics.presentationStageCompleted(NodeCanvasPresentationStage::Nodes, 2000);
-    metrics.presentationStageCompleted(NodeCanvasPresentationStage::SpyRailPreviews, 800);
-    metrics.presentationStageCompleted(NodeCanvasPresentationStage::SpyRail, 1000);
+    metrics.presentationStageCompleted(NodeCanvasPresentationStage::SpyCanvasPreviews, 800);
+    metrics.presentationStageCompleted(NodeCanvasPresentationStage::SpyCanvas, 1000);
     fakeNow = 30000;
     REQUIRE(metrics.presetLoadPaintCompleted(26000) == currentGeneration);
     metrics.nodeTileCompleted("later", 9000);
@@ -191,8 +191,8 @@ TEST_CASE("Preset load telemetry spans return, first paint and a later message t
     REQUIRE((double) property(workspace, "layout") == Catch::Approx(0.05));
     const var& paintStages = property(load, "firstPaintStages");
     REQUIRE((double) property(paintStages, "nodes") == Catch::Approx(2.0));
-    REQUIRE((double) property(paintStages, "spyRail") == Catch::Approx(1.0));
-    REQUIRE((double) property(paintStages, "spyRailPreviews") == Catch::Approx(0.8));
+    REQUIRE((double) property(paintStages, "spyCanvas") == Catch::Approx(1.0));
+    REQUIRE((double) property(paintStages, "spyCanvasPreviews") == Catch::Approx(0.8));
     const Array<var>* tiles = property(exported, "slowestNodeTiles").getArray();
     REQUIRE(tiles != nullptr);
     REQUIRE(tiles->size() == 2);
@@ -236,10 +236,10 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
             NodeCanvasPresentationStage::Nodes,
             1800);
     metrics.presentationStageCompleted(
-            NodeCanvasPresentationStage::SpyRail,
+            NodeCanvasPresentationStage::SpyCanvas,
             900);
     metrics.presentationStageCompleted(
-            NodeCanvasPresentationStage::SpyRailPreviews,
+            NodeCanvasPresentationStage::SpyCanvasPreviews,
             720);
     metrics.presentationStageCompleted(
             NodeCanvasPresentationStage::CableBodies,
@@ -272,9 +272,9 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
     const var& stages = property(exported, "presentationStages");
     REQUIRE((double) property(property(stages, "nodes"), "meanMs")
             == Catch::Approx(3.0));
-    REQUIRE((double) property(property(stages, "spyRail"), "maxMs")
+    REQUIRE((double) property(property(stages, "spyCanvas"), "maxMs")
             == Catch::Approx(0.9));
-    REQUIRE((double) property(property(stages, "spyRailPreviews"), "maxMs")
+    REQUIRE((double) property(property(stages, "spyCanvasPreviews"), "maxMs")
             == Catch::Approx(0.72));
     REQUIRE((double) property(property(stages, "cableBodies"), "meanMs")
             == Catch::Approx(2.4));

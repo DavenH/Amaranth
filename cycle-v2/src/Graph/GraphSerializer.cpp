@@ -292,6 +292,13 @@ var probeToJSON(const SignalProbe& probe) {
     result->setProperty("label", probe.label);
     result->setProperty("tapPosition", probe.tapPosition);
     result->setProperty("railOrder", probe.railOrder);
+    if (probe.frequencyView) {
+        result->setProperty("frequencyView", true);
+    }
+    if (probe.canvasPosition.has_value()) {
+        result->setProperty("canvasX", probe.canvasPosition->x);
+        result->setProperty("canvasY", probe.canvasPosition->y);
+    }
     return var(result.release());
 }
 
@@ -1194,6 +1201,16 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         probe.label = encoded->getProperty("label").toString();
         probe.tapPosition = (float) encoded->getProperty("tapPosition");
         probe.railOrder = (int) encoded->getProperty("railOrder");
+        probe.frequencyView = (bool) encoded->getProperty("frequencyView");
+        if (encoded->hasProperty("canvasX") && encoded->hasProperty("canvasY")) {
+            const float x = (float) encoded->getProperty("canvasX");
+            const float y = (float) encoded->getProperty("canvasY");
+            if (!std::isfinite(x) || !std::isfinite(y)) {
+                result.issues.push_back({ GraphLoadCode::InvalidGraph, "Signal probe canvas position must be finite" });
+                continue;
+            }
+            probe.canvasPosition = juce::Point<float>(x, y);
+        }
         if (!std::isfinite(probe.tapPosition) || probe.tapPosition < 0.f || probe.tapPosition > 1.f) {
             result.issues.push_back({ GraphLoadCode::InvalidGraph, "Signal probe tap position must be finite and normalized" });
             continue;

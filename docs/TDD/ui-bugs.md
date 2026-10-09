@@ -530,3 +530,22 @@ per-pixel reference built with `mapGridToDisplay` and `derivativesAt`. The
 unipolar material and value mapping were untouched by the concurrent bipolar
 palette change. Current status: open; reconcile the heatmap's actual mapping
 and derivative sampling with this reference assertion.
+
+## P3: Legacy Stengah Spy cards overlap
+
+On 2026-10-09, opening `cycle-v2/content/presets/old/stengah.cyclegraph`
+placed `probe` and `default-output` Spy cards at almost identical bounds near
+`(1043, 607)` in a 1728 × 962 canvas. A double-click targeted at `spy:probe`
+opened the output Spy because it was painted on top. The automation report is
+`/private/tmp/cycle-v2-spy-detail-regression2-report.json`. Current status:
+open; assign a non-overlapping fallback position when multiple cards derive
+their placement from nearby cable anchors.
+
+## P3: Phase-velocity agent fixture has no source preset
+
+On 2026-10-09, `cycle-v2-agent-phase-velocity-test-preset.json` failed its
+first command because `cycle-v2/content/presets/phase-velocity-test.cyclegraph`
+does not exist. The report is
+`/private/tmp/cycle-v2-phase-velocity-regression-report.json`; later failures
+are consequences of that missing graph. Current status: open; restore the
+fixture graph or retire the agent fixture.
