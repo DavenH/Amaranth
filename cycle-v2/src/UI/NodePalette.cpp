@@ -129,7 +129,7 @@ Rectangle<float> NodePalette::groupBounds(int sectionIndex) const {
     }
 
     const float width = kColumns * (tileWidth() + kGap) - kGap;
-    const float x = workspace.getX() + 24.f;
+    const float x = workspace.getCentreX() - width * 0.5f;
     return { x, y, width,
             groupHeight(sectionIndex) };
 }

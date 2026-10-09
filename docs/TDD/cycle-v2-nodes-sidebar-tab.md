@@ -100,3 +100,12 @@ continues to share NodePalette layout. Existing resize and hit tests plus explic
 24px group-gap assertions pass (12 cases, 437 assertions). Both builds, architecture
 audit and diff/style checks pass. NodePalette remains 209 lines, header 53,
 chrome presentation 247. No new gesture, domain policy or hot-loop math.
+
+## Center the grid, retain left alignment
+
+The three-column card grid is now centered in the sidebar. Short rows and section
+headings remain left-aligned to the shared grid origin; category bars sit beside
+that origin. Labels increased from 10.5 to 12px. Geometry regression checks the
+shared grid center at both workspace sizes. Both builds and 12 palette cases / 437
+assertions pass; architecture audit and diff/style checks pass. Production file
+sizes remain 209 and 247 lines, with existing layout/render ownership unchanged.

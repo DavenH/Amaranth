@@ -1269,7 +1269,7 @@ TEST_CASE("Nodes palette stays inside the unified sidebar through resizing",
         const auto browser = GuideCurveShelf::guideWorkspace(workspace);
         palette.setWorkspaceBounds(browser);
         REQUIRE(browser.getX() == workspace.getX());
-        REQUIRE(palette.railBounds().getX() == browser.getX() + 14.f);
+        REQUIRE(palette.groupBounds(0).getCentreX() == Catch::Approx(browser.getCentreX()));
         REQUIRE(browser.contains(palette.railBounds()));
         REQUIRE(dock.rightShelf.getX() == browser.getRight() + CanvasUtilityDock::gap);
         REQUIRE(WorkspaceDock::editorAvailableBounds(dock).getX() == dock.rightShelf.getX());

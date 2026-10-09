@@ -235,7 +235,7 @@ void NodeCanvasPresentation::paintPaletteContent(
             const Rectangle<float> icon(tile.getCentreX() - iconSize * 0.5f,
                     tile.getY() + 4.f, iconSize, iconSize);
             NodePaletteEntryIconRenderer::paint(graphics, entry.kind, icon, hover);
-            graphics.setFont(FontOptions(10.5f));
+            graphics.setFont(FontOptions(12.f));
             graphics.setColour(CanvasChromePalette::text);
             graphics.drawFittedText(String::fromUTF8(entry.label),
                     tile.withTop(tile.getBottom() - 16.f).reduced(3.f, 0.f).toNearestInt(),
