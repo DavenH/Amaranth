@@ -182,6 +182,13 @@ PresetPresentationDecodeResult readPresentation(
             object->getProperty("bipolarSpectralSurfaceStyle").toString();
     result.presentation.patternId = object->getProperty("patternId").toString();
     result.presentation.rating = juce::jlimit(0, 5, (int) object->getProperty("rating"));
+    if (object->hasProperty("outputSpyX") && object->hasProperty("outputSpyY")) {
+        const float x = (float) object->getProperty("outputSpyX");
+        const float y = (float) object->getProperty("outputSpyY");
+        if (std::isfinite(x) && std::isfinite(y)) {
+            result.presentation.outputSpyPosition = juce::Point<float>(x, y);
+        }
+    }
 
     readTags(object->getProperty("tags"), result);
 
@@ -217,7 +224,8 @@ bool PresetPresentation::empty() const {
             && rating == 0
             && !preview.has_value()
             && patternId.isEmpty()
-            && !sequence.has_value();
+            && !sequence.has_value()
+            && !outputSpyPosition.has_value();
 }
 
 juce::var PresetPresentationCodec::writeJSON(const PresetPresentation& presentation) {
@@ -268,6 +276,10 @@ juce::var PresetPresentationCodec::writeJSON(const PresetPresentation& presentat
         result->setProperty("patternId", presentation.patternId);
     } else if (presentation.sequence.has_value()) {
         result->setProperty("sequence", writeSequence(*presentation.sequence));
+    }
+    if (presentation.outputSpyPosition.has_value()) {
+        result->setProperty("outputSpyX", presentation.outputSpyPosition->x);
+        result->setProperty("outputSpyY", presentation.outputSpyPosition->y);
     }
     return juce::var(result.release());
 }

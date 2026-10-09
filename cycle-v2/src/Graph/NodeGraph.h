@@ -283,6 +283,7 @@ struct SignalProbe {
     String label;
     float tapPosition { 0.5f };
     int railOrder {};
+    std::optional<juce::Point<float>> canvasPosition;
 };
 
 struct NodeNaturalSize {
@@ -391,6 +392,9 @@ private:
             const String& parameterId);
     GuideCurveResource* findGuideCurveForEditing(const String& guideId);
     SignalProbe* findSignalProbeForEditing(const String& probeId);
+    bool setSignalProbeCanvasPosition(
+            const String& probeId,
+            std::optional<juce::Point<float>> position);
     void markChanged() { ++revision; }
     void rebuildNodeIndex();
     void rebuildParameterIndex(const String& nodeId);

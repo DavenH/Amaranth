@@ -19,7 +19,7 @@ struct GuideTileAutomationPresentation {
     juce::Rectangle<float> deleteBounds;
 };
 
-struct SpyTileAutomationPresentation {
+struct SpyCardAutomationPresentation {
     juce::String probeId;
     juce::Rectangle<float> bounds;
 };
@@ -32,10 +32,7 @@ struct GuideEditorTargetAutomationPresentation {
 struct GuideDockAutomationPresentation {
     bool expanded { true };
     bool guidesMinimized {};
-    bool spiesMinimized {};
-    float expandedHeight { 190.f };
     float guideVerticalOffset {};
-    float spyHorizontalOffset {};
     juce::String selectedGuideId;
     juce::String hoveredGuideId;
     juce::String hoveredProbeId;
@@ -46,18 +43,12 @@ struct GuideDockAutomationPresentation {
     int visibleGuidePreviewCount {};
     bool expandedGuideHeatmapActive {};
     juce::String expandedGuideHeatmapFilename;
-    juce::Rectangle<float> dockBounds;
     juce::Rectangle<float> guideShelfBounds;
-    juce::Rectangle<float> spyShelfBounds;
-    juce::Rectangle<float> collapseBounds;
-    juce::Rectangle<float> resizeBounds;
     juce::Rectangle<float> guideMinimizeBounds;
-    juce::Rectangle<float> spyMinimizeBounds;
     juce::Rectangle<float> addGuideBounds;
     juce::Rectangle<float> guideEditorBounds;
     juce::var guideEditorState;
     std::vector<GuideTileAutomationPresentation> guideTiles;
-    std::vector<SpyTileAutomationPresentation> spyTiles;
     std::vector<GuideEditorTargetAutomationPresentation> guideEditorTargets;
 };
 
@@ -76,6 +67,7 @@ struct NodeCanvasAutomationPresentation {
     juce::Rectangle<float> canvasContentBounds;
     juce::Rectangle<float> editorContentBounds;
     GuideDockAutomationPresentation guideDock;
+    std::vector<SpyCardAutomationPresentation> spyCards;
     uint64_t hoverRepaintRequestCount {};
     uint64_t canvasRepaintRequestCount {};
     uint64_t statusRepaintRequestCount {};

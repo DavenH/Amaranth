@@ -258,7 +258,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/RenderInvalidationAccumulator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeDetailView.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbePreviewTileCache.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeRail.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeCanvas.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WorkspaceDock.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WorkspaceDockInteractionController.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WorkspaceDockKeyboardNavigation.cpp"

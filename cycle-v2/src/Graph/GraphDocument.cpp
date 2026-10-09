@@ -74,6 +74,14 @@ void GraphDocument::setPresentation(PresetPresentation presentation) {
     ++presentationRevision;
 }
 
+void GraphDocument::setOutputSpyPosition(std::optional<juce::Point<float>> position) {
+    if (presetPresentation.outputSpyPosition == position) {
+        return;
+    }
+    presetPresentation.outputSpyPosition = position;
+    ++presentationRevision;
+}
+
 bool GraphDocument::undo() {
     if (undoHistory.empty()) {
         return false;

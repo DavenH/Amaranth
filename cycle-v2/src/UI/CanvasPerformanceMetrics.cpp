@@ -662,8 +662,8 @@ const char* CanvasPerformanceMetrics::label(NodeCanvasPresentationStage stage) {
         case NodeCanvasPresentationStage::Palette:                 return "palette";
         case NodeCanvasPresentationStage::Status:                  return "status";
         case NodeCanvasPresentationStage::GuideShelf:              return "guideShelf";
-        case NodeCanvasPresentationStage::SpyRail:                 return "spyRail";
-        case NodeCanvasPresentationStage::SpyRailPreviews:         return "spyRailPreviews";
+        case NodeCanvasPresentationStage::SpyCanvas:                 return "spyCanvas";
+        case NodeCanvasPresentationStage::SpyCanvasPreviews:         return "spyCanvasPreviews";
         case NodeCanvasPresentationStage::DockAndDetail:           return "dockAndDetail";
         case NodeCanvasPresentationStage::Count:                   break;
     }

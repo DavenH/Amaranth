@@ -587,7 +587,7 @@ NodeCanvasPresentation::NodeCanvasPresentation(
         NodeCanvasPresentationPerformanceObserver* performanceObserverToUse) :
         scene(sceneToUse)
     ,   previewRenderer(previewRendererToUse)
-    ,   signalProbeRail(previewRendererToUse, performanceObserverToUse)
+    ,   signalProbeCanvas(previewRendererToUse, performanceObserverToUse)
     ,   signalProbeDetailView(previewRendererToUse)
     ,   performanceObserver(performanceObserverToUse) {
 }
@@ -622,25 +622,16 @@ void NodeCanvasPresentation::paint(
         return;
     }
 
-    const WorkspaceDockLayout dock = WorkspaceDock::layout(
-            frame.workspaceBounds,
-            {
-                    frame.probeRailState.expanded,
-                    frame.guideShelfState.minimized,
-                    frame.probeRailState.minimized,
-                    frame.probeRailState.expandedHeight
-            });
     {
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::GuideShelf);
-        if (frame.probeRailState.expanded
-                && !frame.guideShelfState.presetBrowserVisible) {
+        if (!frame.guideShelfState.presetBrowserVisible) {
             guideCurveShelf.paint(
                     graphics,
                     frame.graph,
                     frame.workspaceBounds,
-                    frame.probeRailState,
+                    frame.probeCanvasState,
                     frame.guideShelfState,
                     frame.dockFocus);
         }
@@ -648,32 +639,7 @@ void NodeCanvasPresentation::paint(
     {
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
-                NodeCanvasPresentationStage::SpyRail);
-        signalProbeRail.paintRail(
-                graphics,
-                frame.graph,
-                frame.snapshot,
-                frame.facts,
-                frame.probeRailState.expanded
-                        ? GuideCurveShelf::spyWorkspace(
-                                frame.workspaceBounds,
-                                frame.guideShelfState.minimized,
-                                frame.probeRailState.minimized)
-                        : frame.workspaceBounds,
-                frame.probeRailState,
-                frame.dockFocus);
-    }
-    {
-        ScopedNodeCanvasPresentationStage measurement(
-                performanceObserver,
                 NodeCanvasPresentationStage::DockAndDetail);
-        WorkspaceDock::paintChrome(
-                graphics,
-                dock,
-                "Curve Guides",
-                "Spies",
-                frame.probeRailState.expanded,
-                frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
         GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
         signalProbeDetailView.paint(
                 graphics,
@@ -705,16 +671,13 @@ void NodeCanvasPresentation::paintContent(
             ScopedNodeCanvasPresentationStage childMeasurement(
                     performanceObserver,
                     NodeCanvasPresentationStage::CableAnnotations);
-            signalProbeRail.paintCableAnnotations(
+            signalProbeCanvas.paintCableAnnotations(
                     graphics,
                     frame.graph,
                     scene.snapshot(),
                     frame.facts,
-                    GuideCurveShelf::spyWorkspace(
-                            frame.workspaceBounds,
-                            frame.guideShelfState.minimized,
-                            frame.probeRailState.minimized),
-                    frame.probeRailState,
+                    frame.viewport,
+                    frame.probeCanvasState,
                     frame.viewport.getZoom());
         }
     }
@@ -729,6 +692,17 @@ void NodeCanvasPresentation::paintContent(
                 performanceObserver,
                 NodeCanvasPresentationStage::Nodes);
         paintCachedNodes(graphics, frame);
+        ScopedNodeCanvasPresentationStage spyMeasurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::SpyCanvas);
+        signalProbeCanvas.paintCards(
+                graphics,
+                frame.graph,
+                scene.snapshot(),
+                frame.viewport,
+                frame.snapshot,
+                frame.facts,
+                frame.probeCanvasState);
     }
     {
         ScopedNodeCanvasPresentationStage measurement(
@@ -791,7 +765,7 @@ bool NodeCanvasPresentation::renderOpenGL(
             frame.graph,
             frame.workspaceBounds,
             frame.canvasBounds,
-            frame.probeRailState,
+            frame.probeCanvasState,
             frame.guideShelfState,
             scaleFactor);
     if (guideSnapshotUpdated) {
@@ -815,7 +789,7 @@ int NodeCanvasPresentation::visibleGuidePreviewCount(const NodeGraph& graph) con
 
 void NodeCanvasPresentation::clearDocumentCaches() {
     nodeLayerCache.clear();
-    signalProbeRail.clearPreviewCache();
+    signalProbeCanvas.clearPreviewCache();
     guideCurveShelf.resetDocumentPreviews();
 }
 

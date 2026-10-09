@@ -41,7 +41,7 @@
 #include "UI/NodePreviewRenderer.h"
 #include "UI/NodeViewModule.h"
 #include "UI/SignalProbeDetailView.h"
-#include "UI/SignalProbeRail.h"
+#include "UI/SignalProbeCanvas.h"
 #include "UI/TransformCompactEditor.h"
 #include "UI/VoiceContextCompactEditor.h"
 #include "UI/WorkspaceDock.h"
@@ -88,29 +88,13 @@ uint64_t imageChecksum(const Image& image) {
     return checksum;
 }
 
-TEST_CASE("Signal probe rail overlays the full canvas", "[cycle-v2][canvas][probe]") {
+TEST_CASE("Canvas spies leave the full canvas available", "[cycle-v2][canvas][probe]") {
     const Rectangle<float> workspace { 0.f, 0.f, 1200.f, 800.f };
-    SignalProbeRailState expanded;
-    expanded.expandedHeight = 190.f;
-
-    const WorkspaceDockLayout dock = WorkspaceDock::layout(
-            workspace, { true, false, false, expanded.expandedHeight });
+    const WorkspaceDockLayout dock = WorkspaceDock::layout(workspace, {});
     const Rectangle<float> content = dock.content;
     REQUIRE(content == workspace);
-    const Rectangle<float> spies = GuideCurveShelf::spyWorkspace(workspace);
-    REQUIRE(SignalProbeRail::boundsFor(spies, expanded) == dock.rightShelf);
-    const Rectangle<float> collapse = dock.collapseHandle;
-    const Rectangle<float> rail = dock.rightShelf;
-    REQUIRE(collapse.isEmpty());
-    const WorkspaceDockSpyControls controls = WorkspaceDock::spyControls(rail);
-    REQUIRE(controls.label.getRight() < controls.minimize.getX());
-    REQUIRE(controls.minimize.getRight() - controls.label.getX() <= 116.f);
-    REQUIRE(SignalProbeRail::tileBoundsFor(spies, expanded, 0).getY()
-            == Catch::Approx(rail.getY()
-                    + WorkspaceDock::headerHeight));
-    const Rectangle<float> spyScrollArea = SignalProbeRail::scrollAreaFor(spies, expanded, 4);
-    REQUIRE(spyScrollArea.contains(SignalProbeRail::tileBoundsFor(spies, expanded, 0).getCentre()));
-    REQUIRE(spyScrollArea.getRight() < rail.getRight());
+    REQUIRE(dock.leftShelf.getBottom() == Catch::Approx(
+            workspace.getBottom() - CanvasUtilityDock::margin));
 
     GraphNodeFactory factory;
     const Node trimesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
@@ -121,12 +105,10 @@ TEST_CASE("Signal probe rail overlays the full canvas", "[cycle-v2][canvas][prob
     REQUIRE(editor.getWidth() == Catch::Approx(content.getWidth() * 0.86f));
     REQUIRE(editor.getHeight() == Catch::Approx(content.getHeight() * 0.82f));
 
-    expanded.expanded = false;
-    REQUIRE(WorkspaceDock::layout(workspace,
-            { false, false, false, expanded.expandedHeight }).content == workspace);
+    REQUIRE(WorkspaceDock::layout(workspace, { true }).content == workspace);
 }
 
-TEST_CASE("Workspace dock places the unified sidebar left and Spies beside it",
+TEST_CASE("Guide shelf occupies the left side without a Spy tray",
         "[cycle-v2][canvas][guide-dock]") {
     const Rectangle<float> workspace { 0.f, 0.f, 1000.f, 700.f };
     WorkspaceDockState state;
@@ -138,11 +120,7 @@ TEST_CASE("Workspace dock places the unified sidebar left and Spies beside it",
     REQUIRE(balanced.leftShelf.getX() == workspace.getX() + CanvasUtilityDock::margin);
     REQUIRE(balanced.leftShelf.getWidth() == Catch::Approx(256.f));
     REQUIRE_FALSE(balanced.leftShelf.intersects(utilities.minimap));
-    REQUIRE(balanced.leftShelf.getRight() + CanvasUtilityDock::gap == balanced.rightShelf.getX());
     REQUIRE(balanced.leftShelf.getHeight() > WorkspaceDock::guideTileHeight);
-    REQUIRE(balanced.rightShelf.getBottom() == workspace.getBottom());
-    REQUIRE(balanced.collapseHandle.isEmpty());
-    REQUIRE(balanced.resizeHandle.getY() == balanced.dock.getY());
 
     const auto first = WorkspaceDock::guideTileBounds(balanced.leftShelf, 0, 0.f);
     const auto second = WorkspaceDock::guideTileBounds(balanced.leftShelf, 1, 0.f);
@@ -154,23 +132,11 @@ TEST_CASE("Workspace dock places the unified sidebar left and Spies beside it",
     state.leftMinimized = true;
     const WorkspaceDockLayout leftDrawer = WorkspaceDock::layout(workspace, state);
     REQUIRE(leftDrawer.leftShelf.getWidth() == Catch::Approx(WorkspaceDock::drawerWidth));
-    REQUIRE(leftDrawer.rightShelf.getWidth() > balanced.rightShelf.getWidth());
-
     state.leftMinimized = false;
-    state.expanded = false;
-    const WorkspaceDockLayout collapsed = WorkspaceDock::layout(workspace, state);
-    REQUIRE(collapsed.dock.getHeight() == Catch::Approx(WorkspaceDock::collapsedHeight));
-    REQUIRE(collapsed.leftShelf.isEmpty());
-    REQUIRE(collapsed.resizeHandle.isEmpty());
 
     const Rectangle<float> smallWorkspace { 0.f, 0.f, 360.f, 400.f };
-    state.expanded = true;
     const WorkspaceDockLayout small = WorkspaceDock::layout(smallWorkspace, state);
     REQUIRE(small.content == smallWorkspace);
-    REQUIRE_FALSE(small.rightShelf.intersects(small.leftShelf));
-    const WorkspaceDockSpyControls smallSpyControls = WorkspaceDock::spyControls(small.rightShelf);
-    REQUIRE(small.rightShelf.contains(smallSpyControls.minimize));
-    REQUIRE(smallSpyControls.label.getWidth() > 0.f);
 
     const Rectangle<float> narrowWorkspace { 0.f, 0.f, 800.f, 600.f };
     const WorkspaceDockLayout narrow = WorkspaceDock::layout(narrowWorkspace, state);
@@ -178,11 +144,6 @@ TEST_CASE("Workspace dock places the unified sidebar left and Spies beside it",
     REQUIRE_FALSE(narrow.leftShelf.intersects(narrowUtilities.minimap));
     REQUIRE(narrow.leftShelf.getHeight()
             >= WorkspaceDock::headerHeight + WorkspaceDock::guideTileHeight);
-    REQUIRE_FALSE(narrow.leftShelf.intersects(narrow.rightShelf));
-    const WorkspaceDockSpyControls narrowSpyControls = WorkspaceDock::spyControls(narrow.rightShelf);
-    REQUIRE(narrow.collapseHandle.isEmpty());
-    REQUIRE(narrow.rightShelf.contains(narrowSpyControls.minimize));
-    REQUIRE(narrowSpyControls.label.getWidth() >= 80.f);
 
     GraphNodeFactory factory;
     const Node trimesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
@@ -192,21 +153,20 @@ TEST_CASE("Workspace dock places the unified sidebar left and Spies beside it",
         REQUIRE(available.contains(editor));
         REQUIRE_FALSE(editor.intersects(layout.leftShelf));
     }
-    REQUIRE(WorkspaceDock::editorAvailableBounds(collapsed) == collapsed.content);
+    REQUIRE(WorkspaceDock::editorAvailableBounds(balanced).getX()
+            > balanced.leftShelf.getRight());
 }
 
 TEST_CASE("Workspace dock keyboard traversal exposes every visible action",
         "[cycle-v2][canvas][guide-dock][keyboard]") {
     WorkspaceDockKeyboardModel model;
     model.guideIds = { "guide1", "guide2" };
-    model.spyIds = { "probe1" };
 
     const auto order = WorkspaceDockKeyboardNavigation::focusOrder(model);
     REQUIRE(order.front().target == WorkspaceDockFocusTarget::GuideMinimize);
     REQUIRE(std::count(order.begin(), order.end(), WorkspaceDockFocus {
             WorkspaceDockFocusTarget::GuideTile, "guide1" }) == 1);
-    REQUIRE(std::count(order.begin(), order.end(), WorkspaceDockFocus {
-            WorkspaceDockFocusTarget::SpyTile, "probe1" }) == 1);
+    REQUIRE(order.size() == 4);
 
     WorkspaceDockFocus focus;
     REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
@@ -222,31 +182,19 @@ TEST_CASE("Workspace dock keyboard traversal exposes every visible action",
     REQUIRE(focus.itemId == "guide2");
     REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
             KeyPress(KeyPress::tabKey), model, focus));
-    REQUIRE(focus.target == WorkspaceDockFocusTarget::SpyMinimize);
+    REQUIRE(focus.target == WorkspaceDockFocusTarget::GuideMinimize);
 
-    model.spyIds.clear();
-    const auto noSpyOrder = WorkspaceDockKeyboardNavigation::focusOrder(model);
-    REQUIRE(std::none_of(noSpyOrder.begin(), noSpyOrder.end(), [](const auto& target) {
-        return target.target == WorkspaceDockFocusTarget::SpyDrawer
-                || target.target == WorkspaceDockFocusTarget::SpyMinimize
-                || target.target == WorkspaceDockFocusTarget::SpyTile;
-    }));
-
-    model.expanded = false;
-    const auto collapsedOrder = WorkspaceDockKeyboardNavigation::focusOrder(model);
-    REQUIRE(collapsedOrder.size() == 1);
-    REQUIRE(collapsedOrder.front().target == WorkspaceDockFocusTarget::Collapse);
+    model.guidesMinimized = true;
+    const auto minimizedOrder = WorkspaceDockKeyboardNavigation::focusOrder(model);
+    REQUIRE(minimizedOrder.size() == 1);
+    REQUIRE(minimizedOrder.front().target == WorkspaceDockFocusTarget::GuideDrawer);
 }
 
 TEST_CASE("Workspace dock reveals keyboard-focused overflow tiles",
         "[cycle-v2][canvas][guide-dock][keyboard]") {
     const float maximumOffset = 900.f;
-    const float first = WorkspaceDock::offsetToRevealTile(420.f, maximumOffset, 500.f, 0);
-    const float last = WorkspaceDock::offsetToRevealTile(0.f, maximumOffset, 500.f, 5);
-
-    REQUIRE(first == Catch::Approx(0.f));
-    REQUIRE(last > 0.f);
-    REQUIRE(last <= maximumOffset);
+    REQUIRE(WorkspaceDock::offsetToRevealGuideTile(420.f, maximumOffset, 300.f, 0)
+            == Catch::Approx(0.f));
     REQUIRE(WorkspaceDock::offsetToRevealGuideTile(0.f, maximumOffset, 300.f, 5) > 0.f);
 }
 
@@ -258,8 +206,7 @@ TEST_CASE("Guide shelf keeps actions in the footer and exposes per-tile deletion
     REQUIRE(graph.addGuideCurve(std::move(guide)));
 
     const Rectangle<float> workspace { 0.f, 0.f, 1200.f, 800.f };
-    SignalProbeRailState dockState;
-    dockState.expanded = true;
+    SignalProbeCanvasState dockState;
     GuideCurveShelfState guideState;
     const Rectangle<float> shelf = GuideCurveShelf::boundsFor(
             workspace, dockState, guideState);
@@ -309,7 +256,7 @@ TEST_CASE("Expanded Trimesh editor occludes intersecting workspace sidebar conte
         "[cycle-v2][canvas][editor][sidebar][regression]") {
     const Rectangle<float> workspace { 0.f, 0.f, 1200.f, 800.f };
     const Rectangle<float> sidebar = GuideCurveShelf::guideWorkspace(
-            workspace, false, false);
+            workspace, false);
     const Node mesh = GraphNodeFactory().createNode(
             NodeKind::TrilinearMesh,
             "mesh",
@@ -374,9 +321,7 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
     NodePalette palette;
     GuideCurveShelfState guideState;
     guideState.hoveredGuideId = "guide1";
-    SignalProbeRailState dockState;
-    dockState.expanded = true;
-    dockState.expandedHeight = 100.f;
+    SignalProbeCanvasState dockState;
     const Rectangle<float> editorOcclusion { 100.f, 90.f, 200.f, 100.f };
     NodeCanvasPresentationFrame frame {
             graph,
@@ -441,19 +386,12 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
     REQUIRE(alphaCount({ 304, 44, 12, 12 }) > 0);
     REQUIRE(alphaCount({ 4, 44, 12, 12 }) > 0);
     const auto dock = WorkspaceDock::layout(
-            frame.workspaceBounds,
-            {
-                    dockState.expanded,
-                    guideState.minimized,
-                    dockState.minimized,
-                    dockState.expandedHeight
-            });
+            frame.workspaceBounds, { guideState.minimized });
     const auto guideTile = GuideCurveShelf::tileBoundsFor(
             frame.workspaceBounds,
             dockState,
             guideState,
             0);
-    WorkspaceDock::paintChrome(graphics, dock, "Curve Guides", "Spies", true, false);
     GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
     const Point<int> terminal {
             roundToInt(dock.leftShelf.getRight()),
@@ -1271,8 +1209,8 @@ TEST_CASE("Nodes palette stays inside the unified sidebar through resizing",
         REQUIRE(browser.getX() == workspace.getX());
         REQUIRE(palette.groupBounds(0).getCentreX() == Catch::Approx(browser.getCentreX()));
         REQUIRE(browser.contains(palette.railBounds()));
-        REQUIRE(dock.rightShelf.getX() == browser.getRight() + CanvasUtilityDock::gap);
-        REQUIRE(WorkspaceDock::editorAvailableBounds(dock).getX() == dock.rightShelf.getX());
+        REQUIRE(WorkspaceDock::editorAvailableBounds(dock).getX()
+                == dock.leftShelf.getRight() + CanvasUtilityDock::gap);
         for (const auto& [id, bounds] : palette.pointerTargets()) {
             NodeKind kind {};
             REQUIRE(palette.findKindAt(bounds.getCentre(), kind));
@@ -1720,7 +1658,7 @@ TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
     REQUIRE(panWithSpy.getCentreY() == Catch::Approx(twoThirds.y));
     const auto& incomingProbeScene = sceneBuilder.build(graph, viewport, 1, 1);
     const Point<float> oneThird = cablePath.getPointAlongPath(cablePath.getLength() / 3.f);
-    const Point<float> incomingProbeMarker = SignalProbeRail::markerCentre(
+    const Point<float> incomingProbeMarker = SignalProbeCanvas::markerCentre(
             *graph.findSignalProbe("probe1"),
             graph,
             incomingProbeScene);
@@ -1737,7 +1675,7 @@ TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
     REQUIRE(outgoingSpyPan.getCentreX() == Catch::Approx(oneThird.x));
     REQUIRE(outgoingSpyPan.getCentreY() == Catch::Approx(oneThird.y));
     const auto& outgoingProbeScene = sceneBuilder.build(graph, viewport, 1, 1);
-    const Point<float> outgoingProbeMarker = SignalProbeRail::markerCentre(
+    const Point<float> outgoingProbeMarker = SignalProbeCanvas::markerCentre(
             *graph.findSignalProbe("probe2"),
             graph,
             outgoingProbeScene);

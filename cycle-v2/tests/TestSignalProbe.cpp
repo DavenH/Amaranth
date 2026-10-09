@@ -7,19 +7,19 @@
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
-#include "UI/SignalProbeRail.h"
+#include "UI/SignalProbeCanvas.h"
 #include "UI/WorkspaceDockInteractionController.h"
 
 using namespace CycleV2;
 
 TEST_CASE("Signal probe cable annotations scale with canvas zoom",
         "[cycle-v2][ui][signal-probe][zoom]") {
-    const float reference = SignalProbeRail::cableAnnotationDiameter(0.58f);
+    const float reference = SignalProbeCanvas::cableAnnotationDiameter(0.58f);
 
     REQUIRE(reference == Catch::Approx(16.128f));
-    REQUIRE(SignalProbeRail::cableAnnotationDiameter(1.16f)
+    REQUIRE(SignalProbeCanvas::cableAnnotationDiameter(1.16f)
             == Catch::Approx(reference * 2.f));
-    REQUIRE(SignalProbeRail::cableAnnotationDiameter(0.29f)
+    REQUIRE(SignalProbeCanvas::cableAnnotationDiameter(0.29f)
             == Catch::Approx(reference * 0.5f));
 }
 
@@ -36,45 +36,66 @@ NodeGraph probeGraph() {
 
 }
 
-TEST_CASE("Default output spy ends the rail without becoming graph state",
+TEST_CASE("Default output spy has a canvas card without becoming graph state",
         "[cycle-v2][ui][probe][default-output]") {
     NodeGraph graph = probeGraph();
     REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
 
-    const auto ids = SignalProbeRail::orderedProbeIds(graph);
+    const auto ids = SignalProbeCanvas::orderedProbeIds(graph);
     REQUIRE(ids.size() == 2);
     REQUIRE(ids.front() == graph.getSignalProbes().front().id);
     REQUIRE(ids.back() == DefaultOutputProbeResolver::probeId);
-    REQUIRE(SignalProbeRail::ordinalForProbe(
+    REQUIRE(SignalProbeCanvas::ordinalForProbe(
             graph, DefaultOutputProbeResolver::probeId) == 2);
-    REQUIRE(SignalProbeRail::ordinalForProbe(graph, ids.front()) == 1);
+    REQUIRE(SignalProbeCanvas::ordinalForProbe(graph, ids.front()) == 1);
 
-    SignalProbeRailState state;
-    const Rectangle<float> workspace(0.f, 0.f, 600.f, 400.f);
-    REQUIRE(SignalProbeRail::probeAt(
-            SignalProbeRail::tileBoundsFor(workspace, state, 1).getCentre(),
-            workspace,
-            graph,
-            state) == DefaultOutputProbeResolver::probeId);
+    SignalProbeCanvasState state;
+    NodeCanvasViewport viewport;
+    viewport.setBounds({ 0.f, 0.f, 800.f, 600.f });
+    NodeCanvasScene scene;
+    const auto& snapshot = scene.build(graph, viewport, 1, 1);
+    const auto card = SignalProbeCanvas::cardBoundsFor(
+            DefaultOutputProbeResolver::probeId, graph, snapshot, viewport, state);
+    REQUIRE_FALSE(card.isEmpty());
+    REQUIRE(SignalProbeCanvas::cardAt(
+            card.getCentre(), graph, snapshot, viewport, state)
+            == DefaultOutputProbeResolver::probeId);
     REQUIRE(graph.getSignalProbes().size() == 1);
 }
 
-TEST_CASE("Spy tiles reserve right click for output view and double click for detail",
-        "[cycle-v2][ui][probe][interaction]") {
-    using Action = SpyTilePointerAction;
+TEST_CASE("Canvas Spy positions serialize and undo as a small graph delta",
+        "[cycle-v2][probe][canvas][undo]") {
+    NodeGraph graph = probeGraph();
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+    const String probeId = graph.getSignalProbes().front().id;
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
 
-    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
-            false, 1, false) == Action::None);
-    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
-            false, 1, true) == Action::None);
-    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
-            true, 1, true) == Action::ToggleDefaultOutputView);
-    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
-            true, 1, false) == Action::None);
-    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
-            false, 2, false) == Action::OpenDetail);
-    REQUIRE(WorkspaceDockInteractionController::spyTilePointerAction(
-            false, 2, true) == Action::OpenDetail);
+    REQUIRE(commands.moveSignalProbe(probeId, { 125.f, -80.f }).succeeded());
+    REQUIRE(document.graph().findSignalProbe(probeId)->canvasPosition
+            == Point<float>(125.f, -80.f));
+    REQUIRE(GraphSerializer().fromJsonString(document.toJson())
+                    .findSignalProbe(probeId)->canvasPosition
+            == Point<float>(125.f, -80.f));
+
+    REQUIRE(document.undo());
+    REQUIRE_FALSE(document.graph().findSignalProbe(probeId)->canvasPosition.has_value());
+    REQUIRE(document.redo());
+    REQUIRE(document.graph().findSignalProbe(probeId)->canvasPosition
+            == Point<float>(125.f, -80.f));
+}
+
+TEST_CASE("Output Spy card position persists as preset presentation",
+        "[cycle-v2][probe][canvas][default-output]") {
+    GraphDocument document(probeGraph());
+    GraphCommandDispatcher commands(document);
+
+    REQUIRE(commands.moveDefaultOutputSpy({ 320.f, 180.f }));
+    REQUIRE(document.isDirty());
+    REQUIRE(document.presentation().outputSpyPosition == Point<float>(320.f, 180.f));
+    REQUIRE(GraphSerializer().loadJsonString(document.toJson())
+                    .presentation.outputSpyPosition
+            == Point<float>(320.f, 180.f));
 }
 
 TEST_CASE("Signal probes toggle once per source output without changing execution", "[cycle-v2][probe]") {

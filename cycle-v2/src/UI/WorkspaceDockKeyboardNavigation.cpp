@@ -7,11 +7,6 @@ namespace CycleV2 {
 std::vector<WorkspaceDockFocus> WorkspaceDockKeyboardNavigation::focusOrder(
         const WorkspaceDockKeyboardModel& model) {
     std::vector<WorkspaceDockFocus> order;
-    if (!model.expanded) {
-        order.push_back({ WorkspaceDockFocusTarget::Collapse, {} });
-        return order;
-    }
-
     if (model.guidesMinimized) {
         order.push_back({ WorkspaceDockFocusTarget::GuideDrawer, {} });
     } else {
@@ -22,18 +17,6 @@ std::vector<WorkspaceDockFocus> WorkspaceDockKeyboardNavigation::focusOrder(
         }
     }
 
-    if (model.spiesMinimized) {
-        if (!model.spyIds.empty()) {
-            order.push_back({ WorkspaceDockFocusTarget::SpyDrawer, {} });
-        }
-    } else {
-        if (!model.spyIds.empty()) {
-            order.push_back({ WorkspaceDockFocusTarget::SpyMinimize, {} });
-        }
-        for (const auto& spyId : model.spyIds) {
-            order.push_back({ WorkspaceDockFocusTarget::SpyTile, spyId });
-        }
-    }
     return order;
 }
 
@@ -47,16 +30,6 @@ bool WorkspaceDockKeyboardNavigation::moveFocus(
         return true;
     }
 
-    if (key.getKeyCode() == juce::KeyPress::leftKey) {
-        if (focus.target == WorkspaceDockFocusTarget::SpyTile) {
-            return moveWithinTiles(model.spyIds, -1, focus.target, focus);
-        }
-    }
-    if (key.getKeyCode() == juce::KeyPress::rightKey) {
-        if (focus.target == WorkspaceDockFocusTarget::SpyTile) {
-            return moveWithinTiles(model.spyIds, 1, focus.target, focus);
-        }
-    }
     if (focus.target == WorkspaceDockFocusTarget::GuideTile) {
         if (key.getKeyCode() == juce::KeyPress::upKey) {
             return moveWithinTiles(model.guideIds, -1, focus.target, focus);
@@ -74,10 +47,9 @@ bool WorkspaceDockKeyboardNavigation::keyPressed(
         const WorkspaceDockKeyboardLayout& layout,
         WorkspaceDockFocus& focus,
         float& guideOffset,
-        float& spyOffset,
         WorkspaceDockKeyboardDelegate& delegate) {
     if (moveFocus(key, model, focus)) {
-        revealFocus(model, layout, focus, guideOffset, spyOffset);
+        revealFocus(model, layout, focus, guideOffset);
         delegate.repaintDockFromKeyboard();
         return true;
     }
@@ -98,14 +70,10 @@ juce::String WorkspaceDockKeyboardNavigation::targetName(
         WorkspaceDockFocusTarget target) {
     switch (target) {
         case WorkspaceDockFocusTarget::None:            return "none";
-        case WorkspaceDockFocusTarget::Collapse:        return "collapse";
         case WorkspaceDockFocusTarget::GuideDrawer:     return "guideDrawer";
         case WorkspaceDockFocusTarget::GuideMinimize:   return "guideMinimize";
         case WorkspaceDockFocusTarget::GuideAdd:        return "guideAdd";
         case WorkspaceDockFocusTarget::GuideTile:       return "guideTile";
-        case WorkspaceDockFocusTarget::SpyDrawer:       return "spyDrawer";
-        case WorkspaceDockFocusTarget::SpyMinimize:     return "spyMinimize";
-        case WorkspaceDockFocusTarget::SpyTile:         return "spyTile";
     }
     return "none";
 }
@@ -130,23 +98,16 @@ void WorkspaceDockKeyboardNavigation::revealFocus(
         const WorkspaceDockKeyboardModel& model,
         const WorkspaceDockKeyboardLayout& layout,
         const WorkspaceDockFocus& focus,
-        float& guideOffset,
-        float& spyOffset) {
-    const bool guide = focus.target == WorkspaceDockFocusTarget::GuideTile;
-    const bool spy = focus.target == WorkspaceDockFocusTarget::SpyTile;
-    const auto& ids = guide ? model.guideIds : model.spyIds;
-    const auto found = std::find(ids.begin(), ids.end(), focus.itemId);
-    if ((!guide && !spy) || found == ids.end()) {
+        float& guideOffset) {
+    if (focus.target != WorkspaceDockFocusTarget::GuideTile) {
         return;
     }
-
-    const int index = (int) std::distance(ids.begin(), found);
-    float& offset = guide ? guideOffset : spyOffset;
-    offset = guide
-            ? WorkspaceDock::offsetToRevealGuideTile(
-                    offset, layout.maximumGuideOffset, layout.guideShelfHeight, index)
-            : WorkspaceDock::offsetToRevealTile(
-                    offset, layout.maximumSpyOffset, layout.spyShelfWidth, index);
+    const auto found = std::find(model.guideIds.begin(), model.guideIds.end(), focus.itemId);
+    if (found != model.guideIds.end()) {
+        const int index = (int) std::distance(model.guideIds.begin(), found);
+        guideOffset = WorkspaceDock::offsetToRevealGuideTile(
+                guideOffset, layout.maximumGuideOffset, layout.guideShelfHeight, index);
+    }
 }
 
 bool WorkspaceDockKeyboardNavigation::activate(
@@ -154,9 +115,6 @@ bool WorkspaceDockKeyboardNavigation::activate(
         WorkspaceDockFocus& focus,
         WorkspaceDockKeyboardDelegate& delegate) {
     switch (focus.target) {
-        case WorkspaceDockFocusTarget::Collapse:
-            delegate.setDockExpandedFromKeyboard(!model.expanded);
-            break;
         case WorkspaceDockFocusTarget::GuideDrawer:
         case WorkspaceDockFocusTarget::GuideMinimize:
             delegate.setGuideShelfMinimizedFromKeyboard(!model.guidesMinimized);
@@ -171,13 +129,6 @@ bool WorkspaceDockKeyboardNavigation::activate(
         case WorkspaceDockFocusTarget::GuideTile:
             delegate.selectGuideFromKeyboard(focus.itemId, true);
             break;
-        case WorkspaceDockFocusTarget::SpyDrawer:
-        case WorkspaceDockFocusTarget::SpyMinimize:
-            delegate.setSpyShelfMinimizedFromKeyboard(!model.spiesMinimized);
-            break;
-        case WorkspaceDockFocusTarget::SpyTile:
-            delegate.selectSpyFromKeyboard(focus.itemId, true);
-            break;
         case WorkspaceDockFocusTarget::None:
             return false;
     }
@@ -190,8 +141,6 @@ bool WorkspaceDockKeyboardNavigation::remove(
         WorkspaceDockKeyboardDelegate& delegate) {
     if (focus.target == WorkspaceDockFocusTarget::GuideTile) {
         delegate.removeGuideFromKeyboard(focus.itemId);
-    } else if (focus.target == WorkspaceDockFocusTarget::SpyTile) {
-        delegate.removeSpyFromKeyboard(focus.itemId);
     } else {
         return false;
     }

@@ -19,6 +19,10 @@ public:
     GraphEditResult connect(NodeGraph& graph, const PortAddress& first, const PortAddress& second) const;
     GraphEditResult toggleSignalProbe(NodeGraph& graph, size_t edgeIndex, float tapPosition) const;
     GraphEditResult removeSignalProbe(NodeGraph& graph, const String& probeId) const;
+    GraphEditResult moveSignalProbe(
+            NodeGraph& graph,
+            const String& probeId,
+            Point<float> position) const;
     GraphEditResult reattachSignalProbe(
             NodeGraph& graph,
             const String& probeId,

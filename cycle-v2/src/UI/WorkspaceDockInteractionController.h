@@ -8,8 +8,6 @@
 #include <App/Settings.h>
 
 #include "UI/GuideCurveShelf.h"
-#include "UI/NodeCanvasAuthoring.h"
-#include "UI/SignalProbeDetailView.h"
 #include "UI/WorkspaceDockKeyboardNavigation.h"
 #include "Graph/GraphCommandDispatcher.h"
 
@@ -17,18 +15,8 @@ namespace CycleV2 {
 
 struct WorkspaceDockInteractionCallbacks {
     std::function<void(const String&)> openGuideEditor;
-    std::function<void(const String&)> openProbeDetail;
     std::function<void(const String&)> requestGuideDeletion;
-    std::function<void(const NodeCanvasAuthoringResult&)> applyAuthoringResult;
     std::function<void()> repaint;
-    std::function<void()> resized;
-    std::function<void()> occlusionChanged;
-};
-
-enum class SpyTilePointerAction {
-    None,
-    ToggleDefaultOutputView,
-    OpenDetail
 };
 
 class WorkspaceDockInteractionController final :
@@ -36,19 +24,14 @@ class WorkspaceDockInteractionController final :
 public:
     WorkspaceDockInteractionController(
             GraphCommandDispatcher& commands,
-            NodeCanvasAuthoring& authoring,
             const NodeGraph& graph,
             Settings& settings,
-            SignalProbeRail& probeRail,
-            SignalProbeRailState& probeState,
+            SignalProbeCanvasState& probeState,
             GuideCurveShelfState& guideState,
-            SignalProbeDetailState& probeDetailState,
             String& statusMessage,
             WorkspaceDockInteractionCallbacks callbacks);
 
     bool mouseDown(const MouseEvent& event, Rectangle<float> workspace);
-    bool mouseDrag(const MouseEvent& event, Rectangle<float> workspace);
-    bool mouseUp();
     bool keyPressed(const KeyPress& key, Rectangle<float> workspace);
     void createGuide(Rectangle<float> workspace);
 
@@ -57,50 +40,29 @@ public:
     void setFocus(WorkspaceDockFocus focusToUse) { keyboardFocus = std::move(focusToUse); }
     void clearEphemeralState();
     void setProbeRefreshMode(ProbeRefreshMode mode);
-    static SpyTilePointerAction spyTilePointerAction(
-            bool popupClick,
-            int clickCount,
-            bool defaultOutput);
 
 private:
     WorkspaceDockKeyboardModel keyboardModel() const;
     WorkspaceDockKeyboardLayout keyboardLayout(Rectangle<float> workspace) const;
-    Rectangle<float> spyWorkspace(Rectangle<float> workspace) const;
-    bool handleChromeDown(
-            const MouseEvent& event,
-            const WorkspaceDockLayout& layout);
     bool handleGuideDown(const MouseEvent& event, Rectangle<float> workspace);
     bool handleGuideControlsDown(const MouseEvent& event, Rectangle<float> workspace);
     bool handleGuideTileDown(const MouseEvent& event, Rectangle<float> workspace);
-    bool handleSpyDown(const MouseEvent& event, Rectangle<float> workspace);
-    bool handleSpyControlsDown(const MouseEvent& event, Rectangle<float> workspace);
-    bool handleSpyTileDown(const MouseEvent& event, Rectangle<float> workspace);
 
-    void setDockExpandedFromKeyboard(bool expanded) override;
     void setGuideShelfMinimizedFromKeyboard(bool minimized) override;
     String createGuideFromKeyboard() override;
     void selectGuideFromKeyboard(const String& guideId, bool openEditor) override;
     void removeGuideFromKeyboard(const String& guideId) override;
-    void setSpyShelfMinimizedFromKeyboard(bool minimized) override;
-    void selectSpyFromKeyboard(const String& probeId, bool openDetail) override;
-    void removeSpyFromKeyboard(const String& probeId) override;
     void repaintDockFromKeyboard() override;
 
     GraphCommandDispatcher& commands;
-    NodeCanvasAuthoring& authoring;
     const NodeGraph& graph;
     Settings& settings;
-    SignalProbeRail& probeRail;
-    SignalProbeRailState& probeState;
+    SignalProbeCanvasState& probeState;
     GuideCurveShelfState& guideState;
-    SignalProbeDetailState& probeDetailState;
     String& statusMessage;
     WorkspaceDockInteractionCallbacks callbacks;
     WorkspaceDockFocus keyboardFocus;
     Rectangle<float> workspaceBounds;
-    bool resizingHeight {};
-    float resizeStartHeight {};
-    float resizeStartY {};
 };
 
 }

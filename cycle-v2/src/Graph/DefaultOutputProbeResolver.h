@@ -9,6 +9,8 @@ namespace CycleV2 {
 struct DefaultOutputProbeAddress {
     String sourceNodeId;
     String sourcePortId;
+    String destNodeId;
+    String destPortId;
 };
 
 class DefaultOutputProbeResolver {

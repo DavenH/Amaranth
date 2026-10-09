@@ -137,6 +137,27 @@ GraphEditResult GraphCommandDispatcher::removeSignalProbe(const juce::String& pr
     });
 }
 
+GraphEditResult GraphCommandDispatcher::moveSignalProbe(
+        const juce::String& probeId,
+        juce::Point<float> position) {
+    return applyIncremental(
+            [&](auto& delta, const auto& graph) {
+                delta.captureSignalProbePosition(graph, probeId);
+            },
+            [&](auto& graph) {
+                return GraphEditor().moveSignalProbe(graph, probeId, position);
+            });
+}
+
+bool GraphCommandDispatcher::moveDefaultOutputSpy(juce::Point<float> position) {
+    if (hasTransientEdit()
+            || document.presetPresentation.outputSpyPosition == position) {
+        return false;
+    }
+    document.setOutputSpyPosition(position);
+    return true;
+}
+
 GraphEditResult GraphCommandDispatcher::reattachSignalProbe(
         const juce::String& probeId,
         size_t edgeIndex,

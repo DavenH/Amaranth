@@ -59,6 +59,7 @@ struct PresetPresentation {
     std::optional<PresetPreviewImage> preview;
     juce::String patternId;
     std::optional<PresetMidiSequence> sequence;
+    std::optional<juce::Point<float>> outputSpyPosition;
 
     bool empty() const;
 };

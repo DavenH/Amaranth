@@ -53,6 +53,8 @@ TEST_CASE("Default output probe excludes the wet and EQ suffix",
     REQUIRE(address.has_value());
     REQUIRE(address->sourceNodeId == "ir");
     REQUIRE(address->sourcePortId == "out");
+    REQUIRE(address->destNodeId == "eq");
+    REQUIRE(address->destPortId == "in");
 }
 
 TEST_CASE("Default output probe retains a meaningful dry effect at the boundary",

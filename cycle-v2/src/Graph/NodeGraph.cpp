@@ -436,6 +436,20 @@ SignalProbe* NodeGraph::findSignalProbeForEditing(const String& probeId) {
     return nullptr;
 }
 
+bool NodeGraph::setSignalProbeCanvasPosition(
+        const String& probeId,
+        std::optional<Point<float>> position) {
+    SignalProbe* probe = findSignalProbeForEditing(probeId);
+    if (probe == nullptr) {
+        return false;
+    }
+    if (probe->canvasPosition != position) {
+        probe->canvasPosition = position;
+        ++revision;
+    }
+    return true;
+}
+
 const SignalProbe* NodeGraph::findSignalProbeForSource(
         const String& sourceNodeId,
         const String& sourcePortId) const {

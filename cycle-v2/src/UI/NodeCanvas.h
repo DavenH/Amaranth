@@ -146,7 +146,7 @@ public:
         return document.presentation().patternId;
     }
     bool setPresetPatternId(const String& id);
-    ProbeRefreshMode probeRefreshMode() const override { return probeRailState.refreshMode; }
+    ProbeRefreshMode probeRefreshMode() const override { return probeCanvasState.refreshMode; }
     void setProbeRefreshMode(ProbeRefreshMode mode);
     bool setPreviewMidiNote(int midiNote);
     bool setPreviewModWheelValue(int value);
@@ -225,7 +225,12 @@ private:
     bool compiledStateRefreshPending {};
     PresentationRefreshScope compiledStateRefreshScope {
             PresentationRefreshScope::Downstream };
-    SignalProbeRailState probeRailState;
+    SignalProbeCanvasState probeCanvasState;
+    struct ProbeCardGesture {
+        String probeId;
+        Point<float> startWorldPosition;
+    };
+    std::optional<ProbeCardGesture> probeCardGesture;
     GuideCurveShelfState guideShelfState;
     SignalProbeDetailState probeDetailState;
     OutputMeterBallistics outputMeterBallistics;
