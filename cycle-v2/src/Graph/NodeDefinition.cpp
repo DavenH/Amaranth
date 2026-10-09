@@ -628,7 +628,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .execution(NodeExecutionTrait::ConfigurationOnly)
                     .runtime(AudioModuleRole::None, PreviewModuleRole::None,
                             "cycle/src/Audio/Effects/Unison.cpp")
-                    .presentation({ 230.f, 112.f })
+                    .presentation({ 230.f, 43.f })
                     .finish(),
             buildDefinition(definition("reverb", NodeKind::Reverb, "Reverb", "space", "reverb",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
