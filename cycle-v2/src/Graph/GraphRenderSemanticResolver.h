@@ -29,6 +29,10 @@ struct NodeRenderSemantic {
 class GraphRenderSemanticResolver {
 public:
     static NodeRenderSemantic defaultSemanticForDomain(PortDomain domain);
+    static NodeRenderSemantic semanticForDisplay(
+            NodeRenderSemantic source,
+            PortDomain displayedDomain,
+            bool useDomainDefault);
 
     NodeRenderSemantic semanticForNodeOutput(
             const NodeGraph& graph,

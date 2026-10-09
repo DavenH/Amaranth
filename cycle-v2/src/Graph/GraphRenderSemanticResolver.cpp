@@ -164,4 +164,13 @@ NodeRenderSemantic GraphRenderSemanticResolver::defaultSemanticForDomain(PortDom
     }
 }
 
+NodeRenderSemantic GraphRenderSemanticResolver::semanticForDisplay(
+        NodeRenderSemantic source,
+        PortDomain displayedDomain,
+        bool useDomainDefault) {
+    return useDomainDefault || source.domain != displayedDomain
+            ? defaultSemanticForDomain(displayedDomain)
+            : source;
+}
+
 }

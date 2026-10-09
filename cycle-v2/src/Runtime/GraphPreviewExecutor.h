@@ -59,7 +59,10 @@ struct GraphPreviewResult {
 
 class GraphPreviewExecutor {
 public:
+    static constexpr size_t kMinimumProbeSourceFrames = 512;
+
     static size_t periodRowsForMidiNote(int midiNote, double sampleRate = 44100.0);
+    static size_t sourceFrameCountForMidiNote(int midiNote, double sampleRate = 44100.0);
     static void publishLocalNodePreview(
             GraphPreviewResult& result,
             size_t stepIndex,

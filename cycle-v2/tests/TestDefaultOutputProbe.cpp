@@ -11,7 +11,6 @@
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/GraphPreviewExecutor.h"
 #include "UI/PresetPreviewGenerator.h"
-#include "UI/SignalProbeDetailView.h"
 
 using namespace CycleV2;
 using namespace juce;
@@ -270,7 +269,7 @@ TEST_CASE("Expanded output spectrum retains the compact FFT resolution",
     REQUIRE(compact.gridRows == 257);
     REQUIRE(compact.values.size() == compact.gridColumns * compact.gridRows);
 
-    const size_t noteRows = SignalProbeDetailView::resolutionForMidiNote(
+    const size_t noteRows = GraphPreviewExecutor::periodRowsForMidiNote(
             presentation.previewMidiNote());
     const size_t sourceRows = PresetPreviewGenerator::sourceRowCountForView(
             noteRows,

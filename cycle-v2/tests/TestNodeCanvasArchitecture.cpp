@@ -47,6 +47,7 @@
 #include "UI/WorkspaceDock.h"
 #include "UI/WorkspaceDockKeyboardNavigation.h"
 #include "Runtime/GraphPresentationModel.h"
+#include "Runtime/GraphPreviewExecutor.h"
 #include "Runtime/PreviewPitchContextIndex.h"
 #include "Runtime/PreviewPitchResolver.h"
 
@@ -406,12 +407,12 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
             Image(Image::ARGB, image.getWidth(), image.getHeight(), true)));
 }
 
-TEST_CASE("Signal probe detail uses the audition-note period resolution",
+TEST_CASE("Signal probe pitch periods and detail panel layout stay stable",
         "[cycle-v2][canvas][probe][detail]") {
-    REQUIRE(SignalProbeDetailView::resolutionForMidiNote(48) == 512);
-    REQUIRE(SignalProbeDetailView::resolutionForMidiNote(60) == 256);
-    REQUIRE(SignalProbeDetailView::resolutionForMidiNote(72) == 128);
-    REQUIRE(SignalProbeDetailView::resolutionForMidiNote(36) == 1024);
+    REQUIRE(GraphPreviewExecutor::periodRowsForMidiNote(48) == 512);
+    REQUIRE(GraphPreviewExecutor::periodRowsForMidiNote(60) == 256);
+    REQUIRE(GraphPreviewExecutor::periodRowsForMidiNote(72) == 128);
+    REQUIRE(GraphPreviewExecutor::periodRowsForMidiNote(36) == 1024);
 
     const Rectangle<float> content { 0.f, 0.f, 1200.f, 610.f };
     const Rectangle<float> detail = SignalProbeDetailView::boundsFor(content);
@@ -698,7 +699,7 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
     REQUIRE(compactBefore.gridColumns == 256);
     REQUIRE(compactBefore.gridRows == 512);
     REQUIRE(compactBefore.values.size() == 256 * 512);
-    const size_t previewNoteResolution = SignalProbeDetailView::resolutionForMidiNote(24);
+    const size_t previewNoteResolution = GraphPreviewExecutor::periodRowsForMidiNote(24);
     const auto previewNoteDetail = presentation.captureProbePreview(
             graph,
             graph.getSignalProbes().front().id,
@@ -722,7 +723,7 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
     }
     meanDifference /= (double) compactBefore.values.size();
     REQUIRE(meanDifference < 0.02);
-    const size_t resolution = SignalProbeDetailView::resolutionForMidiNote(72);
+    const size_t resolution = GraphPreviewExecutor::periodRowsForMidiNote(72);
     const auto detail = presentation.captureProbePreview(
             graph,
             graph.getSignalProbes().front().id,
@@ -744,7 +745,7 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
     REQUIRE(defaultOutputDetail->probeId == DefaultOutputProbeResolver::probeId);
     REQUIRE(defaultOutputDetail->gridColumns == 512);
 
-    const size_t lowNoteResolution = SignalProbeDetailView::resolutionForMidiNote(36);
+    const size_t lowNoteResolution = GraphPreviewExecutor::periodRowsForMidiNote(36);
     const auto lowNoteDetail = presentation.captureProbePreview(
             graph,
             graph.getSignalProbes().front().id,
@@ -761,6 +762,35 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
     REQUIRE(compactAfter.gridColumns == compactBefore.gridColumns);
     REQUIRE(compactAfter.gridRows == compactBefore.gridRows);
     REQUIRE(compactAfter.values == compactBefore.values);
+
+    REQUIRE(presentation.refreshPreviewMidiNote(graph, 1, 72));
+    const auto& highNoteCompact = presentation.previewResult().probes.front();
+    const size_t highNoteFrames = GraphPreviewExecutor::sourceFrameCountForMidiNote(72);
+    const auto highNoteDetail = presentation.captureProbePreview(
+            graph,
+            graph.getSignalProbes().front().id,
+            highNoteFrames,
+            72);
+    REQUIRE(highNoteFrames == 512);
+    REQUIRE(highNoteCompact.gridRows == 512);
+    REQUIRE(highNoteDetail.has_value());
+    REQUIRE(highNoteDetail->gridColumns == 512);
+    REQUIRE(highNoteDetail->gridRows == highNoteCompact.gridRows);
+
+    double highNoteDifference {};
+    for (size_t column = 0; column < highNoteCompact.gridColumns; ++column) {
+        const size_t detailColumn = (size_t) std::round(
+                (double) column * (double) (highNoteDetail->gridColumns - 1)
+                / (double) (highNoteCompact.gridColumns - 1));
+        for (size_t row = 0; row < highNoteCompact.gridRows; ++row) {
+            highNoteDifference += std::abs(
+                    highNoteCompact.values[column * highNoteCompact.gridRows + row]
+                    - highNoteDetail->values[
+                            detailColumn * highNoteDetail->gridRows + row]);
+        }
+    }
+    highNoteDifference /= (double) highNoteCompact.values.size();
+    REQUIRE(highNoteDifference < 0.02);
 }
 
 TEST_CASE("Compact spectral probes retain the shared high-resolution traversal",

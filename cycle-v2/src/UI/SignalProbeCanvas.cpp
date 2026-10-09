@@ -368,12 +368,11 @@ void SignalProbeCanvas::paintCachedPreview(
         const GraphPresentationFacts& facts,
         Rectangle<float> previewBounds,
         float physicalScale) {
-    NodeRenderSemantic semantic = facts.renderSemanticForNodeOutput(
-            graph, probe.sourceNodeId, probe.sourcePortId);
-    if (probe.id == DefaultOutputProbeResolver::probeId
-            || semantic.domain != preview.domain) {
-        semantic = GraphRenderSemanticResolver::defaultSemanticForDomain(preview.domain);
-    }
+    const NodeRenderSemantic semantic = GraphRenderSemanticResolver::semanticForDisplay(
+            facts.renderSemanticForNodeOutput(
+                    graph, probe.sourceNodeId, probe.sourcePortId),
+            preview.domain,
+            probe.id == DefaultOutputProbeResolver::probeId);
 
     const Rectangle<int> logicalBounds = previewBounds.getSmallestIntegerContainer();
     const SignalProbePreviewTileCacheAccess cache = previewTileCache.access(

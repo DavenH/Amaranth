@@ -18,6 +18,7 @@
 #include "UI/Editors/PropertyControls.h"
 #include "UI/NodeCanvasCursorPolicy.h"
 
+#include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Control/ModulationSource.h"
 #include "UI/NodeViewModule.h"
@@ -26,6 +27,7 @@
 #include "UI/WorkspaceDockKeyboardNavigation.h"
 
 #include "Runtime/GraphAudioExecutor.h"
+#include "Runtime/GraphPreviewExecutor.h"
 
 namespace CycleV2 {
 
@@ -1691,7 +1693,7 @@ void NodeCanvas::refreshCompiledStateAsync(
 
 void NodeCanvas::openProbeDetail(const String& probeId) {
     const int midiNote = presentation.previewMidiNote();
-    const size_t resolution = SignalProbeDetailView::resolutionForMidiNote(
+    const size_t resolution = GraphPreviewExecutor::sourceFrameCountForMidiNote(
             midiNote);
     const SignalProbe* selectedProbe = graph.findSignalProbe(probeId);
     const PresetPreviewView view = probeId == DefaultOutputProbeResolver::probeId
@@ -1724,12 +1726,9 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
                 graph,
                 probe->sourceNodeId,
                 probe->sourcePortId);
-    } else {
-        const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(
-                preview->domain);
-        semantic.domain = preview->domain;
-        semantic.scalePolicy = profile.getScalePolicy();
     }
+    semantic = GraphRenderSemanticResolver::semanticForDisplay(
+            semantic, preview->domain, probe == nullptr);
     editorCoordinator.close();
     probeDetailState.open(
             std::move(*preview),

@@ -41,6 +41,10 @@ size_t GraphPreviewExecutor::periodRowsForMidiNote(int midiNote, double sampleRa
     return (size_t) Arithmetic::getNextPow2((float) (1.0 / angleDelta));
 }
 
+size_t GraphPreviewExecutor::sourceFrameCountForMidiNote(int midiNote, double sampleRate) {
+    return jmax(kMinimumProbeSourceFrames, periodRowsForMidiNote(midiNote, sampleRate));
+}
+
 void GraphPreviewExecutor::reduceProbeRows(
         GraphPreviewResult::SignalProbePreview& preview,
         size_t timeRows) {

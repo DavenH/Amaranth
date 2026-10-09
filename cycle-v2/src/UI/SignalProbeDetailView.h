@@ -30,7 +30,6 @@ class SignalProbeDetailView {
 public:
     explicit SignalProbeDetailView(NodePreviewRenderer& rendererToUse) : renderer(rendererToUse) {}
 
-    static size_t resolutionForMidiNote(int midiNote, double sampleRate = 44100.0);
     static Rectangle<float> boundsFor(Rectangle<float> availableContent);
     static Rectangle<float> plotBounds(Rectangle<float> detailBounds);
     static bool dismissesOnClick(
