@@ -6,7 +6,7 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr int chipHeight = 21;
+constexpr int chipHeight = 18;
 constexpr int chipGap = 4;
 constexpr int horizontalInset = 1;
 const juce::Colour filterAccent { 0xffd16fab };
@@ -132,7 +132,7 @@ void SidebarTagCloud::paint(juce::Graphics& graphics) {
                 graphics.strokePath(star, juce::PathStrokeType(1.f));
             }
         }
-        graphics.drawFittedText(chip.tag,
+        graphics.drawFittedText(chip.tag.toLowerCase(),
                 chip.favorite ? chip.bounds.withTrimmedLeft(22).withTrimmedRight(6)
                         : chip.bounds.reduced(7, 0),
                 juce::Justification::centred, 1);
@@ -210,7 +210,7 @@ std::vector<SidebarTagCloud::Chip> SidebarTagCloud::layoutForWidth(int width) co
         const auto& tag = labels[index];
         const bool favorite = showFavorites && index == 0;
         const int chipWidth = juce::jmin(juce::jmax(36,
-                (int) chipFont.getStringWidthFloat(tag) + (favorite ? 31 : 16)),
+                (int) chipFont.getStringWidthFloat(tag.toLowerCase()) + (favorite ? 31 : 16)),
                 juce::jmax(36, width - 2 * horizontalInset));
         if (x > horizontalInset && x + chipWidth > width - horizontalInset) {
             x = horizontalInset;

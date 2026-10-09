@@ -73,3 +73,14 @@ browser tests pass 215 assertions, including title/favorite separation and three
 chips at 250/290px widths. Refactor/style/diff and architecture review pass:
 SidebarMediaRow 220/62 lines; same geometry/rendering ownership and collaborators,
 no domain behavior, new adapters or outstanding deletion targets.
+
+Typography refinement: increase the preset title from 11.5 to 12.5px and reserve
+28px for its two-line region. Preset chips shrink from 22 to 18px; sidebar cloud
+chips shrink from 21 to 18px. Sidebar tags render lowercase, with measurement using
+the same lowercase text; stored tag values and matching remain unchanged. The
+favorite stays 22px and the 68px row height is retained. Geometry tests confirm
+smaller chips, bottom alignment and a 6px title-region gap. Both builds and nine
+inline tests pass (215 assertions). Architecture/style/diff review passes;
+SidebarMediaRow/SidebarTagCloud stay 220/225 lines with unchanged responsibilities.
+Native capture `/private/tmp/lowercase-preset-tags.png` reviewed for title clarity,
+shorter lowercase chips, three-tag rows and cloud selection state.

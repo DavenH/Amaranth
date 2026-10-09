@@ -11,7 +11,7 @@ PresetLayout presetLayout(juce::Rectangle<float> slot, const juce::StringArray& 
     layout.preview = content.withLeft(metadata.getRight());
     metadata = metadata.withTrimmedRight(6.f);
     layout.favorite = { metadata.getX(), metadata.getY(), 22.f, 22.f };
-    layout.labels.title = metadata.withTrimmedLeft(26.f).withHeight(26.f);
+    layout.labels.title = metadata.withTrimmedLeft(26.f).withHeight(28.f);
 
     const juce::Font tagFont(juce::FontOptions(10.5f));
     float remaining = metadata.getWidth();
@@ -22,8 +22,8 @@ PresetLayout presetLayout(juce::Rectangle<float> slot, const juce::StringArray& 
             break;
         }
         const float width = juce::jmin(remaining - gap,
-                tagFont.getStringWidthFloat(tags[index]) + 11.f);
-        layout.labels.tags[(size_t) index].setSize(width, 22.f);
+                tagFont.getStringWidthFloat(tags[index].toLowerCase()) + 11.f);
+        layout.labels.tags[(size_t) index].setSize(width, 18.f);
         ++layout.labels.tagCount;
         totalWidth += width + gap;
         remaining -= width + gap;
@@ -31,7 +31,7 @@ PresetLayout presetLayout(juce::Rectangle<float> slot, const juce::StringArray& 
     float x = metadata.getRight() - totalWidth;
     for (int index = 0; index < layout.labels.tagCount; ++index) {
         auto& chip = layout.labels.tags[(size_t) index];
-        chip.setPosition(x, metadata.getBottom() - 22.f);
+        chip.setPosition(x, metadata.getBottom() - 18.f);
         x += chip.getWidth() + 3.f;
     }
     return layout;
@@ -48,7 +48,7 @@ HeaderLabelsLayout headerLabelsLayout(
     const float tagBudget = card.getRight() - labelLeft - 77.f;
     for (int index = 0; index < juce::jmin(2, tags.size()); ++index) {
         const float width = juce::jmin(70.f,
-                tagFont.getStringWidthFloat(tags[index]) + 11.f);
+                tagFont.getStringWidthFloat(tags[index].toLowerCase()) + 11.f);
         const float nextWidth = totalTagWidth + width
                 + (layout.tagCount == 0 ? 0.f : 3.f);
         if (nextWidth > tagBudget) {
@@ -85,7 +85,7 @@ void paintHeaderTags(
         graphics.setColour(juce::Colour(0xff333333));
         graphics.fillRoundedRectangle(chip, 3.f);
         graphics.setColour(CanvasChromePalette::text.withAlpha(0.9f));
-        graphics.drawFittedText(tags[index], chip.toNearestInt(),
+        graphics.drawFittedText(tags[index].toLowerCase(), chip.toNearestInt(),
                 juce::Justification::centred, 1);
     }
 }
@@ -166,11 +166,11 @@ void paintLabels(
     const auto layout = presetLayout(slot, tags).labels;
     graphics.setColour(CanvasChromePalette::text);
   #if JUCE_MAC
-    graphics.setFont(juce::FontOptions("Helvetica Neue", 11.5f, juce::Font::plain)
+    graphics.setFont(juce::FontOptions("Helvetica Neue", 12.5f, juce::Font::plain)
             .withStyle("Medium"));
   #else
     graphics.setFont(juce::FontOptions(juce::Font::getDefaultSansSerifFontName(),
-            11.5f, juce::Font::plain));
+            12.5f, juce::Font::plain));
   #endif
     graphics.drawFittedText(title, layout.title.toNearestInt(),
             juce::Justification::topRight, 2, 0.9f);
