@@ -186,3 +186,26 @@ only palette presentation selects the variant. Architecture and whitespace
 checks pass. Clang-tidy's recursion advisory applies to the shallow, trusted SVG
 resource tree during one-time cache creation; it is outside the paint/hot path.
 No per-sample/per-pixel production math or duplicated interaction logic added.
+
+## Transform nodes share palette symbols (2026-10-08)
+
+Implemented: NodeIconRenderer owns the F/F-inverse mapping for both palette and
+node previews. Removed the palette-specific mapping and 130 lines of procedural
+transform diagram drawing; original fft.svg/ifft.svg remain available by asset ID.
+No DSP behavior changes. NodeDefinition retains size ownership: 180 x 178 world
+units, previously 278 x 178. Existing graphs using the old standard width normalize
+to the new width when loaded; custom widths remain unchanged. This is constant
+work in the existing registry normalization boundary, with no adapter or gesture
+changes. Preview canvas trims the 40-unit header and uses an 8-unit inset, with
+SVG aspect ratio preserved by the shared renderer.
+
+Responsibility review: NodePreviewRenderer shrinks 1066 -> 936 lines by deleting
+transform drawing responsibilities. Registry 819 -> 823 remains the declarative
+catalog and normalization owner. NodeIconRenderer 120 -> 126 owns cached icon
+selection; palette entry renderer 38 -> 21 retains only presentation state.
+Existing broader renderer extraction remains tracked separately. No new mixed
+orchestration or duplicate policy was added. Diff/style and architecture audit
+pass; no new scalar math hot loops. Standalone-debug and tests builds pass.
+Focused palette/presentation/loading tests: 28 cases, 629 assertions. Rendered
+preview confirms readable grey F/F-inverse symbols centered in narrower nodes.
+Legacy-width load and subsequent serialization stability are covered.

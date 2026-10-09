@@ -515,7 +515,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .help("Opens a waveform into magnitude and phase for spectral editing.")
                     .execution(NodeExecutionTrait::SpectralTransform)
                     .runtime(AudioModuleRole::Fft, PreviewModuleRole::None)
-                    .presentation({}, { 278.f, 178.f })
+                    .presentation({}, { 180.f, 178.f })
                     .finish(),
             buildDefinition(definition("ifft", NodeKind::Ifft, String::fromUTF8("Freq → Time"), "cyclic overlap", "ifft",
                     { input("mag", "Mag", PortDomain::SpectralMagnitudeSignal, ChannelLayout::StereoPair),
@@ -527,7 +527,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .help("Rebuilds a waveform from its magnitude and phase.")
                     .execution(NodeExecutionTrait::OscillatorMaterializer)
                     .runtime(AudioModuleRole::Ifft, PreviewModuleRole::None)
-                    .presentation({}, { 278.f, 178.f })
+                    .presentation({}, { 180.f, 178.f })
                     .finish(),
             buildDefinition(definition("envelope", NodeKind::Envelope, "Envelope", "control curve", "env",
                     { input("red", "Red Morph", PortDomain::ControlSignal,
@@ -779,6 +779,10 @@ void NodeDefinitionRegistry::normalize(Node& node) const {
     }
     if (node.kind == NodeKind::VoiceContext
             && node.bounds.getWidth() < definitionToUse->fixedNaturalSize.width) {
+        node.bounds.setWidth(definitionToUse->fixedNaturalSize.width);
+    }
+    if ((node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft)
+            && node.bounds.getWidth() == 278.f) {
         node.bounds.setWidth(definitionToUse->fixedNaturalSize.width);
     }
     for (const auto& canonicalInput : definitionToUse->inputs) {

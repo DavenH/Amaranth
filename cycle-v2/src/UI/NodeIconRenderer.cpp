@@ -82,6 +82,12 @@ const Icon* iconFor(const String& semanticId) {
 }
 
 const Icon* iconFor(NodeKind kind) {
+    if (kind == NodeKind::Fft) {
+        return iconFor("fourier");
+    }
+    if (kind == NodeKind::Ifft) {
+        return iconFor("inverseFourier");
+    }
     const NodeDefinition* definition = NodeDefinitionRegistry::instance().find(kind);
     jassert(definition != nullptr);
     return definition != nullptr ? iconFor(definition->typeId) : nullptr;
