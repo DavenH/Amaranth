@@ -1,23 +1,49 @@
+#include <map>
+
 #include "UI/NodeIconRenderer.h"
 
 #include "Graph/NodeDefinition.h"
 #include "NodeIconData.h"
 
-#include <map>
-
 namespace CycleV2 {
 
 namespace {
 
-using IconMap = std::map<String, std::unique_ptr<Drawable>>;
+struct Icon {
+    std::unique_ptr<Drawable> drawable;
+    Rectangle<float> canvas;
+};
 
-std::unique_ptr<Drawable> createIcon(const char* svg) {
+using IconMap = std::map<String, Icon>;
+
+Icon createIcon(const char* svg) {
     const std::unique_ptr<XmlElement> document = parseXML(String::fromUTF8(svg));
     jassert(document != nullptr);
-    return document != nullptr ? Drawable::createFromSVG(*document) : nullptr;
+    if (document == nullptr) {
+        return {};
+    }
+
+    const auto coordinates = StringArray::fromTokens(document->getStringAttribute("viewBox"), false);
+    if (coordinates.size() != 4) {
+        return {};
+    }
+    const Rectangle<float> canvas(coordinates[0].getFloatValue(), coordinates[1].getFloatValue(),
+            coordinates[2].getFloatValue(), coordinates[3].getFloatValue());
+    document->setAttribute("width", canvas.getWidth());
+    document->setAttribute("height", canvas.getHeight());
+    return { Drawable::createFromSVG(*document), canvas };
 }
 
-const Drawable* drawableFor(const String& semanticId) {
+void paintIcon(Graphics& graphics, const Icon* icon, Rectangle<float> area, float opacity) {
+    if (icon == nullptr || icon->drawable == nullptr) {
+        return;
+    }
+    const auto transform = RectanglePlacement(RectanglePlacement::centred)
+            .getTransformToFit(icon->canvas, area);
+    icon->drawable->draw(graphics, jlimit(0.f, 1.f, opacity), transform);
+}
+
+const Icon* iconFor(const String& semanticId) {
     static const IconMap icons = [] {
         IconMap result;
 
@@ -30,23 +56,25 @@ const Drawable* drawableFor(const String& semanticId) {
 
     const auto match = icons.find(semanticId);
     jassert(match != icons.end());
-    return match != icons.end() ? match->second.get() : nullptr;
+    return match != icons.end() ? &match->second : nullptr;
 }
 
-const Drawable* drawableFor(NodeKind kind) {
+const Icon* iconFor(NodeKind kind) {
     const NodeDefinition* definition = NodeDefinitionRegistry::instance().find(kind);
     jassert(definition != nullptr);
-    return definition != nullptr ? drawableFor(definition->typeId) : nullptr;
+    return definition != nullptr ? iconFor(definition->typeId) : nullptr;
 }
 
 }
 
 bool NodeIconRenderer::hasIcon(NodeKind kind) {
-    return drawableFor(kind) != nullptr;
+    const auto* icon = iconFor(kind);
+    return icon != nullptr && icon->drawable != nullptr;
 }
 
 bool NodeIconRenderer::hasIcon(const String& semanticId) {
-    return drawableFor(semanticId) != nullptr;
+    const auto* icon = iconFor(semanticId);
+    return icon != nullptr && icon->drawable != nullptr;
 }
 
 void NodeIconRenderer::paint(
@@ -54,16 +82,7 @@ void NodeIconRenderer::paint(
         NodeKind kind,
         Rectangle<float> area,
         float opacity) {
-    const Drawable* drawable = drawableFor(kind);
-    if (drawable == nullptr) {
-        return;
-    }
-
-    drawable->drawWithin(
-            graphics,
-            area,
-            RectanglePlacement::centred,
-            jlimit(0.f, 1.f, opacity));
+    paintIcon(graphics, iconFor(kind), area, opacity);
 }
 
 void NodeIconRenderer::paint(
@@ -71,16 +90,7 @@ void NodeIconRenderer::paint(
         const String& semanticId,
         Rectangle<float> area,
         float opacity) {
-    const Drawable* drawable = drawableFor(semanticId);
-    if (drawable == nullptr) {
-        return;
-    }
-
-    drawable->drawWithin(
-            graphics,
-            area,
-            RectanglePlacement::centred,
-            jlimit(0.f, 1.f, opacity));
+    paintIcon(graphics, iconFor(semanticId), area, opacity);
 }
 
 }

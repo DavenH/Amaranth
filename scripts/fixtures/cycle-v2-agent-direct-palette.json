@@ -1,0 +1,103 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/resources/default.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 16
+    },
+    {
+      "command": "listPaletteItems"
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "down",
+      "x": 54,
+      "y": 289
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "drag",
+      "x": 400,
+      "y": 300,
+      "downX": 54,
+      "downY": 289
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "drag",
+      "x": 450,
+      "y": 320,
+      "downX": 54,
+      "downY": 289
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "up",
+      "x": 450,
+      "y": 320,
+      "downX": 54,
+      "downY": 289
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 17
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.16.kind",
+      "equals": "Add"
+    },
+    {
+      "command": "undo"
+    },
+    {
+      "command": "undo"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 16
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "click",
+      "x": 206,
+      "y": 665
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 17
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.16.kind",
+      "equals": "EQ"
+    },
+    {
+      "command": "undo"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 16
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas",
+      "waitForIdle": true,
+      "idleDelayMs": 600
+    }
+  ],
+  "quit": true
+}

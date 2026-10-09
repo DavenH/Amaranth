@@ -951,8 +951,8 @@ TEST_CASE("Node palette resolves every authored node kind from its visible entry
 
     for (int sectionIndex = 0; sectionIndex < palette.sectionCount(); ++sectionIndex) {
         const auto& section = palette.section(sectionIndex);
-        REQUIRE(palette.updateHover(palette.groupBounds(sectionIndex).getCentre()));
-        REQUIRE(palette.activeSection() == sectionIndex);
+        REQUIRE(palette.activeSection() == -1);
+        REQUIRE(String(section.title) != "Channel");
 
         for (int entryIndex = 0; entryIndex < section.entryCount; ++entryIndex) {
             NodeKind resolvedKind {};
@@ -973,7 +973,58 @@ TEST_CASE("Every registered node kind has a parseable palette icon",
     }
 }
 
-TEST_CASE("Use Voice Time is a compact single-output utility",
+TEST_CASE("Authored palette icons remain legible inside their production canvas",
+        "[cycle-v2][canvas][palette][icons]") {
+    ScopedJuceInitialiser_GUI juce;
+    MessageManagerLock messageLock;
+    const NodePalette palette;
+    Image sheet(Image::RGB, 720, 540, true);
+    Graphics sheetGraphics(sheet);
+    sheetGraphics.fillAll(Colour(0xff171d24));
+    int itemIndex {};
+    for (int sectionIndex = 0; sectionIndex < palette.sectionCount(); ++sectionIndex) {
+        const auto& section = palette.section(sectionIndex);
+        for (int index = 0; index < section.entryCount; ++index) {
+            const auto& entry = section.entries[index];
+            INFO(entry.label);
+            Image icon(Image::ARGB, 32, 32, true);
+            Graphics graphics(icon);
+            NodePaletteEntryIconRenderer::paint(graphics, entry.kind, { 0.f, 0.f, 32.f, 32.f }, false);
+            Rectangle<int> occupied;
+            int pixels {};
+            for (int y = 0; y < 32; ++y) {
+                for (int x = 0; x < 32; ++x) {
+                    if (icon.getPixelAt(x, y).getAlpha() > 64) {
+                        occupied = occupied.getUnion({ x, y, 1, 1 });
+                        ++pixels;
+                    }
+                }
+            }
+            REQUIRE(pixels > 35);
+            REQUIRE(occupied.getWidth() >= 15);
+            REQUIRE(occupied.getHeight() >= 12);
+            REQUIRE(occupied.getWidth() <= 30);
+            REQUIRE(occupied.getHeight() <= 30);
+            const int x = (itemIndex % 6) * 120;
+            const int y = (itemIndex / 6) * 180;
+            NodePaletteEntryIconRenderer::paint(sheetGraphics, entry.kind,
+                    { (float) x + 12.f, (float) y + 4.f, 96.f, 96.f }, false);
+            sheetGraphics.drawImageAt(icon, x + 44, y + 106);
+            sheetGraphics.setColour(Colours::white);
+            sheetGraphics.setFont(FontOptions(12.f));
+            sheetGraphics.drawText(String::fromUTF8(entry.label), x, y + 144, 120, 20, Justification::centred);
+            ++itemIndex;
+        }
+    }
+    const String reviewPath = SystemStats::getEnvironmentVariable("CYCLE_PALETTE_REVIEW_PATH", {});
+    if (reviewPath.isNotEmpty()) {
+        FileOutputStream stream { File(reviewPath) };
+        REQUIRE(stream.openedOk());
+        REQUIRE(PNGImageFormat().writeImageToStream(sheet, stream));
+    }
+}
+
+TEST_CASE("Ignore Scratch is a compact single-output utility",
         "[cycle-v2][canvas][voice-context][scratch]") {
     const Node node = GraphNodeFactory().createNode(
             NodeKind::ScratchDefaultOverride,
@@ -1116,22 +1167,52 @@ TEST_CASE("Envelope mode selector presents one contiguous highlighted choice",
     REQUIRE(changes == 3);
 }
 
-TEST_CASE("Node palette hover remains open across its pullout and closes outside",
+TEST_CASE("Node palette hover tracks direct entries without hiding other groups",
         "[cycle-v2][canvas][palette]") {
     NodePalette palette;
     const int sourceSection = 3;
     const int adjacentSection = 4;
 
-    REQUIRE(palette.updateHover(palette.groupBounds(sourceSection).getCentre()));
+    REQUIRE(palette.updateHover(palette.entryBounds(sourceSection, 0).getCentre()));
     REQUIRE_FALSE(palette.updateHover(palette.entryBounds(sourceSection, 0).getCentre()));
     REQUIRE(palette.activeSection() == sourceSection);
+    REQUIRE(palette.updateHover(palette.entryBounds(sourceSection, 1).getCentre()));
+    REQUIRE(palette.activeEntry() == 1);
+    REQUIRE_FALSE(palette.updateHover(palette.entryBounds(sourceSection, 1).getCentre()));
 
-    REQUIRE(palette.updateHover(palette.groupBounds(adjacentSection).getCentre()));
+    REQUIRE(palette.updateHover(palette.entryBounds(adjacentSection, 0).getCentre()));
     REQUIRE(palette.activeSection() == adjacentSection);
 
     REQUIRE(palette.updateHover({ 800.f, 700.f }));
     REQUIRE(palette.activeSection() == -1);
     REQUIRE_FALSE(palette.close());
+}
+
+TEST_CASE("Node palette has aligned ragged rows and two directly accessible FX rows",
+        "[cycle-v2][canvas][palette]") {
+    NodePalette palette;
+    const auto first = palette.entryBounds(0, 0);
+    for (int sectionIndex = 0; sectionIndex < palette.sectionCount(); ++sectionIndex) {
+        const auto& section = palette.section(sectionIndex);
+        const auto group = palette.groupBounds(sectionIndex);
+        REQUIRE(palette.entryBounds(sectionIndex, 0).getX() == first.getX());
+        for (int index = 0; index < section.entryCount; ++index) {
+            const auto tile = palette.entryBounds(sectionIndex, index);
+            REQUIRE(tile.getWidth() == 72.f);
+            REQUIRE(tile.getHeight() == 58.f);
+            REQUIRE(tile.getY() == group.getY() + 18.f + (index / 3) * 62.f);
+            REQUIRE(tile.getCentreX() == group.getX() + 36.f + (index % 3) * 76.f);
+        }
+    }
+    const int fx = palette.sectionCount() - 1;
+    REQUIRE(palette.section(fx).entryCount == 6);
+    REQUIRE(palette.entryBounds(fx, 5).getBottom() == palette.groupBounds(fx).getBottom());
+    NodeKind kind {};
+    REQUIRE(palette.findKindAt(palette.entryBounds(fx, 5).getCentre(), kind));
+    REQUIRE(kind == NodeKind::Equalizer);
+    const auto emptyCell = palette.entryBounds(4, 4).getCentre();
+    REQUIRE_FALSE(palette.findKindAt(emptyCell, kind));
+    REQUIRE(palette.findSectionAt(emptyCell) == -1);
 }
 
 TEST_CASE("Node canvas viewport transforms round trip and preserve zoom anchors", "[cycle-v2][canvas]") {

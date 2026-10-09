@@ -4,7 +4,6 @@
 #include "UI/CanvasChromePalette.h"
 #include "UI/CanvasUtilityDock.h"
 #include "UI/NodePaletteEntryIconRenderer.h"
-#include "UI/NodePaletteIconRenderer.h"
 
 namespace CycleV2 {
 
@@ -153,22 +152,10 @@ void NodeCanvasPresentation::paintPalette(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
     const int activeSectionIndex = frame.palette.activeSection();
-    int hoveredEntryIndex = -1;
-    if (activeSectionIndex >= 0) {
-        const auto& section = frame.palette.section(activeSectionIndex);
-        for (int entryIndex = 0; entryIndex < section.entryCount; ++entryIndex) {
-            if (frame.palette.entryBounds(activeSectionIndex, entryIndex).contains(frame.pointer)) {
-                hoveredEntryIndex = entryIndex;
-                break;
-            }
-        }
-    }
+    const int hoveredEntryIndex = frame.palette.activeEntry();
 
     const float physicalScale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
-    Rectangle<float> bounds = frame.palette.railBounds();
-    if (activeSectionIndex >= 0) {
-        bounds = bounds.getUnion(frame.palette.pulloutBounds(activeSectionIndex));
-    }
+    const Rectangle<float> bounds = frame.palette.railBounds();
     const int imageWidth = jmax(1, roundToInt(bounds.getWidth() * physicalScale));
     const int imageHeight = jmax(1, roundToInt(bounds.getHeight() * physicalScale));
     const bool cacheHit = paletteCacheImage.isValid()
@@ -214,70 +201,35 @@ void NodeCanvasPresentation::paintPalette(
 void NodeCanvasPresentation::paintPaletteContent(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    const int activeSectionIndex = frame.palette.activeSection();
     for (int sectionIndex = 0; sectionIndex < frame.palette.sectionCount(); ++sectionIndex) {
         const auto& section = frame.palette.section(sectionIndex);
-        const bool active = sectionIndex == activeSectionIndex;
-        const Rectangle<float> button = frame.palette.groupBounds(sectionIndex);
-        const auto colours = CanvasChromePalette::control(active
-                ? CanvasChromeControlState::Selected
-                : CanvasChromeControlState::Resting);
-        graphics.setColour(colours.surface);
-        graphics.fillRoundedRectangle(button, CanvasChromeMetrics::tileCornerRadius);
-        graphics.setColour(colours.border);
-        graphics.drawRoundedRectangle(
-                button,
-                CanvasChromeMetrics::tileCornerRadius,
-                active
-                        ? CanvasChromeMetrics::activeBorderWidth
-                        : CanvasChromeMetrics::restingBorderWidth);
-
-        Rectangle<float> content = button;
-        const Rectangle<float> label = content.removeFromBottom(18.f);
-        NodePaletteIconRenderer::paint(
-                graphics,
-                section.icon,
-                content.reduced(8.f, 4.f),
-                active);
+        const auto group = frame.palette.groupBounds(sectionIndex);
         graphics.setFont(FontOptions(CanvasChromeMetrics::microFontSize));
-        graphics.setColour(colours.text);
-        graphics.drawText(section.shortLabel, label.reduced(3.f, 0.f), Justification::centred);
-    }
+        graphics.setColour(CanvasChromePalette::mutedText);
+        graphics.drawText(section.title, group.withHeight(16.f), Justification::centredLeft);
 
-    if (activeSectionIndex < 0) {
-        return;
-    }
+        for (int entryIndex = 0; entryIndex < section.entryCount; ++entryIndex) {
+            const auto& entry = section.entries[entryIndex];
+            const auto tile = frame.palette.entryBounds(sectionIndex, entryIndex);
+            const bool hover = sectionIndex == frame.palette.activeSection()
+                    && entryIndex == frame.palette.activeEntry();
+            const auto colours = CanvasChromePalette::control(hover
+                    ? CanvasChromeControlState::Hovered
+                    : CanvasChromeControlState::Resting);
+            graphics.setColour(colours.surface);
+            graphics.fillRoundedRectangle(tile, CanvasChromeMetrics::controlCornerRadius);
+            graphics.setColour(colours.border);
+            graphics.drawRoundedRectangle(tile, CanvasChromeMetrics::controlCornerRadius,
+                    hover ? CanvasChromeMetrics::activeBorderWidth : CanvasChromeMetrics::restingBorderWidth);
 
-    const auto& section = frame.palette.section(activeSectionIndex);
-    for (int entryIndex = 0; entryIndex < section.entryCount; ++entryIndex) {
-        const auto& entry = section.entries[entryIndex];
-        const Rectangle<float> row = frame.palette.entryBounds(activeSectionIndex, entryIndex);
-        const bool hover = row.contains(frame.pointer);
-        const auto colours = CanvasChromePalette::control(hover
-                ? CanvasChromeControlState::Hovered
-                : CanvasChromeControlState::Resting);
-        graphics.setColour(colours.surface);
-        graphics.fillRoundedRectangle(row, CanvasChromeMetrics::controlCornerRadius);
-        graphics.setColour(colours.border);
-        graphics.drawRoundedRectangle(
-                row,
-                CanvasChromeMetrics::controlCornerRadius,
-                hover
-                        ? CanvasChromeMetrics::activeBorderWidth
-                        : CanvasChromeMetrics::restingBorderWidth);
-
-        NodePaletteEntryIconRenderer::paint(
-                graphics,
-                entry.kind,
-                Rectangle<float>(row.getX() + 7.f, row.getY() + 6.f, 34.f, row.getHeight() - 12.f),
-                hover);
-
-        graphics.setColour(colours.text);
-        graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
-        graphics.drawText(
-                String::fromUTF8(entry.label),
-                row.withTrimmedLeft(48.f).reduced(0.f, 2.f),
-                Justification::centredLeft);
+            NodePaletteEntryIconRenderer::paint(graphics, entry.kind,
+                    { tile.getCentreX() - 16.f, tile.getY() + 5.f, 32.f, 32.f }, hover);
+            graphics.setColour(colours.text);
+            graphics.setFont(FontOptions(CanvasChromeMetrics::microFontSize));
+            graphics.drawText(String::fromUTF8(entry.label),
+                    tile.withTrimmedTop(tile.getHeight() - 17.f).reduced(2.f, 0.f),
+                    Justification::centred);
+        }
     }
 }
 

@@ -195,7 +195,7 @@ String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const 
     }
 
     if (node->kind == NodeKind::ScratchDefaultOverride && !address.input) {
-        return "Connect to a Trimesh scratch port to use voice time instead of the context default.";
+        return hoverTextForNode(*node);
     }
 
     return signalDescription(port->domain)

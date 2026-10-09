@@ -372,19 +372,19 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             buildDefinition(definition(
                     "scratchDefaultOverride",
                     NodeKind::ScratchDefaultOverride,
-                    "Use Voice Time",
+                    "Ignore Scratch",
                     "scratch override",
                     "voiceTime",
                     {},
                     { output(
                             "scratch",
-                            "Voice Time",
+                            "Ignore Scratch",
                             PortDomain::EnvelopeSignal,
                             ChannelLayout::Mono,
                             PortSide::Right,
                             ConnectionKind::ProcessingAttachment,
                             AttachmentType::ScratchEnvelope) }))
-                    .help("Stops a Trimesh from inheriting its Voice Context scratch Envelope.")
+                    .help("Blocks the Voice Context's default scratch envelope for the connected Trimesh.")
                     .execution(NodeExecutionTrait::ConfigurationOnly)
                     .disablePreview()
                     .presentation({}, { 174.f, 76.f })

@@ -6,17 +6,6 @@
 
 namespace CycleV2 {
 
-enum class PaletteIcon {
-    Context,
-    Transform,
-    Math,
-    Source,
-    Control,
-    Fx,
-    Channel,
-    Count
-};
-
 class NodePalette {
 public:
     struct Entry {
@@ -26,9 +15,6 @@ public:
 
     struct Section {
         const char* title;
-        const char* shortLabel;
-        PaletteIcon icon {};
-        PortDomain domain {};
         const Entry* entries {};
         int entryCount {};
     };
@@ -38,20 +24,18 @@ public:
 
     Rectangle<float> railBounds() const;
     Rectangle<float> groupBounds(int sectionIndex) const;
-    Rectangle<float> pulloutBounds(int sectionIndex) const;
     Rectangle<float> entryBounds(int sectionIndex, int entryIndex) const;
-    Rectangle<float> hoverBounds(int sectionIndex) const;
 
     int activeSection() const { return activeSectionIndex; }
+    int activeEntry() const { return activeEntryIndex; }
     int findSectionAt(Point<float> screenPosition) const;
     bool findKindAt(Point<float> screenPosition, NodeKind& kind) const;
     bool updateHover(Point<float> screenPosition);
     bool close();
 
 private:
-    int groupIndexAt(Point<float> screenPosition) const;
-
     int activeSectionIndex { -1 };
+    int activeEntryIndex { -1 };
 };
 
 }

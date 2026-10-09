@@ -672,3 +672,12 @@ execution. It does not acquire note-period or Spy presentation policy;
 owns compact capture sizing. `NodePreviewRenderer.cpp` remains at 1,031 lines:
 Guide preparation and cache lookup stay in `NodePreviewResources`, while the
 renderer continues to choose only the authoritative paint path.
+
+## Cycle V2 Direct Palette Size Review
+
+Reviewed 2026-10-08. NodeCanvas grows 2,937 -> 2,944 lines for entry-hover
+repaint routing and palette clearance during graph fitting. Palette owns hit
+geometry, registry owns node help, and existing authoring owns creation/undo.
+No palette layout or icon algorithms move into the canvas. The existing canvas
+hover/overlay coordination extraction remains open; see
+`cycle-v2-direct-node-palette.md` for responsibilities, sizes and proof.

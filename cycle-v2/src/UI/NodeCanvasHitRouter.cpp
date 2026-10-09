@@ -5,6 +5,7 @@
 #include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/NodeDefinition.h"
 
 namespace CycleV2 {
 
@@ -159,14 +160,14 @@ String NodeCanvasHitRouter::hoverTextFor(
     NodeKind paletteKind;
 
     if (palette.findKindAt(screenPosition, paletteKind)) {
-        const Node node = GraphNodeFactory().createNode(paletteKind, {}, {});
-        return "Add a " + labelForNodeKind(node.kind) + " node to the canvas.";
+        const auto* definition = NodeDefinitionRegistry::instance().find(paletteKind);
+        const String help = definition != nullptr ? definition->helpText : String();
+        return "Click or drag to add " + labelForNodeKind(paletteKind) + ". " + help;
     }
 
     const int paletteSectionIndex = palette.findSectionAt(screenPosition);
     if (paletteSectionIndex >= 0) {
-        return "Show the " + String(palette.section(paletteSectionIndex).title)
-                + " node group.";
+        return String(palette.section(paletteSectionIndex).title) + " nodes: click or drag to add.";
     }
 
     if (const auto action = nodeActionAt(viewport, screenPosition)) {

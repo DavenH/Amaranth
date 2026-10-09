@@ -1,21 +1,22 @@
-#include "UI/NodePalette.h"
-
-#include <array>
 #include <iterator>
+
+#include "UI/NodePalette.h"
 
 namespace CycleV2 {
 
 namespace {
 
-constexpr float kWidth = 72.f;
 constexpr float kX = 18.f;
 constexpr float kY = 74.f;
-constexpr float kRowHeight = 78.f;
-constexpr float kPulloutWidth = 144.f;
-constexpr float kPulloutRowHeight = 52.f;
+constexpr float kTileWidth = 72.f;
+constexpr float kTileHeight = 58.f;
+constexpr float kGap = 4.f;
+constexpr float kHeadingHeight = 18.f;
+constexpr float kGroupGap = 8.f;
+constexpr int kColumns = 3;
 
 const NodePalette::Entry kContextEntries[] = {
-        { NodeKind::VoiceContext, "Voice Context" }
+        { NodeKind::VoiceContext, "Voice" }
 };
 
 const NodePalette::Entry kTransformEntries[] = {
@@ -38,7 +39,7 @@ const NodePalette::Entry kControlEntries[] = {
         { NodeKind::ModulationSource, "Modulation" },
         { NodeKind::ModulationTriple, "Mod Triple" },
         { NodeKind::Envelope, "Envelope" },
-        { NodeKind::ScratchDefaultOverride, "Use Voice Time" }
+        { NodeKind::ScratchDefaultOverride, "Ignore Scratch" }
 };
 
 const NodePalette::Entry kFxEntries[] = {
@@ -50,73 +51,19 @@ const NodePalette::Entry kFxEntries[] = {
         { NodeKind::Equalizer, "EQ" }
 };
 
-const NodePalette::Entry kChannelEntries[] = {
-        { NodeKind::SpectralLayer, "Pan" },
-        { NodeKind::StereoSplit, "Split" },
-        { NodeKind::StereoJoin, "Join" },
-        { NodeKind::VoiceOutput, "Voice Output" },
-        { NodeKind::GlobalInput, "Global Input" },
-        { NodeKind::Output, "Output" }
+const NodePalette::Section kSections[] = {
+        { "Context", kContextEntries, (int) std::size(kContextEntries) },
+        { "Transform", kTransformEntries, (int) std::size(kTransformEntries) },
+        { "Math", kMathEntries, (int) std::size(kMathEntries) },
+        { "Source", kSourceEntries, (int) std::size(kSourceEntries) },
+        { "Control", kControlEntries, (int) std::size(kControlEntries) },
+        { "FX", kFxEntries, (int) std::size(kFxEntries) }
 };
 
-const NodePalette::Section kSections[] = {
-        {
-                "Context",
-                "Context",
-                PaletteIcon::Context,
-                PortDomain::VoiceControlSignal,
-                kContextEntries,
-                (int) std::size(kContextEntries)
-        },
-        {
-                "Transform",
-                "Transform",
-                PaletteIcon::Transform,
-                PortDomain::SpectralMagnitudeSignal,
-                kTransformEntries,
-                (int) std::size(kTransformEntries)
-        },
-        {
-                "Math",
-                "Math",
-                PaletteIcon::Math,
-                PortDomain::ControlSignal,
-                kMathEntries,
-                (int) std::size(kMathEntries)
-        },
-        {
-                "Source",
-                "Source",
-                PaletteIcon::Source,
-                PortDomain::TimeSignal,
-                kSourceEntries,
-                (int) std::size(kSourceEntries)
-        },
-        {
-                "Control",
-                "Control",
-                PaletteIcon::Control,
-                PortDomain::EnvelopeSignal,
-                kControlEntries,
-                (int) std::size(kControlEntries)
-        },
-        {
-                "FX",
-                "FX",
-                PaletteIcon::Fx,
-                PortDomain::SpectralPhaseSignal,
-                kFxEntries,
-                (int) std::size(kFxEntries)
-        },
-        {
-                "Channel",
-                "Channel",
-                PaletteIcon::Channel,
-                PortDomain::TimeSignal,
-                kChannelEntries,
-                (int) std::size(kChannelEntries)
-        }
-};
+float groupHeight(const NodePalette::Section& section) {
+    const int rows = (section.entryCount + kColumns - 1) / kColumns;
+    return kHeadingHeight + (float) rows * (kTileHeight + kGap) - kGap;
+}
 
 }
 
@@ -130,76 +77,42 @@ const NodePalette::Section& NodePalette::section(int sectionIndex) const {
 }
 
 Rectangle<float> NodePalette::railBounds() const {
-    return { kX, kY, kWidth, 12.f + (float) sectionCount() * kRowHeight };
+    return { kX, kY, kColumns * (kTileWidth + kGap) - kGap,
+            groupBounds(sectionCount() - 1).getBottom() - kY };
 }
 
 Rectangle<float> NodePalette::groupBounds(int sectionIndex) const {
-    return {
-            kX + 7.f,
-            kY + 7.f + (float) sectionIndex * kRowHeight,
-            kWidth - 14.f,
-            kRowHeight - 9.f
-    };
-}
+    float y = kY;
+    for (int index = 0; index < sectionIndex; ++index) {
+        y += groupHeight(section(index)) + kGroupGap;
+    }
 
-Rectangle<float> NodePalette::pulloutBounds(int sectionIndex) const {
-    const auto group = groupBounds(sectionIndex);
-    const float height = (float) section(sectionIndex).entryCount * kPulloutRowHeight;
-
-    return {
-            railBounds().getRight() + 10.f,
-            group.getY(),
-            kPulloutWidth,
-            height
-    };
+    const int columns = jmin(kColumns, section(sectionIndex).entryCount);
+    return { kX, y, (float) columns * (kTileWidth + kGap) - kGap,
+            groupHeight(section(sectionIndex)) };
 }
 
 Rectangle<float> NodePalette::entryBounds(int sectionIndex, int entryIndex) const {
-    const auto panel = pulloutBounds(sectionIndex);
-
-    return {
-            panel.getX(),
-            panel.getY() + (float) entryIndex * kPulloutRowHeight,
-            panel.getWidth(),
-            kPulloutRowHeight - 7.f
-    };
-}
-
-Rectangle<float> NodePalette::hoverBounds(int sectionIndex) const {
     const auto group = groupBounds(sectionIndex);
-    const auto pullout = pulloutBounds(sectionIndex);
-    const float top = jmin(group.getY(), pullout.getY()) - 22.f;
-    const float bottom = jmax(group.getBottom(), pullout.getBottom()) + 22.f;
-
-    return {
-            group.getX() - 6.f,
-            top,
-            pullout.getRight() - group.getX() + 12.f,
-            bottom - top
-    };
-}
-
-int NodePalette::groupIndexAt(Point<float> screenPosition) const {
-    for (int sectionIndex = 0; sectionIndex < sectionCount(); ++sectionIndex) {
-        if (groupBounds(sectionIndex).expanded(3.f).contains(screenPosition)) {
-            return sectionIndex;
-        }
-    }
-
-    return -1;
+    const int row = entryIndex / kColumns;
+    const int column = entryIndex % kColumns;
+    return { group.getX() + (float) column * (kTileWidth + kGap),
+            group.getY() + kHeadingHeight + (float) row * (kTileHeight + kGap),
+            kTileWidth, kTileHeight };
 }
 
 int NodePalette::findSectionAt(Point<float> screenPosition) const {
-    const int groupIndex = groupIndexAt(screenPosition);
-
-    if (groupIndex >= 0) {
-        return groupIndex;
+    for (int sectionIndex = 0; sectionIndex < sectionCount(); ++sectionIndex) {
+        const auto heading = groupBounds(sectionIndex).withHeight(kHeadingHeight);
+        if (heading.contains(screenPosition)) {
+            return sectionIndex;
+        }
+        for (int entryIndex = 0; entryIndex < section(sectionIndex).entryCount; ++entryIndex) {
+            if (entryBounds(sectionIndex, entryIndex).contains(screenPosition)) {
+                return sectionIndex;
+            }
+        }
     }
-
-    if (activeSectionIndex >= 0 && hoverBounds(activeSectionIndex).contains(screenPosition)) {
-        return activeSectionIndex;
-    }
-
     return -1;
 }
 
@@ -224,20 +137,18 @@ bool NodePalette::findKindAt(Point<float> screenPosition, NodeKind& kind) const 
 
 bool NodePalette::updateHover(Point<float> screenPosition) {
     const int previousSection = activeSectionIndex;
-
-    if (activeSectionIndex >= 0 && hoverBounds(activeSectionIndex).contains(screenPosition)) {
-        const int groupIndex = groupIndexAt(screenPosition);
-
-        if (groupIndex >= 0
-                && groupIndex != activeSectionIndex
-                && groupBounds(groupIndex).contains(screenPosition)) {
-            activeSectionIndex = groupIndex;
+    const int previousEntry = activeEntryIndex;
+    activeSectionIndex = findSectionAt(screenPosition);
+    activeEntryIndex = -1;
+    if (activeSectionIndex >= 0) {
+        for (int index = 0; index < section(activeSectionIndex).entryCount; ++index) {
+            if (entryBounds(activeSectionIndex, index).contains(screenPosition)) {
+                activeEntryIndex = index;
+                break;
+            }
         }
-    } else {
-        activeSectionIndex = groupIndexAt(screenPosition);
     }
-
-    return activeSectionIndex != previousSection;
+    return activeSectionIndex != previousSection || activeEntryIndex != previousEntry;
 }
 
 bool NodePalette::close() {
@@ -246,6 +157,7 @@ bool NodePalette::close() {
     }
 
     activeSectionIndex = -1;
+    activeEntryIndex = -1;
     return true;
 }
 

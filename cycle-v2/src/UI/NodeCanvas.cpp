@@ -453,6 +453,7 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
         ModifierKeys modifiers) {
     const uint64_t startedAt = performanceMetrics.timestamp();
     const int previousPaletteSection = palette.activeSection();
+    const int previousPaletteEntry = palette.activeEntry();
     const String previousGuideId = guideShelfState.hoveredGuideId;
     const String previousProbeId = probeRailState.hoveredProbeId;
     const int previousHoveredEdgeIndex = hoveredEdgeIndex;
@@ -541,6 +542,7 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
             CanvasPerformanceMetrics::Operation::HoverResolution,
             performanceMetrics.timestamp() - startedAt);
     const bool canvasChanged = previousPaletteSection != palette.activeSection()
+            || previousPaletteEntry != palette.activeEntry()
             || previousGuideId != guideShelfState.hoveredGuideId
             || previousProbeId != probeRailState.hoveredProbeId
             || previousHoveredEdgeIndex != hoveredEdgeIndex;
@@ -1199,14 +1201,18 @@ void NodeCanvas::timerCallback() {
 
     const auto mouse = getMouseXYRelative().toFloat();
     const int previousPaletteSectionIndex = palette.activeSection();
+    const int previousPaletteEntryIndex = palette.activeEntry();
 
     if (getLocalBounds().toFloat().contains(mouse)) {
         palette.updateHover(mouse);
     }
 
     if (getLocalBounds().toFloat().contains(mouse)
-            && (mouse != lastMousePosition || previousPaletteSectionIndex != palette.activeSection())) {
-        const bool paletteChanged = previousPaletteSectionIndex != palette.activeSection();
+            && (mouse != lastMousePosition
+                    || previousPaletteSectionIndex != palette.activeSection()
+                    || previousPaletteEntryIndex != palette.activeEntry())) {
+        const bool paletteChanged = previousPaletteSectionIndex != palette.activeSection()
+                || previousPaletteEntryIndex != palette.activeEntry();
         HoverRepaint repaint = updateHoverAt(
                 mouse,
                 ModifierKeys::getCurrentModifiersRealtime());
@@ -1791,6 +1797,7 @@ void NodeCanvas::fitDocumentInViewport() {
     const Rectangle<float> content = canvasContentBounds();
     const auto utilities = CanvasUtilityDock::layout(content);
     Rectangle<float> available = content.reduced(visibleMargin);
+    available.setLeft(jmax(available.getX(), palette.railBounds().getRight() + dockClearance));
     const WorkspaceDockLayout dock = workspaceDockLayout();
     if (!dock.leftShelf.isEmpty()) {
         available.setRight(jmin(available.getRight(), dock.leftShelf.getX() - dockClearance));
