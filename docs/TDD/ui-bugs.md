@@ -530,17 +530,3 @@ per-pixel reference built with `mapGridToDisplay` and `derivativesAt`. The
 unipolar material and value mapping were untouched by the concurrent bipolar
 palette change. Current status: open; reconcile the heatmap's actual mapping
 and derivative sampling with this reference assertion.
-
-## P1: Scratch envelope vertical-range zoom can crash Cycle V2
-
-On 2026-10-08, a user reported that Cycle V2 crashed after clicking the
-vertical-range zoom control in a scratch envelope editor. The likely control is
-"Fit envelope vertical range"; the editor also has a separate "Show full
-envelope vertical range" action, so the exact button needs confirmation on
-reproduction. No matching crash report or assertion was found in the recent
-Cycle V2 diagnostic reports; the latest reports examined abort during app
-startup and should not be attributed to this interaction.
-
-Current status: open, user-reported and not yet reproduced. Reopen a scratch
-envelope, click the vertical-range controls, and capture the preset, assertion
-or crash backtrace, and UI log to identify the failing path.
