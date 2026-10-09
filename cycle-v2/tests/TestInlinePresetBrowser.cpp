@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 
 #include <array>
 
@@ -175,30 +176,27 @@ TEST_CASE("Preset and pattern actions occupy the same sidebar positions",
     }
 }
 
-TEST_CASE("Preset and pattern row tags share a compact top-right header",
+TEST_CASE("Preset metadata stays left of the spectrogram at sidebar widths",
         "[cycle-v2][preset][browser][inline][layout]") {
     ScopedJuceInitialiser_GUI gui;
-    const Rectangle<float> row { 0.f, 0.f, 250.f,
-            (float) SidebarMediaRow::height };
-    const StringArray tags { "Bass", "Rhythmic" };
-    const auto presetCard = SidebarMediaRow::cardBounds(row);
-    const auto preset = SidebarMediaRow::headerLabelsLayout(
-            presetCard, SidebarMediaRow::favoriteBounds(row), tags);
-    const auto patternCard = SidebarMediaRow::cardBounds(row);
-    const auto pattern = SidebarMediaRow::headerLabelsLayout(
-            patternCard, SidebarMediaRow::patternFavoriteBounds(row), tags);
-
-    REQUIRE(preset.tagCount == 2);
-    REQUIRE(pattern.tagCount == 2);
-    REQUIRE(presetCard.getX() == 2.f);
-    REQUIRE(row.getRight() - presetCard.getRight() == 2.f);
-    REQUIRE(SidebarMediaRow::favoriteBounds(row)
-            == SidebarMediaRow::patternFavoriteBounds(row));
-    REQUIRE(preset.tags[0].getY() == pattern.tags[0].getY());
-    REQUIRE(preset.tags[0].getY() == preset.tags[1].getY());
-    REQUIRE(preset.tags[1].getRight() <= presetCard.getRight());
-    REQUIRE(preset.title.getRight() < preset.tags[0].getX());
-    REQUIRE(preset.tags[1].getBottom() < row.getCentreY());
+    for (const float width : { 250.f, 290.f }) {
+        const Rectangle<float> row { 0.f, 0.f, width, (float) SidebarMediaRow::presetHeight };
+        const auto card = SidebarMediaRow::cardBounds(row);
+        const auto layout = SidebarMediaRow::presetLayout(row, { "Bass", "Phase Velocity" });
+        REQUIRE(layout.preview.getWidth() == Catch::Approx(card.reduced(5.f).getWidth() * 0.6f));
+        REQUIRE(card.contains(layout.preview));
+        REQUIRE(card.contains(layout.favorite));
+        REQUIRE_FALSE(layout.labels.title.intersects(layout.favorite));
+        REQUIRE(layout.labels.title.getRight() < layout.preview.getX());
+        REQUIRE(layout.labels.tagCount == 2);
+        for (const auto& tag : layout.labels.tags) {
+            REQUIRE(card.contains(tag));
+            REQUIRE(tag.getY() > layout.labels.title.getBottom());
+            REQUIRE(tag.getRight() < layout.preview.getX());
+        }
+        REQUIRE_FALSE(layout.labels.tags[0].intersects(layout.labels.tags[1]));
+        REQUIRE(SidebarMediaRow::favoriteBounds(row) == layout.favorite);
+    }
 }
 
 TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
@@ -313,7 +311,7 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     }
     REQUIRE(browser.visiblePresetCount() > 1);
     REQUIRE(list->getHeight()
-            == 20 + browser.visiblePresetCount() * SidebarMediaRow::height);
+            == 20 + browser.visiblePresetCount() * SidebarMediaRow::presetHeight);
     const int unfilteredCount = browser.visiblePresetCount();
     for (int attempt = 0; attempt < 30 && !clickTag(*tagCloud, "Keys"); ++attempt) {
         MessageManager::getInstance()->runDispatchLoopUntil(100);
@@ -434,7 +432,7 @@ TEST_CASE("Preset row star and Favorites filter do not load the sound",
     REQUIRE(browser.visiblePresetCount() == 1);
 
     const auto firstRow = Rectangle<float>(0.f, 0.f,
-            (float) list->getWidth(), (float) SidebarMediaRow::height);
+            (float) list->getWidth(), (float) SidebarMediaRow::presetHeight);
     const Point<float> position = SidebarMediaRow::favoriteBounds(firstRow)
             .getCentre();
     const Time now = Time::getCurrentTime();

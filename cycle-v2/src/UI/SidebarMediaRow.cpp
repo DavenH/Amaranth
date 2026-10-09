@@ -4,6 +4,32 @@
 
 namespace CycleV2::SidebarMediaRow {
 
+PresetLayout presetLayout(juce::Rectangle<float> slot, const juce::StringArray& tags) {
+    PresetLayout layout;
+    const auto content = cardBounds(slot).reduced(5.f);
+    auto metadata = content.withWidth(content.getWidth() * 0.4f);
+    layout.preview = content.withLeft(metadata.getRight());
+    metadata = metadata.withTrimmedRight(6.f);
+    layout.favorite = { metadata.getX(), metadata.getY(), 22.f, 22.f };
+    layout.labels.title = metadata.withTrimmedLeft(25.f).withHeight(30.f);
+
+    const juce::Font tagFont(juce::FontOptions(8.5f));
+    float x = metadata.getX();
+    float y = metadata.getY() + 34.f;
+    for (int index = 0; index < juce::jmin(2, tags.size()); ++index) {
+        const float width = juce::jmin(metadata.getWidth(),
+                tagFont.getStringWidthFloat(tags[index].toUpperCase()) + 11.f);
+        if (x + width > metadata.getRight()) {
+            x = metadata.getX();
+            y += 15.f;
+        }
+        layout.labels.tags[(size_t) index] = { x, y, width, 13.f };
+        ++layout.labels.tagCount;
+        x += width + 3.f;
+    }
+    return layout;
+}
+
 HeaderLabelsLayout headerLabelsLayout(
         juce::Rectangle<float> card,
         juce::Rectangle<float> favorite,
@@ -59,7 +85,7 @@ void paintHeaderTags(
 }
 
 juce::Rectangle<float> favoriteBounds(juce::Rectangle<float> slot) {
-    return patternFavoriteBounds(slot);
+    return presetLayout(slot, {}).favorite;
 }
 
 juce::Rectangle<float> cardBounds(juce::Rectangle<float> slot) {
@@ -117,7 +143,7 @@ juce::Rectangle<float> paintFrame(
             : CanvasChromePalette::border.withAlpha(0.55f));
     graphics.drawRoundedRectangle(card, 5.f, selected ? 1.2f : 0.8f);
 
-    const auto preview = card.reduced(5.f, 5.f);
+    const auto preview = presetLayout(slot, {}).preview;
     graphics.setColour(CanvasChromePalette::insetBackground);
     graphics.fillRoundedRectangle(preview, 3.f);
     return preview;
@@ -129,20 +155,11 @@ void paintLabels(
         const juce::String& title,
         const juce::StringArray& tags,
         bool favorite) {
-    const auto card = cardBounds(slot);
-    const auto layout = headerLabelsLayout(card, favoriteBounds(slot), tags);
-    const juce::Font titleFont(juce::FontOptions(13.f, juce::Font::bold));
-    graphics.setColour(juce::Colour(0xff333333));
-    const float titleWidth = juce::jmin(
-            layout.title.getWidth() + 8.f,
-            titleFont.getStringWidthFloat(title) + 12.f);
-    graphics.fillRoundedRectangle(
-            layout.title.getX() - 4.f, layout.title.getY(),
-            titleWidth, layout.title.getHeight(), 3.f);
+    const auto layout = presetLayout(slot, tags).labels;
     graphics.setColour(CanvasChromePalette::text);
-    graphics.setFont(titleFont);
+    graphics.setFont(juce::FontOptions(11.5f).withStyle("Bold"));
     graphics.drawFittedText(title, layout.title.toNearestInt(),
-            juce::Justification::centredLeft, 1);
+            juce::Justification::topLeft, 2, 0.9f);
     paintFavorite(graphics, slot, favorite);
     paintHeaderTags(graphics, tags, layout);
 }

@@ -128,9 +128,9 @@ private:
     juce::Rectangle<int> rowBounds(int index) const {
         return {
                 0,
-                contentInset + index * SidebarMediaRow::height,
+                contentInset + index * SidebarMediaRow::presetHeight,
                 getWidth(),
-                SidebarMediaRow::height
+                SidebarMediaRow::presetHeight
         };
     }
 
@@ -153,7 +153,7 @@ private:
 
     void updateHeight() {
         const int height = contentInset * 2
-                + (int) indices.size() * SidebarMediaRow::height;
+                + (int) indices.size() * SidebarMediaRow::presetHeight;
         setSize(juce::jmax(1, getWidth()), juce::jmax(1, height));
     }
 

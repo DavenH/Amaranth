@@ -7,12 +7,21 @@
 namespace CycleV2::SidebarMediaRow {
 
 constexpr int height = 84;
+constexpr int presetHeight = 78;
 
 struct HeaderLabelsLayout {
     juce::Rectangle<float> title;
     std::array<juce::Rectangle<float>, 2> tags;
     int tagCount {};
 };
+
+struct PresetLayout {
+    juce::Rectangle<float> preview;
+    juce::Rectangle<float> favorite;
+    HeaderLabelsLayout labels;
+};
+
+PresetLayout presetLayout(juce::Rectangle<float> slot, const juce::StringArray& tags);
 
 HeaderLabelsLayout headerLabelsLayout(
         juce::Rectangle<float> card,
