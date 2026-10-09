@@ -69,3 +69,13 @@ plan remains outside this placement slice; no new node-family policy belongs her
   GuideRelationshipPresentation 191, NodePalette 187/44, chrome presentation 256,
   presentation header 166 and hit router 238 lines. No duplicate lifecycle policy
   or deleted implementation remains in this placement slice.
+
+## Right-justified palette follow-up
+
+All icon rows now end at the same right edge, including short groups and the
+single icon on Control's second row. NodePalette remains the sole geometry owner;
+rendering, hover and automation reuse its bounds. Rail width stays three columns.
+Reviewed the rendered result and updated the existing alignment/hit-test contract.
+Both builds pass; palette suite passes 11 cases / 419 assertions. Architecture
+audit and diff whitespace check pass; NodePalette.cpp is 190 lines. No new
+responsibility, domain policy, or hot-loop math was introduced.

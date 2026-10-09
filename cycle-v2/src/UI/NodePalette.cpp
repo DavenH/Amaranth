@@ -98,7 +98,8 @@ std::vector<std::pair<String, Rectangle<float>>> NodePalette::pointerTargets() c
 
 Rectangle<float> NodePalette::railBounds() const {
     const auto first = groupBounds(0);
-    return { first.getX(), first.getY(), kColumns * (kTileWidth + kGap) - kGap,
+    const float width = kColumns * (kTileWidth + kGap) - kGap;
+    return { first.getRight() - width, first.getY(), width,
             groupBounds(sectionCount() - 1).getBottom() - first.getY() };
 }
 
@@ -111,7 +112,8 @@ Rectangle<float> NodePalette::groupBounds(int sectionIndex) const {
     const int columns = jmin(kColumns, section(sectionIndex).entryCount);
     const float width = kColumns * (kTileWidth + kGap) - kGap;
     const float x = jmax(workspace.getX(), workspace.getRight() - kRightMargin - width);
-    return { x, y, (float) columns * (kTileWidth + kGap) - kGap,
+    return { x + (kColumns - columns) * (kTileWidth + kGap), y,
+            (float) columns * (kTileWidth + kGap) - kGap,
             groupHeight(section(sectionIndex)) };
 }
 
@@ -119,7 +121,8 @@ Rectangle<float> NodePalette::entryBounds(int sectionIndex, int entryIndex) cons
     const auto group = groupBounds(sectionIndex);
     const int row = entryIndex / kColumns;
     const int column = entryIndex % kColumns;
-    return { group.getX() + (float) column * (kTileWidth + kGap),
+    const int rowColumns = jmin(kColumns, section(sectionIndex).entryCount - row * kColumns);
+    return { group.getRight() - (float) (rowColumns - column) * (kTileWidth + kGap) + kGap,
             group.getY() + kHeadingHeight + (float) row * (kTileHeight + kGap),
             kTileWidth, kTileHeight };
 }
