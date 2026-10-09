@@ -13,6 +13,12 @@ using namespace AutomationProtocol;
 namespace {
 
 bool automationKeyPress(const String& name, KeyPress& result) {
+    if (name == "commandG" || name == "commandShiftG") {
+        const ModifierKeys modifiers = ModifierKeys::commandModifier
+                | (name == "commandShiftG" ? ModifierKeys::shiftModifier : 0);
+        result = KeyPress('g', modifiers, 'g');
+        return true;
+    }
     if (name == "tab" || name == "shiftTab") {
         const ModifierKeys modifiers = name == "shiftTab"
                 ? ModifierKeys::shiftModifier

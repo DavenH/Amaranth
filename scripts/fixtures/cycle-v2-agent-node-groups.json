@@ -1,0 +1,26 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/old/accoustic.cyclegraph" },
+    { "command": "pointer", "event": "click", "targetId": "node:fft", "targetX": 0.5, "targetY": 0.5 },
+    { "command": "pointer", "area": "canvas", "event": "down", "x": 320, "y": 260, "shift": true },
+    { "command": "pointer", "area": "canvas", "event": "drag", "x": 680, "y": 430, "shift": true },
+    { "command": "pointer", "area": "canvas", "event": "up", "x": 680, "y": 430, "shift": true },
+    { "command": "assertState", "path": "selectedNodeCount", "equals": 3 },
+    { "command": "key", "area": "canvas", "key": "commandG" },
+    { "command": "assertState", "path": "nodeGroupCount", "equals": 1 },
+    { "command": "assertState", "path": "documentDirty", "equals": true },
+    { "command": "assertState", "path": "nodeGroups.0.memberCount", "equals": 3 },
+    { "command": "assertState", "path": "nodeGroups.0.collapsed", "equals": false },
+    { "command": "pointer", "event": "click", "targetId": "groupToggle:0" },
+    { "command": "assertState", "path": "nodeGroups.0.collapsed", "equals": true },
+    { "command": "assertState", "path": "selectedNodeCount", "equals": 0 },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-node-group-collapsed.png" },
+    { "command": "pointer", "event": "click", "targetId": "groupToggle:0" },
+    { "command": "assertState", "path": "nodeGroups.0.collapsed", "equals": false },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-node-group-expanded.png" },
+    { "command": "pointer", "event": "click", "targetId": "node:voice", "targetX": 0.5, "targetY": 0.5 },
+    { "command": "key", "area": "canvas", "key": "commandShiftG" },
+    { "command": "assertState", "path": "nodeGroupCount", "equals": 0 }
+  ],
+  "quit": true
+}

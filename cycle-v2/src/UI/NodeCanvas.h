@@ -314,6 +314,12 @@ private:
     Rectangle<float> editorContentBounds() const;
     WorkspaceDockLayout workspaceDockLayout() const;
     void showEdgeMenu(int edgeIndex, Point<float> canvasPosition);
+    void showNodeGroupMenu(const String& groupId, Point<float> canvasPosition);
+    void promptRenameNodeGroup(const String& groupId);
+    void showSelectionGroupMenu(Point<float> canvasPosition);
+    bool groupSelectedNodes();
+    bool setNodeGroupCollapsed(const String& groupId, bool collapsed);
+    bool ungroupNodes(const String& groupId);
     bool removeSpyCard(const String& probeId);
     void toggleSpyDomain(const String& probeId);
     void openGuideEditor(const String& guideId);

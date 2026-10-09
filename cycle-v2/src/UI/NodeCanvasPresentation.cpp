@@ -16,6 +16,7 @@
 #include "UI/NodePortLayout.h"
 #include "UI/NodePortGeometry.h"
 #include "UI/NodeIconRenderer.h"
+#include "UI/NodeGroupPresentation.h"
 #include "UI/NodeViewModule.h"
 #include "UI/VoiceContextCompactEditor.h"
 #include "Graph/GraphRenderSemanticResolver.h"
@@ -652,6 +653,12 @@ void NodeCanvasPresentation::paint(
 void NodeCanvasPresentation::paintContent(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
+    for (const auto& group : frame.graph.getNodeGroups()) {
+        if (!group.collapsed) {
+            NodeGroupPresentation::paint(
+                    graphics, frame.graph, group, frame.viewport, frame.facts.edgeIndex());
+        }
+    }
     {
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
@@ -1013,6 +1020,9 @@ void NodeCanvasPresentation::paintCachedNodes(
     const float physicalScale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
     const Rectangle<float> visibleArea = frame.canvasBounds.expanded(120.f);
     for (const Node& node : frame.graph.getNodes()) {
+        if (!frame.graph.isNodeVisible(node.id)) {
+            continue;
+        }
         const Rectangle<float> nodeBounds = frame.viewport.toScreen(
                 NodeCanvasScene::presentationWorldBounds(
                         frame.graph, node, frame.facts.edgeIndex()));
@@ -1028,6 +1038,12 @@ void NodeCanvasPresentation::paintCachedNodes(
     }
     if (frame.nodeDragActive) {
         paintInlinePanGesture(graphics, frame);
+        for (const auto& group : frame.graph.getNodeGroups()) {
+            if (group.collapsed) {
+                NodeGroupPresentation::paint(
+                        graphics, frame.graph, group, frame.viewport, frame.facts.edgeIndex());
+            }
+        }
         return;
     }
     const NodeCanvasNodeLayerCacheStats stats = nodeLayerCache.endFrame();
@@ -1038,6 +1054,12 @@ void NodeCanvasPresentation::paintCachedNodes(
                 performanceObserver->presentationTimestamp() - startedAt);
     }
     paintInlinePanGesture(graphics, frame);
+    for (const auto& group : frame.graph.getNodeGroups()) {
+        if (group.collapsed) {
+            NodeGroupPresentation::paint(
+                    graphics, frame.graph, group, frame.viewport, frame.facts.edgeIndex());
+        }
+    }
 }
 
 void NodeCanvasPresentation::paintInlinePanGesture(
@@ -1428,6 +1450,9 @@ void NodeCanvasPresentation::renderOpenGLEffectPreviews(
         float scaleFactor) {
     const Rectangle<float> visibleArea = frame.canvasBounds.expanded(120.f);
     for (const auto& node : frame.graph.getNodes()) {
+        if (!frame.graph.isNodeVisible(node.id)) {
+            continue;
+        }
         const Rectangle<float> nodeBounds = frame.viewport.toScreen(
                 NodeCanvasScene::presentationWorldBounds(
                         frame.graph, node, frame.facts.edgeIndex()));

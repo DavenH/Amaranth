@@ -62,6 +62,7 @@ bool GraphDelta::empty() const {
         && models.empty()
         && editorStates.empty()
         && bounds.empty()
+        && nodeGroups.empty()
         && probePositions.empty()
         && guides.empty()
         && edgeInputs.empty()
@@ -88,6 +89,14 @@ void GraphDelta::apply(NodeGraph& graph, bool forward) const {
     }
     for (const auto& delta : bounds) {
         graph.applyNodeBounds(delta.nodeId, forward ? delta.after : delta.before);
+    }
+    for (const auto& delta : nodeGroups) {
+        const auto& state = forward ? delta.after : delta.before;
+        if (!state.has_value()) {
+            graph.removeNodeGroup(delta.groupId);
+        } else if (!graph.replaceNodeGroup(*state)) {
+            graph.addNodeGroup(*state);
+        }
     }
     for (const auto& delta : probePositions) {
         graph.setSignalProbeCanvasPosition(
@@ -235,6 +244,18 @@ void GraphDeltaBuilder::captureNodeBounds(const NodeGraph& graph, const String& 
     }
 }
 
+void GraphDeltaBuilder::captureNodeGroup(const NodeGraph& graph, const String& groupId) {
+    const auto found = std::find_if(nodeGroups.begin(), nodeGroups.end(),
+            [&](const NodeGroupDelta& delta) { return delta.groupId == groupId; });
+    if (found != nodeGroups.end()) {
+        return;
+    }
+    const NodeGroup* group = graph.findNodeGroup(groupId);
+    nodeGroups.push_back({ groupId,
+            group != nullptr ? std::optional<NodeGroup>(*group) : std::nullopt,
+            std::nullopt });
+}
+
 void GraphDeltaBuilder::captureSignalProbePosition(
         const NodeGraph& graph,
         const String& probeId) {
@@ -277,6 +298,9 @@ void GraphDeltaBuilder::captureCableDeletion(
         const CableDeletionPlan& plan) {
     CableDeletionDelta state;
     if (plan.panNodeId.isNotEmpty()) {
+        if (const NodeGroup* group = graph.groupForNode(plan.panNodeId)) {
+            captureNodeGroup(graph, group->id);
+        }
         const auto& nodes = graph.getNodes();
         const auto found = std::find_if(nodes.begin(), nodes.end(), [&](const Node& node) {
             return node.id == plan.panNodeId;
@@ -316,6 +340,7 @@ GraphDelta GraphDeltaBuilder::finish(
     result.models = models;
     result.editorStates = editorStates;
     result.bounds = bounds;
+    result.nodeGroups = nodeGroups;
     result.probePositions = probePositions;
     result.guides = guides;
     result.edgeInputs = edgeInputs;
@@ -339,6 +364,11 @@ GraphDelta GraphDeltaBuilder::finish(
         if (node != nullptr) {
             delta.after = node->bounds;
         }
+    }
+    for (auto& delta : result.nodeGroups) {
+        const NodeGroup* group = graph.findNodeGroup(delta.groupId);
+        delta.after = group != nullptr
+                ? std::optional<NodeGroup>(*group) : std::nullopt;
     }
     for (auto& delta : result.probePositions) {
         const SignalProbe* probe = graph.findSignalProbe(delta.probeId);
@@ -368,6 +398,7 @@ bool GraphDeltaBuilder::empty() const {
         && models.empty()
         && editorStates.empty()
         && bounds.empty()
+        && nodeGroups.empty()
         && probePositions.empty()
         && guides.empty()
         && edgeInputs.empty()

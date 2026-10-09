@@ -254,6 +254,9 @@ std::vector<String> NodeCanvasInteraction::nodeIdsIntersecting(
         const GraphEdgeIndex& edgeIndex) const {
     std::vector<String> result;
     for (const auto& node : graph.getNodes()) {
+        if (!graph.isNodeVisible(node.id)) {
+            continue;
+        }
         const Rectangle<float> nodeBounds = viewport.toScreen(
                 NodeCanvasScene::presentationWorldBounds(graph, node, edgeIndex));
         if (screenBounds.intersects(nodeBounds)) {
@@ -274,6 +277,9 @@ SnappedNodeBounds NodeCanvasInteraction::snapNode(
     std::vector<float> yAnchors;
 
     for (const auto& candidate : graph.getNodes()) {
+        if (!graph.isNodeVisible(candidate.id)) {
+            continue;
+        }
         if (std::find(
                     excludedNodeIds.begin(),
                     excludedNodeIds.end(),
