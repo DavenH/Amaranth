@@ -60,5 +60,10 @@
     "edges": [
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": []
+    "probes": [],
+    "presetPresentation": {
+        "version": 1,
+        "tags": ["Keys"],
+        "patternId": "factory-basic-keys"
+    }
 }

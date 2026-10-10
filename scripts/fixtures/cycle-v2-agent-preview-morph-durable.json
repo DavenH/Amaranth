@@ -1,0 +1,25 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/resources/default.cyclegraph" },
+    { "command": "assertNodeParameter", "nodeId": "env", "parameterId": "blue", "equals": "0.5" },
+    { "command": "assertNodeParameter", "nodeId": "waveMesh", "parameterId": "blue", "equals": "0.5" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "down", "targetY": 0.8 },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "drag", "targetY": 0.25 },
+    { "command": "assertNodeParameter", "nodeId": "env", "parameterId": "blue", "equals": "0.5" },
+    { "command": "assertNodeParameter", "nodeId": "waveMesh", "parameterId": "blue", "equals": "0.5" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "up", "targetY": 0.25 },
+    { "command": "assertNodeParameter", "nodeId": "env", "parameterId": "blue", "op": "greaterThan", "value": 0.74 },
+    { "command": "assertNodeParameter", "nodeId": "env", "parameterId": "blue", "op": "lessThan", "value": 0.75 },
+    { "command": "assertNodeParameter", "nodeId": "waveMesh", "parameterId": "blue", "op": "greaterThan", "value": 0.74 },
+    { "command": "undo" },
+    { "command": "assertNodeParameter", "nodeId": "env", "parameterId": "blue", "equals": "0.5" },
+    { "command": "assertNodeParameter", "nodeId": "waveMesh", "parameterId": "blue", "equals": "0.5" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.Note60", "event": "click", "button": "right" },
+    { "command": "assertNodeParameter", "nodeId": "env", "parameterId": "red", "op": "greaterThan", "value": 0.373 },
+    { "command": "assertNodeParameter", "nodeId": "env", "parameterId": "red", "op": "lessThan", "value": 0.375 },
+    { "command": "assertNodeParameter", "nodeId": "waveMesh", "parameterId": "red", "op": "greaterThan", "value": 0.373 },
+    { "command": "undo" },
+    { "command": "assertNodeParameter", "nodeId": "env", "parameterId": "red", "equals": "0.5" }
+  ],
+  "quit": true
+}

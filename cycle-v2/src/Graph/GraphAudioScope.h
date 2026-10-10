@@ -7,6 +7,9 @@
 
 namespace CycleV2 {
 
+class GraphEdgeView;
+class GraphEdgeIndexOverlay;
+
 enum class AuthoredAudioScope {
     Voice,
     Global
@@ -21,6 +24,7 @@ struct GraphAudioScopeAnalysis {
 
     std::unordered_map<String, AuthoredAudioScope, StringHash> nodes;
     std::vector<String> conflictingNeutralNodeIds;
+    std::vector<String> affectedNodeIds;
 
     AuthoredAudioScope scopeFor(const String& nodeId) const;
     bool hasConflict(const String& nodeId) const;
@@ -29,6 +33,12 @@ struct GraphAudioScopeAnalysis {
 class GraphAudioScopeAnalyzer {
 public:
     GraphAudioScopeAnalysis analyze(const NodeGraph& graph) const;
+    GraphAudioScopeAnalysis analyze(const NodeGraph& graph, const GraphEdgeView& edges) const;
+    GraphAudioScopeAnalysis analyze(
+            const NodeGraph& graph,
+            const GraphEdgeView& edges,
+            const GraphEdgeIndexOverlay& edgeIndex,
+            const GraphAudioScopeAnalysis& baseline) const;
     static AudioProcessingCapability capabilityFor(const Node& node);
     static AuthoredAudioScope explicitScopeFor(const Node& node);
 };

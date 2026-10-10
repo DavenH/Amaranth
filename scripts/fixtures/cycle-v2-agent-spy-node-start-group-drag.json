@@ -1,0 +1,22 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph" },
+    { "command": "pointer", "area": "canvas", "event": "down", "x": 400, "y": 300, "shift": true },
+    { "command": "pointer", "area": "canvas", "event": "drag", "x": 1715, "y": 800, "shift": true },
+    { "command": "pointer", "area": "canvas", "event": "up", "x": 1715, "y": 800, "shift": true },
+    { "command": "assertState", "path": "selectedNodeCount", "op": "greaterThan", "value": 0 },
+    { "command": "assertState", "path": "selectedSpyIds.0", "equals": "probe" },
+    { "command": "assertState", "path": "selectedSpyIds.1", "equals": "default-output" },
+    { "command": "pointer", "event": "down", "targetId": "node:voice", "targetX": 0.5, "targetY": 0.5 },
+    { "command": "pointer", "event": "drag", "targetId": "node:voice", "downTargetId": "node:voice", "targetX": 0.8, "targetY": 0.5, "downTargetX": 0.5, "downTargetY": 0.5 },
+    { "command": "assertState", "path": "spyCards.1.bounds.x", "op": "greaterThan", "value": 745.1 },
+    { "command": "pointer", "event": "up", "targetId": "node:voice", "downTargetId": "node:voice", "targetX": 0.8, "targetY": 0.5, "downTargetX": 0.5, "downTargetY": 0.5, "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertState", "path": "nodes.0.bounds.x", "op": "greaterThan", "value": 475.2 },
+    { "command": "assertState", "path": "probes.0.canvasX", "op": "greaterThan", "value": 3200 },
+    { "command": "assertState", "path": "spyCards.1.bounds.x", "op": "greaterThan", "value": 770 },
+    { "command": "undo", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertState", "path": "nodes.0.bounds.x", "op": "lessThan", "value": 475.201 },
+    { "command": "assertState", "path": "spyCards.0.bounds.x", "op": "lessThan", "value": 1587.2 }
+  ],
+  "quit": true
+}

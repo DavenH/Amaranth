@@ -5,13 +5,9 @@
 #include <vector>
 
 #include "Runtime/AudioProcessContextUtils.h"
+#include "Runtime/BinarySignalMath.h"
 
 namespace CycleV2 {
-
-enum class BinarySignalOperation {
-    Add,
-    Multiply
-};
 
 enum class BinaryGridOperandMode {
     Block,
@@ -71,10 +67,23 @@ private:
             rightOperand.resize(frameCount);
             prepareOperand(outputSamples, left, frameCount, channel, 0, false);
             prepareOperand(rightOperand, right, frameCount, channel, 0, false);
-            applyTransfer(outputSamples, leftTransfer, channel);
-            applyTransfer(rightOperand, rightTransfer, channel);
-            applyOperation(outputSamples, rightOperand, operation);
-            clampOutputDomain({ outputSamples.data(), (int) outputSamples.size() }, output.domain);
+            BinarySignalMath::applyTransfer(
+                    { outputSamples.data(), (int) outputSamples.size() },
+                    leftTransfer,
+                    channel,
+                    (int) outputSamples.size());
+            BinarySignalMath::applyTransfer(
+                    { rightOperand.data(), (int) rightOperand.size() },
+                    rightTransfer,
+                    channel,
+                    (int) rightOperand.size());
+            BinarySignalMath::combine(
+                    { outputSamples.data(), (int) outputSamples.size() },
+                    { rightOperand.data(), (int) rightOperand.size() },
+                    operation);
+            BinarySignalMath::clampOutputDomain(
+                    { outputSamples.data(), (int) outputSamples.size() },
+                    output.domain);
         }
     }
 
@@ -142,10 +151,21 @@ private:
                     outputColumn, left, *grid, column, leftMode, channel);
             prepareGridColumnOperand(
                     rightOperand, right, *grid, column, rightMode, channel);
-            applyTransfer(outputColumn, leftTransfer, channel);
-            applyTransfer(rightOperand, rightTransfer, channel);
-            applyOperation(outputColumn, rightOperand, operation);
-            clampOutputDomain(outputColumn, output.domain);
+            BinarySignalMath::applyTransfer(
+                    outputColumn,
+                    leftTransfer,
+                    channel,
+                    outputColumn.size());
+            BinarySignalMath::applyTransfer(
+                    { rightOperand.data(), (int) rightOperand.size() },
+                    rightTransfer,
+                    channel,
+                    (int) rightOperand.size());
+            BinarySignalMath::combine(
+                    outputColumn,
+                    { rightOperand.data(), (int) rightOperand.size() },
+                    operation);
+            BinarySignalMath::clampOutputDomain(outputColumn, output.domain);
         }
     }
 
@@ -172,30 +192,6 @@ private:
                 channel,
                 gridColumn,
                 useTraversalGrid);
-    }
-
-    static void applyTransfer(
-            std::vector<float>& values,
-            const SpectralMagnitudeTransfer* transfer,
-            size_t channel) {
-        if (transfer == nullptr) {
-            return;
-        }
-        applySpectralMagnitudeTransfer(
-                { values.data(), (int) values.size() },
-                *transfer,
-                channel,
-                (int) values.size());
-    }
-
-    static void applyTransfer(
-            Buffer<float> values,
-            const SpectralMagnitudeTransfer* transfer,
-            size_t channel) {
-        if (transfer == nullptr) {
-            return;
-        }
-        applySpectralMagnitudeTransfer(values, *transfer, channel, values.size());
     }
 
     static void prepareOperand(
@@ -283,32 +279,6 @@ private:
         }
 
         copyBlockExpandingScalars(dest, sourceBlock, target.rows);
-    }
-
-    static void applyOperation(
-            std::vector<float>& output,
-            std::vector<float>& right,
-            BinarySignalOperation operation) {
-        applyOperation({ output.data(), (int) output.size() }, right, operation);
-    }
-
-    static void applyOperation(
-            Buffer<float> output,
-            std::vector<float>& right,
-            BinarySignalOperation operation) {
-        Buffer<float> rightBuffer(right.data(), (int) right.size());
-        if (operation == BinarySignalOperation::Add) {
-            output.add(rightBuffer);
-            return;
-        }
-
-        output.mul(rightBuffer);
-    }
-
-    static void clampOutputDomain(Buffer<float> output, PortDomain domain) {
-        if (domain == PortDomain::SpectralMagnitudeSignal) {
-            output.threshLT(0.f);
-        }
     }
 
     static Buffer<float> columnBuffer(SignalTraversalGrid& grid, size_t column) {

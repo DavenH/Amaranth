@@ -1,0 +1,113 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/resources/default.cyclegraph"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "workspace.sidebar.nodes",
+      "targetX": 0.5,
+      "targetY": 0.5
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 16
+    },
+    {
+      "command": "listPaletteItems"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "palette:add",
+      "targetX": 0.5,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "drag",
+      "x": 650,
+      "y": 340,
+      "downTargetId": "palette:add",
+      "downTargetX": 0.5,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "drag",
+      "x": 675,
+      "y": 350,
+      "downTargetId": "palette:add",
+      "downTargetX": 0.5,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "up",
+      "x": 700,
+      "y": 340,
+      "downTargetId": "palette:add",
+      "downTargetX": 0.5,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 17
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.16.kind",
+      "equals": "Add"
+    },
+    {
+      "command": "undo"
+    },
+    {
+      "command": "undo"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 16
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "palette:equalizer",
+      "targetX": 0.5,
+      "targetY": 0.5
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 17
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.16.kind",
+      "equals": "EQ"
+    },
+    {
+      "command": "undo"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 16
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas",
+      "waitForIdle": true,
+      "idleDelayMs": 600
+    }
+  ],
+  "quit": true
+}

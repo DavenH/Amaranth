@@ -1,10 +1,13 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
+#include "NodeGraphTestAccess.h"
+
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Graph/NodeParameterMap.h"
@@ -46,6 +49,12 @@ File contentPreset(const String& name) {
   #else
     return File();
   #endif
+}
+
+File graphTestOutputFile(const String& name) {
+    const File outputDirectory(String(CYCLE_V2_TEST_OUTPUT_DIR));
+    ignoreUnused(outputDirectory.createDirectory());
+    return outputDirectory.getNonexistentChildFile(name, ".cyclegraph");
 }
 
 bool hasGuideAssignment(
@@ -133,8 +142,7 @@ TEST_CASE("Graph JSON preserves authored Guide noise seeds", "[cycle-v2][graph][
 
 TEST_CASE("Graph documents save canonical JSON with stable line endings",
         "[cycle-v2][graph]") {
-    const File destination = File::getSpecialLocation(File::tempDirectory)
-            .getNonexistentChildFile("cycle-v2-canonical-graph", ".cyclegraph");
+    const File destination = graphTestOutputFile("cycle-v2-canonical-graph");
     GraphDocument document(NodeGraph::createDemoGraph());
 
     REQUIRE(document.save(destination));
@@ -145,7 +153,7 @@ TEST_CASE("Graph documents save canonical JSON with stable line endings",
 TEST_CASE("Graph JSON preserves parameter precision needed for Cycle parity",
         "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "voice",
             "voiceLength",
@@ -162,8 +170,7 @@ TEST_CASE("Graph JSON preserves parameter precision needed for Cycle parity",
 
 TEST_CASE("Graph document dirty state follows its save point through history",
         "[cycle-v2][graph][dirty]") {
-    const File destination = File::getSpecialLocation(File::tempDirectory)
-            .getNonexistentChildFile("cycle-v2-dirty-state", ".cyclegraph");
+    const File destination = graphTestOutputFile("cycle-v2-dirty-state");
     NodeGraph graph = NodeGraph::createDemoGraph();
     const String movedNodeId = graph.getNodes().front().id;
     GraphDocument document(std::move(graph));
@@ -485,7 +492,7 @@ TEST_CASE("Graph JSON migrates legacy Pan range to its spectral Trimesh",
     graph.addNode(factory.createNode(NodeKind::SpectralLayer, "pan", {}));
     graph.addNode(factory.createNode(NodeKind::Add, "operation", {}));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "base",
             "signalType",
@@ -494,7 +501,7 @@ TEST_CASE("Graph JSON migrates legacy Pan range to its spectral Trimesh",
     graph.addEdge({
             "base", "out", "operation", "left", PortDomain::SpectralMagnitudeSignal
     });
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "mesh",
             "signalType",
@@ -599,7 +606,7 @@ TEST_CASE("Legacy graph formats are rejected after direct Guide resource convers
 
 TEST_CASE("Graph JSON persists authored port side overrides", "[cycle-v2][graph][layout]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    Node* add = graph.findNodeForEditing("addMag");
+    Node* add = NodeGraphTestAccess::findNodeForEditing(graph, "addMag");
     REQUIRE(add != nullptr);
     add->inputs[0].side = PortSide::Top;
     add->inputs[1].side = PortSide::Bottom;
@@ -774,7 +781,6 @@ TEST_CASE("Every shipped graph is canonical JSON and compiles", "[cycle-v2][grap
             contentPreset("african-horn.cyclegraph"),
             contentPreset("alto-sax.cyclegraph"),
             contentPreset("baroque-flute.cyclegraph"),
-            contentPreset("spectral-reference.cyclegraph"),
             contentPreset("stengah.cyclegraph"),
             resource("default.cyclegraph"),
             resource("fft-sawtooth.cyclegraph"),
@@ -790,7 +796,8 @@ TEST_CASE("Every shipped graph is canonical JSON and compiles", "[cycle-v2][grap
         REQUIRE(loaded.succeeded());
         REQUIRE(GraphValidator().isValid(loaded.graph));
         REQUIRE(GraphCompiler().compile(loaded.graph).succeeded());
-        const String canonical = GraphSerializer().toJsonString(loaded.graph);
+        const String canonical = GraphSerializer().toJsonString(
+                loaded.graph, loaded.presentation);
         REQUIRE(GraphSerializer().loadJsonString(canonical).succeeded());
         if (encoded != canonical) {
             FAIL(name + " is not canonical JSON");
@@ -1203,4 +1210,27 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
+}
+
+TEST_CASE("Transform nodes compact legacy diagram widths when loading",
+        "[cycle-v2][serialization][transform-icons]") {
+    NodeGraph graph;
+    for (const auto kind : { NodeKind::Fft, NodeKind::Ifft }) {
+        const String id = kind == NodeKind::Fft ? "fft" : "ifft";
+        auto node = GraphNodeFactory().createNode(kind, id, { 100.f, 200.f });
+        REQUIRE(node.bounds.getWidth() == 144.f);
+        node.bounds.setWidth(278.f);
+        graph.addNode(std::move(node));
+    }
+    GraphSerializer serializer;
+    const auto loaded = serializer.loadJsonString(serializer.toJsonString(graph));
+    REQUIRE(loaded.succeeded());
+    for (const String id : { String("fft"), String("ifft") }) {
+        const auto* node = loaded.graph.findNode(id);
+        REQUIRE(node != nullptr);
+        REQUIRE(node->bounds == Rectangle<float>(100.f, 200.f, 144.f, 142.f));
+    }
+    const auto reloaded = serializer.loadJsonString(serializer.toJsonString(loaded.graph));
+    REQUIRE(reloaded.succeeded());
+    REQUIRE(serializer.toJsonString(reloaded.graph) == serializer.toJsonString(loaded.graph));
 }

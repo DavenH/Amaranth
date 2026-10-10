@@ -1,8 +1,6 @@
 #include "UI/EnvelopePurposeSelector.h"
 
 #include "UI/Editors/PropertyControls.h"
-#include "UI/EnvelopePurposeIconRenderer.h"
-#include "UI/EnvelopeToolbarMetrics.h"
 
 namespace CycleV2 {
 
@@ -24,10 +22,8 @@ public:
 
     EnvelopePurpose purpose() const { return purposeValue; }
 
-    Rectangle<float> iconBounds() const {
-        return getLocalBounds().toFloat().withSizeKeepingCentre(
-                EnvelopeToolbarMetrics::purposeIconCanvasSize,
-                EnvelopeToolbarMetrics::purposeIconCanvasSize);
+    Rectangle<float> labelBounds() const {
+        return getLocalBounds().toFloat().reduced(4.f, 2.f);
     }
 
     void paintButton(Graphics& graphics, bool highlighted, bool down) override {
@@ -43,12 +39,13 @@ public:
             graphics.setColour(Colours::white.withAlpha(down ? 0.14f : 0.08f));
             graphics.fillPath(hover);
         }
-        const float opacity = selected ? 1.f : (highlighted ? 0.94f : 0.62f);
-        EnvelopePurposeIconRenderer::paint(
-                graphics,
-                purposeValue,
-                iconBounds(),
-                opacity);
+        graphics.setColour(Colours::white.withAlpha(
+                selected ? 1.f : highlighted ? 0.94f : 0.62f));
+        graphics.setFont(12.f);
+        graphics.drawText(
+                envelopePurposeLabel(purposeValue),
+                labelBounds(),
+                Justification::centred);
     }
 
 private:
@@ -95,11 +92,11 @@ Rectangle<float> EnvelopePurposeSelector::optionBounds(EnvelopePurpose purposeVa
     return button != nullptr ? button->getBounds().toFloat() : Rectangle<float>();
 }
 
-Rectangle<float> EnvelopePurposeSelector::optionIconBounds(
+Rectangle<float> EnvelopePurposeSelector::optionLabelBounds(
         EnvelopePurpose purposeValue) const {
     const PurposeButton* button = buttonFor(purposeValue);
     return button != nullptr
-            ? button->iconBounds().translated(
+            ? button->labelBounds().translated(
                     static_cast<float>(button->getX()),
                     static_cast<float>(button->getY()))
             : Rectangle<float>();

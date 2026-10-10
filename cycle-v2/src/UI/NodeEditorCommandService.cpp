@@ -2,6 +2,7 @@
 
 #include "Graph/NodeParameterMap.h"
 #include "Runtime/FingerprintBuilder.h"
+#include "Nodes/Curve/Editor/CurveEditorWidget.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentMenu.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
@@ -60,7 +61,8 @@ NodeEditorCommandService::NodeEditorCommandService(
     ,   commands            (commandsToUse)
     ,   presentation        (presentationToUse)
     ,   resources           (resourcesToUse)
-    ,   performanceObserver (performanceObserverToUse) {
+    ,   performanceObserver (performanceObserverToUse)
+    ,   modelCommands       (documentToUse, commandsToUse, presentationToUse) {
 }
 
 const Node* NodeEditorCommandService::findNode(const String& nodeId) const {
@@ -75,14 +77,14 @@ bool NodeEditorCommandService::beginNodeParameterEdit(
     if (findNode(nodeId) == nullptr) {
         return false;
     }
+    if (!presentation.beginNodeEditorGesture(nodeId, commands, document)) {
+        return false;
+    }
     activeParameterNodeId = nodeId;
     activeParameterId = parameterId;
     activeParameterLabel = label;
     activeParameterField = parameterId;
-    activeParameterFingerprint = 0;
-    activeParameterChanged = false;
     presentation.selectEditedNode(nodeId);
-    commands.beginTransientEdit();
     return updateNodeParameterEditValue(value);
 }
 
@@ -104,12 +106,11 @@ bool NodeEditorCommandService::updateNodeParameterEditValue(float value) {
     if (!result.changed) {
         return true;
     }
-    activeParameterFingerprint = static_cast<uint64_t>(String(value, 9).hashCode64());
-    activeParameterChanged = true;
     presentation.recordNodeEditorMovement(
             activeParameterNodeId,
             activeParameterId,
-            activeParameterFingerprint);
+            static_cast<uint64_t>(String(value, 9).hashCode64()),
+            UpdateProduct::LocalSlice);
     presentation.repaintNodeEditor(false);
     return true;
 }
@@ -125,16 +126,16 @@ bool NodeEditorCommandService::beginNodeParameterPairEdit(
     if (findNode(nodeId) == nullptr) {
         return false;
     }
+    if (!presentation.beginNodeEditorGesture(nodeId, commands, document)) {
+        return false;
+    }
     activeParameterNodeId = nodeId;
     activeParameterId = firstParameterId;
     activeParameterLabel = firstLabel;
     secondaryParameterId = secondParameterId;
     secondaryParameterLabel = secondLabel;
     activeParameterField = firstParameterId + "+" + secondParameterId;
-    activeParameterFingerprint = 0;
-    activeParameterChanged = false;
     presentation.selectEditedNode(nodeId);
-    commands.beginTransientEdit();
     return updateNodeParameterPairEditValues(firstValue, secondValue);
 }
 
@@ -168,12 +169,11 @@ bool NodeEditorCommandService::updateNodeParameterPairEditValues(
             static_cast<uint64_t>(String(firstValue, 9).hashCode64()))
             .add(String(secondValue, 9))
             .value();
-    activeParameterFingerprint = fingerprint;
-    activeParameterChanged = true;
     presentation.recordNodeEditorMovement(
             activeParameterNodeId,
             activeParameterField,
-            fingerprint);
+            fingerprint,
+            UpdateProduct::LocalSlice);
     presentation.repaintNodeEditor(false);
     return true;
 }
@@ -185,27 +185,16 @@ void NodeEditorCommandService::endNodeParameterEdit() {
     if (activeParameterNodeId.isEmpty()) {
         return;
     }
-    commands.commitTransientEdit();
-    if (activeParameterChanged) {
-        if (presentation.probeRefreshMode() == ProbeRefreshMode::LiveLatest) {
-            presentation.commitNodeEditorLocalState(
-                    activeParameterNodeId,
-                    activeParameterField,
-                    activeParameterFingerprint,
-                    document.revision());
-            presentation.scheduleNodeEditorRefresh();
-        } else {
-            presentation.refreshNodeEditorPresentation();
-        }
-    }
+    presentation.finishNodeEditorGesture(
+            activeParameterNodeId,
+            commands,
+            document);
     activeParameterNodeId = {};
     activeParameterId = {};
     activeParameterLabel = {};
     secondaryParameterId = {};
     secondaryParameterLabel = {};
     activeParameterField = {};
-    activeParameterFingerprint = 0;
-    activeParameterChanged = false;
 }
 
 bool NodeEditorCommandService::setNodeParameterValue(
@@ -325,32 +314,15 @@ bool NodeEditorCommandService::publishCurveState(
 bool NodeEditorCommandService::publishNodeModel(
         const String& nodeId,
         NodeModelStatePtr model) {
-    const Node* node = findNode(nodeId);
-    if (node == nullptr || model == nullptr) {
-        return false;
-    }
-    const uint64_t currentRevision = node->model != nullptr ? node->model->revision() : 0;
-    const auto result = commands.replaceNodeModel(nodeId, currentRevision, std::move(model));
-    if (!result.succeeded()) {
-        return false;
-    }
-    if (result.changed) {
-        presentation.recordNodeEditorMovement(
-                nodeId,
-                "model",
-                FingerprintBuilder().add(currentRevision + 1).value());
-        presentation.repaintNodeEditor(false);
-    }
-    return true;
+    return modelCommands.publish(nodeId, std::move(model));
 }
 
-void NodeEditorCommandService::beginNodeModelEdit() {
-    commands.beginTransientEdit();
+bool NodeEditorCommandService::beginNodeModelEdit(const String& nodeId) {
+    return modelCommands.begin(nodeId);
 }
 
 void NodeEditorCommandService::endNodeModelEdit() {
-    commands.commitTransientEdit();
-    presentation.flushNodeEditorRefresh();
+    modelCommands.finish();
 }
 
 void NodeEditorCommandService::beginCurveTransaction() {
@@ -364,6 +336,7 @@ void NodeEditorCommandService::beginCurveTransaction() {
 }
 
 void NodeEditorCommandService::commitCurveTransaction() {
+    presentation.settleNodeEditorPreviewWork();
     commands.commitTransientEdit();
     curveTransactionActive = false;
     curveTransactionBaseRevision.reset();
@@ -372,18 +345,34 @@ void NodeEditorCommandService::commitCurveTransaction() {
         return;
     }
     curvePublicationPending = false;
-    if (presentation.probeRefreshMode() == ProbeRefreshMode::LiveLatest) {
+    if (PresentationRefreshPolicy::schedulesDownstreamDuringMovement(
+                presentation.probeRefreshMode())) {
         presentation.commitNodeEditorLocalState(
                 curvePublicationNodeId,
                 "curve",
                 curvePublicationFingerprint,
                 document.revision());
-    } else {
-        presentation.scheduleNodeEditorRefresh();
     }
+    presentation.scheduleNodeEditorRefresh();
     curvePublicationNodeId = {};
     curvePublicationFingerprint = 0;
     presentation.repaintNodeEditor(true);
+}
+
+bool NodeEditorCommandService::cancelCurveTransaction() {
+    if (!curveTransactionActive) {
+        return false;
+    }
+    presentation.settleNodeEditorPreviewWork();
+    commands.cancelTransientEdit();
+    curveTransactionActive = false;
+    curveTransactionBaseRevision.reset();
+    curveTransactionNodeId = {};
+    curvePublicationPending = false;
+    curvePublicationNodeId = {};
+    curvePublicationFingerprint = 0;
+    presentation.scheduleNodeEditorRefresh();
+    return true;
 }
 
 bool NodeEditorCommandService::setTrimeshPrimaryAxisValue(
@@ -439,15 +428,15 @@ bool NodeEditorCommandService::beginTrimeshMorphEdit(
     if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
         return false;
     }
+    if (!presentation.beginNodeEditorGesture(
+                nodeId, commands, document, false)) {
+        return false;
+    }
     activeMorphNodeId = nodeId;
     activeMorphParameterId = parameterId;
-    activeMorphFingerprint = 0;
-    activeMorphChanged = false;
     activeMorphIsPrimary = NodeParameterMap(*node).stringValue(
-            "primaryAxis",
-            "yellow") == parameterId;
+            "primaryAxis", "yellow") == parameterId;
     presentation.selectEditedNode(nodeId);
-    commands.beginTransientEdit();
     return updateTrimeshMorphEditValue(value);
 }
 
@@ -466,12 +455,11 @@ bool NodeEditorCommandService::updateTrimeshMorphEditValue(float value) {
     if (!result.changed) {
         return true;
     }
-    activeMorphFingerprint = static_cast<uint64_t>(String(value, 9).hashCode64());
-    activeMorphChanged = true;
     presentation.recordNodeEditorMovement(
             activeMorphNodeId,
             activeMorphParameterId,
-            activeMorphFingerprint);
+            static_cast<uint64_t>(String(value, 9).hashCode64()),
+            std::nullopt);
     presentation.setNodeEditorStatus("Morph " + label + " = " + String(value, 2));
     presentation.repaintNodeEditor(false);
     return true;
@@ -481,22 +469,13 @@ void NodeEditorCommandService::endTrimeshMorphEdit() {
     if (activeMorphNodeId.isEmpty()) {
         return;
     }
-    commands.commitTransientEdit();
-    if (activeMorphChanged
-            && (activeMorphIsPrimary
-                    || presentation.probeRefreshMode() == ProbeRefreshMode::LiveLatest)) {
-        presentation.commitNodeEditorLocalState(
-                activeMorphNodeId,
-                activeMorphParameterId,
-                activeMorphFingerprint,
-                document.revision());
-    } else if (activeMorphChanged) {
-        presentation.refreshNodeEditorPresentation();
-    }
+    presentation.finishNodeEditorGesture(
+            activeMorphNodeId,
+            commands,
+            document,
+            activeMorphIsPrimary ? activeMorphParameterId : String());
     activeMorphNodeId = {};
     activeMorphParameterId = {};
-    activeMorphFingerprint = 0;
-    activeMorphChanged = false;
     activeMorphIsPrimary = false;
 }
 
@@ -510,23 +489,28 @@ bool NodeEditorCommandService::beginTrimeshVertexParameterEdit(
         return false;
     }
     int vertexIndex = (int) node->editorState.getProperty("selectedVertexId", -1);
-    commands.beginTransientEdit();
     if (vertexIndex < 0) {
         vertexIndex = widget->resolvedSelectedVertexIndexForNode(*node);
-        if (vertexIndex >= 0) {
-            commands.setNodeEditorState(
-                    nodeId, editorStateWithSelectedVertex(*node, vertexIndex));
-        }
     }
     if (vertexIndex < 0) {
-        commands.cancelTransientEdit();
         return false;
+    }
+    if (!presentation.beginNodeEditorGesture(
+                nodeId, commands, document, false)) {
+        return false;
+    }
+    if ((int) node->editorState.getProperty("selectedVertexId", -1) < 0) {
+        commands.setNodeEditorState(
+                nodeId, editorStateWithSelectedVertex(*node, vertexIndex));
     }
     activeVertexNodeId = nodeId;
     activeVertexParameterId = parameterId;
     activeVertexWidget = widget;
     activeVertexIndex = vertexIndex;
-    activeVertexChanged = false;
+    activeVertexDelta.reset();
+    activeCubeCurveBefore = parameterId == "vertex.curve"
+            ? widget->cubeCurveValuesForVertex(vertexIndex)
+            : std::nullopt;
     presentation.selectEditedNode(nodeId);
     return updateTrimeshVertexParameterEditValue(value);
 }
@@ -545,19 +529,54 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
         label = activeVertexParameterId;
     }
     const bool editingGuideGain = activeVertexParameterId.startsWith("guideGain.");
-    const bool modelUpdated = editingGuideGain
-            ? activeVertexWidget->setVertexGuideGain(
-                    activeVertexIndex,
-                    activeVertexParameterId,
-                    value)
-            : activeVertexWidget->setVertexParameter(
-                    activeVertexIndex,
-                    activeVertexParameterId,
-                    value);
-    if (!modelUpdated) {
-        return false;
+    if (activeCubeCurveBefore.has_value()) {
+        const auto before = activeVertexWidget->cubeCurveValuesForVertex(activeVertexIndex);
+        if (!before.has_value()
+                || !activeVertexWidget->setVertexParameter(
+                        activeVertexIndex, activeVertexParameterId, value)) {
+            return false;
+        }
+        if (before == activeVertexWidget->cubeCurveValuesForVertex(activeVertexIndex)) {
+            return true;
+        }
+    } else {
+        const auto movement = editingGuideGain
+                ? TrimeshVertexEditCore::prepareGuideGain(
+                        activeVertexWidget->currentMesh(),
+                        activeVertexIndex,
+                        activeVertexParameterId,
+                        value)
+                : TrimeshVertexEditCore::prepareVertexValue(
+                        activeVertexWidget->currentMesh(),
+                        activeVertexIndex,
+                        activeVertexParameterId,
+                        value);
+        if (!movement.has_value()) {
+            return false;
+        }
+        const auto accumulated = activeVertexDelta.has_value()
+                ? TrimeshVertexEditCore::compose(*activeVertexDelta, *movement)
+                : movement;
+        if (!accumulated.has_value()) {
+            return false;
+        }
+        if (!movement->changed()) {
+            return true;
+        }
+        const bool modelUpdated = editingGuideGain
+                ? activeVertexWidget->setVertexGuideGain(
+                        activeVertexIndex,
+                        activeVertexParameterId,
+                        value)
+                : activeVertexWidget->setVertexParameter(
+                        activeVertexIndex,
+                        activeVertexParameterId,
+                        value);
+        if (!modelUpdated) {
+            return false;
+        }
+        activeVertexDelta = *accumulated;
     }
-    activeVertexChanged = true;
     const uint64_t fingerprint = FingerprintBuilder()
             .add(activeVertexParameterId)
             .add(String(value, 9))
@@ -565,7 +584,8 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
     presentation.recordNodeEditorMovement(
             activeVertexNodeId,
             activeVertexParameterId,
-            fingerprint);
+            fingerprint,
+            std::nullopt);
     const String valueText = editingGuideGain
             ? String((value * 2.f - 1.f) * 30.f, 1) + " dB"
             : String(value, 2);
@@ -582,38 +602,47 @@ void NodeEditorCommandService::endTrimeshVertexParameterEdit() {
     if (activeVertexNodeId.isEmpty()) {
         return;
     }
-    const bool changed = activeVertexChanged;
+    const bool changed = activeCubeCurveBefore.has_value()
+            ? activeVertexWidget != nullptr
+                    && activeCubeCurveBefore
+                            != activeVertexWidget->cubeCurveValuesForVertex(activeVertexIndex)
+            : activeVertexDelta.has_value() && activeVertexDelta->changed();
+    bool published = !changed;
     if (findNode(activeVertexNodeId) != nullptr && activeVertexWidget != nullptr) {
         const Node* node = findNode(activeVertexNodeId);
-        const uint64_t modelRevision = node != nullptr && node->model != nullptr
-                ? node->model->revision()
-                : 0;
-        const auto result = commands.replaceNodeModel(
-                activeVertexNodeId,
-                modelRevision,
-                TrimeshNodeModelState::copyOf(
-                        activeVertexWidget->currentMesh(), modelRevision + 1));
-        if (result.succeeded()) {
-            commands.commitTransientEdit();
-        } else {
-            commands.cancelTransientEdit();
+        if (changed) {
+            const uint64_t modelRevision = node != nullptr && node->model != nullptr
+                    ? node->model->revision()
+                    : 0;
+            const auto result = commands.replaceNodeModel(
+                    activeVertexNodeId,
+                    modelRevision,
+                    TrimeshNodeModelState::copyOf(
+                            activeVertexWidget->currentMesh(), modelRevision + 1));
+            published = result.succeeded();
         }
+    } else {
+        published = false;
+    }
+    if (published) {
+        presentation.finishNodeEditorGesture(
+                activeVertexNodeId,
+                commands,
+                document);
+    } else {
+        presentation.cancelNodeEditorGesture(activeVertexNodeId, commands);
+    }
+    if (activeVertexWidget != nullptr) {
         if (const Node* committedNode = findNode(activeVertexNodeId)) {
             activeVertexWidget->syncFromNode(*committedNode);
         }
-    } else {
-        commands.cancelTransientEdit();
-    }
-    if (changed && presentation.probeRefreshMode() == ProbeRefreshMode::LiveLatest) {
-        presentation.flushNodeEditorRefresh();
-    } else if (changed) {
-        presentation.refreshNodeEditorPresentation();
     }
     activeVertexNodeId = {};
     activeVertexParameterId = {};
     activeVertexWidget = nullptr;
     activeVertexIndex = -1;
-    activeVertexChanged = false;
+    activeVertexDelta.reset();
+    activeCubeCurveBefore.reset();
 }
 
 void NodeEditorCommandService::persistTrimeshMeshEdits(
@@ -648,7 +677,8 @@ void NodeEditorCommandService::persistTrimeshMeshEdits(
                 .add(static_cast<uint64_t>(selectedVertex))
                 .add(++activeMeshUpdateSequence)
                 .value();
-        presentation.recordNodeEditorMovement(nodeId, "mesh", fingerprint);
+        presentation.recordNodeEditorMovement(
+                nodeId, "mesh", fingerprint, std::nullopt);
         presentation.repaintNodeEditor(true);
         return;
     }
@@ -674,7 +704,8 @@ void NodeEditorCommandService::persistTrimeshMeshEdits(
                 .add(modelRevision + 1)
                 .add(static_cast<uint64_t>(selectedVertex))
                 .value();
-        presentation.recordNodeEditorMovement(nodeId, "mesh", fingerprint);
+        presentation.recordNodeEditorMovement(
+                nodeId, "mesh", fingerprint, std::nullopt);
         presentation.repaintNodeEditor(true);
     }
 
@@ -684,11 +715,7 @@ void NodeEditorCommandService::persistTrimeshMeshEdits(
 
     commands.commitTransientEdit();
     if (activeMeshChanged) {
-        if (presentation.probeRefreshMode() == ProbeRefreshMode::LiveLatest) {
-            presentation.flushNodeEditorRefresh();
-        } else {
-            presentation.refreshNodeEditorPresentation();
-        }
+        presentation.refreshNodeEditorPresentation();
     }
     activeMeshNodeId = {};
     activeMeshUpdateSequence = 0;
@@ -708,11 +735,22 @@ bool NodeEditorCommandService::showTrimeshGuideAttachmentMenu(
     }
 
     const Node* node = findNode(nodeId);
-    TrimeshWidget* widget = node != nullptr ? resources.trimeshWidget(*node) : nullptr;
-    if (node == nullptr || widget == nullptr || owner == nullptr) {
+    if (node == nullptr || owner == nullptr) {
         return false;
     }
-    const int vertexIndex = widget->resolvedSelectedVertexIndexForNode(*node);
+    int vertexIndex = -1;
+    if (node->kind == NodeKind::TrilinearMesh) {
+        TrimeshWidget* widget = resources.trimeshWidget(*node);
+        vertexIndex = widget != nullptr
+                ? widget->resolvedSelectedVertexIndexForNode(*node)
+                : -1;
+    } else if (node->kind == NodeKind::Envelope) {
+        CurveEditorWidget* widget = resources.curveEditorWidget(*node);
+        vertexIndex = widget != nullptr ? widget->selectedEnvelopeGuideCubeIndex() : -1;
+    }
+    if (vertexIndex < 0) {
+        return false;
+    }
     const auto items = TrimeshGuideAttachmentMenu::itemsFor(
             document.graph(), nodeId, vertexIndex, parameterField);
     PopupMenu menu;
@@ -796,8 +834,10 @@ bool NodeEditorCommandService::selectTrimeshVertexIndex(
     if (!result.succeeded()) {
         return false;
     }
-    presentation.refreshNodeEditorPresentation();
     presentation.selectEditedNode(nodeId);
+    presentation.refreshNodeEditorPresentation();
+    presentation.rebindNodeEditorTransient();
+    presentation.repaintNodeEditor(false);
     presentation.setNodeEditorStatus("Selected vertex #" + String(vertexIndex));
     return true;
 }

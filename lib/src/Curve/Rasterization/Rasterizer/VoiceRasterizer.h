@@ -41,6 +41,7 @@ private:
 
 public:
     static constexpr float defaultMinimumLineLength = 0.001f;
+    using CubeResolver = VertCube* (*)(const void*, VertCube*);
 
     explicit VoiceRasterizer(float minimumLineLength = defaultMinimumLineLength);
 
@@ -59,6 +60,7 @@ public:
     void resetDiagnostics() { renderDiagnostics = {}; }
     void orphanOldVerts();
     void setState(VoiceCycleState* state) { this->state = state; }
+    void setCubeResolver(const void* context, CubeResolver resolver);
 
     void cleanUp();
     void reset() { cleanUp(); }
@@ -87,6 +89,7 @@ private:
     void markChainedWaveformUnsampleable();
     void restrictIntercepts(std::vector<Intercept>& intercepts);
     bool hasPreparedCapacity(const Mesh* candidate) const;
+    VertCube* resolveCube(VertCube* cube) const;
 
     VoiceCycleState* state {};
     RenderResult chainResult;
@@ -96,6 +99,8 @@ private:
     VoicePointPositionPolicy voicePointPositionPolicy;
     VoiceRasterizerPreparation preparation;
     VoiceRasterizerDiagnostics renderDiagnostics;
+    const void* cubeResolverContext {};
+    CubeResolver cubeResolver {};
 
     float initialAdvancement;
     ActiveOutput activeOutput { ActiveOutput::Ordinary };

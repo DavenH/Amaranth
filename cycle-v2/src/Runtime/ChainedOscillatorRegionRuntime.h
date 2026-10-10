@@ -31,7 +31,8 @@ public:
     virtual void advanceCycleEnvelopes(
             int,
             int,
-            double) {}
+            double,
+            const PreparedOscillatorProcessContext*) {}
     virtual bool hasPitchEnvelope() const { return false; }
     virtual float pitchEnvelopeValue(int) const { return 0.5f; }
     virtual void renderCycle(

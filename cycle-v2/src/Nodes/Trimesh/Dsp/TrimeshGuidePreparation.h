@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "Nodes/Guide/GuideCurveSnapshotProvider.h"
+#include "Nodes/Guide/GuideCurveMeshPreparation.h"
 
 class Mesh;
 
@@ -20,9 +20,6 @@ public:
             const NodeGraph& graph,
             const Node& trimeshNode,
             const Mesh& sourceMesh);
-    static String configurationKey(
-            const NodeGraph& graph,
-            const String& trimeshNodeId);
 };
 
 }

@@ -27,8 +27,11 @@ public:
     class DataRetriever {
     public:
         virtual Buffer<float> getColumnArray() = 0;
+        virtual Buffer<float> getScalarSurfaceArray() { return getColumnArray(); }
         virtual const vector<Column>& getColumns() = 0;
         virtual CriticalSection& getGridLock() = 0;
+        virtual uint64_t getScalarSurfaceRevision() const { return 0; }
+        virtual bool hasStableScalarSurfaceRevision() const { return false; }
     };
 
     /* ----------------------------------------------------------------------------- */
@@ -81,6 +84,7 @@ public:
     virtual bool isSurfaceDetailReduced()           { return false; }
     virtual bool shouldDrawGrid()                   { return true; }
     virtual bool willAdjustSurfaceColumns()         { return false; }
+    virtual bool getScalarSurfaceMaterial(ScalarSurfaceMaterial&) const { return false; }
     virtual int interceptLinePrimaryDimension();
 
     void postVertsDraw() override;
@@ -111,6 +115,7 @@ protected:
     void setVertices            (int column, Buffer<float> verts) const;
     void resizeArrays           ();
     void setColumnColourIndices ();
+    bool drawScalarSurface(const vector<Column>& grid);
 
     /* ----------------------------------------------------------------------------- */
 

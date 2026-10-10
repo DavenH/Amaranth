@@ -1,0 +1,24 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/resources/with-spies.cyclegraph" },
+    { "command": "openNodeEditor", "nodeId": "reverb", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "assertState", "path": "probeRefreshMode", "equals": "On Release" },
+    { "command": "assertState", "path": "previewStats.7.contentFingerprint", "equals": "6213505229202872133" },
+    { "command": "resetCanvasPerformance" },
+    { "command": "pointer", "event": "down", "targetId": "reverbEditor.size", "targetX": 0.4 },
+    { "command": "pointer", "event": "drag", "targetId": "reverbEditor.size", "downTargetId": "reverbEditor.size", "targetX": 0.75, "downTargetX": 0.4 },
+    { "command": "waitForIdle", "idleDelayMs": 800 },
+    { "command": "snapshotState" },
+    { "command": "assertState", "path": "previewStats.7.contentFingerprint", "op": "notEquals", "value": "6213505229202872133" },
+    { "command": "assertState", "path": "previewStats.7.gridRows", "equals": 1025 },
+    { "command": "inspectCanvasPerformance" },
+    { "command": "pointer", "event": "drag", "targetId": "reverbEditor.size", "downTargetId": "reverbEditor.size", "targetX": 0.9, "downTargetX": 0.4 },
+    { "command": "waitForIdle", "idleDelayMs": 800 },
+    { "command": "pointer", "event": "up", "targetId": "reverbEditor.size", "downTargetId": "reverbEditor.size", "targetX": 0.9, "downTargetX": 0.4 },
+    { "command": "waitForIdle", "idleDelayMs": 800 },
+    { "command": "undo", "waitForIdle": true, "idleDelayMs": 200 },
+    { "command": "snapshotState" },
+    { "command": "assertState", "path": "previewStats.7.contentFingerprint", "equals": "6213505229202872133" }
+  ],
+  "quit": true
+}

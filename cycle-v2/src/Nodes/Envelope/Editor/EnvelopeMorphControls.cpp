@@ -23,7 +23,6 @@ constexpr float kActionTopInset = 4.f;
 constexpr float kActionBottomInset = 12.f;
 constexpr float kActionColumnGap = 28.f;
 constexpr float kActionColumnWidths[] {
-        EnvelopeToolbarMetrics::purposeSelectorWidth,
         EnvelopeToolbarMetrics::pairedActionWidth,
         EnvelopeToolbarMetrics::scalingSelectorWidth,
         EnvelopeToolbarMetrics::pairedActionWidth
@@ -95,14 +94,6 @@ Rectangle<float> EnvelopeMorphControls::railColumn(Rectangle<float> controls) co
     return controls.removeFromLeft(328.f);
 }
 
-Rectangle<float> EnvelopeMorphControls::purposeGroupLabelBounds(Rectangle<float> controls) const {
-    return actionGroupLabelBounds(controls, 0);
-}
-
-Rectangle<float> EnvelopeMorphControls::purposeSelectorBounds(Rectangle<float> controls) const {
-    return actionColumnBounds(controls, 0);
-}
-
 Rectangle<float> EnvelopeMorphControls::morphGroupLabelBounds(Rectangle<float> controls) const {
     auto column = railColumn(controls);
     column.removeFromRight(58.f);
@@ -139,8 +130,7 @@ Rectangle<float> EnvelopeMorphControls::actionColumnBounds(
     const float totalWidth = kActionColumnWidths[0]
             + kActionColumnWidths[1]
             + kActionColumnWidths[2]
-            + kActionColumnWidths[3]
-            + 3.f * kActionColumnGap;
+            + 2.f * kActionColumnGap;
     area = area.withSizeKeepingCentre(totalWidth, area.getHeight());
     for (int index = 0; index < column; ++index) {
         area.removeFromLeft(kActionColumnWidths[index] + kActionColumnGap);
@@ -149,27 +139,27 @@ Rectangle<float> EnvelopeMorphControls::actionColumnBounds(
 }
 
 Rectangle<float> EnvelopeMorphControls::markerGroupLabelBounds(Rectangle<float> controls) const {
-    return actionGroupLabelBounds(controls, 1);
+    return actionGroupLabelBounds(controls, 0);
 }
 
 Rectangle<float> EnvelopeMorphControls::markerGroupBounds(Rectangle<float> controls) const {
-    return actionColumnBounds(controls, 1);
+    return actionColumnBounds(controls, 0);
 }
 
 Rectangle<float> EnvelopeMorphControls::axisScaleGroupLabelBounds(Rectangle<float> controls) const {
-    return actionGroupLabelBounds(controls, 2);
+    return actionGroupLabelBounds(controls, 1);
 }
 
 Rectangle<float> EnvelopeMorphControls::axisScaleBounds(Rectangle<float> controls) const {
-    return actionColumnBounds(controls, 2);
+    return actionColumnBounds(controls, 1);
 }
 
 Rectangle<float> EnvelopeMorphControls::rangeGroupLabelBounds(Rectangle<float> controls) const {
-    return actionGroupLabelBounds(controls, 3);
+    return actionGroupLabelBounds(controls, 2);
 }
 
 Rectangle<float> EnvelopeMorphControls::rangeGroupBounds(Rectangle<float> controls) const {
-    return actionColumnBounds(controls, 3);
+    return actionColumnBounds(controls, 2);
 }
 
 Rectangle<float> EnvelopeMorphControls::actionGroupLabelBounds(
@@ -278,13 +268,9 @@ void EnvelopeMorphControls::draw(
         bool blueLinked,
         bool loopSelected,
         bool sustainSelected) const {
-    const bool linked[] { true, redLinked, blueLinked };
+    const bool linked[] { redLinked, blueLinked };
     drawPlane(graphics, controls, red, blue);
     drawActionGroups(graphics, controls, loopSelected, sustainSelected);
-    paintPropertyGroupLabel(
-            graphics,
-            purposeGroupLabelBounds(controls),
-            "Purpose");
     paintPropertyGroupLabel(
             graphics,
             morphGroupLabelBounds(controls),
@@ -306,7 +292,6 @@ void EnvelopeMorphControls::draw(
 
     for (int axis = 0; axis < 3; ++axis) {
         const auto axisArea = axisBounds(controls, axis);
-        const auto linkArea = linkBounds(controls, axis);
         const auto colour = axisColour(axis);
         graphics.setColour(colour.withAlpha(axis == viewAxis ? 0.45f : 0.06f));
         graphics.fillRoundedRectangle(axisArea, CanvasChromeMetrics::controlCornerRadius);
@@ -317,7 +302,10 @@ void EnvelopeMorphControls::draw(
                 axis == viewAxis
                         ? CanvasChromeMetrics::activeBorderWidth
                         : CanvasChromeMetrics::restingBorderWidth);
-        paintPropertyLinkToggle(graphics, linkArea, colour, linked[axis]);
+        if (axis > 0) {
+            paintPropertyLinkToggle(
+                    graphics, linkBounds(controls, axis), colour, linked[axis - 1]);
+        }
     }
 }
 

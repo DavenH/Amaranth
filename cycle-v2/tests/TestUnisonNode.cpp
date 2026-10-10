@@ -6,6 +6,7 @@
 
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
@@ -126,9 +127,9 @@ TEST_CASE("Unison laser colour communicates each voice pan",
     const Colour centre = UnisonPreviewPainter().laserColourForPan(0.5f);
     const Colour right = UnisonPreviewPainter().laserColourForPan(1.f);
 
-    REQUIRE(left == Colour(0xffff9f43));
+    REQUIRE(left == Colour(0xff709ae0));
     REQUIRE(centre == Colour(0xffc7c7c7));
-    REQUIRE(right == Colour(0xffa56cff));
+    REQUIRE(right == Colour(0xffd9ad3b));
     REQUIRE(centre.getSaturation() == Catch::Approx(0.f));
 
     Node node = GraphNodeFactory().createNode(NodeKind::Unison, "unison", {});
@@ -205,7 +206,7 @@ TEST_CASE("Voice Context prepares attached pitch playback for Unison phase previ
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::Unison, "unison", {}));
     graph.addNode(factory.createNode(NodeKind::Envelope, "pitch", {}));
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "pitch", "purpose", "Purpose", "pitch").succeeded());
     REQUIRE(GraphEditor().connect(
             graph, { "pitch", "env", false }, { "voice", "pitch", true }).succeeded());
@@ -274,4 +275,39 @@ TEST_CASE("Unison preview bends from the supplied Voice Context pitch trajectory
     const auto risingPaths = UnisonPreviewPainter().makePaths(node, rising);
 
     REQUIRE(travelledCycles(risingPaths.back()) > travelledCycles(neutralPaths.back()));
+}
+
+TEST_CASE("Pitch Envelope Guide phase randomizes each compiled Unison preview lane",
+        "[cycle-v2][unison][preview][envelope][guide]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    NodeGraph graph = GraphSerializer().fromJsonString(
+            File(String(CYCLE_V2_SOURCE_DIR))
+                    .getChildFile("content/presets/african-horn.cyclegraph")
+                    .loadFileAsString());
+    const TrimeshCubeComponentGuideTarget target { 1, GuideCurveField::Time };
+    if (graph.guideAssignmentForTarget("pitchEnvelope1", target) == nullptr) {
+        REQUIRE(graph.assignGuideCurve({
+                "guide1",
+                "pitchEnvelope1",
+                target,
+                GuideCurveTargetKind::EnvelopeCubeComponent
+        }));
+    }
+
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.voiceContexts.size() == 1);
+    const auto& lanes = compiled.plan.voiceContexts.front()
+            .pitchEnvelopeUnitValuesByLane;
+    REQUIRE(lanes.size() == 3);
+    REQUIRE(lanes[0].size() == 129);
+    REQUIRE((lanes[0] != lanes[1] || lanes[1] != lanes[2]));
+
+    const auto repeated = GraphCompiler().compile(graph);
+    REQUIRE(repeated.succeeded());
+    REQUIRE(repeated.plan.voiceContexts.front().pitchEnvelopeUnitValuesByLane
+            == lanes);
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
 }

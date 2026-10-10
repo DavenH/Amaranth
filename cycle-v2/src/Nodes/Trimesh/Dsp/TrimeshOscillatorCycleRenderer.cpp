@@ -1,8 +1,8 @@
-#include "Nodes/Trimesh/Dsp/TrimeshOscillatorCycleRenderer.h"
-
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Curve/Curve.h>
 
+#include "Nodes/Trimesh/Dsp/TrimeshOscillatorCycleRenderer.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshDeltaOverlay.h"
 #include "Runtime/PreparedOscillatorRegion.h"
 
 namespace CycleV2 {
@@ -27,6 +27,11 @@ bool TrimeshOscillatorCycleRenderer::prepare(
     for (int laneIndex = 0; laneIndex < preparedLaneCount; ++laneIndex) {
         auto& lane = lanes[(size_t) laneIndex];
         lane.rasterizer.setGuideCurveProvider(configuration->guideCurveProvider.get());
+        lane.rasterizer.setCubeResolver(
+                configuration->deltaOverlay.get(),
+                configuration->deltaOverlay != nullptr
+                        ? &TrimeshMeshDeltaOverlay::resolveFromContext
+                        : nullptr);
         lane.rasterizer.setCalcDepthDimensions(false);
         lane.rasterizer.setPrepareIntegrals(false);
         lane.rasterizer.setScalingMode(Rasterization::PointScalingMode::Bipolar);

@@ -40,21 +40,13 @@ function(generate_svg_data SET_NAME SOURCE_DIRECTORY DATA_NAMESPACE DATA_HEADER_
 endfunction()
 
 generate_svg_data(
-    PALETTE_ICON
-    palette-icons
-    PaletteIconData
-    NodePaletteIconData
-    context transform math source control fx channel
-)
-
-generate_svg_data(
     NODE_ICON
     node-icons
     NodeIconData
     NodeIconData
     genericProcessor voiceContext scratchDefaultOverride waveSource imageSource trilinearMesh
     modulationSource modulationTriple
-    fft ifft envelope add multiply guideCurve impulseResponse waveshaper
+    fft ifft fourier inverseFourier envelope add multiply guideCurve impulseResponse waveshaper
     spectralLayer unison reverb delay equalizer stereoSplit stereoJoin globalInput voiceOutput output
 )
 
@@ -81,11 +73,9 @@ file(GLOB_RECURSE APP_SOURCES
 )
 
 list(APPEND APP_SOURCES
-    ${PALETTE_ICON_FILES}
     ${NODE_ICON_FILES}
     ${ENVELOPE_PURPOSE_ICON_FILES}
     ${UI_ICON_FILES}
-    "${PALETTE_ICON_DATA_HEADER}"
     "${NODE_ICON_DATA_HEADER}"
     "${ENVELOPE_PURPOSE_ICON_DATA_HEADER}"
     "${UI_ICON_DATA_HEADER}"
@@ -99,64 +89,98 @@ list(APPEND APP_SOURCES
 list(REMOVE_DUPLICATES APP_SOURCES)
 
 set(GRAPH_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/DefaultOutputProbeResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphMigration.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphRepresentationMigration.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScope.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScopeCompiler.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScopeValidator.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioValidationFacts.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDelta.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/SharedAudioSamples.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeDefinition.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraph.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraphDemo.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraphEditing.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeModelEnvelopeCodec.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeParameterMap.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/PresetPresentation.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/PresetMetadataStore.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphConnectionValidator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDomainResolver.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphEdgeIndex.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphEdgeValidator.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphGuideIndex.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphGuideValidator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphRenderSemanticResolver.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphSpliceValidator.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphValidationContext.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphValidator.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphVoiceContextAssignments.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCompiler.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCommandDispatcher.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCurveStateCommands.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDocument.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphEditor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphNodeStateEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphNodeFactory.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphSerializer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphTopologyValidator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/TrimeshSignalSemantics.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/TrimeshSemanticRepresentationMigration.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphTransaction.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideGraphEditor.cpp"
 )
 
 set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/AudioPerformanceMetrics.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/DefaultOutputPreview.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/BasicNodeAudioProcessors.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/BinarySignalMath.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ChainedOscillatorRecipeRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ChainedOscillatorRegionRuntime.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/CurvePreviewProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/EffectNodeAudioProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphAudioExecutor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ProbeExecutionScope.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphAudioProcessorCache.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphInvalidation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/MidiControlState.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/RealtimeMidiEventQueue.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/RealtimeGraphRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ReverbLocalPreview.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPreviewExecutor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPresentationFacts.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPresentationModel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPresentationPerformanceMetrics.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/LegacyOutputRateAdapter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PerformanceDistribution.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphRuntime.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeUpdateGraph.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PresentationRefreshPolicy.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PresentationGestureSession.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PresentationPreviewRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PresentationRefreshScheduler.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PresentationUpdateRequestBuilder.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeAudioProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeAudioProcessorSupport.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeDspConfiguration.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeModuleRegistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodePreviewProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/OfflineGraphAudioRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/OscillatorRegionPlanView.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/OscillatorRegionTraversalRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreparedCycleEnvelopeBank.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreparedOscillatorRegion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreparedTrimeshMorphBinding.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreviewPitchContextIndex.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreviewPitchResolver.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreviewMorphBinding.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreviewContrastNormalization.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/MonitorPreviewProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SourcePreviewProcessors.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralFrameGraphCombiner.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralFrameSourceRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralFrameTransformStage.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralOscillatorFrameRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralMagnitudeTransfer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralLayerNodeAudioProcessor.cpp"
@@ -179,6 +203,8 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/CanvasUtilityDock.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EnvelopePurposeIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EnvelopePurposeSelector.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ExpandedEditorChrome.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/GraphEndpointNodeRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ModulationCableBundle.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ModulationNodeEditors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ConcreteNodeEditors.cpp"
@@ -202,21 +228,38 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteEntryIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PerformanceKeyboard.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteIconRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PatternControlScheduler.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetMidiEditor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetMidiEditorView.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/MidiPatternMiniMap.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/PatternLibrary.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PatternBrowser.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SidebarMediaRow.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SidebarTagCloud.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SidebarLibraryToolbar.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetMetadataEditor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/LibrarySearchField.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserComponents.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserLookAndFeel.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetLibraryIndex.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetPreviewGenerator.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetThumbnailCache.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewResources.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/OutputMeterPresentation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/GuideCurveShelf.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/GuideRelationshipPresentation.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/InlinePresetBrowser.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/TransformCompactEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/VoiceContextCompactEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorHost.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorCommandService.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorModelCommands.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeViewModule.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/RenderInvalidationAccumulator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeDetailView.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbePreviewTileCache.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeRail.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeCanvas.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WorkspaceDock.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WorkspaceDockInteractionController.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WorkspaceDockKeyboardNavigation.cpp"
@@ -256,12 +299,15 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Unison/UnisonPreviewPainter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effects/EffectSignalProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopeMeshState.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopePitchPreview.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopePurpose.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopeSignalProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftBlockwiseDsp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftGridwiseDsp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftSignalProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideCurveSnapshotProvider.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideAttachmentTarget.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideCurveMeshPreparation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideCurvePreparation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideHeatmapAsset.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideHeatmapLoader.cpp"
@@ -281,6 +327,10 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Model/TrimeshMeshFactory.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Model/TrimeshMeshState.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Model/TrimeshNodeModel.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Rendering/TrimeshGridRenderService.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Rendering/TrimeshGuideRailRenderService.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Model/TrimeshMeshDeltaOverlay.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Model/TrimeshVertexEditCore.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Panel/TrimeshPanelBridge.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Panel/TrimeshPanelDataSource.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Panel/TrimeshPanelEnvironment.cpp"
@@ -304,22 +354,34 @@ if(BUILD_TESTING)
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphMigration.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphRepresentationMigration.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScope.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScopeValidator.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioValidationFacts.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDomainResolver.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphEdgeIndex.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphEdgeValidator.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphGuideIndex.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphGuideValidator.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphNodeFactory.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphSerializer.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphTopologyValidator.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/TrimeshSignalSemantics.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/TrimeshSemanticRepresentationMigration.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphValidator.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphVoiceContextAssignments.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeDefinition.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraph.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraphEditing.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeModelEnvelopeCodec.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeParameterMap.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/PresetPresentation.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/PresetMetadataStore.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/SharedAudioSamples.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Curve/Model/CurveNodeModels.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Curve/Model/FlatCurveMeshState.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopeMeshState.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopePurpose.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideHeatmapAsset.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideAttachmentTarget.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Model/TrimeshMeshFactory.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Model/TrimeshMeshState.cpp"
@@ -394,8 +456,14 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             ${RUNTIME_SOURCES}
             ${NODE_SOURCES}
             ${CANVAS_ARCHITECTURE_SOURCES}
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/App/GraphDocumentReplacement.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/GraphFileHistory.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/App/LibraryFavorites.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2AutomationCommand.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2AutomationAssertions.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2AutomationProtocol.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/OfflineAudioCaptureAutomation.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserPage.cpp"
             ${TEST_SOURCES}
         )
         add_dependencies(${PROJECT_NAME}_tests CycleV2GraphMigrator)
@@ -403,6 +471,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
             BUILD_TESTING=1
             CYCLE_V2_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+            CYCLE_V2_TEST_OUTPUT_DIR="${CMAKE_CURRENT_BINARY_DIR}/test-output"
             JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/incl/JucePluginDefines.h"
         )
 

@@ -7,6 +7,24 @@
       "command": "listPaletteItems"
     },
     {
+      "command": "invokeMenuItem",
+      "id": "file.spyRefreshLive"
+    },
+    {
+      "command": "assertState",
+      "path": "probeRefreshMode",
+      "equals": "Live"
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "file.spyRefreshOnRelease"
+    },
+    {
+      "command": "assertState",
+      "path": "probeRefreshMode",
+      "equals": "On Release"
+    },
+    {
       "command": "invokePaletteItem",
       "id": "add",
       "x": 460,

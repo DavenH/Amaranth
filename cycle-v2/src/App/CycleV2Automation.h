@@ -7,16 +7,19 @@ namespace CycleV2 {
 using namespace juce;
 
 class NodeWorkspace;
+class CycleV2AutomationAssertions;
+class CycleV2AutomationInput;
+class CycleV2AutomationSessionTransport;
+class CycleV2AutomationWorkspaceCommands;
 
 class CycleV2Automation {
 public:
-    class SessionServer;
-
     struct Options {
         File scriptFile;
         File reportFile;
         String sessionPath;
         bool hasSession { false };
+        int startDelayMs {};
     };
 
     static Options parseCommandLine(const String& commandLine);
@@ -31,10 +34,12 @@ private:
     NodeWorkspace& workspace;
     Component& window;
     Options options;
-    std::unique_ptr<SessionServer> sessionServer;
+    std::unique_ptr<CycleV2AutomationSessionTransport> sessionTransport;
+    std::unique_ptr<CycleV2AutomationAssertions> assertions;
+    std::unique_ptr<CycleV2AutomationInput> input;
+    std::unique_ptr<CycleV2AutomationWorkspaceCommands> workspaceCommands;
 
     var runCommand(const var& commandValue);
-    var handleSessionRequest(const var& request);
     void startSessionServer();
     File resolveCommandPath(const String& path) const;
     var snapshotState() const;
@@ -42,6 +47,7 @@ private:
     var exportGraph(const var& commandValue) const;
     var openGraph(const var& commandValue);
     var saveGraph(const var& commandValue);
+    var generatePresetPreview(const var& commandValue);
     var listMenuItems() const;
     var invokeMenuItem(const var& commandValue);
     var listPaletteItems() const;
@@ -49,38 +55,16 @@ private:
     var captureAudio(const var& commandValue);
     var captureLiveAudio(const var& commandValue);
     var sendMidi(const var& commandValue);
-    var openNodeEditor(const var& commandValue);
-    var addNode(const var& commandValue);
     var inspectPointerTargets() const;
     var inspectPointerCursor() const;
     var inspectOpenGLDiagnostics() const;
-    var inspectCanvasPerformance() const;
+    var inspectCanvasPerformance(const var& commandValue) const;
     var resetCanvasPerformance();
     var inspectAudioPerformance() const;
     var resetAudioPerformance();
     var requestCanvasOpenGLFrame();
-    var moveNode(const var& commandValue);
-    var connectPorts(const var& commandValue);
-    var deleteNode(const var& commandValue);
-    var deleteEdge(const var& commandValue);
-    var deleteGuideCurve(const var& commandValue);
-    var loadGuideHeatmap(const var& commandValue);
-    var clearGuideHeatmap(const var& commandValue);
-    var undo();
-    var setGuideParameter(const var& commandValue);
-    var setNodeParameter(const var& commandValue);
-    var inspectNodeControls(const var& commandValue) const;
-    var setMorphSlider(const var& commandValue);
-    var setPrimaryAxis(const var& commandValue);
-    var toggleLink(const var& commandValue);
-    var selectVertex(const var& commandValue);
-    var setVertexParameter(const var& commandValue);
-    var pointer(const var& commandValue);
-    var key(const var& commandValue);
+    var recreateCanvasOpenGLContext();
     var screenshot(const var& commandValue) const;
-    var assertState(const var& commandValue) const;
-    var assertNodeParameter(const var& commandValue) const;
-    var listAssertionPaths() const;
     var waitForIdle(const var& commandValue) const;
 
     Component* componentForArea(const String& area) const;

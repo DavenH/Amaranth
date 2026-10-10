@@ -22,6 +22,7 @@ public:
     virtual void setTrimeshEnabled(bool enabled) = 0;
     virtual bool setTrimeshSignalTypeValue(const juce::String& signalType) = 0;
     virtual bool setTrimeshPolarityValue(const juce::String& polarity) = 0;
+    virtual bool setTrimeshPhaseModeValue(const juce::String& phaseMode) = 0;
     virtual void setTrimeshPrimaryAxisValue(const juce::String& axis) = 0;
     virtual void toggleTrimeshLinkAxisValue(const juce::String& axis) = 0;
     virtual bool beginTrimeshMorphEdit(const juce::String& id, float value) = 0;
@@ -59,6 +60,8 @@ public:
     const juce::String& signalTypeValue() const { return signalTypeSelector.selectedValue(); }
     bool polarityVisible() const { return polaritySelector.isVisible(); }
     const juce::String& polarityValue() const { return polaritySelector.selectedValue(); }
+    bool phaseModeVisible() const { return phaseModeSelector.isVisible(); }
+    const juce::String& phaseModeValue() const { return phaseModeSelector.selectedValue(); }
 
     void paint(juce::Graphics& g) override;
     void resized() override;
@@ -81,6 +84,7 @@ private:
     juce::Rectangle<int> signalTypeSelectorBounds() const;
     juce::Rectangle<int> polarityLabelBounds() const;
     juce::Rectangle<int> polaritySelectorBounds() const;
+    juce::Rectangle<int> phaseModeSelectorBounds() const;
     void setLocalOutputScale(const juce::String& id, float value);
     void setLocalMorphValue(const juce::String& id, float value);
     void setTrimeshPrimaryAxis(const juce::String& axis) override;
@@ -115,6 +119,8 @@ private:
     PropertySegmentedSelector signalTypeSelector;
     juce::Label polarityLabel;
     PropertySegmentedSelector polaritySelector;
+    juce::Label phaseModeLabel;
+    PropertySegmentedSelector phaseModeSelector;
     Node node;
     juce::String activeMorphParameterId;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };

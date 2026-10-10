@@ -1,13 +1,14 @@
-#include "Graph/GraphCommandDispatcher.h"
-
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <unordered_set>
+#include <utility>
 
+#include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/NodeParameterMap.h"
-
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Guide/GuideGraphEditor.h"
 
 namespace CycleV2 {
 
@@ -145,22 +146,11 @@ GraphEditResult GraphCommandDispatcher::publishGuideCurveState(
                     };
                 }
 
-                const bool modelChanged = guide->model == nullptr
-                        || !guide->model->equals(*publication.model);
-                const std::vector<String> consumers = graph.guideTargetNodeIds(
-                        publication.guideId);
-                GraphEditResult result = GraphEditor().replaceGuideCurve(
+                return GuideGraphEditor().replaceGuideCurve(
                         graph,
                         publication.guideId,
                         publication.model,
                         publication.controls);
-                if (result.succeeded()) {
-                    result.changes.nodeIds = consumers;
-                }
-                result.changes.guidesChanged = result.succeeded() && !consumers.empty();
-                result.changes.guidePresentationChanged = result.succeeded();
-                result.changes.modelChanged = result.succeeded() && modelChanged;
-                return result;
             });
 }
 
@@ -281,8 +271,8 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
                     if (!parameterMap.contains("red")
                             || !parameterMap.contains("blue")
                             || !parameterMap.contains("logarithmic")
-                            || parameterMap.floatValue("red") != envelope->red
-                            || parameterMap.floatValue("blue") != envelope->blue
+                            || parameterMap.floatValue("red") != typedModel->envelopeRed()
+                            || parameterMap.floatValue("blue") != typedModel->envelopeBlue()
                             || parameterMap.boolValue("logarithmic")
                                     != envelope->logarithmic) {
                         return GraphEditResult {
@@ -309,20 +299,20 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
                     };
                 }
 
-                auto parameterResult = GraphEditor().setNodeParametersAtomic(
+                auto parameterResult = GraphNodeStateEditor().setNodeParametersAtomic(
                         graph, publication.nodeId, parameters);
                 if (!parameterResult.succeeded()) {
                     return parameterResult;
                 }
                 GraphEditResult modelResult;
                 if (replacesTransientSnapshot) {
-                    modelResult = GraphEditor().replaceTransientNodeModel(
+                    modelResult = GraphNodeStateEditor().replaceTransientNodeModel(
                             graph,
                             publication.nodeId,
                             currentRevision,
                             publication.model);
                 } else {
-                    modelResult = GraphEditor().replaceNodeModel(
+                    modelResult = GraphNodeStateEditor().replaceNodeModel(
                             graph,
                             publication.nodeId,
                             currentRevision,
@@ -331,7 +321,7 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
                 modelResult.changed = modelResult.changed || parameterResult.changed;
                 accumulateChange(modelResult.changes, parameterResult.changes);
                 if (typedModel->editorJSON().getDynamicObject() != nullptr) {
-                    auto editorResult = GraphEditor().setNodeEditorState(
+                    auto editorResult = GraphNodeStateEditor().setNodeEditorState(
                             graph, publication.nodeId, typedModel->editorJSON());
                     if (!editorResult.succeeded()) {
                         return editorResult;
@@ -344,6 +334,173 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
                 }
                 return modelResult;
             });
+}
+
+GraphEditResult GraphCommandDispatcher::setPreviewMorph(float red, float blue) {
+    if (compoundActive) {
+        return { GraphEditCode::ValidationRejected, {}, {} };
+    }
+    const String redValue(jlimit(0.f, 1.f, red), 9);
+    const String blueValue(jlimit(0.f, 1.f, blue), 9);
+    const std::vector<String> morphNodeIds = editingGraph().editorMorphNodeIds();
+
+    const bool transient = transientEdit.has_value();
+    if (!transient) {
+        beginCompoundEdit();
+    }
+    bool changed = false;
+    for (const String& nodeId : morphNodeIds) {
+        const Node* node = editingGraph().findNode(nodeId);
+        const bool succeeded = node != nullptr
+                && (node->kind == NodeKind::TrilinearMesh
+                        ? setTrimeshPreviewMorph(nodeId, redValue, blueValue, changed)
+                        : setEnvelopePreviewMorph(*node, redValue, blueValue, changed));
+        if (!succeeded) {
+            if (transient) {
+                cancelTransientEdit();
+            } else {
+                cancelCompoundEdit();
+            }
+            return { GraphEditCode::ValidationRejected, {}, {} };
+        }
+    }
+
+    GraphEditResult result;
+    result.changed = transient ? changed : commitCompoundEdit();
+    if (result.changed) {
+        result.changes = transient ? transientChanges() : document.lastChange();
+    }
+    return result;
+}
+
+GraphEditResult GraphCommandDispatcher::setMappedPreviewMorph(
+        const std::vector<PreviewMorphTarget>& targets,
+        float keyScale,
+        float modWheel) {
+    if (compoundActive) {
+        return { GraphEditCode::ValidationRejected, {}, {} };
+    }
+    const bool transient = transientEdit.has_value();
+    if (!transient) {
+        beginCompoundEdit();
+    }
+
+    bool changed = false;
+    bool succeeded = true;
+    for (size_t first = 0; first < targets.size() && succeeded;) {
+        const String nodeId = targets[first].nodeId;
+        const Node* node = editingGraph().findNode(nodeId);
+        if (node == nullptr) {
+            succeeded = false;
+            break;
+        }
+        String red;
+        String blue;
+        if (node->kind == NodeKind::Envelope) {
+            const NodeParameterMap parameters(*node);
+            red = parameters.stringValue("red", "0.5");
+            blue = parameters.stringValue("blue", "0.5");
+        }
+        size_t next = first;
+        while (next < targets.size() && targets[next].nodeId == nodeId) {
+            const auto& target = targets[next++];
+            const String value(jlimit(0.f, 1.f,
+                    target.control == PreviewMorphControl::KeyScale
+                            ? keyScale : modWheel), 9);
+            if (target.parameterId == "red") {
+                red = value;
+            } else if (target.parameterId == "blue") {
+                blue = value;
+            }
+            if (node->kind == NodeKind::TrilinearMesh) {
+                const auto result = setNodeParameter(
+                        nodeId, target.parameterId, target.parameterId, value);
+                succeeded = result.succeeded();
+                changed = changed || result.changed;
+                if (!succeeded) {
+                    break;
+                }
+            } else if (node->kind != NodeKind::Envelope) {
+                succeeded = false;
+                break;
+            }
+        }
+        if (succeeded && node->kind == NodeKind::Envelope) {
+            succeeded = setEnvelopePreviewMorph(*node, red, blue, changed);
+        }
+        first = next;
+    }
+    if (!succeeded) {
+        if (transient) {
+            cancelTransientEdit();
+        } else {
+            cancelCompoundEdit();
+        }
+        return { GraphEditCode::ValidationRejected, {}, {} };
+    }
+
+    GraphEditResult result;
+    result.changed = transient ? changed : commitCompoundEdit();
+    if (result.changed) {
+        result.changes = transient ? transientChanges() : document.lastChange();
+    }
+    return result;
+}
+
+bool GraphCommandDispatcher::setTrimeshPreviewMorph(
+        const String& nodeId,
+        const String& red,
+        const String& blue,
+        bool& changed) {
+    for (const auto& setting : {
+            std::pair<String, String> { "yellow", "0" },
+            std::pair<String, String> { "red", red },
+            std::pair<String, String> { "blue", blue } }) {
+        const auto result = setNodeParameter(
+                nodeId, setting.first, setting.first, setting.second);
+        if (!result.succeeded()) {
+            return false;
+        }
+        changed = changed || result.changed;
+    }
+    return true;
+}
+
+bool GraphCommandDispatcher::setEnvelopePreviewMorph(
+        const Node& node,
+        const String& red,
+        const String& blue,
+        bool& changed) {
+    const String nodeId = node.id;
+    const auto model = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
+    if (model == nullptr || model->envelope() == nullptr) {
+        return false;
+    }
+    const float parsedRed = red.getFloatValue();
+    const float parsedBlue = blue.getFloatValue();
+    const NodeParameterMap parameters(node);
+    if (parameters.floatValue("red") == parsedRed
+            && parameters.floatValue("blue") == parsedBlue
+            && model->envelopeRed() == parsedRed
+            && model->envelopeBlue() == parsedBlue) {
+        return true;
+    }
+
+    const auto redResult = setNodeParameter(nodeId, "red", "Red", red);
+    if (!redResult.succeeded()) {
+        return false;
+    }
+    const auto blueResult = setNodeParameter(nodeId, "blue", "Blue", blue);
+    if (!blueResult.succeeded()) {
+        return false;
+    }
+    const auto modelResult = replaceNodeModel(
+            nodeId,
+            model->revision(),
+            model->withEnvelopeMorph(
+                    parsedRed, parsedBlue, model->revision() + 1));
+    changed = changed || redResult.changed || blueResult.changed || modelResult.changed;
+    return modelResult.succeeded();
 }
 
 }

@@ -1,12 +1,13 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
 
-#include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
-
 #include <App/AppConstants.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 
+#include <algorithm>
 #include <array>
+
+#include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 
 namespace CycleV2 {
 
@@ -55,10 +56,25 @@ void TrimeshPanelDataSource::rebuild(
         int keyScaleAxis) {
     const ScopedLock lock(gridLock);
 
-    renderData = model.renderGrid(rows, columns, renderProfile, midiNote);
+    ++renderCounters.sliceRebuilds;
+    ++renderCounters.surfaceRebuilds;
+    renderData = TrimeshGridRenderService::renderGrid(
+            model,
+            rows,
+            columns,
+            renderProfile,
+            midiNote,
+            keyScaleAxis);
     storage = renderData.linearFrequencySurface.empty()
             ? renderData.surface
             : renderData.linearFrequencySurface;
+    scalarSurfaceStorage = renderData.pitchSpansColumns
+            ? renderProfile.mapPitchColumnsToDisplay(
+                    renderData.surface,
+                    (size_t) renderData.columns,
+                    (size_t) renderData.rows)
+            : renderData.surface;
+    ++scalarSurfaceRevision;
     panelColumns.clear();
     panelColumns.reserve((size_t) renderData.columns);
 
@@ -93,6 +109,21 @@ void TrimeshPanelDataSource::rebuild(
     }
 }
 
+void TrimeshPanelDataSource::rebuildSlice(
+        TrimeshNodeModel& model,
+        int rows,
+        const TrimeshRenderProfile& renderProfile,
+        int midiNote) {
+    const ScopedLock lock(gridLock);
+
+    ++renderCounters.sliceRebuilds;
+    renderData.slice = TrimeshGridRenderService::renderSlice(
+            model,
+            rows,
+            renderProfile,
+            midiNote);
+}
+
 Buffer<float> TrimeshPanelDataSource::getColumnArray() {
     const ScopedLock lock(gridLock);
 
@@ -103,8 +134,39 @@ Buffer<float> TrimeshPanelDataSource::getColumnArray() {
     return { storage.data(), (int) storage.size() };
 }
 
+Buffer<float> TrimeshPanelDataSource::getScalarSurfaceArray() {
+    const ScopedLock lock(gridLock);
+
+    if (scalarSurfaceStorage.empty()) {
+        return {};
+    }
+
+    return { scalarSurfaceStorage.data(), (int) scalarSurfaceStorage.size() };
+}
+
 const std::vector<Column>& TrimeshPanelDataSource::getColumns() {
     return panelColumns;
+}
+
+bool TrimeshPanelDataSource::copyColumnAtMorph(
+        float morphPosition,
+        std::vector<float>& values,
+        int& midiNote) {
+    const ScopedLock lock(gridLock);
+    if (panelColumns.empty()) {
+        values.clear();
+        return false;
+    }
+
+    const int index = jlimit(
+            0,
+            (int) panelColumns.size() - 1,
+            roundToInt(morphPosition * (float) (panelColumns.size() - 1)));
+    const Column& column = panelColumns[(size_t) index];
+    midiNote = static_cast<unsigned char>(column.midiKey);
+    values.resize((size_t) column.size());
+    std::copy_n(column.get(), column.size(), values.data());
+    return true;
 }
 
 CriticalSection& TrimeshPanelDataSource::getGridLock() {

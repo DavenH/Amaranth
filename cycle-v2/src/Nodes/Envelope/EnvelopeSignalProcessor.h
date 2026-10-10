@@ -21,7 +21,9 @@ public:
 
     static std::shared_ptr<const EnvelopeConfiguration> buildConfiguration(
             const std::vector<NodeParameter>& parameters,
-            const NodeModelStatePtr& model = {});
+            const NodeModelStatePtr& model = {},
+            const NodeGraph* graph = nullptr,
+            const String& nodeId = {});
 
     void prepareExecution(const AudioExecutionSpec& spec);
     void adoptConfiguration(const PublishedNodeConfiguration& published);
@@ -35,9 +37,7 @@ public:
     const EnvelopeConfiguration* cycleEnvelopeConfiguration() const override {
         return preparedConfiguration();
     }
-    Rasterization::PreparedEnvelopePlaybackView cycleEnvelopePlaybackView() const override {
-        return preparedPlaybackView();
-    }
+    Rasterization::PreparedEnvelopePlaybackView cycleEnvelopePlaybackView() const override;
     double playbackPosition() const {
         return playback.samplePosition(Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex);
     }
@@ -63,6 +63,7 @@ private:
     static constexpr size_t defaultTraversalColumns = 8;
     Rasterization::EnvelopePlaybackEngine playback;
     Rasterization::RealtimeEnvelopeMaterializer materializer;
+    Rasterization::RealtimeEnvelopeMaterializer cycleMaterializer;
     MeshLibrary::EnvProps props;
     bool active {};
     bool fadingIn {};

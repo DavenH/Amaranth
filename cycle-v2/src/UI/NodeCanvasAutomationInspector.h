@@ -16,6 +16,12 @@ namespace CycleV2 {
 struct GuideTileAutomationPresentation {
     juce::String guideId;
     juce::Rectangle<float> bounds;
+    juce::Rectangle<float> deleteBounds;
+};
+
+struct SpyCardAutomationPresentation {
+    juce::String probeId;
+    juce::Rectangle<float> bounds;
 };
 
 struct GuideEditorTargetAutomationPresentation {
@@ -26,13 +32,10 @@ struct GuideEditorTargetAutomationPresentation {
 struct GuideDockAutomationPresentation {
     bool expanded { true };
     bool guidesMinimized {};
-    bool spiesMinimized {};
-    float expandedHeight { 190.f };
-    float splitRatio { 0.5f };
-    float guideHorizontalOffset {};
-    float spyHorizontalOffset {};
+    float guideVerticalOffset {};
     juce::String selectedGuideId;
     juce::String hoveredGuideId;
+    juce::String hoveredProbeId;
     juce::String keyboardFocusTarget;
     juce::String keyboardFocusItemId;
     juce::String expandedGuideId;
@@ -40,14 +43,8 @@ struct GuideDockAutomationPresentation {
     int visibleGuidePreviewCount {};
     bool expandedGuideHeatmapActive {};
     juce::String expandedGuideHeatmapFilename;
-    juce::Rectangle<float> dockBounds;
     juce::Rectangle<float> guideShelfBounds;
-    juce::Rectangle<float> spyShelfBounds;
-    juce::Rectangle<float> dividerBounds;
-    juce::Rectangle<float> collapseBounds;
-    juce::Rectangle<float> resizeBounds;
     juce::Rectangle<float> guideMinimizeBounds;
-    juce::Rectangle<float> spyMinimizeBounds;
     juce::Rectangle<float> addGuideBounds;
     juce::Rectangle<float> guideEditorBounds;
     juce::var guideEditorState;
@@ -62,14 +59,17 @@ struct NodeCanvasAutomationPresentation {
     int selectedEdgeIndex { -1 };
     double previewVoiceLengthSeconds { 1.0 };
     ProbeRefreshMode probeRefreshMode { ProbeRefreshMode::OnGestureCommit };
-    juce::Rectangle<float> probeRefreshModeBounds;
     juce::String probeDetailId;
     size_t probeDetailResolution {};
     size_t probeDetailColumns {};
     size_t probeDetailRows {};
     juce::Rectangle<float> probeDetailBounds;
     juce::Rectangle<float> canvasContentBounds;
+    juce::Rectangle<float> editorContentBounds;
+    juce::Rectangle<int> popupMenuTargetScreenArea;
     GuideDockAutomationPresentation guideDock;
+    std::vector<SpyCardAutomationPresentation> spyCards;
+    std::vector<juce::String> selectedSpyIds;
     uint64_t hoverRepaintRequestCount {};
     uint64_t canvasRepaintRequestCount {};
     uint64_t statusRepaintRequestCount {};

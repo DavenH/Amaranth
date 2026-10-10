@@ -55,6 +55,7 @@ public:
     Font* getVerdana16()    { return verdana16;  }
 
     Image getIcon(int x, int y) const;
+    static MouseCursor createCursor(CursorType type);
     Image& getImage(int imageEnum);
     Image& getPowerIcon() { return powerIcon; }
 

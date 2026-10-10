@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstdint>
 #include <iterator>
 #include "Interactor.h"
@@ -21,6 +22,7 @@
 #include "../Obj/CurveLine.h"
 #include "../UI/Panels/Panel.h"
 #include "../UI/Panels/PanelHostContext.h"
+#include "../UI/Panels/PanelInputHostComponent.h"
 #include "../UI/Panels/Texture.h"
 #include "../UI/Panels/ZoomRect.h"
 #include "../Util/CommonEnums.h"
@@ -220,6 +222,11 @@ void Interactor::timerCallback() {
         return;
     }
 
+    const auto* inputHost = dynamic_cast<const PanelInputHostComponent*>(display.get());
+    if (inputHost != nullptr && inputHost->isPointerGestureActive()) {
+        return;
+    }
+
     ModifierKeys mods = ModifierKeys::getCurrentModifiersRealtime();
     if (mods.isAnyMouseButtonDown()) {
         return;
@@ -383,10 +390,14 @@ void Interactor::mouseDrag(const MouseEvent& e) {
 
     bool selectWithRight = getSetting(SelectWithRight) == 1;
 
-    bool isSelecting =
-            ! actionIs(DraggingCorner) && getSetting(Tool) == Tools::Selector &&
-            (selectWithRight && e.mods.isRightButtonDown() || (! selectWithRight && e.mods.isLeftButtonDown()) &&
-                    state.actionState != PanelState::ReshapingCurve);
+    const bool selectionButtonDown = selectWithRight
+            ? e.mods.isRightButtonDown()
+            : e.mods.isLeftButtonDown();
+    const bool isSelecting = !actionIs(BoxSelecting)
+            && !actionIs(DraggingCorner)
+            && !actionIs(ReshapingCurve)
+            && getSetting(Tool) == Tools::Selector
+            && selectionButtonDown;
 
     if(actionIs(CreatingVertex) || isSelecting) {
         state.actionState = PanelState::DraggingVertex;
@@ -481,23 +492,16 @@ void Interactor::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wh
         showConsoleMsg(String("Axe size: ") + String(realValue(PencilRadius), 1));
     } else {
         state.currentMouse = Vertex2(-1, 0);
+        const float ratio = wheel.isSmooth
+                ? std::pow(ZoomPanel::zoomRatio, 1.f / 3.f)
+                : ZoomPanel::zoomRatio;
 
         if(yInc > 0) {
-            panel->zoomPanel->zoomIn(e.mods.isCommandDown(), e.x, e.y);
+            panel->zoomPanel->zoomIn(e.mods.isCommandDown(), e.x, e.y, ratio);
         }
 
         if(yInc < 0) {
-            panel->zoomPanel->zoomOut(e.mods.isCommandDown(), e.x, e.y);
-        }
-    }
-}
-
-void Interactor::copyVertexPositions() {
-    if (Mesh* mesh = getMesh()) {
-        state.positions.clear();
-
-        for(auto vert : mesh->getVerts()) {
-            state.positions.push_back(*vert);
+            panel->zoomPanel->zoomOut(e.mods.isCommandDown(), e.x, e.y, ratio);
         }
     }
 }
@@ -516,8 +520,6 @@ void Interactor::addToArray(const Array<Vertex*>& src, vector<VertexFrame>& dst)
 }
 
 void Interactor::updateSelectionFrames() {
-    copyVertexPositions();
-
     state.singleHorz.clear();
     state.singleXY.clear();
     state.singleAll.clear();
@@ -1202,7 +1204,8 @@ void Interactor::setMouseDownStateSelectorTool(const MouseEvent& e) {
     bool selectWithRight = getSetting(SelectWithRight) == 1;
 
     if (e.mods.isLeftButtonDown()) {
-        if (e.mods.isShiftDown() && selectWithRight) {
+        if (e.mods.isShiftDown()
+                && (selectWithRight || usesShiftLeftBoxSelection())) {
             action = PanelState::BoxSelecting;
         } else if (getStateValue(HighlitCorner) >= 0) {
             action = PanelState::DraggingCorner;
@@ -2249,7 +2252,7 @@ void Interactor::addNewCubeForOneIntercept(
         const MorphPosition& box) {
     Mesh* mesh = getMesh();
 
-    jassert(!(mesh->getNumCubes() > 0));
+    jassert(mesh->getNumCubes() > 0);
 
     VertCube* meshLine = *mesh->getCubes().begin();
 
@@ -2381,6 +2384,14 @@ void Interactor::addNewCubeForMultipleIntercepts(
 
             vert->owners.clear(); // why?? xxx
             vert->values[Vertex::Amp] = amp;
+        }
+    }
+
+    addedCube->getFinalIntercept(reduceData, getModPosition());
+    if (reduceData.pointOverlaps) {
+        const float phaseOffset = phase - reduceData.v.values[Vertex::Phase];
+        for (int index = 0; index < VertCube::numVerts; ++index) {
+            addedCube->getVertex(index)->values[Vertex::Phase] += phaseOffset;
         }
     }
 }

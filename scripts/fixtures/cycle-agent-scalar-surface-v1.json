@@ -1,0 +1,24 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "CalmingKeys",
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "document",
+      "equals": "CalmingKeys"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaWfrmWaveform3D"
+    },
+    {
+      "command": "openGLDiagnostics",
+      "area": "AreaWfrmWaveform3D"
+    }
+  ],
+  "quit": false
+}

@@ -1,0 +1,18 @@
+{
+  "commands": [
+    { "command": "addNode", "kind": "envelope", "x": 160, "y": 520 },
+    { "command": "openNodeEditor", "nodeId": "env2" },
+    { "command": "pointer", "event": "click", "targetId": "expanded:env2.envelopeMode.scratch", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertNodeParameter", "nodeId": "env2", "parameterId": "purpose", "equals": "scratch" },
+    { "command": "key", "area": "canvas", "key": "escape" },
+    { "command": "pointer", "event": "down", "targetId": "output:env2.env" },
+    { "command": "pointer", "event": "drag", "targetId": "input:voice.scratch", "downTargetId": "output:env2.env" },
+    { "command": "pointer", "event": "up", "targetId": "input:voice.scratch", "downTargetId": "output:env2.env", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    { "command": "assertState", "path": "edgeCount", "equals": 16 },
+    { "command": "assertState", "path": "edges.15.sourceNodeId", "equals": "env2" },
+    { "command": "undo" },
+    { "command": "assertState", "path": "edgeCount", "equals": 15 }
+  ],
+  "quit": true
+}

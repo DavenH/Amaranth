@@ -6,6 +6,8 @@
 
 namespace CycleV2 {
 
+enum class NodeIconColour { Semantic, Monochrome };
+
 class NodeIconRenderer {
 public:
     static bool hasIcon(NodeKind kind);
@@ -14,12 +16,14 @@ public:
             juce::Graphics& graphics,
             NodeKind kind,
             juce::Rectangle<float> area,
-            float opacity = 1.f);
+            float opacity = 1.f,
+            NodeIconColour colour = NodeIconColour::Semantic);
     static void paint(
             juce::Graphics& graphics,
             const juce::String& semanticId,
             juce::Rectangle<float> area,
-            float opacity = 1.f);
+            float opacity = 1.f,
+            NodeIconColour colour = NodeIconColour::Semantic);
 };
 
 }

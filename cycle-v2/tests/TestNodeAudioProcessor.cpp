@@ -646,7 +646,7 @@ TEST_CASE("Envelope processor becomes inactive on note-off without a release cur
     model.getMesh().sustainCubes.clear();
     const auto configuration = EnvelopeSignalProcessor::buildConfiguration(
             {},
-            CurveNodeModelState::copyOf(model, model.revision()));
+            CurveNodeModelState::copyOf(model, 0.5f, 0.5f, model.revision()));
     REQUIRE(configuration != nullptr);
 
     EnvelopeSignalProcessor processor;

@@ -49,6 +49,9 @@ namespace Cycle::Rasterization {
             }
 
             int columnSize = 8 << (context.numFftOrders - 1);
+            for (const Column& column : columns) {
+                columnSize = jmax(columnSize, column.size());
+            }
 
             ScopedAlloc<Float32> memBuf(columnSize * 3);
             Buffer<float> columnBuf, phaseMoveBuffer, phaseMoveBuffer2;

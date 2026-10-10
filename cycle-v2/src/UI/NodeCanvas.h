@@ -5,28 +5,30 @@
 #include <array>
 #include <functional>
 #include <memory>
+#include <optional>
 
 #include <App/Settings.h>
 
-#include "Graph/GraphEditor.h"
+#include "Graph/GraphEditTypes.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/NodeGraph.h"
-#include "Nodes/Curve/Editor/CurveEditorWidget.h"
-#include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentMenu.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "Runtime/GraphPresentationModel.h"
+#include "Runtime/PresentationRefreshPolicy.h"
 #include "UI/CanvasPerformanceMetrics.h"
 #include "UI/NodeCanvasAutomationController.h"
 #include "UI/NodeCanvasAuthoring.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
+#include "UI/NodeCanvasGuideEditorCoordinator.h"
 #include "UI/NodeCanvasPresentation.h"
 #include "UI/NodeCanvasQueryModel.h"
 #include "UI/NodeCableRenderer.h"
 #include "UI/NodeCanvasGlRenderer.h"
 #include "UI/NodeCanvasHitRouter.h"
+#include "UI/InlinePresetBrowser.h"
 #include "UI/NodeCanvasInteraction.h"
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeCanvasViewport.h"
@@ -55,9 +57,41 @@ public:
 
     bool saveGraphToFile(const File& file);
     bool loadGraphFromFile(const File& file);
+    void presetLoadWorkspaceStageCompleted(
+            CanvasPerformanceMetrics::PresetLoadWorkspaceStage stage);
+    bool capturePresetPreviewForAutomation(
+            PresetPreviewView view,
+            PresetPreviewImage& image,
+            String& errorMessage) const;
+    bool savePresetPreviewForAutomation(
+            PresetPreviewImage image,
+            const File& destination,
+            String& errorMessage);
     bool isGraphDirty() const { return document.isDirty(); }
     const File& graphFile() const { return document.file(); }
+    ScalarSurfaceTimeStyle timeSurfaceStyle() const;
+    void setTimeSurfaceStyle(ScalarSurfaceTimeStyle style);
+    std::optional<ScalarSurfaceTimeStyle> bipolarSpectralSurfaceStyle() const;
+    void setBipolarSpectralSurfaceStyle(std::optional<ScalarSurfaceTimeStyle> style);
     void setGraphDocumentStateChangedCallback(std::function<void()> callback);
+    void configurePresetSidebar(
+            std::vector<File> directories,
+            InlinePresetBrowser::OpenCallback openCallback,
+            InlinePresetBrowser::ActionCallback browseCallback,
+            InlinePresetBrowser::ActionCallback createCallback,
+            LibraryFavorites* favorites = nullptr);
+    void refreshPresetSidebarFavorites();
+    void refreshPresetSidebarIndex();
+    void refreshPresetSidebarRecord(const juce::File& file);
+    void setCurrentPresetTags(juce::StringArray tags);
+    void configurePatternSidebar(
+            InlinePresetBrowser::PatternSelectCallback select,
+            InlinePresetBrowser::PatternEditCallback edit,
+            InlinePresetBrowser::PatternCreateCallback create,
+            InlinePresetBrowser::PatternRenameCallback rename,
+            InlinePresetBrowser::PatternDeleteCallback remove);
+    void setPatternSidebarRecords(
+            std::vector<PatternRecord> records, const String& selectedId);
     var exportAutomationState() const;
     String exportGraphJson() const;
     bool openNodeEditorForAutomation(const String& nodeId);
@@ -91,19 +125,34 @@ public:
     bool getNodeParameterForAutomation(const String& nodeId, const String& parameterId, String& value) const;
     var inspectNodeControlsForAutomation(const String& nodeId) const;
     var inspectPointerTargetsForAutomation() const;
+    std::vector<std::pair<String, Rectangle<float>>>
+            presetSidebarPointerTargetsForAutomation() const;
+    std::vector<std::pair<String, Rectangle<float>>> palettePointerTargetsForAutomation() const;
     var inspectOpenGLDiagnosticsForAutomation() const;
     var inspectPerformanceMetricsForAutomation() const;
     void resetPerformanceMetricsForAutomation();
     void requestOpenGLFrameForAutomation();
+    void recreateOpenGLContextForAutomation();
     var captureAudioForAutomation(size_t frameCount) const;
     bool copyAudioPlan(GraphExecutionPlan& plan, uint64_t& revision) const;
+    uint64_t audioPlanRevision() const { return presentation.audioPlanRevision(); }
     float graphOutputGain() const;
     int previewMidiNote() const { return presentation.previewMidiNote(); }
+    const std::optional<PresetMidiSequence>& presetSequence() const {
+        return document.presentation().sequence;
+    }
+    bool setPresetSequence(PresetMidiSequence sequence);
+    const String& presetPatternId() const {
+        return document.presentation().patternId;
+    }
+    bool setPresetPatternId(const String& id);
+    ProbeRefreshMode probeRefreshMode() const override { return probeCanvasState.refreshMode; }
+    void setProbeRefreshMode(ProbeRefreshMode mode);
     bool setPreviewMidiNote(int midiNote);
     bool setPreviewModWheelValue(int value);
     void beginPreviewModWheelGesture();
     bool updatePreviewModWheelGesture(int value);
-    void endPreviewModWheelGesture();
+    void endPreviewModWheelGesture(int finalValue);
     Rectangle<int> performanceKeyboardDockBounds() const;
     Rectangle<float> expandedEditorBoundsForOverlay() const;
     void setOverlayOcclusionChangedCallback(std::function<void()> callback);
@@ -126,9 +175,11 @@ public:
     void mouseUp(const MouseEvent& event) override;
     void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override;
     void mouseMagnify(const MouseEvent& event, float scaleFactor) override;
+    void modifierKeysChanged(const ModifierKeys& modifiers) override;
     bool keyPressed(const KeyPress& key) override;
 
 private:
+    void synchronizeSurfaceStyles();
     enum class HoverRepaint {
         None,
         Status,
@@ -145,9 +196,6 @@ private:
     GraphCommandDispatcher commands;
     const NodeGraph& graph;
     GraphPresentationModel presentation;
-    const GraphCompileResult& compileResult;
-    const RuntimeProcessTrace& runtimeTrace;
-    const GraphPreviewResult& previewResult;
     NodeCanvasQueryModel queries;
     CanvasPerformanceMetrics performanceMetrics;
     NodeEditorCommandService editorCommands;
@@ -160,58 +208,50 @@ private:
     int& selectedEdgeIndex;
     int& spliceTargetEdgeIndex;
     NodeCanvasEditorCoordinator editorCoordinator;
+    NodeCanvasGuideEditorCoordinator guideEditorCoordinator;
     NodeCanvasPresentation canvasPresentation;
     NodeCanvasAutomationController automation;
     RenderInvalidationAccumulator renderInvalidation;
     NodePalette palette;
     NodeCanvasHitRouter hitRouter;
-    std::unique_ptr<CurveEditorWidget> guideEditorWidget;
-    std::unique_ptr<GuideCurveEditorComponent> guideEditor;
-
-    int activeTrimeshVertexIndex { -1 };
     int hoveredEdgeIndex { -1 };
     Point<float> lastMousePosition;
+    Rectangle<int> lastPopupMenuTargetScreenArea;
+    MouseCursor addToSelectionCursor;
     String resolvedHoverText;
     bool pointerInsideCanvas {};
-    bool draggingTrimeshMorph {};
-    bool trimeshMorphUndoPushed {};
-    bool draggingTrimeshVertexParameter {};
-    bool trimeshVertexParameterUndoPushed {};
     bool canvasOpenGlAttached {};
+    uint64_t openGlContextCreateCount {};
+    uint64_t openGlContextCloseCount {};
     bool compiledStateRefreshPending {};
     PresentationRefreshScope compiledStateRefreshScope {
             PresentationRefreshScope::Downstream };
-    String draggingSpectralPanNodeId;
-    String draggingOutputGainNodeId;
-    float spectralPanDragStartValue {};
-    float outputGainDragStartValue { 0.5f };
-    SignalProbeRailState probeRailState;
+    SignalProbeCanvasState probeCanvasState;
+    struct ProbeCardGesture {
+        std::vector<std::pair<String, Point<float>>> startPositions;
+        Point<float> appliedNodeOffset;
+        bool nodeTransactionStarted {};
+    };
+    std::optional<ProbeCardGesture> probeCardGesture;
+    std::vector<std::pair<String, Point<float>>> nodeDragSpyStarts;
     GuideCurveShelfState guideShelfState;
-    float dockSplitRatio { 0.5f };
     SignalProbeDetailState probeDetailState;
     OutputMeterBallistics outputMeterBallistics;
     std::optional<OutputMeterLevels> liveOutputMeterLevels;
     std::unique_ptr<WorkspaceDockInteractionController> dockInteraction;
+    std::unique_ptr<InlinePresetBrowser> presetSidebar;
     UnisonPreviewContext globalUnisonPreviewContext;
-    String draggingProbeId;
-    String expandedGuideId;
-    std::optional<uint64_t> guideTransactionBaseRevision;
     std::function<void()> graphDocumentStateChangedCallback;
     uint32 compiledStateRefreshDueMs {};
     std::function<void()> overlayOcclusionChanged;
     std::function<void()> previewPlaybackToggle;
-    bool previewModWheelGestureActive {};
-    bool previewModWheelGestureChanged {};
-    int previewModWheelGestureValue {};
-    ProbeRefreshMode previewModWheelGestureRefreshMode {
-            ProbeRefreshMode::OnGestureCommit };
-    std::shared_ptr<const NodeGraph> previewModWheelGestureGraph;
-
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
     void openGLContextClosing() override;
     void timerCallback() override;
-    HoverRepaint updateHoverAt(juce::Point<float> position);
+    HoverRepaint updateHoverAt(
+            juce::Point<float> position,
+            ModifierKeys modifiers);
     static HoverRepaint hoverRepaintFor(bool canvasChanged, bool statusChanged);
 
     void setCanvasOpenGlAttached(bool shouldAttach);
@@ -219,6 +259,7 @@ private:
     void requestCanvasRepaint();
     void requestCanvasStatusRepaint();
     void requestHoverRepaint(HoverRepaint repaint);
+    void updatePresetSidebarVisibility();
     void notifyOverlayOcclusionChanged();
     std::optional<NodeAudioResourceSummary> audioResourceSummary(
             const String& nodeId) const override;
@@ -228,10 +269,27 @@ private:
     Point<float> viewportCentreWorld() const;
     void refreshCompiledState();
     void refreshCompiledStateAsync(
-            PresentationRefreshScope scope = PresentationRefreshScope::Downstream);
+            PresentationRefreshScope scope = PresentationRefreshScope::Downstream,
+            const GraphChangeSet* changeOverride = nullptr,
+            std::shared_ptr<const NodeGraph> snapshot = {});
     void openProbeDetail(const String& probeId);
+    void requestDeleteGuideCurve(const String& guideId);
+    bool deleteGuideCurve(const String& guideId);
     void refreshProbeDetail();
     void finishPreviewModWheelRefresh();
+    enum class PreviewMorphEditScope {
+        KeyScale,
+        ModWheel,
+        Both
+    };
+    GraphEditResult persistPreviewMorph(
+            int midiNote,
+            int modWheelValue,
+            PreviewMorphEditScope scope);
+    GraphEditResult editPreviewMorph(
+            int midiNote,
+            int modWheelValue,
+            PreviewMorphEditScope scope);
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh(
@@ -252,8 +310,12 @@ private:
     bool cycleSinglePortLayout(const String& nodeId);
     bool cycleOutputSide(const String& nodeId);
     Rectangle<float> canvasContentBounds() const;
+    Rectangle<float> canvasUtilityBounds() const;
+    Rectangle<float> editorContentBounds() const;
     WorkspaceDockLayout workspaceDockLayout() const;
-    void showEdgeMenu(int edgeIndex, Point<float> screenPosition);
+    void showEdgeMenu(int edgeIndex, Point<float> canvasPosition);
+    bool removeSpyCard(const String& probeId);
+    void toggleSpyDomain(const String& probeId);
     void openGuideEditor(const String& guideId);
     void closeGuideEditor();
     void rebindGuideEditor();
@@ -267,17 +329,32 @@ private:
     void repaintNodeEditor(bool openGl) override;
     void selectEditedNode(const String& nodeId) override;
     void setNodeEditorStatus(const String& message) override;
+    bool beginNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document,
+            bool downstreamFeedback = true) override;
+    void finishNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document,
+            const String& localField = {}) override;
+    void cancelNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands) override;
     void scheduleNodeEditorRefresh() override;
+    void settleNodeEditorPreviewWork() override;
     void flushNodeEditorRefresh() override;
     void refreshNodeEditorPresentation() override;
+    void notifyGraphDocumentStateChanged();
     Point<float> nodeEditorCreationPosition() const override;
     void rebindNodeEditor() override;
     void rebindNodeEditorTransient() override;
-    ProbeRefreshMode probeRefreshMode() const override { return probeRailState.refreshMode; }
     void recordNodeEditorMovement(
             const String& nodeId,
             const String& field,
-            uint64_t effectiveFingerprint) override;
+            uint64_t effectiveFingerprint,
+            std::optional<UpdateProduct> localProduct) override;
     void commitNodeEditorLocalState(
             const String& nodeId,
             const String& field,
@@ -285,10 +362,14 @@ private:
             uint64_t documentRevision) override;
 
     CurveEditorWidget* curveEditorWidget(const Node& node) override;
+    void syncCurveGuideContext(CurveEditorWidget& widget, const Node& node) override;
     TrimeshWidget* trimeshWidget(const Node& node) override;
     TrimeshWidget* findTrimeshWidget(const String& nodeId) override;
     TrimeshRenderProfile trimeshRenderProfile(const Node& node) const override;
     std::array<String, 6> trimeshGuideLabels(const Node& node) override;
+    std::array<String, 6> envelopeGuideLabels(
+            const Node& node,
+            int cubeIndex) override;
     void paintNodePreview(
             Graphics& graphics,
             const Node& node,

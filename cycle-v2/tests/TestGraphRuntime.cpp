@@ -1,20 +1,29 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
+#include "NodeGraphTestAccess.h"
+
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <App/AppConstants.h>
+#include <Curve/Mesh/Mesh.h>
 
 #include <algorithm>
 
+#include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
+#include "Graph/NodeParameterMap.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Control/ModulationTriple.h"
 #include "Nodes/Control/ModulationSource.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/GraphRuntime.h"
@@ -79,6 +88,18 @@ GuideHeatmapAssetPtr verticalGradientHeatmap() {
     REQUIRE(asset != nullptr);
     REQUIRE(error.isEmpty());
     return asset;
+}
+
+NodeGraph demoGraphWithPopulatedWaveMesh() {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("GuideRuntimeMesh");
+    REQUIRE(mesh != nullptr);
+    const NodeModelStatePtr model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    mesh->destroy();
+    REQUIRE(graph.replaceNodeModel(
+            "waveMesh",
+            model));
+    return graph;
 }
 
 NodeModelStatePtr horizontalGuideModel(float y, uint64_t revision) {
@@ -158,7 +179,7 @@ TEST_CASE("Queued presentation publication is inert after model destruction",
                     return node.kind == NodeKind::TrilinearMesh;
                 });
         REQUIRE(mesh != graph.getNodes().end());
-        const auto edit = GraphEditor().setNodeParameter(
+        const auto edit = GraphNodeStateEditor().setNodeParameter(
                 graph, mesh->id, "red", "Red", "0.7");
         REQUIRE(edit.succeeded());
         REQUIRE(edit.changed);
@@ -222,6 +243,122 @@ TEST_CASE("Attached Mod Triple parameter edits refresh implicit voice modulation
             document.lastChange()));
 
     REQUIRE(blueConfiguration().mode == ModulationSourceMode::InverseVelocity);
+}
+
+TEST_CASE("Preview wheel morph follows its compiled source mapping",
+        "[cycle-v2][runtime][preview-wheel][mapping]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::ModulationTriple, "morph", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "unmappedMesh", {}));
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "inverse", {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "morph", "blueSource", "Blue Source", "inverseVelocity").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "inverse", "source", "Source", "inverseVelocity").succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph, { "morph", "modulation", false },
+            { "voice", "modulation", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph, { "voice", "context", false },
+            { "mesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph, { "voice", "context", false },
+            { "unmappedMesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph, { "inverse", "value", false },
+            { "unmappedMesh", "blue", true }).succeeded());
+
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+    REQUIRE_FALSE(presentation.hasModWheelPreviewRoots());
+    REQUIRE(presentation.modWheelMorphTargets().empty());
+    REQUIRE(presentation.keyScaleMorphTargets().size() == 2);
+    REQUIRE(presentation.keyScaleMorphTargets().front().nodeId == "mesh");
+    REQUIRE(presentation.keyScaleMorphTargets().front().parameterId == "red");
+
+    const uint64_t unchangedRevision = document.revision();
+    const float initialBlue = NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("blue");
+    const float unmappedBlue = NodeParameterMap(*document.graph().findNode("unmappedMesh"))
+            .floatValue("blue");
+    const auto ignoredWheel = commands.setMappedPreviewMorph(
+            presentation.modWheelMorphTargets(), 0.25f, 0.8f);
+    REQUIRE(ignoredWheel.succeeded());
+    REQUIRE_FALSE(ignoredWheel.changed);
+    REQUIRE(document.revision() == unchangedRevision);
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh")).floatValue("blue")
+            == initialBlue);
+
+    REQUIRE(commands.setNodeParameter(
+            "morph", "blueSource", "Blue Source", "modWheel").succeeded());
+    REQUIRE(presentation.refresh(
+            document.graph(), document.revision(), document.lastChange()));
+    REQUIRE(presentation.hasModWheelPreviewRoots());
+    REQUIRE(presentation.modWheelMorphTargets().size() == 1);
+    REQUIRE(presentation.modWheelMorphTargets().front().nodeId == "mesh");
+    REQUIRE(presentation.modWheelMorphTargets().front().parameterId == "blue");
+
+    commands.beginTransientEdit();
+    REQUIRE(commands.setMappedPreviewMorph(
+            presentation.modWheelMorphTargets(), 0.25f, 0.3f).changed);
+    REQUIRE(commands.setMappedPreviewMorph(
+            presentation.modWheelMorphTargets(), 0.25f, 0.8f).changed);
+    REQUIRE(NodeParameterMap(*commands.editingGraph().findNode("mesh")).floatValue("blue")
+            == Catch::Approx(0.8f));
+    commands.commitTransientEdit();
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh")).floatValue("blue")
+            == Catch::Approx(0.8f));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("unmappedMesh")).floatValue("blue")
+            == unmappedBlue);
+    REQUIRE(document.undo());
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh")).floatValue("blue")
+            == initialBlue);
+}
+
+TEST_CASE("Mapped wheel movement cost ignores unrelated nodes",
+        "[cycle-v2][runtime][preview-wheel][mapping][complexity]") {
+    const auto verify = [](int unrelatedNodeCount) {
+        GraphNodeFactory factory;
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+        for (int index = 0; index < unrelatedNodeCount; ++index) {
+            graph.addNode(factory.createNode(
+                    NodeKind::Delay, "unrelated" + String(index), {}));
+        }
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher commands(document);
+        const std::vector<PreviewMorphTarget> targets {
+                { "mesh", "blue", PreviewMorphControl::ModWheel }
+        };
+        const float initialBlue = NodeParameterMap(*document.graph().findNode("mesh"))
+                .floatValue("blue");
+
+        commands.beginTransientEdit();
+        InteractionComplexityDiagnostics::reset();
+        REQUIRE(commands.setMappedPreviewMorph(targets, 0.f, 0.3f).changed);
+        REQUIRE(commands.setMappedPreviewMorph(targets, 0.f, 0.8f).changed);
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.meshCopies == 0);
+        REQUIRE(counts.modelSerializations == 0);
+        REQUIRE(counts.nodeLinearScans == 0);
+        commands.commitTransientEdit();
+        REQUIRE(document.undo());
+        REQUIRE(NodeParameterMap(*document.graph().findNode("mesh")).floatValue("blue")
+                == initialBlue);
+        return counts;
+    };
+
+    const auto small = verify(0);
+    const auto large = verify(128);
+    REQUIRE(small.parameterLinearScans == large.parameterLinearScans);
+    REQUIRE(small.assignmentLinearScans == large.assignmentLinearScans);
+    REQUIRE(small.editorStateComparisons == large.editorStateComparisons);
 }
 
 TEST_CASE("Preview MIDI note refreshes key-scale previews without publishing audio",
@@ -326,13 +463,19 @@ TEST_CASE("Preview mod wheel refreshes modulation previews and spies without pub
 
     const auto sharedGraph = std::make_shared<const NodeGraph>(graph);
     bool latestCompleted {};
-    REQUIRE(presentation.refreshPreviewModWheelValueAsync(
-            sharedGraph, 1, 24));
-    REQUIRE(presentation.refreshPreviewModWheelValueAsync(
+    presentation.stagePreviewModWheelValue(24);
+    presentation.refreshAsync(
             sharedGraph,
             1,
-            112,
-            [&latestCompleted] { latestCompleted = true; }));
+            presentation.modWheelPreviewChange({}),
+            PresentationRefreshScope::PreviewOnly);
+    presentation.stagePreviewModWheelValue(112);
+    presentation.refreshAsync(
+            sharedGraph,
+            1,
+            presentation.modWheelPreviewChange({}),
+            PresentationRefreshScope::PreviewOnly,
+            [&latestCompleted] { latestCompleted = true; });
     REQUIRE(waitForAsyncRefresh(latestCompleted));
     REQUIRE(presentation.previewModWheelValue() == 112);
     REQUIRE(findNodePreview(presentation.previewResult(), "mod").primary.front()
@@ -437,7 +580,7 @@ TEST_CASE("Equivalent scratch topology recompiles produce identical previews",
         "[cycle-v2][runtime][preview][voice-context][scratch]") {
     NodeGraph inheritedGraph = NodeGraph::createDemoGraph();
     inheritedGraph.removeEdgesFromOutput("scratchEnv", "env");
-    Node* voice = inheritedGraph.findNodeForEditing("voice");
+    Node* voice = NodeGraphTestAccess::findNodeForEditing(inheritedGraph, "voice");
     REQUIRE(voice != nullptr);
     NodeDefinitionRegistry::instance().normalize(*voice);
     inheritedGraph.addEdge({
@@ -491,7 +634,7 @@ TEST_CASE("Equivalent scratch topology recompiles produce identical previews",
 
 TEST_CASE("Runtime prepares targeted Guide assignments without graph attachments", "[cycle-v2][runtime]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().createGuideCurveAndAssignToTrimeshVertexParameter(
+    REQUIRE(GuideGraphEditor().createGuideCurveAndAssignToMeshComponent(
             graph,
             "waveMesh",
             4,
@@ -526,7 +669,7 @@ TEST_CASE("Unused Guide organization changes do not rebuild DSP presentation",
 
 TEST_CASE("Two live Guide updates refresh an attached downstream Spy before one undo",
         "[cycle-v2][runtime][guides][causal][gesture]") {
-    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphDocument document(demoGraphWithPopulatedWaveMesh());
     GraphCommandDispatcher commands(document);
     REQUIRE(commands.createGuideCurve().succeeded());
     REQUIRE(commands.assignGuideCurve("guide1", "waveMesh", 2, "amp").succeeded());
@@ -575,7 +718,7 @@ TEST_CASE("Two live Guide updates refresh an attached downstream Spy before one 
 
 TEST_CASE("Two live image-backed Guide path updates refresh downstream before one undo",
         "[cycle-v2][runtime][guides][heatmap][gesture]") {
-    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphDocument document(demoGraphWithPopulatedWaveMesh());
     GraphCommandDispatcher commands(document);
     REQUIRE(commands.createGuideCurve().succeeded());
     REQUIRE(commands.assignGuideCurve("guide1", "waveMesh", 2, "amp").succeeded());
@@ -830,7 +973,16 @@ TEST_CASE("Stengah probes reflect an asynchronous Waveshaper curve edit at the c
             .getChildFile("stengah.cyclegraph");
     REQUIRE(preset.existsAsFile());
 
-    GraphDocument document(GraphSerializer().fromJsonString(preset.loadFileAsString()));
+    NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    graph.addSignalProbe({
+            "probe2", "waveshaper", "time", "impulseResponse", "time",
+            "Waveshaper output", 0.5f, 0
+    });
+    graph.addSignalProbe({
+            "probe5", "volumeMultiply", "out", "voiceOutput", "time",
+            "Waveshaper input", 0.5f, 1
+    });
+    GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     GraphPresentationModel presentation;
     GraphChangeSet topology;
@@ -928,8 +1080,11 @@ TEST_CASE("Preset transitions replace equal-revision Trimesh DSP content",
             .getChildFile("presets");
     const NodeGraph african = GraphSerializer().fromJsonString(
             presets.getChildFile("african-horn.cyclegraph").loadFileAsString());
-    const NodeGraph baroque = GraphSerializer().fromJsonString(
+    NodeGraph baroque = GraphSerializer().fromJsonString(
             presets.getChildFile("baroque-flute.cyclegraph").loadFileAsString());
+    baroque.addSignalProbe({
+            "probe", "timeLayer1", "out", "timeOp1", "left", "Time layer", 0.5f, 0
+    });
     GraphChangeSet topology;
     topology.topologyChanged = true;
 
@@ -980,6 +1135,10 @@ TEST_CASE("Stengah upstream probes remain stable across spectral pan edits",
             0.5f,
             8
     });
+    graph.addSignalProbe({
+            "probe6", "phaseOp2", "out", "phaseOp3", "left",
+            "Post-pan phase", 0.5f, 9
+    });
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     GraphPresentationModel presentation;
@@ -1000,7 +1159,7 @@ TEST_CASE("Stengah upstream probes remain stable across spectral pan edits",
 
     for (const String pan : { "1", "0.5", "0", "0.5" }) {
         REQUIRE(commands.setNodeParameter(
-                "phaseLayer1Process", "pan", "Pan", pan).succeeded());
+                "pan2", "pan", "Pan", pan).succeeded());
         REQUIRE(presentation.refresh(
                 document.graph(),
                 document.revision(),

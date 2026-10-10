@@ -1,7 +1,9 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
@@ -20,10 +22,14 @@
 #include "Nodes/Trimesh/Editor/TrimeshExpandedEditorComponent.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Unison/UnisonNode.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Waveshaper/Editor/WaveshaperEditorComponent.h"
+#include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
+#include "Runtime/PresentationGestureSession.h"
 #include "UI/EffectEnableButton.h"
 #include "UI/EditorChromeLayout.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
@@ -55,6 +61,33 @@ public:
     CurveTableScope() { Curve::calcTable(); }
     ~CurveTableScope() { Curve::deleteTable(); }
 };
+
+MouseEvent curvePanelMouseEvent(
+        Component& component,
+        Point<float> position,
+        ModifierKeys modifiers,
+        Point<float> mouseDownPosition,
+        bool dragged,
+        int clickCount = 1) {
+    const Time now = Time::getCurrentTime();
+    return {
+            Desktop::getInstance().getMainMouseSource(),
+            position,
+            modifiers,
+            1.f,
+            0.f,
+            0.f,
+            0.f,
+            0.f,
+            &component,
+            &component,
+            now,
+            mouseDownPosition,
+            now,
+            clickCount,
+            dragged
+    };
+}
 
 void addUnrelatedInteractionState(NodeGraph& graph) {
     GraphNodeFactory factory;
@@ -284,11 +317,40 @@ public:
     void repaintNodeEditor(bool) override {}
     void selectEditedNode(const String&) override {}
     void setNodeEditorStatus(const String&) override {}
+    bool beginNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document,
+            bool downstreamFeedback = true) override {
+        return session.beginGraphGesture(
+                "editor:" + nodeId,
+                commands,
+                document,
+                ProbeRefreshMode::OnGestureCommit,
+                0,
+                true,
+                downstreamFeedback);
+    }
+    void finishNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document,
+            const String& = {}) override {
+        session.finishGraphGesture("editor:" + nodeId, commands, document);
+    }
+    void cancelNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands) override {
+        session.cancelGraphGesture("editor:" + nodeId, commands);
+    }
     void scheduleNodeEditorRefresh() override {}
     void flushNodeEditorRefresh() override {}
     void refreshNodeEditorPresentation() override {}
     Point<float> nodeEditorCreationPosition() const override { return {}; }
     void rebindNodeEditor() override {}
+
+private:
+    PresentationGestureSession session;
 };
 
 class RecordingPresentation final : public NodeEditorPresentation {
@@ -297,13 +359,48 @@ public:
     void repaintNodeEditor(bool) override { ++repaints; }
     void selectEditedNode(const String&) override {}
     void setNodeEditorStatus(const String&) override {}
+    bool beginNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document,
+            bool downstreamFeedback = true) override {
+        gestureDownstreamFeedback.push_back(downstreamFeedback);
+        return session.beginGraphGesture(
+                "editor:" + nodeId, commands, document, refreshMode, 0, true,
+                downstreamFeedback);
+    }
+    void finishNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document,
+            const String& localField = {}) override {
+        const auto finished = session.finishGraphGesture(
+                "editor:" + nodeId, commands, document);
+        if (finished.changed && finished.durableChanged) {
+            ++gestureCommits;
+            if (localField.isNotEmpty()) {
+                ++localCommits;
+            }
+        }
+    }
+    void cancelNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands) override {
+        session.cancelGraphGesture("editor:" + nodeId, commands);
+    }
     void scheduleNodeEditorRefresh() override { ++scheduledRefreshes; }
     void flushNodeEditorRefresh() override {}
     void refreshNodeEditorPresentation() override { ++immediateRefreshes; }
     Point<float> nodeEditorCreationPosition() const override { return {}; }
     void rebindNodeEditor() override { ++rebinds; }
     void rebindNodeEditorTransient() override { ++transientRebinds; }
-    void recordNodeEditorMovement(const String&, const String&, uint64_t) override {
+    void recordNodeEditorMovement(
+            const String& nodeId,
+            const String&,
+            uint64_t fingerprint,
+            std::optional<UpdateProduct> localProduct) override {
+        session.recordGraphMovement("editor:" + nodeId, fingerprint);
+        movementLocalProducts.push_back(localProduct);
         ++recordedMovements;
     }
     void commitNodeEditorLocalState(
@@ -323,6 +420,12 @@ public:
     int rebinds {};
     int transientRebinds {};
     int recordedMovements {};
+    int gestureCommits {};
+    std::vector<bool> gestureDownstreamFeedback;
+    std::vector<std::optional<UpdateProduct>> movementLocalProducts;
+
+private:
+    PresentationGestureSession session;
 };
 
 class NullResources : public NodeEditorResources {
@@ -350,6 +453,14 @@ public:
     PortDomain trimeshDomain { PortDomain::TimeSignal };
     int synchronizingTrimeshLookups {};
     double voiceLengthSeconds { 1.0 };
+};
+
+class EnvelopeEditorResources final : public NullResources {
+public:
+    CurveEditorWidget* curveEditorWidget(const Node&) override { return &widget; }
+
+private:
+    CurveEditorWidget widget { NodeKind::Envelope };
 };
 
 class RecordingVoiceCommands final : public NullCommands {
@@ -441,7 +552,7 @@ TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
 
     const auto render = [&](const NodePreviewResult* runtime) {
         NodePreviewResources resources(editorCommands);
-        resources.setGraph(&document.graph());
+        resources.setDurableGraph(&document.graph());
         NodePreviewRenderer renderer(resources);
         Image image(Image::ARGB, 120, 96, true);
         Graphics graphics(image);
@@ -473,6 +584,83 @@ TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
     REQUIRE(checksum(withRuntime) == checksum(authoritative));
 }
 
+TEST_CASE("Trimesh preview retains the durable graph after a transient refresh",
+        "[cycle-v2][canvas][preview][trimesh][lifecycle][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component canvas;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher graphCommands(document);
+    NullPresentation presentation;
+    NullResources editorResources;
+    NodeEditorCommandService editorCommands(
+            canvas,
+            document,
+            graphCommands,
+            presentation,
+            editorResources);
+    NodePreviewResources resources(editorCommands);
+    resources.setDurableGraph(&document.graph());
+
+    {
+        NodeGraph transient = NodeGraph::createEditingOverlay(document.graph());
+        GraphChangeSet changes;
+        changes.nodeIds.push_back("mesh");
+        resources.refreshGraph(transient, changes);
+        resources.trimeshWidget(*transient.findNode("mesh"), &transient);
+    }
+
+    const Node& node = *document.graph().findNode("mesh");
+    TrimeshWidget& widget = resources.trimeshWidget(node, &document.graph());
+    REQUIRE(widget.guideContextKey().isNotEmpty());
+}
+
+TEST_CASE("Transient preview refresh retains the durable graph for Trimesh resources",
+        "[cycle-v2][canvas][preview][trimesh][lifetime][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component canvas;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GuideCurveResource guide;
+    guide.id = "guide1";
+    REQUIRE(graph.addGuideCurve(std::move(guide)));
+    REQUIRE(graph.assignGuideCurve({
+            "guide1",
+            "mesh",
+            { 0, GuideCurveField::Time }
+    }));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher graphCommands(document);
+    NullPresentation presentation;
+    NullResources editorResources;
+    NodeEditorCommandService editorCommands(
+            canvas,
+            document,
+            graphCommands,
+            presentation,
+            editorResources);
+    NodePreviewResources resources(editorCommands);
+    resources.setDurableGraph(&document.graph());
+
+    const Node& node = *document.graph().findNode("mesh");
+    const String durableKey = resources.trimeshWidget(node).guideContextKey();
+    NodeGraph transient = document.graph();
+    REQUIRE(GuideGraphEditor().renameGuideCurve(
+            transient, "guide1", "Transient guide").succeeded());
+    GraphChangeSet transientChange;
+    transientChange.guidesChanged = true;
+    resources.refreshGraph(transient, transientChange);
+
+    REQUIRE(resources.trimeshWidget(node).guideContextKey() == durableKey);
+}
+
 TEST_CASE("Reverb heatmap palette follows its runtime spectral domain",
         "[cycle-v2][canvas][preview][reverb][regression]") {
     ScopedJuceInitialiser_GUI juce;
@@ -490,7 +678,7 @@ TEST_CASE("Reverb heatmap palette follows its runtime spectral domain",
             presentation,
             editorResources);
     NodePreviewResources resources(editorCommands);
-    resources.setGraph(&document.graph());
+    resources.setDurableGraph(&document.graph());
     NodePreviewRenderer renderer(resources);
     const Node& node = *document.graph().findNode("reverb");
     NodePreviewResult runtime {
@@ -548,6 +736,8 @@ TEST_CASE("First compact Envelope paint synchronizes its durable curve model",
     REQUIRE(envelopeModel.synchronizeFromMesh(nullptr));
     envelope.model = CurveNodeModelState::copyOf(
             envelopeModel,
+            0.5f,
+            0.5f,
             envelopeModel.revision() + 7);
     graph.addNode(std::move(envelope));
     GraphDocument document(std::move(graph));
@@ -561,7 +751,7 @@ TEST_CASE("First compact Envelope paint synchronizes its durable curve model",
             presentation,
             editorResources);
     NodePreviewResources resources(editorCommands);
-    resources.setGraph(&document.graph());
+    resources.setDurableGraph(&document.graph());
     NodePreviewRenderer renderer(resources);
     const Node& node = *document.graph().findNode("env");
 
@@ -577,6 +767,103 @@ TEST_CASE("First compact Envelope paint synchronizes its durable curve model",
     });
 
     REQUIRE(resources.curveEditorWidget(node).modelRevision() == node.model->revision());
+}
+
+TEST_CASE("Compact Envelope paint synchronizes component Guide curves",
+        "[cycle-v2][canvas][preview][envelope][guides][preset][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Component canvas;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "env", "purpose", "Purpose", "pitch").succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
+    const GuideCurveResource* createdGuide = graph.findGuideCurve("guide1");
+    REQUIRE(createdGuide != nullptr);
+    FlatCurveModel guideModel;
+    REQUIRE(guideModel.replaceVertices({
+            { 1, 0.f, 1.f, 1.f },
+            { 2, 1.f, 1.f, 1.f }
+    }));
+    guideModel.setPublicationRevision(createdGuide->model->revision() + 1);
+    REQUIRE(GuideGraphEditor().replaceGuideCurve(
+            graph,
+            "guide1",
+            CurveNodeModelState::copyOf(guideModel, guideModel.revision()),
+            {
+                    { "enabled", "Enabled", "1" },
+                    { "noise", "Noise", "0" },
+                    { "dcOffset", "DC Offset", "0" },
+                    { "phase", "Phase", "0" }
+            }).succeeded());
+    REQUIRE(GuideGraphEditor().assignGuideCurveToMeshComponent(
+            graph, "guide1", "env", 0, "amp").succeeded());
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher graphCommands(document);
+    NullPresentation presentation;
+    NullResources editorResources;
+    NodeEditorCommandService editorCommands(
+            canvas,
+            document,
+            graphCommands,
+            presentation,
+            editorResources);
+    NodePreviewResources resources(editorCommands);
+    resources.setDurableGraph(&document.graph());
+    NodePreviewRenderer renderer(resources);
+    Image image(Image::ARGB, 180, 140, true);
+    Graphics graphics(image);
+    const auto paint = [&] {
+        const Node& node = *document.graph().findNode("env");
+        renderer.paint(graphics, {
+                node,
+                nullptr,
+                image.getBounds().toFloat(),
+                TrimeshRenderProfile::fromDomain(PortDomain::EnvelopeSignal),
+                1.f,
+                true
+        });
+        return JSON::toString(
+                resources.curveEditorWidget(node).automationState().getProperty(
+                        "waveformPoints", {}),
+                true);
+    };
+
+    const String enabledWaveform = paint();
+    const GuideCurveResource* guide = document.graph().findGuideCurve("guide1");
+    REQUIRE(guide != nullptr);
+    FlatCurveModel editedGuideModel;
+    REQUIRE(editedGuideModel.replaceVertices({
+            { 1, 0.f, 0.f, 1.f },
+            { 2, 1.f, 0.f, 1.f }
+    }));
+    editedGuideModel.setPublicationRevision(guide->model->revision() + 1);
+    graphCommands.beginTransientEdit();
+    REQUIRE(graphCommands.publishGuideCurveState({
+            "guide1",
+            guide->revision,
+            CurveNodeModelState::copyOf(
+                    editedGuideModel,
+                    editedGuideModel.revision()),
+            {
+                    { "enabled", "Enabled", "1" },
+                    { "noise", "Noise", String(guide->noise) },
+                    { "dcOffset", "DC Offset", String(guide->dcOffset) },
+                    { "phase", "Phase", String(guide->phase) }
+            }
+    }).succeeded());
+    resources.refreshGraph(
+            graphCommands.editingGraph(),
+            graphCommands.transientChanges());
+    resources.clearCachedSprites();
+    const String editedWaveform = paint();
+    graphCommands.commitTransientEdit();
+
+    REQUIRE(enabledWaveform != editedWaveform);
+    const var state = resources.curveEditorWidget(
+            *document.graph().findNode("env")).automationState();
+    REQUIRE(static_cast<double>(state.getProperty("verticalZoomHeight", {})) < 1.0);
 }
 
 std::vector<double> irEditableSamplesAt(
@@ -646,8 +933,9 @@ public:
     void repaintCurveEditorOpenGL() override { events.add("repaint"); }
 
     bool publishCurveState(
-            NodeModelStatePtr,
+            NodeModelStatePtr model,
             const std::vector<NodeParameter>&) override {
+        publications.push_back(std::move(model));
         events.add("publish");
         return true;
     }
@@ -664,6 +952,13 @@ public:
 
     void beginCurveTransaction() override { events.add("begin"); }
     void commitCurveTransaction() override { events.add("commit"); }
+    bool cancelCurveTransaction() override {
+        if (!allowCancel) {
+            return false;
+        }
+        events.add("cancel");
+        return true;
+    }
     void setCurveEditorStatus(const String& message) override { status = message; }
     bool setAudioResource(NodeAudioResourceEdit edit) override {
         appliedResource = std::move(edit);
@@ -680,14 +975,25 @@ public:
     std::optional<NodeAudioResourceSummary> audioResourceSummary() const override {
         return resource;
     }
+    bool showEnvelopeGuideAttachmentMenu(
+            const String& field,
+            Rectangle<int> targetScreenArea) override {
+        guideMenuField = field;
+        guideMenuTarget = targetScreenArea;
+        return true;
+    }
 
     StringArray events;
+    std::vector<NodeModelStatePtr> publications;
     String status;
     String textParameterId;
     String textValue;
+    String guideMenuField;
+    Rectangle<int> guideMenuTarget;
     NodeAudioResourceEdit appliedResource;
     std::optional<NodeAudioResourceSummary> resource;
     bool resourceRemovalSucceeds { true };
+    bool allowCancel {};
     int resourceRemovals {};
 };
 
@@ -796,11 +1102,13 @@ TEST_CASE("Node canvas automation controller routes aliases and owns diagnostics
     REQUIRE(document.graph().findNode(added.nodeId)->kind == NodeKind::WaveSource);
     REQUIRE_FALSE(automation.addNode("unknown", {}).handled);
 
-    const var diagnostics = automation.inspectOpenGLDiagnostics({ true, {} });
+    const var diagnostics = automation.inspectOpenGLDiagnostics({ true, 2, 1, {}, {} });
     const auto* object = diagnostics.getDynamicObject();
     REQUIRE(object != nullptr);
     REQUIRE(object->getProperty("schema").toString() == "cycle-v2-opengl-diagnostics.v1");
     REQUIRE((bool) object->getProperty("canvasOpenGlAttached"));
+    REQUIRE((int) object->getProperty("contextCreateCount") == 2);
+    REQUIRE((int) object->getProperty("contextCloseCount") == 1);
     REQUIRE((int) object->getProperty("panelCount") == 0);
 }
 
@@ -957,6 +1265,24 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     host.appendAutomationState(automation);
     const var state = automation.getProperty("voiceContext");
     REQUIRE(state.getProperty("kind", {}).toString() == "VOICE_CONTEXT");
+    const var pitchTimingGroup = state.getProperty("pitchTimingGroup", {});
+    const var synthesisGroup = state.getProperty("synthesisGroup", {});
+    REQUIRE(pitchTimingGroup.getProperty("label", {}).toString() == "Pitch & timing");
+    REQUIRE(synthesisGroup.getProperty("label", {}).toString() == "Synthesis");
+    const Rectangle<float> pitchTimingBounds = rectangleProperty(
+            pitchTimingGroup, "bounds");
+    const Rectangle<float> synthesisBounds = rectangleProperty(
+            synthesisGroup, "bounds");
+    REQUIRE(pitchTimingBounds.getCentreX()
+            == Catch::Approx(host.component()->getWidth() * 0.5f));
+    REQUIRE(synthesisBounds.getCentreX()
+            == Catch::Approx(pitchTimingBounds.getCentreX()));
+    REQUIRE(pitchTimingBounds.getX() == Catch::Approx(24.f));
+    REQUIRE(synthesisBounds.getX() == Catch::Approx(pitchTimingBounds.getX()));
+    REQUIRE(pitchTimingBounds.getWidth()
+            == Catch::Approx(host.component()->getWidth() - 48.f));
+    REQUIRE(synthesisBounds.getWidth() == Catch::Approx(pitchTimingBounds.getWidth()));
+    REQUIRE(synthesisBounds.getY() > pitchTimingBounds.getBottom());
     REQUIRE(state.getProperty("octave", {}).getProperty("display", {}).toString() == "0");
     REQUIRE(state.getProperty("voiceLength", {}).getProperty("display", {}).toString() == "1 s");
     REQUIRE(state.getProperty("pitch", {}).getProperty("display", {}).toString() == "0 semis");
@@ -978,6 +1304,7 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     REQUIRE(octaveTrack.getX() == Catch::Approx(pitchTrack.getX()));
     REQUIRE(octaveTrack.getWidth() == Catch::Approx(voiceLengthTrack.getWidth()));
     REQUIRE(octaveTrack.getWidth() == Catch::Approx(pitchTrack.getWidth()));
+    REQUIRE(pitchTimingBounds.getBottom() <= octaveTrack.getY());
 
     auto* pitchValue = dynamic_cast<Label*>(host.component()->findChildWithID(
             "voiceContextEditor.pitch.value"));
@@ -993,6 +1320,7 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     auto* oversamplingSelector = host.component()->findChildWithID(
             "voiceContextEditor.oversampling");
     REQUIRE(oversamplingSelector != nullptr);
+    REQUIRE(synthesisBounds.getBottom() <= oversamplingSelector->getY());
     for (const String& factor : { String("1x"), String("2x"), String("4x"), String("8x") }) {
         auto* option = dynamic_cast<TextButton*>(oversamplingSelector->findChildWithID(
                 "voiceContextEditor.oversampling." + factor));
@@ -1297,7 +1625,7 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
             NodeKind::TrilinearMesh,
             "mesh",
             { 240.f, 180.f }));
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
     REQUIRE(graph.assignGuideCurve({
             "guide1",
             "mesh",
@@ -1330,14 +1658,8 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
             "Opened editor: mesh",
             -1
     };
-    state.guideDock.dockBounds = { 0.f, 610.f, 1200.f, 190.f };
-    state.guideDock.guideShelfBounds = { 0.f, 610.f, 600.f, 190.f };
-    state.guideDock.spyShelfBounds = { 600.f, 610.f, 600.f, 190.f };
-    state.guideDock.dividerBounds = { 596.f, 610.f, 8.f, 190.f };
-    state.guideDock.collapseBounds = { 1072.f, 618.f, 116.f, 22.f };
-    state.guideDock.resizeBounds = { 0.f, 610.f, 1200.f, 7.f };
+    state.guideDock.guideShelfBounds = { 0.f, 0.f, 260.f, 800.f };
     state.guideDock.guideMinimizeBounds = { 12.f, 620.f, 18.f, 18.f };
-    state.guideDock.spyMinimizeBounds = { 612.f, 620.f, 18.f, 18.f };
     state.guideDock.addGuideBounds = { 566.f, 618.f, 22.f, 22.f };
     state.guideDock.expandedGuideId = "guide1";
     state.guideDock.guideEditorBounds = { 36.f, 24.f, 1128.f, 562.f };
@@ -1368,13 +1690,12 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     };
 
     REQUIRE(targetWithId("node:mesh") != nullptr);
-    REQUIRE(targetWithId("guideDock") != nullptr);
-    REQUIRE(targetWithId("guideDock.collapse") != nullptr);
-    REQUIRE(targetWithId("guideDock.resize") != nullptr);
-    REQUIRE(targetWithId("guideDock.divider") != nullptr);
+    REQUIRE(targetWithId("guideShelf") != nullptr);
+    REQUIRE(targetWithId("guideDock.collapse") == nullptr);
+    REQUIRE(targetWithId("guideDock.resize") == nullptr);
     REQUIRE(targetWithId("guideShelf.minimize") != nullptr);
     REQUIRE(targetWithId("guideEditor.noise") != nullptr);
-    REQUIRE(targetWithId("spyShelf.minimize") != nullptr);
+    REQUIRE(targetWithId("spyShelf.minimize") == nullptr);
     REQUIRE(targetWithId("guideShelf.add") != nullptr);
     REQUIRE(targetWithId("guide:guide1") != nullptr);
     REQUIRE(targetWithId("guideEditor:guide1") != nullptr);
@@ -1382,7 +1703,9 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     REQUIRE(targetWithId("expanded:mesh.trimeshMorphRail.yellow") != nullptr);
     REQUIRE(targetWithId("expanded:mesh.trimeshVertexParameter.vertex.phase") != nullptr);
     REQUIRE(targetWithId("expanded:mesh.trimeshVertexGuideGain.guideGain.phase") != nullptr);
-    REQUIRE(targetWithId("expanded:mesh.trimeshVertexGuideGain.guideGain.time") == nullptr);
+    REQUIRE(targetWithId("expanded:mesh.trimeshVertexGuideGain.guideGain.time") != nullptr);
+    REQUIRE(targetWithId("expanded:mesh.trimeshVertexGuideGain.guideGain.red") != nullptr);
+    REQUIRE(targetWithId("expanded:mesh.trimeshVertexGuideGain.guideGain.blue") != nullptr);
     const DynamicObject* expandedTarget = targetWithId("expanded:mesh");
     REQUIRE(expandedTarget != nullptr);
     REQUIRE_FALSE((bool) expandedTarget->getProperty("nativeReady"));
@@ -1472,7 +1795,12 @@ TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
     REQUIRE(static_cast<double>(editor.automationState().getProperty("noise", {}))
             == Catch::Approx(0.76562));
     editor.setGuideResource(*stengahGuide);
-    REQUIRE(widget.vertexCountForAutomation() == 55);
+    const auto stengahModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            stengahGuide->model);
+    REQUIRE(stengahModel != nullptr);
+    REQUIRE(stengahModel->flatCurve() != nullptr);
+    REQUIRE(widget.vertexCountForAutomation()
+            == stengahModel->flatCurve()->getMesh().getNumVerts());
     REQUIRE(static_cast<double>(editor.automationState().getProperty("noise", {}))
             == Catch::Approx(0.0025));
 
@@ -2320,6 +2648,265 @@ TEST_CASE("Guide editor presents heatmap state and clears through its semantic a
     REQUIRE_FALSE((bool) widget.automationState().getProperty("heatmapActive", {}));
 }
 
+TEST_CASE("Waveshaper point drag retains the hovered vertex identity",
+        "[cycle-v2][node-editor-host][waveshaper][interaction][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Node node = GraphNodeFactory().createNode(NodeKind::Waveshaper, "waveshaper", {});
+    CurveEditorWidget widget(NodeKind::Waveshaper);
+    Component* panel = widget.prepareExpandedPanelComponent(
+            node, Rectangle<float>(0.f, 0.f, 436.f, 436.f));
+    REQUIRE(panel != nullptr);
+    panel->setBounds(0, 0, 436, 436);
+    panel->addToDesktop(ComponentPeer::windowIsTemporary);
+
+    const auto pointFor = [&](float x, float y) {
+        const var zoom = widget.automationState().getProperty("zoom", {});
+        const float zoomX = zoom.getProperty("x", {});
+        const float zoomY = zoom.getProperty("y", {});
+        const float zoomWidth = zoom.getProperty("w", {});
+        const float zoomHeight = zoom.getProperty("h", {});
+        return Point<float>(
+                panel->getWidth() * (x - zoomX) / zoomWidth,
+                panel->getHeight() * (1.f - (y - zoomY) / zoomHeight));
+    };
+
+    const Point<float> insertion = pointFor(0.5f, 0.32f);
+    panel->mouseDoubleClick(curvePanelMouseEvent(
+            *panel,
+            insertion,
+            ModifierKeys::leftButtonModifier,
+            insertion,
+            false,
+            2));
+    NodeModelStatePtr insertedPublication = widget.prepareModelPublication(
+            node.model->revision());
+    REQUIRE(insertedPublication != nullptr);
+    const auto insertedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            insertedPublication);
+    REQUIRE(insertedModel != nullptr);
+    REQUIRE(insertedModel->flatCurve() != nullptr);
+    REQUIRE(insertedModel->flatCurve()->selectedVertexId().has_value());
+    const CurveVertexId insertedId = *insertedModel->flatCurve()->selectedVertexId();
+    const auto insertedVertices = insertedModel->flatCurve()->getVertices();
+    const auto inserted = std::find_if(
+            insertedVertices.begin(),
+            insertedVertices.end(),
+            [&](const auto& vertex) { return vertex.id == insertedId; });
+    REQUIRE(inserted != insertedVertices.end());
+    const FlatCurveVertex insertedVertex = *inserted;
+
+    node.model = std::move(insertedPublication);
+    auto* editorState = new DynamicObject();
+    editorState->setProperty("selectedVertexId", (int64) insertedId);
+    node.editorState = var(editorState);
+    widget.syncFromNode(node);
+
+    const Point<float> source = pointFor(insertedVertex.x, insertedVertex.y);
+    panel->mouseMove(curvePanelMouseEvent(*panel, source, {}, source, false));
+    const var hovered = widget.automationState().getProperty("currentVertex", {});
+    REQUIRE(static_cast<double>(hovered.getProperty("x", {}))
+            == Catch::Approx(insertedVertex.x));
+    REQUIRE(static_cast<double>(hovered.getProperty("y", {}))
+            == Catch::Approx(insertedVertex.y));
+
+    panel->mouseDown(curvePanelMouseEvent(
+            *panel,
+            source,
+            ModifierKeys::leftButtonModifier,
+            source,
+            false));
+    const Point<float> destination = pointFor(0.66f, 0.48f);
+    for (int step = 1; step <= 6; ++step) {
+        const float amount = (float) step / 6.f;
+        const Point<float> position = source + (destination - source) * amount;
+        panel->mouseDrag(curvePanelMouseEvent(
+                *panel,
+                position,
+                ModifierKeys::leftButtonModifier,
+                source,
+                true));
+    }
+    panel->mouseUp(curvePanelMouseEvent(*panel, destination, {}, source, true));
+
+    const auto movedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            widget.prepareModelPublication(node.model->revision()));
+    REQUIRE(movedModel != nullptr);
+    REQUIRE(movedModel->flatCurve() != nullptr);
+    const auto movedVertices = movedModel->flatCurve()->getVertices();
+    const auto moved = std::find_if(
+            movedVertices.begin(),
+            movedVertices.end(),
+            [&](const auto& vertex) { return vertex.id == insertedId; });
+    REQUIRE(moved != movedVertices.end());
+    REQUIRE(std::abs(moved->x - insertedVertex.x) > 0.02f);
+    for (const auto& before : insertedVertices) {
+        if (before.id == insertedId) {
+            continue;
+        }
+        const auto after = std::find_if(
+                movedVertices.begin(),
+                movedVertices.end(),
+                [&](const auto& vertex) { return vertex.id == before.id; });
+        REQUIRE(after != movedVertices.end());
+        REQUIRE(*after == before);
+    }
+}
+
+TEST_CASE("Hosted Waveshaper movements publish stable point previews before release",
+        "[cycle-v2][node-editor-host][waveshaper][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Node node = GraphNodeFactory().createNode(NodeKind::Waveshaper, "waveshaper", {});
+    const auto original = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
+    REQUIRE(original != nullptr);
+    REQUIRE(original->flatCurve() != nullptr);
+    const FlatCurveVertex point = original->flatCurve()->getVertices()[1];
+
+    CurveEditorWidget widget(NodeKind::Waveshaper);
+    WaveshaperEditorComponent editor(widget);
+    RecordingCurveDelegate delegate;
+    editor.setDelegate(&delegate);
+    editor.setBounds(0, 0, 766, 464);
+    editor.setNode(node);
+    Component* panel = widget.getExpandedPanelComponentIfCreated();
+    REQUIRE(panel != nullptr);
+    panel->addToDesktop(ComponentPeer::windowIsTemporary);
+
+    const var zoom = widget.automationState().getProperty("zoom", {});
+    const auto panelPoint = [&](float x, float y) {
+        return Point<float>(
+                panel->getWidth() * (x - (float) zoom.getProperty("x", {}))
+                        / (float) zoom.getProperty("w", {}),
+                panel->getHeight() * (1.f - (y - (float) zoom.getProperty("y", {}))
+                        / (float) zoom.getProperty("h", {})));
+    };
+    const Point<float> source = panelPoint(point.x, point.y);
+    panel->mouseMove(curvePanelMouseEvent(*panel, source, {}, source, false));
+    panel->mouseDown(curvePanelMouseEvent(
+            *panel, source, ModifierKeys::leftButtonModifier, source, false));
+
+    InteractionComplexityDiagnostics::reset();
+    size_t movementCount {};
+    for (const Point<float> destination : {
+            panelPoint(0.18f, 0.25f), panelPoint(0.22f, 0.33f) }) {
+        panel->mouseDrag(curvePanelMouseEvent(
+                *panel,
+                destination,
+                ModifierKeys::leftButtonModifier,
+                source,
+                true));
+        ++movementCount;
+        REQUIRE(delegate.publications.size() == movementCount);
+        const auto preview = std::dynamic_pointer_cast<const CurveNodeModelState>(
+                delegate.publications.back());
+        REQUIRE(preview != nullptr);
+        REQUIRE(preview->pointPreview().has_value());
+        REQUIRE(preview->pointPreview()->id == point.id);
+        REQUIRE(preview->flatCurve() == original->flatCurve());
+    }
+    REQUIRE(delegate.publications.size() == 2);
+    const auto movementCounts = InteractionComplexityDiagnostics::counts();
+    REQUIRE(movementCounts.meshCopies == 0);
+    REQUIRE(movementCounts.graphCopies == 0);
+    REQUIRE(movementCounts.modelSerializations == 0);
+    REQUIRE(original->flatCurve()->getVertices()[1] == point);
+
+    const Point<float> destination = panelPoint(0.22f, 0.33f);
+    panel->mouseUp(curvePanelMouseEvent(*panel, destination, {}, source, true));
+    REQUIRE(delegate.publications.size() == 3);
+    const auto committed = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            delegate.publications.back());
+    REQUIRE(committed != nullptr);
+    REQUIRE_FALSE(committed->pointPreview().has_value());
+    REQUIRE(committed->flatCurve()->getVertices()[1].id == point.id);
+    REQUIRE(committed->flatCurve()->getVertices()[1].y != point.y);
+
+    delegate.allowCancel = true;
+    const FlatCurveVertex committedPoint = committed->flatCurve()->getVertices()[1];
+    const Point<float> cancelSource = panelPoint(committedPoint.x, committedPoint.y);
+    panel->mouseMove(curvePanelMouseEvent(
+            *panel, cancelSource, {}, cancelSource, false));
+    panel->mouseDown(curvePanelMouseEvent(
+            *panel,
+            cancelSource,
+            ModifierKeys::leftButtonModifier,
+            cancelSource,
+            false));
+    const Point<float> cancelledDestination = panelPoint(0.28f, 0.42f);
+    panel->mouseDrag(curvePanelMouseEvent(
+            *panel,
+            cancelledDestination,
+            ModifierKeys::leftButtonModifier,
+            cancelSource,
+            true));
+    REQUIRE(delegate.publications.size() == 4);
+    REQUIRE(panel->keyPressed(KeyPress(KeyPress::escapeKey)));
+    panel->mouseUp(curvePanelMouseEvent(
+            *panel, cancelledDestination, {}, cancelSource, true));
+    REQUIRE(delegate.publications.size() == 4);
+    REQUIRE(delegate.events.contains("cancel"));
+    REQUIRE(widget.pointPreview().has_value());
+    REQUIRE(widget.pointPreview()->id == committedPoint.id);
+    REQUIRE(widget.pointPreview()->x == Catch::Approx(committedPoint.x));
+    REQUIRE(widget.pointPreview()->y == Catch::Approx(committedPoint.y));
+}
+
+TEST_CASE("Flat curve editors highlight the closest vertex across the panel",
+        "[cycle-v2][node-editor-host][curve][hover][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+
+    const auto verifyHoverHighlight = [](NodeKind kind, const String& nodeId) {
+        Node node = GraphNodeFactory().createNode(kind, nodeId, {});
+        CurveEditorWidget widget(kind);
+        Component* panel = widget.prepareExpandedPanelComponent(
+                node, Rectangle<float>(0.f, 0.f, 436.f, 436.f));
+        REQUIRE(panel != nullptr);
+        panel->setBounds(0, 0, 436, 436);
+        panel->addToDesktop(ComponentPeer::windowIsTemporary);
+
+        const var zoom = widget.automationState().getProperty("zoom", {});
+        const float zoomX = zoom.getProperty("x", {});
+        const float zoomY = zoom.getProperty("y", {});
+        const float zoomWidth = zoom.getProperty("w", {});
+        const float zoomHeight = zoom.getProperty("h", {});
+        const auto panelPoint = [&](float x, float y) {
+            return Point<float>(
+                    panel->getWidth() * (x - zoomX) / zoomWidth,
+                    panel->getHeight() * (1.f - (y - zoomY) / zoomHeight));
+        };
+        const Point<float> vertexPosition = panelPoint(0.5f, 0.35f);
+
+        panel->mouseDoubleClick(curvePanelMouseEvent(
+                *panel,
+                vertexPosition,
+                ModifierKeys::leftButtonModifier,
+                vertexPosition,
+                false,
+                2));
+        const Point<float> distantPointer = panelPoint(0.5f, 0.85f);
+        panel->mouseMove(curvePanelMouseEvent(
+                *panel, distantPointer, {}, distantPointer, false));
+        const var hoverState = widget.automationState();
+        REQUIRE((bool) hoverState.getProperty(
+                "hoverHighlightVisible", false));
+        const var highlightedVertex = hoverState.getProperty("currentVertex", {});
+        const Point<float> highlightedPosition = panelPoint(
+                highlightedVertex.getProperty("x", {}),
+                highlightedVertex.getProperty("y", {}));
+        REQUIRE(highlightedPosition.getDistanceFrom(distantPointer) > 15.f);
+
+        panel->mouseExit(curvePanelMouseEvent(
+                *panel, distantPointer, {}, distantPointer, false));
+        REQUIRE_FALSE((bool) widget.automationState().getProperty(
+                "hoverHighlightVisible", true));
+    };
+
+    verifyHoverHighlight(NodeKind::Waveshaper, "waveshaper");
+    verifyHoverHighlight(NodeKind::ImpulseResponse, "impulse-response");
+}
+
 TEST_CASE("Selected flat curve state binds before its panel host exists",
           "[cycle-v2][node-editor-host][presets][selection]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
@@ -2356,7 +2943,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     GraphEditor graphEditor;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
-    REQUIRE(graphEditor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "env", "purpose", "Purpose", "pitch").succeeded());
     EnvelopeNodeModel envelopeModel;
     for (VertCube* cube : envelopeModel.getMesh().getCubes()) {
@@ -2367,7 +2954,8 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(envelopeModel.synchronizeFromMesh(nullptr));
     REQUIRE(graph.replaceNodeModel(
             "env",
-            CurveNodeModelState::copyOf(envelopeModel, envelopeModel.revision() + 1)));
+            CurveNodeModelState::copyOf(
+                    envelopeModel, 0.5f, 0.5f, envelopeModel.revision() + 1)));
 
     CurveEditorWidget widget(NodeKind::Envelope);
     widget.syncFromNode(*graph.findNode("env"));
@@ -2389,8 +2977,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(state.getProperty("purpose", {}).toString() == "Pitch");
     REQUIRE(state.getProperty("polarity", {}).toString() == "bipolar");
     const auto purposeBounds = rectangleProperty(state, "purposeBounds");
-    const auto purposeLabelBounds = rectangleProperty(
-            state, "purposeGroupLabelBounds");
+    const auto purposeLabelBounds = rectangleProperty(state, "purposeLabelBounds");
     const auto blueMorphBounds = rectangleProperty(state, "blueMorphBounds");
     const auto actionBarBounds = rectangleProperty(state, "actionBarBounds");
     const auto actionRowBounds = rectangleProperty(state, "actionRowBounds");
@@ -2399,9 +2986,10 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(purposeBounds.getWidth() > 0.f);
     REQUIRE(blueMorphBounds.getWidth() > 0.f);
     REQUIRE(actionRowBounds.getWidth() > 0.f);
-    REQUIRE(actionBarBounds.contains(purposeBounds));
+    REQUIRE(purposeBounds.getY() < controlBounds.getY());
+    REQUIRE(purposeLabelBounds.getRight() < purposeBounds.getX());
+    REQUIRE(purposeLabelBounds.getCentreY() == Catch::Approx(purposeBounds.getCentreY()));
     REQUIRE(blueMorphBounds.getBottom() < actionRowBounds.getY());
-    REQUIRE(purposeBounds.getY() == Catch::Approx(actionRowBounds.getY()));
     REQUIRE(actionBarBounds.getX() == Catch::Approx(actionRowBounds.getX()));
     REQUIRE(actionBarBounds.getRight() == Catch::Approx(actionRowBounds.getRight()));
     REQUIRE(controlBounds.getX() - actionBarBounds.getX()
@@ -2409,10 +2997,6 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(actionBarBounds.getRight() - controlBounds.getRight()
             == Catch::Approx(controlBounds.getX()));
     REQUIRE(actionBarBounds.getBottom() == Catch::Approx(panelBounds.getY()));
-    REQUIRE(purposeLabelBounds.getY() - actionBarBounds.getY()
-            == Catch::Approx(4.f));
-    REQUIRE(actionBarBounds.getBottom() - purposeBounds.getBottom()
-            == Catch::Approx(12.f));
     panelState = widget.automationState();
     REQUIRE((bool) panelState.getProperty("bipolar", {}));
     REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
@@ -2489,19 +3073,19 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(modeOptions.getArray()->size() == 4);
     for (const auto& option : *modeOptions.getArray()) {
         const auto optionBounds = rectangleProperty(option, "bounds");
-        const auto iconBounds = rectangleProperty(option, "iconBounds");
-        REQUIRE(optionBounds.getWidth() == Catch::Approx(34.f));
+        const auto labelBounds = rectangleProperty(option, "labelBounds");
+        REQUIRE(optionBounds.getWidth() == Catch::Approx(70.f));
         REQUIRE(optionBounds.getHeight() == Catch::Approx(30.f));
-        REQUIRE(iconBounds.getWidth() == Catch::Approx(24.f));
-        REQUIRE(iconBounds.getHeight() == Catch::Approx(24.f));
-        REQUIRE(iconBounds.getX() - optionBounds.getX() == Catch::Approx(5.f));
-        REQUIRE(iconBounds.getY() - optionBounds.getY() == Catch::Approx(3.f));
+        REQUIRE(labelBounds.getWidth() == Catch::Approx(62.f));
+        REQUIRE(labelBounds.getHeight() == Catch::Approx(26.f));
+        REQUIRE(labelBounds.getX() - optionBounds.getX() == Catch::Approx(4.f));
+        REQUIRE(labelBounds.getY() - optionBounds.getY() == Catch::Approx(2.f));
     }
     REQUIRE(fitBounds.getWidth() >= 28.f);
     REQUIRE(fullBounds.getWidth() == Catch::Approx(fitBounds.getWidth()));
     REQUIRE(fitBounds.getY() >= actionRowBounds.getY());
     REQUIRE(fullBounds.getBottom() <= actionRowBounds.getBottom());
-    REQUIRE(fitBounds.getY() == Catch::Approx(purposeBounds.getY()));
+    REQUIRE(fitBounds.getY() == Catch::Approx(actionRowBounds.getY()));
     const auto markerGroupBounds = rectangleProperty(state, "markerGroupBounds");
     const auto markerLabelBounds = rectangleProperty(
             state, "markerGroupLabelBounds");
@@ -2511,11 +3095,8 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     const auto rangeGroupBounds = rectangleProperty(state, "rangeGroupBounds");
     const auto rangeLabelBounds = rectangleProperty(
             state, "rangeGroupLabelBounds");
-    REQUIRE(purposeBounds.getRight() < markerGroupBounds.getX());
     REQUIRE(markerGroupBounds.getRight() < axisScaleBounds.getX());
     REQUIRE(axisScaleBounds.getRight() < rangeGroupBounds.getX());
-    REQUIRE(markerGroupBounds.getX() - purposeBounds.getRight()
-            == Catch::Approx(28.f));
     REQUIRE(axisScaleBounds.getX() - markerGroupBounds.getRight()
             == Catch::Approx(28.f));
     REQUIRE(rangeGroupBounds.getX() - axisScaleBounds.getRight()
@@ -2523,17 +3104,16 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(actionBarBounds.contains(markerGroupBounds));
     REQUIRE(actionBarBounds.contains(axisScaleBounds));
     REQUIRE(actionBarBounds.contains(rangeGroupBounds));
-    REQUIRE(purposeBounds.getX() - actionBarBounds.getX()
+    REQUIRE(markerGroupBounds.getX() - actionBarBounds.getX()
             == Catch::Approx(actionBarBounds.getRight() - rangeGroupBounds.getRight()));
-    REQUIRE(markerGroupBounds.getY() == Catch::Approx(purposeBounds.getY()));
-    REQUIRE(axisScaleBounds.getY() == Catch::Approx(purposeBounds.getY()));
-    REQUIRE(rangeGroupBounds.getY() == Catch::Approx(purposeBounds.getY()));
-    REQUIRE(markerLabelBounds.getY() == Catch::Approx(purposeLabelBounds.getY()));
-    REQUIRE(axisScaleLabelBounds.getY() == Catch::Approx(purposeLabelBounds.getY()));
-    REQUIRE(rangeLabelBounds.getY() == Catch::Approx(purposeLabelBounds.getY()));
-    REQUIRE(markerGroupBounds.getBottom() == Catch::Approx(purposeBounds.getBottom()));
-    REQUIRE(axisScaleBounds.getBottom() == Catch::Approx(purposeBounds.getBottom()));
-    REQUIRE(rangeGroupBounds.getBottom() == Catch::Approx(purposeBounds.getBottom()));
+    REQUIRE(markerGroupBounds.getY() == Catch::Approx(actionRowBounds.getY()));
+    REQUIRE(axisScaleBounds.getY() == Catch::Approx(actionRowBounds.getY()));
+    REQUIRE(rangeGroupBounds.getY() == Catch::Approx(actionRowBounds.getY()));
+    REQUIRE(markerLabelBounds.getY() == Catch::Approx(axisScaleLabelBounds.getY()));
+    REQUIRE(rangeLabelBounds.getY() == Catch::Approx(axisScaleLabelBounds.getY()));
+    REQUIRE(markerGroupBounds.getBottom() == Catch::Approx(actionRowBounds.getBottom()));
+    REQUIRE(axisScaleBounds.getBottom() == Catch::Approx(actionRowBounds.getBottom()));
+    REQUIRE(rangeGroupBounds.getBottom() == Catch::Approx(actionRowBounds.getBottom()));
     const auto requireActionIconMetrics = [&state](
             const char* controlProperty,
             const char* iconProperty) {
@@ -2565,8 +3145,9 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     }
     const auto parameterRails = state.getProperty("vertexParameterRails", {});
     REQUIRE(parameterRails.isArray());
-    REQUIRE(parameterRails.getArray()->size() >= 3);
-    REQUIRE_FALSE((bool) state.getProperty("guideControlsVisible", true));
+    REQUIRE(parameterRails.getArray()->size() == 6);
+    REQUIRE((bool) state.getProperty("guideControlsVisible", false));
+    REQUIRE(parameterRails.getArray()->getUnchecked(0).getProperty("id", {}) == "guide.time");
     const auto morphLabelBounds = rectangleProperty(state, "morphGroupLabelBounds");
     const auto axisGroupLabelBounds = rectangleProperty(state, "axisGroupLabelBounds");
     const auto linkGroupLabelBounds = rectangleProperty(state, "linkGroupLabelBounds");
@@ -2601,13 +3182,29 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(envelopeModel.selectedCubeId().has_value());
     Node selectedNode = *graph.findNode("env");
     selectedNode.model = CurveNodeModelState::copyOf(
-            envelopeModel, selectedNode.model->revision() + 1);
+            envelopeModel, 0.5f, 0.5f, selectedNode.model->revision() + 1);
     auto* selectedEditorState = new DynamicObject();
     selectedEditorState->setProperty(
             "selectedCubeId", (int64) *envelopeModel.selectedCubeId());
     selectedNode.editorState = var(selectedEditorState);
     editor->setNode(selectedNode);
     const var selectedState = editor->automationState();
+    const auto* guideTargetRails = selectedState.getProperty(
+            "vertexParameterRails", {}).getArray();
+    REQUIRE(guideTargetRails != nullptr);
+    REQUIRE_FALSE(guideTargetRails->isEmpty());
+    const auto guideBounds = rectangleProperty(
+            guideTargetRails->getFirst(), "guideBounds");
+    REQUIRE(guideBounds.getWidth() > 1.f);
+    editor->mouseDown(curvePanelMouseEvent(
+            *editor,
+            guideBounds.getCentre(),
+            ModifierKeys::leftButtonModifier,
+            guideBounds.getCentre(),
+            false));
+    REQUIRE(delegate.guideMenuField.isNotEmpty());
+    REQUIRE(delegate.guideMenuTarget
+            == editor->localAreaToGlobal(guideBounds.toNearestInt()));
     REQUIRE((bool) selectedState.getProperty("loopEnabled", {}));
     REQUIRE((bool) selectedState.getProperty("sustainEnabled", {}));
     REQUIRE(loopMarker->getTooltip().containsIgnoreCase("toggle selected vertex"));
@@ -2633,6 +3230,58 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE((bool) widget.automationState().getProperty("bipolar", {}));
 }
 
+TEST_CASE("Envelope document reload frames the authored vertex bounds",
+        "[cycle-v2][node-editor-host][envelope][zoom]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    GraphNodeFactory factory;
+    Node node = factory.createNode(NodeKind::Envelope, "env", {});
+    CurveEditorWidget widget(NodeKind::Envelope);
+    widget.syncFromNode(node);
+    REQUIRE(widget.prepareExpandedPanelComponent(
+            node, Rectangle<float>(0.f, 0.f, 840.f, 684.f)) != nullptr);
+
+    EnvelopeNodeModel model;
+    const auto& cubes = model.getMesh().getCubes();
+    for (int cubeIndex = 0; cubeIndex < (int) cubes.size(); ++cubeIndex) {
+        for (int vertexIndex = 0; vertexIndex < (int) VertCube::numVerts; ++vertexIndex) {
+            Vertex* vertex = cubes[(size_t) cubeIndex]->getVertex(vertexIndex);
+            vertex->values[Vertex::Phase] = 4.f + 0.1f * cubeIndex;
+            vertex->values[Vertex::Amp] = 0.45f + 0.01f * cubeIndex;
+        }
+    }
+    REQUIRE(model.synchronizeFromMesh(nullptr));
+    node.model = CurveNodeModelState::copyOf(model, 0.5f, 0.5f, model.revision() + 1);
+
+    widget.resetDocumentPresentation();
+    widget.syncFromNode(node);
+    const var zoom = widget.automationState().getProperty("zoom", {});
+    REQUIRE((double) zoom.getProperty("x", {}) > 3.5);
+    REQUIRE((double) zoom.getProperty("w", {}) < 1.0);
+    REQUIRE((double) zoom.getProperty("h", {}) < 0.5);
+}
+
+TEST_CASE("Envelope view retains depth lines without storage-only point markers",
+        "[cycle-v2][node-editor-host][envelope][presentation]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Node node = GraphNodeFactory().createNode(NodeKind::Envelope, "env", {});
+    CurveEditorWidget widget(NodeKind::Envelope);
+    widget.syncFromNode(node);
+    REQUIRE(widget.prepareExpandedPanelComponent(
+            node, Rectangle<float>(0.f, 0.f, 840.f, 684.f)) != nullptr);
+
+    const var state = widget.automationState();
+    const int sourceCount = state.getProperty("colorPointCount", {});
+    const int visibleLineCount = state.getProperty("visibleColorLineCount", {});
+    const int visibleCount = state.getProperty("visibleColorPointCount", {});
+    REQUIRE(sourceCount > 0);
+    REQUIRE(visibleLineCount == sourceCount);
+    REQUIRE(visibleCount == 0);
+    REQUIRE((bool) state.getProperty("redLinked", false));
+    REQUIRE((bool) state.getProperty("blueLinked", false));
+}
+
 TEST_CASE("Envelope preview sync defers selection work until host initialization",
         "[cycle-v2][node-editor-host][envelope][preview][preset]") {
     ScopedJuceInitialiser_GUI juce;
@@ -2644,7 +3293,7 @@ TEST_CASE("Envelope preview sync defers selection work until host initialization
     REQUIRE(selectedCube != nullptr);
     REQUIRE(envelopeModel.synchronizeFromMesh(selectedCube));
     envelope.model = CurveNodeModelState::copyOf(
-            envelopeModel, envelopeModel.revision() + 1);
+            envelopeModel, 0.5f, 0.5f, envelopeModel.revision() + 1);
     auto* editorState = new DynamicObject();
     editorState->setProperty(
             "selectedCubeId", (int64) *envelopeModel.selectedCubeId());
@@ -2661,7 +3310,8 @@ TEST_CASE("Envelope preview sync defers selection work until host initialization
             Rectangle<float>(0.f, 0.f, 640.f, 400.f)) != nullptr);
     const var initializedState = widget.automationState();
     REQUIRE((bool) initializedState.getProperty("hasCurrentCube", {}));
-    REQUIRE((int) initializedState.getProperty("movingVertexCount", 0) > 0);
+    REQUIRE((int) initializedState.getProperty("movingVertexCount", 0) == 4);
+    REQUIRE((int) initializedState.getProperty("physicalMovingVertexCount", 0) == 8);
 }
 
 TEST_CASE("Logarithmic Envelope grid distinguishes major divisions",
@@ -2789,6 +3439,140 @@ TEST_CASE("Node editor command service publishes a curve drag as one transaction
     REQUIRE_FALSE(document.canUndo());
 }
 
+TEST_CASE("Live curve point commit refreshes the graph after local movement",
+        "[cycle-v2][editor][curve][gesture]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Waveshaper, "shape", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    presentation.refreshMode = ProbeRefreshMode::LiveLatest;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner, document, dispatcher, presentation, resources);
+    FlatCurveModel model;
+    REQUIRE(model.replaceVertices({
+            { 1, 0.f, 0.f, 1.f },
+            { 2, 1.f, 0.75f, 1.f }
+    }));
+    model.setPublicationRevision(document.graph().findNode("shape")->model->revision() + 1);
+
+    commands.beginCurveTransaction();
+    REQUIRE(commands.publishCurveState(
+            "shape",
+            CurveNodeModelState::copyOf(model, model.revision()),
+            curveControls(*document.graph().findNode("shape"))));
+    REQUIRE(presentation.scheduledRefreshes == 0);
+    commands.commitCurveTransaction();
+
+    REQUIRE(presentation.localCommits == 1);
+    REQUIRE(presentation.scheduledRefreshes == 1);
+    REQUIRE(document.canUndo());
+}
+
+TEST_CASE("Waveshaper point previews commit once and cancel without undo",
+        "[cycle-v2][node-editor-host][waveshaper][gesture][complexity]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    for (const ProbeRefreshMode mode : {
+            ProbeRefreshMode::LiveLatest,
+            ProbeRefreshMode::OnGestureCommit }) {
+        for (const bool scaled : { false, true }) {
+            CAPTURE((int) mode, scaled);
+            NodeGraph graph;
+            graph.addNode(GraphNodeFactory().createNode(NodeKind::Waveshaper, "shape", {}));
+            if (scaled) {
+                addUnrelatedInteractionState(graph);
+            }
+            GraphDocument document(std::move(graph));
+            GraphCommandDispatcher dispatcher(document);
+            Component owner;
+            RecordingPresentation presentation;
+            presentation.refreshMode = mode;
+            NullResources resources;
+            NodeEditorCommandService commands(
+                    owner, document, dispatcher, presentation, resources);
+            const Node* originalNode = document.graph().findNode("shape");
+            REQUIRE(originalNode != nullptr);
+            const auto original = std::dynamic_pointer_cast<const CurveNodeModelState>(
+                    originalNode->model);
+            REQUIRE(original != nullptr);
+            const FlatCurveVertex point = original->flatCurve()->getVertices()[1];
+            const auto controls = curveControls(*originalNode);
+            const auto originalConfiguration = WaveshaperSignalProcessor::buildConfiguration(
+                    controls, original);
+            REQUIRE(originalConfiguration != nullptr);
+
+            commands.beginCurveTransaction();
+            InteractionComplexityDiagnostics::reset();
+            for (const float y : { 0.25f, 0.35f }) {
+                const FlatCurveVertex moved { point.id, 0.2f, y, point.curve };
+                const auto preview = original->withPointPreview(
+                        moved, original->revision() + 1);
+                REQUIRE(commands.publishCurveState("shape", preview, controls));
+                const auto visible = std::dynamic_pointer_cast<const CurveNodeModelState>(
+                        dispatcher.editingGraph().findNode("shape")->model);
+                REQUIRE(visible != nullptr);
+                REQUIRE(visible->pointPreview() == moved);
+                REQUIRE(document.graph().findNode("shape")->model == original);
+                const auto workerSnapshot = dispatcher.snapshotTransientEditForWorker();
+                REQUIRE(workerSnapshot != nullptr);
+                const auto workerModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
+                        workerSnapshot->findNode("shape")->model);
+                REQUIRE(workerModel != nullptr);
+                REQUIRE(workerModel->pointPreview() == moved);
+            }
+            const auto movementCounts = InteractionComplexityDiagnostics::counts();
+            REQUIRE(movementCounts.graphCopies == 0);
+            REQUIRE(movementCounts.meshCopies == 0);
+            REQUIRE(movementCounts.modelSerializations == 0);
+            REQUIRE(movementCounts.audioSamplesCopied == 0);
+            REQUIRE(movementCounts.nodeLinearScans == 0);
+            REQUIRE(movementCounts.parameterLinearScans == 2);
+            REQUIRE(movementCounts.validationNodeVisits == 0);
+            REQUIRE(movementCounts.validationEdgeVisits == 0);
+            const auto previewConfiguration = WaveshaperSignalProcessor::buildConfiguration(
+                    controls,
+                    dispatcher.editingGraph().findNode("shape")->model);
+            REQUIRE(previewConfiguration != nullptr);
+            REQUIRE(previewConfiguration->transfer->lookup(0.2f)
+                    != Catch::Approx(originalConfiguration->transfer->lookup(0.2f)));
+
+            FlatCurveModel finalCurve;
+            REQUIRE(finalCurve.copyFrom(*original->flatCurve()));
+            REQUIRE(finalCurve.moveVertex(point.id, { 0.2f, 0.35f }).succeeded());
+            const auto finalModel = CurveNodeModelState::copyOf(
+                    finalCurve, original->revision() + 1);
+            REQUIRE(commands.publishCurveState("shape", finalModel, controls));
+            commands.commitCurveTransaction();
+            REQUIRE(document.graph().findNode("shape")->model->equals(*finalModel));
+            REQUIRE(document.canUndo());
+            const NodeGraph loaded = GraphSerializer().fromJsonString(document.toJson());
+            REQUIRE(loaded.findNode("shape") != nullptr);
+            REQUIRE(loaded.findNode("shape")->model->equals(*finalModel));
+            REQUIRE(document.undo());
+            REQUIRE(document.graph().findNode("shape")->model->equals(*original));
+            REQUIRE_FALSE(document.canUndo());
+            REQUIRE(document.redo());
+
+            commands.beginCurveTransaction();
+            const auto committed = std::dynamic_pointer_cast<const CurveNodeModelState>(
+                    document.graph().findNode("shape")->model);
+            REQUIRE(committed != nullptr);
+            const auto cancelled = committed->withPointPreview(
+                    { point.id, 0.3f, 0.45f, point.curve },
+                    finalModel->revision() + 1);
+            REQUIRE(commands.publishCurveState("shape", cancelled, controls));
+            REQUIRE(commands.cancelCurveTransaction());
+            REQUIRE(document.graph().findNode("shape")->model->equals(*finalModel));
+            REQUIRE(document.undo());
+            REQUIRE_FALSE(document.canUndo());
+        }
+    }
+}
+
 TEST_CASE("Node editor resource commands use the atomic dispatcher boundary",
         "[cycle-v2][node-editor-host][audio-resource]") {
     ScopedJuceInitialiser_GUI juce;
@@ -2812,7 +3596,8 @@ TEST_CASE("Node editor resource commands use the atomic dispatcher boundary",
             "direct"
     }));
     REQUIRE(document.graph().findAudioResourceBinding("ir") != nullptr);
-    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(presentation.immediateRefreshes == 0);
+    REQUIRE(presentation.gestureCommits == 1);
     REQUIRE(presentation.rebinds == 1);
 
     REQUIRE(commands.removeNodeAudioResource("ir"));
@@ -2821,42 +3606,107 @@ TEST_CASE("Node editor resource commands use the atomic dispatcher boundary",
     REQUIRE(presentation.rebinds == 2);
 }
 
-TEST_CASE("Node editor command service publishes model edits as one transaction",
-        "[cycle-v2][editor][model]") {
+TEST_CASE("Typed model gestures retain a durable base across updates, commit, and undo",
+        "[cycle-v2][editor][model][causal]") {
+    ScopedJuceInitialiser_GUI juce;
+    for (const auto mode : { ProbeRefreshMode::OnGestureCommit, ProbeRefreshMode::LiveLatest }) {
+        for (const int unrelatedNodes : { 0, 128 }) {
+            CAPTURE(mode, unrelatedNodes);
+            Component owner;
+            NodeGraph graph;
+            GraphNodeFactory factory;
+            Node unison = factory.createNode(NodeKind::Unison, "unison", {});
+            for (auto& parameter : unison.parameters) {
+                if (parameter.id == "mode") {
+                    parameter.value = "individual";
+                }
+            }
+            graph.addNode(std::move(unison));
+            for (int index = 0; index < unrelatedNodes; ++index) {
+                graph.addNode(factory.createNode(NodeKind::Delay, "other" + String(index), {}));
+            }
+            REQUIRE(graph.addAudioResource({
+                    "unrelated", "unrelated.wav", 48000.0,
+                    std::vector<float>((size_t) unrelatedNodes * 128, 0.5f)
+            }));
+            GraphDocument document(std::move(graph));
+            GraphCommandDispatcher dispatcher(document);
+            RecordingPresentation presentation;
+            presentation.refreshMode = mode;
+            NullResources resources;
+            NodeEditorCommandService commands(
+                    owner, document, dispatcher, presentation, resources);
+            const auto initial = document.graph().findNode("unison")->model;
+            const uint64_t durableRevision = document.revision();
+            REQUIRE(commands.beginNodeModelEdit("unison"));
+            InteractionComplexityDiagnostics::reset();
+
+            REQUIRE(commands.publishNodeModel(
+                    "unison", UnisonNodeModelState::create({ { 0.5f, 0.2f, 0.f } }, 2)));
+            REQUIRE(document.revision() == durableRevision);
+            REQUIRE(document.graph().findNode("unison")->model == initial);
+            REQUIRE(commands.publishNodeModel(
+                    "unison", dispatcher.editingGraph().findNode("unison")->model));
+            REQUIRE(presentation.recordedMovements == 1);
+            REQUIRE(commands.publishNodeModel(
+                    "unison", UnisonNodeModelState::create({ { 0.5f, 0.8f, 0.f } }, 2)));
+            REQUIRE(document.graph().findNode("unison")->model == initial);
+            const Node* transient = dispatcher.editingGraph().findNode("unison");
+            const auto transientConfiguration = buildUnisonNodeConfiguration(
+                    transient->parameters, transient->model);
+            REQUIRE(transientConfiguration->layout.voices.front().pan == Catch::Approx(0.8f));
+            commands.endNodeModelEdit();
+
+            REQUIRE(document.revision() == durableRevision + 1);
+            REQUIRE(presentation.recordedMovements == 2);
+            REQUIRE(presentation.gestureCommits == 1);
+            REQUIRE(presentation.scheduledRefreshes == 0);
+            REQUIRE(presentation.immediateRefreshes == 0);
+            REQUIRE_FALSE(dispatcher.hasTransientEdit());
+            const Node* committed = document.graph().findNode("unison");
+            REQUIRE(buildUnisonNodeConfiguration(committed->parameters, committed->model)
+                    ->layout.voices.front().pan == Catch::Approx(0.8f));
+            REQUIRE(document.undo());
+            REQUIRE(document.graph().findNode("unison")->model == initial);
+            REQUIRE_FALSE(document.canUndo());
+            REQUIRE(document.redo());
+            REQUIRE(document.graph().findNode("unison")->model->revision() == 2);
+            const auto counts = InteractionComplexityDiagnostics::counts();
+            REQUIRE(counts.graphCopies == 0);
+            REQUIRE(counts.meshCopies == 0);
+            REQUIRE(counts.audioSamplesCopied == 0);
+            REQUIRE(counts.modelSerializations == 0);
+            REQUIRE(counts.nodeLinearScans == 0);
+        }
+    }
+}
+
+TEST_CASE("Discrete typed model commands use one gesture and reject unrelated publications",
+        "[cycle-v2][editor][model][causal]") {
     ScopedJuceInitialiser_GUI juce;
     Component owner;
     NodeGraph graph;
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::Unison, "unison", {}));
+    GraphNodeFactory factory;
+    graph.addNode(factory.createNode(NodeKind::Unison, "unison", {}));
+    graph.addNode(factory.createNode(NodeKind::Unison, "other", {}));
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher dispatcher(document);
     RecordingPresentation presentation;
     NullResources resources;
-    NodeEditorCommandService commands(
-            owner,
-            document,
-            dispatcher,
-            presentation,
-            resources);
-
-    commands.beginNodeModelEdit();
-    REQUIRE(commands.publishNodeModel(
-            "unison",
-            UnisonNodeModelState::create({ {}, {} }, 2)));
-    REQUIRE(commands.publishNodeModel(
-            "unison",
-            UnisonNodeModelState::create({ {}, {}, {} }, 3)));
-    commands.endNodeModelEdit();
-
-    const auto current = std::dynamic_pointer_cast<const UnisonNodeModelState>(
-            document.graph().findNode("unison")->model);
-    REQUIRE(current != nullptr);
-    REQUIRE(current->voices().size() == 3);
-    REQUIRE(document.canUndo());
+    NodeEditorCommandService commands(owner, document, dispatcher, presentation, resources);
+    REQUIRE(commands.publishNodeModel("unison", UnisonNodeModelState::create({ {}, {} }, 2)));
+    REQUIRE_FALSE(dispatcher.hasTransientEdit());
+    REQUIRE(presentation.gestureCommits == 1);
     REQUIRE(document.undo());
-    const auto restored = std::dynamic_pointer_cast<const UnisonNodeModelState>(
-            document.graph().findNode("unison")->model);
-    REQUIRE(restored != nullptr);
-    REQUIRE(restored->voices().size() == 1);
+    REQUIRE_FALSE(document.canUndo());
+
+    REQUIRE(commands.beginNodeModelEdit("unison"));
+    REQUIRE_FALSE(commands.publishNodeModel("other", UnisonNodeModelState::create({ {}, {} }, 2)));
+    REQUIRE(commands.publishNodeModel("unison", UnisonNodeModelState::create({ {}, {} }, 2)));
+    REQUIRE_FALSE(commands.publishNodeModel("unison", UnisonNodeModelState::create({ {}, {}, {} }, 1)));
+    REQUIRE_FALSE(dispatcher.hasTransientEdit());
+    REQUIRE(document.graph().findNode("unison")->model->revision() == 1);
+    commands.endNodeModelEdit();
     REQUIRE_FALSE(document.canUndo());
 }
 
@@ -2871,7 +3721,7 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
             {}));
     auto editorState = std::make_unique<DynamicObject>();
     editorState->setProperty("selectedVertexId", 2);
-    REQUIRE(GraphEditor().setNodeEditorState(
+    REQUIRE(GraphNodeStateEditor().setNodeEditorState(
             graph, "mesh", var(editorState.release())).succeeded());
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher dispatcher(document);
@@ -2915,6 +3765,55 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0");
 }
 
+TEST_CASE("Rejected Trimesh vertex collision leaves no undoable edit",
+        "[cycle-v2][editor][trimesh][collision]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("collision-test");
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    mesh->destroy();
+    auto editorState = std::make_unique<DynamicObject>();
+    editorState->setProperty("selectedVertexId", 0);
+    node.editorState = var(editorState.release());
+    graph.addNode(std::move(node));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    widget.syncFromNode(*document.graph().findNode("mesh"));
+    resources.activeTrimesh = &widget;
+    NodeEditorCommandService commands(
+            owner, document, dispatcher, presentation, resources);
+    const uint64_t initialRevision = document.graph().findNode("mesh")->model->revision();
+    const float initialPhase = widget.currentMesh().getVerts().front()->values[Vertex::Phase];
+
+    REQUIRE_FALSE(commands.beginTrimeshVertexParameterEdit(
+            "mesh", "vertex.phase", 0.5f));
+    commands.endTrimeshVertexParameterEdit();
+
+    REQUIRE(widget.currentMesh().getVerts().front()->values[Vertex::Phase]
+            == initialPhase);
+    REQUIRE(document.graph().findNode("mesh")->model->revision() == initialRevision);
+    REQUIRE_FALSE(document.canUndo());
+    REQUIRE(presentation.recordedMovements == 0);
+
+    REQUIRE(commands.beginTrimeshVertexParameterEdit(
+            "mesh", "vertex.phase", initialPhase));
+    REQUIRE_FALSE(commands.updateTrimeshVertexParameterEditValue(0.5f));
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(initialPhase + 0.01f));
+    commands.endTrimeshVertexParameterEdit();
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    const auto restored = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            document.graph().findNode("mesh")->model);
+    REQUIRE(restored != nullptr);
+    REQUIRE(restored->mesh().getVerts().front()->values[Vertex::Phase]
+            == initialPhase);
+}
+
 TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one edit",
         "[cycle-v2][editor][trimesh][guide][gain][complexity]") {
     ScopedJuceInitialiser_GUI juce;
@@ -2926,10 +3825,9 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
             "mesh",
             {}));
     addUnrelatedInteractionState(graph);
-    GraphEditor editor;
-    const auto guide = editor.createGuideCurve(graph);
+    const auto guide = GuideGraphEditor().createGuideCurve(graph);
     REQUIRE(guide.succeeded());
-    REQUIRE(editor.assignGuideCurveToTrimeshVertexParameter(
+    REQUIRE(GuideGraphEditor().assignGuideCurveToMeshComponent(
             graph,
             guide.nodeId,
             "mesh",
@@ -2952,9 +3850,11 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
 
     REQUIRE(commands.beginTrimeshVertexParameterEdit(
             "mesh", "guideGain.amp", 0.5f));
+    const uint64_t revisionBeforeMovement = document.revision();
     InteractionComplexityDiagnostics::reset();
     REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.7f));
     REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.8f));
+    REQUIRE(document.revision() == revisionBeforeMovement);
     REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
     REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
     commands.endTrimeshVertexParameterEdit();
@@ -2962,6 +3862,7 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
     REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
     REQUIRE(InteractionComplexityDiagnostics::counts().audioSamplesCopied == 0);
     REQUIRE(InteractionComplexityDiagnostics::counts().assignmentLinearScans == 0);
+    REQUIRE(document.revision() > revisionBeforeMovement);
 
     const Node* committedNode = document.graph().findNode("mesh");
     REQUIRE(committedNode != nullptr);
@@ -2975,8 +3876,9 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
     REQUIRE(prepared.assignmentCount > 0);
     REQUIRE(prepared.mesh->getCubes().front()->guideCurveGainAt(Vertex::Amp)
             == Catch::Approx(0.8f));
-    REQUIRE(presentation.recordedMovements == 3);
-    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(presentation.recordedMovements == 2);
+    REQUIRE(presentation.immediateRefreshes == 0);
+    REQUIRE(presentation.gestureCommits == 1);
     REQUIRE(document.canUndo());
 
     REQUIRE(document.undo());
@@ -2989,6 +3891,79 @@ TEST_CASE("Trimesh guide gain gesture publishes prepared gain and undoes as one 
     REQUIRE(widget.vertexParametersForIndex(0)[4].guideGain
             == Catch::Approx(0.5f));
     REQUIRE_FALSE(document.canUndo());
+
+    REQUIRE(commands.beginTrimeshVertexParameterEdit(
+            "mesh", "guideGain.amp", 0.5f));
+    InteractionComplexityDiagnostics::reset();
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.7f));
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.5f));
+    commands.endTrimeshVertexParameterEdit();
+    REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
+    REQUIRE(presentation.immediateRefreshes == 0);
+    REQUIRE(presentation.gestureCommits == 2);
+    REQUIRE(document.graph().findNode("mesh")->model == restored);
+    REQUIRE(document.canUndo());
+}
+
+TEST_CASE("Trimesh Curve gesture edits every selected cube corner and undoes",
+        "[cycle-v2][editor][trimesh][curve-average]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("curve-average-gesture");
+    VertCube* sourceCube = mesh->getCubes().front();
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        sourceCube->getVertex(index)->values[Vertex::Curve] = index < 4 ? 0.f : 1.f;
+    }
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    auto selectedState = std::make_unique<DynamicObject>();
+    selectedState->setProperty("selectedVertexId", 0);
+    node.editorState = var(selectedState.release());
+    mesh->destroy();
+
+    NodeGraph graph;
+    graph.addNode(std::move(node));
+    addUnrelatedInteractionState(graph);
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    widget.syncFromNode(*document.graph().findNode("mesh"));
+    resources.activeTrimesh = &widget;
+    NodeEditorCommandService commands(
+            owner, document, dispatcher, presentation, resources);
+
+    REQUIRE(commands.beginTrimeshVertexParameterEdit("mesh", "vertex.curve", 0.5f));
+    InteractionComplexityDiagnostics::reset();
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.25f));
+    REQUIRE(commands.updateTrimeshVertexParameterEditValue(0.f));
+    REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        REQUIRE(widget.currentMesh().getCubes().front()
+                ->getVertex(index)->values[Vertex::Curve] == 0.f);
+    }
+    commands.endTrimeshVertexParameterEdit();
+
+    const auto committed = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            document.graph().findNode("mesh")->model);
+    REQUIRE(committed != nullptr);
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        REQUIRE(committed->mesh().getCubes().front()
+                ->getVertex(index)->values[Vertex::Curve] == 0.f);
+    }
+    REQUIRE(presentation.recordedMovements == 2);
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    const auto restored = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            document.graph().findNode("mesh")->model);
+    REQUIRE(restored != nullptr);
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        REQUIRE(restored->mesh().getCubes().front()
+                ->getVertex(index)->values[Vertex::Curve] == (index < 4 ? 0.f : 1.f));
+    }
 }
 
 TEST_CASE("Clicking an open Trimesh Guide selector dismisses its popup",
@@ -3133,7 +4108,7 @@ TEST_CASE("Spectral Trimesh range is visible and edits as one undo transaction",
     REQUIRE(commands.updateNodeParameterEditValue(0.7f));
     commands.endNodeParameterEdit();
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "range") == "0.700000");
-    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(presentation.gestureCommits == 1);
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "range") == "0.5");
 }
@@ -3176,7 +4151,7 @@ TEST_CASE("Time Trimesh gain is visible and edits as one undo transaction",
     REQUIRE(commands.updateNodeParameterEditValue(0.7f));
     commands.endNodeParameterEdit();
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "gain") == "0.700000");
-    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(presentation.gestureCommits == 1);
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "gain") == "0.5");
 }
@@ -3264,9 +4239,29 @@ TEST_CASE("Trimesh signal type and polarity use shared segmented selectors",
     REQUIRE(parameterValueForNode(
             *document.graph().findNode("mesh"),
             "signalType") == "time");
+    auto* phase = dynamic_cast<TextButton*>(typeSelector->findChildWithID(
+            "trimeshEditor.signalType.spectralPhase"));
+    REQUIRE(phase != nullptr);
+    phase->onClick();
+    auto* phaseModeSelector = dynamic_cast<PropertySegmentedSelector*>(
+            host.component()->findChildWithID("trimeshEditor.phaseMode"));
+    REQUIRE(phaseModeSelector != nullptr);
+    REQUIRE(phaseModeSelector->isVisible());
+    REQUIRE(phaseModeSelector->selectedValue() == "absolute");
+    auto* velocity = dynamic_cast<TextButton*>(phaseModeSelector->findChildWithID(
+            "trimeshEditor.phaseMode.velocity"));
+    REQUIRE(velocity != nullptr);
+    velocity->onClick();
+    REQUIRE(parameterValueForNode(
+            *document.graph().findNode("mesh"),
+            "phaseMode") == "velocity");
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(
+            *document.graph().findNode("mesh"),
+            "phaseMode") == "absolute");
 }
 
-TEST_CASE("Live Trimesh morph commits reuse movement refresh",
+TEST_CASE("Live primary Trimesh morph keeps graph previews deferred",
         "[cycle-v2][editor][trimesh][causal]") {
     ScopedJuceInitialiser_GUI juce;
     Component owner;
@@ -3291,8 +4286,45 @@ TEST_CASE("Live Trimesh morph commits reuse movement refresh",
     commands.endTrimeshMorphEdit();
 
     REQUIRE(presentation.recordedMovements == 1);
+    REQUIRE(presentation.gestureDownstreamFeedback == std::vector<bool> { false });
+    REQUIRE(presentation.movementLocalProducts
+            == std::vector<std::optional<UpdateProduct>> { std::nullopt });
     REQUIRE(presentation.immediateRefreshes == 0);
     REQUIRE(presentation.localCommits == 1);
+}
+
+TEST_CASE("Live non-primary Trimesh morph commits one undoable gesture",
+        "[cycle-v2][editor][trimesh][causal]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh, "mesh", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    presentation.refreshMode = ProbeRefreshMode::LiveLatest;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner, document, dispatcher, presentation, resources);
+    const String initialRed = parameterValueForNode(
+            *document.graph().findNode("mesh"), "red");
+
+    REQUIRE(commands.beginTrimeshMorphEdit("mesh", "red", 0.3f));
+    REQUIRE(commands.updateTrimeshMorphEditValue(0.6f));
+    REQUIRE(commands.updateTrimeshMorphEditValue(0.8f));
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "red") == initialRed);
+    commands.endTrimeshMorphEdit();
+
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "red") == "0.800");
+    REQUIRE(presentation.recordedMovements == 3);
+    REQUIRE(presentation.gestureDownstreamFeedback == std::vector<bool> { false });
+    REQUIRE(presentation.movementLocalProducts
+            == std::vector<std::optional<UpdateProduct>>(3, std::nullopt));
+    REQUIRE(presentation.gestureCommits == 1);
+    REQUIRE(presentation.localCommits == 0);
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "red") == initialRed);
 }
 
 TEST_CASE("Effect parameter drag publishes continuously as one undo transaction",
@@ -3321,8 +4353,11 @@ TEST_CASE("Effect parameter drag publishes continuously as one undo transaction"
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("reverb"), "wet") == "0.4");
     REQUIRE_FALSE(document.canUndo());
-    REQUIRE(presentation.scheduledRefreshes == 0);
+    REQUIRE(presentation.gestureCommits == 1);
     REQUIRE(presentation.recordedMovements == 2);
+    REQUIRE(presentation.movementLocalProducts
+            == std::vector<std::optional<UpdateProduct>>(
+                    2, UpdateProduct::LocalSlice));
     REQUIRE(presentation.rebinds == 0);
     REQUIRE(presentation.transientRebinds == 0);
 }
@@ -3362,7 +4397,7 @@ TEST_CASE("Voice Context hosted pitch gesture commits two updates and one undo",
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("voice"), "pitch") == "0");
     REQUIRE(presentation.recordedMovements == 2);
-    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(presentation.gestureCommits == 1);
 }
 
 TEST_CASE("Voice Context hosted length gesture commits two updates and one undo",
@@ -3409,9 +4444,7 @@ TEST_CASE("Voice Context hosted length gesture commits two updates and one undo"
             *document.graph().findNode("voice"),
             "voiceLength") == String(CycleDsp::voiceLengthUnitValue(1.0f)));
     REQUIRE(presentation.recordedMovements == 2);
-    REQUIRE(presentation.localCommits == 1);
-    REQUIRE(presentation.scheduledRefreshes == 1);
-    REQUIRE(presentation.immediateRefreshes == 0);
+    REQUIRE(presentation.gestureCommits == 1);
 }
 
 TEST_CASE("Unison drag exposes every transient preview before one undoable commit",
@@ -3481,7 +4514,7 @@ TEST_CASE("Trimesh drag keeps movement local and publishes one commit snapshot",
     graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
     auto editorState = std::make_unique<DynamicObject>();
     editorState->setProperty("selectedVertexId", 0);
-    REQUIRE(GraphEditor().setNodeEditorState(
+    REQUIRE(GraphNodeStateEditor().setNodeEditorState(
             graph, "mesh", var(editorState.release())).succeeded());
     addUnrelatedInteractionState(graph);
     GraphDocument document(std::move(graph));
@@ -3534,6 +4567,8 @@ TEST_CASE("Trimesh drag keeps movement local and publishes one commit snapshot",
             "selectedVertexId", -1) == transientSelection);
     REQUIRE(resources.synchronizingTrimeshLookups == 0);
     REQUIRE(presentation.recordedMovements == 2);
+    REQUIRE(presentation.movementLocalProducts
+            == std::vector<std::optional<UpdateProduct>>(2, std::nullopt));
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
 
@@ -3544,6 +4579,42 @@ TEST_CASE("Trimesh drag keeps movement local and publishes one commit snapshot",
             == Catch::Approx(originalAmp));
     REQUIRE((int) document.graph().findNode("mesh")->editorState.getProperty(
             "selectedVertexId", -1) == 0);
+}
+
+TEST_CASE("Trimesh vertex selection rebinds the committed editor state",
+        "[cycle-v2][editor][trimesh][selection]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("SelectionCommand");
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    mesh->destroy();
+    graph.addNode(std::move(node));
+    addUnrelatedInteractionState(graph);
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner, document, dispatcher, presentation, resources);
+
+    InteractionComplexityDiagnostics::reset();
+    REQUIRE(commands.selectTrimeshVertexIndex("mesh", 1));
+    REQUIRE((int) document.graph().findNode("mesh")->editorState.getProperty(
+            "selectedVertexId", -1) == 1);
+    REQUIRE(presentation.rebinds == 0);
+    REQUIRE(presentation.transientRebinds == 1);
+    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().audioSamplesCopied == 0);
+    REQUIRE(commands.selectTrimeshVertexIndex("mesh", 1));
+    REQUIRE(presentation.transientRebinds == 1);
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    REQUIRE((int) document.graph().findNode("mesh")->editorState.getProperty(
+            "selectedVertexId", -1) == -1);
 }
 
 TEST_CASE("Equalizer graph drag publishes frequency and gain as one undo transaction",
@@ -3612,4 +4683,37 @@ TEST_CASE("Effect discrete parameter changes are independently undoable",
 
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("delay"), "enabled") == "1");
+}
+
+TEST_CASE("Envelope enable button commits one undoable edit",
+        "[cycle-v2][editor][envelope][enabled][undo][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    EnvelopeEditorResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+    REQUIRE(host.bind(document.graph().findNode("env"), { 0, 0, 840, 684 }));
+    auto* enabled = dynamic_cast<EffectEnableButton*>(
+            host.component()->findChildWithID("envelopeEditor.enabled"));
+    REQUIRE(enabled != nullptr);
+
+    enabled->setToggleState(false, sendNotificationSync);
+
+    REQUIRE(parameterValueForNode(*document.graph().findNode("env"), "enabled") == "0");
+    REQUIRE(presentation.scheduledRefreshes == 1);
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("env"), "enabled") == "1");
+    REQUIRE_FALSE(document.canUndo());
 }

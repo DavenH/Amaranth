@@ -6,17 +6,6 @@
 
 namespace CycleV2 {
 
-enum class PaletteIcon {
-    Context,
-    Transform,
-    Math,
-    Source,
-    Control,
-    Fx,
-    Channel,
-    Count
-};
-
 class NodePalette {
 public:
     struct Entry {
@@ -26,32 +15,39 @@ public:
 
     struct Section {
         const char* title;
-        const char* shortLabel;
-        PaletteIcon icon {};
-        PortDomain domain {};
         const Entry* entries {};
         int entryCount {};
+        uint32 accentColour {};
     };
 
+    void setWorkspaceBounds(Rectangle<float> bounds);
+    void setVisible(bool value);
+    bool isVisible() const { return visible; }
+    Rectangle<float> workspaceBounds() const { return workspace; }
     int sectionCount() const;
     const Section& section(int sectionIndex) const;
 
+    std::vector<std::pair<String, Rectangle<float>>> pointerTargets() const;
     Rectangle<float> railBounds() const;
     Rectangle<float> groupBounds(int sectionIndex) const;
-    Rectangle<float> pulloutBounds(int sectionIndex) const;
     Rectangle<float> entryBounds(int sectionIndex, int entryIndex) const;
-    Rectangle<float> hoverBounds(int sectionIndex) const;
 
     int activeSection() const { return activeSectionIndex; }
+    int activeEntry() const { return activeEntryIndex; }
     int findSectionAt(Point<float> screenPosition) const;
     bool findKindAt(Point<float> screenPosition, NodeKind& kind) const;
     bool updateHover(Point<float> screenPosition);
     bool close();
 
 private:
-    int groupIndexAt(Point<float> screenPosition) const;
+    float tileWidth() const;
+    float tileHeight() const;
+    float groupHeight(int sectionIndex) const;
 
+    Rectangle<float> workspace { 0.f, 0.f, 290.f, 962.f };
+    bool visible { true };
     int activeSectionIndex { -1 };
+    int activeEntryIndex { -1 };
 };
 
 }

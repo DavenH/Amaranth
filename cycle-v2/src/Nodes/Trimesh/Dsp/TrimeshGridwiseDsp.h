@@ -14,6 +14,7 @@ struct TrimeshGridColumn {
 class TrimeshGridwiseDsp {
 public:
     struct RenderCounters {
+        size_t warmupBakeCount {};
         size_t sliceCount {};
         size_t bakeCount {};
     };
@@ -21,6 +22,7 @@ public:
     void setCyclic(bool shouldWrap);
     void setBipolar(bool shouldUseBipolarScaling);
     void setGuideCurveProvider(GuideCurveProvider* provider);
+    void setDeltaOverlay(std::shared_ptr<const TrimeshMeshDeltaOverlay> overlay);
     void setVoiceLifecycleSeed(uint32_t seed);
     void setFrequencyMidiNote(int midiNote);
     void prepareSampling(size_t maximumRowCount);
@@ -30,7 +32,8 @@ public:
             int primaryViewAxis,
             size_t maximumColumnCount,
             size_t maximumRowCount,
-            PortDomain domain);
+            PortDomain domain,
+            bool prewarmColumns = true);
 
     std::vector<TrimeshGridColumn> renderColumns(
             Mesh& mesh,
@@ -41,6 +44,13 @@ public:
             PortDomain domain,
             ChannelLayout channelLayout);
     bool renderColumnsInto(
+            Mesh& mesh,
+            const MorphPosition& center,
+            int primaryViewAxis,
+            size_t columnCount,
+            Buffer<float> destination,
+            PortDomain domain);
+    bool renderPitchColumnsInto(
             Mesh& mesh,
             const MorphPosition& center,
             int primaryViewAxis,

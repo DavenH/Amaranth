@@ -1,0 +1,16 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/old/baroque-flute.cyclegraph" },
+    { "command": "openNodeEditor", "nodeId": "voice", "waitForIdle": true, "idleDelayMs": 200 },
+    { "command": "assertState", "path": "expandedNodeControls.voiceContext.pitchTimingGroup.label", "equals": "Pitch & timing" },
+    { "command": "assertState", "path": "expandedNodeControls.voiceContext.synthesisGroup.label", "equals": "Synthesis" },
+    { "command": "assertState", "path": "expandedNodeControls.voiceContext.pitchTimingGroup.bounds.x", "equals": 24 },
+    { "command": "assertState", "path": "expandedNodeControls.voiceContext.synthesisGroup.bounds.x", "equals": 24 },
+    { "command": "assertState", "path": "expandedNodeControls.voiceContext.pitchTimingGroup.bounds.width", "equals": 472 },
+    { "command": "assertState", "path": "expandedNodeControls.voiceContext.synthesisGroup.bounds.width", "equals": 472 },
+    { "command": "pointer", "event": "click", "targetId": "voiceContextEditor.portamento", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertNodeParameter", "nodeId": "voice", "parameterId": "portamento", "equals": 1 },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

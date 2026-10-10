@@ -1,10 +1,13 @@
 #pragma once
 
+#include <cstddef>
 #include <optional>
 
-#include "Graph/GraphEditor.h"
+#include "Graph/GraphEditTypes.h"
 
 namespace CycleV2 {
+
+struct CableDeletionPlan;
 
 struct NodeParameterDelta {
     juce::String nodeId;
@@ -31,10 +34,44 @@ struct NodeBoundsDelta {
     juce::Rectangle<float> after;
 };
 
+struct SignalProbePositionDelta {
+    juce::String probeId;
+    std::optional<juce::Point<float>> before;
+    std::optional<juce::Point<float>> after;
+};
+
 struct GuideCurveDelta {
     juce::String guideId;
     GuideCurveResource before;
     GuideCurveResource after;
+};
+
+struct IndexedEdgeState {
+    size_t index {};
+    Edge edge;
+};
+
+struct IndexedNodeState {
+    size_t index {};
+    Node node;
+};
+
+struct IndexedProbeState {
+    size_t index {};
+    SignalProbe probe;
+};
+
+struct CableDeletionDelta {
+    std::optional<IndexedNodeState> pan;
+    std::vector<IndexedEdgeState> edges;
+    std::vector<IndexedProbeState> probes;
+};
+
+struct EdgeInputDelta {
+    juce::String nodeId;
+    juce::String portId;
+    std::vector<IndexedEdgeState> before;
+    std::vector<IndexedEdgeState> after;
 };
 
 class GraphDelta {
@@ -49,12 +86,20 @@ private:
     friend class GraphDeltaBuilder;
 
     void apply(NodeGraph& graph, bool forward) const;
+    void applyEdgeInputs(NodeGraph& graph, bool forward) const;
+    static void applyCableDeletion(
+            NodeGraph& graph,
+            const CableDeletionDelta& deletion,
+            bool forward);
 
     std::vector<NodeParameterDelta> parameters;
     std::vector<NodeModelDelta> models;
     std::vector<NodeEditorStateDelta> editorStates;
     std::vector<NodeBoundsDelta> bounds;
+    std::vector<SignalProbePositionDelta> probePositions;
     std::vector<GuideCurveDelta> guides;
+    std::vector<EdgeInputDelta> edgeInputs;
+    std::vector<CableDeletionDelta> cableDeletions;
     GraphChangeSet changes;
 };
 
@@ -67,7 +112,13 @@ public:
     void captureNodeModel(const NodeGraph& graph, const juce::String& nodeId);
     void captureNodeEditorState(const NodeGraph& graph, const juce::String& nodeId);
     void captureNodeBounds(const NodeGraph& graph, const juce::String& nodeId);
+    void captureSignalProbePosition(const NodeGraph& graph, const juce::String& probeId);
     void captureGuideCurve(const NodeGraph& graph, const juce::String& guideId);
+    void captureEdgesToInput(
+            const NodeGraph& graph,
+            const juce::String& nodeId,
+            const juce::String& portId);
+    void captureCableDeletion(const NodeGraph& graph, const CableDeletionPlan& plan);
 
     GraphDelta finish(const NodeGraph& graph, GraphChangeSet changes) const;
     void restore(NodeGraph& graph) const;
@@ -80,7 +131,10 @@ private:
     std::vector<NodeModelDelta> models;
     std::vector<NodeEditorStateDelta> editorStates;
     std::vector<NodeBoundsDelta> bounds;
+    std::vector<SignalProbePositionDelta> probePositions;
     std::vector<GuideCurveDelta> guides;
+    std::vector<EdgeInputDelta> edgeInputs;
+    std::vector<CableDeletionDelta> cableDeletions;
 };
 
 }

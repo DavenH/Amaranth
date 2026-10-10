@@ -1,6 +1,5 @@
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 
-#include <Binary/Gradients.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 
@@ -17,57 +16,9 @@ const Color kPhasePurple(0.70f, 0.52f, 1.0f, 0.84f);
 const Color kPhaseOrange(1.0f, 0.48f, 0.18f, 0.78f);
 const Color kWaveformGrey(0.86f, 0.86f, 0.94f, 0.74f);
 
-Image& blueGradientImage() {
-    static Image image = PNGImageFormat::loadFrom(Gradients::blue_png, Gradients::blue_pngSize);
-    return image;
-}
-
-Image& burntalumGradientImage() {
-    static Image image = PNGImageFormat::loadFrom(Gradients::burntalum_png, Gradients::burntalum_pngSize);
-    return image;
-}
-
-Colour sampleGradient(Image& gradient, float value) {
-    if (!gradient.isValid() || gradient.getWidth() <= 0) {
-        return Colour(0xff53657a);
-    }
-
-    const int x = jlimit(
-            0,
-            gradient.getWidth() - 1,
-            roundToInt(jlimit(0.f, 1.f, value) * (float) (gradient.getWidth() - 1)));
-    return gradient.getPixelAt(x, 0);
-}
-
-Colour phaseSurfaceColour(float value) {
-    const float v = jlimit(0.f, 1.f, value);
-    const Colour negative(0xffff7a3d);
-    const Colour centre(0xff120d18);
-    const Colour positive(0xffb887ff);
-    const Colour colour = v < 0.5f
-            ? negative.interpolatedWith(centre, v * 2.f)
-            : centre.interpolatedWith(positive, (v - 0.5f) * 2.f);
-    return colour.withAlpha(v < 0.2f ? 5.f * v : 1.f);
-}
-
-Image& phaseGradientImage() {
-    static Image image = [] {
-        const int width = burntalumGradientImage().getWidth();
-        Image result(Image::ARGB, width, 1, true);
-        for (int x = 0; x < width; ++x) {
-            result.setPixelAt(
-                    x,
-                    0,
-                    phaseSurfaceColour((float) x / (float) width));
-        }
-        return result;
-    }();
-    return image;
-}
-
 Color positiveCurveColourFor(bool spectral, bool phase) {
     if (phase) {
-        return kPhasePurple;
+        return kPhaseOrange;
     }
 
     if (spectral) {
@@ -79,7 +30,7 @@ Color positiveCurveColourFor(bool spectral, bool phase) {
 
 Color negativeCurveColourFor(bool spectral, bool phase, bool bipolar) {
     if (phase) {
-        return kPhaseOrange;
+        return kPhasePurple;
     }
 
     if (spectral) {
@@ -87,6 +38,38 @@ Color negativeCurveColourFor(bool spectral, bool phase, bool bipolar) {
     }
 
     return kWaveformGrey;
+}
+
+std::vector<float> logarithmicSourceRows(
+        size_t outputRows,
+        size_t sourceRowCount,
+        int midiNote,
+        bool excludeDc) {
+    std::vector<float> sourceRows(outputRows);
+    LogRegionMapping(midiNote).fillSourceUnits(Buffer<float>(
+            sourceRows.data(),
+            (int) sourceRows.size()));
+    const float firstSourceRow = excludeDc ? 1.f : 0.f;
+    Buffer<float>(sourceRows.data(), (int) sourceRows.size())
+            .mul((float) (sourceRowCount - 1) - firstSourceRow)
+            .add(firstSourceRow)
+            .clip(firstSourceRow, (float) (sourceRowCount - 1));
+    return sourceRows;
+}
+
+void resampleLogarithmicColumn(
+        const float* source,
+        float* destination,
+        size_t sourceRowCount,
+        const std::vector<float>& sourceRows) {
+    for (size_t row = 0; row < sourceRows.size(); ++row) {
+        const float position = sourceRows[row];
+        const size_t rowA = (size_t) position;
+        const size_t rowB = std::min(rowA + 1, sourceRowCount - 1);
+        const float amount = position - (float) rowA;
+        destination[row] = source[rowA]
+                + amount * (source[rowB] - source[rowA]);
+    }
 }
 
 std::vector<float> logarithmicRowsToDisplay(
@@ -100,28 +83,50 @@ std::vector<float> logarithmicRowsToDisplay(
     }
 
     std::vector<float> surface(source.size());
-    std::vector<float> sourceRows(rows);
-    LogRegionMapping(midiNote).fillSourceUnits(Buffer<float>(
-            sourceRows.data(),
-            (int) sourceRows.size()));
-    const float firstSourceRow = excludeDc ? 1.f : 0.f;
-    Buffer<float>(sourceRows.data(), (int) sourceRows.size())
-            .mul((float) (rows - 1) - firstSourceRow)
-            .add(firstSourceRow)
-            .clip(firstSourceRow, (float) (rows - 1));
-
+    const std::vector<float> sourceRows = logarithmicSourceRows(
+            rows, rows, midiNote, excludeDc);
     for (size_t column = 0; column < columns; ++column) {
         const size_t columnOffset = column * rows;
-        for (size_t row = 0; row < rows; ++row) {
-            const float position = sourceRows[row];
-            const size_t rowA = (size_t) position;
-            const size_t rowB = std::min(rowA + 1, rows - 1);
-            const float amount = position - (float) rowA;
-            surface[columnOffset + row] = source[columnOffset + rowA]
-                    + amount * (source[columnOffset + rowB] - source[columnOffset + rowA]);
-        }
+        resampleLogarithmicColumn(
+                source.data() + columnOffset,
+                surface.data() + columnOffset,
+                rows,
+                sourceRows);
     }
 
+    return surface;
+}
+
+std::vector<float> pitchColumnsToDisplay(
+        const std::vector<float>& source,
+        size_t columns,
+        size_t rows) {
+    if (columns < 2 || rows < 2 || source.size() < columns * rows) {
+        return source;
+    }
+
+    std::vector<float> surface(source.size());
+    std::vector<float> sourceRows;
+    const Range<int> midiRange(
+            Constants::LowestMidiNote,
+            Constants::HighestMidiNote);
+    int previousNote = -1;
+    size_t harmonicCount = 0;
+    for (size_t column = 0; column < columns; ++column) {
+        const float x = (float) column / (float) (columns - 1);
+        const int note = Arithmetic::getGraphicNoteForValue(x, midiRange);
+        if (note != previousNote) {
+            harmonicCount = (size_t) LogRegionMapping(note).regionSize();
+            sourceRows = logarithmicSourceRows(rows, harmonicCount, note, false);
+            previousNote = note;
+        }
+        const size_t columnOffset = column * rows;
+        resampleLogarithmicColumn(
+                source.data() + columnOffset,
+                surface.data() + columnOffset,
+                harmonicCount,
+                sourceRows);
+    }
     return surface;
 }
 
@@ -294,6 +299,16 @@ std::vector<float> TrimeshRenderProfile::mapTrimeshValuesToDisplay(
     return surface;
 }
 
+std::vector<float> TrimeshRenderProfile::mapPitchColumnsToDisplay(
+        const std::vector<float>& source,
+        size_t columns,
+        size_t rows) const {
+    if (!sliceStyle.isSpectral()) {
+        return source;
+    }
+    return pitchColumnsToDisplay(source, columns, rows);
+}
+
 float TrimeshRenderProfile::displayFrequencyUnit(float sourceUnit, int midiNote) const {
     return LogRegionMapping(midiNote).displayUnitForSourceUnit(sourceUnit);
 }
@@ -306,29 +321,38 @@ void TrimeshRenderProfile::mapValuesToDisplay(Buffer<float> values) const {
 }
 
 Image TrimeshSurfaceStyle::gradientImage() const {
-    if (domain == PortDomain::SpectralPhaseSignal) {
-        return phaseGradientImage();
-    }
-    const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
-            || domain == PortDomain::SpectralPhaseSignal;
-    return spectral ? burntalumGradientImage() : blueGradientImage();
+    return ScalarSurfaceMaterialEvaluator::createGradientImage(surfaceMaterial());
 }
 
 Colour TrimeshSurfaceStyle::colourForValue(float value) const {
-    const float v = jlimit(0.f, 1.f, value);
-    const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
-            || domain == PortDomain::SpectralPhaseSignal;
+    return ScalarSurfaceMaterialEvaluator::colourFor(
+            value,
+            {},
+            surfaceMaterial());
+}
 
+ScalarSurfaceMaterial TrimeshSurfaceStyle::surfaceMaterial() const {
     if (domain == PortDomain::SpectralPhaseSignal) {
-        return phaseSurfaceColour(v);
+        return ScalarSurfaceMaterial::bipolarPhase();
     }
-
-    if (spectral) {
-        const float alpha = jmin(1.f, 25.f * v * v);
-        return sampleGradient(burntalumGradientImage(), v).withAlpha(alpha);
+    if (domain == PortDomain::SpectralMagnitudeSignal) {
+        return scalePolicy == RenderScalePolicy::Bipolar
+                ? ScalarSurfaceMaterial::bipolarMagnitude()
+                : ScalarSurfaceMaterial::unipolarMagnitude();
     }
+    return ScalarSurfaceMaterial::timeDomain();
+}
 
-    return sampleGradient(blueGradientImage(), v).withAlpha(0.82f);
+int TrimeshSurfaceStyle::materialStyleSignature() const {
+    if (domain == PortDomain::TimeSignal) {
+        return ScalarSurfaceMaterial::timeSurfaceStyleIndex(
+                ScalarSurfaceMaterial::timeSurfaceStyle());
+    }
+    if (domain == PortDomain::SpectralMagnitudeSignal
+            && scalePolicy == RenderScalePolicy::Bipolar) {
+        return ScalarSurfaceMaterial::bipolarMagnitudeStyleIndex();
+    }
+    return -1;
 }
 
 TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :
@@ -339,6 +363,7 @@ TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :
     const bool phase = semantic.domain == PortDomain::SpectralPhaseSignal;
 
     surfaceStyle.domain = domain;
+    surfaceStyle.scalePolicy = scalePolicy;
     surfaceStyle.textureUsesAlpha = spectral;
 
     if (phase) {

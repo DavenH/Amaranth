@@ -29,6 +29,25 @@ namespace Rasterization {
                 context(context) {
         }
 
+        static bool hasMorphAxisGuide(const VertCube& cube, int dimension) {
+            return cube.guideCurveAt(dimension) >= 0;
+        }
+
+        template<typename SampleGuide>
+        static float morphAxisOffset(
+                const VertCube& cube,
+                const MorphPosition& morph,
+                int dimension,
+                SampleGuide&& sampleGuide) {
+            if (!hasMorphAxisGuide(cube, dimension)) {
+                return 0.f;
+            }
+
+            const int guideIndex = cube.guideCurveAt(dimension);
+            const float progress = cube.getPortionAlong(dimension, morph);
+            return cube.guideCurveAbsGain(dimension) * sampleGuide(guideIndex, progress);
+        }
+
         void apply(Intercept& intercept, const MorphPosition& morph) const {
             if (intercept.cube == nullptr || context.guideCurveProvider == nullptr || context.reduction == nullptr) {
                 return;
@@ -52,16 +71,15 @@ namespace Rasterization {
                 GuideCurveProvider::NoiseContext& noise,
                 VertCube* cube,
                 int dimension) const {
-            if (cube->guideCurveAt(dimension) < 0) {
-                return;
-            }
-
-            int guideIndex = cube->guideCurveAt(dimension);
-            float progress = cube->getPortionAlong(dimension, morph);
-            applyNoiseOffsets(noise, guideIndex);
-
-            intercept.adjustedX += cube->guideCurveAbsGain(dimension)
-                    * context.guideCurveProvider->getTableValue(guideIndex, progress, noise);
+            intercept.adjustedX += morphAxisOffset(
+                    *cube,
+                    morph,
+                    dimension,
+                    [this, &noise](int guideIndex, float progress) {
+                        applyNoiseOffsets(noise, guideIndex);
+                        return context.guideCurveProvider->getTableValue(
+                                guideIndex, progress, noise);
+                    });
         }
 
         void applyOutputAxisGuides(

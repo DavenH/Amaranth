@@ -1,8 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
+#include "NodeGraphTestAccess.h"
+
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
@@ -44,7 +47,7 @@ std::atomic<size_t> realtimeLockCount {};
 #endif
 
 void setEnvelopePurpose(NodeGraph& graph, const String& nodeId, EnvelopePurpose purpose) {
-    Node* node = graph.findNodeForEditing(nodeId);
+    Node* node = NodeGraphTestAccess::findNodeForEditing(graph, nodeId);
     REQUIRE(node != nullptr);
     for (auto& parameter : node->parameters) {
         if (parameter.id == "purpose") {
@@ -1349,7 +1352,7 @@ TEST_CASE("Logarithmic Envelope applies the Cycle 1 transform to audio and trave
         NodeGraph graph;
         graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
         setEnvelopePurpose(graph, "env", EnvelopePurpose::Volume);
-        Node* envelope = graph.findNodeForEditing("env");
+        Node* envelope = NodeGraphTestAccess::findNodeForEditing(graph, "env");
         REQUIRE(envelope != nullptr);
         for (auto& parameter : envelope->parameters) {
             if (parameter.id == "logarithmic") {
@@ -1511,7 +1514,7 @@ TEST_CASE("Published curve edits change their node and downstream graph output",
         vertex.y = 0.25f;
     }
     REQUIRE(shapeModel.replaceVertices(std::move(flatVertices)));
-    REQUIRE(GraphEditor().replaceNodeModel(
+    REQUIRE(GraphNodeStateEditor().replaceNodeModel(
             graph,
             "shape",
             initialModel->revision(),
@@ -1536,11 +1539,12 @@ TEST_CASE("Published curve edits change their node and downstream graph output",
     }
     REQUIRE(envelopeModel.synchronizeFromMesh(envelopeModel.getMesh().getCubes().front()));
     const auto currentEnvelopeModel = graph.findNode("env")->model;
-    REQUIRE(GraphEditor().replaceNodeModel(
+    REQUIRE(GraphNodeStateEditor().replaceNodeModel(
             graph,
             "env",
             currentEnvelopeModel->revision(),
-            CurveNodeModelState::copyOf(envelopeModel, envelopeModel.revision())).succeeded());
+            CurveNodeModelState::copyOf(
+                    envelopeModel, 0.5f, 0.5f, envelopeModel.revision())).succeeded());
 
     const auto envelopePlan = GraphCompiler().compile(graph);
     REQUIRE(envelopePlan.succeeded());
@@ -1666,7 +1670,7 @@ TEST_CASE("Graph audio execution preparation retains unchanged configuration rev
     executor.prepareExecution(first.plan, spec);
     REQUIRE(executor.preparationCount("shape") == 1);
 
-    REQUIRE(GraphEditor().setNodeParameter(graph, "shape", "pre", "Pre", "0.75").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "shape", "pre", "Pre", "0.75").succeeded());
     const auto changed = compiler.compile(graph);
     REQUIRE(changed.succeeded());
     executor.prepareExecution(changed.plan, spec);
@@ -1681,7 +1685,7 @@ TEST_CASE("Graph audio execution preparation distinguishes keys from restarted r
     REQUIRE(first.succeeded());
 
     NodeGraph changedGraph = firstGraph;
-    REQUIRE(GraphEditor().setNodeParameter(changedGraph, "shape", "pre", "Pre", "0.75").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(changedGraph, "shape", "pre", "Pre", "0.75").succeeded());
     const auto changed = GraphCompiler().compile(changedGraph);
     REQUIRE(changed.succeeded());
     REQUIRE(changed.plan.steps.front().configuration.revision
@@ -2006,9 +2010,9 @@ TEST_CASE("Scratch Envelope drives every attached Trimesh from one prepared traj
     graph.addNode(factory.createNode(NodeKind::GenericProcessor, "consumeB", {}));
     graph.addNode(factory.createNode(NodeKind::GenericProcessor, "consumePeer", {}));
     setEnvelopePurpose(graph, "scratch", EnvelopePurpose::Scratch);
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "fixedYellow", "source", "Source", "constant").succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "fixedYellow", "constant", "Constant", "0.9").succeeded());
 
     auto mesh = TrimeshMeshFactory::createDefaultMesh("ScratchTraversalMesh");
@@ -2019,7 +2023,7 @@ TEST_CASE("Scratch Envelope drives every attached Trimesh from one prepared traj
     mesh->destroy();
 
     for (const String& target : { "attachedA", "attachedB", "unattached" }) {
-        REQUIRE(GraphEditor().setNodeParameter(
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
                 graph, target, "yellow", "Yellow", "0.9").succeeded());
         graph.addEdge({
                 "voice",
@@ -2212,7 +2216,7 @@ TEST_CASE("Voice Context scratch matches direct attachments across spectral bran
 
     NodeGraph inheritedGraph = directGraph;
     inheritedGraph.removeEdgesFromOutput("scratchEnv", "env");
-    Node* voiceNode = inheritedGraph.findNodeForEditing("voice");
+    Node* voiceNode = NodeGraphTestAccess::findNodeForEditing(inheritedGraph, "voice");
     REQUIRE(voiceNode != nullptr);
     NodeDefinitionRegistry::instance().normalize(*voiceNode);
     inheritedGraph.addEdge({
@@ -2446,9 +2450,9 @@ TEST_CASE("Stengah Waveshaper post gain changes stereo traversal and downstream 
     REQUIRE(preset.existsAsFile());
     NodeGraph lowGraph = GraphSerializer().fromJsonString(preset.loadFileAsString());
     NodeGraph highGraph = lowGraph;
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             lowGraph, "waveshaper", "post", "Post", "0").succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             highGraph, "waveshaper", "post", "Post", "1").succeeded());
     const auto lowPlan = GraphCompiler().compile(lowGraph);
     const auto highPlan = GraphCompiler().compile(highGraph);

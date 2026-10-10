@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "id": "factory-basic-lead",
+  "name": "Basic Lead",
+  "tag": "Lead",
+  "tags": [
+    "Lead",
+    "Melody"
+  ],
+  "sequence": {
+    "durationSeconds": 4,
+    "notes": [
+      {
+        "pitch": 60,
+        "velocity": 85,
+        "startSeconds": 0,
+        "durationSeconds": 0.45
+      },
+      {
+        "pitch": 63,
+        "velocity": 97,
+        "startSeconds": 0.5,
+        "durationSeconds": 0.45
+      },
+      {
+        "pitch": 67,
+        "velocity": 110,
+        "startSeconds": 1,
+        "durationSeconds": 0.8
+      },
+      {
+        "pitch": 70,
+        "velocity": 84,
+        "startSeconds": 2,
+        "durationSeconds": 0.45
+      },
+      {
+        "pitch": 72,
+        "velocity": 105,
+        "startSeconds": 2.5,
+        "durationSeconds": 1.2
+      }
+    ],
+    "controls": [
+      {
+        "controller": 1,
+        "value": 18,
+        "timeSeconds": 0
+      },
+      {
+        "controller": 1,
+        "value": 42,
+        "timeSeconds": 1.5
+      },
+      {
+        "controller": 1,
+        "value": 92,
+        "timeSeconds": 3
+      },
+      {
+        "controller": 1,
+        "value": 25,
+        "timeSeconds": 4
+      }
+    ]
+  }
+}

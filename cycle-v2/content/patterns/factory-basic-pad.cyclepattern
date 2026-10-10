@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "id": "factory-basic-pad",
+  "name": "Basic Pad",
+  "tag": "Pad",
+  "tags": [
+    "Pad",
+    "Ambient"
+  ],
+  "sequence": {
+    "durationSeconds": 8,
+    "notes": [
+      {
+        "pitch": 48,
+        "velocity": 78,
+        "startSeconds": 0,
+        "durationSeconds": 3.7
+      },
+      {
+        "pitch": 55,
+        "velocity": 71,
+        "startSeconds": 0,
+        "durationSeconds": 3.7
+      },
+      {
+        "pitch": 62,
+        "velocity": 68,
+        "startSeconds": 0,
+        "durationSeconds": 3.7
+      },
+      {
+        "pitch": 50,
+        "velocity": 82,
+        "startSeconds": 4,
+        "durationSeconds": 3.7
+      },
+      {
+        "pitch": 57,
+        "velocity": 74,
+        "startSeconds": 4,
+        "durationSeconds": 3.7
+      },
+      {
+        "pitch": 64,
+        "velocity": 70,
+        "startSeconds": 4,
+        "durationSeconds": 3.7
+      }
+    ],
+    "controls": [
+      {
+        "controller": 1,
+        "value": 15,
+        "timeSeconds": 0
+      },
+      {
+        "controller": 1,
+        "value": 70,
+        "timeSeconds": 4
+      },
+      {
+        "controller": 1,
+        "value": 25,
+        "timeSeconds": 8
+      }
+    ]
+  }
+}

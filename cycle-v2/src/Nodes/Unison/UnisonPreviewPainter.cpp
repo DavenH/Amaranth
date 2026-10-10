@@ -8,9 +8,9 @@
 namespace CycleV2 {
 
 Colour UnisonPreviewPainter::laserColourForPan(float pan) const {
-    const Colour leftPan { 0xffff9f43 };
+    const Colour leftPan { 0xff709ae0 };
     const Colour centrePan { 0xffc7c7c7 };
-    const Colour rightPan { 0xffa56cff };
+    const Colour rightPan { 0xffd9ad3b };
     const float position = jlimit(0.f, 1.f, pan);
     if (position <= 0.5f) {
         return leftPan.interpolatedWith(centrePan, position * 2.f);
@@ -26,11 +26,14 @@ std::vector<UnisonPreviewPath> UnisonPreviewPainter::makePaths(
     paths.reserve((size_t) configuration->layout.order);
     for (int index = 0; index < configuration->layout.order; ++index) {
         const auto& voice = configuration->layout[index];
+        const auto& pitchValues = index < (int) context.pitchEnvelopeUnitValuesByLane.size()
+                ? context.pitchEnvelopeUnitValuesByLane[(size_t) index]
+                : context.pitchEnvelopeUnitValues;
         paths.push_back({
                 index,
                 voice.detuneCents,
                 voice.pan,
-                context.pitchEnvelopeUnitValues.empty()
+                pitchValues.empty()
                         ? CycleDsp::UnisonCore::phaseSegments(
                                 CycleDsp::UnisonCore::phaseTrajectory(
                                         context.midiNote,
@@ -42,7 +45,7 @@ std::vector<UnisonPreviewPath> UnisonPreviewPainter::makePaths(
                                 voice.detuneCents,
                                 voice.phaseCycles,
                                 context.voiceDurationSeconds,
-                                context.pitchEnvelopeUnitValues)
+                                pitchValues)
         });
     }
     return paths;
@@ -86,10 +89,10 @@ void UnisonPreviewPainter::paint(
             path.startNewSubPath(start);
             path.lineTo(end);
         }
-        graphics.setColour(colour(laser.withAlpha(0.16f)));
-        graphics.strokePath(path, PathStrokeType(jmax(2.8f, 4.f * zoom), PathStrokeType::curved));
-        graphics.setColour(colour(laser.withAlpha(0.94f)));
-        graphics.strokePath(path, PathStrokeType(jmax(1.f, 1.35f * zoom), PathStrokeType::curved));
+        graphics.setColour(colour(laser.withAlpha(0.10f)));
+        graphics.strokePath(path, PathStrokeType(jmax(1.3f, 2.2f * zoom), PathStrokeType::curved));
+        graphics.setColour(colour(laser.withAlpha(0.84f)));
+        graphics.strokePath(path, PathStrokeType(jmax(0.65f, 0.9f * zoom), PathStrokeType::curved));
     }
 
     if (area.getWidth() >= 260.f && area.getHeight() >= 100.f) {

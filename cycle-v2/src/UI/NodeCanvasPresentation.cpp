@@ -11,6 +11,7 @@
 #include "UI/NodeCableRenderer.h"
 #include "UI/NodeCanvasGlRenderer.h"
 #include "UI/EnvelopePurposeIconRenderer.h"
+#include "UI/GraphEndpointNodeRenderer.h"
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodePortLayout.h"
 #include "UI/NodePortGeometry.h"
@@ -20,7 +21,8 @@
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/GraphValidator.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
-#include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
+#include "Nodes/Guide/GuideCurveMeshPreparation.h"
+#include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
 namespace CycleV2 {
@@ -49,6 +51,15 @@ uint64_t unisonContextFingerprint(const UnisonPreviewContext& context) {
         uint32_t valueBits {};
         std::memcpy(&valueBits, &value, sizeof(valueBits));
         fingerprint.add(valueBits);
+    }
+    fingerprint.add(context.pitchEnvelopeUnitValuesByLane.size());
+    for (const auto& lane : context.pitchEnvelopeUnitValuesByLane) {
+        fingerprint.add(lane.size());
+        for (const float value : lane) {
+            uint32_t valueBits {};
+            std::memcpy(&valueBits, &value, sizeof(valueBits));
+            fingerprint.add(valueBits);
+        }
     }
     return fingerprint.value();
 }
@@ -249,11 +260,16 @@ void paintModulationShell(
             corner,
             CanvasChromeMetrics::restingBorderWidth);
     if (selected) {
-        graphics.setColour(Colours::white.withAlpha(0.86f));
+        graphics.setColour(CanvasChromePalette::selectionOutline.withAlpha(0.16f));
+        graphics.drawRoundedRectangle(
+                bounds.expanded(4.f),
+                corner + 4.f,
+                3.f);
+        graphics.setColour(CanvasChromePalette::selectionOutline.withAlpha(0.92f));
         graphics.drawRoundedRectangle(
                 bounds.expanded(2.f),
                 corner + CanvasChromeMetrics::microCornerRadius,
-                CanvasChromeMetrics::focusRingWidth);
+                CanvasChromeMetrics::activeBorderWidth);
     }
 }
 
@@ -405,10 +421,6 @@ const Node* findNode(const NodeGraph& graph, const String& id) {
     return nullptr;
 }
 
-PortDomain edgeDomain(const NodeGraph& graph, const Edge& edge) {
-    return edge.isAttachment() ? edge.domain : GraphValidator().resolvedDomainForEdge(graph, edge);
-}
-
 Rectangle<float> actionButton(Rectangle<float> nodeBounds, float zoom) {
     const float size = 27.f * zoom;
     return Rectangle<float>(size, size).withCentre({
@@ -434,56 +446,6 @@ void paintGlobalProcessingIcon(
             icon.getRight() - 1.5f * zoom);
 }
 
-enum class OperationPortLayout {
-    Side,
-    Uptack,
-    Vertical,
-    Tee
-};
-
-OperationPortLayout operationLayout(const Node& node) {
-    if (node.inputs.size() < 2) {
-        return OperationPortLayout::Side;
-    }
-
-    const PortSide first = node.inputs[0].side;
-    const PortSide second = node.inputs[1].side;
-    if (first == PortSide::Left && second == PortSide::Bottom) {
-        return OperationPortLayout::Tee;
-    }
-    if (first == PortSide::Top && second == PortSide::Bottom) {
-        return OperationPortLayout::Vertical;
-    }
-    if (first == PortSide::Left && second == PortSide::Top) {
-        return OperationPortLayout::Uptack;
-    }
-
-    return OperationPortLayout::Side;
-}
-
-OperationPortLayout nextLayout(OperationPortLayout layout) {
-    switch (layout) {
-        case OperationPortLayout::Side:     return OperationPortLayout::Uptack;
-        case OperationPortLayout::Uptack:   return OperationPortLayout::Vertical;
-        case OperationPortLayout::Vertical: return OperationPortLayout::Tee;
-        case OperationPortLayout::Tee:      return OperationPortLayout::Side;
-    }
-
-    return OperationPortLayout::Side;
-}
-
-PortSide nextOutputSide(const Node& node) {
-    const PortSide side = node.outputs.empty() ? PortSide::Right : node.outputs.front().side;
-    switch (side) {
-        case PortSide::Right:  return PortSide::Bottom;
-        case PortSide::Bottom: return PortSide::Top;
-        case PortSide::Top:    return PortSide::Right;
-        case PortSide::Left:   return PortSide::Right;
-    }
-
-    return PortSide::Right;
-}
-
 void paintActionButton(Graphics& graphics, Rectangle<float> button, float scale) {
     graphics.setColour(CanvasChromePalette::insetBackground.withAlpha(0.78f));
     graphics.fillEllipse(button);
@@ -506,6 +468,10 @@ void paintOperationAction(
     const Point<float> output(icon.getRight(), icon.getCentreY());
 
     switch (layout) {
+        case OperationPortLayout::SideReversed:
+            first = { icon.getX(), icon.getBottom() - icon.getHeight() * 0.30f };
+            second = { icon.getX(), icon.getY() + icon.getHeight() * 0.30f };
+            break;
         case OperationPortLayout::Vertical:
             first = { icon.getCentreX(), icon.getY() };
             second = { icon.getCentreX(), icon.getBottom() };
@@ -525,9 +491,16 @@ void paintOperationAction(
     }
 
     Path path;
-    path.startNewSubPath(first);
-    path.lineTo(icon.getCentre());
-    path.lineTo(second);
+    if (layout == OperationPortLayout::SideReversed) {
+        path.startNewSubPath(first);
+        path.lineTo({ icon.getCentreX(), icon.getY() });
+        path.startNewSubPath(second);
+        path.lineTo({ icon.getCentreX(), icon.getBottom() });
+    } else {
+        path.startNewSubPath(first);
+        path.lineTo(icon.getCentre());
+        path.lineTo(second);
+    }
     path.startNewSubPath(icon.getCentre());
     path.lineTo(output);
     graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.78f));
@@ -615,7 +588,7 @@ NodeCanvasPresentation::NodeCanvasPresentation(
         NodeCanvasPresentationPerformanceObserver* performanceObserverToUse) :
         scene(sceneToUse)
     ,   previewRenderer(previewRendererToUse)
-    ,   signalProbeRail(previewRendererToUse, performanceObserverToUse)
+    ,   signalProbeCanvas(previewRendererToUse, performanceObserverToUse)
     ,   signalProbeDetailView(previewRendererToUse)
     ,   performanceObserver(performanceObserverToUse) {
 }
@@ -623,7 +596,6 @@ NodeCanvasPresentation::NodeCanvasPresentation(
 void NodeCanvasPresentation::paint(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    audioScopes = GraphAudioScopeAnalyzer().analyze(frame.graph);
     {
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
@@ -642,26 +614,25 @@ void NodeCanvasPresentation::paint(
         paintContent(graphics, frame);
     }
 
-    const WorkspaceDockLayout dock = WorkspaceDock::layout(
-            frame.workspaceBounds,
-            {
-                    frame.probeRailState.expanded,
-                    frame.guideShelfState.minimized,
-                    frame.probeRailState.minimized,
-                    frame.probeRailState.expandedHeight,
-                    frame.dockSplitRatio
-            });
+    if (!frame.canvasOcclusion.isEmpty()) {
+        Graphics::ScopedSaveState scrimClip(graphics);
+        graphics.reduceClipRegion(frame.workspaceBounds.toNearestInt());
+        graphics.excludeClipRegion(frame.canvasOcclusion.toNearestInt());
+        graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.70f));
+        graphics.fillRect(frame.workspaceBounds);
+        return;
+    }
+
     {
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::GuideShelf);
-        if (frame.probeRailState.expanded) {
+        if (!frame.guideShelfState.presetBrowserVisible) {
             guideCurveShelf.paint(
                     graphics,
                     frame.graph,
                     frame.workspaceBounds,
-                    frame.probeRailState,
-                    frame.dockSplitRatio,
+                    frame.probeCanvasState,
                     frame.guideShelfState,
                     frame.dockFocus);
         }
@@ -669,32 +640,7 @@ void NodeCanvasPresentation::paint(
     {
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
-                NodeCanvasPresentationStage::SpyRail);
-        signalProbeRail.paintRail(
-                graphics,
-                frame.graph,
-                frame.previewResult,
-                frame.probeRailState.expanded
-                        ? GuideCurveShelf::spyWorkspace(
-                                frame.workspaceBounds,
-                                frame.dockSplitRatio,
-                                frame.guideShelfState.minimized,
-                                frame.probeRailState.minimized)
-                        : frame.workspaceBounds,
-                frame.probeRailState,
-                frame.dockFocus);
-    }
-    {
-        ScopedNodeCanvasPresentationStage measurement(
-                performanceObserver,
                 NodeCanvasPresentationStage::DockAndDetail);
-        WorkspaceDock::paintChrome(
-                graphics,
-                dock,
-                "Curve Guides",
-                "Spies",
-                frame.probeRailState.expanded,
-                frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
         GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
         signalProbeDetailView.paint(
                 graphics,
@@ -726,16 +672,13 @@ void NodeCanvasPresentation::paintContent(
             ScopedNodeCanvasPresentationStage childMeasurement(
                     performanceObserver,
                     NodeCanvasPresentationStage::CableAnnotations);
-            signalProbeRail.paintCableAnnotations(
+            signalProbeCanvas.paintCableAnnotations(
                     graphics,
                     frame.graph,
                     scene.snapshot(),
-                    GuideCurveShelf::spyWorkspace(
-                            frame.workspaceBounds,
-                            frame.dockSplitRatio,
-                            frame.guideShelfState.minimized,
-                            frame.probeRailState.minimized),
-                    frame.probeRailState,
+                    frame.facts,
+                    frame.viewport,
+                    frame.probeCanvasState,
                     frame.viewport.getZoom());
         }
     }
@@ -750,6 +693,17 @@ void NodeCanvasPresentation::paintContent(
                 performanceObserver,
                 NodeCanvasPresentationStage::Nodes);
         paintCachedNodes(graphics, frame);
+        ScopedNodeCanvasPresentationStage spyMeasurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::SpyCanvas);
+        signalProbeCanvas.paintCards(
+                graphics,
+                frame.graph,
+                scene.snapshot(),
+                frame.viewport,
+                frame.snapshot,
+                frame.facts,
+                frame.probeCanvasState);
     }
     {
         ScopedNodeCanvasPresentationStage measurement(
@@ -758,7 +712,7 @@ void NodeCanvasPresentation::paintContent(
         GuideRelationshipPresentation::paintHighlights(graphics, frame);
     }
     paintAreaSelection(graphics, frame);
-    {
+    if (frame.canvasOcclusion.isEmpty()) {
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::Utilities);
@@ -766,7 +720,9 @@ void NodeCanvasPresentation::paintContent(
             ScopedNodeCanvasPresentationStage childMeasurement(
                     performanceObserver,
                     NodeCanvasPresentationStage::MiniMap);
-            paintMiniMap(graphics, frame);
+            if (!frame.guideShelfState.presetBrowserVisible) {
+                paintMiniMap(graphics, frame);
+            }
         }
         {
             ScopedNodeCanvasPresentationStage childMeasurement(
@@ -800,12 +756,17 @@ bool NodeCanvasPresentation::renderOpenGL(
             frame.viewport.getZoom(),
             frame.viewport.getPan());
     renderOpenGLEffectPreviews(frame, scaleFactor);
+    if (!frame.canvasOcclusion.isEmpty()) {
+        return false;
+    }
+    if (frame.guideShelfState.presetBrowserVisible) {
+        return false;
+    }
     const bool guideSnapshotUpdated = guideCurveShelf.renderOpenGL(
             frame.graph,
             frame.workspaceBounds,
             frame.canvasBounds,
-            frame.probeRailState,
-            frame.dockSplitRatio,
+            frame.probeCanvasState,
             frame.guideShelfState,
             scaleFactor);
     if (guideSnapshotUpdated) {
@@ -829,7 +790,7 @@ int NodeCanvasPresentation::visibleGuidePreviewCount(const NodeGraph& graph) con
 
 void NodeCanvasPresentation::clearDocumentCaches() {
     nodeLayerCache.clear();
-    signalProbeRail.clearPreviewCache();
+    signalProbeCanvas.clearPreviewCache();
     guideCurveShelf.resetDocumentPreviews();
 }
 
@@ -878,7 +839,8 @@ void NodeCanvasPresentation::paintEdges(
             frame.graph,
             frame.viewport,
             frame.presentationRevision,
-            frame.documentRevision);
+            frame.documentRevision,
+            &frame.facts.edgeIndex());
 
     if (!frame.nodeDragActive) {
         cableLayerCache.beginFrame(frame.canvasBounds.toNearestInt(), physicalScale);
@@ -897,7 +859,7 @@ void NodeCanvasPresentation::paintEdges(
         const bool invalid = GraphValidator().edgeHasValidationIssue(frame.graph, edge);
         const Colour colour = invalid
                 ? Colour(0xffff5a5f)
-                : colourForDomain(edgeDomain(frame.graph, edge));
+                : colourForDomain(frame.facts.domainForEdge(frame.graph, edge));
         const NodeCableStyle style {
                 colour,
                 invalid,
@@ -1052,8 +1014,10 @@ void NodeCanvasPresentation::paintCachedNodes(
     const Rectangle<float> visibleArea = frame.canvasBounds.expanded(120.f);
     for (const Node& node : frame.graph.getNodes()) {
         const Rectangle<float> nodeBounds = frame.viewport.toScreen(
-                NodeCanvasScene::presentationWorldBounds(frame.graph, node));
-        if (!nodeBounds.intersects(visibleArea)) {
+                NodeCanvasScene::presentationWorldBounds(
+                        frame.graph, node, frame.facts.edgeIndex()));
+        if (!nodeBounds.intersects(visibleArea)
+                || frame.canvasOcclusion.contains(nodeBounds)) {
             continue;
         }
         if (frame.nodeDragActive) {
@@ -1091,7 +1055,8 @@ void NodeCanvasPresentation::paintInlinePanGesture(
     const float zoom = frame.viewport.getZoom();
     const float scale = portScale(zoom);
     const Rectangle<float> nodeBounds = frame.viewport.toScreen(
-            NodeCanvasScene::presentationWorldBounds(frame.graph, *node));
+            NodeCanvasScene::presentationWorldBounds(
+                    frame.graph, *node, frame.facts.edgeIndex()));
     const float pan = jlimit(0.f, 1.f, NodeParameterMap(*node).floatValue("pan", 0.5f));
     const Colour colour = colourForDomain(profileFor(frame, *node).getDomain());
     paintPanGestureArc(graphics, nodeBounds, pan, colour, scale);
@@ -1102,10 +1067,15 @@ void NodeCanvasPresentation::paintCachedNode(
         const NodeCanvasPresentationFrame& frame,
         const Node& node,
         float physicalScale) {
-    const Rectangle<float> logicalBounds = frame.viewport.toScreen(
-            NodeCanvasScene::presentationWorldBounds(frame.graph, node))
+    const Rectangle<float> nodeBounds = frame.viewport.toScreen(
+            NodeCanvasScene::presentationWorldBounds(
+                    frame.graph, node, frame.facts.edgeIndex()));
+    const Rectangle<float> logicalBounds = GraphEndpointNodeRenderer::visualBounds(
+            node.kind, nodeBounds, frame.viewport.getBounds(),
+            frame.viewport.getZoom())
             .expanded(32.f * portScale(frame.viewport.getZoom()));
-    const NodePreviewResult* runtimePreview = previewFor(frame.previewResult, node.id);
+    const NodePreviewResult* runtimePreview = frame.facts.previewFor(
+            frame.snapshot, node.id);
     const NodeCanvasNodeLayerCacheAccess cache = nodeLayerCache.access(
             node,
             logicalBounds,
@@ -1115,6 +1085,9 @@ void NodeCanvasPresentation::paintCachedNode(
             isNodeSelected(frame, node.id),
             physicalScale);
     if (!cache.hit) {
+        const uint64_t tileStartedAt = performanceObserver != nullptr
+                ? performanceObserver->presentationTimestamp()
+                : 0;
         Graphics imageGraphics(*cache.image);
         imageGraphics.addTransform(AffineTransform(
                 physicalScale,
@@ -1124,6 +1097,11 @@ void NodeCanvasPresentation::paintCachedNode(
                 physicalScale,
                 -logicalBounds.getY() * physicalScale));
         paintNode(imageGraphics, frame, node);
+        if (performanceObserver != nullptr) {
+            performanceObserver->nodeTileCompleted(
+                    node.id,
+                    performanceObserver->presentationTimestamp() - tileStartedAt);
+        }
     }
     nodeLayerCache.draw(graphics, cache);
 }
@@ -1141,6 +1119,8 @@ UnisonPreviewContext NodeCanvasPresentation::unisonPreviewContextFor(
     if (directContext != plan.voiceContexts.end()) {
         fallback.voiceDurationSeconds = directContext->voiceDurationSeconds;
         fallback.pitchEnvelopeUnitValues = directContext->pitchEnvelopeUnitValues;
+        fallback.pitchEnvelopeUnitValuesByLane
+                = directContext->pitchEnvelopeUnitValuesByLane;
         return fallback;
     }
     std::vector<const Edge*> attachments;
@@ -1163,18 +1143,10 @@ UnisonPreviewContext NodeCanvasPresentation::unisonPreviewContextFor(
     if (context != plan.voiceContexts.end()) {
         fallback.voiceDurationSeconds = context->voiceDurationSeconds;
         fallback.pitchEnvelopeUnitValues = context->pitchEnvelopeUnitValues;
+        fallback.pitchEnvelopeUnitValuesByLane
+                = context->pitchEnvelopeUnitValuesByLane;
     }
     return fallback;
-}
-
-bool NodeCanvasPresentation::hasGlobalProcessingIndicator(
-        const NodeGraph& graph,
-        const String& nodeId) {
-    if (graph.findNode(nodeId) == nullptr) {
-        return false;
-    }
-    return GraphAudioScopeAnalyzer().analyze(graph).scopeFor(nodeId)
-            == AuthoredAudioScope::Global;
 }
 
 Rectangle<float> NodeCanvasPresentation::globalProcessingIndicatorBounds(
@@ -1200,7 +1172,8 @@ void NodeCanvasPresentation::paintNode(
     const float scale = portScale(zoom);
     const float corner = CanvasChromeMetrics::panelCornerRadius * scale;
     const Rectangle<float> nodeBounds = frame.viewport.toScreen(
-            NodeCanvasScene::presentationWorldBounds(frame.graph, node));
+            NodeCanvasScene::presentationWorldBounds(
+                    frame.graph, node, frame.facts.edgeIndex()));
     if (node.kind == NodeKind::ModulationSource) {
         paintSingleModulationNode(graphics, frame, node, nodeBounds, zoom, scale);
         return;
@@ -1210,7 +1183,11 @@ void NodeCanvasPresentation::paintNode(
         return;
     }
 
-    if (node.kind == NodeKind::SpectralLayer) {
+    if (GraphEndpointNodeRenderer::isConnector(node.kind)) {
+        GraphEndpointNodeRenderer::paintConnector(
+                graphics, node.kind, nodeBounds, frame.viewport.getBounds(),
+                zoom, isNodeSelected(frame, node.id));
+    } else if (node.kind == NodeKind::SpectralLayer) {
         previewRenderer.paint(graphics, {
                 node,
                 nullptr,
@@ -1236,20 +1213,25 @@ void NodeCanvasPresentation::paintNode(
                 CanvasChromeMetrics::restingBorderWidth);
 
         if (isNodeSelected(frame, node.id)) {
-            graphics.setColour(Colours::white.withAlpha(0.86f));
+            graphics.setColour(CanvasChromePalette::selectionOutline.withAlpha(0.16f));
+            graphics.drawRoundedRectangle(
+                    nodeBounds.expanded(4.f),
+                    corner + 4.f,
+                    3.f);
+            graphics.setColour(CanvasChromePalette::selectionOutline.withAlpha(0.92f));
             graphics.drawRoundedRectangle(
                     nodeBounds.expanded(2.f),
                     corner + CanvasChromeMetrics::microCornerRadius,
-                    CanvasChromeMetrics::focusRingWidth);
+                    CanvasChromeMetrics::activeBorderWidth);
         }
 
         const auto& capabilities = NodeViewModuleRegistry::instance()
                 .moduleFor(node.kind).capabilities();
-        const bool hasAction = capabilities.operationLayoutControl
+        const bool hasAction = supportsOperationPortLayout(node)
                 || supportsSinglePortLayout(node)
                 || capabilities.outputSideControl;
         const bool reservesHeaderRight = hasAction || node.kind == NodeKind::Envelope;
-        const bool globalProcessing = audioScopes.scopeFor(node.id)
+        const bool globalProcessing = frame.facts.audioScopeAnalysis().scopeFor(node.id)
                 == AuthoredAudioScope::Global;
         if (globalProcessing) {
             paintGlobalProcessingIcon(
@@ -1263,20 +1245,27 @@ void NodeCanvasPresentation::paintNode(
         const float titleRightReservation = globalProcessing
                 ? (reservesHeaderRight ? 65.f : 24.f)
                 : reservesHeaderRight ? 65.f : 0.f;
+        Rectangle<float> titleBounds = header.reduced(13.f * zoom, 4.f * zoom)
+                .withTrimmedRight(titleRightReservation * zoom);
+        if (node.kind == NodeKind::Output) {
+            const Rectangle<float> speaker = Rectangle<float>(28.f * zoom, 28.f * zoom)
+                    .withCentre({ header.getX() + 27.f * zoom, header.getCentreY() });
+            NodeIconRenderer::paint(graphics, node.kind, speaker, 1.f);
+            titleBounds = titleBounds.withTrimmedLeft(40.f * zoom);
+        }
         graphics.drawText(
                 labelForNodeKind(node.kind),
-                header.reduced(13.f * zoom, 4.f * zoom).withTrimmedRight(
-                        titleRightReservation * zoom),
+                titleBounds,
                 Justification::centredLeft);
         if (node.kind == NodeKind::Envelope) {
             paintEnvelopePurposeIcon(graphics, node, header, zoom);
         }
-        if (capabilities.operationLayoutControl) {
+        if (supportsOperationPortLayout(node)) {
             paintOperationAction(
                     graphics,
                     actionButton(nodeBounds, zoom),
                     scale,
-                    nextLayout(operationLayout(node)));
+                    nextOperationPortLayout(operationPortLayout(node)));
         } else if (supportsSinglePortLayout(node)) {
             paintSinglePortAction(
                     graphics,
@@ -1288,7 +1277,7 @@ void NodeCanvasPresentation::paintNode(
                     graphics,
                     actionButton(nodeBounds, zoom),
                     scale,
-                    nextOutputSide(node));
+                    nextOutputPortSide(node));
         }
 
         const Rectangle<float> preview = previewRenderer.boundsFor(node, nodeBounds, zoom);
@@ -1310,21 +1299,22 @@ void NodeCanvasPresentation::paintNode(
         } else {
             previewRenderer.paint(graphics, {
                     node,
-                    previewFor(frame.previewResult, node.id),
+                    frame.facts.previewFor(frame.snapshot, node.id),
                     preview,
                     profileFor(frame, node),
                     zoom,
                     true,
                     node.kind == NodeKind::Unison
                             ? unisonPreviewContextFor(
-                                    frame.compileResult.plan,
+                                    frame.snapshot.compileResult.plan,
                                     node.id,
                                     frame.unisonPreviewContext)
                             : frame.unisonPreviewContext,
                     false,
                     node.kind == NodeKind::Output
                             ? frame.liveOutputMeterLevels
-                            : std::optional<OutputMeterLevels> {}
+                            : std::optional<OutputMeterLevels> {},
+                    &frame.graph
             });
         }
     }
@@ -1381,18 +1371,6 @@ NodePortPresentation NodeCanvasPresentation::portPresentation(
     };
 }
 
-const NodePreviewResult* NodeCanvasPresentation::previewFor(
-        const GraphPreviewResult& previews,
-        const String& nodeId) const {
-    for (const auto& preview : previews.nodes) {
-        if (preview.nodeId == nodeId) {
-            return &preview;
-        }
-    }
-
-    return nullptr;
-}
-
 TrimeshRenderProfile NodeCanvasPresentation::profileFor(
         const NodeCanvasPresentationFrame& frame,
         const Node& node) const {
@@ -1402,10 +1380,8 @@ TrimeshRenderProfile NodeCanvasPresentation::profileFor(
 NodeRenderSemantic NodeCanvasPresentation::renderSemanticFor(
         const NodeCanvasPresentationFrame& frame,
         const Node& node) const {
-    NodeRenderSemantic semantic = GraphRenderSemanticResolver().semanticForNodeOutput(
-            frame.graph,
-            node.id,
-            "out");
+    NodeRenderSemantic semantic = frame.facts.renderSemanticForNodeOutput(
+            frame.graph, node.id, "out");
     if (semantic.domain == PortDomain::ControlSignal && !node.outputs.empty()) {
         semantic.domain = node.outputs.front().domain;
     }
@@ -1424,7 +1400,10 @@ uint64_t NodeCanvasPresentation::renderContextFingerprintFor(
             .add((uint64_t) semantic.scalePolicy)
             .add((uint64_t) semantic.role);
     if (node.kind == NodeKind::TrilinearMesh) {
-        fingerprint.add(TrimeshGuidePreparation::configurationKey(frame.graph, node.id));
+        fingerprint.add(GuideCurveMeshPreparation::configurationKey(frame.graph, node.id));
+        const int styleSignature = TrimeshRenderProfile::fromSemantic(semantic)
+                .getSurfaceStyle().materialStyleSignature();
+        fingerprint.add((uint64_t) (styleSignature + 1));
     }
     if (node.kind == NodeKind::Output && frame.liveOutputMeterLevels.has_value()) {
         uint32_t leftBits {};
@@ -1435,7 +1414,7 @@ uint64_t NodeCanvasPresentation::renderContextFingerprintFor(
     }
     if (node.kind == NodeKind::Unison) {
         fingerprint.add(unisonContextFingerprint(unisonPreviewContextFor(
-                frame.compileResult.plan,
+                frame.snapshot.compileResult.plan,
                 node.id,
                 frame.unisonPreviewContext)));
     } else if (node.kind == NodeKind::VoiceContext) {
@@ -1450,7 +1429,8 @@ void NodeCanvasPresentation::renderOpenGLEffectPreviews(
     const Rectangle<float> visibleArea = frame.canvasBounds.expanded(120.f);
     for (const auto& node : frame.graph.getNodes()) {
         const Rectangle<float> nodeBounds = frame.viewport.toScreen(
-                NodeCanvasScene::presentationWorldBounds(frame.graph, node));
+                NodeCanvasScene::presentationWorldBounds(
+                        frame.graph, node, frame.facts.edgeIndex()));
         if (!nodeBounds.intersects(visibleArea)
                 || (!frame.canvasOcclusion.isEmpty()
                     && frame.canvasOcclusion.intersects(nodeBounds))) {

@@ -38,8 +38,8 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.purposeBounds.y",
-      "op": "greaterThan",
-      "value": 200
+      "op": "lessThan",
+      "value": 50
     },
     {
       "command": "assertState",

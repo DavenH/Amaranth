@@ -1,0 +1,28 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/sitar-pad-2.cyclegraph" },
+    { "command": "assertState", "path": "performance.previewPatternId", "equals": "factory-basic-pad" },
+    { "command": "assertState", "path": "performance.previewSequenceNoteCount", "equals": 6 },
+    { "command": "pointer", "targetId": "workspace.sidebar.curves", "event": "click" },
+    { "command": "pointer", "targetId": "guide:guide1", "event": "move" },
+    { "command": "assertState", "path": "guideDock.hoveredGuideId", "equals": "guide1" },
+    { "command": "pointer", "targetId": "workspace.sidebar.patterns", "event": "click" },
+    { "command": "assertState", "path": "guideDock.hoveredGuideId", "equals": "" },
+    { "command": "waitForIdle", "idleDelayMs": 100 },
+    { "command": "pointer", "targetId": "workspace.sidebar.pattern.factory-basic-bass", "event": "move" },
+    { "command": "assertState", "path": "guideDock.hoveredGuideId", "equals": "" },
+    { "command": "pointer", "targetId": "workspace.sidebar.presets", "event": "click" },
+    { "command": "pointer", "targetId": "workspace.sidebar.search", "event": "move" },
+    { "command": "assertState", "path": "guideDock.hoveredGuideId", "equals": "" },
+    { "command": "pointer", "targetId": "workspace.sidebar.patterns", "event": "click" },
+    { "command": "pointer", "targetId": "workspace.sidebar.pattern.factory-basic-keys", "event": "click" },
+    { "command": "assertState", "path": "performance.previewPatternId", "equals": "factory-basic-keys" },
+    { "command": "assertState", "path": "performance.previewSequenceNoteCount", "equals": 6 },
+    { "command": "saveGraph", "path": "/private/tmp/cycle-v2-pattern-assigned.cyclegraph" },
+    { "command": "openGraph", "path": "/private/tmp/cycle-v2-pattern-assigned.cyclegraph" },
+    { "command": "assertState", "path": "performance.previewPatternId", "equals": "factory-basic-keys" },
+    { "command": "inspectTargets" },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-pattern-sidebar.png" }
+  ],
+  "quit": true
+}

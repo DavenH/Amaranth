@@ -1,13 +1,11 @@
 #include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
 
-#include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
-#include "Nodes/Trimesh/Dsp/TrimeshGridwiseDsp.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
-#include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
+#include "Nodes/Trimesh/Model/TrimeshVertexEditCore.h"
 
 #include "Graph/NodeParameterMap.h"
 
-#include <Array/Buffer.h>
+#include <Curve/Mesh/CollisionDetector.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
 #include <Curve/Mesh/VertCube.h>
@@ -96,11 +94,15 @@ bool TrimeshNodeModel::syncFromNode(
     const int nextSelectedVertexIndex = (int) node.editorState.getProperty(
             "selectedVertexId", -1);
 
-    if (nextMorph.time.getTargetValue() != morph.time.getTargetValue()
-            || nextMorph.red.getTargetValue() != morph.red.getTargetValue()
-            || nextMorph.blue.getTargetValue() != morph.blue.getTargetValue()) {
+    const bool yellowChanged = nextMorph.time.getTargetValue() != morph.time.getTargetValue();
+    const bool redChanged = nextMorph.red.getTargetValue() != morph.red.getTargetValue();
+    const bool blueChanged = nextMorph.blue.getTargetValue() != morph.blue.getTargetValue();
+    if (yellowChanged || redChanged || blueChanged) {
         morph = nextMorph;
-        bumpMorphRevision();
+        const bool affectsSurface = (nextPrimaryAxis != Vertex::Time && yellowChanged)
+                || (nextPrimaryAxis != Vertex::Red && redChanged)
+                || (nextPrimaryAxis != Vertex::Blue && blueChanged);
+        bumpMorphRevision(affectsSurface);
     }
 
     if (nextPrimaryAxis != primaryViewAxis) {
@@ -143,92 +145,6 @@ bool TrimeshNodeModel::applyPreparedGuides(
     return meshReplaced;
 }
 
-TrimeshRenderData TrimeshNodeModel::renderGrid(
-        int rows,
-        int columns,
-        PortDomain domain,
-        int midiNote) {
-    return renderGrid(
-            rows,
-            columns,
-            TrimeshRenderProfile::fromDomain(domain),
-            midiNote);
-}
-
-TrimeshRenderData TrimeshNodeModel::renderGrid(
-        int rows,
-        int columns,
-        const TrimeshRenderProfile& renderProfile,
-        int midiNote) {
-    rows = jmax(2, rows);
-    columns = jmax(2, columns);
-    const PortDomain domain = renderProfile.getDomain();
-    const bool cyclic = domain == PortDomain::TimeSignal;
-
-    TrimeshRenderData result;
-    result.domain = domain;
-    result.rows = rows;
-    result.columns = columns;
-    result.cyclic = cyclic;
-
-    TrimeshBlockwiseDsp blockwiseDsp;
-    SignalPayload slice;
-    blockwiseDsp.setGuideCurveProvider(guideCurveProvider.get());
-    blockwiseDsp.setMesh(&mesh());
-    blockwiseDsp.setMorphPosition(morph);
-    blockwiseDsp.setPrimaryViewAxis(primaryViewAxis);
-    blockwiseDsp.setCyclic(cyclic);
-    blockwiseDsp.setFrequencyMidiNote(midiNote);
-    blockwiseDsp.renderCycle((size_t) rows, domain, ChannelLayout::LinkedStereo, slice);
-    if (domain == PortDomain::SpectralMagnitudeSignal
-            || domain == PortDomain::SpectralPhaseSignal) {
-        const std::vector<float> rawSlice(
-                slice.block.samples.begin(),
-                slice.block.samples.end());
-        result.slice = renderProfile.mapGridToDisplay(
-                rawSlice,
-                1,
-                (size_t) rows,
-                midiNote);
-    } else {
-        renderProfile.mapValuesToDisplay(Buffer<float>(
-                slice.block.samples.data(),
-                (int) slice.block.samples.size()));
-        result.slice.assign(slice.block.samples.begin(), slice.block.samples.end());
-    }
-
-    TrimeshGridwiseDsp gridwiseDsp;
-    gridwiseDsp.setCyclic(cyclic);
-    gridwiseDsp.setGuideCurveProvider(guideCurveProvider.get());
-    gridwiseDsp.setFrequencyMidiNote(midiNote);
-    const auto gridColumns = gridwiseDsp.renderColumns(
-            mesh(),
-            morph,
-            primaryViewAxis,
-            (size_t) columns,
-            (size_t) rows,
-            domain,
-            ChannelLayout::LinkedStereo);
-
-    result.surface.reserve((size_t) rows * (size_t) columns);
-
-    for (auto column : gridColumns) {
-        result.surface.insert(
-                result.surface.end(),
-                column.signal.block.samples.begin(),
-                column.signal.block.samples.end());
-    }
-    result.linearFrequencySurface = renderProfile.mapTrimeshValuesToDisplay(
-            result.surface);
-    result.surface = renderProfile.mapGridToDisplay(
-            result.surface,
-            (size_t) columns,
-            (size_t) rows,
-            midiNote);
-
-    return result;
-}
-
 std::vector<TrimeshVertexParameter> TrimeshNodeModel::getVertexParametersForIndex(int vertexIndex) {
     Vertex* selectedVertex = vertexAtIndex(vertexIndex);
 
@@ -263,6 +179,13 @@ std::vector<TrimeshVertexParameter> TrimeshNodeModel::getVertexParametersForInde
 std::vector<TrimeshVertexParameter> TrimeshNodeModel::getSelectedVertexParameters() {
     auto parameters = getVertexParametersForIndex(selectedVertexIndex);
     if (!parameters.empty()) {
+        if (VertCube* cube = cubeForVertex(selectedVertexIndex)) {
+            float sum {};
+            for (int index = 0; index < VertCube::numVerts; ++index) {
+                sum += cube->getVertex(index)->values[Vertex::Curve];
+            }
+            parameters[5].value = sum / (float) VertCube::numVerts;
+        }
         return parameters;
     }
 
@@ -395,8 +318,16 @@ void TrimeshNodeModel::bumpMeshContentRevision() {
             | TrimeshDerivedProduct::SelectedControl);
 }
 
-void TrimeshNodeModel::bumpMorphRevision() {
-    advanceDerivedRevisions(renderProducts);
+void TrimeshNodeModel::bumpMorphRevision(bool affectsSurface) {
+    TrimeshDerivedProduct products = TrimeshDerivedProduct::SliceRasterization
+            | TrimeshDerivedProduct::InterceptsRails;
+    if (affectsSurface) {
+        products = products
+                | TrimeshDerivedProduct::Columns3D
+                | TrimeshDerivedProduct::CompactPreview
+                | TrimeshDerivedProduct::DspPreparation;
+    }
+    advanceDerivedRevisions(products);
 }
 
 void TrimeshNodeModel::bumpPrimaryAxisRevision() {
@@ -494,48 +425,64 @@ bool TrimeshNodeModel::selectVertex(Vertex* vertex) {
 bool TrimeshNodeModel::setVertexParameter(
         int vertexIndex,
         const String& parameterId,
-        float value) {
-    Vertex* vertex = vertexAtIndex(vertexIndex);
-    const int valueIndex = vertexValueIndex(parameterId);
-    if (vertex == nullptr || valueIndex < 0) {
+        float value,
+        CollisionDetector& collisionDetector) {
+    if (parameterId == "vertex.curve") {
+        if (VertCube* cube = cubeForVertex(vertexIndex)) {
+            const auto edit = TrimeshVertexEditCore::prepareCubeCurve(*cube, value);
+            if (!edit.has_value() || !TrimeshVertexEditCore::apply(*cube, *edit)) {
+                return false;
+            }
+            if (edit->changed()) {
+                bumpMeshContentRevision();
+            }
+            return true;
+        }
+    }
+    const auto delta = TrimeshVertexEditCore::prepareVertexValue(
+            mesh(), vertexIndex, parameterId, value);
+    if (!delta.has_value() || !TrimeshVertexEditCore::apply(mesh(), *delta)) {
         return false;
     }
-    const float clampedValue = jlimit(0.f, 1.f, value);
-    if (vertex->values[valueIndex] == clampedValue) {
-        return true;
+    if (delta->changed()
+            && delta->valueIndex != Vertex::Amp
+            && delta->valueIndex != Vertex::Curve) {
+        collisionDetector.setCurrentSelection(&mesh(), vertexAtIndex(vertexIndex));
+        if (!collisionDetector.validate()) {
+            const bool restored = TrimeshVertexEditCore::apply(mesh(), delta->inverse());
+            jassert(restored);
+            return false;
+        }
     }
-    vertex->values[valueIndex] = clampedValue;
-    bumpMeshContentRevision();
+    if (delta->changed()) {
+        bumpMeshContentRevision();
+    }
     return true;
+}
+
+std::optional<std::array<float, 8>> TrimeshNodeModel::cubeCurveValuesForVertex(
+        int vertexIndex) {
+    VertCube* cube = cubeForVertex(vertexIndex);
+    if (cube == nullptr) {
+        return std::nullopt;
+    }
+    std::array<float, 8> values {};
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        values[(size_t) index] = cube->getVertex(index)->values[Vertex::Curve];
+    }
+    return values;
 }
 
 bool TrimeshNodeModel::setVertexGuideGain(
         int vertexIndex,
         const String& parameterId,
         float value) {
-    Vertex* vertex = vertexAtIndex(vertexIndex);
-    const int valueIndex = vertexValueIndex(parameterId);
-    if (vertex == nullptr || valueIndex < 0 || vertex->owners.isEmpty()) {
+    const auto delta = TrimeshVertexEditCore::prepareGuideGain(
+            mesh(), vertexIndex, parameterId, value);
+    if (!delta.has_value() || !TrimeshVertexEditCore::apply(mesh(), *delta)) {
         return false;
     }
-
-    const float targetValue = jlimit(0.f, 1.f, value);
-    const float delta = targetValue - vertexGuideGain(vertexIndex, parameterId);
-    bool changed {};
-    for (auto* owner : vertex->owners) {
-        if (owner != nullptr) {
-            const float nextValue = jlimit(
-                    0.f,
-                    1.f,
-                    owner->guideCurveGainAt(valueIndex) + delta);
-            if (owner->guideCurveGainAt(valueIndex) == nextValue) {
-                continue;
-            }
-            owner->guideCurveGainAt(valueIndex) = nextValue;
-            changed = true;
-        }
-    }
-    if (changed) {
+    if (delta->changed()) {
         bumpMeshContentRevision();
     }
     return true;
@@ -544,44 +491,7 @@ bool TrimeshNodeModel::setVertexGuideGain(
 float TrimeshNodeModel::vertexGuideGain(
         int vertexIndex,
         const String& parameterId) {
-    Vertex* vertex = vertexAtIndex(vertexIndex);
-    const int valueIndex = vertexValueIndex(parameterId);
-    if (vertex == nullptr || valueIndex < 0 || vertex->owners.isEmpty()) {
-        return 0.5f;
-    }
-
-    float sum {};
-    int count {};
-    for (const auto* owner : vertex->owners) {
-        if (owner != nullptr) {
-            sum += owner->guideCurveGainAt(valueIndex);
-            ++count;
-        }
-    }
-    return count > 0 ? sum / (float) count : 0.5f;
-}
-
-int TrimeshNodeModel::vertexValueIndex(const String& parameterId) {
-    const String field = parameterId.fromLastOccurrenceOf(".", false, false);
-    if (field == "time") {
-        return Vertex::Time;
-    }
-    if (field == "red") {
-        return Vertex::Red;
-    }
-    if (field == "blue") {
-        return Vertex::Blue;
-    }
-    if (field == "phase") {
-        return Vertex::Phase;
-    }
-    if (field == "amp") {
-        return Vertex::Amp;
-    }
-    if (field == "curve") {
-        return Vertex::Curve;
-    }
-    return -1;
+    return TrimeshVertexEditCore::guideGain(mesh(), vertexIndex, parameterId);
 }
 
 Vertex* TrimeshNodeModel::vertexAtIndex(int vertexIndex) {
@@ -593,6 +503,12 @@ Vertex* TrimeshNodeModel::vertexAtIndex(int vertexIndex) {
     }
 
     return nullptr;
+}
+
+VertCube* TrimeshNodeModel::cubeForVertex(int vertexIndex) {
+    Vertex* vertex = vertexAtIndex(vertexIndex);
+    return vertex != nullptr && !vertex->owners.isEmpty()
+            ? vertex->owners.getFirst() : nullptr;
 }
 
 void TrimeshNodeModel::clearMesh() {

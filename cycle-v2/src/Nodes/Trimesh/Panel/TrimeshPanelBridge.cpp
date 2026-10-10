@@ -1,10 +1,11 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanelBridge.h"
 
 #include "Graph/NodeParameterMap.h"
-#include "Nodes/Control/ModulationSource.h"
+#include "Nodes/Trimesh/Rendering/TrimeshGuideRailRenderService.h"
 
 #include <App/AppConstants.h>
 #include <Curve/Mesh/Vertex.h>
+#include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 
 namespace CycleV2 {
@@ -32,27 +33,18 @@ String morphParameterForAxis(int axis) {
     return {};
 }
 
-Node presentationNodeFor(
-        const Node& node,
+int panelMidiNoteFor(
+        const NodeParameterMap& parameters,
         int keyScaleAxis,
-        int midiNote) {
-    Node presentationNode = node;
+        int previewMidiNote) {
     const String parameterId = morphParameterForAxis(keyScaleAxis);
     if (parameterId.isEmpty()) {
-        return presentationNode;
+        return previewMidiNote;
     }
 
-    const float position = ModulationSource::normalizeKey(
-            midiNote,
-            Constants::LowestMidiNote,
-            Constants::HighestMidiNote);
-    for (auto& parameter : presentationNode.parameters) {
-        if (parameter.id == parameterId) {
-            parameter.value = String(position, 9);
-            break;
-        }
-    }
-    return presentationNode;
+    return Arithmetic::getGraphicNoteForValue(
+            parameters.floatValue(parameterId, 0.5f),
+            Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote));
 }
 
 }
@@ -61,7 +53,7 @@ TrimeshPanelBridge::TrimeshPanelBridge() :
         interactor2D    (&environment.getRepo(), "CycleV2TrimeshInteractor2D",
                          Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Time, Vertex::Red, Vertex::Blue))
     ,   interactor3D    (&environment.getRepo(), "CycleV2TrimeshInteractor3D")
-    ,   panel2D         (&environment.getRepo())
+    ,   panel2D         (&environment.getRepo(), dataSource)
     ,   panel3D         (&environment.getRepo(), dataSource)
     ,   panelHosts      (panel2D, panel3D, interactor2D, interactor3D) {
 
@@ -114,7 +106,7 @@ bool TrimeshPanelBridge::applyPreparedGuides(PreparedTrimeshGuides guides) {
             lastRows,
             lastColumns,
             renderProfile,
-            previewMidiNote,
+            panelMidiNote,
             previewKeyScaleAxis);
     updateRasterizer(true, true);
     lastSyncedRevision = panelRevisionFor(model);
@@ -138,18 +130,17 @@ void TrimeshPanelBridge::syncFromNode(
     environment.setAxisLinks(yellowLinked, redLinked, blueLinked);
     const bool spectral = renderProfile.getDomain() == PortDomain::SpectralMagnitudeSignal
             || renderProfile.getDomain() == PortDomain::SpectralPhaseSignal;
+    panelMidiNote = panelMidiNoteFor(parameters, previewKeyScaleAxis, previewMidiNote);
+    panel2D.setPreviewMidiNote(panelMidiNote);
+    panel3D.setPreviewMidiNote(panelMidiNote);
 
     const uint64_t previousPanelRevision = panelRevisionFor(model);
     const int previousPrimaryAxis = model.getPrimaryViewAxis();
     const MorphPosition previousMorph = model.getMorphPosition();
 
-    const Node presentationNode = presentationNodeFor(
-            node,
-            previewKeyScaleAxis,
-            previewMidiNote);
     const bool meshReplaced = !meshEditGestureActive
             && model.syncFromNode(
-                    presentationNode,
+                    node,
                     morphEditGestureActive
                             ? TrimeshSelectionSyncPolicy::PreserveCurrent
                             : TrimeshSelectionSyncPolicy::SynchronizeFromNode);
@@ -168,6 +159,8 @@ void TrimeshPanelBridge::syncFromNode(
     lastRedLink = redLinked ? 1 : 0;
     lastBlueLink = blueLinked ? 1 : 0;
     environment.setMorphPosition(model.getMorphPosition(), model.getPrimaryViewAxis());
+    panel2D.setPrimaryMorphPosition(
+            model.getMorphPosition()[model.getPrimaryViewAxis()].getTargetValue());
     syncPrimaryAxisContext();
     const bool pitchSpansColumns = spectral
             && model.getPrimaryViewAxis() == previewKeyScaleAxis;
@@ -176,7 +169,7 @@ void TrimeshPanelBridge::syncFromNode(
         rows = LogRegionMapping(
                 pitchSpansColumns
                         ? Constants::LowestMidiNote
-                        : previewMidiNote).regionSize();
+                        : panelMidiNote).regionSize();
     }
 
     const uint64_t nextPanelRevision = panelRevisionFor(model);
@@ -190,7 +183,7 @@ void TrimeshPanelBridge::syncFromNode(
     const bool renderDomainChanged = lastRenderDomain != renderProfile.getDomain();
     const bool renderScaleChanged = lastRenderScalePolicy != renderProfile.getScalePolicy();
     const bool gridShapeChanged = lastRows != rows || lastColumns != columns;
-    const bool previewPitchChanged = lastPreviewMidiNote != previewMidiNote;
+    const bool previewPitchChanged = lastPanelMidiNote != panelMidiNote;
     const bool keyScaleAxisChanged = lastPreviewKeyScaleAxis != previewKeyScaleAxis;
 
     if (!panelDataChanged
@@ -218,20 +211,28 @@ void TrimeshPanelBridge::syncFromNode(
     change.renderDomainChanged = renderDomainChanged || renderScaleChanged;
 
     const TrimeshInvalidationResult invalidated = invalidation.invalidate(change);
-    dataSource.rebuild(
-            model,
-            rows,
-            columns,
-            renderProfile,
-            previewMidiNote,
-            previewKeyScaleAxis);
+    if (invalidated.rebuildSurfaceData) {
+        dataSource.rebuild(
+                model,
+                rows,
+                columns,
+                renderProfile,
+                panelMidiNote,
+                previewKeyScaleAxis);
+    } else if (invalidated.rebuildSliceData) {
+        dataSource.rebuildSlice(
+                model,
+                rows,
+                renderProfile,
+                panelMidiNote);
+    }
     updateRasterizer(invalidated.refresh2DPanel, invalidated.refresh3DGeometry);
     lastSyncedRevision = nextPanelRevision;
     lastRenderDomain = renderProfile.getDomain();
     lastRenderScalePolicy = renderProfile.getScalePolicy();
     lastRows = rows;
     lastColumns = columns;
-    lastPreviewMidiNote = previewMidiNote;
+    lastPanelMidiNote = panelMidiNote;
     lastPreviewKeyScaleAxis = previewKeyScaleAxis;
 }
 
@@ -300,7 +301,7 @@ void TrimeshPanelBridge::flushPendingMeshEdit(bool gestureComplete) {
                 lastRows,
                 lastColumns,
                 renderProfile,
-                previewMidiNote,
+                panelMidiNote,
                 previewKeyScaleAxis);
     }
 
@@ -387,9 +388,16 @@ void TrimeshPanelBridge::setDisplayDomain(PortDomain domain) {
 
 void TrimeshPanelBridge::setRenderProfile(TrimeshRenderProfile profile) {
     renderProfile = profile;
+    const Range<float> frequencyLimits = profile.getSliceStyle().isSpectral()
+            ? Range<float>(-0.5f, 1.5f)
+            : Range<float>(0.f, 1.f);
+    interactor2D.vertexLimits[Vertex::Phase] = frequencyLimits;
+    interactor3D.vertexLimits[Vertex::Phase] = frequencyLimits;
     updateGuideCurveSeeds();
     panel3D.setRenderProfile(profile);
     panel2D.setRenderProfile(profile);
+    panel3D.configureViewport(frequencyLimits);
+    panel2D.configureViewport(frequencyLimits);
 }
 
 void TrimeshPanelBridge::setPreviewMidiNote(int midiNote) {
@@ -397,7 +405,6 @@ void TrimeshPanelBridge::setPreviewMidiNote(int midiNote) {
             (int) Constants::LowestMidiNote,
             (int) Constants::HighestMidiNote,
             midiNote);
-    panel2D.setPreviewMidiNote(previewMidiNote);
 }
 
 void TrimeshPanelBridge::setPreviewKeyScaleAxis(int axis) {
@@ -417,6 +424,10 @@ void TrimeshPanelBridge::updateGuideCurveSeeds() {
             Rasterization::GuideCurveSeed::visualization(stableSeed));
     panelRasterizer.getRasterizer().setNoiseSeed(
             (int) (stableSeed % GuideCurveProvider::tableSize));
+
+    panel3D.setLineGuideTables(TrimeshGuideRailRenderService::prepareTables(
+            *guideCurveProvider,
+            stableSeed));
 }
 
 void TrimeshPanelBridge::renderPanel3D(Rectangle<float> bounds, float scaleFactor) {

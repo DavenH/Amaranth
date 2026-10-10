@@ -1,0 +1,35 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/organ-3.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "magnitudeLayer3"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:magnitudeLayer3.panel2D",
+      "targetX": 0.8,
+      "targetY": 0.7,
+      "button": "right",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelIntercepts.2.x",
+      "op": "greaterThan",
+      "value": 0.79
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelIntercepts.2.x",
+      "op": "lessThan",
+      "value": 0.81
+    }
+  ],
+  "quit": true
+}

@@ -1,0 +1,60 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/old/accoustic.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "magnitudeLayer1"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "trimeshEditor.polarity.bipolar",
+      "targetX": 0.5,
+      "targetY": 0.5,
+      "waitForIdle": true
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.yellow",
+      "targetX": 0.2,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.yellow",
+      "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.yellow",
+      "targetX": 0.72,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.yellow",
+      "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.yellow",
+      "targetX": 0.72,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "magnitudeLayer1",
+      "parameterId": "polarity",
+      "equals": "bipolar"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

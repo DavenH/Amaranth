@@ -10,6 +10,7 @@ struct UnisonPreviewContext {
     int midiNote { 60 };
     double voiceDurationSeconds { 1.0 };
     std::vector<float> pitchEnvelopeUnitValues;
+    std::vector<std::vector<float>> pitchEnvelopeUnitValuesByLane;
 };
 
 struct UnisonPreviewPath {

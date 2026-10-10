@@ -1,90 +1,193 @@
-#include "Graph/GraphCommandDispatcher.h"
-
 #include <algorithm>
+
+#include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
+#include "Nodes/Guide/GuideGraphEditor.h"
 
 namespace CycleV2 {
 
-namespace {
-
-struct EditAnnotation {
-    std::vector<juce::String> nodeIds;
-    bool topologyChanged {};
-    bool layoutChanged {};
-};
-
-std::vector<String> guideConsumerNodeIds(
-        const NodeGraph& graph,
-        const String& guideId) {
-    return graph.guideTargetNodeIds(guideId);
+bool GraphCommandDispatcher::setTimeSurfaceStyle(const juce::String& styleId) {
+    return setPresentationStyle(document.presetPresentation.timeSurfaceStyle, styleId);
 }
 
-GraphEditResult annotateSuccessful(
-        GraphEditResult result,
-        EditAnnotation annotation) {
-    if (!result.succeeded()) {
-        return result;
+bool GraphCommandDispatcher::setBipolarSpectralSurfaceStyle(
+        const juce::String& styleId) {
+    return setPresentationStyle(
+            document.presetPresentation.bipolarSpectralSurfaceStyle,
+            styleId);
+}
+
+bool GraphCommandDispatcher::setPresentationStyle(
+        juce::String& currentStyleId,
+        const juce::String& styleId) {
+    if (hasTransientEdit() || currentStyleId == styleId) {
+        return false;
     }
-
-    result.changes.nodeIds = std::move(annotation.nodeIds);
-    result.changes.topologyChanged = annotation.topologyChanged;
-    result.changes.layoutChanged = annotation.layoutChanged;
-    return result;
+    // Presentation metadata is dirty without a DSP revision or graph undo entry.
+    currentStyleId = styleId;
+    ++document.presentationRevision;
+    return true;
 }
 
+bool GraphCommandDispatcher::setPresetSequence(PresetMidiSequence sequence) {
+    if (hasTransientEdit()) {
+        return false;
+    }
+    document.presetPresentation.sequence = std::move(sequence);
+    document.presetPresentation.patternId.clear();
+    ++document.presentationRevision;
+    return true;
+}
+
+bool GraphCommandDispatcher::setPresetPatternId(const juce::String& id) {
+    if (hasTransientEdit() || id.isEmpty()
+            || (document.presetPresentation.patternId == id
+                    && !document.presetPresentation.sequence.has_value())) {
+        return false;
+    }
+    document.presetPresentation.patternId = id;
+    document.presetPresentation.sequence.reset();
+    ++document.presentationRevision;
+    return true;
+}
+
+bool GraphCommandDispatcher::setPresetTags(juce::StringArray tags) {
+    if (hasTransientEdit() || (document.presetPresentation.tagsSpecified
+            && document.presetPresentation.tags == tags)) {
+        return false;
+    }
+    document.presetPresentation.tags = std::move(tags);
+    document.presetPresentation.tagsSpecified = true;
+    ++document.presentationRevision;
+    return true;
+}
+
+bool GraphCommandDispatcher::setPresetTitle(const juce::String& title) {
+    if (hasTransientEdit() || document.presetPresentation.title == title) {
+        return false;
+    }
+    document.presetPresentation.title = title;
+    ++document.presentationRevision;
+    return true;
 }
 
 GraphEditResult GraphCommandDispatcher::addNode(NodeKind kind, juce::Point<float> position) {
     return apply([&](auto& graph) {
-        auto result = GraphEditor().addNode(graph, kind, position);
-        const juce::String addedNodeId = result.nodeId;
-        return annotateSuccessful(
-                std::move(result),
-                { { addedNodeId }, true, true });
+        return GraphEditor().addNode(graph, kind, position);
     });
 }
 
 GraphEditResult GraphCommandDispatcher::removeNode(const juce::String& nodeId) {
     return apply([&](auto& graph) {
-        return annotateSuccessful(
-                GraphEditor().removeNode(graph, nodeId),
-                { { nodeId }, true, false });
+        return GraphEditor().removeNode(graph, nodeId);
     });
 }
 
 GraphEditResult GraphCommandDispatcher::removeEdgeAt(size_t edgeIndex) {
-    return apply([&](auto& graph) {
-        return annotateSuccessful(
-                GraphEditor().removeEdgeAt(graph, edgeIndex),
-                { {}, true, false });
-    });
+    return applyIncremental(
+            [&](auto& delta, const auto& graph) {
+                if (edgeIndex < graph.getEdges().size()) {
+                    const Edge& edge = graph.getEdges()[edgeIndex];
+                    delta.captureEdgesToInput(graph, edge.destNodeId, edge.destPortId);
+                }
+            },
+            [&](auto& graph) {
+                return GraphEditor().removeEdgeAt(graph, edgeIndex);
+            });
+}
+
+GraphEditResult GraphCommandDispatcher::removeCable(
+        const std::vector<size_t>& edgeIndices) {
+    const auto plan = GraphEditor().planCableDeletion(editingGraph(), edgeIndices);
+    if (!plan.has_value()) {
+        return { GraphEditCode::MissingEdge, {}, {} };
+    }
+    return applyIncremental(
+            [&](GraphDeltaBuilder& delta, const NodeGraph& graph) {
+                delta.captureCableDeletion(graph, *plan);
+            },
+            [&](NodeGraph& graph) {
+                return GraphEditor().removeCable(graph, *plan);
+            });
 }
 
 GraphEditResult GraphCommandDispatcher::connect(const PortAddress& first, const PortAddress& second) {
-    return apply([&](auto& graph) {
-        return annotateSuccessful(
-                GraphEditor().connect(graph, first, second),
-                { { first.nodeId, second.nodeId }, true, false });
-    });
+    const PortAddress& destination = first.input ? first : second;
+    return applyIncremental(
+            [&](auto& delta, const auto& graph) {
+                delta.captureEdgesToInput(graph, destination.nodeId, destination.portId);
+            },
+            [&](auto& graph) {
+                return GraphEditor().connect(graph, first, second);
+            });
 }
 
 GraphEditResult GraphCommandDispatcher::toggleSignalProbe(
         size_t edgeIndex,
         float tapPosition) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().toggleSignalProbe(graph, edgeIndex, tapPosition),
-                { {}, false, false });
-        result.changes.probesChanged = result.succeeded();
-        return result;
+        return GraphEditor().toggleSignalProbe(graph, edgeIndex, tapPosition);
     });
 }
 
 GraphEditResult GraphCommandDispatcher::removeSignalProbe(const juce::String& probeId) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().removeSignalProbe(graph, probeId),
-                { {}, false, false });
-        result.changes.probesChanged = result.succeeded();
+        return GraphEditor().removeSignalProbe(graph, probeId);
+    });
+}
+
+GraphEditResult GraphCommandDispatcher::moveSignalProbe(
+        const juce::String& probeId,
+        juce::Point<float> position) {
+    return applyIncremental(
+            [&](auto& delta, const auto& graph) {
+                delta.captureSignalProbePosition(graph, probeId);
+            },
+            [&](auto& graph) {
+                return GraphEditor().moveSignalProbe(graph, probeId, position);
+            });
+}
+
+bool GraphCommandDispatcher::moveDefaultOutputSpy(juce::Point<float> position) {
+    if (hasTransientEdit()
+            || document.presetPresentation.outputSpyPosition == position) {
+        return false;
+    }
+    document.setOutputSpyPosition(position);
+    return true;
+}
+
+bool GraphCommandDispatcher::setDefaultOutputSpyVisible(bool visible) {
+    if (hasTransientEdit() || document.presetPresentation.outputSpyVisible == visible) {
+        return false;
+    }
+    document.presetPresentation.outputSpyVisible = visible;
+    ++document.presentationRevision;
+    return true;
+}
+
+bool GraphCommandDispatcher::setDefaultOutputSpyFrequencyView(bool frequencyView) {
+    if (hasTransientEdit()
+            || document.presetPresentation.outputSpyFrequencyView == frequencyView) {
+        return false;
+    }
+    document.presetPresentation.outputSpyFrequencyView = frequencyView;
+    ++document.presentationRevision;
+    return true;
+}
+
+GraphEditResult GraphCommandDispatcher::setSignalProbeFrequencyView(
+        const juce::String& probeId, bool frequencyView) {
+    return apply([&](auto& graph) {
+        SignalProbe* probe = graph.findSignalProbeForEditing(probeId);
+        if (probe == nullptr) {
+            return GraphEditResult { GraphEditCode::MissingNode, probeId, {} };
+        }
+        probe->frequencyView = frequencyView;
+        graph.markChanged();
+        GraphEditResult result { GraphEditCode::Connected, probeId, {} };
+        result.changes.probesChanged = true;
         return result;
     });
 }
@@ -94,41 +197,40 @@ GraphEditResult GraphCommandDispatcher::reattachSignalProbe(
         size_t edgeIndex,
         float tapPosition) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().reattachSignalProbe(graph, probeId, edgeIndex, tapPosition),
-                { {}, false, false });
-        result.changes.probesChanged = result.succeeded();
-        return result;
+        return GraphEditor().reattachSignalProbe(graph, probeId, edgeIndex, tapPosition);
     });
 }
 
 GraphEditResult GraphCommandDispatcher::spliceNodeIntoEdge(
         size_t edgeIndex,
         const juce::String& nodeId) {
-    return apply([&](auto& graph) {
-        return annotateSuccessful(
-                GraphEditor().spliceNodeIntoEdge(graph, edgeIndex, nodeId),
-                { { nodeId }, true, false });
-    });
+    return applyIncremental(
+            [&](auto& delta, const auto& graph) {
+                if (edgeIndex < graph.getEdges().size()) {
+                    const Edge& edge = graph.getEdges()[edgeIndex];
+                    delta.captureEdgesToInput(graph, edge.destNodeId, edge.destPortId);
+                }
+                const Node* node = graph.findNode(nodeId);
+                if (node != nullptr) {
+                    for (const auto& input : node->inputs) {
+                        delta.captureEdgesToInput(graph, nodeId, input.id);
+                    }
+                }
+            },
+            [&](auto& graph) {
+                return GraphEditor().spliceNodeIntoEdge(graph, edgeIndex, nodeId);
+            });
 }
 
 GraphEditResult GraphCommandDispatcher::createGuideCurve() {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().createGuideCurve(graph),
-                { {}, false, false });
-        result.changes.guidePresentationChanged = result.succeeded();
-        return result;
+        return GuideGraphEditor().createGuideCurve(graph);
     });
 }
 
 GraphEditResult GraphCommandDispatcher::duplicateGuideCurve(const juce::String& guideId) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().duplicateGuideCurve(graph, guideId),
-                { {}, false, false });
-        result.changes.guidePresentationChanged = result.succeeded();
-        return result;
+        return GuideGraphEditor().duplicateGuideCurve(graph, guideId);
     });
 }
 
@@ -136,11 +238,7 @@ GraphEditResult GraphCommandDispatcher::reorderGuideCurve(
         const juce::String& guideId,
         int shelfOrder) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().reorderGuideCurve(graph, guideId, shelfOrder),
-                { {}, false, false });
-        result.changes.guidePresentationChanged = result.succeeded() && result.changed;
-        return result;
+        return GuideGraphEditor().reorderGuideCurve(graph, guideId, shelfOrder);
     });
 }
 
@@ -150,17 +248,12 @@ GraphEditResult GraphCommandDispatcher::assignGuideCurve(
         int vertexIndex,
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().assignGuideCurveToTrimeshVertexParameter(
-                        graph,
-                        guideId,
-                        meshNodeId,
-                        vertexIndex,
-                        parameterField),
-                { { meshNodeId }, false, false });
-        result.changes.guidesChanged = result.succeeded();
-        result.changes.guidePresentationChanged = result.succeeded();
-        return result;
+        return GuideGraphEditor().assignGuideCurveToMeshComponent(
+                graph,
+                guideId,
+                meshNodeId,
+                vertexIndex,
+                parameterField);
     });
 }
 
@@ -169,13 +262,8 @@ GraphEditResult GraphCommandDispatcher::detachGuideCurve(
         int vertexIndex,
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().detachGuideCurveFromTrimeshVertexParameter(
-                        graph, meshNodeId, vertexIndex, parameterField),
-                { { meshNodeId }, false, false });
-        result.changes.guidesChanged = result.succeeded();
-        result.changes.guidePresentationChanged = result.succeeded();
-        return result;
+        return GuideGraphEditor().detachGuideCurveFromMeshComponent(
+                graph, meshNodeId, vertexIndex, parameterField);
     });
 }
 
@@ -184,28 +272,17 @@ GraphEditResult GraphCommandDispatcher::createAndAssignGuideCurve(
         int vertexIndex,
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().createGuideCurveAndAssignToTrimeshVertexParameter(
-                        graph,
-                        meshNodeId,
-                        vertexIndex,
-                        parameterField),
-                { { meshNodeId }, false, false });
-        result.changes.guidesChanged = result.succeeded();
-        result.changes.guidePresentationChanged = result.succeeded();
-        return result;
+        return GuideGraphEditor().createGuideCurveAndAssignToMeshComponent(
+                graph,
+                meshNodeId,
+                vertexIndex,
+                parameterField);
     });
 }
 
 GraphEditResult GraphCommandDispatcher::removeGuideCurve(const juce::String& guideId) {
     return apply([&](auto& graph) {
-        const std::vector<String> consumers = guideConsumerNodeIds(graph, guideId);
-        auto result = annotateSuccessful(
-                GraphEditor().removeGuideCurve(graph, guideId),
-                { consumers, false, false });
-        result.changes.guidesChanged = result.succeeded() && !consumers.empty();
-        result.changes.guidePresentationChanged = result.succeeded();
-        return result;
+        return GuideGraphEditor().removeGuideCurve(graph, guideId);
     });
 }
 
@@ -213,11 +290,7 @@ GraphEditResult GraphCommandDispatcher::renameGuideCurve(
         const juce::String& guideId,
         const juce::String& name) {
     return apply([&](auto& graph) {
-        auto result = annotateSuccessful(
-                GraphEditor().renameGuideCurve(graph, guideId, name),
-                { {}, false, false });
-        result.changes.guidePresentationChanged = result.succeeded() && result.changed;
-        return result;
+        return GuideGraphEditor().renameGuideCurve(graph, guideId, name);
     });
 }
 
@@ -233,14 +306,7 @@ GraphEditResult GraphCommandDispatcher::setGuideHeatmap(
         if (guide->revision != expectedRevision) {
             return GraphEditResult { GraphEditCode::StaleRevision, guideId, {} };
         }
-        const std::vector<String> consumers = guideConsumerNodeIds(graph, guideId);
-        auto result = annotateSuccessful(
-                GraphEditor().setGuideHeatmap(graph, guideId, std::move(asset)),
-                { consumers, false, false });
-        result.changes.guidesChanged = result.succeeded() && result.changed && !consumers.empty();
-        result.changes.guidePresentationChanged = result.succeeded() && result.changed;
-        result.changes.modelChanged = result.succeeded() && result.changed;
-        return result;
+        return GuideGraphEditor().setGuideHeatmap(graph, guideId, std::move(asset));
     });
 }
 
@@ -255,14 +321,7 @@ GraphEditResult GraphCommandDispatcher::clearGuideHeatmap(
         if (guide->revision != expectedRevision) {
             return GraphEditResult { GraphEditCode::StaleRevision, guideId, {} };
         }
-        const std::vector<String> consumers = guideConsumerNodeIds(graph, guideId);
-        auto result = annotateSuccessful(
-                GraphEditor().clearGuideHeatmap(graph, guideId),
-                { consumers, false, false });
-        result.changes.guidesChanged = result.succeeded() && result.changed && !consumers.empty();
-        result.changes.guidePresentationChanged = result.succeeded() && result.changed;
-        result.changes.modelChanged = result.succeeded() && result.changed;
-        return result;
+        return GuideGraphEditor().clearGuideHeatmap(graph, guideId);
     });
 }
 
@@ -276,7 +335,7 @@ GraphEditResult GraphCommandDispatcher::setNodeParameter(
                 delta.captureNodeParameter(graph, nodeId, parameterId);
             },
             [&](auto& graph) {
-                return GraphEditor().setNodeParameter(
+                return GraphNodeStateEditor().setNodeParameter(
                         graph, nodeId, parameterId, label, value);
             });
 }
@@ -290,8 +349,29 @@ GraphEditResult GraphCommandDispatcher::replaceNodeModel(
                 delta.captureNodeModel(graph, nodeId);
             },
             [&](auto& graph) {
-                return GraphEditor().replaceNodeModel(
-                        graph, nodeId, expectedRevision, std::move(model));
+                if (!transientEdit.has_value()) {
+                    return GraphNodeStateEditor().replaceNodeModel(
+                            graph, nodeId, expectedRevision, std::move(model));
+                }
+                const Node* durableNode = document.graph().findNode(nodeId);
+                const Node* transientNode = graph.findNode(nodeId);
+                if (durableNode == nullptr || transientNode == nullptr) {
+                    return GraphEditResult { GraphEditCode::MissingNode, nodeId, {} };
+                }
+                const uint64_t durableRevision = durableNode->model != nullptr
+                        ? durableNode->model->revision() : 0;
+                if (expectedRevision != durableRevision) {
+                    return GraphEditResult { GraphEditCode::StaleRevision, nodeId, {} };
+                }
+                const uint64_t transientRevision = transientNode->model != nullptr
+                        ? transientNode->model->revision() : 0;
+                if (model != nullptr && transientRevision > durableRevision
+                        && model->revision() == transientRevision) {
+                    return GraphNodeStateEditor().replaceTransientNodeModel(
+                            graph, nodeId, transientRevision, std::move(model));
+                }
+                return GraphNodeStateEditor().replaceNodeModel(
+                        graph, nodeId, transientRevision, std::move(model));
             });
 }
 
@@ -303,7 +383,7 @@ GraphEditResult GraphCommandDispatcher::setNodeEditorState(
                 delta.captureNodeEditorState(graph, nodeId);
             },
             [&](auto& graph) {
-                return GraphEditor().setNodeEditorState(
+                return GraphNodeStateEditor().setNodeEditorState(
                         graph, nodeId, std::move(editorState));
             });
 }
@@ -311,14 +391,14 @@ GraphEditResult GraphCommandDispatcher::setNodeEditorState(
 GraphEditResult GraphCommandDispatcher::setNodeAudioResource(
         NodeAudioResourceEdit edit) {
     return apply([&](auto& graph) {
-        return GraphEditor().setNodeAudioResource(graph, std::move(edit));
+        return GraphNodeStateEditor().setNodeAudioResource(graph, std::move(edit));
     });
 }
 
 GraphEditResult GraphCommandDispatcher::removeNodeAudioResource(
         const juce::String& nodeId) {
     return apply([&](auto& graph) {
-        return GraphEditor().removeNodeAudioResource(graph, nodeId);
+        return GraphNodeStateEditor().removeNodeAudioResource(graph, nodeId);
     });
 }
 
@@ -467,6 +547,16 @@ const NodeGraph& GraphCommandDispatcher::editingGraph() const {
 const GraphChangeSet& GraphCommandDispatcher::transientChanges() const {
     static const GraphChangeSet noChanges;
     return transientEdit.has_value() ? transientEdit->changes : noChanges;
+}
+
+std::shared_ptr<const NodeGraph> GraphCommandDispatcher::snapshotTransientEditForWorker() const {
+    if (!transientEdit.has_value()) {
+        return {};
+    }
+    auto stableBase = std::shared_ptr<const NodeGraph>(
+            &document.graph(), [](const NodeGraph*) {});
+    return std::make_shared<const NodeGraph>(
+            transientEdit->graph.snapshotNodeEdits(std::move(stableBase)));
 }
 
 GraphEditResult GraphCommandDispatcher::apply(

@@ -78,13 +78,13 @@
       "equals": 114
     },
     {
+      "command": "waitForIdle",
+      "idleDelayMs": 800
+    },
+    {
       "command": "assertState",
       "path": "previewRenderCount",
       "equals": 3
-    },
-    {
-      "command": "waitForIdle",
-      "idleDelayMs": 300
     },
     {
       "command": "screenshot",
@@ -125,8 +125,18 @@
       "targetY": 0.75
     },
     {
+      "command": "assertState",
+      "path": "previewModWheelValue",
+      "equals": 32
+    },
+    {
       "command": "waitForIdle",
-      "idleDelayMs": 300
+      "idleDelayMs": 800
+    },
+    {
+      "command": "assertState",
+      "path": "performance.modWheelValue",
+      "equals": 32
     },
     {
       "command": "assertState",

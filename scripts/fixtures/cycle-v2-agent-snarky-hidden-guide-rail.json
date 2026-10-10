@@ -1,0 +1,31 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/snarky.cyclegraph",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "timeLayer1",
+      "parameterId": "blue",
+      "label": "Blue",
+      "value": "0.5"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "timeLayer1",
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "timeLayer1",
+      "parameterId": "primaryAxis",
+      "equals": "yellow"
+    },
+    { "command": "inspectPointerTargets" }
+  ],
+  "quit": false
+}

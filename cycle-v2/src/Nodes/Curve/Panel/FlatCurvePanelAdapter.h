@@ -20,9 +20,10 @@ public:
     Mesh& mesh() { return model.getMesh(); }
     const Mesh& mesh() const { return model.getMesh(); }
     bool needsNodeSync(const Node& node) const;
-    bool syncFromNode(const Node& node);
+    bool syncFromNode(const Node& node, bool force = false);
     bool syncFromGuideResource(const GuideCurveResource& guide);
     Vertex* selectedMeshVertex() const { return model.selectedMeshVertex(); }
+    std::optional<FlatCurveVertex> pointPreview(Vertex* selectedVertex) const;
     void initialiseDefaultMesh();
     String serializedMeshState();
     NodeModelStatePtr modelPublication(Vertex* selectedVertex, uint64_t publicationRevision);

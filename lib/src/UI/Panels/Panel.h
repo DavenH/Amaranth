@@ -21,6 +21,7 @@ using std::vector;
 
 class Interactor;
 class Interactor3D;
+class Vertex;
 class CommonGfx;
 class Texture;
 
@@ -56,6 +57,7 @@ public:
     void drawSelectionRectangle();
     virtual void drawViewableVerts();
     virtual void highlightSelectedVerts();
+    virtual bool shouldDrawSelectedVertex(const Vertex&) const { return true; }
     void render();
     void render(const PanelHostContext& context);
     void setCursor();
@@ -77,6 +79,7 @@ public:
 
     static int getLinePathPhaseGuideChannel(const VertCube& cube, int pointDim);
     static int getLinePathPhaseGuideDimension(int pointDim);
+    virtual Buffer<Float32> getLineGuideTable(int channel);
 
     bool createLinePath(const Vertex2& start, const Vertex2& end, VertCube* cube, int pointDim, bool haveSpeed);
     void createNameImage(const String& displayName, bool isSecondImage = false, bool dark = false);
@@ -278,6 +281,11 @@ protected:
     vector<Rectangle<float> > scales, guideCurveTags;
 
     /* ----------------------------------------------------------------------------- */
+
+private:
+
+    bool hasHiddenMorphGuide(const VertCube& cube, int pointDim);
+    void addHiddenMorphGuideOffsets(const VertCube& cube, int pointDim, float start, float end);
 
     friend class Interactor;
     friend class Interactor3D;

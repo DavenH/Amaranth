@@ -1,8 +1,11 @@
 #include "UI/NodeCanvasHitRouter.h"
+#include "Graph/GraphSpliceValidator.h"
+#include "Graph/GraphValidationContext.h"
 
 #include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/NodeDefinition.h"
 
 namespace CycleV2 {
 
@@ -29,7 +32,7 @@ bool hasOutputSideControl(NodeKind kind) {
 }
 
 std::optional<CanvasNodeActionKind> actionKindForNode(const Node& node) {
-    if (isOperationNode(node.kind)) {
+    if (supportsOperationPortLayout(node)) {
         return CanvasNodeActionKind::CycleOperationLayout;
     }
 
@@ -119,7 +122,8 @@ int NodeCanvasHitRouter::edgeAt(
 int NodeCanvasHitRouter::spliceTargetEdgeAt(
         const NodeCanvasSceneSnapshot& scene,
         Point<float> screenPosition,
-        const String& nodeId) const {
+        const String& nodeId,
+        const GraphValidationContext& context) const {
     const auto& edges = graph.getEdges();
     for (auto sceneEdge = scene.edges.rbegin(); sceneEdge != scene.edges.rend(); ++sceneEdge) {
         if (sceneEdge->modulationBundle) {
@@ -138,8 +142,8 @@ int NodeCanvasHitRouter::spliceTargetEdgeAt(
             continue;
         }
 
-        NodeGraph candidate = graph;
-        const auto result = GraphEditor().spliceNodeIntoEdge(candidate, (size_t) edgeIndex, nodeId);
+        const auto result = GraphSpliceValidator().validateAfterLayoutChanges(
+                graph, context, (size_t) edgeIndex, nodeId);
 
         if (result.succeeded()) {
             return edgeIndex;
@@ -156,14 +160,14 @@ String NodeCanvasHitRouter::hoverTextFor(
     NodeKind paletteKind;
 
     if (palette.findKindAt(screenPosition, paletteKind)) {
-        const Node node = GraphNodeFactory().createNode(paletteKind, {}, {});
-        return "Add a " + labelForNodeKind(node.kind) + " node to the canvas.";
+        const auto* definition = NodeDefinitionRegistry::instance().find(paletteKind);
+        const String help = definition != nullptr ? definition->helpText : String();
+        return "Click or drag to add " + labelForNodeKind(paletteKind) + ". " + help;
     }
 
     const int paletteSectionIndex = palette.findSectionAt(screenPosition);
     if (paletteSectionIndex >= 0) {
-        return "Show the " + String(palette.section(paletteSectionIndex).title)
-                + " node group.";
+        return String(palette.section(paletteSectionIndex).title) + " nodes: click or drag to add.";
     }
 
     if (const auto action = nodeActionAt(viewport, screenPosition)) {
@@ -199,13 +203,11 @@ Point<float> NodeCanvasHitRouter::paletteCreationWorldPosition(
         Rectangle<float> canvasBounds,
         NodeKind kind,
         Point<float> paletteClickPosition) const {
-    const float paletteRight = palette.railBounds().getRight();
-    const float x = jmin(canvasBounds.getRight() - 280.f, paletteRight + 32.f);
+    const Node node = GraphNodeFactory().createNode(kind, {}, {});
+    const float x = jmax(canvasBounds.getX(), palette.workspaceBounds().getRight() + 32.f);
     Point<float> position = viewport.toWorld(Point<float> { x, paletteClickPosition.y });
 
     if (isOperationNode(kind)) {
-        const Node node = GraphNodeFactory().createNode(kind, {}, position);
-
         if (!node.inputs.empty()) {
             const float inputOffset = NodeCanvasScene::portWorldCentre(
                     node,

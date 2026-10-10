@@ -372,19 +372,19 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             buildDefinition(definition(
                     "scratchDefaultOverride",
                     NodeKind::ScratchDefaultOverride,
-                    "Use Voice Time",
+                    "Ignore Scratch",
                     "scratch override",
                     "voiceTime",
                     {},
                     { output(
                             "scratch",
-                            "Voice Time",
+                            "Ignore Scratch",
                             PortDomain::EnvelopeSignal,
                             ChannelLayout::Mono,
                             PortSide::Right,
                             ConnectionKind::ProcessingAttachment,
                             AttachmentType::ScratchEnvelope) }))
-                    .help("Stops a Trimesh from inheriting its Voice Context scratch Envelope.")
+                    .help("Blocks the Voice Context's default scratch envelope for the connected Trimesh.")
                     .execution(NodeExecutionTrait::ConfigurationOnly)
                     .disablePreview()
                     .presentation({}, { 174.f, 76.f })
@@ -472,6 +472,9 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             choice("signalType", "Signal Type", "time",
                                     { "time", "spectralMagnitude", "spectralPhase" },
                                     graph | dsp | preview | presentation),
+                            choice("phaseMode", "Phase Mode", "absolute",
+                                    { "absolute", "velocity" },
+                                    dsp | preview | presentation),
                             choice("polarity", "Polarity", "unipolar",
                                     { "unipolar", "bipolar" },
                                     graph | dsp | preview | presentation),
@@ -512,7 +515,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .help("Opens a waveform into magnitude and phase for spectral editing.")
                     .execution(NodeExecutionTrait::SpectralTransform)
                     .runtime(AudioModuleRole::Fft, PreviewModuleRole::None)
-                    .presentation({}, { 278.f, 178.f })
+                    .presentation({}, { 144.f, 142.f })
                     .finish(),
             buildDefinition(definition("ifft", NodeKind::Ifft, String::fromUTF8("Freq → Time"), "cyclic overlap", "ifft",
                     { input("mag", "Mag", PortDomain::SpectralMagnitudeSignal, ChannelLayout::StereoPair),
@@ -524,7 +527,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .help("Rebuilds a waveform from its magnitude and phase.")
                     .execution(NodeExecutionTrait::OscillatorMaterializer)
                     .runtime(AudioModuleRole::Ifft, PreviewModuleRole::None)
-                    .presentation({}, { 278.f, 178.f })
+                    .presentation({}, { 144.f, 142.f })
                     .finish(),
             buildDefinition(definition("envelope", NodeKind::Envelope, "Envelope", "control curve", "env",
                     { input("red", "Red Morph", PortDomain::ControlSignal,
@@ -625,7 +628,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .execution(NodeExecutionTrait::ConfigurationOnly)
                     .runtime(AudioModuleRole::None, PreviewModuleRole::None,
                             "cycle/src/Audio/Effects/Unison.cpp")
-                    .presentation({ 230.f, 112.f })
+                    .presentation({ 230.f, 43.f })
                     .finish(),
             buildDefinition(definition("reverb", NodeKind::Reverb, "Reverb", "space", "reverb",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
@@ -698,7 +701,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .help("Terminates each voice before the signals are mixed for global processing.")
                     .requiredSingleton()
                     .disablePreview()
-                    .presentation({}, { 190.f, 76.f })
+                    .presentation({}, { 116.f, 116.f })
                     .finish(),
             buildDefinition(definition("globalInput", NodeKind::GlobalInput, "Global Input", "voice mix", "globalIn", {},
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }))
@@ -707,7 +710,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .requiredSingleton()
                     .runtime(AudioModuleRole::GlobalInput, PreviewModuleRole::None)
                     .disablePreview()
-                    .presentation({}, { 190.f, 76.f })
+                    .presentation({}, { 116.f, 116.f })
                     .finish(),
             buildDefinition(definition("output", NodeKind::Output, "Output", "sink", "out",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}, {
@@ -776,6 +779,10 @@ void NodeDefinitionRegistry::normalize(Node& node) const {
     }
     if (node.kind == NodeKind::VoiceContext
             && node.bounds.getWidth() < definitionToUse->fixedNaturalSize.width) {
+        node.bounds.setWidth(definitionToUse->fixedNaturalSize.width);
+    }
+    if ((node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft)
+            && node.bounds.getWidth() == 278.f) {
         node.bounds.setWidth(definitionToUse->fixedNaturalSize.width);
     }
     for (const auto& canonicalInput : definitionToUse->inputs) {

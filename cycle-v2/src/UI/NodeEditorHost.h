@@ -2,17 +2,21 @@
 
 #include <JuceHeader.h>
 
+#include <array>
 #include <memory>
 #include <optional>
 
-#include "Graph/GraphEditor.h"
+#include "Graph/GraphEditTypes.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/NodeGraph.h"
+#include "Nodes/Trimesh/Model/TrimeshVertexEditCore.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Runtime/NodeUpdateGraph.h"
+#include "Runtime/PresentationRefreshPolicy.h"
 #include "UI/NodeEditorPerformanceObserver.h"
+#include "UI/NodeEditorModelCommands.h"
 
 namespace CycleV2 {
 
@@ -28,7 +32,7 @@ public:
             NodeModelStatePtr model,
             const std::vector<NodeParameter>& controls) = 0;
     virtual bool publishNodeModel(const String&, NodeModelStatePtr) { return false; }
-    virtual void beginNodeModelEdit() {}
+    virtual bool beginNodeModelEdit(const String&) { return false; }
     virtual void endNodeModelEdit() {}
     virtual bool beginNodeParameterEdit(
             const String& nodeId,
@@ -62,6 +66,7 @@ public:
     virtual bool removeNodeAudioResource(const String&) { return false; }
     virtual void beginCurveTransaction() = 0;
     virtual void commitCurveTransaction() = 0;
+    virtual bool cancelCurveTransaction() { return false; }
     virtual bool setTrimeshPrimaryAxisValue(const String& nodeId, const String& axis) = 0;
     virtual bool toggleTrimeshLinkAxisValue(const String& nodeId, const String& axis) = 0;
     virtual bool beginTrimeshMorphEdit(
@@ -94,7 +99,21 @@ public:
     virtual void repaintNodeEditor(bool openGl) = 0;
     virtual void selectEditedNode(const String& nodeId) = 0;
     virtual void setNodeEditorStatus(const String& message) = 0;
+    virtual bool beginNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document,
+            bool downstreamFeedback = true) = 0;
+    virtual void finishNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands,
+            const GraphDocument& document,
+            const String& localField = {}) = 0;
+    virtual void cancelNodeEditorGesture(
+            const String& nodeId,
+            GraphCommandDispatcher& commands) = 0;
     virtual void scheduleNodeEditorRefresh() = 0;
+    virtual void settleNodeEditorPreviewWork() {}
     virtual void flushNodeEditorRefresh() = 0;
     virtual void refreshNodeEditorPresentation() = 0;
     virtual Point<float> nodeEditorCreationPosition() const = 0;
@@ -108,7 +127,8 @@ public:
     virtual void recordNodeEditorMovement(
             const String&,
             const String&,
-            uint64_t) {
+            uint64_t,
+            std::optional<UpdateProduct>) {
     }
     virtual void commitNodeEditorLocalState(
             const String&,
@@ -123,10 +143,14 @@ public:
     virtual ~NodeEditorResources() = default;
 
     virtual CurveEditorWidget* curveEditorWidget(const Node& node) = 0;
+    virtual void syncCurveGuideContext(CurveEditorWidget&, const Node&) {}
     virtual TrimeshWidget* trimeshWidget(const Node& node) = 0;
     virtual TrimeshWidget* findTrimeshWidget(const String& nodeId) = 0;
     virtual TrimeshRenderProfile trimeshRenderProfile(const Node& node) const = 0;
     virtual std::array<String, 6> trimeshGuideLabels(const Node& node) = 0;
+    virtual std::array<String, 6> envelopeGuideLabels(
+            const Node&,
+            int) { return {}; }
     virtual void paintNodePreview(
             Graphics& graphics,
             const Node& node,
@@ -195,7 +219,7 @@ public:
             NodeModelStatePtr model,
             const std::vector<NodeParameter>& controls) override;
     bool publishNodeModel(const String& nodeId, NodeModelStatePtr model) override;
-    void beginNodeModelEdit() override;
+    bool beginNodeModelEdit(const String& nodeId) override;
     void endNodeModelEdit() override;
     bool beginNodeParameterEdit(
             const String& nodeId,
@@ -227,6 +251,7 @@ public:
     bool removeNodeAudioResource(const String& nodeId) override;
     void beginCurveTransaction() override;
     void commitCurveTransaction() override;
+    bool cancelCurveTransaction() override;
     bool setTrimeshPrimaryAxisValue(const String& nodeId, const String& axis) override;
     bool toggleTrimeshLinkAxisValue(const String& nodeId, const String& axis) override;
     bool beginTrimeshMorphEdit(
@@ -260,16 +285,16 @@ private:
     NodeEditorPresentation& presentation;
     NodeEditorResources& resources;
     NodeEditorPerformanceObserver* performanceObserver {};
+    NodeEditorModelCommands modelCommands;
     String activeMorphNodeId;
     String activeMorphParameterId;
-    uint64_t activeMorphFingerprint {};
-    bool activeMorphChanged {};
     bool activeMorphIsPrimary {};
     String activeVertexNodeId;
     String activeVertexParameterId;
     TrimeshWidget* activeVertexWidget {};
     int activeVertexIndex { -1 };
-    bool activeVertexChanged {};
+    std::optional<TrimeshVertexEditDelta> activeVertexDelta;
+    std::optional<std::array<float, 8>> activeCubeCurveBefore;
     String activeGuideMenuNodeId;
     String activeGuideMenuParameterField;
     uint64_t activeGuideMenuGeneration {};
@@ -288,8 +313,6 @@ private:
     String secondaryParameterId;
     String secondaryParameterLabel;
     String activeParameterField;
-    uint64_t activeParameterFingerprint {};
-    bool activeParameterChanged {};
 };
 
 struct NodeEditorAutomationTarget {

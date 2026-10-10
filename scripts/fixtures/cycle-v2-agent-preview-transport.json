@@ -40,9 +40,9 @@
       "equals": 95
     },
     {
-      "command": "pointer",
-      "targetId": "PerformanceKeyboard.Play",
-      "event": "click"
+      "command": "key",
+      "area": "canvas",
+      "key": "space"
     },
     {
       "command": "waitForIdle",

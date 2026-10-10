@@ -1,0 +1,98 @@
+{
+  "version": 2,
+  "input": "peak",
+  "space": "oklab",
+  "aspect": 1.64,
+  "layers": [
+    {
+      "name": "Detail",
+      "enabled": true,
+      "filter": "raw",
+      "sigma": 1.5,
+      "outer": 0.5,
+      "axis": "y",
+      "gain": 0.1,
+      "offset": -0.51,
+      "opacity": 1,
+      "blend": "normal",
+      "mask": "none",
+      "stops": [
+        [
+          0,
+          "#000000"
+        ],
+        [
+          1,
+          "#ffffff"
+        ]
+      ],
+      "alpha_boost": 9.5,
+      "colour_source": "filtered",
+      "colour_gain": 1,
+      "colour_offset": 0
+    },
+    {
+      "name": "Base",
+      "enabled": true,
+      "filter": "highpass",
+      "sigma": 22.5,
+      "outer": 14.5,
+      "axis": "y",
+      "gain": 0.9,
+      "offset": -0.03,
+      "opacity": 1,
+      "blend": "screen",
+      "mask": "amplitude",
+      "stops": [
+        [
+          0,
+          "#b9f6ff"
+        ],
+        [
+          0.15,
+          "#90c7ed"
+        ],
+        [
+          0.27,
+          "#7c89c8"
+        ],
+        [
+          0.35,
+          "#4d4d78"
+        ],
+        [
+          0.42,
+          "#272543"
+        ],
+        [
+          0.5,
+          "#171717"
+        ],
+        [
+          0.58,
+          "#2e1726"
+        ],
+        [
+          0.66,
+          "#580d1d"
+        ],
+        [
+          0.73,
+          "#8c463c"
+        ],
+        [
+          0.85,
+          "#fba900"
+        ],
+        [
+          1,
+          "#ecf4b8"
+        ]
+      ],
+      "alpha_boost": 8.7,
+      "colour_source": "filtered",
+      "colour_gain": 1,
+      "colour_offset": 0
+    }
+  ]
+}

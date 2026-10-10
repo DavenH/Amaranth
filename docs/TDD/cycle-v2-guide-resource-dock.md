@@ -90,8 +90,8 @@ shelf with authoring and assignment behavior, not another kind of graph node.
   name is the only Guide tile heading.
 - Guide shelf tiles do not repeat resource colour as a dot or outline. Colour
   remains meaningful in assignment badges and temporary relationship
-  presentation. The shelf has no ellipsis or resource-action popover; a tile
-  is a selector and editor launcher.
+  presentation. The shelf has no ellipsis or resource-action popover; its only
+  trailing action is a trash icon revealed on hover.
 - Deleting an in-use Guide reports the affected assignment count and performs
   detach-all plus deletion as one undoable semantic command.
 - Cycle V2 is undeployed. Repository `.cyclegraph` files are converted directly
@@ -360,6 +360,28 @@ contracts:
 The keyboard navigation and shared chrome are presentation collaborators, not
 new domain authorities. They do not mutate `NodeGraph`, dispatch Guide/Spy
 commands, render curve/signal content, or interpret assignment targets.
+
+The 2026-09-20 Curves-tab follow-up keeps the unified Curves/Presets strip free
+of shelf controls. The existing Guide creation action moves to a subdued,
+full-width footer beside the shelf disclosure. A tile reveals a top-right trash
+action only while hovered. Deleting an unused Guide dispatches immediately;
+deleting a referenced Guide first reports the indexed assignment count and
+requires confirmation. Pointer and keyboard deletion converge on the same
+`NodeCanvas` policy and the existing `GraphCommandDispatcher::removeGuideCurve`
+semantic command. The command remains the sole owner of detach-all, deletion,
+change-set publication, and undo; shelf and input classes only identify the
+requested Guide.
+
+Architecture review: `NodeCanvas.cpp` remains the high-level owner of the
+component-safe modal lifetime, current Guide selection/editor cleanup, status,
+and the dispatcher invocation. `NodeGraph` owns the indexed usage count;
+`GraphCommandDispatcher`/`GuideGraphEditor` own detach/delete/undo policy;
+`GuideCurveShelf` owns only geometry and hit identification; and
+`WorkspaceDockInteractionController` owns only input routing. The added canvas
+methods coordinate these existing collaborators and contain no Guide graph
+mutation or assignment traversal. Extracting them into another facade would
+move the same orchestration without removing a responsibility or dependency,
+so the existing large-file trigger is accepted for this narrow slice.
 
 ### Ownership
 
@@ -879,3 +901,11 @@ Completed on macOS through the repository build and native launch scripts:
   passes 8,812 assertions in 496 cases. The updated native Baroque fixture
   passes and `/private/tmp/cycle-v2-guide-multiple-tethers-native.png` shows
   Guide 1 routed to both `magnitudeLayer3` and `phaseLayer1`.
+- The 2026-09-20 Curves shelf refinement removes the overlapping header `+`,
+  moves Add and disclosure controls into a neutral footer, and adds a shared
+  hover-trash glyph. `NodeGraph::guideUsageCount` decides whether confirmation
+  is required, while the existing dispatcher command remains authoritative for
+  deletion and undo. The focused geometry case passes 10 assertions, the
+  inline browser case passes 36 assertions, and the native hover and
+  unused-delete/undo fixtures pass. The OS-rendered capture is
+  `/private/tmp/cycle-v2-guide-shelf.png`.

@@ -1,6 +1,10 @@
 #include "Graph/NodeGraph.h"
 
+#include <utility>
+
+#include "Graph/GraphGuideIndex.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
 
 namespace CycleV2 {
 
@@ -50,6 +54,15 @@ bool editorStatesEqual(const var& first, const var& second) {
 
 }
 
+NodeGraph::NodeGraph()
+    : guideIndex(std::make_unique<GraphGuideIndex>()) {}
+
+NodeGraph::~NodeGraph() = default;
+
+NodeGraph::NodeGraph(NodeGraph&& other) noexcept = default;
+
+NodeGraph& NodeGraph::operator=(NodeGraph&& other) noexcept = default;
+
 NodeGraph::NodeGraph(const NodeGraph& other) {
     *this = other;
 }
@@ -69,17 +82,16 @@ NodeGraph& NodeGraph::operator=(const NodeGraph& other) {
     audioResources = other.audioResources;
     audioResourceBindings = other.audioResourceBindings;
     nodeIndex = other.nodeIndex;
+    morphNodeIds = other.morphNodeIds;
     parameterIndices = other.parameterIndices;
-    guideResourceIndex = other.guideResourceIndex;
-    guideHeatmapIndex = other.guideHeatmapIndex;
-    guideAssignmentTargetIndex = other.guideAssignmentTargetIndex;
-    guideUsageCounts = other.guideUsageCounts;
-    guideTargetNodes = other.guideTargetNodes;
-    targetNodeGuides = other.targetNodeGuides;
+    guideIndex = other.guideIndex != nullptr
+            ? std::make_unique<GraphGuideIndex>(*other.guideIndex)
+            : std::make_unique<GraphGuideIndex>();
     overlayNodeView = other.overlayNodeView;
     overlayGuideView = other.overlayGuideView;
     overlayNodeViewRevision = other.overlayNodeViewRevision;
     overlayGuideViewRevision = other.overlayGuideViewRevision;
+    overlayBaseOwner = other.overlayBaseOwner;
     overlayBase = other.overlayBase;
     revision = other.revision;
     return *this;
@@ -90,6 +102,27 @@ NodeGraph NodeGraph::createEditingOverlay(const NodeGraph& base) {
     result.overlayBase = &base;
     result.revision = base.revision;
     return result;
+}
+
+NodeGraph NodeGraph::snapshotNodeEdits(
+        std::shared_ptr<const NodeGraph> stableBase) const {
+    jassert(overlayBase != nullptr);
+    jassert(stableBase != nullptr);
+    NodeGraph snapshot = createEditingOverlay(*stableBase);
+    snapshot.overlayBaseOwner = std::move(stableBase);
+    snapshot.nodes = nodes;
+    snapshot.nodeIndex = nodeIndex;
+    snapshot.parameterIndices = parameterIndices;
+    snapshot.revision = revision;
+    return snapshot;
+}
+
+const std::vector<String>& NodeGraph::editorMorphNodeIds() const {
+    return overlayBase != nullptr ? overlayBase->editorMorphNodeIds() : morphNodeIds;
+}
+
+const std::vector<Edge>& NodeGraph::getEdges() const {
+    return overlayBase != nullptr ? overlayBase->getEdges() : edges;
 }
 
 const std::vector<Node>& NodeGraph::getNodes() const {
@@ -124,16 +157,41 @@ const std::vector<GuideCurveResource>& NodeGraph::getGuideCurves() const {
 
     overlayGuideView = overlayBase->getGuideCurves();
     for (const auto& guide : guideCurves) {
-        const auto baseGuide = overlayBase->guideResourceIndex.find(guide.id);
-        if (baseGuide != overlayBase->guideResourceIndex.end()
-                && baseGuide->second < overlayGuideView.size()) {
-            overlayGuideView[baseGuide->second] = guide;
+        const auto baseGuide = overlayBase->guideIndex->resourceIndex(guide.id);
+        if (baseGuide.has_value() && *baseGuide < overlayGuideView.size()) {
+            overlayGuideView[*baseGuide] = guide;
         } else {
             overlayGuideView.push_back(guide);
         }
     }
     overlayGuideViewRevision = revision;
     return overlayGuideView;
+}
+
+const std::vector<GuideHeatmapAssetPtr>& NodeGraph::getGuideHeatmaps() const {
+    return overlayBase != nullptr ? overlayBase->getGuideHeatmaps() : guideHeatmaps;
+}
+
+const std::vector<GuideCurveAssignment>& NodeGraph::getGuideAssignments() const {
+    return overlayBase != nullptr ? overlayBase->getGuideAssignments() : guideAssignments;
+}
+
+const std::vector<SignalProbe>& NodeGraph::getSignalProbes() const {
+    return overlayBase != nullptr ? overlayBase->getSignalProbes() : signalProbes;
+}
+
+const std::vector<AudioSampleResource>& NodeGraph::getAudioResources() const {
+    return overlayBase != nullptr ? overlayBase->getAudioResources() : audioResources;
+}
+
+const std::vector<NodeAudioResourceBinding>& NodeGraph::getAudioResourceBindings() const {
+    return overlayBase != nullptr
+            ? overlayBase->getAudioResourceBindings()
+            : audioResourceBindings;
+}
+
+uint64_t NodeGraph::getRevision() const {
+    return revision;
 }
 
 const Node* NodeGraph::findNode(const String& nodeId) const {
@@ -271,11 +329,16 @@ void NodeGraph::translateNodes(
 
 void NodeGraph::rebuildNodeIndex() {
     nodeIndex.clear();
+    morphNodeIds.clear();
     parameterIndices.clear();
     nodeIndex.reserve(nodes.size());
     parameterIndices.reserve(nodes.size());
     for (size_t index = 0; index < nodes.size(); ++index) {
         nodeIndex[nodes[index].id] = index;
+        if (nodes[index].kind == NodeKind::Envelope
+                || nodes[index].kind == NodeKind::TrilinearMesh) {
+            morphNodeIds.push_back(nodes[index].id);
+        }
         rebuildParameterIndex(nodes[index].id);
     }
 }
@@ -315,6 +378,9 @@ void NodeGraph::applyNodeParameterState(
         node->parameters.erase(node->parameters.begin() + (int) found->second);
     }
     rebuildParameterIndex(nodeId);
+    if (node->kind == NodeKind::Envelope && parameterId == "purpose") {
+        applyEnvelopePurpose(*node);
+    }
     ++revision;
 }
 

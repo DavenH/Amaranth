@@ -25,6 +25,58 @@ application continues and the audio capture succeeds, but the assertion is
 unrelated to the stale global mesh crash and remains open for a separate
 visual DSP investigation. Repro artifact: `/tmp/cycle-agent-preset-switch-audio.stderr`.
 
+## Open: five broad realtime test failures reproduce with original grid warmup
+
+During the 2026-10-08 preset-load optimization, the broad
+`[cycle-v2][audio-device][realtime]` filter failed in five cases: mixed voice
+terminal peak, legacy volume-envelope clock, Astral preset load, audio
+telemetry waveform segments, and global Delay tail. An isolated mixed-terminal
+run also failed. Rebuilding the test binary with the original realtime
+`prewarmTraversalGrid = true` behavior reproduced the same five failures; the
+new preparation policy assertion then failed as expected. The two focused
+Output-gain tests and the Trimesh diagnostic-grid parity test pass with the
+optimized policy. Logs: `/tmp/cycle-realtime-tests.log` and
+`/tmp/cycle-realtime-baseline-full.log`. Status: open; these failures predate
+the warmup removal and should be diagnosed separately.
+
+## Open: broad Cycle V2 spectral test filter has unrelated fixture failures
+
+During the 2026-10-06 phase-velocity work, the broad
+`[cycle-v2][runtime][oscillator-region][spectral-frame]` filter failed in 15
+of 25 cases. Several fail at `TestSpectralAudioRegression.cpp:45` because a
+named preset file is absent; `TestChainedOscillatorRegionRuntime.cpp:754`
+also reports failed fixed-frame rasterization. The new focused velocity
+runtime test passes. Status: open; identify current preset fixtures and
+recheck the broader spectral baseline separately.
+
+## Open: repeated in-process Brass graph renders can differ with one seed
+
+During the 2026-09-17 Envelope guide parity audit, an experimental focused
+`OfflineGraphAudioRenderer` test rendered the same compiled Brass Section graph
+twice in one process with `randomSeed = 1129927500`. The assertion
+`guided.channels == repeated.channels` failed in three of eight runs, although
+separate-process app captures with that seed were byte-identical. The
+experimental assertion was removed. Current status: open.
+Check retained processor/global state before adding a same-process parity gate.
+
+## Resolved: preview Mod Wheel did not change Filter Saw 2 audio morph
+
+Reported 2026-09-17. Load `cycle-v2/content/presets/filter-saw-2.cyclegraph`,
+hold the MIDI keyboard's preview note, and move its Mod Wheel across the range.
+The spectral filter's audible cutoff stays the same, while the Spy output and
+Trimesh node presentation respond to the wheel. The preset's `morph`
+modulation triple explicitly uses `blueSource: modWheel` and attaches to the
+Voice Context, so the audio preview should follow that Blue morph value too.
+
+Current status: resolved 2026-09-17. The focused offline capture confirmed
+CC1 modulates the DSP, but the first live keyboard capture was byte-identical
+at low and high wheel positions. `RealtimeGraphRenderer::setPreparedGraph`
+cleared `MidiControlState` when the wheel's saved morph edit replaced the plan,
+so the next audition started at CC1=0. Non-null graph adoption now preserves
+channel controllers; device stop still resets them. The focused live fixture
+records RMS 0.0320 versus 0.0670 and has a threshold that fails the old path.
+See `docs/TDD/cycle-v2-mod-wheel-refresh-audit.md`.
+
 ## Open: Full Cycle V2 suite retains broad preset and spectral failures
 
 The 2026-09-15 `ctest --test-dir build/tests -j10 --output-on-failure`
@@ -35,6 +87,14 @@ Organ 2 spectral expectations, and several prepared-oscillator parity cases.
 The new mod-wheel test and all six neighboring performance-keyboard/layout
 tests pass in the same CTest discovery. Full output is in
 `build/tests/Testing/Temporary/LastTest.log`.
+
+On 2026-10-05, a broader `[browser],[sequence],[realtime],[favorites]` run
+passed 61 of 68 tests. Seven existing realtime/executor tests failed in
+telemetry, global delay, spectral output, or factory preset load assertions;
+the same telemetry test fails alone. Several factory preset files are currently
+deleted or edited in the workspace. The focused preview Stop tests and 34
+browser/sequence/favorites cases pass. Log:
+`/private/tmp/cycle-v2-focused-tests.txt`. Current status: open.
 
 Current status: open; reconcile the active preset/audio work independently of
 the presentation-only keyboard control.
@@ -860,8 +920,76 @@ During the 2026-09-17 master merge, the full `CycleV2_tests` binary emitted
 `JUCE Assertion failure in GraphAudioExecutor.cpp:1069` (`jassert(rendered)`)
 immediately before `Scratch Envelope drives every attached Trimesh from one
 prepared trajectory` failed with `blockDifference == 0`. The complete log is
-`/tmp/cycle-merge-tests.log`; the run had 38 failing cases, including the
-previously documented stale fixture paths and offline spectral assertion.
+`/tmp/cycle-merge-tests.log`; an independent editor UI repair CTest run also
+emitted the assertion (`/tmp/cycle-v2-ui-ctest.log`). The merge run had 38
+failing cases, including the previously documented stale fixture paths and
+offline spectral assertion.
 The focused fixed-time, keyboard, and preview-mod-wheel suites pass. Current
 status: open; isolate the region failure and distinguish it from the unrelated
 fixture failures before changing audio behavior or test expectations.
+The 2026-09-18 `CycleV2_tests '[trimesh]'` run reproduced the scratch-envelope
+failure and also found zero traversal difference for `magnitudeLayer1` in the
+Stengah scratch-topology case. Log: `/tmp/cycle-v2-trimesh-tests.txt`.
+
+Update 2026-09-18: the workspace visual-hierarchy verification run completed
+with 787 of 826 cases passing and 39 failures in the same preset-fixture and
+audio/spectral groups. Its focused UI suite passed 117 assertions in nine
+cases. The preset working tree was already modified and was left untouched.
+
+Update 2026-09-20: the Curves-shelf verification run completed with 807 of 847
+cases passing and 40 failures in the same documented missing/modified preset,
+offline spectral, and prepared-runtime groups. The focused Guide dock and
+inline-browser suites passed 123 assertions in eight cases. No DSP or preset
+production path was changed, and the existing preset working-tree edits were
+left untouched.
+
+Update 2026-09-20: the scalar-surface material verification run completed with
+1,130 of 1,172 cases passing. After rebuilding the one changed profile test,
+the surface-material and Trimesh profile suites pass; the remaining failures
+are in the same documented missing/modified preset, offline spectral, and
+prepared-runtime groups. No audio or preset production behavior changed.
+
+## P3: Broad preset-tag suite includes seven legacy parity failures
+
+On 2026-09-20, the broad Cycle V2 Catch2 filter `[cycle-v2][preset]` passed 20
+of 27 cases and exposed seven failures outside the preset-browser work: missing
+archived preset fixtures, two preset deserialization failures, a Stengah phase
+pan edit rejection, a one-sample frontier mismatch, and an unchanged magnitude
+layer where the test expected a difference. Log:
+`/private/tmp/cycle-v2-preset-broad-tests.log`.
+
+Current status: open; the exact presentation, preview, async-browser, and probe
+suites pass and none of these broad-suite cases were changed.
+
+Update 2026-10-01: `[cycle-v2][preset]` passed 31 of 39 cases after adding MIDI
+preview phrase tests. Eight failures remain in the same missing archived preset,
+deserialization, spectral frontier, pan edit, and traversal/probe parity areas;
+the detailed run is `/tmp/cycle-v2-all-preset-tests.txt`. A JSON comparison
+against `HEAD` confirmed that the 249 edited factory files changed only their
+new presentation sequence (plus the presentation wrapper for `empty`), leaving
+all node, edge, and DSP content intact. Status: open.
+
+## P2: Stengah probe test expects absent probe identifiers
+
+Context: On 2026-09-20, the broad `[cycle-v2][probe]` run failed
+`Stengah probes reflect an asynchronous Waveshaper curve edit at the correct
+taps` because `findProbePreview(..., "probe2")` found no result. The focused
+test reproduces the failure, and the current
+`cycle-v2/content/presets/stengah.cyclegraph` contains no `probe2` identifier.
+The indexed presentation-facts query, presentation, and ordinary probe tests
+pass; no probe behavior or preset was changed in that refactor.
+
+Current status: open; reconcile the test's `probe2`/`probe5` expectations with
+the maintained Stengah preset before changing runtime behavior.
+
+## P2: Broad Spy filter exposes preview and missing-preset expectations
+
+On 2026-10-09, `CycleV2_tests '[cycle-v2][probe]' -r compact` passed 43 of
+46 cases. `TestGraphRuntime.cpp:461` captured identical zero Spy values at
+different preview Mod Wheel settings, and `TestGraphRuntime.cpp:501` expected
+`probe` in `honerism-3.cyclegraph` but found none. The scratch-cable preview
+failure at `TestNodeCanvasAuthoring.cpp:232` is already tracked in
+`docs/TDD/ui-bugs.md`. Log: `/tmp/spy-broad-tests.log`. Focused Spy card
+capture, display-domain persistence, and output visibility tests pass.
+Status: open; reconcile these fixture and preview expectations independently
+of Spy card presentation.

@@ -2,6 +2,7 @@
 
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/NodeModelDecodeDiagnostics.h"
+#include "Graph/NodeModelEnvelopeCodec.h"
 #include "Graph/NodeParameterMap.h"
 
 #include "Nodes/Envelope/EnvelopeMeshState.h"
@@ -154,6 +155,23 @@ bool FlatCurveModel::selectVertex(std::optional<CurveVertexId> vertexId) {
 Vertex* FlatCurveModel::vertexForIdentity(CurveVertexId vertexId) const {
     const auto found = verticesByIdentity.find(vertexId);
     return found != verticesByIdentity.end() ? found->second : nullptr;
+}
+
+std::optional<FlatCurveVertex> FlatCurveModel::pointForMeshVertex(
+        Vertex* meshVertex) const {
+    if (meshVertex == nullptr) {
+        return std::nullopt;
+    }
+    const auto identity = identitiesByVertex.find(meshVertex);
+    if (identity == identitiesByVertex.end()) {
+        return std::nullopt;
+    }
+    return FlatCurveVertex {
+            identity->second,
+            meshVertex->values[Vertex::Phase],
+            meshVertex->values[Vertex::Amp],
+            meshVertex->values[Vertex::Curve]
+    };
 }
 
 Vertex* FlatCurveModel::selectedMeshVertex() const {
@@ -399,10 +417,6 @@ bool EnvelopeNodeModel::readJSON(const var& root) {
     rebuildIdentityMap();
     committedMesh.deepCopy(&mesh);
     logarithmic = (bool) object->getProperty("logarithmic");
-    red = jlimit(0.f, 1.f, (float) object->getProperty("red"));
-    blue = jlimit(0.f, 1.f, (float) object->getProperty("blue"));
-    redLinked = (bool) object->getProperty("redLinked");
-    blueLinked = (bool) object->getProperty("blueLinked");
     const int64 selected = object->getProperty("selection");
     selection = std::nullopt;
     if (selected >= 0) {
@@ -419,8 +433,6 @@ bool EnvelopeNodeModel::syncFromNode(const Node& node) {
             && copyFrom(*typed->envelope());
     const NodeParameterMap parameters(node);
     logarithmic = parameters.boolValue("logarithmic", false);
-    red = jlimit(0.f, 1.f, parameters.floatValue("red", 0.5f));
-    blue = jlimit(0.f, 1.f, parameters.floatValue("blue", 0.5f));
     return loaded;
 }
 
@@ -435,10 +447,9 @@ var EnvelopeNodeModel::writeJSON() const {
     root->setProperty("revision", (int64) modelRevision);
     root->setProperty("mesh", mesh.writeJSON());
     root->setProperty("logarithmic", logarithmic);
-    root->setProperty("red", red);
-    root->setProperty("blue", blue);
-    root->setProperty("redLinked", redLinked);
-    root->setProperty("blueLinked", blueLinked);
+    // CurveNodeModelState replaces these schema slots with the durable morph values.
+    root->setProperty("red", 0.5f);
+    root->setProperty("blue", 0.5f);
     Array<var> encodedIds;
     for (const auto cubeId : cubeIds) {
         encodedIds.add((int64) cubeId);
@@ -452,10 +463,6 @@ bool EnvelopeNodeModel::copyFrom(const EnvelopeNodeModel& other) {
     cubeIds = other.cubeIds;
     selection = other.selection;
     logarithmic = other.logarithmic;
-    red = other.red;
-    blue = other.blue;
-    redLinked = other.redLinked;
-    blueLinked = other.blueLinked;
     nextCubeIdentity = other.nextCubeIdentity;
     committedMesh.deepCopy(&other.committedMesh);
     modelRevision = other.modelRevision;
@@ -464,15 +471,15 @@ bool EnvelopeNodeModel::copyFrom(const EnvelopeNodeModel& other) {
 }
 
 bool EnvelopeNodeModel::equals(const EnvelopeNodeModel& other) const {
+    return equalsGeometryAndTopology(other)
+            && modelRevision == other.modelRevision;
+}
+
+bool EnvelopeNodeModel::equalsGeometryAndTopology(const EnvelopeNodeModel& other) const {
     return mesh.equals(other.mesh)
             && cubeIds == other.cubeIds
             && selection == other.selection
-            && logarithmic == other.logarithmic
-            && red == other.red
-            && blue == other.blue
-            && redLinked == other.redLinked
-            && blueLinked == other.blueLinked
-            && modelRevision == other.modelRevision;
+            && logarithmic == other.logarithmic;
 }
 
 bool EnvelopeNodeModel::selectCube(std::optional<EnvelopeCubeId> cubeId) {
@@ -629,10 +636,14 @@ CurveNodeModelState::CurveNodeModelState(
         int versionToUse,
         uint64_t revisionToUse,
         std::shared_ptr<const EnvelopeNodeModel> modelState,
+        float red,
+        float blue,
         var editorStateToUse) :
         schema(std::move(schemaToUse))
     ,   version(versionToUse)
     ,   modelRevision(revisionToUse)
+    ,   envelopeRedValue(red)
+    ,   envelopeBlueValue(blue)
     ,   envelopeState(std::move(modelState))
     ,   editorState(std::move(editorStateToUse)) {}
 
@@ -651,6 +662,8 @@ std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::copyOf(
 
 std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::copyOf(
         const EnvelopeNodeModel& model,
+        float red,
+        float blue,
         uint64_t revision,
         var editorState) {
     InteractionComplexityDiagnostics::recordMeshCopy(
@@ -661,7 +674,31 @@ std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::copyOf(
     copy->setPublicationRevision(revision);
     return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
             "envelope", EnvelopeNodeModel::currentVersion,
-            revision, std::move(copy), std::move(editorState)));
+            revision, std::move(copy), red, blue, std::move(editorState)));
+}
+
+std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::withEnvelopeMorph(
+        float red,
+        float blue,
+        uint64_t revision) const {
+    if (envelopeState == nullptr) {
+        return nullptr;
+    }
+
+    return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
+            schema, version, revision, envelopeState, red, blue, editorState));
+}
+
+std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::withPointPreview(
+        FlatCurveVertex point,
+        uint64_t revisionToUse) const {
+    if (flatCurveState == nullptr || flatCurveState->vertexForIdentity(point.id) == nullptr) {
+        return nullptr;
+    }
+    auto preview = std::shared_ptr<CurveNodeModelState>(new CurveNodeModelState(
+            schema, version, revisionToUse, flatCurveState));
+    preview->previewPoint = point;
+    return preview;
 }
 
 String CurveNodeModelState::schemaId() const {
@@ -677,26 +714,48 @@ uint64_t CurveNodeModelState::revision() const {
 }
 
 var CurveNodeModelState::writeJSON() const {
-    auto result = std::make_unique<DynamicObject>();
-    result->setProperty("schema", schema);
-    result->setProperty("version", version);
-    result->setProperty("revision", (int64) modelRevision);
-    result->setProperty("state", flatCurveState != nullptr
-            ? flatCurveState->writeJSON()
-            : envelopeState->writeJSON());
-    return var(result.release());
+    var state;
+    if (previewPoint.has_value()) {
+        FlatCurveModel previewModel;
+        previewModel.copyFrom(*flatCurveState);
+        previewModel.moveVertex(previewPoint->id, { previewPoint->x, previewPoint->y });
+        previewModel.setCurve(previewPoint->id, previewPoint->curve);
+        state = previewModel.writeJSON();
+    } else {
+        state = flatCurveState != nullptr
+                ? flatCurveState->writeJSON()
+                : envelopeState->writeJSON();
+    }
+    if (envelopeState != nullptr) {
+        auto* object = state.getDynamicObject();
+        object->setProperty("red", envelopeRedValue);
+        object->setProperty("blue", envelopeBlueValue);
+        object->setProperty("revision", (int64) modelRevision);
+    }
+    return NodeModelEnvelopeCodec::write(
+            schema, version, modelRevision, "state", std::move(state));
 }
 
 bool CurveNodeModelState::equals(const NodeModelState& other) const {
     const auto* typed = dynamic_cast<const CurveNodeModelState*>(&other);
+    if (typed != nullptr && (previewPoint.has_value() || typed->previewPoint.has_value())) {
+        return schema == typed->schema
+                && version == typed->version
+                && modelRevision == typed->modelRevision
+                && flatCurveState == typed->flatCurveState
+                && previewPoint == typed->previewPoint;
+    }
     return typed != nullptr
             && schema == typed->schema
             && version == typed->version
             && modelRevision == typed->modelRevision
+            && envelopeRedValue == typed->envelopeRedValue
+            && envelopeBlueValue == typed->envelopeBlueValue
             && ((flatCurveState != nullptr && typed->flatCurveState != nullptr
                         && flatCurveState->equals(*typed->flatCurveState))
                     || (envelopeState != nullptr && typed->envelopeState != nullptr
-                        && envelopeState->equals(*typed->envelopeState)));
+                        && envelopeState->equalsGeometryAndTopology(
+                                *typed->envelopeState)));
 }
 
 CurveNodeDomainCodec::CurveNodeDomainCodec(NodeKind kindToUse) : kind(kindToUse) {}
@@ -714,49 +773,70 @@ int CurveNodeDomainCodec::currentVersion() const {
 NodeModelStatePtr CurveNodeDomainCodec::createDefault() const {
     const var state = defaultCurveModelState(kind);
     String error;
-    auto wrapper = std::make_unique<DynamicObject>();
-    wrapper->setProperty("schema", schemaId());
-    wrapper->setProperty("version", currentVersion());
-    wrapper->setProperty("revision", 1);
-    wrapper->setProperty("state", state);
-    return readJSON(var(wrapper.release()), error);
+    return readJSON(NodeModelEnvelopeCodec::write(
+            schemaId(), currentVersion(), 1, "state", state), error);
 }
 
 NodeModelStatePtr CurveNodeDomainCodec::readJSON(const var& value, String& error) const {
-    const auto* object = value.getDynamicObject();
-    if (object == nullptr || object->getProperty("schema").toString() != schemaId()) {
-        error = "Unexpected node model schema";
-        return nullptr;
+    if (kind != NodeKind::Envelope) {
+        return readFlatCurveJSON(value, error);
     }
-    if ((int) object->getProperty("version") != currentVersion()) {
-        error = "Unsupported node model schema version";
-        return nullptr;
-    }
-    const int64 revision = object->getProperty("revision");
-    if (revision < 1) {
-        error = "Node model revision must be positive";
+
+    const auto envelope = NodeModelEnvelopeCodec::read(
+            value, schemaId(), currentVersion(), "state", error);
+    if (!envelope.has_value()) {
         return nullptr;
     }
 
-    const var state = object->getProperty("state");
-    if (kind == NodeKind::Envelope) {
-        auto model = std::make_shared<EnvelopeNodeModel>();
-        if (model->readJSON(state) && model->revision() == (uint64_t) revision) {
-            return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
-                    schemaId(), currentVersion(), (uint64_t) revision, std::move(model)));
-        }
-    } else {
-        auto model = std::make_shared<FlatCurveModel>();
-        if (model->readJSON(state) && model->revision() == (uint64_t) revision) {
-            return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
-                    schemaId(), currentVersion(), (uint64_t) revision, std::move(model)));
-        }
+    const var& state = envelope->payload;
+    auto model = std::make_shared<EnvelopeNodeModel>();
+    if (model->readJSON(state) && model->revision() == envelope->revision) {
+        const float red = jlimit(0.f, 1.f, (float) state.getProperty("red", 0.5f));
+        const float blue = jlimit(0.f, 1.f, (float) state.getProperty("blue", 0.5f));
+        return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
+                schemaId(), currentVersion(), envelope->revision,
+                std::move(model), red, blue));
     }
     error = "Invalid structured node model state";
     return nullptr;
 }
 
-NodeModelStatePtr createDefaultGuideCurveModel() {
+NodeModelStatePtr CurveNodeDomainCodec::readFlatCurveJSON(
+        const var& value,
+        String& error,
+        const String& modelName) {
+    const auto envelope = NodeModelEnvelopeCodec::read(
+            value,
+            "flatCurve",
+            FlatCurveModel::currentVersion,
+            "state",
+            error);
+    if (!envelope.has_value()) {
+        return nullptr;
+    }
+
+    auto model = std::make_shared<FlatCurveModel>(modelName);
+    if (model->readJSON(envelope->payload)
+            && model->revision() == envelope->revision) {
+        return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
+                "flatCurve",
+                FlatCurveModel::currentVersion,
+                envelope->revision,
+                std::move(model)));
+    }
+    error = "Invalid structured node model state";
+    return nullptr;
+}
+
+String GuideCurveModelCodec::schemaId() const {
+    return "flatCurve";
+}
+
+int GuideCurveModelCodec::currentVersion() const {
+    return FlatCurveModel::currentVersion;
+}
+
+NodeModelStatePtr GuideCurveModelCodec::createDefault() const {
     FlatCurveModel model("CycleV2GuideCurve");
     if (!model.replaceVertices({
                 { 1, 0.05f, 0.5f, 1.f },
@@ -767,28 +847,13 @@ NodeModelStatePtr createDefaultGuideCurveModel() {
     return CurveNodeModelState::copyOf(model, 1);
 }
 
-NodeModelStatePtr readGuideCurveModelJSON(const var& value, String& error) {
-    const auto* object = value.getDynamicObject();
-    if (object == nullptr || object->getProperty("schema").toString() != "flatCurve") {
-        error = "Unexpected Guide Curve model schema";
-        return nullptr;
-    }
-    if ((int) object->getProperty("version") != FlatCurveModel::currentVersion) {
-        error = "Unsupported Guide Curve model schema version";
-        return nullptr;
-    }
-    const int64 revision = object->getProperty("revision");
-    if (revision < 1) {
-        error = "Guide Curve model revision must be positive";
-        return nullptr;
-    }
+NodeModelStatePtr GuideCurveModelCodec::readJSON(const var& value, String& error) const {
+    return CurveNodeDomainCodec::readFlatCurveJSON(
+            value, error, "CycleV2GuideCurve");
+}
 
-    FlatCurveModel model("CycleV2GuideCurve");
-    if (!model.readJSON(object->getProperty("state")) || model.revision() != (uint64_t) revision) {
-        error = "Invalid Guide Curve model state";
-        return nullptr;
-    }
-    return CurveNodeModelState::copyOf(model, (uint64_t) revision);
+NodeModelStatePtr createDefaultGuideCurveModel() {
+    return GuideCurveModelCodec().createDefault();
 }
 
 }

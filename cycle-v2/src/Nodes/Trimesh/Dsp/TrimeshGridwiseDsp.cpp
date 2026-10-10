@@ -1,6 +1,10 @@
 #include "Nodes/Trimesh/Dsp/TrimeshGridwiseDsp.h"
 
+#include <App/AppConstants.h>
 #include <Curve/Mesh/Vertex.h>
+#include <Util/Arithmetic.h>
+
+#include <utility>
 
 namespace CycleV2 {
 
@@ -27,6 +31,11 @@ void TrimeshGridwiseDsp::setGuideCurveProvider(GuideCurveProvider* provider) {
     blockwiseDsp.setGuideCurveProvider(provider);
 }
 
+void TrimeshGridwiseDsp::setDeltaOverlay(
+        std::shared_ptr<const TrimeshMeshDeltaOverlay> overlay) {
+    blockwiseDsp.setDeltaOverlay(std::move(overlay));
+}
+
 void TrimeshGridwiseDsp::setVoiceLifecycleSeed(uint32_t seed) {
     blockwiseDsp.setVoiceLifecycleSeed(seed);
 }
@@ -45,23 +54,27 @@ void TrimeshGridwiseDsp::prepare(
         int primaryViewAxis,
         size_t maximumColumnCount,
         size_t maximumRowCount,
-        PortDomain domain) {
-    preparationScratch.resize(maximumRowCount);
+        PortDomain domain,
+        bool prewarmColumns) {
     prepareSampling(maximumRowCount);
-    renderColumnRange(
-            mesh,
-            center,
-            primaryViewAxis,
-            maximumColumnCount,
-            [this, domain](size_t index, const MorphPosition&) {
-                blockwiseDsp.renderCycleWithNoiseSeedOffsetInto(
-                        Buffer<float>(
-                                preparationScratch.data(),
-                                (int) preparationScratch.size()),
-                        domain,
-                        noiseSeedOffsetForColumn(index, domain));
-            });
     resetCounters();
+    if (prewarmColumns) {
+        preparationScratch.resize(maximumRowCount);
+        renderColumnRange(
+                mesh,
+                center,
+                primaryViewAxis,
+                maximumColumnCount,
+                [this, domain](size_t index, const MorphPosition&) {
+                    blockwiseDsp.renderCycleWithNoiseSeedOffsetInto(
+                            Buffer<float>(
+                                    preparationScratch.data(),
+                                    (int) preparationScratch.size()),
+                            domain,
+                            noiseSeedOffsetForColumn(index, domain));
+                    ++renderCounters.warmupBakeCount;
+                });
+    }
 }
 
 std::vector<TrimeshGridColumn> TrimeshGridwiseDsp::renderColumns(
@@ -119,6 +132,48 @@ bool TrimeshGridwiseDsp::renderColumnsInto(
                     size_t index,
                     const MorphPosition&) {
                 blockwiseDsp.renderCycleWithNoiseSeedOffsetInto(
+                        destination.section((int) index * rowCount, rowCount),
+                        domain,
+                        noiseSeedOffsetForColumn(index, domain));
+                ++renderCounters.sliceCount;
+                ++renderCounters.bakeCount;
+            });
+
+    return true;
+}
+
+bool TrimeshGridwiseDsp::renderPitchColumnsInto(
+        Mesh& mesh,
+        const MorphPosition& center,
+        int primaryViewAxis,
+        size_t columnCount,
+        Buffer<float> destination,
+        PortDomain domain) {
+    if ((domain != PortDomain::SpectralMagnitudeSignal
+            && domain != PortDomain::SpectralPhaseSignal)
+            || columnCount == 0 || destination.empty()
+            || destination.size() % (int) columnCount != 0) {
+        return false;
+    }
+
+    const int rowCount = destination.size() / (int) columnCount;
+    const Range<int> midiRange(
+            Constants::LowestMidiNote,
+            Constants::HighestMidiNote);
+    renderColumnRange(
+            mesh,
+            center,
+            primaryViewAxis,
+            columnCount,
+            [this, destination, rowCount, columnCount, domain, midiRange](
+                    size_t index,
+                    const MorphPosition&) {
+                const float x = columnCount == 1
+                        ? 0.f
+                        : (float) index / (float) (columnCount - 1);
+                blockwiseDsp.setFrequencyMidiNote(
+                        Arithmetic::getGraphicNoteForValue(x, midiRange));
+                blockwiseDsp.renderHarmonicsWithNoiseSeedOffsetInto(
                         destination.section((int) index * rowCount, rowCount),
                         domain,
                         noiseSeedOffsetForColumn(index, domain));

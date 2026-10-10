@@ -1,5 +1,7 @@
 #include "UI/Editors/NodePropertyControlBinding.h"
 
+#include "Graph/NodeDefinition.h"
+
 namespace CycleV2 {
 
 NodePropertySliderRow::NodePropertySliderRow(
@@ -8,6 +10,7 @@ NodePropertySliderRow::NodePropertySliderRow(
         String parameterId,
         String labelText) :
         PropertySliderRow(owner, labelText)
+    ,   owner           (owner)
     ,   commands        (commandsToUse)
     ,   id              (std::move(parameterId))
     ,   parameterLabel  (std::move(labelText)) {
@@ -26,9 +29,7 @@ NodePropertySliderRow::NodePropertySliderRow(
             return;
         }
         const float value = (float) slider.getValue();
-        if (onPreviewValue != nullptr) {
-            onPreviewValue(value);
-        }
+        previewValue(value);
         if (editing) {
             commands.updateNodeParameterEditValue(value);
         } else {
@@ -42,6 +43,29 @@ NodePropertySliderRow::NodePropertySliderRow(
         editing = false;
         commands.endNodeParameterEdit();
     };
+}
+
+void NodePropertySliderRow::mirrorPreviewInto(Node& node, NodeKind kind) {
+    previewNode = &node;
+    previewKind = kind;
+}
+
+void NodePropertySliderRow::previewValue(float value) {
+    if (previewNode == nullptr || !previewKind.has_value()) {
+        return;
+    }
+    const auto* definition = NodeDefinitionRegistry::instance().findParameter(
+            *previewKind, id);
+    const String normalized = definition != nullptr
+            ? definition->normalized(String(value, 6))
+            : String(value, 6);
+    for (auto& parameter : previewNode->parameters) {
+        if (parameter.id == id) {
+            parameter.value = normalized;
+            break;
+        }
+    }
+    owner.repaint();
 }
 
 void NodePropertySliderRow::bind(const String& nextNodeId, double nextValue) {

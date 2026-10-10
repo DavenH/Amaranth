@@ -112,6 +112,14 @@ void CurveEditorWidget::syncFromNode(const Node& node) {
     controller->syncFromNode(node);
 }
 
+void CurveEditorWidget::restoreFromNode(const Node& node) {
+    controller->restoreFromNode(node);
+}
+
+void CurveEditorWidget::syncGuideContext(const NodeGraph& graph, const Node& node) {
+    controller->syncGuideContext(graph, node);
+}
+
 void CurveEditorWidget::syncFromGuideResource(
         const GuideCurveResource& guide,
         const GuideHeatmapAssetPtr& heatmap) {
@@ -212,6 +220,10 @@ std::vector<CurvePreviewVertex> CurveEditorWidget::previewVertices() {
     return controller->previewVertices();
 }
 
+std::optional<FlatCurveVertex> CurveEditorWidget::pointPreview() {
+    return controller->pointPreview();
+}
+
 String CurveEditorWidget::serializedMeshState() {
     return controller->serializedMeshState();
 }
@@ -238,6 +250,11 @@ std::vector<TrimeshVertexParameter> CurveEditorWidget::selectedVertexParameters(
 
 bool CurveEditorWidget::setSelectedVertexParameter(const String& parameterId, float normalizedValue) {
     return controller->setSelectedVertexParameter(parameterId, normalizedValue);
+}
+
+int CurveEditorWidget::selectedEnvelopeGuideCubeIndex() {
+    auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get());
+    return envelope != nullptr ? envelope->selectedGuideCubeIndex() : -1;
 }
 
 bool CurveEditorWidget::hasSingleSelectedEnvelopeVertex() {

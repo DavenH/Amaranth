@@ -1,0 +1,21 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/brass-section.cyclegraph" },
+    { "command": "openNodeEditor", "nodeId": "pitchEnvelope1", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.guideControlsVisible", "equals": true },
+    { "command": "pointer", "event": "click", "targetId": "expanded:pitchEnvelope1.panel2D", "targetX": 0.02, "targetY": 0.5, "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.selectedGuideCubeIndex", "equals": 1 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.guideLabels.0", "equals": "G2" },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.guideGain", "op": "greaterThan", "value": 0.46 },
+    { "command": "screenshot", "area": "window", "path": "/private/tmp/cycle-v2-envelope-guide-editor.png" },
+    { "command": "pointer", "event": "down", "targetId": "expanded:pitchEnvelope1.envelopeGuideGain.time", "targetX": 0.5, "targetY": 0.9 },
+    { "command": "pointer", "event": "drag", "targetId": "expanded:pitchEnvelope1.envelopeGuideGain.time", "downTargetId": "expanded:pitchEnvelope1.envelopeGuideGain.time", "targetX": 0.5, "targetY": 0.1, "downTargetX": 0.5, "downTargetY": 0.9 },
+    { "command": "pointer", "event": "up", "targetId": "expanded:pitchEnvelope1.envelopeGuideGain.time", "downTargetId": "expanded:pitchEnvelope1.envelopeGuideGain.time", "targetX": 0.5, "targetY": 0.1, "downTargetX": 0.5, "downTargetY": 0.9, "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertState", "path": "expandedNodeControls.model.state.mesh.mainMesh.cubes.1.gains.time", "op": "greaterThan", "value": 0.55 },
+    { "command": "undo", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "openNodeEditor", "nodeId": "pitchEnvelope1", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertState", "path": "expandedNodeControls.model.state.mesh.mainMesh.cubes.1.gains.time", "op": "lessThan", "value": 0.5 },
+    { "command": "inspectPointerTargets" }
+  ],
+  "quit": true
+}

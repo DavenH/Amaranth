@@ -10,6 +10,7 @@
 #include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
 
 class EnvelopeMesh;
+class GuideCurveProvider;
 class Mesh;
 class Panel;
 class SingletonRepo;
@@ -62,6 +63,8 @@ public:
 class EnvelopeCurvePanelContract : public CurvePanel {
 public:
     virtual VertCube* selectedEnvelopeCubeForModel() = 0;
+    virtual int selectedEnvelopeCubeIndex() = 0;
+    virtual void setEnvelopeGuideProvider(GuideCurveProvider* provider) = 0;
     virtual void restoreEnvelopeSelection(VertCube* cube) = 0;
     virtual void setEnvelopeBipolar(bool bipolar) = 0;
     virtual void setEnvelopeLogarithmic(bool logarithmic) = 0;

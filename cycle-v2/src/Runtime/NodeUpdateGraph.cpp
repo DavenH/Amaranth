@@ -92,6 +92,10 @@ std::optional<EditIdentity> SemanticEditGate::accept(
     if (activeGestureId == 0) {
         beginGesture();
     }
+    if (source.gestureId != activeGestureId) {
+        source.gestureStartFingerprint = source.effectiveFingerprint;
+        source.gestureStartInitialized = source.initialized;
+    }
     source.effectiveFingerprint = effectiveFingerprint;
     source.initialized = true;
     source.gestureId = activeGestureId;
@@ -120,10 +124,16 @@ EditIdentity SemanticEditGate::commit(const String& sourceStreamId) {
 
 void SemanticEditGate::cancelGesture(const String& sourceStreamId) {
     auto found = sources.find(sourceStreamId);
-    if (found != sources.end()) {
+    if (found != sources.end() && found->second.gestureId != 0) {
+        found->second.effectiveFingerprint = found->second.gestureStartFingerprint;
+        found->second.initialized = found->second.gestureStartInitialized;
         found->second.gestureId = 0;
     }
     activeGestureId = 0;
+}
+
+void SemanticEditGate::invalidateSource(const String& sourceStreamId) {
+    sources.erase(sourceStreamId);
 }
 
 bool NodeUpdateGraph::GenerationKey::operator<(const GenerationKey& other) const {
@@ -263,6 +273,22 @@ CausalUpdateResult NodeUpdateGraph::executeDeferredPublication(
     }
 
     return result;
+}
+
+void NodeUpdateGraph::invalidateProduct(
+        const GraphExecutionPlan& plan,
+        const String& nodeId,
+        UpdateProduct product) {
+    const auto found = plan.dependencyIndex.nodeIndexById.find(nodeId);
+    if (found == plan.dependencyIndex.nodeIndexById.end()) {
+        return;
+    }
+    const std::lock_guard<std::mutex> lock(productMutex);
+    const size_t nodeIndex = static_cast<size_t>(found->second);
+    if (nodeIndex >= productFingerprints.size()) {
+        return;
+    }
+    productFingerprints[nodeIndex][static_cast<size_t>(product)].reset();
 }
 
 void NodeUpdateGraph::publish(

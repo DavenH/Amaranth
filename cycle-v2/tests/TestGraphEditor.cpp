@@ -2,13 +2,17 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphCompiler.h"
+#include "Graph/GraphConnectionValidator.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Nodes/Unison/UnisonNode.h"
 
 #include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/Mesh.h>
@@ -24,14 +28,14 @@ TEST_CASE("Envelope purpose changes output grammar and removes stale edges atomi
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
 
-    REQUIRE(editor.setNodeParameter(graph, "env", "purpose", "Purpose", "volume").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "env", "purpose", "Purpose", "volume").succeeded());
     REQUIRE(editor.connect(
             graph,
             { "env", "env", false },
             { "multiply", "right", true }).succeeded());
     REQUIRE(graph.getEdges().size() == 1);
 
-    const auto changed = editor.setNodeParametersAtomic(graph, "env", {
+    const auto changed = GraphNodeStateEditor().setNodeParametersAtomic(graph, "env", {
             { "purpose", "Purpose", "scratch" },
             { "logarithmic", "Logarithmic", "1" }
     });
@@ -73,7 +77,7 @@ TEST_CASE("Envelope purpose exposes control volume and pitch domains",
     };
 
     for (const auto& item : expected) {
-        REQUIRE(editor.setNodeParameter(
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
                 graph,
                 "env",
                 "purpose",
@@ -94,7 +98,7 @@ TEST_CASE("Pitch Envelope routes only to the typed Voice Context pitch port",
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "env", "purpose", "Purpose", "pitch").succeeded());
 
     const auto voicePitch = editor.connect(
@@ -200,7 +204,7 @@ TEST_CASE("Global effect scope can be repaired into the voice graph and undone",
     graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "global", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "shape",
             "processingScope",
@@ -257,7 +261,7 @@ TEST_CASE("Envelope purpose edit restores its removed routing through document u
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
-    REQUIRE(editor.setNodeParameter(graph, "env", "purpose", "Purpose", "volume").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "env", "purpose", "Purpose", "volume").succeeded());
     REQUIRE(editor.connect(
             graph,
             { "env", "env", false },
@@ -338,7 +342,7 @@ TEST_CASE("Graph editor rejects normalized no-op parameter attempts", "[cycle-v2
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Delay, "delay", {}));
     const uint64_t graphRevision = graph.getRevision();
 
-    const auto result = GraphEditor().setNodeParameter(
+    const auto result = GraphNodeStateEditor().setNodeParameter(
             graph, "delay", "time", "Time", "0.500000");
 
     REQUIRE(result.succeeded());
@@ -351,9 +355,9 @@ TEST_CASE("IR length uses one effective normalizer for graph and DSP edits",
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {}));
 
-    const auto first = GraphEditor().setNodeParameter(graph, "ir", "size", "Size", "0.51");
-    const auto sameLength = GraphEditor().setNodeParameter(graph, "ir", "size", "Size", "0.56");
-    const auto nextLength = GraphEditor().setNodeParameter(graph, "ir", "size", "Size", "0.58");
+    const auto first = GraphNodeStateEditor().setNodeParameter(graph, "ir", "size", "Size", "0.51");
+    const auto sameLength = GraphNodeStateEditor().setNodeParameter(graph, "ir", "size", "Size", "0.56");
+    const auto nextLength = GraphNodeStateEditor().setNodeParameter(graph, "ir", "size", "Size", "0.58");
 
     REQUIRE(first.succeeded());
     REQUIRE_FALSE(first.changed);
@@ -442,6 +446,8 @@ TEST_CASE("Graph editor connects compatible ports", "[cycle-v2][graph]") {
             { "multiply", "right", true });
 
     REQUIRE(result.succeeded());
+    REQUIRE(result.changes.topologyChanged);
+    REQUIRE(result.changes.nodeIds == std::vector<String> { "env", "multiply" });
     REQUIRE(GraphValidator().isValid(graph));
 
     const auto& edge = graph.getEdges().back();
@@ -449,6 +455,26 @@ TEST_CASE("Graph editor connects compatible ports", "[cycle-v2][graph]") {
     REQUIRE(edge.destNodeId == "multiply");
     REQUIRE(edge.destPortId == "right");
     REQUIRE_FALSE(edge.isAttachment());
+}
+
+TEST_CASE("Connection validation returns an applicable edge without mutation",
+        "[cycle-v2][graph][connection-validation]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    graph.removeEdgesToInput("multiply", "right");
+    const size_t edgeCount = graph.getEdges().size();
+
+    const auto validation = GraphConnectionValidator().validate(
+            graph,
+            { "multiply", "right", true },
+            { "env", "env", false });
+
+    REQUIRE(validation.succeeded());
+    REQUIRE(validation.issues.empty());
+    REQUIRE(validation.source.nodeId == "env");
+    REQUIRE(validation.destination.nodeId == "multiply");
+    REQUIRE(validation.edge.sourceNodeId == "env");
+    REQUIRE(validation.edge.destPortId == "right");
+    REQUIRE(graph.getEdges().size() == edgeCount);
 }
 
 TEST_CASE("Graph editor orients input to output connections", "[cycle-v2][graph]") {
@@ -482,7 +508,7 @@ TEST_CASE("Graph editor marks scratch connections as attachments", "[cycle-v2][g
 TEST_CASE("Graph editor creates targeted Trimesh Guide assignments", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
 
-    const auto result = GraphEditor().createGuideCurveAndAssignToTrimeshVertexParameter(
+    const auto result = GuideGraphEditor().createGuideCurveAndAssignToMeshComponent(
             graph,
             "waveMesh",
             2,
@@ -490,6 +516,9 @@ TEST_CASE("Graph editor creates targeted Trimesh Guide assignments", "[cycle-v2]
 
     REQUIRE(result.succeeded());
     REQUIRE(result.nodeId == "guide1");
+    REQUIRE(result.changes.guidesChanged);
+    REQUIRE(result.changes.guidePresentationChanged);
+    REQUIRE(result.changes.nodeIds == std::vector<String> { "waveMesh" });
     REQUIRE(GraphValidator().isValid(graph));
 
     REQUIRE(graph.getGuideAssignments().size() == 1);
@@ -503,7 +532,7 @@ TEST_CASE("Graph editor creates targeted Trimesh Guide assignments", "[cycle-v2]
 TEST_CASE("New Guide resources start flat with neutral modulation",
         "[cycle-v2][graph][guides]") {
     NodeGraph graph;
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
 
     const GuideCurveResource* guide = graph.findGuideCurve("guide1");
     REQUIRE(guide != nullptr);
@@ -522,15 +551,15 @@ TEST_CASE("New Guide resources start flat with neutral modulation",
 
 TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
 
-    const auto waveResult = GraphEditor().assignGuideCurveToTrimeshVertexParameter(
+    const auto waveResult = GuideGraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide1",
             "waveMesh",
             1,
             "phase");
-    const auto magResult = GraphEditor().assignGuideCurveToTrimeshVertexParameter(
+    const auto magResult = GuideGraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide1",
             "magMesh",
@@ -554,12 +583,11 @@ TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[
 
 TEST_CASE("Guide resource edits replace the resource model without creating a node", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    GraphEditor editor;
-    REQUIRE(editor.createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
 
     const GuideCurveResource* original = graph.findGuideCurve("guide1");
     REQUIRE(original != nullptr);
-    REQUIRE(editor.replaceGuideCurve(graph, "guide1", original->model, {
+    REQUIRE(GuideGraphEditor().replaceGuideCurve(graph, "guide1", original->model, {
             { "enabled", "Enabled", "0" },
             { "noise", "Noise", "0.2" },
             { "dcOffset", "DC Offset", "0.7" },
@@ -675,16 +703,16 @@ TEST_CASE("Guide resource reordering preserves its identity and assignments", "[
 
 TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
-    REQUIRE(GraphEditor().assignGuideCurveToTrimeshVertexParameter(
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide1",
             "waveMesh",
             2,
             "amp").succeeded());
 
-    const auto result = GraphEditor().assignGuideCurveToTrimeshVertexParameter(
+    const auto result = GuideGraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide2",
             "waveMesh",
@@ -704,7 +732,7 @@ TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cy
 TEST_CASE("Trimesh topology edits reconcile Guide assignments in one undoable command",
         "[cycle-v2][graph][guides]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
     REQUIRE(graph.findNode("waveMesh") != nullptr);
     REQUIRE(graph.assignGuideCurve({
             "guide1", "waveMesh", { 0, GuideCurveField::Amplitude }
@@ -865,7 +893,7 @@ TEST_CASE("Voice-time scratch exclusion publishes, restores inheritance, and und
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::Envelope, "scratch", {}));
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "scratch", "purpose", "Purpose", "scratch").succeeded());
     graph.addNode(factory.createNode(NodeKind::ScratchDefaultOverride, "voiceTime", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
@@ -974,7 +1002,7 @@ TEST_CASE("Graph editor updates node parameters", "[cycle-v2][graph]") {
     REQUIRE(initialMesh != nullptr);
     const size_t initialParameterCount = initialMesh->parameters.size();
 
-    const auto updateResult = editor.setNodeParameter(
+    const auto updateResult = GraphNodeStateEditor().setNodeParameter(
             graph,
             "waveMesh",
             "polarity",
@@ -985,7 +1013,7 @@ TEST_CASE("Graph editor updates node parameters", "[cycle-v2][graph]") {
     REQUIRE(updateResult.nodeId == "waveMesh");
     REQUIRE(parameterValueForNode(*graph.findNode("waveMesh"), "polarity") == "unipolar");
 
-    const auto addResult = editor.setNodeParameter(
+    const auto addResult = GraphNodeStateEditor().setNodeParameter(
             graph,
             "waveMesh",
             "tempoSync",
@@ -1002,9 +1030,9 @@ TEST_CASE("Graph editor validates and normalizes declared parameters", "[cycle-v
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
 
-    const auto normalized = GraphEditor().setNodeParameter(
+    const auto normalized = GraphNodeStateEditor().setNodeParameter(
             graph, "voice", "portamento", "Ignored Label", "true");
-    const auto invalid = GraphEditor().setNodeParameter(
+    const auto invalid = GraphNodeStateEditor().setNodeParameter(
             graph, "voice", "octave", "Octave", "99");
 
     REQUIRE(normalized.succeeded());
@@ -1017,7 +1045,7 @@ TEST_CASE("Graph editor validates and normalizes declared parameters", "[cycle-v
 TEST_CASE("Graph editor reports missing node parameter updates", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
 
-    const auto result = GraphEditor().setNodeParameter(
+    const auto result = GraphNodeStateEditor().setNodeParameter(
             graph,
             "missing",
             "gain",
@@ -1026,4 +1054,35 @@ TEST_CASE("Graph editor reports missing node parameter updates", "[cycle-v2][gra
 
     REQUIRE_FALSE(result.succeeded());
     REQUIRE(result.code == GraphEditCode::MissingNode);
+}
+
+TEST_CASE("Transient typed model replacement uses one durable concurrency token",
+        "[cycle-v2][graph][model][transient]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Unison, "unison", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    const auto initial = document.graph().findNode("unison")->model;
+    const uint64_t base = initial->revision();
+    commands.beginTransientEdit();
+    REQUIRE(commands.replaceNodeModel(
+            "unison", base, UnisonNodeModelState::create({ { 0.5f, 0.2f, 0.f } }, base + 1))
+            .changed);
+    REQUIRE(commands.replaceNodeModel(
+            "unison", base, UnisonNodeModelState::create({ { 0.5f, 0.8f, 0.f } }, base + 1))
+            .changed);
+    REQUIRE(commands.replaceNodeModel(
+            "unison", base + 1, UnisonNodeModelState::create({ {}, {} }, base + 2))
+            .code == GraphEditCode::StaleRevision);
+    REQUIRE(document.graph().findNode("unison")->model == initial);
+    commands.commitTransientEdit();
+    const auto final = std::dynamic_pointer_cast<const UnisonNodeModelState>(
+            document.graph().findNode("unison")->model);
+    REQUIRE(final->voices().front().pan == 0.8f);
+    REQUIRE(commands.replaceNodeModel(
+            "unison", base + 1, UnisonNodeModelState::create({ {}, {} }, base + 1))
+            .code == GraphEditCode::ConflictingRevision);
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findNode("unison")->model == initial);
+    REQUIRE_FALSE(document.canUndo());
 }

@@ -1,10 +1,11 @@
 #pragma once
 
-#include "Graph/GraphEditor.h"
+#include "Graph/GraphEditTypes.h"
 #include "Nodes/Curve/Editor/CurveEditorWidget.h"
 
 #include <JuceHeader.h>
 
+#include <array>
 #include <initializer_list>
 #include <utility>
 #include <vector>
@@ -28,12 +29,17 @@ public:
             const String& value) = 0;
     virtual void beginCurveTransaction() = 0;
     virtual void commitCurveTransaction() = 0;
+    virtual bool cancelCurveTransaction() { return false; }
     virtual void curveTransientStateChanged(uint64_t) {}
     virtual void setCurveEditorStatus(const String&) {}
     virtual bool setAudioResource(NodeAudioResourceEdit) { return false; }
     virtual bool removeAudioResource() { return false; }
     virtual std::optional<NodeAudioResourceSummary> audioResourceSummary() const {
         return std::nullopt;
+    }
+    virtual std::array<String, 6> envelopeGuideLabels(int) const { return {}; }
+    virtual bool showEnvelopeGuideAttachmentMenu(const String&, Rectangle<int>) {
+        return false;
     }
 };
 
@@ -67,15 +73,17 @@ protected:
     virtual std::vector<NodeParameter> editorControls() const = 0;
     virtual void appendEditorAutomation(DynamicObject& state) const = 0;
     virtual bool editorMouseMove(Point<float> position);
+    virtual bool editorInteractionIsSessionOnly(Point<float> position) const;
     virtual bool editorMouseDown(Point<float> position);
     virtual bool editorMouseDrag(Point<float> position);
     virtual void editorMouseUp();
     virtual void syncInteractionControls() {}
 
     Rectangle<float> contentBounds() const;
-    void publishCurrentState();
+    void publishCurrentState(bool meshEdited = false);
     void beginTransaction();
     void commitTransaction();
+    bool cancelTransaction();
     void setStatusMessage(const String& message);
     void requestRepaint();
     void refreshEditorSubject();
@@ -124,6 +132,7 @@ private:
     void beginCurvePanelControllerEdit() override;
     void curvePanelControllerEdited() override;
     void commitCurvePanelControllerEdit() override;
+    bool cancelCurvePanelControllerEdit() override;
     void setCurvePanelCursor(const MouseCursor& cursor) override;
 
     bool transactionActive {};

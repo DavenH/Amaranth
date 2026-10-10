@@ -27,7 +27,8 @@ struct TrimeshChange {
 };
 
 struct TrimeshInvalidationResult {
-    bool rebuildNodeData {};
+    bool rebuildSurfaceData {};
+    bool rebuildSliceData {};
     bool updateRasterizer {};
     bool refresh2DPanel {};
     bool refresh3DGeometry {};

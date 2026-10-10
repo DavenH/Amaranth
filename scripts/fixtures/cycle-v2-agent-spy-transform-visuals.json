@@ -1,0 +1,13 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph" },
+    { "command": "assertState", "path": "nodes.2.bounds.width", "equals": 144 },
+    { "command": "assertState", "path": "nodes.2.bounds.height", "equals": 142 },
+    { "command": "assertState", "path": "nodes.3.bounds.width", "equals": 144 },
+    { "command": "assertState", "path": "nodes.3.bounds.height", "equals": 142 },
+    { "command": "assertState", "path": "spyCards.0.id", "equals": "probe" },
+    { "command": "waitForIdle", "delayMs": 400 },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-spy-transform-visuals.png" }
+  ],
+  "quit": true
+}

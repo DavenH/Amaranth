@@ -6,22 +6,32 @@
 #include <set>
 
 #include <App/AppConstants.h>
+#include <Curve/Mesh/Mesh.h>
 #include <Util/Arithmetic.h>
 
+#include "Graph/DefaultOutputProbeResolver.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphEdgeIndex.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Graph/NodeDefinition.h"
 #include "UI/CanvasChromeMetrics.h"
+#include "UI/CanvasUtilityDock.h"
 #include "UI/EnvelopePurposeIconRenderer.h"
 #include "UI/EnvelopePurposeSelector.h"
 #include "UI/EffectEnableButton.h"
 #include "UI/EditorChromeLayout.h"
 #include "UI/GuideRelationshipPresentation.h"
+#include "UI/GuideCurveShelf.h"
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
+#include "UI/NodeCanvasCursorPolicy.h"
 #include "UI/NodeCanvasPresentation.h"
 #include "UI/NodeCableRenderer.h"
 #include "UI/NodeCanvasViewport.h"
@@ -31,15 +41,30 @@
 #include "UI/NodePreviewRenderer.h"
 #include "UI/NodeViewModule.h"
 #include "UI/SignalProbeDetailView.h"
-#include "UI/SignalProbeRail.h"
+#include "UI/SignalProbeCanvas.h"
 #include "UI/TransformCompactEditor.h"
 #include "UI/VoiceContextCompactEditor.h"
 #include "UI/WorkspaceDock.h"
 #include "UI/WorkspaceDockKeyboardNavigation.h"
 #include "Runtime/GraphPresentationModel.h"
+#include "Runtime/GraphPreviewExecutor.h"
+#include "Runtime/PreviewPitchContextIndex.h"
 #include "Runtime/PreviewPitchResolver.h"
 
 using namespace CycleV2;
+
+TEST_CASE("Node canvas Shift cursor preserves adjustment priority",
+        "[cycle-v2][canvas][cursor]") {
+    REQUIRE(NodeCanvasCursorPolicy::cursorFor(
+            false, ModifierKeys::shiftModifier)
+            == NodeCanvasCursorKind::AddToSelection);
+    REQUIRE(NodeCanvasCursorPolicy::cursorFor(
+            false, {})
+            == NodeCanvasCursorKind::Normal);
+    REQUIRE(NodeCanvasCursorPolicy::cursorFor(
+            true, ModifierKeys::shiftModifier)
+            == NodeCanvasCursorKind::VerticalAdjust);
+}
 
 TEST_CASE("EQ response preview does not require a Curve model",
         "[cycle-v2][canvas][equalizer][regression]") {
@@ -64,124 +89,151 @@ uint64_t imageChecksum(const Image& image) {
     return checksum;
 }
 
-TEST_CASE("Signal probe rail reserves editor-safe workspace bounds", "[cycle-v2][canvas][probe]") {
+TEST_CASE("Canvas spies leave the full canvas available", "[cycle-v2][canvas][probe]") {
     const Rectangle<float> workspace { 0.f, 0.f, 1200.f, 800.f };
-    SignalProbeRailState expanded;
-    expanded.expandedHeight = 190.f;
-
-    const Rectangle<float> content = SignalProbeRail::contentBoundsFor(workspace, expanded);
-    REQUIRE(content == Rectangle<float>(0.f, 0.f, 1200.f, 610.f));
-    REQUIRE(SignalProbeRail::boundsFor(workspace, expanded).getY() == content.getBottom());
-    const Rectangle<float> collapse = SignalProbeRail::collapseHandleFor(workspace, expanded);
-    const Rectangle<float> refreshMode = SignalProbeRail::refreshModeBoundsFor(workspace, expanded);
-    const Rectangle<float> rail = SignalProbeRail::boundsFor(workspace, expanded);
-    REQUIRE(rail.contains(collapse));
-    REQUIRE(rail.contains(refreshMode));
-    REQUIRE_FALSE(collapse.intersects(refreshMode));
-    REQUIRE(SignalProbeRail::tileBoundsFor(workspace, expanded, 0).getY()
-            == Catch::Approx(SignalProbeRail::boundsFor(workspace, expanded).getY()
-                    + WorkspaceDock::headerHeight));
+    const WorkspaceDockLayout dock = WorkspaceDock::layout(workspace, {});
+    const Rectangle<float> content = dock.content;
+    REQUIRE(content == workspace);
+    REQUIRE(dock.leftShelf.getBottom() == Catch::Approx(
+            workspace.getBottom() - CanvasUtilityDock::margin));
 
     GraphNodeFactory factory;
     const Node trimesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
     const Rectangle<float> editor = NodeCanvasEditorCoordinator::boundsFor(&trimesh, content);
     REQUIRE(content.contains(editor));
     REQUIRE(editor.getBottom() <= content.getBottom());
-    REQUIRE(editor.getWidth() == Catch::Approx(content.getWidth() * 0.81f));
-    REQUIRE(editor.getHeight() == Catch::Approx(content.getHeight() - 36.f));
+    REQUIRE(editor.getCentre() == content.getCentre());
+    REQUIRE(editor.getWidth() == Catch::Approx(content.getWidth() * 0.86f));
+    REQUIRE(editor.getHeight() == Catch::Approx(content.getHeight() * 0.82f));
 
-    expanded.expanded = false;
-    REQUIRE(SignalProbeRail::contentBoundsFor(workspace, expanded).getHeight()
-            == 800.f - WorkspaceDock::collapsedHeight);
+    REQUIRE(WorkspaceDock::layout(workspace, { true }).content == workspace);
 }
 
-TEST_CASE("Workspace dock is the single clamped Guide and Spy layout authority",
+TEST_CASE("Guide shelf occupies the left side without a Spy tray",
         "[cycle-v2][canvas][guide-dock]") {
     const Rectangle<float> workspace { 0.f, 0.f, 1000.f, 700.f };
     WorkspaceDockState state;
     const WorkspaceDockLayout balanced = WorkspaceDock::layout(workspace, state);
 
-    REQUIRE(balanced.content.getBottom() == balanced.dock.getY());
-    REQUIRE(balanced.leftShelf.getWidth() == Catch::Approx(500.f));
-    REQUIRE(balanced.rightShelf.getWidth() == Catch::Approx(500.f));
-    REQUIRE(balanced.leftShelf.getRight() == Catch::Approx(balanced.rightShelf.getX()));
-    REQUIRE(balanced.dock.contains(balanced.collapseHandle));
-    REQUIRE(balanced.resizeHandle.getY() == balanced.dock.getY());
+    const CanvasUtilityDockLayout utilities = CanvasUtilityDock::layout(workspace);
+    REQUIRE(balanced.content == workspace);
+    REQUIRE(balanced.leftShelf.getY() == workspace.getY() + CanvasUtilityDock::margin);
+    REQUIRE(balanced.leftShelf.getX() == workspace.getX() + CanvasUtilityDock::margin);
+    REQUIRE(balanced.leftShelf.getWidth() == Catch::Approx(256.f));
+    REQUIRE_FALSE(balanced.leftShelf.intersects(utilities.minimap));
+    REQUIRE(balanced.leftShelf.getHeight() > WorkspaceDock::guideTileHeight);
 
-    state.splitRatio = 0.05f;
-    const WorkspaceDockLayout clamped = WorkspaceDock::layout(workspace, state);
-    REQUIRE(clamped.leftShelf.getWidth() == Catch::Approx(WorkspaceDock::minimumShelfWidth));
+    const auto first = WorkspaceDock::guideTileBounds(balanced.leftShelf, 0, 0.f);
+    const auto second = WorkspaceDock::guideTileBounds(balanced.leftShelf, 1, 0.f);
+    REQUIRE(first.getY() < second.getY());
+    REQUIRE(first.getWidth() > first.getHeight());
+    REQUIRE(first.getRight() == second.getRight());
+    REQUIRE(first.getBottom() + WorkspaceDock::tileGap == second.getY());
 
     state.leftMinimized = true;
     const WorkspaceDockLayout leftDrawer = WorkspaceDock::layout(workspace, state);
     REQUIRE(leftDrawer.leftShelf.getWidth() == Catch::Approx(WorkspaceDock::drawerWidth));
-    REQUIRE(leftDrawer.rightShelf.getWidth()
-            == Catch::Approx(workspace.getWidth() - WorkspaceDock::drawerWidth));
-    REQUIRE(leftDrawer.divider.isEmpty());
-
     state.leftMinimized = false;
-    state.expanded = false;
-    const WorkspaceDockLayout collapsed = WorkspaceDock::layout(workspace, state);
-    REQUIRE(collapsed.dock.getHeight() == Catch::Approx(WorkspaceDock::collapsedHeight));
-    REQUIRE(collapsed.leftShelf.isEmpty());
-    REQUIRE(collapsed.resizeHandle.isEmpty());
 
     const Rectangle<float> smallWorkspace { 0.f, 0.f, 360.f, 400.f };
-    state.expanded = true;
-    state.splitRatio = 0.8f;
     const WorkspaceDockLayout small = WorkspaceDock::layout(smallWorkspace, state);
-    REQUIRE(small.leftShelf.getWidth() == Catch::Approx(180.f));
-    REQUIRE(small.rightShelf.getWidth() == Catch::Approx(180.f));
+    REQUIRE(small.content == smallWorkspace);
+
+    const Rectangle<float> narrowWorkspace { 0.f, 0.f, 800.f, 600.f };
+    const WorkspaceDockLayout narrow = WorkspaceDock::layout(narrowWorkspace, state);
+    const CanvasUtilityDockLayout narrowUtilities = CanvasUtilityDock::layout(narrowWorkspace);
+    REQUIRE_FALSE(narrow.leftShelf.intersects(narrowUtilities.minimap));
+    REQUIRE(narrow.leftShelf.getHeight()
+            >= WorkspaceDock::headerHeight + WorkspaceDock::guideTileHeight);
+
+    GraphNodeFactory factory;
+    const Node trimesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+    for (const WorkspaceDockLayout& layout : { balanced, narrow }) {
+        const Rectangle<float> available = WorkspaceDock::editorAvailableBounds(layout);
+        const Rectangle<float> editor = NodeCanvasEditorCoordinator::boundsFor(&trimesh, available);
+        REQUIRE(available.contains(editor));
+        REQUIRE_FALSE(editor.intersects(layout.leftShelf));
+    }
+    REQUIRE(WorkspaceDock::editorAvailableBounds(balanced).getX()
+            > balanced.leftShelf.getRight());
 }
 
 TEST_CASE("Workspace dock keyboard traversal exposes every visible action",
         "[cycle-v2][canvas][guide-dock][keyboard]") {
     WorkspaceDockKeyboardModel model;
     model.guideIds = { "guide1", "guide2" };
-    model.spyIds = { "probe1" };
 
     const auto order = WorkspaceDockKeyboardNavigation::focusOrder(model);
-    REQUIRE(order.front().target == WorkspaceDockFocusTarget::Collapse);
+    REQUIRE(order.front().target == WorkspaceDockFocusTarget::GuideMinimize);
     REQUIRE(std::count(order.begin(), order.end(), WorkspaceDockFocus {
             WorkspaceDockFocusTarget::GuideTile, "guide1" }) == 1);
-    REQUIRE(std::count(order.begin(), order.end(), WorkspaceDockFocus {
-            WorkspaceDockFocusTarget::SpyTile, "probe1" }) == 1);
+    REQUIRE(order.size() == 4);
 
     WorkspaceDockFocus focus;
     REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
             KeyPress(KeyPress::tabKey), model, focus));
-    REQUIRE(focus.target == WorkspaceDockFocusTarget::Collapse);
+    REQUIRE(focus.target == WorkspaceDockFocusTarget::GuideMinimize);
     REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
             KeyPress(KeyPress::tabKey, ModifierKeys::shiftModifier, 0), model, focus));
     REQUIRE(focus == order.back());
 
     focus = { WorkspaceDockFocusTarget::GuideTile, "guide1" };
     REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
-            KeyPress(KeyPress::rightKey), model, focus));
+            KeyPress(KeyPress::downKey), model, focus));
     REQUIRE(focus.itemId == "guide2");
     REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
-            KeyPress(KeyPress::downKey), model, focus));
-    const WorkspaceDockFocus expectedSpy {
-            WorkspaceDockFocusTarget::SpyTile,
-            "probe1"
-    };
-    REQUIRE(focus == expectedSpy);
+            KeyPress(KeyPress::tabKey), model, focus));
+    REQUIRE(focus.target == WorkspaceDockFocusTarget::GuideMinimize);
 
-    model.expanded = false;
-    const auto collapsedOrder = WorkspaceDockKeyboardNavigation::focusOrder(model);
-    REQUIRE(collapsedOrder.size() == 1);
-    REQUIRE(collapsedOrder.front().target == WorkspaceDockFocusTarget::Collapse);
+    model.guidesMinimized = true;
+    const auto minimizedOrder = WorkspaceDockKeyboardNavigation::focusOrder(model);
+    REQUIRE(minimizedOrder.size() == 1);
+    REQUIRE(minimizedOrder.front().target == WorkspaceDockFocusTarget::GuideDrawer);
 }
 
 TEST_CASE("Workspace dock reveals keyboard-focused overflow tiles",
         "[cycle-v2][canvas][guide-dock][keyboard]") {
     const float maximumOffset = 900.f;
-    const float first = WorkspaceDock::offsetToRevealTile(420.f, maximumOffset, 500.f, 0);
-    const float last = WorkspaceDock::offsetToRevealTile(0.f, maximumOffset, 500.f, 5);
+    REQUIRE(WorkspaceDock::offsetToRevealGuideTile(420.f, maximumOffset, 300.f, 0)
+            == Catch::Approx(0.f));
+    REQUIRE(WorkspaceDock::offsetToRevealGuideTile(0.f, maximumOffset, 300.f, 5) > 0.f);
+}
 
-    REQUIRE(first == Catch::Approx(0.f));
-    REQUIRE(last > 0.f);
-    REQUIRE(last <= maximumOffset);
+TEST_CASE("Guide shelf keeps actions in the footer and exposes per-tile deletion",
+        "[cycle-v2][canvas][guide-dock][interaction]") {
+    NodeGraph graph;
+    GuideCurveResource guide;
+    guide.id = "guide1";
+    REQUIRE(graph.addGuideCurve(std::move(guide)));
+
+    const Rectangle<float> workspace { 0.f, 0.f, 1200.f, 800.f };
+    SignalProbeCanvasState dockState;
+    GuideCurveShelfState guideState;
+    const Rectangle<float> shelf = GuideCurveShelf::boundsFor(
+            workspace, dockState, guideState);
+    const Rectangle<float> add = GuideCurveShelf::addButtonBounds(
+            workspace, dockState, guideState);
+    const Rectangle<float> minimize = GuideCurveShelf::minimizeButtonBounds(
+            workspace, dockState, guideState);
+    const Rectangle<float> tile = GuideCurveShelf::tileBoundsFor(
+            workspace, dockState, guideState, 0);
+    const Rectangle<float> remove = GuideCurveShelf::deleteButtonBoundsFor(
+            workspace, dockState, guideState, 0);
+
+    REQUIRE(add.getY() > tile.getY());
+    REQUIRE(add.getWidth() > minimize.getWidth());
+    REQUIRE_FALSE(add.intersects(minimize));
+    REQUIRE(shelf.contains(add));
+    REQUIRE(tile.contains(remove));
+    REQUIRE(remove.getCentreX() > tile.getCentreX());
+    REQUIRE(remove.getCentreY() < tile.getCentreY());
+    REQUIRE(GuideCurveShelf::guideDeleteAt(
+            remove.getCentre(), graph, workspace, dockState, guideState) == "guide1");
+    REQUIRE(GuideCurveShelf::guideDeleteAt(
+            tile.getCentre(), graph, workspace, dockState, guideState).isEmpty());
+    guideState.presetBrowserVisible = true;
+    REQUIRE(GuideCurveShelf::guideAt(
+            tile.getCentre(), graph, workspace, dockState, guideState).isEmpty());
 }
 
 TEST_CASE("Guide relationship selection highlights without drawing a persistent tether",
@@ -195,6 +247,30 @@ TEST_CASE("Guide relationship selection highlights without drawing a persistent 
     state.hoveredGuideId = "guide2";
     REQUIRE(GuideRelationshipPresentation::highlightGuideId(state) == "guide2");
     REQUIRE(GuideRelationshipPresentation::tetherGuideId(state) == "guide2");
+
+    state.presetBrowserVisible = true;
+    REQUIRE(GuideRelationshipPresentation::highlightGuideId(state).isEmpty());
+    REQUIRE(GuideRelationshipPresentation::tetherGuideId(state).isEmpty());
+}
+
+TEST_CASE("Expanded Trimesh editor occludes intersecting workspace sidebar content",
+        "[cycle-v2][canvas][editor][sidebar][regression]") {
+    const Rectangle<float> workspace { 0.f, 0.f, 1200.f, 800.f };
+    const Rectangle<float> sidebar = GuideCurveShelf::guideWorkspace(
+            workspace, false);
+    const Node mesh = GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            { 440.f, 260.f });
+    const Rectangle<float> editor = NodeCanvasEditorCoordinator::boundsFor(
+            &mesh, workspace);
+
+    REQUIRE(editor.intersects(sidebar));
+    REQUIRE_FALSE(WorkspaceDock::isOverlayComponentVisible(sidebar, editor));
+    REQUIRE(WorkspaceDock::isOverlayComponentVisible(sidebar, {}));
+    REQUIRE(WorkspaceDock::isOverlayComponentVisible(
+            sidebar,
+            editor.translated(-workspace.getWidth(), 0.f)));
 }
 
 TEST_CASE("Canvas status gives hover help precedence over the last edit",
@@ -238,25 +314,23 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
     }));
     REQUIRE(graph.guideTargetNodeIds("guide1").size() == 2);
 
-    GraphCompileResult compileResult;
-    GraphPreviewResult previewResult;
+    GraphPresentationSnapshot snapshot;
+    GraphPresentationFacts facts(graph, snapshot);
     NodeCanvasViewport viewport;
-    viewport.setBounds({ 0.f, 0.f, 400.f, 200.f });
+    viewport.setBounds({ 0.f, 0.f, 1000.f, 700.f });
     viewport.setTransform({}, 1.f);
     NodePalette palette;
     GuideCurveShelfState guideState;
     guideState.hoveredGuideId = "guide1";
-    SignalProbeRailState dockState;
-    dockState.expanded = true;
-    dockState.expandedHeight = 100.f;
+    SignalProbeCanvasState dockState;
     const Rectangle<float> editorOcclusion { 100.f, 90.f, 200.f, 100.f };
     NodeCanvasPresentationFrame frame {
             graph,
-            compileResult,
-            previewResult,
+            snapshot,
+            facts,
             viewport,
             palette,
-            { 0.f, 0.f, 400.f, 200.f },
+            { 0.f, 0.f, 1000.f, 700.f },
             editorOcclusion,
             {},
             {},
@@ -270,16 +344,15 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
             -1,
             true,
             false,
-            { 0.f, 0.f, 400.f, 300.f },
+            { 0.f, 0.f, 1000.f, 700.f },
             guideState,
-            0.5f,
             dockState,
             {},
             {},
             {}
     };
 
-    Image image(Image::ARGB, 400, 300, true);
+    Image image(Image::ARGB, 1000, 700, true);
     Graphics graphics(image);
     GuideRelationshipPresentation::paintTether(graphics, frame);
 
@@ -311,28 +384,19 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
         }
         return count;
     };
-    REQUIRE(alphaCount({ 339, 74, 12, 12 }) > 0);
-    REQUIRE(alphaCount({ 39, 74, 12, 12 }) > 0);
+    REQUIRE(alphaCount({ 304, 44, 12, 12 }) > 0);
+    REQUIRE(alphaCount({ 4, 44, 12, 12 }) > 0);
     const auto dock = WorkspaceDock::layout(
-            frame.workspaceBounds,
-            {
-                    dockState.expanded,
-                    guideState.minimized,
-                    dockState.minimized,
-                    dockState.expandedHeight,
-                    frame.dockSplitRatio
-            });
+            frame.workspaceBounds, { guideState.minimized });
     const auto guideTile = GuideCurveShelf::tileBoundsFor(
             frame.workspaceBounds,
             dockState,
-            frame.dockSplitRatio,
             guideState,
             0);
-    WorkspaceDock::paintChrome(graphics, dock, "Curve Guides", "Spies", true, false);
     GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
     const Point<int> terminal {
-            roundToInt(guideTile.getCentreX()),
-            roundToInt(dock.dock.getY())
+            roundToInt(dock.leftShelf.getRight()),
+            roundToInt(guideTile.getCentreY())
     };
     REQUIRE(alphaCount(Rectangle<int>(12, 12).withCentre(terminal)) > 0);
 
@@ -343,19 +407,27 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
             Image(Image::ARGB, image.getWidth(), image.getHeight(), true)));
 }
 
-TEST_CASE("Signal probe detail uses the audition-note period resolution",
+TEST_CASE("Signal probe pitch periods and detail panel layout stay stable",
         "[cycle-v2][canvas][probe][detail]") {
-    REQUIRE(SignalProbeDetailView::resolutionForMidiNote(48) == 512);
-    REQUIRE(SignalProbeDetailView::resolutionForMidiNote(60) == 256);
-    REQUIRE(SignalProbeDetailView::resolutionForMidiNote(72) == 128);
-    REQUIRE(SignalProbeDetailView::resolutionForMidiNote(36) == 1024);
+    REQUIRE(GraphPreviewExecutor::periodRowsForMidiNote(48) == 512);
+    REQUIRE(GraphPreviewExecutor::periodRowsForMidiNote(60) == 256);
+    REQUIRE(GraphPreviewExecutor::periodRowsForMidiNote(72) == 128);
+    REQUIRE(GraphPreviewExecutor::periodRowsForMidiNote(36) == 1024);
 
     const Rectangle<float> content { 0.f, 0.f, 1200.f, 610.f };
     const Rectangle<float> detail = SignalProbeDetailView::boundsFor(content);
+    const Rectangle<float> plot = SignalProbeDetailView::plotBounds(detail);
     REQUIRE(content.contains(detail));
     REQUIRE(detail.getWidth() > 700.f);
     REQUIRE(detail.getHeight() > 400.f);
-    REQUIRE(detail.contains(SignalProbeDetailView::closeBounds(detail)));
+    REQUIRE(plot.getY() == detail.getY() + 14.f);
+    REQUIRE(plot.getBottom() == detail.getBottom() - 14.f);
+    REQUIRE_FALSE(SignalProbeDetailView::dismissesOnClick(
+            detail, detail.getCentre(), 1));
+    REQUIRE(SignalProbeDetailView::dismissesOnClick(
+            detail, detail.getCentre(), 2));
+    REQUIRE_FALSE(SignalProbeDetailView::dismissesOnClick(
+            detail, detail.getBottomRight() + Point<float>(1.f, 1.f), 2));
 }
 
 TEST_CASE("Signal probe detail resolves the attached Voice Context key value",
@@ -407,7 +479,7 @@ TEST_CASE("Signal probe detail resolves the attached Voice Context key value",
                     Constants::LowestMidiNote,
                     Constants::HighestMidiNote
             }), 9);
-    const GraphEditResult pitchEdit = GraphEditor().setNodeParameter(
+    const GraphEditResult pitchEdit = GraphNodeStateEditor().setNodeParameter(
             graph,
             "triple",
             "redConstant",
@@ -471,13 +543,13 @@ TEST_CASE("Preview pitch context follows the Modulation Triple key-scale axis",
     REQUIRE(context.midiNote == 72);
     REQUIRE(context.keyScaleAxis == "red");
 
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "triple",
             "redSource",
             "Red Source",
             "modWheel").succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "triple",
             "yellowSource",
@@ -492,13 +564,118 @@ TEST_CASE("Preview pitch context follows the Modulation Triple key-scale axis",
     REQUIRE(context.keyScaleAxis == "yellow");
 }
 
+TEST_CASE("Trimesh preview uses the sole implicit Voice Context's key scale",
+        "[cycle-v2][canvas][preview][key-scale]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationTriple, "triple", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addEdge({
+            "triple", "modulation", "voice", "modulation",
+            PortDomain::VoiceControlSignal, ConnectionKind::ConfigurationAttachment,
+            AttachmentType::ModulationTriple
+    });
+
+    const PreviewPitchContext context =
+            PreviewPitchResolver::contextForNodeAtPreviewNote(graph, "mesh", 72);
+    REQUIRE(context.midiNote == 72);
+    REQUIRE(context.keyScaleAxis == "red");
+
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "otherVoice", {}));
+    REQUIRE(PreviewPitchResolver::contextForNode(graph, "mesh").keyScaleAxis.isEmpty());
+}
+
+TEST_CASE("Trimesh preview pitch lookup reuses publication context",
+        "[cache][canvas][cycle-v2][performance][preview]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationTriple, "triple", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addEdge({
+            "triple", "modulation", "voice", "modulation",
+            PortDomain::VoiceControlSignal, ConnectionKind::ConfigurationAttachment,
+            AttachmentType::ModulationTriple
+    });
+    for (int index = 0; index < 64; ++index) {
+        graph.addNode(factory.createNode(
+                NodeKind::Add,
+                "unrelated-" + String(index),
+                {}));
+    }
+
+    PreviewPitchContextIndex contexts;
+    contexts.rebuild(graph);
+    const size_t resolutionsAfterPublication = contexts.graphResolutionCount();
+    REQUIRE(resolutionsAfterPublication == 1);
+    PreviewPitchContext context;
+    for (int index = 0; index < 100; ++index) {
+        context = contexts.contextForNodeAtPreviewNote("mesh", 72);
+    }
+    REQUIRE(context.midiNote == 72);
+    REQUIRE(context.keyScaleAxis == "red");
+    REQUIRE(contexts.graphResolutionCount() == resolutionsAfterPublication);
+
+    const GraphEditResult sourceEdit = GraphNodeStateEditor().setNodeParameter(
+            graph,
+            "triple",
+            "redSource",
+            "Red Source",
+            "modWheel");
+    REQUIRE(sourceEdit.succeeded());
+    const GraphEditResult keyScaleEdit = GraphNodeStateEditor().setNodeParameter(
+            graph,
+            "triple",
+            "yellowSource",
+            "Yellow Source",
+            "keyScale");
+    REQUIRE(keyScaleEdit.succeeded());
+    GraphChangeSet changes = sourceEdit.changes;
+    changes.nodeIds.insert(
+            changes.nodeIds.end(),
+            keyScaleEdit.changes.nodeIds.begin(),
+            keyScaleEdit.changes.nodeIds.end());
+    contexts.applyParameterChanges(graph, changes.nodeIds, changes.topologyChanged);
+
+    const PreviewPitchContext changed =
+            contexts.contextForNodeAtPreviewNote("mesh", 36);
+    REQUIRE(changed.midiNote == 36);
+    REQUIRE(changed.keyScaleAxis == "yellow");
+    REQUIRE(contexts.graphResolutionCount() == resolutionsAfterPublication);
+    REQUIRE(contexts.parameterRefreshCount() == 1);
+}
+
 TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at full resolution",
         "[cycle-v2][canvas][probe][detail]") {
     GraphNodeFactory factory;
     NodeGraph graph;
+    Node triple = factory.createNode(NodeKind::ModulationTriple, "triple", {});
+    for (auto& parameter : triple.parameters) {
+        if (parameter.id == "redConstant") {
+            parameter.value = String(Arithmetic::getUnitValueForGraphicNote(
+                    24,
+                    {
+                            Constants::LowestMidiNote,
+                            Constants::HighestMidiNote
+                    }), 9);
+        }
+    }
+    graph.addNode(std::move(triple));
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    Node meshNode = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("ProbePeriodMesh");
+    REQUIRE(mesh != nullptr);
+    meshNode.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    mesh->destroy();
+    graph.addNode(std::move(meshNode));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 400.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", { 800.f, 0.f }));
+    graph.addEdge({
+            "triple", "modulation", "voice", "modulation",
+            PortDomain::VoiceControlSignal, ConnectionKind::ConfigurationAttachment,
+            AttachmentType::ModulationTriple
+    });
     graph.addEdge({
             "voice", "context", "mesh", "context",
             PortDomain::DomainContext, ConnectionKind::Signal
@@ -507,20 +684,54 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
             "mesh", "out", "fft", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
-    REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
+    graph.addEdge({
+            "mesh", "out", "output", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 2, 0.5f).succeeded());
 
     GraphPresentationModel presentation;
     REQUIRE(presentation.refresh(graph, 1));
     REQUIRE(presentation.previewResult().probes.size() == 1);
     const GraphPreviewResult::SignalProbePreview compactBefore =
             presentation.previewResult().probes.front();
+    REQUIRE(presentation.previewMidiNote() == 24);
     REQUIRE(compactBefore.gridColumns == 256);
     REQUIRE(compactBefore.gridRows == 512);
     REQUIRE(compactBefore.values.size() == 256 * 512);
-    const size_t resolution = SignalProbeDetailView::resolutionForMidiNote(72);
+    const size_t previewNoteResolution = GraphPreviewExecutor::periodRowsForMidiNote(24);
+    const auto previewNoteDetail = presentation.captureProbePreview(
+            graph,
+            graph.getSignalProbes().front().id,
+            previewNoteResolution,
+            24);
+    REQUIRE(previewNoteResolution == 2048);
+    REQUIRE(previewNoteDetail.has_value());
+    REQUIRE(previewNoteDetail->gridColumns == 512);
+    REQUIRE(previewNoteDetail->gridRows == 512);
+    double meanDifference {};
+    for (size_t column = 0; column < compactBefore.gridColumns; ++column) {
+        const size_t detailColumn = (size_t) std::round(
+                (double) column * (double) (previewNoteDetail->gridColumns - 1)
+                / (double) (compactBefore.gridColumns - 1));
+        for (size_t row = 0; row < compactBefore.gridRows; ++row) {
+            meanDifference += std::abs(
+                    compactBefore.values[column * compactBefore.gridRows + row]
+                    - previewNoteDetail->values[
+                            detailColumn * previewNoteDetail->gridRows + row]);
+        }
+    }
+    meanDifference /= (double) compactBefore.values.size();
+    REQUIRE(meanDifference < 0.02);
+    const size_t resolution = GraphPreviewExecutor::periodRowsForMidiNote(72);
     const auto detail = presentation.captureProbePreview(
             graph,
             graph.getSignalProbes().front().id,
+            resolution,
+            72);
+    const auto defaultOutputDetail = presentation.captureProbePreview(
+            graph,
+            DefaultOutputProbeResolver::probeId,
             resolution,
             72);
 
@@ -529,8 +740,12 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
     REQUIRE(detail->gridColumns == 512);
     REQUIRE(detail->gridRows == resolution);
     REQUIRE(detail->values.size() == detail->gridColumns * resolution);
+    REQUIRE(defaultOutputDetail.has_value());
+    REQUIRE(defaultOutputDetail->connected);
+    REQUIRE(defaultOutputDetail->probeId == DefaultOutputProbeResolver::probeId);
+    REQUIRE(defaultOutputDetail->gridColumns == 512);
 
-    const size_t lowNoteResolution = SignalProbeDetailView::resolutionForMidiNote(36);
+    const size_t lowNoteResolution = GraphPreviewExecutor::periodRowsForMidiNote(36);
     const auto lowNoteDetail = presentation.captureProbePreview(
             graph,
             graph.getSignalProbes().front().id,
@@ -547,6 +762,35 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
     REQUIRE(compactAfter.gridColumns == compactBefore.gridColumns);
     REQUIRE(compactAfter.gridRows == compactBefore.gridRows);
     REQUIRE(compactAfter.values == compactBefore.values);
+
+    REQUIRE(presentation.refreshPreviewMidiNote(graph, 1, 72));
+    const auto& highNoteCompact = presentation.previewResult().probes.front();
+    const size_t highNoteFrames = GraphPreviewExecutor::sourceFrameCountForMidiNote(72);
+    const auto highNoteDetail = presentation.captureProbePreview(
+            graph,
+            graph.getSignalProbes().front().id,
+            highNoteFrames,
+            72);
+    REQUIRE(highNoteFrames == 512);
+    REQUIRE(highNoteCompact.gridRows == 512);
+    REQUIRE(highNoteDetail.has_value());
+    REQUIRE(highNoteDetail->gridColumns == 512);
+    REQUIRE(highNoteDetail->gridRows == highNoteCompact.gridRows);
+
+    double highNoteDifference {};
+    for (size_t column = 0; column < highNoteCompact.gridColumns; ++column) {
+        const size_t detailColumn = (size_t) std::round(
+                (double) column * (double) (highNoteDetail->gridColumns - 1)
+                / (double) (highNoteCompact.gridColumns - 1));
+        for (size_t row = 0; row < highNoteCompact.gridRows; ++row) {
+            highNoteDifference += std::abs(
+                    highNoteCompact.values[column * highNoteCompact.gridRows + row]
+                    - highNoteDetail->values[
+                            detailColumn * highNoteDetail->gridRows + row]);
+        }
+    }
+    highNoteDifference /= (double) highNoteCompact.values.size();
+    REQUIRE(highNoteDifference < 0.02);
 }
 
 TEST_CASE("Compact spectral probes retain the shared high-resolution traversal",
@@ -623,9 +867,11 @@ TEST_CASE("Signal probes inherit spectral mesh render semantics",
     });
     REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
 
-    const NodeRenderSemantic semantic = SignalProbeRail::renderSemanticForProbe(
-            graph,
-            graph.getSignalProbes().front().id);
+    GraphPresentationSnapshot snapshot;
+    GraphPresentationFacts facts(graph, snapshot);
+    const SignalProbe& probe = graph.getSignalProbes().front();
+    const NodeRenderSemantic semantic = facts.renderSemanticForNodeOutput(
+            graph, probe.sourceNodeId, probe.sourcePortId);
     REQUIRE(semantic.domain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(semantic.scalePolicy == RenderScalePolicy::Bipolar);
     REQUIRE(semantic.role == RenderSemanticRole::SpectralMagnitudeBipolar);
@@ -673,8 +919,8 @@ TEST_CASE("Node palette resolves every authored node kind from its visible entry
 
     for (int sectionIndex = 0; sectionIndex < palette.sectionCount(); ++sectionIndex) {
         const auto& section = palette.section(sectionIndex);
-        REQUIRE(palette.updateHover(palette.groupBounds(sectionIndex).getCentre()));
-        REQUIRE(palette.activeSection() == sectionIndex);
+        REQUIRE(palette.activeSection() == -1);
+        REQUIRE(String(section.title) != "Channel");
 
         for (int entryIndex = 0; entryIndex < section.entryCount; ++entryIndex) {
             NodeKind resolvedKind {};
@@ -695,7 +941,89 @@ TEST_CASE("Every registered node kind has a parseable palette icon",
     }
 }
 
-TEST_CASE("Use Voice Time is a compact single-output utility",
+TEST_CASE("Authored palette icons remain legible inside their production canvas",
+        "[cycle-v2][canvas][palette][icons]") {
+    ScopedJuceInitialiser_GUI juce;
+    MessageManagerLock messageLock;
+    const NodePalette palette;
+    Image sheet(Image::RGB, 720, 540, true);
+    Graphics sheetGraphics(sheet);
+    sheetGraphics.fillAll(Colour(0xff171d24));
+    int itemIndex {};
+    for (int sectionIndex = 0; sectionIndex < palette.sectionCount(); ++sectionIndex) {
+        const auto& section = palette.section(sectionIndex);
+        for (int index = 0; index < section.entryCount; ++index) {
+            const auto& entry = section.entries[index];
+            INFO(entry.label);
+            Image icon(Image::ARGB, 32, 32, true);
+            Graphics graphics(icon);
+            NodePaletteEntryIconRenderer::paint(graphics, entry.kind, { 0.f, 0.f, 32.f, 32.f }, false);
+            Rectangle<int> occupied;
+            int pixels {};
+            bool monochrome = true;
+            for (int y = 0; y < 32; ++y) {
+                for (int x = 0; x < 32; ++x) {
+                    const auto pixel = icon.getPixelAt(x, y);
+                    if (pixel.getAlpha() > 64) {
+                        monochrome = monochrome && pixel.getRed() == pixel.getGreen()
+                                && pixel.getGreen() == pixel.getBlue();
+                        occupied = occupied.getUnion({ x, y, 1, 1 });
+                        ++pixels;
+                    }
+                }
+            }
+            REQUIRE(monochrome);
+            REQUIRE(pixels > 35);
+            REQUIRE(occupied.getWidth() >= 15);
+            REQUIRE(occupied.getHeight() >= 12);
+            REQUIRE(occupied.getWidth() <= 30);
+            REQUIRE(occupied.getHeight() <= 30);
+            const int x = (itemIndex % 6) * 120;
+            const int y = (itemIndex / 6) * 180;
+            NodePaletteEntryIconRenderer::paint(sheetGraphics, entry.kind,
+                    { (float) x + 12.f, (float) y + 4.f, 96.f, 96.f }, false);
+            sheetGraphics.drawImageAt(icon, x + 44, y + 106);
+            sheetGraphics.setColour(Colours::white);
+            sheetGraphics.setFont(FontOptions(12.f));
+            sheetGraphics.drawText(String::fromUTF8(entry.label), x, y + 144, 120, 20, Justification::centred);
+            ++itemIndex;
+        }
+    }
+    const String reviewPath = SystemStats::getEnvironmentVariable("CYCLE_PALETTE_REVIEW_PATH", {});
+    if (reviewPath.isNotEmpty()) {
+        FileOutputStream stream { File(reviewPath) };
+        REQUIRE(stream.openedOk());
+        REQUIRE(PNGImageFormat().writeImageToStream(sheet, stream));
+    }
+}
+
+TEST_CASE("Palette semantic colours appear only on hover without mutating the resting icon",
+        "[cycle-v2][canvas][palette][icons]") {
+    ScopedJuceInitialiser_GUI juce;
+    MessageManagerLock messageLock;
+    const auto render = [](bool hover) {
+        Image image(Image::ARGB, 32, 32, true);
+        Graphics graphics(image);
+        NodePaletteEntryIconRenderer::paint(graphics, NodeKind::ModulationTriple,
+                { 0.f, 0.f, 32.f, 32.f }, hover);
+        return image;
+    };
+    const Image resting = render(false);
+    const Image hovered = render(true);
+    bool hasSemanticColour = false;
+    for (int y = 0; y < 32; ++y) {
+        for (int x = 0; x < 32; ++x) {
+            const auto pixel = hovered.getPixelAt(x, y);
+            if (pixel.getAlpha() > 64 && pixel.getSaturation() > 0.3f) {
+                hasSemanticColour = true;
+            }
+        }
+    }
+    REQUIRE(hasSemanticColour);
+    REQUIRE(imageChecksum(resting) == imageChecksum(render(false)));
+}
+
+TEST_CASE("Ignore Scratch is a compact single-output utility",
         "[cycle-v2][canvas][voice-context][scratch]") {
     const Node node = GraphNodeFactory().createNode(
             NodeKind::ScratchDefaultOverride,
@@ -838,22 +1166,88 @@ TEST_CASE("Envelope mode selector presents one contiguous highlighted choice",
     REQUIRE(changes == 3);
 }
 
-TEST_CASE("Node palette hover remains open across its pullout and closes outside",
+TEST_CASE("Node palette hover tracks direct entries without hiding other groups",
         "[cycle-v2][canvas][palette]") {
     NodePalette palette;
     const int sourceSection = 3;
     const int adjacentSection = 4;
 
-    REQUIRE(palette.updateHover(palette.groupBounds(sourceSection).getCentre()));
+    REQUIRE(palette.updateHover(palette.entryBounds(sourceSection, 0).getCentre()));
     REQUIRE_FALSE(palette.updateHover(palette.entryBounds(sourceSection, 0).getCentre()));
     REQUIRE(palette.activeSection() == sourceSection);
+    REQUIRE(palette.updateHover(palette.entryBounds(sourceSection, 1).getCentre()));
+    REQUIRE(palette.activeEntry() == 1);
+    REQUIRE_FALSE(palette.updateHover(palette.entryBounds(sourceSection, 1).getCentre()));
 
-    REQUIRE(palette.updateHover(palette.groupBounds(adjacentSection).getCentre()));
+    REQUIRE(palette.updateHover(palette.entryBounds(adjacentSection, 0).getCentre()));
     REQUIRE(palette.activeSection() == adjacentSection);
 
     REQUIRE(palette.updateHover({ 800.f, 700.f }));
     REQUIRE(palette.activeSection() == -1);
     REQUIRE_FALSE(palette.close());
+    palette.setVisible(false);
+    NodeKind kind {};
+    REQUIRE_FALSE(palette.findKindAt(palette.entryBounds(0, 0).getCentre(), kind));
+    REQUIRE(palette.pointerTargets().empty());
+    palette.setVisible(true);
+    REQUIRE(palette.findKindAt(palette.entryBounds(0, 0).getCentre(), kind));
+
+}
+
+TEST_CASE("Node palette has aligned ragged rows and two directly accessible FX rows",
+        "[cycle-v2][canvas][palette]") {
+    NodePalette palette;
+    const auto first = palette.entryBounds(0, 0);
+    for (int sectionIndex = 0; sectionIndex < palette.sectionCount(); ++sectionIndex) {
+        const auto& section = palette.section(sectionIndex);
+        const auto group = palette.groupBounds(sectionIndex);
+        REQUIRE(group.getX() == first.getX());
+        if (sectionIndex > 0) {
+            REQUIRE(group.getY() - palette.groupBounds(sectionIndex - 1).getBottom()
+                    == Catch::Approx(24.f));
+        }
+        for (int index = 0; index < section.entryCount; ++index) {
+            const auto tile = palette.entryBounds(sectionIndex, index);
+            REQUIRE(tile.getWidth() == Catch::Approx(83.f * 0.8f));
+            REQUIRE(tile.getHeight() == Catch::Approx(78.f * 0.8f));
+            REQUIRE(tile.getY() == Catch::Approx(group.getY() + 25.f + (index / 3) * 68.4f));
+            if (index % 3 == 0) {
+                REQUIRE(tile.getX() == first.getX());
+            }
+        }
+    }
+    const int fx = palette.sectionCount() - 1;
+    REQUIRE(palette.section(fx).entryCount == 6);
+    REQUIRE(palette.entryBounds(fx, 5).getBottom() == Catch::Approx(palette.groupBounds(fx).getBottom()));
+    NodeKind kind {};
+    REQUIRE(palette.findKindAt(palette.entryBounds(fx, 5).getCentre(), kind));
+    REQUIRE(kind == NodeKind::Equalizer);
+    const auto emptyCell = palette.entryBounds(4, 3).getCentre().translated(75.f, 0.f);
+    REQUIRE_FALSE(palette.findKindAt(emptyCell, kind));
+    REQUIRE(palette.findSectionAt(emptyCell) == -1);
+}
+
+TEST_CASE("Nodes palette stays inside the unified sidebar through resizing",
+        "[cycle-v2][canvas][palette][guide-dock]") {
+    NodePalette palette;
+    for (const Rectangle<float> workspace : {
+            Rectangle<float>(0.f, 0.f, 1000.f, 700.f),
+            Rectangle<float>(40.f, 20.f, 1400.f, 900.f) }) {
+        const auto dock = WorkspaceDock::layout(workspace, {});
+        const auto browser = GuideCurveShelf::guideWorkspace(workspace);
+        palette.setWorkspaceBounds(browser);
+        REQUIRE(browser.getX() == workspace.getX());
+        REQUIRE(palette.groupBounds(0).getCentreX() == Catch::Approx(browser.getCentreX()));
+        REQUIRE(browser.contains(palette.railBounds()));
+        REQUIRE(WorkspaceDock::editorAvailableBounds(dock).getX()
+                == dock.leftShelf.getRight() + CanvasUtilityDock::gap);
+        for (const auto& [id, bounds] : palette.pointerTargets()) {
+            NodeKind kind {};
+            REQUIRE(palette.findKindAt(bounds.getCentre(), kind));
+            REQUIRE(id == "palette:" + NodeDefinitionRegistry::instance().find(kind)->typeId);
+            REQUIRE(palette.railBounds().expanded(0.001f).contains(bounds));
+        }
+    }
 }
 
 TEST_CASE("Node canvas viewport transforms round trip and preserve zoom anchors", "[cycle-v2][canvas]") {
@@ -1023,6 +1417,7 @@ TEST_CASE("Graph presentation rejects stale revision results", "[cycle-v2][canva
     GraphChangeSet topology;
     topology.topologyChanged = true;
     REQUIRE(presentation.refresh(NodeGraph::createDemoGraph(), 7, topology));
+    REQUIRE(presentation.snapshot().facts != nullptr);
 
     GraphPresentationSnapshot stale;
     stale.graphRevision = 6;
@@ -1144,7 +1539,7 @@ TEST_CASE("Rich node views are selected through the view module registry", "[cyc
 
     const auto bounds = registry.moduleFor(NodeKind::ImpulseResponse)
             .expandedEditorBounds({ 0.f, 0.f, 1400.f, 800.f }, 18.f);
-    REQUIRE(bounds.getWidth() == Catch::Approx(1080.f));
+    REQUIRE(bounds.getWidth() == Catch::Approx(1296.f));
     REQUIRE(bounds.getHeight() == Catch::Approx(430.f));
 
     const auto clampedIrBounds = registry.moduleFor(NodeKind::ImpulseResponse)
@@ -1241,6 +1636,7 @@ TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
     graph.addEdge({
             "pan", "out", "ifft", "mag",
             PortDomain::ControlSignal, ConnectionKind::Signal });
+    const GraphEdgeIndex edgeIndex(graph.getEdges());
 
     const Node& mesh = *graph.findNode("mesh");
     const Node& ifft = *graph.findNode("ifft");
@@ -1255,7 +1651,8 @@ TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
     const Point<float> cableMidpoint = cablePath.getPointAlongPath(cablePath.getLength() * 0.5f);
     const Rectangle<float> panOnly = NodeCanvasScene::presentationWorldBounds(
             graph,
-            *graph.findNode("pan"));
+            *graph.findNode("pan"),
+            edgeIndex);
     REQUIRE(panOnly.getCentreX() == Catch::Approx(cableMidpoint.x));
     REQUIRE(panOnly.getCentreY() == Catch::Approx(cableMidpoint.y));
 
@@ -1278,19 +1675,20 @@ TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
             [](const auto& target) {
                 return target.nodeId == "pan" && target.isPort();
             }));
-    REQUIRE(NodeCanvasScene::cableExtraEdgeIndex(graph, 1) == 0);
+    REQUIRE(NodeCanvasScene::cableExtraEdgeIndex(graph, 1, edgeIndex) == 0);
 
     graph.addSignalProbe({
             "probe1", "mesh", "out", "pan", "in", "Spy 1", 0.91f, 0 });
     const Point<float> twoThirds = cablePath.getPointAlongPath(cablePath.getLength() * 2.f / 3.f);
     const Rectangle<float> panWithSpy = NodeCanvasScene::presentationWorldBounds(
             graph,
-            *graph.findNode("pan"));
+            *graph.findNode("pan"),
+            edgeIndex);
     REQUIRE(panWithSpy.getCentreX() == Catch::Approx(twoThirds.x));
     REQUIRE(panWithSpy.getCentreY() == Catch::Approx(twoThirds.y));
     const auto& incomingProbeScene = sceneBuilder.build(graph, viewport, 1, 1);
     const Point<float> oneThird = cablePath.getPointAlongPath(cablePath.getLength() / 3.f);
-    const Point<float> incomingProbeMarker = SignalProbeRail::markerCentre(
+    const Point<float> incomingProbeMarker = SignalProbeCanvas::markerCentre(
             *graph.findSignalProbe("probe1"),
             graph,
             incomingProbeScene);
@@ -1302,11 +1700,12 @@ TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
             "probe2", "pan", "out", "ifft", "mag", "Spy 1", 0.08f, 0 });
     const Rectangle<float> outgoingSpyPan = NodeCanvasScene::presentationWorldBounds(
             graph,
-            *graph.findNode("pan"));
+            *graph.findNode("pan"),
+            edgeIndex);
     REQUIRE(outgoingSpyPan.getCentreX() == Catch::Approx(oneThird.x));
     REQUIRE(outgoingSpyPan.getCentreY() == Catch::Approx(oneThird.y));
     const auto& outgoingProbeScene = sceneBuilder.build(graph, viewport, 1, 1);
-    const Point<float> outgoingProbeMarker = SignalProbeRail::markerCentre(
+    const Point<float> outgoingProbeMarker = SignalProbeCanvas::markerCentre(
             *graph.findSignalProbe("probe2"),
             graph,
             outgoingProbeScene);
@@ -1351,11 +1750,10 @@ TEST_CASE("Cable renderer uses one solid grammar with edit-state semantics",
 
 TEST_CASE("Canvas legend collapses non-signal domains into Control",
         "[cycle-v2][canvas][legend]") {
-    REQUIRE(CanvasChromeMetrics::legendFontSize
-            == Catch::Approx(CanvasChromeMetrics::microFontSize * 1.3f));
-    REQUIRE(CanvasChromeMetrics::legendLineLength == Catch::Approx(17.f * 1.3f));
-    REQUIRE(CanvasChromeMetrics::legendLineWidth == Catch::Approx(2.f * 1.3f));
-    REQUIRE(CanvasChromeMetrics::legendRowStride == Catch::Approx(20.f * 1.3f));
+    REQUIRE(CanvasChromeMetrics::legendFontSize == 11.f);
+    REQUIRE(CanvasChromeMetrics::legendLineLength == 14.f);
+    REQUIRE(CanvasChromeMetrics::legendLineWidth == 2.f);
+    REQUIRE(CanvasUtilityDock::preferredLegendHeight == 30.f);
 
     const Colour control = colourForDomain(PortDomain::ControlSignal);
     REQUIRE(colourForDomain(PortDomain::DomainContext) == control);

@@ -11,13 +11,11 @@ using juce::Rectangle;
 class EnvelopeMorphControls {
 public:
     static constexpr float controlsHeight = 310.f;
-    static constexpr float vertexParameterHeightScale = 1.15f;
+    static constexpr float vertexParameterHeightScale = 0.82f;
 
     Rectangle<float> planeGroupLabelBounds(Rectangle<float> controls) const;
     Rectangle<float> planeBounds(Rectangle<float> controls) const;
     Rectangle<float> railColumn(Rectangle<float> controls) const;
-    Rectangle<float> purposeGroupLabelBounds(Rectangle<float> controls) const;
-    Rectangle<float> purposeSelectorBounds(Rectangle<float> controls) const;
     Rectangle<float> morphGroupLabelBounds(Rectangle<float> controls) const;
     Rectangle<float> morphRow(Rectangle<float> controls, int axis) const;
     Rectangle<float> actionBarBounds(Rectangle<float> controls) const;

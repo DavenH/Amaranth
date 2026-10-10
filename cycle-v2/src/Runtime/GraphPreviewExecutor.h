@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "Runtime/NodePreviewProcessor.h"
 #include "Runtime/GraphAudioExecutor.h"
 #include "Graph/GraphCompiler.h"
@@ -45,6 +47,9 @@ struct GraphPreviewResult {
     std::vector<NodePreviewResult> nodes;
     std::vector<int> previewResultIndexByStep;
     std::vector<SignalProbePreview> probes;
+    std::vector<std::optional<SignalProbePreview>> probeSpectra;
+    std::optional<SignalProbePreview> defaultOutput;
+    std::optional<SignalProbePreview> defaultOutputSpectrum;
     size_t indexedNodeCount {};
     size_t addressLookupCount {};
     size_t aliasedInputCount {};
@@ -54,9 +59,21 @@ struct GraphPreviewResult {
 
 class GraphPreviewExecutor {
 public:
+    static constexpr size_t kMinimumProbeSourceFrames = 512;
+
+    static size_t periodRowsForMidiNote(int midiNote, double sampleRate = 44100.0);
+    static size_t sourceFrameCountForMidiNote(int midiNote, double sampleRate = 44100.0);
+    static void publishLocalNodePreview(
+            GraphPreviewResult& result,
+            size_t stepIndex,
+            NodePreviewResult preview);
     static void reduceProbeRows(
             GraphPreviewResult::SignalProbePreview& preview,
             size_t timeRows);
+    GraphPreviewResult::SignalProbePreview captureProbe(
+            const GraphExecutionPlan& plan,
+            const GraphAudioResult& audioResult,
+            const CompiledSignalProbe& address) const;
 
     GraphPreviewResult render(const GraphExecutionPlan& plan, size_t pointCount) const;
     GraphPreviewResult render(

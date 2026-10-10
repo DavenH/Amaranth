@@ -50,7 +50,7 @@ This document summarises formatting patterns observed in the repository. When ed
   - Overrides of base-class hooks
   - Protected helpers
   - Data members
-- Use one declaration per statement and one executable statement per line.
+- Use one executable statement per line.
   Do not compress adjacent member declarations, callback assignments, layout
   operations, or control flow onto one line.
 - Do not use an inline one-line definition to conceal a multi-step operation.

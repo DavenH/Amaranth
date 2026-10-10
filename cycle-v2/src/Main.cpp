@@ -1,12 +1,19 @@
 #include <JuceHeader.h>
-
 #include <memory>
+#include <optional>
 #include <utility>
+#include <vector>
+
+#include <UI/AmaranthLookAndFeel.h>
+#include <UI/Panels/TimeSurfaceStyles.h>
 
 #include "App/CycleV2Automation.h"
+#include "App/GraphDocumentReplacement.h"
 #include "App/GraphFileHistory.h"
+#include "App/LibraryFavorites.h"
 #include "App/StandaloneAudioEngine.h"
 #include "UI/NodeWorkspace.h"
+#include "UI/PresetBrowserPage.h"
 #include "incl/JucePluginDefines.h"
 
 using namespace juce;
@@ -24,7 +31,8 @@ public:
         automationOptions = CycleV2::CycleV2Automation::parseCommandLine(commandLine);
         audioEngine = std::make_unique<CycleV2::StandaloneAudioEngine>();
         audioEngine->start();
-        mainWindow = std::make_unique<MainWindow>(getApplicationName(), *audioEngine);
+        mainWindow = std::make_unique<MainWindow>(
+                getApplicationName(), *audioEngine, automationOptions);
         mainWindow->setVisible(true);
         mainWindow->toFront(true);
 
@@ -46,23 +54,52 @@ public:
         enum Command : CommandID {
             CommandOpenGraph = 0x3000,
             CommandSaveGraph,
-            CommandSaveGraphAs
+            CommandSaveGraphAs,
+            CommandSpyRefreshOnRelease,
+            CommandSpyRefreshLive,
+            TimeSurfaceFirst = 0x3100,
+            SpectralSurfaceFirst = 0x3200,
+            SpectralSurfaceDefault = 0x32ff
         };
 
         MainWindow(
                 const String& name,
-                CycleV2::StandaloneAudioEngine& audioEngine) :
+                CycleV2::StandaloneAudioEngine& audioEngine,
+                const CycleV2::CycleV2Automation::Options& options) :
                 DocumentWindow(name, Colour(0xff101318), allButtons)
             ,   applicationName(name)
             ,   properties(createProperties())
-            ,   fileHistory(*properties) {
+            ,   favorites(*properties, repositoryPresetDirectory())
+            ,   fileHistory(*properties)
+            ,   graphReplacement([this](const File& file) {
+                    return openGraphFileUnchecked(file);
+                })
+            ,   agentPatternDirectory(CycleV2::CycleV2Automation::hasAutomation(options)
+                        ? File::getSpecialLocation(File::tempDirectory).getChildFile(
+                                "cycle-v2-agent-patterns-"
+                                        + Uuid().toString().removeCharacters("{}"))
+                        : File()) {
             setUsingNativeTitleBar(true);
             setResizable(true, true);
             workspace = new CycleV2::NodeWorkspace(audioEngine);
+
             setContentOwned(workspace, true);
             workspace->setGraphDocumentStateChangedCallback([this] {
                 updateDocumentPresentation();
             });
+            workspace->configurePresetSidebar(
+                    { repositoryPresetDirectory(), defaultGraphDirectory(),
+                            userPresetDirectory() },
+                    [this](const File& file) { return requestOpenGraphFile(file); },
+                    [this] { chooseOpenGraph(); },
+                    [this] { createPresetFromCurrent(); },
+                    &favorites);
+            workspace->configurePatternLibrary(
+                    repositoryPresetDirectory().getSiblingFile("patterns"),
+                    agentPatternDirectory != File()
+                            ? agentPatternDirectory
+                            : File::getSpecialLocation(File::userApplicationDataDirectory)
+                                    .getChildFile("Amaranth Audio/Cycle V2/Patterns"));
 
             commandManager.registerAllCommandsForTarget(this);
             addKeyListener(commandManager.getKeyMappings());
@@ -82,6 +119,11 @@ public:
         }
 
         ~MainWindow() override {
+            if (presetChangePrompt != nullptr) {
+                presetChangePrompt->setLookAndFeel(nullptr);
+                presetChangePrompt->exitModalState(0);
+                presetChangePrompt = nullptr;
+            }
             if (workspace != nullptr) {
                 workspace->setGraphDocumentStateChangedCallback({});
             }
@@ -93,6 +135,9 @@ public:
             setMenuBar(nullptr);
           #endif
             removeKeyListener(commandManager.getKeyMappings());
+            if (agentPatternDirectory != File()) {
+                agentPatternDirectory.deleteRecursively();
+            }
         }
 
         void closeButtonPressed() override {
@@ -109,7 +154,7 @@ public:
         }
 
         StringArray getMenuBarNames() override {
-            return { "File" };
+            return { "File", "View" };
         }
 
         PopupMenu getMenuForIndex(int menuIndex, const String&) override {
@@ -126,14 +171,45 @@ public:
                 menu.addSeparator();
                 menu.addCommandItem(&commandManager, CommandSaveGraph);
                 menu.addCommandItem(&commandManager, CommandSaveGraphAs);
+
+                PopupMenu spyRefreshMenu;
+                spyRefreshMenu.addCommandItem(
+                        &commandManager,
+                        CommandSpyRefreshOnRelease);
+                spyRefreshMenu.addCommandItem(
+                        &commandManager,
+                        CommandSpyRefreshLive);
+                menu.addSeparator();
+                menu.addSubMenu("Spy Refresh", spyRefreshMenu);
+            } else if (menuIndex == 1) {
+                auto timeSurfaceMenu = TimeSurfaceStyles::menu(workspace->timeSurfaceStyle(), TimeSurfaceFirst);
+                menu.addSubMenu("Time Surface Colour", timeSurfaceMenu);
+                auto spectralSurfaceMenu = TimeSurfaceStyles::menu(
+                        workspace->bipolarSpectralSurfaceStyle(),
+                        SpectralSurfaceFirst,
+                        SpectralSurfaceDefault,
+                        "Blue / Amber");
+                menu.addSubMenu("Bipolar Spectral Surface", spectralSurfaceMenu);
             }
 
             return menu;
         }
 
         void menuItemSelected(int menuItemId, int) override {
+            if (menuItemId == SpectralSurfaceDefault) {
+                setBipolarSpectralSurfaceStyle(std::nullopt);
+                return;
+            }
+            if (const auto* entry = TimeSurfaceStyles::find(menuItemId - TimeSurfaceFirst)) {
+                setTimeSurfaceStyle(entry->style);
+                return;
+            }
+            if (const auto* entry = TimeSurfaceStyles::find(menuItemId - SpectralSurfaceFirst)) {
+                setBipolarSpectralSurfaceStyle(entry->style);
+                return;
+            }
             if (fileHistory.isRecentMenuItem(menuItemId)) {
-                openGraphFile(fileHistory.fileForMenuItem(menuItemId));
+                requestOpenGraphFile(fileHistory.fileForMenuItem(menuItemId));
             }
         }
 
@@ -142,7 +218,13 @@ public:
         }
 
         void getAllCommands(Array<CommandID>& commands) override {
-            commands.addArray({ CommandOpenGraph, CommandSaveGraph, CommandSaveGraphAs });
+            commands.addArray({
+                    CommandOpenGraph,
+                    CommandSaveGraph,
+                    CommandSaveGraphAs,
+                    CommandSpyRefreshOnRelease,
+                    CommandSpyRefreshLive
+            });
         }
 
         void getCommandInfo(CommandID commandID, ApplicationCommandInfo& result) override {
@@ -163,6 +245,28 @@ public:
                     result.addDefaultKeypress('s', ModifierKeys::commandModifier | ModifierKeys::shiftModifier);
                     break;
 
+                case CommandSpyRefreshOnRelease:
+                    result.setInfo(
+                            "On Release",
+                            "Refresh signal spies when an editing gesture finishes",
+                            "File",
+                            0);
+                    result.setTicked(workspace != nullptr
+                            && workspace->probeRefreshMode()
+                                    == CycleV2::ProbeRefreshMode::OnGestureCommit);
+                    break;
+
+                case CommandSpyRefreshLive:
+                    result.setInfo(
+                            "Live",
+                            "Refresh signal spies during editing gestures",
+                            "File",
+                            0);
+                    result.setTicked(workspace != nullptr
+                            && workspace->probeRefreshMode()
+                                    == CycleV2::ProbeRefreshMode::LiveLatest);
+                    break;
+
                 default:
                     break;
             }
@@ -180,6 +284,14 @@ public:
 
                 case CommandSaveGraphAs:
                     chooseSaveGraphAs();
+                    return true;
+
+                case CommandSpyRefreshOnRelease:
+                    setSpyRefreshMode(CycleV2::ProbeRefreshMode::OnGestureCommit);
+                    return true;
+
+                case CommandSpyRefreshLive:
+                    setSpyRefreshMode(CycleV2::ProbeRefreshMode::LiveLatest);
                     return true;
 
                 default:
@@ -206,6 +318,11 @@ public:
           #endif
         }
 
+        File userPresetDirectory() const {
+            return File::getSpecialLocation(File::userApplicationDataDirectory)
+                    .getChildFile("Amaranth Audio/Cycle V2/Presets");
+        }
+
         File defaultGraphDirectory() const {
             File fallback = repositoryPresetDirectory();
 
@@ -216,7 +333,20 @@ public:
             return fileHistory.initialOpenDirectory(fallback);
         }
 
-        bool openGraphFile(const File& file) {
+        bool requestOpenGraphFile(const File& file) {
+            if (workspace == nullptr) {
+                return false;
+            }
+
+            const auto result = graphReplacement.request(file, workspace->isGraphDirty());
+            if (result == CycleV2::GraphDocumentReplacement::RequestResult::DecisionRequired) {
+                showUnsavedGraphPrompt();
+            }
+            return result == CycleV2::GraphDocumentReplacement::RequestResult::Replaced
+                    || result == CycleV2::GraphDocumentReplacement::RequestResult::DecisionRequired;
+        }
+
+        bool openGraphFileUnchecked(const File& file) {
             if (file == File() || workspace == nullptr
                     || !workspace->loadGraphFromFile(file)) {
                 return false;
@@ -226,6 +356,56 @@ public:
             fileHistory.recordOpened(file);
             updateDocumentPresentation();
             return true;
+        }
+
+        void showUnsavedGraphPrompt() {
+            if (presetChangePrompt != nullptr) {
+                presetChangePrompt->toFront(true);
+                return;
+            }
+            const File file = workspace != nullptr ? workspace->graphFile() : File();
+            const String graphName = file == File()
+                    ? "Untitled"
+                    : file.getFileNameWithoutExtension();
+            auto* prompt = new AlertWindow(
+                    "Save Current Preset",
+                    "Save changes to \"" + graphName
+                            + "\" before opening another preset?",
+                    MessageBoxIconType::QuestionIcon,
+                    this);
+            presetChangePrompt = prompt;
+            prompt->setLookAndFeel(&presetChangeLookAndFeel);
+            prompt->addButton("Save", 1);
+            prompt->addButton("Don't Save", 2);
+            prompt->addButton("Cancel", 0, KeyPress(KeyPress::escapeKey));
+            prompt->enterModalState(true, ModalCallbackFunction::create([
+                    safeThis = SafePointer<MainWindow>(this)](int result) {
+                if (safeThis == nullptr) {
+                    return;
+                }
+                safeThis->presetChangePrompt = nullptr;
+
+                using Decision = CycleV2::GraphDocumentReplacement::Decision;
+                const Decision decision = result == 1
+                        ? Decision::Save
+                        : result == 2
+                                ? Decision::Discard
+                                : Decision::Cancel;
+                safeThis->resolveGraphReplacement(decision);
+            }), true);
+        }
+
+        void resolveGraphReplacement(CycleV2::GraphDocumentReplacement::Decision decision) {
+            const auto resolution = graphReplacement.resolve(decision);
+            if (resolution != CycleV2::GraphDocumentReplacement::Resolution::SaveRequired) {
+                return;
+            }
+
+            saveGraphForReplacement([safeThis = SafePointer<MainWindow>(this)](bool saved) {
+                if (safeThis != nullptr) {
+                    safeThis->graphReplacement.completeSave(saved);
+                }
+            });
         }
 
         bool saveGraphFile(const File& file) {
@@ -255,7 +435,92 @@ public:
             menuItemsChanged();
         }
 
+        void setSpyRefreshMode(CycleV2::ProbeRefreshMode mode) {
+            if (workspace == nullptr) {
+                return;
+            }
+            workspace->setProbeRefreshMode(mode);
+            commandManager.commandStatusChanged();
+            menuItemsChanged();
+        }
+
+        void setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
+            if (workspace == nullptr) {
+                return;
+            }
+            workspace->setTimeSurfaceStyle(style);
+            commandManager.commandStatusChanged();
+            menuItemsChanged();
+        }
+
+        void setBipolarSpectralSurfaceStyle(
+                std::optional<ScalarSurfaceTimeStyle> style) {
+            if (workspace == nullptr) {
+                return;
+            }
+            workspace->setBipolarSpectralSurfaceStyle(style);
+            commandManager.commandStatusChanged();
+            menuItemsChanged();
+        }
+
         void chooseOpenGraph() {
+            if (presetBrowserWindow != nullptr) {
+                presetBrowserWindow->toFront(true);
+                return;
+            }
+
+            auto* page = new CycleV2::PresetBrowserPage(
+                    std::vector<File> { repositoryPresetDirectory(), defaultGraphDirectory(),
+                            userPresetDirectory() },
+                    [safeThis = SafePointer<MainWindow>(this)](const File& file) {
+                        return safeThis != nullptr && safeThis->requestOpenGraphFile(file);
+                    },
+                    [safeThis = SafePointer<MainWindow>(this)] {
+                        if (safeThis != nullptr) {
+                            safeThis->chooseOpenGraphFile();
+                            safeThis->closePresetBrowser();
+                        }
+                    },
+                    [safeThis = SafePointer<MainWindow>(this)] {
+                        if (safeThis != nullptr) {
+                            safeThis->closePresetBrowser();
+                        }
+                    },
+                    [safeThis = SafePointer<MainWindow>(this)] {
+                        if (safeThis != nullptr && safeThis->workspace != nullptr) {
+                            safeThis->workspace->togglePreviewPlayback();
+                        }
+                    },
+                    [safeThis = SafePointer<MainWindow>(this)](
+                            const File& file, const StringArray& tags) {
+                        if (safeThis != nullptr && safeThis->workspace != nullptr) {
+                            safeThis->workspace->refreshPresetSidebarRecord(file);
+                            if (safeThis->currentGraphFile == file) {
+                                safeThis->workspace->setCurrentPresetTags(tags);
+                            }
+                        }
+                    },
+                    &favorites);
+            page->setSize(1180, 760);
+            DialogWindow::LaunchOptions options;
+            options.dialogTitle = "Preset Browser";
+            options.dialogBackgroundColour = Colour(0xff111922);
+            options.content.setOwned(page);
+            options.componentToCentreAround = this;
+            presetBrowserWindow = options.launchAsync();
+        }
+
+        void closePresetBrowser() {
+            if (presetBrowserWindow != nullptr) {
+                presetBrowserWindow->exitModalState(0);
+                presetBrowserWindow = nullptr;
+            }
+            if (workspace != nullptr) {
+                workspace->refreshPresetSidebarFavorites();
+            }
+        }
+
+        void chooseOpenGraphFile() {
             fileChooser = std::make_unique<FileChooser>(
                     "Open Cycle V2 preset",
                     defaultGraphDirectory(),
@@ -269,7 +534,7 @@ public:
                         }
 
                         const File file = chooser.getResult();
-                        safeThis->openGraphFile(file);
+                        safeThis->requestOpenGraphFile(file);
 
                         safeThis->fileChooser = nullptr;
                     });
@@ -284,10 +549,41 @@ public:
             saveGraphFile(currentGraphFile);
         }
 
-        void chooseSaveGraphAs() {
-            const File initialFile = currentGraphFile == File()
-                    ? defaultGraphDirectory().getChildFile("Untitled.cyclegraph")
-                    : currentGraphFile;
+        void saveGraphForReplacement(std::function<void(bool)> completion) {
+            if (currentGraphFile == File()) {
+                chooseSaveGraphAs(std::move(completion));
+                return;
+            }
+
+            completion(saveGraphFile(currentGraphFile));
+        }
+
+        void createPresetFromCurrent() {
+            const File directory = userPresetDirectory();
+            if (directory.createDirectory().failed()) {
+                AlertWindow::showMessageBoxAsync(
+                        MessageBoxIconType::WarningIcon,
+                        "Preset not created",
+                        "The user preset folder could not be created.");
+                return;
+            }
+            chooseSaveGraphAs(
+                    [safeThis = SafePointer<MainWindow>(this)](bool saved) {
+                        if (saved && safeThis != nullptr && safeThis->workspace != nullptr) {
+                            safeThis->workspace->refreshPresetSidebarIndex();
+                        }
+                    },
+                    directory.getChildFile("New Preset.cyclegraph"));
+        }
+
+        void chooseSaveGraphAs(
+                std::function<void(bool)> completion = {},
+                File suggestedFile = {}) {
+            const File initialFile = suggestedFile != File()
+                    ? suggestedFile
+                    : currentGraphFile == File()
+                            ? defaultGraphDirectory().getChildFile("Untitled.cyclegraph")
+                            : currentGraphFile;
             fileChooser = std::make_unique<FileChooser>(
                     "Save Cycle V2 preset",
                     initialFile,
@@ -297,18 +593,23 @@ public:
                     FileBrowserComponent::saveMode
                             | FileBrowserComponent::canSelectFiles
                             | FileBrowserComponent::warnAboutOverwriting,
-                    [safeThis = SafePointer<MainWindow>(this)](const FileChooser& chooser) {
+                    [safeThis = SafePointer<MainWindow>(this),
+                     completion = std::move(completion)](const FileChooser& chooser) {
                         if (safeThis == nullptr) {
                             return;
                         }
 
                         File file = chooser.getResult();
+                        bool saved = false;
                         if (file != File()) {
                             if (file.getFileExtension().isEmpty()) {
                                 file = file.withFileExtension("cyclegraph");
                             }
 
-                            safeThis->saveGraphFile(file);
+                            saved = safeThis->saveGraphFile(file);
+                        }
+                        if (completion) {
+                            completion(saved);
                         }
 
                         safeThis->fileChooser = nullptr;
@@ -317,11 +618,17 @@ public:
 
         const String applicationName;
         ApplicationCommandManager commandManager;
+        AmaranthLookAndFeel presetChangeLookAndFeel { nullptr, false };
         std::unique_ptr<PropertiesFile> properties;
+        CycleV2::LibraryFavorites favorites;
         CycleV2::GraphFileHistory fileHistory;
+        CycleV2::GraphDocumentReplacement graphReplacement;
+        File agentPatternDirectory;
         CycleV2::NodeWorkspace* workspace {};
         std::unique_ptr<CycleV2::CycleV2Automation> automation;
         std::unique_ptr<FileChooser> fileChooser;
+        SafePointer<AlertWindow> presetChangePrompt;
+        SafePointer<DialogWindow> presetBrowserWindow;
         File currentGraphFile;
 
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainWindow)

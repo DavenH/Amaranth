@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <App/AutomationInspectable.h>
+#include <App/Doc/Document.h>
 #include <UI/AsyncUIUpdater.h>
 #include <UI/Panels/Panel3D.h>
 #include <UI/ParameterGroup.h>
@@ -36,12 +37,16 @@ class Waveform3D:
     ,	public ControlsClient
     ,	public AsyncUIUpdater
     ,	public TourGuide
-    ,	public AutomationInspectable {
+    ,   public AutomationInspectable
+    ,   public Document::Listener {
 public:
     explicit Waveform3D(SingletonRepo*);
     ~Waveform3D() override;
 
     void init() override;
+    void documentAboutToLoad() override {}
+    void documentHasLoaded() override;
+    void handleAsyncUpdate() override;
 
     /* UI */
     void panelResized() override;
@@ -72,6 +77,7 @@ public:
     void updateScratchComboBox();
     void updateSmoothedParameters(int deltaSamples);
     void updateSmoothParametersToTarget(int voiceIndex);
+    void updateTimeSurfaceStyle();
     void zoomUpdated(int updateSource) override;
     void doZoomExtra(bool commandDown) override;
 
@@ -85,6 +91,7 @@ public:
     const vector<Column>& getColumns() override;
     CriticalSection& getGridLock() override;
     bool isSurfaceDetailReduced() override;
+    bool getScalarSurfaceMaterial(ScalarSurfaceMaterial& material) const override;
     var exportAutomationState() const override;
 
     /* Accessors */

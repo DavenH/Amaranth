@@ -1,0 +1,49 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/old/accoustic.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "magnitudeLayer1"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "trimeshEditor.polarity.bipolar",
+      "targetX": 0.5,
+      "targetY": 0.5,
+      "waitForIdle": true
+    },
+    {
+      "command": "assertState",
+      "path": "bipolarSpectralSurfaceStyleId",
+      "equals": "default"
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "view.spectralSurface.icy-hot"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "bipolarSpectralSurfaceStyleId",
+      "equals": "icy-hot"
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "magnitudeLayer1",
+      "parameterId": "polarity",
+      "equals": "bipolar"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

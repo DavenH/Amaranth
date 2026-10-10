@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "Graph/GraphDelta.h"
-#include "Graph/GraphEditor.h"
+#include "Graph/GraphEditTypes.h"
 #include "Graph/GraphSerializer.h"
 
 namespace CycleV2 {
@@ -25,9 +25,13 @@ public:
 
     const NodeGraph& graph() const { return currentGraph; }
     uint64_t revision() const { return documentRevision; }
-    bool isDirty() const { return currentStateId != savedStateId; }
+    bool isDirty() const {
+        return currentStateId != savedStateId || presentationRevision != savedPresentationRevision;
+    }
     const juce::File& file() const { return currentFile; }
     const GraphChangeSet& lastChange() const { return latestChange; }
+    const PresetPresentation& presentation() const { return presetPresentation; }
+    void setPresentation(PresetPresentation presentation);
 
     bool save(const juce::File& destination);
     bool load(const juce::File& source);
@@ -43,6 +47,8 @@ public:
 private:
     friend class GraphCommandDispatcher;
 
+    void setOutputSpyPosition(std::optional<juce::Point<float>> position);
+
     NodeGraph& graphForCommand() { return currentGraph; }
     void recordBeforeChange(NodeGraph graph);
     void recordDelta(GraphDelta delta);
@@ -53,6 +59,7 @@ private:
     static constexpr size_t maximumHistoryDepth = 64;
 
     NodeGraph currentGraph;
+    PresetPresentation presetPresentation;
     juce::File currentFile;
     struct HistoryEntry {
         std::variant<NodeGraph, GraphDelta> edit;
@@ -68,6 +75,8 @@ private:
     uint64_t currentStateId { 1 };
     uint64_t savedStateId { 1 };
     uint64_t nextStateId { 2 };
+    uint64_t presentationRevision {};
+    uint64_t savedPresentationRevision {};
     std::optional<uint64_t> pendingStateId;
 };
 

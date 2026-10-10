@@ -28,6 +28,8 @@ public:
     void zoomImpulseResponseToAttack();
     void resetImpulseResponseZoom();
     void syncFromNode(const Node& node);
+    void restoreFromNode(const Node& node);
+    void syncGuideContext(const NodeGraph& graph, const Node& node);
     void syncFromGuideResource(
             const GuideCurveResource& guide,
             const GuideHeatmapAssetPtr& heatmap = nullptr);
@@ -54,6 +56,7 @@ public:
     var automationState() const;
     std::vector<CurvePanelGridLine> verticalMajorGridLines() const;
     std::vector<CurvePreviewVertex> previewVertices();
+    std::optional<FlatCurveVertex> pointPreview();
     String serializedMeshState();
     NodeModelStatePtr modelPublication();
     NodeModelStatePtr prepareModelPublication(uint64_t currentRevision);
@@ -63,6 +66,7 @@ public:
     uint64_t previewSnapshotRevision() const;
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
     bool setSelectedVertexParameter(const String& parameterId, float normalizedValue);
+    int selectedEnvelopeGuideCubeIndex();
     bool hasSingleSelectedEnvelopeVertex();
     bool selectedEnvelopeMarkerState(bool loopMarker) const;
     void toggleSelectedEnvelopeMarker(bool loopMarker);

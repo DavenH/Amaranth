@@ -1,0 +1,31 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/empty.cyclegraph",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    { "command": "resetCanvasPerformance" },
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph", "includeSnapshot": false },
+    { "command": "waitForIdle", "delayMs": 100 },
+    { "command": "waitForIdle", "delayMs": 20 },
+    { "command": "inspectCanvasPerformance" },
+    { "command": "resetCanvasPerformance" },
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/organ-4.cyclegraph", "includeSnapshot": false },
+    { "command": "waitForIdle", "delayMs": 100 },
+    { "command": "waitForIdle", "delayMs": 20 },
+    { "command": "inspectCanvasPerformance" },
+    { "command": "resetCanvasPerformance" },
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph", "includeSnapshot": false },
+    { "command": "waitForIdle", "delayMs": 100 },
+    { "command": "waitForIdle", "delayMs": 20 },
+    { "command": "inspectCanvasPerformance" },
+    { "command": "resetCanvasPerformance" },
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/organ-4.cyclegraph", "includeSnapshot": false },
+    { "command": "waitForIdle", "delayMs": 100 },
+    { "command": "waitForIdle", "delayMs": 20 },
+    { "command": "inspectCanvasPerformance" }
+  ],
+  "quit": true
+}

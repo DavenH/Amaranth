@@ -13,7 +13,9 @@ void NodePaletteEntryIconRenderer::paint(
         NodeKind kind,
         Rectangle<float> area,
         bool hover) {
-    NodeIconRenderer::paint(graphics, kind, area, hover ? 1.f : 0.88f);
+    const float opacity = hover ? 1.f : 0.88f;
+    const auto colour = hover ? NodeIconColour::Semantic : NodeIconColour::Monochrome;
+    NodeIconRenderer::paint(graphics, kind, area, opacity, colour);
 }
 
 }

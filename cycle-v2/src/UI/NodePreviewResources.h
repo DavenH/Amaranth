@@ -8,10 +8,12 @@
 #include "Graph/NodeGraph.h"
 #include "Nodes/Curve/Editor/CurveEditorWidget.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "Runtime/PreviewPitchContextIndex.h"
 
 namespace CycleV2 {
 
 class NodeEditorCommandService;
+struct GraphChangeSet;
 
 struct CachedNodePreviewSprite {
     Image image;
@@ -29,9 +31,14 @@ public:
     explicit NodePreviewResources(NodeEditorCommandService& commands);
 
     TrimeshWidget& trimeshWidget(const String& nodeId);
-    TrimeshWidget& trimeshWidget(const Node& node);
+    TrimeshWidget& trimeshWidget(
+            const Node& node,
+            const NodeGraph* graphToUse = nullptr);
     TrimeshWidget* findTrimeshWidget(const String& nodeId);
-    void setGraph(const NodeGraph* graphToUse) { graph = graphToUse; }
+    void setDurableGraph(const NodeGraph* graphToUse);
+    void refreshGraph(
+            const NodeGraph& graphToUse,
+            const GraphChangeSet& changes);
     void setPreviewMidiNote(int midiNote) {
         selectedPreviewMidiNote = jlimit(0, 127, midiNote);
     }
@@ -55,8 +62,13 @@ private:
     std::vector<std::pair<String, std::unique_ptr<TrimeshWidget>>> trimeshWidgets;
     std::vector<std::pair<String, std::unique_ptr<CurveEditorWidget>>> curveEditorWidgets;
     std::vector<std::pair<String, CachedNodePreviewSprite>> cachedSprites;
+    HashMap<String, int> trimeshWidgetIndices;
+    HashMap<String, int> curveEditorWidgetIndices;
+    StringArray initializedTrimeshGuideContexts;
+    StringArray initializedCurveGuideContexts;
 
-    const NodeGraph* graph {};
+    const NodeGraph* durableGraph {};
+    PreviewPitchContextIndex previewPitchContexts;
 };
 
 }

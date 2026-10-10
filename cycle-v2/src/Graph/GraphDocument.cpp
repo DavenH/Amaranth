@@ -9,9 +9,10 @@ GraphDocument GraphDocument::openOrDefault(
         const juce::File& source,
         NodeGraph fallback) {
     if (source.existsAsFile()) {
-        NodeGraph loaded = GraphSerializer().fromJsonString(source.loadFileAsString());
-        if (!loaded.getNodes().empty()) {
-            GraphDocument document(std::move(loaded));
+        GraphLoadResult loaded = GraphSerializer().loadJsonString(source.loadFileAsString());
+        if (loaded.succeeded() && !loaded.graph.getNodes().empty()) {
+            GraphDocument document(std::move(loaded.graph));
+            document.presetPresentation = std::move(loaded.presentation);
             document.currentFile = source;
             return document;
         }
@@ -30,6 +31,7 @@ bool GraphDocument::save(const juce::File& destination) {
 
     currentFile = destination;
     savedStateId = currentStateId;
+    savedPresentationRevision = presentationRevision;
     return true;
 }
 
@@ -40,19 +42,22 @@ bool GraphDocument::load(const juce::File& source) {
 
     currentFile = source;
     savedStateId = currentStateId;
+    savedPresentationRevision = presentationRevision;
     return true;
 }
 
 bool GraphDocument::loadJson(const juce::String& json, bool recordUndo) {
-    NodeGraph candidate = GraphSerializer().fromJsonString(json);
-    if (candidate.getNodes().empty()) {
+    GraphLoadResult loaded = GraphSerializer().loadJsonString(json);
+    if (!loaded.succeeded() || loaded.graph.getNodes().empty()) {
         return false;
     }
 
     if (recordUndo) {
         recordBeforeChange(currentGraph);
     }
-    currentGraph = std::move(candidate);
+    currentGraph = std::move(loaded.graph);
+    presetPresentation = std::move(loaded.presentation);
+    ++presentationRevision;
     GraphChangeSet change;
     change.topologyChanged = true;
     change.layoutChanged = true;
@@ -61,7 +66,20 @@ bool GraphDocument::loadJson(const juce::String& json, bool recordUndo) {
 }
 
 juce::String GraphDocument::toJson() const {
-    return GraphSerializer().toJsonString(currentGraph);
+    return GraphSerializer().toJsonString(currentGraph, presetPresentation);
+}
+
+void GraphDocument::setPresentation(PresetPresentation presentation) {
+    presetPresentation = std::move(presentation);
+    ++presentationRevision;
+}
+
+void GraphDocument::setOutputSpyPosition(std::optional<juce::Point<float>> position) {
+    if (presetPresentation.outputSpyPosition == position) {
+        return;
+    }
+    presetPresentation.outputSpyPosition = position;
+    ++presentationRevision;
 }
 
 bool GraphDocument::undo() {

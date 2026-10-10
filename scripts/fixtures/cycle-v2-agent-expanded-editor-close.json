@@ -12,12 +12,19 @@
     {
       "command": "pointer",
       "event": "click",
-      "targetId": "expanded:waveMesh.close"
+      "targetId": "expanded:waveMesh.close",
+      "waitForIdle": true,
+      "idleDelayMs": 100
     },
     {
       "command": "assertState",
       "path": "expandedNodeId",
       "equals": ""
+    },
+    {
+      "command": "assertState",
+      "path": "performance.visible",
+      "equals": true
     },
     {
       "command": "inspectPointerTargets"

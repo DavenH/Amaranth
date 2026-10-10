@@ -32,7 +32,7 @@
     },
     {
       "command": "assertState",
-      "path": "guideDock.guideHorizontalOffset",
+      "path": "guideDock.guideVerticalOffset",
       "op": "greaterThan",
       "value": 0
     },
@@ -58,7 +58,7 @@
     },
     {
       "command": "assertState",
-      "path": "guideDock.guideHorizontalOffset",
+      "path": "guideDock.guideVerticalOffset",
       "op": "greaterThan",
       "value": 0
     },

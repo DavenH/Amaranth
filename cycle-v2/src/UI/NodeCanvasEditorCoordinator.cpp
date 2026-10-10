@@ -41,7 +41,7 @@ NodeCanvasEditorCoordinator::NodeCanvasEditorCoordinator(
     ,   resources(commandsToUse)
     ,   renderer(resources)
     ,   editorHost(owner, commandsToUse, presentation, editorResources) {
-    resources.setGraph(&document.graph());
+    resources.setDurableGraph(&document.graph());
 }
 
 NodeCanvasEditorCoordinator::~NodeCanvasEditorCoordinator() {
@@ -142,7 +142,7 @@ std::array<String, 6> NodeCanvasEditorCoordinator::trimeshGuideLabelsFor(const N
         return labels;
     }
 
-    TrimeshWidget& widget = resources.trimeshWidget(node);
+    TrimeshWidget& widget = resources.trimeshWidget(node, &document.graph());
     const int vertexIndex = widget.resolvedSelectedVertexIndexForNode(node);
     const auto& fields = TrimeshGuideAttachmentTarget::fields();
 
@@ -161,6 +161,29 @@ std::array<String, 6> NodeCanvasEditorCoordinator::trimeshGuideLabelsFor(const N
         }
     }
 
+    return labels;
+}
+
+std::array<String, 6> NodeCanvasEditorCoordinator::envelopeGuideLabelsFor(
+        const Node& node,
+        int cubeIndex) const {
+    std::array<String, 6> labels;
+    if (node.kind != NodeKind::Envelope || cubeIndex < 0) {
+        return labels;
+    }
+    const auto& fields = TrimeshGuideAttachmentTarget::fields();
+    for (int index = 0; index < (int) fields.size(); ++index) {
+        const auto* assignment = document.graph().guideAssignmentForTarget(
+                node.id,
+                { cubeIndex, TrimeshGuideAttachmentTarget::guideField(fields[(size_t) index]) });
+        if (assignment == nullptr) {
+            continue;
+        }
+        const auto* guide = document.graph().findGuideCurve(assignment->guideId);
+        if (guide != nullptr) {
+            labels[(size_t) index] = guide->shortLabel;
+        }
+    }
     return labels;
 }
 

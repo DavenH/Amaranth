@@ -4,8 +4,11 @@
 #include <limits>
 
 #include <Audio/CycleDsp/IrModel.h>
+#include <UI/Panels/ScalarSurfaceProgram.h>
 
 #include "UI/NodePreviewRenderer.h"
+
+#include "Runtime/PreviewContrastNormalization.h"
 
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeParameterMap.h"
@@ -17,6 +20,7 @@
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/OutputMeterPresentation.h"
+#include "UI/NodeIconRenderer.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
 namespace CycleV2 {
@@ -159,6 +163,7 @@ std::vector<float> mappedSurface(
     }
 
     const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
+    const bool signalSpy = preview.role == PreviewModuleRole::SignalSpy;
     const bool spectral = preview.domain == PortDomain::SpectralMagnitudeSignal
             || preview.domain == PortDomain::SpectralPhaseSignal;
     if (meshSurface && spectral) {
@@ -169,6 +174,13 @@ std::vector<float> mappedSurface(
                 preview.frequencyMidiNote);
     }
     if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
+        if (signalSpy) {
+            PreviewContrastNormalization::applySpectralMagnitude(
+                    surface,
+                    preview.gridColumns,
+                    preview.gridRows,
+                    1.f);
+        }
         return profile.mapSpectrum2DGridToDisplay(
                 surface,
                 preview.gridColumns,
@@ -185,8 +197,15 @@ std::vector<float> mappedSurface(
     Buffer<float> buffer(surface.data(), (int) surface.size());
     if (meshSurface) {
         profile.mapValuesToDisplay(buffer);
-    } else if (preview.role == PreviewModuleRole::SignalSpy
-            && preview.domain == PortDomain::TimeSignal) {
+    } else if (signalSpy && preview.domain == PortDomain::TimeSignal) {
+        const auto material = profile.getSurfaceStyle().surfaceMaterial();
+        if (ScalarSurfaceProgram::isProgram(material)
+                || material.palette == ScalarSurfacePalette::Greyscale) {
+            PreviewContrastNormalization::apply(surface, 1.f);
+            buffer.mul(0.5f).add(0.5f);
+            return surface;
+        }
+        PreviewContrastNormalization::apply(surface, 3.f);
         std::vector<float> magnitude = surface;
         Buffer<float> magnitudeBuffer(magnitude.data(), (int) magnitude.size());
         magnitudeBuffer.abs().add(1.f);
@@ -311,137 +330,6 @@ Rectangle<float> fitAspect(Rectangle<float> area, float aspectRatio) {
     return area.withSizeKeepingCentre(area.getWidth(), area.getWidth() / aspectRatio);
 }
 
-float previewStrokeScale(Rectangle<float> icon) {
-    return jmax(0.72f, jmin(icon.getWidth() / 150.f, icon.getHeight() / 82.f));
-}
-
-Rectangle<float> fftPreviewIconArea(Rectangle<float> area) {
-    Rectangle<float> icon = area.reduced(area.getWidth() * 0.04f, area.getHeight() * 0.09f);
-
-    if (icon.getWidth() / icon.getHeight() < 1.65f) {
-        return fitAspect(icon, 1.65f);
-    }
-
-    return icon;
-}
-
-void drawFftSquareCycle(Graphics& graphics, Rectangle<float> area, float strokeScale) {
-    Path path;
-    const float left = area.getX() + area.getWidth() * 0.10f;
-    const float middle = area.getCentreX();
-    const float right = area.getRight() - area.getWidth() * 0.10f;
-    const float top = area.getY() + area.getHeight() * 0.20f;
-    const float bottom = area.getY() + area.getHeight() * 0.80f;
-
-    path.startNewSubPath(left, bottom);
-    path.lineTo(left, top);
-    path.lineTo(middle, top);
-    path.lineTo(middle, bottom);
-    path.lineTo(right, bottom);
-    path.lineTo(right, top);
-
-    graphics.setColour(Colour(0xff58d4e8));
-    graphics.strokePath(
-            path,
-            PathStrokeType(2.55f * strokeScale, PathStrokeType::mitered, PathStrokeType::rounded));
-}
-
-void drawFftHarmonicStack(Graphics& graphics, Rectangle<float> area, float strokeScale) {
-    const struct Partial {
-        int harmonic;
-        float minimumWidth;
-        Colour colour;
-    } partials[] = {
-            { 7, 116.f, Colour(0xff9b6dff) },
-            { 5, 0.f, Colour(0xff6f8cff) },
-            { 3, 0.f, Colour(0xff49bde2) },
-            { 1, 0.f, Colour(0xff58d4e8) }
-    };
-
-    Rectangle<float> waveArea = area.reduced(area.getWidth() * 0.08f, area.getHeight() * 0.10f);
-    constexpr float sineControl = 0.3642f;
-
-    for (const auto& partial : partials) {
-        if (area.getWidth() < partial.minimumWidth) {
-            continue;
-        }
-
-        const int halfCycles = partial.harmonic * 2;
-        const float halfWidth = waveArea.getWidth() / (float) halfCycles;
-        const float amplitude = waveArea.getHeight() * 0.44f / (float) partial.harmonic;
-        Path path;
-
-        path.startNewSubPath(waveArea.getX(), waveArea.getCentreY());
-
-        for (int index = 0; index < halfCycles; ++index) {
-            const float x0 = waveArea.getX() + (float) index * halfWidth;
-            const float x1 = x0 + halfWidth;
-            const float controlY = waveArea.getCentreY()
-                    + (index % 2 == 0 ? -amplitude : amplitude);
-
-            path.cubicTo(
-                    x0 + halfWidth * sineControl,
-                    controlY,
-                    x1 - halfWidth * sineControl,
-                    controlY,
-                    x1,
-                    waveArea.getCentreY());
-        }
-
-        graphics.setColour(partial.colour.withAlpha(0.90f));
-        graphics.strokePath(
-                path,
-                PathStrokeType(1.45f * strokeScale, PathStrokeType::curved, PathStrokeType::rounded));
-    }
-}
-
-void drawFftChevron(Graphics& graphics, Rectangle<float> icon, float strokeScale) {
-    Path path;
-    const Point<float> top(
-            icon.getX() + icon.getWidth() * 0.476f,
-            icon.getY() + icon.getHeight() * 0.39f);
-    const Point<float> middle(
-            icon.getX() + icon.getWidth() * 0.512f,
-            icon.getY() + icon.getHeight() * 0.50f);
-    const Point<float> bottom(
-            icon.getX() + icon.getWidth() * 0.476f,
-            icon.getY() + icon.getHeight() * 0.61f);
-
-    path.startNewSubPath(top);
-    path.lineTo(middle);
-    path.lineTo(bottom);
-
-    graphics.setColour(Colour(0xff596a78));
-    graphics.strokePath(
-            path,
-            PathStrokeType(2.f * strokeScale, PathStrokeType::mitered, PathStrokeType::rounded));
-}
-
-void drawFftTransformPreview(Graphics& graphics, Rectangle<float> area, bool inverse) {
-    const Rectangle<float> icon = fftPreviewIconArea(area);
-    const float strokeScale = previewStrokeScale(icon);
-    const Rectangle<float> left(
-            icon.getX() + icon.getWidth() * 0.045f,
-            icon.getY() + icon.getHeight() * 0.14f,
-            icon.getWidth() * 0.405f,
-            icon.getHeight() * 0.72f);
-    const Rectangle<float> right(
-            icon.getX() + icon.getWidth() * 0.55f,
-            icon.getY() + icon.getHeight() * 0.14f,
-            icon.getWidth() * 0.405f,
-            icon.getHeight() * 0.72f);
-
-    if (inverse) {
-        drawFftHarmonicStack(graphics, left, strokeScale);
-        drawFftChevron(graphics, icon, strokeScale);
-        drawFftSquareCycle(graphics, right, strokeScale);
-    } else {
-        drawFftSquareCycle(graphics, left, strokeScale);
-        drawFftChevron(graphics, icon, strokeScale);
-        drawFftHarmonicStack(graphics, right, strokeScale);
-    }
-}
-
 void drawMathOperationPreview(
         Graphics& graphics,
         Rectangle<float> area,
@@ -547,18 +435,22 @@ bool NodePreviewRenderer::requiresCurveModel(NodeKind kind) {
 
 Image NodePreviewRenderer::createRuntimeHeatmapImage(
         const NodePreviewResult& preview,
-        bool desaturated) {
+        bool desaturated,
+        float surfaceAspectRatio) {
     return createRuntimeHeatmapImage(
             preview,
             TrimeshRenderProfile::fromDomain(preview.domain),
-            desaturated);
+            desaturated,
+            surfaceAspectRatio);
 }
 
 Image NodePreviewRenderer::createRuntimeHeatmapImage(
         const NodePreviewResult& preview,
         const TrimeshRenderProfile& profile,
-        bool desaturated) {
-    const auto createImage = [&preview, &profile](const std::vector<float>& values) {
+        bool desaturated,
+        float surfaceAspectRatio) {
+    const auto createImage = [&preview, &profile, surfaceAspectRatio](
+                                     const std::vector<float>& values) {
         TrimeshRenderData data;
         data.surface = mappedSurface(preview, values, profile);
         data.domain = preview.domain;
@@ -567,7 +459,9 @@ Image NodePreviewRenderer::createRuntimeHeatmapImage(
         data.cyclic = preview.domain == PortDomain::TimeSignal;
         return TrimeshSurfaceRenderer::createHeatmapImage(
                 data,
-                profile);
+                profile,
+                false,
+                surfaceAspectRatio);
     };
 
     Image image = createImage(preview.primary);
@@ -584,7 +478,11 @@ Rectangle<float> NodePreviewRenderer::boundsFor(
     Rectangle<float> preview = nodeBounds.withTrimmedTop(42.f * zoom).reduced(8.f * zoom);
 
     if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
-        return nodeBounds.withTrimmedTop(40.f * zoom).reduced(3.f * zoom, 5.f * zoom);
+        const Rectangle<float> content = nodeBounds.withTrimmedTop(40.f * zoom)
+                .reduced(8.f * zoom);
+        const float size = jmin(56.f * zoom,
+                jmin(content.getWidth(), content.getHeight()));
+        return Rectangle<float>(size, size).withCentre(content.getCentre());
     }
 
     if (node.kind == NodeKind::Unison) {
@@ -641,9 +539,12 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
     const int width = roundToInt(request.area.getWidth());
     const int height = roundToInt(request.area.getHeight());
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
-    String signature = nodeSignature(request.node, request.profile.getDomain());
+    String signature = nodeSignature(request.node, request.profile.getDomain())
+            + "|surfaceStyle:"
+            + String(request.profile.getSurfaceStyle().materialStyleSignature());
     if (request.node.kind == NodeKind::TrilinearMesh) {
-        signature += "|guide:" + resources.trimeshWidget(request.node).guideContextKey();
+        signature += "|guide:"
+                + resources.trimeshWidget(request.node, request.graph).guideContextKey();
     }
     if (request.node.kind == NodeKind::Unison) {
         signature += "|previewNote:" + String(request.unisonContext.midiNote)
@@ -684,8 +585,8 @@ bool NodePreviewRenderer::renderOpenGL(
         return false;
     }
 
+    resources.syncCurveEditorWidget(node);
     CurveEditorWidget& widget = resources.curveEditorWidget(node);
-    widget.syncFromNode(node);
     widget.renderPreviewSnapshotOpenGL(node, area, scaleFactor);
     return true;
 }
@@ -698,7 +599,7 @@ bool NodePreviewRenderer::paintAuthoritativeModel(
         Graphics& graphics,
         const NodePreviewRenderRequest& request) {
     if (request.node.kind == NodeKind::TrilinearMesh) {
-        resources.trimeshWidget(request.node).paintCompact(
+        resources.trimeshWidget(request.node, request.graph).paintCompact(
                 graphics,
                 request.node,
                 request.area,
@@ -711,8 +612,8 @@ bool NodePreviewRenderer::paintAuthoritativeModel(
         return false;
     }
 
+    resources.syncCurveEditorWidget(request.node);
     CurveEditorWidget& widget = resources.curveEditorWidget(request.node);
-    widget.syncFromNode(request.node);
     if (!widget.paintPreviewSnapshot(graphics, request.area)) {
         drawCurveFallback(
                 graphics,
@@ -806,17 +707,23 @@ bool NodePreviewRenderer::paintRuntimeHeatmap(
             result.domain);
     const bool desaturated = result.role == PreviewModuleRole::ReverbSpectrogram
             && !NodeParameterMap(request.node).boolValue("enabled", true);
+    const float surfaceAspectRatio = request.area.getWidth()
+            / jmax(1.f, request.area.getHeight());
     const String signature = runtimeSignature(result)
             + "|desaturated:" + String(desaturated ? 1 : 0)
             + "|domain:" + String((int) result.domain)
-            + "|scale:" + String((int) heatmapProfile.getScalePolicy());
+            + "|scale:" + String((int) heatmapProfile.getScalePolicy())
+            + "|surfaceStyle:"
+            + String(heatmapProfile.getSurfaceStyle().materialStyleSignature())
+            + "|aspect:" + String(surfaceAspectRatio, 4);
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
     if (!cached.runtimeHeatmap.isValid()
             || cached.runtimeHeatmapSignature != signature) {
         cached.runtimeHeatmap = createRuntimeHeatmapImage(
                 result,
                 heatmapProfile,
-                desaturated);
+                desaturated,
+                surfaceAspectRatio);
         cached.runtimeHeatmapSignature = signature;
     }
 
@@ -844,7 +751,9 @@ bool NodePreviewRenderer::paintCachedHeatmap(
     const int width = roundToInt(request.area.getWidth());
     const int height = roundToInt(request.area.getHeight());
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
-    const String signature = runtimeSignature(result);
+    const String signature = runtimeSignature(result)
+            + "|surfaceStyle:"
+            + String(request.profile.getSurfaceStyle().materialStyleSignature());
 
     if (!cached.image.isValid()
             || cached.width != width
@@ -933,7 +842,7 @@ void NodePreviewRenderer::paintQualitative(
     }
 
     if (kind == NodeKind::Fft || kind == NodeKind::Ifft) {
-        drawFftTransformPreview(graphics, request.area, kind == NodeKind::Ifft);
+        NodeIconRenderer::paint(graphics, kind, request.area, 0.88f, NodeIconColour::Monochrome);
         return;
     }
 

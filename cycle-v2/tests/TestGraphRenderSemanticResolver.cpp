@@ -153,3 +153,26 @@ TEST_CASE(
     REQUIRE(semantic.scalePolicy == RenderScalePolicy::Unipolar);
     REQUIRE(semantic.role == RenderSemanticRole::SpectralMagnitudeUnipolar);
 }
+
+TEST_CASE("Spy display semantics follow the shown domain in both views",
+        "[cycle-v2][graph][signal-probe]") {
+    const NodeRenderSemantic authored {
+            PortDomain::TimeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::Generic
+    };
+    const auto unchanged = GraphRenderSemanticResolver::semanticForDisplay(
+            authored, PortDomain::TimeSignal, false);
+    REQUIRE(unchanged.domain == PortDomain::TimeSignal);
+    REQUIRE(unchanged.role == RenderSemanticRole::Generic);
+
+    const auto spectrum = GraphRenderSemanticResolver::semanticForDisplay(
+            authored, PortDomain::SpectralMagnitudeSignal, false);
+    REQUIRE(spectrum.domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(spectrum.scalePolicy == RenderScalePolicy::Unipolar);
+    REQUIRE(spectrum.role == RenderSemanticRole::SpectralMagnitudeUnipolar);
+
+    const auto output = GraphRenderSemanticResolver::semanticForDisplay(
+            authored, PortDomain::TimeSignal, true);
+    REQUIRE(output.role == RenderSemanticRole::TimeWaveform);
+}

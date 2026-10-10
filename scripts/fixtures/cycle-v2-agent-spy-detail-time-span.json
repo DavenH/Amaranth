@@ -1,0 +1,21 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph" },
+    { "command": "pointer", "event": "click", "targetId": "PerformanceKeyboard.Note72", "button": "right" },
+    { "command": "assertState", "path": "performance.previewNote", "equals": 72 },
+    { "command": "assertState", "path": "probePreviewStats.0.gridRows", "equals": 512 },
+    { "command": "pointer", "event": "doubleClick", "targetId": "spy:probe" },
+    { "command": "assertState", "path": "probeDetailOpen", "equals": true },
+    { "command": "assertState", "path": "probeDetailResolution", "equals": 512 },
+    { "command": "assertState", "path": "probeDetailColumns", "equals": 512 },
+    { "command": "assertState", "path": "probeDetailRows", "equals": 512 },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-spy-detail-time-span.png" },
+    { "command": "pointer", "event": "doubleClick", "targetId": "probeDetail:probe" },
+    { "command": "pointer", "event": "doubleClick", "targetId": "spy:default-output" },
+    { "command": "assertState", "path": "probeDetailId", "equals": "default-output" },
+    { "command": "assertState", "path": "probeDetailResolution", "equals": 512 },
+    { "command": "assertState", "path": "probeDetailRows", "equals": 257 },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-output-spy-detail-time-span.png" }
+  ],
+  "quit": true
+}

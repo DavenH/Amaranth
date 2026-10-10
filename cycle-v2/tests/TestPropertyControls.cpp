@@ -123,6 +123,20 @@ TEST_CASE("Segmented property selector preserves contiguous equal hit targets",
     }
 }
 
+TEST_CASE("Segmented selector leaves Space available to canvas audition",
+        "[cycle-v2][ui][property-controls][keyboard]") {
+    ScopedJuceInitialiser_GUI juce;
+    PropertySegmentedSelector selector({
+            { "One", "1", "test.one", "One" },
+            { "Two", "2", "test.two", "Two" }
+    });
+    selector.setSelectedValue("1", dontSendNotification);
+    Component* segment = selector.findChildWithID("test.two");
+    REQUIRE(segment != nullptr);
+    REQUIRE_FALSE(segment->keyPressed(KeyPress(' ')));
+    REQUIRE(selector.selectedValue() == "1");
+}
+
 TEST_CASE("Landmark tracks reserve centred endpoint-label space",
         "[cycle-v2][ui][property-controls][slider][landmarks]") {
     ScopedJuceInitialiser_GUI juce;

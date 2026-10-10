@@ -1,9 +1,153 @@
 # Cycle V2 UI Bug Notes
 
-## Remaining priority
+## P2: Full native Trimesh smoke misses an amplitude rail click
 
-There are no open deterministic P0 or P1 regressions as of 2026-09-09.
-Resolved and no-longer-reproducing entries have been removed from this ledger.
+On 2026-10-07, the full `trimesh` native edit smoke passed curve reshape,
+point collision rejection, and the following point move. It then failed at
+`scripts/test_cycle_v2_native_edit_smoke.py:1955`: an amplitude rail click
+left the value at `0.558` instead of the requested `0.638`. The focused
+`trimesh-curve-drag` and `trimesh-point-drag` sequences pass. The earlier
+curve and point failures were inspection races; the smoke now waits for mesh
+content as well as revision. Log: the runner's
+`cycle-v2-native-edit-smoke.log` in its temporary directory. Status: open;
+inspect the rail's native hit and settle sequence separately.
+
+## P2: Cycle 1 Organ4 preset crashes during visual DSP update
+
+On 2026-10-07, a Cycle 1 `openPreset` automation run for
+`cycle/content/presets/Organ4.cyc` crashed with `EXC_BAD_ACCESS` in
+`EnvRasterizer::renderWaveformOnly` (`EnvRasterizer.cpp:212`). The stack runs
+through `UnisonPhaseColumnRenderer::render`,
+`VisualDsp::processFrequency`, and `VisualDsp::calcSpectrogram`.
+Artifacts: `/private/tmp/cycle1-grid-organ-log.txt` and its `.ips` file.
+Status: open. This occurred during a grid-timing investigation; no visual DSP
+behavior was changed.
+
+The same investigation's repeated BaroqueFlute morph-control fixture logged
+`JUCE Assertion failure in EnvRasterizer.cpp:217` and
+`EnvelopePlaybackEngine.cpp:263`, then did not produce its report within 20 s.
+Artifact: `/private/tmp/cycle1-expanded-grid-edits-v2-log.txt.raw`. Status:
+open; the earlier single-update timing run completed.
+
+## P2: Native-input video fixture stalled before writing an agent report
+
+On 2026-10-07, an empty-preset Time Trimesh fixture with a concurrent native
+`cliclick` right click left the Cycle process alive but wrote no automation
+report within 40 seconds. The window video is
+`/private/tmp/empty-trimesh-native-video.mp4`; filtered and raw logs share its
+stem. No assertion or crash appeared in the log, and the recording shows no
+vertex addition. A normal scripted-pointer video fixture completed just before
+this attempt. Status: open; isolate native click timing and automation-runner
+progress before treating this recording as vertex-interaction evidence.
+
+## P2: Trimesh native curve drag and broader test filter fail during editor investigation
+
+On 2026-10-07, `scripts/test_cycle_v2_native_edit_smoke.py trimesh` stopped at
+`scripts/test_cycle_v2_native_edit_smoke.py:1722`: the curve drag did not change
+the mesh before the script reached its vertex-add step. The isolated
+`Trimesh selection remains empty or explicit while morph position changes`
+test also failed at `TestTrimeshNodeDsp.cpp:1470` (`model.selectVertex(selected)`
+returned false). The broader `[cycle-v2][nodes][trimesh]` filter reported nine
+failures and ended with SIGSEGV during the linked-vertex interaction test.
+The later focused `trimesh-curve-drag` sequence passed after the smoke waited
+for mesh content as well as revision. The broader Trimesh test-filter failures
+remain open; capture an isolated baseline and distinguish fixture assumptions
+from product regressions before changing mature interaction code.
+
+## P2: Scratch cable deletion test keeps an unchanged zero spectral Spy preview
+
+On 2026-10-07, `Deleting a scratch cable refreshes an observed spectral
+Trimesh` failed at `TestNodeCanvasAuthoring.cpp:231`: the Spy preview values
+were zero before and after removing the attachment. The untouched
+`build/standalone-debug/cycle-v2/CycleV2_tests` binary fails at the same
+assertion, so this predates the cable cascade repair. Logs:
+`/tmp/cycle-v2-scratch-preview-baseline.log` and
+`/tmp/cycle-v2-scratch-preview-test.log`. Status: open; investigate the
+preview fixture and actual scratch effect separately.
+
+## P2: Existing Trimesh editor tests fail in isolation
+
+During the 2026-10-06 phase-velocity work, isolated reruns of `Clicking an
+open Trimesh Guide selector dismisses its popup` failed at
+`TestNodeEditorHost.cpp:3638` (`showTrimeshGuideAttachmentMenu` returned false),
+and `Trimesh drag keeps movement local and publishes one commit snapshot`
+crashed with SIGSEGV at `TestNodeEditorHost.cpp:4171`, before the gesture.
+Neither test uses the new phase mode. Status: open; reproduce and diagnose
+their fixture setup separately.
+
+The 2026-10-07 focused `Hosted Trimesh point drag defers mesh replacement
+across publications` test also initially failed before its drag because a
+factory node with an empty default mesh produced zero intercepts
+(`TestTrimeshNodeDsp.cpp:2145`). Its fixture now seeds the intended default
+voice mesh; the hosted test and collision tests pass together (73 assertions).
+
+## P3: Trimesh primary morph test has no selected vertex parameters
+
+During the 2026-10-06 master merge, the focused
+`Trimesh primary morph commits refresh graph presentation` test failed at
+`TestNodeEditorHost.cpp:3497`: selected vertex index 2 returned zero parameters
+where the test expects six. The isolated rerun had the same result; log:
+`/private/tmp/cycle-v2-merge-trimesh-test.log`. Status: open; the failure
+occurs before the morph gesture begins.
+
+## P3: Astral realtime test references an absent factory fixture
+
+On 2026-10-05, the broader realtime test filter failed at
+`TestRealtimeGraphRenderer.cpp:67` because
+`cycle-v2/content/presets/astral.cyclegraph` is absent. This is unrelated to
+the MIDI scheduler change; the focused timestamp and cancellation tests pass.
+Status: open; restore the fixture or update the test to a current preset.
+
+## P2: Canvas navigation slows at high zoom
+
+Reported 2026-10-02: when zoomed in a lot, navigating the Cycle V2 canvas
+becomes sluggish. The zoom level, graph size, and affected pan input have not
+yet been measured. Reproduce with canvas performance counters and compare
+per-move work across zoom levels before changing rendering or interaction code.
+Status: open.
+
+## Resolved: Relative agent script path asserted in JUCE File
+
+On 2026-10-01, a direct Cycle V2 automation launch passed a relative
+`--agent-script` path and logged `JUCE Assertion failure in juce_File.cpp:219`
+at `/private/tmp/cycle-v2-pattern-isolation-logs.txt`. JUCE requires an
+absolute path in that constructor. The run was repeated with an absolute
+script path at `/private/tmp/cycle-v2-pattern-isolation-logs-2.txt`; it passed
+24/24 commands without the assertion. No product failure remains.
+## P3: File assertion during Unison automation startup
+
+On 2026-10-05, both recovered Unison gesture fixtures passed all 33 commands
+but logged `JUCE Assertion failure in juce_File.cpp:219`. The Live run also
+reported the already documented CoreMIDI startup assertion. The Guide gain
+fixture passed all 20 commands without assertions. Logs:
+`/private/tmp/salvage-unison-live.log` and
+`/private/tmp/salvage-unison-release.log` (complete logs have `.raw` suffixes).
+Status: open; the source of the File assertion has not been diagnosed.
+
+## P2: Broader Trimesh tests retain a stale control-region expectation
+
+The 2026-09-18 `CycleV2_tests '[trimesh]'` run passed the mapped pitch tests but
+failed the control-region count (`28` versus `22`). The compact versus expanded
+column equality (`96` versus `450`) was also stale after expanded pixel-width
+sampling; its test now checks shared source data at their respective resolutions.
+The control-region expectation remains open; log:
+`/tmp/cycle-v2-trimesh-tests.txt`.
+
+## Resolved P2: Mod Wheel release published duplicate graph/Spy updates
+
+Reported 2026-09-17. While moving the MIDI keyboard Mod Wheel, the Spy appears
+to refresh twice after release, suggesting two graph updates for one movement
+or gesture commit. A graph update also appears to cancel a running audition
+note. These are observations, not yet an established shared cause; the preview
+audio failing to follow the wheel on `filter-saw-2` is tracked separately in
+`docs/TDD/audio-bugs.md`.
+
+Current status: focused On Release path resolved 2026-09-17. The Honerism 3
+fixture reproduced two preview requests and a canceled held note before the
+repair, then one asynchronous request/publication with the held note preserved.
+The workspace now skips unchanged audio-plan copies and defers compatible plan
+adoption until the current note ends. Live-mode commit deduplication remains in
+`docs/TDD/cycle-v2-mod-wheel-refresh-audit.md` and the causal-policy cleanup.
 
 ## Resolved: Linux Acidic preset load could corrupt UI and envelope state
 
@@ -35,6 +179,68 @@ produce a crash. Repro artifact: `/tmp/cycle-acidic-agent.log`.
 
 Current status: open; identify the startup caller that passes the relative path
 and use the existing context-aware JUCE path construction.
+
+## P1: Empty trimesh vertex problem
+
+Adding vertices to an empty trimesh node adds them at phase=0 regardless of where is clicked
+
+## P1: the preset page overlays the trilinear mesh 2d editor
+
+let's just hide it along with the rest of the elements that get hidden/dimmed on expand
+
+## P2: Spy tiles remain muted compared with node previews
+
+User clarified 2026-10-07 that the severe click dimming has been fixed, but
+the Spy previews are still somewhat dim compared with regular node previews.
+With `with-spies.cyclegraph`, a single click on `spy:probe` did not cause any
+further brightness drop and left `probeDetailId` empty. Captures:
+`/tmp/cycle-v2-spy-before-os.png`, `/tmp/cycle-v2-spy-click-os.png`.
+Status: remaining appearance issue open. The current captures establish the
+muted appearance but do not isolate whether it comes from probe data, domain
+mapping, or tile compositing. Compare the same signal and domain in both views
+before changing the shared surface renderer.
+
+A same-grid role experiment on `with-spies.cyclegraph` did not change the
+visible first Spy tile: its sampled mean RGB remained 0.1584 before and after,
+while the source Trimesh node region measured 0.2417. The experiment was
+reverted. `NodePreviewRenderer` paints Trimesh nodes through their authoritative
+model path, while Spies paint runtime traversal grids, so matching the runtime
+role alone does not establish visual parity. A specific current graph and Spy
+label would help isolate the remaining case.
+
+## Resolved: The 'out' Spy cannot be expanded
+
+Checked 2026-10-07 on the default graph. Double-clicking
+`spy:default-output` opened `probeDetailId=default-output`; double-clicking
+the detail closed it. Status: no longer reproducible.
+
+## P3: vertex selection rect doesn't have appropriate hover cursors on edges or center
+
+## P2: Spy node preview content often doesn't agree with its expanded content
+
+## P3: envelope nodes with a component curve do not render that componetn curve on preset load until expanded
+
+## P2: envelope component curves with randomness do not get randomness reseeded based on unison voice
+
+## P2: a graph update causes the playing audio note to stop
+
+## P3: Cycle2's expanded 'out' spy node at C1 takes about 20x longer to render than Cycle 1's comparable DSP grids
+
+## P2: Moving the view-axis' morph slider on trimesh invalidates and repaints the whole grid
+
+But the grid content cannot change moving this slider - only the 2d editor should be updated.
+
+##  P3: An 'empty' trimesh node starts with a default mesh.
+
+## P3: Cycle 1 emits leaked-object assertions after preset-churn shutdown
+
+The 2026-09-20 scalar-surface preset-churn fixture completed all seven
+explicit preset loads, then emitted three `juce_LeakedObjectDetector.h:104`
+assertions during application shutdown. No crash report was produced. Log:
+`/private/tmp/cycle-surface-preset-churn-v1-logs.txt`.
+
+Current status: open; the shutdown assertions are separate from
+the repaired unison scratch-buffer overrun during preset rasterization.
 
 ## P1: Opening a graph can discard unsaved edits without confirmation
 
@@ -71,126 +277,6 @@ runs completed with zero failed commands. Capture the initialized endpoint
 names and launch sequence if it recurs before changing MIDI initialization or
 teardown.
 
-## P2: Cycle 1 menu smoke requests the removed Graphics menu
-
-Context:
-
-- An incidental smoke run on 2026-09-06 listed the current menus successfully,
-  then `cycle-agent-menu-commands.json` failed with `Menu not found: Graphics`.
-- The application now exposes the related display commands under `View`; the
-  audio-pipeline changes do not alter menus or the fixture.
-- Repro report:
-  `/private/tmp/cycle-agent-audio-parity/cycle-agent-smokes-report.json`.
-
-Current status: open; update the menu fixture against the intended current menu
-contract in a focused UI slice.
-
-## P2: Graph document save test cannot use JUCE's default temporary directory
-
-Context:
-
-- The full Cycle V2 suite and a focused rerun on 2026-09-07 fail
-  `Graph documents save canonical JSON with stable line endings` at
-  `TestGraphSerializer.cpp:111`.
-- JUCE first asserts at `juce_TemporaryFile.cpp:126`; the destination is chosen
-  from `File::tempDirectory`, and `GraphDocument::save()` then returns false.
-- Preset serialization itself passes in the workspace-backed native migration
-  runs, including 221 load/save/reopen cycles.
-- Full-suite log: `/private/tmp/cycle-v2-full-tests.log`.
-
-Current status: open as a sandbox/test-fixture path issue. Give temporary-file
-fixtures an explicitly writable test root rather than weakening document-save
-behavior.
-
-## P2: African Horn factory graph is not canonical JSON
-
-Status: Open
-
-The full Cycle V2 suite currently fails `Every shipped graph is canonical JSON
-and compiles` on `african-horn.cyclegraph`. The graph compiles, but a
-deserialize/serialize pass changes its JSON representation. This predates and
-is independent of the document-declick changes; regenerate that preset through
-the canonical serializer without expanding unrelated preset diffs.
-
-## P2: Trimesh preview key scale also changes the default red morph axis
-
-Context:
-
-- After merging `master` on 2026-09-13, the focused
-  `Trimesh preview pitch positions whichever morph axis owns key scale` test
-  fails independently of the audio-parity and Voice Context conflict paths.
-- With preview key scale assigned to Time at MIDI 48, Time reaches the expected
-  normalized `0.261682`, but Red also becomes `0.261682` instead of retaining
-  its neutral `0.5` value.
-- The test and the relevant Trimesh preview behavior arrived from `master`; no
-  conflict hunk touched that implementation.
-
-Current status: open; reconcile key-scale preview ownership with the intended
-single-axis contract before changing the assertion.
-
-## P2: Envelope purpose rail-spacing assertion no longer matches layout
-
-Context:
-
-- The full Cycle V2 suite on 2026-09-10 failed `Envelope purpose selector
-  publishes bipolar pitch presentation` at `TestNodeEditorHost.cpp:2305`.
-- The focused test reproduces independently: the second rail begins 39.825 px
-  below the first, while the assertion expects 39.1 px within 0.02 px.
-- The full test run for audio-parity slices 48–50 on 2026-09-11 retained the
-  same failure (`39.825` px versus `39.1 ± 0.02`).
-- The viewport-pan performance work does not touch Envelope editor layout,
-  shared property rails, or the asserted geometry.
-- Full-suite artifact: `/private/tmp/cycle-v2-pan-full-tests.log`.
-
-Current status: open; reconcile the assertion with the current shared Envelope
-layout contract without weakening minimum rail travel or hit-target coverage.
-
-## P2: Pan definition and legacy-migration assertions disagree with mode state
-
-Context:
-
-- The full Cycle V2 suite on 2026-09-11 fails `Pan presents as an inline cable
-  control`: the current Pan node has two parameters while the test expects one.
-- The same run fails `Graph JSON migrates legacy Pan range to its spectral
-  Trimesh`: the migrated Pan retains a nonempty `mode` while the test expects
-  none.
-- These failures are independent of the delay, Output gain, and meter-cache
-  paths, whose focused tests pass.
-
-Current status: open; reconcile the Pan mode serialization contract and update
-the paired definition/migration expectations together.
-
-## P2: Full-suite Trimesh tests retain order-dependent failures
-
-Context:
-
-- A full randomized Cycle V2 test run on 2026-09-12 failed
-  `Trimesh interactor movement policy matches the mature panel` because the
-  shared move set contained eight vertices where the fixture expected two.
-- The same run later crashed in `Trimesh Panel3D reads node-backed columns
-  through lib data retriever` with `SIGSEGV`, followed by a
-  `SingletonRepo.h:54` assertion. Focused global-audio graph tests do not touch
-  Trimesh panel state and pass independently.
-
-Current status: open; reproduce both tests under their recorded random order
-and isolate leaked singleton/panel state before changing the mature movement
-policy or test expectations.
-
-## P2: Paired audio automation intermittently cannot focus the applications
-
-Context:
-
-- Organ 2 differential runs on 2026-09-11 repeatedly logged AppleScript error
-  `-10006` when System Events attempted to activate either `Cycle` or
-  `CycleV2`.
-- Each application still completed its scripted offline capture and wrote a
-  valid report, raw float sidecar, and WAV, so the error does not invalidate
-  the audio comparison.
-- Repro artifact: `/tmp/cycle-organ-2-reverb-mix-debug-4/`.
-
-Current status: open; make foreground activation best-effort or synchronize it
-with process launch without weakening command/report completion checks.
-
 ## P2: Broad native Trimesh sequence has intermittent late-step assertions
 
 Context:
@@ -207,59 +293,6 @@ Context:
 Current status: open as broader native-fixture stability work; investigate the
 delete targeting and graph-state polling independently of Trimesh drag pointer
 lifetime.
-
-## P2: Broad Waveshaper native sequence can drag the wrong vertex
-
-Context:
-
-- A focused run on 2026-09-11 inserted a Waveshaper vertex, then attempted to
-  drag that exact intercept. The inserted vertex remained unchanged while the
-  panel's current vertex moved to the requested destination.
-- The failure occurs before the curve-reshape portion of the sequence and is
-  independent of curve-pole or hidden-axis gesture scaling.
-- The latest shared launch log is
-  `/private/var/folders/zx/hdzf3v1s6vvdz7chbz40bbtc0000gn/T/cycle-v2-native-edit-smoke.log`.
-
-Current status: open; make the fixture assert the hovered vertex identity before
-mouse-down and investigate why the new intercept is not the drag target.
-
-## P2: Envelope release native edit does not restore exact mesh on undo
-
-Context:
-
-- After native automation was corrected to target the exact launched process,
-  the focused `envelope-release` sequence edited the release region but its
-  final undo did not restore the initial serialized mesh exactly.
-- The failure occurred after the hover-entry assertion passed and is independent
-  of the Trimesh hover-proximity correction.
-- The latest shared launch log is
-  `/private/var/folders/zx/hdzf3v1s6vvdz7chbz40bbtc0000gn/T/cycle-v2-native-edit-smoke.log`.
-
-Current status: open; compare the forward/inverse Envelope vertex delta after a
-real routed release drag without folding that investigation into hover behavior.
-
-## P2: Complexity regression test omitted Guide noise seed
-
-Context:
-
-- The 2026-09-12 tests-preset build failed while compiling
-  `TestInteractionComplexityParity.cpp` because its `GuideCurveResource`
-  aggregate still used the field order from before `noiseSeed` was introduced.
-- Production Guide behavior was unaffected; the test fixture passed its model
-  pointer into the integer seed field and no longer compiled.
-
-Current status: addressed by supplying the default `-1` seed explicitly.
-
-## P2: Legacy Pan migration test expected the removed pre-mode schema
-
-Context:
-
-- The 2026-09-12 graph suite failed after loading a legacy Pan `mode` because
-  the test still expected no Pan mode parameter.
-- Pan now owns the canonical `auto`/`additive`/`multiplicative` mode parameter;
-  loading removes the legacy payload and normalization supplies `auto`.
-
-Current status: addressed by asserting the current canonical `auto` value.
 
 ## P2: Full Cycle V2 suite retains cross-test graph and Trimesh failures
 
@@ -298,18 +331,10 @@ case also fails in isolation before exercising the morph-selection correction.
 The new morph-selection, disabled-control, and pointer-interaction cases pass
 independently; this remains open as shared test setup/lifetime work.
 
-## P3: Isolated Delay causal test expects previews from an unconnected graph
-
-Context:
-
-- `Ordinary DSP edits refresh configuration without compiling topology` fails
-  in isolation because `previewRenderCount()` remains zero instead of two.
-- The fixture contains only an unconnected Delay node, so the current runtime
-  produces no previewable execution product. The focused connected Reverb
-  causal sequence passes and the failure does not overlap Reverb kernel reuse.
-
-Current status: open; reconcile the Delay fixture topology with its preview
-count expectation rather than weakening the runtime product boundary.
+Update 2026-09-27: seed `3643743595` completed without a crash, with 39 failed
+test cases and 41 failed assertions. Most failures now reference archived
+factory presets or stale fixture topology; current focused causal and shipped
+canonical-graph groups pass. Log: `/tmp/cycle-v2-seed-3643743595.log`.
 
 ## P3: Parallel macOS automation launches contend for CoreMIDI
 
@@ -356,28 +381,187 @@ Current status: open; change the generic cable-insertion smoke to use a node
 whose execution scope is legal in the selected cable, or assert insertion
 separately from compilation validity.
 
-## P3: Baroque preset transition omits the expected probe preview
+## P3: Archived preset tests still target moved fixtures
 
 Context:
 
-- On 2026-09-15, `Preset transitions replace equal-revision Trimesh DSP
-  content` failed in isolation at `findProbePreview(..., "probe")` after the
-  African Horn to Baroque Flute presentation refresh.
-- The failure occurs before the test's audio-capture comparison and reproduces
-  with the audio executor's prepared-plan retirement disabled, so it is not
-  caused by the realtime dispatch optimization.
+- On 2026-09-17, a full Cycle V2 CTest run passed 1040/1076 tests and failed
+  36, predominantly tests still naming root preset files or old Baroque and
+  Stengah fixture contents after legacy presets were archived. Examples:
+  `Prepared oscillator preset matrix...` cannot load its preset. This is
+  distinct from the editor UI repairs, whose focused tests pass.
 
-Current status: open; inspect preset probe identity and incremental preview
-publication across equal-revision configuration transitions.
+Current status: open; reconcile test paths and semantic expectations against
+the canonical preset set rather than weakening the assertions.
 
-## P3: Stengah Spy test expects probes absent from the current fixture
+- On 2026-09-18, `cycle-v2-agent-spy-detail.json` opened the probe detail on
+  archived `old/stengah.cyclegraph`, but its `probeDetailRows` assertion
+  expected 129 and observed 256. The capture-path extraction's focused tests
+  passed. Report: `/private/tmp/causal-probe-extract-native.json`. Keep the
+  fixture assertion until the intended archived graph and resolution contract
+  are reconciled.
+## P3: Primary-morph editor test still assumes a populated new Trimesh
 
 Context:
 
-- The grouped `[cycle-v2][runtime][probe][presets]` run on 2026-09-14 fails
-  `Stengah spies render the exact output selected by each probe` because the
-  freshly migrated `stengah.cyclegraph` contains an empty `probes` array.
-- The focused PWM Lead Spy regression uses its checked-in probe and passes.
+- On 2026-09-30, the focused `Trimesh primary morph commits refresh graph
+  presentation` case failed before its gesture assertions because it selects
+  vertex 2 from a newly created Trimesh, whose correct default is now empty.
+- The live primary- and non-primary-morph gesture cases pass independently.
 
-Current status: open fixture/test synchronization issue; restore the intended
-Stengah probes or update the test fixture at its authoring boundary.
+Current status: open fixture maintenance; explicitly author the mesh topology
+needed by the selection-preservation assertions rather than restoring implicit
+content to newly added Trimesh nodes.
+
+## P3: Opening an Envelope editor marks the document dirty
+
+The 2026-09-17 `cycle-v2-agent-envelope-link-toggle.json` run opens the saved
+`old/vox-1.cyclegraph` clean, but `documentDirty` is already true immediately
+after opening the expanded pitch Envelope, before any link click. The focused
+link fixture therefore checks session state and reopen behavior, not dirty
+state. Report: `/private/tmp/cycle-v2-envelope-link-session2`.
+
+Current status: open; distinguish selection/editor-state publication from a
+durable document edit. Envelope link toggles themselves remain session-only.
+
+## P3: With-spies Trimesh morph fixture expects a value absent after load
+
+On 2026-09-18, `cycle-v2-agent-trimesh-morph-selection.json` failed its undo
+assertion: it expected `waveMesh.yellow` to return to `0.317`, but the loaded
+node reports `0` immediately after `openGraph`, before any editor action. The
+source `with-spies.cyclegraph` contains `yellow: 0.317`. Diagnostic reports:
+`/private/tmp/causal-morph-initial-report.json` and
+`/private/tmp/causal-morph-diagnostic-report.json`.
+
+Current status: open; inspect graph load or parameter normalization. The
+fixture's undo value should not be changed until that discrepancy is resolved.
+
+## P3: Reverb preview can remain changed after a second no-op gesture
+
+On 2026-09-18, a diagnostic native sequence dragged Reverb size, committed,
+undid, reopened the editor, then dragged damping. The second drag changed the
+local spectrogram, but the durable Reverb parameters stayed at their initial
+values and a subsequent undo left the changed preview visible. A separate
+fresh-graph damping drag/commit/undo fixture passes. Report:
+`/private/tmp/causal-reverb-kernel-size-damp.json`.
+
+Current status: open; inspect gesture lifecycle and editor rebind after undo.
+
+## P3: Trimesh expanded control-region count test expects an old layout
+
+On 2026-09-18, the broad Trimesh node test filter passed 64 of 65 cases; one
+assertion in `TestTrimeshNodeDsp.cpp` expected 22 control regions and observed
+28. The focused vertex delta and guide-gain gesture tests passed. Log:
+`/private/tmp/causal-trimesh-delta-tests.log`.
+
+Current status: open; reconcile the control layout contract and its assertion.
+
+## P3: Hosted Trimesh point-drag test retains two selected vertices
+
+On 2026-09-22, the broad `[nodes][trimesh]` test filter failed in
+`Hosted Trimesh point drag defers mesh replacement across publications`: the
+post-gesture selection assertion expected one selected vertex and observed
+two. This occurred while verifying the scalar-surface material; that change
+does not touch Trimesh selection or graph publication. The focused surface
+renderer test passed in the same build.
+
+Current status: open; inspect selection reset across the hosted drag sequence.
+
+## P3: Cycle 1 FileManager assertion during a mismatched automation launch
+
+On 2026-09-18, the Cycle V2 guide-gain audit fixture was accidentally run
+through the wrapper's default Cycle 1 app. The commands were unsupported and
+the filtered log emitted `JUCE Assertion failure in FileManager.cpp:174`.
+The same fixture passed when `CYCLE_APP_PATH` and `CYCLE_PROCESS_NAME` targeted
+Cycle V2. The mismatched-run log was replaced by the successful rerun; use
+the wrapper defaults with `/tmp/causal-trimesh-guide-audit.json` to reproduce.
+
+Current status: open in Cycle 1; unrelated to the Cycle V2 gesture change.
+It recurred during the 2026-09-20 scalar-surface visual audit because the saved
+default preset name `ooh-aah` did not resolve before the fixture opened
+`CalmingKeys`; the fixture itself completed and the OpenGL panel reported no
+error. Log: `/private/tmp/cycle-scalar-v1-logs.txt`.
+It also recurred during the 2026-09-29 Icy-hot program automation; both View menu
+switches and GL validation passed afterward. Log: `/tmp/cycle-icy-hot.log`.
+
+
+## P3: Organ graph load emits legacy Curve endpoint assertions
+
+On 2026-09-20, opening `organ.cyclegraph` and the `timeLayer1` expanded
+Trimesh editor emitted repeated `JUCE Assertion failure in Curve.cpp:56` and
+`:57` messages. The automation commands completed, the shared OpenGL canvas
+remained attached, and the expanded surface rendered. Log:
+`/private/tmp/cycle-scalar-v2-expanded-logs.txt`.
+
+Current status: open; unrelated to scalar-surface shader compilation or GL
+resource lifetime.
+
+## P1: Cycle 1 can crash rasterizing presets with more than ten unison voices
+
+Five Cycle 1 crash reports from 2026-09-29 and 2026-09-30 terminate on the
+main thread with `EXC_BAD_ACCESS` in
+`Cycle::Rasterization::UnisonPhaseColumnRenderer::render`, during the
+`VisualDsp` spectrogram refresh after a preset load. Reports:
+`~/Library/Logs/DiagnosticReports/Cycle-2026-09-29-{145603,150303,153814}.ips`
+and `Cycle-2026-09-30-{014550,015513}.ips` in the same directory.
+
+The renderer allocates `phases` and `gains` for `maximumUnisonOrder` (10),
+but loops to `Unison::getOrder(false)`, which returns the uncapped saved voice
+count in individual mode. Several factory `.cyc` presets contain 11–36
+individual voices. This is a likely stack-buffer overrun; the exact preset
+loaded at each crash has not been established. This is a visualization/preset
+rasterization path, not evidence of a scalar shader failure. The earlier
+scratch-buffer repair noted above did not cover this fixed-array bound.
+
+Current status: open. Size the renderer's scratch storage for the actual
+individual voice count without truncating authored voices, then regression-test
+loading and rasterizing a preset with more than ten voices.
+
+## P3: Direct Cycle V2 agent launch with a relative script path asserted
+
+On 2026-10-04, launching the Cycle V2 executable directly with a relative
+`--agent-script` path emitted `JUCE Assertion failure in juce_File.cpp:219` and
+exited with code 134 after leaked-object assertions. This occurred while
+capturing the sidebar tag cloud; a LaunchServices run through
+`scripts/run_cycle_v2_agent.sh` with an absolute fixture path passed all
+commands. The direct invocation's stdout was not saved. Current status:
+open as a direct-launch harness issue; the product UI capture and tests pass.
+
+## P2: Broad Cycle V2 Trimesh test selection fails in model and guide tests
+
+On 2026-10-08, `CycleV2_tests '[cycle-v2][nodes][trimesh]' --reporter compact`
+reported a selected-vertex value mismatch at `TestTrimeshNodeDsp.cpp:1984`
+(`0.32` versus `0.88`), zero guide attachment targets at line 2069, then a
+`SIGSEGV` in the live-mesh-pointer test at line 2007. The four focused panel
+viewport, host, cursor, and box-selection tests passed individually. Current
+status: open; the broad failures occur in model/guide paths outside the
+frequency viewport change.
+
+## P3: Unipolar magnitude heatmap edge-pixel assertion
+
+On 2026-10-08, `CycleV2_tests` case "Magnitude mesh heatmaps consume the full
+unipolar colour scale" failed reproducibly at columns 1, 3, and 4, row 1
+(`TestNodePreviewProcessor.cpp:397`). The generated pixel differs from a
+per-pixel reference built with `mapGridToDisplay` and `derivativesAt`. The
+unipolar material and value mapping were untouched by the concurrent bipolar
+palette change. Current status: open; reconcile the heatmap's actual mapping
+and derivative sampling with this reference assertion.
+
+## P3: Legacy Stengah Spy cards overlap
+
+On 2026-10-09, opening `cycle-v2/content/presets/old/stengah.cyclegraph`
+placed `probe` and `default-output` Spy cards at almost identical bounds near
+`(1043, 607)` in a 1728 × 962 canvas. A double-click targeted at `spy:probe`
+opened the output Spy because it was painted on top. The automation report is
+`/private/tmp/cycle-v2-spy-detail-regression2-report.json`. Current status:
+open; assign a non-overlapping fallback position when multiple cards derive
+their placement from nearby cable anchors.
+
+## P3: Phase-velocity agent fixture has no source preset
+
+On 2026-10-09, `cycle-v2-agent-phase-velocity-test-preset.json` failed its
+first command because `cycle-v2/content/presets/phase-velocity-test.cyclegraph`
+does not exist. The report is
+`/private/tmp/cycle-v2-phase-velocity-regression-report.json`; later failures
+are consequences of that missing graph. Current status: open; restore the
+fixture graph or retire the agent fixture.

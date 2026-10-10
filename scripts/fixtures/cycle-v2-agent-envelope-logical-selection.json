@@ -1,0 +1,10 @@
+{
+  "commands": [
+    { "command": "openNodeEditor", "nodeId": "env", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "pointer", "event": "click", "targetId": "expanded:env.panel2D", "targetX": 0.035, "targetY": 0.02, "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.panelState.movingVertexCount", "equals": 4 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.panelState.physicalMovingVertexCount", "equals": 8 },
+    { "command": "screenshot", "area": "window", "path": "/private/tmp/cycle-v2-envelope-logical-selection-in-app.png" }
+  ],
+  "quit": false
+}

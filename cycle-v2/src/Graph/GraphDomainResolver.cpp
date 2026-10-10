@@ -1,20 +1,16 @@
-#include "Graph/GraphDomainResolver.h"
-
 #include <algorithm>
 #include <deque>
-#include <unordered_map>
+#include <unordered_set>
 
+#include "Graph/GraphDomainResolver.h"
+#include "Graph/GraphEdgeIndex.h"
+#include "Graph/GraphEdgeView.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/TrimeshSignalSemantics.h"
 
 namespace CycleV2 {
 
 namespace {
-
-struct StringHash {
-    size_t operator()(const String& value) const {
-        return (size_t) value.hashCode64();
-    }
-};
 
 bool propagatesUniversalDomain(NodeKind kind) {
     return kind == NodeKind::Add
@@ -34,67 +30,113 @@ const Port* findPort(const Node& node, const String& id, bool input) {
     return nullptr;
 }
 
+template<typename EdgeIndex>
 class ResolutionWorklist {
 public:
-    explicit ResolutionWorklist(const NodeGraph& graphToResolve) :
+    ResolutionWorklist(
+            const NodeGraph& graphToResolve,
+            const GraphEdgeView& edgesToResolve,
+            const EdgeIndex& edgeIndexToUse) :
             graph(graphToResolve)
-        ,   edges(graph.getEdges()) {
+        ,   edges(edgesToResolve)
+        ,   indexedEdges(edgeIndexToUse) {
+        InteractionComplexityDiagnostics::recordValidationNodeVisits(
+                graph.getNodes().size());
         resolution.domains.reserve(edges.size());
         resolution.channelLayouts.resize(edges.size(), ChannelLayout::Mono);
-        incoming.resize(graph.getNodes().size());
-        outgoing.resize(graph.getNodes().size());
-
-        for (size_t nodeIndex = 0; nodeIndex < graph.getNodes().size(); ++nodeIndex) {
-            nodeIndices.emplace(graph.getNodes()[nodeIndex].id, nodeIndex);
-        }
 
         for (size_t edgeIndex = 0; edgeIndex < edges.size(); ++edgeIndex) {
             const Edge& edge = edges[edgeIndex];
             resolution.domains.push_back(edge.domain);
-            if (edge.isAttachment()) {
-                continue;
-            }
-
-            const auto source = nodeIndices.find(edge.sourceNodeId);
-            if (source != nodeIndices.end()) {
-                outgoing[source->second].push_back(edgeIndex);
-            }
-
-            const auto dest = nodeIndices.find(edge.destNodeId);
-            if (dest != nodeIndices.end()) {
-                incoming[dest->second].push_back(edgeIndex);
+            if (!edge.isAttachment()) {
+                initialEdges.push_back(edgeIndex);
             }
         }
     }
 
+    ResolutionWorklist(
+            const NodeGraph& graphToResolve,
+            const GraphEdgeView& edgesToResolve,
+            const EdgeIndex& edgeIndexToUse,
+            const GraphDomainResolution& baseline) :
+            graph(graphToResolve)
+        ,   edges(edgesToResolve)
+        ,   indexedEdges(edgeIndexToUse) {
+        jassert(baseline.domains.size() == edges.existingSize());
+        jassert(baseline.channelLayouts.size() == edges.existingSize());
+        resolution.domains.resize(edges.size());
+        resolution.channelLayouts.resize(edges.size(), ChannelLayout::Mono);
+
+        for (size_t existingIndex = 0;
+                existingIndex < edges.existingSize();
+                ++existingIndex) {
+            const auto viewIndex = edges.viewIndexForExisting(existingIndex);
+            if (viewIndex.has_value()) {
+                resolution.domains[*viewIndex] = baseline.domains[existingIndex];
+                resolution.channelLayouts[*viewIndex] = baseline.channelLayouts[existingIndex];
+            }
+        }
+        for (size_t edgeIndex = edges.retainedSize(); edgeIndex < edges.size(); ++edgeIndex) {
+            resolution.domains[edgeIndex] = edges[edgeIndex].domain;
+        }
+
+        initialEdges = dependencyClosure(
+                indexedEdges.edgesAtChangedDestinations());
+        resolution.affectedEdgeIndices = initialEdges;
+        for (const size_t edgeIndex : initialEdges) {
+            resolution.domains[edgeIndex] = edges[edgeIndex].domain;
+            resolution.channelLayouts[edgeIndex] = ChannelLayout::Mono;
+        }
+    }
+
     GraphDomainResolution run() {
-        resolveDomains();
-        resolveChannelLayouts();
+        const auto domainWork = resolveDomains();
+        resolveChannelLayouts(domainWork);
         return std::move(resolution);
     }
 
 private:
-    const Node* node(const String& id) const {
-        const auto found = nodeIndices.find(id);
-        return found != nodeIndices.end()
-                ? &graph.getNodes()[found->second]
-                : nullptr;
+    std::vector<size_t> dependencyClosure(
+            const std::vector<size_t>& seeds) const {
+        std::vector<size_t> closure;
+        std::deque<size_t> worklist;
+        std::unordered_set<size_t> included;
+        const auto append = [&](size_t edgeIndex) {
+            if (edgeIndex < edges.size()
+                    && !edges[edgeIndex].isAttachment()
+                    && included.insert(edgeIndex).second) {
+                closure.push_back(edgeIndex);
+                worklist.push_back(edgeIndex);
+            }
+        };
+        for (const size_t edgeIndex : seeds) {
+            append(edgeIndex);
+        }
+        while (!worklist.empty()) {
+            const size_t edgeIndex = worklist.front();
+            worklist.pop_front();
+            const String& affectedNodeId = edges[edgeIndex].destNodeId;
+            for (const size_t affected : indexedEdges.incomingEdges(affectedNodeId)) {
+                append(affected);
+            }
+            for (const size_t affected : indexedEdges.outgoingEdges(affectedNodeId)) {
+                append(affected);
+            }
+        }
+        return closure;
     }
 
-    size_t nodeIndex(const String& id) const {
-        const auto found = nodeIndices.find(id);
-        return found != nodeIndices.end() ? found->second : graph.getNodes().size();
+    const Node* node(const String& id) const {
+        return graph.findNode(id);
     }
 
     PortDomain firstInputDomain(
             const Node& nodeToResolve,
             bool operationDomain) const {
-        const size_t index = nodeIndex(nodeToResolve.id);
-        if (index >= incoming.size()) {
-            return PortDomain::ControlSignal;
-        }
-
-        for (const size_t edgeIndex : incoming[index]) {
+        for (const size_t edgeIndex : indexedEdges.incomingEdges(nodeToResolve.id)) {
+            if (edges[edgeIndex].isAttachment()) {
+                continue;
+            }
             const PortDomain domain = resolution.domains[edgeIndex];
             const bool accepted = operationDomain
                     ? GraphDomainResolver::isConcreteOperationDomain(domain)
@@ -182,26 +224,31 @@ private:
     }
 
     template<typename Transfer, typename Value>
-    void propagate(
+    std::vector<size_t> propagate(
             std::vector<Value>& values,
-            Transfer transfer) {
+            Transfer transfer,
+            const std::vector<size_t>& seedEdges) {
         std::deque<size_t> worklist;
-        std::vector<bool> queued(edges.size(), false);
-        for (size_t edgeIndex = 0; edgeIndex < edges.size(); ++edgeIndex) {
-            if (!edges[edgeIndex].isAttachment()) {
+        std::unordered_set<size_t> queued;
+        for (const size_t edgeIndex : seedEdges) {
+            if (edgeIndex < edges.size()
+                    && !edges[edgeIndex].isAttachment()
+                    && queued.insert(edgeIndex).second) {
                 worklist.push_back(edgeIndex);
-                queued[edgeIndex] = true;
             }
         }
 
+        std::vector<size_t> processed;
         const size_t maximumTransfers = std::max<size_t>(
                 1u,
                 edges.size() * edges.size() * 8);
         size_t transfers = 0;
         while (!worklist.empty() && transfers++ < maximumTransfers) {
+            InteractionComplexityDiagnostics::recordDomainTransfer();
             const size_t edgeIndex = worklist.front();
             worklist.pop_front();
-            queued[edgeIndex] = false;
+            queued.erase(edgeIndex);
+            processed.push_back(edgeIndex);
 
             const Value next = transfer(edgeIndex);
             if (values[edgeIndex] == next) {
@@ -209,49 +256,45 @@ private:
             }
             values[edgeIndex] = next;
 
-            const size_t affectedNodeIndex = nodeIndex(edges[edgeIndex].destNodeId);
-            if (affectedNodeIndex >= incoming.size()) {
-                continue;
-            }
-
-            for (const size_t affected : incoming[affectedNodeIndex]) {
-                if (!queued[affected]) {
+            const String& affectedNodeId = edges[edgeIndex].destNodeId;
+            for (const size_t affected : indexedEdges.incomingEdges(affectedNodeId)) {
+                if (!edges[affected].isAttachment() && queued.insert(affected).second) {
                     worklist.push_back(affected);
-                    queued[affected] = true;
                 }
             }
-            for (const size_t affected : outgoing[affectedNodeIndex]) {
-                if (!queued[affected]) {
+            for (const size_t affected : indexedEdges.outgoingEdges(affectedNodeId)) {
+                if (!edges[affected].isAttachment() && queued.insert(affected).second) {
                     worklist.push_back(affected);
-                    queued[affected] = true;
                 }
             }
         }
 
         jassert(worklist.empty());
+        return processed;
     }
 
-    void resolveDomains() {
-        propagate(
+    std::vector<size_t> resolveDomains() {
+        return propagate(
                 resolution.domains,
                 [this](size_t edgeIndex) {
                     return transferDomain(edgeIndex);
-                });
+                },
+                initialEdges);
     }
 
-    void resolveChannelLayouts() {
+    void resolveChannelLayouts(const std::vector<size_t>& domainWork) {
         propagate(
                 resolution.channelLayouts,
                 [this](size_t edgeIndex) {
                     return transferChannelLayout(edgeIndex);
-                });
+                },
+                domainWork);
     }
 
     const NodeGraph& graph;
-    const std::vector<Edge>& edges;
-    std::unordered_map<String, size_t, StringHash> nodeIndices;
-    std::vector<std::vector<size_t>> incoming;
-    std::vector<std::vector<size_t>> outgoing;
+    const GraphEdgeView& edges;
+    const EdgeIndex& indexedEdges;
+    std::vector<size_t> initialEdges;
     GraphDomainResolution resolution;
 };
 
@@ -281,7 +324,27 @@ size_t edgeIndexInGraph(const NodeGraph& graph, const Edge& edge) {
 }
 
 GraphDomainResolution GraphDomainResolver::resolve(const NodeGraph& graph) const {
-    return ResolutionWorklist(graph).run();
+    return resolve(graph, GraphEdgeView(graph.getEdges()));
+}
+
+GraphDomainResolution GraphDomainResolver::resolve(
+        const NodeGraph& graph,
+        const GraphEdgeView& edges) const {
+    const GraphEdgeIndex edgeIndex(edges);
+    return ResolutionWorklist(graph, edges, edgeIndex).run();
+}
+
+GraphDomainResolution GraphDomainResolver::resolve(
+        const NodeGraph& graph,
+        const GraphEdgeView& edges,
+        const GraphEdgeIndexOverlay& edgeIndex,
+        const GraphDomainResolution& baseline) const {
+    if (baseline.domains.size() != edges.existingSize()
+            || baseline.channelLayouts.size() != edges.existingSize()) {
+        jassertfalse;
+        return resolve(graph, edges);
+    }
+    return ResolutionWorklist(graph, edges, edgeIndex, baseline).run();
 }
 
 bool GraphDomainResolver::isConcreteOperationDomain(PortDomain domain) {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <JuceHeader.h>
+
 #include <cstdint>
 
 namespace CycleV2 {
@@ -20,8 +22,8 @@ enum class NodeCanvasPresentationStage : uint8_t {
     Palette,
     Status,
     GuideShelf,
-    SpyRail,
-    SpyRailPreviews,
+    SpyCanvas,
+    SpyCanvasPreviews,
     DockAndDetail,
     Count
 };
@@ -37,6 +39,9 @@ public:
     virtual void nodeLayerCacheCompleted(
             uint64_t hits,
             uint64_t misses,
+            uint64_t elapsedMicroseconds) = 0;
+    virtual void nodeTileCompleted(
+            const juce::String& nodeId,
             uint64_t elapsedMicroseconds) = 0;
     virtual void cableLayerCacheCompleted(
             uint64_t hits,

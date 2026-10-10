@@ -5,6 +5,7 @@
 
 #include <Array/Buffer.h>
 #include <Obj/Color.h>
+#include <UI/Panels/ScalarSurfaceMaterial.h>
 
 #include <JuceHeader.h>
 
@@ -20,12 +21,15 @@ enum class TrimeshSliceBackground {
 
 struct TrimeshSurfaceStyle {
     PortDomain domain { PortDomain::TimeSignal };
+    RenderScalePolicy scalePolicy { RenderScalePolicy::Unipolar };
     juce::Colour minorGridColour;
     juce::Colour majorGridColour;
     bool textureUsesAlpha {};
 
     juce::Image gradientImage() const;
     juce::Colour colourForValue(float value) const;
+    ScalarSurfaceMaterial surfaceMaterial() const;
+    int materialStyleSignature() const;
 };
 
 struct TrimeshCurveStyle {
@@ -63,6 +67,10 @@ public:
             int midiNote = 48) const;
     std::vector<float> mapTrimeshValuesToDisplay(
             const std::vector<float>& source) const;
+    std::vector<float> mapPitchColumnsToDisplay(
+            const std::vector<float>& source,
+            size_t columns,
+            size_t rows) const;
     std::vector<float> mapSpectrum2DGridToDisplay(
             const std::vector<float>& source,
             size_t columns,

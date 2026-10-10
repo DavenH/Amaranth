@@ -54,11 +54,6 @@ enum class UpdateTracePhase {
     InvariantViolation
 };
 
-enum class ProbeRefreshMode {
-    OnGestureCommit,
-    LiveLatest
-};
-
 struct UpdateCause {
     String sourceNodeId;
     String field;
@@ -135,15 +130,18 @@ public:
             EditPhase phase = EditPhase::Movement);
     EditIdentity commit(const String& sourceStreamId);
     void cancelGesture(const String& sourceStreamId);
+    void invalidateSource(const String& sourceStreamId);
 
     const UpdateAuditTrace& trace() const { return auditTrace; }
 
 private:
     struct SourceState {
         uint64_t effectiveFingerprint {};
+        uint64_t gestureStartFingerprint {};
         uint64_t gestureId {};
         uint64_t lastMovementEditId {};
         bool initialized {};
+        bool gestureStartInitialized {};
     };
 
     uint64_t nextEditId { 1 };
@@ -166,6 +164,10 @@ public:
             const GraphExecutionPlan& plan,
             const CausalUpdateRequest& request,
             const ProductBatchExecutor& executor);
+    void invalidateProduct(
+            const GraphExecutionPlan& plan,
+            const String& nodeId,
+            UpdateProduct product);
     void publish(
             const CausalUpdateRequest& request,
             const CausalUpdateResult& result);

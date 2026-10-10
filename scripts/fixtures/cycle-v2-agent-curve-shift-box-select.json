@@ -1,0 +1,16 @@
+{
+  "commands": [
+    { "command": "openNodeEditor", "nodeId": "env", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "pointer", "event": "down", "targetId": "expanded:env.panel2D", "targetX": 0.25, "targetY": 0.25, "shift": true },
+    { "command": "pointer", "event": "drag", "targetId": "expanded:env.panel2D", "downTargetId": "expanded:env.panel2D", "targetX": 0.55, "targetY": 0.65, "downTargetX": 0.25, "downTargetY": 0.25, "shift": true },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.panelState.boxSelecting", "equals": true },
+    { "command": "pointer", "event": "up", "targetId": "expanded:env.panel2D", "downTargetId": "expanded:env.panel2D", "targetX": 0.55, "targetY": 0.65, "downTargetX": 0.25, "downTargetY": 0.25, "shift": true },
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/old/baroque-flute.cyclegraph" },
+    { "command": "pointer", "event": "doubleClick", "targetId": "guide:guide1", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "pointer", "event": "down", "targetId": "guideEditor:guide1.panel2D", "targetX": 0.25, "targetY": 0.25, "shift": true },
+    { "command": "pointer", "event": "drag", "targetId": "guideEditor:guide1.panel2D", "downTargetId": "guideEditor:guide1.panel2D", "targetX": 0.55, "targetY": 0.65, "downTargetX": 0.25, "downTargetY": 0.25, "shift": true },
+    { "command": "assertState", "path": "guideDock.editor.panelState.boxSelecting", "equals": true },
+    { "command": "pointer", "event": "up", "targetId": "guideEditor:guide1.panel2D", "downTargetId": "guideEditor:guide1.panel2D", "targetX": 0.55, "targetY": 0.65, "downTargetX": 0.25, "downTargetY": 0.25, "shift": true }
+  ],
+  "quit": true
+}

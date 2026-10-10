@@ -5,6 +5,12 @@
       "path": "../../cycle-v2/resources/with-spies.cyclegraph"
     },
     {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "equals": "0.317"
+    },
+    {
       "command": "openNodeEditor",
       "nodeId": "waveMesh",
       "waitForIdle": true,

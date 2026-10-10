@@ -20,13 +20,17 @@ constexpr float kExpandedGridRatio     = 0.50f;
 constexpr int kPreviewRows             = 320;
 constexpr int kPreviewColumns          = 96;
 constexpr int kExpandedRows            = 320;
-constexpr int kExpandedColumns         = 96;
+constexpr int kExpandedColumns         = 768;
 constexpr int kVertexParameterCount    = 6;
 
 }
 
 void TrimeshWidget::syncFromNode(const Node& node) {
     bridge.syncFromNode(node, kPreviewRows, kPreviewColumns);
+}
+
+void TrimeshWidget::syncExpandedFromNode(const Node& node) {
+    bridge.syncFromNode(node, kExpandedRows, lastExpandedColumnCount);
 }
 
 void TrimeshWidget::setMorphEditGestureActive(bool active) {
@@ -38,7 +42,7 @@ void TrimeshWidget::syncGuideContext(const NodeGraph& graph, const Node& node) {
         return;
     }
 
-    String nextKey = TrimeshGuidePreparation::configurationKey(graph, node.id);
+    String nextKey = GuideCurveMeshPreparation::configurationKey(graph, node.id);
     if (node.model != nullptr) {
         nextKey << ":mesh=" << String((int64) node.model->revision());
     }
@@ -109,6 +113,10 @@ void TrimeshWidget::paintCompact(
     const TrimeshRenderData& renderData = bridge.getDataSource().getRenderData();
     TrimeshNodeModel& model = bridge.getModel();
     const uint64_t compactRevision = model.getDerivedRevisions().compactPreview;
+    const Rectangle<float> previewArea = meshPreviewContentArea(area);
+    const float surfaceAspectRatio = previewArea.getWidth()
+            / jmax(1.f, previewArea.getHeight());
+    const int materialStyleSignature = profile.getSurfaceStyle().materialStyleSignature();
 
     if (!renderData.canDrawSurface()) {
         return;
@@ -121,27 +129,37 @@ void TrimeshWidget::paintCompact(
             || compactHeatmap.revision != compactRevision
             || compactHeatmap.domain != profile.getDomain()
             || compactHeatmap.scalePolicy != profile.getScalePolicy()
-            || compactHeatmap.midiNote != previewMidiNote) {
-        compactHeatmap.image = TrimeshSurfaceRenderer::createHeatmapImage(renderData, profile);
+            || compactHeatmap.materialStyleSignature != materialStyleSignature
+            || compactHeatmap.midiNote != renderData.midiNote
+            || compactHeatmap.pitchSpansColumns != renderData.pitchSpansColumns
+            || compactHeatmap.surfaceAspectRatio != surfaceAspectRatio) {
+        compactHeatmap.image = TrimeshSurfaceRenderer::createHeatmapImage(
+                renderData,
+                profile,
+                false,
+                surfaceAspectRatio);
         compactHeatmap.valueCount = renderData.surface.size();
         compactHeatmap.rows = renderData.rows;
         compactHeatmap.columns = renderData.columns;
         compactHeatmap.revision = compactRevision;
         compactHeatmap.domain = profile.getDomain();
         compactHeatmap.scalePolicy = profile.getScalePolicy();
-        compactHeatmap.midiNote = previewMidiNote;
+        compactHeatmap.materialStyleSignature = materialStyleSignature;
+        compactHeatmap.midiNote = renderData.midiNote;
+        compactHeatmap.pitchSpansColumns = renderData.pitchSpansColumns;
+        compactHeatmap.surfaceAspectRatio = surfaceAspectRatio;
     }
 
     if (compactHeatmap.image.isValid()) {
         g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-        g.drawImage(compactHeatmap.image, meshPreviewContentArea(area));
+        g.drawImage(compactHeatmap.image, previewArea);
     }
 }
 
 void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float> content) {
     setRenderProfile(displayProfile);
     const TrimeshRenderProfile profile = displayProfile;
-    bridge.syncFromNode(node, kExpandedRows, kExpandedColumns);
+    syncExpandedNode(node, content);
     const TrimeshRenderData& renderData = bridge.getDataSource().getRenderData();
     TrimeshNodeModel& model = bridge.getModel();
 
@@ -222,7 +240,7 @@ void TrimeshWidget::renderExpandedPanelsOpenGL(
         Rectangle<float> content,
         float scaleFactor) {
     setRenderProfile(displayProfile);
-    bridge.syncFromNode(node, kExpandedRows, kExpandedColumns);
+    syncExpandedNode(node, content);
     bridge.renderPanel3D(expandedGridPanelContentBounds(content), scaleFactor);
     bridge.renderPanel2D(expandedWavePanelContentBounds(content), scaleFactor);
 }
@@ -231,7 +249,7 @@ Component* TrimeshWidget::prepareExpandedPanel3DComponent(
         const Node& node,
         Rectangle<float> content) {
     setRenderProfile(displayProfile);
-    bridge.syncFromNode(node, kExpandedRows, kExpandedColumns);
+    syncExpandedNode(node, content);
     return bridge.getPanel3DHostComponent();
 }
 
@@ -243,7 +261,7 @@ Component* TrimeshWidget::prepareExpandedPanel2DComponent(
         const Node& node,
         Rectangle<float> content) {
     setRenderProfile(displayProfile);
-    bridge.syncFromNode(node, kExpandedRows, kExpandedColumns);
+    syncExpandedNode(node, content);
     return bridge.getPanel2DHostComponent();
 }
 
@@ -256,7 +274,7 @@ void TrimeshWidget::releaseSharedGlResources() {
 }
 
 int TrimeshWidget::resolvedSelectedVertexIndexForNode(const Node& node) {
-    bridge.syncFromNode(node, kExpandedRows, kExpandedColumns);
+    bridge.syncFromNode(node, kExpandedRows, lastExpandedColumnCount);
     return bridge.getModel().getResolvedSelectedVertexIndex();
 }
 
@@ -281,7 +299,16 @@ bool TrimeshWidget::setVertexParameter(
         int vertexIndex,
         const String& parameterId,
         float value) {
-    return bridge.getModel().setVertexParameter(vertexIndex, parameterId, value);
+    return bridge.getModel().setVertexParameter(
+            vertexIndex,
+            parameterId,
+            value,
+            bridge.getInteractor2D().getCollisionDetector());
+}
+
+std::optional<std::array<float, 8>> TrimeshWidget::cubeCurveValuesForVertex(
+        int vertexIndex) {
+    return bridge.getModel().cubeCurveValuesForVertex(vertexIndex);
 }
 
 bool TrimeshWidget::setVertexGuideGain(
@@ -314,6 +341,10 @@ std::vector<TrimeshVertexParameter> TrimeshWidget::vertexParametersForIndex(int 
     return bridge.getModel().getVertexParametersForIndex(vertexIndex);
 }
 
+std::vector<TrimeshVertexParameter> TrimeshWidget::selectedVertexParameters() {
+    return bridge.getModel().getSelectedVertexParameters();
+}
+
 int TrimeshWidget::selectedVertexIndexForPanel() const {
     return bridge.selectedVertexIndexForPanel();
 }
@@ -331,6 +362,9 @@ TrimeshPanelRenderStats TrimeshWidget::panelRenderStatsForAutomation() const {
     const auto samples = snapshot.waveY();
     const TrimeshPanel2D& panel = bridge.getPanel2D();
     TrimeshPanelRenderStats stats;
+    const TrimeshRenderData& renderData = bridge.getRenderData();
+    stats.surfaceColumnCount = renderData.columns;
+    stats.surfaceRowCount = renderData.rows;
     const auto& panelColumns = bridge.getDataSource().getPanelColumns();
     if (!panelColumns.empty()) {
         stats.firstPanelMidiNote = panelColumns.front().midiKey;
@@ -801,6 +835,15 @@ Rectangle<float> TrimeshWidget::waveshapeContentBounds(Rectangle<float> content)
 Rectangle<float> TrimeshWidget::expandedGridPanelContentBounds(Rectangle<float> content) {
     auto topRow = content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
     return topRow.removeFromLeft(topRow.getWidth() * kExpandedGridRatio);
+}
+
+int TrimeshWidget::expandedColumnCount(Rectangle<float>) {
+    return kExpandedColumns;
+}
+
+void TrimeshWidget::syncExpandedNode(const Node& node, Rectangle<float> content) {
+    lastExpandedColumnCount = expandedColumnCount(content);
+    bridge.syncFromNode(node, kExpandedRows, lastExpandedColumnCount);
 }
 
 Rectangle<float> TrimeshWidget::expandedWavePanelContentBounds(Rectangle<float> content) {

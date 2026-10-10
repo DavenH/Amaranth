@@ -15,6 +15,7 @@
 #include "../../Curve/GuideCurveProvider.h"
 #include "../../Curve/Mesh/Intercept.h"
 #include "../../Curve/Mesh/PathRepo.h"
+#include "../../Curve/Rasterization/Policies/Mesh/GuideCurvePolicy.h"
 #include "../../Obj/Color.h"
 #include "../../Obj/ColorPoint.h"
 #include "../../Obj/CurveLine.h"
@@ -560,13 +561,26 @@ void Panel::highlightSelectedVerts() {
 
         const bool wrapsVerts = interactor->rasterizerWrapsVertices();
 
-        size = moving.empty() ? selected.size() : moving.size();
+        const int selectedCount = moving.empty() ? (int) selected.size() : (int) moving.size();
+        for (int i = 0; i < selectedCount; ++i) {
+            const Vertex& vertex = moving.empty()
+                    ? *selected[(size_t) i]
+                    : *moving[(size_t) i].vert;
+            size += shouldDrawSelectedVertex(vertex) ? 1 : 0;
+        }
+        if (size == 0) {
+            return;
+        }
         prepareBuffers(size);
 
-        for (int i = 0; i < size; ++i) {
+        int visibleIndex = 0;
+        for (int i = 0; i < selectedCount; ++i) {
             Vertex& vert = moving.empty()
                     ? *selected[(size_t) i]
                     : *moving[(size_t) i].vert;
+            if (!shouldDrawSelectedVertex(vert)) {
+                continue;
+            }
             float vals[] = {vert.values[interactor->dims.x], vert.values[interactor->dims.y]};
             int dimArr[] = {interactor->dims.x, interactor->dims.y};
 
@@ -578,8 +592,9 @@ void Panel::highlightSelectedVerts() {
                 }
             }
 
-            xBuffer[i] = vals[0];
-            yBuffer[i] = vals[1];
+            xBuffer[visibleIndex] = vals[0];
+            yBuffer[visibleIndex] = vals[1];
+            ++visibleIndex;
         }
     }
 
@@ -915,7 +930,8 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     bool anyDfrmAdjustments = (adjustPhase || adjustAmp) && guideCurveApplicable;
     const Dimensions& dims  = interactor->dims;
 
-    if(! anyDfrmAdjustments && (! adjustSpeed || dims.x == Vertex::Phase)) {
+    if(! anyDfrmAdjustments && !hasHiddenMorphGuide(*cube, pointDim)
+            && (! adjustSpeed || dims.x == Vertex::Phase)) {
         return false;
     }
 
@@ -945,10 +961,8 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     Buffer<float> speedEnv  = scratchContext.panelBuffer;
     Buffer<float> ramp      = cBuffer.withSize(linestripRes);
 
-    if(GuideCurveProvider* guideCurveProvider = interactor->getGuideCurveProvider()) {
-        phaseTable = guideCurveProvider->getTable(phaseChan);
-        ampTable = guideCurveProvider->getTable(ampChan);
-    }
+    phaseTable = getLineGuideTable(phaseChan);
+    ampTable = getLineGuideTable(ampChan);
 
     if ((adjustPhase && phaseTable.empty()) || (adjustAmp && ampTable.empty())) {
         if (lockedPathRepo) {
@@ -1075,11 +1089,75 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
             xy.y.add(ramp.ramp(first.y, ySlope));
         }
     }
+
+    addHiddenMorphGuideOffsets(*cube, pointDim, first.x, second.x);
+
     if (lockedPathRepo) {
         getObj(PathRepo).getLock().exit();
     }
 
     return true;
+}
+
+bool Panel::hasHiddenMorphGuide(const VertCube& cube, int pointDim) {
+    if (!guideCurveApplicable || interactor->dims.x == Vertex::Phase
+            || interactor->dims.y != Vertex::Phase) {
+        return false;
+    }
+
+    for (int dimension : { Vertex::Red, Vertex::Blue }) {
+        if (dimension != pointDim
+                && Rasterization::GuideCurvePolicy::hasMorphAxisGuide(cube, dimension)
+                && !getLineGuideTable(cube.guideCurveAt(dimension)).empty()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void Panel::addHiddenMorphGuideOffsets(
+        const VertCube& cube,
+        int pointDim,
+        float start,
+        float end) {
+    if (!hasHiddenMorphGuide(cube, pointDim)) {
+        return;
+    }
+
+    MorphPosition morph = interactor->getMorphPosition();
+    const float step = (end - start) / (float) (linestripRes - 1);
+    for (int dimension : { Vertex::Red, Vertex::Blue }) {
+        if (dimension == pointDim
+                || !Rasterization::GuideCurvePolicy::hasMorphAxisGuide(cube, dimension)) {
+            continue;
+        }
+
+        const Buffer<float> table = getLineGuideTable(cube.guideCurveAt(dimension));
+        if (table.empty()) {
+            continue;
+        }
+
+        const auto sampleGuide = [table](int, float progress) {
+            const int tableIndex = jlimit(0, table.size() - 1,
+                    (int) (progress * (float) (table.size() - 1)));
+            return table[tableIndex];
+        };
+        for (int index = 0; index < linestripRes; ++index) {
+            morph[pointDim].setValueDirect(start + step * (float) index);
+            xy.y[index] += Rasterization::GuideCurvePolicy::morphAxisOffset(
+                    cube,
+                    morph,
+                    dimension,
+                    sampleGuide);
+        }
+    }
+}
+
+Buffer<Float32> Panel::getLineGuideTable(int channel) {
+    if (GuideCurveProvider* provider = interactor->getGuideCurveProvider()) {
+        return provider->getTable(channel);
+    }
+    return {};
 }
 
 int Panel::getLinePathPhaseGuideChannel(const VertCube& cube, int pointDim) {

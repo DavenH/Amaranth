@@ -1,0 +1,136 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "file.spyRefreshLive"
+    },
+    {
+      "command": "assertState",
+      "path": "probeRefreshMode",
+      "equals": "Live"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "timeLayer1",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "requestCanvasOpenGLFrame"
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 250
+    },
+    {
+      "command": "resetCanvasPerformance"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:timeLayer1.trimeshMorphRail.red",
+      "targetX": 0.2,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:timeLayer1.trimeshMorphRail.red",
+      "downTargetId": "expanded:timeLayer1.trimeshMorphRail.red",
+      "targetX": 0.35,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 150
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:timeLayer1.trimeshMorphRail.red",
+      "downTargetId": "expanded:timeLayer1.trimeshMorphRail.red",
+      "targetX": 0.5,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 150
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:timeLayer1.trimeshMorphRail.red",
+      "downTargetId": "expanded:timeLayer1.trimeshMorphRail.red",
+      "targetX": 0.65,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 150
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:timeLayer1.trimeshMorphRail.red",
+      "downTargetId": "expanded:timeLayer1.trimeshMorphRail.red",
+      "targetX": 0.8,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 150
+    },
+    {
+      "command": "inspectCanvasPerformance",
+      "maxRepaintRequests": 0,
+      "maxPreviewRequests": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.surfaceColumnCount",
+      "op": "greaterThan",
+      "value": 500
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:timeLayer1.trimeshMorphRail.red",
+      "downTargetId": "expanded:timeLayer1.trimeshMorphRail.red",
+      "targetX": 0.8,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "timeLayer1",
+      "parameterId": "red",
+      "op": "greaterThan",
+      "value": 0.7
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 500
+    },
+    {
+      "command": "inspectCanvasPerformance"
+    }
+  ],
+  "quit": true
+}

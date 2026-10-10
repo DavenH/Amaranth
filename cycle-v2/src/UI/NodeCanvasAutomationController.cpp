@@ -1,7 +1,5 @@
 #include "UI/NodeCanvasAutomationController.h"
 
-#include "UI/NodeViewModule.h"
-
 namespace CycleV2 {
 
 namespace {
@@ -175,6 +173,8 @@ var NodeCanvasAutomationController::inspectOpenGLDiagnostics(
     auto* root = new DynamicObject();
     root->setProperty("schema", "cycle-v2-opengl-diagnostics.v1");
     root->setProperty("canvasOpenGlAttached", state.canvasAttached);
+    root->setProperty("contextCreateCount", (int64) state.contextCreateCount);
+    root->setProperty("contextCloseCount", (int64) state.contextCloseCount);
     root->setProperty("canvasBounds", rectangleToVar(context.canvas.getLocalBounds().toFloat()));
     root->setProperty("canvasScreenBounds", rectangleToVar(context.canvas.getScreenBounds().toFloat()));
     root->setProperty("expandedNodeId", state.expandedNodeId);
@@ -189,10 +189,7 @@ var NodeCanvasAutomationController::inspectOpenGLDiagnostics(
     const Node* expandedNode = findNode(context.document.graph(), state.expandedNodeId);
     if (expandedNode != nullptr) {
         root->setProperty("expandedNodeKind", labelForNodeKind(expandedNode->kind));
-        root->setProperty("expandedEditorBounds", rectangleToVar(
-                NodeViewModuleRegistry::instance().moduleFor(expandedNode->kind).expandedEditorBounds(
-                        context.canvas.getLocalBounds().toFloat(),
-                        18.f)));
+        root->setProperty("expandedEditorBounds", rectangleToVar(state.expandedEditorBounds));
     }
 
     Array<var> panels;

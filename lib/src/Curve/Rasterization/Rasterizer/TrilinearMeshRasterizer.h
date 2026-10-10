@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <utility>
 
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Rasterization/Builders/CurveWaveformBuilder.h>
@@ -29,6 +30,18 @@ namespace Rasterization {
                     command.mesh,
                     command.request,
                     command.oscillatorPhase);
+            return output;
+        }
+
+        template<typename ResolveCube>
+        RenderResult& renderWaveform(
+                const WaveformRenderCommand& command,
+                ResolveCube&& resolveCube) {
+            renderTrilinearWaveform(
+                    command.mesh,
+                    command.request,
+                    command.oscillatorPhase,
+                    std::forward<ResolveCube>(resolveCube));
             return output;
         }
 
@@ -289,6 +302,19 @@ namespace Rasterization {
                 Mesh& renderMesh,
                 const RasterizationRequest& renderRequest,
                 float oscPhase) {
+            renderTrilinearGeometry(
+                    renderMesh,
+                    renderRequest,
+                    oscPhase,
+                    [](VertCube* cube) { return cube; });
+        }
+
+        template<typename ResolveCube>
+        void renderTrilinearGeometry(
+                Mesh& renderMesh,
+                const RasterizationRequest& renderRequest,
+                float oscPhase,
+                ResolveCube&& resolveCube) {
             if (renderMesh.getNumCubes() == 0) {
                 clearTrilinearOutput();
                 return;
@@ -306,7 +332,8 @@ namespace Rasterization {
                     oscPhase,
                     guideApplier,
                     output,
-                    reduction);
+                    reduction,
+                    std::forward<ResolveCube>(resolveCube));
         }
 
         void renderTrilinearWaveform(float oscPhase) {
@@ -322,7 +349,24 @@ namespace Rasterization {
                 Mesh& renderMesh,
                 const RasterizationRequest& renderRequest,
                 float oscPhase) {
-            renderTrilinearGeometry(renderMesh, renderRequest, oscPhase);
+            renderTrilinearWaveform(
+                    renderMesh,
+                    renderRequest,
+                    oscPhase,
+                    [](VertCube* cube) { return cube; });
+        }
+
+        template<typename ResolveCube>
+        void renderTrilinearWaveform(
+                Mesh& renderMesh,
+                const RasterizationRequest& renderRequest,
+                float oscPhase,
+                ResolveCube&& resolveCube) {
+            renderTrilinearGeometry(
+                    renderMesh,
+                    renderRequest,
+                    oscPhase,
+                    std::forward<ResolveCube>(resolveCube));
 
             if (output.intercepts.empty()) {
                 return;

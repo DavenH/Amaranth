@@ -16,11 +16,12 @@ public:
     bool render(SignalTraversalGrid& grid, int midiNote);
 
 private:
-    float pitchUnitValue(size_t column, size_t columnCount) const;
+    float pitchUnitValue(int laneIndex, size_t column, size_t columnCount) const;
 
     float voiceDurationSeconds { 1.f };
     CycleDsp::UnisonVoiceLayout layout;
     std::vector<float> pitchEnvelopeUnitValues;
+    std::vector<std::vector<float>> pitchEnvelopeUnitValuesByLane;
     ScopedAlloc<float> workspace;
 };
 

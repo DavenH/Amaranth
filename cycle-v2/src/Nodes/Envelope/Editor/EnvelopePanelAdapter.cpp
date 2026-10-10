@@ -1,6 +1,7 @@
 #include "Nodes/Envelope/Editor/EnvelopePanelAdapter.h"
 
 #include "Graph/InteractionComplexityDiagnostics.h"
+#include "Graph/NodeParameterMap.h"
 
 #include "Nodes/Envelope/EnvelopeMeshState.h"
 
@@ -28,11 +29,22 @@ bool EnvelopePanelAdapter::syncFromNode(const Node& node) {
     if (node.kind != NodeKind::Envelope) {
         return false;
     }
-    if (!needsNodeSync(node) || !model.syncFromNode(node)) {
+    if (!needsNodeSync(node)) {
         return false;
     }
+    if (!model.syncFromNode(node)) {
+        return false;
+    }
+    const bool differentNode = syncedNodeId != node.id;
     syncedNodeId = node.id;
     syncedModel = node.model;
+    const NodeParameterMap parameters(node);
+    morphRed = parameters.floatValue("red", 0.5f);
+    morphBlue = parameters.floatValue("blue", 0.5f);
+    if (differentNode) {
+        morphRedLinked = true;
+        morphBlueLinked = true;
+    }
     model.selectCube((EnvelopeCubeId) (int64) node.editorState.getProperty("selectedCubeId", 0));
     model.setPublicationRevision(node.model->revision());
     return true;
@@ -61,7 +73,7 @@ NodeModelStatePtr EnvelopePanelAdapter::modelPublication(
         editor->setProperty("selectedCubeId", (int64) *model.selectedCubeId());
     }
     return CurveNodeModelState::copyOf(
-            model, publicationRevision, var(editor.release()));
+            model, morphRed, morphBlue, publicationRevision, var(editor.release()));
 }
 
 std::vector<CurvePreviewVertex> EnvelopePanelAdapter::previewVertices() {
@@ -69,8 +81,8 @@ std::vector<CurvePreviewVertex> EnvelopePanelAdapter::previewVertices() {
     result.reserve((size_t) mesh().getNumCubes());
     MorphPosition position;
     position.time.setValueDirect(0.f);
-    position.red.setValueDirect(model.red);
-    position.blue.setValueDirect(model.blue);
+    position.red.setValueDirect(morphRed);
+    position.blue.setValueDirect(morphBlue);
     position.timeDepth = 0.001f;
     position.redDepth = 1.f;
     position.blueDepth = 1.f;
@@ -100,8 +112,8 @@ bool EnvelopePanelAdapter::registerMeshEdit() {
 }
 
 void EnvelopePanelAdapter::setMorph(float red, float blue) {
-    model.red = red;
-    model.blue = blue;
+    morphRed = red;
+    morphBlue = blue;
 }
 
 void EnvelopePanelAdapter::setLogarithmic(bool logarithmicToUse) {
@@ -109,8 +121,8 @@ void EnvelopePanelAdapter::setLogarithmic(bool logarithmicToUse) {
 }
 
 void EnvelopePanelAdapter::setAxisLinks(bool redLinkedToUse, bool blueLinkedToUse) {
-    model.redLinked = redLinkedToUse;
-    model.blueLinked = blueLinkedToUse;
+    morphRedLinked = redLinkedToUse;
+    morphBlueLinked = blueLinkedToUse;
 }
 
 }

@@ -293,6 +293,13 @@ var probeToJSON(const SignalProbe& probe) {
     result->setProperty("label", probe.label);
     result->setProperty("tapPosition", probe.tapPosition);
     result->setProperty("railOrder", probe.railOrder);
+    if (probe.frequencyView) {
+        result->setProperty("frequencyView", true);
+    }
+    if (probe.canvasPosition.has_value()) {
+        result->setProperty("canvasX", probe.canvasPosition->x);
+        result->setProperty("canvasY", probe.canvasPosition->y);
+    }
     return var(result.release());
 }
 
@@ -363,7 +370,10 @@ var guideHeatmapToJSON(const GuideHeatmapAsset& asset) {
 
 var guideAssignmentToJSON(const GuideCurveAssignment& assignment) {
     auto target = std::make_unique<DynamicObject>();
-    target->setProperty("kind", "trimeshCubeComponent");
+    target->setProperty("kind", assignment.targetKind
+                    == GuideCurveTargetKind::EnvelopeCubeComponent
+            ? "envelopeCubeComponent"
+            : "trimeshCubeComponent");
     target->setProperty("cubeIndex", assignment.target.cubeIndex);
     target->setProperty("field", guideFieldToJSON(assignment.target.field));
 
@@ -569,6 +579,12 @@ void appendCanonicalJSON(
 }
 
 var GraphSerializer::writeJSON(const NodeGraph& graph) const {
+    return writeJSON(graph, {});
+}
+
+var GraphSerializer::writeJSON(
+        const NodeGraph& graph,
+        const PresetPresentation& presentation) const {
     auto root = std::make_unique<DynamicObject>();
     root->setProperty("format", formatId);
     root->setProperty("formatVersion", currentFormatVersion);
@@ -587,6 +603,9 @@ var GraphSerializer::writeJSON(const NodeGraph& graph) const {
             if (!portSides.isVoid()) {
                 encoded->setProperty("portSides", portSides);
             }
+        }
+        if (node.reverseInputPortOrder) {
+            encoded->setProperty("reverseInputPortOrder", true);
         }
 
         auto parameters = std::make_unique<DynamicObject>();
@@ -668,6 +687,11 @@ var GraphSerializer::writeJSON(const NodeGraph& graph) const {
         probes.add(probeToJSON(probe));
     }
     root->setProperty("probes", var(std::move(probes)));
+    if (!presentation.empty()) {
+        root->setProperty(
+                "presetPresentation",
+                PresetPresentationCodec::writeJSON(presentation));
+    }
     return var(root.release());
 }
 
@@ -702,6 +726,11 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         result.issues.push_back({ GraphLoadCode::UnsupportedVersion, "Unsupported Cycle V2 graph format version" });
         return result;
     }
+
+    const auto presentation = PresetPresentationCodec::readJSON(
+            root->getProperty("presetPresentation"));
+    result.presentation = presentation.presentation;
+    result.presentationWarning = presentation.warning;
 
     const auto* encodedNodes = root->getProperty("nodes").getArray();
     const auto* encodedEdges = root->getProperty("edges").getArray();
@@ -769,6 +798,15 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             continue;
         }
         node.bounds.setPosition((float) x, (float) y);
+
+        const var reverseInputPortOrder = encoded->getProperty("reverseInputPortOrder");
+        if (!reverseInputPortOrder.isVoid() && !reverseInputPortOrder.isBool()) {
+            result.issues.push_back({ GraphLoadCode::InvalidSchema,
+                    "Node '" + nodeId + "' has invalid input port order" });
+            continue;
+        }
+        node.reverseInputPortOrder = reverseInputPortOrder.isBool()
+                && (bool) reverseInputPortOrder;
 
         const var portSides = encoded->getProperty("portSides");
         const auto* portSideGroups = portSides.getDynamicObject();
@@ -985,7 +1023,8 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         }
         guide.revision = (uint64_t) guideRevision;
         String error;
-        guide.model = readGuideCurveModelJSON(encoded->getProperty("model"), error);
+        guide.model = GuideCurveModelCodec().readJSON(
+                encoded->getProperty("model"), error);
         if (guide.model == nullptr || !result.graph.addGuideCurve(std::move(guide))) {
             result.issues.push_back({ GraphLoadCode::InvalidModel,
                     "Invalid model for Guide Curve resource: " + error });
@@ -1003,20 +1042,29 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
                 || target == nullptr
                 || !readRequiredString(*encoded, "guideId", assignment.guideId)
                 || !readRequiredString(*encoded, "targetNodeId", assignment.targetNodeId)
-                || target->getProperty("kind").toString() != "trimeshCubeComponent"
                 || !readRequiredString(*target, "field", field)
                 || !guideFieldFromJSON(field, assignment.target.field)) {
             result.issues.push_back({ GraphLoadCode::InvalidGraph,
-                    "Guide assignment must contain a typed Trimesh cube-component target" });
+                    "Guide assignment must contain a typed cube-component target" });
+            continue;
+        }
+        const String targetKind = target->getProperty("kind").toString();
+        if (targetKind == "envelopeCubeComponent") {
+            assignment.targetKind = GuideCurveTargetKind::EnvelopeCubeComponent;
+        } else if (targetKind != "trimeshCubeComponent") {
+            result.issues.push_back({ GraphLoadCode::InvalidGraph,
+                    "Guide assignment has an unknown target kind" });
             continue;
         }
         assignment.target.cubeIndex = (int) target->getProperty("cubeIndex");
         const Node* targetNode = result.graph.findNode(assignment.targetNodeId);
         if (assignment.target.cubeIndex < 0 || targetNode == nullptr
-                || targetNode->kind != NodeKind::TrilinearMesh
+                || (assignment.targetKind == GuideCurveTargetKind::TrimeshCubeComponent
+                        ? targetNode->kind != NodeKind::TrilinearMesh
+                        : targetNode->kind != NodeKind::Envelope)
                 || !result.graph.assignGuideCurve(std::move(assignment))) {
             result.issues.push_back({ GraphLoadCode::InvalidGraph,
-                    "Guide assignment references an invalid resource or Trimesh target" });
+                    "Guide assignment references an invalid resource or target" });
         }
     }
 
@@ -1145,6 +1193,16 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         probe.label = encoded->getProperty("label").toString();
         probe.tapPosition = (float) encoded->getProperty("tapPosition");
         probe.railOrder = (int) encoded->getProperty("railOrder");
+        probe.frequencyView = (bool) encoded->getProperty("frequencyView");
+        if (encoded->hasProperty("canvasX") && encoded->hasProperty("canvasY")) {
+            const float x = (float) encoded->getProperty("canvasX");
+            const float y = (float) encoded->getProperty("canvasY");
+            if (!std::isfinite(x) || !std::isfinite(y)) {
+                result.issues.push_back({ GraphLoadCode::InvalidGraph, "Signal probe canvas position must be finite" });
+                continue;
+            }
+            probe.canvasPosition = juce::Point<float>(x, y);
+        }
         if (!std::isfinite(probe.tapPosition) || probe.tapPosition < 0.f || probe.tapPosition > 1.f) {
             result.issues.push_back({ GraphLoadCode::InvalidGraph, "Signal probe tap position must be finite and normalized" });
             continue;
@@ -1165,6 +1223,12 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
 
 String GraphSerializer::toJsonString(const NodeGraph& graph) const {
     return toJsonString(writeJSON(graph));
+}
+
+String GraphSerializer::toJsonString(
+        const NodeGraph& graph,
+        const PresetPresentation& presentation) const {
+    return toJsonString(writeJSON(graph, presentation));
 }
 
 String GraphSerializer::toJsonString(const var& graphRepresentation) const {

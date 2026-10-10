@@ -33,7 +33,11 @@ public:
 
     void bind(const Node& node) override {
         nodeId = node.id;
+        boundNode = node;
         editor->setNode(node);
+        if (auto* widget = resources.curveEditorWidget(node)) {
+            resources.syncCurveGuideContext(*widget, node);
+        }
     }
 
     void renderOpenGL(float scaleFactor) override { editor->renderOpenGL(scaleFactor); }
@@ -75,8 +79,13 @@ private:
         commands.commitCurveTransaction();
     }
 
+    bool cancelCurveTransaction() override {
+        return commands.cancelCurveTransaction();
+    }
+
     void curveTransientStateChanged(uint64_t fingerprint) override {
-        presentation.recordNodeEditorMovement(nodeId, "curve", fingerprint);
+        presentation.recordNodeEditorMovement(
+                nodeId, "curve", fingerprint, std::nullopt);
     }
 
     void setCurveEditorStatus(const String& message) override {
@@ -95,11 +104,22 @@ private:
         return resources.audioResourceSummary(nodeId);
     }
 
+    std::array<String, 6> envelopeGuideLabels(int cubeIndex) const override {
+        return resources.envelopeGuideLabels(boundNode, cubeIndex);
+    }
+
+    bool showEnvelopeGuideAttachmentMenu(
+            const String& field,
+            Rectangle<int> area) override {
+        return commands.showTrimeshGuideAttachmentMenu(nodeId, field, area);
+    }
+
     NodeEditorCommands& commands;
     NodeEditorPresentation& presentation;
     NodeEditorResources& resources;
     std::unique_ptr<CurveExpandedEditorComponent> editor;
     String nodeId;
+    Node boundNode;
 };
 
 class CurveNodeEditorFactory final : public NodeEditorFactory {
@@ -163,6 +183,8 @@ public:
         state.setProperty("signalType", editor->signalTypeValue());
         state.setProperty("polarity", editor->polarityValue());
         state.setProperty("polarityVisible", editor->polarityVisible());
+        state.setProperty("phaseMode", editor->phaseModeValue());
+        state.setProperty("phaseModeVisible", editor->phaseModeVisible());
         for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
             auto* slider = new DynamicObject();
             slider->setProperty("id", axis);
@@ -195,7 +217,7 @@ public:
         meshState->setProperty("vertexCount", vertexCount);
         meshState->setProperty("selectedVertexIndex", selectedVertexIndex);
         Array<var> selectedParameters;
-        for (const auto& parameter : boundWidget->vertexParametersForIndex(selectedVertexIndex)) {
+        for (const auto& parameter : boundWidget->selectedVertexParameters()) {
             auto* encoded = new DynamicObject();
             encoded->setProperty("id", parameter.id);
             encoded->setProperty("value", parameter.value);
@@ -231,6 +253,8 @@ public:
         meshState->setProperty("sliceAbsoluteSum", sliceAbsoluteSum);
         const auto panelStats = boundWidget->panelRenderStatsForAutomation();
         meshState->setProperty("panelSampleCount", panelStats.sampleCount);
+        meshState->setProperty("surfaceColumnCount", panelStats.surfaceColumnCount);
+        meshState->setProperty("surfaceRowCount", panelStats.surfaceRowCount);
         meshState->setProperty("panelInterceptCount", panelStats.interceptCount);
         meshState->setProperty(
                 "panelHoveredInterceptIndex",
@@ -313,6 +337,14 @@ private:
                 "polarity",
                 "Polarity",
                 polarity);
+    }
+
+    bool setTrimeshPhaseModeValue(const String& phaseMode) override {
+        return commands.setNodeParameterText(
+                nodeId,
+                "phaseMode",
+                "Phase Mode",
+                phaseMode);
     }
 
     void setTrimeshPrimaryAxisValue(const String& axis) override {

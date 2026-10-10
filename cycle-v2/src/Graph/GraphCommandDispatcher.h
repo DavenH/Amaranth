@@ -1,9 +1,11 @@
 #pragma once
 
-#include "Graph/GraphDocument.h"
-
 #include <functional>
+#include <memory>
 #include <optional>
+
+#include "Graph/GraphDocument.h"
+#include "Graph/PreviewMorphTarget.h"
 
 namespace CycleV2 {
 
@@ -28,11 +30,26 @@ public:
     explicit GraphCommandDispatcher(GraphDocument& documentToUse) : document(documentToUse) {}
 
     GraphEditResult addNode(NodeKind kind, juce::Point<float> position);
+    bool setTimeSurfaceStyle(const juce::String& styleId);
+    bool setBipolarSpectralSurfaceStyle(const juce::String& styleId);
+    bool setPresetSequence(PresetMidiSequence sequence);
+    bool setPresetPatternId(const juce::String& id);
+    bool setPresetTags(juce::StringArray tags);
+    bool setPresetTitle(const juce::String& title);
     GraphEditResult removeNode(const juce::String& nodeId);
     GraphEditResult removeEdgeAt(size_t edgeIndex);
+    GraphEditResult removeCable(const std::vector<size_t>& edgeIndices);
     GraphEditResult connect(const PortAddress& first, const PortAddress& second);
     GraphEditResult toggleSignalProbe(size_t edgeIndex, float tapPosition = 0.5f);
     GraphEditResult removeSignalProbe(const juce::String& probeId);
+    GraphEditResult moveSignalProbe(
+            const juce::String& probeId,
+            juce::Point<float> position);
+    bool moveDefaultOutputSpy(juce::Point<float> position);
+    bool setDefaultOutputSpyVisible(bool visible);
+    bool setDefaultOutputSpyFrequencyView(bool frequencyView);
+    GraphEditResult setSignalProbeFrequencyView(
+            const juce::String& probeId, bool frequencyView);
     GraphEditResult reattachSignalProbe(
             const juce::String& probeId,
             size_t edgeIndex,
@@ -72,6 +89,12 @@ public:
             const juce::String& label,
             const juce::String& value);
     GraphEditResult publishCurveState(const CurveNodeStatePublication& publication);
+    GraphEditResult setPreviewMorph(float red, float blue);
+    GraphEditResult setMappedPreviewMorph(
+            const std::vector<PreviewMorphTarget>& targets,
+            float keyScale,
+            float modWheel);
+    // During a gesture, expectedRevision is the captured durable model revision.
     GraphEditResult replaceNodeModel(
             const juce::String& nodeId,
             uint64_t expectedRevision,
@@ -96,6 +119,8 @@ public:
 
     const NodeGraph& editingGraph() const;
     const GraphChangeSet& transientChanges() const;
+    // The caller must settle worker reads before mutating the durable graph.
+    std::shared_ptr<const NodeGraph> snapshotTransientEditForWorker() const;
     bool hasTransientEdit() const { return transientEdit.has_value(); }
 
 private:
@@ -107,11 +132,22 @@ private:
         bool changed {};
     };
 
+    bool setPresentationStyle(juce::String& currentStyleId, const juce::String& styleId);
     GraphEditResult apply(const std::function<GraphEditResult(NodeGraph&)>& command);
     GraphEditResult applyIncremental(
             const std::function<void(GraphDeltaBuilder&, const NodeGraph&)>& capture,
             const std::function<GraphEditResult(NodeGraph&)>& command);
     GraphEditResult setNodeBounds(const juce::String& nodeId, juce::Rectangle<float> bounds);
+    bool setTrimeshPreviewMorph(
+            const juce::String& nodeId,
+            const juce::String& red,
+            const juce::String& blue,
+            bool& changed);
+    bool setEnvelopePreviewMorph(
+            const Node& node,
+            const juce::String& red,
+            const juce::String& blue,
+            bool& changed);
     void accumulateCompoundChange(const GraphChangeSet& change);
     static void accumulateChange(GraphChangeSet& destination, const GraphChangeSet& change);
 

@@ -9,6 +9,7 @@
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/Trimesh/Editor/TrimeshExpandedEditorComponent.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "Runtime/GraphPresentationFacts.h"
 #include "UI/NodeViewModule.h"
 #include "UI/NodePreviewRenderer.h"
 #include "UI/OutputMeterPresentation.h"
@@ -175,6 +176,10 @@ public:
         object->setProperty("tapPosition", probe.tapPosition);
         object->setProperty("railOrder", probe.railOrder);
         object->setProperty("connected", probe.sourceNodeId.isNotEmpty());
+        if (probe.canvasPosition.has_value()) {
+            object->setProperty("canvasX", probe.canvasPosition->x);
+            object->setProperty("canvasY", probe.canvasPosition->y);
+        }
         return object;
     }
 
@@ -357,9 +362,11 @@ public:
             const Node& node,
             Rectangle<float> panel,
             const DynamicObject& curveEditorState) {
-        const std::array<std::pair<const char*, const char*>, 6> actions {{
+        const std::array<std::pair<const char*, const char*>, 8> actions {{
             { "loop", "loopBounds" },
             { "sustain", "sustainBounds" },
+            { "redLink", "redLinkBounds" },
+            { "blueLink", "blueLinkBounds" },
             { "linear", "linearAxisScaleBounds" },
             { "logarithmic", "logarithmicAxisScaleBounds" },
             { "fitVertical", "fitVerticalBounds" },
@@ -394,6 +401,33 @@ public:
         }
         addEnvelopeModeTargets(targets, node, panel, *curveEditorState);
         addEnvelopeActionTargets(targets, node, panel, *curveEditorState);
+        const auto* parameterRails = curveEditorState->getProperty(
+                "vertexParameterRails").getArray();
+        if (parameterRails == nullptr) {
+            return;
+        }
+        for (const auto& parameterValue : *parameterRails) {
+            const auto* parameter = parameterValue.getDynamicObject();
+            if (parameter == nullptr) {
+                continue;
+            }
+            const String field = parameter->getProperty("id").toString()
+                    .fromLastOccurrenceOf(".", false, false);
+            const std::array<std::pair<const char*, const char*>, 2> guideControls {{
+                    { "envelopeGuide", "guideBounds" },
+                    { "envelopeGuideGain", "guideGainBounds" }
+            }};
+            for (const auto& [suffix, property] : guideControls) {
+                const auto bounds = AutomationValueEncoder::rectangleFromVar(
+                        parameter->getProperty(property)).translated(
+                                panel.getX(), panel.getY());
+                targets.add(pointerTargetToVar(
+                        "expanded:" + node.id + "." + suffix + "." + field,
+                        "envelopeGuideControl",
+                        bounds,
+                        node.id));
+            }
+        }
     }
 
     static void addEffectParameterTargets(
@@ -582,13 +616,10 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     auto* guideDock = new DynamicObject();
     guideDock->setProperty("expanded", state.guideDock.expanded);
     guideDock->setProperty("guidesMinimized", state.guideDock.guidesMinimized);
-    guideDock->setProperty("spiesMinimized", state.guideDock.spiesMinimized);
-    guideDock->setProperty("expandedHeight", state.guideDock.expandedHeight);
-    guideDock->setProperty("splitRatio", state.guideDock.splitRatio);
-    guideDock->setProperty("guideHorizontalOffset", state.guideDock.guideHorizontalOffset);
-    guideDock->setProperty("spyHorizontalOffset", state.guideDock.spyHorizontalOffset);
+    guideDock->setProperty("guideVerticalOffset", state.guideDock.guideVerticalOffset);
     guideDock->setProperty("selectedGuideId", state.guideDock.selectedGuideId);
     guideDock->setProperty("hoveredGuideId", state.guideDock.hoveredGuideId);
+    guideDock->setProperty("hoveredProbeId", state.guideDock.hoveredProbeId);
     guideDock->setProperty("keyboardFocusTarget", state.guideDock.keyboardFocusTarget);
     guideDock->setProperty("keyboardFocusItemId", state.guideDock.keyboardFocusItemId);
     guideDock->setProperty("guideTileCount", (int) state.guideDock.guideTiles.size());
@@ -602,18 +633,31 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     guideDock->setProperty(
             "expandedGuideHeatmapFilename",
             state.guideDock.expandedGuideHeatmapFilename);
-    guideDock->setProperty("bounds", AutomationValueEncoder::rectangleToVar(state.guideDock.dockBounds));
     guideDock->setProperty(
             "guideShelfBounds",
             AutomationValueEncoder::rectangleToVar(state.guideDock.guideShelfBounds));
-    guideDock->setProperty(
-            "spyShelfBounds",
-            AutomationValueEncoder::rectangleToVar(state.guideDock.spyShelfBounds));
     guideDock->setProperty(
             "guideEditorBounds",
             AutomationValueEncoder::rectangleToVar(state.guideDock.guideEditorBounds));
     guideDock->setProperty("editor", state.guideDock.guideEditorState);
     root->setProperty("guideDock", guideDock);
+
+    Array<var> spyCards;
+    for (const auto& card : state.spyCards) {
+        auto* item = new DynamicObject();
+        item->setProperty("id", card.probeId);
+        item->setProperty("bounds", AutomationValueEncoder::rectangleToVar(card.bounds));
+        spyCards.add(var(item));
+    }
+    root->setProperty("spyCards", std::move(spyCards));
+    root->setProperty("spyCardCount", (int) state.spyCards.size());
+    Array<var> selectedSpyIds;
+    for (const auto& spyId : state.selectedSpyIds) {
+        selectedSpyIds.add(spyId);
+    }
+    root->setProperty("selectedSpyIds", std::move(selectedSpyIds));
+    root->setProperty("popupMenuTargetScreenX", state.popupMenuTargetScreenArea.getX());
+    root->setProperty("popupMenuTargetScreenY", state.popupMenuTargetScreenArea.getY());
 
     Array<var> causalUpdates;
     for (const auto& event : context.presentation.updateTrace().snapshot()) {
@@ -816,50 +860,16 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
     Array<var> targets;
     targets.add(
             AutomationValueEncoder::pointerTargetToVar("canvas", "canvas", context.canvas.getLocalBounds().toFloat()));
-    targets.add(AutomationValueEncoder::pointerTargetToVar(
-            "probeRefreshMode",
-            "probeRefreshMode",
-            state.probeRefreshModeBounds));
-    targets.add(AutomationValueEncoder::pointerTargetToVar(
-            "guideDock",
-            "guideDock",
-            state.guideDock.dockBounds));
-    targets.add(AutomationValueEncoder::pointerTargetToVar(
-            "guideDock.collapse",
-            "guideDockCollapse",
-            state.guideDock.collapseBounds));
-    if (!state.guideDock.resizeBounds.isEmpty()) {
-        targets.add(AutomationValueEncoder::pointerTargetToVar(
-                "guideDock.resize",
-                "guideDockResize",
-                state.guideDock.resizeBounds));
-    }
-    if (!state.guideDock.dividerBounds.isEmpty()) {
-        targets.add(AutomationValueEncoder::pointerTargetToVar(
-                "guideDock.divider",
-                "guideDockDivider",
-                state.guideDock.dividerBounds));
-    }
     if (state.guideDock.expanded) {
         targets.add(AutomationValueEncoder::pointerTargetToVar(
                 "guideShelf",
                 "guideShelf",
                 state.guideDock.guideShelfBounds));
-        targets.add(AutomationValueEncoder::pointerTargetToVar(
-                "spyShelf",
-                "spyShelf",
-                state.guideDock.spyShelfBounds));
         if (!state.guideDock.guideMinimizeBounds.isEmpty()) {
             targets.add(AutomationValueEncoder::pointerTargetToVar(
                     "guideShelf.minimize",
                     "guideShelfMinimize",
                     state.guideDock.guideMinimizeBounds));
-        }
-        if (!state.guideDock.spyMinimizeBounds.isEmpty()) {
-            targets.add(AutomationValueEncoder::pointerTargetToVar(
-                    "spyShelf.minimize",
-                    "spyShelfMinimize",
-                    state.guideDock.spyMinimizeBounds));
         }
         if (!state.guideDock.addGuideBounds.isEmpty()) {
             targets.add(AutomationValueEncoder::pointerTargetToVar(
@@ -873,14 +883,32 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                         "guide:" + tile.guideId,
                         "guide",
                         tile.bounds));
+                targets.add(AutomationValueEncoder::pointerTargetToVar(
+                        "guide:" + tile.guideId + ".delete",
+                        "guideDelete",
+                        tile.deleteBounds));
             }
         }
+    }
+    for (const auto& card : state.spyCards) {
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "spy:" + card.probeId,
+                "spy",
+                card.bounds));
     }
     if (!state.guideDock.guideEditorBounds.isEmpty()) {
         targets.add(AutomationValueEncoder::pointerTargetToVar(
                 "guideEditor:" + state.guideDock.expandedGuideId,
                 "guideEditor",
                 state.guideDock.guideEditorBounds));
+        const Rectangle<float> guidePanel = AutomationValueEncoder::rectangleFromVar(
+                state.guideDock.guideEditorState.getProperty("panelBounds", {}));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "guideEditor:" + state.guideDock.expandedGuideId + ".panel2D",
+                "guideEditorPanel",
+                guidePanel.translated(
+                        state.guideDock.guideEditorBounds.getX(),
+                        state.guideDock.guideEditorBounds.getY())));
         for (const auto& target : state.guideDock.guideEditorTargets) {
             targets.add(AutomationValueEncoder::pointerTargetToVar(
                     target.id,
@@ -899,14 +927,18 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                 "probeDetail:" + state.probeDetailId,
                 "probeDetail",
                 state.probeDetailBounds));
-        targets.add(AutomationValueEncoder::pointerTargetToVar(
-                "probeDetailClose",
-                "probeDetailClose",
-                SignalProbeDetailView::closeBounds(state.probeDetailBounds)));
     }
 
-    const auto& sceneSnapshot = scene.build(context.document.graph(), context.viewport, context.presentation.revision(),
-                                            context.document.revision());
+    const GraphPresentationSnapshot& presentationSnapshot = context.presentation.snapshot();
+    const GraphEdgeIndex* edgeIndex = presentationSnapshot.facts != nullptr
+            ? &presentationSnapshot.facts->edgeIndex()
+            : nullptr;
+    const auto& sceneSnapshot = scene.build(
+            context.document.graph(),
+            context.viewport,
+            context.presentation.revision(),
+            context.document.revision(),
+            edgeIndex);
 
     for (const auto& sceneTarget : sceneSnapshot.targets) {
         if (sceneTarget.kind != NodeSceneTargetKind::Node && !sceneTarget.isPort()) {
@@ -966,7 +998,7 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
         AutomationValueEncoder::addExpandedEditorTargets(
                 targets,
                 *expandedNode,
-                state.canvasContentBounds,
+                state.editorContentBounds,
                 context.editorHost);
     }
 

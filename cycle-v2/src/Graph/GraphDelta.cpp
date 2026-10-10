@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "Graph/GraphEditor.h"
+
 namespace CycleV2 {
 
 namespace {
@@ -31,6 +33,20 @@ const NodeParameter* parameter(
     return graph.findNodeParameter(nodeId, parameterId);
 }
 
+std::vector<IndexedEdgeState> edgesToInput(
+        const NodeGraph& graph,
+        const String& nodeId,
+        const String& portId) {
+    std::vector<IndexedEdgeState> result;
+    for (size_t index = 0; index < graph.getEdges().size(); ++index) {
+        const Edge& edge = graph.getEdges()[index];
+        if (edge.destNodeId == nodeId && edge.destPortId == portId) {
+            result.push_back({ index, edge });
+        }
+    }
+    return result;
+}
+
 }
 
 void GraphDelta::applyForward(NodeGraph& graph) const {
@@ -46,10 +62,18 @@ bool GraphDelta::empty() const {
         && models.empty()
         && editorStates.empty()
         && bounds.empty()
-        && guides.empty();
+        && probePositions.empty()
+        && guides.empty()
+        && edgeInputs.empty()
+        && cableDeletions.empty();
 }
 
 void GraphDelta::apply(NodeGraph& graph, bool forward) const {
+    if (!forward) {
+        for (auto deletion = cableDeletions.rbegin(); deletion != cableDeletions.rend(); ++deletion) {
+            applyCableDeletion(graph, *deletion, false);
+        }
+    }
     for (const auto& delta : parameters) {
         graph.applyNodeParameterState(
                 delta.nodeId,
@@ -65,9 +89,15 @@ void GraphDelta::apply(NodeGraph& graph, bool forward) const {
     for (const auto& delta : bounds) {
         graph.applyNodeBounds(delta.nodeId, forward ? delta.after : delta.before);
     }
+    for (const auto& delta : probePositions) {
+        graph.setSignalProbeCanvasPosition(
+                delta.probeId,
+                forward ? delta.after : delta.before);
+    }
     for (const auto& delta : guides) {
         graph.applyGuideCurveState(forward ? delta.after : delta.before);
     }
+    applyEdgeInputs(graph, forward);
     if (forward) {
         for (const auto& edge : changes.removedEdges) {
             graph.removeEdge(edge);
@@ -83,6 +113,78 @@ void GraphDelta::apply(NodeGraph& graph, bool forward) const {
             graph.assignGuideCurve(assignment);
         }
     }
+    if (forward) {
+        for (const auto& deletion : cableDeletions) {
+            applyCableDeletion(graph, deletion, true);
+        }
+    }
+}
+
+void GraphDelta::applyCableDeletion(
+        NodeGraph& graph,
+        const CableDeletionDelta& deletion,
+        bool forward) {
+    if (forward) {
+        for (const auto& state : deletion.probes) {
+            graph.removeSignalProbe(state.probe.id);
+        }
+        for (auto edge = deletion.edges.rbegin(); edge != deletion.edges.rend(); ++edge) {
+            graph.removeEdgeAt(edge->index);
+        }
+        if (deletion.pan.has_value()) {
+            graph.removeNode(deletion.pan->node.id);
+        }
+        return;
+    }
+
+    if (deletion.pan.has_value()) {
+        const size_t index = std::min(deletion.pan->index, graph.nodes.size());
+        graph.nodes.insert(graph.nodes.begin() + (int) index, deletion.pan->node);
+        graph.rebuildNodeIndex();
+        ++graph.revision;
+    }
+    for (const auto& state : deletion.edges) {
+        const size_t index = std::min(state.index, graph.edges.size());
+        graph.edges.insert(graph.edges.begin() + (int) index, state.edge);
+        ++graph.revision;
+    }
+    for (const auto& state : deletion.probes) {
+        const size_t index = std::min(state.index, graph.signalProbes.size());
+        graph.signalProbes.insert(graph.signalProbes.begin() + (int) index, state.probe);
+        ++graph.revision;
+    }
+}
+
+void GraphDelta::applyEdgeInputs(NodeGraph& graph, bool forward) const {
+    if (edgeInputs.empty()) {
+        return;
+    }
+
+    std::vector<IndexedEdgeState> sourceEdges;
+    std::vector<IndexedEdgeState> targetEdges;
+    for (const auto& delta : edgeInputs) {
+        const auto& source = forward ? delta.before : delta.after;
+        const auto& target = forward ? delta.after : delta.before;
+        sourceEdges.insert(sourceEdges.end(), source.begin(), source.end());
+        targetEdges.insert(targetEdges.end(), target.begin(), target.end());
+    }
+    std::sort(sourceEdges.begin(), sourceEdges.end(), [](const auto& left, const auto& right) {
+        return left.index > right.index;
+    });
+    for (const auto& state : sourceEdges) {
+        jassert(state.index < graph.edges.size());
+        if (state.index < graph.edges.size()) {
+            graph.edges.erase(graph.edges.begin() + (int) state.index);
+        }
+    }
+    std::sort(targetEdges.begin(), targetEdges.end(), [](const auto& left, const auto& right) {
+        return left.index < right.index;
+    });
+    for (const auto& state : targetEdges) {
+        const size_t index = std::min(state.index, graph.edges.size());
+        graph.edges.insert(graph.edges.begin() + (int) index, state.edge);
+    }
+    ++graph.revision;
 }
 
 void GraphDeltaBuilder::captureNodeParameter(
@@ -133,6 +235,19 @@ void GraphDeltaBuilder::captureNodeBounds(const NodeGraph& graph, const String& 
     }
 }
 
+void GraphDeltaBuilder::captureSignalProbePosition(
+        const NodeGraph& graph,
+        const String& probeId) {
+    const auto found = std::find_if(probePositions.begin(), probePositions.end(),
+            [&](const auto& delta) { return delta.probeId == probeId; });
+    if (found != probePositions.end()) {
+        return;
+    }
+    if (const SignalProbe* probe = graph.findSignalProbe(probeId)) {
+        probePositions.push_back({ probeId, probe->canvasPosition, {} });
+    }
+}
+
 void GraphDeltaBuilder::captureGuideCurve(const NodeGraph& graph, const String& guideId) {
     const bool alreadyCaptured = std::any_of(
             guides.begin(),
@@ -144,6 +259,55 @@ void GraphDeltaBuilder::captureGuideCurve(const NodeGraph& graph, const String& 
     }
 }
 
+void GraphDeltaBuilder::captureEdgesToInput(
+        const NodeGraph& graph,
+        const String& nodeId,
+        const String& portId) {
+    const bool alreadyCaptured = std::any_of(
+            edgeInputs.begin(), edgeInputs.end(), [&](const auto& delta) {
+                return delta.nodeId == nodeId && delta.portId == portId;
+            });
+    if (!alreadyCaptured) {
+        edgeInputs.push_back({ nodeId, portId, edgesToInput(graph, nodeId, portId), {} });
+    }
+}
+
+void GraphDeltaBuilder::captureCableDeletion(
+        const NodeGraph& graph,
+        const CableDeletionPlan& plan) {
+    CableDeletionDelta state;
+    if (plan.panNodeId.isNotEmpty()) {
+        const auto& nodes = graph.getNodes();
+        const auto found = std::find_if(nodes.begin(), nodes.end(), [&](const Node& node) {
+            return node.id == plan.panNodeId;
+        });
+        if (found != nodes.end()) {
+            state.pan = { (size_t) std::distance(nodes.begin(), found), *found };
+        }
+    }
+    for (const size_t index : plan.edgeIndices) {
+        state.edges.push_back({ index, graph.getEdges()[index] });
+    }
+    std::sort(state.edges.begin(), state.edges.end(), [](const auto& left, const auto& right) {
+        return left.index < right.index;
+    });
+    state.edges.erase(
+            std::unique(state.edges.begin(), state.edges.end(),
+                    [](const auto& left, const auto& right) {
+                        return left.index == right.index;
+                    }),
+            state.edges.end());
+
+    const auto& probes = graph.getSignalProbes();
+    for (size_t index = 0; index < probes.size(); ++index) {
+        if (std::find(plan.probeIds.begin(), plan.probeIds.end(), probes[index].id)
+                != plan.probeIds.end()) {
+            state.probes.push_back({ index, probes[index] });
+        }
+    }
+    cableDeletions.push_back(std::move(state));
+}
+
 GraphDelta GraphDeltaBuilder::finish(
         const NodeGraph& graph,
         GraphChangeSet changes) const {
@@ -152,7 +316,10 @@ GraphDelta GraphDeltaBuilder::finish(
     result.models = models;
     result.editorStates = editorStates;
     result.bounds = bounds;
+    result.probePositions = probePositions;
     result.guides = guides;
+    result.edgeInputs = edgeInputs;
+    result.cableDeletions = cableDeletions;
     result.changes = std::move(changes);
 
     for (auto& delta : result.parameters) {
@@ -173,11 +340,20 @@ GraphDelta GraphDeltaBuilder::finish(
             delta.after = node->bounds;
         }
     }
+    for (auto& delta : result.probePositions) {
+        const SignalProbe* probe = graph.findSignalProbe(delta.probeId);
+        if (probe != nullptr) {
+            delta.after = probe->canvasPosition;
+        }
+    }
     for (auto& delta : result.guides) {
         const GuideCurveResource* guide = graph.findGuideCurve(delta.guideId);
         if (guide != nullptr) {
             delta.after = *guide;
         }
+    }
+    for (auto& delta : result.edgeInputs) {
+        delta.after = edgesToInput(graph, delta.nodeId, delta.portId);
     }
     return result;
 }
@@ -192,7 +368,10 @@ bool GraphDeltaBuilder::empty() const {
         && models.empty()
         && editorStates.empty()
         && bounds.empty()
-        && guides.empty();
+        && probePositions.empty()
+        && guides.empty()
+        && edgeInputs.empty()
+        && cableDeletions.empty();
 }
 
 NodeModelStatePtr GraphDeltaBuilder::originalNodeModel(const String& nodeId) const {

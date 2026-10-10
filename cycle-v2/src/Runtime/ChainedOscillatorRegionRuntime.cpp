@@ -135,7 +135,8 @@ bool ChainedOscillatorRegionRuntime::renderUntilReady(
             renderer.advanceCycleEnvelopes(
                     laneIndex,
                     previousCycleSamples,
-                    context.voice->controls.normalizedVoiceTimeIncrement);
+                    context.voice->controls.normalizedVoiceTimeIncrement,
+                    &context);
         }
         float pitch = 0.5f;
         if (renderer.hasPitchEnvelope()) {

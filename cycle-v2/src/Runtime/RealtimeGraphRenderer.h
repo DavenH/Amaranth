@@ -78,7 +78,7 @@ public:
             double sampleRate,
             double callbackStartSeconds,
             AudioPerformanceMetrics::RealtimeSample* performanceSample = nullptr);
-    void resetVoices();
+    void resetVoices(bool resetControls);
     Diagnostics diagnostics(const RealtimeMidiEventQueue& events) const {
         return {
                 callbackCounter.load(std::memory_order_acquire),
@@ -121,6 +121,7 @@ private:
             double callbackStartSeconds);
     void applyEvent(const RealtimeMidiEvent& event, size_t sampleOffset);
     void releaseSource(MidiEventSource source, size_t sampleOffset);
+    void resetSource(MidiEventSource source, size_t sampleOffset);
     Voice& allocateVoice(const RealtimeMidiEvent& event, size_t sampleOffset);
     void renderVoices(
             float* const* outputChannels,
@@ -143,6 +144,7 @@ private:
     MidiControlState midiControls;
     std::array<RealtimeMidiEvent, maximumScheduledEvents> scheduledEvents;
     size_t scheduledEventCount {};
+    uint32_t patternPlaybackGeneration {};
     uint64_t nextVoiceOrder {};
     std::atomic<float> voiceDurationOverrideSeconds {};
     double volumeEnvelopeClockSampleRate {};

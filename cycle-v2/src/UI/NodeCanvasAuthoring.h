@@ -35,13 +35,6 @@ struct NodeCanvasAuthoringResult {
 
 class NodeCanvasAuthoring {
 public:
-    enum class OperationPortLayout {
-        Side,
-        Uptack,
-        Vertical,
-        Tee
-    };
-
     NodeCanvasAuthoring(
             GraphDocument& document,
             GraphCommandDispatcher& commands,
@@ -86,6 +79,7 @@ public:
     NodeCanvasAuthoringResult deleteEdge(int edgeIndex);
     NodeCanvasAuthoringResult toggleSignalProbe(int edgeIndex, float tapPosition);
     NodeCanvasAuthoringResult removeSignalProbe(const String& probeId);
+    NodeCanvasAuthoringResult removeGuideCurve(const String& guideId);
     NodeCanvasAuthoringResult reattachSignalProbe(
             const String& probeId,
             int edgeIndex,
@@ -132,10 +126,6 @@ public:
             const String& nodeId,
             TransformMode mode);
 
-    static OperationPortLayout operationPortLayout(const Node& node);
-    static OperationPortLayout nextOperationPortLayout(OperationPortLayout layout);
-    static PortSide nextOutputSide(const Node& node);
-
 private:
     NodeCanvasAuthoringResult graphEditResult(
             const GraphEditResult& edit,
@@ -155,6 +145,7 @@ private:
             const String& statusMessage);
     void refreshPresentation();
     void clearDocumentSelection();
+    void reconcileDocumentSelection();
     void spaceNodesAfterSplice(
             const String& upstreamNodeId,
             const String& insertedNodeId,

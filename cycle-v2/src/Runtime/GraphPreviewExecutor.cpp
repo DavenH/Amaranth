@@ -2,8 +2,14 @@
 #include <cstring>
 #include <functional>
 
+#include <Audio/CycleDsp/OscillatorLaneCore.h>
+#include <Util/Arithmetic.h>
+
 #include "Runtime/GraphPreviewExecutor.h"
+
+#include "Runtime/DefaultOutputPreview.h"
 #include "Runtime/FingerprintBuilder.h"
+#include "Graph/DefaultOutputProbeResolver.h"
 
 namespace CycleV2 {
 
@@ -22,6 +28,21 @@ uint64_t nextPreviewContentRevision() {
     return nextRevision.fetch_add(1, std::memory_order_relaxed);
 }
 
+}
+
+size_t GraphPreviewExecutor::periodRowsForMidiNote(int midiNote, double sampleRate) {
+    const double angleDelta = CycleDsp::OscillatorLaneCore::angleDelta(
+            jlimit(0, 127, midiNote),
+            0.f,
+            sampleRate);
+    if (angleDelta <= 0.0) {
+        return 0;
+    }
+    return (size_t) Arithmetic::getNextPow2((float) (1.0 / angleDelta));
+}
+
+size_t GraphPreviewExecutor::sourceFrameCountForMidiNote(int midiNote, double sampleRate) {
+    return jmax(kMinimumProbeSourceFrames, periodRowsForMidiNote(midiNote, sampleRate));
 }
 
 void GraphPreviewExecutor::reduceProbeRows(
@@ -378,62 +399,113 @@ GraphPreviewResult renderPreview(
     return result;
 }
 
+GraphPreviewResult::SignalProbePreview captureCompiledProbe(
+        const GraphExecutionPlan& plan,
+        const NodeAudioResult* node,
+        const CompiledSignalProbe& address) {
+    GraphPreviewResult::SignalProbePreview preview;
+    preview.probeId = address.probeId;
+    if (address.sourceStepIndex < 0
+            || (size_t) address.sourceStepIndex >= plan.steps.size()
+            || node == nullptr || address.sourceOutputIndex < 0
+            || (size_t) address.sourceOutputIndex >= node->outputs.size()) {
+        return preview;
+    }
+    const size_t outputIndex = (size_t) address.sourceOutputIndex;
+    const SignalPayload& payload = node->outputs[outputIndex].second;
+    const SignalTraversalGrid* grid = &payload.traversalGrid;
+    if (outputIndex < node->probeTraversalGrids.size()) {
+        grid = &node->probeTraversalGrids[outputIndex];
+    }
+    preview.connected = grid->isValid();
+    preview.sourceRole = plan.steps[(size_t) address.sourceStepIndex].previewRole;
+    if (!preview.connected) {
+        return preview;
+    }
+    preview.values.assign(grid->values.begin(), grid->values.end());
+    preview.gridColumns = grid->columns;
+    preview.gridRows = grid->rows;
+    preview.domain = grid->metadata.valueDomain;
+    preview.channelLayout = payload.channelLayout;
+    preview.frequencySampling = grid->metadata.frequencySampling;
+    preview.frequencyMidiNote = grid->metadata.frequencyMidiNote;
+    return preview;
+}
+
 void appendProbePreviews(
         GraphPreviewResult& result,
         const GraphExecutionPlan& plan,
         const std::vector<const NodeAudioResult*>& audioNodes,
         const std::vector<SignalProbe>& probes) {
     const auto audioIndex = indexAudioResults(plan, audioNodes, result);
+    const auto capture = [&](const CompiledSignalProbe& address) {
+        const NodeAudioResult* node = address.sourceStepIndex >= 0
+                && (size_t) address.sourceStepIndex < audioIndex.size()
+                ? audioIndex[(size_t) address.sourceStepIndex]
+                : nullptr;
+        return captureCompiledProbe(plan, node, address);
+    };
+
+    result.defaultOutput = plan.defaultOutputProbe.has_value()
+            ? std::optional<GraphPreviewResult::SignalProbePreview>(
+                    capture(*plan.defaultOutputProbe))
+            : std::nullopt;
+    result.defaultOutputSpectrum = result.defaultOutput.has_value()
+            && result.defaultOutput->connected
+            ? std::optional<GraphPreviewResult::SignalProbePreview>(
+                    DefaultOutputPreview::spectrum(*result.defaultOutput))
+            : std::nullopt;
+    if (result.defaultOutput.has_value() && result.defaultOutput->connected) {
+        result.defaultOutput = DefaultOutputPreview::normalizedTime(
+                *result.defaultOutput);
+    }
 
     result.probes.clear();
     result.probes.reserve(probes.size());
     for (size_t probeIndex = 0; probeIndex < probes.size(); ++probeIndex) {
         const auto& probe = probes[probeIndex];
-        const SignalPayload* payload {};
-        const NodeAudioResult* sourceNode {};
-        size_t sourceOutputIndex {};
-        GraphPreviewResult::SignalProbePreview preview;
         if (probeIndex < plan.signalProbes.size()) {
             const auto& address = plan.signalProbes[probeIndex];
-            if (address.probeId == probe.id
-                    && address.sourceStepIndex >= 0
-                    && static_cast<size_t>(address.sourceStepIndex) < audioIndex.size()) {
-                const NodeAudioResult* node = audioIndex[static_cast<size_t>(address.sourceStepIndex)];
-                if (node != nullptr
-                        && address.sourceOutputIndex >= 0
-                        && static_cast<size_t>(address.sourceOutputIndex) < node->outputs.size()) {
-                    sourceNode = node;
-                    sourceOutputIndex = static_cast<size_t>(address.sourceOutputIndex);
-                    payload = &node->outputs[sourceOutputIndex].second;
-                    preview.sourceRole = plan.steps[
-                            static_cast<size_t>(address.sourceStepIndex)].previewRole;
-                }
+            if (address.probeId == probe.id) {
+                result.probes.push_back(capture(address));
+                continue;
             }
         }
-        const SignalTraversalGrid* probeGrid = payload != nullptr
-                ? &payload->traversalGrid
-                : nullptr;
-        if (sourceNode != nullptr && sourceOutputIndex < sourceNode->probeTraversalGrids.size()) {
-            probeGrid = &sourceNode->probeTraversalGrids[sourceOutputIndex];
-        }
-        const bool connected = probeGrid != nullptr && probeGrid->isValid();
+        GraphPreviewResult::SignalProbePreview preview;
         preview.probeId = probe.id;
-        preview.connected = connected;
-        if (connected) {
-            preview.values.assign(
-                    probeGrid->values.begin(),
-                    probeGrid->values.end());
-            preview.gridColumns = probeGrid->columns;
-            preview.gridRows = probeGrid->rows;
-            preview.domain = probeGrid->metadata.valueDomain;
-            preview.channelLayout = payload->channelLayout;
-            preview.frequencySampling = probeGrid->metadata.frequencySampling;
-            preview.frequencyMidiNote = probeGrid->metadata.frequencyMidiNote;
-        }
         result.probes.push_back(std::move(preview));
+    }
+    result.probeSpectra.clear();
+    result.probeSpectra.reserve(result.probes.size());
+    for (const auto& preview : result.probes) {
+        result.probeSpectra.push_back(
+                preview.connected && preview.domain == PortDomain::TimeSignal
+                        ? std::optional<GraphPreviewResult::SignalProbePreview>(
+                                DefaultOutputPreview::spectrum(preview))
+                        : std::nullopt);
     }
 }
 
+}
+
+GraphPreviewResult::SignalProbePreview GraphPreviewExecutor::captureProbe(
+        const GraphExecutionPlan& plan,
+        const GraphAudioResult& audioResult,
+        const CompiledSignalProbe& address) const {
+    const NodeAudioResult* source {};
+    for (const auto& node : audioResult.nodes) {
+        if (address.sourceStepIndex >= 0
+                && (size_t) address.sourceStepIndex < plan.steps.size()
+                && node.nodeId == plan.steps[(size_t) address.sourceStepIndex].nodeId) {
+            source = &node;
+            break;
+        }
+    }
+    auto preview = captureCompiledProbe(plan, source, address);
+    if (address.probeId == DefaultOutputProbeResolver::probeId && preview.connected) {
+        preview = DefaultOutputPreview::normalizedTime(preview);
+    }
+    return preview;
 }
 
 GraphPreviewResult GraphPreviewExecutor::render(const GraphExecutionPlan& plan, size_t pointCount) const {
@@ -521,6 +593,29 @@ void GraphPreviewExecutor::renderIncremental(
     appendProbePreviews(result, plan, audioResult.nodes, probes);
 }
 
+void GraphPreviewExecutor::publishLocalNodePreview(
+        GraphPreviewResult& result,
+        size_t stepIndex,
+        NodePreviewResult preview) {
+    if (stepIndex >= result.previewResultIndexByStep.size()) {
+        return;
+    }
+
+    const int cachedIndex = result.previewResultIndexByStep[stepIndex];
+    if (cachedIndex >= 0 && static_cast<size_t>(cachedIndex) < result.nodes.size()) {
+        const NodePreviewResult& cached = result.nodes[static_cast<size_t>(cachedIndex)];
+        preview.contentRevision = nodePreviewResultsHaveEqualContent(preview, cached)
+                ? cached.contentRevision
+                : nextPreviewContentRevision();
+        result.nodes[static_cast<size_t>(cachedIndex)] = std::move(preview);
+        return;
+    }
+
+    preview.contentRevision = nextPreviewContentRevision();
+    result.nodes.push_back(std::move(preview));
+    result.previewResultIndexByStep[stepIndex] = static_cast<int>(result.nodes.size() - 1);
+}
+
 void GraphPreviewExecutor::renderNodePreviewsIncremental(
         const GraphExecutionPlan& plan,
         const GraphAudioResultView& audioResult,
@@ -529,6 +624,9 @@ void GraphPreviewExecutor::renderNodePreviewsIncremental(
         GraphPreviewResult& result,
         const PreviewControlContext* controlContext) const {
     auto probes = std::move(result.probes);
+    auto probeSpectra = std::move(result.probeSpectra);
+    auto defaultOutput = std::move(result.defaultOutput);
+    auto defaultOutputSpectrum = std::move(result.defaultOutputSpectrum);
     result = renderPreview(
             plan,
             audioResult.nodes,
@@ -537,6 +635,9 @@ void GraphPreviewExecutor::renderNodePreviewsIncremental(
             &dirtyNodes,
             controlContext);
     result.probes = std::move(probes);
+    result.probeSpectra = std::move(probeSpectra);
+    result.defaultOutput = std::move(defaultOutput);
+    result.defaultOutputSpectrum = std::move(defaultOutputSpectrum);
 }
 
 }

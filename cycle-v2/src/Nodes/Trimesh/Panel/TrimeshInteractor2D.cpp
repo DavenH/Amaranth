@@ -29,6 +29,12 @@ TrimeshInteractor2D::TrimeshInteractor2D(
         SingletonAccessor(repo, name)
     ,   Interactor2D(repo, name, dimensions) {}
 
+Range<float> TrimeshInteractor2D::getVertexPhaseLimits(Vertex* vertex) {
+    return getSelected().size() == 1 && vertex == state.currentVertex
+            ? adjacentVertexPhaseLimits(vertex)
+            : Interactor2D::getVertexPhaseLimits(vertex);
+}
+
 void TrimeshInteractor2D::setMeshEditedCallback(
         std::function<void(TrimeshMeshEditEvent)> callback) {
     meshEditedCallback = std::move(callback);

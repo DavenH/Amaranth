@@ -27,6 +27,8 @@ public:
 
     OpenGLPanel* getOpenglPanel()                            { return openGL.get(); }
     virtual bool shouldDrawCurve()                           { return true; }
+    virtual bool shouldDrawDepthLine(int dimension) const { return true; }
+    virtual bool shouldDrawDepthPoint(int dimension) const { return true; }
 
     virtual bool isMeshEnabled();
     void drawCurvesAndSurfaces() override;
@@ -34,6 +36,7 @@ public:
 
 protected:
     float curveLineWidth() const;
+    void drawVertexHighlight(const Vertex2& point);
 
     bool curveIsBipolar, cyclicLines, haveVertZoom;
 

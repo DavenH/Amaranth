@@ -4,13 +4,19 @@
 
 #include "UI/GuideCurveShelf.h"
 
+#include "UI/CanvasChromeIcons.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
-#include "UI/SignalProbeRail.h"
+#include "UI/SignalProbeCanvas.h"
 
 namespace CycleV2 {
 
 namespace {
+
+constexpr float footerHeight = 52.f;
+constexpr float footerControlHeight = 36.f;
+constexpr float footerGap = 7.f;
+constexpr float deleteButtonSize = 30.f;
 
 bool hasDisplayName(const GuideCurveResource& guide) {
     return !guide.name.isEmpty() && guide.name != "Guide Curve";
@@ -20,17 +26,17 @@ Rectangle<float> previewBoundsFor(Rectangle<float> tile) {
     return tile.reduced(7.f);
 }
 
+Rectangle<float> visibleTileBounds(Rectangle<float> shelf) {
+    return shelf
+            .withTrimmedTop(WorkspaceDock::headerHeight)
+            .withTrimmedBottom(footerHeight);
+}
+
 WorkspaceDockState workspaceDockState(
-        const SignalProbeRailState& dockState,
-        float splitRatio,
+        const SignalProbeCanvasState& dockState,
         const GuideCurveShelfState& guideState) {
-    return {
-            dockState.expanded,
-            guideState.minimized,
-            dockState.minimized,
-            dockState.expandedHeight,
-            splitRatio
-    };
+    juce::ignoreUnused(dockState);
+    return { guideState.minimized };
 }
 
 }
@@ -49,90 +55,93 @@ Colour GuideCurveShelf::colourForGuide(const GuideCurveResource& guide) {
 
 Rectangle<float> GuideCurveShelf::guideWorkspace(
         Rectangle<float> workspace,
-        float splitRatio,
-        bool guidesMinimized,
-        bool spiesMinimized) {
+        bool guidesMinimized) {
     const WorkspaceDockLayout layout = WorkspaceDock::layout(
-            workspace,
-            { true, guidesMinimized, spiesMinimized, 190.f, splitRatio });
-    return layout.leftShelf.withY(workspace.getY()).withHeight(workspace.getHeight());
-}
-
-Rectangle<float> GuideCurveShelf::spyWorkspace(
-        Rectangle<float> workspace,
-        float splitRatio,
-        bool guidesMinimized,
-        bool spiesMinimized) {
-    const WorkspaceDockLayout layout = WorkspaceDock::layout(
-            workspace,
-            { true, guidesMinimized, spiesMinimized, 190.f, splitRatio });
-    return layout.rightShelf.withY(workspace.getY()).withHeight(workspace.getHeight());
+            workspace, { guidesMinimized });
+    return layout.leftShelf.withLeft(workspace.getX())
+            .withY(workspace.getY()).withHeight(workspace.getHeight());
 }
 
 Rectangle<float> GuideCurveShelf::boundsFor(
         Rectangle<float> workspace,
-        const SignalProbeRailState& dockState,
-        float splitRatio,
+        const SignalProbeCanvasState& dockState,
         const GuideCurveShelfState& state) {
     return WorkspaceDock::layout(
             workspace,
-            workspaceDockState(dockState, splitRatio, state)).leftShelf;
+            workspaceDockState(dockState, state)).leftShelf;
 }
 
 Rectangle<float> GuideCurveShelf::addButtonBounds(
         Rectangle<float> workspace,
-        const SignalProbeRailState& dockState,
-        float splitRatio,
+        const SignalProbeCanvasState& dockState,
         const GuideCurveShelfState& state) {
-    if (!dockState.expanded || state.minimized) {
+    if (state.minimized) {
         return {};
     }
-    const Rectangle<float> header = WorkspaceDock::headerBounds(
-            boundsFor(workspace, dockState, splitRatio, state));
-    return { header.getX() + 132.f, header.getY(), WorkspaceDock::controlSize,
-            WorkspaceDock::controlSize };
+    Rectangle<float> footer = boundsFor(workspace, dockState, state)
+            .removeFromBottom(footerHeight)
+            .reduced(WorkspaceDock::shelfPadding, 8.f);
+    footer.removeFromLeft(WorkspaceDock::controlSize + footerGap);
+    return footer.withHeight(footerControlHeight);
 }
 
 Rectangle<float> GuideCurveShelf::minimizeButtonBounds(
         Rectangle<float> workspace,
-        const SignalProbeRailState& dockState,
-        float splitRatio,
+        const SignalProbeCanvasState& dockState,
         const GuideCurveShelfState& state) {
-    if (!dockState.expanded || state.minimized) {
+    if (state.minimized) {
         return {};
     }
-    Rectangle<float> header = WorkspaceDock::headerBounds(
-            boundsFor(workspace, dockState, splitRatio, state));
-    return header.removeFromLeft(WorkspaceDock::controlSize);
+    Rectangle<float> footer = boundsFor(workspace, dockState, state)
+            .removeFromBottom(footerHeight)
+            .reduced(WorkspaceDock::shelfPadding, 8.f);
+    return footer.removeFromLeft(WorkspaceDock::controlSize)
+            .withHeight(footerControlHeight);
 }
 
 Rectangle<float> GuideCurveShelf::tileBoundsFor(
         Rectangle<float> workspace,
-        const SignalProbeRailState& dockState,
-        float splitRatio,
+        const SignalProbeCanvasState& dockState,
         const GuideCurveShelfState& state,
         int tileIndex) {
-    return WorkspaceDock::tileBounds(
-            boundsFor(workspace, dockState, splitRatio, state),
+    return WorkspaceDock::guideTileBounds(
+            boundsFor(workspace, dockState, state),
             tileIndex,
-            state.horizontalOffset);
+            state.verticalOffset);
+}
+
+Rectangle<float> GuideCurveShelf::deleteButtonBoundsFor(
+        Rectangle<float> workspace,
+        const SignalProbeCanvasState& dockState,
+        const GuideCurveShelfState& state,
+        int tileIndex) {
+    return tileBoundsFor(workspace, dockState, state, tileIndex)
+            .removeFromRight(deleteButtonSize)
+            .removeFromTop(deleteButtonSize);
 }
 
 String GuideCurveShelf::guideAt(
         Point<float> position,
         const NodeGraph& graph,
         Rectangle<float> workspace,
-        const SignalProbeRailState& dockState,
-        float splitRatio,
+        const SignalProbeCanvasState& dockState,
         const GuideCurveShelfState& state) {
-    if (state.minimized) {
+    if (state.minimized || state.presetBrowserVisible) {
+        return {};
+    }
+    const Rectangle<float> visibleTiles = visibleTileBounds(
+            boundsFor(workspace, dockState, state));
+    if (visibleTiles.getHeight()
+            < WorkspaceDock::guideTileHeight + WorkspaceDock::tileBottomPadding) {
+        return {};
+    }
+    if (!visibleTiles.contains(position)) {
         return {};
     }
     for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
         const Rectangle<float> tile = tileBoundsFor(
                 workspace,
                 dockState,
-                splitRatio,
                 state,
                 index);
         if (tile.contains(position)) {
@@ -142,20 +151,49 @@ String GuideCurveShelf::guideAt(
     return {};
 }
 
-float GuideCurveShelf::maximumHorizontalOffset(
+String GuideCurveShelf::guideDeleteAt(
+        Point<float> position,
+        const NodeGraph& graph,
         Rectangle<float> workspace,
-        const SignalProbeRailState& dockState,
-        float splitRatio,
+        const SignalProbeCanvasState& dockState,
+        const GuideCurveShelfState& state) {
+    const String hoveredGuide = guideAt(
+            position, graph, workspace, dockState, state);
+    if (hoveredGuide.isEmpty()) {
+        return {};
+    }
+    for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
+        const GuideCurveResource& guide = graph.getGuideCurves()[(size_t) index];
+        if (guide.id == hoveredGuide
+                && deleteButtonBoundsFor(
+                        workspace, dockState, state, index).contains(position)) {
+            return guide.id;
+        }
+    }
+    return {};
+}
+
+float GuideCurveShelf::maximumVerticalOffset(
+        Rectangle<float> workspace,
+        const SignalProbeCanvasState& dockState,
         const GuideCurveShelfState& state,
         int guideCount) {
     if (state.minimized || guideCount < 1) {
         return 0.f;
     }
-    const Rectangle<float> shelf = boundsFor(workspace, dockState, splitRatio, state);
-    const float contentWidth = WorkspaceDock::shelfPadding * 2.f
-            + guideCount * WorkspaceDock::tileWidth
-            + jmax(0, guideCount - 1) * WorkspaceDock::tileGap;
-    return jmax(0.f, contentWidth - shelf.getWidth());
+    const Rectangle<float> shelf = boundsFor(workspace, dockState, state);
+    if (shelf.getHeight() < WorkspaceDock::headerHeight
+            + WorkspaceDock::guideTileHeight
+            + WorkspaceDock::tileBottomPadding
+            + footerHeight) {
+        return 0.f;
+    }
+    const float contentHeight = WorkspaceDock::headerHeight
+            + guideCount * WorkspaceDock::guideTileHeight
+            + jmax(0, guideCount - 1) * WorkspaceDock::tileGap
+            + WorkspaceDock::tileBottomPadding
+            + footerHeight;
+    return jmax(0.f, contentHeight - shelf.getHeight());
 }
 
 GuideCurveShelf::Preview& GuideCurveShelf::previewFor(
@@ -190,21 +228,17 @@ void GuideCurveShelf::paint(
         Graphics& graphics,
         const NodeGraph& graph,
         Rectangle<float> workspace,
-        const SignalProbeRailState& dockState,
-        float splitRatio,
+        const SignalProbeCanvasState& dockState,
         const GuideCurveShelfState& state,
         const WorkspaceDockFocus& focus) const {
-    Rectangle<float> shelf = boundsFor(workspace, dockState, splitRatio, state);
-    graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.96f));
-    graphics.fillRect(shelf);
-    graphics.setColour(CanvasChromePalette::border);
-    graphics.drawRect(shelf, CanvasChromeMetrics::restingBorderWidth);
+    Rectangle<float> shelf = boundsFor(workspace, dockState, state);
 
-    if (!dockState.expanded) {
-        return;
-    }
+    graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.96f));
+    graphics.fillRoundedRectangle(shelf, CanvasChromeMetrics::panelCornerRadius);
 
     if (state.minimized) {
+        graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.92f));
+        graphics.fillRoundedRectangle(shelf, CanvasChromeMetrics::panelCornerRadius);
         Rectangle<float> drawerButton = shelf.removeFromTop(WorkspaceDock::drawerWidth).reduced(4.f);
         WorkspaceDock::paintIconButton(
                 graphics,
@@ -224,29 +258,41 @@ void GuideCurveShelf::paint(
         return;
     }
 
-    Rectangle<float> header = WorkspaceDock::headerBounds(shelf);
     const Rectangle<float> minimize = minimizeButtonBounds(
-            workspace, dockState, splitRatio, state);
+            workspace, dockState, state);
     WorkspaceDock::paintIconButton(
             graphics,
             minimize,
             WorkspaceDockIcon::ChevronLeft,
             focus.target == WorkspaceDockFocusTarget::GuideMinimize);
-    graphics.setColour(CanvasChromePalette::text);
+    const Rectangle<float> add = addButtonBounds(workspace, dockState, state);
+    const auto addColours = CanvasChromePalette::control(
+            focus.target == WorkspaceDockFocusTarget::GuideAdd
+                    ? CanvasChromeControlState::Focused
+                    : CanvasChromeControlState::Resting);
+    graphics.setColour(addColours.surface);
+    graphics.fillRoundedRectangle(add, CanvasChromeMetrics::controlCornerRadius);
+    graphics.setColour(addColours.border);
+    graphics.drawRoundedRectangle(
+            add,
+            CanvasChromeMetrics::controlCornerRadius,
+            focus.target == WorkspaceDockFocusTarget::GuideAdd
+                    ? CanvasChromeMetrics::focusRingWidth
+                    : CanvasChromeMetrics::restingBorderWidth);
+    graphics.setColour(addColours.text);
     graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
-    graphics.drawText(
-            "Curve Guides",
-            header.withTrimmedLeft(34.f).withWidth(96.f),
-            Justification::centredLeft);
-    const Rectangle<float> plus = addButtonBounds(workspace, dockState, splitRatio, state);
-    WorkspaceDock::paintIconButton(
-            graphics,
-            plus,
-            WorkspaceDockIcon::Add,
-            focus.target == WorkspaceDockFocusTarget::GuideAdd);
+    graphics.drawText("+  Add curve", add, Justification::centred);
+
+    if (shelf.getHeight() < WorkspaceDock::headerHeight
+            + WorkspaceDock::guideTileHeight
+            + WorkspaceDock::tileBottomPadding
+            + footerHeight) {
+        return;
+    }
 
     if (graph.getGuideCurves().empty()) {
-        const Rectangle<float> vacancy = WorkspaceDock::vacancyBounds(shelf);
+        const Rectangle<float> vacancy = WorkspaceDock::vacancyBounds(
+                shelf.withTrimmedBottom(footerHeight));
         graphics.setColour(CanvasChromePalette::insetBackground.withAlpha(0.68f));
         graphics.fillRoundedRectangle(vacancy, CanvasChromeMetrics::tileCornerRadius);
         graphics.setColour(CanvasChromePalette::border.withAlpha(0.75f));
@@ -261,15 +307,18 @@ void GuideCurveShelf::paint(
     }
 
     Graphics::ScopedSaveState clip(graphics);
-    graphics.reduceClipRegion(shelf.toNearestInt());
+    const Rectangle<float> visibleTiles = visibleTileBounds(shelf);
+    graphics.reduceClipRegion(visibleTiles.toNearestInt());
     for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
         const GuideCurveResource& guide = graph.getGuideCurves()[(size_t) index];
         const Rectangle<float> tile = tileBoundsFor(
                 workspace,
                 dockState,
-                splitRatio,
                 state,
                 index);
+        if (!tile.intersects(visibleTiles)) {
+            continue;
+        }
         const bool selected = guide.id == state.selectedGuideId;
         const bool hovered = guide.id == state.hoveredGuideId;
         const bool focused = focus.target == WorkspaceDockFocusTarget::GuideTile
@@ -277,7 +326,6 @@ void GuideCurveShelf::paint(
         WorkspaceDock::paintTileChrome(
                 graphics,
                 tile,
-                CanvasChromePalette::border,
                 selected,
                 hovered,
                 focused);
@@ -294,15 +342,24 @@ void GuideCurveShelf::paint(
                     thumbnail.reduced(8.f).removeFromTop(22.f),
                     Justification::centredLeft);
         }
+        if (hovered) {
+            const Rectangle<float> deleteBounds = deleteButtonBoundsFor(
+                    workspace, dockState, state, index);
+            graphics.setColour(CanvasChromePalette::raisedSurface.withAlpha(0.76f));
+            graphics.fillEllipse(deleteBounds.reduced(2.f));
+            CanvasChromeIcons::paintTrash(
+                    graphics,
+                    deleteBounds.reduced(2.f),
+                    CanvasChromePalette::text.withAlpha(0.84f));
+        }
     }
-    WorkspaceDock::paintOverflowFeedback(
+    WorkspaceDock::paintVerticalOverflowFeedback(
             graphics,
-            shelf,
-            state.horizontalOffset,
-            maximumHorizontalOffset(
+            shelf.withTrimmedBottom(footerHeight),
+            state.verticalOffset,
+            maximumVerticalOffset(
                     workspace,
                     dockState,
-                    splitRatio,
                     state,
                     (int) graph.getGuideCurves().size()));
 }
@@ -333,16 +390,15 @@ bool GuideCurveShelf::renderOpenGL(
         const NodeGraph& graph,
         Rectangle<float> workspace,
         Rectangle<float> captureWorkspace,
-        const SignalProbeRailState& dockState,
-        float splitRatio,
+        const SignalProbeCanvasState& dockState,
         const GuideCurveShelfState& state,
         float scaleFactor) {
-    if (!dockState.expanded || state.minimized) {
+    if (state.minimized) {
         return false;
     }
 
     bool attempted {};
-    const Rectangle<float> shelf = boundsFor(workspace, dockState, splitRatio, state);
+    const Rectangle<float> shelf = boundsFor(workspace, dockState, state);
     for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
         const GuideCurveResource& guide = graph.getGuideCurves()[(size_t) index];
         Preview& preview = previewFor(guide, graph);
@@ -353,7 +409,6 @@ bool GuideCurveShelf::renderOpenGL(
         const Rectangle<float> tile = tileBoundsFor(
                 workspace,
                 dockState,
-                splitRatio,
                 state,
                 index);
         const Rectangle<float> thumbnail = previewBoundsFor(tile);

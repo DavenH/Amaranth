@@ -9,6 +9,8 @@ class PanelInputHostComponent : public juce::Component {
 public:
     explicit PanelInputHostComponent(Panel& panel);
 
+    bool isPointerGestureActive() const { return pointerActive; }
+
 protected:
     Interactor* panelInteractor() const;
 
@@ -18,9 +20,12 @@ protected:
     virtual void pointerGesturePressed() {}
     virtual void pointerGestureUpdated() {}
     virtual void pointerGestureEnded() {}
+    virtual bool cancelPointerGesture() { return false; }
     virtual bool deleteKeyPressed() { return false; }
 
 private:
+    enum class WheelAxis { None, Horizontal, Vertical };
+
     void mouseEnter(const juce::MouseEvent& event) override;
     void mouseMove(const juce::MouseEvent& event) override;
     void mouseDown(const juce::MouseEvent& event) override;
@@ -36,4 +41,8 @@ private:
 
     Panel& panel;
     bool pointerActive {};
+    WheelAxis wheelAxis { WheelAxis::None };
+    double lastWheelTimeMs {};
+    float pendingWheelX {};
+    float pendingWheelY {};
 };

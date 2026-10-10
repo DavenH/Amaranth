@@ -149,6 +149,8 @@ bool Document::applyJsonRoot(const var& root) {
 
         if (!sectionJson.isVoid()) {
             (void) savableItem->readJSON(sectionJson);
+        } else {
+            savableItem->readMissingJSON();
         }
     }
 

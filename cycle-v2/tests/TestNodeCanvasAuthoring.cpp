@@ -1,10 +1,14 @@
+#include <algorithm>
+
 #include <catch2/catch_test_macros.hpp>
 
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodeCanvasAuthoring.h"
+#include "UI/NodePortLayout.h"
 
 using namespace CycleV2;
 
@@ -111,6 +115,26 @@ TEST_CASE("Node canvas authoring preserves graph and layout semantics",
     REQUIRE(document.graph().findNode(added.nodeId) == nullptr);
 }
 
+TEST_CASE("Guide deletion refreshes authoring state and is undoable",
+        "[cycle-v2][canvas][authoring][guide][undo]") {
+    NodeGraph graph;
+    REQUIRE(graph.addGuideCurve({ "guide1", "G1", "Guide 1" }));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    const auto removed = authoring.removeGuideCurve("guide1");
+    REQUIRE(removed.succeeded);
+    REQUIRE(removed.graphChanged);
+    REQUIRE(document.graph().findGuideCurve("guide1") == nullptr);
+    REQUIRE(document.canUndo());
+
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().findGuideCurve("guide1") != nullptr);
+}
+
 TEST_CASE("Node canvas authoring keeps a toggled selection and bulk move in one undo",
         "[cycle-v2][canvas][authoring][selection]") {
     GraphNodeFactory factory;
@@ -210,6 +234,136 @@ TEST_CASE("Deleting a scratch cable refreshes an observed spectral Trimesh",
     REQUIRE(presentation.previewResult().probes.front().values == attachedValues);
 }
 
+TEST_CASE("A newly authored Scratch envelope connects to Voice Context after publication",
+        "[cycle-v2][canvas][authoring][envelope][scratch]") {
+    NodeGraph graph;
+    GraphNodeFactory factory;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    const auto added = authoring.addNode(NodeKind::Envelope, { 20.f, 20.f });
+    REQUIRE(added.succeeded);
+    commands.beginTransientEdit();
+    REQUIRE(commands.setNodeParameter(added.nodeId, "purpose", "Purpose", "pitch").succeeded());
+    REQUIRE(commands.setNodeParameter(added.nodeId, "purpose", "Purpose", "scratch").succeeded());
+    commands.commitTransientEdit();
+    const Node* envelope = document.graph().findNode(added.nodeId);
+    REQUIRE(envelope != nullptr);
+    REQUIRE(envelope->outputs.front().connectionKind == ConnectionKind::ProcessingAttachment);
+    REQUIRE(authoring.connectPorts(
+            { added.nodeId, "env", false },
+            { "voice", "scratch", true }).succeeded);
+    REQUIRE(document.graph().getEdges().size() == 1);
+    REQUIRE(document.graph().getEdges().front().isProcessingAttachment());
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().findNode(added.nodeId)->outputs.front().connectionKind
+            == ConnectionKind::Signal);
+}
+
+TEST_CASE("Deleting a cable removes its Spy and restores both with undo",
+        "[cycle-v2][canvas][authoring][probe][cable]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addEdge({
+            "wave", "out", "output", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal });
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    REQUIRE(authoring.toggleSignalProbe(0, 0.5f).succeeded);
+    REQUIRE(document.graph().getSignalProbes().size() == 1);
+    REQUIRE(authoring.deleteEdge(0).succeeded);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(document.graph().getSignalProbes().empty());
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().getEdges().size() == 1);
+    REQUIRE(document.graph().getSignalProbes().size() == 1);
+}
+
+TEST_CASE("Deleting another branch leaves a Spy anchored to its surviving cable",
+        "[cycle-v2][canvas][authoring][probe][cable]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "first", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceOutput, "second", {}));
+    graph.addEdge({
+            "wave", "out", "first", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({
+            "wave", "out", "second", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal });
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    REQUIRE(authoring.toggleSignalProbe(0, 0.5f).succeeded);
+    REQUIRE(authoring.deleteEdge(1).succeeded);
+    REQUIRE(document.graph().getEdges().size() == 1);
+    REQUIRE(document.graph().getSignalProbes().size() == 1);
+    REQUIRE(document.graph().getSignalProbes().front().anchorDestNodeId == "first");
+}
+
+TEST_CASE("Deleting an inline panning cable removes the pan and its Spy",
+        "[cycle-v2][canvas][authoring][pan][probe][cable]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::SpectralLayer, "pan", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addEdge({
+            "wave", "out", "pan", "in",
+            PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({
+            "pan", "out", "output", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal });
+    for (int index = 0; index < 64; ++index) {
+        graph.addNode(factory.createNode(
+                NodeKind::Delay,
+                "unrelated-" + String(index),
+                {}));
+    }
+    AudioSampleResource audio { "unrelated-audio", "Unrelated.wav", 48000.0, {} };
+    audio.samples.resize(16384);
+    graph.addAudioResource(std::move(audio));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    REQUIRE(authoring.toggleSignalProbe(0, 0.5f).succeeded);
+    REQUIRE(authoring.toggleSignalProbe(1, 0.5f).succeeded);
+    REQUIRE(document.graph().getSignalProbes().size() == 2);
+    InteractionComplexityDiagnostics::reset();
+    REQUIRE(authoring.deleteEdge(0).succeeded);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().audioSamplesCopied == 0);
+    REQUIRE(document.graph().findNode("pan") == nullptr);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(document.graph().getSignalProbes().empty());
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().findNode("pan") != nullptr);
+    REQUIRE(document.graph().getEdges().size() == 2);
+    REQUIRE(document.graph().getSignalProbes().size() == 2);
+    REQUIRE(authoring.redo().succeeded);
+    REQUIRE(document.graph().findNode("pan") == nullptr);
+    REQUIRE(document.graph().getSignalProbes().empty());
+}
+
 TEST_CASE("Node port layout cycling survives document serialization",
         "[cycle-v2][canvas][authoring][layout]") {
     NodeGraph graph;
@@ -223,6 +377,8 @@ TEST_CASE("Node port layout cycling survives document serialization",
     auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
 
     REQUIRE(authoring.cycleOperationPortLayout("add").succeeded);
+    REQUIRE(document.graph().findNode("add")->reverseInputPortOrder);
+    REQUIRE(authoring.cycleOperationPortLayout("add").succeeded);
     REQUIRE(authoring.cycleOutputSide("mesh").succeeded);
     REQUIRE(authoring.cycleOutputSide("envelope").succeeded);
     const Node* editedAdd = document.graph().findNode("add");
@@ -230,6 +386,7 @@ TEST_CASE("Node port layout cycling survives document serialization",
     const Node* editedEnvelope = document.graph().findNode("envelope");
     REQUIRE(editedAdd->inputs[0].side == PortSide::Left);
     REQUIRE(editedAdd->inputs[1].side == PortSide::Top);
+    REQUIRE_FALSE(editedAdd->reverseInputPortOrder);
     REQUIRE(editedMesh->outputs[0].side == PortSide::Bottom);
     REQUIRE(editedEnvelope->outputs[0].side == PortSide::Bottom);
     REQUIRE(authoring.cycleOutputSide("envelope").succeeded);
@@ -246,6 +403,42 @@ TEST_CASE("Node port layout cycling survives document serialization",
     REQUIRE(restoredAdd->inputs[1].side == PortSide::Top);
     REQUIRE(restoredMesh->outputs[0].side == PortSide::Bottom);
     REQUIRE(restoredEnvelope->outputs[0].side == PortSide::Bottom);
+}
+
+TEST_CASE("Two-input port order is undoable and survives serialization",
+        "[cycle-v2][canvas][authoring][layout]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::StereoJoin, "join", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    const Node* initial = document.graph().findNode("join");
+    REQUIRE(initial != nullptr);
+    const String firstId = initial->inputs[0].id;
+    const String secondId = initial->inputs[1].id;
+    REQUIRE(authoring.cycleOperationPortLayout("join").succeeded);
+    const Node* reversed = document.graph().findNode("join");
+    REQUIRE(operationPortLayout(*reversed) == OperationPortLayout::SideReversed);
+    REQUIRE(reversed->inputs[0].id == firstId);
+    REQUIRE(reversed->inputs[1].id == secondId);
+
+    GraphDocument restored;
+    REQUIRE(restored.loadJson(document.toJson(), false));
+    const Node* loaded = restored.graph().findNode("join");
+    REQUIRE(loaded != nullptr);
+    REQUIRE(operationPortLayout(*loaded) == OperationPortLayout::SideReversed);
+    REQUIRE(loaded->inputs[0].id == firstId);
+    REQUIRE(loaded->inputs[1].id == secondId);
+
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(operationPortLayout(*document.graph().findNode("join"))
+            == OperationPortLayout::Side);
+    REQUIRE(authoring.redo().succeeded);
+    REQUIRE(operationPortLayout(*document.graph().findNode("join"))
+            == OperationPortLayout::SideReversed);
 }
 
 TEST_CASE("Single input and output port layouts cycle forward and undo",
@@ -296,6 +489,24 @@ TEST_CASE("Hosted effect editors open without requiring a compact preview",
     REQUIRE(authoring.session().expandedNodeId == "delay");
 }
 
+TEST_CASE("Undo and redo retain an editor for a surviving Trimesh node",
+        "[cycle-v2][canvas][authoring][trimesh][undo]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    REQUIRE(authoring.openEditor("mesh").succeeded);
+    REQUIRE(authoring.setNodeParameter("mesh", "range", "Range", "0.7").succeeded);
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(authoring.session().expandedNodeId == "mesh");
+    REQUIRE(authoring.redo().succeeded);
+    REQUIRE(authoring.session().expandedNodeId == "mesh");
+}
+
 TEST_CASE("Bundled modulation connection and deletion are single undoable gestures",
         "[cycle-v2][canvas][authoring][modulation]") {
     NodeGraph graph;
@@ -326,6 +537,52 @@ TEST_CASE("Bundled modulation connection and deletion are single undoable gestur
 
     const auto removed = authoring.deleteEdge(0);
     REQUIRE(removed.succeeded);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().getEdges().size() == 3);
+}
+
+TEST_CASE("Bundled modulation connection captures only affected edge state",
+        "[cycle-v2][canvas][authoring][modulation][complexity]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::ModulationTriple,
+            "triple",
+            {}));
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    for (int index = 0; index < 64; ++index) {
+        graph.addNode(GraphNodeFactory().createNode(
+                NodeKind::Delay,
+                "unrelated-" + String(index),
+                {}));
+    }
+    AudioSampleResource audio { "unrelated-audio", "Unrelated.wav", 48000.0, {} };
+    audio.samples.resize(16384);
+    graph.addAudioResource(std::move(audio));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+    InteractionComplexityDiagnostics::reset();
+
+    REQUIRE(authoring.connectPorts(
+            { "triple", ModulationCableBundle::portId(), false },
+            { "mesh", ModulationCableBundle::portId(), true }).succeeded);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().audioSamplesCopied == 0);
+    REQUIRE(document.graph().getEdges().size() == 3);
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(authoring.redo().succeeded);
+    REQUIRE(document.graph().getEdges().size() == 3);
+    InteractionComplexityDiagnostics::reset();
+    REQUIRE(authoring.deleteEdge(0).succeeded);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().audioSamplesCopied == 0);
     REQUIRE(document.graph().getEdges().empty());
     REQUIRE(authoring.undo().succeeded);
     REQUIRE(document.graph().getEdges().size() == 3);
@@ -398,6 +655,36 @@ TEST_CASE("Envelope modulation bundle authors red and blue as one gesture",
     REQUIRE(document.graph().getEdges().empty());
     REQUIRE(authoring.undo().succeeded);
     REQUIRE(document.graph().getEdges().size() == 2);
+}
+
+TEST_CASE("Rejected modulation bundle rolls back earlier routes",
+        "[cycle-v2][canvas][authoring][modulation]") {
+    NodeGraph graph;
+    Node source = GraphNodeFactory().createNode(NodeKind::ModulationTriple, "triple", {});
+    source.outputs.erase(std::remove_if(
+            source.outputs.begin(),
+            source.outputs.end(),
+            [](const Port& port) { return port.id == "blue"; }),
+            source.outputs.end());
+    graph.addNode(std::move(source));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "envelope", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+    const uint64_t revision = document.revision();
+
+    const auto result = authoring.connectPorts(
+            { "triple", ModulationCableBundle::portId(), false },
+            { "envelope", ModulationCableBundle::portId(), true });
+
+    REQUIRE(result.handled);
+    REQUIRE_FALSE(result.succeeded);
+    REQUIRE(result.graphEditCode == GraphEditCode::MissingPort);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(document.revision() == revision);
+    REQUIRE_FALSE(document.canUndo());
 }
 
 TEST_CASE("Effect parameter edits request an open-editor rebind",

@@ -1,9 +1,14 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
+#include "Graph/NodeParameterMap.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Guide/GuideCurveSnapshotProvider.h"
 #include "Nodes/Control/ModulationSource.h"
@@ -14,11 +19,17 @@
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentMenu.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshDeltaOverlay.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
+#include "Nodes/Trimesh/Model/TrimeshVertexEditCore.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelBridge.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanel3D.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
+#include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
+#include "Nodes/Trimesh/Panel/TrimeshInteractor3D.h"
+#include "Nodes/Trimesh/Rendering/TrimeshGuideRailRenderService.h"
+#include "Nodes/Trimesh/Rendering/TrimeshGridRenderService.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
 #include "Nodes/Trimesh/Rendering/OutputScaleControlRenderer.h"
@@ -26,11 +37,18 @@
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
 #include <App/SingletonRepo.h>
+#include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Audio/CycleDsp/SpectralLayerCore.h>
+#include <Curve/Mesh/CollisionDetector.h>
 #include <Curve/Mesh/Intercept.h>
+#include <Curve/Curve.h>
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
+#include <Curve/Rasterization/GuideCurveOffsetSeeds.h>
+#include <UI/AmaranthLookAndFeel.h>
+#include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
 #include <Util/LogRegions.h>
+#include <UI/Panels/ZoomPanel.h>
 
 #include <algorithm>
 #include <array>
@@ -38,6 +56,108 @@
 #include <limits>
 
 using namespace CycleV2;
+
+TEST_CASE("Snarky blue guides agree across Trimesh view axes at an interior morph",
+        "[cycle-v2][nodes][trimesh][guide][axis]") {
+    ScopedJuceInitialiser_GUI juce;
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content/presets/snarky.cyclegraph");
+    const auto loaded = GraphSerializer().readJSON(JSON::parse(preset.loadFileAsString()));
+    REQUIRE(loaded.succeeded());
+    const Node* node = loaded.graph.findNode("timeLayer1");
+    REQUIRE(node != nullptr);
+    const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(node->model);
+    REQUIRE(model != nullptr);
+    const auto prepared = TrimeshGuidePreparation::prepare(loaded.graph, *node, model->mesh());
+    REQUIRE(prepared.assignmentCount > 0);
+
+    Rasterization::TrilinearMeshRasterizer rasterizer;
+    rasterizer.setGuideCurveProvider(prepared.provider.get());
+    Rasterization::RasterizationRequest request;
+    request.cyclic = false;
+    request.calcDepthDimensions = false;
+    for (float time : { 0.2f, 0.5f, 0.8f }) {
+        for (float blue : { 0.2f, 0.5f, 0.8f }) {
+            request.morph = MorphPosition(time, 0.5f, blue);
+            request.primaryViewDimension = Vertex::Time;
+            const auto timeIntercepts = rasterizer.renderGeometry({ *prepared.mesh, request, 0.f }).intercepts;
+            request.primaryViewDimension = Vertex::Blue;
+            const auto blueIntercepts = rasterizer.renderGeometry({ *prepared.mesh, request, 0.f }).intercepts;
+            REQUIRE(timeIntercepts.size() == blueIntercepts.size());
+            for (size_t index = 0; index < timeIntercepts.size(); ++index) {
+                REQUIRE(timeIntercepts[index].x == Catch::Approx(blueIntercepts[index].x).margin(0.002f));
+                REQUIRE(timeIntercepts[index].y == Catch::Approx(blueIntercepts[index].y).margin(0.002f));
+            }
+        }
+    }
+
+    class RailPanel final : public TrimeshPanel3D {
+    public:
+        RailPanel(SingletonRepo* repo, TrimeshPanelDataSource& source) :
+                SingletonAccessor(repo, "SnarkyRailPanel")
+            ,   TrimeshPanel3D(repo, source) {}
+
+        bool sampleMidpoint(Vertex2 first, Vertex2 second, VertCube* cube, float& result) {
+            if (!createLinePath(first, second, cube, Vertex::Time, false)) {
+                return false;
+            }
+            result = xy.y[linestripRes / 2];
+            return true;
+        }
+    };
+
+    TrimeshPanelEnvironment environment;
+    TrimeshPanelDataSource source;
+    TrimeshInteractor3D interactor(&environment.getRepo(), "SnarkyRailInteractor");
+    RailPanel panel(&environment.getRepo(), source);
+    interactor.init();
+    panel.setInteractor(&interactor);
+    panel.setLineGuideTables(TrimeshGuideRailRenderService::prepareTables(
+            *prepared.provider,
+            GuideCurveSnapshotProvider::visualizationSeed(PortDomain::TimeSignal)));
+    const MorphPosition morph(0.5f, 0.5f, 0.5f);
+    environment.setMorphPosition(morph, Vertex::Time);
+
+    bool sampled = false;
+    for (VertCube* cube : prepared.mesh->getCubes()) {
+        if (cube->guideCurveAt(Vertex::Blue) < 0
+                || cube->guideCurveAt(Vertex::Phase) >= 0) {
+            continue;
+        }
+        VertCube::ReductionData reduction;
+        Rasterization::TrilinearMeshSlicer().slice(*cube, Vertex::Time, reduction, morph);
+        if (!reduction.lineOverlaps) {
+            continue;
+        }
+
+        const Vertex2 first(reduction.v0.values[Vertex::Time], reduction.v0.values[Vertex::Phase]);
+        const Vertex2 second(reduction.v1.values[Vertex::Time], reduction.v1.values[Vertex::Phase]);
+        float midpoint {};
+        REQUIRE(panel.sampleMidpoint(first, second, cube, midpoint));
+        const float progress = (float) (Panel::linestripRes / 2)
+                / (float) (Panel::linestripRes - 0.5f);
+        const float base = first.y + progress * (second.y - first.y);
+        REQUIRE(std::abs(midpoint - base) > 0.001f);
+
+        request.morph = MorphPosition(
+                first.x + (second.x - first.x) * 0.5f,
+                0.5f,
+                0.5f);
+        request.primaryViewDimension = Vertex::Time;
+        request.xMinimum = -100.f;
+        request.xMaximum = 100.f;
+        const auto& guided = rasterizer.renderGeometry({ *prepared.mesh, request, 0.f }).intercepts;
+        const auto matching = std::find_if(guided.begin(), guided.end(),
+                [cube](const Intercept& intercept) { return intercept.cube == cube; });
+        REQUIRE(matching != guided.end());
+        REQUIRE(midpoint == Catch::Approx(matching->x).margin(0.01f));
+        sampled = true;
+        break;
+    }
+    REQUIRE(sampled);
+    panel.setInteractor(nullptr);
+    interactor.stopTimer();
+}
 
 namespace {
 
@@ -141,6 +261,404 @@ MouseEvent panelMouseEvent(
     };
 }
 
+}
+
+TEST_CASE("New Trimesh nodes begin without authored mesh content",
+        "[cycle-v2][nodes][trimesh][authoring]") {
+    const Node node = GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh, "mesh", {});
+    const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            node.model);
+
+    REQUIRE(model != nullptr);
+    REQUIRE(model->mesh().getNumVerts() == 0);
+    REQUIRE(model->mesh().getNumCubes() == 0);
+}
+
+TEST_CASE("First Trimesh point is created at the requested phase",
+        "[cycle-v2][nodes][trimesh][authoring][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(node, 320, 96);
+
+    Component* host = bridge.getPanel2DHostComponent();
+    host->setBounds(0, 0, 640, 280);
+    bridge.syncFromNode(node, 320, 96);
+    const Point<float> position(
+            bridge.getPanel2D().sx(0.65f),
+            bridge.getPanel2D().sy(0.4f));
+    auto down = panelMouseEvent(
+            *host,
+            position,
+            ModifierKeys::rightButtonModifier,
+            position,
+            false);
+    bridge.getInteractor2D().mouseDown(down);
+    auto up = panelMouseEvent(*host, position, {}, position, false);
+    bridge.getInteractor2D().mouseUp(up);
+
+    const Mesh& mesh = bridge.getModel().getMeshForPanel();
+    REQUIRE(mesh.getNumCubes() == 1);
+    REQUIRE(mesh.getNumVerts() == VertCube::numVerts);
+    for (const Vertex* vertex : mesh.getVerts()) {
+        REQUIRE(vertex->values[Vertex::Phase] == Catch::Approx(0.65f).margin(0.002f));
+    }
+    const int selected = bridge.selectedVertexIndexForPanel();
+    REQUIRE(selected >= 0);
+    const auto parameters = bridge.getModel().getVertexParametersForIndex(selected);
+    REQUIRE(parameters[3].id == "vertex.phase");
+    REQUIRE(parameters[3].value == Catch::Approx(0.65f).margin(0.002f));
+}
+
+TEST_CASE("Trimesh vertex controls reject a line collision",
+        "[cycle-v2][nodes][trimesh][collision]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto sourceMesh = TrimeshMeshFactory::createDefaultMesh("collision-test");
+    node.model = TrimeshNodeModelState::copyOf(*sourceMesh, 2);
+    sourceMesh->destroy();
+    TrimeshWidget widget;
+    widget.syncFromNode(node);
+    Mesh& mesh = widget.currentMesh();
+    Vertex* vertex = mesh.getVerts().front();
+    const float original = vertex->values[Vertex::Phase];
+    const float crossingPhase = 0.5f;
+    CollisionDetector detector(nullptr, CollisionDetector::Time);
+
+    vertex->values[Vertex::Phase] = crossingPhase;
+    detector.setCurrentSelection(&mesh, vertex);
+    REQUIRE_FALSE(detector.validate());
+    vertex->values[Vertex::Phase] = original;
+
+    REQUIRE_FALSE(widget.setVertexParameter(0, "vertex.phase", crossingPhase));
+    REQUIRE(vertex->values[Vertex::Phase] == original);
+
+    const float safePhase = original + 0.01f;
+    vertex->values[Vertex::Phase] = safePhase;
+    detector.setCurrentSelection(&mesh, vertex);
+    REQUIRE(detector.validate());
+    vertex->values[Vertex::Phase] = original;
+    REQUIRE(widget.setVertexParameter(0, "vertex.phase", safePhase));
+    REQUIRE(vertex->values[Vertex::Phase] == safePhase);
+}
+
+TEST_CASE("Trimesh vertex edit deltas apply and invert across matching meshes",
+        "[cycle-v2][nodes][trimesh][gesture][delta]") {
+    auto verify = [](int unrelatedCubeCount) {
+        auto edited = TrimeshMeshFactory::createDefaultMesh("vertex-delta");
+        for (int index = 0; index < unrelatedCubeCount; ++index) {
+            TrimeshMeshFactory::addVoiceCube(
+                    *edited, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f);
+        }
+        Mesh mirror;
+        mirror.deepCopy(edited.get());
+        InteractionComplexityDiagnostics::reset();
+
+        const auto vertex = TrimeshVertexEditCore::prepareVertexValue(
+                *edited, 0, "vertex.phase", 0.73f);
+        REQUIRE(vertex.has_value());
+        REQUIRE(vertex->changed());
+        REQUIRE(TrimeshVertexEditCore::apply(*edited, *vertex));
+        REQUIRE(TrimeshVertexEditCore::apply(mirror, *vertex));
+        REQUIRE(edited->equals(mirror));
+
+        const auto guide = TrimeshVertexEditCore::prepareGuideGain(
+                *edited, 0, "guideGain.amp", 0.8f);
+        REQUIRE(guide.has_value());
+        REQUIRE(guide->changed());
+        REQUIRE(TrimeshVertexEditCore::apply(*edited, *guide));
+        REQUIRE(TrimeshVertexEditCore::apply(mirror, *guide));
+        REQUIRE(edited->equals(mirror));
+
+        auto invalid = guide->inverse();
+        invalid.changes.front().before = -1.f;
+        REQUIRE_FALSE(TrimeshVertexEditCore::apply(mirror, invalid));
+        REQUIRE(edited->equals(mirror));
+
+        REQUIRE(TrimeshVertexEditCore::apply(*edited, guide->inverse()));
+        REQUIRE(TrimeshVertexEditCore::apply(mirror, guide->inverse()));
+        REQUIRE(TrimeshVertexEditCore::apply(*edited, vertex->inverse()));
+        REQUIRE(TrimeshVertexEditCore::apply(mirror, vertex->inverse()));
+        REQUIRE(edited->equals(mirror));
+
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.meshCopies == 0);
+        REQUIRE(counts.modelSerializations == 0);
+        REQUIRE(counts.nodeLinearScans == 0);
+        const auto ownerVisits = counts.meshEditOwnerVisits;
+        mirror.destroy();
+        edited->destroy();
+        return ownerVisits;
+    };
+
+    REQUIRE(verify(0) == verify(128));
+}
+
+TEST_CASE("Trimesh Curve control edits the displayed cube average",
+        "[cycle-v2][nodes][trimesh][curve-average]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("curve-average");
+    VertCube* cube = mesh->getCubes().front();
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        cube->getVertex(index)->values[Vertex::Curve] = index < 4 ? 0.f : 1.f;
+    }
+
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 1);
+    node.editorState = selectedVertexEditorState(0);
+    TrimeshNodeModel model;
+    REQUIRE(model.syncFromNode(node));
+    REQUIRE(model.getSelectedVertexParameters()[5].value == Catch::Approx(0.5f));
+    CollisionDetector detector(nullptr, CollisionDetector::Time);
+
+    const auto zeroEdit = TrimeshVertexEditCore::prepareCubeCurve(
+            *model.getMeshForPanel().getCubes().front(), 0.f);
+    REQUIRE(zeroEdit.has_value());
+    REQUIRE(zeroEdit->changed());
+    REQUIRE(model.setVertexParameter(0, "vertex.curve", 0.f, detector));
+    REQUIRE(model.getSelectedVertexParameters()[5].value == 0.f);
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        REQUIRE(model.getMeshForPanel().getCubes().front()
+                ->getVertex(index)->values[Vertex::Curve] == 0.f);
+    }
+
+    REQUIRE(TrimeshVertexEditCore::apply(
+            *model.getMeshForPanel().getCubes().front(), zeroEdit->inverse()));
+    REQUIRE(model.getSelectedVertexParameters()[5].value == Catch::Approx(0.5f));
+    REQUIRE(model.setVertexParameter(0, "vertex.curve", 1.f, detector));
+    REQUIRE(model.getSelectedVertexParameters()[5].value == 1.f);
+    mesh->destroy();
+}
+
+TEST_CASE("Zero Curve average removes the rendered component Guide contribution",
+        "[cycle-v2][nodes][trimesh][curve-average][guide]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("zero-component-guide");
+    VertCube* cube = mesh->getCubes().front();
+    cube->guideCurveAt(Vertex::Time) = 0;
+    cube->guideCurveGainAt(Vertex::Time) = 1.f;
+    for (int index = 0; index < VertCube::numVerts; ++index) {
+        cube->getVertex(index)->values[Vertex::Curve] = index < 4 ? 0.f : 1.f;
+    }
+
+    GuideCurveResource guide;
+    guide.id = "componentGuide";
+    FlatCurveModel curve;
+    REQUIRE(curve.replaceVertices({
+            { 1, 0.05f, 0.1f, 1.f },
+            { 2, 0.95f, 0.9f, 1.f }
+    }));
+    guide.model = CurveNodeModelState::copyOf(curve, 2);
+    GuideCurveSnapshotProvider provider;
+    REQUIRE(provider.addGuide(guide));
+
+    constexpr int sampleCount = 256;
+    std::vector<float> plainSamples(sampleCount);
+    std::vector<float> guidedSamples(sampleCount);
+    TrimeshBlockwiseDsp plain;
+    plain.setMesh(mesh.get());
+    plain.setCyclic(true);
+    TrimeshBlockwiseDsp guided;
+    guided.setMesh(mesh.get());
+    guided.setCyclic(true);
+    guided.setGuideCurveProvider(&provider);
+    guided.renderCycleInto(
+            Buffer<float>(guidedSamples.data(), sampleCount),
+            PortDomain::TimeSignal);
+    plain.renderCycleInto(
+            Buffer<float>(plainSamples.data(), sampleCount),
+            PortDomain::TimeSignal);
+    REQUIRE(guidedSamples != plainSamples);
+
+    TrimeshNodeModel model;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    node.editorState = selectedVertexEditorState(0);
+    REQUIRE(model.syncFromNode(node));
+    CollisionDetector detector(nullptr, CollisionDetector::Time);
+    REQUIRE(model.setVertexParameter(0, "vertex.curve", 0.f, detector));
+    REQUIRE(model.getSelectedVertexParameters()[5].value == 0.f);
+    Mesh& zeroed = model.getMeshForPanel();
+    guided.setMesh(&zeroed);
+    plain.setMesh(&zeroed);
+    guided.renderCycleInto(
+            Buffer<float>(guidedSamples.data(), sampleCount),
+            PortDomain::TimeSignal);
+    plain.renderCycleInto(
+            Buffer<float>(plainSamples.data(), sampleCount),
+            PortDomain::TimeSignal);
+    REQUIRE(Buffer<float>(guidedSamples.data(), sampleCount).normDiffL2(
+            Buffer<float>(plainSamples.data(), sampleCount)) < 0.0001f);
+    mesh->destroy();
+}
+
+TEST_CASE("Trimesh delta overlay reuses mature waveform slicing",
+        "[cycle-v2][nodes][trimesh][gesture][delta]") {
+    struct CurveTableLease {
+        bool ownsTable { Curve::table == nullptr };
+
+        CurveTableLease() { Curve::calcTable(); }
+        ~CurveTableLease() {
+            if (ownsTable) {
+                Curve::deleteTable();
+            }
+        }
+    } curveTables;
+    auto created = TrimeshMeshFactory::createDefaultMesh("overlay-preview");
+    std::shared_ptr<const Mesh> base(created.release(), [](const Mesh* value) {
+        auto* mesh = const_cast<Mesh*>(value);
+        mesh->destroy();
+        delete mesh;
+    });
+    const auto delta = TrimeshVertexEditCore::prepareVertexValue(
+            *base, 0, "vertex.phase", 0.73f);
+    REQUIRE(delta.has_value());
+    auto overlay = TrimeshMeshDeltaOverlay::create(base, *delta);
+    REQUIRE(overlay != nullptr);
+
+    Mesh reference;
+    reference.deepCopy(base.get());
+    REQUIRE(TrimeshVertexEditCore::apply(reference, *delta));
+
+    Rasterization::RasterizationRequest request;
+    request.morph = MorphPosition(0.f, 0.f, 0.f);
+    request.primaryViewDimension = Vertex::Time;
+    Rasterization::TrilinearMeshRasterizer referenceRasterizer;
+    const auto& expected = referenceRasterizer.renderWaveform({ reference, request, 0.f });
+    Rasterization::TrilinearMeshRasterizer overlayRasterizer;
+    const auto& actual = overlayRasterizer.renderWaveform(
+            { overlay->rasterizerMesh(), request, 0.f },
+            [&](VertCube* cube) { return overlay->resolve(cube); });
+    REQUIRE_FALSE(expected.intercepts.empty());
+    REQUIRE(actual.intercepts.size() == expected.intercepts.size());
+    for (size_t index = 0; index < actual.intercepts.size(); ++index) {
+        REQUIRE(actual.intercepts[index].x
+                == Catch::Approx(expected.intercepts[index].x));
+        REQUIRE(actual.intercepts[index].y
+                == Catch::Approx(expected.intercepts[index].y));
+        REQUIRE(actual.intercepts[index].shp
+                == Catch::Approx(expected.intercepts[index].shp));
+    }
+
+    TrimeshBlockwiseDsp referenceSlice;
+    referenceSlice.prepare(&reference, request.morph, Vertex::Time, true,
+            PortDomain::TimeSignal);
+    SignalPayload expectedSlice;
+    referenceSlice.renderPrepared(
+            128, PortDomain::TimeSignal, ChannelLayout::Mono, expectedSlice);
+    TrimeshBlockwiseDsp overlaySlice;
+    overlaySlice.setDeltaOverlay(overlay);
+    overlaySlice.prepare(&overlay->rasterizerMesh(), request.morph, Vertex::Time,
+            true, PortDomain::TimeSignal);
+    SignalPayload actualSlice;
+    overlaySlice.renderPrepared(
+            128, PortDomain::TimeSignal, ChannelLayout::Mono, actualSlice);
+    REQUIRE(actualSlice.block.samples == expectedSlice.block.samples);
+
+    std::vector<float> expectedGrid(8 * 64);
+    std::vector<float> actualGrid(8 * 64);
+    TrimeshGridwiseDsp referenceGrid;
+    TrimeshGridwiseDsp overlayGrid;
+    overlayGrid.setDeltaOverlay(overlay);
+    REQUIRE(referenceGrid.renderColumnsInto(
+            reference, request.morph, Vertex::Time, 8,
+            Buffer<float>(expectedGrid.data(), (int) expectedGrid.size()),
+            PortDomain::TimeSignal));
+    REQUIRE(overlayGrid.renderColumnsInto(
+            overlay->rasterizerMesh(), request.morph, Vertex::Time, 8,
+            Buffer<float>(actualGrid.data(), (int) actualGrid.size()),
+            PortDomain::TimeSignal));
+    REQUIRE(actualGrid == expectedGrid);
+
+    Rasterization::VoiceCycleState referenceVoiceState;
+    Rasterization::VoiceCycleState overlayVoiceState;
+    Rasterization::VoiceRasterizer referenceVoice;
+    Rasterization::VoiceRasterizer overlayVoice;
+    const auto voicePreparation = Rasterization::VoiceRasterizerPreparation::forMesh(*base);
+    referenceVoice.prepare(voicePreparation, { &referenceVoiceState });
+    overlayVoice.prepare(voicePreparation, { &overlayVoiceState });
+    overlayVoice.setCubeResolver(
+            overlay.get(), &TrimeshMeshDeltaOverlay::resolveFromContext);
+    std::array<float, 128> referenceFrame {};
+    std::array<float, 128> overlayFrame {};
+    REQUIRE(CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
+            referenceVoice,
+            { &reference, request.morph, 0.f, 0 },
+            Buffer<float>(referenceFrame.data(), (int) referenceFrame.size())));
+    REQUIRE(CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
+            overlayVoice,
+            { &overlay->rasterizerMesh(), request.morph, 0.f, 0 },
+            Buffer<float>(overlayFrame.data(), (int) overlayFrame.size())));
+    REQUIRE(overlayFrame == referenceFrame);
+
+    referenceVoice.setState(&referenceVoiceState);
+    overlayVoice.setState(&overlayVoiceState);
+    referenceVoice.setMesh(&reference);
+    overlayVoice.setMesh(&overlay->rasterizerMesh());
+    referenceVoice.setMorphPosition(request.morph);
+    overlayVoice.setMorphPosition(request.morph);
+    for (int update = 0; update < 2; ++update) {
+        const auto& expectedVoice = referenceVoice.renderChained(0.f);
+        const auto& actualVoice = overlayVoice.renderChained(0.f);
+        REQUIRE(actualVoice.intercepts.size() == expectedVoice.intercepts.size());
+        for (size_t index = 0; index < actualVoice.intercepts.size(); ++index) {
+            REQUIRE(actualVoice.intercepts[index].x
+                    == Catch::Approx(expectedVoice.intercepts[index].x));
+            REQUIRE(actualVoice.intercepts[index].y
+                    == Catch::Approx(expectedVoice.intercepts[index].y));
+        }
+    }
+
+    const auto gainDelta = TrimeshVertexEditCore::prepareGuideGain(
+            *base, 0, "vertex.guideGain.time", 0.82f);
+    REQUIRE(gainDelta.has_value());
+    auto gainOverlay = TrimeshMeshDeltaOverlay::create(base, *gainDelta);
+    REQUIRE(gainOverlay != nullptr);
+    const Vertex* editedVertex = base->getVerts()[0];
+    for (int ordinal = 0; ordinal < editedVertex->owners.size(); ++ordinal) {
+        VertCube* source = editedVertex->owners[ordinal];
+        VertCube* resolved = gainOverlay->resolve(source);
+        const auto change = std::find_if(
+                gainDelta->changes.begin(),
+                gainDelta->changes.end(),
+                [ordinal](const auto& item) { return item.ownerOrdinal == ordinal; });
+        if (change == gainDelta->changes.end()) {
+            REQUIRE(resolved == source);
+        } else {
+            REQUIRE(resolved != source);
+            REQUIRE(resolved->guideCurveGainAt(Vertex::Time) == change->after);
+        }
+    }
+    reference.destroy();
+}
+
+TEST_CASE("Trimesh gesture deltas retain their initial value across movements",
+        "[cycle-v2][nodes][trimesh][gesture][delta]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("gesture-delta");
+    const float initial = mesh->getVerts()[0]->values[Vertex::Phase];
+    const auto first = TrimeshVertexEditCore::prepareVertexValue(
+            *mesh, 0, "vertex.phase", 0.73f);
+    REQUIRE(first.has_value());
+    REQUIRE(TrimeshVertexEditCore::apply(*mesh, *first));
+    const auto second = TrimeshVertexEditCore::prepareVertexValue(
+            *mesh, 0, "vertex.phase", 0.41f);
+    REQUIRE(second.has_value());
+    const auto combined = TrimeshVertexEditCore::compose(*first, *second);
+    REQUIRE(combined.has_value());
+    REQUIRE(combined->changes.front().before == initial);
+    REQUIRE(combined->changes.front().after == 0.41f);
+    REQUIRE(TrimeshVertexEditCore::apply(*mesh, *second));
+
+    const auto returnToBase = TrimeshVertexEditCore::prepareVertexValue(
+            *mesh, 0, "vertex.phase", initial);
+    REQUIRE(returnToBase.has_value());
+    const auto cancelled = TrimeshVertexEditCore::compose(*combined, *returnToBase);
+    REQUIRE(cancelled.has_value());
+    REQUIRE_FALSE(cancelled->changed());
+    auto stale = *second;
+    stale.changes.front().before = -1.f;
+    REQUIRE_FALSE(TrimeshVertexEditCore::compose(*first, stale).has_value());
+    mesh->destroy();
 }
 
 TEST_CASE("Trimesh topology snapshots preserve the authoritative Mesh contract",
@@ -401,6 +919,58 @@ TEST_CASE("Prepared Trimesh guides retain graph Guide slot identity",
     mesh->destroy();
 }
 
+TEST_CASE("Trimesh phase rail samples the same offset Guide as the grid",
+        "[cycle-v2][nodes][trimesh][guide][rail]") {
+    ScopedJuceInitialiser_GUI juce;
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("OffsetGuideRail");
+    FlatCurveModel curve;
+    REQUIRE(curve.replaceVertices({
+            { 1, 0.05f, 0.15f, 1.f },
+            { 2, 0.95f, 0.85f, 1.f }
+    }));
+
+    NodeGraph graph;
+    GuideCurveResource guide;
+    guide.id = "phaseGuide";
+    guide.model = CurveNodeModelState::copyOf(curve, 2);
+    guide.phase = 0.49f;
+    REQUIRE(graph.addGuideCurve(std::move(guide)));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    REQUIRE(graph.assignGuideCurve({
+            "phaseGuide", "mesh", { 0, GuideCurveField::Phase }
+    }));
+    const Node* node = graph.findNode("mesh");
+    REQUIRE(node != nullptr);
+
+    auto prepared = TrimeshGuidePreparation::prepare(graph, *node, *mesh);
+    auto provider = prepared.provider;
+    TrimeshPanelBridge bridge;
+    bridge.setDisplayDomain(PortDomain::SpectralMagnitudeSignal);
+    bridge.syncFromNode(*node, 64, 8);
+    REQUIRE(bridge.applyPreparedGuides(std::move(prepared)));
+
+    const auto rail = bridge.getPanel3D().getLineGuideTable(0);
+    const auto raw = provider->getTable(0);
+    REQUIRE(rail.size() == GuideCurveProvider::tableSize);
+    constexpr int sampleIndex = GuideCurveProvider::tableSize / 4;
+    Rasterization::GuideCurveOffsetSeeds offsets;
+    const uint32_t seed = GuideCurveSnapshotProvider::visualizationSeed(
+            PortDomain::SpectralMagnitudeSignal);
+    offsets.derive(1, GuideCurveProvider::tableSize,
+            Rasterization::GuideCurveSeed::visualization(seed));
+    GuideCurveProvider::NoiseContext context;
+    context.noiseSeed = (int) (seed % GuideCurveProvider::tableSize);
+    context.phaseOffset = offsets.phaseAt(0);
+    context.vertOffset = offsets.verticalAt(0);
+    const float expected = provider->getTableValue(
+            0,
+            (float) sampleIndex / (float) (GuideCurveProvider::tableSize - 1),
+            context);
+    REQUIRE(rail[sampleIndex] == Catch::Approx(expected).margin(0.001f));
+    REQUIRE(rail[sampleIndex] != Catch::Approx(raw[sampleIndex]).margin(0.01f));
+    mesh->destroy();
+}
+
 TEST_CASE("Invalid Trimesh topology snapshots do not partially mutate the mesh",
         "[cycle-v2][nodes][trimesh][topology]") {
     auto mesh = TrimeshMeshFactory::createDefaultMesh("StableTrimesh");
@@ -444,7 +1014,7 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
 
     REQUIRE(timeMid != magMid);
     REQUIRE(magMid != phaseMid);
-    REQUIRE(timeMid.getFloatAlpha() == Catch::Approx(0.82f).margin(0.01f));
+    REQUIRE(timeMid.getFloatAlpha() == Catch::Approx(1.f));
     REQUIRE(magLow.getFloatAlpha() < 0.01f);
     REQUIRE(magHigh.getFloatAlpha() == Catch::Approx(1.f));
     REQUIRE_FALSE(timeSurfaceStyle.textureUsesAlpha);
@@ -500,6 +1070,79 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
     }
 }
 
+TEST_CASE("Bipolar spectral magnitude has a signed surface gradient", "[cycle-v2][nodes][trimesh][surface]") {
+    const TrimeshRenderProfile unipolar = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+    const TrimeshRenderProfile bipolar = TrimeshRenderProfile::fromSemantic({
+            PortDomain::SpectralMagnitudeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::SpectralMagnitudeBipolar
+    });
+    const auto& unipolarStyle = unipolar.getSurfaceStyle();
+    const auto& bipolarStyle = bipolar.getSurfaceStyle();
+    const Colour negative = bipolarStyle.colourForValue(0.f);
+    const Colour neutral = bipolarStyle.colourForValue(0.5f);
+    const Colour positive = bipolarStyle.colourForValue(1.f);
+
+    REQUIRE(unipolarStyle.surfaceMaterial().palette
+            == ScalarSurfacePalette::UnipolarMagnitude);
+    REQUIRE(bipolarStyle.surfaceMaterial().palette
+            == ScalarSurfacePalette::BipolarMagnitude);
+    REQUIRE(unipolarStyle.colourForValue(0.f)
+            != bipolarStyle.colourForValue(0.f));
+    REQUIRE(negative.getFloatBlue() > negative.getFloatRed());
+    REQUIRE(positive.getFloatRed() > positive.getFloatBlue());
+    REQUIRE(neutral.getBrightness() < negative.getBrightness());
+    REQUIRE(neutral.getBrightness() < positive.getBrightness());
+    REQUIRE(negative.getFloatAlpha() == Catch::Approx(positive.getFloatAlpha()));
+}
+
+TEST_CASE("Bipolar spectral curves use yellow for high values and blue for low values",
+        "[cycle-v2][nodes][trimesh][surface]") {
+    const TrimeshRenderProfile bipolar = TrimeshRenderProfile::fromSemantic({
+            PortDomain::SpectralMagnitudeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::SpectralMagnitudeBipolar
+    });
+    const TrimeshRenderProfile unipolar = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+    const auto& bipolarCurve = bipolar.getCurveStyle();
+    const auto& unipolarCurve = unipolar.getCurveStyle();
+
+    REQUIRE(bipolarCurve.bipolar);
+    REQUIRE(bipolarCurve.positiveColour.toColour().getFloatRed()
+            > bipolarCurve.positiveColour.toColour().getFloatBlue());
+    REQUIRE(bipolarCurve.negativeColour.toColour().getFloatBlue()
+            > bipolarCurve.negativeColour.toColour().getFloatRed());
+    REQUIRE_FALSE(unipolarCurve.bipolar);
+    REQUIRE(unipolarCurve.positiveColour == unipolarCurve.negativeColour);
+    REQUIRE(unipolarCurve.positiveColour == bipolarCurve.positiveColour);
+}
+
+TEST_CASE("Bipolar spectral magnitude can use time surface shaders without recolouring unipolar magnitude",
+        "[cycle-v2][nodes][trimesh][surface]") {
+    const int previousStyle = ScalarSurfaceMaterial::bipolarMagnitudeStyleIndex();
+    const TrimeshRenderProfile bipolar = TrimeshRenderProfile::fromSemantic({
+            PortDomain::SpectralMagnitudeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::SpectralMagnitudeBipolar
+    });
+    const TrimeshRenderProfile unipolar = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+
+    ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(-1);
+    const Colour defaultColour = bipolar.getSurfaceStyle().colourForValue(0.2f);
+    ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(
+            (int) ScalarSurfaceTimeStyle::IcyHot13);
+    REQUIRE(bipolar.getSurfaceStyle().materialStyleSignature()
+            == (int) ScalarSurfaceTimeStyle::IcyHot13);
+    REQUIRE(bipolar.getSurfaceStyle().colourForValue(0.2f) != defaultColour);
+    REQUIRE(unipolar.getSurfaceStyle().surfaceMaterial().palette
+            == ScalarSurfacePalette::UnipolarMagnitude);
+    REQUIRE(unipolar.getSurfaceStyle().materialStyleSignature() == -1);
+    ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(previousStyle);
+}
+
 TEST_CASE("Expanded Trimesh panel preserves compact spectral RGBA mapping",
         "[cycle-v2][nodes][trimesh][compact][expanded][spectral]") {
     ScopedJuceInitialiser_GUI juce;
@@ -536,6 +1179,10 @@ TEST_CASE("Expanded Trimesh surfaces use their complete layout rows", "[cycle-v2
     REQUIRE(grid.getY() == Catch::Approx(content.getY()));
     REQUIRE(grid.getHeight() == Catch::Approx(content.getHeight() * 0.54f));
     REQUIRE(grid.getWidth() == Catch::Approx(content.getWidth() * 0.50f));
+    REQUIRE(TrimeshWidget::expandedColumnCount(content) >= roundToInt(grid.getWidth()));
+    REQUIRE(TrimeshWidget::expandedColumnCount(
+            content.withWidth(content.getWidth() * 1.5f))
+            == TrimeshWidget::expandedColumnCount(content));
     REQUIRE(wave.getY() - grid.getBottom() == Catch::Approx(8.f));
     REQUIRE(wave.getBottom() == Catch::Approx(content.getBottom()));
 }
@@ -553,9 +1200,20 @@ TEST_CASE("Trimesh surface renderer creates vertically oriented heatmap images",
 
     const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal);
     const Image image = TrimeshSurfaceRenderer::createHeatmapImage(renderData, profile);
-    const auto requirePixelNear = [&image, &profile](int x, int y, float value) {
+    const auto requirePixelNear = [&image, &profile, &renderData](int x, int y, float value) {
         const Colour actual = image.getPixelAt(x, y);
-        const Colour expected = TrimeshSurfaceRenderer::colourForProfile(value, profile);
+        const int row = renderData.rows - 1 - y;
+        const ScalarSurfaceDerivatives derivatives =
+                ScalarSurfaceMaterialEvaluator::derivativesAt(
+                        renderData.surface.data(),
+                        renderData.columns,
+                        renderData.rows,
+                        x,
+                        row);
+        const Colour expected = ScalarSurfaceMaterialEvaluator::colourFor(
+                value,
+                derivatives,
+                profile.getSurfaceStyle().surfaceMaterial());
 
         REQUIRE(actual.getFloatRed() == Catch::Approx(expected.getFloatRed()).margin(0.01f));
         REQUIRE(actual.getFloatGreen() == Catch::Approx(expected.getFloatGreen()).margin(0.01f));
@@ -572,6 +1230,24 @@ TEST_CASE("Trimesh surface renderer creates vertically oriented heatmap images",
     requirePixelNear(1, 0, 0.90f);
 }
 
+TEST_CASE("Compact pitch columns use each key's harmonic range across the preview height",
+        "[cycle-v2][nodes][trimesh][spectral][key-scale][compact]") {
+    TrimeshRenderData renderData;
+    renderData.rows = LogRegionMapping(Constants::LowestMidiNote).regionSize();
+    renderData.columns = 3;
+    renderData.pitchSpansColumns = true;
+    renderData.surface.resize((size_t) renderData.rows * 3);
+    const size_t highColumnOffset = (size_t) renderData.rows * 2;
+    renderData.surface[highColumnOffset] = 1.f;
+
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+    const Image image = TrimeshSurfaceRenderer::createHeatmapImage(renderData, profile);
+    REQUIRE(image.isValid());
+    REQUIRE(image.getPixelAt(2, renderData.rows / 2)
+            != TrimeshSurfaceRenderer::colourForProfile(0.f, profile));
+}
+
 TEST_CASE("Trimesh side panel renderer keeps vertex rails inside parameter rows", "[cycle-v2][nodes][trimesh]") {
     const Rectangle<float> parameterArea { 20.f, 40.f, 180.f, 140.f };
 
@@ -586,7 +1262,7 @@ TEST_CASE("Trimesh side panel renderer keeps vertex rails inside parameter rows"
     }
 }
 
-TEST_CASE("Trimesh vertex deformer controls apply only to the right parameter column",
+TEST_CASE("Trimesh vertex deformer controls cover every guide-capable dimension",
         "[cycle-v2][nodes][trimesh][geometry][guide]") {
     const Rectangle<float> parameterArea { 20.f, 40.f, 620.f, 150.f };
 
@@ -601,13 +1277,13 @@ TEST_CASE("Trimesh vertex deformer controls apply only to the right parameter co
                         ? TrimeshSidePanelRenderer::GuideControls::Visible
                         : TrimeshSidePanelRenderer::GuideControls::Hidden);
 
-        REQUIRE(showsGuideControls == (i >= 3));
+        REQUIRE(showsGuideControls);
         if (i < 3) {
             const Rectangle<float> pairedRow =
                     TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i + 3);
             const Rectangle<float> pairedRail =
                     TrimeshSidePanelRenderer::vertexParameterRailBounds(pairedRow);
-            REQUIRE(rail.getWidth() > pairedRail.getWidth() + 50.f);
+            REQUIRE(rail.getWidth() == Catch::Approx(pairedRail.getWidth()));
         }
     }
 }
@@ -990,7 +1666,7 @@ TEST_CASE("Prepared spectral raster reuses Cycle 1 logarithmic regions",
     mesh->destroy();
 }
 
-TEST_CASE("Trimesh node model renders compact grid data from node parameters", "[cycle-v2][nodes][trimesh]") {
+TEST_CASE("Trimesh grid renderer uses current node parameters", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
@@ -1008,8 +1684,9 @@ TEST_CASE("Trimesh node model renders compact grid data from node parameters", "
     TrimeshNodeModel model;
 
     model.syncFromNode(node);
-    const auto renderData = model.renderGrid(12, 6);
-    const auto spectralRenderData = model.renderGrid(
+    const auto renderData = TrimeshGridRenderService::renderGrid(model, 12, 6);
+    const auto spectralRenderData = TrimeshGridRenderService::renderGrid(
+            model,
             12,
             6,
             PortDomain::SpectralMagnitudeSignal);
@@ -1115,7 +1792,7 @@ TEST_CASE("Trimesh selection remains empty or explicit while morph position chan
     REQUIRE(model.getSelectedVertexParameters().size() == 6);
     REQUIRE_FALSE(model.getSelectedVertexParameters().front().enabled);
 
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "yellow", "Yellow", "0.8").succeeded());
     model.syncFromNode(*graph.findNode("mesh"));
     REQUIRE(model.getSelectedVertexIndex() == -1);
@@ -1128,10 +1805,10 @@ TEST_CASE("Trimesh selection remains empty or explicit while morph position chan
     REQUIRE(selectedIndex >= 0);
     auto selectedState = std::make_unique<DynamicObject>();
     selectedState->setProperty("selectedVertexId", selectedIndex);
-    REQUIRE(editor.setNodeEditorState(
+    REQUIRE(GraphNodeStateEditor().setNodeEditorState(
             graph, "mesh", var(selectedState.release())).succeeded());
 
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "red", "Red", "0.2").succeeded());
     model.syncFromNode(*graph.findNode("mesh"));
     REQUIRE(model.getSelectedVertexIndex() == selectedIndex);
@@ -1179,6 +1856,90 @@ TEST_CASE("Trimesh morph gesture ignores stale selection snapshots",
     REQUIRE(bridge.selectedVertexIndexForPanel() == -1);
 }
 
+TEST_CASE("Trimesh click selection survives a repaint before pointer up",
+        "[cycle-v2][nodes][trimesh][selection][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto authoredMesh = TrimeshMeshFactory::createDefaultMesh("SelectionRepaint");
+    node.model = TrimeshNodeModelState::copyOf(*authoredMesh, 2);
+    authoredMesh->destroy();
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(node, 320, 96);
+
+    Component* host = bridge.getPanel2DHostComponent();
+    host->setBounds(0, 0, 640, 280);
+    host->addToDesktop(ComponentPeer::windowIsTemporary);
+    host->setVisible(true);
+    bridge.syncFromNode(node, 320, 96);
+    const auto snapshot = bridge.getInteractor2D().rasterizerSnapshot();
+    REQUIRE(snapshot.intercepts().size() >= 2);
+    const Intercept& intercept = snapshot.intercepts()[snapshot.intercepts().size() / 2];
+    const Point<float> position(
+            bridge.getPanel2D().sx(intercept.x),
+            bridge.getPanel2D().sy(intercept.y));
+
+    int completedSelections {};
+    bridge.setMeshEditedCallback([&](TrimeshMeshEditEvent event) {
+        if (event.selectionOnly && event.gestureComplete) {
+            ++completedSelections;
+        }
+    });
+    auto move = panelMouseEvent(*host, position, {}, position, false);
+    host->mouseMove(move);
+    auto down = panelMouseEvent(
+            *host, position, ModifierKeys::leftButtonModifier, position, false);
+    host->mouseDown(down);
+    const int selected = bridge.selectedVertexIndexForPanel();
+    REQUIRE(selected >= 0);
+    const auto parameters = bridge.getModel().getSelectedVertexParameters();
+
+    bridge.syncFromNode(node, 320, 96);
+    REQUIRE(bridge.selectedVertexIndexForPanel() == selected);
+    REQUIRE(bridge.getModel().getSelectedVertexParameters()[3].value
+            == Catch::Approx(parameters[3].value));
+
+    auto up = panelMouseEvent(*host, position, {}, position, false);
+    host->mouseUp(up);
+    REQUIRE(completedSelections == 1);
+    REQUIRE(bridge.selectedVertexIndexForPanel() == selected);
+}
+
+TEST_CASE("Primary Trimesh morph rebuilds only the displayed slice",
+        "[cycle-v2][nodes][trimesh][morph][complexity]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {});
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(node, 128, 64);
+    const auto initial = bridge.getDataSource().getRenderCounters();
+    const std::vector<float> initialSurface = bridge.getRenderData().surface;
+
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == "yellow") {
+            parameter.value = "0.73";
+        }
+    }
+    bridge.syncFromNode(node, 128, 64);
+    const auto primaryMorph = bridge.getDataSource().getRenderCounters();
+
+    REQUIRE(primaryMorph.sliceRebuilds == initial.sliceRebuilds + 1);
+    REQUIRE(primaryMorph.surfaceRebuilds == initial.surfaceRebuilds);
+    REQUIRE(bridge.getRenderData().surface == initialSurface);
+
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == "red") {
+            parameter.value = "0.27";
+        }
+    }
+    bridge.syncFromNode(node, 128, 64);
+    const auto depthMorph = bridge.getDataSource().getRenderCounters();
+
+    REQUIRE(depthMorph.sliceRebuilds == primaryMorph.sliceRebuilds + 1);
+    REQUIRE(depthMorph.surfaceRebuilds == primaryMorph.surfaceRebuilds + 1);
+}
+
 TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",
@@ -1216,9 +1977,19 @@ TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][n
     REQUIRE(morphed.selectedControl == selected.selectedControl);
     REQUIRE(morphed.sliceRasterization > selected.sliceRasterization);
     REQUIRE(morphed.interceptsRails > selected.interceptsRails);
-    REQUIRE(morphed.columns3D > selected.columns3D);
-    REQUIRE(morphed.compactPreview > selected.compactPreview);
-    REQUIRE(morphed.dspPrep > selected.dspPrep);
+    REQUIRE(morphed.columns3D == selected.columns3D);
+    REQUIRE(morphed.compactPreview == selected.compactPreview);
+    REQUIRE(morphed.dspPrep == selected.dspPrep);
+
+    node.parameters.push_back({ "red", "Red", "0.31" });
+    model.syncFromNode(node);
+    const TrimeshDerivedRevisions depthMorphed = model.getDerivedRevisions();
+
+    REQUIRE(depthMorphed.sliceRasterization > morphed.sliceRasterization);
+    REQUIRE(depthMorphed.interceptsRails > morphed.interceptsRails);
+    REQUIRE(depthMorphed.columns3D > morphed.columns3D);
+    REQUIRE(depthMorphed.compactPreview > morphed.compactPreview);
+    REQUIRE(depthMorphed.dspPrep > morphed.dspPrep);
 
     auto editedMesh = TrimeshMeshFactory::createDefaultMesh("RevisionMesh");
     editedMesh->getVerts()[2]->values[Vertex::Amp] = 0.17f;
@@ -1227,14 +1998,14 @@ TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][n
     model.syncFromNode(node);
     const TrimeshDerivedRevisions edited = model.getDerivedRevisions();
 
-    REQUIRE(edited.aggregate > morphed.aggregate);
-    REQUIRE(edited.meshContent > morphed.meshContent);
-    REQUIRE(edited.selectedControl > morphed.selectedControl);
-    REQUIRE(edited.sliceRasterization > morphed.sliceRasterization);
-    REQUIRE(edited.interceptsRails > morphed.interceptsRails);
-    REQUIRE(edited.columns3D > morphed.columns3D);
-    REQUIRE(edited.compactPreview > morphed.compactPreview);
-    REQUIRE(edited.dspPrep > morphed.dspPrep);
+    REQUIRE(edited.aggregate > depthMorphed.aggregate);
+    REQUIRE(edited.meshContent > depthMorphed.meshContent);
+    REQUIRE(edited.selectedControl > depthMorphed.selectedControl);
+    REQUIRE(edited.sliceRasterization > depthMorphed.sliceRasterization);
+    REQUIRE(edited.interceptsRails > depthMorphed.interceptsRails);
+    REQUIRE(edited.columns3D > depthMorphed.columns3D);
+    REQUIRE(edited.compactPreview > depthMorphed.compactPreview);
+    REQUIRE(edited.dspPrep > depthMorphed.dspPrep);
 }
 
 TEST_CASE("Trimesh node model applies one complete topology snapshot", "[cycle-v2][nodes][trimesh]") {
@@ -1332,9 +2103,9 @@ TEST_CASE("Trimesh node model preserves live mesh pointers for equivalent public
 
 TEST_CASE("Trimesh guide attachment menu lists document Guide resources", "[cycle-v2][nodes][trimesh]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
-    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
-    REQUIRE(GraphEditor().assignGuideCurveToTrimeshVertexParameter(
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GuideGraphEditor().assignGuideCurveToMeshComponent(
             graph,
             "guide2",
             "waveMesh",
@@ -1358,7 +2129,7 @@ TEST_CASE("Trimesh guide attachment menu lists document Guide resources", "[cycl
     REQUIRE(items[3].label == "G2");
     REQUIRE(items[3].guideId == "guide2");
     REQUIRE(items[3].attached);
-    REQUIRE(GraphEditor().detachGuideCurveFromTrimeshVertexParameter(
+    REQUIRE(GuideGraphEditor().detachGuideCurveFromMeshComponent(
             graph, "waveMesh", 2, "amp").succeeded());
     REQUIRE(graph.getGuideAssignments().empty());
 }
@@ -1568,6 +2339,51 @@ TEST_CASE(
     mesh->destroy();
 }
 
+TEST_CASE("Diagnostic trimesh grids match prewarmed grids without preparation bakes",
+        "[cycle-v2][nodes][trimesh][complexity][parity]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh();
+    const MorphPosition center(0.37f, 0.42f, 0.63f);
+    constexpr size_t columnCount = 64;
+    constexpr size_t rowCount = 128;
+
+    for (const PortDomain domain : {
+            PortDomain::TimeSignal,
+            PortDomain::SpectralMagnitudeSignal,
+            PortDomain::SpectralPhaseSignal
+    }) {
+        TrimeshGridwiseDsp prewarmed;
+        TrimeshGridwiseDsp diagnostic;
+        prewarmed.prepare(
+                *mesh, center, Vertex::Red, columnCount, rowCount, domain);
+        diagnostic.prepare(
+                *mesh, center, Vertex::Red, columnCount, rowCount, domain, false);
+        REQUIRE(prewarmed.counters().warmupBakeCount == columnCount);
+        REQUIRE(diagnostic.counters().warmupBakeCount == 0);
+
+        std::vector<float> expected(columnCount * rowCount);
+        std::vector<float> actual(columnCount * rowCount);
+        REQUIRE(prewarmed.renderColumnsInto(
+                *mesh,
+                center,
+                Vertex::Red,
+                columnCount,
+                { expected.data(), (int) expected.size() },
+                domain));
+        REQUIRE(diagnostic.renderColumnsInto(
+                *mesh,
+                center,
+                Vertex::Red,
+                columnCount,
+                { actual.data(), (int) actual.size() },
+                domain));
+        REQUIRE(actual == expected);
+        REQUIRE(prewarmed.counters().bakeCount == columnCount);
+        REQUIRE(diagnostic.counters().bakeCount == columnCount);
+    }
+
+    mesh->destroy();
+}
+
 TEST_CASE("Trimesh panel data source adapts node grid data to Panel3D columns", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",
@@ -1599,6 +2415,40 @@ TEST_CASE("Trimesh panel data source adapts node grid data to Panel3D columns", 
     REQUIRE(columns.back().x == Catch::Approx(1.f));
     REQUIRE(columns.front().get() == columnArray.get());
     REQUIRE(columns.back().get() == columnArray.get() + 64);
+}
+
+TEST_CASE("Spectral partials sample the 3D grid column at the morph position",
+        "[cycle-v2][nodes][trimesh][expanded][spectral]") {
+    Node node { "mesh", NodeKind::TrilinearMesh, {}, {}, {}, {}, {} };
+    TrimeshNodeModel model;
+    TrimeshPanelDataSource source;
+    model.syncFromNode(node);
+    for (const PortDomain domain : {
+            PortDomain::SpectralMagnitudeSignal,
+            PortDomain::SpectralPhaseSignal }) {
+        source.rebuild(
+                model,
+                16,
+                5,
+                TrimeshRenderProfile::fromDomain(domain),
+                48,
+                model.getPrimaryViewAxis());
+
+        std::vector<float> partials;
+        int midiNote {};
+        REQUIRE(source.copyColumnAtMorph(0.49f, partials, midiNote));
+        const Column& middle = source.getColumns()[2];
+        REQUIRE(midiNote == middle.midiKey);
+        REQUIRE(partials.size() == (size_t) middle.size());
+        REQUIRE(std::equal(partials.begin(), partials.end(), middle.get()));
+
+        REQUIRE(source.copyColumnAtMorph(1.f, partials, midiNote));
+        const Column& last = source.getColumns().back();
+        REQUIRE(midiNote == last.midiKey);
+        REQUIRE(midiNote != middle.midiKey);
+        REQUIRE(std::equal(partials.begin(), partials.end(), last.get()));
+    }
+    REQUIRE(source.getRenderCounters().surfaceRebuilds == 2);
 }
 
 TEST_CASE("Trimesh Panel3D reads node-backed columns through lib data retriever", "[cycle-v2][nodes][trimesh]") {
@@ -1677,6 +2527,9 @@ TEST_CASE("Hosted Trimesh point drag defers mesh replacement across publications
         "[cycle-v2][nodes][trimesh][interaction]") {
     ScopedJuceInitialiser_GUI juce;
     Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto sourceMesh = TrimeshMeshFactory::createDefaultMesh("hosted-drag-test");
+    node.model = TrimeshNodeModelState::copyOf(*sourceMesh, 2);
+    sourceMesh->destroy();
     TrimeshPanelBridge bridge;
     bridge.syncFromNode(node, 320, 96);
 
@@ -1751,6 +2604,56 @@ TEST_CASE("Hosted Trimesh point drag defers mesh replacement across publications
     REQUIRE(bridge.applyPreparedGuides(preparedGuides()));
 }
 
+TEST_CASE("Hosted Trimesh 2D point drag stops before the next line",
+        "[cycle-v2][nodes][trimesh][collision][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto sourceMesh = TrimeshMeshFactory::createDefaultMesh("point-collision-test");
+    node.model = TrimeshNodeModelState::copyOf(*sourceMesh, 2);
+    sourceMesh->destroy();
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(node, 320, 96);
+
+    Component* host = bridge.getPanel2DHostComponent();
+    host->setBounds(0, 0, 640, 280);
+    host->addToDesktop(ComponentPeer::windowIsTemporary);
+    host->setVisible(true);
+    bridge.syncFromNode(node, 320, 96);
+    const auto snapshot = bridge.getInteractor2D().rasterizerSnapshot();
+    REQUIRE(snapshot.intercepts().size() >= 4);
+    const Intercept& intercept = snapshot.intercepts()[snapshot.intercepts().size() / 2];
+    const Point<float> source(
+            bridge.getPanel2D().sx(intercept.x),
+            bridge.getPanel2D().sy(intercept.y));
+    host->mouseMove(panelMouseEvent(*host, source, {}, source, false));
+    host->mouseDown(panelMouseEvent(
+            *host, source, ModifierKeys::leftButtonModifier, source, false));
+    const auto& selected = bridge.getInteractor2D().getSelected();
+    REQUIRE(selected.size() == 1);
+    Vertex* movedVertex = selected.front();
+    const float startingPhase = movedVertex->values[Vertex::Phase];
+    const auto next = std::find_if(
+            snapshot.intercepts().begin(),
+            snapshot.intercepts().end(),
+            [startingPhase](const Intercept& candidate) {
+                return candidate.x > startingPhase + 0.02f;
+            });
+    REQUIRE(next != snapshot.intercepts().end());
+    const float nextLinePhase = next->x;
+    Point<float> destination = source;
+    for (int step = 1; step <= 12; ++step) {
+        const float phase = startingPhase
+                + (nextLinePhase + 0.08f - startingPhase) * (float) step / 12.f;
+        destination.x = bridge.getPanel2D().sx(phase);
+        host->mouseDrag(panelMouseEvent(
+                *host, destination, ModifierKeys::leftButtonModifier, source, true));
+    }
+    host->mouseUp(panelMouseEvent(*host, destination, {}, source, true));
+
+    REQUIRE(movedVertex->values[Vertex::Phase] > startingPhase);
+    REQUIRE(movedVertex->values[Vertex::Phase] < nextLinePhase);
+}
+
 TEST_CASE("Trimesh hover follows the closest intercept without changing selection",
         "[cycle-v2][nodes][trimesh][interaction]") {
     ScopedJuceInitialiser_GUI juce;
@@ -1810,6 +2713,12 @@ TEST_CASE("Trimesh highlighted curve wins gesture routing over a nearby intercep
     auto move = panelMouseEvent(*host, position, {}, position, false);
     interactor.mouseMove(move);
     REQUIRE(interactor.state.mouseFlags[PanelState::WithinReshapeThresh]);
+    const Point<float> outsideCurve = position.translated(0.f, 12.f);
+    interactor.mouseMove(panelMouseEvent(
+            *host, outsideCurve, {}, outsideCurve, false));
+    REQUIRE_FALSE(interactor.state.mouseFlags[PanelState::WithinReshapeThresh]);
+    interactor.mouseMove(move);
+    REQUIRE(interactor.state.mouseFlags[PanelState::WithinReshapeThresh]);
     auto down = panelMouseEvent(
             *host,
             position,
@@ -1841,6 +2750,40 @@ TEST_CASE("Trimesh highlighted curve wins gesture routing over a nearby intercep
     REQUIRE(bridge.getModel().currentMesh().getVerts()[(size_t) selectedVertexIndex]
             == curveVertex);
     REQUIRE(curveVertex->values[Vertex::Curve] != Catch::Approx(initialCurve));
+}
+
+TEST_CASE("Trimesh shift-left drag remains a box selection in both editor views",
+        "[cycle-v2][nodes][trimesh][interaction][box-selection]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(node, 320, 96);
+
+    for (const bool view3D : { false, true }) {
+        Component* host = view3D
+                ? bridge.getPanel3DHostComponent()
+                : bridge.getPanel2DHostComponent();
+        host->setBounds(0, 0, 640, 280);
+        bridge.syncFromNode(node, 320, 96);
+        Interactor& interactor = view3D
+                ? static_cast<Interactor&>(bridge.getInteractor3D())
+                : static_cast<Interactor&>(bridge.getInteractor2D());
+        const Point<float> origin(80.f, 80.f);
+        const Point<float> destination(180.f, 160.f);
+        const ModifierKeys modifiers = ModifierKeys::leftButtonModifier
+                | ModifierKeys::shiftModifier;
+
+        interactor.mouseDown(panelMouseEvent(
+                *host, origin, modifiers, origin, false));
+        REQUIRE(interactor.state.actionState == PanelState::BoxSelecting);
+
+        interactor.mouseDrag(panelMouseEvent(
+                *host, destination, modifiers, origin, true));
+        REQUIRE(interactor.state.actionState == PanelState::BoxSelecting);
+
+        interactor.mouseUp(panelMouseEvent(
+                *host, destination, {}, origin, true));
+    }
 }
 
 TEST_CASE("Spectral Trimesh panels share pitch-dependent LogRegions coordinates",
@@ -1878,40 +2821,50 @@ TEST_CASE("Spectral Trimesh panels share pitch-dependent LogRegions coordinates"
     }
 }
 
-TEST_CASE("Trimesh preview pitch positions whichever morph axis owns key scale",
+TEST_CASE("Trimesh mapped morph edits move the slider and spectral preview pitch",
         "[cycle-v2][nodes][trimesh][spectral][key-scale]") {
     ScopedJuceInitialiser_GUI juce;
     Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
     TrimeshPanelBridge bridge;
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal));
+    bridge.setPreviewKeyScaleAxis(Vertex::Red);
+    bridge.setPreviewMidiNote(72);
 
-    bridge.setPreviewKeyScaleAxis(Vertex::Time);
-    bridge.setPreviewMidiNote(48);
-    bridge.syncFromNode(node, 10, 3);
-    const float c3Position = ModulationSource::normalizeKey(
-            48,
-            Constants::LowestMidiNote,
-            Constants::HighestMidiNote);
-    REQUIRE(bridge.getModel().getMorphPosition().time.getCurrentValue()
-            == Catch::Approx(c3Position));
-    REQUIRE(bridge.getModel().getMorphPosition().red.getCurrentValue()
-            == Catch::Approx(c3Position));
+    for (const float value : { 0.2f, 0.8f }) {
+        for (auto& parameter : node.parameters) {
+            if (parameter.id == "red") {
+                parameter.value = String(value, 6);
+            }
+        }
+        bridge.syncFromNode(node, 10, 3);
+
+        REQUIRE(bridge.getModel().getMorphPosition().red.getCurrentValue()
+                == Catch::Approx(value));
+        const int expectedNote = Arithmetic::getGraphicNoteForValue(
+                value,
+                Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote));
+        REQUIRE((int) bridge.getDataSource().getColumns().front().midiKey
+                == expectedNote);
+        REQUIRE(bridge.getDataSource().getColumns().front().size()
+                == LogRegionMapping(expectedNote).regionSize());
+    }
 
     bridge.setPreviewKeyScaleAxis(Vertex::Blue);
-    bridge.setPreviewMidiNote(72);
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == "blue") {
+            parameter.value = "0.1";
+        }
+    }
     bridge.syncFromNode(node, 10, 3);
-    const float c5Position = ModulationSource::normalizeKey(
-            72,
-            Constants::LowestMidiNote,
-            Constants::HighestMidiNote);
-    REQUIRE(bridge.getModel().getMorphPosition().time.getCurrentValue()
-            == Catch::Approx(0.f));
+    REQUIRE(bridge.getModel().getMorphPosition().red.getCurrentValue()
+            == Catch::Approx(0.8f));
     REQUIRE(bridge.getModel().getMorphPosition().blue.getCurrentValue()
-            == Catch::Approx(c5Position));
-
-    bridge.setPreviewMidiNote(Constants::HighestMidiNote);
-    bridge.syncFromNode(node, 10, 3);
-    REQUIRE(bridge.getModel().getMorphPosition().blue.getCurrentValue()
-            == Catch::Approx(1.f));
+            == Catch::Approx(0.1f));
+    REQUIRE((int) bridge.getDataSource().getColumns().front().midiKey
+            == Arithmetic::getGraphicNoteForValue(
+                    0.1f,
+                    Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote)));
 }
 
 TEST_CASE("Spectral Trimesh columns span pitch only on the key-scale primary axis",
@@ -1937,11 +2890,16 @@ TEST_CASE("Spectral Trimesh columns span pitch only on the key-scale primary axi
     bridge.setPreviewKeyScaleAxis(Vertex::Red);
     bridge.syncFromNode(node, 10, 5);
     const auto& nonKeyColumns = bridge.getDataSource().getColumns();
+    const int redMorphNote = Arithmetic::getGraphicNoteForValue(
+            NodeParameterMap(node).floatValue("red", 0.5f),
+            Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote));
     REQUIRE_FALSE(bridge.getPanel3D().willAdjustSurfaceColumns());
     REQUIRE(std::all_of(
             nonKeyColumns.begin(),
             nonKeyColumns.end(),
-            [](const Column& column) { return (int) column.midiKey == 72; }));
+            [redMorphNote](const Column& column) {
+                return (int) column.midiKey == redMorphNote;
+            }));
 
     for (auto& parameter : node.parameters) {
         if (parameter.id == "primaryAxis") {
@@ -1953,6 +2911,49 @@ TEST_CASE("Spectral Trimesh columns span pitch only on the key-scale primary axi
     REQUIRE(bridge.getPanel3D().willAdjustSurfaceColumns());
     REQUIRE((int) redColumns.front().midiKey == Constants::LowestMidiNote);
     REQUIRE((int) redColumns.back().midiKey == Constants::HighestMidiNote);
+
+    const std::vector<float> redSurface = bridge.getRenderData().linearFrequencySurface;
+    REQUIRE(*std::max_element(redSurface.begin(), redSurface.end()) > 0.05f);
+    const int sampledColumn = 3;
+    const float columnPosition = (float) sampledColumn / 4.f;
+    const int columnNote = Arithmetic::getGraphicNoteForValue(
+            columnPosition,
+            Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote));
+    const int harmonicCount = LogRegionMapping(columnNote).regionSize();
+    std::vector<float> directHarmonics((size_t) harmonicCount);
+    TrimeshBlockwiseDsp directDsp;
+    directDsp.setMesh(&bridge.getModel().getMeshForPanel());
+    directDsp.setCyclic(false);
+    directDsp.setPrimaryViewAxis(Vertex::Red);
+    directDsp.setMorphPosition(TrimeshGridwiseDsp::morphForColumn(
+            bridge.getModel().getMorphPosition(),
+            Vertex::Red,
+            (size_t) sampledColumn,
+            5));
+    directDsp.setFrequencyMidiNote(columnNote);
+    directDsp.renderCycleInto(
+            { directHarmonics.data(), harmonicCount },
+            PortDomain::SpectralMagnitudeSignal);
+    const size_t columnOffset = (size_t) sampledColumn
+            * (size_t) bridge.getRenderData().rows;
+    for (int harmonic = 0; harmonic < harmonicCount; ++harmonic) {
+        REQUIRE(redSurface[columnOffset + (size_t) harmonic]
+                == Catch::Approx(directHarmonics[(size_t) harmonic]));
+    }
+
+    for (const float value : { 0.2f, 0.8f }) {
+        for (auto& parameter : node.parameters) {
+            if (parameter.id == "red") {
+                parameter.value = String(value, 6);
+            }
+        }
+        bridge.syncFromNode(node, 10, 5);
+        REQUIRE(bridge.getRenderData().linearFrequencySurface == redSurface);
+        REQUIRE((int) bridge.getDataSource().getColumns().front().midiKey
+                == Constants::LowestMidiNote);
+        REQUIRE((int) bridge.getDataSource().getColumns().back().midiKey
+                == Constants::HighestMidiNote);
+    }
 }
 
 TEST_CASE("Trimesh panel bridge hosts panel cores without legacy OpenGL leaves", "[cycle-v2][nodes][trimesh]") {
@@ -1964,10 +2965,167 @@ TEST_CASE("Trimesh panel bridge hosts panel cores without legacy OpenGL leaves",
 
     REQUIRE(panel3DHost != nullptr);
     REQUIRE(panel2DHost != nullptr);
-    REQUIRE(bridge.getPanel3D().getComponent() == panel3DHost);
-    REQUIRE(bridge.getPanel2D().getComponent() == panel2DHost);
+    REQUIRE(bridge.getPanel3D().getComponent()->getParentComponent() == panel3DHost);
+    REQUIRE(bridge.getPanel2D().getComponent()->getParentComponent() == panel2DHost);
     REQUIRE(bridge.getPanel3D().getOpenglPanel() == nullptr);
     REQUIRE(bridge.getPanel2D().getOpenglPanel() == nullptr);
+}
+
+TEST_CASE("Spectral Trimesh viewports expose the full editable frequency range",
+        "[cycle-v2][nodes][trimesh][spectral][viewport]") {
+    ScopedJuceInitialiser_GUI juce;
+    TrimeshPanelBridge bridge;
+    auto* grid = dynamic_cast<ZoomPanel*>(bridge.getPanel3DHostComponent());
+    auto* slice = dynamic_cast<ZoomPanel*>(bridge.getPanel2DHostComponent());
+    REQUIRE(grid != nullptr);
+    REQUIRE(slice != nullptr);
+    grid->setBounds(0, 0, 640, 320);
+    slice->setBounds(0, 0, 640, 180);
+
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal));
+    REQUIRE(bridge.getInteractor3D().vertexLimits[Vertex::Phase]
+            == Range<float>(-0.5f, 1.5f));
+    REQUIRE(bridge.getInteractor2D().vertexLimits[Vertex::Phase]
+            == Range<float>(-0.5f, 1.5f));
+    REQUIRE(grid->getComponent(false)->isVisible());
+    REQUIRE(grid->getComponent(true)->isVisible());
+    REQUIRE(dynamic_cast<AmaranthLookAndFeel*>(
+            &grid->getComponent(false)->getLookAndFeel()) != nullptr);
+    REQUIRE(dynamic_cast<AmaranthLookAndFeel*>(
+            &slice->getComponent(true)->getLookAndFeel()) != nullptr);
+    REQUIRE(bridge.getPanel3D().getComponent()->getWidth() == 632);
+    REQUIRE(bridge.getPanel3D().getComponent()->getHeight() == 312);
+    REQUIRE(grid->rect.yMinimum == Catch::Approx(-0.5f));
+    REQUIRE(grid->rect.yMaximum == Catch::Approx(1.5f));
+
+    auto* vertical = dynamic_cast<ScrollBar*>(grid->getComponent(false));
+    REQUIRE(vertical != nullptr);
+    vertical->setCurrentRangeStart(-0.5);
+    MessageManager::getInstance()->runDispatchLoopUntil(50);
+    REQUIRE(grid->rect.y == Catch::Approx(-0.5f));
+    REQUIRE(bridge.getPanel3D().sy(1.5f) == Catch::Approx(3.f));
+
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralPhaseSignal));
+    REQUIRE(bridge.getInteractor3D().vertexLimits[Vertex::Phase]
+            == Range<float>(-0.5f, 1.5f));
+    REQUIRE(grid->rect.y == Catch::Approx(-0.5f));
+
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal));
+    REQUIRE(bridge.getInteractor3D().vertexLimits[Vertex::Phase]
+            == Range<float>(0.f, 1.f));
+    REQUIRE(bridge.getInteractor2D().vertexLimits[Vertex::Phase]
+            == Range<float>(0.f, 1.f));
+    REQUIRE(grid->rect.yMinimum == Catch::Approx(0.f));
+    REQUIRE(grid->rect.yMaximum == Catch::Approx(1.f));
+}
+
+TEST_CASE("Trimesh trackpad scroll pans horizontally and zooms vertically",
+        "[cycle-v2][nodes][trimesh][viewport][trackpad]") {
+    ScopedJuceInitialiser_GUI juce;
+    TrimeshPanelBridge bridge;
+    auto* viewport = dynamic_cast<ZoomPanel*>(bridge.getPanel2DHostComponent());
+    REQUIRE(viewport != nullptr);
+    viewport->setBounds(0, 0, 640, 180);
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal));
+
+    Component* panel = bridge.getPanel2D().getComponent();
+    REQUIRE(panel != nullptr);
+    const auto event = panelMouseEvent(*panel, { 320.f, 80.f }, {}, { 320.f, 80.f }, false);
+    const float originalWidth = viewport->rect.w;
+    const float originalX = viewport->rect.x;
+
+    MouseWheelDetails initialDrift {};
+    initialDrift.deltaY = 0.01f;
+    initialDrift.isSmooth = true;
+    panel->mouseWheelMove(event, initialDrift);
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth));
+
+    MouseWheelDetails sideways {};
+    sideways.deltaX = 0.2f;
+    sideways.deltaY = 0.03f;
+    sideways.isSmooth = true;
+    panel->mouseWheelMove(event, sideways);
+    REQUIRE(viewport->rect.x < originalX);
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth));
+
+    MouseWheelDetails verticalDrift {};
+    verticalDrift.deltaY = 0.03f;
+    verticalDrift.isSmooth = true;
+    panel->mouseWheelMove(event, verticalDrift);
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth));
+
+    const float pannedX = viewport->rect.x;
+    MouseWheelDetails upward {};
+    upward.deltaY = 0.2f;
+    panel->mouseWheelMove(event, upward);
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth / ZoomPanel::zoomRatio));
+
+    const float zoomedWidth = viewport->rect.w;
+    MouseWheelDetails downward {};
+    downward.deltaY = -0.2f;
+    panel->mouseWheelMove(event, downward);
+    REQUIRE(viewport->rect.w > zoomedWidth);
+
+    sideways.deltaX = 10.f;
+    panel->mouseWheelMove(event, sideways);
+    REQUIRE(viewport->rect.x == Catch::Approx(viewport->rect.xMinimum));
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth));
+    REQUIRE(pannedX > viewport->rect.xMinimum);
+
+    auto* gridViewport = dynamic_cast<ZoomPanel*>(bridge.getPanel3DHostComponent());
+    REQUIRE(gridViewport != nullptr);
+    gridViewport->setBounds(0, 0, 640, 320);
+    Component* gridPanel = bridge.getPanel3D().getComponent();
+    REQUIRE(gridPanel != nullptr);
+    const auto gridEvent = panelMouseEvent(
+            *gridPanel, { 320.f, 150.f }, {}, { 320.f, 150.f }, false);
+    gridPanel->mouseWheelMove(gridEvent, upward);
+    const float gridZoomedWidth = gridViewport->rect.w;
+    REQUIRE(gridZoomedWidth < 1.f);
+
+    sideways.deltaX = -0.2f;
+    const float gridX = gridViewport->rect.x;
+    gridPanel->mouseWheelMove(gridEvent, sideways);
+    REQUIRE(gridViewport->rect.x > gridX);
+    REQUIRE(gridViewport->rect.w == Catch::Approx(gridZoomedWidth));
+}
+
+TEST_CASE("Smooth trackpad zoom uses one third of a wheel step per event",
+        "[cycle-v2][nodes][trimesh][viewport][trackpad]") {
+    ScopedJuceInitialiser_GUI juce;
+    TrimeshPanelBridge bridge;
+    auto* viewport = dynamic_cast<ZoomPanel*>(bridge.getPanel2DHostComponent());
+    REQUIRE(viewport != nullptr);
+    viewport->setBounds(0, 0, 640, 180);
+
+    Component* panel = bridge.getPanel2D().getComponent();
+    REQUIRE(panel != nullptr);
+    const auto event = panelMouseEvent(*panel, { 320.f, 80.f }, {}, { 320.f, 80.f }, false);
+    const float originalWidth = viewport->rect.w;
+
+    MouseWheelDetails wheel {};
+    wheel.deltaY = 0.03f;
+    wheel.isSmooth = true;
+    panel->mouseWheelMove(event, wheel);
+    const float firstWidth = viewport->rect.w;
+    REQUIRE(firstWidth < originalWidth * 0.94f);
+    REQUIRE(firstWidth > originalWidth * 0.92f);
+
+    wheel.deltaY = 0.2f;
+    for (int index = 0; index < 4; ++index) {
+        panel->mouseWheelMove(event, wheel);
+    }
+    REQUIRE(viewport->rect.w < originalWidth * 0.75f);
+    REQUIRE(viewport->rect.w > originalWidth * 0.6f);
+
+    wheel.deltaY = -0.03f;
+    for (int index = 0; index < 5; ++index) {
+        panel->mouseWheelMove(event, wheel);
+    }
+    REQUIRE(viewport->rect.w == Catch::Approx(originalWidth).margin(0.001f));
 }
 
 TEST_CASE("Trimesh link parameters drive mature linked-vertex interaction",
@@ -1981,9 +3139,9 @@ TEST_CASE("Trimesh link parameters drive mature linked-vertex interaction",
     TrimeshPanelBridge bridge;
     GraphEditor editor;
 
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "link.red", "Link Red", "0").succeeded());
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "link.blue", "Link Blue", "0").succeeded());
     bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
     VertCube* cube = bridge.getModel().getMeshForPanel().getCubes().front();
@@ -1993,13 +3151,13 @@ TEST_CASE("Trimesh link parameters drive mature linked-vertex interaction",
     bridge.getInteractor2D().setMovingVertsFromSelected();
     REQUIRE(bridge.getInteractor2D().getSelectedMovingVerts().size() == 2);
 
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "link.red", "Link Red", "1").succeeded());
     bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
     REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 4);
     REQUIRE(bridge.getInteractor2D().getSelectedMovingVerts().size() == 4);
 
-    REQUIRE(editor.setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "link.blue", "Link Blue", "1").succeeded());
     bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
     REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 8);
@@ -2058,15 +3216,18 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     controls.setNode(node);
     controls.setContentBounds({ 10.f, 42.f, 1380.f, 710.f });
 
-    REQUIRE(controls.getControlRegionCount() == 22);
+    REQUIRE(controls.getControlRegionCount() == 28);
     REQUIRE(controls.getMorphSliderCount() == 3);
     REQUIRE(controls.getOutputScaleSliderCount() == 1);
     REQUIRE(controls.getPrimaryAxisButtonCount() == 3);
     REQUIRE(controls.getLinkToggleButtonCount() == 3);
     REQUIRE(controls.getVertexParameterSliderCount() == 6);
-    REQUIRE(controls.getVertexGuideGainKnobCount() == 3);
-    REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 3);
-    REQUIRE(controls.getNumChildComponents() == 22);
+    REQUIRE(controls.getVertexGuideGainKnobCount() == 6);
+    REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 6);
+    REQUIRE(controls.getNumChildComponents() == 28);
+    Component* link = controls.findChildWithID("trimesh.link.red");
+    REQUIRE(link != nullptr);
+    REQUIRE_FALSE(link->keyPressed(KeyPress(' ')));
     REQUIRE_FALSE(controls.findChildWithID("trimesh.vertex.time")->isEnabled());
     REQUIRE_FALSE(controls.findChildWithID("trimesh.vertex.amp")->isEnabled());
     REQUIRE_FALSE(controls.findChildWithID("trimesh.guide.amp")->isEnabled());
@@ -2117,7 +3278,9 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
             "trimesh.link." + linkToggle.axisValue);
     REQUIRE(keyboardLink != nullptr);
     delegate.linkedAxis = {};
-    REQUIRE(keyboardLink->keyPressed(KeyPress(KeyPress::spaceKey)));
+    REQUIRE_FALSE(keyboardLink->keyPressed(KeyPress(KeyPress::spaceKey)));
+    REQUIRE(delegate.linkedAxis.isEmpty());
+    REQUIRE(keyboardLink->keyPressed(KeyPress(KeyPress::returnKey)));
     REQUIRE(delegate.linkedAxis == linkToggle.axisValue);
 
     const auto& morph = findRegion(TrimeshExpandedHitRegionKind::MorphControl);
@@ -2238,7 +3401,7 @@ TEST_CASE("Trimesh panel bridge maps spectral grids by signal domain",
     REQUIRE(*std::max_element(phase.surface.begin(), phase.surface.end()) <= 1.f);
 }
 
-TEST_CASE("Compact and expanded Trimesh views share mapped spectral data",
+TEST_CASE("Compact and expanded Trimesh views sample the same spectral source",
         "[cycle-v2][nodes][trimesh][compact][expanded][spectral]") {
     ScopedJuceInitialiser_GUI juce;
     Node node {
@@ -2274,9 +3437,54 @@ TEST_CASE("Compact and expanded Trimesh views share mapped spectral data",
         widget.paintExpanded(expandedGraphics, node, expandedImage.getBounds().toFloat());
         const TrimeshRenderData expanded = widget.renderDataForAutomation();
 
+        REQUIRE(compact.domain == expanded.domain);
         REQUIRE(compact.rows == expanded.rows);
-        REQUIRE(compact.columns == expanded.columns);
-        REQUIRE(compact.slice == expanded.slice);
-        REQUIRE(compact.surface == expanded.surface);
+        REQUIRE(compact.columns < expanded.columns);
+        REQUIRE(std::equal(
+                compact.slice.begin(),
+                compact.slice.end(),
+                expanded.slice.begin()));
+        REQUIRE(std::equal(
+                compact.surface.begin(),
+                compact.surface.begin() + compact.rows,
+                expanded.surface.begin()));
     }
+}
+
+TEST_CASE("Compact bipolar spectral surface updates when its shader changes",
+        "[cycle-v2][nodes][trimesh][compact][surface]") {
+    ScopedJuceInitialiser_GUI juce;
+    const int previousStyle = ScalarSurfaceMaterial::bipolarMagnitudeStyleIndex();
+    const Node node { "mesh", NodeKind::TrilinearMesh, {}, {}, {}, {}, {} };
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromSemantic({
+            PortDomain::SpectralMagnitudeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::SpectralMagnitudeBipolar
+    });
+    TrimeshWidget widget;
+    Image original(Image::ARGB, 220, 180, true);
+    Image configured(Image::ARGB, 220, 180, true);
+
+    ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(-1);
+    Graphics originalGraphics(original);
+    widget.paintCompact(originalGraphics, node, original.getBounds().toFloat(), 1.f, profile);
+    const TrimeshRenderData originalData = widget.renderDataForAutomation();
+
+    ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex((int) ScalarSurfaceTimeStyle::IcyHot13);
+    Graphics configuredGraphics(configured);
+    widget.paintCompact(configuredGraphics, node, configured.getBounds().toFloat(), 1.f, profile);
+    const TrimeshRenderData configuredData = widget.renderDataForAutomation();
+    ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(previousStyle);
+
+    bool appearanceChanged = false;
+    for (int y = 0; y < original.getHeight() && !appearanceChanged; ++y) {
+        for (int x = 0; x < original.getWidth(); ++x) {
+            if (original.getPixelAt(x, y) != configured.getPixelAt(x, y)) {
+                appearanceChanged = true;
+                break;
+            }
+        }
+    }
+    REQUIRE(appearanceChanged);
+    REQUIRE(configuredData.surface == originalData.surface);
 }

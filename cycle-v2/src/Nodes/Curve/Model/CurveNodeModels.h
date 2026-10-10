@@ -75,6 +75,7 @@ public:
     const std::vector<FlatCurveVertex>& getVertices() const { return vertices; }
     std::optional<CurveVertexId> selectedVertexId() const { return selection; }
     Vertex* vertexForIdentity(CurveVertexId vertexId) const;
+    std::optional<FlatCurveVertex> pointForMeshVertex(Vertex* vertex) const;
     Vertex* selectedMeshVertex() const;
     uint64_t revision() const { return modelRevision; }
     void setPublicationRevision(uint64_t revisionToUse) { modelRevision = juce::jmax<uint64_t>(1, revisionToUse); }
@@ -111,6 +112,7 @@ public:
     var writeJSON() const;
     bool copyFrom(const EnvelopeNodeModel& other);
     bool equals(const EnvelopeNodeModel& other) const;
+    bool equalsGeometryAndTopology(const EnvelopeNodeModel& other) const;
     bool selectCube(std::optional<EnvelopeCubeId> cubeId);
 
     EnvelopeMesh& getMesh() { return mesh; }
@@ -123,10 +125,6 @@ public:
     void setPublicationRevision(uint64_t revisionToUse) { modelRevision = juce::jmax<uint64_t>(1, revisionToUse); }
 
     bool logarithmic {};
-    float red { 0.5f };
-    float blue { 0.5f };
-    bool redLinked { true };
-    bool blueLinked { true };
 
 private:
     EnvelopeCubeId nextIdentity() const;
@@ -170,8 +168,17 @@ public:
             var editorState = {});
     static std::shared_ptr<const CurveNodeModelState> copyOf(
             const EnvelopeNodeModel& model,
+            float red,
+            float blue,
             uint64_t revision,
             var editorState = {});
+    std::shared_ptr<const CurveNodeModelState> withEnvelopeMorph(
+            float red,
+            float blue,
+            uint64_t revision) const;
+    std::shared_ptr<const CurveNodeModelState> withPointPreview(
+            FlatCurveVertex point,
+            uint64_t revision) const;
 
     String schemaId() const override;
     int schemaVersion() const override;
@@ -180,7 +187,10 @@ public:
     bool equals(const NodeModelState& other) const override;
 
     const FlatCurveModel* flatCurve() const { return flatCurveState.get(); }
+    const std::optional<FlatCurveVertex>& pointPreview() const { return previewPoint; }
     const EnvelopeNodeModel* envelope() const { return envelopeState.get(); }
+    float envelopeRed() const { return envelopeRedValue; }
+    float envelopeBlue() const { return envelopeBlueValue; }
     const var& editorJSON() const { return editorState; }
 
 private:
@@ -197,12 +207,17 @@ private:
             int version,
             uint64_t revision,
             std::shared_ptr<const EnvelopeNodeModel> modelState,
+            float red,
+            float blue,
             var editorState = {});
 
     String schema;
     int version {};
     uint64_t modelRevision {};
+    float envelopeRedValue {};
+    float envelopeBlueValue {};
     std::shared_ptr<const FlatCurveModel> flatCurveState;
+    std::optional<FlatCurveVertex> previewPoint;
     std::shared_ptr<const EnvelopeNodeModel> envelopeState;
     var editorState;
 };
@@ -215,12 +230,23 @@ public:
     int currentVersion() const override;
     NodeModelStatePtr createDefault() const override;
     NodeModelStatePtr readJSON(const var& value, String& error) const override;
+    static NodeModelStatePtr readFlatCurveJSON(
+            const var& value,
+            String& error,
+            const String& modelName = {});
 
 private:
     NodeKind kind;
 };
 
+class GuideCurveModelCodec : public NodeModelCodec {
+public:
+    String schemaId() const override;
+    int currentVersion() const override;
+    NodeModelStatePtr createDefault() const override;
+    NodeModelStatePtr readJSON(const var& value, String& error) const override;
+};
+
 NodeModelStatePtr createDefaultGuideCurveModel();
-NodeModelStatePtr readGuideCurveModelJSON(const var& value, String& error);
 
 }

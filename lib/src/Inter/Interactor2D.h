@@ -27,6 +27,9 @@ public:
     virtual void setExtraElements(float x);
     virtual float getCurveProximityThreshold() const { return 7.f; }
 
+protected:
+    Range<float> adjacentVertexPhaseLimits(Vertex* vert);
+
 private:
     int curveIndexForClosestIntercept(
             const std::vector<Intercept>& intercepts,

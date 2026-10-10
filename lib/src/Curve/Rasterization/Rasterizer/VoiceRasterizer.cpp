@@ -66,6 +66,19 @@ bool VoiceRasterizer::isPreparedFor(const Mesh& candidate) const {
     return preparation.interceptCapacity >= (size_t) candidate.getNumCubes();
 }
 
+void VoiceRasterizer::setCubeResolver(
+        const void* context,
+        CubeResolver resolver) {
+    cubeResolverContext = context;
+    cubeResolver = resolver;
+}
+
+VertCube* VoiceRasterizer::resolveCube(VertCube* cube) const {
+    return cubeResolver != nullptr
+            ? cubeResolver(cubeResolverContext, cube)
+            : cube;
+}
+
 const RenderResult& VoiceRasterizer::renderOrdinary(Mesh* mesh, float phase, WaveformBakeWork* work) {
     activeOutput = ActiveOutput::Ordinary;
     if (!hasPreparedCapacity(mesh)) {
@@ -76,7 +89,11 @@ const RenderResult& VoiceRasterizer::renderOrdinary(Mesh* mesh, float phase, Wav
     setMesh(mesh);
     auto request = getRequest();
     request.waveformWork = work;
-    renderTrilinearWaveform(*mesh, request, phase);
+    renderTrilinearWaveform(
+            *mesh,
+            request,
+            phase,
+            [this](VertCube* cube) { return resolveCube(cube); });
     ++renderDiagnostics.sliceCount;
     ++renderDiagnostics.sortCount;
     ++renderDiagnostics.bakeCount;
@@ -209,7 +226,12 @@ const RenderResult& VoiceRasterizer::renderVoiceSlice(float oscPhase) {
 
     auto& cubes = mesh->getCubes();
     for (int i = 0; i < (int) cubes.size(); ++i) {
-        appendVoiceCubeIntercept(cubes[i], voiceTime, oscPhase, guideApplier, sliceResult.intercepts);
+        appendVoiceCubeIntercept(
+                resolveCube(cubes[i]),
+                voiceTime,
+                oscPhase,
+                guideApplier,
+                sliceResult.intercepts);
     }
 
     std::sort(sliceResult.intercepts.begin(), sliceResult.intercepts.end());

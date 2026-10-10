@@ -3,6 +3,7 @@
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "UI/NodeCanvasScene.h"
@@ -87,7 +88,7 @@ TEST_CASE("Envelope purpose changes output semantics and removes incompatible ed
             { "envelope", "env", false },
             { "multiply", "right", true }).succeeded());
 
-    const auto changed = GraphEditor().setNodeParameter(
+    const auto changed = GraphNodeStateEditor().setNodeParameter(
             graph, "envelope", "purpose", "Purpose", "pitch");
 
     REQUIRE(changed.succeeded());

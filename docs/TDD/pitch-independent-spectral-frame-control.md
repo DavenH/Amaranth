@@ -199,6 +199,7 @@ is an artifact of whole-cycle scheduling.
 A partitioned convolver may bind an impulse-response version to the input block
 that arrived while that version was active:
 
+
 \[
 Z_n = \sum_{p=0}^{P-1} X_{n-p}H_p^{v(n-p)}.
 \]

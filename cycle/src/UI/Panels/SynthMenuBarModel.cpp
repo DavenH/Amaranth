@@ -6,6 +6,7 @@
 #include <Inter/Interactor.h>
 #include <Inter/Interactor3D.h>
 #include <UI/IConsole.h>
+#include <UI/Panels/TimeSurfaceStyles.h>
 #include <UI/MiscGraphics.h>
 #include <Util/Util.h>
 #include <Util/CommonEnums.h>
@@ -21,6 +22,7 @@
 
 #include "../CycleDefs.h"
 #include "../VertexPanels/Waveform2D.h"
+#include "../VertexPanels/Waveform3D.h"
 
 #include "../../App/CycleTour.h"
 #include "../../App/MainAppWindow.h"
@@ -115,6 +117,12 @@ PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String
 		menu.addItem(VertsOnHover, 		"Draw verts only on hover",	true, getSetting(ViewVertsOnlyOnHover) == 1);
 
 		menu.addSeparator();
+
+        {
+            const ScalarSurfaceTimeStyle style = ScalarSurfaceMaterial::timeSurfaceStyle();
+            auto surfaceMenu = TimeSurfaceStyles::menu(style, TimeSurfaceFirst);
+            menu.addSubMenu("Time Surface Colour", surfaceMenu, true);
+        }
 
 		{
 			int viewStage = getSetting(ViewStage);
@@ -287,7 +295,12 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 			getObj(Waveform2D).repaint();
 		} else if (item == DrawScales) {
 			getSetting(DrawScales) ^= true;
-		}
+        } else if (const auto* entry = TimeSurfaceStyles::find(item - TimeSurfaceFirst)) {
+            getObj(Settings).getDocumentSetting(DocSettings::TimeSurfaceStyle) = (int) entry->style;
+            editedSomething = true;
+            getObj(Waveform3D).updateTimeSurfaceStyle();
+            getObj(Updater).update(UpdateSources::SourceWaveform3D, Repaint);
+        }
 
 		/*
 		else if(item == UseOpenGL)

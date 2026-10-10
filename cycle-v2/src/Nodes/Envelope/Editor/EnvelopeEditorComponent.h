@@ -22,6 +22,7 @@ private:
     void layoutEditor() override;
     void syncEditorFromNode() override;
     void applyEditorStateToWidget() override;
+    bool editorInteractionIsSessionOnly(Point<float> position) const override;
     std::vector<NodeParameter> editorControls() const override;
     void appendEditorAutomation(DynamicObject&) const override;
     bool editorMouseMove(Point<float>) override;

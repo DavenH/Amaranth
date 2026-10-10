@@ -4,6 +4,7 @@
 #include <Obj/MorphPosition.h>
 
 #include <vector>
+#include <memory>
 
 #include "Runtime/NodeAudioProcessor.h"
 #include "Nodes/Guide/GuideCurveSnapshotProvider.h"
@@ -12,15 +13,19 @@ class Mesh;
 
 namespace CycleV2 {
 
+class TrimeshMeshDeltaOverlay;
+
 struct TrimeshConfiguration final : public INodeDspConfiguration {
     AudioModuleRole role() const override { return processorRole; }
 
     AudioModuleRole processorRole { AudioModuleRole::MeshSource };
     std::shared_ptr<const Mesh> mesh;
+    std::shared_ptr<const TrimeshMeshDeltaOverlay> deltaOverlay;
     MorphPosition morph { 0.5f, 0.5f, 0.5f };
     int primaryViewAxis { Vertex::Time };
     float gain { 1.f };
     float range { 0.5f };
+    bool phaseVelocity {};
     bool enabled { true };
     bool bipolar {};
     bool scratchSourceEnabled { true };
@@ -38,6 +43,7 @@ public:
             PortDomain domain);
     void prepareSampling(size_t maximumFrameCount);
     void setMesh(Mesh* meshToRender);
+    void setDeltaOverlay(std::shared_ptr<const TrimeshMeshDeltaOverlay> overlay);
     void setMorphPosition(const MorphPosition& morphPosition);
     void setPrimaryViewAxis(int axis);
     void setCyclic(bool shouldWrap);
@@ -65,6 +71,10 @@ public:
             SignalPayload& output);
     void renderCycleInto(Buffer<float> output, PortDomain domain);
     void renderCycleWithNoiseSeedOffsetInto(
+            Buffer<float> output,
+            PortDomain domain,
+            int noiseSeedOffset);
+    void renderHarmonicsWithNoiseSeedOffsetInto(
             Buffer<float> output,
             PortDomain domain,
             int noiseSeedOffset);
@@ -101,6 +111,7 @@ private:
     Rasterization::TrilinearMeshRasterizer rasterizer;
     GuideCurveProvider* guideCurveProvider {};
     Mesh* mesh {};
+    std::shared_ptr<const TrimeshMeshDeltaOverlay> deltaOverlay;
     bool hasVoiceLifecycleSeed {};
     uint32_t voiceLifecycleSeed {};
     int voiceGuideSeedCount { -1 };

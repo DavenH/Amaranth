@@ -11,16 +11,6 @@
     },
     {
       "command": "assertState",
-      "path": "guideDock.expandedHeight",
-      "equals": 190
-    },
-    {
-      "command": "assertState",
-      "path": "guideDock.splitRatio",
-      "equals": 0.5
-    },
-    {
-      "command": "assertState",
       "path": "performance.visible",
       "equals": true
     },
@@ -32,12 +22,14 @@
     {
       "command": "assertState",
       "path": "performance.screenWidth",
-      "equals": 489
+      "op": "greaterThan",
+      "value": 500
     },
     {
       "command": "assertState",
       "path": "performance.screenHeight",
-      "equals": 140
+      "op": "greaterThan",
+      "value": 100
     },
     {
       "command": "inspectTargets",

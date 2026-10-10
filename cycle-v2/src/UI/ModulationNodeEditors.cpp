@@ -1,8 +1,7 @@
 #include "UI/ModulationNodeEditors.h"
 
 #include "Graph/NodeParameterMap.h"
-#include "UI/CanvasChromeMetrics.h"
-#include "UI/EditorChromeLayout.h"
+#include "UI/ExpandedEditorChrome.h"
 
 namespace CycleV2 {
 
@@ -174,10 +173,13 @@ public:
             NodeEditorCommands& commands,
             NodeEditorPresentation& presentationToUse) :
             kind         (kindToUse)
-        ,   presentation (presentationToUse) {
-        closeButton.setButtonText(String::fromUTF8("\xc3\x97"));
-        closeButton.onClick = [this] { presentation.closeNodeEditor(); };
-        addAndMakeVisible(closeButton);
+        ,   presentation (presentationToUse)
+        ,   chrome       (*this,
+                    kind == NodeKind::ModulationTriple
+                            ? "MODULATION TRIPLE"
+                            : "MODULATION",
+                    "modulationEditor",
+                    [this] { presentation.closeNodeEditor(); }) {
 
         if (kind == NodeKind::ModulationTriple) {
             addRow("yellow", "Y", "voiceTime", commands);
@@ -195,24 +197,11 @@ public:
     }
 
     void paint(Graphics& graphics) override {
-        graphics.fillAll(Colour(0xff11151b));
-        graphics.setColour(Colour(0xff2b3340));
-        graphics.drawRoundedRectangle(
-                getLocalBounds().toFloat().reduced(0.5f),
-                CanvasChromeMetrics::panelCornerRadius,
-                CanvasChromeMetrics::restingBorderWidth);
-        graphics.setColour(Colour(0xffeef2f6));
-        graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize));
-        const auto header = fullEditorHeaderLayout(getLocalBounds(), false);
-        graphics.drawText(
-                kind == NodeKind::ModulationTriple ? "MODULATION TRIPLE" : "MODULATION",
-                header.title,
-                Justification::centredLeft);
+        chrome.paint(graphics);
     }
 
     void resized() override {
-        const auto header = fullEditorHeaderLayout(getLocalBounds(), false);
-        closeButton.setBounds(header.close);
+        chrome.resized();
         Rectangle<int> area = getLocalBounds().reduced(16);
         area.removeFromTop(34);
         const int rowHeight = jmax(48, area.getHeight() / jmax(1, (int) rows.size()));
@@ -250,7 +239,7 @@ private:
 
     NodeKind kind;
     NodeEditorPresentation& presentation;
-    TextButton closeButton;
+    ExpandedEditorChrome chrome;
     std::vector<std::unique_ptr<ModulationSourceRow>> rows;
 };
 

@@ -1,6 +1,67 @@
 # Cycle V2 Trimesh Vertex Gesture Semantics
 
-Status: Implemented after native regression correction (2026-09-11)
+Status: Implemented after collision control and 2D drag corrections (2026-10-07)
+
+## Selected-vertex control collision regression (2026-10-07)
+
+The selected-vertex value controls use `TrimeshVertexEditCore` to apply an
+invertible value delta, but this path does not consult the mature
+`CollisionDetector` used by pointer dragging. It can therefore publish a
+crossing mesh even when the equivalent pointer movement is rejected. The
+model owns the value mutation and should validate the candidate with the
+panel's existing detector before advancing its content revision. The widget
+passes that detector to the model; it does not copy the detector's geometry
+rules. On failure, apply the delta's inverse and leave the model revision,
+undo transaction, and presentation unchanged. Guide gain and amplitude
+controls do not alter line collision topology.
+
+Completion: an actual colliding candidate is rejected through the widget,
+with the vertex value and model content revision intact; a legal candidate
+still applies; pointer dragging retains the mature detector's behavior.
+
+Architecture review: `TrimeshNodeModel` owns the candidate value and revision,
+`TrimeshWidget` supplies the interactor's existing detector, and
+`NodeCanvasAuthoring` closes a rejected discrete edit. No collision geometry
+or UI gesture policy was copied. The widget (843 lines) and authoring service
+(960 lines) are above the size review trigger, but this slice adds only a
+detector argument and one cleanup call to their existing responsibilities.
+The collision decision has one owner in `CollisionDetector`; the old
+unchecked direct value path is the deletion target.
+
+## 2D point drag crossing regression (2026-10-07)
+
+A hosted single-point gesture moves a vertex from phase 0.18 past the next
+displayed line at 0.31 and leaves it at 0.3865. The existing detector reports
+the final position valid, so final-state collision validation misses a move
+that passes through a neighboring line. `Interactor2D` already owns an
+adjacent-intercept phase limit used while Alt is pressed. Extract that exact
+limit computation without changing Cycle 1's Alt condition, then have the
+Trimesh 2D specialization use it for a single selected point by default.
+The interactor remains authoritative for the movement and detector; no mesh
+geometry algorithm belongs in the bridge or widget.
+
+Cycle 1 cost: pointer-down resolves the intercept and selected linked
+vertices; each movement translates the selected vertices and validates their
+owned cubes against the mesh; commit publishes one edit. The Trimesh rule
+adds one scan of displayed intercepts for the active vertex on a single-point
+movement, which is bounded by the same mesh size already examined by collision
+validation. Linked vertices and multi-selection retain the original path. The previous V2
+fallback that allowed a point to pass its neighboring intercept is the
+deletion target. Verify native and hosted drags, including a legal movement,
+selection stability, and a crossing attempt.
+
+Regression evidence: a test proves that changing vertex 0's phase to 0.5
+collides according to the mature detector, then verifies that the widget
+rejects it and accepts a nearby legal value. A command-service sequence
+verifies that rejection leaves no undo entry and a later legal update in the
+same gesture commits and undoes. The hosted point-drag test passes after its
+fixture seeds a nonempty mesh. A separate hosted gesture reproduces a point
+crossing an adjacent line before the correction and confirms that a legal
+movement stops short afterward. The native `trimesh-point-drag` and
+`trimesh-curve-drag` sequences and the existing vertex-control automation
+fixture pass. The broader native `trimesh` sequence passes the curve and
+collision sections, then stops at an unrelated amplitude rail click recorded
+in `ui-bugs.md`.
 
 ## Reopened Defect
 

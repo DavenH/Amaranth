@@ -1,0 +1,29 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/saxophone.cyclegraph" },
+    { "command": "pointer", "targetId": "probeRefreshMode", "event": "click" },
+    { "command": "assertState", "path": "probeRefreshMode", "equals": "Live" },
+    { "command": "assertNodeParameter", "nodeId": "morph", "parameterId": "blueSource", "equals": "inverseVelocity" },
+    { "command": "assertState", "path": "probeCount", "equals": 2 },
+    { "command": "assertState", "path": "documentDirty", "equals": false },
+    { "command": "assertState", "path": "previewRenderCount", "equals": 2 },
+    { "command": "snapshotState" },
+    { "command": "resetCanvasPerformance" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "down", "targetY": 0.8 },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "drag", "targetY": 0.1 },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "up", "targetY": 0.1, "waitForIdle": true, "idleDelayMs": 500 },
+    { "command": "assertState", "path": "documentDirty", "equals": false },
+    { "command": "assertState", "path": "previewRenderCount", "equals": 2 },
+    { "command": "snapshotState" },
+    { "command": "inspectCanvasPerformance" },
+    { "command": "pointer", "targetId": "probeRefreshMode", "event": "click" },
+    { "command": "assertState", "path": "probeRefreshMode", "equals": "On Release" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "down", "targetY": 0.1 },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "drag", "targetY": 0.7 },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "up", "targetY": 0.7, "waitForIdle": true, "idleDelayMs": 500 },
+    { "command": "assertState", "path": "documentDirty", "equals": false },
+    { "command": "assertState", "path": "previewRenderCount", "equals": 2 },
+    { "command": "snapshotState" }
+  ],
+  "quit": true
+}

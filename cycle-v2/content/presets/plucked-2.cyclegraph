@@ -6,14 +6,22 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 945.59998, "y": 826.0 },
-            "parameters": { "octave": 2, "voiceLength": 0.419847328, "pitch": 0.0, "portamento": false, "oversampling": "1x", "controlInterval": "256" }
+            "position": { "x": 1063.83557, "y": 758.0 },
+            "parameters": {
+                "octave": 2,
+                "voiceLength": 0.419847328,
+                "pitch": 0.0,
+                "portamento": false,
+                "pitchIndependentSpectralControl": false,
+                "oversampling": "1x",
+                "controlInterval": "256"
+            }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 585.59998, "y": 837.0 },
+            "position": { "x": 697.83557, "y": 758.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -30,7 +38,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1325.59998, "y": 886.0 },
+            "position": { "x": 2161.13135, "y": 724.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -206,7 +214,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2222.3999, "y": 1084.0 },
+            "position": { "x": 2151.9314, "y": 1074.02356 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -297,8 +305,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5 ]
                 }
             }
@@ -307,7 +313,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 898.5 },
+            "position": { "x": 1761.08655, "y": 758.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -385,8 +391,6 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4 ]
                 }
             }
@@ -402,7 +406,7 @@
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 1231.59998, "y": 1424.0 },
+            "position": { "x": 795.1283, "y": 1172.09351 },
             "parameters": { "processingScope": "global", "enabled": true, "size": 0.142857143, "post": 0.432, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
@@ -531,21 +535,21 @@
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 1535.59998, "y": 1424.0 },
+            "position": { "x": 1099.1283, "y": 1172.09351 },
             "parameters": { "enabled": true, "time": 0.372000006, "feedback": 0.24, "wet": 0.5, "spin": 0.568, "spinIters": 0.616000003 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 1799.59998, "y": 1424.0 },
+            "position": { "x": 1363.1283, "y": 1172.09351 },
             "parameters": { "gain": 0.519083969 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 993.59998, "y": 1424.0 },
+            "position": { "x": 557.1283, "y": 1172.09351 },
             "parameters": {}
         },
         {
@@ -568,21 +572,21 @@
             "dcOffset": 0.0,
             "phase": 0.0,
             "noiseSeed": 5431,
-            "revision": 1,
+            "revision": 2,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 2,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 2,
                     "vertices": [
-                        { "id": 1, "x": 0.0525, "y": 0.5, "curve": 0.0 },
-                        { "id": 2, "x": 0.06731, "y": 0.52128, "curve": 0.25856 },
+                        { "id": 1, "x": 0.03997, "y": 0.49763, "curve": 0.0 },
+                        { "id": 2, "x": 0.05478, "y": 0.51891, "curve": 0.25856 },
                         { "id": 3, "x": 0.9375, "y": 0.5, "curve": 1.0 },
                         { "id": 4, "x": 0.9475, "y": 0.5, "curve": 0.0 },
-                        { "id": 5, "x": 0.11757, "y": 0.02482, "curve": 0.0 }
+                        { "id": 5, "x": 0.10504, "y": 0.02245, "curve": 0.0 }
                     ]
                 }
             }
@@ -611,5 +615,17 @@
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "impulseResponse", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": []
+    "probes": [],
+    "presetPresentation": {
+        "version": 1,
+        "tags": ["Pluck"],
+        "preview": {
+            "mediaType": "image/jpeg",
+            "width": 320,
+            "height": 180,
+            "view": "spectrum",
+            "data": "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"
+        },
+        "patternId": "factory-basic-keys"
+    }
 }

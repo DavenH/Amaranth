@@ -17,6 +17,10 @@ struct InteractionComplexityCounts {
     uint64_t nodeLinearScans {};
     uint64_t parameterLinearScans {};
     uint64_t assignmentLinearScans {};
+    uint64_t meshEditOwnerVisits {};
+    uint64_t validationNodeVisits {};
+    uint64_t validationEdgeVisits {};
+    uint64_t domainTransfers {};
 };
 
 class InteractionComplexityDiagnostics {
@@ -32,6 +36,10 @@ public:
         nodeLinearScans.store(0, std::memory_order_relaxed);
         parameterLinearScans.store(0, std::memory_order_relaxed);
         assignmentLinearScans.store(0, std::memory_order_relaxed);
+        meshEditOwnerVisits.store(0, std::memory_order_relaxed);
+        validationNodeVisits.store(0, std::memory_order_relaxed);
+        validationEdgeVisits.store(0, std::memory_order_relaxed);
+        domainTransfers.store(0, std::memory_order_relaxed);
     }
 
     static InteractionComplexityCounts counts() {
@@ -45,7 +53,11 @@ public:
                 editorStateComparisons.load(std::memory_order_relaxed),
                 nodeLinearScans.load(std::memory_order_relaxed),
                 parameterLinearScans.load(std::memory_order_relaxed),
-                assignmentLinearScans.load(std::memory_order_relaxed)
+                assignmentLinearScans.load(std::memory_order_relaxed),
+                meshEditOwnerVisits.load(std::memory_order_relaxed),
+                validationNodeVisits.load(std::memory_order_relaxed),
+                validationEdgeVisits.load(std::memory_order_relaxed),
+                domainTransfers.load(std::memory_order_relaxed)
         };
     }
 
@@ -61,6 +73,10 @@ public:
     static void recordNodeLinearScan() { ++nodeLinearScans; }
     static void recordParameterLinearScan() { ++parameterLinearScans; }
     static void recordAssignmentLinearScan() { ++assignmentLinearScans; }
+    static void recordMeshEditOwnerVisit() { ++meshEditOwnerVisits; }
+    static void recordValidationNodeVisits(size_t count) { validationNodeVisits += count; }
+    static void recordValidationEdgeVisits(size_t count) { validationEdgeVisits += count; }
+    static void recordDomainTransfer() { ++domainTransfers; }
 
 private:
     static inline std::atomic<uint64_t> graphCopies {};
@@ -73,6 +89,10 @@ private:
     static inline std::atomic<uint64_t> nodeLinearScans {};
     static inline std::atomic<uint64_t> parameterLinearScans {};
     static inline std::atomic<uint64_t> assignmentLinearScans {};
+    static inline std::atomic<uint64_t> meshEditOwnerVisits {};
+    static inline std::atomic<uint64_t> validationNodeVisits {};
+    static inline std::atomic<uint64_t> validationEdgeVisits {};
+    static inline std::atomic<uint64_t> domainTransfers {};
 };
 
 }

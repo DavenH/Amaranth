@@ -1,0 +1,46 @@
+{
+  "version": 2,
+  "input": "peak",
+  "space": "oklab",
+  "aspect": 1.64,
+  "layers": [
+    {
+      "name": "Greyscale amplitude",
+      "enabled": true,
+      "filter": "raw",
+      "sigma": 2,
+      "outer": 8,
+      "axis": "both",
+      "gain": 1,
+      "offset": 0,
+      "opacity": 1,
+      "blend": "normal",
+      "mask": "none",
+      "alpha_boost": 1,
+      "stops": [[0, "#ffffff"], [1, "#000000"]]
+    },
+    {
+      "name": "Icy-hot polarity highlights",
+      "enabled": true,
+      "filter": "highpass",
+      "sigma": 1.5,
+      "outer": 8,
+      "axis": "y",
+      "gain": 6.7,
+      "offset": 0,
+      "opacity": 1,
+      "blend": "colour",
+      "mask": "amplitude",
+      "alpha_boost": 9.5,
+      "colour_source": "original",
+      "colour_gain": 1.1,
+      "colour_offset": 0,
+      "stops": [
+        [0, "#b9f6ff"], [0.15, "#6d96b3"], [0.27, "#1a6191"],
+        [0.35, "#3e3f8e"], [0.42, "#272543"], [0.5, "#151515"],
+        [0.58, "#2e1726"], [0.66, "#580d1d"], [0.73, "#8c463c"],
+        [0.85, "#fba900"], [1, "#ecf4b8"]
+      ]
+    }
+  ]
+}

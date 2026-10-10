@@ -31,7 +31,8 @@ public:
     void advanceCycleEnvelopes(
             int laneIndex,
             int sampleCount,
-            double normalizedTimeIncrement) override;
+            double normalizedTimeIncrement,
+            const PreparedOscillatorProcessContext* context) override;
     bool hasPitchEnvelope() const override {
         return cycleEnvelopes.hasPitchEnvelope();
     }

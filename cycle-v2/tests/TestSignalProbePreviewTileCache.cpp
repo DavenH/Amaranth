@@ -44,6 +44,7 @@ TEST_CASE("Spy preview tile cache reuses only complete presentation keys",
     cachedGraphics.fillAll(Colours::red);
     Image output(Image::ARGB, 220, 180, true);
     Graphics outputGraphics(output);
+    outputGraphics.setColour(Colours::white.withAlpha(0.2f));
     cache.draw(outputGraphics, first);
     REQUIRE(output.getPixelAt(bounds.getCentreX(), bounds.getCentreY()) == Colours::red);
     REQUIRE(cache.endFrame().misses == 1);

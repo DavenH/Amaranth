@@ -1,0 +1,19 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/filter-saw-2.cyclegraph" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "down", "targetY": 0.98 },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "up", "targetY": 0.98 },
+    { "command": "waitForIdle", "idleDelayMs": 800 },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.Note60", "event": "down", "targetY": 0.85 },
+    { "command": "captureLiveAudio", "durationMs": 700, "path": "/private/tmp/cycle-v2-filter-saw-mod-live-low.wav", "rmsGreaterThan": 0.00001, "rmsLessThan": 0.05 },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.Note60", "event": "up", "targetY": 0.85 },
+    { "command": "waitForIdle", "idleDelayMs": 150 },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "down", "targetY": 0.02 },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.ModWheel", "event": "up", "targetY": 0.02 },
+    { "command": "waitForIdle", "idleDelayMs": 800 },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.Note60", "event": "down", "targetY": 0.85 },
+    { "command": "captureLiveAudio", "durationMs": 700, "path": "/private/tmp/cycle-v2-filter-saw-mod-live-high.wav", "rmsGreaterThan": 0.05 },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.Note60", "event": "up", "targetY": 0.85 }
+  ],
+  "quit": true
+}

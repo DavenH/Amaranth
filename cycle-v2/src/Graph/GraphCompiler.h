@@ -127,6 +127,7 @@ struct CompiledVoiceContext {
     std::shared_ptr<const INodeDspConfiguration> pitchEnvelope;
     String pitchEnvelopeNodeId;
     std::vector<float> pitchEnvelopeUnitValues;
+    std::vector<std::vector<float>> pitchEnvelopeUnitValuesByLane;
     std::shared_ptr<const INodeDspConfiguration> unison;
     String defaultScratchNodeId;
     CycleDsp::UnisonVoiceLayout lanes;
@@ -189,6 +190,7 @@ struct GraphExecutionPlan {
     std::vector<CompiledVoiceContext> voiceContexts;
     std::vector<OscillatorRegionPlan> oscillatorRegions;
     std::vector<CompiledSignalProbe> signalProbes;
+    std::optional<CompiledSignalProbe> defaultOutputProbe;
     std::vector<int> voiceMixBufferIndices;
     int globalInputBufferIndex { -1 };
     GraphDependencyIndex dependencyIndex;
@@ -204,6 +206,7 @@ struct GraphCompileResult {
 
 class GraphCompiler {
 public:
+    static std::vector<Edge> implicitVoiceContextEdges(const NodeGraph& graph);
     GraphCompileResult compile(const NodeGraph& graph) const;
     static float outputGainFor(const NodeGraph& graph);
     void refreshSignalProbes(const NodeGraph& graph, GraphExecutionPlan& plan) const;

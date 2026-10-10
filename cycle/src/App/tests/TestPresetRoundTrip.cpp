@@ -17,6 +17,7 @@
 #include <JuceHeader.h>
 
 #include "../Initializer.h"
+#include "../FileManager.h"
 #include <Inter/Interactor.h>
 #include "../../Audio/Effects/Unison.h"
 #include "../../Curve/Rasterization/Rasterizer/GraphicRasterizer.h"
@@ -203,6 +204,16 @@ namespace {
 
         return false;
     }
+}
+
+TEST_CASE("Cycle opens its canonical shipped default preset",
+        "[cycle][preset][default]") {
+    CycleTestHarness harness;
+    auto& fileManager = harness.getRepo().get<FileManager>("FileManager");
+
+    fileManager.openDefaultPreset();
+
+    REQUIRE(File(fileManager.getCurrentPresetName()).getFileName() == "OohAah.cyc");
 }
 
 TEST_CASE("Legacy presets round trip through Document into stable current JSON", "[cycle][preset][roundtrip]") {

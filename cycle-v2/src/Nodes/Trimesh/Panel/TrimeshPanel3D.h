@@ -6,6 +6,8 @@
 #include <Curve/Mesh/Vertex.h>
 #include <UI/Panels/Panel3D.h>
 
+#include <vector>
+
 namespace CycleV2 {
 
 class TrimeshPanel3D : public Panel3D {
@@ -15,22 +17,38 @@ public:
     void drawViewableVerts() override {}
     bool shouldDrawGrid() override { return true; }
     bool willAdjustSurfaceColumns() override { return pitchSpansColumns; }
+    bool getScalarSurfaceMaterial(ScalarSurfaceMaterial& material) const override;
+    Buffer<Float32> getLineGuideTable(int channel) override;
     int interceptLinePrimaryDimension() override { return primaryViewAxis; }
+    void drawBackground(bool fillBackground = true) override;
     void panelResized() override;
+    void updateBackground(bool onlyVerticalBackground = false) override;
     void postVertsDraw() override {}
     bool usesCachedSurface() const override { return !sharedCanvasMode; }
     void setSharedCanvasMode(bool shouldUseSharedCanvas) { sharedCanvasMode = shouldUseSharedCanvas; }
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
+    void configureViewport(Range<float> frequencyLimits);
     void setPrimaryViewAxis(int axis) { primaryViewAxis = axis; }
-    void setPitchSpansColumns(bool shouldSpan) { pitchSpansColumns = shouldSpan; }
+    void setPitchSpansColumns(bool shouldSpan);
+    void setPreviewMidiNote(int midiNote);
+    void setLineGuideTables(std::vector<std::vector<float>> tables);
 
 private:
     void applyGradientForProfile();
+    void drawSpectralHarmonics();
+    bool drawHarmonicLine(
+            int harmonic,
+            Buffer<float> x,
+            Buffer<float> y,
+            const std::vector<Buffer<float>>& pitchRamps);
 
     TrimeshPanelDataSource& dataSource;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
+    std::vector<std::vector<float>> lineGuideTables;
     int primaryViewAxis { Vertex::Time };
+    int previewMidiNote { 48 };
+    int appliedMaterialStyleSignature { -2 };
     bool pitchSpansColumns {};
     bool sharedCanvasMode {};
 };

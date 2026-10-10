@@ -97,7 +97,11 @@ void ZoomPanel::setBounds(int x, int y, int width, int height) {
     jassert(context.panel != nullptr);
 
     Component::setBounds(x, y, width, height);
+}
 
+void ZoomPanel::resized() {
+    const int width = getWidth();
+    const int height = getHeight();
     int panelWidth  = width  - (context.haveVert ? scrollbarWidth : 0);
     int panelHeight = height - (context.haveHorz ? scrollbarWidth : 0);
     context.bounded->setBounds(0, 0, panelWidth, panelHeight);
@@ -148,6 +152,14 @@ void ZoomPanel::scrollBarMoved(ScrollBar* bar, double newRangeStart) {
     listeners.call(&ZoomListener::zoomUpdated, updateSource);
 }
 
+void ZoomPanel::panHorizontal(float wheelDelta) {
+    if (!context.haveHorz || wheelDelta == 0.f) {
+        return;
+    }
+
+    horz.setCurrentRangeStart(rect.x - rect.w * wheelDelta, sendNotificationSync);
+}
+
 int ZoomPanel::getX()       { return Component::getX();         }
 int ZoomPanel::getY()       { return Component::getY();         }
 int ZoomPanel::getWidth()   { return Component::getWidth();     }
@@ -193,7 +205,7 @@ void ZoomPanel::panelComponentChanged(Component* newComponent, Component* oldCom
     addAndMakeVisible(newComponent);
 }
 
-void ZoomPanel::zoomIn(bool cmdDown, int mouseX, int mouseY) {
+void ZoomPanel::zoomIn(bool cmdDown, int mouseX, int mouseY, float ratio) {
     validateRect("zoomIn-entry");
     float oldZoom;
 
@@ -203,34 +215,34 @@ void ZoomPanel::zoomIn(bool cmdDown, int mouseX, int mouseY) {
         float noZoomY   = 1 - context.panel->invertScaleYNoZoom(mouseY);
         bool usualZoom  = true;
 
-        rect.h /= zoomRatio;
+        rect.h /= ratio;
 
         if (noZoomY < 0.125f && tendZoomToTop) {
             y = 1 - context.panel->invertScaleY(0.);
         } else if (noZoomY > 0.875f && tendZoomToBottom) {
-            rect.y = (1 - 1 / zoomRatio) * oldZoom + rect.y;
+            rect.y = (1 - 1 / ratio) * oldZoom + rect.y;
             usualZoom = false;
         } else if (noZoomY > 0.4f && noZoomY < 0.6f && tendZoomToCentre) {
             y = 0.5f;
         }
 
         if(usualZoom) {
-            rect.y = y + (rect.y - y) / zoomRatio;
+            rect.y = y + (rect.y - y) / ratio;
         }
     } else {
         oldZoom = rect.w;
         float x = context.panel->invertScaleX(mouseX);
         float noZoomX = context.panel->invertScaleXNoZoom(mouseX);
 
-        rect.w /= zoomRatio;
+        rect.w /= ratio;
 
         if (noZoomX < 0.125f && tendZoomToLeft) {
             x = context.panel->invertScaleX(0.f);
-            rect.x = x + (rect.x - x) / zoomRatio;
+            rect.x = x + (rect.x - x) / ratio;
         } else if (noZoomX > 0.875f && tendZoomToRight) {
-            rect.x = (1 - 1 / zoomRatio) * oldZoom + rect.x;
+            rect.x = (1 - 1 / ratio) * oldZoom + rect.x;
         } else {
-            rect.x = x + (rect.x - x) / zoomRatio;
+            rect.x = x + (rect.x - x) / ratio;
         }
     }
 
@@ -238,7 +250,7 @@ void ZoomPanel::zoomIn(bool cmdDown, int mouseX, int mouseY) {
     panelZoomChanged(cmdDown);
 }
 
-void ZoomPanel::zoomOut(bool cmdDown, int mouseX, int mouseY) {
+void ZoomPanel::zoomOut(bool cmdDown, int mouseX, int mouseY, float ratio) {
     // validateRect("zoomOut-entry");
     float oldZoom;
 
@@ -246,13 +258,13 @@ void ZoomPanel::zoomOut(bool cmdDown, int mouseX, int mouseY) {
         oldZoom = rect.h;
         float y = 1 - context.panel->invertScaleY(mouseY);
 
-        rect.h *= zoomRatio;
+        rect.h *= ratio;
         rect.y = y + (rect.y - y) * rect.h / oldZoom;
     } else {
         oldZoom = rect.w;
         float x = context.panel->invertScaleX(mouseX);
 
-        rect.w *= zoomRatio;
+        rect.w *= ratio;
         rect.x = x + (rect.x - x) * rect.w / oldZoom;
     }
 

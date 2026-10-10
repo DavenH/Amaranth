@@ -169,6 +169,11 @@ private:
         delegate.commitEdit();
     }
 
+    bool cancelPointerGesture() override {
+        publishedDuringGesture = false;
+        return delegate.cancelEdit();
+    }
+
     bool deleteKeyPressed() override {
         if (Interactor* interactor = panelInteractor()) {
             delegate.beginEdit();

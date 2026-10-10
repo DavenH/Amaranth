@@ -1,10 +1,15 @@
 #include "Graph/GraphCompiler.h"
 
+#include "Graph/DefaultOutputProbeResolver.h"
+
 #include "Graph/GraphAudioScopeCompiler.h"
+#include "Graph/GraphEdgeView.h"
+#include "Graph/GraphVoiceContextAssignments.h"
 #include "Graph/NodeParameterMap.h"
 #include "Graph/TrimeshSignalSemantics.h"
 
 #include "Nodes/Control/ModulationTriple.h"
+#include "Nodes/Envelope/EnvelopePitchPreview.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "Nodes/Unison/UnisonNode.h"
@@ -219,52 +224,9 @@ std::vector<String> buildNodeOrder(
     return buildNodeOrder(graph.getNodes(), graph.getEdges(), issues);
 }
 
-std::vector<Edge> implicitVoiceContextEdges(const NodeGraph& graph) {
-    const Node* context = nullptr;
-    for (const auto& node : graph.getNodes()) {
-        if (node.kind != NodeKind::VoiceContext) {
-            continue;
-        }
-        if (context != nullptr) {
-            return {};
-        }
-        context = &node;
-    }
-    if (context == nullptr) {
-        return {};
-    }
-
-    std::unordered_set<String, GraphAudioScopeAnalysis::StringHash>
-            explicitlyAssignedNodes;
-    for (const auto& edge : graph.getEdges()) {
-        if (!edge.isAttachment() && edge.destPortId == "context") {
-            explicitlyAssignedNodes.emplace(edge.destNodeId);
-        }
-    }
-
-    std::vector<Edge> edges;
-    for (const auto& node : graph.getNodes()) {
-        const bool acceptsContext = std::any_of(
-                node.inputs.begin(),
-                node.inputs.end(),
-                [](const Port& port) {
-                    return port.id == "context"
-                            && port.domain == PortDomain::DomainContext;
-                });
-        const bool hasContext = explicitlyAssignedNodes.find(node.id)
-                != explicitlyAssignedNodes.end();
-        if (acceptsContext && !hasContext) {
-            edges.push_back({
-                    context->id,
-                    "context",
-                    node.id,
-                    "context",
-                    PortDomain::DomainContext,
-                    ConnectionKind::Signal
-            });
-        }
-    }
-    return edges;
+std::vector<Edge> buildImplicitVoiceContextEdges(const NodeGraph& graph) {
+    const GraphEdgeView edges(graph.getEdges());
+    return GraphVoiceContextAssignments(graph, edges).implicitEdges();
 }
 
 std::vector<GraphExecutionStep> buildExecutionSteps(
@@ -752,34 +714,24 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
                 context.pitchEnvelopeNodeId = source->id;
                 context.pitchEnvelope = EnvelopeSignalProcessor::buildConfiguration(
                         source->parameters,
-                        source->model);
+                        source->model,
+                        &graph,
+                        source->id);
                 const auto envelope = std::dynamic_pointer_cast<const EnvelopeConfiguration>(
                         context.pitchEnvelope);
                 if (envelope != nullptr) {
                     constexpr int previewSamples = 129;
-                    if (!envelope->enabled) {
-                        context.pitchEnvelopeUnitValues.assign(
-                                previewSamples,
-                                envelope->neutralValue);
-                        continue;
+                    constexpr uint32_t unisonPreviewSeed = 0x554e4953u;
+                    context.pitchEnvelopeUnitValuesByLane
+                            = EnvelopePitchPreview::renderLanes(
+                                    envelope,
+                                    context.lanes.order,
+                                    previewSamples,
+                                    unisonPreviewSeed);
+                    if (!context.pitchEnvelopeUnitValuesByLane.empty()) {
+                        context.pitchEnvelopeUnitValues
+                                = context.pitchEnvelopeUnitValuesByLane.front();
                     }
-                    Rasterization::EnvelopePlaybackEngine playback;
-                    playback.ensureVoiceCount(1);
-                    playback.validate(envelope->rasterizer->preparedPlaybackView());
-                    playback.noteOn();
-                    MeshLibrary::EnvProps props;
-                    props.active = true;
-                    playback.renderToBuffer(
-                            envelope->rasterizer->preparedPlaybackView(),
-                            previewSamples,
-                            1.0 / (double) (previewSamples - 1),
-                            Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
-                            props,
-                            1.f);
-                    const Buffer<float> values = playback.output().withSize(previewSamples);
-                    context.pitchEnvelopeUnitValues.assign(
-                            values.get(),
-                            values.get() + previewSamples);
                 }
             }
         }
@@ -1374,6 +1326,10 @@ void GraphCompiler::refreshVoiceContexts(
     }
 }
 
+std::vector<Edge> GraphCompiler::implicitVoiceContextEdges(const NodeGraph& graph) {
+    return buildImplicitVoiceContextEdges(graph);
+}
+
 GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
     GraphCompileResult result;
     result.validationIssues = validator.validate(graph);
@@ -1515,6 +1471,28 @@ void GraphCompiler::refreshSignalProbes(
         }
         plan.signalProbes.push_back(std::move(compiled));
     }
+
+    plan.defaultOutputProbe.reset();
+    const auto address = DefaultOutputProbeResolver().resolve(graph);
+    if (!address.has_value()) {
+        return;
+    }
+    CompiledSignalProbe compiled;
+    compiled.probeId = DefaultOutputProbeResolver::probeId;
+    const auto source = plan.dependencyIndex.stepIndexById.find(address->sourceNodeId);
+    if (source == plan.dependencyIndex.stepIndexById.end()) {
+        return;
+    }
+    compiled.sourceStepIndex = source->second;
+    const auto& outputs = plan.steps[(size_t) source->second].outputs;
+    const auto output = std::find_if(outputs.begin(), outputs.end(), [&](const auto& candidate) {
+        return candidate.portId == address->sourcePortId;
+    });
+    if (output == outputs.end()) {
+        return;
+    }
+    compiled.sourceOutputIndex = (int) std::distance(outputs.begin(), output);
+    plan.defaultOutputProbe = std::move(compiled);
 }
 
 void GraphCompiler::publishConfigurations(

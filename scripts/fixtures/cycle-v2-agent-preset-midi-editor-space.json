@@ -1,0 +1,16 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/sitar-pad.cyclegraph" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.EditSequence", "event": "click" },
+    { "command": "waitForIdle", "idleDelayMs": 100 },
+    { "command": "pointer", "area": "focused", "event": "down", "x": 100, "y": 356 },
+    { "command": "assertState", "path": "performance.heldNote", "equals": 48 },
+    { "command": "pointer", "area": "focused", "event": "up", "x": 100, "y": 356 },
+    { "command": "assertState", "path": "performance.heldNote", "equals": -1 },
+    { "command": "key", "area": "focused", "key": "space" },
+    { "command": "assertState", "path": "performance.previewPlaying", "equals": true },
+    { "command": "key", "area": "focused", "key": "space" },
+    { "command": "assertState", "path": "performance.previewPlaying", "equals": false }
+  ],
+  "quit": true
+}

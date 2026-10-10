@@ -12,11 +12,18 @@ class GraphPresentationPerformanceMetrics final {
 public:
     enum class Stage : uint8_t {
         SynchronousRefresh,
+        CancellationWait,
+        Compilation,
+        RuntimeTrace,
+        SnapshotFacts,
         QueueDelay,
         Worker,
         Configuration,
         PreviewAudio,
         PreviewExtraction,
+        ExpandedProbeExecution,
+        ExpandedProbeExtraction,
+        ExpandedProbeTotal,
         PublicationDelay,
         EndToEnd,
         Count

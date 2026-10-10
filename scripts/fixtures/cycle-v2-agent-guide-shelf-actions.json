@@ -1,0 +1,28 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/old/baroque-flute.cyclegraph"
+    },
+    { "command": "waitForIdle", "idleDelayMs": 800 },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "workspace.sidebar.curves",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "guide:guide1.delete"
+    },
+    {
+      "command": "assertState",
+      "path": "guideDock.hoveredGuideId",
+      "equals": "guide1"
+    },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

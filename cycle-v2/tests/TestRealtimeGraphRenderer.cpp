@@ -9,6 +9,7 @@
 
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/NodeParameterMap.h"
 #include "Graph/GraphSerializer.h"
@@ -22,7 +23,7 @@ namespace {
 
 std::vector<float> renderOutputGain(float gainUnitValue, float& compiledGain) {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "out",
             "gain",
@@ -35,6 +36,8 @@ std::vector<float> renderOutputGain(float gainUnitValue, float& compiledGain) {
     AudioExecutionSpec spec;
     spec.maximumFrameCount = 256;
     auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+    REQUIRE(spec.prewarmTraversalGrid);
+    REQUIRE_FALSE(prepared->spec.prewarmTraversalGrid);
     RealtimeGraphRenderer renderer;
     RealtimeMidiEventQueue queue;
     renderer.setPreparedGraph(prepared.get());
@@ -120,13 +123,13 @@ std::vector<float> renderAttachedVelocityMapping(
             .getChildFile("bright-lead-3.cyclegraph");
     GraphLoadResult loaded = GraphSerializer().loadJsonString(preset.loadFileAsString());
     REQUIRE(loaded.succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             loaded.graph,
             "morph",
             "blueSource",
             "Blue Source",
             source).succeeded());
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             loaded.graph,
             "morph",
             "blueConstant",
@@ -575,6 +578,58 @@ TEST_CASE("Realtime voice length updates the active voice-time clock",
     REQUIRE(fastDelta == Catch::Approx(10.f * slowDelta).margin(1.0e-6f));
 }
 
+TEST_CASE("Realtime graph replacement preserves channel controllers for the next note",
+        "[cycle-v2][audio-device][realtime][modulation][graph-adoption]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "mod", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "mod", "value", "out", "time",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    const auto renderAfterReplacement = [&](int controllerValue) {
+        constexpr int frameCount = 64;
+        constexpr double sampleRate = 44'100.0;
+        constexpr double blockDuration = frameCount / sampleRate;
+        AudioExecutionSpec spec;
+        spec.maximumFrameCount = frameCount;
+        spec.sampleRate = sampleRate;
+        auto initial = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+        auto replacement = RealtimeGraphRenderer::prepareGraph(compiled.plan, 2, spec);
+        RealtimeGraphRenderer renderer;
+        RealtimeMidiEventQueue queue;
+        renderer.setPreparedGraph(initial.get());
+        REQUIRE(queue.enqueue(
+                MidiMessage::controllerEvent(1, 1, controllerValue),
+                MidiEventSource::PerformanceKeyboard,
+                1.0));
+
+        AudioBuffer<float> output(2, frameCount);
+        float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+        renderer.process(queue, channels, 2, frameCount, sampleRate, 1.0);
+        renderer.setPreparedGraph(replacement.get());
+        REQUIRE(queue.enqueue(
+                MidiMessage::noteOn(1, 60, (uint8) 100),
+                MidiEventSource::PerformanceKeyboard,
+                1.0 + blockDuration));
+        renderer.process(
+                queue,
+                channels,
+                2,
+                frameCount,
+                sampleRate,
+                1.0 + blockDuration);
+        REQUIRE(renderer.diagnostics(queue).graphRevision == 2);
+        return output.getSample(0, frameCount - 1);
+    };
+
+    REQUIRE(renderAfterReplacement(127) > renderAfterReplacement(0) + 0.1f);
+}
+
 TEST_CASE("Realtime voice-time clock uses the compiled Voice Context length",
         "[cycle-v2][audio-device][realtime][voice-context][voice-length]") {
     const auto renderDelta = [](float voiceLength) {
@@ -590,7 +645,7 @@ TEST_CASE("Realtime voice-time clock uses the compiled Voice Context length",
                 { "constant", "Constant", "0.5" }
         });
         graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
-        REQUIRE(editor.setNodeParameter(
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
                 graph,
                 "voice",
                 "voiceLength",
@@ -922,6 +977,76 @@ TEST_CASE("Realtime graph renderer defers events beyond the current callback",
     REQUIRE(renderer.diagnostics(queue).peak > 0.f);
     REQUIRE(secondPerformance.dequeuedMidiEventCount == 0);
     REQUIRE(secondPerformance.sortedMidiItemCount == 0);
+}
+
+TEST_CASE("Pattern timestamps reach sample offsets and canceled notes leave manual voices playing",
+        "[cycle-v2][audio-device][realtime][midi][sequence]") {
+    const auto compiled = GraphCompiler().compile(NodeGraph::createDemoGraph());
+    REQUIRE(compiled.succeeded());
+
+    constexpr int frameCount = 256;
+    constexpr double sampleRate = 44100.0;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = frameCount;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    renderer.setPreparedGraph(prepared.get());
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 60, (uint8) 100),
+            MidiEventSource::PatternPlayback, 1.0 + 137.0 / sampleRate));
+
+    AudioBuffer<float> output(2, frameCount);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    renderer.process(queue, channels, 2, frameCount, sampleRate, 1.0);
+    for (int sample = 0; sample < 137; ++sample) {
+        REQUIRE(output.getSample(0, sample) == 0.f);
+    }
+    REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 1);
+
+    queue.cancelSource(MidiEventSource::PatternPlayback);
+    REQUIRE(queue.enqueue(MidiMessage::allNotesOff(1),
+            MidiEventSource::PatternPlayback, 1.01));
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 64, (uint8) 100),
+            MidiEventSource::PerformanceKeyboard, 1.01));
+    renderer.process(queue, channels, 2, frameCount, sampleRate, 1.01);
+    REQUIRE(renderer.diagnostics(queue).activeVoiceCount >= 1);
+    const auto voicesAfterRelease = renderer.diagnostics(queue).activeVoiceCount;
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 67, (uint8) 100),
+            MidiEventSource::PatternPlayback, 2.0));
+    queue.cancelSource(MidiEventSource::PatternPlayback);
+    AudioPerformanceMetrics::RealtimeSample performance;
+    renderer.process(queue, channels, 2, frameCount, sampleRate, 2.0,
+            &performance);
+    REQUIRE(renderer.diagnostics(queue).activeVoiceCount == voicesAfterRelease);
+    REQUIRE(performance.scheduledMidiEventCount == 0);
+}
+
+TEST_CASE("Stopping a pattern resets its sounding voice without releasing the manual keyboard",
+        "[cycle-v2][audio-device][realtime][midi][sequence][stop]") {
+    const auto compiled = GraphCompiler().compile(NodeGraph::createDemoGraph());
+    REQUIRE(compiled.succeeded());
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 256;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    renderer.setPreparedGraph(prepared.get());
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 60, (uint8) 100),
+            MidiEventSource::PatternPlayback, 1.0));
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 64, (uint8) 100),
+            MidiEventSource::PerformanceKeyboard, 1.0));
+
+    AudioBuffer<float> output(2, 256);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    renderer.process(queue, channels, 2, 256, 44100.0, 1.0);
+    REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 2);
+
+    queue.cancelSource(MidiEventSource::PatternPlayback);
+    REQUIRE(queue.enqueue(MidiMessage::allSoundOff(1),
+            MidiEventSource::PatternPlayback, 1.01));
+    renderer.process(queue, channels, 2, 256, 44100.0, 1.01);
+    REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 1);
+    REQUIRE(renderer.diagnostics(queue).peak > 0.f);
 }
 
 TEST_CASE("Fully released spectral notes repeat on the same voice instance",

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <functional>
+#include <optional>
 
 #include "UI/Editors/PropertyControls.h"
 #include "UI/NodeEditorHost.h"
@@ -16,12 +16,16 @@ public:
             String label);
 
     void bind(const String& nodeId, double value);
+    void mirrorPreviewInto(Node& node, NodeKind kind);
+    void previewValue(float value);
 
     const String& parameterId() const { return id; }
-    std::function<void(float)> onPreviewValue;
 
 private:
+    Component& owner;
     NodeEditorCommands& commands;
+    Node* previewNode {};
+    std::optional<NodeKind> previewKind;
     String nodeId;
     String id;
     String parameterLabel;

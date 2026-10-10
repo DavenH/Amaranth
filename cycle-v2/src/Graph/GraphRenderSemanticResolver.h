@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graph/GraphDomainResolver.h"
+#include "Graph/GraphEdgeIndex.h"
 
 namespace CycleV2 {
 
@@ -27,21 +28,35 @@ struct NodeRenderSemantic {
 
 class GraphRenderSemanticResolver {
 public:
+    static NodeRenderSemantic defaultSemanticForDomain(PortDomain domain);
+    static NodeRenderSemantic semanticForDisplay(
+            NodeRenderSemantic source,
+            PortDomain displayedDomain,
+            bool useDomainDefault);
+
     NodeRenderSemantic semanticForNodeOutput(
             const NodeGraph& graph,
             const String& nodeId,
             const String& portId) const;
+    NodeRenderSemantic semanticForNodeOutput(
+            const NodeGraph& graph,
+            const String& nodeId,
+            const String& portId,
+            const GraphEdgeIndex& edgeIndex,
+            const GraphDomainResolution& resolution) const;
 
 private:
     GraphDomainResolver domainResolver;
 
-    const Node* findNode(const NodeGraph& graph, const String& id) const;
-    bool isBipolarMagnitudeSource(const NodeGraph& graph, const String& nodeId) const;
+    bool isBipolarMagnitudeSource(
+            const NodeGraph& graph,
+            const String& nodeId,
+            const GraphEdgeIndex* edgeIndex = nullptr) const;
     NodeRenderSemantic semanticForEdge(
             const NodeGraph& graph,
             const Edge& edge,
-            PortDomain domain) const;
-    NodeRenderSemantic defaultSemanticForDomain(PortDomain domain) const;
+            PortDomain domain,
+            const GraphEdgeIndex* edgeIndex = nullptr) const;
 };
 
 }

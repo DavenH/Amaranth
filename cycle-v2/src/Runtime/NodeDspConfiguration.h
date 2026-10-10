@@ -17,6 +17,7 @@ struct AudioExecutionSpec {
     double bpm { 120.0 };
     int beatsPerMeasure { 4 };
     size_t traversalColumnCount {};
+    bool prewarmTraversalGrid { true };
 };
 
 class INodeDspConfiguration {

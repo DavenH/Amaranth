@@ -15,13 +15,6 @@ namespace CycleV2 {
 
 namespace {
 
-bool operationLayoutSupported(NodeKind kind) {
-    return NodeViewModuleRegistry::instance()
-            .moduleFor(kind)
-            .capabilities()
-            .operationLayoutControl;
-}
-
 bool outputSideControlSupported(NodeKind kind) {
     return NodeViewModuleRegistry::instance()
             .moduleFor(kind)
@@ -154,6 +147,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::saveGraph(const File& file) {
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::loadGraph(const File& file) {
+    presentation.cancelPendingRefreshes();
     if (!document.load(file)) {
         return handledResult(false, "Open failed", { true });
     }
@@ -172,6 +166,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::loadSnapshot(const File& file) {
     if (!file.existsAsFile()) {
         return handledResult(false, "No snapshot", { true });
     }
+    presentation.cancelPendingRefreshes();
     if (!document.load(file)) {
         return handledResult(false, "Load failed", { true });
     }
@@ -182,6 +177,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::loadSnapshot(const File& file) {
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::undo() {
+    presentation.cancelPendingRefreshes();
     if (!document.undo()) {
         return handledResult(false, "Nothing to undo", { true });
     }
@@ -190,6 +186,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::undo() {
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::redo() {
+    presentation.cancelPendingRefreshes();
     if (!document.redo()) {
         return handledResult(false, "Nothing to redo", { true });
     }
@@ -204,7 +201,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::restoreGraphJson(
         return handledResult(false, "Restore failed", { true });
     }
 
-    clearDocumentSelection();
+    reconcileDocumentSelection();
     refreshPresentation();
     return restoredDocumentResult(statusMessage);
 }
@@ -332,6 +329,14 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::removeSignalProbe(const String& p
             { true, false, true });
 }
 
+NodeCanvasAuthoringResult NodeCanvasAuthoring::removeGuideCurve(const String& guideId) {
+    return graphEditResult(
+            commands.removeGuideCurve(guideId),
+            "Guide Curve deleted",
+            {},
+            { true, false, true });
+}
+
 NodeCanvasAuthoringResult NodeCanvasAuthoring::reattachSignalProbe(
         const String& probeId,
         int edgeIndex,
@@ -392,14 +397,14 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::connectPorts(
             source,
             destination);
     if (!bundleRoutes.empty()) {
-        if (!ModulationCableBundle::canConnect(document.graph(), source, destination)) {
-            return {};
-        }
-
         commands.beginCompoundEdit();
         GraphEditResult edit;
         for (const auto& route : bundleRoutes) {
             edit = commands.connect(route.source, route.destination);
+            if (!edit.succeeded()) {
+                commands.cancelCompoundEdit();
+                return graphEditResult(edit, {}, {});
+            }
         }
         commands.commitCompoundEdit();
         return graphEditResult(
@@ -431,19 +436,20 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::deleteNode(const String& nodeId) 
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::deleteEdge(int edgeIndex) {
-    if (edgeIndex < 0) {
+    if (edgeIndex < 0 || edgeIndex >= (int) document.graph().getEdges().size()) {
         return {};
     }
 
-    auto indices = ModulationCableBundle::edgeIndices(document.graph(), edgeIndex);
-    std::sort(indices.begin(), indices.end(), std::greater<int>());
-    commands.beginCompoundEdit();
-    GraphEditResult edit;
-    for (const int index : indices) {
-        edit = commands.removeEdgeAt((size_t) index);
+    const auto bundleIndices = ModulationCableBundle::edgeIndices(document.graph(), edgeIndex);
+    std::vector<size_t> indices(bundleIndices.begin(), bundleIndices.end());
+    const auto edit = commands.removeCable(indices);
+    if (!edit.succeeded()) {
+        return graphEditResult(edit, {}, {});
     }
-    commands.commitCompoundEdit();
-    return graphEditResult(edit, "Edge deleted: " + String(edgeIndex), {}, { true });
+    const bool editorClosed = authoringSession.expandedNodeId.isNotEmpty()
+            && document.graph().findNode(authoringSession.expandedNodeId) == nullptr;
+    reconcileDocumentSelection();
+    return graphEditResult(edit, "Edge deleted: " + String(edgeIndex), {}, { true, editorClosed, true });
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::setNodeParameter(
@@ -553,6 +559,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::setTrimeshVertexParameter(
             nodeId,
             parameterId,
             jlimit(0.f, 1.f, value))) {
+        editorCommands.endTrimeshVertexParameterEdit();
         return handledResult(false, {}, { false, true, false });
     }
 
@@ -594,32 +601,13 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::spliceSelectedNodeIntoEdge(int ed
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleOperationPortLayout(const String& nodeId) {
     const Node* node = findNode(nodeId);
-    if (node == nullptr || !operationLayoutSupported(node->kind)
-            || node->inputs.size() < 2 || node->outputs.empty()) {
+    if (node == nullptr || !supportsOperationPortLayout(*node)) {
         return {};
     }
 
-    const OperationPortLayout layout = operationPortLayout(*node);
+    const OperationPortLayout layout = nextOperationPortLayout(operationPortLayout(*node));
     const auto edit = commands.editNodePresentation(nodeId, [layout](Node& edited) {
-        switch (layout) {
-            case OperationPortLayout::Side:
-                edited.inputs[0].side = PortSide::Left;
-                edited.inputs[1].side = PortSide::Top;
-                break;
-            case OperationPortLayout::Uptack:
-                edited.inputs[0].side = PortSide::Top;
-                edited.inputs[1].side = PortSide::Bottom;
-                break;
-            case OperationPortLayout::Vertical:
-                edited.inputs[0].side = PortSide::Left;
-                edited.inputs[1].side = PortSide::Bottom;
-                break;
-            case OperationPortLayout::Tee:
-                edited.inputs[0].side = PortSide::Left;
-                edited.inputs[1].side = PortSide::Left;
-                break;
-        }
-        edited.outputs[0].side = PortSide::Right;
+        applyOperationPortLayout(edited, layout);
     });
 
     return graphEditResult(edit, {}, nodeId, { true });
@@ -644,7 +632,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleOutputSide(const String& nod
         return {};
     }
 
-    const PortSide side = nextOutputSide(*node);
+    const PortSide side = nextOutputPortSide(*node);
     const auto edit = commands.editNodePresentation(nodeId, [side](Node& edited) {
         edited.outputs[0].side = side;
     });
@@ -785,50 +773,6 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::setTransformMode(
     return { true, true, true, GraphEditCode::Connected, nodeId, { true, false, true } };
 }
 
-NodeCanvasAuthoring::OperationPortLayout NodeCanvasAuthoring::operationPortLayout(const Node& node) {
-    if (node.inputs.size() < 2) {
-        return OperationPortLayout::Side;
-    }
-
-    const PortSide first = node.inputs[0].side;
-    const PortSide second = node.inputs[1].side;
-    if (first == PortSide::Left && second == PortSide::Bottom) {
-        return OperationPortLayout::Tee;
-    }
-    if (first == PortSide::Top && second == PortSide::Bottom) {
-        return OperationPortLayout::Vertical;
-    }
-    if (first == PortSide::Left && second == PortSide::Top) {
-        return OperationPortLayout::Uptack;
-    }
-
-    return OperationPortLayout::Side;
-}
-
-NodeCanvasAuthoring::OperationPortLayout NodeCanvasAuthoring::nextOperationPortLayout(
-        OperationPortLayout layout) {
-    switch (layout) {
-        case OperationPortLayout::Side:     return OperationPortLayout::Uptack;
-        case OperationPortLayout::Uptack:   return OperationPortLayout::Vertical;
-        case OperationPortLayout::Vertical: return OperationPortLayout::Tee;
-        case OperationPortLayout::Tee:      return OperationPortLayout::Side;
-    }
-
-    return OperationPortLayout::Side;
-}
-
-PortSide NodeCanvasAuthoring::nextOutputSide(const Node& node) {
-    const PortSide side = node.outputs.empty() ? PortSide::Right : node.outputs.front().side;
-    switch (side) {
-        case PortSide::Right:  return PortSide::Bottom;
-        case PortSide::Bottom: return PortSide::Top;
-        case PortSide::Top:    return PortSide::Right;
-        case PortSide::Left:   return PortSide::Right;
-    }
-
-    return PortSide::Right;
-}
-
 NodeCanvasAuthoringResult NodeCanvasAuthoring::graphEditResult(
         const GraphEditResult& edit,
         const String& statusMessage,
@@ -926,6 +870,25 @@ void NodeCanvasAuthoring::clearDocumentSelection() {
     authoringSession.selectedNodeId = {};
     authoringSession.selectedNodeIds.clear();
     authoringSession.expandedNodeId = {};
+    authoringSession.selectedEdgeIndex = -1;
+    authoringSession.spliceTargetEdgeIndex = -1;
+}
+
+void NodeCanvasAuthoring::reconcileDocumentSelection() {
+    const NodeGraph& restored = document.graph();
+    auto& selected = authoringSession.selectedNodeIds;
+    selected.erase(std::remove_if(selected.begin(), selected.end(),
+            [&restored](const String& id) {
+                return restored.findNode(id) == nullptr;
+            }), selected.end());
+
+    if (restored.findNode(authoringSession.selectedNodeId) == nullptr) {
+        authoringSession.selectedNodeId = selected.empty() ? String() : selected.front();
+    }
+    const Node* expanded = restored.findNode(authoringSession.expandedNodeId);
+    if (expanded == nullptr || !hasEditor(expanded->kind)) {
+        authoringSession.expandedNodeId = {};
+    }
     authoringSession.selectedEdgeIndex = -1;
     authoringSession.spliceTargetEdgeIndex = -1;
 }

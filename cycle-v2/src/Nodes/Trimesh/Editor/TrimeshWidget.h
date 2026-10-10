@@ -12,6 +12,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <vector>
 
 namespace CycleV2 {
@@ -35,6 +36,8 @@ struct TrimeshExpandedHitRegion {
 
 struct TrimeshPanelRenderStats {
     int sampleCount {};
+    int surfaceColumnCount {};
+    int surfaceRowCount {};
     int interceptCount {};
     int guideRailSegmentCount {};
     int componentGuideSegmentCount {};
@@ -59,6 +62,7 @@ struct TrimeshPanelRenderStats {
 class TrimeshWidget {
 public:
     void syncFromNode(const Node& node);
+    void syncExpandedFromNode(const Node& node);
     void setMorphEditGestureActive(bool active);
     void syncGuideContext(const NodeGraph& graph, const Node& node);
     void setDisplayDomain(PortDomain domain);
@@ -104,10 +108,12 @@ public:
     void setMeshEditedCallback(std::function<void(TrimeshMeshEditEvent)> callback);
     Mesh& currentMesh();
     bool setVertexParameter(int vertexIndex, const juce::String& parameterId, float value);
+    std::optional<std::array<float, 8>> cubeCurveValuesForVertex(int vertexIndex);
     bool setVertexGuideGain(int vertexIndex, const juce::String& parameterId, float value);
     bool guideGainValueForParameter(const juce::String& parameterId, float& value);
     bool hasGuideAttachmentForParameter(const juce::String& parameterId) const;
     std::vector<TrimeshVertexParameter> vertexParametersForIndex(int vertexIndex);
+    std::vector<TrimeshVertexParameter> selectedVertexParameters();
     int selectedVertexIndexForPanel() const;
     std::vector<TrimeshVertexMarker> vertexMarkers();
     const TrimeshRenderData& renderDataForAutomation() const;
@@ -118,6 +124,7 @@ public:
         return displayProfile.getSliceStyle().isSpectral() ? "range" : "gain";
     }
     static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content);
+    static int expandedColumnCount(juce::Rectangle<float> content);
     static juce::Rectangle<float> expandedWavePanelContentBounds(juce::Rectangle<float> content);
     static juce::Colour surfaceColourForDomain(float value, PortDomain domain);
     static juce::Colour surfaceColourForProfile(float value, const TrimeshRenderProfile& profile);
@@ -169,6 +176,8 @@ public:
             const juce::String& outputScaleParameter = "range");
 
 private:
+    void syncExpandedNode(const Node& node, juce::Rectangle<float> content);
+
     struct CachedHeatmap {
         juce::Image image;
         size_t valueCount {};
@@ -177,7 +186,10 @@ private:
         uint64_t revision {};
         PortDomain domain { PortDomain::ControlSignal };
         RenderScalePolicy scalePolicy { RenderScalePolicy::Unipolar };
+        int materialStyleSignature { -2 };
         int midiNote { 48 };
+        bool pitchSpansColumns {};
+        float surfaceAspectRatio {};
     };
 
     static juce::Rectangle<float> meshPreviewContentArea(juce::Rectangle<float> area);
@@ -207,6 +219,7 @@ private:
     CachedHeatmap compactHeatmap;
     TrimeshRenderProfile displayProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     int previewMidiNote { 48 };
+    int lastExpandedColumnCount { 96 };
     std::array<juce::String, 6> guideAttachmentLabels;
     juce::String guideConfigurationKey { "unprepared" };
 };

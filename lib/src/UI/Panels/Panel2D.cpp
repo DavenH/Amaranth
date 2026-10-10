@@ -303,6 +303,10 @@ void Panel2D::highlightCurrentIntercept()
         point.y = icpts[icptIdx].y;
     }
 
+    drawVertexHighlight(point);
+}
+
+void Panel2D::drawVertexHighlight(const Vertex2& point) {
     PanelRenderer* renderer = getRenderer(this);
     jassert(renderer != nullptr);
     renderer->setCurrentColour(1.0f, 0.8f, 0.0f);
@@ -364,7 +368,9 @@ void Panel2D::drawDepthLinesAndVerts() {
 
     for (auto& point : points) {
         dim = point.num;
-
+        if (!shouldDrawDepthLine(dim)) {
+            continue;
+        }
         clr = pointColours[dim];
 
         if(createLinePath(point.before, point.after, point.cube, dim, haveSpeed)) {
@@ -394,6 +400,9 @@ void Panel2D::drawDepthLinesAndVerts() {
     }
 
     for (auto& p : points) {
+        if (!shouldDrawDepthPoint(p.num)) {
+            continue;
+        }
         renderer->setCurrentColour(pointColours[p.num]);
         renderer->drawPoint(vertexWhiteRadius, p.before, true);
         renderer->drawPoint(vertexWhiteRadius, p.after, true);

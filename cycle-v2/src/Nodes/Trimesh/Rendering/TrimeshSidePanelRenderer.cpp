@@ -674,7 +674,9 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
         const Rectangle<float> sliderBody = showRowGuideControls
                 ? row.withRight(guideBox.getX() - kVertexCellGap)
                 : row;
-        drawSliderRowBody(g, sliderBody);
+        if (!parameter.guideOnly) {
+            drawSliderRowBody(g, sliderBody);
+        }
 
         g.setColour(kMutedText);
         g.setFont(FontOptions(10.5f));
@@ -685,10 +687,12 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
                 ? jlimit(0.f, 1.f, (parameter.value - parameter.minimum) / range)
                 : 0.f;
 
-        g.setColour(Colour(0xff15191e).withAlpha(0.88f));
-        g.fillRect(rail);
-        g.setColour(Colour(0xffb7bec7).withAlpha(0.84f));
-        g.fillRect(rail.withWidth(rail.getWidth() * normalized));
+        if (!parameter.guideOnly) {
+            g.setColour(Colour(0xff15191e).withAlpha(0.88f));
+            g.fillRect(rail);
+            g.setColour(Colour(0xffb7bec7).withAlpha(0.84f));
+            g.fillRect(rail.withWidth(rail.getWidth() * normalized));
+        }
 
         if (!showRowGuideControls) {
             continue;
@@ -849,7 +853,7 @@ Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRowBounds(
 }
 
 bool TrimeshSidePanelRenderer::showsGuideControlsForParameter(int parameterIndex) {
-    return parameterIndex >= 3 && parameterIndex < kVertexParamCount;
+    return isPositiveAndBelow(parameterIndex, kVertexParamCount);
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRailBounds(
