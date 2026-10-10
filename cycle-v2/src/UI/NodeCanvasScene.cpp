@@ -351,7 +351,8 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                 graph, group, viewport, indexedEdges));
         const auto background = group.collapsed
                 ? groupBounds.reduced(13.f).withTrimmedTop(29.f)
-                : groupBounds.withHeight(29.f).withTrimmedRight(45.f);
+                : groupBounds.withTrimmedTop(groupBounds.getHeight() - 15.f)
+                        .reduced(10.f, 0.f);
         current.targets.push_back({
                 NodeSceneTargetKind::NodeGroupBackground,
                 "groupBackground:" + group.id,

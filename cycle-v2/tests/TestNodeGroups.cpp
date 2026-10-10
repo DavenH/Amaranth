@@ -74,6 +74,7 @@ TEST_CASE("Node groups persist and undo without changing graph connectivity",
 
 TEST_CASE("Collapsed groups hide member targets and internal cables",
         "[cycle-v2][ui][groups]") {
+    juce::ScopedJuceInitialiser_GUI gui;
     GraphNodeFactory factory;
     NodeGraph graph;
     Node first = factory.createNode(NodeKind::WaveSource, "first", { 0.f, 0.f });
@@ -124,6 +125,7 @@ TEST_CASE("Collapsed groups hide member targets and internal cables",
 
 TEST_CASE("Collapsed group geometry follows an inline pan on its cable",
         "[cycle-v2][ui][groups][pan]") {
+    juce::ScopedJuceInitialiser_GUI gui;
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 0.f, 80.f }));
@@ -158,6 +160,7 @@ TEST_CASE("Collapsed group geometry follows an inline pan on its cable",
 
 TEST_CASE("Expanded group header clears endpoint nodes and their captions",
         "[cycle-v2][ui][groups]") {
+    juce::ScopedJuceInitialiser_GUI gui;
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "input", { 200.f, 200.f }));
@@ -189,6 +192,7 @@ TEST_CASE("Expanded group header clears endpoint nodes and their captions",
 
 TEST_CASE("Group toggles stay anchored while their Spy cards collapse",
         "[cycle-v2][ui][groups][spy]") {
+    juce::ScopedJuceInitialiser_GUI gui;
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "input", { 100.f, 150.f }));
@@ -206,8 +210,11 @@ TEST_CASE("Group toggles stay anchored while their Spy cards collapse",
     NodeCanvasScene scene;
     const auto& expanded = scene.build(graph, viewport);
     const GraphEdgeIndex edgeIndex(graph.getEdges());
+    const auto expandedFrame = viewport.toScreen(NodeGroupPresentation::worldBounds(
+            graph, *graph.findNodeGroup("group"), viewport, edgeIndex));
     const auto before = NodeGroupPresentation::toggleBounds(
             graph, *graph.findNodeGroup("group"), viewport, edgeIndex);
+    REQUIRE(before.getX() < expandedFrame.getX() + 160.f);
     REQUIRE_FALSE(SignalProbeCanvas::cardBoundsFor(
             "spy", graph, expanded, viewport, probeState).isEmpty());
     REQUIRE_FALSE(SignalProbeCanvas::cardBoundsFor(
@@ -226,6 +233,10 @@ TEST_CASE("Group toggles stay anchored while their Spy cards collapse",
     const auto& compact = scene.build(graph, viewport);
     const auto after = NodeGroupPresentation::toggleBounds(
             graph, collapsed, viewport, edgeIndex);
+    const auto compactFrame = viewport.toScreen(NodeGroupPresentation::worldBounds(
+            graph, collapsed, viewport, edgeIndex));
+    REQUIRE(compactFrame.getX() == Catch::Approx(expandedFrame.getX()));
+    REQUIRE(compactFrame.contains(after));
     REQUIRE(after.getCentreX() == Catch::Approx(before.getCentreX()));
     REQUIRE(after.getCentreY() == Catch::Approx(before.getCentreY()));
     REQUIRE(SignalProbeCanvas::cardBoundsFor(
@@ -241,6 +252,7 @@ TEST_CASE("Group toggles stay anchored while their Spy cards collapse",
 
 TEST_CASE("Group background moves members through one undoable gesture",
         "[cycle-v2][ui][groups][gesture]") {
+    juce::ScopedJuceInitialiser_GUI gui;
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::Add, "first", { 100.f, 100.f }));

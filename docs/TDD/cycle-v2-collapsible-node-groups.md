@@ -12,15 +12,15 @@ Implemented (2026-10-09).
 - Expanded groups frame their member nodes. A collapsed group shows a compact card with a diagram of its member nodes and internal connections. Member nodes and internal cables are hidden; external cables terminate on the card.
 - The card has an accessible toggle target. A selection of two or more nodes can be grouped from a context menu or keyboard shortcut. Ungroup is available from the group menu.
 - Group geometry is derived from each member's presented bounds, including inline pan nodes whose displayed position follows a cable. Moving a member uses the existing node movement delta, with no aggregate graph copy on movement updates.
-- The expanded frame contains connector captions as well as node bodies. Its header reserves enough screen space for the title and collapse control at every zoom, and title text ends before the control.
+- The expanded frame contains connector captions as well as node bodies. Its header reserves enough screen space for the title and collapse control at every zoom, and title text ends before the control. The control is an unboxed plus/minus beside a larger muted label.
 - Collapse and expansion keep the toggle in the same screen position. Dragging empty group background moves all members through one undoable gesture. The expanded backdrop includes visible attached Spy cards. Spy cards and markers attached to a collapsed member are hidden and reappear on expansion; their saved placement remains intact.
 
 ## Ownership and reuse
 
 `NodeGraph` owns the membership data. `GraphCommandDispatcher` owns semantic edits and undo publication. `NodeCanvasScene` owns presented targets and cable endpoints. `NodeCanvasPresentation` consumes that scene and graph data to draw the card. Existing node dragging, box selection, and cable rendering remain authoritative. No DSP implementation is copied.
 
-The anchor is the node-derived expanded frame's top-right toggle position. The
-compact card shares that top-right corner; dragging the group translates its
+The anchor is the node-derived expanded frame's top-left label and toggle. The
+compact card shares that left edge; dragging the group translates its
 member nodes, so the anchor moves with them without another stored position.
 The backdrop extends around visible Spy cards while its toggle stays anchored
 to the node-derived header. Background dragging reuses the existing multi-node
@@ -153,3 +153,14 @@ The title and toggle colours are quieter as well. The OS capture at
 RGB (21, 26, 33) and the empty group interior at (20, 31, 42), keeping the
 expanded frame close to the reference's low-contrast treatment. The standalone
 target built and the 21-command focused UI capture passed.
+
+## Inline label control follow-up
+
+The group title is displayed in muted 14.5-point uppercase type with an
+unboxed 24-pixel hit target for the adjacent plus/minus glyph. The expanded
+outline is thinner and less opaque. The compact card aligns to the expanded
+frame's left edge so the toggle remains at the same screen point across both
+states. The scene's automation background target uses bottom padding rather
+than the header, keeping it clear of the control. The nine focused group tests
+pass with 122 assertions, and the 26-command Spy/background-drag fixture and
+the OS capture at `/private/tmp/cycle-v2-inline-group-os.png` pass.

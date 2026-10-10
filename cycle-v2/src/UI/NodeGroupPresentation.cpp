@@ -14,6 +14,14 @@ constexpr float kExpandedHeaderHeight = 39.f;
 constexpr float kExpandedScreenPadding = 16.f;
 constexpr float kCardWidth = 290.f;
 constexpr float kCardHeight = 190.f;
+constexpr float kLabelFontSize = 14.5f;
+constexpr float kLabelLeftPadding = 12.f;
+constexpr float kToggleGap = 4.f;
+constexpr float kToggleTargetSize = 24.f;
+
+juce::Font groupLabelFont() {
+    return { juce::FontOptions(kLabelFontSize, juce::Font::bold) };
+}
 
 juce::Rectangle<float> mapBounds(juce::Rectangle<float> card) {
     return card.reduced(13.f).withTrimmedTop(29.f).reduced(0.f, 4.f);
@@ -37,6 +45,31 @@ juce::Rectangle<float> expandedContentBounds(
     return result;
 }
 
+juce::Rectangle<float> expandedScreenBounds(
+        const NodeGraph& graph,
+        const NodeGroup& group,
+        const NodeCanvasViewport& viewport,
+        const GraphEdgeIndex& edgeIndex) {
+    const auto content = expandedContentBounds(graph, group, viewport, edgeIndex);
+    return {
+            content.getX() - kExpandedScreenPadding,
+            content.getY() - kExpandedHeaderHeight,
+            content.getWidth() + 2.f * kExpandedScreenPadding,
+            content.getHeight() + kExpandedHeaderHeight + kExpandedScreenPadding
+    };
+}
+
+float displayedLabelWidth(
+        const NodeGroup& group,
+        juce::Rectangle<float> expanded,
+        float zoom) {
+    const float available = juce::jmin(expanded.getWidth(), kCardWidth * zoom)
+            - kLabelLeftPadding - kToggleGap - kToggleTargetSize - 8.f;
+    return juce::jmax(0.f,
+            juce::jmin(groupLabelFont().getStringWidthFloat(group.title.toUpperCase()),
+                    available));
+}
+
 juce::Point<float> mappedCentre(
         juce::Rectangle<float> nodeBounds,
         juce::Rectangle<float> source,
@@ -55,8 +88,8 @@ void paintGroupChrome(
         juce::Rectangle<float> bounds) {
     graphics.setColour(juce::Colour(0xff0b2038).withAlpha(group.collapsed ? 0.78f : 0.27f));
     graphics.fillRect(bounds);
-    graphics.setColour(juce::Colour(0xff315270).withAlpha(group.collapsed ? 0.62f : 0.28f));
-    graphics.drawRect(bounds.reduced(0.5f), 1.f);
+    graphics.setColour(juce::Colour(0xff315270).withAlpha(group.collapsed ? 0.48f : 0.18f));
+    graphics.drawRect(bounds.reduced(0.5f), 0.8f);
 }
 
 void paintGroupControls(
@@ -64,21 +97,21 @@ void paintGroupControls(
         const NodeGroup& group,
         juce::Rectangle<float> toggle,
         juce::Rectangle<float> header) {
-    graphics.setColour(juce::Colour(0xff98b1c8));
-    graphics.setFont(juce::Font(juce::FontOptions(12.f, juce::Font::bold)));
-    const auto title = header.withHeight(29.f).reduced(12.f, 0.f)
-            .withTrimmedRight(header.getRight() - toggle.getX() + 5.f);
-    graphics.drawFittedText(group.title + "  ·  " + juce::String((int) group.nodeIds.size()),
+    graphics.setColour(juce::Colour(0xff88a4bb).withAlpha(0.85f));
+    graphics.setFont(groupLabelFont());
+    const auto title = juce::Rectangle<float>(
+            header.getX() + kLabelLeftPadding,
+            header.getY(),
+            toggle.getX() - header.getX() - kLabelLeftPadding - kToggleGap,
+            29.f);
+    graphics.drawFittedText(group.title.toUpperCase(),
             title.toNearestInt(), juce::Justification::centredLeft, 1);
 
-    graphics.setColour(juce::Colour(0xff11283f));
-    graphics.fillRect(toggle);
-    graphics.setColour(juce::Colour(0xff7594ae));
-    graphics.drawRect(toggle, 1.f);
+    graphics.setColour(juce::Colour(0xff96aec2).withAlpha(0.88f));
     const auto centre = toggle.getCentre();
-    graphics.drawLine(centre.x - 4.f, centre.y, centre.x + 4.f, centre.y, 1.5f);
+    graphics.drawLine(centre.x - 4.f, centre.y, centre.x + 4.f, centre.y, 1.2f);
     if (group.collapsed) {
-        graphics.drawLine(centre.x, centre.y - 4.f, centre.x, centre.y + 4.f, 1.5f);
+        graphics.drawLine(centre.x, centre.y - 4.f, centre.x, centre.y + 4.f, 1.2f);
     }
 }
 
@@ -158,15 +191,10 @@ juce::Rectangle<float> NodeGroupPresentation::worldBounds(
         const NodeGroup& group,
         const NodeCanvasViewport& viewport,
         const GraphEdgeIndex& edgeIndex) {
-    const auto content = expandedContentBounds(graph, group, viewport, edgeIndex);
-    const auto screen = juce::Rectangle<float>(
-            content.getX() - kExpandedScreenPadding,
-            content.getY() - kExpandedHeaderHeight,
-            content.getWidth() + 2.f * kExpandedScreenPadding,
-            content.getHeight() + kExpandedHeaderHeight + kExpandedScreenPadding);
+    const auto screen = expandedScreenBounds(graph, group, viewport, edgeIndex);
     if (group.collapsed) {
         const auto card = juce::Rectangle<float>(
-                screen.getRight() - kCardWidth * viewport.getZoom(),
+                screen.getX(),
                 screen.getY(),
                 kCardWidth * viewport.getZoom(),
                 kCardHeight * viewport.getZoom());
@@ -180,9 +208,15 @@ juce::Rectangle<float> NodeGroupPresentation::toggleBounds(
         const NodeGroup& group,
         const NodeCanvasViewport& viewport,
         const GraphEdgeIndex& edgeIndex) {
-    const auto bounds = viewport.toScreen(worldBounds(graph, group, viewport, edgeIndex));
-    const float size = juce::jlimit(17.f, 26.f, 22.f * viewport.getZoom());
-    return { bounds.getRight() - size - 7.f, bounds.getY() + 5.f, size, size };
+    const auto expanded = expandedScreenBounds(graph, group, viewport, edgeIndex);
+    return {
+            expanded.getX() + kLabelLeftPadding
+                    + displayedLabelWidth(group, expanded, viewport.getZoom())
+                    + kToggleGap,
+            expanded.getY() + 3.f,
+            kToggleTargetSize,
+            kToggleTargetSize
+    };
 }
 
 juce::Rectangle<float> NodeGroupPresentation::expandedBackdropBounds(
