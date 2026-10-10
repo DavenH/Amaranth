@@ -128,3 +128,18 @@ Spy hide/restore, and undo. The nine focused group tests passed with 119
 assertions. The standalone and test targets built, `git diff --check` passed,
 and the architecture audit reported only the existing size triggers. Clang-tidy
 found three pre-existing SignalProbeCanvas warnings outside the changed lines.
+
+## Navy chrome and cable opacity follow-up
+
+The group backdrop, compact card, minimap, and toggle use navy fills and square
+corners. The mature `NodeCableRenderer` still owns stroke colours and widths.
+The cable sprite/composite cache now sets its image-draw opacity to full within
+a saved graphics state, matching the existing node cache. This prevents a
+translucent group fill from dimming cached cables; live drag strokes already set
+their own colour before painting. A cache pixel test covers both composite and
+fallback entry drawing after an incoming translucent paint state.
+The test failed before the cache fix and passes afterward. The standalone and
+test targets build; 16 focused cache/group cases pass with 238 assertions. The
+26-command group fixture passes, and the OS capture at
+`/private/tmp/cycle-v2-group-navy-os.png` shows full-colour cables and square
+navy group chrome. The architecture audit and `git diff --check` pass.

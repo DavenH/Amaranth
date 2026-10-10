@@ -41,6 +41,7 @@ TEST_CASE("Cable layer cache reuses only complete presentation keys",
     REQUIRE_FALSE(firstFrame.compositeHit);
     Image output(Image::ARGB, 220, 180, true);
     Graphics outputGraphics(output);
+    outputGraphics.setColour(Colours::white.withAlpha(0.15f));
     cache.drawComposite(outputGraphics, firstFrame);
     REQUIRE(output.getPixelAt(
             roundToInt(bounds.getCentreX()),
@@ -60,6 +61,13 @@ TEST_CASE("Cable layer cache reuses only complete presentation keys",
     REQUIRE(translatedFrame.spriteStats.hits == 1);
     REQUIRE_FALSE(translatedFrame.compositeHit);
     REQUIRE(translatedFrame.drawEntries);
+    Image translatedOutput(Image::ARGB, 240, 180, true);
+    Graphics translatedGraphics(translatedOutput);
+    translatedGraphics.setColour(Colours::white.withAlpha(0.15f));
+    cache.drawComposite(translatedGraphics, translatedFrame);
+    REQUIRE(translatedOutput.getPixelAt(
+            roundToInt(bounds.getCentreX()),
+            roundToInt(bounds.getCentreY())) == Colours::red);
 
     cache.beginFrame({ 0, 0, 240, 180 }, 1.f);
     REQUIRE(access().hit);

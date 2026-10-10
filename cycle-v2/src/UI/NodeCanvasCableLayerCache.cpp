@@ -287,6 +287,8 @@ NodeCanvasCableLayerCacheFrame NodeCanvasCableLayerCache::endFrame() {
 void NodeCanvasCableLayerCache::drawComposite(
         Graphics& graphics,
         const NodeCanvasCableLayerCacheFrame& frame) const {
+    Graphics::ScopedSaveState saved(graphics);
+    graphics.setOpacity(1.f);
     if (frame.drawEntries) {
         for (const size_t entryIndex : frameEntryIndices) {
             drawEntry(graphics, entries[entryIndex]);

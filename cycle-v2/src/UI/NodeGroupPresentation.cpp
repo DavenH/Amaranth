@@ -53,11 +53,10 @@ void paintGroupChrome(
         juce::Graphics& graphics,
         const NodeGroup& group,
         juce::Rectangle<float> bounds) {
-    const float radius = group.collapsed ? 9.f : 15.f;
-    graphics.setColour(juce::Colour(0xff122332).withAlpha(group.collapsed ? 0.98f : 0.36f));
-    graphics.fillRoundedRectangle(bounds, radius);
-    graphics.setColour(juce::Colour(0xff63819a).withAlpha(group.collapsed ? 0.8f : 0.36f));
-    graphics.drawRoundedRectangle(bounds.reduced(0.5f), radius, 1.f);
+    graphics.setColour(juce::Colour(0xff102b49).withAlpha(group.collapsed ? 0.96f : 0.72f));
+    graphics.fillRect(bounds);
+    graphics.setColour(juce::Colour(0xff416688).withAlpha(group.collapsed ? 0.88f : 0.72f));
+    graphics.drawRect(bounds.reduced(0.5f), 1.f);
 }
 
 void paintGroupControls(
@@ -72,10 +71,10 @@ void paintGroupControls(
     graphics.drawFittedText(group.title + "  ·  " + juce::String((int) group.nodeIds.size()),
             title.toNearestInt(), juce::Justification::centredLeft, 1);
 
-    graphics.setColour(juce::Colour(0xff182d3d));
-    graphics.fillRoundedRectangle(toggle, 4.f);
+    graphics.setColour(juce::Colour(0xff193a5a));
+    graphics.fillRect(toggle);
     graphics.setColour(juce::Colour(0xffa8bdcf));
-    graphics.drawRoundedRectangle(toggle, 4.f, 1.f);
+    graphics.drawRect(toggle, 1.f);
     const auto centre = toggle.getCentre();
     graphics.drawLine(centre.x - 4.f, centre.y, centre.x + 4.f, centre.y, 1.5f);
     if (group.collapsed) {
@@ -130,9 +129,9 @@ void paintMapNodes(
                     .withCentre(mappedCentre(presented, source, mapped));
             miniature = miniature.getIntersection(map.reduced(2.f));
             graphics.setColour(juce::Colour(0xff41627b));
-            graphics.fillRoundedRectangle(miniature, 2.f);
+            graphics.fillRect(miniature);
             graphics.setColour(juce::Colour(0xffa6c2d2));
-            graphics.drawRoundedRectangle(miniature, 2.f, 0.8f);
+            graphics.drawRect(miniature, 0.8f);
         }
     }
 }
@@ -235,9 +234,9 @@ void NodeGroupPresentation::paint(
     const auto map = mapBounds(bounds);
     const auto source = memberWorldBounds(graph, group, edgeIndex).expanded(8.f);
     graphics.setColour(juce::Colour(0xff09151e));
-    graphics.fillRoundedRectangle(map, 5.f);
+    graphics.fillRect(map);
     graphics.setColour(juce::Colour(0xff355066));
-    graphics.drawRoundedRectangle(map, 5.f, 1.f);
+    graphics.drawRect(map, 1.f);
     if (source.isEmpty()) {
         return;
     }
