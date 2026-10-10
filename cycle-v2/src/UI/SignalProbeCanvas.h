@@ -46,6 +46,12 @@ public:
             const NodeGraph& graph,
             const NodeGroup& group,
             const SignalProbeCanvasState& state);
+    static Rectangle<float> cardBoundsForGroup(
+            const NodeGraph& graph,
+            const NodeGroup& group,
+            const NodeCanvasSceneSnapshot& scene,
+            const NodeCanvasViewport& viewport,
+            const SignalProbeCanvasState& state);
     static Point<float> markerCentre(
             const SignalProbe& probe,
             const NodeGraph& graph,

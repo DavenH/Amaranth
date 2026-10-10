@@ -954,7 +954,7 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
     for (const auto& sceneTarget : sceneSnapshot.targets) {
         if (sceneTarget.kind != NodeSceneTargetKind::Node
                 && sceneTarget.kind != NodeSceneTargetKind::NodeGroupToggle
-                && sceneTarget.kind != NodeSceneTargetKind::NodeGroupGrabber
+                && sceneTarget.kind != NodeSceneTargetKind::NodeGroupBackground
                 && !sceneTarget.isPort()) {
             continue;
         }
@@ -965,14 +965,14 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                         ? "node"
                         : sceneTarget.kind == NodeSceneTargetKind::NodeGroupToggle
                         ? "nodeGroupToggle"
-                        : sceneTarget.kind == NodeSceneTargetKind::NodeGroupGrabber
-                        ? "nodeGroupGrabber"
+                        : sceneTarget.kind == NodeSceneTargetKind::NodeGroupBackground
+                        ? "nodeGroupBackground"
                         : (sceneTarget.kind == NodeSceneTargetKind::InputPort ? "inputPort" : "outputPort"),
                 sceneTarget.bounds, sceneTarget.nodeId, sceneTarget.portId,
                 sceneTarget.kind == NodeSceneTargetKind::InputPort));
 
         if (sceneTarget.kind == NodeSceneTargetKind::NodeGroupToggle
-                || sceneTarget.kind == NodeSceneTargetKind::NodeGroupGrabber) {
+                || sceneTarget.kind == NodeSceneTargetKind::NodeGroupBackground) {
             const auto& groups = context.document.graph().getNodeGroups();
             const auto found = std::find_if(groups.begin(), groups.end(),
                     [&](const NodeGroup& group) {
@@ -982,9 +982,9 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                 const int index = (int) std::distance(groups.begin(), found);
                 targets.add(AutomationValueEncoder::pointerTargetToVar(
                         (sceneTarget.kind == NodeSceneTargetKind::NodeGroupToggle
-                                ? "groupToggle:" : "groupGrabber:") + String(index),
+                                ? "groupToggle:" : "groupBackground:") + String(index),
                         sceneTarget.kind == NodeSceneTargetKind::NodeGroupToggle
-                                ? "nodeGroupToggle" : "nodeGroupGrabber",
+                                ? "nodeGroupToggle" : "nodeGroupBackground",
                         sceneTarget.bounds,
                         sceneTarget.nodeId));
             }

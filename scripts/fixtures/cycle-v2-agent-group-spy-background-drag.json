@@ -58,15 +58,15 @@
     {
       "command": "pointer",
       "event": "down",
-      "targetId": "groupGrabber:0",
+      "targetId": "groupBackground:0",
       "targetX": 0.5,
       "targetY": 0.5
     },
     {
       "command": "pointer",
       "event": "drag",
-      "targetId": "groupGrabber:0",
-      "downTargetId": "groupGrabber:0",
+      "targetId": "groupBackground:0",
+      "downTargetId": "groupBackground:0",
       "targetX": 3.5,
       "targetY": 0.5,
       "downTargetX": 0.5,
@@ -75,8 +75,8 @@
     {
       "command": "pointer",
       "event": "up",
-      "targetId": "groupGrabber:0",
-      "downTargetId": "groupGrabber:0",
+      "targetId": "groupBackground:0",
+      "downTargetId": "groupBackground:0",
       "targetX": 3.5,
       "targetY": 0.5,
       "downTargetX": 0.5,
@@ -115,6 +115,52 @@
       "command": "screenshot",
       "area": "canvas",
       "path": "/private/tmp/cycle-v2-group-spy-expanded.png"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "groupBackground:0",
+      "targetX": 0.3,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "groupBackground:0",
+      "downTargetId": "groupBackground:0",
+      "targetX": -0.5,
+      "targetY": 0.5,
+      "downTargetX": 0.3,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "groupBackground:0",
+      "downTargetId": "groupBackground:0",
+      "targetX": -0.5,
+      "targetY": 0.5,
+      "downTargetX": 0.3,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.16.bounds.x",
+      "op": "lessThan",
+      "value": 3009.1
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.16.bounds.x",
+      "op": "greaterThan",
+      "value": 3009.15
     }
   ],
   "quit": true

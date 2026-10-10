@@ -673,30 +673,38 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     }
 
     const GraphEdgeIndex& groupEdgeIndex = queries.presentationFacts().edgeIndex();
+    const auto& scene = sceneBuilder.build(
+            graph,
+            viewport,
+            presentation.revision(),
+            document.revision(),
+            &groupEdgeIndex);
     for (const auto& group : graph.getNodeGroups()) {
-        const auto bounds = viewport.toScreen(
-                NodeGroupPresentation::worldBounds(graph, group, viewport, groupEdgeIndex));
+        const auto spyBounds = SignalProbeCanvas::cardBoundsForGroup(
+                graph, group, scene, viewport, probeCanvasState);
+        const auto bounds = NodeGroupPresentation::expandedBackdropBounds(
+                graph, group, viewport, groupEdgeIndex, spyBounds);
         const bool onToggle = NodeGroupPresentation::toggleBounds(
                 graph, group, viewport, groupEdgeIndex).contains(event.position);
-        const bool onGrabber = NodeGroupPresentation::grabberBounds(
-                graph, group, viewport, groupEdgeIndex).contains(event.position);
-        const bool onCard = group.collapsed && bounds.contains(event.position);
-        const bool onHeader = !group.collapsed
-                && bounds.withHeight(34.f).contains(event.position);
-        if (!onToggle && !onGrabber && !onCard && !onHeader) {
+        const bool onBackground = bounds.contains(event.position)
+                && SignalProbeCanvas::cardAt(
+                        event.position, graph, scene, viewport, probeCanvasState).isEmpty()
+                && queries.findNodeAt(viewport.toWorld(event.position)) == nullptr
+                && !interaction.portAt(scene, event.position).has_value();
+        if (!onToggle && !onBackground) {
             continue;
         }
         if (event.mods.isPopupMenu()) {
             showNodeGroupMenu(group.id, event.position);
-        } else if (onGrabber) {
+        } else if (onToggle || (group.collapsed && event.getNumberOfClicks() >= 2)) {
+            setNodeGroupCollapsed(group.id, !group.collapsed);
+        } else {
             if (const Node* anchor = graph.findNode(group.nodeIds.front())) {
                 interaction.beginNodeDrag(
                         graph, anchor->id, group.nodeIds, anchor->bounds, false);
                 nodeDragSpyStarts = SignalProbeCanvas::explicitCardPositionsForGroup(
                         graph, group, probeCanvasState);
             }
-        } else if (onToggle || onCard) {
-            setNodeGroupCollapsed(group.id, !group.collapsed);
         }
         return;
     }
@@ -729,12 +737,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         return;
     }
 
-    const auto& scene = sceneBuilder.build(
-            graph,
-            viewport,
-            presentation.revision(),
-            document.revision(),
-            &queries.presentationFacts().edgeIndex());
     const String cardProbe = SignalProbeCanvas::cardAt(
             event.position, graph, scene, viewport, probeCanvasState);
     if (cardProbe.isNotEmpty()) {

@@ -141,6 +141,33 @@ std::vector<std::pair<String, Point<float>>> SignalProbeCanvas::explicitCardPosi
     return positions;
 }
 
+Rectangle<float> SignalProbeCanvas::cardBoundsForGroup(
+        const NodeGraph& graph,
+        const NodeGroup& group,
+        const NodeCanvasSceneSnapshot& scene,
+        const NodeCanvasViewport& viewport,
+        const SignalProbeCanvasState& state) {
+    Rectangle<float> bounds;
+    const auto include = [&](const String& probeId) {
+        const auto card = cardBoundsFor(probeId, graph, scene, viewport, state);
+        if (!card.isEmpty()) {
+            bounds = bounds.isEmpty() ? card : bounds.getUnion(card);
+        }
+    };
+    for (const auto& probe : graph.getSignalProbes()) {
+        if (probeTouchesGroup(graph, group,
+                    probe.sourceNodeId, probe.anchorDestNodeId)) {
+            include(probe.id);
+        }
+    }
+    const auto output = DefaultOutputProbeResolver().resolve(graph);
+    if (output.has_value() && probeTouchesGroup(graph, group,
+                output->sourceNodeId, output->destNodeId)) {
+        include(DefaultOutputProbeResolver::probeId);
+    }
+    return bounds;
+}
+
 std::vector<const SignalProbe*> SignalProbeCanvas::orderedProbes(const NodeGraph& graph) {
     std::vector<const SignalProbe*> probes;
     probes.reserve(graph.getSignalProbes().size());

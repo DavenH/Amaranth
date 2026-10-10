@@ -25,11 +25,12 @@ public:
             const NodeGroup& group,
             const NodeCanvasViewport& viewport,
             const GraphEdgeIndex& edgeIndex);
-    static juce::Rectangle<float> grabberBounds(
+    static juce::Rectangle<float> expandedBackdropBounds(
             const NodeGraph& graph,
             const NodeGroup& group,
             const NodeCanvasViewport& viewport,
-            const GraphEdgeIndex& edgeIndex);
+            const GraphEdgeIndex& edgeIndex,
+            juce::Rectangle<float> spyBounds);
     static juce::Point<float> boundaryPoint(
             const NodeGraph& graph,
             const NodeGroup& group,
@@ -37,6 +38,13 @@ public:
             const NodeCanvasViewport& viewport,
             const GraphEdgeIndex& edgeIndex);
     static void paint(
+            juce::Graphics& graphics,
+            const NodeGraph& graph,
+            const NodeGroup& group,
+            const NodeCanvasViewport& viewport,
+            const GraphEdgeIndex& edgeIndex,
+            juce::Rectangle<float> spyBounds = {});
+    static void paintControls(
             juce::Graphics& graphics,
             const NodeGraph& graph,
             const NodeGroup& group,

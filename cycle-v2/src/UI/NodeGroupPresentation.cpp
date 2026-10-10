@@ -52,19 +52,23 @@ juce::Point<float> mappedCentre(
 void paintGroupChrome(
         juce::Graphics& graphics,
         const NodeGroup& group,
-        juce::Rectangle<float> bounds,
-        juce::Rectangle<float> toggle,
-        juce::Rectangle<float> grabber) {
+        juce::Rectangle<float> bounds) {
     const float radius = group.collapsed ? 9.f : 15.f;
     graphics.setColour(juce::Colour(0xff122332).withAlpha(group.collapsed ? 0.98f : 0.36f));
     graphics.fillRoundedRectangle(bounds, radius);
     graphics.setColour(juce::Colour(0xff63819a).withAlpha(group.collapsed ? 0.8f : 0.36f));
     graphics.drawRoundedRectangle(bounds.reduced(0.5f), radius, 1.f);
+}
 
+void paintGroupControls(
+        juce::Graphics& graphics,
+        const NodeGroup& group,
+        juce::Rectangle<float> toggle,
+        juce::Rectangle<float> header) {
     graphics.setColour(juce::Colour(0xffb9ccdd));
     graphics.setFont(juce::Font(juce::FontOptions(12.f, juce::Font::bold)));
-    const auto title = bounds.withHeight(29.f).reduced(12.f, 0.f)
-            .withTrimmedRight(bounds.getRight() - grabber.getX() + 5.f);
+    const auto title = header.withHeight(29.f).reduced(12.f, 0.f)
+            .withTrimmedRight(header.getRight() - toggle.getX() + 5.f);
     graphics.drawFittedText(group.title + "  ·  " + juce::String((int) group.nodeIds.size()),
             title.toNearestInt(), juce::Justification::centredLeft, 1);
 
@@ -76,15 +80,6 @@ void paintGroupChrome(
     graphics.drawLine(centre.x - 4.f, centre.y, centre.x + 4.f, centre.y, 1.5f);
     if (group.collapsed) {
         graphics.drawLine(centre.x, centre.y - 4.f, centre.x, centre.y + 4.f, 1.5f);
-    }
-
-    graphics.setColour(juce::Colour(0xffa8bdcf).withAlpha(0.85f));
-    const auto gripCentre = grabber.getCentre();
-    for (float x : { -3.f, 3.f }) {
-        for (float y : { -3.f, 3.f }) {
-            graphics.fillEllipse(gripCentre.x + x - 1.f,
-                    gripCentre.y + y - 1.f, 2.f, 2.f);
-        }
     }
 }
 
@@ -191,13 +186,16 @@ juce::Rectangle<float> NodeGroupPresentation::toggleBounds(
     return { bounds.getRight() - size - 7.f, bounds.getY() + 5.f, size, size };
 }
 
-juce::Rectangle<float> NodeGroupPresentation::grabberBounds(
+juce::Rectangle<float> NodeGroupPresentation::expandedBackdropBounds(
         const NodeGraph& graph,
         const NodeGroup& group,
         const NodeCanvasViewport& viewport,
-        const GraphEdgeIndex& edgeIndex) {
-    const auto toggle = toggleBounds(graph, group, viewport, edgeIndex);
-    return toggle.translated(-toggle.getWidth() - 4.f, 0.f);
+        const GraphEdgeIndex& edgeIndex,
+        juce::Rectangle<float> spyBounds) {
+    const auto frame = viewport.toScreen(worldBounds(graph, group, viewport, edgeIndex));
+    return group.collapsed || spyBounds.isEmpty()
+            ? frame
+            : frame.getUnion(spyBounds.expanded(kExpandedScreenPadding));
 }
 
 juce::Point<float> NodeGroupPresentation::boundaryPoint(
@@ -223,14 +221,16 @@ void NodeGroupPresentation::paint(
         const NodeGraph& graph,
         const NodeGroup& group,
         const NodeCanvasViewport& viewport,
-        const GraphEdgeIndex& edgeIndex) {
-    const auto bounds = viewport.toScreen(worldBounds(graph, group, viewport, edgeIndex));
-    const auto toggle = toggleBounds(graph, group, viewport, edgeIndex);
-    const auto grabber = grabberBounds(graph, group, viewport, edgeIndex);
-    paintGroupChrome(graphics, group, bounds, toggle, grabber);
+        const GraphEdgeIndex& edgeIndex,
+        juce::Rectangle<float> spyBounds) {
+    const auto bounds = expandedBackdropBounds(
+            graph, group, viewport, edgeIndex, spyBounds);
+    paintGroupChrome(graphics, group, bounds);
     if (!group.collapsed) {
         return;
     }
+
+    paintControls(graphics, graph, group, viewport, edgeIndex);
 
     const auto map = mapBounds(bounds);
     const auto source = memberWorldBounds(graph, group, edgeIndex).expanded(8.f);
@@ -248,6 +248,17 @@ void NodeGroupPresentation::paint(
             source.getWidth() * scale, source.getHeight() * scale).withCentre(map.getCentre());
     paintMapEdges(graphics, graph, group, edgeIndex, source, mapped);
     paintMapNodes(graphics, graph, group, source, mapped, map, scale, edgeIndex);
+}
+
+void NodeGroupPresentation::paintControls(
+        juce::Graphics& graphics,
+        const NodeGraph& graph,
+        const NodeGroup& group,
+        const NodeCanvasViewport& viewport,
+        const GraphEdgeIndex& edgeIndex) {
+    const auto header = viewport.toScreen(worldBounds(graph, group, viewport, edgeIndex));
+    const auto toggle = toggleBounds(graph, group, viewport, edgeIndex);
+    paintGroupControls(graphics, group, toggle, header);
 }
 
 }

@@ -22,7 +22,7 @@ enum class NodeSceneTargetKind {
     MiniMap,
     ExpandedEditor,
     NodeGroupToggle,
-    NodeGroupGrabber
+    NodeGroupBackground
 };
 
 struct NodeSceneTarget {

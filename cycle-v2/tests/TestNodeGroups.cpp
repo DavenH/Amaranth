@@ -213,6 +213,12 @@ TEST_CASE("Group toggles stay anchored while their Spy cards collapse",
     REQUIRE_FALSE(SignalProbeCanvas::cardBoundsFor(
             DefaultOutputProbeResolver::probeId,
             graph, expanded, viewport, probeState).isEmpty());
+    const auto spyBounds = SignalProbeCanvas::cardBoundsForGroup(
+            graph, *graph.findNodeGroup("group"), expanded, viewport, probeState);
+    const auto backdrop = NodeGroupPresentation::expandedBackdropBounds(
+            graph, *graph.findNodeGroup("group"), viewport, edgeIndex, spyBounds);
+    REQUIRE(backdrop.contains(spyBounds));
+    REQUIRE(backdrop.contains(before));
 
     NodeGroup collapsed = *graph.findNodeGroup("group");
     collapsed.collapsed = true;
@@ -229,11 +235,11 @@ TEST_CASE("Group toggles stay anchored while their Spy cards collapse",
             graph, compact, viewport, probeState).isEmpty());
     REQUIRE(std::any_of(compact.targets.begin(), compact.targets.end(),
             [](const NodeSceneTarget& target) {
-                return target.kind == NodeSceneTargetKind::NodeGroupGrabber;
+                return target.kind == NodeSceneTargetKind::NodeGroupBackground;
             }));
 }
 
-TEST_CASE("Group grabber moves members through one undoable gesture",
+TEST_CASE("Group background moves members through one undoable gesture",
         "[cycle-v2][ui][groups][gesture]") {
     GraphNodeFactory factory;
     NodeGraph graph;

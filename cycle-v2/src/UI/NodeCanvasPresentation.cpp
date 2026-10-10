@@ -653,10 +653,16 @@ void NodeCanvasPresentation::paint(
 void NodeCanvasPresentation::paintContent(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
+    scene.build(frame.graph, frame.viewport, frame.presentationRevision,
+            frame.documentRevision, &frame.facts.edgeIndex());
     for (const auto& group : frame.graph.getNodeGroups()) {
         if (!group.collapsed) {
+            const auto spyBounds = SignalProbeCanvas::cardBoundsForGroup(
+                    frame.graph, group, scene.snapshot(), frame.viewport,
+                    frame.probeCanvasState);
             NodeGroupPresentation::paint(
-                    graphics, frame.graph, group, frame.viewport, frame.facts.edgeIndex());
+                    graphics, frame.graph, group, frame.viewport,
+                    frame.facts.edgeIndex(), spyBounds);
         }
     }
     {
@@ -711,6 +717,13 @@ void NodeCanvasPresentation::paintContent(
                 frame.snapshot,
                 frame.facts,
                 frame.probeCanvasState);
+        for (const auto& group : frame.graph.getNodeGroups()) {
+            if (!group.collapsed) {
+                NodeGroupPresentation::paintControls(
+                        graphics, frame.graph, group, frame.viewport,
+                        frame.facts.edgeIndex());
+            }
+        }
     }
     {
         ScopedNodeCanvasPresentationStage measurement(

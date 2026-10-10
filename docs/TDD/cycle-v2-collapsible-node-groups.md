@@ -13,16 +13,18 @@ Implemented (2026-10-09).
 - The card has an accessible toggle target. A selection of two or more nodes can be grouped from a context menu or keyboard shortcut. Ungroup is available from the group menu.
 - Group geometry is derived from each member's presented bounds, including inline pan nodes whose displayed position follows a cable. Moving a member uses the existing node movement delta, with no aggregate graph copy on movement updates.
 - The expanded frame contains connector captions as well as node bodies. Its header reserves enough screen space for the title and collapse control at every zoom, and title text ends before the control.
-- Collapse and expansion keep the toggle in the same screen position. A separate grabber moves all members through one undoable gesture. Spy cards and markers attached to a collapsed member are hidden and reappear on expansion; their saved placement remains intact.
+- Collapse and expansion keep the toggle in the same screen position. Dragging empty group background moves all members through one undoable gesture. The expanded backdrop includes visible attached Spy cards. Spy cards and markers attached to a collapsed member are hidden and reappear on expansion; their saved placement remains intact.
 
 ## Ownership and reuse
 
 `NodeGraph` owns the membership data. `GraphCommandDispatcher` owns semantic edits and undo publication. `NodeCanvasScene` owns presented targets and cable endpoints. `NodeCanvasPresentation` consumes that scene and graph data to draw the card. Existing node dragging, box selection, and cable rendering remain authoritative. No DSP implementation is copied.
 
-The anchor is the expanded frame's top-right toggle position. The compact card
-shares that top-right corner; dragging the group translates its member nodes,
-so the anchor moves with them without another stored position. The grabber
-reuses the existing multi-node transaction and inverse delta. It disables node
+The anchor is the node-derived expanded frame's top-right toggle position. The
+compact card shares that top-right corner; dragging the group translates its
+member nodes, so the anchor moves with them without another stored position.
+The backdrop extends around visible Spy cards while its toggle stays anchored
+to the node-derived header. Background dragging reuses the existing multi-node
+transaction and inverse delta. It disables node
 snapping and splice validation for this gesture, leaving movement updates
 proportional to group members and explicitly placed attached Spy cards. The
 probe canvas owns the decision to hide or move attached cards; probe data and
@@ -31,7 +33,7 @@ audio routing do not change on collapse.
 The user creates a group from a multi-node selection with the context menu or
 Command/Ctrl+G. Its title can be changed from the group menu. Command/Ctrl+
 Shift+G ungroups a selected member. The plus/minus control toggles the compact
-card; clicking the card also expands it.
+card; double-clicking the card also expands it.
 
 ## Completion evidence
 
@@ -103,7 +105,26 @@ group state.
 - Seven focused CTest cases passed, including two movement updates, commit,
   undo, and operation-counter checks at 0 and 128 unrelated nodes with 16,384
   unrelated audio samples. The 20-command
-  `scripts/fixtures/cycle-v2-agent-group-spy-grabber.json` passed: attached Spy
+  initial group Spy fixture passed: attached Spy
   card hidden/restored, grabber movement, and undo. Collapsed and expanded
   captures are at `/private/tmp/cycle-v2-group-spy-collapsed.png` and
   `/private/tmp/cycle-v2-group-spy-expanded.png`; filtered log had no errors.
+
+## Background-drag and Spy-bound follow-up
+
+The Spy canvas remains authoritative for card position and group attachment.
+`NodeGroupPresentation` unions the visible attached-card bounds with its
+node-derived frame only for the expanded backdrop. The node-derived toggle
+anchor stays fixed on collapse, including when a Spy lies above or to the right
+of the member nodes. Canvas input skips Spy cards, node bodies, and ports before
+starting the existing group movement gesture from empty backdrop space. The
+controls paint above Spy cards where their placement overlaps the header. The
+grabber target and drawing are removed. The focused UI fixture now targets the
+group background, and the geometry test asserts the expanded backdrop encloses
+the attached cards while the toggle remains stationary.
+The fixture is `scripts/fixtures/cycle-v2-agent-group-spy-background-drag.json`.
+The 26-command fixture passed with collapsed and expanded background drags,
+Spy hide/restore, and undo. The nine focused group tests passed with 119
+assertions. The standalone and test targets built, `git diff --check` passed,
+and the architecture audit reported only the existing size triggers. Clang-tidy
+found three pre-existing SignalProbeCanvas warnings outside the changed lines.
