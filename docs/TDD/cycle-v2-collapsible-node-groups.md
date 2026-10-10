@@ -143,3 +143,13 @@ test targets build; 16 focused cache/group cases pass with 238 assertions. The
 26-command group fixture passes, and the OS capture at
 `/private/tmp/cycle-v2-group-navy-os.png` shows full-colour cables and square
 navy group chrome. The architecture audit and `git diff --check` pass.
+
+## Subtle group tint follow-up
+
+The expanded backdrop uses a darker navy at 27% fill opacity and a 28% border.
+The collapsed card retains enough contrast for its minimap at 78% fill opacity.
+The title and toggle colours are quieter as well. The OS capture at
+`/private/tmp/cycle-v2-group-subtle-os.png` measures the nearby canvas at
+RGB (21, 26, 33) and the empty group interior at (20, 31, 42), keeping the
+expanded frame close to the reference's low-contrast treatment. The standalone
+target built and the 21-command focused UI capture passed.

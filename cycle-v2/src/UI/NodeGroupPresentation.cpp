@@ -53,9 +53,9 @@ void paintGroupChrome(
         juce::Graphics& graphics,
         const NodeGroup& group,
         juce::Rectangle<float> bounds) {
-    graphics.setColour(juce::Colour(0xff102b49).withAlpha(group.collapsed ? 0.96f : 0.72f));
+    graphics.setColour(juce::Colour(0xff0b2038).withAlpha(group.collapsed ? 0.78f : 0.27f));
     graphics.fillRect(bounds);
-    graphics.setColour(juce::Colour(0xff416688).withAlpha(group.collapsed ? 0.88f : 0.72f));
+    graphics.setColour(juce::Colour(0xff315270).withAlpha(group.collapsed ? 0.62f : 0.28f));
     graphics.drawRect(bounds.reduced(0.5f), 1.f);
 }
 
@@ -64,16 +64,16 @@ void paintGroupControls(
         const NodeGroup& group,
         juce::Rectangle<float> toggle,
         juce::Rectangle<float> header) {
-    graphics.setColour(juce::Colour(0xffb9ccdd));
+    graphics.setColour(juce::Colour(0xff98b1c8));
     graphics.setFont(juce::Font(juce::FontOptions(12.f, juce::Font::bold)));
     const auto title = header.withHeight(29.f).reduced(12.f, 0.f)
             .withTrimmedRight(header.getRight() - toggle.getX() + 5.f);
     graphics.drawFittedText(group.title + "  ·  " + juce::String((int) group.nodeIds.size()),
             title.toNearestInt(), juce::Justification::centredLeft, 1);
 
-    graphics.setColour(juce::Colour(0xff193a5a));
+    graphics.setColour(juce::Colour(0xff11283f));
     graphics.fillRect(toggle);
-    graphics.setColour(juce::Colour(0xffa8bdcf));
+    graphics.setColour(juce::Colour(0xff7594ae));
     graphics.drawRect(toggle, 1.f);
     const auto centre = toggle.getCentre();
     graphics.drawLine(centre.x - 4.f, centre.y, centre.x + 4.f, centre.y, 1.5f);
