@@ -18,6 +18,7 @@
 #include "UI/Editors/PropertyControls.h"
 #include "UI/NodeCanvasCursorPolicy.h"
 #include "UI/NodeGroupPresentation.h"
+#include "UI/NodeGroupRenameCallout.h"
 
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeParameterMap.h"
@@ -696,6 +697,10 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         }
         if (event.mods.isPopupMenu()) {
             showNodeGroupMenu(group.id, event.position);
+        } else if (event.getNumberOfClicks() >= 2
+                && NodeGroupPresentation::labelBounds(
+                        graph, group, viewport, groupEdgeIndex).contains(event.position)) {
+            promptRenameNodeGroup(group.id);
         } else if (onToggle || (group.collapsed && event.getNumberOfClicks() >= 2)) {
             setNodeGroupCollapsed(group.id, !group.collapsed);
         } else {
@@ -1679,26 +1684,33 @@ void NodeCanvas::promptRenameNodeGroup(const String& groupId) {
     if (group == nullptr) {
         return;
     }
-    auto* prompt = new AlertWindow(
-            "Rename group", "Choose a name for this node group.",
-            MessageBoxIconType::QuestionIcon, getTopLevelComponent());
-    prompt->addTextEditor("name", group->title, "Group name");
-    prompt->addButton("Rename", 1, KeyPress(KeyPress::returnKey));
-    prompt->addButton("Cancel", 0, KeyPress(KeyPress::escapeKey));
-    prompt->enterModalState(true,
-            ModalCallbackFunction::create([
-                    safeThis = SafePointer<NodeCanvas>(this), prompt, groupId](int choice) {
-                if (choice != 1 || safeThis == nullptr) {
+    const GraphEdgeIndex& edgeIndex = queries.presentationFacts().edgeIndex();
+    const auto anchor = NodeGroupPresentation::labelBounds(
+            graph, *group, viewport, edgeIndex).toNearestInt();
+    auto editor = std::make_unique<NodeGroupRenameCallout>(group->title,
+            [safeThis = SafePointer<NodeCanvas>(this), groupId](const String& title) {
+                if (safeThis == nullptr) {
                     return;
                 }
-                const String title = prompt->getTextEditorContents("name").trim();
                 const GraphEditResult result = safeThis->commands.renameNodeGroup(groupId, title);
                 if (result.succeeded() && result.changed) {
                     safeThis->editStatusMessage = "Group renamed";
                     safeThis->notifyGraphDocumentStateChanged();
                     safeThis->requestCanvasRepaint();
                 }
-            }), true);
+            });
+    auto* editorContent = editor.get();
+    auto& callout = CallOutBox::launchAsynchronously(std::move(editor), anchor, this);
+    callout.setLookAndFeel(editorContent);
+    callout.setArrowSize(8.f);
+    auto available = canvasContentBounds();
+    if (presetSidebar != nullptr && presetSidebar->isVisible()) {
+        available.setLeft(juce::jmin(available.getRight(),
+                (float) presetSidebar->getRight() + 8.f));
+    }
+    callout.updatePosition(anchor, available.toNearestInt());
+    callout.setDismissalMouseClicksAreAlwaysConsumed(true);
+    editorContent->focusName();
 }
 
 void NodeCanvas::showSelectionGroupMenu(Point<float> canvasPosition) {

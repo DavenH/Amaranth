@@ -164,3 +164,15 @@ states. The scene's automation background target uses bottom padding rather
 than the header, keeping it clear of the control. The nine focused group tests
 pass with 122 assertions, and the 26-command Spy/background-drag fixture and
 the OS capture at `/private/tmp/cycle-v2-inline-group-os.png` pass.
+
+## Anchored rename follow-up
+
+The group menu and a double-click on the group label open a compact name field
+in a `CallOutBox` pointed at the label. The box fits within the visible canvas
+beside the preset sidebar. Return submits a nonempty trimmed name through the
+existing `GraphCommandDispatcher` rename command; Escape and an outside click
+dismiss without changing the group. `NodeGroupPresentation` owns the label hit
+rectangle used for painting, the gesture, and the anchor. The focused group
+tests and `cycle-v2-agent-group-rename-callout.json` gesture fixture pass. The
+OS capture at `/private/tmp/cycle-v2-group-rename-callout-os.png` shows the
+field and pointer at the label.

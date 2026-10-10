@@ -95,15 +95,10 @@ void paintGroupChrome(
 void paintGroupControls(
         juce::Graphics& graphics,
         const NodeGroup& group,
-        juce::Rectangle<float> toggle,
-        juce::Rectangle<float> header) {
+        juce::Rectangle<float> title,
+        juce::Rectangle<float> toggle) {
     graphics.setColour(juce::Colour(0xff88a4bb).withAlpha(0.85f));
     graphics.setFont(groupLabelFont());
-    const auto title = juce::Rectangle<float>(
-            header.getX() + kLabelLeftPadding,
-            header.getY(),
-            toggle.getX() - header.getX() - kLabelLeftPadding - kToggleGap,
-            29.f);
     graphics.drawFittedText(group.title.toUpperCase(),
             title.toNearestInt(), juce::Justification::centredLeft, 1);
 
@@ -219,6 +214,21 @@ juce::Rectangle<float> NodeGroupPresentation::toggleBounds(
     };
 }
 
+juce::Rectangle<float> NodeGroupPresentation::labelBounds(
+        const NodeGraph& graph,
+        const NodeGroup& group,
+        const NodeCanvasViewport& viewport,
+        const GraphEdgeIndex& edgeIndex) {
+    const auto frame = viewport.toScreen(worldBounds(graph, group, viewport, edgeIndex));
+    const auto toggle = toggleBounds(graph, group, viewport, edgeIndex);
+    return {
+            frame.getX() + kLabelLeftPadding,
+            frame.getY(),
+            toggle.getX() - frame.getX() - kLabelLeftPadding - kToggleGap,
+            29.f
+    };
+}
+
 juce::Rectangle<float> NodeGroupPresentation::expandedBackdropBounds(
         const NodeGraph& graph,
         const NodeGroup& group,
@@ -289,9 +299,9 @@ void NodeGroupPresentation::paintControls(
         const NodeGroup& group,
         const NodeCanvasViewport& viewport,
         const GraphEdgeIndex& edgeIndex) {
-    const auto header = viewport.toScreen(worldBounds(graph, group, viewport, edgeIndex));
+    const auto title = labelBounds(graph, group, viewport, edgeIndex);
     const auto toggle = toggleBounds(graph, group, viewport, edgeIndex);
-    paintGroupControls(graphics, group, toggle, header);
+    paintGroupControls(graphics, group, title, toggle);
 }
 
 }

@@ -223,6 +223,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasQueryModel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeGroupPresentation.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeGroupRenameCallout.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasViewport.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePalette.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePortLayout.cpp"

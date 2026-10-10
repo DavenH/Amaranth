@@ -11,6 +11,7 @@
 #include "UI/NodeCanvasInteraction.h"
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeGroupPresentation.h"
+#include "UI/NodeGroupRenameCallout.h"
 #include "UI/SignalProbeCanvas.h"
 
 using namespace CycleV2;
@@ -25,6 +26,26 @@ bool hasNodeTarget(const NodeCanvasSceneSnapshot& scene, const String& nodeId) {
             });
 }
 
+}
+
+TEST_CASE("Group rename callout commits trimmed text only on Return",
+        "[cycle-v2][ui][groups][rename]") {
+    juce::ScopedJuceInitialiser_GUI gui;
+    String renamed;
+    NodeGroupRenameCallout callout("Group", [&](const String& title) {
+        renamed = title;
+    });
+    auto* name = dynamic_cast<juce::TextEditor*>(callout.getChildComponent(0));
+    REQUIRE(name != nullptr);
+    REQUIRE(name->getText() == "Group");
+
+    name->setText("   ");
+    name->onReturnKey();
+    REQUIRE(renamed.isEmpty());
+
+    name->setText("  Global FX  ");
+    name->onReturnKey();
+    REQUIRE(renamed == "Global FX");
 }
 
 TEST_CASE("Node groups persist and undo without changing graph connectivity",
@@ -214,7 +235,10 @@ TEST_CASE("Group toggles stay anchored while their Spy cards collapse",
             graph, *graph.findNodeGroup("group"), viewport, edgeIndex));
     const auto before = NodeGroupPresentation::toggleBounds(
             graph, *graph.findNodeGroup("group"), viewport, edgeIndex);
+    const auto labelBefore = NodeGroupPresentation::labelBounds(
+            graph, *graph.findNodeGroup("group"), viewport, edgeIndex);
     REQUIRE(before.getX() < expandedFrame.getX() + 160.f);
+    REQUIRE(labelBefore.getRight() < before.getX());
     REQUIRE_FALSE(SignalProbeCanvas::cardBoundsFor(
             "spy", graph, expanded, viewport, probeState).isEmpty());
     REQUIRE_FALSE(SignalProbeCanvas::cardBoundsFor(
@@ -235,8 +259,11 @@ TEST_CASE("Group toggles stay anchored while their Spy cards collapse",
             graph, collapsed, viewport, edgeIndex);
     const auto compactFrame = viewport.toScreen(NodeGroupPresentation::worldBounds(
             graph, collapsed, viewport, edgeIndex));
+    const auto labelAfter = NodeGroupPresentation::labelBounds(
+            graph, collapsed, viewport, edgeIndex);
     REQUIRE(compactFrame.getX() == Catch::Approx(expandedFrame.getX()));
     REQUIRE(compactFrame.contains(after));
+    REQUIRE(labelAfter == labelBefore);
     REQUIRE(after.getCentreX() == Catch::Approx(before.getCentreX()));
     REQUIRE(after.getCentreY() == Catch::Approx(before.getCentreY()));
     REQUIRE(SignalProbeCanvas::cardBoundsFor(
