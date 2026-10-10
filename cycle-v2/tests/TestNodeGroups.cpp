@@ -11,6 +11,7 @@
 #include "UI/NodeCanvasInteraction.h"
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeGroupPresentation.h"
+#include "UI/SignalProbeCanvas.h"
 
 using namespace CycleV2;
 
@@ -184,6 +185,88 @@ TEST_CASE("Expanded group header clears endpoint nodes and their captions",
         REQUIRE(toggle.getBottom() + 6.f <= juce::jmin(
                 inputVisual.getY(), outputVisual.getY()));
     }
+}
+
+TEST_CASE("Group toggles stay anchored while their Spy cards collapse",
+        "[cycle-v2][ui][groups][spy]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::GlobalInput, "input", { 100.f, 150.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", { 450.f, 150.f }));
+    graph.addEdge({ "input", "time", "output", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addSignalProbe({ "spy", "input", "time", "output", "time",
+            "Spy", 0.5f, 0, juce::Point<float>(230.f, 400.f) });
+    REQUIRE(graph.addNodeGroup({ "group", "Global FX", { "input", "output" }, false }));
+    SignalProbeCanvasState probeState;
+    probeState.outputCanvasPosition = juce::Point<float>(550.f, 400.f);
+    NodeCanvasViewport viewport;
+    viewport.setBounds({ 0.f, 0.f, 1100.f, 700.f });
+    viewport.setTransform({}, 0.8f);
+    NodeCanvasScene scene;
+    const auto& expanded = scene.build(graph, viewport);
+    const GraphEdgeIndex edgeIndex(graph.getEdges());
+    const auto before = NodeGroupPresentation::toggleBounds(
+            graph, *graph.findNodeGroup("group"), viewport, edgeIndex);
+    REQUIRE_FALSE(SignalProbeCanvas::cardBoundsFor(
+            "spy", graph, expanded, viewport, probeState).isEmpty());
+    REQUIRE_FALSE(SignalProbeCanvas::cardBoundsFor(
+            DefaultOutputProbeResolver::probeId,
+            graph, expanded, viewport, probeState).isEmpty());
+
+    NodeGroup collapsed = *graph.findNodeGroup("group");
+    collapsed.collapsed = true;
+    REQUIRE(graph.replaceNodeGroup(collapsed));
+    const auto& compact = scene.build(graph, viewport);
+    const auto after = NodeGroupPresentation::toggleBounds(
+            graph, collapsed, viewport, edgeIndex);
+    REQUIRE(after.getCentreX() == Catch::Approx(before.getCentreX()));
+    REQUIRE(after.getCentreY() == Catch::Approx(before.getCentreY()));
+    REQUIRE(SignalProbeCanvas::cardBoundsFor(
+            "spy", graph, compact, viewport, probeState).isEmpty());
+    REQUIRE(SignalProbeCanvas::cardBoundsFor(
+            DefaultOutputProbeResolver::probeId,
+            graph, compact, viewport, probeState).isEmpty());
+    REQUIRE(std::any_of(compact.targets.begin(), compact.targets.end(),
+            [](const NodeSceneTarget& target) {
+                return target.kind == NodeSceneTargetKind::NodeGroupGrabber;
+            }));
+}
+
+TEST_CASE("Group grabber moves members through one undoable gesture",
+        "[cycle-v2][ui][groups][gesture]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Add, "first", { 100.f, 100.f }));
+    graph.addNode(factory.createNode(NodeKind::Add, "second", { 300.f, 100.f }));
+    graph.addNode(factory.createNode(NodeKind::Add, "outside", { 900.f, 100.f }));
+    REQUIRE(graph.addNodeGroup({ "group", "Pair", { "first", "second" }, true }));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    NodeCanvasInteraction interaction;
+    NodeCanvasViewport viewport;
+    viewport.setTransform({}, 1.f);
+    NodeCanvasScene scene;
+    interaction.beginNodeDrag(document.graph(), "first", { "first", "second" },
+            document.graph().findNode("first")->bounds, false);
+    REQUIRE(interaction.gestureValidationContext() == nullptr);
+    commands.beginCompoundEdit();
+    for (float offset : { 20.f, 50.f }) {
+        const auto update = interaction.drag(
+                document.graph(), viewport, scene.build(document.graph(), viewport),
+                { 100.f + offset, 100.f }, { offset, 0.f });
+        const auto& movement = std::get<NodeDragUpdate>(update);
+        const auto current = commands.editingGraph().findNode("first")->bounds;
+        REQUIRE(commands.translateNodes(movement.nodeIds,
+                movement.bounds.getPosition() - current.getPosition()).succeeded());
+    }
+    REQUIRE(commands.commitCompoundEdit());
+    REQUIRE(document.graph().findNode("first")->bounds.getX() == Catch::Approx(150.f));
+    REQUIRE(document.graph().findNode("second")->bounds.getX() == Catch::Approx(350.f));
+    REQUIRE(document.graph().findNode("outside")->bounds.getX() == Catch::Approx(900.f));
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findNode("first")->bounds.getX() == Catch::Approx(100.f));
+    REQUIRE(document.graph().findNode("second")->bounds.getX() == Catch::Approx(300.f));
 }
 
 TEST_CASE("Deleting a group member clears the remaining membership",

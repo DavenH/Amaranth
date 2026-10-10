@@ -14,6 +14,25 @@ namespace {
 
 constexpr float kCableAnnotationBaseDiameter = 12.f;
 
+bool probeEndpointsVisible(
+        const NodeGraph& graph,
+        const String& sourceNodeId,
+        const String& destinationNodeId) {
+    return (sourceNodeId.isEmpty() || graph.isNodeVisible(sourceNodeId))
+            && (destinationNodeId.isEmpty() || graph.isNodeVisible(destinationNodeId));
+}
+
+bool probeTouchesGroup(
+        const NodeGraph& graph,
+        const NodeGroup& group,
+        const String& sourceNodeId,
+        const String& destinationNodeId) {
+    const NodeGroup* sourceGroup = graph.groupForNode(sourceNodeId);
+    const NodeGroup* destinationGroup = graph.groupForNode(destinationNodeId);
+    return (sourceGroup != nullptr && sourceGroup->id == group.id)
+            || (destinationGroup != nullptr && destinationGroup->id == group.id);
+}
+
 const Edge* graphEdgeFor(const NodeGraph& graph, int edgeIndex) {
     return isPositiveAndBelow(edgeIndex, (int) graph.getEdges().size())
             ? &graph.getEdges()[(size_t) edgeIndex]
@@ -97,6 +116,29 @@ std::vector<String> SignalProbeCanvas::orderedProbeIds(const NodeGraph& graph) {
     }
     ids.push_back(DefaultOutputProbeResolver::probeId);
     return ids;
+}
+
+std::vector<std::pair<String, Point<float>>> SignalProbeCanvas::explicitCardPositionsForGroup(
+        const NodeGraph& graph,
+        const NodeGroup& group,
+        const SignalProbeCanvasState& state) {
+    std::vector<std::pair<String, Point<float>>> positions;
+    for (const auto& probe : graph.getSignalProbes()) {
+        if (probe.canvasPosition.has_value()
+                && probeTouchesGroup(graph, group,
+                        probe.sourceNodeId, probe.anchorDestNodeId)) {
+            positions.emplace_back(probe.id, *probe.canvasPosition);
+        }
+    }
+    if (state.outputCanvasPosition.has_value()) {
+        const auto output = DefaultOutputProbeResolver().resolve(graph);
+        if (output.has_value() && probeTouchesGroup(graph, group,
+                    output->sourceNodeId, output->destNodeId)) {
+            positions.emplace_back(DefaultOutputProbeResolver::probeId,
+                    *state.outputCanvasPosition);
+        }
+    }
+    return positions;
 }
 
 std::vector<const SignalProbe*> SignalProbeCanvas::orderedProbes(const NodeGraph& graph) {
@@ -197,7 +239,9 @@ String SignalProbeCanvas::markerProbeAt(
         const NodeGraph& graph,
         const NodeCanvasSceneSnapshot& scene) const {
     for (const auto& probe : graph.getSignalProbes()) {
-        if (probe.sourceNodeId.isEmpty()) {
+        if (probe.sourceNodeId.isEmpty()
+                || !probeEndpointsVisible(
+                        graph, probe.sourceNodeId, probe.anchorDestNodeId)) {
             continue;
         }
         const Point<float> centre = markerCentre(probe, graph, scene);
@@ -248,6 +292,10 @@ void SignalProbeCanvas::paintCableAnnotations(
     };
 
     for (const SignalProbe* probe : orderedProbes(graph)) {
+        if (!probeEndpointsVisible(
+                    graph, probe->sourceNodeId, probe->anchorDestNodeId)) {
+            continue;
+        }
         const Colour colour = colourForProbe(*probe, graph, scene, facts);
         const bool active = probe->id == state.hoveredProbeId || state.isSelected(probe->id);
         paintAnnotation(*probe, colour, active);
@@ -256,7 +304,8 @@ void SignalProbeCanvas::paintCableAnnotations(
     const auto outputAddress = state.outputSpyVisible
             ? DefaultOutputProbeResolver().resolve(graph)
             : std::nullopt;
-    if (outputAddress.has_value()) {
+    if (outputAddress.has_value() && probeEndpointsVisible(
+                graph, outputAddress->sourceNodeId, outputAddress->destNodeId)) {
         SignalProbe outputProbe;
         outputProbe.sourceNodeId = outputAddress->sourceNodeId;
         outputProbe.sourcePortId = outputAddress->sourcePortId;
@@ -284,8 +333,27 @@ Rectangle<float> SignalProbeCanvas::cardBoundsFor(
     if (defaultOutput && !state.outputSpyVisible) {
         return {};
     }
+    const auto outputAddress = defaultOutput
+            ? DefaultOutputProbeResolver().resolve(graph)
+            : std::nullopt;
+    if (defaultOutput && outputAddress.has_value()
+            && !probeEndpointsVisible(graph,
+                    outputAddress->sourceNodeId, outputAddress->destNodeId)) {
+        return {};
+    }
+    if (defaultOutput && !outputAddress.has_value()) {
+        const auto output = std::find_if(graph.getNodes().begin(), graph.getNodes().end(),
+                [](const Node& node) { return node.kind == NodeKind::Output; });
+        if (output != graph.getNodes().end() && !graph.isNodeVisible(output->id)) {
+            return {};
+        }
+    }
     const SignalProbe* probe = defaultOutput ? nullptr : graph.findSignalProbe(probeId);
     if (!defaultOutput && probe == nullptr) {
+        return {};
+    }
+    if (probe != nullptr && !probeEndpointsVisible(
+                graph, probe->sourceNodeId, probe->anchorDestNodeId)) {
         return {};
     }
     const auto draggedPosition = std::find_if(
@@ -306,12 +374,11 @@ Rectangle<float> SignalProbeCanvas::cardBoundsFor(
 
     SignalProbe outputProbe;
     if (defaultOutput) {
-        const auto address = DefaultOutputProbeResolver().resolve(graph);
-        if (address.has_value()) {
-            outputProbe.sourceNodeId = address->sourceNodeId;
-            outputProbe.sourcePortId = address->sourcePortId;
-            outputProbe.anchorDestNodeId = address->destNodeId;
-            outputProbe.anchorDestPortId = address->destPortId;
+        if (outputAddress.has_value()) {
+            outputProbe.sourceNodeId = outputAddress->sourceNodeId;
+            outputProbe.sourcePortId = outputAddress->sourcePortId;
+            outputProbe.anchorDestNodeId = outputAddress->destNodeId;
+            outputProbe.anchorDestPortId = outputAddress->destPortId;
             outputProbe.tapPosition = 0.5f;
         }
     }

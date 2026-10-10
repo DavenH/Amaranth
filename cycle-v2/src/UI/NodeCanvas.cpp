@@ -678,14 +678,23 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                 NodeGroupPresentation::worldBounds(graph, group, viewport, groupEdgeIndex));
         const bool onToggle = NodeGroupPresentation::toggleBounds(
                 graph, group, viewport, groupEdgeIndex).contains(event.position);
+        const bool onGrabber = NodeGroupPresentation::grabberBounds(
+                graph, group, viewport, groupEdgeIndex).contains(event.position);
         const bool onCard = group.collapsed && bounds.contains(event.position);
         const bool onHeader = !group.collapsed
                 && bounds.withHeight(34.f).contains(event.position);
-        if (!onToggle && !onCard && !onHeader) {
+        if (!onToggle && !onGrabber && !onCard && !onHeader) {
             continue;
         }
         if (event.mods.isPopupMenu()) {
             showNodeGroupMenu(group.id, event.position);
+        } else if (onGrabber) {
+            if (const Node* anchor = graph.findNode(group.nodeIds.front())) {
+                interaction.beginNodeDrag(
+                        graph, anchor->id, group.nodeIds, anchor->bounds, false);
+                nodeDragSpyStarts = SignalProbeCanvas::explicitCardPositionsForGroup(
+                        graph, group, probeCanvasState);
+            }
         } else if (onToggle || onCard) {
             setNodeGroupCollapsed(group.id, !group.collapsed);
         }

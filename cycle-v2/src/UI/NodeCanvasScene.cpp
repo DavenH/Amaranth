@@ -347,6 +347,17 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                 -1,
                 30000 + zOrder++
         });
+        current.targets.push_back({
+                NodeSceneTargetKind::NodeGroupGrabber,
+                "groupGrabber:" + group.id,
+                group.id,
+                {},
+                {},
+                NodeGroupPresentation::grabberBounds(
+                        graph, group, viewport, indexedEdges),
+                -1,
+                30000 + zOrder++
+        });
     }
     for (const auto& node : graph.getNodes()) {
         if (!graph.isNodeVisible(node.id)) {
@@ -504,13 +515,13 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         PortSide destinationSide = destinationPort != nullptr ? destinationPort->side : PortSide::Top;
         if (sourceCollapsed) {
             const auto world = NodeGroupPresentation::boundaryPoint(
-                    graph, *sourceGroup, viewport.toWorld(destination), indexedEdges);
+                    graph, *sourceGroup, viewport.toWorld(destination), viewport, indexedEdges);
             source = viewport.toScreen(world);
             sourceSide = source.x <= destination.x ? PortSide::Right : PortSide::Left;
         }
         if (destinationCollapsed) {
             const auto world = NodeGroupPresentation::boundaryPoint(
-                    graph, *destinationGroup, viewport.toWorld(source), indexedEdges);
+                    graph, *destinationGroup, viewport.toWorld(source), viewport, indexedEdges);
             destination = viewport.toScreen(world);
             destinationSide = destination.x >= source.x ? PortSide::Left : PortSide::Right;
         }

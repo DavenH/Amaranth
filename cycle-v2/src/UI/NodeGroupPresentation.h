@@ -25,10 +25,16 @@ public:
             const NodeGroup& group,
             const NodeCanvasViewport& viewport,
             const GraphEdgeIndex& edgeIndex);
+    static juce::Rectangle<float> grabberBounds(
+            const NodeGraph& graph,
+            const NodeGroup& group,
+            const NodeCanvasViewport& viewport,
+            const GraphEdgeIndex& edgeIndex);
     static juce::Point<float> boundaryPoint(
             const NodeGraph& graph,
             const NodeGroup& group,
             juce::Point<float> other,
+            const NodeCanvasViewport& viewport,
             const GraphEdgeIndex& edgeIndex);
     static void paint(
             juce::Graphics& graphics,

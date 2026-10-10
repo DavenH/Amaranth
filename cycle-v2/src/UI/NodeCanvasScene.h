@@ -21,7 +21,8 @@ enum class NodeSceneTargetKind {
     PaletteItem,
     MiniMap,
     ExpandedEditor,
-    NodeGroupToggle
+    NodeGroupToggle,
+    NodeGroupGrabber
 };
 
 struct NodeSceneTarget {

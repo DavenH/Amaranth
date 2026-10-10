@@ -954,6 +954,7 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
     for (const auto& sceneTarget : sceneSnapshot.targets) {
         if (sceneTarget.kind != NodeSceneTargetKind::Node
                 && sceneTarget.kind != NodeSceneTargetKind::NodeGroupToggle
+                && sceneTarget.kind != NodeSceneTargetKind::NodeGroupGrabber
                 && !sceneTarget.isPort()) {
             continue;
         }
@@ -964,11 +965,14 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                         ? "node"
                         : sceneTarget.kind == NodeSceneTargetKind::NodeGroupToggle
                         ? "nodeGroupToggle"
+                        : sceneTarget.kind == NodeSceneTargetKind::NodeGroupGrabber
+                        ? "nodeGroupGrabber"
                         : (sceneTarget.kind == NodeSceneTargetKind::InputPort ? "inputPort" : "outputPort"),
                 sceneTarget.bounds, sceneTarget.nodeId, sceneTarget.portId,
                 sceneTarget.kind == NodeSceneTargetKind::InputPort));
 
-        if (sceneTarget.kind == NodeSceneTargetKind::NodeGroupToggle) {
+        if (sceneTarget.kind == NodeSceneTargetKind::NodeGroupToggle
+                || sceneTarget.kind == NodeSceneTargetKind::NodeGroupGrabber) {
             const auto& groups = context.document.graph().getNodeGroups();
             const auto found = std::find_if(groups.begin(), groups.end(),
                     [&](const NodeGroup& group) {
@@ -977,8 +981,10 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
             if (found != groups.end()) {
                 const int index = (int) std::distance(groups.begin(), found);
                 targets.add(AutomationValueEncoder::pointerTargetToVar(
-                        "groupToggle:" + String(index),
-                        "nodeGroupToggle",
+                        (sceneTarget.kind == NodeSceneTargetKind::NodeGroupToggle
+                                ? "groupToggle:" : "groupGrabber:") + String(index),
+                        sceneTarget.kind == NodeSceneTargetKind::NodeGroupToggle
+                                ? "nodeGroupToggle" : "nodeGroupGrabber",
                         sceneTarget.bounds,
                         sceneTarget.nodeId));
             }

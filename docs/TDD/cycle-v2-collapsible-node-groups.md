@@ -13,10 +13,20 @@ Implemented (2026-10-09).
 - The card has an accessible toggle target. A selection of two or more nodes can be grouped from a context menu or keyboard shortcut. Ungroup is available from the group menu.
 - Group geometry is derived from each member's presented bounds, including inline pan nodes whose displayed position follows a cable. Moving a member uses the existing node movement delta, with no aggregate graph copy on movement updates.
 - The expanded frame contains connector captions as well as node bodies. Its header reserves enough screen space for the title and collapse control at every zoom, and title text ends before the control.
+- Collapse and expansion keep the toggle in the same screen position. A separate grabber moves all members through one undoable gesture. Spy cards and markers attached to a collapsed member are hidden and reappear on expansion; their saved placement remains intact.
 
 ## Ownership and reuse
 
 `NodeGraph` owns the membership data. `GraphCommandDispatcher` owns semantic edits and undo publication. `NodeCanvasScene` owns presented targets and cable endpoints. `NodeCanvasPresentation` consumes that scene and graph data to draw the card. Existing node dragging, box selection, and cable rendering remain authoritative. No DSP implementation is copied.
+
+The anchor is the expanded frame's top-right toggle position. The compact card
+shares that top-right corner; dragging the group translates its member nodes,
+so the anchor moves with them without another stored position. The grabber
+reuses the existing multi-node transaction and inverse delta. It disables node
+snapping and splice validation for this gesture, leaving movement updates
+proportional to group members and explicitly placed attached Spy cards. The
+probe canvas owns the decision to hide or move attached cards; probe data and
+audio routing do not change on collapse.
 
 The user creates a group from a multi-node selection with the context menu or
 Command/Ctrl+G. Its title can be changed from the group menu. Command/Ctrl+
@@ -85,3 +95,15 @@ group state.
   Geometry assertions cover normal, reduced, and minimum zoom. UI fixture and
   OS compositor capture use a Global Input through Output group at
   `/private/tmp/cycle-v2-global-group-expanded-os.png`.
+- Anchored-collapse follow-up: `NodeGroupPresentation.cpp` is 253 lines and
+  `NodeCanvas.cpp` is 3,286 lines. Presentation alone decides toggle/grabber
+  geometry; `SignalProbeCanvas` owns attached-card visibility and explicit
+  placement; canvas routing delegates to the existing node-move transaction.
+  No additional graph or audio preparation occurs on collapse or drag.
+- Seven focused CTest cases passed, including two movement updates, commit,
+  undo, and operation-counter checks at 0 and 128 unrelated nodes with 16,384
+  unrelated audio samples. The 20-command
+  `scripts/fixtures/cycle-v2-agent-group-spy-grabber.json` passed: attached Spy
+  card hidden/restored, grabber movement, and undo. Collapsed and expanded
+  captures are at `/private/tmp/cycle-v2-group-spy-collapsed.png` and
+  `/private/tmp/cycle-v2-group-spy-expanded.png`; filtered log had no errors.
