@@ -594,6 +594,17 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("canvasRepaintRequestCount", (int64) state.canvasRepaintRequestCount);
     root->setProperty("statusRepaintRequestCount", (int64) state.statusRepaintRequestCount);
     root->setProperty("nodeCount", (int) graph.getNodes().size());
+    Array<var> nodeGroups;
+    for (const auto& group : graph.getNodeGroups()) {
+        auto* encoded = new DynamicObject();
+        encoded->setProperty("id", group.id);
+        encoded->setProperty("title", group.title);
+        encoded->setProperty("collapsed", group.collapsed);
+        encoded->setProperty("memberCount", (int) group.nodeIds.size());
+        nodeGroups.add(encoded);
+    }
+    root->setProperty("nodeGroups", nodeGroups);
+    root->setProperty("nodeGroupCount", nodeGroups.size());
     root->setProperty("edgeCount", (int) graph.getEdges().size());
     root->setProperty("probeCount", (int) graph.getSignalProbes().size());
     root->setProperty("guideCount", (int) graph.getGuideCurves().size());
@@ -941,7 +952,10 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
             edgeIndex);
 
     for (const auto& sceneTarget : sceneSnapshot.targets) {
-        if (sceneTarget.kind != NodeSceneTargetKind::Node && !sceneTarget.isPort()) {
+        if (sceneTarget.kind != NodeSceneTargetKind::Node
+                && sceneTarget.kind != NodeSceneTargetKind::NodeGroupToggle
+                && sceneTarget.kind != NodeSceneTargetKind::NodeGroupBackground
+                && !sceneTarget.isPort()) {
             continue;
         }
 
@@ -949,9 +963,33 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                 sceneTarget.semanticId,
                 sceneTarget.kind == NodeSceneTargetKind::Node
                         ? "node"
+                        : sceneTarget.kind == NodeSceneTargetKind::NodeGroupToggle
+                        ? "nodeGroupToggle"
+                        : sceneTarget.kind == NodeSceneTargetKind::NodeGroupBackground
+                        ? "nodeGroupBackground"
                         : (sceneTarget.kind == NodeSceneTargetKind::InputPort ? "inputPort" : "outputPort"),
                 sceneTarget.bounds, sceneTarget.nodeId, sceneTarget.portId,
                 sceneTarget.kind == NodeSceneTargetKind::InputPort));
+
+        if (sceneTarget.kind == NodeSceneTargetKind::NodeGroupToggle
+                || sceneTarget.kind == NodeSceneTargetKind::NodeGroupBackground) {
+            const auto& groups = context.document.graph().getNodeGroups();
+            const auto found = std::find_if(groups.begin(), groups.end(),
+                    [&](const NodeGroup& group) {
+                        return group.id == sceneTarget.nodeId;
+                    });
+            if (found != groups.end()) {
+                const int index = (int) std::distance(groups.begin(), found);
+                targets.add(AutomationValueEncoder::pointerTargetToVar(
+                        (sceneTarget.kind == NodeSceneTargetKind::NodeGroupToggle
+                                ? "groupToggle:" : "groupBackground:") + String(index),
+                        sceneTarget.kind == NodeSceneTargetKind::NodeGroupToggle
+                                ? "nodeGroupToggle" : "nodeGroupBackground",
+                        sceneTarget.bounds,
+                        sceneTarget.nodeId));
+            }
+            continue;
+        }
 
         const Node* node = context.document.graph().findNode(sceneTarget.nodeId);
         if (sceneTarget.kind == NodeSceneTargetKind::Node

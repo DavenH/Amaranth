@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 1102.03027, "y": 509.35498 },
+            "position": { "x": 1102.03027, "y": 260.39954 },
             "parameters": {
                 "octave": 0,
                 "voiceLength": 0.376412064,
@@ -21,7 +21,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 744.39825, "y": 509.35498 },
+            "position": { "x": 744.39825, "y": 260.39954 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -51,6 +51,7 @@
                 "gain": 0.5,
                 "range": 0.65,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 1.0,
                 "red": 0.233644858,
@@ -139,6 +140,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 1.0,
                 "red": 0.233644858,
@@ -224,6 +226,7 @@
                 "gain": 0.5,
                 "range": 0.725,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.002,
                 "red": 0.233644858,
@@ -319,6 +322,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.233644858,
@@ -665,7 +669,7 @@
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 530.39819, "y": 1035.58862 },
+            "position": { "x": 575.66284, "y": 1035.58862 },
             "parameters": {}
         },
         {
@@ -905,7 +909,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Percussion", "Rhythmic"],
+        "tags": [ "Percussion", "Rhythmic" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,
@@ -927,6 +931,8 @@
                 { "controller": 1, "value": 127, "timeSeconds": 0.875 },
                 { "controller": 1, "value": 101, "timeSeconds": 1.6 }
             ]
-        }
+        },
+        "outputSpyX": 912.54504,
+        "outputSpyY": 767.23169
     }
 }

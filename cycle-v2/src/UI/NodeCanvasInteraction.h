@@ -51,6 +51,7 @@ struct NodeDragGesture {
     NodeSnapGuides guides;
     bool moved {};
     bool transactionRequested {};
+    bool snapEnabled { true };
 };
 
 struct PortConnectionGesture {
@@ -147,7 +148,8 @@ public:
             const NodeGraph& graph,
             const String& nodeId,
             std::vector<String> nodeIds,
-            Rectangle<float> startBounds);
+            Rectangle<float> startBounds,
+            bool snapEnabled = true);
     void beginConnection(
             const NodeGraph& graph,
             const PortAddress& source,

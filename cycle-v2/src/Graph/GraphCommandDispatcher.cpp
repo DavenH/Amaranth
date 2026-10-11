@@ -457,6 +457,109 @@ GraphEditResult GraphCommandDispatcher::translateNodes(
             });
 }
 
+GraphEditResult GraphCommandDispatcher::groupNodes(
+        const std::vector<juce::String>& nodeIds,
+        const juce::String& title) {
+    const String groupId = "group-" + Uuid().toString();
+    return applyIncremental(
+            [&](GraphDeltaBuilder& delta, const NodeGraph& graph) {
+                delta.captureNodeGroup(graph, groupId);
+            },
+            [&](NodeGraph& graph) {
+                GraphEditResult result;
+                NodeGroup group { groupId, title.trim().isEmpty() ? "Group" : title.trim(),
+                        nodeIds, false };
+                if (!graph.addNodeGroup(std::move(group))) {
+                    result.code = GraphEditCode::ValidationRejected;
+                    result.changed = false;
+                    return result;
+                }
+                result.nodeId = groupId;
+                result.changes.nodeIds = nodeIds;
+                result.changes.layoutChanged = true;
+                return result;
+            });
+}
+
+GraphEditResult GraphCommandDispatcher::setNodeGroupCollapsed(
+        const juce::String& groupId,
+        bool collapsed) {
+    return applyIncremental(
+            [&](GraphDeltaBuilder& delta, const NodeGraph& graph) {
+                delta.captureNodeGroup(graph, groupId);
+            },
+            [&](NodeGraph& graph) {
+                GraphEditResult result;
+                const NodeGroup* existing = graph.findNodeGroup(groupId);
+                if (existing == nullptr) {
+                    result.code = GraphEditCode::ValidationRejected;
+                    result.changed = false;
+                    return result;
+                }
+                if (existing->collapsed == collapsed) {
+                    result.changed = false;
+                    return result;
+                }
+                NodeGroup updated = *existing;
+                updated.collapsed = collapsed;
+                result.changes.nodeIds = updated.nodeIds;
+                graph.replaceNodeGroup(std::move(updated));
+                result.nodeId = groupId;
+                result.changes.layoutChanged = true;
+                return result;
+            });
+}
+
+GraphEditResult GraphCommandDispatcher::renameNodeGroup(
+        const juce::String& groupId,
+        const juce::String& title) {
+    return applyIncremental(
+            [&](GraphDeltaBuilder& delta, const NodeGraph& graph) {
+                delta.captureNodeGroup(graph, groupId);
+            },
+            [&](NodeGraph& graph) {
+                GraphEditResult result;
+                const NodeGroup* existing = graph.findNodeGroup(groupId);
+                const String trimmed = title.trim();
+                if (existing == nullptr || trimmed.isEmpty()) {
+                    result.code = GraphEditCode::ValidationRejected;
+                    result.changed = false;
+                    return result;
+                }
+                if (existing->title == trimmed) {
+                    result.changed = false;
+                    return result;
+                }
+                NodeGroup updated = *existing;
+                updated.title = trimmed;
+                result.changes.nodeIds = updated.nodeIds;
+                graph.replaceNodeGroup(std::move(updated));
+                result.nodeId = groupId;
+                result.changes.layoutChanged = true;
+                return result;
+            });
+}
+
+GraphEditResult GraphCommandDispatcher::ungroupNodes(const juce::String& groupId) {
+    return applyIncremental(
+            [&](GraphDeltaBuilder& delta, const NodeGraph& graph) {
+                delta.captureNodeGroup(graph, groupId);
+            },
+            [&](NodeGraph& graph) {
+                GraphEditResult result;
+                const NodeGroup* existing = graph.findNodeGroup(groupId);
+                if (existing == nullptr) {
+                    result.code = GraphEditCode::ValidationRejected;
+                    result.changed = false;
+                    return result;
+                }
+                result.changes.nodeIds = existing->nodeIds;
+                graph.removeNodeGroup(groupId);
+                result.changes.layoutChanged = true;
+                return result;
+            });
+}
+
 void GraphCommandDispatcher::beginCompoundEdit() {
     if (compoundActive) {
         ++compoundDepth;

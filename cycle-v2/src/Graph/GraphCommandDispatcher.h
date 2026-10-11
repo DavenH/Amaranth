@@ -110,6 +110,12 @@ public:
     GraphEditResult translateNodes(
             const std::vector<juce::String>& nodeIds,
             juce::Point<float> offset);
+    GraphEditResult groupNodes(
+            const std::vector<juce::String>& nodeIds,
+            const juce::String& title = "Group");
+    GraphEditResult setNodeGroupCollapsed(const juce::String& groupId, bool collapsed);
+    GraphEditResult renameNodeGroup(const juce::String& groupId, const juce::String& title);
+    GraphEditResult ungroupNodes(const juce::String& groupId);
     void beginCompoundEdit();
     bool commitCompoundEdit();
     void cancelCompoundEdit();

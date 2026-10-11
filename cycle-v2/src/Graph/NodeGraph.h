@@ -219,6 +219,13 @@ struct Node {
     bool reverseInputPortOrder {};
 };
 
+struct NodeGroup {
+    String id;
+    String title;
+    std::vector<String> nodeIds;
+    bool collapsed {};
+};
+
 struct Edge {
     String sourceNodeId;
     String sourcePortId;
@@ -305,6 +312,10 @@ public:
     NodeGraph snapshotNodeEdits(std::shared_ptr<const NodeGraph> stableBase) const;
 
     const std::vector<Node>& getNodes() const;
+    const std::vector<NodeGroup>& getNodeGroups() const;
+    const NodeGroup* findNodeGroup(const String& groupId) const;
+    const NodeGroup* groupForNode(const String& nodeId) const;
+    bool isNodeVisible(const String& nodeId) const;
     const std::vector<String>& editorMorphNodeIds() const;
     const std::vector<Edge>& getEdges() const;
     const std::vector<GuideCurveResource>& getGuideCurves() const;
@@ -321,6 +332,9 @@ public:
             const String& parameterId) const;
 
     void addNode(Node node);
+    bool addNodeGroup(NodeGroup group);
+    bool replaceNodeGroup(NodeGroup group);
+    bool removeNodeGroup(const String& groupId);
     void addEdge(Edge edge);
     bool addGuideCurve(GuideCurveResource resource);
     bool removeGuideCurve(const String& guideId);
@@ -398,6 +412,7 @@ private:
             std::optional<juce::Point<float>> position);
     void markChanged() { ++revision; }
     void rebuildNodeIndex();
+    void rebuildNodeGroupIndex();
     void rebuildParameterIndex(const String& nodeId);
     void applyNodeParameterState(
             const String& nodeId,
@@ -409,6 +424,7 @@ private:
     void applyGuideCurveState(GuideCurveResource state);
 
     std::vector<Node> nodes;
+    std::vector<NodeGroup> nodeGroups;
     std::vector<Edge> edges;
     std::vector<GuideCurveResource> guideCurves;
     std::vector<GuideHeatmapAssetPtr> guideHeatmaps;
@@ -417,6 +433,7 @@ private:
     std::vector<AudioSampleResource> audioResources;
     std::vector<NodeAudioResourceBinding> audioResourceBindings;
     std::unordered_map<String, size_t, StringHash> nodeIndex;
+    std::unordered_map<String, size_t, StringHash> nodeGroupIndex;
     std::vector<String> morphNodeIds;
     std::unordered_map<
             String,

@@ -890,6 +890,8 @@
                 { "pitch": 36, "velocity": 100, "startSeconds": 2.5, "durationSeconds": 0.125 }
             ],
             "controls": []
-        }
+        },
+        "outputSpyX": 649.91553,
+        "outputSpyY": 1278.45422
     }
 }

@@ -1,0 +1,167 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "spyCardCount",
+      "equals": 2
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "node:volumeMultiply"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "node:voiceOutput",
+      "shift": true
+    },
+    {
+      "command": "key",
+      "area": "canvas",
+      "key": "commandG"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeGroupCount",
+      "equals": 1
+    },
+    {
+      "command": "assertState",
+      "path": "spyCardCount",
+      "equals": 2
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "groupToggle:0"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeGroups.0.collapsed",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "spyCardCount",
+      "equals": 1
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-group-spy-collapsed.png"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "groupBackground:0",
+      "targetX": 0.5,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "groupBackground:0",
+      "downTargetId": "groupBackground:0",
+      "targetX": 3.5,
+      "targetY": 0.5,
+      "downTargetX": 0.5,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "groupBackground:0",
+      "downTargetId": "groupBackground:0",
+      "targetX": 3.5,
+      "targetY": 0.5,
+      "downTargetX": 0.5,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.16.bounds.x",
+      "op": "greaterThan",
+      "value": 3009.3
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.16.bounds.x",
+      "op": "lessThan",
+      "value": 3009.201
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "groupToggle:0"
+    },
+    {
+      "command": "assertState",
+      "path": "spyCardCount",
+      "equals": 2
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-group-spy-expanded.png"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "groupBackground:0",
+      "targetX": 0.3,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "groupBackground:0",
+      "downTargetId": "groupBackground:0",
+      "targetX": -0.5,
+      "targetY": 0.5,
+      "downTargetX": 0.3,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "groupBackground:0",
+      "downTargetId": "groupBackground:0",
+      "targetX": -0.5,
+      "targetY": 0.5,
+      "downTargetX": 0.3,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.16.bounds.x",
+      "op": "lessThan",
+      "value": 3009.1
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.16.bounds.x",
+      "op": "greaterThan",
+      "value": 3009.15
+    }
+  ],
+  "quit": true
+}

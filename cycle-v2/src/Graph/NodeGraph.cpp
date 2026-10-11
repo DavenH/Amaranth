@@ -41,6 +41,108 @@ void NodeGraph::addNode(Node nodeToAdd) {
     ++revision;
 }
 
+const std::vector<NodeGroup>& NodeGraph::getNodeGroups() const {
+    return overlayBase != nullptr ? overlayBase->getNodeGroups() : nodeGroups;
+}
+
+const NodeGroup* NodeGraph::findNodeGroup(const String& groupId) const {
+    const auto& groups = getNodeGroups();
+    const auto found = std::find_if(groups.begin(), groups.end(), [&](const NodeGroup& group) {
+        return group.id == groupId;
+    });
+    return found != groups.end() ? &*found : nullptr;
+}
+
+const NodeGroup* NodeGraph::groupForNode(const String& nodeId) const {
+    if (overlayBase != nullptr) {
+        return overlayBase->groupForNode(nodeId);
+    }
+    const auto found = nodeGroupIndex.find(nodeId);
+    return found != nodeGroupIndex.end() && found->second < nodeGroups.size()
+            ? &nodeGroups[found->second] : nullptr;
+}
+
+bool NodeGraph::isNodeVisible(const String& nodeId) const {
+    const NodeGroup* group = groupForNode(nodeId);
+    return group == nullptr || !group->collapsed;
+}
+
+void NodeGraph::rebuildNodeGroupIndex() {
+    nodeGroupIndex.clear();
+    for (size_t index = 0; index < nodeGroups.size(); ++index) {
+        for (const auto& nodeId : nodeGroups[index].nodeIds) {
+            nodeGroupIndex[nodeId] = index;
+        }
+    }
+}
+
+bool NodeGraph::addNodeGroup(NodeGroup group) {
+    if (overlayBase != nullptr || group.id.isEmpty() || group.title.trim().isEmpty()
+            || group.nodeIds.size() < 2
+            || findNodeGroup(group.id) != nullptr) {
+        return false;
+    }
+    std::unordered_set<String, StringHash> seen;
+    for (const auto& nodeId : group.nodeIds) {
+        if (findNode(nodeId) == nullptr || groupForNode(nodeId) != nullptr
+                || !seen.emplace(nodeId).second) {
+            return false;
+        }
+    }
+    nodeGroups.push_back(std::move(group));
+    for (const auto& nodeId : nodeGroups.back().nodeIds) {
+        nodeGroupIndex[nodeId] = nodeGroups.size() - 1;
+    }
+    ++revision;
+    return true;
+}
+
+bool NodeGraph::replaceNodeGroup(NodeGroup group) {
+    if (overlayBase != nullptr) {
+        return false;
+    }
+    const auto found = std::find_if(nodeGroups.begin(), nodeGroups.end(),
+            [&](const NodeGroup& candidate) { return candidate.id == group.id; });
+    if (found == nodeGroups.end()) {
+        return false;
+    }
+    if (group.title.trim().isEmpty() || group.nodeIds.size() < 2) {
+        return false;
+    }
+    std::unordered_set<String, StringHash> seen;
+    for (const auto& nodeId : group.nodeIds) {
+        const NodeGroup* current = groupForNode(nodeId);
+        if (findNode(nodeId) == nullptr || !seen.emplace(nodeId).second
+                || (current != nullptr && current->id != group.id)) {
+            return false;
+        }
+    }
+    const size_t index = (size_t) std::distance(nodeGroups.begin(), found);
+    for (const auto& nodeId : found->nodeIds) {
+        nodeGroupIndex.erase(nodeId);
+    }
+    *found = std::move(group);
+    for (const auto& nodeId : found->nodeIds) {
+        nodeGroupIndex[nodeId] = index;
+    }
+    ++revision;
+    return true;
+}
+
+bool NodeGraph::removeNodeGroup(const String& groupId) {
+    if (overlayBase != nullptr) {
+        return false;
+    }
+    const size_t count = nodeGroups.size();
+    eraseIf(nodeGroups, [&](const NodeGroup& group) { return group.id == groupId; });
+    if (nodeGroups.size() == count) {
+        return false;
+    }
+    rebuildNodeGroupIndex();
+    ++revision;
+    return true;
+}
+
 void NodeGraph::addEdge(Edge edgeToAdd) {
     const auto duplicate = std::find_if(edges.begin(), edges.end(), [&](const Edge& edge) {
         return edge.sourceNodeId == edgeToAdd.sourceNodeId
@@ -469,6 +571,15 @@ void NodeGraph::removeNode(const String& nodeId) {
     eraseIf(nodes, [&](const Node& node) {
         return node.id == nodeId;
     });
+    for (auto& group : nodeGroups) {
+        eraseIf(group.nodeIds, [&](const String& memberId) {
+            return memberId == nodeId;
+        });
+    }
+    eraseIf(nodeGroups, [](const NodeGroup& group) {
+        return group.nodeIds.size() < 2;
+    });
+    rebuildNodeGroupIndex();
 
     eraseIf(edges, [&](const Edge& edge) {
         return edge.sourceNodeId == nodeId || edge.destNodeId == nodeId;

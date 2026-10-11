@@ -17,6 +17,8 @@
 #include "UI/CanvasUtilityDock.h"
 #include "UI/Editors/PropertyControls.h"
 #include "UI/NodeCanvasCursorPolicy.h"
+#include "UI/NodeGroupPresentation.h"
+#include "UI/NodeGroupRenameCallout.h"
 
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeParameterMap.h"
@@ -76,6 +78,9 @@ const Node* findInlinePanAt(
         Point<float> position) {
     const auto& nodes = graph.getNodes();
     for (auto node = nodes.rbegin(); node != nodes.rend(); ++node) {
+        if (!graph.isNodeVisible(node->id)) {
+            continue;
+        }
         if (node->kind == NodeKind::SpectralLayer
                 && inlinePanContains(viewport, graph, *node, edgeIndex, position)) {
             return &*node;
@@ -104,6 +109,9 @@ const Node* findOutputFaderAt(
         Point<float> position) {
     const auto& nodes = graph.getNodes();
     for (auto node = nodes.rbegin(); node != nodes.rend(); ++node) {
+        if (!graph.isNodeVisible(node->id)) {
+            continue;
+        }
         if (node->kind == NodeKind::Output
                 && outputFaderBounds(viewport, graph, *node, edgeIndex).contains(position)) {
             return &*node;
@@ -665,6 +673,47 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         return;
     }
 
+    const GraphEdgeIndex& groupEdgeIndex = queries.presentationFacts().edgeIndex();
+    const auto& scene = sceneBuilder.build(
+            graph,
+            viewport,
+            presentation.revision(),
+            document.revision(),
+            &groupEdgeIndex);
+    for (const auto& group : graph.getNodeGroups()) {
+        const auto spyBounds = SignalProbeCanvas::cardBoundsForGroup(
+                graph, group, scene, viewport, probeCanvasState);
+        const auto bounds = NodeGroupPresentation::expandedBackdropBounds(
+                graph, group, viewport, groupEdgeIndex, spyBounds);
+        const bool onToggle = NodeGroupPresentation::toggleBounds(
+                graph, group, viewport, groupEdgeIndex).contains(event.position);
+        const bool onBackground = bounds.contains(event.position)
+                && SignalProbeCanvas::cardAt(
+                        event.position, graph, scene, viewport, probeCanvasState).isEmpty()
+                && queries.findNodeAt(viewport.toWorld(event.position)) == nullptr
+                && !interaction.portAt(scene, event.position).has_value();
+        if (!onToggle && !onBackground) {
+            continue;
+        }
+        if (event.mods.isPopupMenu()) {
+            showNodeGroupMenu(group.id, event.position);
+        } else if (event.getNumberOfClicks() >= 2
+                && NodeGroupPresentation::labelBounds(
+                        graph, group, viewport, groupEdgeIndex).contains(event.position)) {
+            promptRenameNodeGroup(group.id);
+        } else if (onToggle || (group.collapsed && event.getNumberOfClicks() >= 2)) {
+            setNodeGroupCollapsed(group.id, !group.collapsed);
+        } else {
+            if (const Node* anchor = graph.findNode(group.nodeIds.front())) {
+                interaction.beginNodeDrag(
+                        graph, anchor->id, group.nodeIds, anchor->bounds, false);
+                nodeDragSpyStarts = SignalProbeCanvas::explicitCardPositionsForGroup(
+                        graph, group, probeCanvasState);
+            }
+        }
+        return;
+    }
+
     if (const auto action = hitRouter.nodeActionAt(viewport, event.position)) {
         switch (action->kind) {
             case CanvasNodeActionKind::CycleOperationLayout:
@@ -693,12 +742,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         return;
     }
 
-    const auto& scene = sceneBuilder.build(
-            graph,
-            viewport,
-            presentation.revision(),
-            document.revision(),
-            &queries.presentationFacts().edgeIndex());
     const String cardProbe = SignalProbeCanvas::cardAt(
             event.position, graph, scene, viewport, probeCanvasState);
     if (cardProbe.isNotEmpty()) {
@@ -849,6 +892,11 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         } else {
             authoring.makeNodePrimary(hitNode->id);
         }
+        if (event.mods.isPopupMenu() && selectedNodeIds.size() >= 2) {
+            showSelectionGroupMenu(event.position);
+            requestCanvasRepaint();
+            return;
+        }
         interaction.beginNodeDrag(
                 graph,
                 hitNode->id,
@@ -905,6 +953,10 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     if (event.mods.isShiftDown()) {
         interaction.beginAreaSelection(event.position);
     } else {
+        if (event.mods.isPopupMenu() && selectedNodeIds.size() >= 2) {
+            showSelectionGroupMenu(event.position);
+            return;
+        }
         probeCanvasState.selectedProbeIds.clear();
         authoring.selectNode({});
         interaction.beginPan(viewport.getPan());
@@ -1238,6 +1290,14 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
         return key.getModifiers().isShiftDown() ? redo() : undo();
     }
 
+    if (commandDown && (keyChar == 'g' || keyCode == 'g' || keyCode == 'G')) {
+        if (key.getModifiers().isShiftDown()) {
+            const NodeGroup* group = graph.groupForNode(selectedNodeId);
+            return group != nullptr && ungroupNodes(group->id);
+        }
+        return groupSelectedNodes();
+    }
+
     if (commandDown && (keyChar == 'y' || keyCode == 'y' || keyCode == 'Y')) {
         return redo();
     }
@@ -1540,6 +1600,133 @@ void NodeCanvas::toggleSpyDomain(const String& probeId) {
         notifyGraphDocumentStateChanged();
         requestCanvasRepaint();
     }
+}
+
+bool NodeCanvas::groupSelectedNodes() {
+    if (selectedNodeIds.size() < 2) {
+        return false;
+    }
+    const GraphEditResult result = commands.groupNodes(selectedNodeIds);
+    if (!result.succeeded() || !result.changed) {
+        return false;
+    }
+    editStatusMessage = "Nodes grouped";
+    notifyGraphDocumentStateChanged();
+    requestCanvasRepaint();
+    return true;
+}
+
+bool NodeCanvas::setNodeGroupCollapsed(const String& groupId, bool collapsed) {
+    const GraphEditResult result = commands.setNodeGroupCollapsed(groupId, collapsed);
+    if (!result.succeeded() || !result.changed) {
+        return false;
+    }
+    if (collapsed) {
+        authoring.selectNode({});
+        if (expandedNodeId.isNotEmpty()) {
+            const NodeGroup* group = graph.findNodeGroup(groupId);
+            if (group != nullptr && std::find(group->nodeIds.begin(), group->nodeIds.end(),
+                    expandedNodeId) != group->nodeIds.end()) {
+                closeNodeEditor();
+            }
+        }
+    }
+    editStatusMessage = collapsed ? "Group collapsed" : "Group expanded";
+    notifyGraphDocumentStateChanged();
+    requestCanvasRepaint();
+    return true;
+}
+
+bool NodeCanvas::ungroupNodes(const String& groupId) {
+    const GraphEditResult result = commands.ungroupNodes(groupId);
+    if (!result.succeeded() || !result.changed) {
+        return false;
+    }
+    editStatusMessage = "Group removed";
+    notifyGraphDocumentStateChanged();
+    requestCanvasRepaint();
+    return true;
+}
+
+void NodeCanvas::showNodeGroupMenu(const String& groupId, Point<float> canvasPosition) {
+    const NodeGroup* group = graph.findNodeGroup(groupId);
+    if (group == nullptr) {
+        return;
+    }
+    PopupMenu menu;
+    menu.addItem(1, group->collapsed ? "Expand Group" : "Collapse Group");
+    menu.addItem(2, "Rename Group...");
+    menu.addItem(3, "Ungroup Nodes");
+    const Point<int> click = localPointToGlobal(canvasPosition.roundToInt());
+    const PopupMenu::Options options = PopupMenu::Options()
+            .withTargetComponent(this)
+            .withTargetScreenArea({ click.x, click.y, 1, 1 });
+    lastPopupMenuTargetScreenArea = options.getTargetScreenArea();
+    menu.showMenuAsync(options,
+            [safeThis = SafePointer<NodeCanvas>(this), groupId](int choice) {
+                if (safeThis == nullptr) {
+                    return;
+                }
+                if (choice == 1) {
+                    if (const NodeGroup* current = safeThis->graph.findNodeGroup(groupId)) {
+                        safeThis->setNodeGroupCollapsed(groupId, !current->collapsed);
+                    }
+                } else if (choice == 2) {
+                    safeThis->promptRenameNodeGroup(groupId);
+                } else if (choice == 3) {
+                    safeThis->ungroupNodes(groupId);
+                }
+            });
+}
+
+void NodeCanvas::promptRenameNodeGroup(const String& groupId) {
+    const NodeGroup* group = graph.findNodeGroup(groupId);
+    if (group == nullptr) {
+        return;
+    }
+    const GraphEdgeIndex& edgeIndex = queries.presentationFacts().edgeIndex();
+    const auto anchor = NodeGroupPresentation::labelBounds(
+            graph, *group, viewport, edgeIndex).toNearestInt();
+    auto editor = std::make_unique<NodeGroupRenameCallout>(group->title,
+            [safeThis = SafePointer<NodeCanvas>(this), groupId](const String& title) {
+                if (safeThis == nullptr) {
+                    return;
+                }
+                const GraphEditResult result = safeThis->commands.renameNodeGroup(groupId, title);
+                if (result.succeeded() && result.changed) {
+                    safeThis->editStatusMessage = "Group renamed";
+                    safeThis->notifyGraphDocumentStateChanged();
+                    safeThis->requestCanvasRepaint();
+                }
+            });
+    auto* editorContent = editor.get();
+    auto& callout = CallOutBox::launchAsynchronously(std::move(editor), anchor, this);
+    callout.setLookAndFeel(editorContent);
+    callout.setArrowSize(8.f);
+    auto available = canvasContentBounds();
+    if (presetSidebar != nullptr && presetSidebar->isVisible()) {
+        available.setLeft(juce::jmin(available.getRight(),
+                (float) presetSidebar->getRight() + 8.f));
+    }
+    callout.updatePosition(anchor, available.toNearestInt());
+    callout.setDismissalMouseClicksAreAlwaysConsumed(true);
+    editorContent->focusName();
+}
+
+void NodeCanvas::showSelectionGroupMenu(Point<float> canvasPosition) {
+    PopupMenu menu;
+    menu.addItem(1, "Group Selected Nodes");
+    const Point<int> click = localPointToGlobal(canvasPosition.roundToInt());
+    const PopupMenu::Options options = PopupMenu::Options()
+            .withTargetComponent(this)
+            .withTargetScreenArea({ click.x, click.y, 1, 1 });
+    lastPopupMenuTargetScreenArea = options.getTargetScreenArea();
+    menu.showMenuAsync(options,
+            [safeThis = SafePointer<NodeCanvas>(this)](int choice) {
+                if (safeThis != nullptr && choice == 1) {
+                    safeThis->groupSelectedNodes();
+                }
+            });
 }
 
 void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> canvasPosition) {

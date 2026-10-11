@@ -42,6 +42,16 @@ public:
 
     static int ordinalForProbe(const NodeGraph& graph, const String& probeId);
     static std::vector<String> orderedProbeIds(const NodeGraph& graph);
+    static std::vector<std::pair<String, Point<float>>> explicitCardPositionsForGroup(
+            const NodeGraph& graph,
+            const NodeGroup& group,
+            const SignalProbeCanvasState& state);
+    static Rectangle<float> cardBoundsForGroup(
+            const NodeGraph& graph,
+            const NodeGroup& group,
+            const NodeCanvasSceneSnapshot& scene,
+            const NodeCanvasViewport& viewport,
+            const SignalProbeCanvasState& state);
     static Point<float> markerCentre(
             const SignalProbe& probe,
             const NodeGraph& graph,

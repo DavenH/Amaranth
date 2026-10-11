@@ -20,7 +20,9 @@ enum class NodeSceneTargetKind {
     ParameterControl,
     PaletteItem,
     MiniMap,
-    ExpandedEditor
+    ExpandedEditor,
+    NodeGroupToggle,
+    NodeGroupBackground
 };
 
 struct NodeSceneTarget {

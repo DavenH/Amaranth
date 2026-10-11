@@ -74,6 +74,7 @@ NodeGraph& NodeGraph::operator=(const NodeGraph& other) {
 
     InteractionComplexityDiagnostics::recordGraphCopy();
     nodes = other.nodes;
+    nodeGroups = other.nodeGroups;
     edges = other.edges;
     guideCurves = other.guideCurves;
     guideHeatmaps = other.guideHeatmaps;
@@ -82,6 +83,7 @@ NodeGraph& NodeGraph::operator=(const NodeGraph& other) {
     audioResources = other.audioResources;
     audioResourceBindings = other.audioResourceBindings;
     nodeIndex = other.nodeIndex;
+    nodeGroupIndex = other.nodeGroupIndex;
     morphNodeIds = other.morphNodeIds;
     parameterIndices = other.parameterIndices;
     guideIndex = other.guideIndex != nullptr

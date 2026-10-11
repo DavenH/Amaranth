@@ -7,6 +7,7 @@
 #include "UI/NodePortGeometry.h"
 #include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"
+#include "UI/NodeGroupPresentation.h"
 
 namespace CycleV2 {
 
@@ -478,7 +479,39 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
             : *localEdgeIndex;
 
     int zOrder = 100;
+    for (const auto& group : graph.getNodeGroups()) {
+        current.targets.push_back({
+                NodeSceneTargetKind::NodeGroupToggle,
+                "groupToggle:" + group.id,
+                group.id,
+                {},
+                {},
+                NodeGroupPresentation::toggleBounds(
+                        graph, group, viewport, indexedEdges),
+                -1,
+                30000 + zOrder++
+        });
+        const auto groupBounds = viewport.toScreen(NodeGroupPresentation::worldBounds(
+                graph, group, viewport, indexedEdges));
+        const auto background = group.collapsed
+                ? groupBounds.reduced(13.f).withTrimmedTop(29.f)
+                : groupBounds.withTrimmedTop(groupBounds.getHeight() - 15.f)
+                        .reduced(10.f, 0.f);
+        current.targets.push_back({
+                NodeSceneTargetKind::NodeGroupBackground,
+                "groupBackground:" + group.id,
+                group.id,
+                {},
+                {},
+                background,
+                -1,
+                30000 + zOrder++
+        });
+    }
     for (const auto& node : graph.getNodes()) {
+        if (!graph.isNodeVisible(node.id)) {
+            continue;
+        }
         const std::optional<Point<float>> inlineCentre = node.kind == NodeKind::SpectralLayer
                 ? inlinePanCentre(graph, indexedEdges, node)
                 : std::nullopt;
@@ -565,15 +598,24 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         if (sourceNode == nullptr || destinationNode == nullptr) {
             continue;
         }
+        const NodeGroup* sourceGroup = graph.groupForNode(edge.sourceNodeId);
+        const NodeGroup* destinationGroup = graph.groupForNode(edge.destNodeId);
+        const bool sourceCollapsed = !graph.isNodeVisible(edge.sourceNodeId);
+        const bool destinationCollapsed = !graph.isNodeVisible(edge.destNodeId);
+        if (sourceCollapsed && sourceGroup == destinationGroup) {
+            continue;
+        }
 
-        if (sourceNode->kind == NodeKind::SpectralLayer) {
+        if (!sourceCollapsed && !destinationCollapsed
+                && sourceNode->kind == NodeKind::SpectralLayer) {
             const std::optional<InlinePanRoute> route = inlinePanRoute(
                     graph, indexedEdges, *sourceNode);
             if (route.has_value() && route->outgoingIndex == edgeIndex) {
                 continue;
             }
         }
-        if (destinationNode->kind == NodeKind::SpectralLayer) {
+        if (!sourceCollapsed && !destinationCollapsed
+                && destinationNode->kind == NodeKind::SpectralLayer) {
             const std::optional<InlinePanRoute> route = inlinePanRoute(
                     graph, indexedEdges, *destinationNode);
             if (route.has_value() && route->incomingIndex == edgeIndex) {
@@ -605,7 +647,7 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         presentedDestinationNode.bounds = destinationCentre.has_value()
                 ? destinationNode->bounds.withCentre(*destinationCentre)
                 : destinationNode->bounds;
-        const auto source = viewport.toScreen(usesSharedModulationSource
+        auto source = viewport.toScreen(usesSharedModulationSource
                 ? ModulationCableBundle::worldCentre(presentedSourceNode, false)
                 : portWorldCentre(presentedSourceNode, *sourcePort));
         const auto attachmentCentre = NodeViewModuleRegistry::instance()
@@ -613,16 +655,29 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         if (destinationPort == nullptr && !attachmentCentre.has_value()) {
             continue;
         }
-        const auto destination = viewport.toScreen(isModulationBundle
+        auto destination = viewport.toScreen(isModulationBundle
                 ? ModulationCableBundle::worldCentre(presentedDestinationNode, true)
                 : destinationPort != nullptr
                 ? portWorldCentre(presentedDestinationNode, *destinationPort)
                 : *attachmentCentre);
-        const PortSide destinationSide = destinationPort != nullptr ? destinationPort->side : PortSide::Top;
+        PortSide sourceSide = usesSharedModulationSource ? PortSide::Right : sourcePort->side;
+        PortSide destinationSide = destinationPort != nullptr ? destinationPort->side : PortSide::Top;
+        if (sourceCollapsed) {
+            const auto world = NodeGroupPresentation::boundaryPoint(
+                    graph, *sourceGroup, viewport.toWorld(destination), viewport, indexedEdges);
+            source = viewport.toScreen(world);
+            sourceSide = source.x <= destination.x ? PortSide::Right : PortSide::Left;
+        }
+        if (destinationCollapsed) {
+            const auto world = NodeGroupPresentation::boundaryPoint(
+                    graph, *destinationGroup, viewport.toWorld(source), viewport, indexedEdges);
+            destination = viewport.toScreen(world);
+            destinationSide = destination.x >= source.x ? PortSide::Left : PortSide::Right;
+        }
         juce::Path visiblePath = cablePath(
                 source,
                 destination,
-                usesSharedModulationSource ? PortSide::Right : sourcePort->side,
+                sourceSide,
                 destinationSide,
                 viewport.getZoom());
         juce::Path hitPath;
