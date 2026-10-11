@@ -26,7 +26,7 @@ void CommonGL::setCurrentColour(float float1, float float2, float float3) {
 }
 
 void CommonGL::setCurrentLineWidth(float width) {
-    glLineWidth(width);
+    glLineWidth(width * displayDensityScale());
 }
 
 void CommonGL::setCurrentColour(const Color& color) {
@@ -44,7 +44,7 @@ void CommonGL::enableSmoothing() {
 }
 
 void CommonGL::drawPoint(float size, Vertex2 point, bool scale) {
-    glPointSize(size);
+    glPointSize(size * displayDensityScale());
 
     ScopedElement glPoint(GL_POINTS);
 
@@ -56,7 +56,7 @@ void CommonGL::drawPoint(float size, Vertex2 point, bool scale) {
 }
 
 void CommonGL::drawPoints(float pointSize, BufferXY& xy, bool scale) {
-    glPointSize(pointSize);
+    glPointSize(pointSize * displayDensityScale());
 
     scaleIfNecessary(scale, xy);
 
@@ -83,7 +83,7 @@ void CommonGL::drawPoints(float pointSize, BufferXY& xy, Buffer<float> c, bool s
 
     scaleIfNecessary(scale, xy);
 
-    glPointSize(pointSize);
+    glPointSize(pointSize * displayDensityScale());
 
     ScopedElement glPoint(GL_POINTS);
 
@@ -98,6 +98,15 @@ void CommonGL::drawPoints(float pointSize, BufferXY& xy, Buffer<float> c, bool s
             glVertex2f(xy.x[i], xy.y[i]);
         }
     }
+}
+
+float CommonGL::displayDensityScale() const {
+    constexpr float referenceRetinaScale = 2.f;
+    constexpr float minimumRasterScale = 0.65f;
+    const float scaleFactor = panel != nullptr
+            ? panel->createRenderContext().scaleFactor
+            : referenceRetinaScale;
+    return jlimit(minimumRasterScale, 1.f, scaleFactor / referenceRetinaScale);
 }
 
 void CommonGL::drawLine(float x1, float y1, float x2, float y2, bool scale) {

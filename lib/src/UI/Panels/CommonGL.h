@@ -37,5 +37,7 @@ public:
     void updateTexture(Texture* tex) override;
 
 private:
+    float displayDensityScale() const;
+
     Ref<OpenGLBase> parent;
 };

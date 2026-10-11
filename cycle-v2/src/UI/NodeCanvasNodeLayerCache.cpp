@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cmath>
 
 #include "UI/NodeCanvasNodeLayerCache.h"
 
@@ -173,21 +174,23 @@ void NodeCanvasNodeLayerCache::draw(
     if (access.image == nullptr || !access.image->isValid()) {
         return;
     }
-    const float imageToLogicalX = access.logicalBounds.getWidth()
-            / (float) access.image->getWidth();
-    const float imageToLogicalY = access.logicalBounds.getHeight()
-            / (float) access.image->getHeight();
+    const float physicalScale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
+    const float imageToLogical = 1.f / jmax(1.f, physicalScale);
+    const float alignedX = std::round(access.logicalBounds.getX() * physicalScale)
+            * imageToLogical;
+    const float alignedY = std::round(access.logicalBounds.getY() * physicalScale)
+            * imageToLogical;
     Graphics::ScopedSaveState saved(graphics);
     graphics.setOpacity(1.f);
     graphics.drawImageTransformed(
             *access.image,
             AffineTransform(
-                    imageToLogicalX,
+                    imageToLogical,
                     0.f,
-                    access.logicalBounds.getX(),
+                    alignedX,
                     0.f,
-                    imageToLogicalY,
-                    access.logicalBounds.getY()),
+                    imageToLogical,
+                    alignedY),
             false);
 }
 
