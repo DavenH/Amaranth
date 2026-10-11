@@ -77,6 +77,27 @@ TEST_CASE("Buffer initialization operations", "[buffer]") {
         REQUIRE(buf[2] == 5.0f);
         REQUIRE(buf[3] == 7.0f);
     }
+
+    SECTION("random values advance the seed and remain reproducible") {
+        std::array<float, 32> firstData {};
+        std::array<float, 32> secondData {};
+        std::array<float, 32> repeatedData {};
+        Buffer<float> first(firstData.data(), (int) firstData.size());
+        Buffer<float> second(secondData.data(), (int) secondData.size());
+        Buffer<float> repeated(repeatedData.data(), (int) repeatedData.size());
+        unsigned seed = 0x12345678u;
+        unsigned repeatedSeed = seed;
+
+        first.rand(seed);
+        second.rand(seed);
+        repeated.rand(repeatedSeed);
+
+        REQUIRE(compareBuffers(first, repeated, 0.f));
+        REQUIRE_FALSE(compareBuffers(first, second, 0.f));
+        REQUIRE(seed != repeatedSeed);
+        REQUIRE(first.min() >= 0.f);
+        REQUIRE(first.max() < 1.f);
+    }
 }
 
 TEST_CASE("Buffer mathematical operations", "[buffer]") {

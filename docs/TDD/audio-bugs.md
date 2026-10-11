@@ -1,5 +1,15 @@
 # Audio Bug Notes
 
+## Open: Ubuntu legacy BlockConvolver Dirac test loses about 0.1% per stage
+
+During the 2026-10-11 Reverb kernel portability fix, the isolated
+`ConvReverb Convolution Accuracy` test failed all 512 Dirac-response sample
+checks on Ubuntu. Errors were approximately `0.000978` in the first stage and
+`0.001957` in the second against a `0.0001` tolerance. The test does not use
+random kernel generation, while the focused Reverb kernel tests and all 14
+Cycle V2 Reverb tests pass. Artifact: `/tmp/convreverb-accuracy.log`. Status:
+open; inspect IPP real-FFT convolution scaling separately.
+
 ## Resolved: Linux Cycle preset reload could rasterize a stale global mesh
 
 Loading an active preset after another active preset could leave the standalone

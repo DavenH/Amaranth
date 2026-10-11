@@ -1,5 +1,14 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Linux headless Cycle V2 automation logs JUCE font assertions
+
+On 2026-10-11, the focused Reverb kernel automation completed its semantic
+commands on Ubuntu under `DISPLAY=:1`, but repeatedly logged
+`JUCE Assertion failure in juce_Font.cpp:123`, `juce_Font.cpp:211`, and
+`juce_SimpleShapedText.cpp:471` while rendering the UI. Artifact:
+`/tmp/cycle-v2-reverb-kernel-logs.txt.raw`. Status: open and unrelated to the
+Reverb kernel calculation fix; inspect Linux font discovery/fallback separately.
+
 ## P2: Full native Trimesh smoke misses an amplitude rail click
 
 On 2026-10-07, the full `trimesh` native edit smoke passed curve reshape,

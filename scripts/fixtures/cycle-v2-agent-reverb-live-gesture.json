@@ -10,7 +10,7 @@
     { "command": "pointer", "event": "drag", "targetId": "reverbEditor.wet", "downTargetId": "reverbEditor.wet", "targetX": 0.9, "downTargetX": 0.4 },
     { "command": "waitForIdle", "idleDelayMs": 800 },
     { "command": "assertState", "path": "documentDirty", "equals": false },
-    { "command": "assertState", "path": "previewStats.7.contentFingerprint", "op": "notEquals", "value": "6213505229202872133" },
+    { "command": "assertState", "path": "previewStats.7.contentFingerprint", "op": "notEquals", "value": "-6738037878637033672" },
     { "command": "snapshotState" },
     { "command": "pointer", "event": "up", "targetId": "reverbEditor.wet", "downTargetId": "reverbEditor.wet", "targetX": 0.9, "downTargetX": 0.4 },
     { "command": "waitForIdle", "idleDelayMs": 800 },
@@ -18,7 +18,7 @@
     { "command": "snapshotState" },
     { "command": "inspectCanvasPerformance" },
     { "command": "undo", "waitForIdle": true, "idleDelayMs": 300 },
-    { "command": "assertState", "path": "previewStats.7.contentFingerprint", "equals": "6213505229202872133" }
+    { "command": "assertState", "path": "previewStats.7.contentFingerprint", "equals": "-6738037878637033672" }
   ],
   "quit": true
 }
