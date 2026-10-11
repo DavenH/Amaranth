@@ -27,11 +27,11 @@ bool isBlackKey(int pitch) {
 }
 
 Rectangle<float> PresetMidiEditor::miniMap() const {
-    return { 62.f, 40.f, (float) getWidth() - 80.f, 42.f };
+    return { 62.f, 85.f, (float) getWidth() - 80.f, 42.f };
 }
 
 Rectangle<float> PresetMidiEditor::noteGrid() const {
-    constexpr float top = 112.f;
+    constexpr float top = 157.f;
     constexpr float reservedBelow = 25.f + 96.f + 70.f + 36.f;
     return { 62.f, top, (float) getWidth() - 80.f,
             jmax(180.f, (float) getHeight() - top - reservedBelow) };
@@ -98,22 +98,15 @@ Range<int> PresetMidiEditor::overviewPitches() const {
     return MidiPatternMiniMap::pitchRange(sequence, 48, 12);
 }
 
-int PresetMidiEditor::controllerLane() const {
-    if (sequence.controls.empty()) {
-        return 1;
-    }
-    const auto modWheel = std::find_if(sequence.controls.begin(), sequence.controls.end(),
-            [](const PresetMidiControl& control) { return control.controller == 1; });
-    return modWheel != sequence.controls.end()
-            ? 1 : sequence.controls.front().controller;
-}
-
 void PresetMidiEditor::paint(Graphics& graphics) {
     graphics.fillAll(CanvasChromePalette::dockSurface);
     graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(FontOptions(15.f, Font::bold));
     graphics.drawText("PRESET PHRASE", 16, 8, 220, 24,
             Justification::centredLeft);
+    graphics.setColour(CanvasChromePalette::mutedText);
+    graphics.setFont(FontOptions(10.f, Font::bold));
+    graphics.drawText("LIVE CC", 3, 43, 56, 25, Justification::centredRight);
     if (activeNote >= 0) {
         graphics.setColour(CanvasChromePalette::focus);
         graphics.setFont(FontOptions(12.f, Font::bold));
@@ -142,7 +135,7 @@ void PresetMidiEditor::paint(Graphics& graphics) {
         const double seconds = timeOffset() + visibleDuration() * marker / 4.0;
         const int x = roundToInt(xForTime(seconds));
         graphics.drawText(String(seconds, 2) + "s",
-                x - (marker == 4 ? 34 : 12), 91, 48, 16,
+                x - (marker == 4 ? 34 : 12), 136, 48, 16,
                 Justification::centredLeft);
     }
     paintNoteGrid(graphics);
@@ -165,7 +158,7 @@ void PresetMidiEditor::paintMiniMap(Graphics& graphics) const {
     MidiPatternMiniMap::paintNotes(graphics, sequence,
             map.withTrimmedBottom(9.f), pitches);
     MidiPatternMiniMap::paintControls(graphics, sequence,
-            map.withTrimmedTop(map.getHeight() - 9.f));
+            map.withTrimmedTop(map.getHeight() - 9.f), selectedControllerNumber);
     const float left = map.getX() + map.getWidth()
             * (float) (timeOffset() / sequence.durationSeconds);
     const float width = map.getWidth()
@@ -287,14 +280,13 @@ void PresetMidiEditor::paintVelocity(Graphics& graphics) const {
 
 void PresetMidiEditor::paintModulation(Graphics& graphics) const {
     const auto grid = controlGrid();
-    const int lane = controllerLane();
+    const int lane = selectedControllerNumber;
     graphics.setColour(CanvasChromePalette::raisedSurface);
     graphics.fillRect(grid);
     graphics.setColour(CanvasChromePalette::mutedText);
     graphics.setFont(FontOptions(10.f, Font::bold));
-    graphics.drawText(lane == 1 ? "MOD" : "CC" + String(lane),
-            3, roundToInt(grid.getY()), 38, 18,
-            Justification::centredRight);
+    graphics.drawText("CC", 2, roundToInt(grid.getY()) - 17, 56, 15,
+            Justification::centred);
     for (int value : { 0, 32, 64, 96, 127 }) {
         const float y = grid.getBottom() - grid.getHeight() * value / 127.f;
         graphics.setColour(Colours::white.withAlpha(value == 64 ? 0.18f : 0.08f));
@@ -364,7 +356,7 @@ void PresetMidiEditor::paintPlaybackCursor(Graphics& graphics) const {
         graphics.drawVerticalLine(roundToInt(x),
                 noteGrid().getY(), controlGrid().getBottom());
         Path marker;
-        marker.addTriangle(x - 5.f, 108.f, x + 5.f, 108.f, x, 113.f);
+        marker.addTriangle(x - 5.f, 153.f, x + 5.f, 153.f, x, 158.f);
         graphics.fillPath(marker);
     }
     const float mapX = miniMap().getX() + miniMap().getWidth()

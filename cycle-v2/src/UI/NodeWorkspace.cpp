@@ -37,6 +37,9 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     });
     keyboard.setPreviewNote(canvas.previewMidiNote());
     keyboard.setSequence(canvas.presetSequence());
+    keyboard.setMappedControllersCallback([this] {
+        return canvas.mappedMidiControllers();
+    });
     keyboard.setSequenceChangedCallback([this](PresetMidiSequence sequence) {
         saveEditedSequence(std::move(sequence), canvas.presetPatternId());
     });

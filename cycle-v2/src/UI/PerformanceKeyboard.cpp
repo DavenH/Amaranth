@@ -413,6 +413,11 @@ void PerformanceKeyboardPanel::setSequenceChangedCallback(
     sequenceChanged = std::move(callback);
 }
 
+void PerformanceKeyboardPanel::setMappedControllersCallback(
+        std::function<std::vector<int>()> callback) {
+    mappedControllers = std::move(callback);
+}
+
 bool PerformanceKeyboardPanel::hasSequenceNotes() const {
     return sequence.has_value() && !sequence->notes.empty();
 }
@@ -760,7 +765,20 @@ void PerformanceKeyboardPanel::showSequenceEditor(
                         ? safeThis->sequence->durationSeconds
                         : (double) safeThis->playbackDuration;
                 return duration * safeThis->progress;
-            });
+            },
+            mappedControllers ? mappedControllers() : std::vector<int> {},
+            [safeThis](int controller, int value) {
+                if (safeThis != nullptr) {
+                    if (controller == 1) {
+                        safeThis->setModWheelValue(value);
+                        return;
+                    }
+                    safeThis->eventSink.enqueueMidiMessage(
+                            MidiMessage::controllerEvent(1, controller, value),
+                            MidiEventSource::PerformanceKeyboard);
+                }
+            },
+            modWheel.value());
     auto* editorContent = editor.get();
     CallOutBox::launchAsynchronously(
             std::move(editor), editButton.getScreenBounds(), nullptr);

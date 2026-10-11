@@ -141,6 +141,7 @@ public:
     const std::optional<PresetMidiSequence>& presetSequence() const {
         return document.presentation().sequence;
     }
+    std::vector<int> mappedMidiControllers() const;
     bool setPresetSequence(PresetMidiSequence sequence);
     const String& presetPatternId() const {
         return document.presentation().patternId;

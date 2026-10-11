@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "Graph/GraphSerializer.h"
+#include "Graph/PresetMidiControllerMapping.h"
 #include "UI/PresetMidiEditor.h"
 
 using namespace CycleV2;
@@ -17,6 +19,21 @@ MouseEvent pointer(Component& component, Point<float> position,
     };
 }
 
+TEST_CASE("Alto sax preset exposes its attached CC mappings",
+        "[cycle-v2][preset][sequence][editor]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content/presets/altosax-2.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    const auto loaded = GraphSerializer().loadJsonString(preset.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    const std::vector<int> expected { 1, 73 };
+    REQUIRE(mappedPresetMidiControllers(loaded.graph) == expected);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 float xAt(const PresetMidiEditor& editor, double time, double duration) {
     const auto grid = editor.noteGrid();
     return grid.getX() + grid.getWidth()
@@ -26,6 +43,18 @@ float xAt(const PresetMidiEditor& editor, double time, double duration) {
 float pitch60Y(const PresetMidiEditor& editor) {
     const auto grid = editor.noteGrid();
     return grid.getY() + grid.getHeight() * 11.5f / 24.f;
+}
+
+Component* findDescendant(Component& parent, const String& id) {
+    if (parent.getComponentID() == id) {
+        return &parent;
+    }
+    for (int index = 0; index < parent.getNumChildComponents(); ++index) {
+        if (auto* found = findDescendant(*parent.getChildComponent(index), id)) {
+            return found;
+        }
+    }
+    return nullptr;
 }
 
 }
@@ -108,6 +137,52 @@ TEST_CASE("Velocity and modulation lanes edit selected saved events",
     editor.mouseDown(pointer(editor, { controlX, controlY },
             ModifierKeys::rightButtonModifier));
     REQUIRE(changed.controls.empty());
+}
+
+TEST_CASE("Piano roll edits each mapped CC lane and auditions its sliders",
+        "[cycle-v2][preset][sequence][editor][ui]") {
+    ScopedJuceInitialiser_GUI gui;
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    phrase.controls.push_back({ 1, 20, 0.5 });
+    phrase.controls.push_back({ 73, 60, 0.5 });
+    PresetMidiSequence changed;
+    int publications = 0;
+    int sentController = -1;
+    int sentValue = -1;
+    PresetMidiEditor editor(phrase, [&](PresetMidiSequence sequence) {
+        changed = std::move(sequence);
+        ++publications;
+    }, {}, {}, {}, { 1, 73 }, [&](int controller, int value) {
+        sentController = controller;
+        sentValue = value;
+    });
+    auto* selector = dynamic_cast<ComboBox*>(
+            editor.findChildWithID("PresetMidiEditor.Controller"));
+    REQUIRE(selector != nullptr);
+    REQUIRE(selector->getNumItems() == 2);
+    selector->setSelectedId(74, sendNotificationSync);
+    REQUIRE(editor.selectedController() == 73);
+    REQUIRE(publications == 0);
+
+    const auto lane = editor.controlGrid();
+    const float x = xAt(editor, 1.0, 4.0);
+    const float y = lane.getBottom() - lane.getHeight() * 100.f / 127.f;
+    editor.mouseDown(pointer(editor, { x, y }));
+    editor.mouseUp(pointer(editor, { x, y }));
+    REQUIRE(publications == 1);
+    REQUIRE(changed.controls.size() == 3);
+    REQUIRE(changed.controls.back().controller == 73);
+    REQUIRE(changed.controls[0].controller == 1);
+    REQUIRE(changed.controls[0].value == 20);
+
+    auto* cc73 = dynamic_cast<Slider*>(
+            findDescendant(editor, "PresetMidiEditor.CC73"));
+    REQUIRE(cc73 != nullptr);
+    cc73->setValue(91, sendNotificationSync);
+    REQUIRE(sentController == 73);
+    REQUIRE(sentValue == 91);
+    REQUIRE(publications == 1);
 }
 
 TEST_CASE("Trackpad deltas accumulate and the minimap navigates the snapped viewport",

@@ -50,18 +50,14 @@ void paintNotes(
 void paintControls(
         juce::Graphics& graphics,
         const PresetMidiSequence& sequence,
-        juce::Rectangle<float> bounds) {
+        juce::Rectangle<float> bounds,
+        int controller) {
     if (sequence.controls.empty()) {
         return;
     }
-    const bool hasModWheel = std::any_of(sequence.controls.begin(),
-            sequence.controls.end(), [](const PresetMidiControl& control) {
-                return control.controller == 1;
-            });
-    const int lane = hasModWheel ? 1 : sequence.controls.front().controller;
     std::vector<const PresetMidiControl*> points;
     for (const auto& control : sequence.controls) {
-        if (control.controller == lane) {
+        if (control.controller == controller) {
             points.push_back(&control);
         }
     }

@@ -2,7 +2,9 @@
 
 #include <JuceHeader.h>
 
+#include <memory>
 #include <optional>
+#include <vector>
 
 #include "Graph/PresetPresentation.h"
 
@@ -15,17 +17,22 @@ public:
     using ChangeCallback = std::function<void(PresetMidiSequence)>;
     using AuditionCallback = std::function<void(int, int, bool)>;
     using PlaybackTimeCallback = std::function<std::optional<double>()>;
+    using ControlCallback = std::function<void(int, int)>;
 
-    PresetMidiEditor(PresetMidiSequence sequence, ChangeCallback callback,
+    PresetMidiEditor(PresetMidiSequence phrase, ChangeCallback callback,
             std::function<void()> togglePlayback = {},
             AuditionCallback audition = {},
-            PlaybackTimeCallback playbackTime = {});
+            PlaybackTimeCallback playbackTime = {},
+            std::vector<int> mappedControllers = {},
+            ControlCallback controlChanged = {},
+            int previewModWheelValue = 0);
     ~PresetMidiEditor() override;
 
     juce::Rectangle<float> noteGrid() const;
     juce::Rectangle<float> velocityGrid() const;
     juce::Rectangle<float> controlGrid() const;
     juce::Rectangle<float> miniMap() const;
+    int selectedController() const { return selectedControllerNumber; }
 
     void paint(juce::Graphics& graphics) override;
     void resized() override;
@@ -62,7 +69,8 @@ private:
     void updateDurationRange();
     void audition(int pitch, int velocity);
     void releaseAudition();
-    int controllerLane() const;
+    void configureControllers(std::vector<int> mappedControllers);
+    void addControlSlider(int controller);
     void editControl(juce::Point<float> point);
     void publish();
 
@@ -71,7 +79,14 @@ private:
     std::function<void()> onTogglePlayback;
     AuditionCallback onAudition;
     PlaybackTimeCallback playbackTime;
+    ControlCallback onControlChanged;
     juce::TextButton clearButton { "Clear" };
+    juce::ComboBox controllerSelector;
+    juce::Component controlStrip;
+    juce::Viewport controlViewport;
+    std::vector<int> controllers;
+    std::vector<std::unique_ptr<juce::Slider>> controlSliders;
+    std::vector<std::unique_ptr<juce::Label>> controlLabels;
     juce::Label durationLabel;
     juce::Slider durationSlider;
     int lowestPitch { 48 };
@@ -80,6 +95,8 @@ private:
     int selectedNote { -1 };
     int activeControl { -1 };
     int selectedControl { -1 };
+    int selectedControllerNumber { 1 };
+    int initialModWheelValue {};
     int auditionPitch { -1 };
     int timeOffsetSteps {};
     double minimumDurationSeconds { 0.01 };

@@ -22,6 +22,7 @@
 
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeParameterMap.h"
+#include "Graph/PresetMidiControllerMapping.h"
 #include "Nodes/Control/ModulationSource.h"
 #include "UI/NodeViewModule.h"
 #include "UI/PresetPreviewGenerator.h"
@@ -2656,6 +2657,10 @@ void NodeCanvas::setBipolarSpectralSurfaceStyle(
         synchronizeSurfaceStyles();
         notifyGraphDocumentStateChanged();
     }
+}
+
+std::vector<int> NodeCanvas::mappedMidiControllers() const {
+    return mappedPresetMidiControllers(document.graph());
 }
 
 bool NodeCanvas::setPresetSequence(PresetMidiSequence sequence) {

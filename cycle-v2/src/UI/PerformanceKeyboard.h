@@ -126,6 +126,7 @@ public:
     bool isRecording() const { return recording; }
     void setSequence(std::optional<PresetMidiSequence> sequence);
     void setSequenceChangedCallback(std::function<void(PresetMidiSequence)> callback);
+    void setMappedControllersCallback(std::function<std::vector<int>()> callback);
     void showSequenceEditor(PresetMidiSequence sequence,
             std::function<void(PresetMidiSequence)> onEdit);
     void setRecordingChangedCallback(std::function<void(bool)> callback) {
@@ -223,6 +224,7 @@ private:
     PatternControlScheduler controlScheduler;
 
     std::function<void(PresetMidiSequence)> sequenceChanged;
+    std::function<std::vector<int>()> mappedControllers;
     std::function<void(bool)> recordingChanged;
     std::function<void()> flushRecordingInput;
 
