@@ -30,6 +30,7 @@
 #include "UI/GuideRelationshipPresentation.h"
 #include "UI/GuideCurveShelf.h"
 #include "UI/NodeCanvasScene.h"
+#include "UI/NodePortGeometry.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
 #include "UI/NodeCanvasCursorPolicy.h"
 #include "UI/NodeCanvasPresentation.h"
@@ -52,6 +53,21 @@
 #include "Runtime/PreviewPitchResolver.h"
 
 using namespace CycleV2;
+
+TEST_CASE("Voice Context ports place Unison before Pitch and Scratch",
+        "[cycle-v2][canvas][ports][voice-context][regression]") {
+    const Node voice = GraphNodeFactory().createNode(
+            NodeKind::VoiceContext, "voice", { 100.f, 100.f });
+    const std::vector<String> expected { "modulation", "unison", "pitch", "scratch" };
+    REQUIRE(voice.inputs.size() == expected.size());
+    for (size_t index = 0; index < expected.size(); ++index) {
+        REQUIRE(voice.inputs[index].id == expected[index]);
+        REQUIRE(NodeCanvasScene::portWorldCentre(voice, voice.inputs[index]).y
+                == Catch::Approx(voice.bounds.getY()
+                        + NodePortGeometry::firstSidePortOffset
+                        + (float) index * NodePortGeometry::sidePortSpacing));
+    }
+}
 
 TEST_CASE("Node canvas Shift cursor preserves adjustment priority",
         "[cycle-v2][canvas][cursor]") {

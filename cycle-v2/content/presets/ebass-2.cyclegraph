@@ -52,7 +52,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 721.38672, "y": 720.01111 },
+            "position": { "x": 721.38672, "y": 430.18018 },
             "parameters": { "enabled": true, "mode": "group", "order": 6, "width": 2.39237845, "panSpread": 0.0, "phase": 0.0, "jitter": 0.0 },
             "model": {
                 "schema": "unisonVoices",
@@ -679,7 +679,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 697.38666, "y": 424.01111 },
+            "position": { "x": 697.38666, "y": 641.34924 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",

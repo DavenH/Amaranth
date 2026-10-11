@@ -340,10 +340,10 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     input("modulation", "Modulation", PortDomain::VoiceControlSignal,
                             ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
                             ConnectionKind::ConfigurationAttachment, AttachmentType::ModulationTriple),
-                    input("pitch", "Pitch", PortDomain::PitchSignal),
                     input("unison", "Unison", PortDomain::VoiceControlSignal,
                             ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
                             ConnectionKind::ConfigurationAttachment, AttachmentType::Unison),
+                    input("pitch", "Pitch", PortDomain::PitchSignal),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal,
                             ChannelLayout::Mono, PortPurpose::ScratchAttachment)
                     },

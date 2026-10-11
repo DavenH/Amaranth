@@ -1277,3 +1277,40 @@ TEST_CASE("Unison width matches Envelope and preserves legacy right edges",
     REQUIRE(reloaded.graph.findNode("unison")->bounds.getX()
             == Catch::Approx(restored->bounds.getX()));
 }
+
+TEST_CASE("Voice Context preset sources follow port order without overlap",
+        "[cycle-v2][graph][presets][voice-context][regression]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    for (const String name : { String("nordic-1.cyclegraph"),
+                               String("honerism-3.cyclegraph"),
+                               String("old/ooh-aah.cyclegraph") }) {
+        const auto loaded = GraphSerializer().loadJsonString(
+                contentPreset(name).loadFileAsString());
+        INFO(name + ": " + (loaded.issues.empty()
+                ? String() : loaded.issues.front().message));
+        REQUIRE(loaded.succeeded());
+
+        auto source = [&](const String& portId) -> const Node* {
+            for (const auto& edge : loaded.graph.getEdges()) {
+                if (edge.destNodeId == "voice" && edge.destPortId == portId) {
+                    return loaded.graph.findNode(edge.sourceNodeId);
+                }
+            }
+            return nullptr;
+        };
+        const Node* modulation = source("modulation");
+        const Node* unison = source("unison");
+        const Node* pitch = source("pitch");
+        const Node* scratch = source("scratch");
+        REQUIRE(modulation != nullptr);
+        REQUIRE(unison != nullptr);
+        REQUIRE(pitch != nullptr);
+        REQUIRE(scratch != nullptr);
+        REQUIRE(modulation->bounds.getBottom() + 24.f <= unison->bounds.getY() + 0.01f);
+        REQUIRE(unison->bounds.getBottom() + 24.f <= pitch->bounds.getY() + 0.01f);
+        REQUIRE(pitch->bounds.getBottom() + 24.f <= scratch->bounds.getY() + 0.01f);
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}

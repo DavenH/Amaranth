@@ -52,7 +52,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 642.15436, "y": 525.53448 },
+            "position": { "x": 642.15436, "y": 233 },
             "parameters": { "enabled": true, "mode": "group", "order": 4, "width": 25.48, "panSpread": 0.952, "phase": 1.0, "jitter": 0.96 },
             "model": {
                 "schema": "unisonVoices",
@@ -474,7 +474,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 616.89136, "y": 240.0 },
+            "position": { "x": 616.89136, "y": 431 },
             "parameters": {
                 "enabled": true,
                 "purpose": "pitch",
@@ -763,7 +763,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 616.89136, "y": 712.0 },
+            "position": { "x": 616.89136, "y": 712 },
             "parameters": {
                 "enabled": true,
                 "purpose": "scratch",
