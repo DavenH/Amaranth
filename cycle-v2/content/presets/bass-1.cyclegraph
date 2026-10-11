@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 556.6817, "y": 837.0 },
+            "position": { "x": 556.6817, "y": 678.0 },
             "parameters": {
                 "octave": 0,
                 "voiceLength": 0.267175573,
@@ -21,7 +21,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 195.41125, "y": 837.0 },
+            "position": { "x": 195.41125, "y": 678.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -38,7 +38,7 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "position": { "x": 1731.59998, "y": 886.0 },
+            "position": { "x": 1868.20361, "y": 886.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
         {
@@ -52,7 +52,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1325.59998, "y": 886.0 },
+            "position": { "x": 1462.20361, "y": 886.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -440,7 +440,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2372.3999, "y": 1084.0 },
+            "position": { "x": 2389.6001, "y": 1098.94104 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.037383176, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
