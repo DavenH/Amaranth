@@ -90,6 +90,43 @@ TEST_CASE("Preset browser coalesces search and opens the highlighted card",
   #endif
 }
 
+TEST_CASE("A failed preset open leaves the browser responsive",
+        "[cycle-v2][preset][browser][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    const File directory = File::getSpecialLocation(File::tempDirectory)
+            .getChildFile("cycle-v2-failed-preset-" + Uuid().toString());
+    REQUIRE(directory.createDirectory().wasOk());
+    REQUIRE(directory.getChildFile("invalid.cyclegraph").replaceWithText("{}"));
+
+    int attempts {};
+    int closes {};
+    {
+        PresetBrowserPage page({ directory },
+                [&](const File&) {
+                    ++attempts;
+                    return false;
+                },
+                [] {}, [&] { ++closes; }, [] {},
+                [](const File&, const StringArray&) {});
+        page.setBounds(0, 0, 1000, 700);
+        auto* open = dynamic_cast<Button*>(page.findChildWithID("presetBrowser.open"));
+        auto* status = dynamic_cast<Label*>(page.findChildWithID("presetBrowser.status"));
+        REQUIRE(open != nullptr);
+        REQUIRE(status != nullptr);
+        for (int attempt = 0; attempt < 40 && !open->isEnabled(); ++attempt) {
+            MessageManager::getInstance()->runDispatchLoopUntil(50);
+        }
+        REQUIRE(open->isEnabled());
+
+        REQUIRE(page.keyPressed(KeyPress(KeyPress::returnKey)));
+        REQUIRE(attempts == 1);
+        REQUIRE(status->getText() == "COULD NOT LOAD INVALID");
+        REQUIRE(page.keyPressed(KeyPress(KeyPress::escapeKey)));
+        REQUIRE(closes == 1);
+    }
+    REQUIRE(directory.deleteRecursively());
+}
+
 TEST_CASE("Expanded preset browser shares favorites and filters its cards",
         "[cycle-v2][preset][browser][favorites]") {
     ScopedJuceInitialiser_GUI gui;

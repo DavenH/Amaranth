@@ -569,3 +569,14 @@ group containing Reverb collapses in
 `/private/tmp/cycle-v2-global-group-collapsed.png`. Current status: open;
 trace the preview's drawing bounds and invalidation independently of group
 frame geometry.
+
+## P3: CoreMIDI assertion during automated preset open
+
+On 2026-10-11, the standalone Debug agent opened `astral-3.cyclegraph`
+successfully, but the filtered launch log recorded `CoreMIDI error: 580 -
+fffffed0` and three `JUCE Assertion failure in juce_CoreMidi_mac.mm:595`
+messages. The run completed all commands and reported a compiled graph with
+zero validation issues. Repro artifacts are
+`/private/tmp/cycle-v2-astral3-fixed-report.json` and
+`/private/tmp/cycle-v2-astral3-fixed-log.txt`. Current status: open; investigate
+MIDI device initialization separately from preset loading.

@@ -1540,18 +1540,8 @@
         },
         {
             "guideId": "guide2",
-            "targetNodeId": "magnitudeLayer1",
-            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 2, "field": "time" }
-        },
-        {
-            "guideId": "guide2",
             "targetNodeId": "magnitudeLayer2",
             "target": { "kind": "trimeshCubeComponent", "cubeIndex": 0, "field": "time" }
-        },
-        {
-            "guideId": "guide2",
-            "targetNodeId": "magnitudeLayer2",
-            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 2, "field": "time" }
         },
         {
             "guideId": "guide1",

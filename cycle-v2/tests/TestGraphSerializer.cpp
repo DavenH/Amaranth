@@ -938,6 +938,20 @@ TEST_CASE("Astral retains the canonical spectral and Envelope control graph",
   #endif
 }
 
+TEST_CASE("Astral 3 loads as a valid factory graph",
+        "[cycle-v2][graph][presets][astral]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            contentPreset("astral-3.cyclegraph").loadFileAsString());
+    for (const auto& issue : loaded.issues) {
+        UNSCOPED_INFO(issue.message);
+    }
+    REQUIRE(loaded.succeeded());
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Accoustic retains its canonical spectral and global effect graph",
         "[cycle-v2][graph][presets][accoustic]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
