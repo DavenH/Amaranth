@@ -25,6 +25,7 @@ constexpr auto preview = ParameterImpact::Preview;
 constexpr auto graph = ParameterImpact::GraphSemantics;
 constexpr auto dsp = ParameterImpact::DspConfiguration;
 constexpr auto reset = ParameterImpact::ProcessorReset;
+constexpr float wideCompactPreviewWidth = 269.2f;
 
 float defaultTrimeshKeyPosition() {
     return ModulationSource::normalizeKey(
@@ -552,7 +553,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .execution(NodeExecutionTrait::ControlProducer)
                     .runtime(AudioModuleRole::Envelope, PreviewModuleRole::Envelope,
                             "cycle/src/Inter/EnvelopeInter2D.cpp")
-                    .presentation({ 269.2f, 92.f })
+                    .presentation({ wideCompactPreviewWidth, 92.f })
                     .finish(),
             buildDefinition(definition("add", NodeKind::Add, "Add", "combine", "add",
                     { input("left", "A", PortDomain::ControlSignal), input("right", "B", PortDomain::ControlSignal) },
@@ -628,7 +629,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .execution(NodeExecutionTrait::ConfigurationOnly)
                     .runtime(AudioModuleRole::None, PreviewModuleRole::None,
                             "cycle/src/Audio/Effects/Unison.cpp")
-                    .presentation({ 230.f, 43.f })
+                    .presentation({ wideCompactPreviewWidth, 43.f })
                     .finish(),
             buildDefinition(definition("reverb", NodeKind::Reverb, "Reverb", "space", "reverb",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },

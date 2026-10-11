@@ -21,6 +21,8 @@ namespace CycleV2 {
 namespace {
 
 constexpr auto formatId = "cycle-v2-graph";
+constexpr int unisonWidthLayoutVersion = 1;
+constexpr float legacyUnisonWidth = 256.f;
 constexpr int maximumDecimalPlaces = 5;
 constexpr int parameterDecimalPlaces = 15;
 constexpr int maximumLineLength = 140;
@@ -596,6 +598,7 @@ var GraphSerializer::writeJSON(
     auto root = std::make_unique<DynamicObject>();
     root->setProperty("format", formatId);
     root->setProperty("formatVersion", currentFormatVersion);
+    root->setProperty("unisonWidthLayoutVersion", unisonWidthLayoutVersion);
 
     Array<var> nodes;
     const auto& registry = NodeDefinitionRegistry::instance();
@@ -751,6 +754,8 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         result.issues.push_back({ GraphLoadCode::UnsupportedVersion, "Unsupported Cycle V2 graph format version" });
         return result;
     }
+    const int savedUnisonWidthLayoutVersion =
+            (int) root->getProperty("unisonWidthLayoutVersion");
 
     const auto presentation = PresetPresentationCodec::readJSON(
             root->getProperty("presetPresentation"));
@@ -829,7 +834,11 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             result.issues.push_back({ GraphLoadCode::InvalidSchema, "Node '" + nodeId + "' position is not finite" });
             continue;
         }
-        node.bounds.setPosition((float) x, (float) y);
+        const float legacyUnisonOffset = node.kind == NodeKind::Unison
+                && savedUnisonWidthLayoutVersion < unisonWidthLayoutVersion
+                ? node.bounds.getWidth() - legacyUnisonWidth
+                : 0.f;
+        node.bounds.setPosition((float) x - legacyUnisonOffset, (float) y);
 
         const var reverseInputPortOrder = encoded->getProperty("reverseInputPortOrder");
         if (!reverseInputPortOrder.isVoid() && !reverseInputPortOrder.isBool()) {
