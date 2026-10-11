@@ -175,7 +175,7 @@
                 "signalType": "spectralMagnitude",
                 "phaseMode": "absolute",
                 "polarity": "bipolar",
-                "yellow": 0.5,
+                "yellow": 0.241,
                 "red": 0.5,
                 "blue": 0.0,
                 "primaryAxis": "yellow",
@@ -640,7 +640,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 2362.0, "y": 1663.63293 },
-            "parameters": { "gain": 0.496183206 }
+            "parameters": { "gain": 0.596183 }
         },
         {
             "id": "globalInput",
