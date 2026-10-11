@@ -216,7 +216,7 @@
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1591.19995, "y": 387.0 },
+            "position": { "x": 1591.19995, "y": 421.0 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -279,7 +279,7 @@
             "id": "magnitudeOp1",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 1659.19995, "y": 736.0 },
+            "position": { "x": 1659.19995, "y": 770.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },

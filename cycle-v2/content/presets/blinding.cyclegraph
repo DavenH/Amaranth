@@ -38,7 +38,7 @@
             "id": "ifft",
             "kind": "ifft",
             "definitionVersion": 1,
-            "position": { "x": 2103.8623, "y": 561.76764 },
+            "position": { "x": 2064.6582, "y": 561.76764 },
             "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
         },
         {
@@ -177,7 +177,7 @@
                 "signalType": "spectralPhase",
                 "phaseMode": "absolute",
                 "polarity": "unipolar",
-                "yellow": 0.5,
+                "yellow": 0.0,
                 "red": 0.495327115,
                 "blue": 0.0,
                 "primaryAxis": "yellow",
@@ -572,7 +572,7 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2354.92334, "y": 561.76764 },
+            "position": { "x": 2305.49219, "y": 561.76764 },
             "portSides": {
                 "inputs": { "right": "bottom" }
             },
@@ -603,7 +603,7 @@
             "id": "voiceOutput",
             "kind": "voiceOutput",
             "definitionVersion": 1,
-            "position": { "x": 2549.104, "y": 561.76764 },
+            "position": { "x": 2525.24072, "y": 561.76764 },
             "parameters": {}
         },
         {

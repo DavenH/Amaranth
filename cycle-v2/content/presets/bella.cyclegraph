@@ -242,7 +242,7 @@
             "id": "magnitudeOp1",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 1659.19995, "y": 736.0 },
+            "position": { "x": 1659.19983, "y": 769.18585 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -341,7 +341,7 @@
             "id": "magnitudeOp2",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 2025.19995, "y": 736.0 },
+            "position": { "x": 2025.19983, "y": 769.18585 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -414,7 +414,7 @@
             "id": "phaseOp1",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 1659.19995, "y": 1056.0 },
+            "position": { "x": 1659.19983, "y": 1022.00006 },
             "portSides": {
                 "inputs": { "right": "bottom" }
             },
@@ -494,7 +494,7 @@
             "id": "phaseOp2",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 2025.19995, "y": 1056.0 },
+            "position": { "x": 2025.19983, "y": 1022.00006 },
             "portSides": {
                 "inputs": { "right": "bottom" }
             },

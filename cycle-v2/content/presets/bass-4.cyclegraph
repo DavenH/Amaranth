@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 457.84772, "y": 435.14612 },
+            "position": { "x": 457.84772, "y": 327.89929 },
             "parameters": {
                 "octave": 0,
                 "voiceLength": 0.290213495,
@@ -21,7 +21,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 98.6792, "y": 435.14612 },
+            "position": { "x": 98.6792, "y": 327.89929 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -504,7 +504,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1693.30786, "y": 361.89929 },
+            "position": { "x": 1668.3512, "y": 361.89929 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.056074765, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
