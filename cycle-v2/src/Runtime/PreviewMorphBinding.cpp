@@ -61,11 +61,12 @@ std::vector<PreviewMorphTarget> PreviewMorphBinding::fromPlan(
             if (source->mode == ModulationSourceMode::KeyScale) {
                 targets.push_back({ step.nodeId, input.destPortId,
                         PreviewMorphControl::KeyScale });
-            } else if (source->mode == ModulationSourceMode::ModWheel
-                    || (source->mode == ModulationSourceMode::MidiController
-                            && source->controller == 1)) {
+            } else if (const auto controller = ModulationSource::controllerFor(*source)) {
                 targets.push_back({ step.nodeId, input.destPortId,
-                        PreviewMorphControl::ModWheel });
+                        *controller == 1
+                                ? PreviewMorphControl::ModWheel
+                                : PreviewMorphControl::MidiController,
+                        *controller });
             }
         }
     }

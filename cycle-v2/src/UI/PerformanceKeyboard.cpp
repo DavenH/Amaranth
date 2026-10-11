@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <map>
 
 #include "UI/PerformanceKeyboard.h"
 #include "UI/PresetMidiEditor.h"
@@ -285,15 +286,24 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
         if (modWheelValueChanged) {
             modWheelValueChanged(value);
         }
+        if (controllerValueChanged) {
+            controllerValueChanged(1, value);
+        }
     };
     modWheel.onGestureStarted = [this] {
         if (modWheelGestureStarted) {
             modWheelGestureStarted();
         }
+        if (controllerGestureStarted) {
+            controllerGestureStarted(1);
+        }
     };
     modWheel.onGestureEnded = [this] {
         if (modWheelGestureEnded) {
             modWheelGestureEnded();
+        }
+        if (controllerGestureEnded) {
+            controllerGestureEnded(1);
         }
     };
     keyboard.setPrimaryGestureStartedCallback([this] { stopPlayback(); });
@@ -407,6 +417,21 @@ void PerformanceKeyboardPanel::setModWheelGestureEndedCallback(
     modWheelGestureEnded = std::move(callback);
 }
 
+void PerformanceKeyboardPanel::setControllerValueChangedCallback(
+        std::function<void(int, int)> callback) {
+    controllerValueChanged = std::move(callback);
+}
+
+void PerformanceKeyboardPanel::setControllerGestureStartedCallback(
+        std::function<void(int)> callback) {
+    controllerGestureStarted = std::move(callback);
+}
+
+void PerformanceKeyboardPanel::setControllerGestureEndedCallback(
+        std::function<void(int)> callback) {
+    controllerGestureEnded = std::move(callback);
+}
+
 void PerformanceKeyboardPanel::setModWheelValue(int value) {
     modWheel.setValue(value, true);
 }
@@ -455,6 +480,19 @@ void PerformanceKeyboardPanel::setMappedControllers(std::vector<int> controllers
         wheel->setTooltip("Preview MIDI CC " + String(controller));
         wheel->onValueChanged = [this, controller](int value) {
             sendControllerValue(controller, value);
+            if (controllerValueChanged) {
+                controllerValueChanged(controller, value);
+            }
+        };
+        wheel->onGestureStarted = [this, controller] {
+            if (controllerGestureStarted) {
+                controllerGestureStarted(controller);
+            }
+        };
+        wheel->onGestureEnded = [this, controller] {
+            if (controllerGestureEnded) {
+                controllerGestureEnded(controller);
+            }
         };
         addAndMakeVisible(*wheel);
         nextWheels.push_back(std::move(wheel));
@@ -489,8 +527,8 @@ void PerformanceKeyboardPanel::releaseEditorAudition() {
 
 void PerformanceKeyboardPanel::rebuildPlaybackEvents() {
     playbackEvents.clear();
+    controlSchedulers.clear();
     if (!sequence.has_value()) {
-        controlScheduler.reset({}, 1, 0.0);
         return;
     }
     for (const auto& note : sequence->notes) {
@@ -501,19 +539,16 @@ void PerformanceKeyboardPanel::rebuildPlaybackEvents() {
                 note.startSeconds + note.durationSeconds,
                 MidiMessage::noteOff(1, note.pitch) });
     }
-    const int envelopeController = sequence->controls.empty() ? 1
-            : (std::any_of(sequence->controls.begin(), sequence->controls.end(),
-                    [](const PresetMidiControl& control) { return control.controller == 1; })
-                    ? 1 : sequence->controls.front().controller);
-    std::vector<PresetMidiControl> modulationEnvelope;
+    std::map<int, std::vector<PresetMidiControl>> controlLanes;
     for (const auto& control : sequence->controls) {
-        if (control.controller == envelopeController) {
-            modulationEnvelope.push_back(control);
-            continue;
-        }
-        playbackEvents.push_back({
-                control.timeSeconds,
-                MidiMessage::controllerEvent(1, control.controller, control.value) });
+        controlLanes[control.controller].push_back(control);
+    }
+    controlSchedulers.reserve(controlLanes.size());
+    for (auto& lane : controlLanes) {
+        PatternControlScheduler scheduler;
+        scheduler.reset(std::move(lane.second), lane.first,
+                sequence->durationSeconds);
+        controlSchedulers.push_back(std::move(scheduler));
     }
     std::stable_sort(playbackEvents.begin(), playbackEvents.end(),
             [](const PlaybackEvent& first, const PlaybackEvent& second) {
@@ -525,8 +560,6 @@ void PerformanceKeyboardPanel::rebuildPlaybackEvents() {
                 };
                 return priority(first.message) < priority(second.message);
             });
-    controlScheduler.reset(std::move(modulationEnvelope), envelopeController,
-            sequence->durationSeconds);
 }
 
 bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
@@ -545,6 +578,11 @@ bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
     for (const auto& wheel : extraWheels) {
         sendControllerValue(wheel->controller(), wheel->value());
     }
+    if (!scheduleControlEventsUntil(automationLookaheadSeconds,
+            nowMilliseconds / 1000.0)) {
+        stopPlayback();
+        return false;
+    }
     if (hasSequenceNotes()
             && !scheduleSequenceEvents(nowMilliseconds / 1000.0)) {
         stopPlayback();
@@ -552,11 +590,6 @@ bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
     }
     if (!hasSequenceNotes()) {
         keyboardState.noteOn(1, playbackNote, 0.8f);
-    }
-    if (!controlScheduler.scheduleUntil(automationLookaheadSeconds,
-            nowMilliseconds / 1000.0, eventSink)) {
-        stopPlayback();
-        return false;
     }
     if (sequence.has_value()) {
         dispatchSequenceEvents(0.0);
@@ -606,10 +639,9 @@ void PerformanceKeyboardPanel::updatePlayback(double nowMilliseconds) {
             (nowMilliseconds - playbackStartedAtMilliseconds) / 1000.0);
     if (sequence.has_value()) {
         dispatchSequenceEvents(elapsedSeconds);
-        if (!controlScheduler.scheduleUntil(
+        if (!scheduleControlEventsUntil(
                 elapsedSeconds + automationLookaheadSeconds,
-                playbackStartedAtMilliseconds / 1000.0,
-                eventSink)) {
+                playbackStartedAtMilliseconds / 1000.0)) {
             stopPlayback();
             return;
         }
@@ -651,6 +683,16 @@ bool PerformanceKeyboardPanel::scheduleSequenceEvents(double startSeconds) {
                 MidiEventSource::PatternPlayback,
                 startSeconds + event.timeSeconds)) {
             eventSink.releaseMidiSource(MidiEventSource::PatternPlayback);
+            return false;
+        }
+    }
+    return true;
+}
+
+bool PerformanceKeyboardPanel::scheduleControlEventsUntil(
+        double elapsedSeconds, double startSeconds) {
+    for (auto& scheduler : controlSchedulers) {
+        if (!scheduler.scheduleUntil(elapsedSeconds, startSeconds, eventSink)) {
             return false;
         }
     }

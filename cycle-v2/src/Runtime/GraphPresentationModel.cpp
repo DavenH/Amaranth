@@ -13,46 +13,41 @@ namespace CycleV2 {
 
 namespace {
 
-bool usesModWheel(const ModulationSourceConfiguration& configuration) {
-    return configuration.mode == ModulationSourceMode::ModWheel
-            || (configuration.mode == ModulationSourceMode::MidiController
-                    && configuration.controller == 1);
-}
-
-std::vector<String> modWheelPreviewRoots(const GraphExecutionPlan& plan) {
-    std::vector<String> roots;
-    const auto appendRoot = [&](const String& nodeId) {
-        if (std::find(roots.begin(), roots.end(), nodeId) == roots.end()) {
-            roots.push_back(nodeId);
+std::array<std::vector<String>, 128> controllerPreviewRoots(
+        const GraphExecutionPlan& plan) {
+    std::array<std::vector<String>, 128> roots;
+    const auto appendRoot = [&](const String& nodeId,
+            const ModulationSourceConfiguration& configuration) {
+        const auto controller = ModulationSource::controllerFor(configuration);
+        if (!controller.has_value()) {
+            return;
+        }
+        auto& nodes = roots[(size_t) *controller];
+        if (std::find(nodes.begin(), nodes.end(), nodeId) == nodes.end()) {
+            nodes.push_back(nodeId);
         }
     };
     for (const auto& step : plan.steps) {
         if (const auto source = std::dynamic_pointer_cast<
                     const ModulationSourceConfiguration>(step.configuration.value)) {
-            if (usesModWheel(*source)) {
-                appendRoot(step.nodeId);
-            }
+            appendRoot(step.nodeId, *source);
             continue;
         }
         const auto triple = std::dynamic_pointer_cast<
                 const ModulationTripleConfiguration>(step.configuration.value);
-        if (triple != nullptr
-                && std::any_of(
-                        triple->sources.begin(),
-                        triple->sources.end(),
-                        usesModWheel)) {
-            appendRoot(step.nodeId);
+        if (triple != nullptr) {
+            for (const auto& source : triple->sources) {
+                appendRoot(step.nodeId, source);
+            }
         }
     }
     for (const auto& context : plan.voiceContexts) {
         const auto triple = std::dynamic_pointer_cast<
                 const ModulationTripleConfiguration>(context.defaultModulation);
-        if (triple != nullptr
-                && std::any_of(
-                        triple->sources.begin(),
-                        triple->sources.end(),
-                        usesModWheel)) {
-            appendRoot(context.nodeId);
+        if (triple != nullptr) {
+            for (const auto& source : triple->sources) {
+                appendRoot(context.nodeId, source);
+            }
         }
     }
     return roots;
@@ -128,7 +123,7 @@ bool GraphPresentationModel::refresh(
             documentRevision,
             change,
             { current.graphRevision, current.previewMidiNote,
-                    current.previewModWheelValue },
+                    current.previewControllerValues },
             compile,
             preview,
             PresentationRefreshScope::Downstream);
@@ -160,7 +155,7 @@ bool GraphPresentationModel::refresh(
     if (accepted && (compile
             || change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration))) {
-        modWheelPreviewRootNodeIds = modWheelPreviewRoots(current.compileResult.plan);
+        controllerPreviewRootNodeIds = controllerPreviewRoots(current.compileResult.plan);
         refreshPreviewMorphBindings();
         ++audioRevision;
     }
@@ -235,28 +230,48 @@ bool GraphPresentationModel::refreshPreviewModWheelValue(
         const NodeGraph& graph,
         uint64_t documentRevision,
         int value) {
+    return refreshPreviewControllerValue(graph, documentRevision, 1, value);
+}
+
+bool GraphPresentationModel::refreshPreviewControllerValue(
+        const NodeGraph& graph,
+        uint64_t documentRevision,
+        int controller,
+        int value) {
+    const int selectedController = jlimit(0, 127, controller);
     const int selectedValue = jlimit(0, 127, value);
-    if (current.previewModWheelValue == selectedValue) {
+    if (current.previewControllerValues[(size_t) selectedController] == selectedValue) {
         return true;
     }
 
     scheduler.cancelAndWait();
-    current.previewModWheelValue = selectedValue;
+    current.previewControllerValues[(size_t) selectedController] = selectedValue;
 
     return refreshPreviewControls(
             graph,
             documentRevision,
-            modWheelPreviewRootNodeIds);
+            controllerPreviewRootNodeIds[(size_t) selectedController]);
 }
 
 void GraphPresentationModel::stagePreviewModWheelValue(int value) {
-    current.previewModWheelValue = jlimit(0, 127, value);
+    stagePreviewControllerValue(1, value);
+}
+
+void GraphPresentationModel::stagePreviewControllerValue(int controller, int value) {
+    current.previewControllerValues[(size_t) jlimit(0, 127, controller)]
+            = jlimit(0, 127, value);
 }
 
 GraphChangeSet GraphPresentationModel::modWheelPreviewChange(
         GraphChangeSet change) const {
+    return controllerPreviewChange(std::move(change), 1);
+}
+
+GraphChangeSet GraphPresentationModel::controllerPreviewChange(
+        GraphChangeSet change, int controller) const {
     change.parameterImpacts = change.parameterImpacts | ParameterImpact::Preview;
-    for (const auto& nodeId : modWheelPreviewRootNodeIds) {
+    for (const auto& nodeId : controllerPreviewRootNodeIds[
+            (size_t) jlimit(0, 127, controller)]) {
         if (std::find(change.nodeIds.begin(), change.nodeIds.end(), nodeId)
                 == change.nodeIds.end()) {
             change.nodeIds.push_back(nodeId);
@@ -331,7 +346,7 @@ void GraphPresentationModel::refreshAsync(
             documentRevision,
             change,
             { current.graphRevision, current.previewMidiNote,
-                    current.previewModWheelValue },
+                    current.previewControllerValues },
             false,
             preview,
             scope);
@@ -370,7 +385,7 @@ void GraphPresentationModel::refreshAsync(
                         && (job.change.guidesChanged
                                 || hasImpact(job.change.parameterImpacts,
                                         ParameterImpact::DspConfiguration))) {
-                    modWheelPreviewRootNodeIds = modWheelPreviewRoots(current.compileResult.plan);
+                    controllerPreviewRootNodeIds = controllerPreviewRoots(current.compileResult.plan);
                     refreshPreviewMorphBindings();
                     ++audioRevision;
                 }
@@ -510,7 +525,7 @@ GraphPresentationModel::captureProbePreview(
             probeId,
             rasterRowCount,
             midiNote,
-            current.previewModWheelValue,
+            current.previewControllerValues,
             performance);
 }
 
@@ -528,14 +543,17 @@ bool GraphPresentationModel::requiresPreview(const GraphChangeSet& change) const
 }
 
 void GraphPresentationModel::refreshPreviewMorphBindings() {
-    allMorphTargets = PreviewMorphBinding::fromPlan(current.compileResult.plan);
+    const auto targets = PreviewMorphBinding::fromPlan(current.compileResult.plan);
     keyScaleTargets.clear();
-    modWheelTargets.clear();
-    for (const auto& target : allMorphTargets) {
+    for (auto& targets : controllerTargets) {
+        targets.clear();
+    }
+    for (const auto& target : targets) {
         if (target.control == PreviewMorphControl::KeyScale) {
             keyScaleTargets.push_back(target);
         } else {
-            modWheelTargets.push_back(target);
+            controllerTargets[(size_t) jlimit(0, 127, target.controller)]
+                    .push_back(target);
         }
     }
 }

@@ -145,6 +145,10 @@ public:
     void setModWheelValueChangedCallback(std::function<void(int)> callback);
     void setModWheelGestureStartedCallback(std::function<void()> callback);
     void setModWheelGestureEndedCallback(std::function<void()> callback);
+    void setControllerValueChangedCallback(
+            std::function<void(int, int)> callback);
+    void setControllerGestureStartedCallback(std::function<void(int)> callback);
+    void setControllerGestureEndedCallback(std::function<void(int)> callback);
     void setModWheelValue(int value);
     void setPlaybackDurationSeconds(float seconds);
     bool startPlayback(double nowMilliseconds);
@@ -206,6 +210,7 @@ private:
     void dispatchSequenceEvents(double elapsedSeconds);
     bool scheduleSequenceEvents(double startSeconds);
     void rebuildPlaybackEvents();
+    bool scheduleControlEventsUntil(double elapsedSeconds, double startSeconds);
     bool hasSequenceNotes() const;
 
     struct PlaybackEvent {
@@ -228,7 +233,7 @@ private:
     std::array<int, 128> activePlaybackNoteCounts {};
     std::optional<PresetMidiSequence> sequence;
     std::vector<PlaybackEvent> playbackEvents;
-    PatternControlScheduler controlScheduler;
+    std::vector<PatternControlScheduler> controlSchedulers;
 
     std::function<void(PresetMidiSequence)> sequenceChanged;
     std::vector<int> mappedControllers;
@@ -238,6 +243,9 @@ private:
     std::function<void(int)> modWheelValueChanged;
     std::function<void()> modWheelGestureStarted;
     std::function<void()> modWheelGestureEnded;
+    std::function<void(int, int)> controllerValueChanged;
+    std::function<void(int)> controllerGestureStarted;
+    std::function<void(int)> controllerGestureEnded;
 
     MidiKeyboardState& keyboardState;
     MidiEventSink& eventSink;

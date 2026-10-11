@@ -1,0 +1,28 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/altosax-2.cyclegraph" },
+    { "command": "invokeMenuItem", "id": "file.spyRefreshLive" },
+    { "command": "assertState", "path": "probeRefreshMode", "equals": "Live" },
+    { "command": "resetCanvasPerformance" },
+    { "command": "snapshotState" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.CC73", "event": "down", "targetY": 0.8 },
+    { "command": "snapshotState" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.CC73", "event": "drag", "targetY": 0.6 },
+    { "command": "snapshotState" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.CC73", "event": "drag", "targetY": 0.25 },
+    { "command": "snapshotState" },
+    { "command": "waitForIdle", "idleDelayMs": 4000 },
+    { "command": "snapshotState" },
+    { "command": "assertState", "path": "performance.cc73Value", "op": "greaterThan", "value": 90 },
+    { "command": "assertState", "path": "previewRenderCount", "op": "greaterThan", "value": 2 },
+    { "command": "assertState", "path": "documentDirty", "equals": false },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.CC73", "event": "up", "targetY": 0.25 },
+    { "command": "waitForIdle", "idleDelayMs": 800 },
+    { "command": "snapshotState" },
+    { "command": "assertNodeParameter", "nodeId": "volumeEnvelope1", "parameterId": "red", "op": "greaterThan", "value": 0.7 },
+    { "command": "assertState", "path": "documentDirty", "equals": true },
+    { "command": "undo" },
+    { "command": "assertNodeParameter", "nodeId": "volumeEnvelope1", "parameterId": "red", "equals": "0.5" }
+  ],
+  "quit": true
+}

@@ -12,7 +12,7 @@ uint64_t PresentationUpdateRequestBuilder::effectiveFingerprint(
         uint64_t documentRevision,
         const GraphChangeSet& change,
         int previewMidiNote,
-        int previewModWheelValue) {
+        const std::array<int, 128>& previewControllerValues) {
     uint64_t effectiveFingerprint = change.nodeIds.empty()
             ? documentRevision
             : 1469598103934665603ULL;
@@ -35,10 +35,12 @@ uint64_t PresentationUpdateRequestBuilder::effectiveFingerprint(
         }
         effectiveFingerprint = nodeFingerprint.value();
     }
-    effectiveFingerprint = FingerprintBuilder(effectiveFingerprint)
-            .add(previewMidiNote)
-            .add(previewModWheelValue)
-            .value();
+    FingerprintBuilder controlsFingerprint(effectiveFingerprint);
+    controlsFingerprint.add(previewMidiNote);
+    for (const int value : previewControllerValues) {
+        controlsFingerprint.add(value);
+    }
+    effectiveFingerprint = controlsFingerprint.value();
     return effectiveFingerprint;
 }
 

@@ -48,14 +48,15 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     keyboard.setPreviewNoteSelectedCallback([this](int midiNote) {
         canvas.setPreviewMidiNote(midiNote);
     });
-    keyboard.setModWheelValueChangedCallback([this](int value) {
-        canvas.updatePreviewModWheelGesture(value);
+    keyboard.setControllerValueChangedCallback([this](int controller, int value) {
+        canvas.updatePreviewControllerGesture(controller, value);
     });
-    keyboard.setModWheelGestureStartedCallback([this] {
-        canvas.beginPreviewModWheelGesture();
+    keyboard.setControllerGestureStartedCallback([this](int controller) {
+        canvas.beginPreviewControllerGesture(controller);
     });
-    keyboard.setModWheelGestureEndedCallback([this] {
-        canvas.endPreviewModWheelGesture(keyboard.modWheelValue());
+    keyboard.setControllerGestureEndedCallback([this](int controller) {
+        canvas.endPreviewControllerGesture(
+                controller, keyboard.controllerValue(controller));
     });
     startTimerHz(30);
     timerCallback();
@@ -66,9 +67,9 @@ NodeWorkspace::~NodeWorkspace() {
     audioEngine.setMidiRecordingEnabled(false);
     canvas.setOverlayOcclusionChangedCallback({});
     canvas.setPreviewPlaybackToggleCallback({});
-    keyboard.setModWheelValueChangedCallback({});
-    keyboard.setModWheelGestureStartedCallback({});
-    keyboard.setModWheelGestureEndedCallback({});
+    keyboard.setControllerValueChangedCallback({});
+    keyboard.setControllerGestureStartedCallback({});
+    keyboard.setControllerGestureEndedCallback({});
     keyboard.releaseAllNotes();
 }
 

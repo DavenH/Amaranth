@@ -57,13 +57,16 @@ GraphPreviewResult::SignalProbePreview captureSelectedProbe(
         const CompiledSignalProbe& address,
         size_t frameCount,
         int midiNote,
-        int modWheelValue,
+        const std::array<int, 128>& controllerValues,
         GraphPresentationPerformanceMetrics& performance) {
     GraphAudioExecutor captureExecutor;
 
     AudioVoiceContext voice;
     voice.controls.noteNumber = jlimit(0, 127, midiNote);
-    voice.controls.controllers[1] = (float) jlimit(0, 127, modWheelValue) / 127.f;
+    for (size_t controller = 0; controller < controllerValues.size(); ++controller) {
+        voice.controls.controllers[controller]
+                = (float) controllerValues[controller] / 127.f;
+    }
     voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     const uint64_t executionStartedAt = performance.timestamp();
     const GraphAudioResult audio = captureExecutor.processProbe(
@@ -110,13 +113,15 @@ bool PresentationPreviewRenderer::render(
             snapshot.previewMidiNote);
     AudioVoiceContext previewVoice;
     previewVoice.controls.noteNumber = snapshot.previewMidiNote;
-    previewVoice.controls.controllers[1]
-            = (float) snapshot.previewModWheelValue / 127.f;
+    for (size_t controller = 0;
+            controller < snapshot.previewControllerValues.size(); ++controller) {
+        previewVoice.controls.controllers[controller]
+                = (float) snapshot.previewControllerValues[controller] / 127.f;
+    }
     previewVoice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     PreviewControlContext previewControls;
     previewControls.noteNumber = snapshot.previewMidiNote;
-    previewControls.controllers[1]
-            = (float) snapshot.previewModWheelValue / 127.f;
+    previewControls.controllers = previewVoice.controls.controllers;
     previewControls.lowestNote = Constants::LowestMidiNote;
     previewControls.highestNote = Constants::HighestMidiNote;
     previewControls.traverseVoiceTime = true;
@@ -208,7 +213,7 @@ PresentationPreviewRenderer::captureProbePreview(
         const String& probeId,
         size_t rasterRowCount,
         int midiNote,
-        int modWheelValue,
+        const std::array<int, 128>& controllerValues,
         GraphPresentationPerformanceMetrics& performance) const {
     const uint64_t startedAt = performance.timestamp();
     const auto address = probeAddressFor(graph, plan, probeId);
@@ -216,7 +221,7 @@ PresentationPreviewRenderer::captureProbePreview(
         return std::nullopt;
     }
     auto preview = captureSelectedProbe(
-            plan, *address, rasterRowCount, midiNote, modWheelValue, performance);
+            plan, *address, rasterRowCount, midiNote, controllerValues, performance);
     const auto recordTotal = [&] {
         performance.record(
                 GraphPresentationPerformanceMetrics::Stage::ExpandedProbeTotal,

@@ -154,6 +154,10 @@ public:
     void beginPreviewModWheelGesture();
     bool updatePreviewModWheelGesture(int value);
     void endPreviewModWheelGesture(int finalValue);
+    bool setPreviewControllerValue(int controller, int value);
+    void beginPreviewControllerGesture(int controller);
+    bool updatePreviewControllerGesture(int controller, int value);
+    void endPreviewControllerGesture(int controller, int finalValue);
     Rectangle<int> performanceKeyboardDockBounds() const;
     Rectangle<float> expandedEditorBoundsForOverlay() const;
     void setOverlayOcclusionChangedCallback(std::function<void()> callback);
@@ -281,20 +285,21 @@ private:
     void requestDeleteGuideCurve(const String& guideId);
     bool deleteGuideCurve(const String& guideId);
     void refreshProbeDetail();
-    void finishPreviewModWheelRefresh();
+    void finishPreviewControllerRefresh();
     enum class PreviewMorphEditScope {
         KeyScale,
-        ModWheel,
-        Both
+        Controller
     };
     GraphEditResult persistPreviewMorph(
             int midiNote,
-            int modWheelValue,
-            PreviewMorphEditScope scope);
+            PreviewMorphEditScope scope,
+            int controller = 1,
+            int controllerValue = 0);
     GraphEditResult editPreviewMorph(
             int midiNote,
-            int modWheelValue,
-            PreviewMorphEditScope scope);
+            PreviewMorphEditScope scope,
+            int controller = 1,
+            int controllerValue = 0);
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh(

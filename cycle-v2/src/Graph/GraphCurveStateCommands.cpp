@@ -377,6 +377,15 @@ GraphEditResult GraphCommandDispatcher::setMappedPreviewMorph(
         const std::vector<PreviewMorphTarget>& targets,
         float keyScale,
         float modWheel) {
+    std::array<float, 128> controllerValues {};
+    controllerValues[1] = modWheel;
+    return setMappedPreviewMorph(targets, keyScale, controllerValues);
+}
+
+GraphEditResult GraphCommandDispatcher::setMappedPreviewMorph(
+        const std::vector<PreviewMorphTarget>& targets,
+        float keyScale,
+        const std::array<float, 128>& controllerValues) {
     if (compoundActive) {
         return { GraphEditCode::ValidationRejected, {}, {} };
     }
@@ -404,9 +413,10 @@ GraphEditResult GraphCommandDispatcher::setMappedPreviewMorph(
         size_t next = first;
         while (next < targets.size() && targets[next].nodeId == nodeId) {
             const auto& target = targets[next++];
-            const String value(jlimit(0.f, 1.f,
-                    target.control == PreviewMorphControl::KeyScale
-                            ? keyScale : modWheel), 9);
+            const float controlValue = target.control == PreviewMorphControl::KeyScale
+                    ? keyScale
+                    : controllerValues[(size_t) jlimit(0, 127, target.controller)];
+            const String value(jlimit(0.f, 1.f, controlValue), 9);
             if (target.parameterId == "red") {
                 red = value;
             } else if (target.parameterId == "blue") {
@@ -494,11 +504,19 @@ bool GraphCommandDispatcher::setEnvelopePreviewMorph(
     if (!blueResult.succeeded()) {
         return false;
     }
+    const Node* durableNode = document.graph().findNode(nodeId);
+    if (durableNode == nullptr || durableNode->model == nullptr) {
+        return false;
+    }
+    const uint64_t expectedRevision = transientEdit.has_value()
+            ? durableNode->model->revision() : model->revision();
+    const uint64_t nextRevision = transientEdit.has_value()
+            ? std::max(model->revision(), expectedRevision + 1)
+            : model->revision() + 1;
     const auto modelResult = replaceNodeModel(
             nodeId,
-            model->revision(),
-            model->withEnvelopeMorph(
-                    parsedRed, parsedBlue, model->revision() + 1));
+            expectedRevision,
+            model->withEnvelopeMorph(parsedRed, parsedBlue, nextRevision));
     changed = changed || redResult.changed || blueResult.changed || modelResult.changed;
     return modelResult.succeeded();
 }

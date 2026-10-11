@@ -189,16 +189,28 @@ TEST_CASE("Preset phrase playback sends notes and CC through the performance MID
     REQUIRE_FALSE(panel.noteBounds(72).isEmpty());
     const double startedAt = Time::getMillisecondCounterHiRes();
     REQUIRE(panel.startPlayback(startedAt));
-    REQUIRE(sink.messages[1].isNoteOn());
-    REQUIRE(sink.messages[1].getNoteNumber() == 67);
-    REQUIRE(sink.messages[2].isNoteOff());
-    REQUIRE(sink.messages[3].isNoteOn());
-    REQUIRE(sink.sources[1] == MidiEventSource::PatternPlayback);
-    REQUIRE(sink.sources[2] == MidiEventSource::PatternPlayback);
-    REQUIRE(sink.sources[3] == MidiEventSource::PatternPlayback);
-    REQUIRE(sink.timestamps[1] == Catch::Approx(startedAt / 1000.0));
-    REQUIRE(sink.timestamps[2] == Catch::Approx(startedAt / 1000.0 + 0.5));
-    REQUIRE(sink.timestamps[3] == Catch::Approx(startedAt / 1000.0 + 0.5));
+    const auto noteEventIndex = [&](int note, bool on) {
+        for (size_t index = 0; index < sink.messages.size(); ++index) {
+            const auto& message = sink.messages[index];
+            if ((on ? message.isNoteOn() : message.isNoteOff())
+                    && message.getNoteNumber() == note) {
+                return index;
+            }
+        }
+        return sink.messages.size();
+    };
+    const size_t firstOn = noteEventIndex(67, true);
+    const size_t firstOff = noteEventIndex(67, false);
+    const size_t secondOn = noteEventIndex(72, true);
+    REQUIRE(firstOn < sink.messages.size());
+    REQUIRE(firstOff < sink.messages.size());
+    REQUIRE(secondOn < sink.messages.size());
+    REQUIRE(sink.sources[firstOn] == MidiEventSource::PatternPlayback);
+    REQUIRE(sink.sources[firstOff] == MidiEventSource::PatternPlayback);
+    REQUIRE(sink.sources[secondOn] == MidiEventSource::PatternPlayback);
+    REQUIRE(sink.timestamps[firstOn] == Catch::Approx(startedAt / 1000.0));
+    REQUIRE(sink.timestamps[firstOff] == Catch::Approx(startedAt / 1000.0 + 0.5));
+    REQUIRE(sink.timestamps[secondOn] == Catch::Approx(startedAt / 1000.0 + 0.5));
     const size_t scheduledCount = sink.messages.size();
     REQUIRE(scheduledCount > 30);
     panel.updatePlayback(startedAt + 800.0);
@@ -244,6 +256,54 @@ TEST_CASE("Preset automation interpolates the configured MIDI controller",
     REQUIRE(sink.timestamps[index] == Catch::Approx(startedAt / 1000.0 + 0.5));
     panel.updatePlayback(startedAt + 500.0);
     REQUIRE(sink.messages.size() > initialCount);
+}
+
+TEST_CASE("Every automation lane sets its first value before the first note",
+        "[cycle-v2][keyboard][sequence][automation][timing]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 2.0;
+    phrase.notes.push_back({ 60, 100, 0.0, 1.0 });
+    phrase.controls.push_back({ 1, 20, 0.25 });
+    phrase.controls.push_back({ 1, 100, 1.0 });
+    phrase.controls.push_back({ 73, 40, 0.25 });
+    phrase.controls.push_back({ 73, 120, 1.0 });
+    panel.setSequence(phrase);
+
+    REQUIRE(panel.startPlayback(1000.0));
+    const auto firstNote = std::find_if(sink.messages.begin(), sink.messages.end(),
+            [](const MidiMessage& message) { return message.isNoteOn(); });
+    REQUIRE(firstNote != sink.messages.end());
+    const size_t noteIndex = (size_t) std::distance(sink.messages.begin(), firstNote);
+    REQUIRE(sink.timestamps[noteIndex] == Catch::Approx(1.0));
+
+    const auto hasInitialControl = [&](int controller, int value) {
+        for (size_t index = 0; index < noteIndex; ++index) {
+            const auto& message = sink.messages[index];
+            if (sink.sources[index] == MidiEventSource::PatternPlayback
+                    && message.isController()
+                    && message.getControllerNumber() == controller
+                    && message.getControllerValue() == value
+                    && sink.timestamps[index] == Catch::Approx(1.0)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    REQUIRE(hasInitialControl(1, 20));
+    REQUIRE(hasInitialControl(73, 40));
+
+    const auto laterCc73 = std::find_if(sink.messages.begin(), sink.messages.end(),
+            [](const MidiMessage& message) {
+                return message.isController()
+                        && message.getControllerNumber() == 73
+                        && message.getControllerValue() > 40;
+            });
+    REQUIRE(laterCc73 != sink.messages.end());
+    panel.stopPlayback();
 }
 
 TEST_CASE("Pattern automation schedules dense timestamped values ahead of UI ticks",
@@ -617,7 +677,12 @@ TEST_CASE("A roll without notes auditions the selected key for audition length",
     panel.setSequence(phrase);
 
     REQUIRE(panel.startPlayback(1'000.0));
-    REQUIRE(sink.messages.back().isController());
+    REQUIRE(std::any_of(sink.messages.begin(), sink.messages.end(),
+            [](const MidiMessage& message) {
+                return message.isController()
+                        && message.getControllerNumber() == 1
+                        && message.getControllerValue() == 20;
+            }));
     REQUIRE(panel.heldNote() == 55);
     panel.updatePlayback(2'000.0);
     REQUIRE(panel.isPlaying());

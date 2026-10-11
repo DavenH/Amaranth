@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -16,7 +17,7 @@ namespace CycleV2 {
 struct PresentationRequestContext {
     uint64_t publishedGraphRevision {};
     int previewMidiNote { 48 };
-    int previewModWheelValue {};
+    std::array<int, 128> previewControllerValues {};
 };
 
 class PresentationRefreshScheduler final {
