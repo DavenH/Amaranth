@@ -549,3 +549,14 @@ does not exist. The report is
 `/private/tmp/cycle-v2-phase-velocity-regression-report.json`; later failures
 are consequences of that missing graph. Current status: open; restore the
 fixture graph or retire the agent fixture.
+
+## P3: Reverb preview appears above its node
+
+On 2026-10-09, opening `cycle-v2/content/presets/old/accoustic.cyclegraph`
+showed a Reverb preview tile above the Reverb node in the OS compositor.
+It occurs with no node group, as captured at
+`/private/tmp/cycle-v2-global-ungrouped-os.png`, and remains visible when a
+group containing Reverb collapses in
+`/private/tmp/cycle-v2-global-group-collapsed.png`. Current status: open;
+trace the preview's drawing bounds and invalidation independently of group
+frame geometry.

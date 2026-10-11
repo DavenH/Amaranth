@@ -650,6 +650,23 @@ var GraphSerializer::writeJSON(
     }
     root->setProperty("nodes", var(std::move(nodes)));
 
+    if (!graph.getNodeGroups().empty()) {
+        Array<var> groups;
+        for (const auto& group : graph.getNodeGroups()) {
+            auto encoded = std::make_unique<DynamicObject>();
+            encoded->setProperty("id", group.id);
+            encoded->setProperty("title", group.title);
+            encoded->setProperty("collapsed", group.collapsed);
+            Array<var> members;
+            for (const auto& nodeId : group.nodeIds) {
+                members.add(nodeId);
+            }
+            encoded->setProperty("nodeIds", var(std::move(members)));
+            groups.add(var(encoded.release()));
+        }
+        root->setProperty("nodeGroups", var(std::move(groups)));
+    }
+
     if (!graph.getAudioResources().empty()) {
         Array<var> audioResources;
         for (const auto& resource : graph.getAudioResources()) {
@@ -741,6 +758,8 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
     result.presentationWarning = presentation.warning;
 
     const auto* encodedNodes = root->getProperty("nodes").getArray();
+    const var encodedGroupsValue = root->getProperty("nodeGroups");
+    const auto* encodedGroups = encodedGroupsValue.getArray();
     const auto* encodedEdges = root->getProperty("edges").getArray();
     const auto* encodedProbes = root->getProperty("probes").getArray();
     const auto* encodedGuides = root->getProperty("guides").getArray();
@@ -751,6 +770,11 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             || encodedGuideAssignments == nullptr) {
         result.issues.push_back({ GraphLoadCode::InvalidSchema,
                 "Graph nodes, edges, probes, guides, heatmaps, and guide assignments must be arrays" });
+        return result;
+    }
+    if (!encodedGroupsValue.isVoid() && encodedGroups == nullptr) {
+        result.issues.push_back({ GraphLoadCode::InvalidSchema,
+                "Node groups must be an array" });
         return result;
     }
 
@@ -906,6 +930,35 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         node.editorState = editor;
         registry.normalize(node);
         result.graph.addNode(std::move(node));
+    }
+
+    if (encodedGroups != nullptr) {
+        for (const var& value : *encodedGroups) {
+            const auto* encoded = value.getDynamicObject();
+            const auto* members = encoded != nullptr
+                    ? encoded->getProperty("nodeIds").getArray() : nullptr;
+            NodeGroup group;
+            if (encoded == nullptr || members == nullptr
+                    || !readRequiredString(*encoded, "id", group.id)
+                    || !readRequiredString(*encoded, "title", group.title)
+                    || members->size() < 2) {
+                result.issues.push_back({ GraphLoadCode::InvalidGraph,
+                        "Node group identity, title, and members must be valid" });
+                continue;
+            }
+            for (const var& member : *members) {
+                if (!member.isString()) {
+                    group.nodeIds.clear();
+                    break;
+                }
+                group.nodeIds.push_back(member.toString());
+            }
+            group.collapsed = (bool) encoded->getProperty("collapsed");
+            if (!result.graph.addNodeGroup(std::move(group))) {
+                result.issues.push_back({ GraphLoadCode::InvalidGraph,
+                        "Node group has duplicate or missing members" });
+            }
+        }
     }
 
     std::unordered_set<String, StringHash> audioResourceIds;

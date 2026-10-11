@@ -53,6 +53,10 @@ const Node* NodeCanvasQueryModel::findNodeAt(Point<float> worldPosition) const {
     for (int i = (int) nodes.size() - 1; i >= 0; --i) {
         const auto& node = nodes[(size_t) i];
 
+        if (!graph.isNodeVisible(node.id)) {
+            continue;
+        }
+
         if (node.bounds.contains(worldPosition)) {
             return &node;
         }

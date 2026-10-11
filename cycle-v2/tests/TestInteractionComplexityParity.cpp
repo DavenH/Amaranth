@@ -757,6 +757,36 @@ TEST_CASE("Canvas translation iterates changed identities without graph snapshot
     }
 }
 
+TEST_CASE("Group drag keeps unrelated graph and audio out of movement updates",
+        "[cycle-v2][complexity][gesture][groups]") {
+    GraphNodeFactory factory;
+    for (const auto& scale : std::vector<std::pair<int, size_t>> {
+            { 0, 0 }, { 128, 16384 } }) {
+        NodeGraph graph = scaledGraph(scale.first, scale.second);
+        graph.addNode(factory.createNode(NodeKind::Add, "member", { 250.f, 100.f }));
+        REQUIRE(graph.addNodeGroup({ "group", "Pair", { "output", "member" }, true }));
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher commands(document);
+        InteractionComplexityDiagnostics::reset();
+
+        commands.beginCompoundEdit();
+        REQUIRE(commands.translateNodes({ "output", "member" }, { 20.f, 0.f }).succeeded());
+        REQUIRE(commands.translateNodes({ "output", "member" }, { 30.f, 0.f }).succeeded());
+        REQUIRE(commands.commitCompoundEdit());
+        REQUIRE(document.undo());
+
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.audioSamplesCopied == 0);
+        REQUIRE(counts.meshCopies == 0);
+        REQUIRE(counts.modelSerializations == 0);
+        REQUIRE(counts.nodeLinearScans == 0);
+        REQUIRE(counts.parameterLinearScans == 0);
+        REQUIRE(counts.validationNodeVisits == 0);
+        REQUIRE(counts.validationEdgeVisits == 0);
+    }
+}
+
 TEST_CASE("Guide curve gesture resolves consumers from the relationship index",
         "[cycle-v2][complexity][gesture][guide]") {
     for (const int unrelatedNodeCount : { 0, 128 }) {

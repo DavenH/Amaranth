@@ -145,12 +145,16 @@ void NodeCanvasInteraction::beginNodeDrag(
         const NodeGraph& graph,
         const String& nodeId,
         std::vector<String> nodeIds,
-        Rectangle<float> startBounds) {
+        Rectangle<float> startBounds,
+        bool snapEnabled) {
     if (std::find(nodeIds.begin(), nodeIds.end(), nodeId) == nodeIds.end()) {
         nodeIds.push_back(nodeId);
     }
-    currentGesture = NodeDragGesture { nodeId, std::move(nodeIds), startBounds, {} };
-    validationContext = std::make_unique<GraphValidationContext>(graph);
+    currentGesture = NodeDragGesture { nodeId, std::move(nodeIds), startBounds,
+            {}, false, false, snapEnabled };
+    validationContext = snapEnabled
+            ? std::make_unique<GraphValidationContext>(graph)
+            : nullptr;
 }
 
 void NodeCanvasInteraction::beginConnection(
@@ -254,6 +258,9 @@ std::vector<String> NodeCanvasInteraction::nodeIdsIntersecting(
         const GraphEdgeIndex& edgeIndex) const {
     std::vector<String> result;
     for (const auto& node : graph.getNodes()) {
+        if (!graph.isNodeVisible(node.id)) {
+            continue;
+        }
         const Rectangle<float> nodeBounds = viewport.toScreen(
                 NodeCanvasScene::presentationWorldBounds(graph, node, edgeIndex));
         if (screenBounds.intersects(nodeBounds)) {
@@ -274,6 +281,9 @@ SnappedNodeBounds NodeCanvasInteraction::snapNode(
     std::vector<float> yAnchors;
 
     for (const auto& candidate : graph.getNodes()) {
+        if (!graph.isNodeVisible(candidate.id)) {
+            continue;
+        }
         if (std::find(
                     excludedNodeIds.begin(),
                     excludedNodeIds.end(),
@@ -352,11 +362,10 @@ NodeCanvasDragUpdate NodeCanvasInteraction::drag(
 
     nodeDrag->moved = dragOffset.getDistanceFromOrigin() > 3.f;
     const Point<float> worldOffset = dragOffset / viewport.getZoom();
-    const auto snapped = snapNode(
-            graph,
-            *node,
-            nodeDrag->startBounds.translated(worldOffset.x, worldOffset.y),
-            nodeDrag->nodeIds);
+    const auto proposed = nodeDrag->startBounds.translated(worldOffset.x, worldOffset.y);
+    const auto snapped = nodeDrag->snapEnabled
+            ? snapNode(graph, *node, proposed, nodeDrag->nodeIds)
+            : SnappedNodeBounds { proposed, {} };
     nodeDrag->guides = snapped.guides;
     const bool beginTransaction = !nodeDrag->transactionRequested;
     nodeDrag->transactionRequested = true;
