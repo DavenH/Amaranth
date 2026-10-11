@@ -342,6 +342,30 @@ Rectangle<float> PerformanceKeyboardPanel::modWheelBounds() const {
     return modWheel.getBounds().toFloat();
 }
 
+Rectangle<float> PerformanceKeyboardPanel::controllerBounds(int controller) const {
+    if (controller == 1) {
+        return modWheelBounds();
+    }
+    for (const auto& wheel : extraWheels) {
+        if (wheel->controller() == controller) {
+            return wheel->getBounds().toFloat();
+        }
+    }
+    return {};
+}
+
+int PerformanceKeyboardPanel::controllerValue(int controller) const {
+    if (controller == 1) {
+        return modWheel.value();
+    }
+    for (const auto& wheel : extraWheels) {
+        if (wheel->controller() == controller) {
+            return wheel->value();
+        }
+    }
+    return 0;
+}
+
 Rectangle<float> PerformanceKeyboardPanel::progressBounds() const {
     const Rectangle<float> keys = keyboard.getBounds().toFloat();
     return {
@@ -413,9 +437,30 @@ void PerformanceKeyboardPanel::setSequenceChangedCallback(
     sequenceChanged = std::move(callback);
 }
 
-void PerformanceKeyboardPanel::setMappedControllersCallback(
-        std::function<std::vector<int>()> callback) {
-    mappedControllers = std::move(callback);
+void PerformanceKeyboardPanel::setMappedControllers(std::vector<int> controllers) {
+    std::sort(controllers.begin(), controllers.end());
+    controllers.erase(std::unique(controllers.begin(), controllers.end()),
+            controllers.end());
+    if (controllers == mappedControllers) {
+        return;
+    }
+    mappedControllers = std::move(controllers);
+    std::vector<std::unique_ptr<ModWheel>> nextWheels;
+    for (const int controller : mappedControllers) {
+        if (controller == 1) {
+            continue;
+        }
+        auto wheel = std::make_unique<ModWheel>(controller);
+        wheel->setValue(controllerValue(controller), false);
+        wheel->setTooltip("Preview MIDI CC " + String(controller));
+        wheel->onValueChanged = [this, controller](int value) {
+            sendControllerValue(controller, value);
+        };
+        addAndMakeVisible(*wheel);
+        nextWheels.push_back(std::move(wheel));
+    }
+    extraWheels = std::move(nextWheels);
+    resized();
 }
 
 bool PerformanceKeyboardPanel::hasSequenceNotes() const {
@@ -497,6 +542,9 @@ bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
     playing = true;
     playButton.setButtonText("STOP");
     sendModWheelValue();
+    for (const auto& wheel : extraWheels) {
+        sendControllerValue(wheel->controller(), wheel->value());
+    }
     if (hasSequenceNotes()
             && !scheduleSequenceEvents(nowMilliseconds / 1000.0)) {
         stopPlayback();
@@ -712,6 +760,10 @@ void PerformanceKeyboardPanel::resized() {
     editButton.setBounds(actions);
     modWheel.setBounds(content.removeFromLeft(wheelWidth));
     content.removeFromLeft(wheelGap);
+    for (auto& wheel : extraWheels) {
+        wheel->setBounds(content.removeFromLeft(wheelWidth));
+        content.removeFromLeft(wheelGap);
+    }
     octaveDown.setBounds(content.removeFromLeft(buttonWidth));
     content.removeFromLeft(controlGap);
     octaveUp.setBounds(content.removeFromRight(buttonWidth));
@@ -766,27 +818,18 @@ void PerformanceKeyboardPanel::showSequenceEditor(
                         : (double) safeThis->playbackDuration;
                 return duration * safeThis->progress;
             },
-            mappedControllers ? mappedControllers() : std::vector<int> {},
-            [safeThis](int controller, int value) {
-                if (safeThis != nullptr) {
-                    if (controller == 1) {
-                        safeThis->setModWheelValue(value);
-                        return;
-                    }
-                    safeThis->eventSink.enqueueMidiMessage(
-                            MidiMessage::controllerEvent(1, controller, value),
-                            MidiEventSource::PerformanceKeyboard);
-                }
-            },
-            modWheel.value());
+            mappedControllers);
     auto* editorContent = editor.get();
     CallOutBox::launchAsynchronously(
             std::move(editor), editButton.getScreenBounds(), nullptr);
     editorContent->grabKeyboardFocus();
 }
 
-PerformanceKeyboardPanel::ModWheel::ModWheel() {
-    setName("PerformanceKeyboard.ModWheel");
+PerformanceKeyboardPanel::ModWheel::ModWheel(int controller) :
+        controllerNumber(controller) {
+    setName(controller == 1
+            ? "PerformanceKeyboard.ModWheel"
+            : "PerformanceKeyboard.CC" + String(controller));
     setMouseCursor(MouseCursor::UpDownResizeCursor);
     setWantsKeyboardFocus(true);
 }
@@ -883,7 +926,7 @@ void PerformanceKeyboardPanel::ModWheel::paint(Graphics& graphics) {
     graphics.setColour(CanvasChromePalette::mutedText);
     graphics.setFont(FontOptions(9.f, Font::plain));
     graphics.drawText(
-            "MOD",
+            controllerNumber == 1 ? "MOD" : "CC" + String(controllerNumber),
             getLocalBounds().removeFromBottom(13),
             Justification::centred,
             false);
@@ -913,8 +956,12 @@ void PerformanceKeyboardPanel::timerCallback() {
 }
 
 void PerformanceKeyboardPanel::sendModWheelValue() {
+    sendControllerValue(1, modWheel.value());
+}
+
+void PerformanceKeyboardPanel::sendControllerValue(int controller, int value) {
     eventSink.enqueueMidiMessage(
-            MidiMessage::controllerEvent(1, 1, modWheel.value()),
+            MidiMessage::controllerEvent(1, controller, value),
             MidiEventSource::PerformanceKeyboard);
 }
 

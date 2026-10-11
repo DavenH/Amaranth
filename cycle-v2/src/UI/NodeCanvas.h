@@ -181,6 +181,7 @@ public:
 
 private:
     void synchronizeSurfaceStyles();
+    int extraMidiControllerCount() const;
     enum class HoverRepaint {
         None,
         Status,
@@ -194,6 +195,9 @@ private:
     mutable NodeCanvasScene sceneBuilder;
     Settings settings;
     GraphDocument document;
+    mutable bool mappedControllerCacheValid {};
+    mutable uint64_t mappedControllerRevision {};
+    mutable std::vector<int> mappedControllerCache;
     GraphCommandDispatcher commands;
     const NodeGraph& graph;
     GraphPresentationModel presentation;

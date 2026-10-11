@@ -64,6 +64,7 @@ struct NodeCanvasPresentationFrame {
     int hoveredEdgeIndex { -1 };
     std::optional<Rectangle<float>> areaSelectionBounds;
     Rectangle<float> utilityBounds;
+    int keyboardExtraControllerCount {};
 };
 
 struct NodePortPresentation {

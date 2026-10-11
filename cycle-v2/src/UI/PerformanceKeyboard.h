@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include <array>
+#include <memory>
 #include <vector>
 
 #include <UI/Widgets/AmaranthMidiKeyboard.h>
@@ -107,6 +108,7 @@ public:
     Rectangle<float> octaveDownBounds() const;
     Rectangle<float> octaveUpBounds() const;
     Rectangle<float> modWheelBounds() const;
+    Rectangle<float> controllerBounds(int controller) const;
     Rectangle<float> progressBounds() const;
     Rectangle<float> editBounds() const { return editButton.getBounds().toFloat(); }
     Rectangle<float> recordBounds() const { return recordButton.getBounds().toFloat(); }
@@ -119,6 +121,8 @@ public:
     }
 
     int modWheelValue() const { return modWheel.value(); }
+    int controllerValue(int controller) const;
+    const std::vector<int>& mappedControllerNumbers() const { return mappedControllers; }
     int previewNote() const { return selectedPreviewNote; }
     float playbackProgress() const { return progress; }
     float playbackDurationSeconds() const { return playbackDuration; }
@@ -126,8 +130,8 @@ public:
     bool isRecording() const { return recording; }
     void setSequence(std::optional<PresetMidiSequence> sequence);
     void setSequenceChangedCallback(std::function<void(PresetMidiSequence)> callback);
-    void setMappedControllersCallback(std::function<std::vector<int>()> callback);
-    void showSequenceEditor(PresetMidiSequence sequence,
+    void setMappedControllers(std::vector<int> controllers);
+    void showSequenceEditor(PresetMidiSequence initial,
             std::function<void(PresetMidiSequence)> onEdit);
     void setRecordingChangedCallback(std::function<void(bool)> callback) {
         recordingChanged = std::move(callback);
@@ -166,9 +170,10 @@ private:
             public Component
         ,   public SettableTooltipClient {
     public:
-        ModWheel();
+        explicit ModWheel(int controllerNumber = 1);
 
         int value() const { return currentValue; }
+        int controller() const { return controllerNumber; }
         void setValue(int value, bool sendNotification);
 
         void focusGained(FocusChangeType cause) override;
@@ -188,10 +193,12 @@ private:
         void updateFromPointer(float y);
 
         int currentValue {};
+        int controllerNumber { 1 };
     };
 
     void timerCallback() override;
     void sendModWheelValue();
+    void sendControllerValue(int controller, int value);
     void openSequenceEditor();
     void stopRecording();
     void auditionSequenceNote(int pitch, int velocity, bool noteOn);
@@ -224,7 +231,7 @@ private:
     PatternControlScheduler controlScheduler;
 
     std::function<void(PresetMidiSequence)> sequenceChanged;
-    std::function<std::vector<int>()> mappedControllers;
+    std::vector<int> mappedControllers;
     std::function<void(bool)> recordingChanged;
     std::function<void()> flushRecordingInput;
 
@@ -238,6 +245,7 @@ private:
     OctaveButton octaveDown { false };
     OctaveButton octaveUp { true };
     ModWheel modWheel;
+    std::vector<std::unique_ptr<ModWheel>> extraWheels;
     TextButton playButton { "PLAY" };
     TextButton editButton { "EDIT" };
     TextButton recordButton { "REC" };

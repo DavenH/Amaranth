@@ -14,24 +14,16 @@ PresetMidiEditor::PresetMidiEditor(
         std::function<void()> togglePlayback,
         AuditionCallback auditionCallback,
         PlaybackTimeCallback playbackTimeCallback,
-        std::vector<int> mappedControllers,
-        ControlCallback controlChanged,
-        int previewModWheelValue) :
+        std::vector<int> mappedControllers) :
         sequence(std::move(phrase))
     ,   onChange(std::move(callback))
     ,   onTogglePlayback(std::move(togglePlayback))
     ,   onAudition(std::move(auditionCallback))
-    ,   playbackTime(std::move(playbackTimeCallback))
-    ,   onControlChanged(std::move(controlChanged))
-    ,   initialModWheelValue(previewModWheelValue) {
+    ,   playbackTime(std::move(playbackTimeCallback)) {
     setName("PresetMidiEditor");
     setSize(840, 640);
     setWantsKeyboardFocus(true);
     addAndMakeVisible(clearButton);
-    addAndMakeVisible(controllerSelector);
-    addAndMakeVisible(controlViewport);
-    controlViewport.setViewedComponent(&controlStrip, false);
-    controlViewport.setScrollBarsShown(false, true);
     addAndMakeVisible(durationLabel);
     addAndMakeVisible(durationSlider);
     durationSlider.setName("PresetMidiEditor.Length");
@@ -46,17 +38,6 @@ PresetMidiEditor::PresetMidiEditor(
     durationSlider.setColour(Slider::textBoxTextColourId,
             CanvasChromePalette::text);
     durationSlider.setTextValueSuffix(" s");
-    controllerSelector.setName("PresetMidiEditor.Controller");
-    controllerSelector.setComponentID("PresetMidiEditor.Controller");
-    controllerSelector.setTooltip("Choose the MIDI controller curve to edit");
-    controllerSelector.setColour(ComboBox::backgroundColourId,
-            CanvasChromePalette::restingControlSurface);
-    controllerSelector.setColour(ComboBox::textColourId, CanvasChromePalette::text);
-    controllerSelector.onChange = [this] {
-        selectedControllerNumber = controllerSelector.getSelectedId() - 1;
-        selectedControl = -1;
-        repaint();
-    };
     configureControllers(std::move(mappedControllers));
     updateDurationRange();
     durationSlider.setValue(sequence.durationSeconds, dontSendNotification);
@@ -114,16 +95,6 @@ void PresetMidiEditor::resized() {
     clearButton.setBounds(getWidth() - 82, 8, 64, 24);
     durationLabel.setBounds(getWidth() - 293, 9, 52, 22);
     durationSlider.setBounds(getWidth() - 240, 8, 148, 24);
-    controllerSelector.setBounds(2, roundToInt(controlGrid().getY()) + 4, 56, 25);
-    controlViewport.setBounds(62, 40, getWidth() - 80, 43);
-    controlStrip.setSize(jmax(controlViewport.getWidth(),
-            (int) controllers.size() * 174), 28);
-    int x = 0;
-    for (size_t index = 0; index < controlSliders.size(); ++index) {
-        controlLabels[index]->setBounds(x, 2, 48, 25);
-        controlSliders[index]->setBounds(x + 46, 2, 116, 25);
-        x += 174;
-    }
 }
 
 void PresetMidiEditor::configureControllers(std::vector<int> mappedControllers) {
@@ -137,44 +108,7 @@ void PresetMidiEditor::configureControllers(std::vector<int> mappedControllers) 
     std::sort(controllers.begin(), controllers.end());
     controllers.erase(std::unique(controllers.begin(), controllers.end()),
             controllers.end());
-    selectedControllerNumber = std::find(controllers.begin(), controllers.end(), 1)
-            != controllers.end() ? 1 : controllers.front();
-
-    for (const int controller : controllers) {
-        addControlSlider(controller);
-    }
-    controllerSelector.setSelectedId(selectedControllerNumber + 1, dontSendNotification);
-    resized();
-}
-
-void PresetMidiEditor::addControlSlider(int controller) {
-    const String name = controller == 1 ? "MOD" : "CC " + String(controller);
-    controllerSelector.addItem(String(controller), controller + 1);
-
-    auto label = std::make_unique<Label>();
-    label->setText(name, dontSendNotification);
-    label->setColour(Label::textColourId, CanvasChromePalette::mutedText);
-    label->setFont(FontOptions(10.f, Font::bold));
-    controlStrip.addAndMakeVisible(*label);
-    controlLabels.push_back(std::move(label));
-
-    auto slider = std::make_unique<Slider>();
-    slider->setName("PresetMidiEditor.CC" + String(controller));
-    slider->setComponentID(slider->getName());
-    slider->setSliderStyle(Slider::LinearHorizontal);
-    slider->setTextBoxStyle(Slider::TextBoxRight, false, 34, 22);
-    slider->setRange(0, 127, 1);
-    slider->setColour(Slider::trackColourId, CanvasChromePalette::patternAutomation);
-    slider->setColour(Slider::textBoxTextColourId, CanvasChromePalette::text);
-    slider->setValue(controller == 1 ? initialModWheelValue : 0,
-            dontSendNotification);
-    slider->onValueChange = [this, controller, control = slider.get()] {
-        if (onControlChanged) {
-            onControlChanged(controller, (int) control->getValue());
-        }
-    };
-    controlStrip.addAndMakeVisible(*slider);
-    controlSliders.push_back(std::move(slider));
+    setSize(840, 640 + 104 * ((int) controllers.size() - 1));
 }
 
 void PresetMidiEditor::timerCallback() {
@@ -326,16 +260,16 @@ void PresetMidiEditor::mouseDown(const MouseEvent& event) {
         }
         return;
     }
-    if (controlGrid().contains(event.position)) {
+    const int controller = controllerAt(event.position);
+    if (controller >= 0) {
         velocitySelected = false;
-        const auto grid = controlGrid();
-        const int lane = selectedControllerNumber;
+        const auto grid = controlGrid(controller);
         for (size_t index = 0; index < sequence.controls.size(); ++index) {
             const auto& control = sequence.controls[index];
             const float x = xForTime(control.timeSeconds);
             const float y = grid.getBottom() - grid.getHeight()
                     * (float) control.value / 127.f;
-            if (control.controller == lane
+            if (control.controller == controller
                     && std::abs(x - event.position.x) <= 8.f
                     && std::abs(y - event.position.y) <= 8.f) {
                 selectedControl = (int) index;
@@ -353,7 +287,7 @@ void PresetMidiEditor::mouseDown(const MouseEvent& event) {
         if (event.mods.isRightButtonDown()) {
             return;
         }
-        editControl(event.position);
+        editControl(event.position, controller);
         return;
     }
     if (!noteGrid().contains(event.position)) {
@@ -416,9 +350,10 @@ void PresetMidiEditor::mouseDrag(const MouseEvent& event) {
     }
     if (activeControl >= 0) {
         auto& control = sequence.controls[(size_t) activeControl];
+        const auto grid = controlGrid(control.controller);
         control.value = jlimit(0, 127, roundToInt(127.f
-                * (controlGrid().getBottom() - event.position.y)
-                / controlGrid().getHeight()));
+                * (grid.getBottom() - event.position.y)
+                / grid.getHeight()));
         control.timeSeconds = timeAt(event.position.x);
         pendingChange = true;
         repaint();
@@ -459,20 +394,29 @@ void PresetMidiEditor::mouseUp(const MouseEvent&) {
     }
 }
 
-void PresetMidiEditor::editControl(Point<float> point) {
-    if (!controlGrid().contains(point)) {
+int PresetMidiEditor::controllerAt(Point<float> point) const {
+    for (const int controller : controllers) {
+        if (controlGrid(controller).contains(point)) {
+            return controller;
+        }
+    }
+    return -1;
+}
+
+void PresetMidiEditor::editControl(Point<float> point, int controller) {
+    const auto grid = controlGrid(controller);
+    if (!grid.contains(point)) {
         return;
     }
     const int value = jlimit(0, 127, roundToInt(127.f
-            * (controlGrid().getBottom() - point.y) / controlGrid().getHeight()));
+            * (grid.getBottom() - point.y) / grid.getHeight()));
     const double time = timeAt(point.x);
-    const int lane = selectedControllerNumber;
     auto existing = std::find_if(sequence.controls.begin(), sequence.controls.end(),
-            [lane, time](const PresetMidiControl& control) {
-                return control.controller == lane && control.timeSeconds == time;
+            [controller, time](const PresetMidiControl& control) {
+                return control.controller == controller && control.timeSeconds == time;
             });
     if (existing == sequence.controls.end()) {
-        sequence.controls.push_back({ lane, value, time });
+        sequence.controls.push_back({ controller, value, time });
         selectedControl = (int) sequence.controls.size() - 1;
     } else {
         existing->value = value;

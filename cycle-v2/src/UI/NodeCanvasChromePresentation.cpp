@@ -23,7 +23,8 @@ Rectangle<float> graphBounds(const NodeGraph& graph) {
 void NodeCanvasPresentation::paintMiniMap(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    const Rectangle<float> map = CanvasUtilityDock::layout(frame.utilityBounds).minimap;
+    const Rectangle<float> map = CanvasUtilityDock::layout(
+            frame.utilityBounds, frame.keyboardExtraControllerCount).minimap;
     graphics.setColour(CanvasChromePalette::minimapBackground);
     graphics.fillRoundedRectangle(map, CanvasChromeMetrics::panelCornerRadius);
 
@@ -87,7 +88,8 @@ void NodeCanvasPresentation::paintLegend(
             { PortDomain::ControlSignal, "Control" }
     };
     constexpr int entryCount = 4;
-    const Rectangle<float> legend = CanvasUtilityDock::layout(frame.utilityBounds).legend;
+    const Rectangle<float> legend = CanvasUtilityDock::layout(
+            frame.utilityBounds, frame.keyboardExtraControllerCount).legend;
     if (legend.isEmpty()) {
         return;
     }
@@ -137,7 +139,8 @@ void NodeCanvasPresentation::paintStatus(
         return;
     }
 
-    const Rectangle<float> status = CanvasUtilityDock::layout(frame.utilityBounds).status;
+    const Rectangle<float> status = CanvasUtilityDock::layout(
+            frame.utilityBounds, frame.keyboardExtraControllerCount).status;
     if (status.getWidth() < 180.f) {
         return;
     }

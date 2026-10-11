@@ -45,18 +45,6 @@ float pitch60Y(const PresetMidiEditor& editor) {
     return grid.getY() + grid.getHeight() * 11.5f / 24.f;
 }
 
-Component* findDescendant(Component& parent, const String& id) {
-    if (parent.getComponentID() == id) {
-        return &parent;
-    }
-    for (int index = 0; index < parent.getNumChildComponents(); ++index) {
-        if (auto* found = findDescendant(*parent.getChildComponent(index), id)) {
-            return found;
-        }
-    }
-    return nullptr;
-}
-
 }
 
 TEST_CASE("Piano roll auditions a note and publishes one move gesture",
@@ -139,7 +127,7 @@ TEST_CASE("Velocity and modulation lanes edit selected saved events",
     REQUIRE(changed.controls.empty());
 }
 
-TEST_CASE("Piano roll edits each mapped CC lane and auditions its sliders",
+TEST_CASE("Piano roll keeps mapped CC automation in separate stacked lanes",
         "[cycle-v2][preset][sequence][editor][ui]") {
     ScopedJuceInitialiser_GUI gui;
     PresetMidiSequence phrase;
@@ -148,24 +136,15 @@ TEST_CASE("Piano roll edits each mapped CC lane and auditions its sliders",
     phrase.controls.push_back({ 73, 60, 0.5 });
     PresetMidiSequence changed;
     int publications = 0;
-    int sentController = -1;
-    int sentValue = -1;
     PresetMidiEditor editor(phrase, [&](PresetMidiSequence sequence) {
         changed = std::move(sequence);
         ++publications;
-    }, {}, {}, {}, { 1, 73 }, [&](int controller, int value) {
-        sentController = controller;
-        sentValue = value;
-    });
-    auto* selector = dynamic_cast<ComboBox*>(
-            editor.findChildWithID("PresetMidiEditor.Controller"));
-    REQUIRE(selector != nullptr);
-    REQUIRE(selector->getNumItems() == 2);
-    selector->setSelectedId(74, sendNotificationSync);
-    REQUIRE(editor.selectedController() == 73);
-    REQUIRE(publications == 0);
+    }, {}, {}, {}, { 1, 73 });
+    REQUIRE(editor.controllerLanes() == std::vector<int>({ 1, 73 }));
+    REQUIRE(editor.controlGrid(73).getY() > editor.controlGrid(1).getBottom());
+    REQUIRE(editor.controlGrid(73).getBottom() < editor.getHeight());
 
-    const auto lane = editor.controlGrid();
+    const auto lane = editor.controlGrid(73);
     const float x = xAt(editor, 1.0, 4.0);
     const float y = lane.getBottom() - lane.getHeight() * 100.f / 127.f;
     editor.mouseDown(pointer(editor, { x, y }));
@@ -176,13 +155,29 @@ TEST_CASE("Piano roll edits each mapped CC lane and auditions its sliders",
     REQUIRE(changed.controls[0].controller == 1);
     REQUIRE(changed.controls[0].value == 20);
 
-    auto* cc73 = dynamic_cast<Slider*>(
-            findDescendant(editor, "PresetMidiEditor.CC73"));
-    REQUIRE(cc73 != nullptr);
-    cc73->setValue(91, sendNotificationSync);
-    REQUIRE(sentController == 73);
-    REQUIRE(sentValue == 91);
-    REQUIRE(publications == 1);
+    const float movedX = xAt(editor, 1.125, 4.0);
+    const float movedY = lane.getBottom() - lane.getHeight() * 40.f / 127.f;
+    editor.mouseDown(pointer(editor, { x, y }));
+    editor.mouseDrag(pointer(editor, { movedX, movedY }));
+    editor.mouseUp(pointer(editor, { movedX, movedY }));
+    REQUIRE(publications == 2);
+    REQUIRE(changed.controls[2].controller == 73);
+    REQUIRE(changed.controls[2].value == 40);
+    REQUIRE(changed.controls[0].value == 20);
+
+    const auto firstLane = editor.controlGrid(1);
+    const float firstY = firstLane.getBottom() - firstLane.getHeight() * 85.f / 127.f;
+    const float laterX = xAt(editor, 1.5, 4.0);
+    editor.mouseDown(pointer(editor, { laterX, firstY }));
+    editor.mouseUp(pointer(editor, { laterX, firstY }));
+    REQUIRE(publications == 3);
+    REQUIRE(changed.controls.size() == 4);
+    REQUIRE(changed.controls.back().controller == 1);
+    REQUIRE(changed.controls[2].controller == 73);
+
+    PresetMidiEditor afterMappingChange(changed, [](PresetMidiSequence) {},
+            {}, {}, {}, { 1 });
+    REQUIRE(afterMappingChange.controllerLanes() == std::vector<int>({ 1, 73 }));
 }
 
 TEST_CASE("Trackpad deltas accumulate and the minimap navigates the snapped viewport",

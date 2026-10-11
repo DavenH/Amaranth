@@ -499,6 +499,56 @@ TEST_CASE("Performance mod wheel drag controls preview CC 1 and audition start",
     REQUIRE(sink.messages.back().getNoteNumber() == 55);
 }
 
+TEST_CASE("Mapped CC wheel sits beside the mod wheel and sends live MIDI",
+        "[cycle-v2][keyboard][midi-cc][ui]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    panel.setMappedControllers({ 1, 73 });
+    panel.setBounds(0, 0,
+            (int) CanvasUtilityDock::preferredKeyboardWidth + 38,
+            (int) CanvasUtilityDock::preferredKeyboardHeight);
+
+    const auto ccBounds = panel.controllerBounds(73);
+    REQUIRE(ccBounds.getWidth() == 32.f);
+    REQUIRE(ccBounds.getX() > panel.modWheelBounds().getRight());
+    REQUIRE(ccBounds.getRight() < panel.octaveDownBounds().getX());
+    REQUIRE(panel.noteBounds(60).getWidth() >= 25.f);
+
+    Component* ccWheel = nullptr;
+    for (int index = 0; index < panel.getNumChildComponents(); ++index) {
+        if (panel.getChildComponent(index)->getName() == "PerformanceKeyboard.CC73") {
+            ccWheel = panel.getChildComponent(index);
+        }
+    }
+    REQUIRE(ccWheel != nullptr);
+    ccWheel->mouseDown(keyboardMouseEvent(*ccWheel,
+            { ccWheel->getWidth() * 0.5f, 0.f },
+            ModifierKeys::leftButtonModifier));
+    ccWheel->mouseUp(keyboardMouseEvent(*ccWheel,
+            { ccWheel->getWidth() * 0.5f, 0.f }, {}));
+    REQUIRE(panel.controllerValue(73) == 127);
+    REQUIRE(sink.messages.back().isController());
+    REQUIRE(sink.messages.back().getControllerNumber() == 73);
+    REQUIRE(sink.messages.back().getControllerValue() == 127);
+
+    sink.messages.clear();
+    REQUIRE(panel.startPlayback(1000.0));
+    REQUIRE(sink.messages.size() == 3);
+    REQUIRE(sink.messages[0].getControllerNumber() == 1);
+    REQUIRE(sink.messages[1].getControllerNumber() == 73);
+    REQUIRE(sink.messages[1].getControllerValue() == 127);
+    REQUIRE(sink.messages[2].isNoteOn());
+    panel.stopPlayback();
+
+    const auto compactDock = CanvasUtilityDock::layout(
+            { 0.f, 0.f, 500.f, 500.f }, 1);
+    panel.setBounds(compactDock.keyboard.toNearestInt());
+    REQUIRE(panel.noteBounds(60).getWidth() >= 20.f);
+    REQUIRE(panel.getLocalBounds().toFloat().contains(panel.controllerBounds(73)));
+}
+
 TEST_CASE("Performance keyboard preview transport follows its configured duration",
         "[cycle-v2][keyboard][transport]") {
     ScopedJuceInitialiser_GUI gui;
@@ -621,6 +671,13 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
     REQUIRE(content.contains(layout.legend));
     REQUIRE(content.contains(layout.keyboard));
     REQUIRE(content.contains(layout.status));
+
+    const CanvasUtilityDockLayout mapped = CanvasUtilityDock::layout(content, 2);
+    REQUIRE(mapped.keyboard.getWidth()
+            == CanvasUtilityDock::preferredKeyboardWidth + 76.f);
+    REQUIRE(mapped.keyboard.getCentreX() == content.getCentreX());
+    REQUIRE_FALSE(mapped.keyboard.intersects(mapped.status));
+    REQUIRE_FALSE(mapped.keyboard.intersects(mapped.minimap));
 
     const Rectangle<float> compactContent { 0.f, 0.f, 500.f, 300.f };
     const CanvasUtilityDockLayout compact = CanvasUtilityDock::layout(compactContent);

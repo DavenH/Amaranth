@@ -145,8 +145,9 @@ const SignalProbe* cableExtraProbe(
             : nullptr;
 }
 
-Rectangle<int> statusRepaintBounds(Rectangle<float> canvasBounds) {
-    return CanvasUtilityDock::layout(canvasBounds).status.expanded(2.f).toNearestInt();
+Rectangle<int> statusRepaintBounds(Rectangle<float> canvasBounds, int extraControllers) {
+    return CanvasUtilityDock::layout(canvasBounds, extraControllers)
+            .status.expanded(2.f).toNearestInt();
 }
 
 GraphDocument createStartupDocument() {
@@ -364,7 +365,8 @@ void NodeCanvas::paint(Graphics& g) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Frame::JucePaint);
     const uint64_t framePreparationStartedAt = performanceMetrics.timestamp();
     const NodeCanvasPresentationFrame frame = presentationFrame();
-    const Rectangle<int> status = statusRepaintBounds(frame.canvasBounds);
+    const Rectangle<int> status = statusRepaintBounds(
+            frame.canvasBounds, frame.keyboardExtraControllerCount);
     if (!status.isEmpty() && status.contains(g.getClipBounds())) {
         canvasPresentation.paintStatus(g, frame);
         return;
@@ -1514,7 +1516,8 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             selectedNodeIds,
             hoveredEdgeIndex,
             areaSelectionBounds,
-            canvasUtilityBounds()
+            canvasUtilityBounds(),
+            extraMidiControllerCount()
     };
 }
 
@@ -2160,7 +2163,8 @@ void NodeCanvas::fitDocumentInViewport() {
     constexpr float visibleMargin = 40.f;
     constexpr float dockClearance = 12.f;
     const Rectangle<float> content = canvasUtilityBounds();
-    const auto utilities = CanvasUtilityDock::layout(content);
+    const auto utilities = CanvasUtilityDock::layout(
+            content, extraMidiControllerCount());
     Rectangle<float> available = content.reduced(visibleMargin);
     available.setTop(jmax(available.getY(), utilities.keyboard.getBottom() + dockClearance));
     viewport.setBounds(canvasContentBounds());
@@ -2605,7 +2609,8 @@ void NodeCanvas::finishPreviewModWheelRefresh() {
 }
 
 Rectangle<int> NodeCanvas::performanceKeyboardDockBounds() const {
-    return CanvasUtilityDock::layout(canvasUtilityBounds()).keyboard.toNearestInt();
+    return CanvasUtilityDock::layout(canvasUtilityBounds(),
+            extraMidiControllerCount()).keyboard.toNearestInt();
 }
 
 Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
@@ -2660,7 +2665,19 @@ void NodeCanvas::setBipolarSpectralSurfaceStyle(
 }
 
 std::vector<int> NodeCanvas::mappedMidiControllers() const {
-    return mappedPresetMidiControllers(document.graph());
+    if (!mappedControllerCacheValid
+            || mappedControllerRevision != document.revision()) {
+        mappedControllerCache = mappedPresetMidiControllers(document.graph());
+        mappedControllerRevision = document.revision();
+        mappedControllerCacheValid = true;
+    }
+    return mappedControllerCache;
+}
+
+int NodeCanvas::extraMidiControllerCount() const {
+    const auto controllers = mappedMidiControllers();
+    return (int) std::count_if(controllers.begin(), controllers.end(),
+            [](int controller) { return controller != 1; });
 }
 
 bool NodeCanvas::setPresetSequence(PresetMidiSequence sequence) {
@@ -2732,6 +2749,7 @@ bool NodeCanvas::loadGraphFromFile(const File& file) {
     performanceMetrics.beginPresetLoad(file.getFileName());
     const bool loaded = applyAuthoringResult(authoring.loadGraph(file));
     if (loaded) {
+        mappedControllerCacheValid = false;
         closeGuideEditor();
         resetDocumentPresentation();
         clearDockEphemeralState();
@@ -3298,7 +3316,8 @@ void NodeCanvas::flushRenderInvalidations(uint32_t categories) {
         return;
     }
     if ((categories & NodeCanvasInvalidation::StatusRepaint) != 0) {
-        Component::repaint(statusRepaintBounds(canvasUtilityBounds()));
+        Component::repaint(statusRepaintBounds(canvasUtilityBounds(),
+                extraMidiControllerCount()));
     }
 }
 

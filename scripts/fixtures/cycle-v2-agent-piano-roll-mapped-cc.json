@@ -1,9 +1,12 @@
 {
   "commands": [
     { "command": "openGraph", "path": "../../cycle-v2/content/presets/altosax-2.cyclegraph" },
+    { "command": "pointer", "targetId": "PerformanceKeyboard.CC73", "event": "click", "targetY": 0.25 },
+    { "command": "assertState", "path": "performance.cc73Value", "op": "greaterThan", "value": 0 },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-mapped-cc-keyboard.png" },
     { "command": "pointer", "targetId": "PerformanceKeyboard.EditSequence", "event": "click" },
     { "command": "waitForIdle", "idleDelayMs": 500 },
-    { "command": "screenshot", "area": "focused", "path": "/private/tmp/cycle-v2-piano-roll-mapped-cc.png" }
+    { "command": "screenshot", "area": "presetMidiEditor", "path": "/private/tmp/cycle-v2-piano-roll-mapped-cc.png" }
   ],
   "quit": true
 }
