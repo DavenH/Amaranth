@@ -9,8 +9,9 @@
 
 #include <App/AppConstants.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
-#include <UI/Panels/TimeSurfaceStyles.h>
 #include <UI/MiscGraphics.h>
+#include <UI/Panels/OpenGLDiagnostics.h>
+#include <UI/Panels/TimeSurfaceStyles.h>
 
 #include "UI/NodeCanvas.h"
 #include "UI/CanvasChromePalette.h"
@@ -1305,6 +1306,7 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
 }
 
 void NodeCanvas::newOpenGLContextCreated() {
+    suppressOpenGLDebugNotifications();
     ++openGlContextCreateCount;
     renderer.initialize();
 }
