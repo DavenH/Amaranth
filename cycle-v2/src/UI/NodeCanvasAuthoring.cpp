@@ -10,6 +10,7 @@
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"
+#include "UI/VoiceContextInputCreation.h"
 
 namespace CycleV2 {
 
@@ -225,6 +226,70 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::addNode(NodeKind kind, Point<floa
 
     authoringSession.expandedNodeId = {};
     return graphEditResult(edit, "Node added: " + edit.nodeId, edit.nodeId, { true, true, false });
+}
+
+NodeCanvasAuthoringResult NodeCanvasAuthoring::createVoiceContextInput(
+        const PortAddress& destination) {
+    const Node* voice = document.graph().findNode(destination.nodeId);
+    const auto source = VoiceContextInputCreation::sourceFor(destination.portId);
+    const auto& edges = document.graph().getEdges();
+    const bool connected = std::any_of(edges.begin(), edges.end(), [&](const Edge& edge) {
+        return edge.destNodeId == destination.nodeId && edge.destPortId == destination.portId;
+    });
+    if (!VoiceContextInputCreation::canCreate(voice, destination, connected)) {
+        return handledResult(false,
+                connected ? "Port already connected" : "No source available for this port",
+                { true });
+    }
+    const auto port = std::find_if(
+            voice->inputs.begin(), voice->inputs.end(),
+            [&](const Port& candidate) { return candidate.id == destination.portId; });
+    if (port == voice->inputs.end()) {
+        return handledResult(false, "Voice Context port is missing", { true });
+    }
+
+    const Point<float> position = VoiceContextInputCreation::positionFor(
+            document.graph(), *voice, *port, *source);
+    commands.beginCompoundEdit();
+    const auto added = commands.addNode(source->kind, position);
+    if (!added.succeeded()) {
+        commands.cancelCompoundEdit();
+        return graphEditResult(added, "Could not create source", {});
+    }
+    if (source->envelopePurpose.isNotEmpty()) {
+        const auto purpose = commands.setNodeParameter(
+                added.nodeId, "purpose", "Purpose", source->envelopePurpose);
+        if (!purpose.succeeded()) {
+            commands.cancelCompoundEdit();
+            return graphEditResult(purpose, "Could not set envelope purpose", {});
+        }
+    }
+
+    const PortAddress output { added.nodeId, source->outputPortId, false };
+    const auto routes = ModulationCableBundle::routes(document.graph(), output, destination);
+    GraphEditResult connectedEdit;
+    if (routes.empty()) {
+        connectedEdit = commands.connect(output, destination);
+    } else {
+        for (const auto& route : routes) {
+            connectedEdit = commands.connect(route.source, route.destination);
+            if (!connectedEdit.succeeded()) {
+                break;
+            }
+        }
+    }
+    if (!connectedEdit.succeeded()) {
+        commands.cancelCompoundEdit();
+        return graphEditResult(connectedEdit, "Could not connect source", {});
+    }
+
+    commands.commitCompoundEdit();
+    authoringSession.expandedNodeId = {};
+    auto result = graphEditResult(
+            connectedEdit, "Created " + labelForNodeKind(source->kind),
+            added.nodeId, { true, true, false });
+    result.nodeId = added.nodeId;
+    return result;
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::insertPanIntoEdge(

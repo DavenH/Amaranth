@@ -69,6 +69,32 @@ TEST_CASE("Voice Context ports place Unison before Pitch and Scratch",
     }
 }
 
+TEST_CASE("Voice Context quick-create badges hit the intended port at normal zoom",
+        "[cycle-v2][canvas][ports][voice-context][regression]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::VoiceContext, "voice", { 300.f, 200.f }));
+    NodeCanvasViewport viewport;
+    NodeCanvasScene sceneBuilder;
+    const Node& voice = *graph.findNode("voice");
+
+    for (const float zoom : { 0.18f, 0.43f, 1.f }) {
+        viewport.setTransform({}, zoom);
+        const auto& scene = sceneBuilder.build(graph, viewport);
+        for (const Port& port : voice.inputs) {
+            const Point<float> centre = viewport.toScreen(
+                    NodeCanvasScene::portWorldCentre(voice, port));
+            const Point<float> badgeCentre { centre.x - 13.f, centre.y };
+            const auto hit = NodeCanvasHitTester().hitTest(scene, badgeCentre);
+            REQUIRE(hit.has_value());
+            REQUIRE(hit->kind == NodeSceneTargetKind::InputPort);
+            REQUIRE(hit->portId == port.id);
+            REQUIRE(hit->bounds.getHeight()
+                    <= NodePortGeometry::sidePortSpacing * viewport.getZoom() + 0.01f);
+        }
+    }
+}
+
 TEST_CASE("Node canvas Shift cursor preserves adjustment priority",
         "[cycle-v2][canvas][cursor]") {
     REQUIRE(NodeCanvasCursorPolicy::cursorFor(
@@ -1890,7 +1916,7 @@ TEST_CASE("Canvas legend collapses non-signal domains into Control",
     REQUIRE(colourForDomain(PortDomain::SpectralPhaseSignal) != control);
 }
 
-TEST_CASE("Voice context compact presentation retains its summary",
+TEST_CASE("Voice context compact presentation aligns pictograms with ports",
         "[cycle-v2][canvas][compact-editor]") {
     Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
 
@@ -1907,23 +1933,21 @@ TEST_CASE("Voice context compact presentation retains its summary",
     REQUIRE(VoiceContextCompactEditor::summaryLabel(voice)
             == "Octave 1  ·  1 second  ·  Glide");
 
-    const Rectangle<float> scratch = VoiceContextCompactEditor::scratchIndicatorBounds(
-            voice.bounds,
-            1.f);
+    const Rectangle<float> scratch = VoiceContextCompactEditor::portIconBounds(
+            voice.bounds, 1.f, 3);
     const Rectangle<float> summary = VoiceContextCompactEditor::summaryBounds(
-            voice.bounds,
-            1.f);
-    const Rectangle<float> scratchLabel = VoiceContextCompactEditor::scratchLabelBounds(
             voice.bounds,
             1.f);
     REQUIRE(voice.bounds.contains(scratch));
     REQUIRE(voice.bounds.contains(summary));
-    REQUIRE(voice.bounds.contains(scratchLabel));
     REQUIRE_FALSE(summary.intersects(scratch));
-    REQUIRE_FALSE(summary.intersects(scratchLabel));
-    REQUIRE(scratch.getCentreY() == Catch::Approx(
-            NodeCanvasScene::portWorldCentre(voice, voice.inputs[3]).getY()));
-    REQUIRE(scratch.getX() - voice.bounds.getX() >= 7.f);
+    for (int index = 0; index < 4; ++index) {
+        const Rectangle<float> icon = VoiceContextCompactEditor::portIconBounds(
+                voice.bounds, 1.f, index);
+        REQUIRE(icon.getCentreY() == Catch::Approx(
+                NodeCanvasScene::portWorldCentre(voice, voice.inputs[(size_t) index]).getY()));
+        REQUIRE_FALSE(summary.intersects(icon));
+    }
 }
 
 TEST_CASE("Shared Unison preview does not depend on attachment edge order",

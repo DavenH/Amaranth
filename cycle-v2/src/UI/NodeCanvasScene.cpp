@@ -548,13 +548,26 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                 const float hitPadding = node.kind == NodeKind::SpectralLayer
                         ? 4.f
                         : NodePortGeometry::hitPadding;
+                Rectangle<float> hitBounds = Rectangle<float>(size, size)
+                        .withCentre(centre)
+                        .expanded(hitPadding);
+                if (node.kind == NodeKind::VoiceContext && port.input) {
+                    const float rowHeight = NodePortGeometry::sidePortSpacing
+                            * viewport.getZoom();
+                    hitBounds = {
+                            hitBounds.getX() - 8.f,
+                            centre.y - rowHeight * 0.5f,
+                            hitBounds.getWidth() + 8.f,
+                            rowHeight
+                    };
+                }
                 current.targets.push_back({
                         kind,
                         (port.input ? "input:" : "output:") + node.id + "." + port.id,
                         node.id,
                         port.id,
                         {},
-                        juce::Rectangle<float>(size, size).withCentre(centre).expanded(hitPadding),
+                        hitBounds,
                         -1,
                         10000 + zOrder++
                 });

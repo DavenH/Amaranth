@@ -19,6 +19,7 @@
 #include "UI/NodeGroupPresentation.h"
 #include "UI/NodeViewModule.h"
 #include "UI/VoiceContextCompactEditor.h"
+#include "UI/VoiceContextInputCreation.h"
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/GraphValidator.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
@@ -706,6 +707,7 @@ void NodeCanvasPresentation::paintContent(
                 performanceObserver,
                 NodeCanvasPresentationStage::Nodes);
         paintCachedNodes(graphics, frame);
+        paintVoiceContextPortHover(graphics, frame);
         ScopedNodeCanvasPresentationStage spyMeasurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::SpyCanvas);
@@ -1322,7 +1324,7 @@ void NodeCanvasPresentation::paintNode(
                     nodeBounds,
                     zoom,
                     node);
-            VoiceContextCompactEditor::paintScratchIndicator(graphics, nodeBounds, zoom);
+            VoiceContextCompactEditor::paintPortIcons(graphics, nodeBounds, zoom);
         } else if (node.kind == NodeKind::ScratchDefaultOverride) {
             const float iconSize = 24.f * zoom;
             NodeIconRenderer::paint(
@@ -1390,6 +1392,48 @@ void NodeCanvasPresentation::paintNode(
                 false,
                 ModulationCableBundle::destinationIncludesYellow(node));
     }
+}
+
+void NodeCanvasPresentation::paintVoiceContextPortHover(
+        Graphics& graphics,
+        const NodeCanvasPresentationFrame& frame) {
+    if (frame.hoverText.isEmpty() || frame.canvasOcclusion.contains(frame.pointer)) {
+        return;
+    }
+    const auto target = NodeCanvasHitTester().hitTest(scene.snapshot(), frame.pointer);
+    if (!target.has_value() || target->kind != NodeSceneTargetKind::InputPort) {
+        return;
+    }
+    const Node* node = frame.graph.findNode(target->nodeId);
+    const bool connected = !frame.facts.edgeIndex().edgesToInput(
+            target->nodeId, target->portId).empty();
+    if (!VoiceContextInputCreation::canCreate(
+            node, target->portAddress(), connected)) {
+        return;
+    }
+    const auto port = std::find_if(
+            node->inputs.begin(), node->inputs.end(),
+            [&](const Port& input) { return input.id == target->portId; });
+    if (port == node->inputs.end()) {
+        return;
+    }
+
+    const Point<float> socket = frame.viewport.toScreen(
+            NodeCanvasScene::portWorldCentre(*node, *port));
+    const Point<float> centre { socket.x - 13.f, socket.y };
+    const float rowHeight = NodePortGeometry::sidePortSpacing * frame.viewport.getZoom();
+    const float diameter = jmax(4.f, jmin(
+            13.f,
+            rowHeight - 2.f));
+    const float arm = jmin(3.f, diameter * 0.25f);
+    const Rectangle<float> badge = Rectangle<float>(diameter, diameter).withCentre(centre);
+    const float padding = jmin(2.f, (rowHeight - diameter) * 0.5f);
+    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.96f));
+    graphics.fillEllipse(badge.expanded(padding));
+    graphics.setColour(CanvasChromePalette::text.withAlpha(0.94f));
+    graphics.drawEllipse(badge, 1.f);
+    graphics.drawLine(centre.x - arm, centre.y, centre.x + arm, centre.y, 1.25f);
+    graphics.drawLine(centre.x, centre.y - arm, centre.x, centre.y + arm, 1.25f);
 }
 
 NodePortPresentation NodeCanvasPresentation::portPresentation(

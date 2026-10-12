@@ -1,10 +1,12 @@
 #include <algorithm>
+#include <array>
 
 #include <catch2/catch_test_macros.hpp>
 
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/NodeParameterMap.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodeCanvasAuthoring.h"
@@ -113,6 +115,55 @@ TEST_CASE("Node canvas authoring preserves graph and layout semantics",
 
     REQUIRE(authoring.deleteNode(added.nodeId).succeeded);
     REQUIRE(document.graph().findNode(added.nodeId) == nullptr);
+}
+
+TEST_CASE("Empty Voice Context inputs create and connect their source in one undo",
+        "[cycle-v2][canvas][voice-context][authoring]") {
+    struct Case {
+        const char* portId;
+        NodeKind sourceKind;
+        const char* purpose;
+    };
+    const std::array<Case, 4> cases {{
+            { "modulation", NodeKind::ModulationTriple, "" },
+            { "unison", NodeKind::Unison, "" },
+            { "pitch", NodeKind::Envelope, "pitch" },
+            { "scratch", NodeKind::Envelope, "scratch" }
+    }};
+
+    for (const Case& testCase : cases) {
+        GraphNodeFactory factory;
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 600.f, 300.f }));
+        graph.addNode(factory.createNode(NodeKind::Unison, "blocker", { 200.f, 300.f }));
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher commands(document);
+        GraphPresentationModel presentation;
+        NullEditorCommands editorCommands;
+        auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+        const PortAddress destination { "voice", testCase.portId, true };
+
+        const auto created = authoring.createVoiceContextInput(destination);
+        REQUIRE(created.succeeded);
+        REQUIRE(document.graph().getNodes().size() == 3);
+        REQUIRE(document.graph().getEdges().size() == 1);
+        const Node* source = document.graph().findNode(created.nodeId);
+        REQUIRE(source != nullptr);
+        REQUIRE(source->kind == testCase.sourceKind);
+        REQUIRE_FALSE(source->bounds.intersects(document.graph().findNode("blocker")->bounds));
+        REQUIRE_FALSE(source->bounds.intersects(document.graph().findNode("voice")->bounds));
+        if (source->kind == NodeKind::Envelope) {
+            REQUIRE(envelopePurposeToString(envelopePurposeFor(*source)) == testCase.purpose);
+        }
+        REQUIRE(document.graph().getEdges().front().destPortId == testCase.portId);
+
+        REQUIRE_FALSE(authoring.createVoiceContextInput(destination).succeeded);
+        REQUIRE(document.graph().getNodes().size() == 3);
+        REQUIRE(authoring.undo().succeeded);
+        REQUIRE(document.graph().getNodes().size() == 2);
+        REQUIRE(document.graph().getEdges().empty());
+        REQUIRE_FALSE(document.canUndo());
+    }
 }
 
 TEST_CASE("Guide deletion refreshes authoring state and is undoable",

@@ -3,6 +3,8 @@
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeDefinition.h"
 #include "UI/NodeCanvasQueryModel.h"
+#include "UI/VoiceContextCompactEditor.h"
+#include "UI/VoiceContextInputCreation.h"
 
 namespace CycleV2 {
 
@@ -168,6 +170,35 @@ String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const 
         return {};
     }
 
+    if (node->kind == NodeKind::VoiceContext && address.input) {
+        const auto& localEdges = presentationFacts().edgeIndex().edgesToInput(
+                node->id, port->id);
+        String help;
+        if (port->id == "modulation") {
+            help = "Modulation: voice control sources and routing.";
+        } else if (port->id == "unison") {
+            help = "Unison: voice count, spread, and detune.";
+        } else if (port->id == "pitch") {
+            help = "Pitch: changes pitch over the voice's lifetime.";
+        } else if (port->id == "scratch") {
+            help = "Scratch: sets the default scratch envelope for this Voice Context; without an attachment, voice time is used.";
+        }
+        if (!localEdges.empty()) {
+            const Node* source = findNode(graph.getEdges()[localEdges.front()].sourceNodeId);
+            return help + (source != nullptr
+                    ? " Connected to " + nodeDisplayLabel(*source) + "."
+                    : " Connected.");
+        }
+        const auto source = VoiceContextInputCreation::sourceFor(port->id);
+        return source.has_value()
+                ? help + " Double-click to add " + source->label + "."
+                : help;
+    }
+
+    if (node->kind == NodeKind::ScratchDefaultOverride && !address.input) {
+        return "Uses voice time instead of the inherited scratch envelope.";
+    }
+
     if (port->purpose == PortPurpose::ScratchAttachment) {
         if (node->kind == NodeKind::VoiceContext) {
             return "Attach the default scratch envelope for this Voice Context.";
@@ -198,16 +229,17 @@ String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const 
         return "Uses voice time. Attach a scratch envelope here to override it.";
     }
 
-    if (node->kind == NodeKind::ScratchDefaultOverride && !address.input) {
-        return hoverTextForNode(*node);
-    }
-
     return signalDescription(port->domain)
             + (address.input ? " enters " : " leaves ")
             + nodeDisplayLabel(*node) + " here.";
 }
 
 String NodeCanvasQueryModel::hoverTextForNode(const Node& node) const {
+    if (node.kind == NodeKind::VoiceContext) {
+        return "Voice Context: " + VoiceContextCompactEditor::summaryLabel(node)
+                + ". Inputs from top: modulation, unison, pitch, scratch."
+                + " Double-click an empty input to create its source.";
+    }
     const auto* definition = NodeDefinitionRegistry::instance().find(node.kind);
     if (definition != nullptr && definition->helpText.isNotEmpty()) {
         return definition->helpText;

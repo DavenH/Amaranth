@@ -45,6 +45,7 @@ enum class TransformMode;
 
 class NodeCanvas :
         public Component
+    ,   public TooltipClient
     ,   private OpenGLRenderer
     ,   private Timer
     ,   private NodeEditorPresentation
@@ -175,6 +176,7 @@ public:
     void mouseUp(const MouseEvent& event) override;
     void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override;
     void mouseMagnify(const MouseEvent& event, float scaleFactor) override;
+    String getTooltip() override { return resolvedHoverText; }
     void modifierKeysChanged(const ModifierKeys& modifiers) override;
     bool keyPressed(const KeyPress& key) override;
 
@@ -187,6 +189,7 @@ private:
     };
 
     OpenGLContext openGLContext;
+    TooltipWindow tooltipHost { this, 500 };
     NodeCanvasRenderer renderer;
     mutable NodeCanvasViewport viewport;
     bool documentViewportFitted {};
@@ -219,6 +222,7 @@ private:
     Rectangle<int> lastPopupMenuTargetScreenArea;
     MouseCursor addToSelectionCursor;
     String resolvedHoverText;
+    String hoveredQuickCreatePortId;
     bool pointerInsideCanvas {};
     bool canvasOpenGlAttached {};
     uint64_t openGlContextCreateCount {};
