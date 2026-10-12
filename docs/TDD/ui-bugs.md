@@ -580,3 +580,11 @@ zero validation issues. Repro artifacts are
 `/private/tmp/cycle-v2-astral3-fixed-report.json` and
 `/private/tmp/cycle-v2-astral3-fixed-log.txt`. Current status: open; investigate
 MIDI device initialization separately from preset loading.
+
+## P3: Focused compact-node paint test needed JUCE GUI initialization (addressed)
+
+On 2026-10-12, running the isolated zero-octave paint test produced JUCE
+`Leaked objects detected` and `juce_Singleton.h:62` assertions at process exit
+after the assertion itself passed. The test now uses
+`ScopedJuceInitialiser_GUI`; rerunning the compact-editor test group passed
+without shutdown assertions. Current status: addressed.

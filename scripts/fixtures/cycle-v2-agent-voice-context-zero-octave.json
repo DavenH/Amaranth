@@ -1,0 +1,17 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/ooh.cyclegraph",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-voice-context-zero-octave.png"
+    },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true }
+  ],
+  "quit": true
+}

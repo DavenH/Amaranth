@@ -1950,6 +1950,31 @@ TEST_CASE("Voice context compact presentation aligns pictograms with ports",
     }
 }
 
+TEST_CASE("Voice context shows its zero octave on the compact canvas",
+        "[cycle-v2][canvas][compact-editor][regression]") {
+    ScopedJuceInitialiser_GUI gui;
+    const Node voice = GraphNodeFactory().createNode(
+            NodeKind::VoiceContext, "voice", {});
+    Image image(Image::ARGB,
+            (int) voice.bounds.getWidth(),
+            (int) voice.bounds.getHeight(), true);
+    Graphics graphics(image);
+    VoiceContextCompactEditor::paintNodeSummary(
+            graphics, voice.bounds, 1.f, voice);
+
+    const Rectangle<float> summary = VoiceContextCompactEditor::summaryBounds(
+            voice.bounds, 1.f);
+    const Rectangle<int> octaveArea(
+            (int) summary.getX(), (int) summary.getY() + 43, 72, 33);
+    int visiblePixels = 0;
+    for (int y = octaveArea.getY(); y < octaveArea.getBottom(); ++y) {
+        for (int x = octaveArea.getX(); x < octaveArea.getRight(); ++x) {
+            visiblePixels += image.getPixelAt(x, y).getAlpha() != 0;
+        }
+    }
+    REQUIRE(visiblePixels > 20);
+}
+
 TEST_CASE("Shared Unison preview does not depend on attachment edge order",
         "[cycle-v2][canvas][voice-context][unison]") {
     GraphExecutionPlan plan;

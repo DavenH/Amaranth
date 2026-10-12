@@ -74,15 +74,17 @@ void paintOctave(
         Point<float> origin,
         float zoom,
         int octave) {
-    const String notation = std::abs(octave) == 1
-            ? (octave > 0 ? "8va" : "8vb")
-            : (octave > 0 ? "15ma" : "15mb");
-    graphics.setColour(kBlue);
+    const String notation = octave == 0
+            ? "Oct 0"
+            : std::abs(octave) == 1
+                    ? (octave > 0 ? "8va" : "8vb")
+                    : (octave > 0 ? "15ma" : "15mb");
+    graphics.setColour(octave == 0 ? kMutedText : kBlue);
     graphics.setFont(FontOptions(27.f * zoom).withStyle("Bold"));
     graphics.drawText(
             notation,
             Rectangle<float>(origin.x, origin.y - 17.f * zoom,
-                    61.f * zoom, 34.f * zoom),
+                    92.f * zoom, 34.f * zoom),
             Justification::centredLeft);
 }
 
@@ -142,12 +144,10 @@ void VoiceContextCompactEditor::paintNodeSummary(
 
     const int octave = parameterValueForNode(node, "octave", "0").getIntValue();
     const float detailY = summary.getY() + 55.f * zoom;
-    if (octave != 0) {
-        paintOctave(graphics, { summary.getX() + 4.f * zoom, detailY }, zoom, octave);
-    }
+    paintOctave(graphics, { summary.getX() + 4.f * zoom, detailY }, zoom, octave);
 
     if (portamentoEnabled(node)) {
-        const float glideX = summary.getX() + (octave != 0 ? 67.f : 2.f) * zoom;
+        const float glideX = summary.getX() + 102.f * zoom;
         paintGlide(graphics, { glideX, detailY }, zoom);
     }
 }
