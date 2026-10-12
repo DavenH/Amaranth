@@ -191,7 +191,7 @@ String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const 
         }
         const auto source = VoiceContextInputCreation::sourceFor(port->id);
         return source.has_value()
-                ? help + " Double-click to add " + source->label + "."
+                ? help + " Click + to add " + source->label + "."
                 : help;
     }
 

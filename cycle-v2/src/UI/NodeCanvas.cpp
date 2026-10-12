@@ -887,16 +887,22 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         }
     }
     if (const auto hitPort = interaction.portAt(scene, event.position)) {
-        if (event.getNumberOfClicks() >= 2 && hitPort->input
-                && !event.mods.isPopupMenu()) {
+        if (hitPort->input && !event.mods.isPopupMenu()) {
             const Node* portNode = graph.findNode(hitPort->nodeId);
             const bool connected = !queries.presentationFacts().edgeIndex().edgesToInput(
                     hitPort->nodeId, hitPort->portId).empty();
             if (VoiceContextInputCreation::canCreate(portNode, *hitPort, connected)) {
-                applyAuthoringResult(authoring.createVoiceContextInput(*hitPort));
-                updateHoverAt(event.position, event.mods);
-                requestCanvasRepaint();
-                return;
+                const auto port = std::find_if(portNode->inputs.begin(), portNode->inputs.end(),
+                        [&](const Port& input) { return input.id == hitPort->portId; });
+                const auto badge = VoiceContextInputCreation::badgeBounds(
+                        viewport.toScreen(NodeCanvasScene::portWorldCentre(*portNode, *port)),
+                        viewport.getZoom());
+                if (badge.contains(event.position) || event.getNumberOfClicks() >= 2) {
+                    applyAuthoringResult(authoring.createVoiceContextInput(*hitPort));
+                    updateHoverAt(event.position, event.mods);
+                    requestCanvasRepaint();
+                    return;
+                }
             }
         }
         interaction.beginConnection(graph, *hitPort, event.position);

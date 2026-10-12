@@ -3,10 +3,15 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <Curve/Mesh/VertCube.h>
+#include <Curve/Mesh/Vertex.h>
+
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodeCanvasAuthoring.h"
@@ -154,6 +159,16 @@ TEST_CASE("Empty Voice Context inputs create and connect their source in one und
         REQUIRE_FALSE(source->bounds.intersects(document.graph().findNode("voice")->bounds));
         if (source->kind == NodeKind::Envelope) {
             REQUIRE(envelopePurposeToString(envelopePurposeFor(*source)) == testCase.purpose);
+            const auto model = std::dynamic_pointer_cast<const CurveNodeModelState>(source->model);
+            REQUIRE(model != nullptr);
+            REQUIRE(model->envelope() != nullptr);
+            const auto& cubes = model->envelope()->getMesh().getCubes();
+            REQUIRE(cubes.size() == 2);
+            const float start = cubes.front()->getVertex(0)->values[Vertex::Amp];
+            const float end = cubes.back()->getVertex(0)->values[Vertex::Amp];
+            const bool pitch = String(testCase.purpose) == "pitch";
+            REQUIRE(start == (pitch ? 0.5f : 0.f));
+            REQUIRE(end == (pitch ? 0.5f : 1.f));
         }
         REQUIRE(document.graph().getEdges().front().destPortId == testCase.portId);
 
@@ -164,6 +179,52 @@ TEST_CASE("Empty Voice Context inputs create and connect their source in one und
         REQUIRE(document.graph().getEdges().empty());
         REQUIRE_FALSE(document.canUndo());
     }
+}
+
+TEST_CASE("Voice Context quick creation opens a gap in its connected source stack",
+        "[cycle-v2][canvas][voice-context][authoring]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 600.f, 300.f }));
+    graph.addNode(factory.createNode(NodeKind::ModulationTriple, "mod", { 250.f, 100.f }));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "pitch", { 250.f, 310.f }));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "scratch", { 250.f, 700.f }));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "pitch", "purpose", "Purpose", "pitch").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "scratch", "purpose", "Purpose", "scratch").succeeded());
+    graph.addEdge({ "mod", "modulation", "voice", "modulation",
+            PortDomain::VoiceControlSignal,
+            ConnectionKind::ConfigurationAttachment, AttachmentType::ModulationTriple });
+    graph.addEdge({ "pitch", "env", "voice", "pitch",
+            PortDomain::PitchSignal, ConnectionKind::Signal });
+    graph.addEdge({ "scratch", "env", "voice", "scratch",
+            PortDomain::EnvelopeSignal,
+            ConnectionKind::ProcessingAttachment, AttachmentType::ScratchEnvelope });
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+    const float originalUpperY = document.graph().findNode("mod")->bounds.getY();
+    const float originalLowerY = document.graph().findNode("pitch")->bounds.getY();
+
+    const auto created = authoring.createVoiceContextInput({ "voice", "unison", true });
+    REQUIRE(created.succeeded);
+    const Node* inserted = document.graph().findNode(created.nodeId);
+    REQUIRE(inserted != nullptr);
+    const Node* upper = document.graph().findNode("mod");
+    const Node* lower = document.graph().findNode("pitch");
+    REQUIRE(upper->bounds.getY() < originalUpperY);
+    REQUIRE(lower->bounds.getY() > originalLowerY);
+    REQUIRE(upper->bounds.getBottom() < inserted->bounds.getY());
+    REQUIRE(inserted->bounds.getBottom() < lower->bounds.getY());
+    REQUIRE(document.graph().findNode("scratch")->bounds.getY() > 700.f);
+
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().findNode(created.nodeId) == nullptr);
+    REQUIRE(document.graph().findNode("mod")->bounds.getY() == originalUpperY);
+    REQUIRE(document.graph().findNode("pitch")->bounds.getY() == originalLowerY);
 }
 
 TEST_CASE("Guide deletion refreshes authoring state and is undoable",

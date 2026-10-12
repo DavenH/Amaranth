@@ -119,7 +119,7 @@ TEST_CASE("Scratch attachment help distinguishes defaults inheritance and exclus
 
     REQUIRE(queries.hoverTextForPort({ "voice", "scratch", true }).contains("default"));
     REQUIRE(queries.hoverTextForPort({ "voice", "unison", true })
-            .contains("Double-click to add Unison"));
+            .contains("Click + to add Unison"));
     REQUIRE_FALSE(queries.hoverTextForPort({ "voice", "scratch", true })
             .contains("Double-click"));
     REQUIRE(queries.hoverTextForPort({ "inherited", "scratch", true }).contains("Inherits"));

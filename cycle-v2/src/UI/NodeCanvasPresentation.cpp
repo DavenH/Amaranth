@@ -1420,13 +1420,12 @@ void NodeCanvasPresentation::paintVoiceContextPortHover(
 
     const Point<float> socket = frame.viewport.toScreen(
             NodeCanvasScene::portWorldCentre(*node, *port));
-    const Point<float> centre { socket.x - 13.f, socket.y };
     const float rowHeight = NodePortGeometry::sidePortSpacing * frame.viewport.getZoom();
-    const float diameter = jmax(4.f, jmin(
-            13.f,
-            rowHeight - 2.f));
-    const float arm = jmin(3.f, diameter * 0.25f);
-    const Rectangle<float> badge = Rectangle<float>(diameter, diameter).withCentre(centre);
+    const Rectangle<float> badge = VoiceContextInputCreation::badgeBounds(
+            socket, frame.viewport.getZoom());
+    const Point<float> centre = badge.getCentre();
+    const float diameter = badge.getWidth();
+    const float arm = jmin(3.6f, diameter * 0.25f);
     const float padding = jmin(2.f, (rowHeight - diameter) * 0.5f);
     graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.96f));
     graphics.fillEllipse(badge.expanded(padding));

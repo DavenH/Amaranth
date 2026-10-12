@@ -7,6 +7,8 @@
 #include "UI/NodeCanvasAuthoring.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"
@@ -248,10 +250,17 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::createVoiceContextInput(
         return handledResult(false, "Voice Context port is missing", { true });
     }
 
-    const Point<float> position = VoiceContextInputCreation::positionFor(
+    const VoiceContextInputLayout layout = VoiceContextInputCreation::layoutFor(
             document.graph(), *voice, *port, *source);
     commands.beginCompoundEdit();
-    const auto added = commands.addNode(source->kind, position);
+    for (const auto& move : layout.moves) {
+        const auto moved = commands.moveNode(move.nodeId, move.position);
+        if (!moved.succeeded()) {
+            commands.cancelCompoundEdit();
+            return graphEditResult(moved, "Could not make room for source", {});
+        }
+    }
+    const auto added = commands.addNode(source->kind, layout.position);
     if (!added.succeeded()) {
         commands.cancelCompoundEdit();
         return graphEditResult(added, "Could not create source", {});
@@ -262,6 +271,22 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::createVoiceContextInput(
         if (!purpose.succeeded()) {
             commands.cancelCompoundEdit();
             return graphEditResult(purpose, "Could not set envelope purpose", {});
+        }
+        const Node* envelope = commands.editingGraph().findNode(added.nodeId);
+        if (envelope == nullptr || envelope->model == nullptr) {
+            commands.cancelCompoundEdit();
+            return handledResult(false, "Envelope model is missing", { true });
+        }
+        EnvelopeNodeModel defaultModel(
+                envelopePurposeFromString(source->envelopePurpose));
+        const uint64_t revision = envelope->model->revision();
+        const auto model = CurveNodeModelState::copyOf(
+                defaultModel, 0.5f, 0.5f, revision + 1);
+        const auto replaced = commands.replaceNodeModel(
+                added.nodeId, revision, model);
+        if (!replaced.succeeded()) {
+            commands.cancelCompoundEdit();
+            return graphEditResult(replaced, "Could not set envelope shape", {});
         }
     }
 

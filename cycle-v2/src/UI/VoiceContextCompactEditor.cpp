@@ -74,24 +74,15 @@ void paintOctave(
         Point<float> origin,
         float zoom,
         int octave) {
-    const float direction = octave > 0 ? -1.f : 1.f;
+    const String notation = std::abs(octave) == 1
+            ? (octave > 0 ? "8va" : "8vb")
+            : (octave > 0 ? "15ma" : "15mb");
     graphics.setColour(kBlue);
-    graphics.drawLine(
-            origin.x, origin.y - 5.f * zoom * direction,
-            origin.x, origin.y + 5.f * zoom * direction,
-            jmax(1.f, 2.f * zoom));
-    for (const float side : { -1.f, 1.f }) {
-        graphics.drawLine(
-                origin.x + side * 4.f * zoom, origin.y,
-                origin.x, origin.y - 5.f * zoom * direction,
-                jmax(1.f, 2.f * zoom));
-    }
-    graphics.setColour(kText);
-    graphics.setFont(FontOptions(17.f * zoom));
+    graphics.setFont(FontOptions(27.f * zoom).withStyle("Bold"));
     graphics.drawText(
-            String(std::abs(octave)),
-            Rectangle<float>(origin.x + 10.f * zoom, origin.y - 12.f * zoom,
-                    20.f * zoom, 24.f * zoom),
+            notation,
+            Rectangle<float>(origin.x, origin.y - 17.f * zoom,
+                    61.f * zoom, 34.f * zoom),
             Justification::centredLeft);
 }
 

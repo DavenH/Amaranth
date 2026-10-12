@@ -20,8 +20,9 @@
     },
     {
       "command": "pointer",
-      "event": "doubleClick",
+      "event": "click",
       "targetId": "input:voice.unison",
+      "targetX": 0.25,
       "waitForIdle": true,
       "idleDelayMs": 200
     },

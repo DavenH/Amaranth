@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <vector>
 
 #include "Graph/GraphEditTypes.h"
 #include "Graph/NodeGraph.h"
@@ -14,6 +15,16 @@ struct VoiceContextInputSource {
     String label;
 };
 
+struct VoiceContextInputMove {
+    String nodeId;
+    Point<float> position;
+};
+
+struct VoiceContextInputLayout {
+    Point<float> position;
+    std::vector<VoiceContextInputMove> moves;
+};
+
 class VoiceContextInputCreation {
 public:
     static std::optional<VoiceContextInputSource> sourceFor(const String& portId);
@@ -21,11 +32,12 @@ public:
             const Node* node,
             const PortAddress& destination,
             bool connected);
-    static Point<float> positionFor(
+    static VoiceContextInputLayout layoutFor(
             const NodeGraph& graph,
             const Node& voice,
             const Port& destination,
             const VoiceContextInputSource& source);
+    static Rectangle<float> badgeBounds(Point<float> socket, float zoom);
 };
 
 }
