@@ -2458,7 +2458,7 @@ bool NodeCanvas::setPreviewControllerValue(int controller, int value) {
         requestCanvasRepaint();
         return true;
     }
-    const GraphEditResult edit = persistPreviewMorph(
+    const GraphEditResult edit = editPreviewMorph(
             presentation.previewMidiNote(),
             PreviewMorphEditScope::Controller,
             selectedController,
@@ -2466,8 +2466,15 @@ bool NodeCanvas::setPreviewControllerValue(int controller, int value) {
     if (!edit.succeeded()) {
         return false;
     }
+    presentation.stagePreviewControllerValue(selectedController, selectedValue);
     if (edit.changed) {
-        presentation.stagePreviewControllerValue(selectedController, selectedValue);
+        const GraphChangeSet change = presentation.controllerPreviewChange(
+                document.lastChange(), selectedController);
+        editorCoordinator.clearPreviewCache();
+        if (graphDocumentStateChangedCallback) {
+            graphDocumentStateChangedCallback();
+        }
+        refreshCompiledStateAsync(PresentationRefreshScope::Downstream, &change);
     } else {
         if (!presentation.refreshPreviewControllerValue(
                     commands.editingGraph(),

@@ -1,6 +1,28 @@
 # Cycle V2 MIDI CC controls and piano roll lanes
 
-Status: Complete (2026-10-11)
+Status: Complete (2026-10-12)
+
+## Release-mode CC73 preview regression (2026-10-12)
+
+The alto-sax-2 CC73 wheel changed its saved envelope morph on release while
+the node graph kept showing the old envelope preview. The existing UI fixture
+only checked the parameter, and the Live fixture used a separate transient
+refresh path. A before/after agent snapshot reproduced the default On Release
+failure: CC73 reached 99 and the volume envelope parameter changed, but the
+preview fingerprint and absolute sum remained unchanged at 104736.
+
+The graph presentation model owns the controller's source roots and
+`controllerPreviewChange` adds them to the invalidation set. The release path
+now stages the new controller value and uses that authoritative change set when
+requesting downstream refresh, matching the existing Live commit boundary.
+`NodeCanvas` still only coordinates the gesture and refresh; no preview
+rendering logic moves into it. The focused fixture checks the rendered volume
+envelope data after release, which fails on the old build and passes with the
+fix (absolute sum 109546 at CC73 value 99). The change adds seven net lines to
+`NodeCanvas.cpp` (3,360 to 3,367) and no new graph-scale movement work.
+The Live CC73 and MOD wheel UI fixtures still pass, as do 343 focused C++
+assertions in 14 cases. Standalone and test builds, architecture audit, diff
+check, and the UI capture pass; filtered launch logs contain no errors.
 
 ## Live graph preview and first-note automation
 
