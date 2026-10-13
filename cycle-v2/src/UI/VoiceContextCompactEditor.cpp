@@ -79,7 +79,7 @@ void paintSemitoneOffset(
             Rectangle<float>(26.f * zoom, 26.f * zoom).withCentre(origin));
 
     graphics.setColour(kText);
-    graphics.setFont(FontOptions(24.f * zoom).withStyle("Bold"));
+    graphics.setFont(FontOptions(24.f * zoom));
     graphics.drawText(
             (semitones > 0 ? "+" : "") + String(semitones) + " semis",
             Rectangle<float>(origin.x + 22.f * zoom, origin.y - 17.f * zoom,
