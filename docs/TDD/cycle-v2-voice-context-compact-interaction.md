@@ -9,8 +9,8 @@ octave state at every value, and glide only when enabled. Its four input rows us
 stable pictograms matching Modulation, Unison, Pitch, and Scratch. Hovering the
 node or a port reveals readable meaning and current state without filling the
 compact body with prose.
-The octave indicator shows `Oct 0` when unshifted and uses ottava notation:
-8va/8vb and 15ma/15mb for shifted states.
+The octave indicator shows a muted, struck-through `8va` when unshifted and
+uses active ottava notation: 8va/8vb and 15ma/15mb for shifted states.
 
 Clicking the badge on a disconnected input creates the default compatible source,
 sets an envelope's purpose before connection, places it in the connected source
@@ -85,7 +85,7 @@ The focused fixture passed with 14 commands and no failures; its after image
 is `/private/tmp/cycle-v2-voice-context-created.png`.
 
 An additional zero-octave regression showed that hiding the neutral state made
-the octave property disappear. The compact node now shows `Oct 0` at the same
-prominence as shifted ottava labels. A focused image test checks that this
-state paints into the octave row, and the `ooh.cyclegraph` agent fixture
-captures it at whole-graph fit zoom.
+the octave property disappear. The first always-visible `Oct 0` label read as
+a date, so the neutral state now uses a struck-through ottava symbol. A focused
+image test checks that this state paints into the octave row, and the
+`ooh.cyclegraph` agent fixture captures it at whole-graph fit zoom.

@@ -75,7 +75,7 @@ void paintOctave(
         float zoom,
         int octave) {
     const String notation = octave == 0
-            ? "Oct 0"
+            ? "8va"
             : std::abs(octave) == 1
                     ? (octave > 0 ? "8va" : "8vb")
                     : (octave > 0 ? "15ma" : "15mb");
@@ -86,6 +86,12 @@ void paintOctave(
             Rectangle<float>(origin.x, origin.y - 17.f * zoom,
                     92.f * zoom, 34.f * zoom),
             Justification::centredLeft);
+    if (octave == 0) {
+        graphics.drawLine(
+                origin.x, origin.y + 12.f * zoom,
+                origin.x + 52.f * zoom, origin.y - 12.f * zoom,
+                jmax(1.f, 2.f * zoom));
+    }
 }
 
 void paintGlide(Graphics& graphics, Point<float> origin, float zoom) {

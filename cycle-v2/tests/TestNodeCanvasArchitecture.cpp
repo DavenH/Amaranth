@@ -1973,6 +1973,18 @@ TEST_CASE("Voice context shows its zero octave on the compact canvas",
         }
     }
     REQUIRE(visiblePixels > 20);
+
+    Node shiftedVoice = voice;
+    for (NodeParameter& parameter : shiftedVoice.parameters) {
+        if (parameter.id == "octave") {
+            parameter.value = "1";
+        }
+    }
+    Image shifted(Image::ARGB, image.getWidth(), image.getHeight(), true);
+    Graphics shiftedGraphics(shifted);
+    VoiceContextCompactEditor::paintNodeSummary(
+            shiftedGraphics, shiftedVoice.bounds, 1.f, shiftedVoice);
+    REQUIRE(imageChecksum(image) != imageChecksum(shifted));
 }
 
 TEST_CASE("Shared Unison preview does not depend on attachment edge order",
