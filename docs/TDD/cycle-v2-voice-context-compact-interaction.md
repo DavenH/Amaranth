@@ -10,9 +10,14 @@ stable pictograms matching Modulation, Unison, Pitch, and Scratch. Hovering the
 node or a port reveals readable meaning and current state without filling the
 compact body with prose.
 The octave indicator uses a monochrome tuning fork separated from the pitch
-port icon, followed by a signed semitone value, including `0 st` when unshifted.
+port icon, followed by a signed semitone value, including `0 semis` when unshifted.
+Duration and semitone readouts use aligned icon and value columns. The semitone
+label has enough width to show `semis` at normal and whole-graph zoom; glide
+uses the duration row so it does not compete with that label.
 The canvas status line owns hover explanations; no duplicate tooltip appears.
-Empty inputs show a persistent `+`, independent of pointer hover repaint state.
+An eligible empty input shows `+` only while its port is hovered. The badge
+appears with one canvas repaint on hover entry and does not repaint again while
+the pointer stays on that port.
 
 Clicking the badge on a disconnected input creates the default compatible source,
 sets an envelope's purpose before connection, places it in the connected source
@@ -94,19 +99,23 @@ focused image test checks that this state paints into the semitone row.
 
 The follow-up removes the canvas `TooltipClient` text while retaining the
 tooltip host for child controls. `NodeCanvasQueryModel` continues to supply
-the status-line help. The quick-create painter now draws eligible empty input
-badges independent of hover state; changing the hovered badge no longer
-requests a canvas repaint. It reuses the existing pitch SVG through a cached
-monochrome renderer for the semitone cue. The semitone cue starts 42 world units
-inside the summary area, leaving about 55 world units between the two fork
-icons' edges at unit zoom. The compact value represents the octave parameter
-as `octave * 12` semitones; the separate pitch parameter is not included.
+the status-line help. The quick-create painter retains hover-only badge
+drawing. Removing the canvas tooltip removes a duplicate hover surface that
+could interrupt pointer hover. It reuses the existing pitch SVG through a
+cached monochrome renderer for the semitone cue. The cue starts 42 world units
+inside the summary area, aligned with the duration clock and leaving about
+55 world units between the two fork icons' edges at unit zoom. The compact
+value represents the octave parameter as `octave * 12` semitones; the separate
+pitch parameter is not included.
 
 Follow-up verification: the focused C++ tests pass 15 assertions in two
-cases. The Baroque Flute agent fixture passes 17 commands with zero failures;
-it asserts that hovering the quick-create badge requests zero canvas repaints.
+cases. The Baroque Flute agent fixture passes 19 commands with zero failures.
+It checks one canvas repaint on badge entry and no additional repaint for a
+second pointer move on the same port. The whole-graph image shows the complete
+`+12 semis` label, aligned with the duration value.
 The captured hover frame at `/private/tmp/cycle-v2-voice-context-port-hover.png`
-shows status help without a second popup. `NodeCanvas.cpp` decreases from
-3337 to 3333 lines, and `NodeCanvasPresentation.cpp` decreases from 1528 to
-1525. Their responsibilities remain canvas interaction and presentation;
-eligibility and badge geometry remain owned by `VoiceContextInputCreation`.
+shows status help without a second popup. `NodeCanvas.cpp` retains its hover
+transition check, while `NodeCanvasPresentation.cpp` retains the single-target
+badge painter. Their responsibilities remain canvas interaction and
+presentation; eligibility and badge geometry remain owned by
+`VoiceContextInputCreation`.

@@ -707,7 +707,7 @@ void NodeCanvasPresentation::paintContent(
                 performanceObserver,
                 NodeCanvasPresentationStage::Nodes);
         paintCachedNodes(graphics, frame);
-        paintVoiceContextQuickCreateBadges(graphics, frame);
+        paintVoiceContextPortHover(graphics, frame);
         ScopedNodeCanvasPresentationStage spyMeasurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::SpyCanvas);
@@ -1394,42 +1394,45 @@ void NodeCanvasPresentation::paintNode(
     }
 }
 
-void NodeCanvasPresentation::paintVoiceContextQuickCreateBadges(
+void NodeCanvasPresentation::paintVoiceContextPortHover(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    const float zoom = frame.viewport.getZoom();
-    const float rowHeight = NodePortGeometry::sidePortSpacing * zoom;
-    for (const Node& node : frame.graph.getNodes()) {
-        if (node.kind != NodeKind::VoiceContext || !frame.graph.isNodeVisible(node.id)) {
-            continue;
-        }
-        const Rectangle<float> nodeBounds = frame.viewport.toScreen(node.bounds);
-        if (!nodeBounds.intersects(frame.canvasBounds)
-                || frame.canvasOcclusion.contains(nodeBounds)) {
-            continue;
-        }
-        for (const Port& port : node.inputs) {
-            const bool connected = !frame.facts.edgeIndex().edgesToInput(
-                    node.id, port.id).empty();
-            if (!VoiceContextInputCreation::canCreate(
-                    &node, { node.id, port.id, true }, connected)) {
-                continue;
-            }
-            const Point<float> socket = frame.viewport.toScreen(
-                    NodeCanvasScene::portWorldCentre(node, port));
-            const Rectangle<float> badge = VoiceContextInputCreation::badgeBounds(socket, zoom);
-            const Point<float> centre = badge.getCentre();
-            const float diameter = badge.getWidth();
-            const float arm = jmin(3.6f, diameter * 0.25f);
-            const float padding = jmin(2.f, (rowHeight - diameter) * 0.5f);
-            graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.96f));
-            graphics.fillEllipse(badge.expanded(padding));
-            graphics.setColour(CanvasChromePalette::text.withAlpha(0.94f));
-            graphics.drawEllipse(badge, 1.f);
-            graphics.drawLine(centre.x - arm, centre.y, centre.x + arm, centre.y, 1.25f);
-            graphics.drawLine(centre.x, centre.y - arm, centre.x, centre.y + arm, 1.25f);
-        }
+    if (frame.hoverText.isEmpty() || frame.canvasOcclusion.contains(frame.pointer)) {
+        return;
     }
+    const auto target = NodeCanvasHitTester().hitTest(scene.snapshot(), frame.pointer);
+    if (!target.has_value() || target->kind != NodeSceneTargetKind::InputPort) {
+        return;
+    }
+    const Node* node = frame.graph.findNode(target->nodeId);
+    const bool connected = !frame.facts.edgeIndex().edgesToInput(
+            target->nodeId, target->portId).empty();
+    if (!VoiceContextInputCreation::canCreate(
+            node, target->portAddress(), connected)) {
+        return;
+    }
+    const auto port = std::find_if(
+            node->inputs.begin(), node->inputs.end(),
+            [&](const Port& input) { return input.id == target->portId; });
+    if (port == node->inputs.end()) {
+        return;
+    }
+
+    const Point<float> socket = frame.viewport.toScreen(
+            NodeCanvasScene::portWorldCentre(*node, *port));
+    const float rowHeight = NodePortGeometry::sidePortSpacing * frame.viewport.getZoom();
+    const Rectangle<float> badge = VoiceContextInputCreation::badgeBounds(
+            socket, frame.viewport.getZoom());
+    const Point<float> centre = badge.getCentre();
+    const float diameter = badge.getWidth();
+    const float arm = jmin(3.6f, diameter * 0.25f);
+    const float padding = jmin(2.f, (rowHeight - diameter) * 0.5f);
+    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.96f));
+    graphics.fillEllipse(badge.expanded(padding));
+    graphics.setColour(CanvasChromePalette::text.withAlpha(0.94f));
+    graphics.drawEllipse(badge, 1.f);
+    graphics.drawLine(centre.x - arm, centre.y, centre.x + arm, centre.y, 1.25f);
+    graphics.drawLine(centre.x, centre.y - arm, centre.x, centre.y + arm, 1.25f);
 }
 
 NodePortPresentation NodeCanvasPresentation::portPresentation(

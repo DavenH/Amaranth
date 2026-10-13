@@ -19,7 +19,14 @@
       "targetId": "input:voice.unison",
       "expectedCursor": "pointingHand"
     },
-    { "command": "assertState", "path": "canvasRepaintRequestCount", "equals": 0 },
+    { "command": "assertState", "path": "canvasRepaintRequestCount", "equals": 1 },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "input:voice.unison",
+      "expectedCursor": "pointingHand"
+    },
+    { "command": "assertState", "path": "canvasRepaintRequestCount", "equals": 1 },
     {
       "command": "screenshot",
       "area": "canvas",

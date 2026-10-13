@@ -39,9 +39,9 @@ void paintDuration(
         Rectangle<float> summary,
         float zoom,
         const Node& node) {
-    const float iconSize = 21.f * zoom;
+    const float iconSize = 24.f * zoom;
     const Point<float> centre {
-            summary.getX() + iconSize * 0.5f,
+            summary.getX() + 42.f * zoom,
             summary.getY() + 20.f * zoom
     };
     graphics.setColour(kMutedText);
@@ -57,12 +57,12 @@ void paintDuration(
             jmax(1.f, 1.6f * zoom));
 
     graphics.setColour(kText);
-    graphics.setFont(FontOptions(22.f * zoom));
+    graphics.setFont(FontOptions(24.f * zoom));
     graphics.drawText(
             formatPropertyReal(jmax(0.0, voiceDurationSeconds(node))) + "s",
-            Rectangle<float>(summary.getX() + 30.f * zoom,
+            Rectangle<float>(summary.getX() + 64.f * zoom,
                     summary.getY() + 1.f * zoom,
-                    summary.getWidth() - 30.f * zoom,
+                    summary.getWidth() - 64.f * zoom,
                     39.f * zoom),
             Justification::centredLeft);
 }
@@ -79,11 +79,11 @@ void paintSemitoneOffset(
             Rectangle<float>(26.f * zoom, 26.f * zoom).withCentre(origin));
 
     graphics.setColour(kText);
-    graphics.setFont(FontOptions(25.f * zoom).withStyle("Bold"));
+    graphics.setFont(FontOptions(24.f * zoom).withStyle("Bold"));
     graphics.drawText(
-            (semitones > 0 ? "+" : "") + String(semitones) + " st",
-            Rectangle<float>(origin.x + 21.f * zoom, origin.y - 17.f * zoom,
-                    95.f * zoom, 34.f * zoom),
+            (semitones > 0 ? "+" : "") + String(semitones) + " semis",
+            Rectangle<float>(origin.x + 22.f * zoom, origin.y - 17.f * zoom,
+                    140.f * zoom, 34.f * zoom),
             Justification::centredLeft);
 }
 
@@ -149,8 +149,9 @@ void VoiceContextCompactEditor::paintNodeSummary(
             { summary.getX() + 42.f * zoom, detailY }, zoom, octave);
 
     if (portamentoEnabled(node)) {
-        const float glideX = summary.getX() + 165.f * zoom;
-        paintGlide(graphics, { glideX, detailY }, zoom);
+        paintGlide(graphics,
+                { summary.getX() + 165.f * zoom,
+                        summary.getY() + 20.f * zoom }, zoom);
     }
 }
 

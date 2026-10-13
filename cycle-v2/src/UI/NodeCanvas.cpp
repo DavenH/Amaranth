@@ -452,6 +452,7 @@ void NodeCanvas::mouseExit(const MouseEvent&) {
     const bool canvasChanged = guideShelfState.hoveredGuideId.isNotEmpty()
             || probeCanvasState.hoveredProbeId.isNotEmpty()
             || hoveredEdgeIndex >= 0
+            || hoveredQuickCreatePortId.isNotEmpty()
             || paletteChanged;
     const bool statusChanged = resolvedHoverText.isNotEmpty();
     pointerInsideCanvas = false;
@@ -475,6 +476,7 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
     const String previousGuideId = guideShelfState.hoveredGuideId;
     const String previousProbeId = probeCanvasState.hoveredProbeId;
     const int previousHoveredEdgeIndex = hoveredEdgeIndex;
+    const String previousQuickCreatePortId = hoveredQuickCreatePortId;
     const String previousHoverText = resolvedHoverText;
     const bool occluded = expandedEditorBoundsForOverlay().contains(position);
     pointerInsideCanvas = true;
@@ -490,6 +492,7 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
         const bool canvasChanged = paletteChanged
                 || previousGuideId.isNotEmpty()
                 || previousProbeId.isNotEmpty()
+                || previousQuickCreatePortId.isNotEmpty()
                 || previousHoveredEdgeIndex >= 0;
         const bool statusChanged = previousHoverText.isNotEmpty();
         const HoverRepaint repaint = hoverRepaintFor(canvasChanged, statusChanged);
@@ -570,6 +573,7 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
             || previousPaletteEntry != palette.activeEntry()
             || previousGuideId != guideShelfState.hoveredGuideId
             || previousProbeId != probeCanvasState.hoveredProbeId
+            || previousQuickCreatePortId != hoveredQuickCreatePortId
             || previousHoveredEdgeIndex != hoveredEdgeIndex;
     const bool statusChanged = previousHoverText != resolvedHoverText;
     const HoverRepaint repaint = hoverRepaintFor(canvasChanged, statusChanged);
