@@ -238,7 +238,7 @@ String NodeCanvasQueryModel::hoverTextForNode(const Node& node) const {
     if (node.kind == NodeKind::VoiceContext) {
         return "Voice Context: " + VoiceContextCompactEditor::summaryLabel(node)
                 + ". Inputs from top: modulation, unison, pitch, scratch."
-                + " Double-click an empty input to create its source.";
+                + " Click + on an empty input to create its source.";
     }
     const auto* definition = NodeDefinitionRegistry::instance().find(node.kind);
     if (definition != nullptr && definition->helpText.isNotEmpty()) {

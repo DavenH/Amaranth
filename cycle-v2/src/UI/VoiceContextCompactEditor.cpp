@@ -1,5 +1,3 @@
-#include <cstdlib>
-
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
 #include "UI/Editors/PropertyControls.h"
@@ -69,29 +67,24 @@ void paintDuration(
             Justification::centredLeft);
 }
 
-void paintOctave(
+void paintSemitoneOffset(
         Graphics& graphics,
         Point<float> origin,
         float zoom,
         int octave) {
-    const String notation = octave == 0
-            ? "8va"
-            : std::abs(octave) == 1
-                    ? (octave > 0 ? "8va" : "8vb")
-                    : (octave > 0 ? "15ma" : "15mb");
-    graphics.setColour(octave == 0 ? kMutedText : kBlue);
-    graphics.setFont(FontOptions(27.f * zoom).withStyle("Bold"));
+    const int semitones = octave * 12;
+    EnvelopePurposeIconRenderer::paintMonochrome(
+            graphics,
+            EnvelopePurpose::Pitch,
+            Rectangle<float>(26.f * zoom, 26.f * zoom).withCentre(origin));
+
+    graphics.setColour(kText);
+    graphics.setFont(FontOptions(25.f * zoom).withStyle("Bold"));
     graphics.drawText(
-            notation,
-            Rectangle<float>(origin.x, origin.y - 17.f * zoom,
-                    92.f * zoom, 34.f * zoom),
+            (semitones > 0 ? "+" : "") + String(semitones) + " st",
+            Rectangle<float>(origin.x + 21.f * zoom, origin.y - 17.f * zoom,
+                    95.f * zoom, 34.f * zoom),
             Justification::centredLeft);
-    if (octave == 0) {
-        graphics.drawLine(
-                origin.x, origin.y + 12.f * zoom,
-                origin.x + 52.f * zoom, origin.y - 12.f * zoom,
-                jmax(1.f, 2.f * zoom));
-    }
 }
 
 void paintGlide(Graphics& graphics, Point<float> origin, float zoom) {
@@ -132,8 +125,10 @@ Rectangle<float> VoiceContextCompactEditor::portIconBounds(
 }
 
 String VoiceContextCompactEditor::summaryLabel(const Node& node) {
-    const String octave = parameterValueForNode(node, "octave", "0");
-    String summary = "Octave " + octave + "  ·  " + durationText(voiceDurationSeconds(node));
+    const int octave = parameterValueForNode(node, "octave", "0").getIntValue();
+    const int semitones = octave * 12;
+    String summary = "Octave offset " + String(semitones)
+            + " semitones  ·  " + durationText(voiceDurationSeconds(node));
     if (portamentoEnabled(node)) {
         summary += "  ·  Glide";
     }
@@ -150,10 +145,11 @@ void VoiceContextCompactEditor::paintNodeSummary(
 
     const int octave = parameterValueForNode(node, "octave", "0").getIntValue();
     const float detailY = summary.getY() + 55.f * zoom;
-    paintOctave(graphics, { summary.getX() + 4.f * zoom, detailY }, zoom, octave);
+    paintSemitoneOffset(graphics,
+            { summary.getX() + 42.f * zoom, detailY }, zoom, octave);
 
     if (portamentoEnabled(node)) {
-        const float glideX = summary.getX() + 102.f * zoom;
+        const float glideX = summary.getX() + 165.f * zoom;
         paintGlide(graphics, { glideX, detailY }, zoom);
     }
 }

@@ -45,7 +45,6 @@ enum class TransformMode;
 
 class NodeCanvas :
         public Component
-    ,   public TooltipClient
     ,   private OpenGLRenderer
     ,   private Timer
     ,   private NodeEditorPresentation
@@ -176,7 +175,6 @@ public:
     void mouseUp(const MouseEvent& event) override;
     void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override;
     void mouseMagnify(const MouseEvent& event, float scaleFactor) override;
-    String getTooltip() override { return resolvedHoverText; }
     void modifierKeysChanged(const ModifierKeys& modifiers) override;
     bool keyPressed(const KeyPress& key) override;
 

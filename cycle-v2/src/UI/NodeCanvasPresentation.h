@@ -118,7 +118,7 @@ private:
     void paintSnapGuides(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintAreaSelection(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintCachedNodes(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
-    void paintVoiceContextPortHover(
+    static void paintVoiceContextQuickCreateBadges(
             Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintInlinePanGesture(
             Graphics& graphics,

@@ -1921,7 +1921,7 @@ TEST_CASE("Voice context compact presentation aligns pictograms with ports",
     Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
 
     REQUIRE(VoiceContextCompactEditor::summaryLabel(voice)
-            == "Octave 0  ·  1 second");
+            == "Octave offset 0 semitones  ·  1 second");
 
     voice.parameters = {
             { "octave", "Octave", "1" },
@@ -1931,7 +1931,7 @@ TEST_CASE("Voice context compact presentation aligns pictograms with ports",
             { "oversampling", "Oversampling", "4x" }
     };
     REQUIRE(VoiceContextCompactEditor::summaryLabel(voice)
-            == "Octave 1  ·  1 second  ·  Glide");
+            == "Octave offset 12 semitones  ·  1 second  ·  Glide");
 
     const Rectangle<float> scratch = VoiceContextCompactEditor::portIconBounds(
             voice.bounds, 1.f, 3);
@@ -1950,7 +1950,7 @@ TEST_CASE("Voice context compact presentation aligns pictograms with ports",
     }
 }
 
-TEST_CASE("Voice context shows its zero octave on the compact canvas",
+TEST_CASE("Voice context shows its semitone offset on the compact canvas",
         "[cycle-v2][canvas][compact-editor][regression]") {
     ScopedJuceInitialiser_GUI gui;
     const Node voice = GraphNodeFactory().createNode(
@@ -1965,7 +1965,7 @@ TEST_CASE("Voice context shows its zero octave on the compact canvas",
     const Rectangle<float> summary = VoiceContextCompactEditor::summaryBounds(
             voice.bounds, 1.f);
     const Rectangle<int> octaveArea(
-            (int) summary.getX(), (int) summary.getY() + 43, 72, 33);
+            (int) summary.getX() + 28, (int) summary.getY() + 43, 118, 33);
     int visiblePixels = 0;
     for (int y = octaveArea.getY(); y < octaveArea.getBottom(); ++y) {
         for (int x = octaveArea.getX(); x < octaveArea.getRight(); ++x) {
