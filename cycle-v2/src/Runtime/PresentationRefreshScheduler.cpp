@@ -23,7 +23,7 @@ CausalUpdateRequest PresentationRefreshScheduler::request(
             documentRevision,
             change,
             context.previewMidiNote,
-            context.previewModWheelValue);
+            context.previewControllerValues);
     const EditPhase phase = documentRevision > context.publishedGraphRevision
             ? EditPhase::Commit
             : EditPhase::Movement;

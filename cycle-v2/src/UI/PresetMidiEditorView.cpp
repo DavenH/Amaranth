@@ -32,7 +32,9 @@ Rectangle<float> PresetMidiEditor::miniMap() const {
 
 Rectangle<float> PresetMidiEditor::noteGrid() const {
     constexpr float top = 112.f;
-    constexpr float reservedBelow = 25.f + 96.f + 70.f + 36.f;
+    const float reservedBelow = 25.f + 70.f + 36.f
+            + 96.f * (float) controllers.size()
+            + 8.f * (float) (controllers.size() - 1);
     return { 62.f, top, (float) getWidth() - 80.f,
             jmax(180.f, (float) getHeight() - top - reservedBelow) };
 }
@@ -43,7 +45,16 @@ Rectangle<float> PresetMidiEditor::velocityGrid() const {
 }
 
 Rectangle<float> PresetMidiEditor::controlGrid() const {
-    return { noteGrid().getX(), velocityGrid().getBottom() + 18.f,
+    return controlGrid(controllers.front());
+}
+
+Rectangle<float> PresetMidiEditor::controlGrid(int controller) const {
+    const auto lane = std::find(controllers.begin(), controllers.end(), controller);
+    if (lane == controllers.end()) {
+        return {};
+    }
+    const float offset = 104.f * (float) std::distance(controllers.begin(), lane);
+    return { noteGrid().getX(), velocityGrid().getBottom() + 18.f + offset,
             noteGrid().getWidth(), 96.f };
 }
 
@@ -96,16 +107,6 @@ float PresetMidiEditor::xForTime(double time) const {
 
 Range<int> PresetMidiEditor::overviewPitches() const {
     return MidiPatternMiniMap::pitchRange(sequence, 48, 12);
-}
-
-int PresetMidiEditor::controllerLane() const {
-    if (sequence.controls.empty()) {
-        return 1;
-    }
-    const auto modWheel = std::find_if(sequence.controls.begin(), sequence.controls.end(),
-            [](const PresetMidiControl& control) { return control.controller == 1; });
-    return modWheel != sequence.controls.end()
-            ? 1 : sequence.controls.front().controller;
 }
 
 void PresetMidiEditor::paint(Graphics& graphics) {
@@ -165,7 +166,7 @@ void PresetMidiEditor::paintMiniMap(Graphics& graphics) const {
     MidiPatternMiniMap::paintNotes(graphics, sequence,
             map.withTrimmedBottom(9.f), pitches);
     MidiPatternMiniMap::paintControls(graphics, sequence,
-            map.withTrimmedTop(map.getHeight() - 9.f));
+            map.withTrimmedTop(map.getHeight() - 9.f), controllers.front());
     const float left = map.getX() + map.getWidth()
             * (float) (timeOffset() / sequence.durationSeconds);
     const float width = map.getWidth()
@@ -263,7 +264,8 @@ void PresetMidiEditor::paintVelocity(Graphics& graphics) const {
     graphics.drawText("VEL", 5, roundToInt(grid.getY()), 35, 19,
             Justification::centredRight);
     for (int value : { 32, 64, 96 }) {
-        const float y = grid.getBottom() - grid.getHeight() * value / 127.f;
+        const float y = grid.getBottom() - grid.getHeight()
+                * static_cast<float>(value) / 127.f;
         graphics.setColour(Colours::white.withAlpha(value == 64 ? 0.16f : 0.08f));
         graphics.drawHorizontalLine(roundToInt(y), grid.getX(), grid.getRight());
     }
@@ -286,23 +288,29 @@ void PresetMidiEditor::paintVelocity(Graphics& graphics) const {
 }
 
 void PresetMidiEditor::paintModulation(Graphics& graphics) const {
-    const auto grid = controlGrid();
-    const int lane = controllerLane();
+    for (const int controller : controllers) {
+        paintModulationLane(graphics, controller);
+    }
+}
+
+void PresetMidiEditor::paintModulationLane(Graphics& graphics, int controller) const {
+    const auto grid = controlGrid(controller);
     graphics.setColour(CanvasChromePalette::raisedSurface);
     graphics.fillRect(grid);
     graphics.setColour(CanvasChromePalette::mutedText);
     graphics.setFont(FontOptions(10.f, Font::bold));
-    graphics.drawText(lane == 1 ? "MOD" : "CC" + String(lane),
-            3, roundToInt(grid.getY()), 38, 18,
+    graphics.drawText(controller == 1 ? "MOD" : "CC " + String(controller),
+            2, roundToInt(grid.getY()) + 5, 56, 20,
             Justification::centredRight);
     for (int value : { 0, 32, 64, 96, 127 }) {
-        const float y = grid.getBottom() - grid.getHeight() * value / 127.f;
+        const float y = grid.getBottom() - grid.getHeight()
+                * static_cast<float>(value) / 127.f;
         graphics.setColour(Colours::white.withAlpha(value == 64 ? 0.18f : 0.08f));
         graphics.drawHorizontalLine(roundToInt(y), grid.getX(), grid.getRight());
     }
     std::vector<size_t> points;
     for (size_t index = 0; index < sequence.controls.size(); ++index) {
-        if (sequence.controls[index].controller == lane) {
+        if (sequence.controls[index].controller == controller) {
             points.push_back(index);
         }
     }
@@ -318,7 +326,7 @@ void PresetMidiEditor::paintModulation(Graphics& graphics) const {
         const auto& control = sequence.controls[points[position]];
         const float x = xForTime(control.timeSeconds);
         const float y = grid.getBottom() - grid.getHeight()
-                * control.value / 127.f;
+                * static_cast<float>(control.value) / 127.f;
         if (position == 0) {
             line.startNewSubPath(x, y);
         } else {
@@ -341,7 +349,7 @@ void PresetMidiEditor::paintModulation(Graphics& graphics) const {
         const auto& control = sequence.controls[index];
         const float x = xForTime(control.timeSeconds);
         const float y = grid.getBottom() - grid.getHeight()
-                * control.value / 127.f;
+                * static_cast<float>(control.value) / 127.f;
         graphics.setColour((int) index == selectedControl
                 ? Colours::white : CanvasChromePalette::patternAutomation);
         graphics.fillEllipse(x - 4.f, y - 4.f, 8.f, 8.f);
@@ -362,7 +370,7 @@ void PresetMidiEditor::paintPlaybackCursor(Graphics& graphics) const {
     if (x >= noteGrid().getX() && x <= noteGrid().getRight()) {
         graphics.setColour(CanvasChromePalette::navigationAccent.withAlpha(0.92f));
         graphics.drawVerticalLine(roundToInt(x),
-                noteGrid().getY(), controlGrid().getBottom());
+                noteGrid().getY(), controlGrid(controllers.back()).getBottom());
         Path marker;
         marker.addTriangle(x - 5.f, 108.f, x + 5.f, 108.f, x, 113.f);
         graphics.fillPath(marker);

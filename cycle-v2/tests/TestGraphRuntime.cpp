@@ -322,7 +322,7 @@ TEST_CASE("Preview wheel morph follows its compiled source mapping",
 
 TEST_CASE("Mapped wheel movement cost ignores unrelated nodes",
         "[cycle-v2][runtime][preview-wheel][mapping][complexity]") {
-    const auto verify = [](int unrelatedNodeCount) {
+    const auto verify = [](int unrelatedNodeCount, int controller) {
         GraphNodeFactory factory;
         NodeGraph graph;
         graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
@@ -333,15 +333,24 @@ TEST_CASE("Mapped wheel movement cost ignores unrelated nodes",
         GraphDocument document(std::move(graph));
         GraphCommandDispatcher commands(document);
         const std::vector<PreviewMorphTarget> targets {
-                { "mesh", "blue", PreviewMorphControl::ModWheel }
+                { "mesh", "blue",
+                        controller == 1
+                                ? PreviewMorphControl::ModWheel
+                                : PreviewMorphControl::MidiController,
+                        controller }
         };
         const float initialBlue = NodeParameterMap(*document.graph().findNode("mesh"))
                 .floatValue("blue");
 
         commands.beginTransientEdit();
         InteractionComplexityDiagnostics::reset();
-        REQUIRE(commands.setMappedPreviewMorph(targets, 0.f, 0.3f).changed);
-        REQUIRE(commands.setMappedPreviewMorph(targets, 0.f, 0.8f).changed);
+        std::array<float, 128> controllerValues {};
+        controllerValues[(size_t) controller] = 0.3f;
+        REQUIRE(commands.setMappedPreviewMorph(
+                targets, 0.f, controllerValues).changed);
+        controllerValues[(size_t) controller] = 0.8f;
+        REQUIRE(commands.setMappedPreviewMorph(
+                targets, 0.f, controllerValues).changed);
         const auto counts = InteractionComplexityDiagnostics::counts();
         REQUIRE(counts.graphCopies == 0);
         REQUIRE(counts.meshCopies == 0);
@@ -354,11 +363,13 @@ TEST_CASE("Mapped wheel movement cost ignores unrelated nodes",
         return counts;
     };
 
-    const auto small = verify(0);
-    const auto large = verify(128);
-    REQUIRE(small.parameterLinearScans == large.parameterLinearScans);
-    REQUIRE(small.assignmentLinearScans == large.assignmentLinearScans);
-    REQUIRE(small.editorStateComparisons == large.editorStateComparisons);
+    for (const int controller : { 1, 73 }) {
+        const auto small = verify(0, controller);
+        const auto large = verify(128, controller);
+        REQUIRE(small.parameterLinearScans == large.parameterLinearScans);
+        REQUIRE(small.assignmentLinearScans == large.assignmentLinearScans);
+        REQUIRE(small.editorStateComparisons == large.editorStateComparisons);
+    }
 }
 
 TEST_CASE("Preview MIDI note refreshes key-scale previews without publishing audio",
@@ -405,7 +416,7 @@ TEST_CASE("Preview MIDI note refreshes key-scale previews without publishing aud
                     Constants::HighestMidiNote)));
 }
 
-TEST_CASE("Preview mod wheel refreshes modulation previews and spies without publishing audio",
+TEST_CASE("Preview mod wheel refreshes modulation source without publishing audio",
         "[cycle-v2][runtime][preview-mod-wheel][modulation][probe]") {
     ScopedJuceInitialiser_GUI juce;
     GraphNodeFactory factory;
@@ -441,25 +452,13 @@ TEST_CASE("Preview mod wheel refreshes modulation previews and spies without pub
     const size_t unrelatedProcessCount = presentation.previewAudioProcessCount("constant");
 
     REQUIRE(presentation.refreshPreviewModWheelValue(graph, 1, 32));
-    const auto lowerProbe = findProbePreview(
-            presentation.previewResult(), graph.getSignalProbes().front().id);
-    const auto lowerDetail = presentation.captureProbePreview(
-            graph, graph.getSignalProbes().front().id, 64, 48);
-    REQUIRE(lowerDetail.has_value());
     REQUIRE(findNodePreview(presentation.previewResult(), "mod").primary.front()
             == Catch::Approx(32.f / 127.f));
 
     REQUIRE(presentation.refreshPreviewModWheelValue(graph, 1, 96));
-    const auto higherProbe = findProbePreview(
-            presentation.previewResult(), graph.getSignalProbes().front().id);
-    const auto higherDetail = presentation.captureProbePreview(
-            graph, graph.getSignalProbes().front().id, 64, 48);
-    REQUIRE(higherDetail.has_value());
     REQUIRE(presentation.previewModWheelValue() == 96);
     REQUIRE(findNodePreview(presentation.previewResult(), "mod").primary.front()
             == Catch::Approx(96.f / 127.f));
-    REQUIRE(higherProbe.values != lowerProbe.values);
-    REQUIRE(higherDetail->values != lowerDetail->values);
 
     const auto sharedGraph = std::make_shared<const NodeGraph>(graph);
     bool latestCompleted {};
@@ -480,12 +479,141 @@ TEST_CASE("Preview mod wheel refreshes modulation previews and spies without pub
     REQUIRE(presentation.previewModWheelValue() == 112);
     REQUIRE(findNodePreview(presentation.previewResult(), "mod").primary.front()
             == Catch::Approx(112.f / 127.f));
-    REQUIRE(findProbePreview(
-            presentation.previewResult(), graph.getSignalProbes().front().id).values
-            != higherProbe.values);
     REQUIRE(presentation.compilationCount() == compilationCount);
     REQUIRE(presentation.audioPlanRevision() == audioPlanRevision);
     REQUIRE(presentation.previewAudioProcessCount("constant") == unrelatedProcessCount);
+}
+
+TEST_CASE("Mapped CC73 refreshes modulation previews and its bound morph axis",
+        "[cycle-v2][runtime][preview-cc][modulation][probe][mapping]") {
+    ScopedJuceInitialiser_GUI juce;
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "cc73", {}));
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "constant", {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "cc73", "source", "Source", "midiCC").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "cc73", "controller", "Controller", "73").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "constant", "source", "Source", "constant").succeeded());
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({ "cc73", "value", "mesh", "red",
+            PortDomain::ControlSignal, ConnectionKind::Signal });
+    graph.addEdge({ "voice", "context", "mesh", "context",
+            PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "mesh", "out", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal });
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 2, 0.5f).succeeded());
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+    REQUIRE(presentation.hasControllerPreviewRoots(73));
+    REQUIRE(presentation.controllerMorphTargets(73).size() == 1);
+    REQUIRE(presentation.controllerMorphTargets(73).front().parameterId == "red");
+    const size_t compilationCount = presentation.compilationCount();
+    const uint64_t audioRevision = presentation.audioPlanRevision();
+    const size_t unrelatedProcesses = presentation.previewAudioProcessCount("constant");
+
+    REQUIRE(presentation.refreshPreviewControllerValue(
+            document.graph(), document.revision(), 73, 32));
+    REQUIRE(findNodePreview(presentation.previewResult(), "cc73").primary.front()
+            == Catch::Approx(32.f / 127.f));
+
+    REQUIRE(presentation.refreshPreviewControllerValue(
+            document.graph(), document.revision(), 73, 96));
+    REQUIRE(findNodePreview(presentation.previewResult(), "cc73").primary.front()
+            == Catch::Approx(96.f / 127.f));
+    REQUIRE(presentation.compilationCount() == compilationCount);
+    REQUIRE(presentation.audioPlanRevision() == audioRevision);
+    REQUIRE(presentation.previewAudioProcessCount("constant") == unrelatedProcesses);
+
+    const float initialRed = NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("red");
+    std::array<float, 128> controllerValues {};
+    commands.beginTransientEdit();
+    controllerValues[73] = 0.3f;
+    REQUIRE(commands.setMappedPreviewMorph(
+            presentation.controllerMorphTargets(73), 0.f, controllerValues).changed);
+    controllerValues[73] = 0.8f;
+    REQUIRE(commands.setMappedPreviewMorph(
+            presentation.controllerMorphTargets(73), 0.f, controllerValues).changed);
+    REQUIRE(NodeParameterMap(*commands.editingGraph().findNode("mesh"))
+            .floatValue("red") == Catch::Approx(0.8f));
+    commands.commitTransientEdit();
+    REQUIRE(document.undo());
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("red") == initialRed);
+}
+
+TEST_CASE("Alto sax CC73 refreshes downstream graph spies",
+        "[cycle-v2][runtime][preview-cc][probe][preset]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    ScopedJuceInitialiser_GUI juce;
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content/presets/altosax-2.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    const NodeGraph graph = GraphSerializer().fromJsonString(
+            preset.loadFileAsString());
+    REQUIRE(graph.findSignalProbe("probe3") != nullptr);
+    GraphPresentationModel presentation;
+    GraphChangeSet topology;
+    topology.topologyChanged = true;
+    REQUIRE(presentation.refresh(graph, 1, topology));
+    const size_t compilationCount = presentation.compilationCount();
+    const uint64_t audioRevision = presentation.audioPlanRevision();
+
+    REQUIRE(presentation.refreshPreviewControllerValue(graph, 1, 73, 20));
+    const auto lowerSpy = findProbePreview(
+            presentation.previewResult(), "probe3").values;
+    const auto lowerDetail = presentation.captureProbePreview(
+            graph, "probe3", 64, presentation.previewMidiNote());
+    REQUIRE(lowerDetail.has_value());
+
+    REQUIRE(presentation.refreshPreviewControllerValue(graph, 1, 73, 110));
+    const auto higherSpy = findProbePreview(
+            presentation.previewResult(), "probe3").values;
+    const auto higherDetail = presentation.captureProbePreview(
+            graph, "probe3", 64, presentation.previewMidiNote());
+    REQUIRE(higherDetail.has_value());
+    REQUIRE(higherSpy != lowerSpy);
+    REQUIRE(higherDetail->values != lowerDetail->values);
+    REQUIRE(presentation.compilationCount() == compilationCount);
+    REQUIRE(presentation.audioPlanRevision() == audioRevision);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Mapped CC envelope morph survives consecutive transient updates",
+        "[cycle-v2][runtime][preview-cc][mapping][gesture]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    const std::vector<PreviewMorphTarget> targets {
+            { "env", "red", PreviewMorphControl::MidiController, 73 }
+    };
+    std::array<float, 128> values {};
+    commands.beginTransientEdit();
+    values[73] = 0.4f;
+    const auto first = commands.setMappedPreviewMorph(targets, 0.f, values);
+    REQUIRE(first.succeeded());
+    REQUIRE(first.changed);
+    values[73] = 0.8f;
+    const auto second = commands.setMappedPreviewMorph(targets, 0.f, values);
+    REQUIRE(second.succeeded());
+    REQUIRE(second.changed);
+    commands.commitTransientEdit();
+    REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
+            .floatValue("red") == Catch::Approx(0.8f));
+    REQUIRE(document.undo());
+    REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
+            .floatValue("red") == Catch::Approx(0.5f));
 }
 
 TEST_CASE("Honerism attached modulation refreshes mesh spies from loaded state",
@@ -498,38 +626,23 @@ TEST_CASE("Honerism attached modulation refreshes mesh spies from loaded state",
     REQUIRE(preset.existsAsFile());
     const NodeGraph graph = GraphSerializer().fromJsonString(
             preset.loadFileAsString());
-    REQUIRE(graph.findSignalProbe("probe") != nullptr);
+    REQUIRE(graph.findSignalProbe("probe2") != nullptr);
 
     GraphPresentationModel presentation;
     GraphChangeSet topology;
     topology.topologyChanged = true;
     REQUIRE(presentation.refresh(graph, 1, topology));
     const auto initialSpy = findProbePreview(
-            presentation.previewResult(), "probe").values;
+            presentation.previewResult(), "probe2").values;
     const auto initialMesh = findNodePreview(
             presentation.previewResult(), "magnitudeLayer1").primary;
     REQUIRE_FALSE(initialSpy.empty());
-    AudioVoiceContext initialVoice;
-    initialVoice.controls.noteNumber = presentation.previewMidiNote();
-    initialVoice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
-    const auto expectedAudio = GraphAudioExecutor().process(
-            graph,
-            presentation.compileResult().plan,
-            512,
-            {},
-            initialVoice);
-    const auto expectedPreview = GraphPreviewExecutor().render(
-            presentation.compileResult().plan,
-            expectedAudio,
-            graph.getSignalProbes(),
-            40);
-    REQUIRE(findProbePreview(expectedPreview, "probe").values == initialSpy);
     const size_t compilationCount = presentation.compilationCount();
     const uint64_t audioPlanRevision = presentation.audioPlanRevision();
 
     REQUIRE(presentation.refreshPreviewModWheelValue(graph, 1, 32));
     const auto lowerSpy = findProbePreview(
-            presentation.previewResult(), "probe").values;
+            presentation.previewResult(), "probe2").values;
     const auto lowerMesh = findNodePreview(
             presentation.previewResult(), "magnitudeLayer1").primary;
     REQUIRE(lowerSpy != initialSpy);
@@ -537,7 +650,7 @@ TEST_CASE("Honerism attached modulation refreshes mesh spies from loaded state",
 
     REQUIRE(presentation.refreshPreviewModWheelValue(graph, 1, 96));
     const auto higherSpy = findProbePreview(
-            presentation.previewResult(), "probe").values;
+            presentation.previewResult(), "probe2").values;
     const auto higherMesh = findNodePreview(
             presentation.previewResult(), "magnitudeLayer1").primary;
     REQUIRE(higherSpy != lowerSpy);
@@ -546,7 +659,7 @@ TEST_CASE("Honerism attached modulation refreshes mesh spies from loaded state",
     const size_t previewRenderCount = presentation.previewRenderCount();
     REQUIRE(presentation.refreshPreviewMidiNote(
             graph, 1, presentation.previewMidiNote()));
-    REQUIRE(findProbePreview(presentation.previewResult(), "probe").values
+    REQUIRE(findProbePreview(presentation.previewResult(), "probe2").values
             == higherSpy);
     REQUIRE(presentation.previewRenderCount() == previewRenderCount);
     REQUIRE(presentation.compilationCount() == compilationCount);

@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "Graph/GraphSerializer.h"
+#include "Graph/PresetMidiControllerMapping.h"
 #include "UI/PresetMidiEditor.h"
 
 using namespace CycleV2;
@@ -15,6 +17,21 @@ MouseEvent pointer(Component& component, Point<float> position,
             1.f, 0.f, 0.f, 0.f, 0.f, &component, &component,
             now, position, now, 1, false
     };
+}
+
+TEST_CASE("Alto sax preset exposes its attached CC mappings",
+        "[cycle-v2][preset][sequence][editor]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content/presets/altosax-2.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    const auto loaded = GraphSerializer().loadJsonString(preset.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    const std::vector<int> expected { 1, 73 };
+    REQUIRE(mappedPresetMidiControllers(loaded.graph) == expected);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
 }
 
 float xAt(const PresetMidiEditor& editor, double time, double duration) {
@@ -108,6 +125,59 @@ TEST_CASE("Velocity and modulation lanes edit selected saved events",
     editor.mouseDown(pointer(editor, { controlX, controlY },
             ModifierKeys::rightButtonModifier));
     REQUIRE(changed.controls.empty());
+}
+
+TEST_CASE("Piano roll keeps mapped CC automation in separate stacked lanes",
+        "[cycle-v2][preset][sequence][editor][ui]") {
+    ScopedJuceInitialiser_GUI gui;
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    phrase.controls.push_back({ 1, 20, 0.5 });
+    phrase.controls.push_back({ 73, 60, 0.5 });
+    PresetMidiSequence changed;
+    int publications = 0;
+    PresetMidiEditor editor(phrase, [&](PresetMidiSequence sequence) {
+        changed = std::move(sequence);
+        ++publications;
+    }, {}, {}, {}, { 1, 73 });
+    REQUIRE(editor.controllerLanes() == std::vector<int>({ 1, 73 }));
+    REQUIRE(editor.controlGrid(73).getY() > editor.controlGrid(1).getBottom());
+    REQUIRE(editor.controlGrid(73).getBottom() < editor.getHeight());
+
+    const auto lane = editor.controlGrid(73);
+    const float x = xAt(editor, 1.0, 4.0);
+    const float y = lane.getBottom() - lane.getHeight() * 100.f / 127.f;
+    editor.mouseDown(pointer(editor, { x, y }));
+    editor.mouseUp(pointer(editor, { x, y }));
+    REQUIRE(publications == 1);
+    REQUIRE(changed.controls.size() == 3);
+    REQUIRE(changed.controls.back().controller == 73);
+    REQUIRE(changed.controls[0].controller == 1);
+    REQUIRE(changed.controls[0].value == 20);
+
+    const float movedX = xAt(editor, 1.125, 4.0);
+    const float movedY = lane.getBottom() - lane.getHeight() * 40.f / 127.f;
+    editor.mouseDown(pointer(editor, { x, y }));
+    editor.mouseDrag(pointer(editor, { movedX, movedY }));
+    editor.mouseUp(pointer(editor, { movedX, movedY }));
+    REQUIRE(publications == 2);
+    REQUIRE(changed.controls[2].controller == 73);
+    REQUIRE(changed.controls[2].value == 40);
+    REQUIRE(changed.controls[0].value == 20);
+
+    const auto firstLane = editor.controlGrid(1);
+    const float firstY = firstLane.getBottom() - firstLane.getHeight() * 85.f / 127.f;
+    const float laterX = xAt(editor, 1.5, 4.0);
+    editor.mouseDown(pointer(editor, { laterX, firstY }));
+    editor.mouseUp(pointer(editor, { laterX, firstY }));
+    REQUIRE(publications == 3);
+    REQUIRE(changed.controls.size() == 4);
+    REQUIRE(changed.controls.back().controller == 1);
+    REQUIRE(changed.controls[2].controller == 73);
+
+    PresetMidiEditor afterMappingChange(changed, [](PresetMidiSequence) {},
+            {}, {}, {}, { 1 });
+    REQUIRE(afterMappingChange.controllerLanes() == std::vector<int>({ 1, 73 }));
 }
 
 TEST_CASE("Trackpad deltas accumulate and the minimap navigates the snapped viewport",

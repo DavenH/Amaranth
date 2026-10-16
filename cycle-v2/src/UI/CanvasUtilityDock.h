@@ -23,7 +23,8 @@ public:
     static constexpr float preferredLegendWidth = 390.f;
     static constexpr float preferredLegendHeight = 30.f;
 
-    static CanvasUtilityDockLayout layout(juce::Rectangle<float> contentBounds);
+    static CanvasUtilityDockLayout layout(
+            juce::Rectangle<float> contentBounds, int extraControllerCount = 0);
     static void paintSurface(
             juce::Graphics& graphics,
             juce::Rectangle<float> bounds);

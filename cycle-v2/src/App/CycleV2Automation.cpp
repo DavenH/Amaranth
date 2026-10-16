@@ -1,5 +1,6 @@
 #include <optional>
 #include <utility>
+#include <vector>
 
 #include <UI/Panels/TimeSurfaceStyles.h>
 
@@ -77,6 +78,21 @@ bool checkAudioThresholds(const var& command, const var& metrics, String& messag
             && checkMetricThreshold(command, metrics, "peakLessThan", "peak", "lessThan", message)
             && checkMetricThreshold(command, metrics, "rmsGreaterThan", "rms", "greaterThan", message)
             && checkMetricThreshold(command, metrics, "rmsLessThan", "rms", "lessThan", message);
+}
+
+Component* findNamedComponent(Component& root, const String& name) {
+    std::vector<Component*> pending { &root };
+    while (!pending.empty()) {
+        Component* current = pending.back();
+        pending.pop_back();
+        if (current->getName() == name) {
+            return current;
+        }
+        for (int index = 0; index < current->getNumChildComponents(); ++index) {
+            pending.push_back(current->getChildComponent(index));
+        }
+    }
+    return nullptr;
 }
 
 }
@@ -907,6 +923,15 @@ var CycleV2Automation::waitForIdle(const var& commandValue) const {
 Component* CycleV2Automation::componentForArea(const String& area) const {
     if (area == "focused") {
         return Component::getCurrentlyFocusedComponent();
+    }
+    if (area == "presetMidiEditor") {
+        auto& desktop = Desktop::getInstance();
+        for (int index = 0; index < desktop.getNumComponents(); ++index) {
+            if (auto* match = findNamedComponent(
+                    *desktop.getComponent(index), "PresetMidiEditor")) {
+                return match;
+            }
+        }
     }
     if (area == "window" || area == "AreaWindow") {
         return const_cast<Component*>(&window);

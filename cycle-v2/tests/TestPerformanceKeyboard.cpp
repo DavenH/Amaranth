@@ -189,16 +189,28 @@ TEST_CASE("Preset phrase playback sends notes and CC through the performance MID
     REQUIRE_FALSE(panel.noteBounds(72).isEmpty());
     const double startedAt = Time::getMillisecondCounterHiRes();
     REQUIRE(panel.startPlayback(startedAt));
-    REQUIRE(sink.messages[1].isNoteOn());
-    REQUIRE(sink.messages[1].getNoteNumber() == 67);
-    REQUIRE(sink.messages[2].isNoteOff());
-    REQUIRE(sink.messages[3].isNoteOn());
-    REQUIRE(sink.sources[1] == MidiEventSource::PatternPlayback);
-    REQUIRE(sink.sources[2] == MidiEventSource::PatternPlayback);
-    REQUIRE(sink.sources[3] == MidiEventSource::PatternPlayback);
-    REQUIRE(sink.timestamps[1] == Catch::Approx(startedAt / 1000.0));
-    REQUIRE(sink.timestamps[2] == Catch::Approx(startedAt / 1000.0 + 0.5));
-    REQUIRE(sink.timestamps[3] == Catch::Approx(startedAt / 1000.0 + 0.5));
+    const auto noteEventIndex = [&](int note, bool on) {
+        for (size_t index = 0; index < sink.messages.size(); ++index) {
+            const auto& message = sink.messages[index];
+            if ((on ? message.isNoteOn() : message.isNoteOff())
+                    && message.getNoteNumber() == note) {
+                return index;
+            }
+        }
+        return sink.messages.size();
+    };
+    const size_t firstOn = noteEventIndex(67, true);
+    const size_t firstOff = noteEventIndex(67, false);
+    const size_t secondOn = noteEventIndex(72, true);
+    REQUIRE(firstOn < sink.messages.size());
+    REQUIRE(firstOff < sink.messages.size());
+    REQUIRE(secondOn < sink.messages.size());
+    REQUIRE(sink.sources[firstOn] == MidiEventSource::PatternPlayback);
+    REQUIRE(sink.sources[firstOff] == MidiEventSource::PatternPlayback);
+    REQUIRE(sink.sources[secondOn] == MidiEventSource::PatternPlayback);
+    REQUIRE(sink.timestamps[firstOn] == Catch::Approx(startedAt / 1000.0));
+    REQUIRE(sink.timestamps[firstOff] == Catch::Approx(startedAt / 1000.0 + 0.5));
+    REQUIRE(sink.timestamps[secondOn] == Catch::Approx(startedAt / 1000.0 + 0.5));
     const size_t scheduledCount = sink.messages.size();
     REQUIRE(scheduledCount > 30);
     panel.updatePlayback(startedAt + 800.0);
@@ -244,6 +256,54 @@ TEST_CASE("Preset automation interpolates the configured MIDI controller",
     REQUIRE(sink.timestamps[index] == Catch::Approx(startedAt / 1000.0 + 0.5));
     panel.updatePlayback(startedAt + 500.0);
     REQUIRE(sink.messages.size() > initialCount);
+}
+
+TEST_CASE("Every automation lane sets its first value before the first note",
+        "[cycle-v2][keyboard][sequence][automation][timing]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 2.0;
+    phrase.notes.push_back({ 60, 100, 0.0, 1.0 });
+    phrase.controls.push_back({ 1, 20, 0.25 });
+    phrase.controls.push_back({ 1, 100, 1.0 });
+    phrase.controls.push_back({ 73, 40, 0.25 });
+    phrase.controls.push_back({ 73, 120, 1.0 });
+    panel.setSequence(phrase);
+
+    REQUIRE(panel.startPlayback(1000.0));
+    const auto firstNote = std::find_if(sink.messages.begin(), sink.messages.end(),
+            [](const MidiMessage& message) { return message.isNoteOn(); });
+    REQUIRE(firstNote != sink.messages.end());
+    const size_t noteIndex = (size_t) std::distance(sink.messages.begin(), firstNote);
+    REQUIRE(sink.timestamps[noteIndex] == Catch::Approx(1.0));
+
+    const auto hasInitialControl = [&](int controller, int value) {
+        for (size_t index = 0; index < noteIndex; ++index) {
+            const auto& message = sink.messages[index];
+            if (sink.sources[index] == MidiEventSource::PatternPlayback
+                    && message.isController()
+                    && message.getControllerNumber() == controller
+                    && message.getControllerValue() == value
+                    && sink.timestamps[index] == Catch::Approx(1.0)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    REQUIRE(hasInitialControl(1, 20));
+    REQUIRE(hasInitialControl(73, 40));
+
+    const auto laterCc73 = std::find_if(sink.messages.begin(), sink.messages.end(),
+            [](const MidiMessage& message) {
+                return message.isController()
+                        && message.getControllerNumber() == 73
+                        && message.getControllerValue() > 40;
+            });
+    REQUIRE(laterCc73 != sink.messages.end());
+    panel.stopPlayback();
 }
 
 TEST_CASE("Pattern automation schedules dense timestamped values ahead of UI ticks",
@@ -499,6 +559,56 @@ TEST_CASE("Performance mod wheel drag controls preview CC 1 and audition start",
     REQUIRE(sink.messages.back().getNoteNumber() == 55);
 }
 
+TEST_CASE("Mapped CC wheel sits beside the mod wheel and sends live MIDI",
+        "[cycle-v2][keyboard][midi-cc][ui]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    panel.setMappedControllers({ 1, 73 });
+    panel.setBounds(0, 0,
+            (int) CanvasUtilityDock::preferredKeyboardWidth + 38,
+            (int) CanvasUtilityDock::preferredKeyboardHeight);
+
+    const auto ccBounds = panel.controllerBounds(73);
+    REQUIRE(ccBounds.getWidth() == 32.f);
+    REQUIRE(ccBounds.getX() > panel.modWheelBounds().getRight());
+    REQUIRE(ccBounds.getRight() < panel.octaveDownBounds().getX());
+    REQUIRE(panel.noteBounds(60).getWidth() >= 25.f);
+
+    Component* ccWheel = nullptr;
+    for (int index = 0; index < panel.getNumChildComponents(); ++index) {
+        if (panel.getChildComponent(index)->getName() == "PerformanceKeyboard.CC73") {
+            ccWheel = panel.getChildComponent(index);
+        }
+    }
+    REQUIRE(ccWheel != nullptr);
+    ccWheel->mouseDown(keyboardMouseEvent(*ccWheel,
+            { ccWheel->getWidth() * 0.5f, 0.f },
+            ModifierKeys::leftButtonModifier));
+    ccWheel->mouseUp(keyboardMouseEvent(*ccWheel,
+            { ccWheel->getWidth() * 0.5f, 0.f }, {}));
+    REQUIRE(panel.controllerValue(73) == 127);
+    REQUIRE(sink.messages.back().isController());
+    REQUIRE(sink.messages.back().getControllerNumber() == 73);
+    REQUIRE(sink.messages.back().getControllerValue() == 127);
+
+    sink.messages.clear();
+    REQUIRE(panel.startPlayback(1000.0));
+    REQUIRE(sink.messages.size() == 3);
+    REQUIRE(sink.messages[0].getControllerNumber() == 1);
+    REQUIRE(sink.messages[1].getControllerNumber() == 73);
+    REQUIRE(sink.messages[1].getControllerValue() == 127);
+    REQUIRE(sink.messages[2].isNoteOn());
+    panel.stopPlayback();
+
+    const auto compactDock = CanvasUtilityDock::layout(
+            { 0.f, 0.f, 500.f, 500.f }, 1);
+    panel.setBounds(compactDock.keyboard.toNearestInt());
+    REQUIRE(panel.noteBounds(60).getWidth() >= 20.f);
+    REQUIRE(panel.getLocalBounds().toFloat().contains(panel.controllerBounds(73)));
+}
+
 TEST_CASE("Performance keyboard preview transport follows its configured duration",
         "[cycle-v2][keyboard][transport]") {
     ScopedJuceInitialiser_GUI gui;
@@ -567,7 +677,12 @@ TEST_CASE("A roll without notes auditions the selected key for audition length",
     panel.setSequence(phrase);
 
     REQUIRE(panel.startPlayback(1'000.0));
-    REQUIRE(sink.messages.back().isController());
+    REQUIRE(std::any_of(sink.messages.begin(), sink.messages.end(),
+            [](const MidiMessage& message) {
+                return message.isController()
+                        && message.getControllerNumber() == 1
+                        && message.getControllerValue() == 20;
+            }));
     REQUIRE(panel.heldNote() == 55);
     panel.updatePlayback(2'000.0);
     REQUIRE(panel.isPlaying());
@@ -621,6 +736,13 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
     REQUIRE(content.contains(layout.legend));
     REQUIRE(content.contains(layout.keyboard));
     REQUIRE(content.contains(layout.status));
+
+    const CanvasUtilityDockLayout mapped = CanvasUtilityDock::layout(content, 2);
+    REQUIRE(mapped.keyboard.getWidth()
+            == CanvasUtilityDock::preferredKeyboardWidth + 76.f);
+    REQUIRE(mapped.keyboard.getCentreX() == content.getCentreX());
+    REQUIRE_FALSE(mapped.keyboard.intersects(mapped.status));
+    REQUIRE_FALSE(mapped.keyboard.intersects(mapped.minimap));
 
     const Rectangle<float> compactContent { 0.f, 0.f, 500.f, 300.f };
     const CanvasUtilityDockLayout compact = CanvasUtilityDock::layout(compactContent);

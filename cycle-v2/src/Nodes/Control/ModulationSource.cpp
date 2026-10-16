@@ -149,6 +149,17 @@ String ModulationSource::idForMode(ModulationSourceMode mode) {
     return "modWheel";
 }
 
+std::optional<int> ModulationSource::controllerFor(
+        const ModulationSourceConfiguration& configuration) {
+    if (configuration.mode == ModulationSourceMode::ModWheel) {
+        return 1;
+    }
+    if (configuration.mode == ModulationSourceMode::MidiController) {
+        return jlimit(0, 127, configuration.controller);
+    }
+    return std::nullopt;
+}
+
 float ModulationSource::evaluate(
         const ModulationSourceConfiguration& configuration,
         const PreviewControlContext& context) {

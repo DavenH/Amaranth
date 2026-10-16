@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 1059.88794, "y": 489.00003 },
+            "position": { "x": 1068.09338, "y": 523.0 },
             "parameters": {
                 "octave": 0,
                 "voiceLength": 0.465517241,
@@ -21,7 +21,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 697.38666, "y": 254.01111 },
+            "position": { "x": 712.58667, "y": 278.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -52,7 +52,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 721.38672, "y": 720.01111 },
+            "position": { "x": 736.58673, "y": 691.29199 },
             "parameters": { "enabled": true, "mode": "group", "order": 6, "width": 2.39237845, "panSpread": 0.0, "phase": 0.0, "jitter": 0.0 },
             "model": {
                 "schema": "unisonVoices",
@@ -882,7 +882,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 697.38666, "y": 935.51831 },
+            "position": { "x": 697.38672, "y": 886.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",

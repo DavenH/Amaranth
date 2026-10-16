@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include <optional>
+#include <vector>
 
 #include "Graph/PresetPresentation.h"
 
@@ -16,16 +17,19 @@ public:
     using AuditionCallback = std::function<void(int, int, bool)>;
     using PlaybackTimeCallback = std::function<std::optional<double>()>;
 
-    PresetMidiEditor(PresetMidiSequence sequence, ChangeCallback callback,
+    PresetMidiEditor(PresetMidiSequence phrase, ChangeCallback callback,
             std::function<void()> togglePlayback = {},
             AuditionCallback audition = {},
-            PlaybackTimeCallback playbackTime = {});
+            PlaybackTimeCallback playbackTime = {},
+            std::vector<int> mappedControllers = {});
     ~PresetMidiEditor() override;
 
     juce::Rectangle<float> noteGrid() const;
     juce::Rectangle<float> velocityGrid() const;
     juce::Rectangle<float> controlGrid() const;
+    juce::Rectangle<float> controlGrid(int controller) const;
     juce::Rectangle<float> miniMap() const;
+    const std::vector<int>& controllerLanes() const { return controllers; }
 
     void paint(juce::Graphics& graphics) override;
     void resized() override;
@@ -44,6 +48,7 @@ private:
     void paintNotes(juce::Graphics& graphics) const;
     void paintVelocity(juce::Graphics& graphics) const;
     void paintModulation(juce::Graphics& graphics) const;
+    void paintModulationLane(juce::Graphics& graphics, int controller) const;
     void paintMiniMap(juce::Graphics& graphics) const;
     void paintPlaybackCursor(juce::Graphics& graphics) const;
     int pitchAt(float y) const;
@@ -62,8 +67,9 @@ private:
     void updateDurationRange();
     void audition(int pitch, int velocity);
     void releaseAudition();
-    int controllerLane() const;
-    void editControl(juce::Point<float> point);
+    void configureControllers(std::vector<int> mappedControllers);
+    int controllerAt(juce::Point<float> point) const;
+    void editControl(juce::Point<float> point, int controller);
     void publish();
 
     PresetMidiSequence sequence;
@@ -72,6 +78,7 @@ private:
     AuditionCallback onAudition;
     PlaybackTimeCallback playbackTime;
     juce::TextButton clearButton { "Clear" };
+    std::vector<int> controllers;
     juce::Label durationLabel;
     juce::Slider durationSlider;
     int lowestPitch { 48 };
