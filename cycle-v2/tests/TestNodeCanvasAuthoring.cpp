@@ -6,6 +6,7 @@
 #include <Curve/Mesh/VertCube.h>
 #include <Curve/Mesh/Vertex.h>
 
+#include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphNodeStateEditor.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
@@ -15,6 +16,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodeCanvasAuthoring.h"
+#include "UI/NodeInputQuickCreate.h"
 #include "UI/NodePortLayout.h"
 
 using namespace CycleV2;
@@ -148,7 +150,7 @@ TEST_CASE("Empty Voice Context inputs create and connect their source in one und
         auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
         const PortAddress destination { "voice", testCase.portId, true };
 
-        const auto created = authoring.createVoiceContextInput(destination);
+        const auto created = authoring.createInputSource(destination);
         REQUIRE(created.succeeded);
         REQUIRE(document.graph().getNodes().size() == 3);
         REQUIRE(document.graph().getEdges().size() == 1);
@@ -172,7 +174,7 @@ TEST_CASE("Empty Voice Context inputs create and connect their source in one und
         }
         REQUIRE(document.graph().getEdges().front().destPortId == testCase.portId);
 
-        REQUIRE_FALSE(authoring.createVoiceContextInput(destination).succeeded);
+        REQUIRE_FALSE(authoring.createInputSource(destination).succeeded);
         REQUIRE(document.graph().getNodes().size() == 3);
         REQUIRE(authoring.undo().succeeded);
         REQUIRE(document.graph().getNodes().size() == 2);
@@ -209,7 +211,7 @@ TEST_CASE("Voice Context quick creation opens a gap in its connected source stac
     const float originalUpperY = document.graph().findNode("mod")->bounds.getY();
     const float originalLowerY = document.graph().findNode("pitch")->bounds.getY();
 
-    const auto created = authoring.createVoiceContextInput({ "voice", "unison", true });
+    const auto created = authoring.createInputSource({ "voice", "unison", true });
     REQUIRE(created.succeeded);
     const Node* inserted = document.graph().findNode(created.nodeId);
     REQUIRE(inserted != nullptr);
@@ -225,6 +227,82 @@ TEST_CASE("Voice Context quick creation opens a gap in its connected source stac
     REQUIRE(document.graph().findNode(created.nodeId) == nullptr);
     REQUIRE(document.graph().findNode("mod")->bounds.getY() == originalUpperY);
     REQUIRE(document.graph().findNode("pitch")->bounds.getY() == originalLowerY);
+}
+
+TEST_CASE("Trimesh quick creation connects Scratch and Mod Triple in one undo",
+        "[cycle-v2][canvas][trimesh][quick-create]") {
+    for (const bool modulation : { false, true }) {
+        NodeGraph graph;
+        graph.addNode(GraphNodeFactory().createNode(
+                NodeKind::TrilinearMesh, "mesh", { 600.f, 300.f }));
+        graph.addNode(GraphNodeFactory().createNode(
+                NodeKind::Unison, "blocker", { 200.f, 300.f }));
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher commands(document);
+        GraphPresentationModel presentation;
+        NullEditorCommands editorCommands;
+        auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+        const PortAddress destination {
+                "mesh", modulation ? ModulationCableBundle::portId() : String("scratch"), true };
+
+        const auto created = authoring.createInputSource(destination);
+        REQUIRE(created.succeeded);
+        const Node* source = document.graph().findNode(created.nodeId);
+        const Node* mesh = document.graph().findNode("mesh");
+        REQUIRE(source != nullptr);
+        REQUIRE(mesh != nullptr);
+        REQUIRE(source->kind == (modulation ? NodeKind::ModulationTriple : NodeKind::Envelope));
+        REQUIRE(source->bounds.getRight() < mesh->bounds.getX());
+        REQUIRE_FALSE(source->bounds.intersects(document.graph().findNode("blocker")->bounds));
+        if (modulation) {
+            REQUIRE(document.graph().getEdges().size() == 3);
+            for (const String& axis : { "yellow", "red", "blue" }) {
+                REQUIRE(edgeIndexFor(document.graph(), created.nodeId, axis, "mesh", axis) >= 0);
+            }
+        } else {
+            REQUIRE(document.graph().getEdges().size() == 1);
+            REQUIRE(document.graph().getEdges().front().destPortId == "scratch");
+            REQUIRE(envelopePurposeFor(*source) == EnvelopePurpose::Scratch);
+            const auto model = std::dynamic_pointer_cast<const CurveNodeModelState>(source->model);
+            REQUIRE(model != nullptr);
+            REQUIRE(model->envelope() != nullptr);
+            const auto& cubes = model->envelope()->getMesh().getCubes();
+            REQUIRE(cubes.size() == 2);
+            REQUIRE(cubes.front()->getVertex(0)->values[Vertex::Amp] == 0.f);
+            REQUIRE(cubes.back()->getVertex(0)->values[Vertex::Amp] == 1.f);
+        }
+        REQUIRE_FALSE(authoring.createInputSource(destination).succeeded);
+        REQUIRE(authoring.undo().succeeded);
+        REQUIRE(document.graph().findNode(created.nodeId) == nullptr);
+        REQUIRE(document.graph().getEdges().empty());
+        REQUIRE_FALSE(document.canUndo());
+    }
+}
+
+TEST_CASE("Trimesh Mod Triple quick creation preserves occupied morph inputs",
+        "[cycle-v2][canvas][trimesh][quick-create]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh, "mesh", { 600.f, 300.f }));
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::ModulationSource, "control", { 200.f, 300.f }));
+    graph.addEdge({ "control", "value", "mesh", "yellow",
+            PortDomain::ControlSignal, ConnectionKind::Signal });
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+    const PortAddress bundle { "mesh", ModulationCableBundle::portId(), true };
+
+    REQUIRE_FALSE(NodeInputQuickCreate::canCreate(
+            document.graph().findNode("mesh"), bundle,
+            GraphEdgeIndex(document.graph().getEdges())));
+    REQUIRE_FALSE(authoring.createInputSource(bundle).succeeded);
+    REQUIRE(document.graph().getNodes().size() == 2);
+    REQUIRE(document.graph().getEdges().size() == 1);
+    REQUIRE(document.graph().getEdges().front().sourceNodeId == "control");
+    REQUIRE_FALSE(document.canUndo());
 }
 
 TEST_CASE("Guide deletion refreshes authoring state and is undoable",

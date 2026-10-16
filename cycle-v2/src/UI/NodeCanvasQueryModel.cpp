@@ -3,8 +3,8 @@
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeDefinition.h"
 #include "UI/NodeCanvasQueryModel.h"
+#include "UI/NodeInputQuickCreate.h"
 #include "UI/VoiceContextCompactEditor.h"
-#include "UI/VoiceContextInputCreation.h"
 
 namespace CycleV2 {
 
@@ -164,6 +164,19 @@ String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const 
         return {};
     }
 
+    const auto quickSource = NodeInputQuickCreate::sourceFor(*node, address);
+    const bool quickCreateAvailable = NodeInputQuickCreate::canCreate(
+            node, address, presentationFacts().edgeIndex());
+    const String quickCreateHelp = quickCreateAvailable && quickSource.has_value()
+            ? " Click + to add " + quickSource->label + "."
+            : String();
+    if (node->kind == NodeKind::TrilinearMesh && address.input
+            && quickSource.has_value()
+            && quickSource->kind == NodeKind::ModulationTriple) {
+        return "Modulation Triple: controls the Yellow, Red, and Blue morph axes."
+                + quickCreateHelp;
+    }
+
     const Port* port = findPort(*node, address.portId, address.input);
 
     if (port == nullptr) {
@@ -189,10 +202,7 @@ String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const 
                     ? " Connected to " + nodeDisplayLabel(*source) + "."
                     : " Connected.");
         }
-        const auto source = VoiceContextInputCreation::sourceFor(port->id);
-        return source.has_value()
-                ? help + " Click + to add " + source->label + "."
-                : help;
+        return help + quickCreateHelp;
     }
 
     if (node->kind == NodeKind::ScratchDefaultOverride && !address.input) {
@@ -223,10 +233,12 @@ String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const 
                     });
             if (step != snapshot->compileResult.plan.steps.end()
                     && effectiveScratchSourceNodeId(*step).isNotEmpty()) {
-                return "Inherits the Voice Context scratch envelope. Attach here to override it.";
+                return "Inherits the Voice Context scratch envelope. Attach here to override it."
+                        + quickCreateHelp;
             }
         }
-        return "Uses voice time. Attach a scratch envelope here to override it.";
+        return "Uses voice time. Attach a scratch envelope here to override it."
+                + quickCreateHelp;
     }
 
     return signalDescription(port->domain)

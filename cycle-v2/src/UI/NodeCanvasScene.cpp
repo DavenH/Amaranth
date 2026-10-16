@@ -4,6 +4,7 @@
 #include "UI/NodeCanvasScene.h"
 #include "Graph/GraphEdgeIndex.h"
 #include "UI/ModulationCableBundle.h"
+#include "UI/NodeInputQuickCreate.h"
 #include "UI/NodePortGeometry.h"
 #include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"
@@ -12,6 +13,19 @@
 namespace CycleV2 {
 
 namespace {
+
+Rectangle<float> quickCreateHitBounds(
+        Rectangle<float> bounds,
+        Point<float> centre,
+        float zoom) {
+    const float rowHeight = NodePortGeometry::sidePortSpacing * zoom;
+    return {
+            bounds.getX() - 8.f,
+            centre.y - rowHeight * 0.5f,
+            bounds.getWidth() + 8.f,
+            rowHeight
+    };
+}
 
 int portIndexOnSide(const Node& node, const Port& port) {
     if (port.input && operationPortLayout(node) == OperationPortLayout::SideReversed) {
@@ -551,15 +565,10 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                 Rectangle<float> hitBounds = Rectangle<float>(size, size)
                         .withCentre(centre)
                         .expanded(hitPadding);
-                if (node.kind == NodeKind::VoiceContext && port.input) {
-                    const float rowHeight = NodePortGeometry::sidePortSpacing
-                            * viewport.getZoom();
-                    hitBounds = {
-                            hitBounds.getX() - 8.f,
-                            centre.y - rowHeight * 0.5f,
-                            hitBounds.getWidth() + 8.f,
-                            rowHeight
-                    };
+                if (port.input && NodeInputQuickCreate::sourceFor(
+                            node, { node.id, port.id, true }).has_value()) {
+                    hitBounds = quickCreateHitBounds(
+                            hitBounds, centre, viewport.getZoom());
                 }
                 current.targets.push_back({
                         kind,
@@ -584,14 +593,20 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                     ModulationCableBundle::worldCentre(node, input));
             const float size = ModulationCableBundle::socketDiameter
                     * viewport.getZoom() / NodePortGeometry::referenceZoom;
+            Rectangle<float> hitBounds = Rectangle<float>(size, size)
+                    .withCentre(centre).expanded(NodePortGeometry::hitPadding);
+            if (input && NodeInputQuickCreate::sourceFor(
+                        node, ModulationCableBundle::destinationAddress(node)).has_value()) {
+                hitBounds = quickCreateHitBounds(
+                        hitBounds, centre, viewport.getZoom());
+            }
             current.targets.push_back({
                     input ? NodeSceneTargetKind::InputPort : NodeSceneTargetKind::OutputPort,
                     (input ? "input:" : "output:") + node.id + ".modulationBundle",
                     node.id,
                     ModulationCableBundle::portId(),
                     {},
-                    juce::Rectangle<float>(size, size).withCentre(centre).expanded(
-                            NodePortGeometry::hitPadding),
+                    hitBounds,
                     -1,
                     20000 + zOrder++
             });

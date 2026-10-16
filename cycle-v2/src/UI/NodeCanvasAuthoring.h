@@ -62,7 +62,7 @@ public:
 
     NodeCanvasAuthoringResult openEditor(const String& nodeId);
     NodeCanvasAuthoringResult addNode(NodeKind kind, Point<float> position);
-    NodeCanvasAuthoringResult createVoiceContextInput(
+    NodeCanvasAuthoringResult createInputSource(
             const PortAddress& destination);
     NodeCanvasAuthoringResult insertPanIntoEdge(int edgeIndex, Point<float> position);
     NodeCanvasAuthoringResult removePanFromCable(const String& nodeId);

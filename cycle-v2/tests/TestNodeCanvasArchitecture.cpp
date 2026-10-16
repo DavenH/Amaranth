@@ -36,6 +36,8 @@
 #include "UI/NodeCanvasPresentation.h"
 #include "UI/NodeCableRenderer.h"
 #include "UI/NodeCanvasViewport.h"
+#include "UI/ModulationCableBundle.h"
+#include "UI/NodeInputQuickCreate.h"
 #include "UI/NodeIconRenderer.h"
 #include "UI/NodePalette.h"
 #include "UI/NodePaletteEntryIconRenderer.h"
@@ -91,6 +93,33 @@ TEST_CASE("Voice Context quick-create badges hit the intended port at normal zoo
             REQUIRE(hit->portId == port.id);
             REQUIRE(hit->bounds.getHeight()
                     <= NodePortGeometry::sidePortSpacing * viewport.getZoom() + 0.01f);
+        }
+    }
+}
+
+TEST_CASE("Trimesh quick-create badges hit Scratch and Mod Triple sockets",
+        "[cycle-v2][canvas][ports][trimesh][regression]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh, "mesh", { 300.f, 200.f }));
+    const Node& mesh = *graph.findNode("mesh");
+    NodeCanvasViewport viewport;
+    NodeCanvasScene sceneBuilder;
+
+    for (const float zoom : { 0.43f, 1.f }) {
+        viewport.setTransform({}, zoom);
+        const auto& scene = sceneBuilder.build(graph, viewport);
+        for (const String& portId : { String("scratch"), ModulationCableBundle::portId() }) {
+            const PortAddress destination { mesh.id, portId, true };
+            const Point<float> socket = viewport.toScreen(
+                    NodeInputQuickCreate::socketWorldCentre(mesh, destination));
+            const Point<float> badge = NodeInputQuickCreate::badgeBounds(
+                    socket, zoom).getCentre();
+            const auto hit = NodeCanvasHitTester().hitTest(scene, badge);
+            REQUIRE(hit.has_value());
+            REQUIRE(hit->kind == NodeSceneTargetKind::InputPort);
+            REQUIRE(hit->portAddress().nodeId == mesh.id);
+            REQUIRE(hit->portAddress().portId == portId);
         }
     }
 }

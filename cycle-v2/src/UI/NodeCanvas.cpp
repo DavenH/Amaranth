@@ -26,7 +26,7 @@
 #include "UI/NodeViewModule.h"
 #include "UI/PresetPreviewGenerator.h"
 #include "UI/TransformCompactEditor.h"
-#include "UI/VoiceContextInputCreation.h"
+#include "UI/NodeInputQuickCreate.h"
 #include "UI/WorkspaceDockKeyboardNavigation.h"
 
 #include "Runtime/GraphAudioExecutor.h"
@@ -514,9 +514,8 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
     if (const auto port = interaction.portAt(scene, position);
             port.has_value() && port->input) {
         const Node* node = graph.findNode(port->nodeId);
-        const bool connected = !queries.presentationFacts().edgeIndex().edgesToInput(
-                port->nodeId, port->portId).empty();
-        if (VoiceContextInputCreation::canCreate(node, *port, connected)) {
+        if (NodeInputQuickCreate::canCreate(
+                node, *port, queries.presentationFacts().edgeIndex())) {
             hoveredQuickCreatePortId = port->nodeId + "." + port->portId;
         }
     }
@@ -889,16 +888,14 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     if (const auto hitPort = interaction.portAt(scene, event.position)) {
         if (hitPort->input && !event.mods.isPopupMenu()) {
             const Node* portNode = graph.findNode(hitPort->nodeId);
-            const bool connected = !queries.presentationFacts().edgeIndex().edgesToInput(
-                    hitPort->nodeId, hitPort->portId).empty();
-            if (VoiceContextInputCreation::canCreate(portNode, *hitPort, connected)) {
-                const auto port = std::find_if(portNode->inputs.begin(), portNode->inputs.end(),
-                        [&](const Port& input) { return input.id == hitPort->portId; });
-                const auto badge = VoiceContextInputCreation::badgeBounds(
-                        viewport.toScreen(NodeCanvasScene::portWorldCentre(*portNode, *port)),
+            if (NodeInputQuickCreate::canCreate(
+                    portNode, *hitPort, queries.presentationFacts().edgeIndex())) {
+                const auto badge = NodeInputQuickCreate::badgeBounds(
+                        viewport.toScreen(NodeInputQuickCreate::socketWorldCentre(
+                                *portNode, *hitPort)),
                         viewport.getZoom());
                 if (badge.contains(event.position) || event.getNumberOfClicks() >= 2) {
-                    applyAuthoringResult(authoring.createVoiceContextInput(*hitPort));
+                    applyAuthoringResult(authoring.createInputSource(*hitPort));
                     updateHoverAt(event.position, event.mods);
                     requestCanvasRepaint();
                     return;

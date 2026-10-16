@@ -6,13 +6,14 @@
 
 #include "UI/NodeCanvasAuthoring.h"
 
+#include "Graph/GraphEdgeIndex.h"
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "UI/ModulationCableBundle.h"
+#include "UI/NodeInputQuickCreate.h"
 #include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"
-#include "UI/VoiceContextInputCreation.h"
 
 namespace CycleV2 {
 
@@ -230,28 +231,20 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::addNode(NodeKind kind, Point<floa
     return graphEditResult(edit, "Node added: " + edit.nodeId, edit.nodeId, { true, true, false });
 }
 
-NodeCanvasAuthoringResult NodeCanvasAuthoring::createVoiceContextInput(
+NodeCanvasAuthoringResult NodeCanvasAuthoring::createInputSource(
         const PortAddress& destination) {
-    const Node* voice = document.graph().findNode(destination.nodeId);
-    const auto source = VoiceContextInputCreation::sourceFor(destination.portId);
-    const auto& edges = document.graph().getEdges();
-    const bool connected = std::any_of(edges.begin(), edges.end(), [&](const Edge& edge) {
-        return edge.destNodeId == destination.nodeId && edge.destPortId == destination.portId;
-    });
-    if (!VoiceContextInputCreation::canCreate(voice, destination, connected)) {
+    const Node* destinationNode = document.graph().findNode(destination.nodeId);
+    const GraphEdgeIndex edgeIndex(document.graph().getEdges());
+    if (!NodeInputQuickCreate::canCreate(destinationNode, destination, edgeIndex)) {
         return handledResult(false,
-                connected ? "Port already connected" : "No source available for this port",
+                "Port is occupied or has no quick-create source",
                 { true });
     }
-    const auto port = std::find_if(
-            voice->inputs.begin(), voice->inputs.end(),
-            [&](const Port& candidate) { return candidate.id == destination.portId; });
-    if (port == voice->inputs.end()) {
-        return handledResult(false, "Voice Context port is missing", { true });
-    }
+    const auto source = NodeInputQuickCreate::sourceFor(*destinationNode, destination);
+    jassert(source.has_value());
 
-    const VoiceContextInputLayout layout = VoiceContextInputCreation::layoutFor(
-            document.graph(), *voice, *port, *source);
+    const NodeInputQuickCreateLayout layout = NodeInputQuickCreate::layoutFor(
+            document.graph(), *destinationNode, destination, *source);
     commands.beginCompoundEdit();
     for (const auto& move : layout.moves) {
         const auto moved = commands.moveNode(move.nodeId, move.position);

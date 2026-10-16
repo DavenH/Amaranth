@@ -19,7 +19,7 @@
 #include "UI/NodeGroupPresentation.h"
 #include "UI/NodeViewModule.h"
 #include "UI/VoiceContextCompactEditor.h"
-#include "UI/VoiceContextInputCreation.h"
+#include "UI/NodeInputQuickCreate.h"
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/GraphValidator.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
@@ -707,7 +707,7 @@ void NodeCanvasPresentation::paintContent(
                 performanceObserver,
                 NodeCanvasPresentationStage::Nodes);
         paintCachedNodes(graphics, frame);
-        paintVoiceContextPortHover(graphics, frame);
+        paintInputQuickCreateHover(graphics, frame);
         ScopedNodeCanvasPresentationStage spyMeasurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::SpyCanvas);
@@ -1394,7 +1394,7 @@ void NodeCanvasPresentation::paintNode(
     }
 }
 
-void NodeCanvasPresentation::paintVoiceContextPortHover(
+void NodeCanvasPresentation::paintInputQuickCreateHover(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
     if (frame.hoverText.isEmpty() || frame.canvasOcclusion.contains(frame.pointer)) {
@@ -1405,23 +1405,15 @@ void NodeCanvasPresentation::paintVoiceContextPortHover(
         return;
     }
     const Node* node = frame.graph.findNode(target->nodeId);
-    const bool connected = !frame.facts.edgeIndex().edgesToInput(
-            target->nodeId, target->portId).empty();
-    if (!VoiceContextInputCreation::canCreate(
-            node, target->portAddress(), connected)) {
-        return;
-    }
-    const auto port = std::find_if(
-            node->inputs.begin(), node->inputs.end(),
-            [&](const Port& input) { return input.id == target->portId; });
-    if (port == node->inputs.end()) {
+    if (!NodeInputQuickCreate::canCreate(
+            node, target->portAddress(), frame.facts.edgeIndex())) {
         return;
     }
 
     const Point<float> socket = frame.viewport.toScreen(
-            NodeCanvasScene::portWorldCentre(*node, *port));
+            NodeInputQuickCreate::socketWorldCentre(*node, target->portAddress()));
     const float rowHeight = NodePortGeometry::sidePortSpacing * frame.viewport.getZoom();
-    const Rectangle<float> badge = VoiceContextInputCreation::badgeBounds(
+    const Rectangle<float> badge = NodeInputQuickCreate::badgeBounds(
             socket, frame.viewport.getZoom());
     const Point<float> centre = badge.getCentre();
     const float diameter = badge.getWidth();
