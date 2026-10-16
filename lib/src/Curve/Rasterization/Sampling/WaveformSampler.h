@@ -7,8 +7,10 @@ namespace Rasterization {
     class WaveformSampler {
     public:
         static bool isSampleable(const WaveformBuffers& waveform) {
-            return waveform.waveX.size() >= 2
+            return waveform.isSampleable()
+                && waveform.waveX.size() >= 2
                 && waveform.waveY.size() == waveform.waveX.size()
+                && waveform.slope.get() != nullptr
                 && waveform.slope.size() >= waveform.waveX.size() - 1;
         }
 

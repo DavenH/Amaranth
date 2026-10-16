@@ -3,12 +3,12 @@
 
 #include "Buffer.h"
 #include "ArrayDefs.h"
+#include "BufferRandom.h"
 
 #define VIMAGE_H
 #include <Accelerate/Accelerate.h>
 #include <algorithm>
 #include <cmath>
-#include <random>
 
 #define ERROR_COUNTER globalBufferMacSizeErrorCount
 
@@ -611,12 +611,7 @@ void Buffer<Float32>::getMax(Float32& pMax, int& index) const {
 
 template<>
 Buffer<Float32>& Buffer<Float32>::rand(unsigned& seed) {
-    std::mt19937 gen(seed);
-    std::uniform_real_distribution<Float32> dist(0, 1);
-    for (size_t i = 0; i < sz; i++) {
-        ptr[i] = dist(gen);
-    }
-    seed = gen();
+    BufferRandom::fill(ptr, sz, seed);
     return *this;
 }
 

@@ -1,6 +1,7 @@
 #include "Buffer.h"
 
 #include "ArrayDefs.h"
+#include "BufferRandom.h"
 
 #ifdef USE_IPP
 #include "ScopedAlloc.h"
@@ -318,21 +319,6 @@ Buffer<Ipp##T>&  Buffer<Ipp##T>::ramp()                         \
     if(sz > 1) {                                                \
         Ipp##T delta = 1 / Ipp##T(sz - 1.f);                    \
         ippsVectorSlope_##T(ptr, sz, 0, delta);                 \
-    }                                                           \
-    return *this;                                               \
-}
-
-#define constructRand(T)                                        \
-template<>                                                      \
-Buffer<Ipp##T>&  Buffer<Ipp##T>::rand(unsigned& seed)           \
-{                                                               \
-    if(sz > 1) {                                                \
-        int size = 0;                                           \
-        ippsRandUniformGetSize_##T(&size);                      \
-        ScopedAlloc<Int8u> stateBuff(size);                     \
-        IppsRandUniState_##T* state = (IppsRandUniState_##T*) stateBuff.get(); \
-        ippsRandUniformInit_##T(state, -1, 1, seed);            \
-        ippsRandUniform_##T(ptr, sz, state);                    \
     }                                                           \
     return *this;                                               \
 }
@@ -729,13 +715,18 @@ constructMin(32f);
 constructMaxVal(32f);
 constructMinVal(32f);
 constructMinMax(32f);
-constructRand(32f);
 constructMean(32f);
 constructStddev(32f);
 constructSort(32f);
 
 implementOperators(32f)
 implementOperators(64f)
+
+template<>
+Buffer<Ipp32f>& Buffer<Ipp32f>::rand(unsigned& seed) {
+    BufferRandom::fill(ptr, sz, seed);
+    return *this;
+}
 
 template<> Buffer<Ipp32fc>& Buffer<Ipp32fc>::mul(Ipp32fc c)
 {

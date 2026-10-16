@@ -1,5 +1,14 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Linux headless Cycle V2 automation logs JUCE font assertions
+
+On 2026-10-11, the focused Reverb kernel automation completed its semantic
+commands on Ubuntu under `DISPLAY=:1`, but repeatedly logged
+`JUCE Assertion failure in juce_Font.cpp:123`, `juce_Font.cpp:211`, and
+`juce_SimpleShapedText.cpp:471` while rendering the UI. Artifact:
+`/tmp/cycle-v2-reverb-kernel-logs.txt.raw`. Status: open and unrelated to the
+Reverb kernel calculation fix; inspect Linux font discovery/fallback separately.
+
 ## P2: Full native Trimesh smoke misses an amplitude rail click
 
 On 2026-10-07, the full `trimesh` native edit smoke passed curve reshape,
@@ -149,20 +158,36 @@ The workspace now skips unchanged audio-plan copies and defers compatible plan
 adoption until the current note ends. Live-mode commit deduplication remains in
 `docs/TDD/cycle-v2-mod-wheel-refresh-audit.md` and the causal-policy cleanup.
 
-## P2: Cycle 1 default factory preset key no longer resolves
+## Resolved: Linux Acidic preset load could corrupt UI and envelope state
 
-Context:
+Loading the legacy `Acidic1.cyc` preset in the standalone Release app could
+crash while the preset browser or post-load UI was settling. AddressSanitizer
+found three independent lifetime errors on the load path: `GLPanelRenderer`
+stored a pointer to a temporary render context, `SynthesizerVoice` retained
+pointers into an envelope vector while that vector grew, and legacy document
+loading left the shared envelope rasterizers bound to meshes destroyed by
+`MeshLibrary` replacement.
 
-- The 2026-09-13 expanded Cycle 1 preset export sweep logged
-  `FileManager::openFactoryPreset failed to resolve presetName="ooh-aah"` and
-  asserted at `FileManager.cpp:174` during asynchronous startup.
-- The preset library now contains `OohAah.cyc`; explicit loading and export of
-  all 276 files succeeded, so this is limited to the stale default-preset key or
-  filename-resolution policy.
-- Repro log: `/private/tmp/cycle-preset-migration.log`.
+The renderer now owns its active context value, envelope voice contexts reserve
+their final capacity before pointers are retained, and `EnvelopeInter2D`
+rebinding runs after every document load. The focused fixture
+`scripts/fixtures/cycle-agent-acidic-preset-load.json` opens Acidic1, waits for
+idle, and verifies the loaded document.
 
-Current status: open; select the intended default and make its persisted key
-follow the factory preset filename-resolution contract.
+Status: resolved 2026-09-18. ASan direct load and fixture runs completed with no
+sanitizer report; Release validation is recorded with the implementation
+change.
+
+## Open: Linux automation startup logs a JUCE absolute path assertion
+
+The Acidic ASan fixture completed successfully but also logged
+`JUCE Assertion failure in juce_File.cpp:219` during the initial automation
+startup load. That assertion is JUCE's guard against constructing `File` from a
+non-absolute path. It did not recur on the Acidic load itself and did not
+produce a crash. Repro artifact: `/tmp/cycle-acidic-agent.log`.
+
+Current status: open; identify the startup caller that passes the relative path
+and use the existing context-aware JUCE path construction.
 
 ## P1: Empty trimesh vertex problem
 

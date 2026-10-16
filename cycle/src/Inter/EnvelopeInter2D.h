@@ -62,6 +62,7 @@ public:
     EnvelopeMesh* getCurrentMesh() override;
     EnvRasterizer* getRast(int envEnum);
     EnvRasterizer* getEnvRasterizer();
+    void rebindRasterizersToCurrentMeshes();
     vector<VertCube*> getLinesToSlideOnSingleSelect() override;
     Button* getEnableButton() { return &enableButton; }
 

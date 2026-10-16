@@ -68,7 +68,10 @@ namespace Rasterization {
         }
 
         bool isSampleable() const {
-            return !waveX.empty() && !waveY.empty();
+            return waveX.get() != nullptr
+                && waveY.get() != nullptr
+                && !waveX.empty()
+                && !waveY.empty();
         }
 
         void copyFrom(const WaveformBuffers& source) {
@@ -133,7 +136,12 @@ namespace Rasterization {
         }
 
         bool isSampleable() const {
-            return waveX != nullptr && !waveX->empty();
+            return waveX != nullptr
+                && waveY != nullptr
+                && waveX->get() != nullptr
+                && waveY->get() != nullptr
+                && !waveX->empty()
+                && !waveY->empty();
         }
 
         WaveformBuffers view() const {

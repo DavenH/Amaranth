@@ -224,6 +224,7 @@ void FileManager::openCurrentPreset() {
     DBG("FileManager::openCurrentPreset calling Document::open");
     getObj(Document).open(currentPresetName);
     DBG("FileManager::openCurrentPreset Document::open returned");
+    getObj(EnvelopeInter2D).rebindRasterizersToCurrentMeshes();
     doPostPresetLoad();
     DBG("FileManager::openCurrentPreset finish post-preset updates");
 }
@@ -302,9 +303,6 @@ void FileManager::doPostPresetLoad() {
     getObj(PluginProcessor).suspendProcessing(false);
     getObj(PluginProcessor).documentHasLoaded();
     getObj(PluginProcessor).updateLatency();
-  #else
-    getObj(AudioSourceRepo)	.setAudioProcessor(AudioSourceRepo::SynthSource);
-    getObj(AudioHub)		.resumeAudio();
   #endif
 
     getObj(EnvelopeInter2D)	.switchedEnvelope(LayerGroups::GroupVolume, false, true);
@@ -319,6 +317,12 @@ void FileManager::doPostPresetLoad() {
     getSetting(IgnoringEditMessages) = false;
 
     getObj(Initializer).resetAll(true);
+
+  #if !PLUGIN_MODE
+    getObj(AudioSourceRepo).setAudioProcessor(AudioSourceRepo::SynthSource);
+    getObj(AudioHub).resumeAudio();
+  #endif
+
     getObj(Waveform3D).reconcileLoadedState();
     getObj(Spectrum3D).reconcileLoadedState();
     getObj(UnisonUI).reconcileLoadedState(true);

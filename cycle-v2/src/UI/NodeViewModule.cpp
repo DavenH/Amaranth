@@ -50,6 +50,11 @@ public:
         if (viewCapabilities.expandedEditorSize.has_value()) {
             size = *viewCapabilities.expandedEditorSize;
         }
+        if (viewCapabilities.expandedEditorMaximumAspectRatio.has_value()
+                && size.x / jmax(1.f, size.y)
+                        > *viewCapabilities.expandedEditorMaximumAspectRatio) {
+            size.x = size.y * *viewCapabilities.expandedEditorMaximumAspectRatio;
+        }
         return Rectangle<float>(
                 jmin(available.getWidth(), size.x),
                 jmin(available.getHeight(), size.y)).withCentre(available.getCentre());
@@ -98,7 +103,8 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     NodeViewCapabilities mesh = preview;
     mesh.hostedEditor = true;
     mesh.outputSideControl = true;
-    mesh.expandedEditorScale = Point<float>(0.86f, 0.82f);
+    mesh.expandedEditorScale = Point<float>(0.81f, 0.955f);
+    mesh.expandedEditorMaximumAspectRatio = 1.65f;
     add(NodeKind::TrilinearMesh, mesh);
     add(NodeKind::SpectralLayer, preview);
 

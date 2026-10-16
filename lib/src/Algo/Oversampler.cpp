@@ -163,6 +163,11 @@ void Oversampler::setKernelSize(int size) {
 
     stateUpBuf.resize(specSize);
     stateDownBuf.resize(specSize);
+    workBuffUp.resize(buffSize);
+    workBuffDown.resize(buffSize);
+
+    filterUpState = reinterpret_cast<IppsFIRSpec_32f*>(stateUpBuf.get());
+    filterDownState = reinterpret_cast<IppsFIRSpec_32f*>(stateDownBuf.get());
 
     ippsFIRSRInit_32f(firTaps, firTaps.size(), ippAlgAuto, filterUpState);
     ippsFIRSRInit_32f(firTaps, firTaps.size(), ippAlgAuto, filterDownState);

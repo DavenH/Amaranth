@@ -4,6 +4,7 @@
 
 #include "Panel.h"
 #include "OpenGL.h"
+#include "OpenGLDiagnostics.h"
 #include "../../App/SingletonRepo.h"
 
 using namespace gl;
@@ -76,6 +77,7 @@ OpenGLBase::Diagnostics OpenGLBase::getDiagnostics(bool pollNow, const String& p
 }
 
 void OpenGLBase::noteContextCreated() {
+    suppressOpenGLDebugNotifications();
     ++contextCreateCount;
 }
 
