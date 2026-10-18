@@ -3455,6 +3455,60 @@ TEST_CASE("Compact and expanded Trimesh views sample the same spectral source",
     }
 }
 
+TEST_CASE("Compact Trimesh repaint preserves the expanded spectral grid during morph editing",
+        "[cycle-v2][nodes][trimesh][compact][expanded][morph]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == "primaryAxis") {
+            parameter.value = "red";
+        }
+    }
+
+    TrimeshWidget widget;
+    widget.setPreviewKeyScaleAxis("red");
+    const auto profile = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+    Image expandedImage(Image::ARGB, 900, 650, true);
+    Graphics expandedGraphics(expandedImage);
+    widget.setRenderProfile(profile);
+    widget.paintExpanded(expandedGraphics, node, expandedImage.getBounds().toFloat());
+    const TrimeshRenderData expanded = widget.renderDataForAutomation();
+    REQUIRE(expanded.columns == TrimeshWidget::expandedColumnCount(
+            expandedImage.getBounds().toFloat()));
+    REQUIRE(expanded.pitchSpansColumns);
+    const uint64_t surfaceRebuilds = widget.panelRenderStatsForAutomation().surfaceRebuildCount;
+
+    Image compactImage(Image::ARGB, 220, 180, true);
+    Graphics compactGraphics(compactImage);
+    widget.paintCompact(compactGraphics, node, compactImage.getBounds().toFloat(), 1.f, profile);
+    REQUIRE(widget.renderDataForAutomation().surface == expanded.surface);
+    REQUIRE(widget.renderDataForAutomation().columns == expanded.columns);
+    REQUIRE(widget.panelRenderStatsForAutomation().surfaceRebuildCount == surfaceRebuilds);
+
+    for (const char* value : { "0.62", "0.78" }) {
+        for (auto& parameter : node.parameters) {
+            if (parameter.id == "red") {
+                parameter.value = value;
+            }
+        }
+        widget.syncFromNode(node);
+        widget.paintCompact(compactGraphics, node, compactImage.getBounds().toFloat(), 1.f, profile);
+        REQUIRE(widget.renderDataForAutomation().surface == expanded.surface);
+        REQUIRE(widget.renderDataForAutomation().columns == expanded.columns);
+        REQUIRE(widget.panelRenderStatsForAutomation().surfaceRebuildCount == surfaceRebuilds);
+    }
+
+    widget.paintExpanded(expandedGraphics, node, expandedImage.getBounds().toFloat());
+    REQUIRE(widget.renderDataForAutomation().surface == expanded.surface);
+    REQUIRE(widget.renderDataForAutomation().columns == expanded.columns);
+    REQUIRE(widget.panelRenderStatsForAutomation().surfaceRebuildCount == surfaceRebuilds);
+
+    widget.clearExpandedPanelHostDelegate(nullptr);
+    widget.paintCompact(compactGraphics, node, compactImage.getBounds().toFloat(), 1.f, profile);
+    REQUIRE(widget.renderDataForAutomation().columns == 96);
+}
+
 TEST_CASE("Compact bipolar spectral surface updates when its shader changes",
         "[cycle-v2][nodes][trimesh][compact][surface]") {
     ScopedJuceInitialiser_GUI juce;
