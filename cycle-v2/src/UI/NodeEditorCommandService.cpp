@@ -6,6 +6,7 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentMenu.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Nodes/Trimesh/Model/TrimeshMorphValue.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
 namespace CycleV2 {
@@ -448,7 +449,10 @@ bool NodeEditorCommandService::updateTrimeshMorphEditValue(float value) {
     const String label = activeMorphParameterId.substring(0, 1).toUpperCase()
             + activeMorphParameterId.substring(1);
     const auto result = commands.setNodeParameter(
-            activeMorphNodeId, activeMorphParameterId, label, String(value, 3));
+            activeMorphNodeId,
+            activeMorphParameterId,
+            label,
+            formatTrimeshMorphValue(value));
     if (!result.succeeded()) {
         return false;
     }

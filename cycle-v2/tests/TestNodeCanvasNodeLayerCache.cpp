@@ -123,3 +123,55 @@ TEST_CASE("Node layer cache invalidates only the changed runtime preview",
     REQUIRE(stats.misses == 1);
     REQUIRE(stats.hits == 1);
 }
+
+TEST_CASE("Moving a node reuses its preview tile through updates and release",
+        "[cycle-v2][canvas][performance][cache]") {
+    NodeCanvasNodeLayerCache cache;
+    Node node = GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh, "magnitude", { 20.f, 30.f });
+    Rectangle<float> tileBounds { 15.f, 25.f, 190.f, 160.f };
+    Image output(Image::ARGB, 400, 300, true);
+    Graphics graphics(output);
+
+    cache.beginFrame();
+    const auto initial = cache.access(node, tileBounds, 3, 4, nullptr, false, 1.f);
+    REQUIRE_FALSE(initial.hit);
+    Graphics tile(*initial.image);
+    tile.fillAll(Colours::orange);
+    REQUIRE(cache.endFrame().misses == 1);
+
+    cache.beginFrame();
+    node.bounds = node.bounds.translated(18.f, 6.f);
+    tileBounds = tileBounds.translated(18.f, 6.f);
+    const auto firstMove = cache.accessDuringMove(
+            node, tileBounds, nullptr, false, 1.f);
+    REQUIRE(firstMove.hit);
+    cache.draw(graphics, firstMove);
+    REQUIRE(cache.endFrame().hits == 1);
+
+    cache.beginFrame();
+    node.bounds = node.bounds.translated(24.f, 9.f);
+    tileBounds = tileBounds.translated(24.f, 9.f);
+    const auto secondMove = cache.accessDuringMove(
+            node, tileBounds, nullptr, false, 1.f);
+    REQUIRE(secondMove.hit);
+    cache.draw(graphics, secondMove);
+    REQUIRE(cache.endFrame().hits == 1);
+    REQUIRE(output.getPixelAt(
+            roundToInt(tileBounds.getCentreX()),
+            roundToInt(tileBounds.getCentreY())) == Colours::orange);
+
+    cache.beginFrame();
+    REQUIRE(cache.access(node, tileBounds, 3, 4, nullptr, false, 1.f).hit);
+    REQUIRE(cache.endFrame().hits == 1);
+
+    node.bounds = node.bounds.translated(-42.f, -15.f);
+    tileBounds = tileBounds.translated(-42.f, -15.f);
+    cache.beginFrame();
+    REQUIRE(cache.access(node, tileBounds, 3, 4, nullptr, false, 1.f).hit);
+    REQUIRE(cache.endFrame().hits == 1);
+
+    cache.beginFrame();
+    REQUIRE_FALSE(cache.access(node, tileBounds, 3, 5, nullptr, false, 1.f).hit);
+    REQUIRE(cache.endFrame().misses == 1);
+}

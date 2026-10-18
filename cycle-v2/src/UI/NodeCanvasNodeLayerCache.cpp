@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <cmath>
 
 #include "UI/NodeCanvasNodeLayerCache.h"
@@ -50,7 +49,8 @@ bool nodesEqualForPresentation(const Node& first, const Node& second) {
     return first.id == second.id
             && first.kind == second.kind
             && first.subtitle == second.subtitle
-            && first.bounds == second.bounds
+            && first.bounds.getWidth() == second.bounds.getWidth()
+            && first.bounds.getHeight() == second.bounds.getHeight()
             && nodeParametersEqual(first.parameters, second.parameters)
             && portsEqual(first.inputs, second.inputs)
             && portsEqual(first.outputs, second.outputs)
@@ -80,14 +80,23 @@ bool NodeCanvasNodeLayerCache::Entry::matches(
         uint64_t contextFingerprint,
         const NodePreviewResult* runtimePreview,
         bool currentlySelected,
-        float scale) const {
-    return nodesEqualForPresentation(nodeSnapshot, node)
+        float scale,
+        bool moving) const {
+    const bool nodeMatches = moving
+            ? nodeSnapshot.model == node.model
+                    && nodeSnapshot.kind == node.kind
+                    && nodeSnapshot.bounds.getWidth() == node.bounds.getWidth()
+                    && nodeSnapshot.bounds.getHeight() == node.bounds.getHeight()
+            : nodesEqualForPresentation(nodeSnapshot, node);
+    return nodeMatches
             && logicalSize == Point<float>(bounds.getWidth(), bounds.getHeight())
             && previewResourceFingerprint == resourceFingerprint
             && renderContextFingerprint == contextFingerprint
             && hasRuntimePreview == (runtimePreview != nullptr)
             && (runtimePreview == nullptr
-                    || runtimePreviewsEqual(runtimePreviewSnapshot, *runtimePreview))
+                    || (moving && runtimePreview->contentRevision == 0
+                            ? false
+                            : runtimePreviewsEqual(runtimePreviewSnapshot, *runtimePreview)))
             && physicalScale == scale
             && selected == currentlySelected
             && image.isValid();
@@ -106,11 +115,8 @@ NodeCanvasNodeLayerCacheAccess NodeCanvasNodeLayerCache::access(
         const NodePreviewResult* runtimePreview,
         bool selected,
         float physicalScale) {
-    auto match = std::find_if(
-            entries.begin(),
-            entries.end(),
-            [&](const Entry& entry) { return entry.nodeId == node.id; });
-    Entry* entry = match != entries.end() ? &*match : nullptr;
+    auto match = entries.find(node.id);
+    Entry* entry = match != entries.end() ? &match->second : nullptr;
     const bool hit = entry != nullptr
             && entry->matches(
                     node,
@@ -119,11 +125,11 @@ NodeCanvasNodeLayerCacheAccess NodeCanvasNodeLayerCache::access(
                     renderContextFingerprint,
                     runtimePreview,
                     selected,
-                    physicalScale);
+                    physicalScale,
+                    false);
     if (!hit) {
         if (entry == nullptr) {
-            entries.push_back({});
-            entry = &entries.back();
+            entry = &entries.try_emplace(node.id).first->second;
         }
         replaceEntry(
                 *entry,
@@ -142,6 +148,34 @@ NodeCanvasNodeLayerCacheAccess NodeCanvasNodeLayerCache::access(
     return { &entry->image, logicalBounds, hit };
 }
 
+NodeCanvasNodeLayerCacheAccess NodeCanvasNodeLayerCache::accessDuringMove(
+        const Node& node,
+        Rectangle<float> logicalBounds,
+        const NodePreviewResult* runtimePreview,
+        bool selected,
+        float physicalScale) {
+    // A node-move gesture only changes position; ordinary access checks the full key on release.
+    auto match = entries.find(node.id);
+    if (match == entries.end()) {
+        return {};
+    }
+    Entry& entry = match->second;
+    if (!entry.matches(
+                node,
+                logicalBounds,
+                entry.previewResourceFingerprint,
+                entry.renderContextFingerprint,
+                runtimePreview,
+                selected,
+                physicalScale,
+                true)) {
+        return {};
+    }
+    entry.paintGeneration = paintGeneration;
+    ++frameStats.hits;
+    return { &entry.image, logicalBounds, true };
+}
+
 void NodeCanvasNodeLayerCache::replaceEntry(
         Entry& entry,
         const Node& node,
@@ -153,7 +187,6 @@ void NodeCanvasNodeLayerCache::replaceEntry(
         float physicalScale) {
     const int imageWidth = jmax(1, roundToInt(logicalBounds.getWidth() * physicalScale));
     const int imageHeight = jmax(1, roundToInt(logicalBounds.getHeight() * physicalScale));
-    entry.nodeId = node.id;
     entry.nodeSnapshot = node;
     entry.hasRuntimePreview = runtimePreview != nullptr;
     entry.runtimePreviewSnapshot = runtimePreview != nullptr
@@ -195,12 +228,13 @@ void NodeCanvasNodeLayerCache::draw(
 }
 
 NodeCanvasNodeLayerCacheStats NodeCanvasNodeLayerCache::endFrame() {
-    entries.erase(
-            std::remove_if(
-                    entries.begin(),
-                    entries.end(),
-                    [&](const Entry& entry) { return entry.paintGeneration != paintGeneration; }),
-            entries.end());
+    for (auto entry = entries.begin(); entry != entries.end();) {
+        if (entry->second.paintGeneration != paintGeneration) {
+            entry = entries.erase(entry);
+        } else {
+            ++entry;
+        }
+    }
     return frameStats;
 }
 

@@ -88,6 +88,15 @@ characters or fewer and run `python3 scripts/check_code_map.py`.
 Record incidental assertions, crashes, or suspicious runtime failures in
 `docs/TDD/ui-bugs.md` or `docs/TDD/audio-bugs.md` with concise repro evidence.
 
+## Pull Requests
+
+- Keep descriptions short and focused on the user-visible change, its reason,
+  and material review concerns. Link issues and include a relevant screenshot
+  for UI changes when useful.
+- Leave routine build commands, test counts, lint and audit results, and pixel
+  measurements out of the description. Provide detailed proof separately when
+  requested or when a result affects the review decision.
+
 ## Chat Playbook
 
 Consult `docs/chats/README.md` and recent entries when a session establishes

@@ -114,13 +114,14 @@ void TrimeshWidget::paintCompact(
     const Rectangle<float> previewArea = meshPreviewContentArea(area);
     const float surfaceAspectRatio = previewArea.getWidth()
             / jmax(1.f, previewArea.getHeight());
+    const int displayHeight = roundToInt(previewArea.getHeight());
 
     if (!panelData.canDrawSurface()) {
         return;
     }
 
-    if (needsCompactHeatmapRefresh(panelData, profile, surfaceAspectRatio)) {
-        refreshCompactHeatmap(panelData, profile, surfaceAspectRatio);
+    if (needsCompactHeatmapRefresh(panelData, profile, surfaceAspectRatio, displayHeight)) {
+        refreshCompactHeatmap(panelData, profile, surfaceAspectRatio, displayHeight);
     }
 
     if (compactHeatmap.image.isValid()) {
@@ -132,10 +133,12 @@ void TrimeshWidget::paintCompact(
 bool TrimeshWidget::needsCompactHeatmapRefresh(
         const TrimeshRenderData& panelData,
         const TrimeshRenderProfile& profile,
-        float surfaceAspectRatio) const {
+        float surfaceAspectRatio,
+        int displayHeight) const {
     return !compactHeatmap.image.isValid()
             || compactHeatmap.rows != panelData.rows
             || compactHeatmap.columns != kPreviewColumns
+            || compactHeatmap.displayHeight != displayHeight
             || compactHeatmap.revision != bridge.getModel().getDerivedRevisions().compactPreview
             || compactHeatmap.domain != profile.getDomain()
             || compactHeatmap.scalePolicy != profile.getScalePolicy()
@@ -149,7 +152,8 @@ bool TrimeshWidget::needsCompactHeatmapRefresh(
 void TrimeshWidget::refreshCompactHeatmap(
         const TrimeshRenderData& panelData,
         const TrimeshRenderProfile& profile,
-        float surfaceAspectRatio) {
+        float surfaceAspectRatio,
+        int displayHeight) {
     std::optional<TrimeshRenderData> compactGrid;
     if (panelData.columns != kPreviewColumns) {
         compactGrid = TrimeshGridRenderService::renderGrid(
@@ -159,10 +163,11 @@ void TrimeshWidget::refreshCompactHeatmap(
     const TrimeshRenderData& compactData = compactGrid.has_value()
             ? *compactGrid : panelData;
 
-    compactHeatmap.image = TrimeshSurfaceRenderer::createHeatmapImage(
-            compactData, profile, false, surfaceAspectRatio);
+    compactHeatmap.image = TrimeshSurfaceRenderer::createTrimeshImage(
+            compactData, profile, surfaceAspectRatio, displayHeight);
     compactHeatmap.rows = compactData.rows;
     compactHeatmap.columns = compactData.columns;
+    compactHeatmap.displayHeight = displayHeight;
     compactHeatmap.revision = bridge.getModel().getDerivedRevisions().compactPreview;
     compactHeatmap.domain = profile.getDomain();
     compactHeatmap.scalePolicy = profile.getScalePolicy();

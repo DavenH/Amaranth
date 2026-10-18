@@ -93,11 +93,15 @@ and any global preview context consumed by node painters.
 
 `NodeCanvasNodeLayerCache` owns transparent HiDPI sprites for visible nodes;
 `NodeCanvasPresentation::paintNode` remains the sole producer of their pixels.
-The cache compares immutable node presentation state (bounds, parameters,
+The cache compares immutable node presentation state (size, parameters,
 ports, model identity, and editor state) and keys reuse on presentation and
 viewport revisions, per-node preview-resource state, selection, display scale,
 sprite bounds, and the global Unison/Voice context where applicable. Entries
 that leave the visible set are released at the end of the frame.
+Node position translates an existing tile. During a node move, the cache uses
+its constant-time content key and reuses the tile; release rechecks the full
+presentation key. This keeps compact mesh previews visually stable and avoids
+rendering their content for position-only updates.
 
 The metrics export `presentationCache.nodeLayer` with per-node hit/miss counts.
 The hit-duration distribution contains all-hit node-layer frames; the

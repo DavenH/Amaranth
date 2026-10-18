@@ -2,6 +2,7 @@
 
 #include <UI/Panels/Panel2D.h>
 
+#include <functional>
 #include <vector>
 
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
@@ -18,9 +19,12 @@ public:
     void drawBackground(bool fillBackground = true) override;
     void drawViewableVerts() override {}
     void panelResized() override;
+    void zoomUpdated(int updateSource) override;
+    void doZoomExtra(bool commandDown) override;
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
     void configureViewport(Range<float> frequencyLimits);
+    void setZoomChangedCallback(std::function<void(bool)> callback);
     void setPreviewMidiNote(int midiNote);
     void setPrimaryMorphPosition(float position);
 
@@ -35,6 +39,7 @@ private:
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     std::vector<float> partialValues;
     std::vector<ColorPos> partialContour;
+    std::function<void(bool)> zoomChangedCallback;
     float primaryMorphPosition {};
     int previewMidiNote { 48 };
 };

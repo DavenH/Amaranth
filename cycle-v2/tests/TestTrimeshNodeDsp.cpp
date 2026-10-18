@@ -1230,6 +1230,45 @@ TEST_CASE("Trimesh surface renderer creates vertically oriented heatmap images",
     requirePixelNear(1, 0, 0.90f);
 }
 
+TEST_CASE("Compact magnitude bands use expanded log intervals and source rows",
+        "[cycle-v2][nodes][trimesh][spectral][compact]") {
+    constexpr int midiNote = 105;
+    constexpr int imageHeight = 200;
+    const Buffer<float> ramp = LogRegions::getDefaultRegion(midiNote);
+    TrimeshRenderData renderData;
+    renderData.rows = ramp.size();
+    renderData.columns = 2;
+    renderData.midiNote = midiNote;
+    renderData.surface.resize((size_t) renderData.rows * 2, 0.4f);
+    renderData.linearFrequencySurface.resize((size_t) renderData.rows * 2, 0.2f);
+    renderData.linearFrequencySurface[0] = 0.9f;
+    renderData.linearFrequencySurface[1] = 0.1f;
+
+    const auto profile = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+    const Image image = TrimeshSurfaceRenderer::createTrimeshImage(
+            renderData, profile, 1.f, imageHeight);
+    REQUIRE(image.isValid());
+    REQUIRE(image.getHeight() == imageHeight);
+
+    const float displayHeightScale = (float) imageHeight / (1.f - ramp[0]);
+    const int firstTop = roundToInt((1.f - ramp[1]) * displayHeightScale);
+    const int firstBottom = roundToInt((1.f - ramp[0]) * displayHeightScale);
+    const int secondTop = roundToInt((1.f - ramp[2]) * displayHeightScale);
+    REQUIRE(firstBottom - firstTop > firstTop - secondTop);
+
+    const Image gradient = profile.getSurfaceStyle().gradientImage();
+    const int firstColourIndex = (int) (0.9f * (float) gradient.getWidth());
+    const int secondColourIndex = (int) (0.1f * (float) gradient.getWidth());
+    REQUIRE(image.getPixelAt(0, (firstTop + firstBottom) / 2)
+            == gradient.getPixelAt(firstColourIndex, 0));
+    REQUIRE(image.getPixelAt(0, (firstTop + secondTop) / 2)
+            == gradient.getPixelAt(secondColourIndex, 0));
+    REQUIRE(firstBottom == imageHeight);
+    REQUIRE(image.getPixelAt(0, imageHeight - 1)
+            == gradient.getPixelAt(firstColourIndex, 0));
+}
+
 TEST_CASE("Compact pitch columns use each key's harmonic range across the preview height",
         "[cycle-v2][nodes][trimesh][spectral][key-scale][compact]") {
     TrimeshRenderData renderData;
@@ -1239,10 +1278,12 @@ TEST_CASE("Compact pitch columns use each key's harmonic range across the previe
     renderData.surface.resize((size_t) renderData.rows * 3);
     const size_t highColumnOffset = (size_t) renderData.rows * 2;
     renderData.surface[highColumnOffset] = 1.f;
+    renderData.linearFrequencySurface = renderData.surface;
 
     const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(
             PortDomain::SpectralMagnitudeSignal);
-    const Image image = TrimeshSurfaceRenderer::createHeatmapImage(renderData, profile);
+    const Image image = TrimeshSurfaceRenderer::createTrimeshImage(
+            renderData, profile, 1.f, renderData.rows);
     REQUIRE(image.isValid());
     REQUIRE(image.getPixelAt(2, renderData.rows / 2)
             != TrimeshSurfaceRenderer::colourForProfile(0.f, profile));
@@ -2477,6 +2518,22 @@ TEST_CASE("Trimesh Panel3D reads node-backed columns through lib data retriever"
     REQUIRE(&panel.getGridLock() == &source.getGridLock());
 }
 
+TEST_CASE("Expanded spectral magnitude uses only stepped Panel3D rows",
+        "[cycle-v2][nodes][trimesh][surface]") {
+    ScopedJuceInitialiser_GUI juce;
+    TrimeshPanelBridge bridge;
+    TrimeshPanel3D& panel = bridge.getPanel3D();
+    ScalarSurfaceMaterial material;
+
+    bridge.setDisplayDomain(PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(panel.shouldStepSurfaceRows());
+    REQUIRE_FALSE(panel.getScalarSurfaceMaterial(material));
+
+    bridge.setDisplayDomain(PortDomain::SpectralPhaseSignal);
+    REQUIRE_FALSE(panel.shouldStepSurfaceRows());
+    REQUIRE(panel.getScalarSurfaceMaterial(material));
+}
+
 TEST_CASE("Trimesh panel bridge binds Panel3D interactor and rasterizer", "[cycle-v2][nodes][trimesh]") {
     ScopedJuceInitialiser_GUI juce;
     Node node {
@@ -3023,6 +3080,151 @@ TEST_CASE("Spectral Trimesh viewports expose the full editable frequency range",
             == Range<float>(0.f, 1.f));
     REQUIRE(grid->rect.yMinimum == Catch::Approx(0.f));
     REQUIRE(grid->rect.yMaximum == Catch::Approx(1.f));
+}
+
+TEST_CASE("Spectral magnitude zoom aligns the first harmonic and links the editor views",
+        "[cycle-v2][nodes][trimesh][spectral][viewport][linked-zoom]") {
+    ScopedJuceInitialiser_GUI juce;
+    TrimeshPanelBridge bridge;
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal));
+
+    auto* slice = dynamic_cast<ZoomPanel*>(bridge.getPanel2DHostComponent());
+    auto* grid = dynamic_cast<ZoomPanel*>(bridge.getPanel3DHostComponent());
+    REQUIRE(slice != nullptr);
+    REQUIRE(grid != nullptr);
+    slice->setBounds(0, 0, 640, 180);
+    grid->setBounds(0, 0, 640, 320);
+
+    const float firstHarmonic = LogRegionMapping(48).displayUnitForSourceUnit(0.f);
+    REQUIRE(slice->rect.x == Catch::Approx(firstHarmonic));
+    REQUIRE(slice->rect.w == Catch::Approx(1.f - firstHarmonic));
+    REQUIRE(grid->rect.y == Catch::Approx(0.f));
+    REQUIRE(grid->rect.h == Catch::Approx(1.f - firstHarmonic));
+    REQUIRE(bridge.getPanel2D().sx(firstHarmonic) == Catch::Approx(3.f));
+    REQUIRE(bridge.getPanel3D().sy(firstHarmonic)
+            == Catch::Approx((float) bridge.getPanel3D().getHeight() - 3.f));
+
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    bridge.syncFromNode(node, 32, 8);
+    const auto renderCounts = bridge.getDataSource().getRenderCounters();
+    REQUIRE(renderCounts.surfaceRebuilds > 0);
+
+    auto* horizontal = dynamic_cast<ScrollBar*>(slice->getComponent(true));
+    auto* vertical = dynamic_cast<ScrollBar*>(grid->getComponent(false));
+    REQUIRE(horizontal != nullptr);
+    REQUIRE(vertical != nullptr);
+    horizontal->setCurrentRangeStart(0.2);
+    REQUIRE(grid->rect.y == Catch::Approx(1.f - slice->rect.x - slice->rect.w));
+    REQUIRE(grid->rect.h == Catch::Approx(slice->rect.w));
+
+    vertical->setCurrentRangeStart(0.1);
+    REQUIRE(slice->rect.x == Catch::Approx(1.f - grid->rect.y - grid->rect.h));
+    REQUIRE(slice->rect.w == Catch::Approx(grid->rect.h));
+
+    const auto wheelEvent = panelMouseEvent(
+            *bridge.getPanel2D().getComponent(), { 320.f, 80.f }, {},
+            { 320.f, 80.f }, false);
+    MouseWheelDetails upward {};
+    upward.deltaY = 0.2f;
+    bridge.getPanel2D().getComponent()->mouseWheelMove(wheelEvent, upward);
+    REQUIRE(slice->rect.w < 1.f - firstHarmonic);
+    REQUIRE(grid->rect.y == Catch::Approx(1.f - slice->rect.x - slice->rect.w));
+    REQUIRE(grid->rect.h == Catch::Approx(slice->rect.w));
+
+    const float beforeGridWheel = grid->rect.h;
+    const auto gridWheelEvent = panelMouseEvent(
+            *bridge.getPanel3D().getComponent(), { 320.f, 150.f },
+            ModifierKeys::commandModifier, { 320.f, 150.f }, false);
+    bridge.getPanel3D().getComponent()->mouseWheelMove(gridWheelEvent, upward);
+    REQUIRE(grid->rect.h < beforeGridWheel);
+    REQUIRE(slice->rect.x == Catch::Approx(1.f - grid->rect.y - grid->rect.h));
+    REQUIRE(slice->rect.w == Catch::Approx(grid->rect.h));
+    const auto afterZoomCounts = bridge.getDataSource().getRenderCounters();
+    REQUIRE(afterZoomCounts.sliceRebuilds == renderCounts.sliceRebuilds);
+    REQUIRE(afterZoomCounts.surfaceRebuilds == renderCounts.surfaceRebuilds);
+
+    const float customizedStart = slice->rect.x;
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralPhaseSignal));
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal));
+    REQUIRE(slice->rect.x == Catch::Approx(customizedStart));
+    REQUIRE(grid->rect.y == Catch::Approx(1.f - slice->rect.x - slice->rect.w));
+
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal));
+    REQUIRE(slice->rect.x == Catch::Approx(0.f));
+    REQUIRE(slice->rect.w == Catch::Approx(1.f));
+    REQUIRE(grid->rect.y == Catch::Approx(0.f));
+    REQUIRE(grid->rect.h == Catch::Approx(1.f));
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal));
+    REQUIRE(slice->rect.x == Catch::Approx(firstHarmonic));
+    REQUIRE(grid->rect.h == Catch::Approx(1.f - firstHarmonic));
+}
+
+TEST_CASE("Opening the second spectral view inherits the first view's zoom",
+        "[cycle-v2][nodes][trimesh][spectral][viewport][linked-zoom]") {
+    ScopedJuceInitialiser_GUI juce;
+    for (const bool gridFirst : { false, true }) {
+        TrimeshPanelBridge bridge;
+        bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+                PortDomain::SpectralMagnitudeSignal));
+
+        auto* first = dynamic_cast<ZoomPanel*>(gridFirst
+                ? bridge.getPanel3DHostComponent()
+                : bridge.getPanel2DHostComponent());
+        REQUIRE(first != nullptr);
+        first->setBounds(0, 0, 640, 320);
+        auto* scrollbar = dynamic_cast<ScrollBar*>(
+                first->getComponent(!gridFirst));
+        REQUIRE(scrollbar != nullptr);
+        scrollbar->setCurrentRangeStart(0.2);
+
+        auto* second = dynamic_cast<ZoomPanel*>(gridFirst
+                ? bridge.getPanel2DHostComponent()
+                : bridge.getPanel3DHostComponent());
+        REQUIRE(second != nullptr);
+        const ZoomRect& grid = (gridFirst ? first : second)->rect;
+        const ZoomRect& slice = (gridFirst ? second : first)->rect;
+        REQUIRE(slice.x == Catch::Approx(1.f - grid.y - grid.h));
+        REQUIRE(slice.w == Catch::Approx(grid.h));
+    }
+}
+
+TEST_CASE("Unrelated panel zoom does not suppress the magnitude frequency default",
+        "[cycle-v2][nodes][trimesh][spectral][viewport][linked-zoom]") {
+    ScopedJuceInitialiser_GUI juce;
+    TrimeshPanelBridge bridge;
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralPhaseSignal));
+    auto* slice = dynamic_cast<ZoomPanel*>(bridge.getPanel2DHostComponent());
+    auto* grid = dynamic_cast<ZoomPanel*>(bridge.getPanel3DHostComponent());
+    REQUIRE(slice != nullptr);
+    REQUIRE(grid != nullptr);
+    slice->setBounds(0, 0, 640, 180);
+    grid->setBounds(0, 0, 640, 320);
+
+    MouseWheelDetails upward {};
+    upward.deltaY = 0.2f;
+    Component* slicePanel = bridge.getPanel2D().getComponent();
+    const auto sliceWheel = panelMouseEvent(
+            *slicePanel, { 320.f, 80.f }, ModifierKeys::commandModifier,
+            { 320.f, 80.f }, false);
+    slicePanel->mouseWheelMove(sliceWheel, upward);
+    Component* gridPanel = bridge.getPanel3D().getComponent();
+    const auto gridWheel = panelMouseEvent(
+            *gridPanel, { 320.f, 150.f }, {}, { 320.f, 150.f }, false);
+    gridPanel->mouseWheelMove(gridWheel, upward);
+    REQUIRE(slice->rect.x == Catch::Approx(0.f));
+    REQUIRE(slice->rect.w == Catch::Approx(1.f));
+    REQUIRE(grid->rect.y == Catch::Approx(0.f));
+    REQUIRE(grid->rect.h == Catch::Approx(1.f));
+
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal));
+    REQUIRE(slice->rect.x == Catch::Approx(0.05f));
+    REQUIRE(grid->rect.h == Catch::Approx(0.95f));
 }
 
 TEST_CASE("Trimesh trackpad scroll pans horizontally and zooms vertically",

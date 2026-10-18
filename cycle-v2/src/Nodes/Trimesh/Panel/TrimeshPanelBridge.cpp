@@ -387,6 +387,11 @@ void TrimeshPanelBridge::setDisplayDomain(PortDomain domain) {
 }
 
 void TrimeshPanelBridge::setRenderProfile(TrimeshRenderProfile profile) {
+    const bool wasMagnitude = renderProfile.getDomain()
+            == PortDomain::SpectralMagnitudeSignal;
+    const bool isMagnitude = profile.getDomain()
+            == PortDomain::SpectralMagnitudeSignal;
+    const bool enteringMagnitude = isMagnitude && !wasMagnitude;
     renderProfile = profile;
     const Range<float> frequencyLimits = profile.getSliceStyle().isSpectral()
             ? Range<float>(-0.5f, 1.5f)
@@ -396,8 +401,11 @@ void TrimeshPanelBridge::setRenderProfile(TrimeshRenderProfile profile) {
     updateGuideCurveSeeds();
     panel3D.setRenderProfile(profile);
     panel2D.setRenderProfile(profile);
-    panel3D.configureViewport(frequencyLimits);
-    panel2D.configureViewport(frequencyLimits);
+    const float defaultStart = isMagnitude
+            ? LogRegionMapping(panelMidiNote).displayUnitForSourceUnit(0.f)
+            : 0.f;
+    panelHosts.configureFrequencyViewport(
+            frequencyLimits, defaultStart, enteringMagnitude);
 }
 
 void TrimeshPanelBridge::setPreviewMidiNote(int midiNote) {

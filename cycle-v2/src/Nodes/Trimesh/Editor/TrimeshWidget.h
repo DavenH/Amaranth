@@ -183,6 +183,7 @@ private:
         juce::Image image;
         int rows {};
         int columns {};
+        int displayHeight {};
         uint64_t revision {};
         PortDomain domain { PortDomain::ControlSignal };
         RenderScalePolicy scalePolicy { RenderScalePolicy::Unipolar };
@@ -195,11 +196,13 @@ private:
     bool needsCompactHeatmapRefresh(
             const TrimeshRenderData& panelData,
             const TrimeshRenderProfile& profile,
-            float surfaceAspectRatio) const;
+            float surfaceAspectRatio,
+            int displayHeight) const;
     void refreshCompactHeatmap(
             const TrimeshRenderData& panelData,
             const TrimeshRenderProfile& profile,
-            float surfaceAspectRatio);
+            float surfaceAspectRatio,
+            int displayHeight);
 
     static juce::Rectangle<float> meshPreviewContentArea(juce::Rectangle<float> area);
     static juce::Rectangle<float> expandedSidePanelContentBounds(juce::Rectangle<float> content);

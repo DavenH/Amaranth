@@ -1029,9 +1029,7 @@ void NodeCanvasPresentation::paintCachedNodes(
     const uint64_t startedAt = performanceObserver != nullptr
             ? performanceObserver->presentationTimestamp()
             : 0;
-    if (!frame.nodeDragActive) {
-        nodeLayerCache.beginFrame();
-    }
+    nodeLayerCache.beginFrame();
     const float physicalScale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
     const Rectangle<float> visibleArea = frame.canvasBounds.expanded(120.f);
     for (const Node& node : frame.graph.getNodes()) {
@@ -1045,21 +1043,7 @@ void NodeCanvasPresentation::paintCachedNodes(
                 || frame.canvasOcclusion.contains(nodeBounds)) {
             continue;
         }
-        if (frame.nodeDragActive) {
-            paintNode(graphics, frame, node);
-        } else {
-            paintCachedNode(graphics, frame, node, physicalScale);
-        }
-    }
-    if (frame.nodeDragActive) {
-        paintInlinePanGesture(graphics, frame);
-        for (const auto& group : frame.graph.getNodeGroups()) {
-            if (group.collapsed) {
-                NodeGroupPresentation::paint(
-                        graphics, frame.graph, group, frame.viewport, frame.facts.edgeIndex());
-            }
-        }
-        return;
+        paintCachedNode(graphics, frame, node, physicalScale);
     }
     const NodeCanvasNodeLayerCacheStats stats = nodeLayerCache.endFrame();
     if (performanceObserver != nullptr) {
@@ -1113,14 +1097,21 @@ void NodeCanvasPresentation::paintCachedNode(
             .expanded(32.f * portScale(frame.viewport.getZoom()));
     const NodePreviewResult* runtimePreview = frame.facts.previewFor(
             frame.snapshot, node.id);
-    const NodeCanvasNodeLayerCacheAccess cache = nodeLayerCache.access(
-            node,
-            logicalBounds,
-            previewRenderer.nodePresentationFingerprint(node.id),
-            renderContextFingerprintFor(frame, node),
-            runtimePreview,
-            isNodeSelected(frame, node.id),
-            physicalScale);
+    const bool selected = isNodeSelected(frame, node.id);
+    NodeCanvasNodeLayerCacheAccess cache = frame.nodeDragActive
+            ? nodeLayerCache.accessDuringMove(
+                    node, logicalBounds, runtimePreview, selected, physicalScale)
+            : NodeCanvasNodeLayerCacheAccess {};
+    if (cache.image == nullptr) {
+        cache = nodeLayerCache.access(
+                node,
+                logicalBounds,
+                previewRenderer.nodePresentationFingerprint(node.id),
+                renderContextFingerprintFor(frame, node),
+                runtimePreview,
+                selected,
+                physicalScale);
+    }
     if (!cache.hit) {
         const uint64_t tileStartedAt = performanceObserver != nullptr
                 ? performanceObserver->presentationTimestamp()
